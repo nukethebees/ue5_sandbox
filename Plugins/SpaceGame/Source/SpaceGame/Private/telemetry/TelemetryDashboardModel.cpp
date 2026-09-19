@@ -13,6 +13,8 @@
 #include <Misc/Paths.h>
 #include <Serialization/JsonSerializer.h>
 
+#include <string_view>
+
 namespace telemetry_dashboard {
 auto read_summary(FString const& path) -> std::expected<FTelemetryRunSummary, FString> {
     FString json;
@@ -52,9 +54,13 @@ auto read_summary(FString const& path) -> std::expected<FTelemetryRunSummary, FS
         return std::unexpected{FString::Printf(TEXT("Summary fields are missing in '%s'"), *path)};
     }
     result.level_id = FName{level_id};
-    if (!ml::try_parse_serialized(FStringView{reason}, result.completion_reason)) {
+    auto const utf8_reason{FTCHARToUTF8{*reason}};
+    auto const parsed_reason{::ioj::sim::try_parse_serialized_level_telemetry_run_end_reason(
+        std::string_view{utf8_reason.Get(), static_cast<std::size_t>(utf8_reason.Length())})};
+    if (!parsed_reason.has_value()) {
         return std::unexpected{FString::Printf(TEXT("Unknown completion reason in '%s'"), *path)};
     }
+    result.completion_reason = *parsed_reason;
     return result;
 }
 

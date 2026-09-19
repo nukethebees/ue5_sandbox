@@ -205,7 +205,7 @@ auto collect_radar_instances(std::span<::ioj::sim::AgentDisplayBatch const> cons
                 }
                 auto const local_delta{FVector3f{
                     no_roll_transform.InverseTransformVectorNoScale(FVector{world_delta})}};
-                auto const entity_type{ml::to_unreal(batch.type)};
+                auto const entity_type{batch.type};
                 auto heading_radians{0.0f};
                 if (entity_type == ETestEntityType::Fighter) {
                     auto const world_velocity{ml::to_unreal(batch.velocity(index))};

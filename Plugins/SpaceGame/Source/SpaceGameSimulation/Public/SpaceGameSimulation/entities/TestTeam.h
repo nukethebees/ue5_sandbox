@@ -4,24 +4,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
 #include "TestTeam.generated.h"
-
 UENUM()
 enum class ETestTeam : uint8 {
-    White,
-    Red,
-    Green,
-    Blue,
-    Orange,
-    Yellow,
-    COUNT UMETA(DisplayName = "Count", Hidden),
+    White = 0,
+    Red = 1,
+    Green = 2,
+    Blue = 3,
+    Orange = 4,
+    Yellow = 5,
+    COUNT = 6 UMETA(DisplayName = "Count", Hidden),
 };
-
-SPACEGAMESIMULATION_API auto LexToSerializedString(ETestTeam const value) -> TCHAR const*;
-
-namespace ml {
-SPACEGAMESIMULATION_API auto try_parse_serialized(FStringView const value, ETestTeam& result)
-    -> bool;
-
-} // namespace ml

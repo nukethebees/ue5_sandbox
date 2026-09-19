@@ -3,6 +3,7 @@ target_sources(native-simulation-tests PRIVATE
   agent_indexes_tests.cpp
   entity_ledger_tests.cpp
   entity_unique_id_tests.cpp
+  enum_tests.cpp
   test_tick_phases.cpp
   test_level_simulation.cpp
   test_overlap_handler.cpp

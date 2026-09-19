@@ -414,6 +414,29 @@ auto parse_enum_conversion(Form const& form) -> EnumConversion {
     return found->second;
 }
 
+auto parse_enum_unreal_projection(Form const& form) -> EnumUnrealProjection {
+    Fields const fields{form, "unreal-projection", 1};
+    fields.validate(
+        {"header", "header-include", "conversion-header", "native-header-include", "reflection"});
+
+    auto reflection{EnumReflection::uenum};
+    if (auto const* value{fields.optional("reflection")}) {
+        reflection = parse_enum_reflection(*value);
+    }
+
+    return EnumUnrealProjection{
+        .name = text(fields.positional(0), "Unreal projection name"),
+        .header = text(fields.required("header"), "Unreal projection header"),
+        .header_include =
+            text(fields.required("header-include"), "Unreal projection header include"),
+        .conversion_header =
+            text(fields.required("conversion-header"), "Unreal projection conversion header"),
+        .native_header_include =
+            text(fields.required("native-header-include"), "native enum header include"),
+        .reflection = reflection,
+    };
+}
+
 auto parse_packed_field(Form const& form) -> PackedFieldSchema {
     Fields const fields{form, "field", 2};
     fields.validate({"bits", "kind", "range-helper"});
@@ -463,19 +486,28 @@ auto parse_packed_value(Form const& form) -> PackedValueSchema {
 
 auto parse_enum(Form const& form) -> EnumSchema {
     Fields const fields{form, "enum", 2};
-    fields.validate({"reflection", "enum-array", "count", "conversions", "export-specifier"},
-                    {"value"});
+    fields.validate(
+        {"reflection", "enum-array", "count", "conversions", "export-specifier", "native-api"},
+        {"value", "unreal-projection"});
     std::vector<EnumeratorSchema> values;
+    std::optional<EnumUnrealProjection> unreal_projection;
     for (auto const* declaration : fields.declarations()) {
-        Fields const value{*declaration, "value", 1};
-        value.validate({"value", "display-name", "hidden", "serialized-name"});
-        values.push_back(EnumeratorSchema{
-            .name = text(value.positional(0), "enumerator name"),
-            .initializer = optional_text(value, "value"),
-            .display_name = optional_text(value, "display-name"),
-            .hidden = boolean_or(value, "hidden"),
-            .serialized_name = optional_text(value, "serialized-name"),
-        });
+        if (declaration->head() == "value") {
+            Fields const value{*declaration, "value", 1};
+            value.validate({"value", "display-name", "hidden", "serialized-name"});
+            values.push_back(EnumeratorSchema{
+                .name = text(value.positional(0), "enumerator name"),
+                .initializer = optional_text(value, "value"),
+                .display_name = optional_text(value, "display-name"),
+                .hidden = boolean_or(value, "hidden"),
+                .serialized_name = optional_text(value, "serialized-name"),
+            });
+        } else {
+            if (unreal_projection.has_value()) {
+                fail(declaration->token.span, "enum may define only one Unreal projection");
+            }
+            unreal_projection = parse_enum_unreal_projection(*declaration);
+        }
     }
     std::vector<EnumConversion> conversions;
     if (auto const* list{fields.optional("conversions")}) {
@@ -499,6 +531,8 @@ auto parse_enum(Form const& form) -> EnumSchema {
         .count = optional_text(fields, "count"),
         .conversions = std::move(conversions),
         .export_specifier = optional_text(fields, "export-specifier"),
+        .native_api = boolean_or(fields, "native-api"),
+        .unreal_projection = std::move(unreal_projection),
     };
 }
 

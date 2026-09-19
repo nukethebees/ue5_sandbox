@@ -154,7 +154,7 @@ auto select_soft_target(std::span<::ioj::sim::AgentDisplayBatch const> const bat
         for (int32 index{}; index < batch_count; ++index, ++output_index) {
             if (::ioj::sim::is_dead(batch.health(index)) ||
                 batch.team(index) == ml::to_native(context.player_team) ||
-                !is_supported_entity_type(ml::to_unreal(batch.type))) {
+                !is_supported_entity_type(batch.type)) {
                 continue;
             }
 
@@ -318,8 +318,7 @@ auto collect_entity_overlay_instances(
             }
 
             auto const entity_type{batch.type};
-            auto const inverse_health{
-                inverse_maximum_health(ml::to_unreal(entity_type), maximum_health)};
+            auto const inverse_health{inverse_maximum_health(entity_type, maximum_health)};
             if (inverse_health <= 0.0f) {
                 continue;
             }
@@ -329,8 +328,7 @@ auto collect_entity_overlay_instances(
                 ml::to_unreal(batch.locations[index]),
                 static_cast<float>(batch.health(index)) * inverse_health,
                 entity_type_radii[static_cast<std::size_t>(entity_type)],
-                team_colour(
-                    ml::to_unreal(entity_type), ml::to_unreal(batch.team(index)), team_colours),
+                team_colour(entity_type, ml::to_unreal(batch.team(index)), team_colours),
                 objective_role,
                 objective_role != EEntityOverlayObjectiveRole::None));
         }

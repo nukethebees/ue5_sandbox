@@ -2,6 +2,7 @@
 
 #include <codegen/schema/enum_conversion.h>
 #include <codegen/schema/enum_reflection.h>
+#include <codegen/schema/enum_unreal_projection.h>
 #include <codegen/schema/enumerator_schema.h>
 #include <codegen/schema/type_ref.h>
 
@@ -20,6 +21,8 @@ struct EnumSchema {
     std::optional<std::string> count;
     std::vector<EnumConversion> conversions;
     std::optional<std::string> export_specifier;
+    bool native_api{false};
+    std::optional<EnumUnrealProjection> unreal_projection;
 };
 
 } // namespace codegen

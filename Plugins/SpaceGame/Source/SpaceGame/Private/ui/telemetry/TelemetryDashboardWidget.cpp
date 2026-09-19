@@ -142,7 +142,7 @@ void UTelemetryDashboardWidget::rebuild_state() {
              "PLATFORM // %s\nSOURCE SHA-256 // %s\nRUN // %s"),
         *level,
         UTF8_TO_TCHAR(record->metadata.launched_utc.c_str()),
-        LexToSerializedString(static_cast<ELevelTelemetryRunEndReason>(record->completion.reason)),
+        UTF8_TO_TCHAR(::ioj::sim::to_serialized_string(record->completion.reason).data()),
         record->metadata.initial_requested_time_scale,
         *record->metadata.presentation_mode,
         record->metadata.requested_duration_seconds.has_value()
@@ -207,13 +207,14 @@ void UTelemetryDashboardWidget::rebuild_state() {
             return total;
         };
         auto const& combat{record->battle_samples.Last().combat};
-        auto const winner{static_cast<ELevelTelemetryRunEndReason>(record->completion.reason) ==
-                                  ELevelTelemetryRunEndReason::BattleResolved
-                              ? (record->completion.winning_team.has_value()
-                                     ? FString{LexToSerializedString(
-                                           ml::to_unreal(record->completion.winning_team.value()))}
-                                     : FString{TEXT("draw")})
-                              : FString{TEXT("—")}};
+        auto const winner{
+            record->completion.reason == ::ioj::sim::LevelTelemetryRunEndReason::BattleResolved
+                ? (record->completion.winning_team.has_value()
+                       ? FString{UTF8_TO_TCHAR(::ioj::sim::to_serialized_string(
+                                                   record->completion.winning_team.value())
+                                                   .data())}
+                       : FString{TEXT("draw")})
+                : FString{TEXT("—")}};
         summary += FString::Printf(
             TEXT("\nBATTLE RESULT  //  %s    SAMPLES // %d\nCOMBAT  //  SHOTS %llu  HITS %llu  "
                  "DAMAGE %.0f  KILLS %llu  LOSSES %llu"),

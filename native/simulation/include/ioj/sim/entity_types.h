@@ -3,21 +3,12 @@
 #include "ioj/sim/entity_life_state.h"
 #include "ioj/sim/entity_type.h"
 #include "ioj/sim/entity_unique_id.h"
+#include "ioj/sim/team.h"
 
 #include <cstdint>
 #include <limits>
 
 namespace ioj::sim {
-enum class Team : std::uint8_t {
-    White,
-    Red,
-    Green,
-    Blue,
-    Orange,
-    Yellow,
-    COUNT,
-};
-
 struct EntityOwnerId {
     using ThisClass = EntityOwnerId;
     using value_type = std::uint8_t;

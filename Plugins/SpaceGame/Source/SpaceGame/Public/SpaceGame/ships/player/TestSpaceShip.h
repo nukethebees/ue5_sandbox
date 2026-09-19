@@ -101,7 +101,7 @@ class SPACEGAME_API ATestSpaceShip
     void stop_fire_laser();
     void upgrade_laser();
     auto get_laser_fire_rate() const noexcept -> ETestShipFireRate;
-    auto get_laser_firing_mode() const noexcept -> ELaserFiringState;
+    auto get_laser_firing_mode() const noexcept -> ::ioj::sim::LaserFiringState;
     void select_next_laser_fire_rate() noexcept;
     void select_previous_laser_fire_rate() noexcept;
     void set_laser_fire_rate(ETestShipFireRate value) noexcept;

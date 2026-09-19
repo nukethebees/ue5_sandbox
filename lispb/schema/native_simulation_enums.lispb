@@ -1,0 +1,162 @@
+(enum-module native_team
+  :header "native/simulation/include/ioj/sim/team.h"
+  :namespace ioj::sim
+  (enum Team @native_uint8
+    :native-api true
+    :count COUNT
+    (unreal-projection ETestTeam
+      :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestTeam.h"
+      :header-include "SpaceGameSimulation/entities/TestTeam.h"
+      :conversion-header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestTeamConversion.h"
+      :native-header-include "ioj/sim/team.h"
+      :reflection uenum)
+    (value White :value "0" :serialized-name "white")
+    (value Red :value "1" :serialized-name "red")
+    (value Green :value "2" :serialized-name "green")
+    (value Blue :value "3" :serialized-name "blue")
+    (value Orange :value "4" :serialized-name "orange")
+    (value Yellow :value "5" :serialized-name "yellow")
+    (value COUNT :value "6" :hidden true :display-name "Count" :serialized-name "count")))
+
+(enum-module native_mission_mode
+  :header "native/simulation/include/ioj/sim/missions/mission_mode.h"
+  :namespace ioj::sim
+  (enum MissionMode @native_uint8
+    :native-api true
+    (unreal-projection ETestMissionMode
+      :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionMode.h"
+      :header-include "SpaceGameSimulation/missions/TestMissionMode.h"
+      :conversion-header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionModeConversion.h"
+      :native-header-include "ioj/sim/missions/mission_mode.h"
+      :reflection uenum)
+    (value None :value "0" :serialized-name "none")
+    (value SurviveTime :value "1" :display-name "Survive Time" :serialized-name "survive_time")
+    (value KillEnemies :value "2" :display-name "Kill Enemies" :serialized-name "kill_enemies")
+    (value KillEnemiesWithinTime :value "3" :display-name "Kill Enemies Within Time" :serialized-name "kill_enemies_within_time")))
+
+(enum-module native_mission_state
+  :header "native/simulation/include/ioj/sim/missions/mission_state.h"
+  :namespace ioj::sim
+  (enum MissionState @native_uint8
+    :native-api true
+    (unreal-projection ETestMissionState
+      :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionState.h"
+      :header-include "SpaceGameSimulation/missions/TestMissionState.h"
+      :conversion-header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionStateConversion.h"
+      :native-header-include "ioj/sim/missions/mission_state.h"
+      :reflection uenum)
+    (value NotStarted :value "0" :display-name "Not Started" :serialized-name "not_started")
+    (value Running :value "1" :display-name "Running" :serialized-name "running")
+    (value Succeeded :value "2" :serialized-name "succeeded")
+    (value Failed :value "3" :display-name "Failed" :serialized-name "failed")
+    (value Disabled :value "4" :serialized-name "disabled")))
+
+(enum-module native_mission_fail_reason
+  :header "native/simulation/include/ioj/sim/missions/mission_fail_reason.h"
+  :namespace ioj::sim
+  (enum MissionFailReason @native_uint8
+    :native-api true
+    (unreal-projection ETestMissionFailReason
+      :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionFailReason.h"
+      :header-include "SpaceGameSimulation/missions/TestMissionFailReason.h"
+      :conversion-header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionFailReasonConversion.h"
+      :native-header-include "ioj/sim/missions/mission_fail_reason.h"
+      :reflection uenum)
+    (value None :value "0" :display-name "None" :serialized-name "none")
+    (value PlayerKilled :value "1" :serialized-name "player_killed")
+    (value TimeElapsed :value "2" :serialized-name "time_elapsed")
+    (value DefenceObjectiveFailed :value "3" :serialized-name "defence_objective_failed")))
+
+(enum-module native_boost_brake_state
+  :header "native/simulation/include/ioj/sim/player/space_ship_common.h"
+  :namespace ioj::sim::player
+  (enum BoostBrakeState @native_uint8
+    :native-api true
+    (value None :value "0")
+    (value Boost :value "1")
+    (value Brake :value "2")))
+
+(enum-module native_ship_laser_mode
+  :header "native/simulation/include/ioj/sim/player/ship_laser_mode.h"
+  :namespace ioj::sim
+  (enum ShipLaserMode @native_uint8
+    :native-api true
+    (unreal-projection EShipLaserMode
+      :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/common/ShipLaserMode.h"
+      :header-include "SpaceGameSimulation/ships/common/ShipLaserMode.h"
+      :conversion-header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/common/ShipLaserModeConversion.h"
+      :native-header-include "ioj/sim/player/ship_laser_mode.h"
+      :reflection blueprint)
+    (value Single :value "0" :display-name "Single" :serialized-name "single")
+    (value Double :value "1" :display-name "Double" :serialized-name "double")
+    (value Hyper :value "2" :display-name "Hyper" :serialized-name "hyper")))
+
+(enum-module native_laser_firing_state
+  :header "native/simulation/include/ioj/sim/player/laser_firing_state.h"
+  :namespace ioj::sim
+  (enum LaserFiringState @native_uint8
+    :native-api true
+    (value idle :value "0")
+    (value burst :value "1")
+    (value lock_on_transition :value "2")
+    (value lock_on_searching :value "3")
+    (value lock_on_acquired :value "4")))
+
+(enum-module native_ship_fire_rate
+  :header "native/simulation/include/ioj/sim/player/fire_rate.h"
+  :namespace ioj::sim
+  (enum ShipFireRate @native_uint8
+    :native-api true
+    :count COUNT
+    (unreal-projection ETestShipFireRate
+      :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/player/TestShipFireRate.h"
+      :header-include "SpaceGameSimulation/ships/player/TestShipFireRate.h"
+      :conversion-header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/player/TestShipFireRateConversion.h"
+      :native-header-include "ioj/sim/player/fire_rate.h"
+      :reflection uenum)
+    (value Single :value "0" :display-name "Single" :serialized-name "single")
+    (value Burst3 :value "1" :display-name "Burst 3" :serialized-name "burst_3")
+    (value FullAuto :value "2" :display-name "Full Auto" :serialized-name "full_auto")
+    (value COUNT :value "3" :hidden true :display-name "Count" :serialized-name "count")))
+
+(enum-module native_space_ship_flight_mode
+  :header "native/simulation/include/ioj/sim/player/flight_mode.h"
+  :namespace ioj::sim
+  (enum SpaceShipFlightMode @native_uint8
+    :native-api true
+    (unreal-projection ETestSpaceShipFlightMode
+      :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/player/TestSpaceShipFlightMode.h"
+      :header-include "SpaceGameSimulation/ships/player/TestSpaceShipFlightMode.h"
+      :conversion-header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/player/TestSpaceShipFlightModeConversion.h"
+      :native-header-include "ioj/sim/player/flight_mode.h"
+      :reflection uenum)
+    (value ForwardSpeed :value "0" :display-name "Forward Speed" :serialized-name "forward_speed")
+    (value PlanarVelocity :value "1" :display-name "Planar Velocity" :serialized-name "planar_velocity")))
+
+(enum-module native_space_ship_control_mode
+  :header "native/simulation/include/ioj/sim/player/control_mode.h"
+  :namespace ioj::sim
+  (enum SpaceShipControlMode @native_uint8
+    :native-api true
+    :count COUNT
+    (unreal-projection ETestSpaceShipControlMode
+      :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/player/TestSpaceShipControlMode.h"
+      :header-include "SpaceGameSimulation/ships/player/TestSpaceShipControlMode.h"
+      :conversion-header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/player/TestSpaceShipControlModeConversion.h"
+      :native-header-include "ioj/sim/player/control_mode.h"
+      :reflection uenum)
+    (value Velocity :value "0" :display-name "Velocity" :serialized-name "velocity")
+    (value Power :value "1" :display-name "Power" :serialized-name "power")
+    (value COUNT :value "2" :hidden true :display-name "Count" :serialized-name "count")))
+
+(enum-module native_level_telemetry_run_end_reason
+  :header "native/simulation/include/ioj/sim/telemetry/level_telemetry_run_end_reason.h"
+  :namespace ioj::sim
+  (enum LevelTelemetryRunEndReason @native_uint8
+    :native-api true
+    (value MissionSucceeded :value "0" :serialized-name "mission_succeeded")
+    (value MissionFailed :value "1" :serialized-name "mission_failed")
+    (value BattleResolved :value "2" :serialized-name "battle_resolved")
+    (value DurationReached :value "3" :serialized-name "duration_reached")
+    (value OrchestratorReset :value "4" :serialized-name "orchestrator_reset")
+    (value WorldEnd :value "5" :serialized-name "world_end")))

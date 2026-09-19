@@ -4,22 +4,12 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
 #include "TestMissionState.generated.h"
-
 UENUM()
 enum class ETestMissionState : uint8 {
-    NotStarted,
-    Running,
-    Succeeded,
-    Failed,
-    Disabled,
+    NotStarted = 0 UMETA(DisplayName = "Not Started"),
+    Running = 1 UMETA(DisplayName = "Running"),
+    Succeeded = 2,
+    Failed = 3 UMETA(DisplayName = "Failed"),
+    Disabled = 4,
 };
-
-SPACEGAMESIMULATION_API auto LexToSerializedString(ETestMissionState const value) -> TCHAR const*;
-
-namespace ml {
-SPACEGAMESIMULATION_API auto try_parse_serialized(FStringView const value,
-                                                  ETestMissionState& result) -> bool;
-
-} // namespace ml

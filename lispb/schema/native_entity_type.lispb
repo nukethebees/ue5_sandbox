@@ -2,10 +2,11 @@
   :header "native/simulation/include/ioj/sim/entity_type.h"
   :namespace ioj::sim
   (enum EntityType @native_uint8
+    :native-api true
     :count COUNT
-    (value PlayerShip)
-    (value Turret)
-    (value CapitalShip)
-    (value Fighter)
-    (value TubeSpinner)
-    (value COUNT)))
+    (value PlayerShip :value "0" :display-name "Player Ship" :serialized-name "player_ship")
+    (value Turret :value "1" :display-name "Turret" :serialized-name "turret")
+    (value CapitalShip :value "2" :display-name "Capital Ship" :serialized-name "capital_ship")
+    (value Fighter :value "3" :display-name "Capital Ship Fighter" :serialized-name "capital_ship_fighter")
+    (value TubeSpinner :value "4" :display-name "Tube Spinner" :serialized-name "tube_spinner")
+    (value COUNT :value "5" :hidden true)))

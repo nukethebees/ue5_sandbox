@@ -3,16 +3,167 @@
 
 #pragma once
 
+#include <array>
+
 #include <cstdint>
+
+#include <cstddef>
+
+#include <optional>
+
+#include <string_view>
+
+#include "sandbox/core/enum_traits.h"
 
 namespace ioj::sim {
 enum class EntityType : std::uint8_t {
-    PlayerShip,
-    Turret,
-    CapitalShip,
-    Fighter,
-    TubeSpinner,
-    COUNT,
+    PlayerShip = 0,
+    Turret = 1,
+    CapitalShip = 2,
+    Fighter = 3,
+    TubeSpinner = 4,
+    COUNT = 5,
 };
 
+[[nodiscard]] constexpr auto to_string(EntityType const value) noexcept -> std::string_view {
+    switch (value) {
+        case EntityType::PlayerShip: {
+            return "PlayerShip";
+        }
+        case EntityType::Turret: {
+            return "Turret";
+        }
+        case EntityType::CapitalShip: {
+            return "CapitalShip";
+        }
+        case EntityType::Fighter: {
+            return "Fighter";
+        }
+        case EntityType::TubeSpinner: {
+            return "TubeSpinner";
+        }
+        case EntityType::COUNT: {
+            return "COUNT";
+        }
+    }
+
+    return "<invalid EntityType>";
+}
+
+[[nodiscard]] constexpr auto try_parse_entity_type(std::string_view const value) noexcept
+    -> std::optional<EntityType> {
+    if (value == "PlayerShip") {
+        return EntityType::PlayerShip;
+    }
+    if (value == "Turret") {
+        return EntityType::Turret;
+    }
+    if (value == "CapitalShip") {
+        return EntityType::CapitalShip;
+    }
+    if (value == "Fighter") {
+        return EntityType::Fighter;
+    }
+    if (value == "TubeSpinner") {
+        return EntityType::TubeSpinner;
+    }
+    if (value == "COUNT") {
+        return EntityType::COUNT;
+    }
+
+    return std::nullopt;
+}
+
+[[nodiscard]] constexpr auto to_display_string(EntityType const value) noexcept
+    -> std::string_view {
+    switch (value) {
+        case EntityType::PlayerShip: {
+            return "Player Ship";
+        }
+        case EntityType::Turret: {
+            return "Turret";
+        }
+        case EntityType::CapitalShip: {
+            return "Capital Ship";
+        }
+        case EntityType::Fighter: {
+            return "Capital Ship Fighter";
+        }
+        case EntityType::TubeSpinner: {
+            return "Tube Spinner";
+        }
+        case EntityType::COUNT: {
+            return "COUNT";
+        }
+    }
+
+    return "<invalid EntityType>";
+}
+
+[[nodiscard]] constexpr auto to_serialized_string(EntityType const value) noexcept
+    -> std::string_view {
+    switch (value) {
+        case EntityType::PlayerShip: {
+            return "player_ship";
+        }
+        case EntityType::Turret: {
+            return "turret";
+        }
+        case EntityType::CapitalShip: {
+            return "capital_ship";
+        }
+        case EntityType::Fighter: {
+            return "capital_ship_fighter";
+        }
+        case EntityType::TubeSpinner: {
+            return "tube_spinner";
+        }
+        default: {
+            return "<invalid EntityType>";
+        }
+    }
+}
+
+[[nodiscard]] constexpr auto try_parse_serialized_entity_type(std::string_view const value) noexcept
+    -> std::optional<EntityType> {
+    if (value == "player_ship") {
+        return EntityType::PlayerShip;
+    }
+    if (value == "turret") {
+        return EntityType::Turret;
+    }
+    if (value == "capital_ship") {
+        return EntityType::CapitalShip;
+    }
+    if (value == "capital_ship_fighter") {
+        return EntityType::Fighter;
+    }
+    if (value == "tube_spinner") {
+        return EntityType::TubeSpinner;
+    }
+
+    return std::nullopt;
+}
+
 } // namespace ioj::sim
+namespace ml {
+template <>
+struct EnumTraits<::ioj::sim::EntityType> {
+    inline static constexpr std::array values{
+        ::ioj::sim::EntityType::PlayerShip,
+        ::ioj::sim::EntityType::Turret,
+        ::ioj::sim::EntityType::CapitalShip,
+        ::ioj::sim::EntityType::Fighter,
+        ::ioj::sim::EntityType::TubeSpinner,
+    };
+    inline static constexpr std::array names{
+        std::string_view{"PlayerShip"},
+        std::string_view{"Turret"},
+        std::string_view{"CapitalShip"},
+        std::string_view{"Fighter"},
+        std::string_view{"TubeSpinner"},
+    };
+    inline static constexpr std::size_t count{values.size()};
+};
+
+} // namespace ml

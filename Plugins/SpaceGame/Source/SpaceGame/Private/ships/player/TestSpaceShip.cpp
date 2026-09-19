@@ -293,8 +293,8 @@ auto ATestSpaceShip::get_laser_fire_rate() const noexcept -> ETestShipFireRate {
     return ml::to_unreal(simulation().laser_fire_rate);
 }
 
-auto ATestSpaceShip::get_laser_firing_mode() const noexcept -> ELaserFiringState {
-    return ml::to_unreal(simulation().laser_firing_mode);
+auto ATestSpaceShip::get_laser_firing_mode() const noexcept -> ::ioj::sim::LaserFiringState {
+    return simulation().laser_firing_mode;
 }
 
 void ATestSpaceShip::select_next_laser_fire_rate() noexcept {
