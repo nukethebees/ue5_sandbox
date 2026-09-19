@@ -68,6 +68,7 @@ endif()
 add_subdirectory(profiling)
 add_subdirectory(sbx_mimalloc)
 add_subdirectory(lispb)
+add_subdirectory(layout)
 add_subdirectory(memory)
 add_subdirectory(s7)
 add_subdirectory(core)
@@ -114,6 +115,7 @@ sandbox_target_precompile_codegen_headers(
 sandbox_target_precompile_test_headers(
   codegen-tests
   kernel-codegen-tests
+  native-layout-tests
   native-core-tests
   native-level-authoring-tests
   native-simulation-tests
