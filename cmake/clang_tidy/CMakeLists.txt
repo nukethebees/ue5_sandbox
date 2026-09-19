@@ -31,7 +31,7 @@ function(sandbox_configure_native_clang_tidy)
   string(REPLACE "/" "[/\\\\]" sandbox_native_source_root_pattern
     "${sandbox_native_source_root}")
   set(SANDBOX_NATIVE_CLANG_TIDY_SOURCE_FILTER
-    "^${sandbox_native_source_root_pattern}[/\\\\](?!third_party[/\\\\])(?!sbx_mimalloc[/\\\\])(?!s7[/\\\\])(?!lispb[/\\\\]kernel[/\\\\]tests[/\\\\]standard_anchor_tests\\.cpp$)(?!simulation[/\\\\]src[/\\\\](?:lasers|fighters)[/\\\\]phase_interface\\.cpp$)(?!.*[/\\\\][^/\\\\]*generated[^/\\\\]*[/\\\\])(?!.*[/\\\\]tests[/\\\\]compile(?:_fixture)?[/\\\\])(?!.*[/\\\\][^/\\\\]*reject[^/\\\\]*\\.cpp$).*\\.cpp$"
+    "^${sandbox_native_source_root_pattern}[/\\\\](?!third_party[/\\\\])(?!sbx_mimalloc[/\\\\])(?!s7[/\\\\]lib[/\\\\]src[/\\\\]s7_sandbox\\.cpp$)(?!lispb[/\\\\]kernel[/\\\\]tests[/\\\\]standard_anchor_tests\\.cpp$)(?!simulation[/\\\\]src[/\\\\](?:lasers|fighters)[/\\\\]phase_interface\\.cpp$)(?!.*[/\\\\][^/\\\\]*generated[^/\\\\]*[/\\\\])(?!.*[/\\\\]tests[/\\\\]compile(?:_fixture)?[/\\\\])(?!.*[/\\\\][^/\\\\]*reject[^/\\\\]*\\.cpp$).*\\.cpp$"
     PARENT_SCOPE
   )
 endfunction()
