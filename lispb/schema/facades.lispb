@@ -8,8 +8,6 @@
       (parameter queue @fighter_spawn_queue_const_view))
     (method queue_orders void
       (parameter queue (type-ref @fighter_order_queue :suffix " const&")))
-    (method self_destruct_fighter void
-      (parameter fighter (type-ref @native_unique_id :suffix " const")))
     (method get_num_instances "std::int32_t"
       :const true
       :noexcept true)
@@ -19,6 +17,9 @@
     (method set_parent_id void
       (parameter fighter @native_unique_id)
       (parameter parent @native_unique_id))
+    (method reassign_pending_spawns void
+      (parameter parent @native_unique_id)
+      (parameter replacement @native_unique_id))
     (method get_target_ids "std::span<EntityUniqueId const>"
       :const true
       :noexcept true)))
@@ -125,7 +126,6 @@
       (parameter dt "float const"))
     (method think void
       (parameter dt "float const"))
-    (method execute_fighter_self_destruct_requests void)
     (method resolve_damage_events void)
     (method resolve_fighters_of_dying_capitals void)
     (method publish_deaths void)
