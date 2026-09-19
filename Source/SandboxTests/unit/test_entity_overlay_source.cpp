@@ -52,7 +52,7 @@ void add_entity(ml::tests::FDisplayEntityTestData& entities,
     entities.locations.set(index, ml::to_native(position));
     entity_type_radii[static_cast<std::size_t>(type)] = radius;
     entities.teams[index] = ml::to_native(team);
-    entities.entity_types[index] = ml::to_native(type);
+    entities.entity_types[index] = type;
     auto const owner{::ioj::sim::EntityUniqueId::make(
         ::ioj::sim::entity_identity_offset(entities.entity_types[index], index),
         entities.entity_types[index])};

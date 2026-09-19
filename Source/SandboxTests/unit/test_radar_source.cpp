@@ -1,9 +1,11 @@
 #include <SandboxTests/support/DisplayEntityTestData.h>
 #include <SpaceGamePresentation/presentation/RadarSource.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGameSimulation/entities/TestEntityType.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <CQTest.h>
+#include <ioj/sim/entity_identity_layout.h>
 #include <vector>
 
 namespace ml::test_radar_source {
@@ -34,7 +36,7 @@ void add_entity(ml::tests::FDisplayEntityTestData& entities,
     entities.add_defaulted(1);
     entities.locations.set(index, ml::to_native(location));
     entities.teams[index] = ml::to_native(team);
-    entities.entity_types[index] = ml::to_native(type);
+    entities.entity_types[index] = type;
     auto const owner{::ioj::sim::EntityUniqueId::make(
         ::ioj::sim::entity_identity_offset(entities.entity_types[index], index),
         entities.entity_types[index])};

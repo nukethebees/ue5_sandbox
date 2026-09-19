@@ -17,6 +17,7 @@
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGameSimulation/entities/TestEntityType.h>
 #include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
 #include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
@@ -649,8 +650,8 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
             requests.speeds[spawn] = 1000.0f;
             requests.max_distances[spawn] = requests.speeds[spawn] * initial_lifetime;
             requests.instigator_ids[spawn] = {};
-            requests.sources[spawn] =
-                ml::make_laser_source(ETestTeam::White, ETestEntityType::TubeSpinner);
+            requests.sources[spawn] = {ml::to_native(ETestTeam::White),
+                                       ETestEntityType::TubeSpinner};
             expected_material_data.Add(
                 {.colour = colour,
                  .initial_lifetime = initial_lifetime,

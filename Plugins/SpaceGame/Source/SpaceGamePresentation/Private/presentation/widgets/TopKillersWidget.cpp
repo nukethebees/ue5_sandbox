@@ -182,12 +182,11 @@ void UTopKillersWidget::rebuild_table() {
             column_type,
             entity_alignment,
             FText::FromString(ml::get_entity_display_name(top_killers.entity_types[entry_index])));
-        auto* const team_text{add_value(
-            FString::Printf(TEXT("team_%d"), entry_index),
-            column_team,
-            data_alignment,
-            FText::FromString(
-                ml::to_fstring(::ioj::sim::to_string(ml::to_native(top_killers.teams[entry_index]))))};
+        auto* const team_text{add_value(FString::Printf(TEXT("team_%d"), entry_index),
+                                        column_team,
+                                        data_alignment,
+                                        FText::FromString(ml::to_fstring(::ioj::sim::to_string(
+                                            ml::to_native(top_killers.teams[entry_index])))))};
         add_value(FString::Printf(TEXT("kills_%d"), entry_index),
                   column_kills,
                   data_alignment,
