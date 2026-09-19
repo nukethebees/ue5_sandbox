@@ -32,7 +32,9 @@ class SANDBOX_API ULoopingPlatformComponent : public UActorComponent {
     FVector current_direction;
     FVector ab_direction;
     FVector ba_direction;
-    float pause_timer{std::numeric_limits<float>::infinity()};
+    inline static constexpr float no_active_pause_time{std::numeric_limits<float>::infinity()};
+
+    float pause_timer{no_active_pause_time};
 
     auto get_ab_direction() const { return (location_b - location_a).GetSafeNormal(); }
     auto get_ba_direction() const { return (location_a - location_b).GetSafeNormal(); }

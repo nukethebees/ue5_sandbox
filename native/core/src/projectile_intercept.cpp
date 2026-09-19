@@ -4,6 +4,8 @@
 #include <limits>
 
 namespace {
+constexpr float no_intercept_candidate_time{std::numeric_limits<float>::infinity()};
+
 auto size_squared(ml::Vector3f const value) noexcept -> float {
     return HMM_LenSqrV3(value);
 }
@@ -59,7 +61,7 @@ auto solve_intercept_time(Vector3f const shooter_position,
     auto const sqrt_discriminant{std::sqrt(discriminant)};
     auto const t0{(-b - sqrt_discriminant) / (2.0f * a)};
     auto const t1{(-b + sqrt_discriminant) / (2.0f * a)};
-    auto best_time{std::numeric_limits<float>::max()};
+    auto best_time{no_intercept_candidate_time};
 
     if (t0 > 0.0f) {
         best_time = t0;
@@ -68,7 +70,7 @@ auto solve_intercept_time(Vector3f const shooter_position,
         best_time = t1;
     }
 
-    return best_time == std::numeric_limits<float>::max() ? no_intercept : best_time;
+    return best_time == no_intercept_candidate_time ? no_intercept : best_time;
 }
 }
 
@@ -97,7 +99,6 @@ void solve_intercept_times(float* const out_intercept_times,
                            float const projectile_speed) noexcept {
     constexpr float no_intercept{};
     constexpr float epsilon{1e-8f};
-    constexpr auto maximum{std::numeric_limits<float>::max()};
     auto const projectile_speed_squared{projectile_speed * projectile_speed};
     auto const count{validate_batch(
         out_intercept_times, shooter_positions, target_positions, target_velocities)};
@@ -131,14 +132,14 @@ void solve_intercept_times(float* const out_intercept_times,
         auto const sqrt_discriminant{std::sqrt(discriminant)};
         auto const t0{scale * (-b - sqrt_discriminant)};
         auto const t1{scale * (-b + sqrt_discriminant)};
-        auto best_time{maximum};
+        auto best_time{no_intercept_candidate_time};
         if (t0 > 0.0f) {
             best_time = t0;
         }
         if (t1 > 0.0f && t1 < best_time) {
             best_time = t1;
         }
-        if (best_time != maximum) {
+        if (best_time != no_intercept_candidate_time) {
             out_intercept_times[i] = best_time;
         }
     }
@@ -153,7 +154,6 @@ void solve_intercept_times(float* const out_intercept_times,
                            float const projectile_speed) noexcept {
     constexpr float no_intercept{};
     constexpr float epsilon{1e-8f};
-    constexpr auto maximum{std::numeric_limits<float>::max()};
     auto const projectile_speed_squared{projectile_speed * projectile_speed};
     auto const count{validate_batch(
         out_intercept_times, shooter_positions, target_positions, target_velocities)};
@@ -190,14 +190,14 @@ void solve_intercept_times(float* const out_intercept_times,
         auto const sqrt_discriminant{std::sqrt(discriminant)};
         auto const t0{scale * (-b - sqrt_discriminant)};
         auto const t1{scale * (-b + sqrt_discriminant)};
-        auto best_time{maximum};
+        auto best_time{no_intercept_candidate_time};
         if (t0 > 0.0f) {
             best_time = t0;
         }
         if (t1 > 0.0f && t1 < best_time) {
             best_time = t1;
         }
-        if (best_time != maximum) {
+        if (best_time != no_intercept_candidate_time) {
             out_intercept_times[i] = best_time;
         }
     }

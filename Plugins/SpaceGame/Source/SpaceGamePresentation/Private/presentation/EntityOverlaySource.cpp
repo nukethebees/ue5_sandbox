@@ -15,10 +15,12 @@ struct FProjectedPosition {
 };
 
 struct FSoftTargetCandidate {
+    inline static constexpr float no_candidate_distance{std::numeric_limits<float>::infinity()};
+
     ::ioj::sim::EntityUniqueId id{};
-    float centre_distance_pixels{std::numeric_limits<float>::max()};
-    float centre_score_pixels{std::numeric_limits<float>::max()};
-    float surface_distance{std::numeric_limits<float>::max()};
+    float centre_distance_pixels{no_candidate_distance};
+    float centre_score_pixels{no_candidate_distance};
+    float surface_distance{no_candidate_distance};
     float range_alpha{0.0f};
     float indicator_radius_pixels{0.0f};
     float world_units_per_pixel{0.0f};

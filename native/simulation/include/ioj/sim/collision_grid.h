@@ -3,10 +3,13 @@
 #include "ioj/sim/vectors3f.h"
 
 #include <cstdint>
+#include <limits>
 #include <span>
 
 namespace ioj::sim::collision {
 using Vec3f = Vector3f;
+
+inline constexpr float no_trace_hit{std::numeric_limits<float>::infinity()};
 
 struct CellCoord {
     int x{};
@@ -67,6 +70,8 @@ class GridTraversal {
     [[nodiscard]] auto current_cell() const noexcept -> CellCoord;
     [[nodiscard]] auto advance() noexcept -> bool;
   private:
+    inline static constexpr float no_axis_crossing_t{std::numeric_limits<float>::infinity()};
+
     CellCoord current_cell_;
     CellCoord end_cell_;
     CellCoord steps_;

@@ -36,7 +36,7 @@ class SANDBOX_API ASandboxActorSpawner : public AActor {
     TSubclassOf<AActor> actor_class{};
 
     UPROPERTY(EditAnywhere, Category = "Spawner")
-    int32 spawn_limit{std::numeric_limits<int32>::max()};
+    int32 spawn_limit{unlimited_spawn_limit};
     UPROPERTY(EditAnywhere, Category = "Spawner")
     float spawn_period{1.f};
     UPROPERTY(EditAnywhere, Category = "Spawner")
@@ -44,4 +44,6 @@ class SANDBOX_API ASandboxActorSpawner : public AActor {
 
     UPROPERTY(VisibleAnywhere, Category = "Spawner")
     TArray<AActor*> spawned_actors{};
+  private:
+    inline static constexpr int32 unlimited_spawn_limit{std::numeric_limits<int32>::max()};
 };

@@ -15,7 +15,6 @@
 #include <cassert>
 #include <cmath>
 #include <format>
-#include <limits>
 #include <utility>
 
 namespace ioj::sim::collision {
@@ -82,7 +81,7 @@ void trace_grid_aabbs(GridGeometry const geometry,
             }
         }
 
-        auto nearest_t{std::numeric_limits<float>::infinity()};
+        auto nearest_t{no_trace_hit};
         EntityUniqueId nearest_entity;
         std::int32_t nearest_static_index{-1};
         EntityUniqueId ignored_entity{};

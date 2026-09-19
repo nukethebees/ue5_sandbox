@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
-#include <limits>
 #include <utility>
 
 namespace ioj::sim::collision {
@@ -214,7 +213,6 @@ auto trace_aabb(Vec3f const trace_start,
                 Vec3f const aabb_min,
                 Vec3f const aabb_max,
                 Vec3f const expansion) noexcept -> float {
-    constexpr auto no_hit{std::numeric_limits<float>::infinity()};
     float minimum_t{};
     float maximum_t{1.0f};
 
@@ -225,7 +223,7 @@ auto trace_aabb(Vec3f const trace_start,
         auto const axis_delta{trace_delta.Elements[axis]};
         if (axis_delta == 0.0f) {
             if (start < slab_min || start > slab_max) {
-                return no_hit;
+                return no_trace_hit;
             }
             continue;
         }
@@ -238,7 +236,7 @@ auto trace_aabb(Vec3f const trace_start,
         minimum_t = std::max(minimum_t, first_t);
         maximum_t = std::min(maximum_t, second_t);
         if (minimum_t > maximum_t) {
-            return no_hit;
+            return no_trace_hit;
         }
     }
     return minimum_t;
@@ -283,8 +281,8 @@ auto GridTraversal::create(GridGeometry const geometry,
     for (std::size_t axis{}; axis < axis_count; ++axis) {
         if (delta.Elements[axis] == 0.0f) {
             result.steps_[axis] = 0;
-            result.next_t_.Elements[axis] = std::numeric_limits<float>::max();
-            result.t_deltas_.Elements[axis] = std::numeric_limits<float>::max();
+            result.next_t_.Elements[axis] = no_axis_crossing_t;
+            result.t_deltas_.Elements[axis] = no_axis_crossing_t;
             continue;
         }
 
