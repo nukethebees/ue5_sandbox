@@ -15,8 +15,8 @@ csetup
 
 `csetup` synchronizes submodules, regenerates presets, installs the per-user jobserver when
 needed, and prepares the DebugGame and Development worktrees. Its CMake workflows build their
-configuration-local C# host tools before other worktree dependencies. Use `csetup native` when
-only the native toolchain is needed; it avoids Unreal worktree preparation. See the
+configuration-local C# host-tool dependencies on demand. Use `csetup native` when only the native
+toolchain is needed; it avoids Unreal worktree preparation. See the
 [PowerShell guide](../PowerShell/README.md) for the other session commands.
 
 Alternatively, set `UE_ROOT` in the ignored `CMakeUserPresets.json` using a local configure preset

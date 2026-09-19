@@ -537,7 +537,6 @@ def make_unreal_document() -> dict[str, Any]:
             "description": "Build DebugGame dependencies, import optional audio, and generate project files",
             "steps": [
                 {"type": "configure", "name": "debug-game"},
-                {"type": "build", "name": "csharp-host-tools-debug-game"},
                 {"type": "build", "name": "generate-worktree-code-debug-game"},
                 {"type": "build", "name": "worktree-dependencies-debug-game"},
                 {"type": "build", "name": "import-game-audio"},
@@ -550,7 +549,6 @@ def make_unreal_document() -> dict[str, Any]:
             "description": "Build non-Unreal Development dependencies and generate project files",
             "steps": [
                 {"type": "configure", "name": "development"},
-                {"type": "build", "name": "csharp-host-tools-development"},
                 {"type": "build", "name": "generate-worktree-code-development"},
                 {"type": "build", "name": "worktree-dependencies-development"},
                 {"type": "build", "name": "generate-project-files-development"},
@@ -560,18 +558,13 @@ def make_unreal_document() -> dict[str, Any]:
     for suffix, _, _, _ in compiler_variants:
         for name, _, _, _ in unreal_configurations:
             preset_name = f"{name}{suffix}"
-            steps: list[dict[str, str]] = [
-                {"type": "configure", "name": preset_name},
-            ]
-            if preset_name == "development":
-                steps.append(
-                    {"type": "build", "name": "csharp-host-tools-development"}
-                )
-            steps.append({"type": "build", "name": preset_name})
             workflow_presets.append(
                 {
                     "name": preset_name,
-                    "steps": steps,
+                    "steps": [
+                        {"type": "configure", "name": preset_name},
+                        {"type": "build", "name": preset_name},
+                    ],
                 }
             )
 
@@ -620,7 +613,6 @@ def make_unreal_document() -> dict[str, Any]:
                 "name": "debug-game-tests",
                 "steps": [
                     {"type": "configure", "name": "debug-game"},
-                    {"type": "build", "name": "csharp-host-tools-debug-game"},
                     {"type": "build", "name": "debug-game"},
                     {"type": "test", "name": "debug-game-tests"},
                 ],
@@ -629,7 +621,6 @@ def make_unreal_document() -> dict[str, Any]:
                 "name": "debug-game-full-tests",
                 "steps": [
                     {"type": "configure", "name": "debug-game"},
-                    {"type": "build", "name": "csharp-host-tools-debug-game"},
                     {"type": "build", "name": "debug-game"},
                     {"type": "test", "name": "debug-game-full-tests"},
                 ],

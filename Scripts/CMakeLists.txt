@@ -33,3 +33,13 @@ set_tests_properties(Scripts.BenchmarkToolsBootstrap PROPERTIES
   LABELS "unit;all;scripts"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )
+
+add_test(NAME CMake.DotnetHostTools
+  COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/cmake/tests/test_dotnet_host_tools.py"
+    --source-dir "${PROJECT_SOURCE_DIR}"
+    --cmake "${CMAKE_COMMAND}"
+)
+set_tests_properties(CMake.DotnetHostTools PROPERTIES
+  LABELS "unit;all;cmake"
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+)
