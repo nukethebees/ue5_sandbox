@@ -3,4 +3,6 @@
   <Project Path="GitTools.Tests/GitTools.Tests.csproj" />
   <Project Path="SetLiveCodingDisabled/SetLiveCodingDisabled.csproj" />
   <Project Path="SetLiveCodingDisabled.Tests/SetLiveCodingDisabled.Tests.csproj" />
+  <Project Path="UnrealBuildTools/UnrealBuildTools.csproj" />
+  <Project Path="UnrealBuildTools.Tests/UnrealBuildTools.Tests.csproj" />
 </Solution>

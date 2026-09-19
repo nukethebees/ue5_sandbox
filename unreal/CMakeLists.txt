@@ -195,6 +195,9 @@ set(SANDBOX_LIVE_CODING_DISABLED_ARGUMENT
 set(SANDBOX_SET_LIVE_CODING_DISABLED_TOOL
   "${PROJECT_SOURCE_DIR}/tools/bin/SetLiveCodingDisabled.exe"
 )
+set(SANDBOX_UNREAL_BUILD_TOOLS
+  "${PROJECT_SOURCE_DIR}/tools/bin/UnrealBuildTools.exe"
+)
 file(MAKE_DIRECTORY "${SANDBOX_LOCAL_DDC_DIR}")
 
 include("${PROJECT_SOURCE_DIR}/cmake/unreal.cmake")

@@ -11,6 +11,12 @@ file(WRITE "${CMAKE_BINARY_DIR}/resource.txt" "${UE_ENGINE_JOBSERVER_RESOURCE}")
 file(WRITE "${CMAKE_BINARY_DIR}/claims.txt" "${UE_JOBSERVER_COMMAND_PREFIX}\n${reader_command}\n${benchmark_command}\n")
 
 set(UE_BUILD_SCRIPT "${HELPER}")
+set(SANDBOX_UNREAL_BUILD_TOOLS
+  "${POWERSHELL_EXECUTABLE}"
+  -NoProfile
+  -File
+  "${CMAKE_CURRENT_SOURCE_DIR}/UnrealBuildToolsFixture.ps1"
+)
 set(UE_EDITOR_CMD_EXE "${HELPER}")
 set(UE_PLATFORM "${READY}")
 set(UE_CONFIGURATION test)

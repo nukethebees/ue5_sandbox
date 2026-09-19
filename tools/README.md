@@ -9,6 +9,8 @@
   workspace with `dotnet build tools/Tools.slnx` or `ctools` after loading `dev.ps1`.
 - `SetLiveCodingDisabled/` is a small C# executable for disabling Live Coding in saved editor
   settings while preserving the file's encoding and line endings.
+- `UnrealBuildTools/` is a C# executable that invokes Unreal targets and verifies Editor module
+  compatibility before and after Editor builds.
 
 `Directory.Build.props` applies the shared target framework, nullable, implicit-using, warning,
 analysis, and warnings-as-errors policy to every .NET project below `tools/`.
