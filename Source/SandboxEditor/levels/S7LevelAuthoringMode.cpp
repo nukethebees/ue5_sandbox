@@ -391,13 +391,35 @@ void US7LevelAuthoringMode::preview_apply() {
         return;
     }
     preview_ = *plan;
-    set_status(FText::Format(
-        LOCTEXT("Preview",
-                "Preview: +{0}, update {1}, replace {2}, remove {3}. Apply is undoable."),
-        preview_->count(ml::editor::ES7LevelSyncAction::Add),
-        preview_->count(ml::editor::ES7LevelSyncAction::Update),
-        preview_->count(ml::editor::ES7LevelSyncAction::Replace),
-        preview_->count(ml::editor::ES7LevelSyncAction::Remove)));
+    if (!preview_->has_changes()) {
+        set_status(LOCTEXT("PreviewMatches", "Preview: the source and scene already match."));
+    } else {
+        TArray<FString> document_changes;
+        if (preview_->metadata_changed) {
+            document_changes.Add(TEXT("metadata"));
+        }
+        if (preview_->viewpoint_changed) {
+            document_changes.Add(TEXT("viewpoint"));
+        }
+        if (preview_->mission_changed) {
+            document_changes.Add(TEXT("mission"));
+        }
+
+        auto const entity_summary{FText::Format(
+            LOCTEXT("PreviewEntityChanges", "+{0}, update {1}, replace {2}, remove {3}"),
+            preview_->count(ml::editor::ES7LevelSyncAction::Add),
+            preview_->count(ml::editor::ES7LevelSyncAction::Update),
+            preview_->count(ml::editor::ES7LevelSyncAction::Replace),
+            preview_->count(ml::editor::ES7LevelSyncAction::Remove))};
+        set_status(
+            document_changes.IsEmpty()
+                ? FText::Format(LOCTEXT("PreviewEntitiesOnly", "Preview: {0}. Apply is undoable."),
+                                entity_summary)
+                : FText::Format(LOCTEXT("PreviewWithDocumentChanges",
+                                        "Preview: {0}; document: {1}. Apply is undoable."),
+                                entity_summary,
+                                FText::FromString(FString::Join(document_changes, TEXT(", ")))));
+    }
     changed_.Broadcast();
 }
 

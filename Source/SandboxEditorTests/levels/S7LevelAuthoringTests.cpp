@@ -31,6 +31,51 @@ auto config(UObject& outer) -> USpaceGameLevelConfig* {
     return IsValid(source) ? DuplicateObject<USpaceGameLevelConfig>(source, &outer) : nullptr;
 }
 
+struct FPreviewFixture {
+    UWorld* world{};
+    AS7LevelAuthoringDocument* document{};
+    USpaceGameLevelConfig* level_config{};
+    ATestSpaceShip* player{};
+    ATestCapitalShipProxy* enemy{};
+
+    auto is_valid() const -> bool {
+        return IsValid(world) && IsValid(document) && IsValid(level_config) && IsValid(player) &&
+               IsValid(enemy);
+    }
+};
+
+auto make_preview_fixture() -> FPreviewFixture {
+    FPreviewFixture result;
+    result.world = FAutomationEditorCommonUtils::CreateNewMap();
+    if (!IsValid(result.world)) {
+        return result;
+    }
+    result.document = spawn<AS7LevelAuthoringDocument>(*result.world, TEXT("S7 Document"));
+    result.level_config = config(*result.world);
+    if (!IsValid(result.document) || !IsValid(result.level_config) ||
+        !IsValid(result.level_config->classes.player_ship_class.Get()) ||
+        !IsValid(result.level_config->classes.capital_ship_proxy_class.Get())) {
+        return result;
+    }
+    result.player = spawn<ATestSpaceShip>(
+        *result.world, TEXT("player"), result.level_config->classes.player_ship_class.Get());
+    result.enemy = spawn<ATestCapitalShipProxy>(
+        *result.world, TEXT("enemy"), result.level_config->classes.capital_ship_proxy_class.Get());
+    if (!IsValid(result.player) || !IsValid(result.enemy)) {
+        return result;
+    }
+
+    result.player->set_team(ETestTeam::Blue);
+    result.enemy->set_team(ETestTeam::Red);
+    result.document->level_config = result.level_config;
+    result.document->level_id = TEXT("preview-level");
+    result.document->title = TEXT("Preview Level");
+    result.document->description = TEXT("Before");
+    result.document->entities = {{.id = TEXT("player"), .actor = result.player},
+                                 {.id = TEXT("enemy"), .actor = result.enemy}};
+    return result;
+}
+
 auto bound_binding(AS7LevelAuthoringDocument const& document, FName const id)
     -> FS7LevelEntityBinding const* {
     return document.entities.FindByPredicate(
@@ -98,6 +143,252 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Required kill survives"),
                               read.definition->mission->required_kill_entity_ids.Num(),
                               1);
+    }
+
+    TEST_METHOD(PreviewReportsMetadataOnlyChange)
+    {
+        auto const fixture{make_preview_fixture()};
+        if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
+            return;
+        }
+        auto definition{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
+                                                            *fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Baseline collects"), definition.has_value())) {
+            TestRunner->AddError(definition.error());
+            return;
+        }
+        definition->metadata.title = TEXT("After");
+        definition->metadata.description = TEXT("After description");
+
+        auto const plan{ml::editor::make_s7_level_sync_plan(
+            *fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
+        if (!TestRunner->TestTrue(TEXT("Preview builds"), plan.has_value())) {
+            TestRunner->AddError(plan.error());
+            return;
+        }
+        TestRunner->TestTrue(TEXT("Metadata change is reported"), plan->metadata_changed);
+        TestRunner->TestFalse(TEXT("Viewpoint is unchanged"), plan->viewpoint_changed);
+        TestRunner->TestFalse(TEXT("Mission is unchanged"), plan->mission_changed);
+        TestRunner->TestEqual(TEXT("Entities are unchanged"), plan->changes.Num(), 0);
+
+        auto const applied{ml::editor::apply_s7_level_sync_plan(
+            *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
+        if (!TestRunner->TestTrue(TEXT("Preview applies"), applied.has_value())) {
+            TestRunner->AddError(applied.error());
+            return;
+        }
+        auto const collected{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
+                                                                 *fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Applied scene collects"), collected.has_value())) {
+            TestRunner->AddError(collected.error());
+            return;
+        }
+        TestRunner->TestEqual(
+            TEXT("Title is applied"), collected->metadata.title, FString{TEXT("After")});
+        TestRunner->TestEqual(TEXT("Description is applied"),
+                              collected->metadata.description,
+                              FString{TEXT("After description")});
+    }
+
+    TEST_METHOD(PreviewReportsMissionOnlyChange)
+    {
+        auto const fixture{make_preview_fixture()};
+        if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
+            return;
+        }
+        fixture.document->mission.mode = ETestMissionMode::KillEnemiesWithinTime;
+        fixture.document->mission.time_limit_seconds = 30.0f;
+        fixture.document->mission.use_explicit_kill_count = true;
+        fixture.document->mission.kill_count = 1;
+        fixture.document->mission.heroes = {fixture.player};
+        fixture.document->mission.required_kills = {fixture.enemy};
+        auto definition{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
+                                                            *fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Baseline collects"), definition.has_value())) {
+            TestRunner->AddError(definition.error());
+            return;
+        }
+        definition->mission->time_limit_seconds = 60.0f;
+        definition->mission->kill_count = 2;
+        definition->mission->required_kill_entity_ids.Reset();
+
+        auto const plan{ml::editor::make_s7_level_sync_plan(
+            *fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
+        if (!TestRunner->TestTrue(TEXT("Preview builds"), plan.has_value())) {
+            TestRunner->AddError(plan.error());
+            return;
+        }
+        TestRunner->TestFalse(TEXT("Metadata is unchanged"), plan->metadata_changed);
+        TestRunner->TestFalse(TEXT("Viewpoint is unchanged"), plan->viewpoint_changed);
+        TestRunner->TestTrue(TEXT("Mission change is reported"), plan->mission_changed);
+        TestRunner->TestEqual(TEXT("Entities are unchanged"), plan->changes.Num(), 0);
+
+        auto const applied{ml::editor::apply_s7_level_sync_plan(
+            *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
+        if (!TestRunner->TestTrue(TEXT("Preview applies"), applied.has_value())) {
+            TestRunner->AddError(applied.error());
+            return;
+        }
+        auto const collected{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
+                                                                 *fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Applied scene collects"), collected.has_value()) ||
+            !TestRunner->TestTrue(TEXT("Mission is present"), collected->mission.IsSet())) {
+            return;
+        }
+        TestRunner->TestEqual(TEXT("Mission mode is applied"),
+                              collected->mission->mode,
+                              ::ioj::sim::levels::LevelMissionMode::KillEnemiesWithinTime);
+        TestRunner->TestEqual(TEXT("Mission time is applied"),
+                              collected->mission->time_limit_seconds.GetValue(),
+                              60.0f);
+        TestRunner->TestEqual(
+            TEXT("Kill count is applied"), collected->mission->kill_count.GetValue(), 2);
+        TestRunner->TestEqual(
+            TEXT("Hero is applied"), collected->mission->hero_entity_ids.Num(), 1);
+        TestRunner->TestEqual(TEXT("Required kills are applied"),
+                              collected->mission->required_kill_entity_ids.Num(),
+                              0);
+    }
+
+    TEST_METHOD(PreviewReportsObserverCameraOnlyChange)
+    {
+        auto const fixture{make_preview_fixture()};
+        if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
+            return;
+        }
+        fixture.document->use_observer_camera = true;
+        fixture.document->camera.targets = {fixture.player};
+        fixture.document->camera.offset_direction = FVector{-1.0, 0.0, 0.0};
+        fixture.document->camera.distance = 1000.0;
+        auto definition{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
+                                                            *fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Baseline collects"), definition.has_value())) {
+            TestRunner->AddError(definition.error());
+            return;
+        }
+        definition->camera->target_entity_ids = {ml::FLevelEntityId{TEXT("enemy")}};
+
+        auto const plan{ml::editor::make_s7_level_sync_plan(
+            *fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
+        if (!TestRunner->TestTrue(TEXT("Preview builds"), plan.has_value())) {
+            TestRunner->AddError(plan.error());
+            return;
+        }
+        TestRunner->TestFalse(TEXT("Metadata is unchanged"), plan->metadata_changed);
+        TestRunner->TestTrue(TEXT("Viewpoint change is reported"), plan->viewpoint_changed);
+        TestRunner->TestFalse(TEXT("Mission is unchanged"), plan->mission_changed);
+        TestRunner->TestEqual(TEXT("Entities are unchanged"), plan->changes.Num(), 0);
+
+        auto const applied{ml::editor::apply_s7_level_sync_plan(
+            *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
+        if (!TestRunner->TestTrue(TEXT("Preview applies"), applied.has_value())) {
+            TestRunner->AddError(applied.error());
+            return;
+        }
+        auto const collected{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
+                                                                 *fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Applied scene collects"), collected.has_value()) ||
+            !TestRunner->TestTrue(TEXT("Camera is present"), collected->camera.IsSet())) {
+            return;
+        }
+        TestRunner->TestTrue(TEXT("Camera target is applied"),
+                             collected->camera->target_entity_ids ==
+                                 TArray<ml::FLevelEntityId>{ml::FLevelEntityId{TEXT("enemy")}});
+    }
+
+    TEST_METHOD(PreviewReportsPlayerToCameraViewpointChange)
+    {
+        auto const fixture{make_preview_fixture()};
+        if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
+            return;
+        }
+        auto definition{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
+                                                            *fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Baseline collects"), definition.has_value())) {
+            TestRunner->AddError(definition.error());
+            return;
+        }
+        definition->player_entity_id = {};
+        definition->camera = ml::FLevelCameraDefinition{
+            .target_entity_ids = {ml::FLevelEntityId{TEXT("enemy")}},
+            .offset_direction = FVector{-1.0, 0.0, 0.0},
+            .distance = 1000.0,
+        };
+
+        auto const plan{ml::editor::make_s7_level_sync_plan(
+            *fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
+        if (!TestRunner->TestTrue(TEXT("Preview builds"), plan.has_value())) {
+            TestRunner->AddError(plan.error());
+            return;
+        }
+        TestRunner->TestFalse(TEXT("Metadata is unchanged"), plan->metadata_changed);
+        TestRunner->TestTrue(TEXT("Viewpoint change is reported"), plan->viewpoint_changed);
+        TestRunner->TestFalse(TEXT("Mission is unchanged"), plan->mission_changed);
+        TestRunner->TestEqual(TEXT("Entities are unchanged"), plan->changes.Num(), 0);
+
+        auto const applied{ml::editor::apply_s7_level_sync_plan(
+            *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
+        if (!TestRunner->TestTrue(TEXT("Preview applies"), applied.has_value())) {
+            TestRunner->AddError(applied.error());
+            return;
+        }
+        auto const collected{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
+                                                                 *fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Applied scene collects"), collected.has_value())) {
+            TestRunner->AddError(collected.error());
+            return;
+        }
+        TestRunner->TestFalse(TEXT("Player viewpoint is cleared"),
+                              collected->player_entity_id.is_set());
+        TestRunner->TestTrue(TEXT("Camera viewpoint is applied"), collected->camera.IsSet());
+    }
+
+    TEST_METHOD(EquivalentDefinitionReportsNoChanges)
+    {
+        auto const fixture{make_preview_fixture()};
+        if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
+            return;
+        }
+        fixture.document->use_observer_camera = true;
+        fixture.document->camera.targets = {fixture.player, fixture.enemy};
+        fixture.document->camera.offset_direction = FVector{-1.0, 0.0, 0.0};
+        fixture.document->camera.distance = 1000.0;
+        fixture.document->mission.mode = ETestMissionMode::KillEnemies;
+        fixture.document->mission.use_explicit_kill_count = true;
+        fixture.document->mission.kill_count = 1;
+        fixture.document->mission.heroes = {fixture.player, fixture.enemy};
+        auto definition{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
+                                                            *fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Baseline collects"), definition.has_value())) {
+            TestRunner->AddError(definition.error());
+            return;
+        }
+        definition->camera->target_entity_ids.Swap(0, 1);
+        definition->mission->hero_entity_ids.Swap(0, 1);
+
+        auto const plan{ml::editor::make_s7_level_sync_plan(
+            *fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
+        if (!TestRunner->TestTrue(TEXT("Preview builds"), plan.has_value())) {
+            TestRunner->AddError(plan.error());
+            return;
+        }
+        TestRunner->TestFalse(TEXT("Metadata is unchanged"), plan->metadata_changed);
+        TestRunner->TestFalse(TEXT("Target order is semantically unchanged"),
+                              plan->viewpoint_changed);
+        TestRunner->TestFalse(TEXT("Mission role order is semantically unchanged"),
+                              plan->mission_changed);
+        TestRunner->TestEqual(TEXT("Entities are unchanged"), plan->changes.Num(), 0);
+        TestRunner->TestFalse(TEXT("Plan reports no changes"), plan->has_changes());
+
+        auto const applied{ml::editor::apply_s7_level_sync_plan(
+            *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
+        if (!TestRunner->TestTrue(TEXT("No-op preview applies"), applied.has_value())) {
+            TestRunner->AddError(applied.error());
+            return;
+        }
+        auto const collected{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
+                                                                 *fixture.document)};
+        TestRunner->TestTrue(TEXT("Applied scene still collects"), collected.has_value());
     }
 
     TEST_METHOD(ApplyAddsConfiguredActor)

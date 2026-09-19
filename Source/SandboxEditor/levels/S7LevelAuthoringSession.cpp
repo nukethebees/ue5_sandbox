@@ -36,6 +36,9 @@ struct FPreparedSyncPlan {
     TArray<FPreparedSyncEntity> entities{};
     TArray<AActor*> actors_to_destroy{};
     TArray<FS7LevelSyncChange> changes{};
+    bool metadata_changed{};
+    bool viewpoint_changed{};
+    bool mission_changed{};
 };
 
 auto resolve_actor(AActor const& actor) -> TOptional<FResolvedActor> {
@@ -193,6 +196,112 @@ auto authoring_mode(::ioj::sim::levels::LevelMissionMode const mode) -> ETestMis
     return ETestMissionMode::None;
 }
 
+auto sorted_ids(TArray<FLevelEntityId> ids) -> TArray<FLevelEntityId> {
+    ids.Sort([](FLevelEntityId const lhs, FLevelEntityId const rhs) {
+        return lhs.value.LexicalLess(rhs.value);
+    });
+    return ids;
+}
+
+auto actor_ids(TArray<TObjectPtr<AActor>> const& actors,
+               TMap<AActor const*, FLevelEntityId> const& ids_by_actor)
+    -> TOptional<TArray<FLevelEntityId>> {
+    TArray<FLevelEntityId> result;
+    result.Reserve(actors.Num());
+    for (auto const actor : actors) {
+        auto const* const id{ids_by_actor.Find(actor.Get())};
+        if (!id) {
+            return NullOpt;
+        }
+        result.Add(*id);
+    }
+    return sorted_ids(MoveTemp(result));
+}
+
+auto metadata_changed(AS7LevelAuthoringDocument const& document, FLevelMetadata const& metadata)
+    -> bool {
+    return document.level_id != metadata.id.value || document.title != metadata.title ||
+           document.description != metadata.description;
+}
+
+auto viewpoint_changed(AS7LevelAuthoringDocument const& document,
+                       FLevelDefinition const& definition,
+                       TMap<AActor const*, FLevelEntityId> const& ids_by_actor) -> bool {
+    if (document.use_observer_camera != definition.camera.IsSet()) {
+        return true;
+    }
+    if (document.use_observer_camera) {
+        auto const current_targets{actor_ids(document.camera.targets, ids_by_actor)};
+        if (!current_targets.IsSet()) {
+            return true;
+        }
+        auto const& camera{definition.camera.GetValue()};
+        return current_targets.GetValue() != sorted_ids(camera.target_entity_ids) ||
+               document.camera.offset_direction != camera.offset_direction ||
+               document.camera.distance != camera.distance;
+    }
+
+    TOptional<FLevelEntityId> current_player;
+    for (auto const& binding : document.entities) {
+        if (!IsValid(Cast<ATestSpaceShip>(binding.actor))) {
+            continue;
+        }
+        if (current_player.IsSet()) {
+            return true;
+        }
+        current_player = FLevelEntityId{binding.id};
+    }
+    return !current_player.IsSet() || current_player.GetValue() != definition.player_entity_id;
+}
+
+auto optionals_equal(TOptional<float> const lhs, TOptional<float> const rhs) -> bool {
+    return lhs.IsSet() == rhs.IsSet() && (!lhs.IsSet() || lhs.GetValue() == rhs.GetValue());
+}
+
+auto optionals_equal(TOptional<int32> const lhs, TOptional<int32> const rhs) -> bool {
+    return lhs.IsSet() == rhs.IsSet() && (!lhs.IsSet() || lhs.GetValue() == rhs.GetValue());
+}
+
+auto mission_changed(AS7LevelAuthoringDocument const& document,
+                     FLevelDefinition const& definition,
+                     TMap<AActor const*, FLevelEntityId> const& ids_by_actor) -> bool {
+    auto const has_current{document.mission.mode != ETestMissionMode::None};
+    if (has_current != definition.mission.IsSet()) {
+        return true;
+    }
+    if (!has_current) {
+        return false;
+    }
+
+    auto const& incoming{definition.mission.GetValue()};
+    if (mission_mode(document.mission.mode) != incoming.mode) {
+        return true;
+    }
+
+    TOptional<float> current_time;
+    if (document.mission.mode == ETestMissionMode::SurviveTime ||
+        document.mission.mode == ETestMissionMode::KillEnemiesWithinTime) {
+        current_time = document.mission.time_limit_seconds;
+    }
+    TOptional<int32> current_kill_count;
+    if (document.mission.use_explicit_kill_count &&
+        document.mission.mode != ETestMissionMode::SurviveTime) {
+        current_kill_count = document.mission.kill_count;
+    }
+    if (!optionals_equal(current_time, incoming.time_limit_seconds) ||
+        !optionals_equal(current_kill_count, incoming.kill_count)) {
+        return true;
+    }
+
+    auto const heroes{actor_ids(document.mission.heroes, ids_by_actor)};
+    auto const survivors{actor_ids(document.mission.must_survive, ids_by_actor)};
+    auto const required_kills{actor_ids(document.mission.required_kills, ids_by_actor)};
+    return !heroes.IsSet() || !survivors.IsSet() || !required_kills.IsSet() ||
+           heroes.GetValue() != sorted_ids(incoming.hero_entity_ids) ||
+           survivors.GetValue() != sorted_ids(incoming.must_survive_entity_ids) ||
+           required_kills.GetValue() != sorted_ids(incoming.required_kill_entity_ids);
+}
+
 auto validation_error(FLevelDefinition const& definition) -> FString {
     auto const validation{validate_level(definition)};
     TArray<FString> messages;
@@ -235,6 +344,7 @@ auto prepare_sync_plan(ULevel const& level,
     }
 
     TMap<FName, FS7LevelEntityBinding const*> bindings_by_id;
+    TMap<AActor const*, FLevelEntityId> ids_by_actor;
     TSet<AActor*> bound_actors;
     for (auto const& binding : document.entities) {
         if (binding.id.IsNone() || !IsValid(binding.actor)) {
@@ -256,10 +366,14 @@ auto prepare_sync_plan(ULevel const& level,
         }
 
         bindings_by_id.Add(binding.id, &binding);
+        ids_by_actor.Add(binding.actor.Get(), FLevelEntityId{binding.id});
         bound_actors.Add(binding.actor.Get());
     }
 
     FPreparedSyncPlan prepared;
+    prepared.metadata_changed = metadata_changed(document, definition.metadata);
+    prepared.viewpoint_changed = viewpoint_changed(document, definition, ids_by_actor);
+    prepared.mission_changed = mission_changed(document, definition, ids_by_actor);
     auto const entities{definition.entities.get_const_view()};
     auto const entity_count{entities.num()};
     prepared.entities.Reserve(entity_count);
@@ -343,6 +457,10 @@ auto FS7LevelSyncPlan::count(ES7LevelSyncAction const action) const -> int32 {
         }
     }
     return result;
+}
+
+auto FS7LevelSyncPlan::has_changes() const -> bool {
+    return !changes.IsEmpty() || metadata_changed || viewpoint_changed || mission_changed;
 }
 
 auto find_level_authoring_document(ULevel const& level)
@@ -581,7 +699,11 @@ auto make_s7_level_sync_plan(ULevel const& level,
     if (!prepared) {
         return std::unexpected{prepared.error()};
     }
-    return FS7LevelSyncPlan{.definition = definition, .changes = MoveTemp(prepared->changes)};
+    return FS7LevelSyncPlan{.definition = definition,
+                            .changes = MoveTemp(prepared->changes),
+                            .metadata_changed = prepared->metadata_changed,
+                            .viewpoint_changed = prepared->viewpoint_changed,
+                            .mission_changed = prepared->mission_changed};
 }
 
 auto apply_s7_level_sync_plan(ULevel& level,

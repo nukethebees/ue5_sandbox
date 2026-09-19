@@ -25,8 +25,12 @@ struct FS7LevelSyncChange {
 struct SANDBOXEDITOR_API FS7LevelSyncPlan {
     FLevelDefinition definition{};
     TArray<FS7LevelSyncChange> changes{};
+    bool metadata_changed{};
+    bool viewpoint_changed{};
+    bool mission_changed{};
 
     [[nodiscard]] auto count(ES7LevelSyncAction action) const -> int32;
+    [[nodiscard]] auto has_changes() const -> bool;
 };
 
 SANDBOXEDITOR_API auto find_level_authoring_document(ULevel const& level)
