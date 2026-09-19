@@ -88,12 +88,14 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
          (material.settings.blend_mode != BlendMode::additive ||
           material.settings.shading_model != ShadingModel::default_lit ||
           material.settings.two_sided || material.settings.disable_depth_test ||
-          material.settings.used_with_instanced_static_meshes)) ||
+          material.settings.used_with_instanced_static_meshes ||
+          material.settings.used_with_particle_sprites)) ||
         (material.settings.domain == MaterialDomain::post_process &&
          (material.settings.blend_mode != BlendMode::opaque ||
           material.settings.shading_model != ShadingModel::unlit || material.settings.two_sided ||
           material.settings.disable_depth_test ||
-          material.settings.used_with_instanced_static_meshes)) ||
+          material.settings.used_with_instanced_static_meshes ||
+          material.settings.used_with_particle_sprites)) ||
         (material.settings.disable_depth_test &&
          material.settings.blend_mode != BlendMode::translucent &&
          material.settings.blend_mode != BlendMode::alpha_composite)) {
