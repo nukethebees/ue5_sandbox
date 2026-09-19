@@ -111,6 +111,24 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                              main_menu_mode->PlayerControllerClass == controller_class);
     }
 
+    TEST_METHOD(RuntimePlayerUsesPlanarVelocityForControlModeExperiment)
+    {
+        auto const* const config{ml::load_default_level_config()};
+        auto const* const player{config && IsValid(config->classes.player_ship_class)
+                                     ? config->classes.player_ship_class.GetDefaultObject()
+                                     : nullptr};
+        if (!TestRunner->TestTrue(TEXT("Runtime player ship class is configured"),
+                                  IsValid(player))) {
+            return;
+        }
+
+        auto const spawn{player->make_spawn_data()};
+        TestRunner->TestTrue(TEXT("Runtime player uses PlanarVelocity"),
+                             spawn.flight_mode == ::ioj::sim::SpaceShipFlightMode::PlanarVelocity);
+        TestRunner->TestTrue(TEXT("Runtime player starts in Velocity control mode"),
+                             spawn.control_mode == ::ioj::sim::SpaceShipControlMode::Velocity);
+    }
+
     TEST_METHOD(RuntimeControllerInputsMatchAuthoredController)
     {
         auto* const runtime_config{
