@@ -97,6 +97,72 @@ public sealed class SpaceGameLayerCheckerTests
             result.Diagnostics.ToArray());
     }
 
+    [TestMethod]
+    public void Check_reports_a_missing_presentation_module()
+    {
+        using var fixture = new ArchitectureCheckFixture();
+        fixture.WriteBuildCs("SpaceGameSimulation", "PublicDependencyModuleNames.Add(\"Core\");");
+        fixture.WriteBuildCs("SpaceGame", "PublicDependencyModuleNames.AddRange(new string[] { \"SpaceGameSimulation\", \"SpaceGamePresentation\" });");
+
+        var result = Check(fixture);
+
+        CollectionAssert.AreEqual(
+            new[] { "SpaceGamePresentation runtime module is missing" },
+            result.Diagnostics.ToArray());
+    }
+
+    [TestMethod]
+    public void Check_reports_a_missing_composition_module()
+    {
+        using var fixture = new ArchitectureCheckFixture();
+        fixture.WriteBuildCs("SpaceGameSimulation", "PublicDependencyModuleNames.Add(\"Core\");");
+        fixture.WriteBuildCs("SpaceGamePresentation", "PublicDependencyModuleNames.Add(\"SpaceGameSimulation\");");
+
+        var result = Check(fixture);
+
+        CollectionAssert.AreEqual(
+            new[] { "SpaceGame composition module is missing" },
+            result.Diagnostics.ToArray());
+    }
+
+    [TestMethod]
+    public void Check_reports_both_missing_composition_modules()
+    {
+        using var fixture = new ArchitectureCheckFixture();
+        fixture.WriteBuildCs("SpaceGameSimulation", "PublicDependencyModuleNames.Add(\"Core\");");
+
+        var result = Check(fixture);
+
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                "SpaceGame composition module is missing",
+                "SpaceGamePresentation runtime module is missing",
+            },
+            result.Diagnostics.ToArray());
+    }
+
+    [TestMethod]
+    public void Check_collects_missing_modules_with_other_architecture_failures()
+    {
+        using var fixture = new ArchitectureCheckFixture();
+        fixture.WriteBuildCs("SpaceGameSimulation", "PublicDependencyModuleNames.Add(\"Forbidden\");");
+        fixture.WriteBuildCs("SpaceGame", "PublicDependencyModuleNames.Add(\"SpaceGameSimulation\");");
+        fixture.WriteSimulationSource("Private/Forbidden.cpp", "#include <SpaceGame/Anything.h>");
+
+        var result = Check(fixture);
+
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                Path.Combine("Plugins", "SpaceGame", "Source", "SpaceGameSimulation", "Private", "Forbidden.cpp") + ":1: forbidden layer reference",
+                "SpaceGame must compose both layers",
+                "SpaceGamePresentation runtime module is missing",
+                "SpaceGameSimulation has forbidden simulation dependency Forbidden",
+            },
+            result.Diagnostics.ToArray());
+    }
+
     [DataTestMethod]
     [DataRow("FLevelSimulation* simulation;")]
     [DataRow("FLevelSimulation& simulation;")]

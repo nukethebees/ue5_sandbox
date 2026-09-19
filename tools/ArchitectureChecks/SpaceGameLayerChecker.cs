@@ -6,6 +6,8 @@ namespace ArchitectureChecks;
 public sealed class SpaceGameLayerChecker
 {
     private const string simulation_module = "SpaceGameSimulation";
+    private const string presentation_module = "SpaceGamePresentation";
+    private const string composition_module = "SpaceGame";
 
     private static readonly HashSet<string> allowed_dependencies = new(StringComparer.Ordinal)
     {
@@ -147,19 +149,27 @@ public sealed class SpaceGameLayerChecker
 
     private void CheckModuleComposition(IReadOnlyDictionary<string, string> modules, ICollection<string> diagnostics)
     {
-        if (modules.TryGetValue("SpaceGamePresentation", out var presentation_path))
+        if (!modules.TryGetValue(presentation_module, out var presentation_path))
+        {
+            diagnostics.Add("SpaceGamePresentation runtime module is missing");
+        }
+        else
         {
             var dependencies = dependency_parser.Parse(ReadText(presentation_path));
-            if (dependencies.Contains("SpaceGame") || !dependencies.Contains(simulation_module))
+            if (dependencies.Contains(composition_module) || !dependencies.Contains(simulation_module))
             {
                 diagnostics.Add("Presentation must depend on Simulation, never on SpaceGame");
             }
         }
 
-        if (modules.TryGetValue("SpaceGame", out var composition_path))
+        if (!modules.TryGetValue(composition_module, out var composition_path))
+        {
+            diagnostics.Add("SpaceGame composition module is missing");
+        }
+        else
         {
             var dependencies = dependency_parser.Parse(ReadText(composition_path));
-            if (!dependencies.Contains(simulation_module) || !dependencies.Contains("SpaceGamePresentation"))
+            if (!dependencies.Contains(simulation_module) || !dependencies.Contains(presentation_module))
             {
                 diagnostics.Add("SpaceGame must compose both layers");
             }
