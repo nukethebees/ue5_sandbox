@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <limits>
+#include <set>
 #include <type_traits>
 #include <utility>
 
@@ -54,12 +55,24 @@ void AbiProfile::set(std::string spelling, TypeFacts facts) {
     types_.insert_or_assign(std::move(spelling), facts);
 }
 
+void AbiProfile::set_representation(std::string spelling, std::string represented_by) {
+    representations_.insert_or_assign(std::move(spelling), std::move(represented_by));
+}
+
 auto AbiProfile::find(std::string const& spelling) const -> std::optional<TypeFacts> {
-    auto const found{types_.find(spelling)};
-    if (found == types_.end()) {
-        return std::nullopt;
+    std::set<std::string, std::less<>> visited;
+    auto current{spelling};
+    while (visited.insert(current).second) {
+        if (auto const found{types_.find(current)}; found != types_.end()) {
+            return found->second;
+        }
+        auto const representation{representations_.find(current)};
+        if (representation == representations_.end()) {
+            return std::nullopt;
+        }
+        current = representation->second;
     }
-    return found->second;
+    return std::nullopt;
 }
 
 auto AbiProfile::name() const -> std::string const& {

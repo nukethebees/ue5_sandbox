@@ -59,16 +59,57 @@ auto minimum_cache_lines(std::uint64_t const bytes) -> std::uint64_t {
     return bytes / cache_line_bytes + (bytes % cache_line_bytes == 0 ? 0 : 1);
 }
 
+auto cache_line_tiling(std::uint64_t const element_bytes) -> CacheLineTiling {
+    auto const complete_elements{
+        element_bytes <= cache_line_bytes ? cache_line_bytes / element_bytes : std::uint64_t{0}};
+    return {.cache_line_bytes = cache_line_bytes,
+            .element_bytes = element_bytes,
+            .exact_elements_per_cache_line =
+                element_bytes <= cache_line_bytes && cache_line_bytes % element_bytes == 0
+                    ? std::optional<std::uint64_t>{complete_elements}
+                    : std::nullopt,
+            .complete_elements_from_line_start = complete_elements,
+            .boundary_fragment_bytes =
+                element_bytes <= cache_line_bytes ? cache_line_bytes % element_bytes : 0,
+            .minimum_cache_lines_per_element = minimum_cache_lines(element_bytes)};
+}
+
 } // namespace
+
+auto numeric_delta(std::optional<std::uint64_t> const baseline,
+                   std::optional<std::uint64_t> const variant) -> std::optional<NumericDelta> {
+    if (!baseline.has_value() || !variant.has_value()) {
+        return std::nullopt;
+    }
+    if (*baseline == *variant) {
+        return NumericDelta{.direction = NumericDeltaDirection::unchanged,
+                            .magnitude = 0,
+                            .percentage =
+                                *baseline == 0 ? std::nullopt : std::optional<double>{0.0}};
+    }
+    auto const increased{*variant > *baseline};
+    auto const magnitude{increased ? *variant - *baseline : *baseline - *variant};
+    return NumericDelta{.direction = increased ? NumericDeltaDirection::increased
+                                               : NumericDeltaDirection::decreased,
+                        .magnitude = magnitude,
+                        .percentage = *baseline == 0 ? std::nullopt
+                                                     : std::optional<double>{
+                                                           static_cast<double>(magnitude) * 100.0 /
+                                                           static_cast<double>(*baseline)}};
+}
 
 auto Analyzer::analyze(PackedLayout const& layout, Variant const& variant, AbiProfile const& abi)
     -> PackedAnalysis {
     PackedAnalysis result{.id = layout.id,
+                          .schema_storage_type = layout.storage_type,
                           .storage_type = effective_storage_type(layout, variant),
+                          .storage_overridden =
+                              variant.overrides.packed_storage_types.contains(layout.id),
                           .storage_facts = std::nullopt,
                           .storage_bits = std::nullopt,
                           .bits_used = std::nullopt,
                           .unused_bits = std::nullopt,
+                          .overflow_bits = std::nullopt,
                           .invalid_raw_value = layout.invalid_raw_value,
                           .fields = {},
                           .diagnostics = {}};
@@ -97,12 +138,17 @@ auto Analyzer::analyze(PackedLayout const& layout, Variant const& variant, AbiPr
     for (auto const& field : layout.fields) {
         auto const width{effective_field_width(layout, field, variant)};
         auto const next_offset{checked_add(offset, width)};
-        PackedFieldAnalysis field_result{.name = field.name,
-                                         .kind = field.kind,
-                                         .bit_width = width,
-                                         .least_significant_bit = offset,
-                                         .most_significant_bit = std::nullopt,
-                                         .maximum_unsigned_value = maximum_unsigned_value(width)};
+        PackedFieldAnalysis field_result{
+            .name = field.name,
+            .logical_type = field.logical_type,
+            .kind = field.kind,
+            .schema_bit_width = field.bit_width,
+            .bit_width = width,
+            .overridden = variant.overrides.packed_field_widths.contains(
+                FieldOverrideId{.schema = layout.id, .field_name = field.name}),
+            .least_significant_bit = offset,
+            .most_significant_bit = std::nullopt,
+            .maximum_unsigned_value = maximum_unsigned_value(width)};
         if (width == 0) {
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
@@ -130,6 +176,7 @@ auto Analyzer::analyze(PackedLayout const& layout, Variant const& variant, AbiPr
         result.bits_used = offset;
         if (result.storage_bits.has_value()) {
             if (*result.bits_used > *result.storage_bits) {
+                result.overflow_bits = *result.bits_used - *result.storage_bits;
                 result.diagnostics.push_back(
                     {DiagnosticSeverity::error,
                      "Packed fields use more bits than the selected storage type provides."});
@@ -157,12 +204,15 @@ auto Analyzer::analyze(SoaLayout const& layout,
                        AbiProfile const& abi,
                        std::uint64_t const default_capacity) -> SoaAnalysis {
     auto capacity{default_capacity};
+    bool capacity_overridden{};
     if (auto const found{variant.overrides.capacities.find(layout.id)};
         found != variant.overrides.capacities.end()) {
         capacity = found->second;
+        capacity_overridden = true;
     }
     SoaAnalysis result{.id = layout.id,
                        .capacity = capacity,
+                       .capacity_overridden = capacity_overridden,
                        .columns = {},
                        .bytes_per_logical_element = std::nullopt,
                        .total_payload_bytes = std::nullopt,
@@ -173,13 +223,17 @@ auto Analyzer::analyze(SoaLayout const& layout,
     result.columns.reserve(layout.columns.size());
 
     for (auto const& column : layout.columns) {
-        SoaColumnAnalysis column_result{.name = column.name,
-                                        .physical_type =
-                                            effective_column_type(layout, column, variant),
-                                        .type_facts = std::nullopt,
-                                        .total_bytes = std::nullopt,
-                                        .minimum_cache_lines = std::nullopt,
-                                        .elements_per_cache_line = std::nullopt};
+        SoaColumnAnalysis column_result{
+            .name = column.name,
+            .schema_type = column.logical_type,
+            .physical_type = effective_column_type(layout, column, variant),
+            .overridden = variant.overrides.soa_column_types.contains(
+                FieldOverrideId{.schema = layout.id, .field_name = column.name}),
+            .type_facts = std::nullopt,
+            .total_bytes = std::nullopt,
+            .minimum_cache_lines = std::nullopt,
+            .elements_per_cache_line = std::nullopt,
+            .cache_line_tiling = std::nullopt};
         column_result.type_facts = abi.find(column_result.physical_type);
         if (!column_result.type_facts.has_value()) {
             complete = false;
@@ -191,6 +245,14 @@ auto Analyzer::analyze(SoaLayout const& layout,
         }
 
         auto const size{column_result.type_facts->size_bytes};
+        if (size == 0) {
+            complete = false;
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "SoA column '" + column.name + "' has a zero-byte physical type."});
+            result.columns.push_back(std::move(column_result));
+            continue;
+        }
         column_result.total_bytes = checked_multiply(size, capacity);
         if (!column_result.total_bytes.has_value()) {
             complete = false;
@@ -200,9 +262,9 @@ auto Analyzer::analyze(SoaLayout const& layout,
         } else {
             column_result.minimum_cache_lines = minimum_cache_lines(*column_result.total_bytes);
         }
-        if (size != 0 && size <= cache_line_bytes && cache_line_bytes % size == 0) {
-            column_result.elements_per_cache_line = cache_line_bytes / size;
-        }
+        column_result.cache_line_tiling = cache_line_tiling(size);
+        column_result.elements_per_cache_line =
+            column_result.cache_line_tiling->exact_elements_per_cache_line;
 
         auto const next_row_bytes{checked_add(row_bytes, size)};
         if (!next_row_bytes.has_value()) {
