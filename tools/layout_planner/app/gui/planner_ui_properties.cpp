@@ -268,21 +268,8 @@ void PlannerUi::draw_properties_panel() {
 
 void PlannerUi::draw_variants_panel() {
     ImGui::Begin("Variants");
-    for (auto const& variant : workspace_.variants()) {
-        auto const selected{workspace_.active_variant_id() == variant.id};
-        auto const label{variant.id == LayoutWorkspace::baseline_variant_id
-                             ? "Baseline"
-                             : variant.name + " (" +
-                                   std::to_string(detail::override_count(variant.overrides)) +
-                                   " overrides)"};
-        if (ImGui::Selectable(label.c_str(), selected)) {
-            workspace_.select_variant(variant.id);
-            sync_variant_name();
-            packed_dragged_divider_.reset();
-        }
-    }
-    ImGui::Separator();
-    auto const baseline{workspace_.active_variant_id() == LayoutWorkspace::baseline_variant_id};
+    auto const baseline_before_actions{workspace_.active_variant_id() ==
+                                       LayoutWorkspace::baseline_variant_id};
     if (ImGui::BeginTable("variant-actions",
                           2,
                           ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoSavedSettings)) {
@@ -297,7 +284,7 @@ void PlannerUi::draw_variants_panel() {
             sync_variant_name();
         }
         ImGui::TableNextColumn();
-        ImGui::BeginDisabled(baseline);
+        ImGui::BeginDisabled(baseline_before_actions);
         if (ImGui::Button("Reset all overrides", {-1.0F, 0.0F})) {
             workspace_.reset_variant(workspace_.active_variant_id());
         }
@@ -309,6 +296,8 @@ void PlannerUi::draw_variants_panel() {
         ImGui::EndDisabled();
         ImGui::EndTable();
     }
+
+    auto const baseline{workspace_.active_variant_id() == LayoutWorkspace::baseline_variant_id};
     ImGui::BeginDisabled(baseline);
     if (variant_name_id_ != workspace_.active_variant_id()) {
         sync_variant_name();
@@ -321,6 +310,24 @@ void PlannerUi::draw_variants_panel() {
         sync_variant_name();
     }
     ImGui::EndDisabled();
+
+    ImGui::Separator();
+    if (ImGui::BeginChild("variant-list", {0.0F, 0.0F}, false)) {
+        for (auto const& variant : workspace_.variants()) {
+            auto const selected{workspace_.active_variant_id() == variant.id};
+            auto const label{variant.id == LayoutWorkspace::baseline_variant_id
+                                 ? "Baseline"
+                                 : variant.name + " (" +
+                                       std::to_string(detail::override_count(variant.overrides)) +
+                                       " overrides)"};
+            if (ImGui::Selectable(label.c_str(), selected)) {
+                workspace_.select_variant(variant.id);
+                sync_variant_name();
+                packed_dragged_divider_.reset();
+            }
+        }
+    }
+    ImGui::EndChild();
     ImGui::End();
 }
 
