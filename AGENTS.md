@@ -50,6 +50,12 @@ Unreal Engine 5.8 project.
 * Prefer to build native code for the development process; leave Unreal builds to the end of a task to avoid UBT mutex contention
 * Run code/asset generators needed for the task
 * Keep benchmarks short; More than 3 minutes total is too long
+* Standalone developer-tool tests are not part of the default validation path. Run
+  `cmake --workflow --preset tool-tests` only when the change can affect a tool or its tests, a
+  directly consumed interface/protocol/file format/configuration, shared build or tool
+  infrastructure, or the tool is being diagnosed. Unrelated native, game, and runtime changes must
+  not run them merely because a broad test command exists. For a tool-affecting feature, use
+  `integrate-feature -ToolTests` so final integration also runs `tool-tests`.
 
 
 # Agent Behaviour

@@ -14,7 +14,9 @@ After the user authorizes a ready feature, `integrate-feature` queues the exclus
 `integration/dev` lease and runs the trusted rebase, review, validation, merge, and cleanup
 transaction. `cbuild` defaults to
 the native test workflow; `csetup native` prepares native-only prerequisites, while `cplay` prepares
-and builds playable Editor configurations.
+and builds playable Editor configurations. Use `cbuild tool-tests` for standalone developer-tool
+validation when that scope is affected, and `integrate-feature -ToolTests` to include it in final
+integration validation.
 
 The remaining scripts implement build safety, packaging, project-file generation, and Live Coding
 configuration. Treat them as implementation details unless a documented workflow calls for one

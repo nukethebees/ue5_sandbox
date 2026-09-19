@@ -6,6 +6,10 @@ Run `ctools` when a direct developer command needs a staged executable in `tools
 workflows build their own configuration-local C# host-tool outputs on demand and never depend on
 the shared staging directory.
 
+Run `cmake --workflow --preset tool-tests` when changing a standalone tool, its tests, directly
+consumed interfaces/configuration, or shared tool/build infrastructure. Ordinary game, runtime,
+and native validation does not run this suite.
+
 - `jobserver/` is the canonical per-user coordinator for build, Editor, test, commandlet, and
   benchmark resource claims. See its [detailed README](jobserver/README.md).
 - `perf/` contains performance tooling integrated into the root CMake project.

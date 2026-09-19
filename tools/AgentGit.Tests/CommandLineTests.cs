@@ -52,11 +52,12 @@ public sealed class CommandLineTests
         StringAssert.Contains(missing_error, "--authorized");
 
         Assert.IsTrue(CommandLine.TryParse(
-            ["integrate", "--authorized", "--keep-branch"],
+            ["integrate", "--authorized", "--keep-branch", "--tool-tests"],
             out var request,
             out var error), error);
         Assert.IsTrue(((IntegrateRequest)request!).Authorized);
         Assert.IsTrue(((IntegrateRequest)request).KeepBranch);
+        Assert.IsTrue(((IntegrateRequest)request).ToolTests);
         Assert.IsFalse(CommandLine.TryParse(
             ["--dry-run", "integrate", "--authorized"],
             out _,

@@ -468,7 +468,7 @@
       "configurePreset": "debug-game",
       "filter": {
         "include": {
-          "label": "^all$"
+          "label": "^(all|developer-tool)$"
         }
       }
     },
@@ -501,7 +501,7 @@
       "configurePreset": "debug-game-msvc",
       "filter": {
         "include": {
-          "label": "^all$"
+          "label": "^(all|developer-tool)$"
         }
       }
     }

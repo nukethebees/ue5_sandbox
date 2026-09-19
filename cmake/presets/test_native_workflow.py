@@ -17,6 +17,9 @@ class NativeWorkflowTests(unittest.TestCase):
     cmake: str
 
     presets = json.loads((PRESET_DIRECTORY / "native.json").read_text(encoding="utf-8"))
+    unreal_presets = json.loads(
+        (PRESET_DIRECTORY / "unreal.json").read_text(encoding="utf-8")
+    )
 
     def test_native_preset_uses_the_unreal_disabled_default(self) -> None:
         configure_presets = {
@@ -45,6 +48,33 @@ class NativeWorkflowTests(unittest.TestCase):
                 {"type": "build", "name": "native"},
                 {"type": "test", "name": "native-tests"},
             ],
+        )
+
+    def test_tool_workflow_is_explicit_and_normal_workflows_exclude_it(self) -> None:
+        test_presets = {preset["name"]: preset for preset in self.presets["testPresets"]}
+        workflows = {preset["name"]: preset for preset in self.presets["workflowPresets"]}
+        unreal_test_presets = {
+            preset["name"]: preset for preset in self.unreal_presets["testPresets"]
+        }
+
+        self.assertEqual(
+            test_presets["tool-tests"]["filter"]["include"]["label"],
+            "^developer-tool$",
+        )
+        self.assertEqual(
+            workflows["tool-tests"]["steps"],
+            [
+                {"type": "configure", "name": "native"},
+                {"type": "test", "name": "tool-tests"},
+            ],
+        )
+        self.assertEqual(
+            unreal_test_presets["debug-game-tests"]["filter"]["include"]["label"],
+            "^all$",
+        )
+        self.assertEqual(
+            unreal_test_presets["debug-game-full-tests"]["filter"]["include"]["label"],
+            "^(all|developer-tool)$",
         )
 
     def test_native_target_dry_run_has_no_unreal_dependency(self) -> None:
@@ -79,6 +109,8 @@ class NativeWorkflowTests(unittest.TestCase):
             )
             self.assertNotRegex(dry_run, r"UnrealBuildTools|UnrealEditor|RunUBT")
             self.assertNotRegex(dry_run, r"(?i)(?:^|[\\/\s])unreal(?:[\\/\s]|$)")
+            self.assertNotIn("Tools.slnx", dry_run)
+            self.assertNotIn("dotnet.exe\" test", dry_run)
 
             host_tool = (
                 build_directory

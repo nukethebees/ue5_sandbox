@@ -111,13 +111,14 @@ user authorization it acquires the jobserver's exclusive `integration/<baseBranc
 invokes:
 
 ```text
-agent-git integrate --authorized [--keep-branch]
+agent-git integrate --authorized [--keep-branch] [--tool-tests]
 ```
 
 `agent-git` verifies that the visible lease ID is a running `integration` job for the current
 worktree with the exact exclusive resource. It records local `dev`, rebases onto that commit,
 prints a range-diff and diff summary, and requires an exact review acknowledgement within 15
 minutes. It then runs `debug-game-tests`, any detected benchmark build, and the Development build.
+Pass `--tool-tests` for a tool-affecting feature to also run the explicit `tool-tests` workflow.
 The final `dev` update is an atomic compare-and-swap from the recorded SHA to a no-fast-forward
 merge commit. A mismatch reports both SHAs and aborts without retrying. Cleanup returns a `devN`
 worktree to its home branch and uses safe branch deletion; cleanup failure retains the branch and

@@ -26,8 +26,8 @@ manager configuration is needed.
 ## Development validation
 
 Use the cheapest tier that validates the changed boundary. Native code is the normal inner loop;
-Unreal is an integration boundary, and the complete DebugGame workflow is the final merge-ready
-gate.
+Unreal is an integration boundary, and the normal DebugGame workflow is the final merge-ready
+game/native gate.
 
 ### Native inner loop
 
@@ -50,6 +50,17 @@ PowerShell shortcut `cbuild` defaults to `native-tests`.
 Native mimalloc targets build their configuration-local `NativeBinaryTools` host dependency on
 demand. CMake-owned tools likewise rebuild automatically when their sources change; no CMake
 workflow requires a manual `ctools` preflight.
+
+### Standalone developer tools
+
+```powershell
+cmake --workflow --preset tool-tests
+```
+
+Run this only when the current change can affect a standalone developer tool: the tool or its
+tests, a directly consumed interface/protocol/file format/configuration, shared tool/build
+infrastructure, or an active tool diagnosis. Normal native, game, runtime, DebugGame unit, and
+DebugGame integration validation deliberately exclude this suite.
 
 Do not rebuild Unreal merely because a native implementation has a thin Unreal adapter. Settle the
 native behavior with the smallest target and test subset first.
@@ -79,8 +90,11 @@ After implementation is complete and the feature branch has been rebased onto cu
 cmake --workflow --preset debug-game-tests
 ```
 
-This is the full DebugGame integration gate. If it finds one native failure, return to that
+This is the normal DebugGame game/native integration gate. If it finds one native failure, return to that
 target's focused native build/test loop, then rerun this gate once on the final HEAD.
+
+Use `cmake --workflow --preset debug-game-full-tests` only for explicitly requested broad
+validation; it also includes standalone developer-tool tests.
 
 Use `cmake --build --preset debug-game --target run-editor` to build and launch the Editor, or
 `run-editor-debug` to break at startup for an attached debugger. Regenerate Visual Studio project

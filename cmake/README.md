@@ -34,8 +34,11 @@ remains responsible for integration coverage of generated Ninja and CTest files.
 native compilation, `ctest --preset native-simulation-tests` or `native-core-tests` for focused
 tests, and `cmake --workflow --preset native-tests` for the full native suite. The detailed native
 preset matrix remains available for explicit compiler, configuration, unity, and ASan choices.
+`cmake --workflow --preset tool-tests` runs standalone developer-tool tests explicitly; ordinary
+native/game validation excludes them.
 
 The normal Unreal presets build `dev-core`, the broad integration aggregate. The focused
 `debug-game-unit-tests` workflow instead builds `unreal-unit-tests` (`editor` plus `native-tests`)
 before running the mixed unit taxonomy. `debug-game-tests` retains `dev-core` as the merge-ready
-integration gate.
+game/native integration gate. `debug-game-full-tests` is the explicit broad suite and also includes
+standalone developer-tool tests.

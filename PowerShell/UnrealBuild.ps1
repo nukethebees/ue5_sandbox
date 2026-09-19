@@ -305,7 +305,7 @@ function reset-ubt-build-state {
 function cbuild {
     param(
         [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
-        [ValidateSet('native-tests', 'native-core-tests', 'native-simulation-tests', 'debug', 'debug-game', 'development', 'shipping', 'test')]
+        [ValidateSet('native-tests', 'native-core-tests', 'native-simulation-tests', 'tool-tests', 'debug', 'debug-game', 'development', 'shipping', 'test')]
         [string[]]$configuration = @('native-tests')
     )
 
@@ -362,7 +362,8 @@ function install-agent-git {
 
 function integrate-feature {
     param(
-        [switch]$KeepBranch
+        [switch]$KeepBranch,
+        [switch]$ToolTests
     )
 
     $agent_git = Join-Path $env:LOCALAPPDATA 'NukeTheBees\agent-git\bin\agent-git.exe'
@@ -406,6 +407,9 @@ function integrate-feature {
     )
     if ($KeepBranch) {
         $arguments += '--keep-branch'
+    }
+    if ($ToolTests) {
+        $arguments += '--tool-tests'
     }
 
     Write-Host "Queueing '$branch' for the exclusive '$resource' integration reservation."

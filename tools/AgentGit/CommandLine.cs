@@ -6,7 +6,7 @@ internal static class CommandLine
         Usage:
           agent-git status
           agent-git branch-info
-          agent-git integrate --authorized [--keep-branch]
+          agent-git integrate --authorized [--keep-branch] [--tool-tests]
           agent-git policy <add|add-all|commit|switch|switch-create|rebase-base|rebase-continue|rebase-abort|branch-delete> [branch]
           agent-git [--dry-run] add <path>...
           agent-git [--dry-run] add-all
@@ -73,14 +73,18 @@ internal static class CommandLine
                     error = "--dry-run is not supported for the integration transaction.";
                     return false;
                 }
-                if (remaining.All(value => value is "--authorized" or "--keep-branch") &&
+                if (remaining.All(value => value is "--authorized" or "--keep-branch" or "--tool-tests") &&
                     remaining.Count(value => value == "--authorized") == 1 &&
-                    remaining.Count(value => value == "--keep-branch") <= 1)
+                    remaining.Count(value => value == "--keep-branch") <= 1 &&
+                    remaining.Count(value => value == "--tool-tests") <= 1)
                 {
-                    request = new IntegrateRequest(true, remaining.Contains("--keep-branch", StringComparer.Ordinal));
+                    request = new IntegrateRequest(
+                        true,
+                        remaining.Contains("--keep-branch", StringComparer.Ordinal),
+                        remaining.Contains("--tool-tests", StringComparer.Ordinal));
                     return true;
                 }
-                error = "integrate requires exactly one --authorized and accepts optional --keep-branch.";
+                error = "integrate requires exactly one --authorized and accepts optional --keep-branch and --tool-tests.";
                 return false;
             case "policy":
                 return TryParsePolicy(remaining, out request, out error);

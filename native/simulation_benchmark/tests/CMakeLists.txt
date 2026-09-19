@@ -17,8 +17,6 @@ set_tests_properties(native-simulation-benchmark-tests PROPERTIES
 )
 
 if(SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK)
-  add_dependencies(native-simulation-benchmark-tests benchmark-tools-preflight)
-
   add_test(NAME native-frame-memory-level-benchmark
     COMMAND powershell -NoProfile -File
       "${PROJECT_SOURCE_DIR}/Scripts/run-frame-memory-level-benchmark.ps1"

@@ -4,11 +4,6 @@ sandbox_add_dotnet_host_tool(
   "${PROJECT_SOURCE_DIR}/tools/CodeFormatTools/CodeFormatTools.csproj"
 )
 
-set(sandbox_benchmark_tools
-  "${PROJECT_SOURCE_DIR}/tools/bin/BenchmarkTools.exe")
-sandbox_add_staged_csharp_tool_preflight(benchmark-tools-preflight
-  "BenchmarkTools.exe" "${sandbox_benchmark_tools}")
-
 add_custom_target(format-code
   COMMAND "${SANDBOX_CODE_FORMAT_TOOLS}" --changed
   DEPENDS code-format-tools-host
@@ -25,6 +20,16 @@ add_custom_target(format-all-code
   COMMENT "Formatting all project source files"
   USES_TERMINAL
   VERBATIM
+)
+
+find_program(DOTNET_EXECUTABLE NAMES dotnet REQUIRED)
+add_test(
+  NAME Sandbox.CSharpTools
+  COMMAND "${DOTNET_EXECUTABLE}" test "${PROJECT_SOURCE_DIR}/tools/Tools.slnx" -m:1
+)
+set_tests_properties(Sandbox.CSharpTools PROPERTIES
+  LABELS "developer-tool"
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )
 
 add_subdirectory(perf)

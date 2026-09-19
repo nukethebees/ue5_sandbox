@@ -132,6 +132,7 @@ internal interface IIntegrationValidator
 {
     Task<int> ValidateAsync(
         string worktree,
+        bool requires_tool_tests,
         bool requires_benchmark_build,
         TextWriter output,
         TextWriter error,
@@ -165,6 +166,7 @@ internal sealed class CMakeIntegrationValidator : IIntegrationValidator
 
     public async Task<int> ValidateAsync(
         string worktree,
+        bool requires_tool_tests,
         bool requires_benchmark_build,
         TextWriter output,
         TextWriter error,
@@ -174,6 +176,10 @@ internal sealed class CMakeIntegrationValidator : IIntegrationValidator
         {
             new[] { "--workflow", "--preset", "debug-game-tests" },
         };
+        if (requires_tool_tests)
+        {
+            commands.Add(new[] { "--workflow", "--preset", "tool-tests" });
+        }
         if (requires_benchmark_build)
         {
             commands.Add(new[] { "--preset", "benchmark" });

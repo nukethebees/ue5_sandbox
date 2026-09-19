@@ -198,6 +198,12 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
             "filter": {"include": {"label": "^native$"}},
         },
+        {
+            "name": "tool-tests",
+            "inherits": "test-base",
+            "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
+            "filter": {"include": {"label": "^developer-tool$"}},
+        },
         *(
             {
                 "name": test_target,
@@ -234,6 +240,14 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
                 {"type": "configure", "name": DEFAULT_NATIVE_CONFIGURATION},
                 {"type": "build", "name": "native"},
                 {"type": "test", "name": "native-tests"},
+            ],
+        },
+        {
+            "name": "tool-tests",
+            "displayName": "Run standalone developer-tool tests",
+            "steps": [
+                {"type": "configure", "name": DEFAULT_NATIVE_CONFIGURATION},
+                {"type": "test", "name": "tool-tests"},
             ],
         },
         *(
@@ -495,7 +509,7 @@ def make_unreal_document() -> dict[str, Any]:
                 "name": "debug-game-full-tests",
                 "inherits": "test-base",
                 "configurePreset": "debug-game",
-                "filter": {"include": {"label": "^all$"}},
+                "filter": {"include": {"label": "^(all|developer-tool)$"}},
             },
         ]
     )
@@ -525,7 +539,7 @@ def make_unreal_document() -> dict[str, Any]:
                     "name": f"debug-game{suffix}-full-tests",
                     "inherits": "test-base",
                     "configurePreset": f"debug-game{suffix}",
-                    "filter": {"include": {"label": "^all$"}},
+                    "filter": {"include": {"label": "^(all|developer-tool)$"}},
                 },
             ]
         )

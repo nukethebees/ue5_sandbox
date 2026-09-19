@@ -6,13 +6,14 @@ namespace AgentGit.Tests;
 public sealed class IntegrationTransactionTests
 {
     [TestMethod]
-    public async Task Final_validator_runs_debug_game_benchmark_and_development_gates_in_order()
+    public async Task Final_validator_runs_normal_gates_without_tool_tests()
     {
         var runner = new RecordingCommandRunner();
         var validator = new CMakeIntegrationValidator(runner);
 
         var exit_code = await validator.ValidateAsync(
             "C:\\worktree",
+            requires_tool_tests: false,
             requires_benchmark_build: true,
             TextWriter.Null,
             TextWriter.Null,
@@ -25,6 +26,31 @@ public sealed class IntegrationTransactionTests
                 "cmake --workflow --preset debug-game-tests",
                 "cmake --preset benchmark",
                 "cmake --build --preset benchmark --target benchmarks",
+                "cmake --workflow --preset development",
+            },
+            runner.Commands);
+    }
+
+    [TestMethod]
+    public async Task Final_validator_runs_tool_tests_when_requested()
+    {
+        var runner = new RecordingCommandRunner();
+        var validator = new CMakeIntegrationValidator(runner);
+
+        var exit_code = await validator.ValidateAsync(
+            "C:\\worktree",
+            requires_tool_tests: true,
+            requires_benchmark_build: false,
+            TextWriter.Null,
+            TextWriter.Null,
+            default);
+
+        Assert.AreEqual(0, exit_code);
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                "cmake --workflow --preset debug-game-tests",
+                "cmake --workflow --preset tool-tests",
                 "cmake --workflow --preset development",
             },
             runner.Commands);
@@ -170,7 +196,8 @@ public sealed class IntegrationTransactionTests
             validator,
             output,
             error);
-        var exit_code = await transaction.RunAsync(new IntegrateRequest(true, false), worktree, default);
+        var exit_code = await transaction.RunAsync(
+            new IntegrateRequest(true, false, false), worktree, default);
         return new ApplicationResult(exit_code, output.ToString(), error.ToString());
     }
 
@@ -195,6 +222,7 @@ public sealed class IntegrationTransactionTests
 
         public Task<int> ValidateAsync(
             string worktree,
+            bool requires_tool_tests,
             bool requires_benchmark_build,
             TextWriter output,
             TextWriter error,

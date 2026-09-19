@@ -102,6 +102,7 @@ internal sealed class IntegrationTransaction(
             .Any(path => path.Contains("benchmark", StringComparison.OrdinalIgnoreCase));
         var validation_exit = await validator.ValidateAsync(
             state.WorktreeRoot,
+            request.ToolTests,
             requires_benchmark_build,
             output,
             error,
