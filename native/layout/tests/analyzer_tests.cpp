@@ -41,7 +41,8 @@ auto six_float_soa() -> SoaLayout {
 }
 
 TEST(PackedAnalyzer, ReportsEntityUniqueIdLayout) {
-    auto const analysis{Analyzer::analyze(entity_id_layout(), Variant{}, AbiProfile::host_common())};
+    auto const analysis{
+        Analyzer::analyze(entity_id_layout(), Variant{}, AbiProfile::host_common())};
 
     ASSERT_EQ(analysis.storage_facts->size_bytes, 4);
     EXPECT_EQ(analysis.storage_bits, 32);
@@ -87,8 +88,11 @@ TEST(PackedAnalyzer, AppliesExplicitVariantOverrides) {
 TEST(SoaAnalyzer, ReportsSixFloatPayloadAcrossCapacities) {
     auto const layout{six_float_soa()};
     auto const abi{AbiProfile::host_common()};
-    for (auto const capacity : {std::uint64_t{0}, std::uint64_t{1}, std::uint64_t{4'096},
-                                std::uint64_t{16'384}, std::uint64_t{65'536}}) {
+    for (auto const capacity : {std::uint64_t{0},
+                                std::uint64_t{1},
+                                std::uint64_t{4'096},
+                                std::uint64_t{16'384},
+                                std::uint64_t{65'536}}) {
         auto const analysis{Analyzer::analyze(layout, Variant{}, abi, capacity)};
         EXPECT_EQ(analysis.bytes_per_logical_element, 24);
         EXPECT_EQ(analysis.total_payload_bytes, 24 * capacity);
@@ -104,8 +108,7 @@ TEST(SoaAnalyzer, AppliesCapacityAndColumnTypeOverrides) {
     auto const layout{six_float_soa()};
     Variant variant;
     variant.overrides.capacities[layout.id] = 4'096;
-    variant.overrides.soa_column_types[{.schema = layout.id, .field_name = "min_xs"}] =
-        "double";
+    variant.overrides.soa_column_types[{.schema = layout.id, .field_name = "min_xs"}] = "double";
 
     auto const analysis{Analyzer::analyze(layout, variant, AbiProfile::host_common(), 65'536)};
 
@@ -135,9 +138,10 @@ TEST(SoaAnalyzer, ReportsIntegerOverflow) {
         .columns = {{.name = "values", .logical_type = "huge"}},
     }};
     AbiProfile abi{"test"};
-    abi.set("huge", {.size_bytes = std::numeric_limits<std::uint64_t>::max(),
-                     .alignment_bytes = 1,
-                     .unsigned_value_bits = std::nullopt});
+    abi.set("huge",
+            {.size_bytes = std::numeric_limits<std::uint64_t>::max(),
+             .alignment_bytes = 1,
+             .unsigned_value_bits = std::nullopt});
 
     auto const analysis{Analyzer::analyze(layout, Variant{}, abi, 2)};
 

@@ -7,9 +7,8 @@ namespace {
 
 TEST(LayoutWorkspace, CreatesDuplicatesResetsAndDeletesVariants) {
     LayoutWorkspace workspace;
-    auto const schema{SchemaId{.kind = SchemaKind::packed_value,
-                               .module_name = "module",
-                               .schema_name = "Packed"}};
+    auto const schema{SchemaId{
+        .kind = SchemaKind::packed_value, .module_name = "module", .schema_name = "Packed"}};
 
     EXPECT_FALSE(workspace.set_capacity(schema, 100));
     auto const first{workspace.create_variant("First")};

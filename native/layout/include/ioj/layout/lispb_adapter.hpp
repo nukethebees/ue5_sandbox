@@ -15,7 +15,7 @@ struct CatalogLoadResult {
     bool loaded{};
 };
 
-auto load_lispb_catalog(std::filesystem::path const& project_path,
-                        std::string const& target_name) -> CatalogLoadResult;
+auto load_lispb_catalog(std::filesystem::path const& project_path, std::string const& target_name)
+    -> CatalogLoadResult;
 
 } // namespace ioj::layout

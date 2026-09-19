@@ -21,7 +21,8 @@ auto SchemaCatalog::add(LayoutDefinition definition) -> bool {
 }
 
 auto SchemaCatalog::find(SchemaId const& id) const -> LayoutDefinition const* {
-    auto const found{std::ranges::find_if(items_, [&](auto const& item) { return id_of(item) == id; })};
+    auto const found{
+        std::ranges::find_if(items_, [&](auto const& item) { return id_of(item) == id; })};
     return found == items_.end() ? nullptr : &*found;
 }
 

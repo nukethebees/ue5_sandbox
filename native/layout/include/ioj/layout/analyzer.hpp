@@ -53,9 +53,8 @@ struct SoaAnalysis {
 
 class Analyzer {
   public:
-    static auto analyze(PackedLayout const& layout,
-                        Variant const& variant,
-                        AbiProfile const& abi) -> PackedAnalysis;
+    static auto analyze(PackedLayout const& layout, Variant const& variant, AbiProfile const& abi)
+        -> PackedAnalysis;
     static auto analyze(SoaLayout const& layout,
                         Variant const& variant,
                         AbiProfile const& abi,

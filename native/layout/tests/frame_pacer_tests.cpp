@@ -23,7 +23,8 @@ TEST(FramePacer, SelectsActivityDrivenModes) {
 TEST(FramePacer, UsesExpectedWaitIntervals) {
     EXPECT_EQ(FramePacer::wait_timeout(FramePacingMode::interactive), std::chrono::milliseconds{0});
     EXPECT_EQ(FramePacer::wait_timeout(FramePacingMode::idle), std::chrono::milliseconds{83});
-    EXPECT_EQ(FramePacer::wait_timeout(FramePacingMode::background), std::chrono::milliseconds{500});
+    EXPECT_EQ(FramePacer::wait_timeout(FramePacingMode::background),
+              std::chrono::milliseconds{500});
     EXPECT_LT(FramePacer::wait_timeout(FramePacingMode::suspended).count(), 0);
 }
 

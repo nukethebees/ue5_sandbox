@@ -10,7 +10,8 @@ auto FramePacer::mode(FramePacingState const& state,
     if (!state.focused) {
         return FramePacingMode::background;
     }
-    if (state.explicit_refresh || state.dragging || now - state.last_interaction <= interactive_tail) {
+    if (state.explicit_refresh || state.dragging ||
+        now - state.last_interaction <= interactive_tail) {
         return FramePacingMode::interactive;
     }
     return FramePacingMode::idle;
@@ -18,14 +19,14 @@ auto FramePacer::mode(FramePacingState const& state,
 
 auto FramePacer::wait_timeout(FramePacingMode const mode) -> std::chrono::milliseconds {
     switch (mode) {
-    case FramePacingMode::interactive:
-        return std::chrono::milliseconds{0};
-    case FramePacingMode::idle:
-        return idle_interval;
-    case FramePacingMode::background:
-        return background_interval;
-    case FramePacingMode::suspended:
-        return std::chrono::milliseconds{-1};
+        case FramePacingMode::interactive:
+            return std::chrono::milliseconds{0};
+        case FramePacingMode::idle:
+            return idle_interval;
+        case FramePacingMode::background:
+            return background_interval;
+        case FramePacingMode::suspended:
+            return std::chrono::milliseconds{-1};
     }
     return std::chrono::milliseconds{0};
 }

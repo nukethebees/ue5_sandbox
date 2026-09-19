@@ -25,7 +25,6 @@ class AbiProfile {
     auto find(std::string const& spelling) const -> std::optional<TypeFacts>;
     auto name() const -> std::string const&;
     auto types() const -> std::map<std::string, TypeFacts, std::less<>> const&;
-
   private:
     std::string name_;
     std::map<std::string, TypeFacts, std::less<>> types_;

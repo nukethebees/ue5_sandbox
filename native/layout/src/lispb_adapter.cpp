@@ -14,10 +14,10 @@ namespace {
 
 auto field_kind(codegen::PackedFieldKind const kind) -> PackedFieldKind {
     switch (kind) {
-    case codegen::PackedFieldKind::unsigned_integer:
-        return PackedFieldKind::unsigned_integer;
-    case codegen::PackedFieldKind::enumeration:
-        return PackedFieldKind::enumeration;
+        case codegen::PackedFieldKind::unsigned_integer:
+            return PackedFieldKind::unsigned_integer;
+        case codegen::PackedFieldKind::enumeration:
+            return PackedFieldKind::enumeration;
     }
     return PackedFieldKind::unsigned_integer;
 }
@@ -31,8 +31,8 @@ void add_packed_module(SchemaCatalog& catalog,
             .id = {.kind = SchemaKind::packed_value,
                    .module_name = module.settings.name,
                    .schema_name = value.name},
-            .storage_type =
-                codegen::native_spelling(codegen::resolve_type(value.storage_type, manifest.types).spelling),
+            .storage_type = codegen::native_spelling(
+                codegen::resolve_type(value.storage_type, manifest.types).spelling),
             .fields = {},
             .invalid_raw_value = value.invalid_value,
         };
@@ -45,9 +45,9 @@ void add_packed_module(SchemaCatalog& catalog,
                  .kind = field_kind(field.kind)});
         }
         if (!catalog.add(std::move(layout))) {
-            diagnostics.push_back(
-                {DiagnosticSeverity::error,
-                 "Duplicate packed layout identity in LispB module '" + module.settings.name + "'."});
+            diagnostics.push_back({DiagnosticSeverity::error,
+                                   "Duplicate packed layout identity in LispB module '" +
+                                       module.settings.name + "'."});
         }
     }
 }
@@ -82,8 +82,7 @@ void add_soa_module(SchemaCatalog& catalog,
         for (auto const& member : schema.members) {
             auto const resolved{codegen::resolve_type(member.type, manifest.types)};
             layout.columns.push_back(
-                {.name = member.name,
-                 .logical_type = codegen::native_spelling(resolved.spelling)});
+                {.name = member.name, .logical_type = codegen::native_spelling(resolved.spelling)});
         }
         if (!catalog.add(std::move(layout))) {
             diagnostics.push_back(
@@ -95,15 +94,16 @@ void add_soa_module(SchemaCatalog& catalog,
 
 } // namespace
 
-auto load_lispb_catalog(std::filesystem::path const& project_path,
-                        std::string const& target_name) -> CatalogLoadResult {
+auto load_lispb_catalog(std::filesystem::path const& project_path, std::string const& target_name)
+    -> CatalogLoadResult {
     CatalogLoadResult result;
     try {
         auto const project{lispb::load_project(project_path)};
         auto const target_found{project.targets.find(target_name)};
         if (target_found == project.targets.end()) {
             result.diagnostics.push_back(
-                {DiagnosticSeverity::error, "LispB project has no target named '" + target_name + "'."});
+                {DiagnosticSeverity::error,
+                 "LispB project has no target named '" + target_name + "'."});
             return result;
         }
         auto const* target{std::get_if<lispb::CppSchemaTarget>(&target_found->second)};
@@ -127,7 +127,8 @@ auto load_lispb_catalog(std::filesystem::path const& project_path,
                 [&](auto const& typed_module) {
                     using Module = std::decay_t<decltype(typed_module)>;
                     if constexpr (std::is_same_v<Module, codegen::PackedValueModuleSchema>) {
-                        add_packed_module(result.catalog, result.diagnostics, typed_module, manifest);
+                        add_packed_module(
+                            result.catalog, result.diagnostics, typed_module, manifest);
                     } else if constexpr (std::is_same_v<Module, codegen::SoaModuleSchema>) {
                         add_soa_module(result.catalog, result.diagnostics, typed_module, manifest);
                     }

@@ -6,11 +6,10 @@
 namespace ioj::layout {
 
 LayoutWorkspace::LayoutWorkspace(SchemaCatalog catalog, std::uint64_t const default_capacity)
-    : catalog_{std::move(catalog)}, default_capacity_{default_capacity} {
-    variants_.push_back(Variant{.id = baseline_variant_id,
-                                .name = "Baseline",
-                                .overrides = {},
-                                .revision = 0});
+    : catalog_{std::move(catalog)}
+    , default_capacity_{default_capacity} {
+    variants_.push_back(
+        Variant{.id = baseline_variant_id, .name = "Baseline", .overrides = {}, .revision = 0});
 }
 
 auto LayoutWorkspace::catalog() const -> SchemaCatalog const& {
@@ -53,8 +52,7 @@ auto LayoutWorkspace::select_variant(std::uint64_t const id) -> bool {
 
 auto LayoutWorkspace::create_variant(std::string name) -> std::uint64_t {
     auto const id{next_variant_id_++};
-    variants_.push_back(
-        Variant{.id = id, .name = std::move(name), .overrides = {}, .revision = 0});
+    variants_.push_back(Variant{.id = id, .name = std::move(name), .overrides = {}, .revision = 0});
     active_variant_id_ = id;
     ++revision_;
     return id;
@@ -67,8 +65,8 @@ auto LayoutWorkspace::duplicate_variant(std::uint64_t const source_id, std::stri
         return std::nullopt;
     }
     auto const id{next_variant_id_++};
-    variants_.push_back(Variant{
-        .id = id, .name = std::move(name), .overrides = source->overrides, .revision = 0});
+    variants_.push_back(
+        Variant{.id = id, .name = std::move(name), .overrides = source->overrides, .revision = 0});
     active_variant_id_ = id;
     ++revision_;
     return id;
@@ -117,7 +115,7 @@ auto LayoutWorkspace::delete_variant(std::uint64_t const id) -> bool {
 }
 
 auto LayoutWorkspace::set_packed_storage_type(SchemaId const& schema,
-                                               std::optional<std::string> spelling) -> bool {
+                                              std::optional<std::string> spelling) -> bool {
     auto* selected{editable_active_variant()};
     if (selected == nullptr) {
         return false;
@@ -137,8 +135,8 @@ auto LayoutWorkspace::set_packed_storage_type(SchemaId const& schema,
 }
 
 auto LayoutWorkspace::set_packed_field_width(SchemaId const& schema,
-                                              std::string field_name,
-                                              std::optional<std::uint32_t> width) -> bool {
+                                             std::string field_name,
+                                             std::optional<std::uint32_t> width) -> bool {
     auto* selected{editable_active_variant()};
     if (selected == nullptr) {
         return false;
@@ -159,8 +157,8 @@ auto LayoutWorkspace::set_packed_field_width(SchemaId const& schema,
 }
 
 auto LayoutWorkspace::set_soa_column_type(SchemaId const& schema,
-                                           std::string column_name,
-                                           std::optional<std::string> spelling) -> bool {
+                                          std::string column_name,
+                                          std::optional<std::string> spelling) -> bool {
     auto* selected{editable_active_variant()};
     if (selected == nullptr) {
         return false;

@@ -20,8 +20,8 @@ class FramePacer {
     static constexpr auto idle_interval{std::chrono::milliseconds{83}};
     static constexpr auto background_interval{std::chrono::milliseconds{500}};
 
-    static auto mode(FramePacingState const& state,
-                     std::chrono::steady_clock::time_point now) -> FramePacingMode;
+    static auto mode(FramePacingState const& state, std::chrono::steady_clock::time_point now)
+        -> FramePacingMode;
     static auto wait_timeout(FramePacingMode mode) -> std::chrono::milliseconds;
 };
 

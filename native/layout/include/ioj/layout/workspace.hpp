@@ -50,7 +50,8 @@ class LayoutWorkspace {
 
     auto select_variant(std::uint64_t id) -> bool;
     auto create_variant(std::string name) -> std::uint64_t;
-    auto duplicate_variant(std::uint64_t source_id, std::string name) -> std::optional<std::uint64_t>;
+    auto duplicate_variant(std::uint64_t source_id, std::string name)
+        -> std::optional<std::uint64_t>;
     auto rename_variant(std::uint64_t id, std::string name) -> bool;
     auto reset_variant(std::uint64_t id) -> bool;
     auto delete_variant(std::uint64_t id) -> bool;
@@ -64,7 +65,6 @@ class LayoutWorkspace {
                              std::string column_name,
                              std::optional<std::string> spelling) -> bool;
     auto set_capacity(SchemaId const& schema, std::optional<std::uint64_t> capacity) -> bool;
-
   private:
     auto editable_active_variant() -> Variant*;
     void note_change(Variant& variant);

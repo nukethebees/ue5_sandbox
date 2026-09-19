@@ -53,7 +53,6 @@ class SchemaCatalog {
     auto add(LayoutDefinition definition) -> bool;
     auto find(SchemaId const& id) const -> LayoutDefinition const*;
     auto items() const -> std::vector<LayoutDefinition> const&;
-
   private:
     std::vector<LayoutDefinition> items_;
 };

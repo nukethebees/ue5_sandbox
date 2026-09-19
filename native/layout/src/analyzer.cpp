@@ -44,12 +44,12 @@ auto effective_field_width(PackedLayout const& layout,
 
 auto effective_storage_type(PackedLayout const& layout, Variant const& variant) -> std::string {
     auto const found{variant.overrides.packed_storage_types.find(layout.id)};
-    return found == variant.overrides.packed_storage_types.end() ? layout.storage_type : found->second;
+    return found == variant.overrides.packed_storage_types.end() ? layout.storage_type
+                                                                 : found->second;
 }
 
-auto effective_column_type(SoaLayout const& layout,
-                           SoaColumn const& column,
-                           Variant const& variant) -> std::string {
+auto effective_column_type(SoaLayout const& layout, SoaColumn const& column, Variant const& variant)
+    -> std::string {
     auto const found{variant.overrides.soa_column_types.find(
         FieldOverrideId{.schema = layout.id, .field_name = column.name})};
     return found == variant.overrides.soa_column_types.end() ? column.logical_type : found->second;
@@ -104,9 +104,9 @@ auto Analyzer::analyze(PackedLayout const& layout, Variant const& variant, AbiPr
                                          .most_significant_bit = std::nullopt,
                                          .maximum_unsigned_value = maximum_unsigned_value(width)};
         if (width == 0) {
-            result.diagnostics.push_back({DiagnosticSeverity::error,
-                                          "Packed field '" + field.name +
-                                              "' must use at least one bit."});
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Packed field '" + field.name + "' must use at least one bit."});
         }
         if (!field_result.maximum_unsigned_value.has_value()) {
             result.diagnostics.push_back(
@@ -141,7 +141,8 @@ auto Analyzer::analyze(PackedLayout const& layout, Variant const& variant, AbiPr
 
     if (layout.invalid_raw_value.has_value() && result.storage_bits.has_value() &&
         *result.storage_bits < 64) {
-        auto const storage_max{maximum_unsigned_value(static_cast<std::uint32_t>(*result.storage_bits))};
+        auto const storage_max{
+            maximum_unsigned_value(static_cast<std::uint32_t>(*result.storage_bits))};
         if (storage_max.has_value() && *layout.invalid_raw_value > *storage_max) {
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
@@ -172,20 +173,19 @@ auto Analyzer::analyze(SoaLayout const& layout,
     result.columns.reserve(layout.columns.size());
 
     for (auto const& column : layout.columns) {
-        SoaColumnAnalysis column_result{
-            .name = column.name,
-            .physical_type = effective_column_type(layout, column, variant),
-            .type_facts = std::nullopt,
-            .total_bytes = std::nullopt,
-            .minimum_cache_lines = std::nullopt,
-            .elements_per_cache_line = std::nullopt};
+        SoaColumnAnalysis column_result{.name = column.name,
+                                        .physical_type =
+                                            effective_column_type(layout, column, variant),
+                                        .type_facts = std::nullopt,
+                                        .total_bytes = std::nullopt,
+                                        .minimum_cache_lines = std::nullopt,
+                                        .elements_per_cache_line = std::nullopt};
         column_result.type_facts = abi.find(column_result.physical_type);
         if (!column_result.type_facts.has_value()) {
             complete = false;
-            result.diagnostics.push_back(
-                {DiagnosticSeverity::error,
-                 "Unknown physical facts for SoA column '" + column.name + "' type '" +
-                     column_result.physical_type + "'."});
+            result.diagnostics.push_back({DiagnosticSeverity::error,
+                                          "Unknown physical facts for SoA column '" + column.name +
+                                              "' type '" + column_result.physical_type + "'."});
             result.columns.push_back(std::move(column_result));
             continue;
         }
