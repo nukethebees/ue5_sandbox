@@ -360,6 +360,14 @@ add_unreal_editor_test(Sandbox.SparkRenderTests
   TIMEOUT 900
 )
 
+add_unreal_editor_test(Sandbox.SpaceDustUnitTests
+  NO_LOCAL_DDC
+  ARGUMENTS
+    "-ExecCmds=Automation Now; Automation RunTests Sandbox.UnitTests.SpaceDust; Quit"
+  LABELS unit space-dust
+  TIMEOUT 900
+)
+
 add_unreal_editor_test(SandboxBenchmarks.SparkBenchmark
   ACTIVITY BENCHMARK
   ARGUMENTS
