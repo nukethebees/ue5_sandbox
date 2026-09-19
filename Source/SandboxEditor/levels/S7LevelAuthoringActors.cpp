@@ -91,4 +91,22 @@ auto canonical_s7_level_entity_id(FStringView const text, FStringView const fall
     }
     return FName{result};
 }
+
+auto is_canonical_s7_level_entity_id(FStringView const value) -> bool {
+    if (value.IsEmpty() || value[0] < TEXT('a') || value[0] > TEXT('z')) {
+        return false;
+    }
+    for (auto const character : value) {
+        auto const lower{character >= TEXT('a') && character <= TEXT('z')};
+        auto const digit{character >= TEXT('0') && character <= TEXT('9')};
+        if (!lower && !digit && character != TEXT('-')) {
+            return false;
+        }
+    }
+    return true;
+}
+
+auto is_canonical_s7_level_entity_id(FName const id) -> bool {
+    return is_canonical_s7_level_entity_id(FStringView{id.ToString()});
+}
 }

@@ -53,6 +53,8 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
 
     void create_document();
     void adopt_entities();
+    void repair_and_adopt_entities();
+    void rename_selected_entity(FString id);
     void assign_selected_heroes();
     void assign_selected_must_survive();
     void assign_selected_required_kills();

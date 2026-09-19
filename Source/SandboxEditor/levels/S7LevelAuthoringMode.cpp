@@ -1,5 +1,6 @@
 #include "SandboxEditor/levels/S7LevelAuthoringMode.h"
 
+#include "SandboxEditor/levels/S7LevelAuthoringActors.h"
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringModeToolkit.h"
 
@@ -72,6 +73,33 @@ auto confirm_replace_source(FStringView const path) -> bool {
                FText::Format(
                    LOCTEXT("ReplaceSource", "The S7 source file '{0}' already exists. Replace it?"),
                    FText::FromString(FString{path}))) == EAppReturnType::Yes;
+}
+
+auto selected_bound_entity(AS7LevelAuthoringDocument& document)
+    -> std::expected<FS7LevelEntityBinding*, FString> {
+    if (!GEditor) {
+        return std::unexpected{TEXT("The editor selection is unavailable.")};
+    }
+
+    TArray<AActor*> selected;
+    for (FSelectionIterator it{*GEditor->GetSelectedActors()}; it; ++it) {
+        auto* const actor{Cast<AActor>(*it)};
+        if (IsValid(actor)) {
+            selected.AddUnique(actor);
+        }
+    }
+    if (selected.Num() != 1) {
+        return std::unexpected{TEXT("Select exactly one adopted entity first.")};
+    }
+
+    auto* const binding{document.entities.FindByPredicate(
+        [actor = selected[0]](FS7LevelEntityBinding const& candidate) {
+            return candidate.actor == actor;
+        })};
+    if (!binding) {
+        return std::unexpected{TEXT("The selected actor is not an adopted S7 entity.")};
+    }
+    return binding;
 }
 }
 
@@ -359,6 +387,83 @@ void US7LevelAuthoringMode::adopt_entities() {
     auto const adopted{ml::editor::adopt_unbound_level_entities(*level, *document_)};
     set_status(adopted ? FText::Format(LOCTEXT("Adopted", "Adopted {0} entities."), *adopted)
                        : FText::FromString(adopted.error()));
+    changed_.Broadcast();
+}
+
+void US7LevelAuthoringMode::repair_and_adopt_entities() {
+    if (!document_.IsValid()) {
+        create_document();
+    }
+    auto* const level{current_level()};
+    if (!IsValid(level) || !document_.IsValid()) {
+        return;
+    }
+
+    auto const repaired{ml::editor::repair_s7_level_bindings(*level, *document_)};
+    if (!repaired) {
+        set_status(FText::FromString(repaired.error()));
+    } else if (!repaired->has_changes()) {
+        set_status(
+            LOCTEXT("BindingsAlreadyRepaired", "Bindings and references already need no repair."));
+    } else {
+        if (preview_.IsSet()) {
+            preview_.Reset();
+            preview_stale_ = true;
+        }
+        set_status(FText::Format(
+            LOCTEXT("BindingsRepaired",
+                    "Repaired bindings: removed {0}; references: removed {1}; adopted {2}."),
+            repaired->removed_bindings,
+            repaired->removed_references,
+            repaired->adopted_entities));
+    }
+    changed_.Broadcast();
+}
+
+void US7LevelAuthoringMode::rename_selected_entity(FString const id) {
+    if (!document_.IsValid()) {
+        set_status(LOCTEXT("NoDocumentForRename", "Create an S7 authoring document first."));
+        changed_.Broadcast();
+        return;
+    }
+
+    auto const binding{selected_bound_entity(*document_)};
+    if (!binding) {
+        set_status(FText::FromString(binding.error()));
+        changed_.Broadcast();
+        return;
+    }
+
+    FName const new_id{id};
+    if (!ml::editor::is_canonical_s7_level_entity_id(FStringView{id})) {
+        set_status(LOCTEXT("InvalidEntityId",
+                           "Entity IDs must be lowercase S7 symbols beginning with a letter."));
+        changed_.Broadcast();
+        return;
+    }
+    if ((*binding)->id == new_id) {
+        set_status(LOCTEXT("UnchangedEntityId", "The selected entity already has that ID."));
+        changed_.Broadcast();
+        return;
+    }
+    if (document_->entities.ContainsByPredicate(
+            [binding = *binding, new_id](FS7LevelEntityBinding const& candidate) {
+                return &candidate != binding && candidate.id == new_id;
+            })) {
+        set_status(LOCTEXT("DuplicateEntityId", "That S7 entity ID is already in use."));
+        changed_.Broadcast();
+        return;
+    }
+
+    FScopedTransaction transaction{LOCTEXT("RenameEntityId", "Rename S7 Entity ID")};
+    document_->Modify();
+    (*binding)->id = new_id;
+    if (preview_.IsSet()) {
+        preview_.Reset();
+        preview_stale_ = true;
+    }
+    set_status(FText::Format(LOCTEXT("RenamedEntityId", "Renamed selected entity to '{0}'."),
+                             FText::FromName(new_id)));
     changed_.Broadcast();
 }
 

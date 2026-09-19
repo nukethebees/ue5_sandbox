@@ -8,6 +8,7 @@
 #include <Modules/ModuleManager.h>
 #include <PropertyEditorModule.h>
 #include <Widgets/Input/SButton.h>
+#include <Widgets/Input/SEditableTextBox.h>
 #include <Widgets/Layout/SScrollBox.h>
 #include <Widgets/Layout/SUniformGridPanel.h>
 #include <Widgets/Text/STextBlock.h>
@@ -46,10 +47,11 @@ void FS7LevelAuthoringModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_
                       1, 1)[SNew(SButton)
                                 .Text(LOCTEXT("Apply", "Apply"))
                                 .OnClicked(this, &FS7LevelAuthoringModeToolkit::apply_preview)] +
-                  SUniformGridPanel::Slot(
-                      0, 2)[SNew(SButton)
-                                .Text(LOCTEXT("Adopt", "Adopt Actors"))
-                                .OnClicked(this, &FS7LevelAuthoringModeToolkit::adopt_entities)] +
+                  SUniformGridPanel::Slot(0, 2)
+                      [SNew(SButton)
+                           .Text(LOCTEXT("RepairAndAdopt", "Repair / Adopt Actors"))
+                           .OnClicked(this,
+                                      &FS7LevelAuthoringModeToolkit::repair_and_adopt_entities)] +
                   SUniformGridPanel::Slot(
                       1, 2)[SNew(SButton)
                                 .Text(LOCTEXT("Save", "Save Source"))
@@ -87,7 +89,15 @@ void FS7LevelAuthoringModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_
                   SUniformGridPanel::Slot(0, 6)
                       [SNew(SButton)
                            .Text(LOCTEXT("OpenScriptEditor", "Open Script Editor"))
-                           .OnClicked(this, &FS7LevelAuthoringModeToolkit::open_script_editor)]] +
+                           .OnClicked(this, &FS7LevelAuthoringModeToolkit::open_script_editor)] +
+                  SUniformGridPanel::Slot(
+                      0, 7)[SAssignNew(entity_id_, SEditableTextBox)
+                                .HintText(LOCTEXT("EntityIdHint", "Selected entity ID"))] +
+                  SUniformGridPanel::Slot(
+                      1, 7)[SNew(SButton)
+                                .Text(LOCTEXT("RenameEntity", "Rename Entity ID"))
+                                .OnClicked(
+                                    this, &FS7LevelAuthoringModeToolkit::rename_selected_entity)]] +
              SVerticalBox::Slot().AutoHeight().Padding(
                  4.0f)[SAssignNew(status_, STextBlock).AutoWrapText(true)] +
              SVerticalBox::Slot().AutoHeight()[details_.ToSharedRef()]];
@@ -127,12 +137,18 @@ void FS7LevelAuthoringModeToolkit::refresh() {
     }
 
 FORWARD_ACTION(create_document)
-FORWARD_ACTION(adopt_entities)
+FORWARD_ACTION(repair_and_adopt_entities)
 FORWARD_ACTION(assign_selected_heroes)
 FORWARD_ACTION(assign_selected_must_survive)
 FORWARD_ACTION(assign_selected_required_kills)
 FORWARD_ACTION(clear_selected_objectives)
 FORWARD_ACTION(load_s7)
+auto FS7LevelAuthoringModeToolkit::rename_selected_entity() -> FReply {
+    if (mode_.IsValid() && entity_id_.IsValid()) {
+        mode_->rename_selected_entity(entity_id_->GetText().ToString());
+    }
+    return FReply::Handled();
+}
 auto FS7LevelAuthoringModeToolkit::open_script_editor() -> FReply {
     FSandboxEditorModule::open_s7_level_script_editor();
     return FReply::Handled();
