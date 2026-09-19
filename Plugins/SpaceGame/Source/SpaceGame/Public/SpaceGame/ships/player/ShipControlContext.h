@@ -1,6 +1,7 @@
 #pragma once
 
 #include <SpaceGame/ships/common/SpaceShipControllerInputs.h>
+#include <SpaceGame/ships/player/ShipInputGestureRecognizer.h>
 
 #include <CoreMinimal.h>
 
@@ -66,6 +67,9 @@ struct SPACEGAME_API FShipControlContext {
     void start_roll(FInputActionValue const& value);
     void roll(FInputActionValue const& value);
     void stop_roll(FInputActionValue const& value);
+    void start_throttle(FInputActionValue const& value);
+    void set_throttle(FInputActionValue const& value);
+    void stop_throttle();
     void start_boost();
     void stop_boost();
     void start_brake();
@@ -89,6 +93,8 @@ struct SPACEGAME_API FShipControlContext {
     FVector2D turn_input_{FVector2D::ZeroVector};
     FVector2D pointer_turn_position_{FVector2D::ZeroVector};
     bool pointer_turn_engaged_{false};
+    FShipInputGestureRecognizer throttle_gesture_{};
+    FShipInputGestureRecognizer brake_gesture_{};
     bool initialised_{false};
     bool bound_{false};
 };

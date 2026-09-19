@@ -8,6 +8,7 @@
 #include <EnhancedInputComponent.h>
 #include <EnhancedInputSubsystemInterface.h>
 #include <EnhancedInputSubsystems.h>
+#include <HAL/PlatformTime.h>
 #include <InputAction.h>
 #include <InputActionValue.h>
 #include <InputMappingContext.h>
@@ -41,6 +42,8 @@ auto FShipControlContext::initialise(ASpaceGamePlayerController& owner,
     input_subsystem_object_ = input_subsystem_object;
     input_subsystem_ = &input_subsystem;
     input_ = &input;
+    throttle_gesture_ = FShipInputGestureRecognizer{input.double_tap_window_seconds};
+    brake_gesture_ = FShipInputGestureRecognizer{input.double_tap_window_seconds};
     initialised_ = true;
     return true;
 }
@@ -191,6 +194,9 @@ void FShipControlContext::bind_actions() {
     bind_value(input_->roll, Started, &FShipControlContext::start_roll);
     bind_value(input_->roll, Triggered, &FShipControlContext::roll);
     bind_value(input_->roll, Completed, &FShipControlContext::stop_roll);
+    bind_value(input_->throttle, Started, &FShipControlContext::start_throttle);
+    bind_value(input_->throttle, Triggered, &FShipControlContext::set_throttle);
+    bind_no_value(input_->throttle, Completed, &FShipControlContext::stop_throttle);
     bind_no_value(input_->boost, Started, &FShipControlContext::start_boost);
     bind_no_value(input_->boost, Completed, &FShipControlContext::stop_boost);
     bind_no_value(input_->brake, Started, &FShipControlContext::start_brake);
@@ -259,10 +265,13 @@ void FShipControlContext::neutralise_ship_input() {
     ship->set_ship_1d_control_y(0.f);
     ship->turn(FVector2D::ZeroVector);
     ship->roll(0.f);
+    ship->set_throttle(0.f);
     ship->stop_sampling();
     ship->stop_boost();
     ship->stop_brake();
     ship->stop_fire_laser();
+    throttle_gesture_.reset();
+    brake_gesture_.reset();
 }
 
 auto FShipControlContext::get_ship() const -> ATestSpaceShip* {
@@ -419,6 +428,26 @@ void FShipControlContext::stop_roll(FInputActionValue const& value) {
         ship->roll(0.f);
     }
 }
+void FShipControlContext::start_throttle(FInputActionValue const& value) {
+    if (auto* const ship{get_ship()}) {
+        if (throttle_gesture_.begin_press(FPlatformTime::Seconds())) {
+            ship->start_boost();
+        }
+        ship->set_throttle(value.Get<float>());
+    }
+}
+void FShipControlContext::set_throttle(FInputActionValue const& value) {
+    if (auto* const ship{get_ship()}) {
+        ship->set_throttle(value.Get<float>());
+    }
+}
+void FShipControlContext::stop_throttle() {
+    throttle_gesture_.end_press(FPlatformTime::Seconds());
+    if (auto* const ship{get_ship()}) {
+        ship->set_throttle(0.f);
+        ship->stop_boost();
+    }
+}
 void FShipControlContext::start_boost() {
     if (auto* const ship{get_ship()}) {
         ship->start_boost();
@@ -432,9 +461,13 @@ void FShipControlContext::stop_boost() {
 void FShipControlContext::start_brake() {
     if (auto* const ship{get_ship()}) {
         ship->start_brake();
+        if (brake_gesture_.begin_press(FPlatformTime::Seconds())) {
+            ship->start_emergency_brake();
+        }
     }
 }
 void FShipControlContext::stop_brake() {
+    brake_gesture_.end_press(FPlatformTime::Seconds());
     if (auto* const ship{get_ship()}) {
         ship->stop_brake();
     }

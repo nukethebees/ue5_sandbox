@@ -215,6 +215,10 @@ void ATestSpaceShip::turn(FVector2D const direction) {
     commands().turn(ml::to_native(direction));
 }
 
+void ATestSpaceShip::set_throttle(float const input) {
+    commands().set_throttle(input);
+}
+
 void ATestSpaceShip::start_boost() {
     commands().start_boost();
 }
@@ -225,6 +229,10 @@ void ATestSpaceShip::stop_boost() {
 
 void ATestSpaceShip::start_brake() {
     commands().start_brake();
+}
+
+void ATestSpaceShip::start_emergency_brake() {
+    commands().start_emergency_brake();
 }
 
 void ATestSpaceShip::stop_brake() {
@@ -285,6 +293,10 @@ auto ATestSpaceShip::get_target_local_planar_velocity() const -> FVector {
 
 auto ATestSpaceShip::get_turn_input() const -> FVector2D {
     return ml::to_unreal(simulation().rotation_input);
+}
+
+auto ATestSpaceShip::get_throttle() const -> float {
+    return simulation().throttle;
 }
 
 /* **************************************** */

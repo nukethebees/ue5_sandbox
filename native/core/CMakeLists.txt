@@ -96,6 +96,7 @@ target_sources(native-core-tests PRIVATE
   tests/ui_settings_histogram_tests.cpp
   tests/test_timeline_tests.cpp
   tests/vector_math_tests.cpp
+  tests/vector3d_tests.cpp
 )
 target_compile_features(native-core-tests PRIVATE cxx_std_23)
 target_link_libraries(native-core-tests PRIVATE native-core sandbox::native_defaults ioj::test_pch)

@@ -74,7 +74,8 @@
     :native-api true
     (value None :value "0")
     (value Boost :value "1")
-    (value Brake :value "2")))
+    (value Brake :value "2")
+    (value EmergencyBrake :value "3")))
 
 (module native_ship_laser_mode
   :header "native/simulation/include/ioj/sim/player/ship_laser_mode.h"

@@ -143,7 +143,7 @@ TEST(NativeEnums, PlayerEnumsExposeExhaustiveNativeValues) {
     EXPECT_EQ(ml::EnumTraits<ShipFireRate>::count, 3U);
     EXPECT_EQ(ml::EnumTraits<SpaceShipFlightMode>::count, 2U);
     EXPECT_EQ(ml::EnumTraits<SpaceShipControlMode>::count, 2U);
-    EXPECT_EQ(ml::EnumTraits<player::BoostBrakeState>::count, 3U);
+    EXPECT_EQ(ml::EnumTraits<player::BoostBrakeState>::count, 4U);
 
     for (auto const value : ml::EnumTraits<ShipLaserMode>::values) {
         EXPECT_FALSE(to_string(value).empty());
@@ -164,5 +164,6 @@ TEST(NativeEnums, PlayerEnumsExposeExhaustiveNativeValues) {
         EXPECT_FALSE(to_string(value).empty());
     }
     EXPECT_EQ(to_string(player::BoostBrakeState::Boost), "Boost");
+    EXPECT_EQ(to_string(player::BoostBrakeState::EmergencyBrake), "EmergencyBrake");
 }
 } // namespace ioj::sim::tests

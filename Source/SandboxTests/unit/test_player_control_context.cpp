@@ -139,6 +139,11 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                              IsValid(runtime_input->turn_pointer_delta));
         TestRunner->TestTrue(TEXT("Runtime pointer-turn engagement action is generated"),
                              IsValid(runtime_input->engage_pointer_turn));
+        TestRunner->TestTrue(TEXT("Runtime throttle action is generated"),
+                             IsValid(runtime_input->throttle));
+        TestRunner->TestEqual(TEXT("Throttle action is analog"),
+                              runtime_input->throttle->ValueType,
+                              EInputActionValueType::Axis1D);
         matches(TEXT("Runtime fire action matches the authored controller"),
                 runtime_input->fire_laser,
                 source_input->fire_laser);
@@ -247,6 +252,8 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         TestRunner->TestTrue(
             TEXT("Mapping contains profile cycling"),
             mapping_context->HasMappingForInputAction(input->cycle_input_mapping_context));
+        TestRunner->TestTrue(TEXT("Mapping contains analog throttle"),
+                             mapping_context->HasMappingForInputAction(input->throttle));
 
         mapping_context->ForEachKeyMapping([this](FEnhancedActionKeyMapping const& mapping) {
             TestRunner->TestTrue(TEXT("Mapping contains a valid action"), IsValid(mapping.Action));
@@ -337,6 +344,28 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         TestRunner->TestTrue(
             TEXT("Right mouse engages pointer turning"),
             has_named_mapping(TEXT("IA_Ship_EngagePointerTurn"), EKeys::RightMouseButton));
+        TestRunner->TestTrue(TEXT("Left trigger provides analog throttle"),
+                             has_mapping(input->throttle, EKeys::Gamepad_LeftTriggerAxis));
+        TestRunner->TestTrue(TEXT("Left shoulder provides braking"),
+                             has_mapping(input->brake, EKeys::Gamepad_LeftShoulder));
+        TestRunner->TestTrue(TEXT("Right trigger fires lasers"),
+                             has_mapping(input->fire_laser, EKeys::Gamepad_RightTriggerAxis));
+    }
+
+    TEST_METHOD(DoubleTapHoldGestureRecognitionIsConfigurable)
+    {
+        FShipInputGestureRecognizer gesture{0.25};
+        TestRunner->TestFalse(TEXT("The first press is not a double tap"),
+                              gesture.begin_press(1.0));
+        gesture.end_press(1.1);
+        TestRunner->TestTrue(TEXT("A quick second press starts a double-tap hold"),
+                             gesture.begin_press(1.3));
+        gesture.end_press(1.7);
+        TestRunner->TestFalse(TEXT("A long hold cannot seed a later double tap"),
+                              gesture.begin_press(1.8));
+
+        gesture.reset();
+        TestRunner->TestFalse(TEXT("Reset clears a pending tap"), gesture.begin_press(2.0));
     }
 
     TEST_METHOD(ControlProfilesRegisterAndCycle)
@@ -1031,6 +1060,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         input.turn_pointer_delta = move_action;
         input.engage_pointer_turn = move_action;
         input.fire_laser = move_action;
+        input.throttle = move_action;
         input.boost = move_action;
         input.brake = move_action;
         input.roll = move_action;
@@ -1084,6 +1114,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
 
         ship->set_move_input(FVector2D{0.5f, -0.25f});
         ship->turn(FVector2D{0.25f, 0.75f});
+        ship->set_throttle(0.75f);
         ship->start_fire_laser();
 
         context.unbind();
@@ -1103,6 +1134,8 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Movement is neutralized"),
                              ship->get_move_input().IsNearlyZero());
         TestRunner->TestTrue(TEXT("Turning is neutralized"), ship->get_turn_input().IsNearlyZero());
+        TestRunner->TestTrue(TEXT("Throttle is neutralized"),
+                             FMath::IsNearlyZero(ship->get_throttle()));
         TestRunner->TestTrue(TEXT("Laser firing is stopped"),
                              ship->get_laser_firing_mode() == ::ioj::sim::LaserFiringState::idle);
 

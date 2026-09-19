@@ -35,6 +35,8 @@ struct SPACEGAME_API FSpaceShipControllerInputs {
     UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* fire_laser{nullptr};
     UPROPERTY(EditAnywhere, Category = "Input")
+    UInputAction* throttle{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* boost{nullptr};
     UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* brake{nullptr};
@@ -70,6 +72,9 @@ struct SPACEGAME_API FSpaceShipControllerInputs {
     UInputAction* cycle_next_control_mode{nullptr};
     UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* cycle_previous_control_mode{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Input|Gestures", meta = (ClampMin = "0.01"))
+    float double_tap_window_seconds{0.25f};
 };
 
 USTRUCT(BlueprintType)
