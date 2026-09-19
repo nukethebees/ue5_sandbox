@@ -1,6 +1,7 @@
 # agent-git
 
-`agent-git` is the constrained Git interface for autonomous coding agents. It is a policy engine,
+`agent-git` is the constrained Git interface for autonomous coding agents. It is not an OS sandbox.
+It is a policy engine,
 not an argument wrapper: every supported operation is parsed into a semantic request, evaluated
 against repository and worktree state, and either executed with fixed Git arguments or denied.
 Unknown commands never fall through to Git.
@@ -25,15 +26,36 @@ install-agent-git -BaseBranch dev
 ```
 
 The installer is intentionally separate from `agent-git` and must not be included in an
-unconditional agent allow rule. It records the repository's canonical common Git directory,
+unconditional agent allow rule. A canonical install builds the tools, runs the complete
+`AgentGit.Tests` security regression suite, and only then prepares and activates a staged copy.
+The security gate cannot be skipped or replaced for a canonical install. A failed gate leaves the
+existing installation untouched; a failed activation or post-install smoke check restores the
+previous installation.
+
+The installer records the repository's canonical common Git directory,
 origin URL, trusted Git and Git-LFS executables, user identity, and `refs/heads/dev` as the policy
 authority. Runtime policy is read from `refs/heads/dev:.agent-git.json`; an edit in a feature
 worktree cannot change active permissions before it is reviewed and merged.
 
 Repository build output under `tools/bin` refuses repository operations. This prevents an agent
 from editing the source, rebuilding a permissive binary, and using it through the trusted rule.
-Installation activates a staged copy atomically, smoke-tests both the executable and the registered
-repository trust path, and restores the previous installation if either check fails.
+Installation activates the validated staged copy atomically and smoke-tests both the executable and
+the registered repository trust path.
+
+### Trust boundary
+
+Internally, `agent-git` enforces the closed semantic command set, compiled safety ceilings,
+repository identity and protected-ref policy authority, branch/worktree checks, direct structured
+Git invocation, and controlled Git configuration and environment described below. Repository data
+cannot select a Git subcommand or a program for Git to execute.
+
+The outer agent permission sandbox must protect what this executable cannot: only the canonical
+absolute executable path receives unconditional execution permission. Agents must not receive
+unconditional permission to run the installer, invoke raw mutating Git, replace or modify the
+canonical installation, trust manifest, or isolation configuration, change the permission rule, or
+directly edit Git administrative data as a substitute for an unsupported operation. Deployment also
+assumes a reviewed trusted source checkout that is not being modified concurrently while the human-controlled
+installer runs. These are deployment assumptions, not guarantees provided by `agent-git` itself.
 
 ## Policy
 
@@ -81,21 +103,29 @@ Prefix any mutation with `--dry-run` to perform full discovery and policy evalua
 executing a mutating Git command. Policy denial has a different exit code from invalid usage,
 configuration failure, repository failure, and Git execution failure.
 
-Staging and committing are limited to feature branches. Existing-branch switching requires a
-fully clean worktree; switch-create may carry local changes onto a new feature branch. Rebase-base
-uses only the configured local base branch and stops on conflicts. Branch deletion requires a clean
-worktree, an unowned feature branch, proven ancestry into the base, and Git's safe `branch -d` check.
+Staging and committing are limited to feature branches. Both switching commands may originate only
+from workspace or feature branches, so an agent cannot move a protected integration worktree away
+from its protected branch. Switching to a protected branch remains forbidden. Existing-branch
+switching requires a fully clean worktree; switch-create may carry local changes onto a new feature
+branch. Rebase-base uses only the configured local base branch and stops on conflicts. Branch
+deletion remains available while on a protected branch, but requires a clean worktree, an unowned
+feature branch, proven ancestry into the base, and Git's safe `branch -d` check.
 
 ## Intentionally unsupported
 
 There is no raw/exec/passthrough command, repository/config/Git-path override, merge, push, fetch,
 reset, clean, restore, path checkout, arbitrary rebase target, force deletion, or force push.
 Unsupported mutations must use the normal human-approval route. Raw read-only Git remains suitable
-for inspection.
+for inspection. Partial-clone/promisor repositories, custom LFS extensions, and redirected LFS
+storage are also unsupported because they can introduce implicit remote processes or filesystem
+writes outside the registered Git state.
 
 The tool invokes a pinned Git executable directly with structured arguments and no shell. It uses
-a controlled environment, disables hooks, signing, editors, pagers, prompts, automatic maintenance,
-replace refs, update-refs rebasing, and inherited repository redirection. Unknown executable filters,
+a controlled environment, explicitly enables Git's NTFS and HFS path protections, disables optional
+locks for inspection, and disables hooks, signing, editors, pagers, prompts, automatic maintenance,
+replace refs, update-refs rebasing, and inherited repository redirection. Mutation commands still
+use Git's required integrity locks; `GIT_OPTIONAL_LOCKS=0` suppresses only opportunistic writes by
+commands such as status. Unknown executable filters,
 merge drivers, configuration includes, executable diff/merge/pager/GPG/submodule settings,
 `core.worktree` redirection, hidden exclude files, fsmonitor commands, and object alternates fail
 closed. Git LFS is the sole initially modeled external extension. Git output captured by the tool is
@@ -132,5 +162,6 @@ prefix_rule(
 )
 ```
 
-Mutating raw Git and `install-agent-git` must remain outside this unconditional allow path. The
-installer does not edit Codex configuration.
+Mutating raw Git, `install-agent-git`, canonical trust/isolation file modification, and direct Git
+administrative-data mutation must remain outside this unconditional allow path. The installer does
+not edit Codex configuration.
