@@ -100,6 +100,37 @@ TEST(Lowering, EmitsOnlyRequestedStorageOperations) {
     EXPECT_EQ(minimal.source.find("void FData::reset()"), std::string::npos);
 }
 
+TEST(Lowering, EmitsStandaloneNativeEnumApi) {
+    auto const files{render_modules(lower_modules(Manifest{
+        .schema_version = manifest_schema_version,
+        .types = {{"native_uint8", CppType{"std::uint8_t", "cstdint"}}},
+        .modules = {EnumModuleSchema{
+            .settings = ModuleSettings{.name = "native_enum",
+                                       .header = "NativeEnum.h",
+                                       .namespace_name = "fixture"},
+            .enums = {EnumSchema{.name = "NativeState",
+                                 .underlying_type = TypeRef{"@native_uint8"},
+                                 .values = {EnumeratorSchema{.name = "Idle",
+                                                             .initializer = "0",
+                                                             .display_name = "Idle",
+                                                             .serialized_name = "idle"},
+                                            EnumeratorSchema{.name = "Active",
+                                                             .initializer = "1",
+                                                             .display_name = "Active",
+                                                             .serialized_name = "active"}},
+                                 .native_api = true}},
+        }},
+    }))};
+
+    ASSERT_EQ(files.size(), 1);
+    auto const& header{files.front().content};
+    EXPECT_NE(header.find("enum class NativeState : std::uint8_t"), std::string::npos);
+    EXPECT_NE(header.find("try_parse_native_state"), std::string::npos);
+    EXPECT_NE(header.find("try_parse_serialized_native_state"), std::string::npos);
+    EXPECT_NE(header.find("EnumTraits<::fixture::NativeState>"), std::string::npos);
+    EXPECT_EQ(header.find("CoreMinimal.h"), std::string::npos);
+}
+
 TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
     auto const output{render_enum(EnumModuleSchema{
         .settings =

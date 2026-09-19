@@ -4,34 +4,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
-#include "SandboxCore/enum_array.h"
-
 #include "TestMissionMode.generated.h"
-
 UENUM()
 enum class ETestMissionMode : uint8 {
-    None,
-    SurviveTime UMETA(DisplayName = "Survive Time"),
-    KillEnemies UMETA(DisplayName = "Kill Enemies"),
-    KillEnemiesWithinTime UMETA(DisplayName = "Kill Enemies Within Time"),
+    None = 0,
+    SurviveTime = 1 UMETA(DisplayName = "Survive Time"),
+    KillEnemies = 2 UMETA(DisplayName = "Kill Enemies"),
+    KillEnemiesWithinTime = 3 UMETA(DisplayName = "Kill Enemies Within Time"),
 };
-
-template <>
-struct TEnumTraits<ETestMissionMode> {
-    static constexpr int32 count{4};
-};
-
-SPACEGAMESIMULATION_API auto LexToString(ETestMissionMode const value) -> TCHAR const*;
-
-SPACEGAMESIMULATION_API auto LexToSerializedString(ETestMissionMode const value) -> TCHAR const*;
-
-namespace ml {
-SPACEGAMESIMULATION_API auto to_string_view(ETestMissionMode const value) -> FStringView;
-
-SPACEGAMESIMULATION_API auto to_display_string_view(ETestMissionMode const value) -> FStringView;
-
-SPACEGAMESIMULATION_API auto try_parse_serialized(FStringView const value, ETestMissionMode& result)
-    -> bool;
-
-} // namespace ml

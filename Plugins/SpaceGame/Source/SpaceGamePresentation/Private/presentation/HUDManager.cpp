@@ -823,7 +823,7 @@ void FHUDManager::read_mission_data(ml::hud_manager::FMissionDataCache& out) con
     }
     static_data.surviving_entity_types.Reset();
     for (auto const value : mission_manager->get_entity_types_that_must_survive()) {
-        static_data.surviving_entity_types.Add(ml::to_unreal(value));
+        static_data.surviving_entity_types.Add(value);
     }
     static_data.required_kill_entity_ids.Reset();
     for (auto const value : mission_manager->get_entity_ids_required_to_kill()) {
@@ -831,7 +831,7 @@ void FHUDManager::read_mission_data(ml::hud_manager::FMissionDataCache& out) con
     }
     static_data.required_kill_entity_types.Reset();
     for (auto const value : mission_manager->get_entity_types_required_to_kill()) {
-        static_data.required_kill_entity_types.Add(ml::to_unreal(value));
+        static_data.required_kill_entity_types.Add(value);
     }
 
     auto& status_data{out.status_data};
@@ -891,7 +891,7 @@ void FHUDManager::collect_kill_data() {
         auto const history_index{entity_ledger->get_history_index(entity_id)};
         next_data.top_killers.entity_ids[top_killer_index] = entity_id;
         next_data.top_killers.entity_types[top_killer_index] =
-            ml::to_unreal(unique_entities.entity_types[history_index]);
+            unique_entities.entity_types[history_index];
         next_data.top_killers.teams[top_killer_index] =
             ml::to_unreal(unique_entities.teams[history_index]);
         next_data.top_killers.kills[top_killer_index] =
@@ -914,7 +914,7 @@ void FHUDManager::collect_kill_data() {
             continue;
         }
         next_data.team_kill_matrix.add(ml::to_unreal(unique_entities.teams[killer_history_index]),
-                                       ml::to_unreal(unique_entities.entity_types[victim_index]));
+                                       unique_entities.entity_types[victim_index]);
     }
     kill_data_buffers.cycle();
 }
@@ -1078,7 +1078,7 @@ void FHUDManager::update_player_status_hud(UShipHudWidget& hud) const {
     hud.set_target_speed(data.target_speed);
     hud.set_energy(data.energy);
     hud.set_points(data.points);
-    hud.set_fire_rate(*ml::to_string_without_type_prefix(data.fire_rate));
+    hud.set_fire_rate(UTF8_TO_TCHAR(::ioj::sim::to_string(ml::to_native(data.fire_rate)).data()));
     hud.set_crosshair_targeting(data.crosshair_targeting);
 }
 void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
@@ -1096,8 +1096,10 @@ void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
     hud.set_flight_vector_debug(data.flight_vector_debug);
     hud.set_ship_velocity(data.ship_velocity);
     hud.set_target_velocity(data.target_velocity);
-    hud.set_control_mode(*ml::to_string_without_type_prefix(data.control_mode));
-    hud.set_flight_mode(*ml::to_string_without_type_prefix(data.flight_mode));
+    hud.set_control_mode(
+        UTF8_TO_TCHAR(::ioj::sim::to_string(ml::to_native(data.control_mode)).data()));
+    hud.set_flight_mode(
+        UTF8_TO_TCHAR(::ioj::sim::to_string(ml::to_native(data.flight_mode)).data()));
 
     auto* const controller{hud.GetOwningPlayer()};
     check(IsValid(controller));

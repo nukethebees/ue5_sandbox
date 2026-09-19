@@ -4,22 +4,11 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
 #include "TestMissionFailReason.generated.h"
-
 UENUM()
 enum class ETestMissionFailReason : uint8 {
-    None,
-    PlayerKilled,
-    TimeElapsed,
-    DefenceObjectiveFailed,
+    None = 0 UMETA(DisplayName = "None"),
+    PlayerKilled = 1,
+    TimeElapsed = 2,
+    DefenceObjectiveFailed = 3,
 };
-
-SPACEGAMESIMULATION_API auto LexToSerializedString(ETestMissionFailReason const value)
-    -> TCHAR const*;
-
-namespace ml {
-SPACEGAMESIMULATION_API auto try_parse_serialized(FStringView const value,
-                                                  ETestMissionFailReason& result) -> bool;
-
-} // namespace ml

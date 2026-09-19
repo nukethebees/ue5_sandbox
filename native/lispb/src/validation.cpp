@@ -339,8 +339,13 @@ void validate_enum(EnumModuleSchema const& module, std::map<std::string, CppType
         require_qualified_identifier(*module.helper_namespace,
                                      "Enum module '" + module.settings.name + "' helper namespace");
     }
+    auto const native_api{module.enums.front().native_api};
     std::set<std::string> enum_names;
     for (auto const& schema : module.enums) {
+        if (schema.native_api != native_api) {
+            throw std::invalid_argument{"Enum module '" + module.settings.name +
+                                        "' cannot mix native and Unreal enum APIs"};
+        }
         require_identifier(schema.name, "Enum name");
         if (!enum_names.insert(schema.name).second) {
             throw std::invalid_argument{"Duplicate enum name: " + schema.name};
@@ -348,6 +353,36 @@ void validate_enum(EnumModuleSchema const& module, std::map<std::string, CppType
         validate_type(schema.underlying_type, types, "Enum '" + schema.name + "' underlying");
         validate_export_specifier(schema.export_specifier,
                                   "Enum '" + schema.name + "' export specifier");
+        if (schema.unreal_projection.has_value()) {
+            auto const& projection{*schema.unreal_projection};
+            require_identifier(projection.name,
+                               "Enum '" + schema.name + "' Unreal projection name");
+            require_value(projection.header.string(),
+                          "Enum '" + schema.name + "' Unreal projection header");
+            require_value(projection.header_include,
+                          "Enum '" + schema.name + "' Unreal projection header include");
+            require_value(projection.conversion_header.string(),
+                          "Enum '" + schema.name + "' Unreal projection conversion header");
+            require_value(projection.native_header_include,
+                          "Enum '" + schema.name + "' native enum header include");
+            if (!schema.native_api || schema.reflection != EnumReflection::none) {
+                throw std::invalid_argument{"Enum '" + schema.name +
+                                            "' Unreal projection requires a native plain enum"};
+            }
+            if (projection.reflection == EnumReflection::none) {
+                throw std::invalid_argument{"Enum '" + schema.name +
+                                            "' Unreal projection must be reflected"};
+            }
+        }
+        if (schema.native_api && schema.reflection != EnumReflection::none) {
+            throw std::invalid_argument{"Native enum '" + schema.name +
+                                        "' cannot use Unreal reflection"};
+        }
+        if (schema.native_api && (schema.enum_array || !schema.conversions.empty() ||
+                                  schema.export_specifier.has_value())) {
+            throw std::invalid_argument{"Native enum '" + schema.name +
+                                        "' cannot use Unreal enum generation options"};
+        }
         if (schema.reflection != EnumReflection::none &&
             module.settings.namespace_name.has_value()) {
             throw std::invalid_argument{"Reflected enum '" + schema.name +
@@ -386,7 +421,9 @@ void validate_enum(EnumModuleSchema const& module, std::map<std::string, CppType
                 throw std::invalid_argument{"Enum '" + schema.name + "' value '" + value.name +
                                             "' requires a serialized name"};
             }
-            if (value.hidden && schema.reflection == EnumReflection::none) {
+            if (value.hidden && schema.reflection == EnumReflection::none &&
+                !schema.unreal_projection.has_value() &&
+                (!schema.count.has_value() || value.name != *schema.count)) {
                 throw std::invalid_argument{"Plain enum '" + schema.name + "' value '" +
                                             value.name + "' cannot be hidden"};
             }
@@ -424,7 +461,9 @@ void validate_enum(EnumModuleSchema const& module, std::map<std::string, CppType
             }
 
             if (schema.count.has_value()) {
-                if (schema.reflection != EnumReflection::none && !count_value->hidden) {
+                if ((schema.reflection != EnumReflection::none ||
+                     schema.unreal_projection.has_value()) &&
+                    !count_value->hidden) {
                     throw std::invalid_argument{"Reflected enum-array enum '" + schema.name +
                                                 "' count must be hidden"};
                 }

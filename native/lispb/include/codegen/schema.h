@@ -4,6 +4,7 @@
 #include <codegen/schema/enum_module_schema.h>
 #include <codegen/schema/enum_reflection.h>
 #include <codegen/schema/enum_schema.h>
+#include <codegen/schema/enum_unreal_projection.h>
 #include <codegen/schema/enumerator_schema.h>
 #include <codegen/schema/facade_method_schema.h>
 #include <codegen/schema/facade_module_schema.h>

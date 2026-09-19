@@ -650,7 +650,7 @@ auto ASpaceGamePlayerController::get_input_snapshot() const -> FPlayerInputSnaps
         snapshot.movement = ship->get_move_input();
         snapshot.turn = ship->get_turn_input();
         snapshot.sampled_movement = ship->get_target_local_planar_velocity_scale();
-        snapshot.fire_active = ship->get_laser_firing_mode() != ELaserFiringState::idle;
+        snapshot.fire_active = ship->get_laser_firing_mode() != ::ioj::sim::LaserFiringState::idle;
         snapshot.sampling_active = ship->is_sampling();
     }
     return snapshot;

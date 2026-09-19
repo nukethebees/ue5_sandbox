@@ -4,6 +4,9 @@
 
 #include <SandboxCoreEngine/enums.h>
 #include <SandboxGameShared/core/levels/levels.h>
+#include <SpaceGameSimulation/missions/TestMissionFailReasonConversion.h>
+#include <SpaceGameSimulation/missions/TestMissionModeConversion.h>
+#include <SpaceGameSimulation/missions/TestMissionStateConversion.h>
 
 namespace ml::ioj::save_profile {
 namespace profile_adapter {
@@ -50,10 +53,13 @@ auto make_report(FString profile_id, TConstArrayView<FScoreRecord> records) -> F
         outcome.completed_at = record.date;
         outcome.simulation_duration_seconds = record.time_seconds;
         outcome.kills = record.kills;
-        outcome.result = ml::to_string_without_type_prefix(record.end_state);
+        outcome.result =
+            UTF8_TO_TCHAR(::ioj::sim::to_string(ml::to_native(record.end_state)).data());
 
         profile_adapter::add_statistic(
-            outcome, TEXT("Mission mode"), ml::to_string_without_type_prefix(record.mission_mode));
+            outcome,
+            TEXT("Mission mode"),
+            UTF8_TO_TCHAR(::ioj::sim::to_string(ml::to_native(record.mission_mode)).data()));
         switch (record.mission_mode) {
             case ETestMissionMode::None: {
                 break;
@@ -82,9 +88,10 @@ auto make_report(FString profile_id, TConstArrayView<FScoreRecord> records) -> F
         }
 
         if (record.end_state == ETestMissionState::Failed) {
-            profile_adapter::add_statistic(outcome,
-                                           TEXT("Failure reason"),
-                                           ml::to_string_without_type_prefix(record.fail_reason));
+            profile_adapter::add_statistic(
+                outcome,
+                TEXT("Failure reason"),
+                UTF8_TO_TCHAR(::ioj::sim::to_string(ml::to_native(record.fail_reason)).data()));
         }
     }
     return report;

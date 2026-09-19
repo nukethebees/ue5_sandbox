@@ -18,6 +18,7 @@
         "lispb/schema/native_entity_death_info.lispb"
         "lispb/schema/native_entity_history.lispb"
         "lispb/schema/native_entity_type.lispb"
+        "lispb/schema/native_simulation_enums.lispb"
         "lispb/schema/native_entity_unique_id.lispb"
         "lispb/schema/native_fighter_order_queue.lispb"
         "lispb/schema/native_vectors.lispb"

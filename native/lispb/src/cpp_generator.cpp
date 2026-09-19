@@ -5,6 +5,7 @@
 #include "lowering_utils.h"
 #include "validation.h"
 
+#include <iterator>
 #include <set>
 #include <stdexcept>
 #include <type_traits>
@@ -42,7 +43,10 @@ auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
             [&](auto const& module) {
                 using T = std::decay_t<decltype(module)>;
                 if constexpr (std::is_same_v<T, EnumModuleSchema>) {
-                    result.push_back(detail::lower_enum_module(module, manifest.types));
+                    auto lowered{detail::lower_enum_module(module, manifest.types)};
+                    result.insert(result.end(),
+                                  std::make_move_iterator(lowered.begin()),
+                                  std::make_move_iterator(lowered.end()));
                 } else if constexpr (std::is_same_v<T, PackedValueModuleSchema>) {
                     result.push_back(detail::lower_packed_value_module(
                         module, manifest.types, manifest.modules));
