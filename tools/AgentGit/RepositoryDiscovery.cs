@@ -411,11 +411,11 @@ internal sealed class RepositoryDiscovery(GitClient git)
         {
             var result = await git.RunAsync(
                 worktree_root,
-                ["config", scope, "--name-only", "--list"],
+                ["config", scope, "--null", "--name-only", "--list"],
                 cancellation_token: cancellation_token);
             GitClient.EnsureSuccess(result, ["config"]);
             var names = Encoding.UTF8.GetString(result.StandardOutput)
-                .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+                .Split('\0', StringSplitOptions.RemoveEmptyEntries);
             var unknown = names.Where(name =>
                 IsUnsupportedExecutableConfiguration(name, git.HasTrustedGitLfs)).ToArray();
             if (unknown.Length > 0)
@@ -668,7 +668,12 @@ internal sealed class RepositoryDiscovery(GitClient git)
                 {
                     ++index;
                 }
+
+                continue;
             }
+
+            throw new RepositoryException(
+                $"Git status returned an unsupported porcelain-v2 record '{record}'.");
         }
 
         var fingerprint = $"{Convert.ToHexString(SHA256.HashData(status_result.StandardOutput))}:" +
