@@ -126,6 +126,7 @@ auto Application::initialize() -> bool {
     auto& style{ImGui::GetStyle()};
     style.ScaleAllSizes(scale);
     style.FontScaleDpi = scale;
+    io.Fonts->AddFontDefaultVector();
 
     if (!ImGui_ImplSDL3_InitForSDLGPU(window_)) {
         std::fprintf(stderr, "ImGui SDL3 platform initialization failed.\n");

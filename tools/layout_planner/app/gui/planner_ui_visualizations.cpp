@@ -22,6 +22,7 @@ inline constexpr ImVec4 selected_color{0.35F, 0.52F, 0.88F, 1.0F};
 inline constexpr ImVec4 unused_color{0.36F, 0.39F, 0.43F, 1.0F};
 inline constexpr ImVec4 unused_hatch_color{0.82F, 0.85F, 0.89F, 0.45F};
 inline constexpr ImVec4 bit_grid_color{0.86F, 0.9F, 0.95F, 0.2F};
+inline constexpr ImVec4 packed_detail_text_color{0.9F, 0.93F, 0.98F, 1.0F};
 inline constexpr ImVec4 overflow_color{0.85F, 0.55F, 0.2F, 1.0F};
 
 struct PackedDividerAdjustment {
@@ -148,7 +149,7 @@ void draw_packed_bar(PackedAnalysis const& analysis,
                                field.name.c_str());
             auto const field_bits{std::to_string(field.bit_width) + " bits"};
             draw_list->AddText({left + 6.0F, origin.y + 34.0F},
-                               ImGui::GetColorU32(ImGuiCol_TextDisabled),
+                               ImGui::GetColorU32(packed_detail_text_color),
                                field_bits.c_str());
         }
     }

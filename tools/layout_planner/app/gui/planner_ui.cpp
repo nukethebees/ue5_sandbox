@@ -82,7 +82,7 @@ void PlannerUi::setup_default_dock_layout(unsigned int const dockspace_id) {
     auto const left_id{
         ImGui::DockBuilderSplitNode(center_id, ImGuiDir_Left, 0.22F, nullptr, &center_id)};
     auto const right_id{
-        ImGui::DockBuilderSplitNode(center_id, ImGuiDir_Right, 0.27F, nullptr, &center_id)};
+        ImGui::DockBuilderSplitNode(center_id, ImGuiDir_Right, 0.34F, nullptr, &center_id)};
     auto const comparison_id{
         ImGui::DockBuilderSplitNode(center_id, ImGuiDir_Down, 0.34F, nullptr, &center_id)};
     auto left_top_id{left_id};
