@@ -5,7 +5,7 @@
 namespace ioj::sim {
 
 namespace {
-[[nodiscard]] auto checked_slot(std::span<EntityUniqueId const> const owners,
+[[nodiscard]] auto checked_slot(std::span<EntityUniqueId const> const owners [[maybe_unused]],
                                 std::span<HealthIndex const> const indices,
                                 std::int32_t const row) -> std::size_t {
     assert(row >= 0 && static_cast<std::size_t>(row) < indices.size());
@@ -106,7 +106,7 @@ void HealthTable::add(std::span<EntityUniqueId const> const owners,
 }
 void HealthTable::remove_rows(std::span<std::int32_t const> const rows,
                               std::span<HealthIndex const> const indices,
-                              std::span<EntityUniqueId const> const owners) {
+                              std::span<EntityUniqueId const> const owners [[maybe_unused]]) {
     auto const row_count{rows.size()};
     for (std::size_t row_index{}; row_index < row_count; ++row_index) {
         auto const row{rows[row_index]};

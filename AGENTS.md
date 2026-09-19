@@ -36,7 +36,9 @@ Unreal Engine 5.8 project.
   5. Diagnose and fix failures using focused validation where appropriate, then rerun the required
      merge-ready integration gate on the final HEAD.
   6. As a final check before proposing a merge into `dev`, build every buildable target on the
-     final rebased HEAD to catch possible compiler errors.
+     final rebased HEAD, including `cmake --workflow --preset development`. This optimized,
+     `NDEBUG` build is mandatory even when the merge-ready test gate uses DebugGame, so
+     configuration-specific compiler errors cannot reach another worktree.
   7. Only report the branch as merge-ready after its final rebased HEAD passes the required gate
      and all buildable targets build successfully. Do not merge it into `dev` without the user's
      explicit permission; ask for that permission once the branch is ready.
