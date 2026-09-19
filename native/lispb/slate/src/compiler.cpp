@@ -45,7 +45,7 @@ auto compile_sources(SourceOptions const& options) -> lispb::Compilation {
         result.dependencies.insert(result.dependencies.end(),
                                    preprocessed.dependencies.begin(),
                                    preprocessed.dependencies.end());
-        auto const document{detail::parse(input.generic_string(), std::move(preprocessed.forms))};
+        auto const document{detail::parse(input.generic_string(), preprocessed.forms)};
         for (auto const& widget_declaration : document.declarations) {
             if (!owners.insert(widget_declaration.name).second) {
                 throw detail::SourceError{input.generic_string(),

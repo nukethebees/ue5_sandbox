@@ -69,7 +69,7 @@ struct MissionManager {
     void set_target_time(float new_target_time);
     void set_kill_target(std::int32_t new_kill_target);
     void set_save_mission_results(bool should_save) noexcept;
-    void set_level_identity(std::string level_id, std::string display_name);
+    void set_level_identity(std::string const& level_id, std::string display_name);
     void add_hero_entity(EntityUniqueId id);
     void add_entity_that_must_survive(EntityUniqueId id);
     void add_entity_required_to_kill(EntityUniqueId id);

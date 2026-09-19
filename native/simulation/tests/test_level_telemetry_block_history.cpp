@@ -72,8 +72,6 @@ TEST(NativeSimulation, LevelTelemetryBlockHistoryTest) {
     }
     tests::expect_equal(
         history.retained_block_count(), std::int32_t{2}, "A smaller second run acquires no blocks");
-
-    return;
 }
 
 } // namespace tests

@@ -76,7 +76,7 @@ void run_worldless_fighter_obstacle_avoidance(tests::SimulationFixture const& co
 }
 
 auto make_fighter_navigation_test_data(tests::SimulationFixture const& config,
-                                       std::vector<Transform3d> spawn_slots,
+                                       std::vector<Transform3d> const& spawn_slots,
                                        Vector3f const source_location,
                                        Vector3f const target_location) -> LevelSimInitData {
     auto data{tests::make_simulation_data(config)};
@@ -322,10 +322,8 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
                                   std::int32_t const fighter_count) -> DenseNavigationResult {
     std::vector<Transform3d> spawn_slots{};
     spawn_slots.assign(fighter_count, Transform3d{.location = ml::Vector3d{3000.f, 7000.f, 0.f}});
-    auto data{make_fighter_navigation_test_data(config,
-                                                std::move(spawn_slots),
-                                                Vector3f{{-20000.f, -7000.f, 0.f}},
-                                                Vector3f{{20000.f, 0.f, 0.f}})};
+    auto data{make_fighter_navigation_test_data(
+        config, spawn_slots, Vector3f{{-20000.f, -7000.f, 0.f}}, Vector3f{{20000.f, 0.f, 0.f}})};
     std::ranges::fill(data.level_events.initial_spawns.capital_spawns.get_view()
                           .columns()
                           .fighter_spawn_cooldowns,

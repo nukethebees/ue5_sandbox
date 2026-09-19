@@ -81,7 +81,7 @@ auto add_player_spawn(LevelSimInitData& data, player::PlayerSpawnData spawn) -> 
     auto& initialisation{data.level_events.initialisation};
     auto const entity_index{initialisation.entity_count++};
     initialisation.player_entity_index = entity_index;
-    data.player.emplace(std::move(spawn));
+    data.player.emplace(spawn);
     return entity_index;
 }
 auto add_capital_spawn(LevelSimInitData& data,

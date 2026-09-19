@@ -347,15 +347,16 @@ auto homogeneous_storage_sort_nodes() -> Nodes {
 
 auto homogeneous_storage_array_operation_nodes(HomogeneousLayoutSchema const& layout) -> Nodes {
     NodeListBuilder result;
-    auto add_each =
-        [&](std::string name, std::vector<FunctionParameter> parameters, std::string expression) {
-            result.add(homogeneous_function(std::move(name),
-                                            "auto",
-                                            std::move(parameters),
-                                            component_statements(layout, expression),
-                                            {.trailing_return_type = CppType{"void"}}),
-                       1);
-        };
+    auto add_each = [&](std::string name,
+                        std::vector<FunctionParameter> parameters,
+                        std::string const& expression) {
+        result.add(homogeneous_function(std::move(name),
+                                        "auto",
+                                        std::move(parameters),
+                                        component_statements(layout, expression),
+                                        {.trailing_return_type = CppType{"void"}}),
+                   1);
+    };
     add_each("reset", {}, "{}.Reset()");
     add_each("empty", {}, "{}.Empty()");
     add_each("reserve", {FunctionParameter{"size_type const", "count"}}, "{}.Reserve(count)");

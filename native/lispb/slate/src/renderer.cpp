@@ -94,7 +94,7 @@ class Renderer {
         output_ += '\n';
     }
 
-    void append_source_line(SourceSpan const span) {
+    void append_source_line(SourceSpan const& span) {
         append_line(0,
                     "#line " + std::to_string(span.line) + " \"" +
                         escape_cpp_string(span.path.empty() ? source_path_ : span.path) + "\"");

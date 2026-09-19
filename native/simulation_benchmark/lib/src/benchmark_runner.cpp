@@ -247,7 +247,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
             ioj::sim::to_quaternion(ioj::sim::Rotator3d{player_definition->rotation.pitch,
                                                         player_definition->rotation.yaw,
                                                         player_definition->rotation.roll});
-        data.player = std::move(player);
+        data.player = player;
     }
 
     ioj::sim::SimClock compilation_clock;

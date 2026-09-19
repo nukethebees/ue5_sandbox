@@ -90,7 +90,7 @@ class Parser {
         return head_token.kind == TokenKind::atom && head_token.text == head;
     }
 
-    [[noreturn]] void fail(SourceSpan const span, std::string_view const message) const {
+    [[noreturn]] void fail(SourceSpan const& span, std::string_view const message) const {
         throw SourceError{path_, span, std::string{message}};
     }
 
@@ -295,7 +295,7 @@ class Parser {
         }
     }
 
-    auto parse_widget_body(SourceSpan const span,
+    auto parse_widget_body(SourceSpan const& span,
                            std::string type,
                            std::optional<std::string> assigned_member) -> Child {
         Widget widget{
@@ -460,7 +460,7 @@ class Parser {
 
     void use_parameter(std::string const& name,
                        ParameterKind const expected_kind,
-                       SourceSpan const span,
+                       SourceSpan const& span,
                        bool const allow_multiple_uses) {
         auto const found{parameter_states_.find(name)};
         if (found == parameter_states_.end()) {
@@ -731,7 +731,7 @@ class Parser {
 
 }
 
-auto parse(std::string_view const path, std::vector<Form> forms) -> Document {
+auto parse(std::string_view const path, std::vector<Form> const& forms) -> Document {
     return Parser{path, forms}.parse();
 }
 
