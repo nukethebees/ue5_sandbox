@@ -45,6 +45,7 @@ TEST_CLASS(LevelCompletionWidget, "Sandbox.UnitTests")
                 snapshot.cumulative_kill_count_data.add(4, 6);
                 widget->prepare_for_open(TEXT("Border Skirmish"),
                                          ETestMissionState::Succeeded,
+                                         ETestMissionFailReason::None,
                                          MoveTemp(snapshot),
                                          TOptional<float>{3800.0f},
                                          true);

@@ -118,16 +118,20 @@ TEST_CLASS(GameUiRootLayout, "Sandbox.UnitTests")
 
         ::ioj::sim::LevelTelemetrySnapshot completion_snapshot;
         completion_snapshot.kills = 6;
-        auto* const completion{root->show_level_completion(
-            TEXT("Border Skirmish"), ETestMissionState::Succeeded, completion_snapshot)};
+        auto* const completion{root->show_level_completion(TEXT("Border Skirmish"),
+                                                           ETestMissionState::Succeeded,
+                                                           ETestMissionFailReason::None,
+                                                           completion_snapshot)};
         if (!TestRunner->TestTrue(TEXT("Completion is pushed"), IsValid(completion))) {
             return;
         }
         TestRunner->TestTrue(TEXT("Completion owns its native focus target"),
                              completion->GetDesiredFocusTarget() == completion);
         TestRunner->TestTrue(TEXT("Repeated completion returns the active instance"),
-                             root->show_level_completion(
-                                 TEXT("Ignored"), ETestMissionState::Succeeded, {}) == completion);
+                             root->show_level_completion(TEXT("Ignored"),
+                                                         ETestMissionState::Succeeded,
+                                                         ETestMissionFailReason::None,
+                                                         {}) == completion);
         TestRunner->TestEqual(
             TEXT("Completion does not accumulate widgets"), root->get_modal_count(), 1);
     }

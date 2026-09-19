@@ -14,6 +14,23 @@
 #include <Widgets/Text/STextBlock.h>
 
 namespace ml::ioj {
+namespace level_completion_detail {
+auto failure_reason_text(ETestMissionFailReason const fail_reason) -> FText {
+    switch (fail_reason) {
+        case ETestMissionFailReason::PlayerKilled:
+            return NSLOCTEXT("LevelCompletion", "PlayerKilled", "YOUR SHIP WAS DESTROYED");
+        case ETestMissionFailReason::TimeElapsed:
+            return NSLOCTEXT("LevelCompletion", "TimeElapsed", "TIME LIMIT EXPIRED");
+        case ETestMissionFailReason::DefenceObjectiveFailed:
+            return NSLOCTEXT(
+                "LevelCompletion", "DefenceObjectiveFailed", "DEFENCE OBJECTIVE FAILED");
+        case ETestMissionFailReason::None:
+        default:
+            return NSLOCTEXT("LevelCompletion", "UnknownFailure", "FAILURE REASON UNKNOWN");
+    }
+}
+} // namespace level_completion_detail
+
 void SLevelCompletionView::Construct(FArguments const& args) {
     style_ = args._Style;
     audio_ = args._Audio;
@@ -43,6 +60,7 @@ void SLevelCompletionView::Construct(FArguments const& args) {
 
 void SLevelCompletionView::update_report(FString const& level_display_name,
                                          ETestMissionState const state,
+                                         ETestMissionFailReason const fail_reason,
                                          ::ioj::sim::LevelTelemetrySnapshot const& snapshot,
                                          TOptional<float> const par_time_seconds,
                                          bool const new_best_time) {
@@ -56,6 +74,10 @@ void SLevelCompletionView::update_report(FString const& level_display_name,
                   : NSLOCTEXT("LevelCompletion", "MissionFailed", "MISSION FAILED"));
     mission_result_->SetColorAndOpacity(succeeded ? style_->palette().success
                                                   : style_->palette().danger);
+    failure_reason_->SetText(level_completion_detail::failure_reason_text(fail_reason));
+    failure_reason_->SetColorAndOpacity(style_->palette().danger);
+    failure_reason_->SetVisibility(succeeded ? EVisibility::Collapsed
+                                             : EVisibility::HitTestInvisible);
     objective_status_->SetText(
         succeeded
             ? NSLOCTEXT("LevelCompletion", "ObjectiveSatisfied", "OBJECTIVE STATUS // SATISFIED")
@@ -149,6 +171,9 @@ auto SLevelCompletionView::build_summary() -> TSharedRef<SWidget> {
     details->AddSlot().AutoHeight().Padding(
         FMargin{0.0f, 10.0f, 0.0f, 4.0f})[SAssignNew(mission_result_, STextBlock)
                                               .TextStyle(&style_->text(EGameTextStyle::Heading3))];
+    details->AddSlot().AutoHeight()[SAssignNew(failure_reason_, STextBlock)
+                                        .TextStyle(&style_->text(EGameTextStyle::Caption))
+                                        .Visibility(EVisibility::Collapsed)];
     details->AddSlot().AutoHeight()[SAssignNew(objective_status_, STextBlock)
                                         .TextStyle(&style_->text(EGameTextStyle::Caption))];
     details->AddSlot().AutoHeight().Padding(

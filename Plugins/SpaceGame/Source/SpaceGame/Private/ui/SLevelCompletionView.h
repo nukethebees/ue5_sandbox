@@ -3,6 +3,7 @@
 #include "ioj/sim/level_telemetry_snapshot.h"
 #include "SpaceGamePresentation/audio/GameAudio.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
+#include "SpaceGameSimulation/missions/TestMissionFailReason.h"
 #include "SpaceGameSimulation/missions/TestMissionState.h"
 
 #include <Widgets/SCompoundWidget.h>
@@ -32,6 +33,7 @@ class SLevelCompletionView final : public SCompoundWidget {
     void Construct(FArguments const& args);
     void update_report(FString const& level_display_name,
                        ETestMissionState state,
+                       ETestMissionFailReason fail_reason,
                        ::ioj::sim::LevelTelemetrySnapshot const& snapshot,
                        TOptional<float> par_time_seconds,
                        bool new_best_time);
@@ -59,6 +61,7 @@ class SLevelCompletionView final : public SCompoundWidget {
 
     TSharedPtr<STextBlock> mission_name_{};
     TSharedPtr<STextBlock> mission_result_{};
+    TSharedPtr<STextBlock> failure_reason_{};
     TSharedPtr<STextBlock> objective_status_{};
     TSharedPtr<STextBlock> new_best_time_{};
     TSharedPtr<STextBlock> elapsed_time_{};

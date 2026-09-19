@@ -924,6 +924,7 @@ void ATestBatchOrchestrator::process_mission_result() {
         {.level_id = FName{UTF8_TO_TCHAR(result->level_id.c_str())},
          .level_display_name = UTF8_TO_TCHAR(result->level_display_name.c_str()),
          .state = ml::to_unreal(result->state),
+         .fail_reason = ml::to_unreal(result->fail_reason),
          .persisted = persisted,
          .par_time_seconds = par_time_seconds,
          .new_best_time = new_best_time});

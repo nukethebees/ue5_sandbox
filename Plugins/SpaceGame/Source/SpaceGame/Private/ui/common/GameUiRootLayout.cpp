@@ -101,6 +101,7 @@ auto UGameUiRootLayout::show_pause_menu(UInputAction& toggle_action, FPauseMenuD
 
 auto UGameUiRootLayout::show_level_completion(FString level_display_name,
                                               ETestMissionState const state,
+                                              ETestMissionFailReason const fail_reason,
                                               ::ioj::sim::LevelTelemetrySnapshot snapshot,
                                               TOptional<float> const par_time_seconds,
                                               bool const new_best_time) -> ULevelCompletionWidget* {
@@ -127,11 +128,16 @@ auto UGameUiRootLayout::show_level_completion(FString level_display_name,
         completion_class,
         [name = MoveTemp(level_display_name),
          state,
+         fail_reason,
          snapshot = MoveTemp(snapshot),
          par_time_seconds,
          new_best_time](ULevelCompletionWidget& widget) mutable {
-            widget.prepare_for_open(
-                MoveTemp(name), state, MoveTemp(snapshot), par_time_seconds, new_best_time);
+            widget.prepare_for_open(MoveTemp(name),
+                                    state,
+                                    fail_reason,
+                                    MoveTemp(snapshot),
+                                    par_time_seconds,
+                                    new_best_time);
         })};
     if (!IsValid(completion)) {
         UE_LOG(LogSandboxUI,

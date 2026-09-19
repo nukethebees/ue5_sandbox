@@ -3,6 +3,7 @@
 #include "ioj/sim/level_telemetry_snapshot.h"
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
+#include "SpaceGameSimulation/missions/TestMissionFailReason.h"
 #include "SpaceGameSimulation/missions/TestMissionState.h"
 
 #include "LevelCompletionWidget.generated.h"
@@ -23,6 +24,7 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
 
     void prepare_for_open(FString level_display_name,
                           ETestMissionState state,
+                          ETestMissionFailReason fail_reason,
                           ::ioj::sim::LevelTelemetrySnapshot snapshot,
                           TOptional<float> par_time_seconds = NullOpt,
                           bool new_best_time = false);
@@ -56,6 +58,7 @@ class SPACEGAME_API ULevelCompletionWidget : public UMenuActivatableWidget {
 
     FString level_display_name_{};
     ETestMissionState mission_state_{ETestMissionState::Succeeded};
+    ETestMissionFailReason mission_fail_reason_{ETestMissionFailReason::None};
     ::ioj::sim::LevelTelemetrySnapshot stats_snapshot_{};
     TOptional<float> par_time_seconds_{};
     TSharedPtr<SLevelCompletionView> view_{};
