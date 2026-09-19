@@ -308,12 +308,19 @@ void PlannerUi::draw_soa_layout(SoaLayout const&, SoaAnalysis const& analysis) {
         maximum_bytes = std::max(maximum_bytes, column.total_bytes.value_or(0));
     }
     ImGui::SeparatorText("Relative column payloads");
-    for (auto const& column : analysis.columns) {
-        ImGui::TextUnformatted(column.name.c_str());
-        ImGui::SameLine(130.0F);
-        auto const fraction{static_cast<float>(column.total_bytes.value_or(0)) /
-                            static_cast<float>(maximum_bytes)};
-        ImGui::ProgressBar(fraction, {-1.0F, 0.0F}, format_bytes(column.total_bytes).c_str());
+    if (ImGui::BeginTable("soa-relative-payloads", 2, ImGuiTableFlags_SizingFixedFit)) {
+        ImGui::TableSetupColumn("Field", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Payload", ImGuiTableColumnFlags_WidthStretch);
+        for (auto const& column : analysis.columns) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(column.name.c_str());
+            ImGui::TableNextColumn();
+            auto const fraction{static_cast<float>(column.total_bytes.value_or(0)) /
+                                static_cast<float>(maximum_bytes)};
+            ImGui::ProgressBar(fraction, {-1.0F, 0.0F}, format_bytes(column.total_bytes).c_str());
+        }
+        ImGui::EndTable();
     }
 }
 
