@@ -27,7 +27,7 @@ cmake --workflow --preset layout-planner
 The workflow builds and tests the planner. It places the executable at:
 
 ```text
-%REPOSITORY_ROOT%\out\build\layout-planner\tools\layout_planner\layout-planner.exe
+%REPOSITORY_ROOT%\out\build\layout-planner\tools\layout_planner\app\layout-planner.exe
 ```
 
 Here, `%REPOSITORY_ROOT%` means the root of the current worktree. For example, a checkout below a
@@ -43,14 +43,14 @@ executable.
 Run the planner with the repository root as its working directory:
 
 ```powershell
-.\out\build\layout-planner\tools\layout_planner\layout-planner.exe
+.\out\build\layout-planner\tools\layout_planner\app\layout-planner.exe
 ```
 
 The default invocation loads `lispb/project.lispb` and its `sandbox-code` target. Override either
 selection when inspecting another manifest or target:
 
 ```powershell
-.\out\build\layout-planner\tools\layout_planner\layout-planner.exe `
+.\out\build\layout-planner\tools\layout_planner\app\layout-planner.exe `
   --project path\to\project.lispb `
   --target target-name
 ```

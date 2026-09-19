@@ -53,7 +53,7 @@ cmake --workflow --preset layout-planner
 ```
 
 The executable remains local to the worktree at
-`%REPOSITORY_ROOT%\out\build\layout-planner\tools\layout_planner\layout-planner.exe`; it is not
+`%REPOSITORY_ROOT%\out\build\layout-planner\tools\layout_planner\app\layout-planner.exe`; it is not
 installed system-wide or added to `PATH`. Run it from the repository root to load
 `lispb/project.lispb`, or pass `--project` and `--target` explicitly. See the
 [memory layout planner guide](../tools/layout_planner/README.md) for usage, supported analysis, and
