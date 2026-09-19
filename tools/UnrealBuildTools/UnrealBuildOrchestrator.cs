@@ -6,7 +6,7 @@ public sealed class UnrealBuildOrchestrator
     private readonly EditorModuleCompatibilityChecker compatibility_checker = new();
     private readonly BuildScriptRunner build_script_runner = new();
 
-    public BuildOutcome Build(BuildRequest request)
+    public BuildOutcome Build(BuildRequest request, Action<string>? warning_sink = null)
     {
         ArgumentNullException.ThrowIfNull(request);
 
@@ -19,7 +19,7 @@ public sealed class UnrealBuildOrchestrator
             var discovery = manifest_locator.Discover(paths.ProjectRoot, request.Target, request.Configuration);
             if (discovery.Problem is not null)
             {
-                warnings.Add($"{discovery.Problem} Forcing an editor rebuild.");
+                AddWarning($"{discovery.Problem} Forcing an editor rebuild.");
                 force_rebuild = true;
             }
             else
@@ -27,8 +27,11 @@ public sealed class UnrealBuildOrchestrator
                 var compatibility = compatibility_checker.Check(paths.EngineRoot, discovery.Paths);
                 if (compatibility.Problems.Count > 0)
                 {
-                    warnings.Add($"Editor module BuildId mismatch detected. Forcing '{request.Target} {request.Platform} {request.Configuration}' to resynchronize modules.");
-                    warnings.AddRange(compatibility.Problems.Select(problem => $"  {problem}"));
+                    AddWarning($"Editor module BuildId mismatch detected. Forcing '{request.Target} {request.Platform} {request.Configuration}' to resynchronize modules.");
+                    foreach (var problem in compatibility.Problems)
+                    {
+                        AddWarning($"  {problem}");
+                    }
                     force_rebuild = true;
                 }
             }
@@ -54,5 +57,11 @@ public sealed class UnrealBuildOrchestrator
         }
 
         return new BuildOutcome(force_rebuild, warnings);
+
+        void AddWarning(string warning)
+        {
+            warnings.Add(warning);
+            warning_sink?.Invoke(warning);
+        }
     }
 }

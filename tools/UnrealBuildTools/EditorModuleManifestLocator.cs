@@ -14,7 +14,7 @@ public sealed class EditorModuleManifestLocator
     public static string GetManifestName(string configuration)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(configuration);
-        return string.Equals(configuration, "Development", StringComparison.Ordinal)
+        return string.Equals(configuration, "Development", StringComparison.OrdinalIgnoreCase)
             ? "UnrealEditor.modules"
             : $"UnrealEditor-Win64-{configuration}.modules";
     }
@@ -23,7 +23,7 @@ public sealed class EditorModuleManifestLocator
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(target);
         ArgumentException.ThrowIfNullOrWhiteSpace(configuration);
-        return string.Equals(configuration, "Development", StringComparison.Ordinal)
+        return string.Equals(configuration, "Development", StringComparison.OrdinalIgnoreCase)
             ? $"{target}.target"
             : $"{target}-Win64-{configuration}.target";
     }

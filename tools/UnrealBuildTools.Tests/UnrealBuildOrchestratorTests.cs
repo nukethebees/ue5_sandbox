@@ -32,6 +32,58 @@ public sealed class UnrealBuildOrchestratorTests
     }
 
     [TestMethod]
+    public void Build_emits_a_missing_receipt_warning_before_a_failed_build()
+    {
+        using var fixture = new UnrealBuildFixture();
+        fixture.WriteEditorVersion("editor-build");
+        fixture.WriteBuildScript("@echo off\r\nexit /b 7\r\n");
+        var warnings = new List<string>();
+
+        Assert.ThrowsException<BuildScriptFailedException>(
+            () => new UnrealBuildOrchestrator().Build(fixture.CreateRequest(verify_editor_modules: true), warnings.Add));
+
+        Assert.AreEqual(1, warnings.Count);
+        StringAssert.Contains(warnings[0], "editor target receipt is missing");
+    }
+
+    [TestMethod]
+    public void Build_emits_build_id_mismatch_details_before_a_failed_build()
+    {
+        using var fixture = new UnrealBuildFixture();
+        fixture.WriteEditorVersion("editor-build");
+        fixture.WriteReceipt("SandboxEditor", "Development", "{ \"BuildProducts\": [] }");
+        fixture.WriteManifest(fixture.ProjectManifestPath("Development"), "stale-build");
+        fixture.WriteBuildScript("@echo off\r\nexit /b 7\r\n");
+        var warnings = new List<string>();
+
+        Assert.ThrowsException<BuildScriptFailedException>(
+            () => new UnrealBuildOrchestrator().Build(fixture.CreateRequest(verify_editor_modules: true), warnings.Add));
+
+        Assert.AreEqual(2, warnings.Count);
+        StringAssert.Contains(warnings[0], "BuildId mismatch");
+        StringAssert.Contains(warnings[1], "stale-build");
+        StringAssert.Contains(warnings[1], "editor-build");
+    }
+
+    [TestMethod]
+    public void Build_emits_each_mismatch_warning_once_when_the_forced_rebuild_succeeds()
+    {
+        using var fixture = new UnrealBuildFixture();
+        fixture.WriteEditorVersion("editor-build");
+        fixture.WriteReceipt("SandboxEditor", "Development", "{ \"BuildProducts\": [] }");
+        var manifest_path = fixture.ProjectManifestPath("Development");
+        fixture.WriteManifest(manifest_path, "stale-build");
+        fixture.WriteBuildScript($"@echo off\r\necho {{ \"BuildId\": \"editor-build\" }} > \"{manifest_path}\"\r\nexit /b 0\r\n");
+        var warnings = new List<string>();
+
+        var outcome = new UnrealBuildOrchestrator().Build(fixture.CreateRequest(verify_editor_modules: true), warnings.Add);
+
+        Assert.IsTrue(outcome.ForceRebuild);
+        CollectionAssert.AreEqual(outcome.Warnings.ToArray(), warnings);
+        Assert.AreEqual(2, warnings.Count);
+    }
+
+    [TestMethod]
     public void Build_adds_force_only_when_the_receipt_is_missing()
     {
         using var fixture = new UnrealBuildFixture();

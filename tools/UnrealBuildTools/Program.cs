@@ -12,11 +12,7 @@ public static class Program
 
         try
         {
-            var outcome = new UnrealBuildOrchestrator().Build(request);
-            foreach (var warning in outcome.Warnings)
-            {
-                Console.Error.WriteLine($"UnrealBuildTools: warning: {warning}");
-            }
+            new UnrealBuildOrchestrator().Build(request, WriteWarning);
 
             return 0;
         }
@@ -91,5 +87,10 @@ public static class Program
     {
         Console.Error.WriteLine($"UnrealBuildTools: {exception.Message}");
         return exit_code;
+    }
+
+    private static void WriteWarning(string warning)
+    {
+        Console.Error.WriteLine($"UnrealBuildTools: warning: {warning}");
     }
 }

@@ -6,10 +6,13 @@ namespace UnrealBuildTools.Tests;
 [TestClass]
 public sealed class EditorModuleManifestLocatorTests
 {
-    [TestMethod]
-    public void GetManifestName_returns_the_development_name()
+    [DataTestMethod]
+    [DataRow("Development")]
+    [DataRow("development")]
+    [DataRow("DEVELOPMENT")]
+    public void GetManifestName_returns_the_development_name_regardless_of_case(string configuration)
     {
-        Assert.AreEqual("UnrealEditor.modules", EditorModuleManifestLocator.GetManifestName("Development"));
+        Assert.AreEqual("UnrealEditor.modules", EditorModuleManifestLocator.GetManifestName(configuration));
     }
 
     [TestMethod]
@@ -18,10 +21,13 @@ public sealed class EditorModuleManifestLocatorTests
         Assert.AreEqual("UnrealEditor-Win64-DebugGame.modules", EditorModuleManifestLocator.GetManifestName("DebugGame"));
     }
 
-    [TestMethod]
-    public void GetTargetReceiptName_returns_the_development_name()
+    [DataTestMethod]
+    [DataRow("Development")]
+    [DataRow("development")]
+    [DataRow("DEVELOPMENT")]
+    public void GetTargetReceiptName_returns_the_development_name_regardless_of_case(string configuration)
     {
-        Assert.AreEqual("SandboxEditor.target", EditorModuleManifestLocator.GetTargetReceiptName("SandboxEditor", "Development"));
+        Assert.AreEqual("SandboxEditor.target", EditorModuleManifestLocator.GetTargetReceiptName("SandboxEditor", configuration));
     }
 
     [TestMethod]
