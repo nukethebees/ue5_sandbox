@@ -33,7 +33,8 @@ auto make_view(ml::tests::FDisplayEntityTestData const& entities,
              ids.empty() ? ids : ids.subspan(i, 1),
              entities.locations.get_const_view(i, 1),
              entities.velocities.get_const_view(i, 1),
-             entities.health_table.get_const_view(std::span{entities.health_indices}.subspan(i, 1)),
+             entities.health_table.get_const_view(std::span{entities.health_indices}.subspan(i, 1),
+                                                  std::span{entities.entity_ids}.subspan(i, 1)),
              std::span{entities.teams}.subspan(i, 1)});
     }
     return batches;

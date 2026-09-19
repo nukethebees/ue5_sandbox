@@ -1279,7 +1279,8 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
              {{moved_location.X - aabb_half_extents.X, 0.f, 0.f}}},
         };
         check_traces(authoritative, owner_cases);
-        authoritative.owners.health_table.get_view(owner.health_indices).health(0) = 0;
+        authoritative.owners.health_table.get_view(owner.health_indices, owner.entity_ids)
+            .health(0) = 0;
         std::vector<ExpectedTrace> const dead_owner_cases{
             {"Logical owner death filters cached geometry without rebuild",
              {{moved_location.X - trace_offset, 0.f, 0.f}},

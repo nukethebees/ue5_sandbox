@@ -23,7 +23,7 @@ auto make_view(::ioj::sim::TurretEntityData const& entities,
               data.entity_ids,
               data.locations,
               {},
-              health_table.get_const_view(data.health_indices),
+              health_table.get_const_view(data.health_indices, data.entity_ids),
               data.teams}}};
 }
 

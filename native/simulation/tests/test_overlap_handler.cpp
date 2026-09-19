@@ -81,7 +81,8 @@ TEST(OverlapHandler, SkipsUnsupportedDeadInvalidAndRetiredRecipients) {
 
     owners.combat_events.reset();
     auto const fighter_data{owners.fighters.get_const_view().columns()};
-    owners.health_table.get_view(fighter_data.health_indices).health(0) = 0;
+    owners.health_table.get_view(fighter_data.health_indices, fighter_data.entity_ids).health(0) =
+        0;
     handler.handle({retired_pair.get_const_view(), {}});
     EXPECT_EQ(owners.combat_events.all_events().num(), 0);
 }

@@ -114,12 +114,12 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     batch::resolve_damage_events(events.events_for(EntityType::Fighter),
                                  indexes,
                                  ids,
-                                 health_table.get_view(health_indices),
+                                 health_table.get_view(health_indices, ids),
                                  removals,
                                  deaths,
                                  ledger);
 
-    EXPECT_EQ(health_table.get_health(health_indices[0]), -6);
+    EXPECT_EQ(health_table.get_health(health_indices[0], ids[0]), -6);
     EXPECT_EQ(removals, std::vector<std::int32_t>{0});
     ASSERT_EQ(deaths.num(), 1);
     EXPECT_EQ(deaths.victims[0], victim);
