@@ -26,8 +26,9 @@ manager configuration is needed.
 ## Development validation
 
 Use the cheapest tier that validates the changed boundary. Native code is the normal inner loop;
-Unreal is an integration boundary, and the normal DebugGame workflow is the final merge-ready
-game/native gate.
+Unreal is an integration boundary. The final integration planner selects the relevant gate from
+the changed component graph; the normal DebugGame game/native workflow is reserved for
+Unreal-facing or cross-cutting candidates.
 
 ### Native inner loop
 

@@ -40,5 +40,6 @@ native/game validation excludes them.
 The normal Unreal presets build `dev-core`, the broad integration aggregate. The focused
 `debug-game-unit-tests` workflow instead builds `unreal-unit-tests` (`editor` plus `native-tests`)
 before running the mixed unit taxonomy. `debug-game-tests` retains `dev-core` as the merge-ready
-game/native integration gate. `debug-game-full-tests` is the explicit broad suite and also includes
-standalone developer-tool tests.
+game/native integration gate when the changed dependency surface requires broad Unreal validation;
+it is not a universal gate for standalone tooling or native-only changes. `debug-game-full-tests`
+is the explicit broad suite and also includes standalone developer-tool tests.

@@ -111,18 +111,34 @@ user authorization it acquires the jobserver's exclusive `integration/<baseBranc
 invokes:
 
 ```text
+agent-git integration-info [--json]
 agent-git integrate --authorized [--keep-branch] [--tool-tests]
+  [--maintainer-override --override-reason <reason>]
 ```
 
 `agent-git` verifies that the visible lease ID is a running `integration` job for the current
-worktree with the exact exclusive resource. It records local `dev`, rebases onto that commit,
-prints a range-diff and diff summary, and requires an exact review acknowledgement within 15
-minutes. It then runs `debug-game-tests`, any detected benchmark build, and the Development build.
-Pass `--tool-tests` for a tool-affecting feature to also run the explicit `tool-tests` workflow.
-The final `dev` update is an atomic compare-and-swap from the recorded SHA to a no-fast-forward
-merge commit. A mismatch reports both SHAs and aborts without retrying. Cleanup returns a `devN`
-worktree to its home branch and uses safe branch deletion; cleanup failure retains the branch and
-is reported separately from merge success.
+worktree with the exact exclusive resource. It pins local `dev`, rebases once, prints review
+material, and identifies the effective patch with a history-independent fingerprint. Review
+receipts follow that fingerprint across history-only rebases and are invalidated by changed source
+or conflict resolution.
+
+The changed component/dependency surface selects the final gates. AgentGit, jobserver, C# tools,
+scripts, and native code use focused gates without automatically scheduling Unreal. Unreal and
+Development validation is reserved for Unreal-facing and cross-cutting build changes. Successful
+receipts prevent rerunning an identical gate against the same candidate and environment.
+Component ownership and dependency expansion come from `.integration-gates.json` at the pinned
+base commit. The manifest selects only fixed built-in gate IDs; built-in minimum classifications
+and conservative handling of unknown paths prevent a feature from exempting itself. Pass
+`--tool-tests` to explicitly add the aggregate standalone developer-tool workflow.
+
+The final `dev` update is an atomic compare-and-swap from the pinned SHA to a no-fast-forward merge
+commit. A mismatch reports both SHAs and aborts without retrying. Cleanup returns a `devN` worktree
+to its home branch and uses safe branch deletion.
+
+An explicit maintainer instruction can use
+`integrate-feature -MaintainerOverride -OverrideReason '<reason>'`. The override never activates
+implicitly: it lists skipped gates, requires candidate-specific confirmation, retains cheap Git
+integrity checks, and records JSON audit data plus merge trailers.
 
 Prefix any mutation with `--dry-run` to perform full discovery and policy evaluation without
 executing a mutating Git command. Policy denial has a different exit code from invalid usage,

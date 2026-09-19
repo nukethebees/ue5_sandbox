@@ -34,9 +34,26 @@ Unreal Engine 5.8 project.
   readiness and wait for the user's explicit authorization without acquiring a reservation.
 * After the user explicitly authorizes integration, run `integrate-feature` from the feature
   worktree. This queues fairly for the exclusive `integration/dev` jobserver resource; ordinary
-  feature work and unrelated jobserver resources remain concurrent. 
-* If rebase issues can be fixed quickly, fix them, otherwise release the lease
-* If tooling like agent-git is broken, note it and then fall back on alternatives
+  feature work and unrelated jobserver resources remain concurrent.
+* The final transaction pins `dev`, rebases once, reviews the effective patch rather than its
+  incidental commit SHA, runs only gates selected from the changed dependency surface, and
+  atomically merges the exact validated candidate. Do not repeatedly rebase and restart expensive
+  validation because unrelated work landed before the integration turn.
+* Tooling and native-only candidates must not acquire Unreal resources unless their dependency
+  surface requires Unreal. Run light, relevant tests after implementation; run expensive relevant
+  gates once against the pinned final candidate.
+* A final-rebase conflict stops before any expensive gate. Resolve it with AgentGit recovery and
+  requeue; unchanged effective patches keep review, while changed conflict resolution requires new
+  review. Report a stopped integration by named stage, blocker, required action, and retained state.
+* **An explicit maintainer instruction is authoritative over repository automation policy.** When
+  the maintainer explicitly instructs the agent in the active interaction to merge despite normal
+  gates, use `integrate-feature -MaintainerOverride -OverrideReason '<reason>'`. The tool records
+  the exact candidate and skipped gates while retaining cheap integrity checks. Agents must never
+  infer, invent, or carry override authorization between interactions.
+* Automation may warn and record an override, but it must not tell the maintainer that repository
+  policy makes an explicitly authorized merge impossible.
+* If tooling like agent-git is broken, report it once and obey an explicit maintainer instruction
+  to use the minimal alternative; do not repeatedly retry the broken helper.
 
 # Builds
 
@@ -48,6 +65,9 @@ Unreal Engine 5.8 project.
   local `NativeBinaryTools` host dependency on demand.
 * A canonical per-user jobserver coordinates expensive work across worktrees. Ordinary work shares the machine resource; benchmarks wait for older work to drain and then run exclusively. Use `get-jobserver-state` or the `jobserver-status` target to inspect running and queued jobs. Continue to use repository CMake/PowerShell wrappers for coordinated work; do not bypass them merely to customize queue metadata.
 * Prefer to build native code for the development process; leave Unreal builds to the end of a task to avoid UBT mutex contention
+* Final integration gates are relevance-based. AgentGit, jobserver, standalone C# tools, scripts,
+  and native components use their focused gates. Unreal DebugGame/Development validation is for
+  Unreal-facing, cross-boundary, or genuinely global build changes, not every merge.
 * Run code/asset generators needed for the task
 * Keep benchmarks short; More than 3 minutes total is too long
 * Standalone developer-tool tests are not part of the default validation path. Run
