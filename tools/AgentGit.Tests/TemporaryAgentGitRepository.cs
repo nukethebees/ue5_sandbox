@@ -83,6 +83,19 @@ internal sealed class TemporaryAgentGitRepository : IDisposable
 
     public string RunGitAt(string working_directory, params string[] arguments)
     {
+        var result = RunGitAllowFailureAt(working_directory, arguments);
+        if (result.ExitCode != 0)
+        {
+            throw new AssertFailedException(
+                $"Git {string.Join(' ', arguments.Select(argument => $"[{argument}]"))} failed with " +
+                $"code {result.ExitCode}: {result.Error}");
+        }
+
+        return result.Output;
+    }
+
+    public GitFixtureResult RunGitAllowFailureAt(string working_directory, params string[] arguments)
+    {
         var start_info = new ProcessStartInfo
         {
             FileName = GitExecutable,
@@ -103,14 +116,7 @@ internal sealed class TemporaryAgentGitRepository : IDisposable
         var output = process.StandardOutput.ReadToEnd();
         var error = process.StandardError.ReadToEnd();
         process.WaitForExit();
-        if (process.ExitCode != 0)
-        {
-            throw new AssertFailedException(
-                $"Git {string.Join(' ', arguments.Select(argument => $"[{argument}]"))} failed with " +
-                $"code {process.ExitCode}: {error}");
-        }
-
-        return output;
+        return new GitFixtureResult(process.ExitCode, output, error);
     }
 
     public async Task<ApplicationResult> RunAgentGitAsync(string working_directory, params string[] arguments)
@@ -162,3 +168,5 @@ internal sealed class TemporaryAgentGitRepository : IDisposable
 }
 
 internal sealed record ApplicationResult(int ExitCode, string Output, string Error);
+
+internal sealed record GitFixtureResult(int ExitCode, string Output, string Error);

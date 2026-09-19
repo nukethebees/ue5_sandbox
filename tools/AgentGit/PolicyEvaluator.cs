@@ -8,13 +8,58 @@ internal sealed class PolicyEvaluator(RepositoryDiscovery discovery)
         string invocation_directory,
         CancellationToken cancellation_token = default)
     {
-        if (!context.Policy.Operations.TryGetValue(request.Operation, out var operation_policy))
+        var state = context.State;
+        if (request is RebaseAbortRequest)
         {
-            return Denied(request, context,
-                $"Operation '{CommandLine.OperationName(request.Operation)}' is not enabled by repository policy.");
+            return EvaluateRebaseAbort(request, context);
         }
 
-        var state = context.State;
+        var policy_operation = request is RebaseContinueRequest
+            ? AgentGitOperation.RebaseBase
+            : request.Operation;
+        if (!context.Policy.Operations.TryGetValue(policy_operation, out var operation_policy))
+        {
+            return Denied(request, context,
+                $"Operation '{CommandLine.OperationName(policy_operation)}' is not enabled by repository policy.");
+        }
+
+        var recovery_staging = request is AddRequest or AddAllRequest &&
+            state.OperationState == RepositoryOperationState.Rebase;
+        if (request is RebaseContinueRequest || recovery_staging)
+        {
+            if (state.OperationState != RepositoryOperationState.Rebase ||
+                state.RebaseRecovery.Availability != RebaseRecoveryAvailability.Available ||
+                state.RebaseRecovery.Marker is null)
+            {
+                return Denied(request, context,
+                    $"AgentGit rebase recovery is unavailable: {state.RebaseRecovery.Description}.");
+            }
+
+            var original_branch = state.RebaseRecovery.Marker.OriginalBranch;
+            var original_classification = context.Policy.Classify(original_branch);
+            if (original_classification != BranchClassification.Feature ||
+                !operation_policy.AllowedCurrentGroups.Contains(original_classification))
+            {
+                return Denied(request, context,
+                    $"Operation '{CommandLine.OperationName(request.Operation)}' is forbidden for " +
+                    $"original branch '{original_branch}'.");
+            }
+
+            if (request is RebaseContinueRequest)
+            {
+                return Allowed(request, context,
+                    $"AgentGit-owned rebase of feature branch '{original_branch}' may continue.");
+            }
+
+            return request switch
+            {
+                AddRequest add => await EvaluateAddAsync(
+                    add, context, invocation_directory, cancellation_token),
+                AddAllRequest add_all => await EvaluateAddAllAsync(add_all, context, cancellation_token),
+                _ => throw new ArgumentOutOfRangeException(nameof(request), request, "Unknown recovery request."),
+            };
+        }
+
         if (state.CurrentBranch is null || state.CurrentClassification is null)
         {
             return Denied(request, context, "Mutating operations are forbidden in detached HEAD state.");
@@ -50,10 +95,29 @@ internal sealed class PolicyEvaluator(RepositoryDiscovery discovery)
                 create_request, context, operation_policy, cancellation_token),
             RebaseBaseRequest rebase_request => await EvaluateRebaseBaseAsync(
                 rebase_request, context, cancellation_token),
+            RebaseContinueRequest => throw new InvalidOperationException("Rebase continuation must use recovery evaluation."),
+            RebaseAbortRequest => throw new InvalidOperationException("Rebase abort must use recovery evaluation."),
             BranchDeleteRequest delete_request => await EvaluateBranchDeleteAsync(
                 delete_request, context, operation_policy, cancellation_token),
             _ => throw new ArgumentOutOfRangeException(nameof(request), request, "Unknown mutation request."),
         };
+    }
+
+    private static EvaluatedOperation EvaluateRebaseAbort(
+        MutationRequest request,
+        RepositoryContext context)
+    {
+        var recovery = context.State.RebaseRecovery;
+        if (context.State.OperationState != RepositoryOperationState.Rebase ||
+            !recovery.IsOwned ||
+            recovery.Marker is null)
+        {
+            return Denied(request, context,
+                $"AgentGit rebase abort is unavailable: {recovery.Description}.");
+        }
+
+        return Allowed(request, context,
+            $"AgentGit-owned rebase of feature branch '{recovery.Marker.OriginalBranch}' may be aborted.");
     }
 
     private async Task<EvaluatedOperation> EvaluateAddAsync(

@@ -101,6 +101,8 @@ agent-git commit -m <message>
 agent-git switch <branch>
 agent-git switch-create <branch>
 agent-git rebase-base
+agent-git rebase-continue
+agent-git rebase-abort
 agent-git branch-delete <branch>
 ```
 
@@ -133,6 +135,40 @@ branch. Rebase-base uses only the configured local base branch and stops on conf
 deletion remains available while on a protected branch, but requires a clean worktree, an unowned
 feature branch, proven ancestry into the base, and Git's safe `branch -d` check.
 
+### Rebase conflict recovery
+
+If `rebase-base` stops at a conflict, resolve the files normally and use the existing staging
+commands before continuing:
+
+```text
+agent-git rebase-base
+# resolve files
+agent-git add <resolved-path>...
+# or: agent-git add-all
+agent-git rebase-continue
+```
+
+Repeat the resolve, stage, and continue steps if another commit conflicts. To abandon the rebase,
+use `agent-git rebase-abort`. During recovery, only `add`, `add-all`, `rebase-continue`, and
+`rebase-abort` receive narrow exceptions to the normal operation-in-progress and detached-HEAD
+rules. Commit, switch, switch-create, branch-delete, and another rebase-base remain denied.
+
+Recovery is available only for a rebase started by AgentGit's constrained
+`rebase-base` operation. Before starting Git, AgentGit records versioned provenance in the current
+worktree's Git administrative directory. After a conflict, it binds that marker to Git's rebase
+directory and validates the original feature branch and HEAD, exact base commit, protected policy
+commit, repository identity, Git's rebase metadata, and the fixed pick plan. The marker is not a
+policy authority: continuation still requires the current protected policy and relevant refs to
+match. Abort remains available for a proven owned rebase if policy or the base ref moves, because
+it only restores the recorded branch and pre-rebase HEAD.
+
+An externally started rebase, malformed or mismatched provenance, changed rebase plan, or missing
+binding is reported as unavailable and cannot use any recovery command or the staging exception.
+A marker without an active matching rebase grants no authority; a later valid `rebase-base` safely
+replaces that stale marker. Successful completion or abort removes the marker. Status reports
+whether an active rebase has available, abort-only, or unavailable AgentGit recovery and, for an
+owned rebase, identifies its original branch and recorded base.
+
 ## Intentionally unsupported
 
 There is no raw/exec/passthrough command, repository/config/Git-path override, general merge, push,
@@ -143,6 +179,9 @@ human-approval route. Raw read-only Git remains suitable
 for inspection. Partial-clone/promisor repositories, custom LFS extensions, and redirected LFS
 storage are also unsupported because they can introduce implicit remote processes or filesystem
 writes outside the registered Git state.
+
+Rebase skip is deliberately unsupported: dropping a commit is not part of the unconditional
+recovery surface. AgentGit also never adopts or aborts a rebase started through raw Git.
 
 The tool invokes a pinned Git executable directly with structured arguments and no shell. It uses
 a controlled environment, explicitly enables Git's NTFS and HFS path protections, disables optional

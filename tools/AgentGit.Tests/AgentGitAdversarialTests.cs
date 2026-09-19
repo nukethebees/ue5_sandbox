@@ -227,7 +227,7 @@ public sealed class AgentGitAdversarialTests
         }
     }
 
-    private static void CreateDirectoryLink(string link, string target)
+    internal static void CreateDirectoryLink(string link, string target)
     {
         if (!OperatingSystem.IsWindows())
         {
@@ -258,7 +258,7 @@ public sealed class AgentGitAdversarialTests
         }
     }
 
-    private static void RemoveDirectoryLink(string link)
+    internal static void RemoveDirectoryLink(string link)
     {
         if (!OperatingSystem.IsWindows())
         {

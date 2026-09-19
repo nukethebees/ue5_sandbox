@@ -10,6 +10,8 @@ internal enum AgentGitOperation
     Switch,
     SwitchCreate,
     RebaseBase,
+    RebaseContinue,
+    RebaseAbort,
     BranchDelete,
 }
 
@@ -65,6 +67,12 @@ internal sealed record SwitchCreateRequest(bool DryRun, string Branch)
 internal sealed record RebaseBaseRequest(bool DryRun)
     : MutationRequest(DryRun, AgentGitOperation.RebaseBase);
 
+internal sealed record RebaseContinueRequest(bool DryRun)
+    : MutationRequest(DryRun, AgentGitOperation.RebaseContinue);
+
+internal sealed record RebaseAbortRequest(bool DryRun)
+    : MutationRequest(DryRun, AgentGitOperation.RebaseAbort);
+
 internal sealed record BranchDeleteRequest(bool DryRun, string Branch)
     : MutationRequest(DryRun, AgentGitOperation.BranchDelete);
 
@@ -75,6 +83,37 @@ internal sealed record WorkingTreeStatus(
     bool HasConflicts)
 {
     public bool IsClean => !HasStagedChanges && !HasUnstagedChanges && !HasUntrackedFiles && !HasConflicts;
+}
+
+internal enum RebaseRecoveryAvailability
+{
+    None,
+    Stale,
+    Unavailable,
+    AbortOnly,
+    Available,
+}
+
+internal sealed record RebaseRecoveryMarker(
+    int Version,
+    string Phase,
+    string Token,
+    string RepositoryId,
+    string OriginalBranch,
+    string OriginalHead,
+    string BaseBranch,
+    string BaseCommit,
+    string PolicyCommit,
+    string? PlanHash);
+
+internal sealed record RebaseRecoveryState(
+    RebaseRecoveryAvailability Availability,
+    RebaseRecoveryMarker? Marker,
+    string? Fingerprint,
+    string Description)
+{
+    public bool IsOwned => Availability is RebaseRecoveryAvailability.Available or
+        RebaseRecoveryAvailability.AbortOnly;
 }
 
 internal sealed record RepositoryState(
@@ -89,6 +128,7 @@ internal sealed record RepositoryState(
     string MutationFingerprint,
     WorkingTreeStatus Status,
     RepositoryOperationState OperationState,
+    RebaseRecoveryState RebaseRecovery,
     IReadOnlyList<Worktree> Worktrees,
     string? HomeBranch);
 

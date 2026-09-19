@@ -73,6 +73,7 @@ internal sealed class AgentGitApplication(
         standard_output.WriteLine($"Untracked files: {YesNo(context.State.Status.HasUntrackedFiles)}");
         standard_output.WriteLine($"Conflicts: {YesNo(context.State.Status.HasConflicts)}");
         standard_output.WriteLine($"Git operation: {context.State.OperationState.ToString().ToLowerInvariant()}");
+        WriteRebaseRecovery(context.State.RebaseRecovery);
         return ExitCodes.Success;
     }
 
@@ -158,6 +159,12 @@ internal sealed class AgentGitApplication(
 
         WriteInvocation(evaluated);
         var result = await executor.ExecuteAsync(evaluated, cancellation_token);
+        if (request is RebaseBaseRequest or RebaseContinueRequest or RebaseAbortRequest)
+        {
+            var post_context = await discovery.DiscoverAsync(trust, working_directory, cancellation_token);
+            await executor.FinalizeAsync(evaluated, result, post_context, cancellation_token);
+        }
+
         if (result.StandardOutput.Length > 0)
         {
             standard_output.Write(Encoding.UTF8.GetString(result.StandardOutput));
@@ -209,12 +216,34 @@ internal sealed class AgentGitApplication(
             AgentGitOperation.Switch => new SwitchRequest(true, request.Target!),
             AgentGitOperation.SwitchCreate => new SwitchCreateRequest(true, request.Target!),
             AgentGitOperation.RebaseBase => new RebaseBaseRequest(true),
+            AgentGitOperation.RebaseContinue => new RebaseContinueRequest(true),
+            AgentGitOperation.RebaseAbort => new RebaseAbortRequest(true),
             AgentGitOperation.BranchDelete => new BranchDeleteRequest(true, request.Target!),
             _ => throw new ArgumentOutOfRangeException(nameof(request), request, "Unknown policy probe."),
         };
     }
 
     private static string YesNo(bool value) => value ? "yes" : "no";
+
+    private void WriteRebaseRecovery(RebaseRecoveryState recovery)
+    {
+        standard_output.WriteLine($"AgentGit rebase recovery: {recovery.Availability switch
+        {
+            RebaseRecoveryAvailability.None => "none",
+            RebaseRecoveryAvailability.Stale => "unavailable (stale metadata)",
+            RebaseRecoveryAvailability.Unavailable => "unavailable (not AgentGit-owned)",
+            RebaseRecoveryAvailability.AbortOnly => "abort only",
+            RebaseRecoveryAvailability.Available => "available",
+            _ => throw new ArgumentOutOfRangeException(),
+        }}");
+        if (recovery.Marker is null)
+        {
+            return;
+        }
+
+        standard_output.WriteLine($"Original branch: {recovery.Marker.OriginalBranch}");
+        standard_output.WriteLine($"Base: {recovery.Marker.BaseBranch} @ {recovery.Marker.BaseCommit}");
+    }
 
     private static bool PathsEqual(string left, string right)
     {

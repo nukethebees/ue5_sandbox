@@ -62,4 +62,17 @@ public sealed class CommandLineTests
             out _,
             out _));
     }
+
+    [TestMethod]
+    public void TryParse_accepts_only_argument_free_rebase_recovery_commands()
+    {
+        Assert.IsTrue(CommandLine.TryParse(["rebase-continue"], out var continue_request, out _));
+        Assert.IsInstanceOfType<RebaseContinueRequest>(continue_request);
+        Assert.IsTrue(CommandLine.TryParse(["--dry-run", "rebase-abort"], out var abort_request, out _));
+        Assert.IsInstanceOfType<RebaseAbortRequest>(abort_request);
+
+        Assert.IsFalse(CommandLine.TryParse(["rebase-continue", "dev"], out _, out _));
+        Assert.IsFalse(CommandLine.TryParse(["rebase-abort", "--force"], out _, out _));
+        Assert.IsFalse(CommandLine.TryParse(["rebase-skip"], out _, out _));
+    }
 }

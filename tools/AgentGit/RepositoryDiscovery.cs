@@ -6,6 +6,8 @@ namespace AgentGit;
 
 internal sealed class RepositoryDiscovery(GitClient git)
 {
+    internal RebaseRecoveryStore RebaseRecovery { get; } = new(git);
+
     public async Task<RepositoryContext> DiscoverAsync(
         TrustContext trust,
         string start_directory,
@@ -130,6 +132,17 @@ internal sealed class RepositoryDiscovery(GitClient git)
 
         var home_branch = await FindHomeBranchAsync(root, policy, cancellation_token);
         var operation_state = DiscoverOperationState(git_directory);
+        var rebase_recovery = await RebaseRecovery.DiscoverAsync(
+            registration,
+            policy,
+            root,
+            git_directory,
+            head,
+            current_branch,
+            base_commit,
+            policy_commit,
+            operation_state,
+            cancellation_token);
         var state = new RepositoryState(
             root,
             git_directory,
@@ -142,6 +155,7 @@ internal sealed class RepositoryDiscovery(GitClient git)
             status_snapshot.Fingerprint,
             status_snapshot.Status,
             operation_state,
+            rebase_recovery,
             worktrees,
             home_branch);
         return new RepositoryContext(registration, policy, state);
@@ -179,6 +193,29 @@ internal sealed class RepositoryDiscovery(GitClient git)
         {
             throw new RepositoryStateException(
                 "The index or working tree changed after policy evaluation; no mutation was executed.");
+        }
+
+        if (state.RebaseRecovery.Fingerprint is not null)
+        {
+            var recovery = await RebaseRecovery.DiscoverAsync(
+                context.Registration,
+                context.Policy,
+                state.WorktreeRoot,
+                state.GitDirectory,
+                state.HeadCommit,
+                state.CurrentBranch,
+                state.BaseCommit,
+                state.PolicyCommit,
+                state.OperationState,
+                cancellation_token);
+            if (!string.Equals(
+                    recovery.Fingerprint,
+                    state.RebaseRecovery.Fingerprint,
+                    StringComparison.Ordinal))
+            {
+                throw new RepositoryStateException(
+                    "AgentGit rebase recovery metadata changed after policy evaluation; no mutation was executed.");
+            }
         }
     }
 

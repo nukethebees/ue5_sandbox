@@ -23,7 +23,8 @@ internal sealed class GitClient
         string working_directory,
         IReadOnlyList<string> arguments,
         TimeSpan? timeout = null,
-        CancellationToken cancellation_token = default)
+        CancellationToken cancellation_token = default,
+        IReadOnlyDictionary<string, string>? environment_override = null)
     {
         var full_arguments = new List<string>
         {
@@ -62,7 +63,7 @@ internal sealed class GitClient
                 trust.GitExecutable,
                 full_arguments,
                 Path.GetFullPath(working_directory),
-                environment,
+                environment_override ?? environment,
                 timeout ?? query_timeout),
             cancellation_token);
     }
@@ -87,6 +88,25 @@ internal sealed class GitClient
             arguments,
             TimeSpan.FromMinutes(30),
             cancellation_token);
+    }
+
+    public async Task<ProcessResult> RunMutationWithNoOpEditorAsync(
+        string working_directory,
+        IReadOnlyList<string> arguments,
+        CancellationToken cancellation_token = default)
+    {
+        var no_op_editor_environment = new Dictionary<string, string>(
+            environment,
+            StringComparer.OrdinalIgnoreCase)
+        {
+            ["GIT_EDITOR"] = "true",
+        };
+        return await RunAsync(
+            working_directory,
+            arguments,
+            TimeSpan.FromMinutes(30),
+            cancellation_token,
+            no_op_editor_environment);
     }
 
     public static void EnsureSuccess(ProcessResult result, IReadOnlyList<string> arguments)

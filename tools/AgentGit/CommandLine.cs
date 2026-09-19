@@ -7,13 +7,15 @@ internal static class CommandLine
           agent-git status
           agent-git branch-info
           agent-git integrate --authorized [--keep-branch]
-          agent-git policy <add|add-all|commit|switch|switch-create|rebase-base|branch-delete> [branch]
+          agent-git policy <add|add-all|commit|switch|switch-create|rebase-base|rebase-continue|rebase-abort|branch-delete> [branch]
           agent-git [--dry-run] add <path>...
           agent-git [--dry-run] add-all
           agent-git [--dry-run] commit -m <message>
           agent-git [--dry-run] switch <branch>
           agent-git [--dry-run] switch-create <branch>
           agent-git [--dry-run] rebase-base
+          agent-git [--dry-run] rebase-continue
+          agent-git [--dry-run] rebase-abort
           agent-git [--dry-run] branch-delete <branch>
         """;
 
@@ -100,6 +102,12 @@ internal static class CommandLine
             case "rebase-base" when remaining.Length == 0:
                 request = new RebaseBaseRequest(dry_run);
                 return true;
+            case "rebase-continue" when remaining.Length == 0:
+                request = new RebaseContinueRequest(dry_run);
+                return true;
+            case "rebase-abort" when remaining.Length == 0:
+                request = new RebaseAbortRequest(dry_run);
+                return true;
             case "branch-delete" when remaining is [var branch] && !string.IsNullOrWhiteSpace(branch):
                 request = new BranchDeleteRequest(dry_run, branch);
                 return true;
@@ -145,6 +153,8 @@ internal static class CommandLine
             "switch" => AgentGitOperation.Switch,
             "switch-create" => AgentGitOperation.SwitchCreate,
             "rebase-base" => AgentGitOperation.RebaseBase,
+            "rebase-continue" => AgentGitOperation.RebaseContinue,
+            "rebase-abort" => AgentGitOperation.RebaseAbort,
             "branch-delete" => AgentGitOperation.BranchDelete,
             _ => (AgentGitOperation?)null,
         };
@@ -162,6 +172,8 @@ internal static class CommandLine
             AgentGitOperation.Switch => "switch",
             AgentGitOperation.SwitchCreate => "switch-create",
             AgentGitOperation.RebaseBase => "rebase-base",
+            AgentGitOperation.RebaseContinue => "rebase-continue",
+            AgentGitOperation.RebaseAbort => "rebase-abort",
             AgentGitOperation.BranchDelete => "branch-delete",
             _ => throw new ArgumentOutOfRangeException(nameof(operation), operation, "Unknown agent-git operation."),
         };

@@ -190,10 +190,16 @@ public sealed class AgentGitOperationTests
         fixture.RunGit("merge-base", "--is-ancestor", "dev", "feature/rebase");
         Assert.AreEqual(original_feature, fixture.RunGit("rev-parse", "sibling").Trim());
         Assert.AreNotEqual(original_feature, fixture.RunGit("rev-parse", "feature/rebase").Trim());
+        var git_directory = Path.GetFullPath(fixture.RunGitAt(
+            feature,
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-dir").Trim());
+        Assert.IsFalse(File.Exists(Path.Combine(git_directory, RebaseRecoveryStore.MarkerFileName)));
     }
 
     [TestMethod]
-    public async Task Rebase_base_stops_on_conflict_without_automatic_recovery()
+    public async Task Rebase_base_stops_on_conflict_and_establishes_owned_recovery()
     {
         using var fixture = new TemporaryAgentGitRepository();
         var feature = fixture.CreateWorktree("feature/conflict", "dev1");
@@ -211,6 +217,8 @@ public sealed class AgentGitOperationTests
         Assert.IsTrue(
             Directory.Exists(Path.Combine(fixture.RunGitAt(feature, "rev-parse", "--git-dir").Trim(), "rebase-merge")) ||
             Directory.Exists(Path.Combine(fixture.RunGitAt(feature, "rev-parse", "--git-dir").Trim(), "rebase-apply")));
+        var status = await fixture.RunAgentGitAsync(feature, "status");
+        StringAssert.Contains(status.Output, "AgentGit rebase recovery: available");
     }
 
     [TestMethod]
