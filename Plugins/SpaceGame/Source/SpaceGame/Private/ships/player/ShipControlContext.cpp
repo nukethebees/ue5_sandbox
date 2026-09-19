@@ -251,6 +251,10 @@ void FShipControlContext::neutralise_ship_input() {
     turn_input_ = FVector2D::ZeroVector;
     pointer_turn_position_ = FVector2D::ZeroVector;
     pointer_turn_engaged_ = false;
+    throttle_gesture_.reset();
+    brake_gesture_.reset();
+    throttle_power_press_active_ = false;
+    brake_power_press_active_ = false;
 
     auto* const ship{ship_.Get()};
     if (!IsValid(ship) || !ship->has_simulation()) {
@@ -270,8 +274,6 @@ void FShipControlContext::neutralise_ship_input() {
     ship->stop_boost();
     ship->stop_brake();
     ship->stop_fire_laser();
-    throttle_gesture_.reset();
-    brake_gesture_.reset();
 }
 
 auto FShipControlContext::get_ship() const -> ATestSpaceShip* {
@@ -429,21 +431,53 @@ void FShipControlContext::stop_roll(FInputActionValue const& value) {
     }
 }
 void FShipControlContext::start_throttle(FInputActionValue const& value) {
+    start_throttle_at(value.Get<float>(), FPlatformTime::Seconds());
+}
+void FShipControlContext::start_throttle_at(float const input, double const time_seconds) {
     if (auto* const ship{get_ship()}) {
-        if (throttle_gesture_.begin_press(FPlatformTime::Seconds())) {
-            ship->start_boost();
+        if (ship->get_control_mode() == ETestSpaceShipControlMode::Power) {
+            throttle_power_press_active_ = true;
+            if (throttle_gesture_.begin_press(time_seconds)) {
+                ship->start_boost();
+            }
+            ship->set_throttle(input);
+            return;
         }
-        ship->set_throttle(value.Get<float>());
+
+        throttle_power_press_active_ = false;
+        throttle_gesture_.reset();
+        ship->start_boost();
     }
 }
 void FShipControlContext::set_throttle(FInputActionValue const& value) {
+    set_throttle_value(value.Get<float>());
+}
+void FShipControlContext::set_throttle_value(float const input) {
     if (auto* const ship{get_ship()}) {
-        ship->set_throttle(value.Get<float>());
+        if (ship->get_control_mode() == ETestSpaceShipControlMode::Power) {
+            ship->set_throttle(input);
+            return;
+        }
+
+        throttle_power_press_active_ = false;
+        throttle_gesture_.reset();
+        ship->start_boost();
     }
 }
 void FShipControlContext::stop_throttle() {
-    throttle_gesture_.end_press(FPlatformTime::Seconds());
-    if (auto* const ship{get_ship()}) {
+    stop_throttle_at(FPlatformTime::Seconds());
+}
+void FShipControlContext::stop_throttle_at(double const time_seconds) {
+    auto* const ship{get_ship()};
+    if (throttle_power_press_active_ && ship != nullptr &&
+        ship->get_control_mode() == ETestSpaceShipControlMode::Power) {
+        throttle_gesture_.end_press(time_seconds);
+    } else {
+        throttle_gesture_.reset();
+    }
+    throttle_power_press_active_ = false;
+
+    if (ship != nullptr) {
         ship->set_throttle(0.f);
         ship->stop_boost();
     }
@@ -459,16 +493,37 @@ void FShipControlContext::stop_boost() {
     }
 }
 void FShipControlContext::start_brake() {
+    start_brake_at(FPlatformTime::Seconds());
+}
+void FShipControlContext::start_brake_at(double const time_seconds) {
     if (auto* const ship{get_ship()}) {
         ship->start_brake();
-        if (brake_gesture_.begin_press(FPlatformTime::Seconds())) {
+        if (ship->get_control_mode() != ETestSpaceShipControlMode::Power) {
+            brake_power_press_active_ = false;
+            brake_gesture_.reset();
+            return;
+        }
+
+        brake_power_press_active_ = true;
+        if (brake_gesture_.begin_press(time_seconds)) {
             ship->start_emergency_brake();
         }
     }
 }
 void FShipControlContext::stop_brake() {
-    brake_gesture_.end_press(FPlatformTime::Seconds());
-    if (auto* const ship{get_ship()}) {
+    stop_brake_at(FPlatformTime::Seconds());
+}
+void FShipControlContext::stop_brake_at(double const time_seconds) {
+    auto* const ship{get_ship()};
+    if (brake_power_press_active_ && ship != nullptr &&
+        ship->get_control_mode() == ETestSpaceShipControlMode::Power) {
+        brake_gesture_.end_press(time_seconds);
+    } else {
+        brake_gesture_.reset();
+    }
+    brake_power_press_active_ = false;
+
+    if (ship != nullptr) {
         ship->stop_brake();
     }
 }

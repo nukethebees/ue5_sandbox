@@ -12,6 +12,7 @@ class UInputAction;
 class UInputMappingContext;
 class IEnhancedInputSubsystemInterface;
 struct FInputActionValue;
+struct FShipControlContextTestAccess;
 
 struct SPACEGAME_API FShipControlContext {
   public:
@@ -68,12 +69,17 @@ struct SPACEGAME_API FShipControlContext {
     void roll(FInputActionValue const& value);
     void stop_roll(FInputActionValue const& value);
     void start_throttle(FInputActionValue const& value);
+    void start_throttle_at(float input, double time_seconds);
     void set_throttle(FInputActionValue const& value);
+    void set_throttle_value(float input);
     void stop_throttle();
+    void stop_throttle_at(double time_seconds);
     void start_boost();
     void stop_boost();
     void start_brake();
+    void start_brake_at(double time_seconds);
     void stop_brake();
+    void stop_brake_at(double time_seconds);
     void cycle_input_mapping_context();
     void start_fire_laser();
     void stop_fire_laser();
@@ -95,6 +101,10 @@ struct SPACEGAME_API FShipControlContext {
     bool pointer_turn_engaged_{false};
     FShipInputGestureRecognizer throttle_gesture_{};
     FShipInputGestureRecognizer brake_gesture_{};
+    bool throttle_power_press_active_{false};
+    bool brake_power_press_active_{false};
     bool initialised_{false};
     bool bound_{false};
+
+    friend struct FShipControlContextTestAccess;
 };
