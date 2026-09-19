@@ -414,6 +414,7 @@ void ATestSpaceShip::apply_space_dust_debug_preset(FStringView const preset) {
         settings.minimum_visible_speed = 500.0f;
         settings.full_visible_speed = 4000.0f;
         settings.streak_seconds = 0.02f;
+        settings.lateral_streak_scale = FMath::Min(settings.lateral_streak_scale, 0.35f);
         settings.maximum_streak_pixels = 32.0f;
     } else {
         UE_LOG(LogSandbox,

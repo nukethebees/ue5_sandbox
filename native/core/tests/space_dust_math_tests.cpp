@@ -12,6 +12,7 @@ TEST(NativeCoreSpaceDustMath, NormalisesTuningIdempotently) {
     tuning.minimum_visible_speed = -100.0f;
     tuning.full_visible_speed = -200.0f;
     tuning.streak_seconds = -0.1f;
+    tuning.lateral_streak_scale = -0.35f;
     tuning.maximum_streak_pixels = -3.0f;
     tuning.volume_edge_fade_fraction = 1.0f;
 
@@ -24,10 +25,17 @@ TEST(NativeCoreSpaceDustMath, NormalisesTuningIdempotently) {
     EXPECT_FLOAT_EQ(normalised.volume_dimensions.Z, 1.0f);
     EXPECT_FLOAT_EQ(normalised.brightness, 0.0f);
     EXPECT_GT(normalised.full_visible_speed, normalised.minimum_visible_speed);
+    EXPECT_FLOAT_EQ(normalised.lateral_streak_scale, 0.0f);
     EXPECT_FLOAT_EQ(normalised.volume_edge_fade_fraction, 0.49f);
     EXPECT_EQ(normalised_again.particle_count, normalised.particle_count);
     EXPECT_EQ(normalised_again.volume_dimensions.X, normalised.volume_dimensions.X);
     EXPECT_EQ(normalised_again.full_visible_speed, normalised.full_visible_speed);
+}
+
+TEST(NativeCoreSpaceDustMath, UsesSubtleDefaultLateralStreakScale) {
+    ml::space_dust::Tuning const tuning;
+
+    EXPECT_FLOAT_EQ(tuning.lateral_streak_scale, 0.35f);
 }
 
 TEST(NativeCoreSpaceDustMath, WrapsLargeNegativeAndPeriodicLocations) {

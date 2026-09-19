@@ -12,6 +12,7 @@ float SpaceDustBrightness;
 float SpaceDustMinimumVisibleSpeed;
 float SpaceDustFullVisibleSpeed;
 float SpaceDustStreakSeconds;
+float SpaceDustLateralStreakScale;
 float SpaceDustMaximumStreakPixels;
 float SpaceDustVolumeEdgeFadeFraction;
 
@@ -74,9 +75,9 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
         space_dust_wrap(space_dust_random_position(InstanceId) * SpaceDustVolumeDimensions -
                             SpaceDustTranslationPhase,
                         SpaceDustVolumeDimensions);
-    float const Speed = length(SpaceDustWorldVelocity);
+    float const TotalSpeed = length(SpaceDustWorldVelocity);
     float const SpeedVisibility =
-        saturate((Speed - SpaceDustMinimumVisibleSpeed) /
+        saturate((TotalSpeed - SpaceDustMinimumVisibleSpeed) /
                  max(SpaceDustFullVisibleSpeed - SpaceDustMinimumVisibleSpeed, 0.001));
     float3 const ProjectedVelocity =
         SpaceDustWorldVelocity -
@@ -94,7 +95,8 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
     float const WorldUnitsPerPixel = ProjectionDepth / max(ViewToPixels, 0.0001);
     float const HalfThickness = max(SpaceDustParticleSize * 0.5, WorldUnitsPerPixel * 0.5);
     float const RequestedLength =
-        max(SpaceDustParticleSize, ProjectedSpeed * SpaceDustStreakSeconds);
+        max(SpaceDustParticleSize,
+            ProjectedSpeed * SpaceDustLateralStreakScale * SpaceDustStreakSeconds);
     float const Length = min(RequestedLength, SpaceDustMaximumStreakPixels * WorldUnitsPerPixel);
     float const HalfLength = Length * 0.5;
     float3 const Centre = RelativePosition + StreakDirection * HalfLength;

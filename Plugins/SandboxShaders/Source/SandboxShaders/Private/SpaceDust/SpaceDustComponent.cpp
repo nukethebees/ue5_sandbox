@@ -32,6 +32,7 @@ struct FSpaceDustRenderParameters {
     float minimum_visible_speed{};
     float full_visible_speed{};
     float streak_seconds{};
+    float lateral_streak_scale{};
     float maximum_streak_pixels{};
     float volume_edge_fade_fraction{};
 };
@@ -50,6 +51,7 @@ auto make_render_parameters(FSpaceDustSettings const& settings,
         .minimum_visible_speed = settings.minimum_visible_speed,
         .full_visible_speed = settings.full_visible_speed,
         .streak_seconds = settings.streak_seconds,
+        .lateral_streak_scale = settings.lateral_streak_scale,
         .maximum_streak_pixels = settings.maximum_streak_pixels,
         .volume_edge_fade_fraction = settings.volume_edge_fade_fraction,
     };
@@ -100,6 +102,7 @@ class FSpaceDustVertexFactoryShaderParameters final : public FVertexFactoryShade
         minimum_visible_speed_.Bind(parameter_map, TEXT("SpaceDustMinimumVisibleSpeed"));
         full_visible_speed_.Bind(parameter_map, TEXT("SpaceDustFullVisibleSpeed"));
         streak_seconds_.Bind(parameter_map, TEXT("SpaceDustStreakSeconds"));
+        lateral_streak_scale_.Bind(parameter_map, TEXT("SpaceDustLateralStreakScale"));
         maximum_streak_pixels_.Bind(parameter_map, TEXT("SpaceDustMaximumStreakPixels"));
         volume_edge_fade_fraction_.Bind(parameter_map, TEXT("SpaceDustVolumeEdgeFadeFraction"));
     }
@@ -124,6 +127,7 @@ class FSpaceDustVertexFactoryShaderParameters final : public FVertexFactoryShade
     LAYOUT_FIELD(FShaderParameter, minimum_visible_speed_);
     LAYOUT_FIELD(FShaderParameter, full_visible_speed_);
     LAYOUT_FIELD(FShaderParameter, streak_seconds_);
+    LAYOUT_FIELD(FShaderParameter, lateral_streak_scale_);
     LAYOUT_FIELD(FShaderParameter, maximum_streak_pixels_);
     LAYOUT_FIELD(FShaderParameter, volume_edge_fade_fraction_);
 };
@@ -182,6 +186,7 @@ void FSpaceDustVertexFactoryShaderParameters::GetElementShaderBindings(
     shader_bindings.Add(minimum_visible_speed_, parameters.minimum_visible_speed);
     shader_bindings.Add(full_visible_speed_, parameters.full_visible_speed);
     shader_bindings.Add(streak_seconds_, parameters.streak_seconds);
+    shader_bindings.Add(lateral_streak_scale_, parameters.lateral_streak_scale);
     shader_bindings.Add(maximum_streak_pixels_, parameters.maximum_streak_pixels);
     shader_bindings.Add(volume_edge_fade_fraction_, parameters.volume_edge_fade_fraction);
 }
@@ -305,6 +310,7 @@ auto to_native_settings(FSpaceDustSettings const& settings) -> ml::space_dust::T
         .minimum_visible_speed = settings.minimum_visible_speed,
         .full_visible_speed = settings.full_visible_speed,
         .streak_seconds = settings.streak_seconds,
+        .lateral_streak_scale = settings.lateral_streak_scale,
         .maximum_streak_pixels = settings.maximum_streak_pixels,
         .volume_edge_fade_fraction = settings.volume_edge_fade_fraction,
     };
@@ -325,6 +331,7 @@ auto apply_native_settings(FSpaceDustSettings settings, ml::space_dust::Tuning c
     settings.minimum_visible_speed = native.minimum_visible_speed;
     settings.full_visible_speed = native.full_visible_speed;
     settings.streak_seconds = native.streak_seconds;
+    settings.lateral_streak_scale = native.lateral_streak_scale;
     settings.maximum_streak_pixels = native.maximum_streak_pixels;
     settings.volume_edge_fade_fraction = native.volume_edge_fade_fraction;
     return settings;

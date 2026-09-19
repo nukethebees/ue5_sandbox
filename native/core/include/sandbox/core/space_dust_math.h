@@ -21,6 +21,7 @@ struct Tuning {
     float minimum_visible_speed{1000.0f};
     float full_visible_speed{8000.0f};
     float streak_seconds{0.0125f};
+    float lateral_streak_scale{0.35f};
     float maximum_streak_pixels{24.0f};
     float volume_edge_fade_fraction{0.15f};
 };
@@ -46,6 +47,7 @@ struct WorldLocation {
         std::max(tuning.full_visible_speed,
                  tuning.minimum_visible_speed + std::numeric_limits<float>::epsilon());
     tuning.streak_seconds = std::max(tuning.streak_seconds, 0.0f);
+    tuning.lateral_streak_scale = std::max(tuning.lateral_streak_scale, 0.0f);
     tuning.maximum_streak_pixels = std::max(tuning.maximum_streak_pixels, 0.0f);
     tuning.volume_edge_fade_fraction = std::clamp(tuning.volume_edge_fade_fraction, 0.0f, 0.49f);
     return tuning;
