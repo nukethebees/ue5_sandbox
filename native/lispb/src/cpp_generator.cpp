@@ -3,7 +3,8 @@
 
 #include "lowering.h"
 #include "lowering_utils.h"
-#include "validation.h"
+
+#include <codegen/validation.h>
 
 #include <iterator>
 #include <set>
@@ -36,7 +37,7 @@ auto lower_umbrella(UmbrellaModuleSchema const& module) -> Module {
 } // namespace
 
 auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
-    detail::validate_manifest(manifest);
+    validate_manifest(manifest);
     std::vector<Module> result;
     for (auto const& schema : manifest.modules) {
         std::visit(
