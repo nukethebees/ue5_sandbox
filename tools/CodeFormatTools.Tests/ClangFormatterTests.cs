@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using CodeFormatTools;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -18,8 +19,9 @@ public sealed class ClangFormatterTests
         var result = await formatter.FormatAsync(file, CancellationToken.None);
 
         Assert.IsTrue(result.Success, result.Error);
-        CollectionAssert.AreEqual(new[] { "--version" }, runner.Requests[0].Arguments.ToArray());
-        CollectionAssert.AreEqual(new[] { "-i", file }, runner.Requests[1].Arguments.ToArray());
+        var requests = runner.Requests.ToArray();
+        CollectionAssert.AreEqual(new[] { "--version" }, requests[0].Arguments.ToArray());
+        CollectionAssert.AreEqual(new[] { "-i", file }, requests[1].Arguments.ToArray());
         CollectionAssert.AreEqual("int main() {\n}\n"u8.ToArray(), File.ReadAllBytes(file));
     }
 
@@ -55,13 +57,13 @@ public sealed class ClangFormatterTests
 
     private sealed class RecordingProcessRunner : IProcessRunner
     {
-        public List<ProcessRequest> Requests { get; } = [];
+        public ConcurrentQueue<ProcessRequest> Requests { get; } = [];
 
         public Func<ProcessRequest, ProcessResult> Response { get; set; } = _ => new ProcessResult(0, [], string.Empty);
 
         public Task<ProcessResult> RunAsync(ProcessRequest request, CancellationToken cancellation_token)
         {
-            Requests.Add(request);
+            Requests.Enqueue(request);
             return Task.FromResult(Response(request));
         }
     }

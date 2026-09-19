@@ -88,4 +88,29 @@ public sealed class FormattingScopeTests
         Assert.IsFalse(FormatRequest.TryParse(["--format-hlsl"], out _, out var unknown));
         StringAssert.Contains(unknown, "Unknown");
     }
+
+    [TestMethod]
+    public void FormatRequest_parses_long_and_short_positive_job_options()
+    {
+        Assert.IsTrue(FormatRequest.TryParse([], out var default_request, out var default_error), default_error);
+        Assert.AreEqual(FormatRequest.DefaultJobs, default_request!.Jobs);
+
+        Assert.IsTrue(FormatRequest.TryParse(["--jobs", "3"], out var long_request, out var long_error), long_error);
+        Assert.AreEqual(3, long_request!.Jobs);
+
+        Assert.IsTrue(FormatRequest.TryParse(["-j", "2"], out var short_request, out var short_error), short_error);
+        Assert.AreEqual(2, short_request!.Jobs);
+    }
+
+    [DataTestMethod]
+    [DataRow("--jobs", "0")]
+    [DataRow("--jobs", "-1")]
+    [DataRow("--jobs", "many")]
+    [DataRow("--jobs")]
+    [DataRow("--jobs", "2", "-j", "3")]
+    public void FormatRequest_rejects_invalid_or_duplicate_job_options(params string[] arguments)
+    {
+        Assert.IsFalse(FormatRequest.TryParse(arguments, out _, out var error));
+        StringAssert.Contains(error, "jobs");
+    }
 }

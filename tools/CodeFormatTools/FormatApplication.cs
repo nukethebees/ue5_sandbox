@@ -14,7 +14,8 @@ internal sealed class FormatApplication(
         if (!FormatRequest.TryParse(arguments, out var request, out var usage_error))
         {
             standard_error.WriteLine(usage_error);
-            standard_error.WriteLine("Usage: CodeFormatTools [--all | --changed | --staged] [--verbose]");
+            standard_error.WriteLine("Usage: CodeFormatTools [--all | --changed | --staged] [--jobs N | -j N] [--verbose]");
+            standard_error.WriteLine("Default jobs: half of logical processors, limited to 16.");
             return 2;
         }
 
@@ -71,16 +72,31 @@ internal sealed class FormatApplication(
             return 1;
         }
 
+        var file_count = selection.Files.Count;
+        var results = new FormatFileResult?[file_count];
+        await Parallel.ForEachAsync(
+            Enumerable.Range(0, file_count),
+            new ParallelOptions
+            {
+                MaxDegreeOfParallelism = request.Jobs,
+                CancellationToken = cancellation_token,
+            },
+            async (file_index, worker_token) =>
+            {
+                results[file_index] = await formatter.FormatAsync(selection.Files[file_index], worker_token);
+            });
+
         var errors = new List<string>();
-        foreach (var file_path in selection.Files)
+        for (var file_index = 0; file_index < file_count; file_index++)
         {
+            var file_path = selection.Files[file_index];
             var relative_path = Path.GetRelativePath(selection.RepositoryRoot, file_path);
             if (request.Verbose)
             {
                 standard_output.WriteLine($"Formatting: {relative_path}");
             }
 
-            var result = await formatter.FormatAsync(file_path, cancellation_token);
+            var result = results[file_index]!;
             if (result.Success)
             {
                 continue;

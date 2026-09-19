@@ -12,7 +12,9 @@ Any workflow that uses one requires its staged executable to be present.
   workspace with `dotnet build tools/Tools.slnx` or `ctools` after loading `dev.ps1`.
 - `CodeFormatTools/` is the C# formatter for repository C++ and shader files. Run its staged
   executable through the `format-code` and `format-all-code` CMake workflows, or directly as
-  `tools/bin/CodeFormatTools.exe [--all|--changed|--staged] [--verbose]` after building tools.
+  `tools/bin/CodeFormatTools.exe [--all|--changed|--staged] [--jobs N|-j N] [--verbose]` after
+  building tools. Formatting runs concurrently by default with half the logical processor count,
+  capped at 16 jobs; use `--jobs 1` for sequential execution.
 - `ArchitectureChecks/` validates repository architecture invariants. Its staged executable is
   invoked by `check-space-game-layers` as `tools/bin/ArchitectureChecks.exe --root <path>`.
 - `GamePackageTools/` verifies archived game packages through the `verify-package` CMake target.

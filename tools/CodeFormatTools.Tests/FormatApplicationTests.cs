@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using CodeFormatTools;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -57,14 +58,14 @@ public sealed class FormatApplicationTests
         var failed = fixture.WriteFile("Source/failed.cpp");
         var succeeded = fixture.WriteFile("Source/succeeded.cpp");
         var formatter = new FakeFormatter();
-        formatter.Failures.Add(failed, "formatter diagnostic");
+        formatter.Failures[failed] = "formatter diagnostic";
         var error = new StringWriter();
         var application = CreateApplication(formatter, new StringWriter(), error);
 
         var exit_code = await application.RunAsync(["--all"], fixture.Root);
 
         Assert.AreEqual(1, exit_code);
-        CollectionAssert.AreEquivalent(new[] { failed, succeeded }, formatter.Attempts);
+        CollectionAssert.AreEquivalent(new[] { failed, succeeded }, formatter.Attempts.ToArray());
         StringAssert.Contains(error.ToString(), "formatter diagnostic");
         StringAssert.Contains(error.ToString(), "Errors encountered");
     }
@@ -102,7 +103,7 @@ public sealed class FormatApplicationTests
         StringAssert.Contains(error.ToString(), "Usage:");
     }
 
-    private static FormatApplication CreateApplication(FakeFormatter formatter, TextWriter output, TextWriter error)
+    private static FormatApplication CreateApplication(IFileFormatter formatter, TextWriter output, TextWriter error)
     {
         return new FormatApplication(
             new FormatFileSelector(new GitFileSelector(new ProcessRunner()), ["Source"]),
@@ -113,23 +114,25 @@ public sealed class FormatApplicationTests
 
     private sealed class FakeFormatter : IFileFormatter
     {
-        public List<string> Attempts { get; } = [];
+        private int availability_checked;
 
-        public Dictionary<string, string> Failures { get; } = new(StringComparer.OrdinalIgnoreCase);
+        public ConcurrentQueue<string> Attempts { get; } = [];
+
+        public ConcurrentDictionary<string, string> Failures { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         public Action<string>? OnFormat { get; set; }
 
-        public bool AvailabilityChecked { get; private set; }
+        public bool AvailabilityChecked => Volatile.Read(ref availability_checked) != 0;
 
         public Task EnsureAvailableAsync(CancellationToken cancellation_token)
         {
-            AvailabilityChecked = true;
+            Interlocked.Exchange(ref availability_checked, 1);
             return Task.CompletedTask;
         }
 
         public Task<FormatFileResult> FormatAsync(string file_path, CancellationToken cancellation_token)
         {
-            Attempts.Add(file_path);
+            Attempts.Enqueue(file_path);
             if (Failures.TryGetValue(file_path, out var error))
             {
                 return Task.FromResult(new FormatFileResult(false, error));
