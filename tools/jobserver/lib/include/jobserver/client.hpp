@@ -21,6 +21,7 @@ class Lease {
     ~Lease();
 
     [[nodiscard]] auto id() const -> std::string const&;
+    [[nodiscard]] auto connected() const -> bool;
     auto release() -> std::expected<void, Error>;
   private:
     friend class Client;

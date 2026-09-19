@@ -44,6 +44,32 @@ auto main(int argc, char** argv) -> int {
         auto const result{jobserver::Client::run(request, [](auto const&, auto const&) {})};
         return result ? *result : 125;
     }
+    if (mode == "independent-run" && argc == 3) {
+        char value[256]{};
+        if (GetEnvironmentVariableA("NUKETHEBEES_JOBSERVER_JOB", value, 256) != 0) {
+            return 20;
+        }
+        if (GetEnvironmentVariableA("NUKETHEBEES_JOBSERVER_LEASE", value, 256) == 0) {
+            return 21;
+        }
+        auto const result{jobserver::Client::run(
+            {
+                .metadata = {.name = "independent leased-child submission",
+                             .kind = "test",
+                             .worktree = std::filesystem::current_path()},
+                .command = {.executable = JOBSERVER_TEST_HELPER_PATH,
+                            .arguments = {"sleep", "100"},
+                            .working_directory =
+                                std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.parent_path(),
+                            .environment = {}},
+                .resources = {{.name = argv[2], .mode = jobserver::ClaimMode::exclusive}},
+                .timeout = std::nullopt,
+                .suspect_after = std::nullopt,
+                .disconnect_policy = jobserver::DisconnectPolicy::cancel,
+            },
+            [](std::string const&, std::string const&) {})};
+        return result ? *result : 125;
+    }
     auto const crash{mode == "lease-crash"};
     auto const hold{mode == "lease-hold" && argc == 5};
     auto const detached_run{mode == "detached-run" && argc == 3};

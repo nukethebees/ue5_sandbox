@@ -383,6 +383,14 @@ Lease::~Lease() {
 auto Lease::id() const -> std::string const& {
     return id_;
 }
+auto Lease::connected() const -> bool {
+    if (handle_ == nullptr) {
+        return false;
+    }
+    DWORD available{};
+    return PeekNamedPipe(static_cast<HANDLE>(handle_), nullptr, 0, nullptr, &available, nullptr) !=
+           FALSE;
+}
 auto Lease::release() -> std::expected<void, Error> {
     if (handle_ == nullptr) {
         return {};

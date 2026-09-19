@@ -58,6 +58,7 @@ target_sources(jobserver PRIVATE
 )
 target_link_libraries(jobserver PRIVATE
   jobserver::client
+  jobserver-supervisor
   nlohmann_json::nlohmann_json
   ole32
   oleaut32
