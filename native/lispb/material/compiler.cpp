@@ -150,6 +150,8 @@ auto kind_name(material_synth::NodeKind const kind) -> std::string_view {
             return "camera-position";
         case step:
             return "step";
+        case vertex_color:
+            return "vertex-color";
         case transform_position:
             return "transform-position";
         case scene_texture:

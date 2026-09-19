@@ -35,6 +35,11 @@ add_custom_target(compile-world-soft-target-material
   DEPENDS "${WORLD_SOFT_TARGET_MATERIAL_ARTIFACT}"
 )
 
+add_material_ir("space dust" space-dust-material
+  "Plugins/SandboxShaders/Source/SandboxShaders/Private/materials/SpaceDust.lispb"
+  SpaceDust SPACE_DUST_MATERIAL_ARTIFACT)
+add_custom_target(compile-space-dust-material DEPENDS "${SPACE_DUST_MATERIAL_ARTIFACT}")
+
 set(MIGRATED_MATERIAL_ARTIFACTS)
 set(SHADER_MATERIAL_SOURCE_ROOT
   "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials"
@@ -86,3 +91,4 @@ add_custom_target(validate-world-soft-target-material
 # Unreal commandlets consume these generated artifacts.
 set(UI_GLOW_MATERIAL_ARTIFACT "${UI_GLOW_MATERIAL_ARTIFACT}" PARENT_SCOPE)
 set(WORLD_SOFT_TARGET_MATERIAL_ARTIFACT "${WORLD_SOFT_TARGET_MATERIAL_ARTIFACT}" PARENT_SCOPE)
+set(SPACE_DUST_MATERIAL_ARTIFACT "${SPACE_DUST_MATERIAL_ARTIFACT}" PARENT_SCOPE)

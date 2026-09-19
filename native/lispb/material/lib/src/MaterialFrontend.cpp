@@ -527,6 +527,9 @@ class Analyzer {
         if (head == "camera-position") {
             return standard_value(form, NodeKind::camera_position, ValueType::float3);
         }
+        if (head == "vertex-color") {
+            return standard_value(form, NodeKind::vertex_color, ValueType::float4);
+        }
         if (head == "transform-position") {
             return transform_position(form);
         }

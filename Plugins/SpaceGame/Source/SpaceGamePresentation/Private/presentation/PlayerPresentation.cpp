@@ -2,6 +2,7 @@
 #include <Components/StaticMeshComponent.h>
 #include <DrawDebugHelpers.h>
 #include <NiagaraComponent.h>
+#include <SandboxShaders/SpaceDust/SpaceDustComponent.h>
 #include <SpaceGamePresentation/integration/TransformConversion.h>
 #include <SpaceGamePresentation/presentation/PlayerPresentation.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
@@ -12,7 +13,8 @@ FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,
     : resources_{MoveTemp(resources)}
     , config_{config}
     , boost_start_sequence_{initial_state.boost_start_sequence} {
-    if (!resources_.pulse.IsValid() || !resources_.engine.IsValid() || !resources_.mesh.IsValid()) {
+    if (!resources_.pulse.IsValid() || !resources_.engine.IsValid() || !resources_.mesh.IsValid() ||
+        !resources_.space_dust.IsValid()) {
         UE_LOG(LogSandbox, Error, TEXT("Player visual resources are incomplete"));
         return;
     }
@@ -24,17 +26,19 @@ FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,
     resources_.engine->SetColorParameter(TEXT("colour"), config.engine_colour);
     resources_.engine->SetFloatParameter(TEXT("sparks_colour_intensity"),
                                          config.boost_effect_colour_intensity);
+    resources_.space_dust->apply_settings(config.space_dust);
     tick(initial_state);
 }
 void FPlayerPresentation::tick(::ioj::sim::PlayerReadView const& state) {
     if (!resources_.root.IsValid() || !resources_.mesh.IsValid() || !resources_.pulse.IsValid() ||
-        !resources_.engine.IsValid()) {
+        !resources_.engine.IsValid() || !resources_.space_dust.IsValid()) {
         return;
     }
     resources_.root->SetWorldTransform(
         ml::to_unreal(state.transform), false, nullptr, ETeleportType::TeleportPhysics);
     resources_.mesh->SetRelativeTransform(ml::to_unreal(state.body_transform));
     resources_.engine->SetVectorParameter(TEXT("ship_velocity"), ml::to_unreal(state.velocity));
+    resources_.space_dust->update_motion(ml::to_unreal(state.velocity));
     if (boost_start_sequence_ != state.boost_start_sequence) {
         resources_.pulse->Activate();
         boost_start_sequence_ = state.boost_start_sequence;

@@ -139,6 +139,9 @@
   (material celestial-analytic-material
     :source "Plugins/SandboxShaders/Source/SandboxCelestials/Private/materials/CelestialAnalytic.lispb"
     :artifact (project-path "Intermediate/MaterialGen/CelestialAnalytic.smat"))
+  (material space-dust-material
+    :source "Plugins/SandboxShaders/Source/SandboxShaders/Private/materials/SpaceDust.lispb"
+    :artifact (project-path "Intermediate/MaterialGen/SpaceDust.smat"))
 
   (group slate-production
     :targets (

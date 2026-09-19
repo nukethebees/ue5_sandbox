@@ -193,7 +193,8 @@ auto read_node(Reader& reader) -> std::expected<Node, std::string> {
     auto const kind{reader.read_u8()};
     auto const type{read_value_type(reader)};
     auto const input_count{reader.read_size(maximum_collection_size)};
-    if (!kind || *kind > static_cast<std::uint8_t>(NodeKind::step) || !type || !input_count) {
+    if (!kind || *kind > static_cast<std::uint8_t>(NodeKind::vertex_color) || !type ||
+        !input_count) {
         return std::unexpected{"invalid material node header"};
     }
 

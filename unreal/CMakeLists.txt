@@ -490,6 +490,17 @@ add_unreal_editor_target(generate-celestial-analytic-material
   FOLDER "Sandbox/Unreal/Maintenance"
 )
 
+add_unreal_editor_target(generate-space-dust-material
+  ARGUMENTS
+    -run=MaterialSynth
+    "-Artifact=${SPACE_DUST_MATERIAL_ARTIFACT}"
+    -Generate -RenderOffscreen -AllowCommandletRendering
+    -unattended -nop4 -nosplash -nosound -stdout
+  DEPENDS editor compile-space-dust-material
+  COMMENT "Generating the space dust material"
+  FOLDER "Sandbox/Unreal/Maintenance"
+)
+
 add_unreal_editor_test(SandboxShaders.MaterialCompilation
   NO_LOCAL_DDC
   ARGUMENTS
@@ -497,6 +508,17 @@ add_unreal_editor_test(SandboxShaders.MaterialCompilation
     -AllowCommandletRendering
     -DDC-ForceMemoryCache
   LABELS focused-material all
+  TIMEOUT 900
+)
+
+add_unreal_editor_test(Sandbox.SpaceDustRenderTests
+  NO_LOCAL_DDC
+  ARGUMENTS
+    "-ExecCmds=Automation Now; Automation RunTests Sandbox.SpaceDustRenderTests; Quit"
+    -RenderOffscreen
+    -AllowCommandletRendering
+    -DDC-ForceMemoryCache
+  LABELS level space-dust all
   TIMEOUT 900
 )
 
