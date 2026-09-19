@@ -136,22 +136,15 @@ auto strict_subset_error(FLevelDefinition const& definition) -> FString {
         unsupported.Add(TEXT("mission events"));
     }
     auto const entities{definition.entities.get_const_view()};
-    TSet<FLevelTeamId> initial_teams;
-    for (auto const spawn_time : entities.spawn_times_seconds) {
-        if (spawn_time != 0.0) {
-            unsupported.AddUnique(TEXT("delayed spawns"));
-        }
-    }
+    TSet<FLevelTeamId> used_teams;
     auto const entity_count{entities.num()};
     for (int32 index{}; index < entity_count; ++index) {
-        if (entities.spawn_times_seconds[index] == 0.0) {
-            initial_teams.Add(entities.teams[index]);
-        }
+        used_teams.Add(entities.teams[index]);
     }
 
     TArray<FString> unused_teams;
     for (auto const team : definition.teams) {
-        if (!initial_teams.Contains(team)) {
+        if (!used_teams.Contains(team)) {
             unused_teams.Add(team.value.ToString());
         }
     }
@@ -163,8 +156,8 @@ auto strict_subset_error(FLevelDefinition const& definition) -> FString {
     }
     if (!unused_teams.IsEmpty()) {
         errors.Add(FString::Printf(
-            TEXT("The focused authoring mode cannot preserve declared teams unused by initial "
-                 "entities: %s."),
+            TEXT("The focused authoring mode cannot preserve declared teams unused by entities: "
+                 "%s."),
             *FString::Join(unused_teams, TEXT(", "))));
     }
     return FString::Join(errors, TEXT("\n"));
@@ -241,7 +234,7 @@ auto prepare_sync_plan(ULevel const& level,
         return std::unexpected{error};
     }
 
-    TMap<FName, AActor*> actors_by_id;
+    TMap<FName, FS7LevelEntityBinding const*> bindings_by_id;
     TSet<AActor*> bound_actors;
     for (auto const& binding : document.entities) {
         if (binding.id.IsNone() || !IsValid(binding.actor)) {
@@ -251,7 +244,7 @@ auto prepare_sync_plan(ULevel const& level,
             return std::unexpected{FString::Printf(TEXT("Entity '%s' belongs to another level."),
                                                    *binding.id.ToString())};
         }
-        if (actors_by_id.Contains(binding.id)) {
+        if (bindings_by_id.Contains(binding.id)) {
             return std::unexpected{
                 FString::Printf(TEXT("The authoring document contains duplicate entity id '%s'."),
                                 *binding.id.ToString())};
@@ -262,7 +255,7 @@ auto prepare_sync_plan(ULevel const& level,
                                 *binding.actor->GetActorLabel())};
         }
 
-        actors_by_id.Add(binding.id, binding.actor.Get());
+        bindings_by_id.Add(binding.id, &binding);
         bound_actors.Add(binding.actor.Get());
     }
 
@@ -290,7 +283,8 @@ auto prepare_sync_plan(ULevel const& level,
         }
         incoming_ids.Add(id.value);
 
-        auto* const existing_actor{actors_by_id.FindRef(id.value)};
+        auto const* const existing_binding{bindings_by_id.FindRef(id.value)};
+        auto* const existing_actor{existing_binding ? existing_binding->actor.Get() : nullptr};
         auto const transform{FTransform{FRotator{entities.rotations.pitches[index],
                                                  entities.rotations.yaws[index],
                                                  entities.rotations.rolls[index]},
@@ -310,7 +304,10 @@ auto prepare_sync_plan(ULevel const& level,
             auto const resolved{resolve_actor(*existing_actor)};
             if (!resolved.IsSet() || resolved->team != entities.teams[index] ||
                 !existing_actor->GetActorTransform().Equals(transform, 0.001) ||
-                existing_actor->GetActorLabel() != id.value.ToString()) {
+                existing_actor->GetActorLabel() != id.value.ToString() ||
+                !FMath::IsNearlyEqual(existing_binding->spawn_time_seconds,
+                                      entities.spawn_times_seconds[index],
+                                      0.001)) {
                 action = ES7LevelSyncAction::Update;
             }
         }
@@ -476,6 +473,7 @@ auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument cons
             .team = resolved->team,
             .position = binding.actor->GetActorLocation(),
             .rotation = binding.actor->GetActorRotation(),
+            .spawn_time_seconds = binding.spawn_time_seconds,
         });
     }
     for (auto const actor_ptr : level.Actors) {
@@ -644,7 +642,9 @@ auto apply_s7_level_sync_plan(ULevel& level,
     document.entities.Reset(entity_count);
     for (int32 index{}; index < entity_count; ++index) {
         auto const id{entities.ids[index].value};
-        document.entities.Add({.id = id, .actor = resolved.FindChecked(id)});
+        document.entities.Add({.id = id,
+                               .actor = resolved.FindChecked(id),
+                               .spawn_time_seconds = entities.spawn_times_seconds[index]});
     }
     document.use_observer_camera = plan.definition.camera.IsSet();
     document.camera.targets.Reset();

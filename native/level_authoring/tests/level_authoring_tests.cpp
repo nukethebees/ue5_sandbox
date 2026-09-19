@@ -115,6 +115,7 @@ TEST(NativeLevelAuthoringWriter, EmitsDeterministicReadableSource) {
         .team = "red",
         .position = {1000.0, 200.12349, -300.5},
         .rotation = {0.0, 90.0, 0.0},
+        .spawn_time_seconds = 2.5,
     });
     auto second{first};
     std::ranges::reverse(second.teams);
@@ -127,20 +128,15 @@ TEST(NativeLevelAuthoringWriter, EmitsDeterministicReadableSource) {
     EXPECT_EQ(*first_source, *second_source);
     EXPECT_TRUE(first_source->contains("(title \"Writer \\\"Example\\\"\")"));
     EXPECT_TRUE(first_source->contains("(position 1000 200.123 -300.5)"));
+    EXPECT_TRUE(first_source->contains("(spawn-at 2.5)"));
 
     LevelDefinitionReader reader;
     auto const decoded{reader.read_source(*first_source)};
     ASSERT_TRUE(decoded);
     EXPECT_EQ(decoded.definition->entities.size(), 2u);
-}
-
-TEST(NativeLevelAuthoringWriter, RejectsRuntimeOnlyFields) {
-    auto definition{make_level("scheduled")};
-    definition.entities.front().spawn_time_seconds = 1.0;
-    auto const result{emit_editor_level_source(definition)};
-
-    ASSERT_FALSE(result);
-    EXPECT_TRUE(result.error().contains("initial t=0"));
+    auto const& delayed{decoded.definition->entities.back()};
+    EXPECT_EQ(delayed.id, "red-capital");
+    EXPECT_DOUBLE_EQ(delayed.spawn_time_seconds, 2.5);
 }
 
 TEST(NativeLevelAuthoringWriter, RoundTripsInitialMissionObjectives) {

@@ -138,17 +138,27 @@ TEST_CLASS(S7LevelDefinitionWriter, "Sandbox.UnitTests")
                                  .Equals(FRotator{10.0, 20.25, 0.0}, 0.001));
     }
 
-    TEST_METHOD(RejectsRuntimeOnlyDefinitionFields)
+    TEST_METHOD(EmitsScheduledEntities)
     {
         auto definition{make_player_level()};
         definition.entities.spawn_times_seconds[1] = 5.0;
         auto const source{ml::s7::emit_editor_level_source(definition)};
 
-        TestRunner->TestFalse(TEXT("Scheduled entity is rejected"), source.has_value());
-        if (!source) {
-            TestRunner->TestTrue(TEXT("Failure identifies t=0 semantics"),
-                                 source.error().Contains(TEXT("initial t=0")));
+        if (!TestRunner->TestTrue(TEXT("Scheduled entity is emitted"), source.has_value())) {
+            TestRunner->AddError(source.error());
+            return;
         }
+        TestRunner->TestTrue(TEXT("Spawn clause is emitted"),
+                             source->Contains(TEXT("(spawn-at 5)")));
+
+        ml::s7::FLevelDefinitionReader reader;
+        auto const read{reader.read_source(*source)};
+        if (!TestRunner->TestTrue(TEXT("Scheduled source reads"), static_cast<bool>(read))) {
+            TestRunner->AddError(read.script_error);
+            return;
+        }
+        TestRunner->TestEqual(
+            TEXT("Spawn time survives"), read.definition->entities.spawn_times_seconds[1], 5.0);
     }
 
     TEST_METHOD(ExpandsLargeProceduralLevelIntoExplicitSemanticEquivalent)

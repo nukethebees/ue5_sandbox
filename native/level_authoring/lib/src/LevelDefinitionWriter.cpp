@@ -126,9 +126,6 @@ auto collect_errors(::ioj::sim::levels::LevelDefinition const& definition)
         }
     }
     for (auto const& entity : definition.entities) {
-        if (entity.spawn_time_seconds != 0.0) {
-            errors.push_back("Entity '" + entity.id + "' is not an initial t=0 entity");
-        }
         append_error(errors, validate_symbol(entity.id, "Entity id"));
         append_error(errors, validate_symbol(entity.archetype, "Entity archetype"));
         append_error(errors, validate_symbol(entity.team, "Entity team"));
@@ -279,7 +276,11 @@ auto emit_editor_level_source(::ioj::sim::levels::LevelDefinition const& definit
                   format_number(entity.position.y) + " " + format_number(entity.position.z) + ")\n";
         source += "      (rotation " + format_number(entity.rotation.pitch) + " " +
                   format_number(entity.rotation.yaw) + " " + format_number(entity.rotation.roll);
-        source += output_index + 1 == indices.size() ? "))))\n" : "))\n";
+        source += ")";
+        if (entity.spawn_time_seconds != 0.0) {
+            source += "\n      (spawn-at " + format_number(entity.spawn_time_seconds) + ")";
+        }
+        source += output_index + 1 == indices.size() ? ")))\n" : ")\n";
     }
     return source;
 }

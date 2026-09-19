@@ -31,9 +31,14 @@ auto config(UObject& outer) -> USpaceGameLevelConfig* {
     return IsValid(source) ? DuplicateObject<USpaceGameLevelConfig>(source, &outer) : nullptr;
 }
 
+auto bound_binding(AS7LevelAuthoringDocument const& document, FName const id)
+    -> FS7LevelEntityBinding const* {
+    return document.entities.FindByPredicate(
+        [id](FS7LevelEntityBinding const& candidate) { return candidate.id == id; });
+}
+
 auto bound_actor(AS7LevelAuthoringDocument const& document, FName const id) -> AActor* {
-    auto const* const binding{document.entities.FindByPredicate(
-        [id](FS7LevelEntityBinding const& candidate) { return candidate.id == id; })};
+    auto const* const binding{bound_binding(document, id)};
     return binding ? binding->actor.Get() : nullptr;
 }
 
@@ -381,7 +386,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Bindings are unchanged"), document->entities.Num(), 1);
     }
 
-    TEST_METHOD(RejectsDeclaredTeamUnusedByInitialEntities)
+    TEST_METHOD(RejectsDeclaredTeamUnusedByEntities)
     {
         auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
         auto* const document{spawn<AS7LevelAuthoringDocument>(*world, TEXT("S7 Document"))};
@@ -500,7 +505,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         document->level_id = TEXT("before");
         document->title = TEXT("Before");
         document->description = TEXT("Before description");
-        document->entities = {{.id = TEXT("update"), .actor = updated},
+        document->entities = {{.id = TEXT("update"), .actor = updated, .spawn_time_seconds = 7.0},
                               {.id = TEXT("replace"), .actor = replaced},
                               {.id = TEXT("remove"), .actor = removed}};
         document->use_observer_camera = false;
@@ -528,7 +533,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                             .archetype = ml::level_archetypes::capital_ship,
                             .team = ml::level_teams::blue,
                             .position = FVector{100.0, 200.0, 300.0},
-                            .rotation = FRotator{10.0, 20.0, 30.0}});
+                            .rotation = FRotator{10.0, 20.0, 30.0},
+                            .spawn_time_seconds = 3.0});
         builder.add_entity({.id = ml::FLevelEntityId{TEXT("replace")},
                             .archetype = ml::level_archetypes::static_turret,
                             .team = ml::level_teams::red,
@@ -574,6 +580,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Viewpoint is published"), document->use_observer_camera);
         TestRunner->TestEqual(
             TEXT("Mission is published"), document->mission.mode, ETestMissionMode::KillEnemies);
+        TestRunner->TestEqual(TEXT("Spawn time is published"),
+                              bound_binding(*document, TEXT("update"))->spawn_time_seconds,
+                              3.0);
 
         GEditor->UndoTransaction();
 
@@ -594,6 +603,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Updated label is restored"),
                               updated->GetActorLabel(),
                               FString{TEXT("old-update-label")});
+        TestRunner->TestEqual(TEXT("Spawn time is restored"),
+                              bound_binding(*document, TEXT("update"))->spawn_time_seconds,
+                              7.0);
         TestRunner->TestEqual(
             TEXT("Metadata is restored"), document->level_id, FName{TEXT("before")});
         TestRunner->TestEqual(TEXT("Title is restored"), document->title, FString{TEXT("Before")});
@@ -656,11 +668,14 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         modes.DeactivateMode(US7LevelAuthoringMode::mode_id);
     }
 
-    TEST_METHOD(RejectsOutOfScopeRuntimeFeatures)
+    TEST_METHOD(DelayedSpawnsApplyUpdateAndRoundTrip)
     {
         auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
         auto* const document{spawn<AS7LevelAuthoringDocument>(*world, TEXT("S7 Document"))};
         document->level_config = config(*world);
+        if (!TestRunner->TestNotNull(TEXT("Config"), document->level_config.Get())) {
+            return;
+        }
 
         ml::FLevelBuilder builder;
         builder.set_metadata({.id = ml::FLevelId{TEXT("delayed")}, .title = TEXT("Delayed")});
@@ -671,10 +686,68 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         builder.add_entity({.id = ml::FLevelEntityId{TEXT("ship")},
                             .archetype = ml::level_archetypes::capital_ship,
                             .team = ml::level_teams::blue,
-                            .spawn_time_seconds = 1.0});
+                            .spawn_time_seconds = 2.5});
         auto const plan{ml::editor::make_s7_level_sync_plan(
             *world->GetCurrentLevel(), *document, builder.finish())};
-        TestRunner->TestFalse(TEXT("Delayed spawn is rejected"), plan.has_value());
+        if (!TestRunner->TestTrue(TEXT("Delayed spawn preview builds"), plan.has_value())) {
+            TestRunner->AddError(plan.error());
+            return;
+        }
+        TestRunner->TestEqual(
+            TEXT("Delayed actor adds"), plan->count(ml::editor::ES7LevelSyncAction::Add), 1);
+
+        auto const applied{
+            ml::editor::apply_s7_level_sync_plan(*world->GetCurrentLevel(), *document, *plan)};
+        if (!TestRunner->TestTrue(TEXT("Delayed spawn applies"), applied.has_value())) {
+            TestRunner->AddError(applied.error());
+            return;
+        }
+        auto* const actor{bound_actor(*document, TEXT("ship"))};
+        auto const* const binding{bound_binding(*document, TEXT("ship"))};
+        if (!TestRunner->TestNotNull(TEXT("Delayed actor is bound"), actor) ||
+            !TestRunner->TestNotNull(TEXT("Delayed binding exists"), binding)) {
+            return;
+        }
+        TestRunner->TestEqual(
+            TEXT("Delay is stored in the world document"), binding->spawn_time_seconds, 2.5);
+
+        auto const collected{
+            ml::editor::collect_s7_editor_level(*world->GetCurrentLevel(), *document)};
+        if (!TestRunner->TestTrue(TEXT("Delayed scene collects"), collected.has_value())) {
+            TestRunner->AddError(collected.error());
+            return;
+        }
+        auto const source{ml::s7::emit_editor_level_source(*collected)};
+        if (!TestRunner->TestTrue(TEXT("Delayed scene writes"), source.has_value())) {
+            TestRunner->AddError(source.error());
+            return;
+        }
+        TestRunner->TestTrue(TEXT("Spawn clause survives"),
+                             source->Contains(TEXT("(spawn-at 2.5)")));
+
+        auto updated_definition{*collected};
+        updated_definition.entities.spawn_times_seconds[0] = 4.0;
+        auto const update_plan{ml::editor::make_s7_level_sync_plan(
+            *world->GetCurrentLevel(), *document, updated_definition)};
+        if (!TestRunner->TestTrue(TEXT("Delay-only preview builds"), update_plan.has_value())) {
+            TestRunner->AddError(update_plan.error());
+            return;
+        }
+        TestRunner->TestEqual(TEXT("Delay-only change updates"),
+                              update_plan->count(ml::editor::ES7LevelSyncAction::Update),
+                              1);
+
+        auto const updated{ml::editor::apply_s7_level_sync_plan(
+            *world->GetCurrentLevel(), *document, *update_plan)};
+        if (!TestRunner->TestTrue(TEXT("Delay-only update applies"), updated.has_value())) {
+            TestRunner->AddError(updated.error());
+            return;
+        }
+        TestRunner->TestTrue(TEXT("Delay-only update preserves actor identity"),
+                             bound_actor(*document, TEXT("ship")) == actor);
+        TestRunner->TestEqual(TEXT("Updated delay is stored"),
+                              bound_binding(*document, TEXT("ship"))->spawn_time_seconds,
+                              4.0);
     }
 
     TEST_METHOD(EditorModeActivatesAndDeactivates)
