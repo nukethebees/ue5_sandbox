@@ -17,6 +17,7 @@
       "cacheVariables": {
         "SANDBOX_WITH_UNREAL": false,
         "SANDBOX_WITH_ASAN": false,
+        "SANDBOX_LAYOUT_PLANNER": false,
         "CMAKE_UNITY_BUILD": false
       }
     },

@@ -97,6 +97,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             "cacheVariables": {
                 "SANDBOX_WITH_UNREAL": False,
                 "SANDBOX_WITH_ASAN": False,
+                "SANDBOX_LAYOUT_PLANNER": False,
                 "CMAKE_UNITY_BUILD": False,
             },
         }

@@ -28,7 +28,8 @@ auto value_facts() -> TypeFacts {
 
 } // namespace
 
-AbiProfile::AbiProfile(std::string name) : name_{std::move(name)} {}
+AbiProfile::AbiProfile(std::string name)
+    : name_{std::move(name)} {}
 
 auto AbiProfile::host_common() -> AbiProfile {
     AbiProfile result{"Host common native"};
@@ -42,9 +43,10 @@ auto AbiProfile::host_common() -> AbiProfile {
     result.set("std::int64_t", integer_facts<std::int64_t>());
     result.set("float", value_facts<float>());
     result.set("double", value_facts<double>());
-    result.set("bool", TypeFacts{.size_bytes = sizeof(bool),
-                                 .alignment_bytes = alignof(bool),
-                                 .unsigned_value_bits = 1});
+    result.set("bool",
+               TypeFacts{.size_bytes = sizeof(bool),
+                         .alignment_bytes = alignof(bool),
+                         .unsigned_value_bits = 1});
     return result;
 }
 
