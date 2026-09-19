@@ -7,6 +7,7 @@
 #include <ioj/sim/transform3d.h>
 #include <sandbox/core/diagnostics.h>
 #include <sandbox/core/vector2d.h>
+#include <sandbox/core/vector3d.h>
 #include <span>
 
 #include <algorithm>
@@ -200,6 +201,10 @@ void Sim::integrate_velocity(float const dt, MovementState& movement) {
             break;
         }
         case SpaceShipFlightMode::PlanarVelocity: {
+            if (uses_power_controller()) {
+                integrate_power_velocity(dt, movement);
+                break;
+            }
             movement.planar_velocity = movement.planar_flight_model.update(dt);
             movement.planar_boost_speed = movement.planar_boost_flight_model.update(dt);
             movement.velocity = movement.planar_velocity +
@@ -207,6 +212,28 @@ void Sim::integrate_velocity(float const dt, MovementState& movement) {
             break;
         }
     }
+}
+
+void Sim::integrate_power_velocity(float const dt, MovementState& movement) {
+    auto const state{movement.boost_brake_state};
+    if (state == BoostBrakeState::Brake || state == BoostBrakeState::EmergencyBrake) {
+        auto const deceleration{state == BoostBrakeState::EmergencyBrake
+                                    ? config.power_emergency_brake_deceleration
+                                    : config.power_brake_deceleration};
+        movement.planar_velocity =
+            ml::move_towards(movement.planar_velocity, {}, deceleration * dt);
+    } else if (throttle > 0.f) {
+        auto const boosting{state == BoostBrakeState::Boost};
+        auto const maximum_speed{boosting ? config.power_boost_max_speed : config.power_max_speed};
+        auto const acceleration{boosting ? config.power_boost_acceleration
+                                         : config.power_acceleration};
+        auto const desired_velocity{movement.transform.forward() * maximum_speed};
+        movement.planar_velocity = ml::move_towards(
+            movement.planar_velocity, desired_velocity, acceleration * throttle * dt);
+    }
+
+    movement.planar_boost_speed = 0.f;
+    movement.velocity = movement.planar_velocity;
 }
 
 void Sim::update_rotation(float const dt, MovementState& movement) {
@@ -273,10 +300,21 @@ void Sim::set_boost_brake_state(BoostBrakeState const state, MovementState& move
         ++movement.boost_start_sequence;
     }
 
+    if (uses_power_controller()) {
+        movement.thrust_change_rate = state == BoostBrakeState::Boost
+                                        ? -(1.f / config.boost_depletion_time)
+                                        : 1.f / config.thrust_recharge_time;
+        movement.target_speed =
+            state == BoostBrakeState::Boost ? config.power_boost_max_speed : config.power_max_speed;
+        movement.boost_brake_state = state;
+        return;
+    }
+
     auto const current_speed{static_cast<float>(movement.velocity.size())};
     auto const& speed_responses{config.speed_responses};
     if (state != player::BoostBrakeState::None && state != player::BoostBrakeState::Boost &&
-        state != player::BoostBrakeState::Brake) {
+        state != player::BoostBrakeState::Brake &&
+        state != player::BoostBrakeState::EmergencyBrake) {
         ml::log_error("Unhandled player boost/brake state.");
     }
 
@@ -302,6 +340,7 @@ void Sim::set_boost_brake_state(BoostBrakeState const state, MovementState& move
                           SpeedResponseKind::Boost};
             break;
         case player::BoostBrakeState::Brake:
+        case player::BoostBrakeState::EmergencyBrake:
             transition = {config.brake_speed,
                           -(1.f / config.brake_depletion_time),
                           0.f,
@@ -335,7 +374,8 @@ void Sim::set_boost_brake_state(BoostBrakeState const state, MovementState& move
 
 void Sim::update_boost_brake(float const dt, MovementState& movement) {
     auto const starting_energy{movement.thrust_energy};
-    if (starting_energy <= 0.f) {
+    if (starting_energy <= 0.f && (!uses_power_controller() ||
+                                   movement.boost_brake_state == player::BoostBrakeState::Boost)) {
         set_boost_brake_state(player::BoostBrakeState::None, movement);
     }
 
@@ -368,6 +408,10 @@ void Sim::set_ship_2d_control(ml::Vector2d const input) {
     }
 }
 
+void Sim::set_throttle(float const input) noexcept {
+    throttle = std::clamp(input, 0.f, 1.f);
+}
+
 void Sim::set_ship_1d_control_x(float const input) {
     auto control{target_local_planar_velocity_scale};
     control.x = input;
@@ -381,16 +425,47 @@ void Sim::set_ship_1d_control_y(float const input) {
 }
 
 void Sim::select_next_control_mode() {
-    control_mode =
+    set_control_mode(
         static_cast<SpaceShipControlMode>((static_cast<unsigned>(control_mode) + 1) %
-                                          static_cast<unsigned>(SpaceShipControlMode::COUNT));
+                                          static_cast<unsigned>(SpaceShipControlMode::COUNT)));
 }
 
 void Sim::select_previous_control_mode() {
-    control_mode =
+    set_control_mode(
         static_cast<SpaceShipControlMode>((static_cast<unsigned>(control_mode) +
                                            static_cast<unsigned>(SpaceShipControlMode::COUNT) - 1) %
-                                          static_cast<unsigned>(SpaceShipControlMode::COUNT));
+                                          static_cast<unsigned>(SpaceShipControlMode::COUNT)));
+}
+
+void Sim::set_control_mode(SpaceShipControlMode const new_control_mode) {
+    if (control_mode == new_control_mode) {
+        return;
+    }
+
+    sampling = false;
+    target_local_planar_velocity_scale = {};
+    throttle = 0.f;
+    if (flight_mode == SpaceShipFlightMode::PlanarVelocity) {
+        movement_state_.planar_velocity = movement_state_.velocity;
+        movement_state_.planar_boost_speed = 0.f;
+        planned_movement_ = movement_state_;
+    }
+
+    control_mode = new_control_mode;
+    if (uses_power_controller()) {
+        set_boost_brake_state(movement_state_.boost_brake_state);
+        return;
+    }
+
+    if (flight_mode == SpaceShipFlightMode::PlanarVelocity) {
+        set_desired_planar_velocity(movement_state_.velocity);
+    }
+    set_boost_brake_state(movement_state_.boost_brake_state);
+}
+
+auto Sim::uses_power_controller() const noexcept -> bool {
+    return flight_mode == SpaceShipFlightMode::PlanarVelocity &&
+           control_mode == SpaceShipControlMode::Power;
 }
 
 void Sim::start_sampling() noexcept {
@@ -451,13 +526,29 @@ void Sim::stop_boost() {
 }
 
 void Sim::start_brake() {
+    if (uses_power_controller() &&
+        movement_state_.boost_brake_state != player::BoostBrakeState::Brake &&
+        movement_state_.boost_brake_state != player::BoostBrakeState::EmergencyBrake) {
+        set_boost_brake_state(player::BoostBrakeState::Brake);
+        return;
+    }
+
     if (energy_is_full() && movement_state_.boost_brake_state == player::BoostBrakeState::None) {
         set_boost_brake_state(player::BoostBrakeState::Brake);
     }
 }
 
+void Sim::start_emergency_brake() {
+    if (uses_power_controller()) {
+        set_boost_brake_state(player::BoostBrakeState::EmergencyBrake);
+        return;
+    }
+    start_brake();
+}
+
 void Sim::stop_brake() {
-    if (movement_state_.boost_brake_state == player::BoostBrakeState::Brake) {
+    if (movement_state_.boost_brake_state == player::BoostBrakeState::Brake ||
+        movement_state_.boost_brake_state == player::BoostBrakeState::EmergencyBrake) {
         set_boost_brake_state(player::BoostBrakeState::None);
     }
 }

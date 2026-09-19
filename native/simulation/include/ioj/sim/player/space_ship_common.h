@@ -20,6 +20,7 @@ enum class BoostBrakeState : std::uint8_t {
     None = 0,
     Boost = 1,
     Brake = 2,
+    EmergencyBrake = 3,
 };
 
 [[nodiscard]] constexpr auto to_string(BoostBrakeState const value) noexcept -> std::string_view {
@@ -32,6 +33,9 @@ enum class BoostBrakeState : std::uint8_t {
         }
         case BoostBrakeState::Brake: {
             return "Brake";
+        }
+        case BoostBrakeState::EmergencyBrake: {
+            return "EmergencyBrake";
         }
     }
 
@@ -49,6 +53,9 @@ enum class BoostBrakeState : std::uint8_t {
     if (value == "Brake") {
         return BoostBrakeState::Brake;
     }
+    if (value == "EmergencyBrake") {
+        return BoostBrakeState::EmergencyBrake;
+    }
 
     return std::nullopt;
 }
@@ -61,11 +68,13 @@ struct EnumTraits<::ioj::sim::player::BoostBrakeState> {
         ::ioj::sim::player::BoostBrakeState::None,
         ::ioj::sim::player::BoostBrakeState::Boost,
         ::ioj::sim::player::BoostBrakeState::Brake,
+        ::ioj::sim::player::BoostBrakeState::EmergencyBrake,
     };
     inline static constexpr std::array names{
         std::string_view{"None"},
         std::string_view{"Boost"},
         std::string_view{"Brake"},
+        std::string_view{"EmergencyBrake"},
     };
     inline static constexpr std::size_t count{values.size()};
 };

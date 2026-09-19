@@ -204,6 +204,19 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
             out, "player.config.brake_depletion_time", player.config.brake_depletion_time);
         ml::fixture_export::write(out, "player.config.brake_speed", player.config.brake_speed);
         ml::fixture_export::write(
+            out, "player.config.power_max_speed", player.config.power_max_speed);
+        ml::fixture_export::write(
+            out, "player.config.power_acceleration", player.config.power_acceleration);
+        ml::fixture_export::write(
+            out, "player.config.power_boost_max_speed", player.config.power_boost_max_speed);
+        ml::fixture_export::write(
+            out, "player.config.power_boost_acceleration", player.config.power_boost_acceleration);
+        ml::fixture_export::write(
+            out, "player.config.power_brake_deceleration", player.config.power_brake_deceleration);
+        ml::fixture_export::write(out,
+                                  "player.config.power_emergency_brake_deceleration",
+                                  player.config.power_emergency_brake_deceleration);
+        ml::fixture_export::write(
             out, "player.config.rotation_speed", player.config.rotation_speed);
         ml::fixture_export::write(
             out, "player.config.pitch_angle_max", player.config.pitch_angle_max);
