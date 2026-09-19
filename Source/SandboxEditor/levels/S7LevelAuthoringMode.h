@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
+#include "SandboxEditor/levels/S7LevelSourceSession.h"
 
 #include <Tools/LegacyEdModeWidgetHelpers.h>
 
@@ -31,6 +32,7 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
                  FCanvas* canvas) override;
 
     [[nodiscard]] auto document() const -> AS7LevelAuthoringDocument*;
+    [[nodiscard]] auto source_session() -> ml::editor::FS7LevelSourceSession&;
     [[nodiscard]] auto status() const -> FText const&;
     auto on_changed() -> FOnS7LevelAuthoringChanged&;
 
@@ -45,15 +47,16 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     void apply_preview();
     void save();
     void save_as();
+    void save_canonical_from_scene();
   private:
     auto current_level() const -> ULevel*;
     void refresh_document();
     void set_status(FText text);
-    void save_to_path(bool force_dialog);
+    void update_document_source_path();
     void assign_selected_objective(int32 role);
-    auto read_current_source(FString& source) const -> bool;
 
     TWeakObjectPtr<AS7LevelAuthoringDocument> document_{};
+    ml::editor::FS7LevelSourceSession source_session_{};
     TOptional<ml::editor::FS7LevelSyncPlan> preview_{};
     FText status_{};
     FOnS7LevelAuthoringChanged changed_{};

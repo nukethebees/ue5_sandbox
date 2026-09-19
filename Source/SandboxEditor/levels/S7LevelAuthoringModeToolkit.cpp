@@ -51,7 +51,7 @@ void FS7LevelAuthoringModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_
                                 .OnClicked(this, &FS7LevelAuthoringModeToolkit::adopt_entities)] +
                   SUniformGridPanel::Slot(
                       1, 2)[SNew(SButton)
-                                .Text(LOCTEXT("Save", "Save"))
+                                .Text(LOCTEXT("Save", "Save Source"))
                                 .OnClicked(this, &FS7LevelAuthoringModeToolkit::save)] +
                   SUniformGridPanel::Slot(
                       0, 3)[SNew(SButton)
@@ -75,9 +75,14 @@ void FS7LevelAuthoringModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_
                            .OnClicked(this,
                                       &FS7LevelAuthoringModeToolkit::clear_selected_objectives)] +
                   SUniformGridPanel::Slot(
-                      1, 5)[SNew(SButton)
-                                .Text(LOCTEXT("SaveAs", "Save As"))
-                                .OnClicked(this, &FS7LevelAuthoringModeToolkit::save_as)]] +
+                      0, 5)[SNew(SButton)
+                                .Text(LOCTEXT("SaveAs", "Save Source As"))
+                                .OnClicked(this, &FS7LevelAuthoringModeToolkit::save_as)] +
+                  SUniformGridPanel::Slot(1, 5)
+                      [SNew(SButton)
+                           .Text(LOCTEXT("SaveCanonical", "Save Canonical from Scene"))
+                           .OnClicked(this,
+                                      &FS7LevelAuthoringModeToolkit::save_canonical_from_scene)]] +
              SVerticalBox::Slot().AutoHeight().Padding(
                  4.0f)[SAssignNew(status_, STextBlock).AutoWrapText(true)] +
              SVerticalBox::Slot().AutoHeight()[details_.ToSharedRef()]];
@@ -127,6 +132,7 @@ FORWARD_ACTION(preview_apply)
 FORWARD_ACTION(apply_preview)
 FORWARD_ACTION(save)
 FORWARD_ACTION(save_as)
+FORWARD_ACTION(save_canonical_from_scene)
 
 #undef FORWARD_ACTION
 #undef LOCTEXT_NAMESPACE
