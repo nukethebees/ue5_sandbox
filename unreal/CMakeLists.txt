@@ -511,6 +511,17 @@ add_unreal_editor_test(SandboxShaders.MaterialCompilation
   TIMEOUT 900
 )
 
+add_unreal_editor_test(Sandbox.SpaceDustRenderTests
+  NO_LOCAL_DDC
+  ARGUMENTS
+    "-ExecCmds=Automation Now; Automation RunTests Sandbox.SpaceDustRenderTests; Quit"
+    -RenderOffscreen
+    -AllowCommandletRendering
+    -DDC-ForceMemoryCache
+  LABELS level space-dust all
+  TIMEOUT 900
+)
+
 add_unreal_editor_test(USFLoader.IncludedFunctionCompilation
   NO_LOCAL_DDC
   ARGUMENTS
