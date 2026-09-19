@@ -131,6 +131,63 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
     EXPECT_EQ(header.find("CoreMinimal.h"), std::string::npos);
 }
 
+TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) {
+    auto const files{render_modules(lower_modules(Manifest{
+        .schema_version = manifest_schema_version,
+        .types = {{"native_uint8", CppType{"std::uint8_t", "cstdint"}}},
+        .modules = {EnumModuleSchema{
+            .settings = ModuleSettings{.name = "native_enum",
+                                       .header = "NativeEnum.h",
+                                       .namespace_name = "fixture"},
+            .enums = {EnumSchema{
+                .name = "NativeState",
+                .underlying_type = TypeRef{"@native_uint8"},
+                .values = {EnumeratorSchema{
+                               .name = "Idle", .initializer = "0", .serialized_name = "idle"},
+                           EnumeratorSchema{
+                               .name = "Active", .initializer = "1", .serialized_name = "active"},
+                           EnumeratorSchema{.name = "COUNT", .initializer = "2", .hidden = true}},
+                .count = "COUNT",
+                .native_api = true,
+                .unreal_projection =
+                    EnumUnrealProjection{
+                        .name = "ENativeState",
+                        .header = "Project/NativeState.h",
+                        .header_include = "Project/NativeState.h",
+                        .conversion_header = "Project/NativeStateConversion.h",
+                        .native_header_include = "fixture/NativeEnum.h",
+                    },
+            }},
+        }},
+    }))};
+
+    ASSERT_EQ(files.size(), 3);
+    auto const& native_header{files[0].content};
+    auto const& projection_header{files[1].content};
+    auto const& conversion_header{files[2].content};
+    EXPECT_NE(native_header.find("enum class NativeState : std::uint8_t"), std::string::npos);
+    auto const traits_start{native_header.find("struct EnumTraits<::fixture::NativeState>")};
+    ASSERT_NE(traits_start, std::string::npos);
+    auto const traits_end{native_header.find("};", traits_start)};
+    ASSERT_NE(traits_end, std::string::npos);
+    auto const traits{native_header.substr(traits_start, traits_end - traits_start)};
+    EXPECT_NE(traits.find("::fixture::NativeState::Idle"), std::string::npos);
+    EXPECT_NE(traits.find("::fixture::NativeState::Active"), std::string::npos);
+    EXPECT_EQ(traits.find("::fixture::NativeState::COUNT"), std::string::npos);
+    EXPECT_EQ(native_header.find("CoreMinimal.h"), std::string::npos);
+    EXPECT_NE(projection_header.find("#include \"CoreMinimal.h\"\n"
+                                     "#include \"NativeState.generated.h\""),
+              std::string::npos);
+    EXPECT_NE(projection_header.find("UENUM()\nenum class ENativeState : uint8"),
+              std::string::npos);
+    EXPECT_NE(conversion_header.find("#include \"fixture/NativeEnum.h\"\n"
+                                     "#include \"Project/NativeState.h\""),
+              std::string::npos);
+    EXPECT_NE(conversion_header.find("static_assert(static_cast<int>(ENativeState::Active) == "
+                                     "static_cast<int>(::fixture::NativeState::Active));"),
+              std::string::npos);
+}
+
 TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
     auto const output{render_enum(EnumModuleSchema{
         .settings =
