@@ -158,9 +158,11 @@ Recovery is available only for a rebase started by AgentGit's constrained
 worktree's Git administrative directory. After a conflict, it binds that marker to Git's rebase
 directory and validates the original feature branch and HEAD, exact base commit, protected policy
 commit, repository identity, Git's rebase metadata, and the fixed pick plan. The marker is not a
-policy authority: continuation still requires the current protected policy and relevant refs to
-match. Abort remains available for a proven owned rebase if policy or the base ref moves, because
-it only restores the recorded branch and pre-rebase HEAD.
+policy authority: continuation still requires the current protected policy to classify the
+original branch as a permitted feature branch and authorize rebasing. The live base branch may
+advance independently; the active transaction remains bound to the exact recorded base commit in
+Git's immutable `onto` metadata. If current policy semantics become restrictive, only abort remains
+available; abort restores the recorded branch and pre-rebase HEAD.
 
 An externally started rebase, malformed or mismatched provenance, changed rebase plan, or missing
 binding is reported as unavailable and cannot use any recovery command or the staging exception.

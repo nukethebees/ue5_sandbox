@@ -30,8 +30,6 @@ internal sealed class RebaseRecoveryStore(GitClient git)
         string git_directory,
         string head_commit,
         string? current_branch,
-        string base_commit,
-        string policy_commit,
         RepositoryOperationState operation_state,
         CancellationToken cancellation_token = default)
     {
@@ -103,8 +101,6 @@ internal sealed class RebaseRecoveryStore(GitClient git)
 
         var fingerprint = ComputeFingerprint(marker_json!, sentinel!, plan_hash);
         var continuation_allowed =
-            string.Equals(active_marker.PolicyCommit, policy_commit, StringComparison.Ordinal) &&
-            string.Equals(active_marker.BaseCommit, base_commit, StringComparison.Ordinal) &&
             policy.Classify(active_marker.OriginalBranch) == BranchClassification.Feature &&
             policy.Operations.TryGetValue(AgentGitOperation.RebaseBase, out var rebase_policy) &&
             rebase_policy.AllowedCurrentGroups.Contains(BranchClassification.Feature);
@@ -118,7 +114,7 @@ internal sealed class RebaseRecoveryStore(GitClient git)
                 RebaseRecoveryAvailability.AbortOnly,
                 active_marker,
                 fingerprint,
-                "policy or base state changed; only abort remains available");
+                "current policy forbids continuation; only abort remains available");
     }
 
     public RebaseRecoveryMarker Prepare(RepositoryContext context)

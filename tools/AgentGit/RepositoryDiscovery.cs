@@ -139,8 +139,6 @@ internal sealed class RepositoryDiscovery(GitClient git)
             git_directory,
             head,
             current_branch,
-            base_commit,
-            policy_commit,
             operation_state,
             cancellation_token);
         var state = new RepositoryState(
@@ -204,8 +202,6 @@ internal sealed class RepositoryDiscovery(GitClient git)
                 state.GitDirectory,
                 state.HeadCommit,
                 state.CurrentBranch,
-                state.BaseCommit,
-                state.PolicyCommit,
                 state.OperationState,
                 cancellation_token);
             if (!string.Equals(

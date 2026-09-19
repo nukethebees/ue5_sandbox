@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AgentGit.Tests;
@@ -42,6 +43,7 @@ public sealed class AgentGitRebaseRecoveryTests
         Assert.AreEqual(
             ExitCodes.GitFailure,
             (await fixture.RunAgentGitAsync(setup.Worktree, "rebase-base")).ExitCode);
+        var advanced_base = AdvanceBase(fixture, "multiple");
 
         fixture.WriteFile("conflict-1.txt", "resolved first\n", setup.Worktree);
         Assert.AreEqual(
@@ -62,6 +64,10 @@ public sealed class AgentGitRebaseRecoveryTests
 
         Assert.AreEqual(ExitCodes.Success, second_continue.ExitCode, second_continue.Error);
         Assert.AreEqual(setup.Branch + "\n", fixture.RunGitAt(setup.Worktree, "branch", "--show-current"));
+        fixture.RunGitAt(setup.Worktree, "merge-base", "--is-ancestor", setup.BaseHead, "HEAD");
+        Assert.AreNotEqual(
+            0,
+            fixture.RunGitAllowFailureAt(setup.Worktree, "merge-base", "--is-ancestor", advanced_base, "HEAD").ExitCode);
         Assert.IsFalse(File.Exists(MarkerPath(fixture, setup.Worktree)));
     }
 
@@ -150,6 +156,25 @@ public sealed class AgentGitRebaseRecoveryTests
             "rebase-continue");
         Assert.AreEqual(ExitCodes.PolicyDenied, missing_fields_continue.ExitCode, missing_fields_continue.Error);
         tampered_fixture.RunGitAt(tampered_setup.Worktree, "rebase", "--abort");
+    }
+
+    [TestMethod]
+    public async Task Modified_rebase_plan_fails_closed()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        var setup = CreateConflictingRebase(fixture, "feature/plan-tampered", conflict_count: 2);
+        Assert.AreEqual(
+            ExitCodes.GitFailure,
+            (await fixture.RunAgentGitAsync(setup.Worktree, "rebase-base")).ExitCode);
+        var todo_path = Path.Combine(GitDirectory(fixture, setup.Worktree), "rebase-merge", "git-rebase-todo");
+        var todo = File.ReadAllText(todo_path);
+        File.WriteAllText(todo_path, todo.Replace("pick ", "drop ", StringComparison.Ordinal));
+
+        var resume = await fixture.RunAgentGitAsync(setup.Worktree, "rebase-continue");
+
+        Assert.AreEqual(ExitCodes.StateFailure, resume.ExitCode, resume.Error);
+        StringAssert.Contains(resume.Error, "only the non-interactive pick sequence");
+        fixture.RunGitAt(setup.Worktree, "rebase", "--abort");
     }
 
     [TestMethod]
@@ -246,16 +271,44 @@ public sealed class AgentGitRebaseRecoveryTests
     }
 
     [TestMethod]
-    public async Task Base_or_policy_movement_blocks_continue_but_not_abort()
+    public async Task Base_advance_during_conflict_does_not_invalidate_recovery()
     {
         using var fixture = new TemporaryAgentGitRepository();
-        var setup = CreateConflictingRebase(fixture, "feature/policy-drift", conflict_count: 1);
+        var setup = CreateConflictingRebase(fixture, "feature/base-advance", conflict_count: 1);
         Assert.AreEqual(
             ExitCodes.GitFailure,
             (await fixture.RunAgentGitAsync(setup.Worktree, "rebase-base")).ExitCode);
-        fixture.WriteFile("base-moved.txt", "moved\n");
-        fixture.RunGit("add", "base-moved.txt");
-        fixture.RunGit("commit", "-qm", "move base during conflict");
+        var advanced_base = AdvanceBase(fixture, "single");
+
+        var status = await fixture.RunAgentGitAsync(setup.Worktree, "status");
+        fixture.WriteFile("conflict-1.txt", "resolved\n", setup.Worktree);
+        var add = await fixture.RunAgentGitAsync(setup.Worktree, "add", "conflict-1.txt");
+        var resume = await fixture.RunAgentGitAsync(setup.Worktree, "rebase-continue");
+
+        StringAssert.Contains(status.Output, "AgentGit rebase recovery: available");
+        Assert.AreEqual(ExitCodes.Success, add.ExitCode, add.Error);
+        Assert.AreEqual(ExitCodes.Success, resume.ExitCode, resume.Error);
+        Assert.AreEqual(setup.Branch + "\n", fixture.RunGitAt(setup.Worktree, "branch", "--show-current"));
+        fixture.RunGitAt(setup.Worktree, "merge-base", "--is-ancestor", setup.BaseHead, "HEAD");
+        Assert.AreNotEqual(
+            0,
+            fixture.RunGitAllowFailureAt(setup.Worktree, "merge-base", "--is-ancestor", advanced_base, "HEAD").ExitCode);
+        Assert.IsFalse(File.Exists(MarkerPath(fixture, setup.Worktree)));
+    }
+
+    [TestMethod]
+    public async Task Restrictive_current_policy_blocks_continue_but_not_abort()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        var setup = CreateConflictingRebase(fixture, "feature/policy-restricted", conflict_count: 1);
+        Assert.AreEqual(
+            ExitCodes.GitFailure,
+            (await fixture.RunAgentGitAsync(setup.Worktree, "rebase-base")).ExitCode);
+        var policy = JsonNode.Parse(PolicyLoaderTests.ValidPolicy())!.AsObject();
+        Assert.IsTrue(policy["policies"]!.AsObject().Remove("rebaseBase"));
+        fixture.WriteFile(".agent-git.json", policy.ToJsonString());
+        fixture.RunGit("add", ".agent-git.json");
+        fixture.RunGit("commit", "-qm", "restrict rebase policy during conflict");
 
         var status = await fixture.RunAgentGitAsync(setup.Worktree, "status");
         var add = await fixture.RunAgentGitAsync(setup.Worktree, "add-all");
@@ -327,6 +380,15 @@ public sealed class AgentGitRebaseRecoveryTests
         fixture.RunGit("commit", "-qm", "base conflicts");
         var base_head = fixture.RunGit("rev-parse", "dev").Trim();
         return new ConflictSetup(branch, worktree, original_head, base_head);
+    }
+
+    private static string AdvanceBase(TemporaryAgentGitRepository fixture, string suffix)
+    {
+        var path = $"base-advanced-{suffix}.txt";
+        fixture.WriteFile(path, "advanced\n");
+        fixture.RunGit("add", path);
+        fixture.RunGit("commit", "-qm", $"advance base during {suffix} conflict");
+        return fixture.RunGit("rev-parse", "dev").Trim();
     }
 
     private static string GitDirectory(TemporaryAgentGitRepository fixture, string worktree)

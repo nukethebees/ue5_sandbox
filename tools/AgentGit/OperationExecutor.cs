@@ -193,8 +193,8 @@ internal sealed class OperationExecutor(GitClient git, RepositoryDiscovery disco
         if (after.State.OperationState != RepositoryOperationState.None ||
             !string.Equals(after.State.CurrentBranch, marker.OriginalBranch, StringComparison.Ordinal) ||
             after.State.CurrentClassification != BranchClassification.Feature ||
-            !string.Equals(after.State.BaseCommit, marker.BaseCommit, StringComparison.OrdinalIgnoreCase) ||
-            !string.Equals(after.State.PolicyCommit, marker.PolicyCommit, StringComparison.OrdinalIgnoreCase))
+            !after.Policy.Operations.TryGetValue(AgentGitOperation.RebaseBase, out var rebase_policy) ||
+            !rebase_policy.AllowedCurrentGroups.Contains(BranchClassification.Feature))
         {
             throw new RepositoryStateException(
                 "Git reported a successful rebase without restoring the expected feature branch and repository state.");
