@@ -104,6 +104,25 @@ auto valid_enum_module() -> EnumModuleSchema {
     };
 }
 
+auto valid_native_enum_module() -> EnumModuleSchema {
+    return EnumModuleSchema{
+        .settings =
+            ModuleSettings{
+                .name = "native_enums",
+                .header = "NativeEnums.h",
+                .namespace_name = "project",
+            },
+        .enums = {EnumSchema{
+            .name = "NativeMode",
+            .underlying_type = TypeRef{"std::uint8_t"},
+            .values = {EnumeratorSchema{"Idle", "0", std::nullopt, false, "idle"},
+                       EnumeratorSchema{"COUNT", "1", std::nullopt, true}},
+            .count = "COUNT",
+            .native_api = true,
+        }},
+    };
+}
+
 auto valid_static_table_module() -> StaticTableModuleSchema {
     return StaticTableModuleSchema{
         .settings = ModuleSettings{.name = "tables", .header = "Tables.h"},
@@ -164,6 +183,49 @@ TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
     module = valid_enum_module();
     module.enums.front().reflection = EnumReflection::none;
     module.enums.front().values.front().hidden = true;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
+TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
+    auto module{valid_native_enum_module()};
+    module.enums.push_back(valid_enum_module().enums.front());
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_native_enum_module();
+    module.enums.front().reflection = EnumReflection::uenum;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_native_enum_module();
+    module.enums.front().enum_array = true;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_native_enum_module();
+    module.enums.front().conversions = {EnumConversion::string_view};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_native_enum_module();
+    module.enums.front().export_specifier = "PROJECT_API";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_native_enum_module();
+    module.enums.front().unreal_projection = EnumUnrealProjection{
+        .name = "ENativeMode",
+        .header = "Project/NativeMode.h",
+        .header_include = "Project/NativeMode.h",
+        .conversion_header = "Project/NativeModeConversion.h",
+        .native_header_include = "project/NativeEnums.h",
+        .reflection = EnumReflection::none,
+    };
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_enum_module();
+    module.enums.front().unreal_projection = EnumUnrealProjection{
+        .name = "ENativeMode",
+        .header = "Project/NativeMode.h",
+        .header_include = "Project/NativeMode.h",
+        .conversion_header = "Project/NativeModeConversion.h",
+        .native_header_include = "project/NativeEnums.h",
+    };
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
