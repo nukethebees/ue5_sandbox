@@ -355,6 +355,19 @@ function ctools {
     }
 }
 
+function install-agent-git {
+    param(
+        [string]$BaseBranch = 'dev'
+    )
+
+    ctools
+    $installer = Join-Path $script:dev_project_root 'PowerShell\Install-AgentGit.ps1'
+    & $installer -Repository $script:dev_project_root -BaseBranch $BaseBranch
+    if ($LASTEXITCODE -ne 0) {
+        throw "agent-git installation exited with code $LASTEXITCODE."
+    }
+}
+
 function csetup {
     param(
         [Parameter(Position = 0, ValueFromRemainingArguments = $true)]

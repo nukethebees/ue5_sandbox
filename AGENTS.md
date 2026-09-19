@@ -16,6 +16,9 @@ Unreal Engine 5.8 project.
 
 # Feature Workflow
 
+* Use the canonical `agent-git` executable for supported Git mutations. Raw Git remains acceptable
+  for read-only inspection; unsupported mutations require the normal human-approval route rather
+  than bypassing `agent-git` or using a repository-built copy.
 * `dev` is the integration branch. Perform feature work on dedicated feature branches in separate
   worktrees rather than directly on `dev`; multiple agents may work concurrently in their own
   worktrees.

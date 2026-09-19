@@ -14,6 +14,10 @@ Workflows that directly use a staged executable require it to be present.
   executable can be run as `tools/bin/NativeBinaryTools.exe mimalloc-symbols <generate|verify> ...`.
   Native CMake builds use a configuration-local copy built on demand, so they do not require a
   prior `ctools` run.
+- `AgentGit/` is the repository-aware, policy-enforcing Git interface intended for autonomous
+  agents. Its repository build output is deliberately not trusted for mutations; use
+  `install-agent-git` to create the canonical per-user installation described in
+  [the agent-git documentation](../docs/agent-git.md).
 - `CodeFormatTools/` is the C# formatter for repository C++ and shader files. Run its staged
   executable through the `format-code` and `format-all-code` CMake workflows, or directly as
   `tools/bin/CodeFormatTools.exe [--all|--changed|--staged] [--jobs N|-j N] [--verbose]` after
