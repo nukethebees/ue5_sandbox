@@ -33,3 +33,6 @@ set_tests_properties(Sandbox.CSharpTools PROPERTIES
 )
 
 add_subdirectory(perf)
+if(SANDBOX_LAYOUT_PLANNER)
+  add_subdirectory(layout_planner)
+endif()

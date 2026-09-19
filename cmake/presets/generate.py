@@ -31,6 +31,7 @@ DEFAULT_NATIVE_CONFIGURATION = "native"
 CODEGEN_CONFIGURATION = DEFAULT_NATIVE_CONFIGURATION
 BENCHMARK_CONFIGURATION = "win-x64-clangcl-release-unity"
 CLANG_TIDY_CONFIGURATION = "win-x64-clangcl-debug-tidy"
+LAYOUT_PLANNER_CONFIGURATION = "layout-planner"
 
 
 def generated_header() -> dict[str, Any]:
@@ -150,6 +151,18 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             },
         }
     )
+    configure_presets.append(
+        {
+            "name": LAYOUT_PLANNER_CONFIGURATION,
+            "displayName": "Memory Layout Planner (clang-cl Debug)",
+            "inherits": [
+                "windows-clang-cl",
+                "native-common",
+                "native-config-debug",
+            ],
+            "cacheVariables": {"SANDBOX_LAYOUT_PLANNER": True},
+        }
+    )
 
     document["configurePresets"] = configure_presets
     document["buildPresets"] = [
@@ -189,6 +202,11 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             "name": CLANG_TIDY_CONFIGURATION,
             "configurePreset": CLANG_TIDY_CONFIGURATION,
             "targets": ["native-clang-tidy"],
+        },
+        {
+            "name": LAYOUT_PLANNER_CONFIGURATION,
+            "configurePreset": LAYOUT_PLANNER_CONFIGURATION,
+            "targets": ["layout-planner", "native-layout-tests"],
         },
     ]
     document["testPresets"] = [
@@ -230,6 +248,12 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             "inherits": "test-base",
             "configurePreset": CODEGEN_CONFIGURATION,
             "filter": {"include": {"label": "codegen"}},
+        },
+        {
+            "name": LAYOUT_PLANNER_CONFIGURATION,
+            "inherits": "test-base",
+            "configurePreset": LAYOUT_PLANNER_CONFIGURATION,
+            "filter": {"include": {"label": "layout"}},
         },
     ]
     document["workflowPresets"] = [
@@ -292,6 +316,14 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             "steps": [
                 {"type": "configure", "name": CLANG_TIDY_CONFIGURATION},
                 {"type": "build", "name": CLANG_TIDY_CONFIGURATION},
+            ],
+        },
+        {
+            "name": LAYOUT_PLANNER_CONFIGURATION,
+            "steps": [
+                {"type": "configure", "name": LAYOUT_PLANNER_CONFIGURATION},
+                {"type": "build", "name": LAYOUT_PLANNER_CONFIGURATION},
+                {"type": "test", "name": LAYOUT_PLANNER_CONFIGURATION},
             ],
         },
     ]

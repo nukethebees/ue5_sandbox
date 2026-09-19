@@ -198,6 +198,18 @@
         "CMAKE_CXX_SCAN_FOR_MODULES": false,
         "CMAKE_EXPORT_COMPILE_COMMANDS": true
       }
+    },
+    {
+      "name": "layout-planner",
+      "displayName": "Memory Layout Planner (clang-cl Debug)",
+      "inherits": [
+        "windows-clang-cl",
+        "native-common",
+        "native-config-debug"
+      ],
+      "cacheVariables": {
+        "SANDBOX_LAYOUT_PLANNER": true
+      }
     }
   ],
   "buildPresets": [
@@ -292,6 +304,14 @@
       "configurePreset": "win-x64-clangcl-debug-tidy",
       "targets": [
         "native-clang-tidy"
+      ]
+    },
+    {
+      "name": "layout-planner",
+      "configurePreset": "layout-planner",
+      "targets": [
+        "layout-planner",
+        "native-layout-tests"
       ]
     }
   ],
@@ -475,6 +495,16 @@
       "filter": {
         "include": {
           "label": "codegen"
+        }
+      }
+    },
+    {
+      "name": "layout-planner",
+      "inherits": "test-base",
+      "configurePreset": "layout-planner",
+      "filter": {
+        "include": {
+          "label": "layout"
         }
       }
     }
@@ -790,6 +820,23 @@
         {
           "type": "build",
           "name": "win-x64-clangcl-debug-tidy"
+        }
+      ]
+    },
+    {
+      "name": "layout-planner",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "layout-planner"
+        },
+        {
+          "type": "build",
+          "name": "layout-planner"
+        },
+        {
+          "type": "test",
+          "name": "layout-planner"
         }
       ]
     }

@@ -2,6 +2,11 @@ option(SANDBOX_KERNEL_BENCHMARKS "Build native generated-kernel benchmarks" OFF)
 option(SANDBOX_NATIVE_SOA_BENCHMARKS "Build standalone experimental SoA benchmarks" OFF)
 option(SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK "Register the native frame-memory level benchmark" OFF)
 option(SANDBOX_KERNEL_BENCHMARK_PLOTS "Generate native kernel benchmark plots" OFF)
+option(SANDBOX_LAYOUT_PLANNER "Build the standalone memory layout planner" OFF)
+
+if(SANDBOX_LAYOUT_PLANNER)
+  enable_language(C)
+endif()
 
 add_subdirectory(third_party)
 add_subdirectory(third_party/handmade_math)
