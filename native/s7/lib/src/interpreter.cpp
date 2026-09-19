@@ -499,7 +499,7 @@ struct CanonicalPath {
     resolved.resize(copied);
     resolved = strip_extended_path_prefix(std::move(resolved));
 
-    auto const narrow{wide_to_utf8(resolved)};
+    auto narrow{wide_to_utf8(resolved)};
     auto const size{(static_cast<std::uint64_t>(file_information.nFileSizeHigh) << 32U) |
                     file_information.nFileSizeLow};
     if (!narrow.has_value() || size > std::numeric_limits<std::size_t>::max()) {
