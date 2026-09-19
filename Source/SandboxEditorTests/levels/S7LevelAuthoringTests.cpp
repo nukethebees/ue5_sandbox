@@ -2,6 +2,7 @@
 #include <SandboxEditor/levels/S7LevelAuthoringMode.h>
 #include <SandboxEditor/levels/S7LevelAuthoringPreview.h>
 #include <SandboxEditor/levels/S7LevelAuthoringSession.h>
+#include <SandboxEditor/levels/S7LevelReconciliation.h>
 #include <SandboxEditor/levels/S7LevelSourceSession.h>
 
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
