@@ -43,7 +43,14 @@ internal sealed record StatusRequest : AgentGitRequest;
 
 internal sealed record BranchInfoRequest : AgentGitRequest;
 
-internal sealed record IntegrateRequest(bool Authorized, bool KeepBranch, bool ToolTests) : AgentGitRequest;
+internal sealed record IntegrateRequest(
+    bool Authorized,
+    bool KeepBranch,
+    bool ToolTests,
+    bool MaintainerOverride,
+    string? OverrideReason) : AgentGitRequest;
+
+internal sealed record IntegrationInfoRequest(bool Json) : AgentGitRequest;
 
 internal sealed record PolicyRequest(AgentGitOperation Operation, string? Target) : AgentGitRequest;
 

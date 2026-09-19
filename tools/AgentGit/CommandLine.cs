@@ -6,7 +6,9 @@ internal static class CommandLine
         Usage:
           agent-git status
           agent-git branch-info
+          agent-git integration-info [--json]
           agent-git integrate --authorized [--keep-branch] [--tool-tests]
+            [--maintainer-override --override-reason <reason>]
           agent-git policy <add|add-all|commit|switch|switch-create|rebase-base|rebase-continue|rebase-abort|branch-delete> [branch]
           agent-git [--dry-run] add <path>...
           agent-git [--dry-run] add-all
@@ -67,24 +69,23 @@ internal static class CommandLine
             case "branch-info" when remaining.Length == 0:
                 request = new BranchInfoRequest();
                 return true;
+            case "integration-info" when remaining.Length == 0:
+                request = new IntegrationInfoRequest(false);
+                return true;
+            case "integration-info" when remaining is ["--json"]:
+                request = new IntegrationInfoRequest(true);
+                return true;
             case "integrate":
                 if (dry_run)
                 {
                     error = "--dry-run is not supported for the integration transaction.";
                     return false;
                 }
-                if (remaining.All(value => value is "--authorized" or "--keep-branch" or "--tool-tests") &&
-                    remaining.Count(value => value == "--authorized") == 1 &&
-                    remaining.Count(value => value == "--keep-branch") <= 1 &&
-                    remaining.Count(value => value == "--tool-tests") <= 1)
+                if (TryParseIntegration(remaining, out var integration, out error))
                 {
-                    request = new IntegrateRequest(
-                        true,
-                        remaining.Contains("--keep-branch", StringComparer.Ordinal),
-                        remaining.Contains("--tool-tests", StringComparer.Ordinal));
+                    request = integration;
                     return true;
                 }
-                error = "integrate requires exactly one --authorized and accepts optional --keep-branch and --tool-tests.";
                 return false;
             case "policy":
                 return TryParsePolicy(remaining, out request, out error);
@@ -119,6 +120,63 @@ internal static class CommandLine
                 error = $"Unknown or invalid operation '{command}'.";
                 return false;
         }
+    }
+
+    private static bool TryParseIntegration(
+        IReadOnlyList<string> arguments,
+        out IntegrateRequest? request,
+        out string? error)
+    {
+        request = null;
+        error = null;
+        var authorized = false;
+        var keep_branch = false;
+        var tool_tests = false;
+        var maintainer_override = false;
+        string? override_reason = null;
+        for (var index = 0; index < arguments.Count; ++index)
+        {
+            switch (arguments[index])
+            {
+                case "--authorized" when !authorized:
+                    authorized = true;
+                    break;
+                case "--keep-branch" when !keep_branch:
+                    keep_branch = true;
+                    break;
+                case "--tool-tests" when !tool_tests:
+                    tool_tests = true;
+                    break;
+                case "--maintainer-override" when !maintainer_override:
+                    maintainer_override = true;
+                    break;
+                case "--override-reason" when override_reason is null && index + 1 < arguments.Count:
+                    override_reason = arguments[++index];
+                    break;
+                default:
+                    error = $"Unknown or duplicate integrate argument '{arguments[index]}'.";
+                    return false;
+            }
+        }
+
+        if (!authorized)
+        {
+            error = "integrate requires exactly one --authorized.";
+            return false;
+        }
+        if (maintainer_override != !string.IsNullOrWhiteSpace(override_reason))
+        {
+            error = "--maintainer-override requires exactly one non-empty --override-reason.";
+            return false;
+        }
+
+        request = new IntegrateRequest(
+            authorized,
+            keep_branch,
+            tool_tests,
+            maintainer_override,
+            override_reason);
+        return true;
     }
 
     private static bool TryParsePolicy(

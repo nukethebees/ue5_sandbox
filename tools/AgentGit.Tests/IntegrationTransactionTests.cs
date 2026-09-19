@@ -6,27 +6,41 @@ namespace AgentGit.Tests;
 public sealed class IntegrationTransactionTests
 {
     [TestMethod]
-    public async Task Final_validator_runs_normal_gates_without_tool_tests()
+    public async Task Final_validator_runs_only_planned_gates_in_order()
     {
+        using var fixture = new TemporaryAgentGitRepository();
         var runner = new RecordingCommandRunner();
-        var validator = new CMakeIntegrationValidator(runner);
+        var validator = new IntegrationGateValidator(runner);
+        var store = new IntegrationStateStore(fixture.RunGit(
+            "rev-parse", "--path-format=absolute", "--git-common-dir").Trim());
+        var identity = new PatchIdentity("candidate", "tree", ["tools/AgentGit/Program.cs"]);
+        var plan = new IntegrationGatePlanner().Plan(identity.ChangedPaths);
 
-        var exit_code = await validator.ValidateAsync(
-            "C:\\worktree",
-            requires_tool_tests: false,
-            requires_benchmark_build: true,
+        var result = await validator.ValidateAsync(
+            fixture.RepositoryRoot,
+            "base",
+            identity,
+            plan,
+            store,
+            TextWriter.Null,
+            TextWriter.Null,
+            default);
+        var reused = await validator.ValidateAsync(
+            fixture.RepositoryRoot,
+            "base",
+            identity,
+            plan,
+            store,
             TextWriter.Null,
             TextWriter.Null,
             default);
 
-        Assert.AreEqual(0, exit_code);
+        Assert.AreEqual(0, result.ExitCode);
+        Assert.AreEqual(0, reused.ExitCode);
         CollectionAssert.AreEqual(
             new[]
             {
-                "cmake --workflow --preset debug-game-tests",
-                "cmake --preset benchmark",
-                "cmake --build --preset benchmark --target benchmarks",
-                "cmake --workflow --preset development",
+                "dotnet test tools/AgentGit.Tests/AgentGit.Tests.csproj --nologo",
             },
             runner.Commands);
     }
@@ -34,24 +48,30 @@ public sealed class IntegrationTransactionTests
     [TestMethod]
     public async Task Final_validator_runs_tool_tests_when_requested()
     {
+        using var fixture = new TemporaryAgentGitRepository();
         var runner = new RecordingCommandRunner();
-        var validator = new CMakeIntegrationValidator(runner);
+        var validator = new IntegrationGateValidator(runner);
+        var store = new IntegrationStateStore(fixture.RunGit(
+            "rev-parse", "--path-format=absolute", "--git-common-dir").Trim());
+        var identity = new PatchIdentity("candidate", "tree", ["tools/AgentGit/Program.cs"]);
+        var plan = new IntegrationGatePlanner().Plan(identity.ChangedPaths, include_tool_tests: true);
 
-        var exit_code = await validator.ValidateAsync(
-            "C:\\worktree",
-            requires_tool_tests: true,
-            requires_benchmark_build: false,
+        var result = await validator.ValidateAsync(
+            fixture.RepositoryRoot,
+            "base",
+            identity,
+            plan,
+            store,
             TextWriter.Null,
             TextWriter.Null,
             default);
 
-        Assert.AreEqual(0, exit_code);
+        Assert.AreEqual(0, result.ExitCode);
         CollectionAssert.AreEqual(
             new[]
             {
-                "cmake --workflow --preset debug-game-tests",
+                "dotnet test tools/AgentGit.Tests/AgentGit.Tests.csproj --nologo",
                 "cmake --workflow --preset tool-tests",
-                "cmake --workflow --preset development",
             },
             runner.Commands);
     }
@@ -99,6 +119,43 @@ public sealed class IntegrationTransactionTests
     }
 
     [TestMethod]
+    public async Task Moving_dev_preserves_review_for_identical_patch_and_runs_final_gate_once()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        var candidate_a = CreateFeature(fixture, "dev1", "feature/a", "a.txt");
+        var candidate_b = CreateFeature(fixture, "dev2", "feature/b", "b.txt");
+        var original_base = fixture.RunGit("rev-parse", "dev").Trim();
+        var original_tip = fixture.RunGitAt(candidate_a, "rev-parse", "HEAD").Trim();
+        var git = new GitClient(fixture.Trust, new ProcessRunner());
+        var identity = await new PatchIdentityService(git).ComputeAsync(
+            candidate_a, original_base, original_tip, default);
+        var common_git = fixture.RunGit(
+            "rev-parse", "--path-format=absolute", "--git-common-dir").Trim();
+        new IntegrationStateStore(common_git).WriteReview(new ReviewReceipt(
+            1,
+            identity.Fingerprint,
+            identity.Tree,
+            original_base,
+            original_tip,
+            "feature/a",
+            DateTimeOffset.UtcNow));
+
+        var b_result = await RunAsync(fixture, candidate_b, new RecordingValidator());
+        var a_validation = new RecordingValidator();
+        var a_reviewer = new CountingReviewer();
+        var a_result = await RunAsync(
+            fixture, candidate_a, a_validation, reviewer: a_reviewer);
+
+        Assert.AreEqual(ExitCodes.Success, b_result.ExitCode, b_result.Error);
+        Assert.AreEqual(ExitCodes.Success, a_result.ExitCode, a_result.Error);
+        Assert.AreEqual(0, a_reviewer.CallCount);
+        Assert.AreEqual(1, a_validation.CallCount);
+        StringAssert.Contains(a_result.Output, "Review receipt reused");
+        Assert.AreEqual("feature b\n", fixture.RunGit("show", "dev:b.txt"));
+        Assert.AreEqual("feature a\n", fixture.RunGit("show", "dev:a.txt"));
+    }
+
+    [TestMethod]
     public async Task Unexpected_dev_movement_aborts_without_retry_or_cleanup()
     {
         using var fixture = new TemporaryAgentGitRepository();
@@ -136,6 +193,59 @@ public sealed class IntegrationTransactionTests
         Assert.AreEqual(original_dev, fixture.RunGit("rev-parse", "dev").Trim());
         Assert.AreEqual("feature/failing\n", fixture.RunGitAt(feature_worktree, "branch", "--show-current"));
         Assert.AreNotEqual(string.Empty, fixture.RunGit("branch", "--list", "feature/failing"));
+    }
+
+    [TestMethod]
+    public async Task Failed_validation_preserves_review_for_unchanged_effective_patch()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        var feature_worktree = CreateFeature(fixture, "dev1", "feature/review", "review.txt");
+        var reviewer = new CountingReviewer();
+
+        var failed = await RunAsync(
+            fixture,
+            feature_worktree,
+            new RecordingValidator(exit_code: 42),
+            reviewer: reviewer);
+        var succeeded = await RunAsync(
+            fixture,
+            feature_worktree,
+            new RecordingValidator(),
+            reviewer: reviewer);
+
+        Assert.AreEqual(42, failed.ExitCode);
+        Assert.AreEqual(ExitCodes.Success, succeeded.ExitCode, succeeded.Error);
+        Assert.AreEqual(1, reviewer.CallCount, "The unchanged effective patch should reuse review.");
+        StringAssert.Contains(succeeded.Output, "Review receipt reused");
+    }
+
+    [TestMethod]
+    public async Task Maintainer_override_skips_validation_and_is_audited_in_merge()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        var feature_worktree = CreateFeature(fixture, "dev1", "feature/override", "override.txt");
+        var validation = new RecordingValidator(exit_code: 42);
+        var reviewer = new CountingReviewer();
+
+        var result = await RunAsync(
+            fixture,
+            feature_worktree,
+            validation,
+            new IntegrateRequest(true, false, false, true, "maintainer verified the working fix"),
+            reviewer);
+
+        Assert.AreEqual(ExitCodes.Success, result.ExitCode, result.Error);
+        Assert.AreEqual(0, validation.CallCount);
+        Assert.AreEqual(1, reviewer.CallCount);
+        Assert.IsTrue(reviewer.SawOverride);
+        StringAssert.Contains(result.Output, "Maintainer override accepted");
+        var merge_message = fixture.RunGit("show", "-s", "--format=%B", "dev");
+        StringAssert.Contains(merge_message, "Maintainer-Override: yes");
+        StringAssert.Contains(merge_message, "Maintainer-Override-Reason: maintainer verified the working fix");
+        var common_git = fixture.RunGit(
+            "rev-parse", "--path-format=absolute", "--git-common-dir").Trim();
+        var audit = File.ReadAllText(Path.Combine(common_git, "agent-git", "integration", "audit.jsonl"));
+        StringAssert.Contains(audit, "maintainer verified the working fix");
     }
 
     [TestMethod]
@@ -181,7 +291,9 @@ public sealed class IntegrationTransactionTests
     private static async Task<ApplicationResult> RunAsync(
         TemporaryAgentGitRepository fixture,
         string worktree,
-        RecordingValidator validator)
+        RecordingValidator validator,
+        IntegrateRequest? request = null,
+        IIntegrationReviewer? reviewer = null)
     {
         var output = new StringWriter();
         var error = new StringWriter();
@@ -192,12 +304,12 @@ public sealed class IntegrationTransactionTests
             git,
             discovery,
             new AcceptingLeaseVerifier(),
-            new AcceptingReviewer(),
+            reviewer ?? new AcceptingReviewer(),
             validator,
             output,
             error);
         var exit_code = await transaction.RunAsync(
-            new IntegrateRequest(true, false, false), worktree, default);
+            request ?? new IntegrateRequest(true, false, false, false, null), worktree, default);
         return new ApplicationResult(exit_code, output.ToString(), error.ToString());
     }
 
@@ -212,25 +324,51 @@ public sealed class IntegrationTransactionTests
 
     private sealed class AcceptingReviewer : IIntegrationReviewer
     {
-        public Task<bool> ConfirmAsync(string rebased_tip, CancellationToken cancellation_token) =>
+        public Task<bool> ConfirmAsync(
+            string patch_fingerprint,
+            bool maintainer_override,
+            string? override_reason,
+            CancellationToken cancellation_token) =>
             Task.FromResult(true);
+    }
+
+    private sealed class CountingReviewer : IIntegrationReviewer
+    {
+        public int CallCount { get; private set; }
+
+        public bool SawOverride { get; private set; }
+
+        public Task<bool> ConfirmAsync(
+            string patch_fingerprint,
+            bool maintainer_override,
+            string? override_reason,
+            CancellationToken cancellation_token)
+        {
+            ++CallCount;
+            SawOverride |= maintainer_override;
+            return Task.FromResult(true);
+        }
     }
 
     private sealed class RecordingValidator(Action? action = null, int exit_code = 0) : IIntegrationValidator
     {
         public int CallCount { get; private set; }
 
-        public Task<int> ValidateAsync(
+        public Task<IntegrationValidationResult> ValidateAsync(
             string worktree,
-            bool requires_tool_tests,
-            bool requires_benchmark_build,
+            string base_commit,
+            PatchIdentity identity,
+            IntegrationGatePlan plan,
+            IntegrationStateStore state_store,
             TextWriter output,
             TextWriter error,
             CancellationToken cancellation_token)
         {
             ++CallCount;
             action?.Invoke();
-            return Task.FromResult(exit_code);
+            return Task.FromResult(exit_code == 0
+                ? IntegrationValidationResult.Success
+                : new IntegrationValidationResult(exit_code, "test-gate"));
         }
     }
 

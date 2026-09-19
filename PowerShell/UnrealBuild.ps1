@@ -311,7 +311,9 @@ function install-agent-git {
 function integrate-feature {
     param(
         [switch]$KeepBranch,
-        [switch]$ToolTests
+        [switch]$ToolTests,
+        [switch]$MaintainerOverride,
+        [string]$OverrideReason
     )
 
     $agent_git = Join-Path $env:LOCALAPPDATA 'NukeTheBees\agent-git\bin\agent-git.exe'
@@ -323,29 +325,62 @@ function integrate-feature {
         throw "The per-user jobserver is not installed. Run 'csetup' first."
     }
 
-    $status = & $agent_git status
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Unable to inspect the current feature worktree with agent-git.'
-    }
-    $branch_info = & $agent_git branch-info
-    if ($LASTEXITCODE -ne 0) {
-        throw 'Unable to inspect the configured integration branch with agent-git.'
-    }
-    $worktree_line = $status | Where-Object { $_ -match '^Worktree: ' } | Select-Object -First 1
-    $branch_line = $status | Where-Object { $_ -match '^Current branch: ' } | Select-Object -First 1
-    $base_line = $branch_info | Where-Object { $_ -match '^Base branch: ' } | Select-Object -First 1
-    if ($null -eq $worktree_line -or $null -eq $branch_line -or $null -eq $base_line) {
-        throw 'agent-git returned incomplete repository metadata.'
+    if (($MaintainerOverride -and [string]::IsNullOrWhiteSpace($OverrideReason)) -or
+        (-not $MaintainerOverride -and -not [string]::IsNullOrWhiteSpace($OverrideReason))) {
+        throw '-MaintainerOverride requires one non-empty -OverrideReason and reasons are accepted only with the override.'
     }
 
-    $worktree = $worktree_line.Substring('Worktree: '.Length)
-    $branch = $branch_line.Substring('Current branch: '.Length)
-    $base_branch = $base_line.Substring('Base branch: '.Length)
+    $integration_info_json = & $agent_git integration-info --json 2>$null
+    $supports_integration_info = $LASTEXITCODE -eq 0
+    if ($supports_integration_info) {
+        try {
+            $integration_info = $integration_info_json | ConvertFrom-Json -ErrorAction Stop
+        } catch {
+            throw 'agent-git returned invalid integration candidate metadata.'
+        }
+        $worktree = $integration_info.worktree
+        $branch = $integration_info.branch
+        $base_branch = $integration_info.baseBranch
+        $candidate = $integration_info.patchFingerprint
+    } else {
+        Write-Warning 'Installed agent-git predates stable candidate metadata; using compatibility inspection.'
+        $status = & $agent_git status
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Unable to inspect the current feature worktree with agent-git.'
+        }
+        $branch_info = & $agent_git branch-info
+        if ($LASTEXITCODE -ne 0) {
+            throw 'Unable to inspect the configured integration branch with agent-git.'
+        }
+        $worktree_line = $status | Where-Object { $_ -match '^Worktree: ' } | Select-Object -First 1
+        $branch_line = $status | Where-Object { $_ -match '^Current branch: ' } | Select-Object -First 1
+        $base_line = $branch_info | Where-Object { $_ -match '^Base branch: ' } | Select-Object -First 1
+        if ($null -eq $worktree_line -or $null -eq $branch_line -or $null -eq $base_line) {
+            throw 'agent-git returned incomplete compatibility metadata.'
+        }
+        $worktree = $worktree_line.Substring('Worktree: '.Length)
+        $branch = $branch_line.Substring('Current branch: '.Length)
+        $base_branch = $base_line.Substring('Base branch: '.Length)
+        $candidate = 'legacy-candidate'
+    }
+    if ([string]::IsNullOrWhiteSpace($worktree) -or
+        [string]::IsNullOrWhiteSpace($branch) -or
+        [string]::IsNullOrWhiteSpace($base_branch) -or
+        [string]::IsNullOrWhiteSpace($candidate)) {
+        throw 'agent-git returned incomplete integration candidate metadata.'
+    }
+
+    if ($MaintainerOverride -and -not $supports_integration_info) {
+        throw 'The installed agent-git does not support auditable maintainer overrides. Install the reviewed version or follow an explicitly authorized fallback.'
+    }
+
+    $candidate_short = if ($candidate.Length -gt 12) { $candidate.Substring(0, 12) } else { $candidate }
     $resource = "integration/$base_branch"
     $arguments = @(
         'lease',
-        '--name', "Integrate $branch into $base_branch",
+        '--name', "Integrate $branch into $base_branch [$candidate_short]",
         '--kind', 'integration',
+        '--task', "$branch candidate $candidate_short",
         '--worktree', $worktree,
         '--exclusive', $resource,
         '--',
@@ -359,11 +394,17 @@ function integrate-feature {
     if ($ToolTests) {
         $arguments += '--tool-tests'
     }
+    if ($MaintainerOverride) {
+        $arguments += @('--maintainer-override', '--override-reason', $OverrideReason)
+    }
 
-    Write-Host "Queueing '$branch' for the exclusive '$resource' integration reservation."
+    Write-Host "Queueing '$branch' candidate $candidate for the exclusive '$resource' integration reservation."
+    if ($MaintainerOverride) {
+        Write-Warning "Maintainer override requested: $OverrideReason"
+    }
     & $jobserver @arguments
     if ($LASTEXITCODE -ne 0) {
-        throw "Feature integration exited with code $LASTEXITCODE."
+        throw "Feature integration stopped during its reported stage (exit code $LASTEXITCODE). Review the named blocker above; nothing is retried automatically."
     }
 }
 

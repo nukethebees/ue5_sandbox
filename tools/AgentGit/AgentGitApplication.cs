@@ -33,6 +33,8 @@ internal sealed class AgentGitApplication(
                     return await ShowStatusAsync(working_directory, cancellation_token);
                 case BranchInfoRequest:
                     return await ShowBranchInfoAsync(working_directory, cancellation_token);
+                case IntegrationInfoRequest integration_info:
+                    return await ShowIntegrationInfoAsync(integration_info, working_directory, cancellation_token);
                 case IntegrateRequest integrate:
                     if (integration is null)
                     {
@@ -89,6 +91,55 @@ internal sealed class AgentGitApplication(
         foreach (var worktree in context.State.Worktrees)
         {
             standard_output.WriteLine($"  {worktree.Path}: {worktree.Branch ?? "detached"}");
+        }
+
+        return ExitCodes.Success;
+    }
+
+    private async Task<int> ShowIntegrationInfoAsync(
+        IntegrationInfoRequest request,
+        string working_directory,
+        CancellationToken cancellation_token)
+    {
+        var context = await discovery.DiscoverAsync(trust, working_directory, cancellation_token);
+        if (context.State.CurrentClassification != BranchClassification.Feature ||
+            context.State.CurrentBranch is null)
+        {
+            throw new RepositoryStateException("Integration information requires a checked-out feature branch.");
+        }
+
+        var git = new GitClient(trust, new ProcessRunner());
+        var base_commit = context.State.BaseCommit;
+        var merge_base = await git.RequireTextAsync(
+            context.State.WorktreeRoot,
+            ["merge-base", context.State.HeadCommit, base_commit],
+            cancellation_token);
+        var identity = await new PatchIdentityService(git).ComputeAsync(
+            context.State.WorktreeRoot,
+            merge_base,
+            context.State.HeadCommit,
+            cancellation_token);
+        if (request.Json)
+        {
+            standard_output.WriteLine(JsonSerializer.Serialize(new
+            {
+                worktree = context.State.WorktreeRoot,
+                branch = context.State.CurrentBranch,
+                baseBranch = context.Policy.BaseBranch,
+                baseCommit = base_commit,
+                patchFingerprint = identity.Fingerprint,
+                tree = identity.Tree,
+                changedPaths = identity.ChangedPaths,
+            }));
+        }
+        else
+        {
+            standard_output.WriteLine($"Worktree: {context.State.WorktreeRoot}");
+            standard_output.WriteLine($"Feature branch: {context.State.CurrentBranch}");
+            standard_output.WriteLine($"Base branch: {context.Policy.BaseBranch}");
+            standard_output.WriteLine($"Base commit: {base_commit}");
+            standard_output.WriteLine($"Patch fingerprint: {identity.Fingerprint}");
+            standard_output.WriteLine($"Candidate tree: {identity.Tree}");
         }
 
         return ExitCodes.Success;
