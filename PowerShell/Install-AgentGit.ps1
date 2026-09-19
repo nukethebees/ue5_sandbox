@@ -376,14 +376,14 @@ try {
         $activated_new_install = $true
 
         $installed_executable = Join-Path $install_root 'bin\agent-git.exe'
-        & $installed_executable --version
-        if ($LASTEXITCODE -ne 0) {
-            throw 'The installed agent-git executable failed its version smoke test.'
-        }
         Assert-RuntimeArtifactHashes `
             -ArtifactRoot (Join-Path $install_root 'bin') `
             -RuntimeFiles $runtime_files `
             -ExpectedHashes $artifact_hashes
+        & $installed_executable --version
+        if ($LASTEXITCODE -ne 0) {
+            throw 'The installed agent-git executable failed its version smoke test.'
+        }
 
         if ($TestOnlyFailPostInstall) {
             throw 'Test-only post-install failure.'
