@@ -15,6 +15,7 @@
 
 namespace ioj::sim {
 class CombatEvents;
+struct LevelSim;
 struct SpatialQueryManager;
 }
 

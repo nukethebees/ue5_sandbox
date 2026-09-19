@@ -32,6 +32,7 @@
 namespace ioj::sim {
 class EntityLedger;
 class CombatEvents;
+struct LevelSim;
 struct SpatialQueryManager;
 }
 
