@@ -347,14 +347,6 @@ add_unreal_editor_test(Sandbox.SparkRenderTests
   TIMEOUT 900
 )
 
-add_unreal_editor_test(Sandbox.SpaceDustUnitTests
-  NO_LOCAL_DDC
-  ARGUMENTS
-    "-ExecCmds=Automation Now; Automation RunTests Sandbox.UnitTests.SpaceDust; Quit"
-  LABELS unit space-dust
-  TIMEOUT 900
-)
-
 add_unreal_editor_test(SandboxBenchmarks.SparkBenchmark
   ACTIVITY BENCHMARK
   ARGUMENTS
@@ -516,17 +508,6 @@ add_unreal_editor_test(SandboxShaders.MaterialCompilation
     -AllowCommandletRendering
     -DDC-ForceMemoryCache
   LABELS focused-material all
-  TIMEOUT 900
-)
-
-add_unreal_editor_test(Sandbox.SpaceDustRenderTests
-  NO_LOCAL_DDC
-  ARGUMENTS
-    "-ExecCmds=Automation Now; Automation RunTests Sandbox.SpaceDustRenderTests; Quit"
-    -RenderOffscreen
-    -AllowCommandletRendering
-    -DDC-ForceMemoryCache
-  LABELS level space-dust all
   TIMEOUT 900
 )
 

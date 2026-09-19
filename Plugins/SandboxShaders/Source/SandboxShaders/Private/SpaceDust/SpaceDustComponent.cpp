@@ -16,11 +16,9 @@
 #include "UObject/ConstructorHelpers.h"
 #include "VertexFactory.h"
 
-DEFINE_LOG_CATEGORY_STATIC(LogSpaceDust, Log, All);
+#include <sandbox/core/space_dust_math.h>
 
-namespace space_dust {
-inline constexpr int32 maximum_particle_count{65536};
-}
+DEFINE_LOG_CATEGORY_STATIC(LogSpaceDust, Log, All);
 
 namespace {
 struct FSpaceDustRenderParameters {
@@ -28,7 +26,7 @@ struct FSpaceDustRenderParameters {
     FVector3f translation_phase{FVector3f::ZeroVector};
     FVector3f world_velocity{FVector3f::ZeroVector};
     FVector3f colour{FVector3f::OneVector};
-    int32 random_seed{};
+    uint32 random_seed{};
     float particle_size{};
     float brightness{};
     float minimum_visible_speed{};
@@ -46,7 +44,7 @@ auto make_render_parameters(FSpaceDustSettings const& settings,
         .translation_phase = translation_phase,
         .world_velocity = world_velocity,
         .colour = FVector3f{settings.colour},
-        .random_seed = settings.random_seed,
+        .random_seed = static_cast<uint32>(settings.random_seed),
         .particle_size = settings.particle_size,
         .brightness = settings.brightness,
         .minimum_visible_speed = settings.minimum_visible_speed,
@@ -293,43 +291,59 @@ class FSpaceDustSceneProxy final : public FPrimitiveSceneProxy {
     int32 particle_count_{};
 };
 
-auto positive_modulo(double const value, double const divisor) -> float {
-    auto remainder{FMath::Fmod(value, divisor)};
-    if (remainder < 0.0) {
-        remainder += divisor;
-    }
-    return static_cast<float>(remainder);
+auto to_native_settings(FSpaceDustSettings const& settings) -> ml::space_dust::Tuning {
+    return {
+        .enabled = settings.enabled,
+        .particle_count = settings.particle_count,
+        .random_seed = static_cast<uint32>(FMath::Max(settings.random_seed, 0)),
+        .volume_dimensions = ml::make_vector3f(static_cast<float>(settings.volume_dimensions.X),
+                                               static_cast<float>(settings.volume_dimensions.Y),
+                                               static_cast<float>(settings.volume_dimensions.Z)),
+        .particle_size = settings.particle_size,
+        .brightness = settings.brightness,
+        .colour = ml::make_vector3f(settings.colour.R, settings.colour.G, settings.colour.B),
+        .minimum_visible_speed = settings.minimum_visible_speed,
+        .full_visible_speed = settings.full_visible_speed,
+        .streak_seconds = settings.streak_seconds,
+        .maximum_streak_pixels = settings.maximum_streak_pixels,
+        .volume_edge_fade_fraction = settings.volume_edge_fade_fraction,
+    };
+}
+
+auto apply_native_settings(FSpaceDustSettings settings, ml::space_dust::Tuning const& native)
+    -> FSpaceDustSettings {
+    settings.enabled = native.enabled;
+    settings.particle_count = native.particle_count;
+    settings.random_seed = static_cast<int32>(native.random_seed);
+    settings.volume_dimensions =
+        FVector{native.volume_dimensions.X, native.volume_dimensions.Y, native.volume_dimensions.Z};
+    settings.particle_size = native.particle_size;
+    settings.brightness = native.brightness;
+    settings.colour.R = native.colour.X;
+    settings.colour.G = native.colour.Y;
+    settings.colour.B = native.colour.Z;
+    settings.minimum_visible_speed = native.minimum_visible_speed;
+    settings.full_visible_speed = native.full_visible_speed;
+    settings.streak_seconds = native.streak_seconds;
+    settings.maximum_streak_pixels = native.maximum_streak_pixels;
+    settings.volume_edge_fade_fraction = native.volume_edge_fade_fraction;
+    return settings;
 }
 }
 
 auto normalise_space_dust_settings(FSpaceDustSettings settings) -> FSpaceDustSettings {
-    settings.particle_count =
-        FMath::Clamp(settings.particle_count, 0, space_dust::maximum_particle_count);
-    settings.volume_dimensions.X = FMath::Max(settings.volume_dimensions.X, 1.0);
-    settings.volume_dimensions.Y = FMath::Max(settings.volume_dimensions.Y, 1.0);
-    settings.volume_dimensions.Z = FMath::Max(settings.volume_dimensions.Z, 1.0);
-    settings.particle_size = FMath::Max(settings.particle_size, 0.0f);
-    settings.brightness = FMath::Max(settings.brightness, 0.0f);
-    settings.colour.R = FMath::Max(settings.colour.R, 0.0f);
-    settings.colour.G = FMath::Max(settings.colour.G, 0.0f);
-    settings.colour.B = FMath::Max(settings.colour.B, 0.0f);
-    settings.minimum_visible_speed = FMath::Max(settings.minimum_visible_speed, 0.0f);
-    settings.full_visible_speed =
-        FMath::Max(settings.full_visible_speed, settings.minimum_visible_speed + UE_SMALL_NUMBER);
-    settings.streak_seconds = FMath::Max(settings.streak_seconds, 0.0f);
-    settings.maximum_streak_pixels = FMath::Max(settings.maximum_streak_pixels, 0.0f);
-    settings.volume_edge_fade_fraction =
-        FMath::Clamp(settings.volume_edge_fade_fraction, 0.0f, 0.49f);
-    return settings;
+    return apply_native_settings(settings,
+                                 ml::space_dust::normalise_tuning(to_native_settings(settings)));
 }
 
 auto make_space_dust_translation_phase(FVector const world_location,
                                        FVector const volume_dimensions) -> FVector3f {
-    return {
-        positive_modulo(world_location.X, volume_dimensions.X),
-        positive_modulo(world_location.Y, volume_dimensions.Y),
-        positive_modulo(world_location.Z, volume_dimensions.Z),
-    };
+    auto const phase{ml::space_dust::make_translation_phase(
+        {.x = world_location.X, .y = world_location.Y, .z = world_location.Z},
+        ml::make_vector3f(static_cast<float>(volume_dimensions.X),
+                          static_cast<float>(volume_dimensions.Y),
+                          static_cast<float>(volume_dimensions.Z)))};
+    return FVector3f{phase.X, phase.Y, phase.Z};
 }
 
 USpaceDustComponent::USpaceDustComponent() {

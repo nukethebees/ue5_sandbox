@@ -20,7 +20,7 @@ struct SANDBOXSHADERS_API FSpaceDustSettings {
               meta = (ClampMin = "0", ClampMax = "65536"))
     int32 particle_count{1024};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Space Dust")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Space Dust", meta = (ClampMin = "0"))
     int32 random_seed{1337};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Space Dust", meta = (ClampMin = "1.0"))
@@ -67,6 +67,7 @@ class SANDBOXSHADERS_API USpaceDustComponent final : public UPrimitiveComponent 
     USpaceDustComponent();
 
     void apply_settings(FSpaceDustSettings const& settings);
+    [[nodiscard]] auto get_settings() const -> FSpaceDustSettings { return settings_; }
     void update_motion(FVector world_velocity);
 
     FPrimitiveSceneProxy* CreateSceneProxy() override;

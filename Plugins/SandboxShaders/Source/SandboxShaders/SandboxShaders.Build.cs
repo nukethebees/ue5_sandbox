@@ -13,6 +13,7 @@ public class SandboxShaders : ModuleRules
             "Core",
             "CoreUObject",
             "Engine",
+            "SandboxCore",
         });
 
         PrivateDependencyModuleNames.AddRange(new string[]

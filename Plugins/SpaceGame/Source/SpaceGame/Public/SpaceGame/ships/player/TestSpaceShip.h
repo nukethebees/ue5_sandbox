@@ -141,6 +141,10 @@ class SPACEGAME_API ATestSpaceShip
     // Presentation
     /* **************************************** */
     auto get_presentation_resources() const -> FPlayerPresentationResources;
+
+#if !UE_BUILD_SHIPPING
+    void apply_space_dust_debug_preset(FStringView preset);
+#endif
   private:
     /* **************************************** */
     // Simulation access and presentation
