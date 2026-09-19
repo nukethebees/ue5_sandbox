@@ -285,7 +285,13 @@ auto claims_json(std::vector<ResourceClaim> const& claims) -> Json {
 auto metadata_json(JobMetadata const& metadata) -> Json {
     return Json{{"name", metadata.name},
                 {"kind", metadata.kind},
-                {"worktree", path_to_utf8(metadata.worktree)}};
+                {"worktree", path_to_utf8(metadata.worktree)},
+                {"submit_directory", path_to_utf8(metadata.submit_directory)}};
+}
+
+auto metadata_at_submission(JobMetadata metadata) -> JobMetadata {
+    metadata.submit_directory = std::filesystem::current_path();
+    return metadata;
 }
 }
 
@@ -323,12 +329,13 @@ auto Lease::release() -> std::expected<void, Error> {
 }
 
 auto Client::acquire(AcquireRequest const& request) -> std::expected<Lease, Error> {
+    auto const metadata{metadata_at_submission(request.metadata)};
     auto handle{connect_pipe()};
     if (!handle) {
         return std::unexpected(handle.error());
     }
     auto const message = Json{{"type", "acquire"},
-                              {"metadata", metadata_json(request.metadata)},
+                              {"metadata", metadata_json(metadata)},
                               {"resources", claims_json(request.resources)}};
     if (auto sent{transport::write_message(*handle, message.dump(), control_timeout())}; !sent) {
         close_handle(*handle);
@@ -397,13 +404,14 @@ auto Client::run(SubmitRequest const& request, OutputCallback output) -> std::ex
         return run_in_inherited_job(request.command);
     }
 
+    auto const metadata{metadata_at_submission(request.metadata)};
     auto handle{connect_pipe()};
     if (!handle) {
         return std::unexpected(handle.error());
     }
     auto message = Json{
         {"type", "submit"},
-        {"metadata", metadata_json(request.metadata)},
+        {"metadata", metadata_json(metadata)},
         {"resources", claims_json(request.resources)},
         {"command",
          Json{{"executable", path_to_utf8(request.command.executable)},

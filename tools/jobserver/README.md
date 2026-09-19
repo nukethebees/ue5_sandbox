@@ -34,7 +34,7 @@ Older clients can still send controls to the main endpoint, but do not gain the 
 The pipes reject remote clients. Their access control list lets restricted local tokens connect, and
 the daemon then impersonates each client and rejects it unless its user SID matches the daemon's
 user SID. Messages use a four-byte little-endian payload length followed by UTF-8 JSON. The current
-protocol version is `1.1`.
+protocol version is `1.2`.
 
 Request fields are checked before queue admission or execution. Numeric fields must be integral
 and within their destination range; timeouts and hang-suspicion durations must be positive and
@@ -166,8 +166,11 @@ jobserver run `
   -- cmake --build out/build/debug-game
 ```
 
-`--worktree <path>` records the originating worktree. The child inherits the CLI's working
-directory, so compiler launchers and other wrappers preserve their caller's relative paths.
+`--worktree <path>` records the logical originating worktree and may differ from where a command
+was submitted. Every top-level submission also records its actual client current directory as
+`submit_directory`; callers do not provide or override that provenance. The child inherits the
+CLI's working directory, so compiler launchers and other wrappers preserve their caller's relative
+paths. That child working directory is separate from both provenance fields.
 `--detach` lets a supervised command continue if its submitting client disconnects. Attached jobs
 are cancelled when their client disappears.
 
@@ -194,7 +197,10 @@ jobserver version
 ```
 
 `status` reports daemon PID, uptime, audit freshness, handler/owner counts, active and queued jobs,
-blockers, elapsed time, health, and resource usage.
+their worktree and (when distinct) submission directory, blockers, elapsed time, health, and
+resource usage. `status --json`, `show`, and `history` retain both `worktree` and
+`submit_directory`, including after completion, so concurrent jobs remain attributable to their
+origin.
 `doctor` checks the canonical binaries and client location, Scheduled Task action, responsive
 daemon PID and executable, protocol, authority record, writable data directory, diagnostic log,
 and abandoned installer staging directories. Failures produce a nonzero exit code; warnings are
@@ -342,11 +348,12 @@ it when `value` is `std::nullopt`. Changes apply in order, case-insensitively; t
 Both normal and nested launches apply these changes. The job ID variable is always daemon-owned
 and cannot be replaced or removed by command overrides.
 
-Protocol 1.1 adds nested validation and nullable environment values. New clients fail closed if an
-older daemon does not support nested validation. Upgrade the installed CLI and daemon together;
-rebuild native tools statically linked to the client library, since old binaries retain the previous
-nested bypass behavior. The Tracy comparison driver uses a private child marker rather than
-treating any enclosing job as permission to run benchmarks.
+Protocol 1.1 adds nested validation and nullable environment values. Protocol 1.2 adds optional
+submission-directory provenance; older clients may omit it and older daemons ignore it. New clients
+fail closed if an older daemon does not support nested validation. Upgrade the installed CLI and
+daemon together; rebuild native tools statically linked to the client library, since old binaries
+retain the previous nested bypass behavior. The Tracy comparison driver uses a private child marker
+rather than treating any enclosing job as permission to run benchmarks.
 
 The implementation uses Win32 directly rather than Boost.Process. Named-pipe security, suspended
 launch with atomic Job Object assignment, process-tree accounting, and reliable tree termination

@@ -35,6 +35,11 @@ struct ChildProcess {
     HANDLE thread{};
 };
 
+struct CommandResult {
+    DWORD exit_code{};
+    std::string output;
+};
+
 class TestIoTimeout {
   public:
     explicit TestIoTimeout(char const* const value) {
@@ -87,6 +92,83 @@ auto launch(std::filesystem::path const& executable,
         return {};
     }
     return {.process = process.hProcess, .thread = process.hThread};
+}
+
+auto run_and_capture(std::filesystem::path const& executable,
+                     std::wstring arguments = {},
+                     std::filesystem::path const& working_directory = {})
+    -> std::optional<CommandResult> {
+    SECURITY_ATTRIBUTES attributes{};
+    attributes.nLength = sizeof(attributes);
+    attributes.bInheritHandle = TRUE;
+    HANDLE output_read{};
+    HANDLE output_write{};
+    if (!CreatePipe(&output_read, &output_write, &attributes, 0) ||
+        !SetHandleInformation(output_read, HANDLE_FLAG_INHERIT, 0)) {
+        if (output_read != nullptr) {
+            CloseHandle(output_read);
+        }
+        if (output_write != nullptr) {
+            CloseHandle(output_write);
+        }
+        return std::nullopt;
+    }
+
+    auto command_line{quote(executable.wstring())};
+    if (!arguments.empty()) {
+        command_line += L" " + arguments;
+    }
+    STARTUPINFOW startup{};
+    startup.cb = sizeof(startup);
+    startup.dwFlags = STARTF_USESTDHANDLES;
+    startup.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+    startup.hStdOutput = output_write;
+    startup.hStdError = output_write;
+    PROCESS_INFORMATION process{};
+    auto const started{
+        CreateProcessW(executable.c_str(),
+                       command_line.data(),
+                       nullptr,
+                       nullptr,
+                       TRUE,
+                       CREATE_NO_WINDOW,
+                       nullptr,
+                       working_directory.empty() ? nullptr : working_directory.c_str(),
+                       &startup,
+                       &process)};
+    CloseHandle(output_write);
+    if (!started) {
+        CloseHandle(output_read);
+        return std::nullopt;
+    }
+    CloseHandle(process.hThread);
+
+    std::string output;
+    for (;;) {
+        std::array<char, 4096> buffer{};
+        DWORD read{};
+        if (ReadFile(
+                output_read, buffer.data(), static_cast<DWORD>(buffer.size()), &read, nullptr)) {
+            output.append(buffer.data(), read);
+            continue;
+        }
+        if (GetLastError() == ERROR_BROKEN_PIPE) {
+            break;
+        }
+        CloseHandle(output_read);
+        CloseHandle(process.hProcess);
+        return std::nullopt;
+    }
+    CloseHandle(output_read);
+
+    if (WaitForSingleObject(process.hProcess, 5'000) != WAIT_OBJECT_0) {
+        CloseHandle(process.hProcess);
+        return std::nullopt;
+    }
+    DWORD exit_code{};
+    GetExitCodeProcess(process.hProcess, &exit_code);
+    CloseHandle(process.hProcess);
+    return CommandResult{.exit_code = exit_code, .output = std::move(output)};
 }
 
 auto connect_raw_pipe(bool const control = false) -> HANDLE {
@@ -1245,6 +1327,7 @@ TEST_F(JobserverIntegration, IndependentWorktreeProcessesShareOneQueue) {
     auto const first_job{find_job("worktree-one")};
     ASSERT_TRUE(first_job.has_value());
     EXPECT_EQ(first_job->value("worktree", ""), jobserver::path_to_utf8(first_worktree));
+    EXPECT_EQ(first_job->value("submit_directory", ""), jobserver::path_to_utf8(first_worktree));
 
     auto second{launch(JOBSERVER_TEST_CLIENT_PATH,
                        L"lease-hold worktree-two cross-worktree-resource 50",
@@ -1254,6 +1337,7 @@ TEST_F(JobserverIntegration, IndependentWorktreeProcessesShareOneQueue) {
     ASSERT_TRUE(second_job.has_value());
     EXPECT_EQ(second_job->value("state", ""), "QUEUED");
     EXPECT_EQ(second_job->value("worktree", ""), jobserver::path_to_utf8(second_worktree));
+    EXPECT_EQ(second_job->value("submit_directory", ""), jobserver::path_to_utf8(second_worktree));
 
     auto const first_exit{wait_for_exit(first, 5s)};
     auto const second_exit{wait_for_exit(second, 5s)};
@@ -1263,6 +1347,78 @@ TEST_F(JobserverIntegration, IndependentWorktreeProcessesShareOneQueue) {
     EXPECT_EQ(*second_exit, 0U);
     close(first);
     close(second);
+}
+
+TEST_F(JobserverIntegration, CliSubmissionPublishesDistinctWorktreeAndSubmissionDirectory) {
+    auto const submit_directory{data_path_ / "submitted from"};
+    auto const worktree{data_path_ / "logical worktree"};
+    std::filesystem::create_directories(submit_directory);
+    std::filesystem::create_directories(worktree);
+
+    auto const name{"CLI provenance"};
+    auto const arguments{L"run --name \"CLI provenance\" --kind test --worktree " +
+                         quote(worktree.wstring()) + L" --shared provenance-resource -- " +
+                         quote(std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.wstring()) +
+                         L" sleep 60000"};
+    auto client{launch(JOBSERVER_CLI_PATH, arguments, submit_directory)};
+    ASSERT_NE(client.process, nullptr);
+
+    auto const active{find_job(name)};
+    ASSERT_TRUE(active.has_value());
+    EXPECT_EQ(active->value("worktree", ""), jobserver::path_to_utf8(worktree));
+    EXPECT_EQ(active->value("submit_directory", ""), jobserver::path_to_utf8(submit_directory));
+
+    auto const status_json{run_and_capture(JOBSERVER_CLI_PATH, L"status --json")};
+    ASSERT_TRUE(status_json.has_value());
+    ASSERT_EQ(status_json->exit_code, 0U);
+    auto const live_status = Json::parse(status_json->output);
+    auto const live_job{std::ranges::find_if(live_status["jobs"], [&](Json const& job) {
+        return job.value("id", "") == active->value("id", "");
+    })};
+    ASSERT_NE(live_job, live_status["jobs"].end());
+    EXPECT_EQ(live_job->value("worktree", ""), jobserver::path_to_utf8(worktree));
+    EXPECT_EQ(live_job->value("submit_directory", ""), jobserver::path_to_utf8(submit_directory));
+
+    auto const text_status{run_and_capture(JOBSERVER_CLI_PATH, L"status")};
+    ASSERT_TRUE(text_status.has_value());
+    EXPECT_EQ(text_status->exit_code, 0U);
+    EXPECT_NE(text_status->output.find("worktree: " + jobserver::path_to_utf8(worktree)),
+              std::string::npos);
+    EXPECT_NE(
+        text_status->output.find("submitted-from: " + jobserver::path_to_utf8(submit_directory)),
+        std::string::npos);
+
+    auto const id{active->value("id", "")};
+    auto const show{
+        run_and_capture(JOBSERVER_CLI_PATH, L"show " + std::wstring{id.begin(), id.end()})};
+    ASSERT_TRUE(show.has_value());
+    ASSERT_EQ(show->exit_code, 0U);
+    auto const shown = Json::parse(show->output);
+    EXPECT_EQ(shown.value("worktree", ""), jobserver::path_to_utf8(worktree));
+    EXPECT_EQ(shown.value("submit_directory", ""), jobserver::path_to_utf8(submit_directory));
+
+    EXPECT_TRUE(jobserver::Client::cancel(id, true));
+    EXPECT_TRUE(wait_for_exit(client, 5s).has_value());
+    close(client);
+
+    auto const history_json{run_and_capture(JOBSERVER_CLI_PATH, L"history --json")};
+    ASSERT_TRUE(history_json.has_value());
+    ASSERT_EQ(history_json->exit_code, 0U);
+    auto const historical = Json::parse(history_json->output);
+    auto const completed{std::ranges::find_if(
+        historical["jobs"], [&](Json const& job) { return job.value("name", "") == name; })};
+    ASSERT_NE(completed, historical["jobs"].end());
+    EXPECT_EQ(completed->value("worktree", ""), jobserver::path_to_utf8(worktree));
+    EXPECT_EQ(completed->value("submit_directory", ""), jobserver::path_to_utf8(submit_directory));
+
+    auto const text_history{run_and_capture(JOBSERVER_CLI_PATH, L"history")};
+    ASSERT_TRUE(text_history.has_value());
+    EXPECT_EQ(text_history->exit_code, 0U);
+    EXPECT_NE(text_history->output.find("worktree: " + jobserver::path_to_utf8(worktree)),
+              std::string::npos);
+    EXPECT_NE(
+        text_history->output.find("submitted-from: " + jobserver::path_to_utf8(submit_directory)),
+        std::string::npos);
 }
 
 TEST_F(JobserverIntegration, NestedCommandInheritsInvokingBuildDirectory) {
@@ -1569,6 +1725,7 @@ TEST_F(JobserverIntegration, MalformedFieldsFailBeforeAdmissionOrExecution) {
         {"/metadata/name", 1},
         {"/metadata/kind", false},
         {"/metadata/worktree", Json::object()},
+        {"/metadata/submit_directory", Json::array()},
         {"/resources", nullptr},
         {"/resources", Json::object()},
         {"/resources/0", nullptr},
@@ -2071,6 +2228,9 @@ TEST_F(JobserverIntegration, LoadsOnlyNewestValidHistoryEntries) {
     ASSERT_EQ(jobs.size(), 1000U);
     EXPECT_EQ(jobs.front().value("id", ""), "history-5");
     EXPECT_EQ(jobs.back().value("id", ""), "history-1004");
+    EXPECT_FALSE(jobs.front().contains("submit_directory"));
+
+    auto const submit_directory{jobserver::path_to_utf8(std::filesystem::current_path())};
 
     auto const run_result{jobserver::Client::run(
         {
@@ -2089,13 +2249,32 @@ TEST_F(JobserverIntegration, LoadsOnlyNewestValidHistoryEntries) {
     ASSERT_TRUE(run_result.has_value());
     std::ifstream rotated_history{history_path};
     auto valid_lines{0};
+    auto persisted_provenance{false};
     std::string line;
     while (std::getline(rotated_history, line)) {
-        if (Json::parse(line, nullptr, false).is_object()) {
+        auto const entry = Json::parse(line, nullptr, false);
+        if (entry.is_object()) {
             ++valid_lines;
+            persisted_provenance =
+                persisted_provenance ||
+                (entry.value("name", "") == "history rotation" &&
+                 entry.value("worktree", "") == jobserver::path_to_utf8(data_path_) &&
+                 entry.value("submit_directory", "") == submit_directory);
         }
     }
     EXPECT_EQ(valid_lines, 1000);
+    EXPECT_TRUE(persisted_provenance);
+
+    stop_daemon();
+    start_daemon();
+    auto const reloaded{jobserver::Client::status(true)};
+    ASSERT_TRUE(reloaded.has_value());
+    auto const reloaded_jobs = Json::parse(*reloaded).value("jobs", Json::array());
+    auto const restored{std::ranges::find_if(reloaded_jobs, [](Json const& job) {
+        return job.value("name", "") == "history rotation";
+    })};
+    ASSERT_NE(restored, reloaded_jobs.end());
+    EXPECT_EQ(restored->value("submit_directory", ""), submit_directory);
 }
 
 TEST_F(JobserverIntegration, RotatesAndWritesDaemonDiagnosticLog) {

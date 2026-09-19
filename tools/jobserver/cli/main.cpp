@@ -1,6 +1,7 @@
 #include "doctor.hpp"
 
 #include "jobserver/client.hpp"
+#include "jobserver/protocol.hpp"
 
 #include <Windows.h>
 
@@ -162,6 +163,12 @@ void print_status(std::string const& text) {
             std::cout << "  " << job.value("health_reason", "");
         }
         std::cout << '\n';
+        auto const worktree{job.value("worktree", "")};
+        auto const submit_directory{job.value("submit_directory", "")};
+        std::cout << "      worktree: " << (worktree.empty() ? "<unspecified>" : worktree) << '\n';
+        if (!submit_directory.empty() && submit_directory != worktree) {
+            std::cout << "      submitted-from: " << submit_directory << '\n';
+        }
     }
     std::cout << "RESOURCES\n";
     for (auto const& resource : status.value("resources", Json::array())) {
@@ -399,7 +406,8 @@ auto wmain(int argc, wchar_t** argv) -> int {
         return failed ? 4 : 0;
     }
     if (command == "version") {
-        std::cout << "jobserver 0.1.0 (protocol 1.0)\n";
+        std::cout << "jobserver 0.1.0 (protocol " << jobserver::protocol::major_version << '.'
+                  << jobserver::protocol::minor_version << ")\n";
         return 0;
     }
     std::cerr << "jobserver: unknown command " << command << '\n';

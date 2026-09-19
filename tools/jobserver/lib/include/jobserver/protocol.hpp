@@ -9,7 +9,7 @@
 
 namespace jobserver::protocol {
 inline constexpr std::uint32_t major_version{1};
-inline constexpr std::uint32_t minor_version{1};
+inline constexpr std::uint32_t minor_version{2};
 inline constexpr std::uint32_t maximum_payload_size{1024U * 1024U};
 
 [[nodiscard]] auto encode_frame(std::string const& payload)

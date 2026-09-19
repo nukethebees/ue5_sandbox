@@ -180,7 +180,7 @@ auto validate_request(Json const& json) -> std::expected<void, Error> {
         if (!metadata.is_object()) {
             return invalid("metadata");
         }
-        for (auto const field : {"name", "kind", "worktree"}) {
+        for (auto const field : {"name", "kind", "worktree", "submit_directory"}) {
             if (metadata.contains(field) && !valid_text(metadata[field])) {
                 return invalid(std::string{"metadata."} + field);
             }
@@ -243,6 +243,7 @@ auto parse_metadata(Json const& json) -> JobMetadata {
         .name = json.value("name", "unnamed"),
         .kind = json.value("kind", "command"),
         .worktree = path_from_utf8(json.value("worktree", "")),
+        .submit_directory = path_from_utf8(json.value("submit_directory", "")),
     };
 }
 
@@ -892,6 +893,7 @@ void Server::handle_status(void* const pipe, bool const include_history) {
             {"name", entry.metadata.name},
             {"kind", entry.metadata.kind},
             {"worktree", path_to_utf8(entry.metadata.worktree)},
+            {"submit_directory", path_to_utf8(entry.metadata.submit_directory)},
             {"state", to_string(entry.state)},
             {"health", to_string(entry.health)},
             {"health_reason", entry.health_reason},
@@ -1087,6 +1089,7 @@ void Server::record_history(std::string const& id) noexcept {
         entry["name"] = found->metadata.name;
         entry["kind"] = found->metadata.kind;
         entry["worktree"] = path_to_utf8(found->metadata.worktree);
+        entry["submit_directory"] = path_to_utf8(found->metadata.submit_directory);
         entry["state"] = to_string(found->state);
         entry["health"] = to_string(found->health);
         entry["health_reason"] = found->health_reason;

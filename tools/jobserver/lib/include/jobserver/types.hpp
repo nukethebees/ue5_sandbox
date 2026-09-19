@@ -26,6 +26,7 @@ struct JobMetadata {
     std::string name;
     std::string kind;
     std::filesystem::path worktree;
+    std::filesystem::path submit_directory{};
 };
 
 struct Command {
