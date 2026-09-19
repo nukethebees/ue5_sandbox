@@ -20,6 +20,9 @@ TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
     source_columns.float_biases[0] = 0.1f;
     source_columns.float_biases[1] = 0.2f;
     source_columns.float_biases[2] = 0.3f;
+    source_columns.health_indices[0] = HealthIndex{10};
+    source_columns.health_indices[1] = HealthIndex{20};
+    source_columns.health_indices[2] = HealthIndex{30};
     source_columns.validate_array_sizes();
 
     auto view{source.get_view(1, 2).columns()};
@@ -49,6 +52,8 @@ TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
                        "Buffered copy keeps ID paired with integral bias");
     tests::expect_equal(reordered_columns.integral_biases[0], 300u, "Buffered copy integral bias");
     tests::expect_equal(reordered_columns.float_biases[0], 0.3f, "Buffered copy float bias");
+    tests::expect_true(reordered_columns.health_indices[0] == HealthIndex{30},
+                       "Buffered copy keeps health index paired with ID");
 
     reordered.remove_at_swap(0, 1);
     reordered_columns = reordered.get_view().columns();
@@ -57,6 +62,8 @@ TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
                        "Swap removal keeps ID paired with integral bias");
     tests::expect_equal(reordered_columns.integral_biases[0], 200u, "Swap removal integral bias");
     tests::expect_equal(reordered_columns.float_biases[0], 0.2f, "Swap removal float bias");
+    tests::expect_true(reordered_columns.health_indices[0] == HealthIndex{20},
+                       "Swap removal keeps health index paired with ID");
 }
 
 } // namespace tests

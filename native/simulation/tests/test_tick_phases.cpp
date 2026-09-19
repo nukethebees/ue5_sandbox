@@ -312,6 +312,9 @@ TEST(TickPhases, AcceptedFireSurvivesShooterDeathAndDeathCannotBeHealed) {
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_lasers().get_number_spawned(), 1);
     EXPECT_EQ(simulation.get_lasers().get_num_instances(), 1);
+    EXPECT_EQ(simulation.get_agent_indexes().find(player->unique_entity_id), 0);
+    EXPECT_FALSE(simulation.get_agent_accessor().is_alive(player->unique_entity_id));
+    EXPECT_FALSE(simulation.get_agent_accessor().read(player->unique_entity_id));
 }
 
 TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {

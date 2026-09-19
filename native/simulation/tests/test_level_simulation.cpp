@@ -85,6 +85,34 @@ void kill_enemy(LevelSim& simulation) {
         simulation.get_capital_ships().get_id(1), 100, simulation.get_capital_ships().get_id(0));
     LevelSimTestAccess::queue_direct_damage_events(simulation, events.get_const_view());
 }
+
+void expect_health_mappings(LevelSim const& simulation) {
+    auto const world{simulation.get_read_view()};
+    auto const& table{simulation.get_entity_tables().health};
+    std::int32_t expected_count{};
+    auto validate = [&](auto const& entities, HealthConstView const healths) {
+        ASSERT_EQ(healths.num(), entities.num());
+        expected_count += entities.num();
+        for (std::int32_t row{}; row < entities.num(); ++row) {
+            auto const element{static_cast<std::size_t>(row)};
+            auto const id{entities.entity_ids[element]};
+            auto const index{healths.indices()[element]};
+            EXPECT_TRUE(table.contains(index, id));
+            EXPECT_EQ(table.get_health(index, id), healths.health(row));
+        }
+    };
+
+    validate(world.capitals.entities, world.capitals.healths);
+    validate(world.fighters.entities, world.fighters.healths);
+    validate(world.turrets.entities, world.turrets.healths);
+    if (auto const* const player{simulation.get_player_ship_simulation()}) {
+        ++expected_count;
+        EXPECT_TRUE(table.contains(player->get_health_index(), player->unique_entity_id));
+        EXPECT_EQ(table.get_health(player->get_health_index(), player->unique_entity_id),
+                  player->get_health().health);
+    }
+    EXPECT_EQ(table.num_slots(), expected_count);
+}
 }
 
 TEST(NativeSimulation, LevelSimFrameMemoryUsesAndReturnsGameMemoryBlock) {
@@ -318,6 +346,86 @@ TEST(NativeSimulation, PlayerPreservesPartialSpawnHealth) {
     ASSERT_NE(player, nullptr);
     EXPECT_EQ(player->get_health().health, 50);
     EXPECT_EQ(player->get_health().max_health, 100);
+}
+
+TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings) {
+    auto data{make_battle()};
+    player::PlayerSpawnData player_spawn{};
+    player_spawn.health = {100, 100};
+    player_spawn.transform.location = {0.0, 5000.0, 0.0};
+    add_player_spawn(data, player_spawn);
+    add_turret_spawn(data, {{0.f, 2000.f, 0.f}}, {}, Team::Green, 100, 0);
+    add_turret_spawn(data, {{0.f, 3000.f, 0.f}}, {}, Team::White, 100, 0);
+    add_turret_spawn(data, {{0.f, 4000.f, 0.f}}, {}, Team::Green, 100, 0);
+
+    data.capital_ships.fighter_spawn_slots = 2;
+    data.capital_ships.fighter_spawn_slots_relative_transforms.resize(2);
+    data.capital_ships.fighter_spawn_slots_relative_transforms[0].location.y = -100.0;
+    data.capital_ships.fighter_spawn_slots_relative_transforms[1].location.y = 100.0;
+    data.fighters.health = 100;
+    data.fighters.speed = 0.f;
+    auto const capital_events{data.level_events.initial_spawns.capital_spawns.get_view().columns()};
+    capital_events.target_entity_indices[0] = capital_events.entity_indices[1];
+    capital_events.target_entity_indices[1] = capital_events.entity_indices[0];
+    std::ranges::fill(capital_events.initial_fighter_spawn_delays, 0.f);
+
+    auto& schedule{data.level_events.schedule};
+    schedule.execution_ticks = {4};
+    schedule.event_group_counts = {{}};
+    schedule.turret_spawns.add_defaulted(1);
+    auto const scheduled_turret{schedule.turret_spawns.get_view().columns()};
+    scheduled_turret.entity_indices[0] = data.level_events.initialisation.entity_count++;
+    scheduled_turret.locations.set(0, {{0.f, 6000.f, 0.f}});
+    scheduled_turret.teams[0] = Team::White;
+    scheduled_turret.healths[0] = 75;
+    ASSERT_TRUE(schedule.add_spawn_group(EntityType::Turret, 0, 1));
+
+    LevelSim simulation{std::move(data)};
+    simulation.finish_initialisation();
+    simulation.start();
+    auto const tick_period{simulation.get_clock().get_tick_period()};
+    simulation.advance(tick_period);
+    simulation.advance(tick_period);
+
+    auto const* const player{simulation.get_player_ship_simulation()};
+    ASSERT_NE(player, nullptr);
+    auto const surviving_capital{simulation.get_capital_ships().get_id(1)};
+    std::int32_t fighter_count_before{};
+    std::array<EntityUniqueId, 6> victims{};
+    {
+        auto const before{simulation.get_read_view()};
+        ASSERT_GE(before.fighters.entities.num(), 4);
+        ASSERT_EQ(before.turrets.entities.num(), 3);
+        fighter_count_before = before.fighters.entities.num();
+        victims = {
+            simulation.get_capital_ships().get_id(0),
+            before.fighters.entities.entity_ids[0],
+            before.fighters.entities.entity_ids[before.fighters.entities.num() - 1],
+            before.turrets.entities.entity_ids[0],
+            before.turrets.entities.entity_ids[before.turrets.entities.num() - 1],
+            player->unique_entity_id,
+        };
+    }
+    DirectDamageEvents damage;
+    for (auto const victim : victims) {
+        damage.add(victim, 10000, surviving_capital);
+    }
+    LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
+
+    simulation.advance(tick_period);
+    expect_health_mappings(simulation);
+    EXPECT_EQ(simulation.get_capital_ships().get_num_instances(), 1);
+    EXPECT_EQ(simulation.get_fighters().get_num_instances(), fighter_count_before - 2);
+    EXPECT_EQ(simulation.get_turrets().get_num_instances(), 1);
+    EXPECT_TRUE(is_dead(player->get_health().health));
+    EXPECT_EQ(simulation.get_agent_indexes().find(player->unique_entity_id), 0);
+    EXPECT_FALSE(simulation.get_agent_accessor().read(player->unique_entity_id));
+
+    auto const slots_after_removal{simulation.get_entity_tables().health.num_slots()};
+    simulation.advance(tick_period);
+    expect_health_mappings(simulation);
+    EXPECT_EQ(simulation.get_turrets().get_num_instances(), 2);
+    EXPECT_EQ(simulation.get_entity_tables().health.num_slots(), slots_after_removal + 1);
 }
 
 TEST(NativeSimulation, LevelSimReconstructionTest) {
