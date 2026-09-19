@@ -3,6 +3,7 @@
 
 #include <SandboxCore/error_msg.h>
 #include <SandboxCoreEngine/enums.h>
+#include <SandboxCoreEngine/strings.h>
 #include <SandboxCoreEngine/uobject_utils.h>
 #include <SandboxGameShared/ui/widgets/ValueWidget.h>
 #include <SpaceGamePresentation/presentation/HUDManager.h>
@@ -67,19 +68,16 @@ void UMissionStatusWidget::set_mission_data(ml::hud_manager::FMissionDataCache c
 void UMissionStatusWidget::set_mission_mode(ETestMissionMode const new_mode,
                                             ETestMissionState const initial_state) {
     current_mission_mode = new_mode;
-    auto const mode_name{
-        FString{UTF8_TO_TCHAR(::ioj::sim::to_display_string(ml::to_native(new_mode)).data())}};
-    auto const state_name{
-        FString{UTF8_TO_TCHAR(::ioj::sim::to_string(ml::to_native(initial_state)).data())}};
+    auto const mode_name{ml::to_fstring(::ioj::sim::to_display_string(ml::to_native(new_mode)))};
+    auto const state_name{ml::to_fstring(::ioj::sim::to_string(ml::to_native(initial_state)))};
     mission_mode_widget->update(mode_name, FStringView{state_name});
     apply_mission_state_style(initial_state);
 }
 
 void UMissionStatusWidget::set_mission_state(ETestMissionState const new_state) {
-    auto const mode_name{FString{
-        UTF8_TO_TCHAR(::ioj::sim::to_display_string(ml::to_native(current_mission_mode)).data())}};
-    auto const state_name{
-        FString{UTF8_TO_TCHAR(::ioj::sim::to_string(ml::to_native(new_state)).data())}};
+    auto const mode_name{
+        ml::to_fstring(::ioj::sim::to_display_string(ml::to_native(current_mission_mode)))};
+    auto const state_name{ml::to_fstring(::ioj::sim::to_string(ml::to_native(new_state)))};
     mission_mode_widget->update(mode_name, FStringView{state_name});
     apply_mission_state_style(new_state);
 }

@@ -1,6 +1,6 @@
 #include <SpaceGame/levels/NativeLevelDefinitionConversion.h>
 
-#include <Containers/StringConv.h>
+#include <SandboxCoreEngine/strings.h>
 
 namespace ml::level_authoring {
 namespace {
@@ -15,13 +15,8 @@ auto to_utf8(FName const value) -> std::string {
     return to_utf8(value.ToString().ToLower());
 }
 
-auto to_fstring(std::string_view const value) -> FString {
-    auto const converted{FUTF8ToTCHAR{value.data(), static_cast<int32>(value.size())}};
-    return FString{converted.Length(), converted.Get()};
-}
-
 auto to_fname(std::string const& value) -> FName {
-    return FName{to_fstring(value)};
+    return FName{ml::to_fstring(value)};
 }
 
 template <typename Id>
@@ -123,8 +118,8 @@ auto to_unreal(::ioj::sim::levels::LevelDefinition definition) -> FLevelDefiniti
     FLevelBuilder builder;
     FLevelMetadata metadata{
         .id = FLevelId{to_fname(definition.metadata.id)},
-        .title = to_fstring(definition.metadata.title),
-        .description = to_fstring(definition.metadata.description),
+        .title = ml::to_fstring(definition.metadata.title),
+        .description = ml::to_fstring(definition.metadata.description),
     };
     if (definition.metadata.par_time_seconds) {
         metadata.par_time_seconds = *definition.metadata.par_time_seconds;

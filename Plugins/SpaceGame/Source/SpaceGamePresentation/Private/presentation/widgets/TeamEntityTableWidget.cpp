@@ -1,6 +1,7 @@
 #include "SpaceGamePresentation/presentation/widgets/TeamEntityTableWidget.h"
 
 #include <SandboxCoreEngine/enums.h>
+#include <SandboxCoreEngine/strings.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 
 #include <Blueprint/WidgetTree.h>
@@ -151,8 +152,8 @@ void UTeamEntityTableWidget::rebuild_table() {
                                first_team_column + team,
                                1,
                                data_alignment)};
-        heading->SetText(FText::FromString(
-            UTF8_TO_TCHAR(::ioj::sim::to_string(ml::to_native(team_value)).data())));
+        heading->SetText(
+            FText::FromString(ml::to_fstring(::ioj::sim::to_string(ml::to_native(team_value)))));
         if (hud_style_) {
             auto heading_style{hud_style_->caption_text};
             auto const base_colour{heading_style.ColorAndOpacity.GetSpecifiedColor()};

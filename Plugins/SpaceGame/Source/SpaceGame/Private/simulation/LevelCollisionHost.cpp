@@ -9,6 +9,7 @@
 
 #include <SandboxCore/container_ops.h>
 #include <SandboxCoreEngine/actor_utils.h>
+#include <SandboxCoreEngine/strings.h>
 
 #include <Components/InstancedStaticMeshComponent.h>
 #include <Components/PrimitiveComponent.h>
@@ -213,11 +214,8 @@ auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes)
     auto const count{FEntityAABBs::num()};
     for (int32 i{0}; i < count; ++i) {
         auto const entity_type{static_cast<ETestEntityType>(i)};
-        set_mesh_aabb(bounds,
-                      i,
-                      UTF8_TO_TCHAR(::ioj::sim::to_string(entity_type).data()),
-                      meshes[entity_type],
-                      errors);
+        auto const entity_name{ml::to_fstring(::ioj::sim::to_string(entity_type))};
+        set_mesh_aabb(bounds, i, *entity_name, meshes[entity_type], errors);
     }
     if (errors.has_errors()) {
         return FEntityBoundsExtractionResult{std::unexpect, MoveTemp(errors)};

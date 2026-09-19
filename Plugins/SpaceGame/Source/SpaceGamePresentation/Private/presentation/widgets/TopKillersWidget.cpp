@@ -1,6 +1,7 @@
 #include "SpaceGamePresentation/presentation/widgets/TopKillersWidget.h"
 
 #include <SandboxCoreEngine/enums.h>
+#include <SandboxCoreEngine/strings.h>
 #include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 
 #include <Blueprint/WidgetTree.h>
@@ -185,8 +186,8 @@ void UTopKillersWidget::rebuild_table() {
             FString::Printf(TEXT("team_%d"), entry_index),
             column_team,
             data_alignment,
-            FText::FromString(UTF8_TO_TCHAR(
-                ::ioj::sim::to_string(ml::to_native(top_killers.teams[entry_index])).data())))};
+            FText::FromString(
+                ml::to_fstring(::ioj::sim::to_string(ml::to_native(top_killers.teams[entry_index]))))};
         add_value(FString::Printf(TEXT("kills_%d"), entry_index),
                   column_kills,
                   data_alignment,

@@ -1,6 +1,7 @@
 #include <SpaceGameS7/LevelScriptCatalog.h>
 
 #include <sandbox/level_authoring/CatalogValidation.h>
+#include <SandboxCoreEngine/strings.h>
 #include <SpaceGame/levels/NativeLevelDefinitionConversion.h>
 #include <SpaceGameS7/CampaignDefinitionReader.h>
 #include <SpaceGameS7/LevelDefinitionReader.h>
@@ -20,11 +21,6 @@ void append_error(FString& errors, FString message) {
 
 auto to_utf8(FString const& value) -> std::string {
     return TCHAR_TO_UTF8(*value);
-}
-
-auto catalog_to_fstring(std::string_view const value) -> FString {
-    auto const converted{FUTF8ToTCHAR{value.data(), static_cast<int32>(value.size())}};
-    return FString{converted.Length(), converted.Get()};
 }
 
 auto format_read_error(FLevelDefinitionReadResult const& result) -> FString {
@@ -102,7 +98,7 @@ void apply_level_issues(FLevelScriptCatalogResult& result) {
     auto const issues{level_authoring::validate_level_catalog(native_entries)};
     for (auto const& issue : issues) {
         auto& entry{result.entries[static_cast<int32>(issue.entry_index)]};
-        entry.error = catalog_to_fstring(issue.message);
+        entry.error = ml::to_fstring(issue.message);
         entry.definition.Reset();
         append_error(result.error, FString::Printf(TEXT("%s: %s"), *entry.filename, *entry.error));
     }
@@ -114,7 +110,7 @@ void apply_campaign_issues(FLevelScriptCatalogResult& result) {
     auto const issues{level_authoring::validate_campaign_catalog(campaigns, levels, {})};
     for (auto const& issue : issues) {
         auto& entry{result.campaigns[static_cast<int32>(issue.entry_index)]};
-        entry.error = catalog_to_fstring(issue.message);
+        entry.error = ml::to_fstring(issue.message);
         entry.definition.Reset();
         append_error(result.error, FString::Printf(TEXT("%s: %s"), *entry.filename, *entry.error));
     }
