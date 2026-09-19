@@ -18,124 +18,35 @@ public sealed class UnrealBuildOrchestratorTests
         using var fixture = new UnrealBuildFixture();
         fixture.WriteBuildScript("@echo off\r\nexit /b 7\r\n");
 
-        var exit_code = Program.Main(
-        [
-            "--build-script", fixture.BuildScriptPath,
-            "--target", "SandboxEditor",
-            "--platform", "Win64",
-            "--configuration", "Development",
-            "--project", fixture.ProjectPath,
-            "--native-toolchain", "fixture-toolchain",
-        ]);
+        var exit_code = Program.Main(fixture.CreateArguments());
 
-        Assert.AreEqual(5, exit_code);
+        Assert.AreEqual(7, exit_code);
     }
 
     [TestMethod]
-    public void Build_emits_a_missing_receipt_warning_before_a_failed_build()
+    public void Build_passes_the_project_build_contract_to_ubt()
     {
         using var fixture = new UnrealBuildFixture();
-        fixture.WriteEditorVersion("editor-build");
-        fixture.WriteBuildScript("@echo off\r\nexit /b 7\r\n");
-        var warnings = new List<string>();
 
-        Assert.ThrowsException<BuildScriptFailedException>(
-            () => new UnrealBuildOrchestrator().Build(fixture.CreateRequest(verify_editor_modules: true), warnings.Add));
+        new UnrealBuildOrchestrator().Build(fixture.CreateRequest());
 
-        Assert.AreEqual(1, warnings.Count);
-        StringAssert.Contains(warnings[0], "editor target receipt is missing");
+        var arguments = fixture.ReadBuildArguments();
+        StringAssert.Contains(arguments, "SandboxEditor Win64 Development");
+        StringAssert.Contains(arguments, $"-Project={fixture.ProjectPath}");
+        StringAssert.Contains(arguments, "-WaitMutex");
+        Assert.IsFalse(arguments.Contains("-Force", StringComparison.Ordinal));
+        Assert.IsFalse(arguments.Contains("-NoEngineChanges", StringComparison.Ordinal));
     }
 
     [TestMethod]
-    public void Build_emits_build_id_mismatch_details_before_a_failed_build()
-    {
-        using var fixture = new UnrealBuildFixture();
-        fixture.WriteEditorVersion("editor-build");
-        fixture.WriteReceipt("SandboxEditor", "Development", "{ \"BuildProducts\": [] }");
-        fixture.WriteManifest(fixture.ProjectManifestPath("Development"), "stale-build");
-        fixture.WriteBuildScript("@echo off\r\nexit /b 7\r\n");
-        var warnings = new List<string>();
-
-        Assert.ThrowsException<BuildScriptFailedException>(
-            () => new UnrealBuildOrchestrator().Build(fixture.CreateRequest(verify_editor_modules: true), warnings.Add));
-
-        Assert.AreEqual(2, warnings.Count);
-        StringAssert.Contains(warnings[0], "BuildId mismatch");
-        StringAssert.Contains(warnings[1], "stale-build");
-        StringAssert.Contains(warnings[1], "editor-build");
-    }
-
-    [TestMethod]
-    public void Build_emits_each_mismatch_warning_once_when_the_forced_rebuild_succeeds()
-    {
-        using var fixture = new UnrealBuildFixture();
-        fixture.WriteEditorVersion("editor-build");
-        fixture.WriteReceipt("SandboxEditor", "Development", "{ \"BuildProducts\": [] }");
-        var manifest_path = fixture.ProjectManifestPath("Development");
-        fixture.WriteManifest(manifest_path, "stale-build");
-        fixture.WriteBuildScript($"@echo off\r\necho {{ \"BuildId\": \"editor-build\" }} > \"{manifest_path}\"\r\nexit /b 0\r\n");
-        var warnings = new List<string>();
-
-        var outcome = new UnrealBuildOrchestrator().Build(fixture.CreateRequest(verify_editor_modules: true), warnings.Add);
-
-        Assert.IsTrue(outcome.ForceRebuild);
-        CollectionAssert.AreEqual(outcome.Warnings.ToArray(), warnings);
-        Assert.AreEqual(2, warnings.Count);
-    }
-
-    [TestMethod]
-    public void Build_adds_force_only_when_the_receipt_is_missing()
-    {
-        using var fixture = new UnrealBuildFixture();
-        fixture.WriteEditorVersion("editor-build");
-
-        var exception = Assert.ThrowsException<PostBuildCompatibilityException>(
-            () => new UnrealBuildOrchestrator().Build(fixture.CreateRequest(verify_editor_modules: true)));
-
-        StringAssert.Contains(exception.Message, "editor target receipt is missing");
-        StringAssert.Contains(fixture.ReadBuildArguments(), "-Force");
-    }
-
-    [TestMethod]
-    public void Build_omits_force_when_modules_are_compatible()
-    {
-        using var fixture = new UnrealBuildFixture();
-        fixture.WriteEditorVersion("editor-build");
-        fixture.WriteReceipt("SandboxEditor", "Development", "{ \"BuildProducts\": [] }");
-        fixture.WriteManifest(fixture.ProjectManifestPath("Development"), "editor-build");
-
-        var outcome = new UnrealBuildOrchestrator().Build(fixture.CreateRequest(verify_editor_modules: true));
-
-        Assert.IsFalse(outcome.ForceRebuild);
-        Assert.IsFalse(fixture.ReadBuildArguments().Contains("-Force", StringComparison.Ordinal));
-    }
-
-    [TestMethod]
-    public void Build_treats_post_build_incompatibility_as_a_failure()
-    {
-        using var fixture = new UnrealBuildFixture();
-        fixture.WriteEditorVersion("editor-build");
-        fixture.WriteReceipt("SandboxEditor", "Development", "{ \"BuildProducts\": [] }");
-        fixture.WriteManifest(fixture.ProjectManifestPath("Development"), "stale-build");
-
-        var exception = Assert.ThrowsException<PostBuildCompatibilityException>(
-            () => new UnrealBuildOrchestrator().Build(fixture.CreateRequest(verify_editor_modules: true)));
-
-        StringAssert.Contains(exception.Message, "remain incompatible");
-    }
-
-    [TestMethod]
-    public void Build_script_runner_preserves_spaced_paths_and_scopes_the_toolchain_to_the_child()
+    public void Build_preserves_spaced_paths_and_scopes_the_toolchain_to_the_child()
     {
         using var fixture = new UnrealBuildFixture();
         var original_toolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN");
         Environment.SetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN", "parent-toolchain");
         try
         {
-            new BuildScriptRunner().Run(
-                BuildPaths.Resolve(fixture.CreateRequest(verify_editor_modules: false)),
-                fixture.CreateRequest(verify_editor_modules: false),
-                force_rebuild: false);
+            new UnrealBuildOrchestrator().Build(fixture.CreateRequest());
 
             Assert.AreEqual("parent-toolchain", Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN"));
         }
@@ -150,24 +61,27 @@ public sealed class UnrealBuildOrchestratorTests
     }
 
     [TestMethod]
-    public void Program_runs_the_cli_against_temporary_receipt_data()
+    public void Build_reports_missing_build_scripts()
     {
         using var fixture = new UnrealBuildFixture();
-        fixture.WriteEditorVersion("editor-build");
-        fixture.WriteReceipt("SandboxEditor", "Development", "{ \"BuildProducts\": [] }");
-        fixture.WriteManifest(fixture.ProjectManifestPath("Development"), "editor-build");
+        File.Delete(fixture.BuildScriptPath);
 
-        var exit_code = Program.Main(
-        [
-            "--build-script", fixture.BuildScriptPath,
-            "--target", "SandboxEditor",
-            "--platform", "Win64",
-            "--configuration", "Development",
-            "--project", fixture.ProjectPath,
-            "--native-toolchain", "fixture-toolchain",
-            "--verify-editor-modules",
-        ]);
+        var exception = Assert.ThrowsException<ToolInputException>(
+            () => new UnrealBuildOrchestrator().Build(fixture.CreateRequest()));
 
-        Assert.AreEqual(0, exit_code);
+        StringAssert.Contains(exception.Message, "build script file is missing");
     }
+
+    [TestMethod]
+    public void Build_reports_missing_projects()
+    {
+        using var fixture = new UnrealBuildFixture();
+        File.Delete(fixture.ProjectPath);
+
+        var exception = Assert.ThrowsException<ToolInputException>(
+            () => new UnrealBuildOrchestrator().Build(fixture.CreateRequest()));
+
+        StringAssert.Contains(exception.Message, "project file is missing");
+    }
+
 }

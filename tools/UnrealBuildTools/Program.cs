@@ -6,13 +6,13 @@ public static class Program
     {
         if (!TryParse(arguments, out var request))
         {
-            Console.Error.WriteLine("Usage: UnrealBuildTools --build-script <path> --target <target> --platform <platform> --configuration <configuration> --project <path> --native-toolchain <name> [--verify-editor-modules]");
+            Console.Error.WriteLine("Usage: UnrealBuildTools --build-script <path> --target <target> --platform <platform> --configuration <configuration> --project <path> --native-toolchain <name>");
             return 2;
         }
 
         try
         {
-            new UnrealBuildOrchestrator().Build(request, WriteWarning);
+            new UnrealBuildOrchestrator().Build(request);
 
             return 0;
         }
@@ -26,11 +26,7 @@ public static class Program
         }
         catch (BuildScriptFailedException exception)
         {
-            return WriteFailure(5, exception);
-        }
-        catch (PostBuildCompatibilityException exception)
-        {
-            return WriteFailure(6, exception);
+            return WriteFailure(exception.ExitCode, exception);
         }
     }
 
@@ -38,21 +34,9 @@ public static class Program
     {
         request = null!;
         var values = new Dictionary<string, string>(StringComparer.Ordinal);
-        var verify_editor_modules = false;
         for (var index = 0; index < arguments.Length; ++index)
         {
             var argument = arguments[index];
-            if (string.Equals(argument, "--verify-editor-modules", StringComparison.Ordinal))
-            {
-                if (verify_editor_modules)
-                {
-                    return false;
-                }
-
-                verify_editor_modules = true;
-                continue;
-            }
-
             if (argument is not ("--build-script" or "--target" or "--platform" or "--configuration" or "--project" or "--native-toolchain") ||
                 index + 1 >= arguments.Length ||
                 string.IsNullOrWhiteSpace(arguments[index + 1]) ||
@@ -78,8 +62,7 @@ public static class Program
             platform,
             configuration,
             project,
-            native_toolchain,
-            verify_editor_modules);
+            native_toolchain);
         return true;
     }
 
@@ -87,10 +70,5 @@ public static class Program
     {
         Console.Error.WriteLine($"UnrealBuildTools: {exception.Message}");
         return exit_code;
-    }
-
-    private static void WriteWarning(string warning)
-    {
-        Console.Error.WriteLine($"UnrealBuildTools: warning: {warning}");
     }
 }

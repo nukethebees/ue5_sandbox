@@ -6,7 +6,4 @@ public sealed record BuildRequest(
     string Platform,
     string Configuration,
     string ProjectPath,
-    string NativeToolchain,
-    bool VerifyEditorModules);
-
-public sealed record BuildOutcome(bool ForceRebuild, IReadOnlyList<string> Warnings);
+    string NativeToolchain);

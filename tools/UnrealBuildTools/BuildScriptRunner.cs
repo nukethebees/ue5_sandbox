@@ -5,7 +5,7 @@ namespace UnrealBuildTools;
 
 public sealed class BuildScriptRunner
 {
-    public void Run(BuildPaths paths, BuildRequest request, bool force_rebuild)
+    public void Run(BuildPaths paths, BuildRequest request)
     {
         ArgumentNullException.ThrowIfNull(paths);
         ArgumentNullException.ThrowIfNull(request);
@@ -18,10 +18,6 @@ public sealed class BuildScriptRunner
             $"-Project={paths.ProjectPath}",
             "-WaitMutex",
         };
-        if (force_rebuild)
-        {
-            build_arguments.Add("-Force");
-        }
 
         var start_info = CreateStartInfo(paths.BuildScriptPath, build_arguments, request.NativeToolchain);
         using var process = new Process { StartInfo = start_info };

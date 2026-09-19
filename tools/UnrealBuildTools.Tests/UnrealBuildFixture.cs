@@ -9,27 +9,23 @@ internal sealed class UnrealBuildFixture : IDisposable
     public UnrealBuildFixture()
     {
         root = Directory.CreateTempSubdirectory("SandboxUnrealBuildTools-").FullName;
-        ProjectRoot = Path.Combine(root, "Project Root");
-        ProjectPath = Path.Combine(ProjectRoot, "Sandbox.uproject");
-        EngineRoot = Path.Combine(root, "Engine Root");
-        BuildScriptPath = Path.Combine(EngineRoot, "Engine", "Build", "BatchFiles", "RunUBT.cmd");
+        var project_root = Path.Combine(root, "Project Root");
+        ProjectPath = Path.Combine(project_root, "Sandbox.uproject");
+        var engine_root = Path.Combine(root, "Engine Root");
+        BuildScriptPath = Path.Combine(engine_root, "Engine", "Build", "BatchFiles", "RunUBT.cmd");
 
-        Directory.CreateDirectory(ProjectRoot);
+        Directory.CreateDirectory(project_root);
         File.WriteAllText(ProjectPath, "{}");
         Directory.CreateDirectory(Path.GetDirectoryName(BuildScriptPath)!);
         WriteBuildScript(
             "@echo off\r\necho %* > \"%~dp0arguments.txt\"\r\nset > \"%~dp0environment.txt\"\r\nexit /b 0\r\n");
     }
 
-    public string ProjectRoot { get; }
-
     public string ProjectPath { get; }
-
-    public string EngineRoot { get; }
 
     public string BuildScriptPath { get; }
 
-    public BuildRequest CreateRequest(bool verify_editor_modules)
+    public BuildRequest CreateRequest()
     {
         return new BuildRequest(
             BuildScriptPath,
@@ -37,42 +33,20 @@ internal sealed class UnrealBuildFixture : IDisposable
             "Win64",
             "Development",
             ProjectPath,
-            "fixture-toolchain",
-            verify_editor_modules);
+            "fixture-toolchain");
     }
 
-    public string ProjectManifestPath(string configuration)
+    public string[] CreateArguments()
     {
-        return Path.Combine(
-            ProjectRoot,
-            "Binaries",
-            "Win64",
-            EditorModuleManifestLocator.GetManifestName(configuration));
-    }
-
-    public void WriteReceipt(string target, string configuration, string contents)
-    {
-        var path = Path.Combine(
-            ProjectRoot,
-            "Binaries",
-            "Win64",
-            EditorModuleManifestLocator.GetTargetReceiptName(target, configuration));
-        WriteFile(path, contents);
-    }
-
-    public void WriteEditorVersion(string build_id)
-    {
-        WriteEditorVersionJson($"{{ \"BuildId\": \"{build_id}\" }}");
-    }
-
-    public void WriteEditorVersionJson(string contents)
-    {
-        WriteFile(Path.Combine(EngineRoot, "Engine", "Binaries", "Win64", "UnrealEditor.version"), contents);
-    }
-
-    public void WriteManifest(string path, string build_id)
-    {
-        WriteFile(path, $"{{ \"BuildId\": \"{build_id}\" }}");
+        return
+        [
+            "--build-script", BuildScriptPath,
+            "--target", "SandboxEditor",
+            "--platform", "Win64",
+            "--configuration", "Development",
+            "--project", ProjectPath,
+            "--native-toolchain", "fixture-toolchain",
+        ];
     }
 
     public void WriteBuildScript(string contents)
@@ -93,11 +67,5 @@ internal sealed class UnrealBuildFixture : IDisposable
     public void Dispose()
     {
         Directory.Delete(root, true);
-    }
-
-    private static void WriteFile(string path, string contents)
-    {
-        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
-        File.WriteAllText(path, contents);
     }
 }

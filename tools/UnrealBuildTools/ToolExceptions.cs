@@ -26,11 +26,3 @@ public sealed class BuildScriptFailedException : Exception
 
     public int ExitCode { get; }
 }
-
-public sealed class PostBuildCompatibilityException : Exception
-{
-    public PostBuildCompatibilityException(string message)
-        : base(message)
-    {
-    }
-}
