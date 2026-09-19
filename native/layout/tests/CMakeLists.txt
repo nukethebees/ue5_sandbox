@@ -3,6 +3,7 @@ target_sources(native-layout-tests PRIVATE
   analyzer_tests.cpp
   frame_pacer_tests.cpp
   lispb_adapter_tests.cpp
+  model_tests.cpp
   workspace_tests.cpp
 )
 target_compile_features(native-layout-tests PRIVATE cxx_std_23)
