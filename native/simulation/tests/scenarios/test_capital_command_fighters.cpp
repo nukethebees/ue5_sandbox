@@ -63,9 +63,20 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
             })
         .then_after(3.0 / 60.0,
                     [&] {
-                        for (auto const task : fighters.get_tasks()) {
-                            tests::expect_equal(
-                                Task::Standby, task, "Fighter stands by with no enemies");
+                        auto const fighter_ids{fighters.get_entity_ids()};
+                        auto const fighter_tasks{fighters.get_tasks()};
+                        auto const fighter_parents{fighters.get_parent_ids()};
+                        auto const fighter_count{static_cast<std::int32_t>(fighter_ids.size())};
+                        for (std::int32_t index{}; index < fighter_count; ++index) {
+                            if (fighter_parents[index].is_valid()) {
+                                tests::expect_equal(Task::Standby,
+                                                    fighter_tasks[index],
+                                                    "Owned fighter stands by with no enemies");
+                            } else {
+                                tests::expect_equal(Task::Attack,
+                                                    fighter_tasks[index],
+                                                    "Orphaned fighter retains its attack task");
+                            }
                         }
                         tests::expect_greater(capitals.get_num_instances(),
                                               std::int32_t{0},

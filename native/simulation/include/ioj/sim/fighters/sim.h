@@ -198,12 +198,12 @@ struct Sim {
     // Spawning
     /* **************************************** */
     auto queue_spawns(FighterSpawnQueueConstView queue) -> std::int32_t;
+    void reassign_pending_spawns(EntityUniqueId parent, EntityUniqueId replacement);
     void commit_spawns();
 
     /* **************************************** */
     // Destruction
     /* **************************************** */
-    void self_destruct_fighter(EntityUniqueId fighter);
     void remove_dead_entities();
 
     /* **************************************** */

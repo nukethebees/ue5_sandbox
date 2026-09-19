@@ -331,7 +331,7 @@ TEST(TickPhases, ShortLivedProjectileSweepsItsRemainingLifetimeFromTheMuzzle) {
     EXPECT_EQ(simulation.get_read_view().lasers.entities.num(), 0);
 }
 
-TEST(TickPhases, CapitalDeathPublishesExistingAndNewChildDeathsBeforeMissionEvaluation) {
+TEST(TickPhases, CapitalDeathPreservesExistingChildrenBeforeMissionEvaluation) {
     for (auto const kill_tick : {1, 2}) {
         auto data{make_world()};
 
@@ -387,7 +387,7 @@ TEST(TickPhases, CapitalDeathPublishesExistingAndNewChildDeathsBeforeMissionEval
         simulation.advance(period);
 
         EXPECT_FALSE(simulation.get_agent_accessor().is_alive(victim));
-        EXPECT_EQ(fighter_sim.get_num_instances(), kill_tick == 1 ? 0 : 1);
+        EXPECT_EQ(fighter_sim.get_num_instances(), kill_tick == 1 ? 0 : 2);
         EXPECT_EQ(capitals.get_num_instances(), 1);
         auto const capital_view{simulation.get_read_view().capitals};
         ASSERT_FALSE(capital_view.changes.empty());
@@ -396,10 +396,19 @@ TEST(TickPhases, CapitalDeathPublishesExistingAndNewChildDeathsBeforeMissionEval
         ASSERT_EQ(capital_view.deaths.size(), 1);
         EXPECT_EQ(simulation.get_agent_indexes().find(victim), -1);
         EXPECT_EQ(simulation.get_agent_indexes().find(killer), 0);
-        EXPECT_EQ(ledger.count_alive(), kill_tick == 1 ? 1 : 2);
+        EXPECT_EQ(ledger.count_alive(), kill_tick == 1 ? 1 : 3);
         EXPECT_EQ(simulation.get_mission_manager().get_mission_state(), MissionState::Succeeded);
         EXPECT_FALSE(queries.trace_closest({{-2020.f, 0.f, 0.f}}, {{-1980.f, 0.f, 0.f}}).hit);
-        EXPECT_FALSE(queries.trace_closest({{-2020.f, 500.f, 0.f}}, {{-1980.f, 500.f, 0.f}}).hit);
+        EXPECT_EQ(queries.trace_closest({{-2020.f, 500.f, 0.f}}, {{-1980.f, 500.f, 0.f}}).hit,
+                  kill_tick == 2);
+        if (kill_tick == 2) {
+            auto const fighter_ids{fighter_sim.get_entity_ids()};
+            auto const fighter_parents{fighter_sim.get_parent_ids()};
+            auto const orphaned{std::ranges::find(fighter_parents, EntityUniqueId{})};
+            ASSERT_NE(orphaned, fighter_parents.end());
+            auto const orphaned_index{static_cast<std::size_t>(orphaned - fighter_parents.begin())};
+            EXPECT_GE(simulation.get_agent_indexes().find(fighter_ids[orphaned_index]), 0);
+        }
     }
 
     auto data{make_world()};

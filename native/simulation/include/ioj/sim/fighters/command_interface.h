@@ -20,10 +20,6 @@ class CommandInterface {
 
     void queue_orders(FighterOrderQueue const& queue) { fighters.queue_orders(queue); }
 
-    void self_destruct_fighter(EntityUniqueId const fighter) {
-        fighters.self_destruct_fighter(fighter);
-    }
-
     std::int32_t get_num_instances() const noexcept { return fighters.get_num_instances(); }
 
     std::span<EntityUniqueId const> get_parent_ids() const { return fighters.get_parent_ids(); }
@@ -34,6 +30,10 @@ class CommandInterface {
 
     void set_parent_id(EntityUniqueId fighter, EntityUniqueId parent) {
         fighters.set_parent_id(fighter, parent);
+    }
+
+    void reassign_pending_spawns(EntityUniqueId parent, EntityUniqueId replacement) {
+        fighters.reassign_pending_spawns(parent, replacement);
     }
 
     std::span<EntityUniqueId const> get_target_ids() const noexcept {

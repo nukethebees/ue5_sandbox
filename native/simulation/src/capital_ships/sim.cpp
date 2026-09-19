@@ -55,7 +55,6 @@ void Sim::begin_play() {
 void Sim::prepare_tick(float const dt) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::prepare_tick");
     clear_tick_buffers();
-    fighter_self_destruct_requests_.clear();
     auto const entities{this->entities.get_view().columns()};
     ml::tick_countdowns(entities.fighter_spawn_timers, dt);
 }
@@ -83,16 +82,9 @@ void Sim::think(float const) {
     queue_fighter_spawns();
     queue_fighter_orders();
 }
-void Sim::execute_fighter_self_destruct_requests() {
-    for (auto const fighter : fighter_self_destruct_requests_) {
-        fighters_interface.self_destruct_fighter(fighter);
-    }
-    fighter_self_destruct_requests_.clear();
-}
 void Sim::resolve_fighters_of_dying_capitals() {
     batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
     reassign_fighters_of_dying_capital();
-    execute_fighter_self_destruct_requests();
 }
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::resolve_damage_events");
@@ -422,12 +414,9 @@ void Sim::reassign_fighters_of_dying_capital() {
             if (parents[index] != parent || is_dead(healths[index])) {
                 continue;
             }
-            if (!replacement.is_valid()) {
-                fighter_self_destruct_requests_.push_back(ids[index]);
-            } else {
-                fighters_interface.set_parent_id(ids[index], replacement);
-            }
+            fighters_interface.set_parent_id(ids[index], replacement);
         }
+        fighters_interface.reassign_pending_spawns(parent, replacement);
     }
 }
 

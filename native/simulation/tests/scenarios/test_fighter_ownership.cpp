@@ -24,6 +24,7 @@ void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture co
         std::vector<std::vector<EntityUniqueId>> owned_fighters{};
         std::vector<Team> capital_teams{};
         std::vector<Team> fighter_teams{};
+        std::vector<EntityUniqueId> fighter_parents{};
         std::vector<std::int32_t> span_starts{};
         std::vector<EntityUniqueId> all_owned_fighters{};
         std::vector<EntityUniqueId> fighters{};
@@ -62,8 +63,11 @@ void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture co
             auto const owned{capitals.get_fighter_ids(i)};
             sample.owned_fighters.emplace_back(owned.begin(), owned.end());
             for (auto const fighter : capitals.get_fighter_ids(i)) {
+                auto const fighter_index{simulation.get_agent_indexes().find(fighter)};
                 sample.fighter_teams.push_back(
                     simulation.get_agent_accessor().read_alive(fighter)->team);
+                sample.fighter_parents.push_back(
+                    simulation.get_fighters().get_parent_ids()[fighter_index]);
             }
         }
         auto const owned{capitals.get_fighter_ids()};
@@ -142,6 +146,9 @@ void run_worldless_simultaneous_capital_reassignment(tests::SimulationFixture co
             tests::expect_equal(after.capital_teams[i],
                                 after.fighter_teams[offset],
                                 "Fighter belongs to owner's team");
+            tests::expect_equal(after.capitals[i],
+                                after.fighter_parents[offset],
+                                "Fighter parent matches its surviving owner");
             if (tests::expect_true((offset >= 0 && static_cast<std::size_t>(offset) <
                                                        after.all_owned_fighters.size()),
                                    "Span is within flat ownership array")) {

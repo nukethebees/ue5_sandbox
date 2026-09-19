@@ -1203,6 +1203,18 @@ auto Sim::queue_spawns(FighterSpawnQueueConstView const new_spawns) -> std::int3
     }
     return accepted_count;
 }
+void Sim::reassign_pending_spawns(EntityUniqueId const parent, EntityUniqueId const replacement) {
+    assert(parent.is_valid() && parent.entity_type() == EntityType::CapitalShip);
+    assert(!replacement.is_valid() || replacement.entity_type() == EntityType::CapitalShip);
+
+    auto const pending{spawn_queue.get_view().columns()};
+    auto const pending_count{pending.num()};
+    for (std::int32_t index{}; index < pending_count; ++index) {
+        if (pending.parents[index] == parent) {
+            pending.parents[index] = replacement;
+        }
+    }
+}
 void Sim::commit_spawns() {
     agents_.indexes().assert_preparation_mutation_allowed();
     SANDBOX_PROFILE_SCOPE("fighters::Sim::commit_spawns");
@@ -1210,26 +1222,6 @@ void Sim::commit_spawns() {
     if (!diagnostics_enabled_) {
         diagnostic_spawn_reports = 0;
     }
-    auto accepted_count{0};
-    auto const pending_count{spawn_queue.num()};
-    auto pending{spawn_queue.get_view().columns()};
-    for (auto index{0}; index < pending_count; ++index) {
-        // ResolutionCommit retired dead parents. Preparation may already have
-        // invalidated owner views, but surviving IDs still have table entries.
-        if (agents_.indexes().find(pending.parents[index]) >= 0) {
-            pending.set(accepted_count++,
-                        pending.locations.xs[index],
-                        pending.locations.ys[index],
-                        pending.locations.zs[index],
-                        pending.rotations.pitches[index],
-                        pending.rotations.yaws[index],
-                        pending.rotations.rolls[index],
-                        pending.teams[index],
-                        pending.parents[index],
-                        pending.targets[index]);
-        }
-    }
-    spawn_queue.set_num(accepted_count);
     auto const n_cur{get_num_instances()};
     auto const n_new{spawn_queue.num()};
 
@@ -1290,20 +1282,6 @@ void Sim::commit_spawns() {
 /* **************************************** */
 // Destruction
 /* **************************************** */
-void Sim::self_destruct_fighter(EntityUniqueId const fighter) {
-    auto const data{entity_buffers.current().get_view().columns()};
-    auto const index{fighter.is_valid() && fighter.entity_type() == EntityType::Fighter
-                         ? agents_.indexes().find(fighter)
-                         : -1};
-    if (index < 0 || is_dead(data.healths[index])) {
-        return;
-    }
-    data.healths[index] = 0;
-    entity_death_info.add(DeathReason::Unknown, data.entity_ids[index], {});
-    if (!std::ranges::contains(local_indices_to_remove, index)) {
-        local_indices_to_remove.push_back(index);
-    }
-}
 void Sim::remove_dead_entities() {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_dead_entities");
     auto& data{entity_buffers.current()};

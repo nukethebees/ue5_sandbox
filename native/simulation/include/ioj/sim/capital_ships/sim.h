@@ -113,7 +113,6 @@ struct Sim {
     void begin_play();
     void prepare_tick(float dt);
     void think(float dt);
-    void execute_fighter_self_destruct_requests();
     void resolve_damage_events();
     void resolve_fighters_of_dying_capitals();
     void publish_deaths();
@@ -176,7 +175,6 @@ struct Sim {
     std::vector<CapitalDeathEvent> deaths_;
 
     fighters::CommandInterface fighters_interface;
-    std::vector<EntityUniqueId> fighter_self_destruct_requests_;
     std::vector<EntityUniqueId> fighter_ids;
     std::int32_t fighters_spawned{0};
 

@@ -21,10 +21,6 @@ void PhaseInterface::think(float const dt) {
     simulation.think(dt);
 }
 
-void PhaseInterface::execute_fighter_self_destruct_requests() {
-    simulation.execute_fighter_self_destruct_requests();
-}
-
 void PhaseInterface::resolve_damage_events() {
     simulation.resolve_damage_events();
 }

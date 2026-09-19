@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/level_sim.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
@@ -60,6 +61,18 @@ auto count_team(LevelSim const& simulation, Team const team) -> std::int32_t {
         count += fighter_team == team ? 1 : 0;
     }
     return count;
+}
+
+void queue_damage(LevelSim& simulation, EntityUniqueId const target, std::int32_t const damage) {
+    DirectDamageEvents events;
+    events.add_uninitialised(1);
+    events.damaged_entities[0] = target;
+    events.damage_amounts[0] = damage;
+    LevelSimTestAccess::queue_direct_damage_events(simulation, events.get_const_view());
+}
+
+auto location_changed(Vector3f const before, Vector3f const after) -> bool {
+    return before.X != after.X || before.Y != after.Y || before.Z != after.Z;
 }
 }
 
@@ -146,8 +159,126 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
     parent_death_simulation.advance(parent_death_simulation.get_clock().get_tick_period());
     tests::expect_equal(static_cast<std::int32_t>(
                             parent_death_simulation.get_capital_ships().get_fighter_ids(0).size()),
+                        2,
+                        "A pending launch from a dead parent is reassigned to its surviving team");
+    auto const survivor{parent_death_simulation.get_capital_ships().get_id(0)};
+    for (auto const parent : parent_death_simulation.get_fighters().get_parent_ids()) {
+        tests::expect_equal(parent, survivor, "Pending fighter uses the surviving capital parent");
+    }
+}
+
+TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
+
+    std::vector<Team> const capitals{Team::White, Team::Red};
+    auto data{make_cap_battle(capitals, capitals, 4, 2, 6000.f)};
+    auto targets{
+        data.level_events.initial_spawns.capital_spawns.get_view().target_entity_indices()};
+    targets[0] = 1;
+    targets[1] = 0;
+
+    LevelSim simulation{std::move(data)};
+    start_and_tick(simulation);
+
+    auto const& capital_simulation{simulation.get_capital_ships()};
+    auto const& fighter_simulation{simulation.get_fighters()};
+    auto const white_capital{capital_simulation.get_id(0)};
+    auto const red_capital{capital_simulation.get_id(1)};
+    std::vector<EntityUniqueId> white_fighters;
+    for (auto const fighter : fighter_simulation.get_entity_ids()) {
+        auto const index{simulation.get_agent_indexes().find(fighter)};
+        if (fighter_simulation.get_teams()[index] == Team::White) {
+            white_fighters.push_back(fighter);
+        }
+    }
+    tests::expect_equal(static_cast<std::int32_t>(white_fighters.size()),
+                        2,
+                        "Final capital begins with its fighter wave");
+
+    queue_damage(simulation, white_capital, 100000);
+    simulation.advance(simulation.get_clock().get_tick_period());
+
+    tests::expect_true(!capital_simulation.find_first_index_on_team(Team::White).has_value(),
+                       "Final capital is removed");
+    for (auto const fighter : white_fighters) {
+        auto const index{simulation.get_agent_indexes().find(fighter)};
+        tests::expect_true(index >= 0, "Orphaned fighter remains registered");
+        if (index < 0) {
+            continue;
+        }
+        tests::expect_equal(fighter_simulation.get_teams()[index],
+                            Team::White,
+                            "Orphaned fighter retains its team");
+        tests::expect_true(!fighter_simulation.get_parent_ids()[index].is_valid(),
+                           "Orphaned fighter has no capital parent");
+        tests::expect_equal(fighter_simulation.get_target_ids()[index],
+                            red_capital,
+                            "Orphaned fighter retains its target");
+        tests::expect_equal(fighter_simulation.get_tasks()[index],
+                            FighterTask::Attack,
+                            "Orphaned fighter continues its attack task");
+        tests::expect_true(!std::ranges::contains(capital_simulation.get_fighter_ids(), fighter),
+                           "Orphaned fighter is absent from capital rosters");
+    }
+
+    auto const tracked_fighter{white_fighters.front()};
+    auto const tracked_index{simulation.get_agent_indexes().find(tracked_fighter)};
+    auto const before_location{fighter_simulation.get_locations()[tracked_index]};
+    for (std::int32_t tick{}; tick < 10; ++tick) {
+        simulation.advance(simulation.get_clock().get_tick_period());
+    }
+    auto const after_index{simulation.get_agent_indexes().find(tracked_fighter)};
+    tests::expect_true(after_index >= 0, "Orphaned fighter remains live while simulating");
+    if (after_index >= 0) {
+        tests::expect_true(
+            location_changed(before_location, fighter_simulation.get_locations()[after_index]),
+            "Orphaned fighter continues moving");
+    }
+
+    queue_damage(simulation, tracked_fighter, 100000);
+    simulation.advance(simulation.get_clock().get_tick_period());
+    tests::expect_equal(simulation.get_agent_indexes().find(tracked_fighter),
+                        -1,
+                        "Orphaned fighter dies through normal damage resolution");
+    tests::expect_equal(count_team(simulation, Team::White),
                         1,
-                        "A pending launch from a dead parent is cancelled, not adopted");
+                        "Other orphaned fighters remain live after one is destroyed");
+}
+
+TEST(FighterLiveCap, PendingLaunchSurvivesFinalCapitalDeathUnowned) {
+
+    std::vector<Team> const capitals{Team::White, Team::Red};
+    auto data{make_cap_battle(capitals, capitals, 2, 1, 6000.f)};
+    auto targets{
+        data.level_events.initial_spawns.capital_spawns.get_view().target_entity_indices()};
+    targets[0] = 1;
+    targets[1] = 0;
+
+    LevelSim simulation{std::move(data)};
+    simulation.finish_initialisation();
+    simulation.start();
+
+    auto const white_capital{simulation.get_capital_ships().get_id(0)};
+    queue_damage(simulation, white_capital, 100000);
+    simulation.advance(simulation.get_clock().get_tick_period());
+    simulation.advance(simulation.get_clock().get_tick_period());
+
+    auto const& capital_simulation{simulation.get_capital_ships()};
+    auto const& fighter_simulation{simulation.get_fighters()};
+    tests::expect_true(!capital_simulation.find_first_index_on_team(Team::White).has_value(),
+                       "Spawn parent capital is removed");
+    tests::expect_equal(count_team(simulation, Team::White),
+                        1,
+                        "Pending fighter is admitted after its final parent dies");
+    for (auto const fighter : fighter_simulation.get_entity_ids()) {
+        auto const index{simulation.get_agent_indexes().find(fighter)};
+        if (fighter_simulation.get_teams()[index] != Team::White) {
+            continue;
+        }
+        tests::expect_true(!fighter_simulation.get_parent_ids()[index].is_valid(),
+                           "Pending fighter is admitted unowned");
+        tests::expect_true(!std::ranges::contains(capital_simulation.get_fighter_ids(), fighter),
+                           "Pending fighter is absent from capital rosters");
+    }
 }
 
 TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {

@@ -37,12 +37,15 @@ void run_worldless_fighters_standby_transition(tests::SimulationFixture const& c
         std::int32_t capital_count{};
         std::vector<fighters::Sim::Task> tasks{};
         std::vector<Vector3f> velocities{};
+        std::vector<EntityUniqueId> parents{};
     };
     ml::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {
         Sample sample{.capital_count = capitals.get_num_instances()};
         auto const tasks{fighters.get_tasks()};
         sample.tasks.insert(sample.tasks.end(), tasks.begin(), tasks.end());
+        auto const parents{fighters.get_parent_ids()};
+        sample.parents.insert(sample.parents.end(), parents.begin(), parents.end());
         for (auto const id : fighters.get_entity_ids()) {
             sample.velocities.push_back(
                 harness.get_simulation().get_agent_accessor().read(id)->velocity);
@@ -75,12 +78,27 @@ void run_worldless_fighters_standby_transition(tests::SimulationFixture const& c
     tests::expect_equal(static_cast<std::int32_t>(after.tasks.size()),
                         static_cast<std::int32_t>(after.velocities.size()),
                         "Standby tasks and velocities have matching counts");
+    std::int32_t standby_fighters{};
+    std::int32_t orphaned_fighters{};
     for (std::int32_t i{}; i < static_cast<std::int32_t>(after.tasks.size()); ++i) {
-        tests::expect_equal(
-            fighters::Sim::Task::Standby, after.tasks[i], "Fighter transitioned to standby", i);
-        tests::expect_distance_near(
-            after.velocities[i], Vector3f{}, 0.f, "Standby fighter velocity is zero", i);
+        if (after.parents[i].is_valid()) {
+            tests::expect_equal(fighters::Sim::Task::Standby,
+                                after.tasks[i],
+                                "Owned fighter transitioned to standby",
+                                i);
+            tests::expect_distance_near(
+                after.velocities[i], Vector3f{}, 0.f, "Standby fighter velocity is zero", i);
+            ++standby_fighters;
+        } else {
+            tests::expect_equal(fighters::Sim::Task::Attack,
+                                after.tasks[i],
+                                "Orphaned fighter retains its attack task",
+                                i);
+            ++orphaned_fighters;
+        }
     }
+    tests::expect_greater(standby_fighters, std::int32_t{0}, "Surviving capital retains fighters");
+    tests::expect_greater(orphaned_fighters, std::int32_t{0}, "Destroyed capital leaves orphans");
 }
 
 }

@@ -16,8 +16,6 @@ class PhaseInterface {
 
     void think(float const dt);
 
-    void execute_fighter_self_destruct_requests();
-
     void resolve_damage_events();
 
     void resolve_fighters_of_dying_capitals();
