@@ -272,6 +272,13 @@ auto ATestSpaceShip::get_flight_mode() const -> ETestSpaceShipFlightMode {
     return ml::to_unreal(simulation().flight_mode);
 }
 
+void ATestSpaceShip::set_control_mode(ETestSpaceShipControlMode const new_control_mode) noexcept {
+    control_mode = new_control_mode;
+    if (bound_simulation) {
+        commands().set_control_mode(ml::to_native(new_control_mode));
+    }
+}
+
 void ATestSpaceShip::set_flight_mode(ETestSpaceShipFlightMode const new_flight_mode) noexcept {
     flight_mode = new_flight_mode;
     if (bound_simulation) {

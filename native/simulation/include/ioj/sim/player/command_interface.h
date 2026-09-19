@@ -39,6 +39,8 @@ class CommandInterface {
 
     void select_previous_control_mode() { simulation.select_previous_control_mode(); }
 
+    void set_control_mode(SpaceShipControlMode mode) { simulation.set_control_mode(mode); }
+
     void start_sampling() noexcept { simulation.start_sampling(); }
 
     void stop_sampling() { simulation.stop_sampling(); }

@@ -112,6 +112,7 @@ struct Sim {
     void set_ship_1d_control_y(float input);
     void select_next_control_mode();
     void select_previous_control_mode();
+    void set_control_mode(SpaceShipControlMode new_control_mode);
     void start_sampling() noexcept;
     void stop_sampling();
     void adjust_desired_forward_velocity(float direction);
@@ -212,7 +213,6 @@ struct Sim {
     void update_body_orientation(float dt, MovementState& movement);
     void integrate_power_velocity(float dt, MovementState& movement);
     void set_desired_planar_velocity(ml::Vector3d desired_velocity);
-    void set_control_mode(SpaceShipControlMode new_control_mode);
     [[nodiscard]] auto uses_power_controller() const noexcept -> bool;
     std::uint64_t boost_start_sequence_{};
     void set_boost_brake_state(BoostBrakeState state);
