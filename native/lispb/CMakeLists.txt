@@ -30,6 +30,7 @@ target_link_libraries(lispb-project PRIVATE lispb-syntax sandbox::codegen_warnin
 add_library(lispb-schema)
 target_sources(lispb-schema PRIVATE
   src/cpp_type.cpp
+  src/editable_document.cpp
   src/packed_value_internal.cpp
   src/schema.cpp
   src/source_loader.cpp
@@ -183,6 +184,7 @@ target_link_libraries(codegen-generated-tests PRIVATE
 
 add_executable(codegen-tests
   tests/ast_tests.cpp
+  tests/editable_document_tests.cpp
   tests/expr_tests.cpp
   tests/fixed_soa_lowering_tests.cpp
   tests/single_allocation_soa_tests.cpp

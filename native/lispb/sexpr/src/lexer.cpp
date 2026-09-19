@@ -43,7 +43,7 @@ class Lexer {
     }
   private:
     auto current_span() const -> SourceSpan {
-        return SourceSpan{line_, column_, std::string{path_}, {}};
+        return SourceSpan{line_, column_, std::string{path_}, {}, index_};
     }
 
     auto at_end() const -> bool { return index_ >= source_.size(); }

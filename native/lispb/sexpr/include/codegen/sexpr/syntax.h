@@ -12,6 +12,7 @@ struct SourceSpan {
     std::size_t column{1};
     std::string path;
     std::string expansion;
+    std::size_t offset{};
 };
 
 class SourceError final : public std::runtime_error {

@@ -1,0 +1,121 @@
+#pragma once
+
+#include <codegen/schema.h>
+
+#include <lispb/schema/type_graph.h>
+
+#include <compare>
+#include <cstddef>
+#include <cstdint>
+#include <expected>
+#include <filesystem>
+#include <optional>
+#include <span>
+#include <string>
+#include <utility>
+#include <variant>
+#include <vector>
+
+namespace lispb::schema {
+
+struct DeclarationId {
+    inline static constexpr std::uint64_t invalid_value{0};
+
+    std::uint64_t value{invalid_value};
+
+    [[nodiscard]] auto valid() const -> bool { return value != invalid_value; }
+    auto operator<=>(DeclarationId const&) const = default;
+};
+
+struct SourceRange {
+    std::size_t source_file_index{};
+    std::size_t begin_offset{};
+    std::size_t end_offset{};
+    std::size_t line{1};
+    std::size_t column{1};
+
+    auto operator==(SourceRange const&) const -> bool = default;
+};
+
+struct SchemaSourceFile {
+    std::filesystem::path path;
+    std::string text;
+};
+
+struct DeclarationInfo {
+    DeclarationId id;
+    TypeIdentity identity;
+    std::size_t module_index{};
+    std::size_t declaration_index{};
+    std::optional<SourceRange> source;
+};
+
+struct SetEnumeratorDisplayName {
+    DeclarationId enum_declaration;
+    std::string enumerator_name;
+    std::optional<std::string> display_name;
+};
+
+struct SetEnumeratorName {
+    DeclarationId enum_declaration;
+    std::string current_name;
+    std::string new_name;
+};
+
+using SchemaEditCommand = std::variant<SetEnumeratorDisplayName, SetEnumeratorName>;
+
+struct SchemaEditError {
+    std::string message;
+};
+
+class EditableSchemaDocument {
+  public:
+    static auto from_manifest(codegen::Manifest manifest) -> EditableSchemaDocument;
+
+    auto manifest() const -> codegen::Manifest const&;
+    auto types() const -> TypeGraph const&;
+    auto source_files() const -> std::span<SchemaSourceFile const>;
+    auto declarations() const -> std::span<DeclarationInfo const>;
+    auto declaration(DeclarationId id) const -> DeclarationInfo const*;
+    auto find_declaration(TypeIdentity const& identity) const -> std::optional<DeclarationId>;
+
+    auto apply(SchemaEditCommand command) -> std::expected<bool, SchemaEditError>;
+    auto undo() -> std::expected<bool, SchemaEditError>;
+    auto redo() -> std::expected<bool, SchemaEditError>;
+    auto can_undo() const -> bool;
+    auto can_redo() const -> bool;
+    auto dirty() const -> bool;
+    auto revision() const -> std::uint64_t;
+    void mark_saved();
+  private:
+    friend auto load_editable_schema_document(std::filesystem::path const& types_path,
+                                              std::span<std::filesystem::path const> module_paths)
+        -> EditableSchemaDocument;
+
+    struct HistoryEntry {
+        SchemaEditCommand forward;
+        SchemaEditCommand inverse;
+    };
+
+    explicit EditableSchemaDocument(codegen::Manifest manifest,
+                                    std::vector<SchemaSourceFile> source_files);
+
+    void initialize_declarations(std::vector<std::optional<SourceRange>> source_ranges);
+    auto execute(SchemaEditCommand const& command)
+        -> std::expected<std::optional<SchemaEditCommand>, SchemaEditError>;
+
+    codegen::Manifest manifest_;
+    TypeGraph types_;
+    std::vector<SchemaSourceFile> source_files_;
+    std::vector<DeclarationInfo> declarations_;
+    std::vector<HistoryEntry> history_;
+    std::size_t history_position_{};
+    std::optional<std::size_t> saved_history_position_{0};
+    std::uint64_t revision_{};
+};
+
+auto load_editable_schema_document(std::filesystem::path const& types_path,
+                                   std::span<std::filesystem::path const> module_paths)
+    -> EditableSchemaDocument;
+
+} // namespace lispb::schema

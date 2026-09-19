@@ -21,3 +21,10 @@ and `native-layout` are peer consumers. Consumer-specific analysis results and e
 experiments may project the graph, but must not duplicate or discard LispB semantics. New logical
 kinds such as structs, unions, arrays, and containers should extend `TypeDefinition` and resolution
 rather than introduce another schema hierarchy.
+
+`EditableSchemaDocument` is the authoring boundary above the resolved graph. It owns a mutable
+validated manifest draft, source-file ownership and declaration ranges, stable declaration IDs,
+and typed undoable commands. A successful command resolves a replacement `TypeGraph`; a command
+which fails validation leaves both the draft and its last valid graph unchanged. The document is
+the foundation for source-preserving LispB serialization and must remain in `lispb-schema` rather
+than becoming planner-owned state.
