@@ -14,6 +14,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <string_view>
 #include <thread>
 
 namespace jobserver {
@@ -282,15 +283,79 @@ auto claims_json(std::vector<ResourceClaim> const& claims) -> Json {
     return result;
 }
 
+auto environment_value(wchar_t const* const name) -> std::string {
+    auto const size{GetEnvironmentVariableW(name, nullptr, 0)};
+    if (size == 0) {
+        return {};
+    }
+    std::wstring value(size, L'\0');
+    auto const copied{GetEnvironmentVariableW(name, value.data(), size)};
+    if (copied == 0 || copied >= size) {
+        return {};
+    }
+    value.resize(copied);
+    return path_to_utf8(std::filesystem::path{value});
+}
+
+auto git_branch(std::filesystem::path worktree) -> std::string {
+    std::error_code error;
+    if (worktree.empty()) {
+        return {};
+    }
+    worktree = std::filesystem::absolute(worktree, error);
+    if (error) {
+        return {};
+    }
+
+    for (;;) {
+        auto const dot_git{worktree / ".git"};
+        auto git_directory{dot_git};
+        if (std::filesystem::is_regular_file(dot_git, error)) {
+            std::ifstream git_file{dot_git};
+            std::string line;
+            std::getline(git_file, line);
+            constexpr std::string_view prefix{"gitdir: "};
+            if (!line.starts_with(prefix)) {
+                return {};
+            }
+            git_directory = path_from_utf8(line.substr(prefix.size()));
+            if (git_directory.is_relative()) {
+                git_directory = worktree / git_directory;
+            }
+        } else if (!std::filesystem::is_directory(dot_git, error)) {
+            auto const parent{worktree.parent_path()};
+            if (parent == worktree) {
+                return {};
+            }
+            worktree = parent;
+            continue;
+        }
+
+        std::ifstream head{git_directory / "HEAD"};
+        std::string reference;
+        std::getline(head, reference);
+        constexpr std::string_view branch_prefix{"ref: refs/heads/"};
+        return reference.starts_with(branch_prefix) ? reference.substr(branch_prefix.size()) : "";
+    }
+}
+
 auto metadata_json(JobMetadata const& metadata) -> Json {
     return Json{{"name", metadata.name},
                 {"kind", metadata.kind},
+                {"task", metadata.task},
                 {"worktree", path_to_utf8(metadata.worktree)},
                 {"submit_directory", path_to_utf8(metadata.submit_directory)}};
 }
 
 auto metadata_at_submission(JobMetadata metadata) -> JobMetadata {
     metadata.submit_directory = std::filesystem::current_path();
+    if (metadata.task.empty()) {
+        metadata.task = environment_value(L"NUKETHEBEES_JOBSERVER_TASK");
+    }
+    if (metadata.task.empty()) {
+        metadata.task =
+            git_branch(metadata.worktree.empty() ? metadata.submit_directory : metadata.worktree);
+    }
     return metadata;
 }
 }

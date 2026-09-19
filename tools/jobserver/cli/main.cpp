@@ -62,7 +62,7 @@ void print_help() {
                  "  jobserver doctor\n"
                  "  jobserver version\n\n"
                  "run options:\n"
-                 "  --name <name> --kind <kind> --worktree <path>\n"
+                 "  --name <name> --kind <kind> --task <task> --worktree <path>\n"
                  "  --resource <name=units> --shared <name> --exclusive <name>\n"
                  "  --timeout <Nms|Ns|Nm> --suspect-after <Nms|Ns|Nm> --detach\n";
 }
@@ -120,6 +120,21 @@ auto local_app_data() -> std::filesystem::path {
     return result;
 }
 
+auto format_duration(std::int64_t milliseconds) -> std::string {
+    if (milliseconds < 1000) {
+        return std::to_string(milliseconds) + "ms";
+    }
+    auto const seconds{milliseconds / 1000};
+    if (seconds < 60) {
+        return std::to_string(seconds) + "s";
+    }
+    auto const minutes{seconds / 60};
+    if (minutes < 60) {
+        return std::to_string(minutes) + "m" + std::to_string(seconds % 60) + "s";
+    }
+    return std::to_string(minutes / 60) + "h" + std::to_string(minutes % 60) + "m";
+}
+
 void print_status(std::string const& text) {
     auto const status = Json::parse(text, nullptr, false);
     if (!status.is_object()) {
@@ -140,34 +155,65 @@ void print_status(std::string const& text) {
                   << daemon.value("supervised_jobs", 0U) << "  leases "
                   << daemon.value("leases", 0U) << '\n';
     }
+    auto const& jobs{status.at("jobs")};
     std::cout << "JOBS\n";
-    for (auto const& job : status.value("jobs", Json::array())) {
-        std::cout << "  " << job.value("id", "?") << "  " << job.value("state", "UNKNOWN") << "  "
-                  << job.value("kind", "") << "  " << job.value("name", "");
-        auto const blockers{job.value("blockers", std::vector<std::string>{})};
-        for (auto const& claim : job.value("claims", Json::array())) {
-            std::cout << "  " << claim.value("name", "") << ':' << claim.value("mode", "") << '='
-                      << claim.value("units", 1U);
-        }
-        if (!blockers.empty()) {
-            std::cout << "  waiting on:";
-            for (auto const& blocker : blockers) {
-                std::cout << ' ' << blocker;
-            }
-        }
+    for (auto const& job : jobs) {
+        auto const task{job.value("task", std::string{})};
         auto const running_ms{job.value("running_ms", 0LL)};
-        if (running_ms != 0) {
-            std::cout << "  " << running_ms << "ms";
+        auto const queued_ms{job.value("queued_ms", 0LL)};
+        std::cout << "  " << job.value("id", "?") << "  " << job.value("state", "UNKNOWN") << "  "
+                  << job.value("kind", "");
+        if (!task.empty()) {
+            std::cout << "  " << task;
         }
-        if (job.value("health", "NORMAL") != "NORMAL") {
-            std::cout << "  " << job.value("health_reason", "");
+        std::cout << "  " << job.value("name", "");
+        if (running_ms != 0) {
+            std::cout << "  running " << format_duration(running_ms);
+        } else if (queued_ms != 0) {
+            std::cout << "  waiting " << format_duration(queued_ms);
+        } else if (job.contains("duration_ms")) {
+            std::cout << "  duration " << format_duration(job.value("duration_ms", 0LL));
         }
         std::cout << '\n';
+
         auto const worktree{job.value("worktree", "")};
         auto const submit_directory{job.value("submit_directory", "")};
         std::cout << "      worktree: " << (worktree.empty() ? "<unspecified>" : worktree) << '\n';
         if (!submit_directory.empty() && submit_directory != worktree) {
             std::cout << "      submitted-from: " << submit_directory << '\n';
+        }
+        if (job.contains("claims")) {
+            auto const& claims{job.at("claims")};
+            if (!claims.empty()) {
+                std::cout << "      claims:";
+                for (auto const& claim : claims) {
+                    std::cout << ' ' << claim.value("name", "") << ':' << claim.value("mode", "")
+                              << '=' << claim.value("units", 1U);
+                }
+                std::cout << '\n';
+            }
+        }
+        auto const blockers{job.value("blockers", std::vector<std::string>{})};
+        if (!blockers.empty()) {
+            std::cout << "      waiting on:";
+            for (auto const& blocker : blockers) {
+                std::cout << "\n        " << blocker;
+                for (auto const& candidate : jobs) {
+                    if (candidate.value("id", "") != blocker) {
+                        continue;
+                    }
+                    auto const blocker_task{candidate.value("task", std::string{})};
+                    if (!blocker_task.empty()) {
+                        std::cout << "  " << blocker_task;
+                    }
+                    std::cout << "  " << candidate.value("name", "");
+                    break;
+                }
+            }
+            std::cout << '\n';
+        }
+        if (job.value("health", "NORMAL") != "NORMAL") {
+            std::cout << "      health: " << job.value("health_reason", "") << '\n';
         }
     }
     std::cout << "RESOURCES\n";
@@ -228,6 +274,8 @@ auto run_command(std::vector<std::string> const& arguments) -> int {
             request.metadata.name = *value;
         } else if (argument == "--kind") {
             request.metadata.kind = *value;
+        } else if (argument == "--task") {
+            request.metadata.task = *value;
         } else if (argument == "--worktree") {
             request.metadata.worktree = jobserver::path_from_utf8(*value);
         } else if (argument == "--shared") {

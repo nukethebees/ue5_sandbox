@@ -25,6 +25,7 @@ struct ResourceClaim {
 struct JobMetadata {
     std::string name;
     std::string kind;
+    std::string task{};
     std::filesystem::path worktree;
     std::filesystem::path submit_directory{};
 };

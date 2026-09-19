@@ -56,6 +56,29 @@ class TestIoTimeout {
     std::string previous_;
 };
 
+class TestEnvironmentValue {
+  public:
+    TestEnvironmentValue(wchar_t const* const name, wchar_t const* const value)
+        : name_{name} {
+        auto const size{GetEnvironmentVariableW(name, nullptr, 0)};
+        if (size != 0) {
+            previous_.resize(size, L'\0');
+            auto const copied{GetEnvironmentVariableW(name, previous_.data(), size)};
+            previous_.resize(copied);
+            had_previous_ = true;
+        }
+        static_cast<void>(SetEnvironmentVariableW(name, value));
+    }
+    ~TestEnvironmentValue() {
+        static_cast<void>(
+            SetEnvironmentVariableW(name_.c_str(), had_previous_ ? previous_.c_str() : nullptr));
+    }
+  private:
+    std::wstring name_;
+    std::wstring previous_;
+    bool had_previous_{};
+};
+
 struct TestPipes {
     std::vector<HANDLE> handles;
     ~TestPipes() {
@@ -1356,10 +1379,10 @@ TEST_F(JobserverIntegration, CliSubmissionPublishesDistinctWorktreeAndSubmission
     std::filesystem::create_directories(worktree);
 
     auto const name{"CLI provenance"};
-    auto const arguments{L"run --name \"CLI provenance\" --kind test --worktree " +
-                         quote(worktree.wstring()) + L" --shared provenance-resource -- " +
-                         quote(std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.wstring()) +
-                         L" sleep 60000"};
+    auto const arguments{
+        L"run --name \"CLI provenance\" --kind test --task cli-provenance --worktree " +
+        quote(worktree.wstring()) + L" --shared provenance-resource -- " +
+        quote(std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.wstring()) + L" sleep 60000"};
     auto client{launch(JOBSERVER_CLI_PATH, arguments, submit_directory)};
     ASSERT_NE(client.process, nullptr);
 
@@ -1367,6 +1390,7 @@ TEST_F(JobserverIntegration, CliSubmissionPublishesDistinctWorktreeAndSubmission
     ASSERT_TRUE(active.has_value());
     EXPECT_EQ(active->value("worktree", ""), jobserver::path_to_utf8(worktree));
     EXPECT_EQ(active->value("submit_directory", ""), jobserver::path_to_utf8(submit_directory));
+    EXPECT_EQ(active->value("task", ""), "cli-provenance");
 
     auto const status_json{run_and_capture(JOBSERVER_CLI_PATH, L"status --json")};
     ASSERT_TRUE(status_json.has_value());
@@ -1378,11 +1402,14 @@ TEST_F(JobserverIntegration, CliSubmissionPublishesDistinctWorktreeAndSubmission
     ASSERT_NE(live_job, live_status["jobs"].end());
     EXPECT_EQ(live_job->value("worktree", ""), jobserver::path_to_utf8(worktree));
     EXPECT_EQ(live_job->value("submit_directory", ""), jobserver::path_to_utf8(submit_directory));
+    EXPECT_EQ(live_job->value("task", ""), "cli-provenance");
 
     auto const text_status{run_and_capture(JOBSERVER_CLI_PATH, L"status")};
     ASSERT_TRUE(text_status.has_value());
     EXPECT_EQ(text_status->exit_code, 0U);
     EXPECT_NE(text_status->output.find("worktree: " + jobserver::path_to_utf8(worktree)),
+              std::string::npos);
+    EXPECT_NE(text_status->output.find(std::string{"test  cli-provenance  "} + name),
               std::string::npos);
     EXPECT_NE(
         text_status->output.find("submitted-from: " + jobserver::path_to_utf8(submit_directory)),
@@ -1396,6 +1423,7 @@ TEST_F(JobserverIntegration, CliSubmissionPublishesDistinctWorktreeAndSubmission
     auto const shown = Json::parse(show->output);
     EXPECT_EQ(shown.value("worktree", ""), jobserver::path_to_utf8(worktree));
     EXPECT_EQ(shown.value("submit_directory", ""), jobserver::path_to_utf8(submit_directory));
+    EXPECT_EQ(shown.value("task", ""), "cli-provenance");
 
     EXPECT_TRUE(jobserver::Client::cancel(id, true));
     EXPECT_TRUE(wait_for_exit(client, 5s).has_value());
@@ -1410,6 +1438,8 @@ TEST_F(JobserverIntegration, CliSubmissionPublishesDistinctWorktreeAndSubmission
     ASSERT_NE(completed, historical["jobs"].end());
     EXPECT_EQ(completed->value("worktree", ""), jobserver::path_to_utf8(worktree));
     EXPECT_EQ(completed->value("submit_directory", ""), jobserver::path_to_utf8(submit_directory));
+    EXPECT_EQ(completed->value("task", ""), "cli-provenance");
+    EXPECT_EQ(completed->at("claims").front().value("name", ""), "provenance-resource");
 
     auto const text_history{run_and_capture(JOBSERVER_CLI_PATH, L"history")};
     ASSERT_TRUE(text_history.has_value());
@@ -1419,6 +1449,95 @@ TEST_F(JobserverIntegration, CliSubmissionPublishesDistinctWorktreeAndSubmission
     EXPECT_NE(
         text_history->output.find("submitted-from: " + jobserver::path_to_utf8(submit_directory)),
         std::string::npos);
+}
+
+TEST_F(JobserverIntegration, TaskMetadataPrefersExplicitThenEnvironmentThenGitBranch) {
+    auto const worktree{data_path_ / "task-worktree"};
+    auto const git_directory{data_path_ / "task-git-directory"};
+    std::filesystem::create_directories(worktree);
+    std::filesystem::create_directories(git_directory);
+    {
+        std::ofstream git_file{worktree / ".git"};
+        git_file << "gitdir: " << git_directory.string() << '\n';
+    }
+    {
+        std::ofstream head{git_directory / "HEAD"};
+        head << "ref: refs/heads/derived-task\n";
+    }
+
+    TestEnvironmentValue task{L"NUKETHEBEES_JOBSERVER_TASK", L"session-task"};
+    auto environment_lease{jobserver::Client::acquire({
+        .metadata = {.name = "environment task", .kind = "test", .worktree = worktree},
+        .resources = {{.name = "environment-task-resource",
+                       .mode = jobserver::ClaimMode::exclusive}},
+    })};
+    ASSERT_TRUE(environment_lease.has_value());
+    auto const environment_job{find_job("environment task")};
+    ASSERT_TRUE(environment_job.has_value());
+    EXPECT_EQ(environment_job->value("task", ""), "session-task");
+    EXPECT_TRUE(environment_lease->release().has_value());
+
+    auto explicit_lease{jobserver::Client::acquire({
+        .metadata = {.name = "explicit task",
+                     .kind = "test",
+                     .task = "explicit-task",
+                     .worktree = worktree},
+        .resources = {{.name = "explicit-task-resource", .mode = jobserver::ClaimMode::exclusive}},
+    })};
+    ASSERT_TRUE(explicit_lease.has_value());
+    auto const explicit_job{find_job("explicit task")};
+    ASSERT_TRUE(explicit_job.has_value());
+    EXPECT_EQ(explicit_job->value("task", ""), "explicit-task");
+    EXPECT_TRUE(explicit_lease->release().has_value());
+
+    ASSERT_NE(SetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_TASK", nullptr), FALSE);
+    auto branch_lease{jobserver::Client::acquire({
+        .metadata = {.name = "branch task", .kind = "test", .worktree = worktree},
+        .resources = {{.name = "branch-task-resource", .mode = jobserver::ClaimMode::exclusive}},
+    })};
+    ASSERT_TRUE(branch_lease.has_value());
+    auto const branch_job{find_job("branch task")};
+    ASSERT_TRUE(branch_job.has_value());
+    EXPECT_EQ(branch_job->value("task", ""), "derived-task");
+    EXPECT_TRUE(branch_lease->release().has_value());
+}
+
+TEST_F(JobserverIntegration, StatusIdentifiesBlockersByTaskAndName) {
+    auto blocker{jobserver::Client::acquire({
+        .metadata = {.name = "Build Unreal Editor",
+                     .kind = "unreal-build",
+                     .task = "health-ecs",
+                     .worktree = {}},
+        .resources = {{.name = "blocker-display-resource",
+                       .mode = jobserver::ClaimMode::exclusive}},
+    })};
+    ASSERT_TRUE(blocker.has_value());
+    auto const blocker_job{find_job("Build Unreal Editor")};
+    ASSERT_TRUE(blocker_job.has_value());
+
+    auto const arguments{L"run --name \"Unreal test: queue display\" --kind unreal-test --task "
+                         L"editor-authoring --exclusive blocker-display-resource -- " +
+                         quote(std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.wstring()) +
+                         L" sleep 60000"};
+    auto waiter{launch(JOBSERVER_CLI_PATH, arguments)};
+    ASSERT_NE(waiter.process, nullptr);
+    auto const waiter_job{find_job("Unreal test: queue display")};
+    ASSERT_TRUE(waiter_job.has_value());
+    EXPECT_EQ(waiter_job->value("state", ""), "QUEUED");
+
+    auto const text_status{run_and_capture(JOBSERVER_CLI_PATH, L"status")};
+    ASSERT_TRUE(text_status.has_value());
+    EXPECT_NE(text_status->output.find("editor-authoring  Unreal test: queue display"),
+              std::string::npos);
+    EXPECT_NE(text_status->output.find("waiting on:"), std::string::npos);
+    EXPECT_NE(text_status->output.find(blocker_job->value("id", "") +
+                                       "  health-ecs  Build Unreal Editor"),
+              std::string::npos);
+
+    EXPECT_TRUE(jobserver::Client::cancel(waiter_job->value("id", ""), true));
+    EXPECT_TRUE(blocker->release().has_value());
+    EXPECT_TRUE(wait_for_exit(waiter, 5s).has_value());
+    close(waiter);
 }
 
 TEST_F(JobserverIntegration, NestedCommandInheritsInvokingBuildDirectory) {
@@ -1724,6 +1843,7 @@ TEST_F(JobserverIntegration, MalformedFieldsFailBeforeAdmissionOrExecution) {
         {"/metadata", Json::array()},
         {"/metadata/name", 1},
         {"/metadata/kind", false},
+        {"/metadata/task", Json::array()},
         {"/metadata/worktree", Json::object()},
         {"/metadata/submit_directory", Json::array()},
         {"/resources", nullptr},

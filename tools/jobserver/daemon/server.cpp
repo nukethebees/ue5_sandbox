@@ -180,7 +180,7 @@ auto validate_request(Json const& json) -> std::expected<void, Error> {
         if (!metadata.is_object()) {
             return invalid("metadata");
         }
-        for (auto const field : {"name", "kind", "worktree", "submit_directory"}) {
+        for (auto const field : {"name", "kind", "task", "worktree", "submit_directory"}) {
             if (metadata.contains(field) && !valid_text(metadata[field])) {
                 return invalid(std::string{"metadata."} + field);
             }
@@ -242,6 +242,7 @@ auto parse_metadata(Json const& json) -> JobMetadata {
     return JobMetadata{
         .name = json.value("name", "unnamed"),
         .kind = json.value("kind", "command"),
+        .task = json.value("task", ""),
         .worktree = path_from_utf8(json.value("worktree", "")),
         .submit_directory = path_from_utf8(json.value("submit_directory", "")),
     };
@@ -892,6 +893,7 @@ void Server::handle_status(void* const pipe, bool const include_history) {
             {"claims", std::move(claims)},
             {"name", entry.metadata.name},
             {"kind", entry.metadata.kind},
+            {"task", entry.metadata.task},
             {"worktree", path_to_utf8(entry.metadata.worktree)},
             {"submit_directory", path_to_utf8(entry.metadata.submit_directory)},
             {"state", to_string(entry.state)},
@@ -1088,8 +1090,15 @@ void Server::record_history(std::string const& id) noexcept {
         entry["id"] = found->id;
         entry["name"] = found->metadata.name;
         entry["kind"] = found->metadata.kind;
+        entry["task"] = found->metadata.task;
         entry["worktree"] = path_to_utf8(found->metadata.worktree);
         entry["submit_directory"] = path_to_utf8(found->metadata.submit_directory);
+        auto claims = Json::array();
+        for (auto const& claim : found->claims) {
+            claims.push_back(
+                {{"name", claim.name}, {"mode", to_string(claim.mode)}, {"units", claim.units}});
+        }
+        entry["claims"] = std::move(claims);
         entry["state"] = to_string(found->state);
         entry["health"] = to_string(found->health);
         entry["health_reason"] = found->health_reason;

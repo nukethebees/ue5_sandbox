@@ -34,7 +34,7 @@ Older clients can still send controls to the main endpoint, but do not gain the 
 The pipes reject remote clients. Their access control list lets restricted local tokens connect, and
 the daemon then impersonates each client and rejects it unless its user SID matches the daemon's
 user SID. Messages use a four-byte little-endian payload length followed by UTF-8 JSON. The current
-protocol version is `1.2`.
+protocol version is `1.3`.
 
 Request fields are checked before queue admission or execution. Numeric fields must be integral
 and within their destination range; timeouts and hang-suspicion durations must be positive and
@@ -178,6 +178,49 @@ was submitted. Every top-level submission also records its actual client current
 `submit_directory`; callers do not provide or override that provenance. The child inherits the
 CLI's working directory, so compiler launchers and other wrappers preserve their caller's relative
 paths. That child working directory is separate from both provenance fields.
+
+## Job metadata
+
+Each job has a human-readable `name`, a stable `kind`, optional logical `task`, `worktree`, and
+client-captured `submit_directory`. Names describe the operation, not the resource being acquired:
+use `Build Unreal Editor`, `Generate Unreal project files`, or `clang-tidy: first-party native
+sources`, rather than `build`, `standard`, or an engine path. Resource claims, blockers, state, and
+health remain separate structured status fields.
+
+Repository-generated kinds use this bounded vocabulary: `build`, `unreal-build`, `test`,
+`unreal-test`, `unreal-command`, `benchmark`, `static-analysis`, `format`, `generate`, `package`,
+and `command`. Direct callers should select the matching category rather than inventing a new
+description-like kind.
+
+`task` is an attribution label for a logical coding activity, never an operating-system identity or
+an authorization input. A top-level client chooses it in this order: explicit `--task` or typed
+metadata, `NUKETHEBEES_JOBSERVER_TASK`, then the checked-out branch of the supplied worktree. It
+is omitted for detached or non-Git worktrees without an explicit/session value. Nested commands do
+not create a second queue entry and therefore retain their outer job's metadata.
+
+For an ad-hoc session label, set the environment variable once in PowerShell; CMake wrappers and
+repository scripts inherit it automatically:
+
+```powershell
+$env:NUKETHEBEES_JOBSERVER_TASK = 'health-ecs'
+& $jobserver run `
+  --name 'native simulation tests' `
+  --kind test `
+  --shared machine `
+  -- ctest --preset native-simulation-tests
+```
+
+An explicit task is useful when a branch is intentionally broad or detached:
+
+```powershell
+& $jobserver run `
+  --name 'fighter stress benchmark' `
+  --kind benchmark `
+  --task 'fighter-balance' `
+  --exclusive machine `
+  --exclusive benchmark `
+  -- .\out\build\benchmark\bin\native-simulation-benchmark.exe
+```
 `--detach` lets a supervised command continue if its submitting client disconnects. Attached jobs
 are cancelled when their client disappears.
 
@@ -203,11 +246,11 @@ jobserver doctor
 jobserver version
 ```
 
-`status` reports daemon PID, uptime, audit freshness, handler/owner counts, active and queued jobs,
-their worktree and (when distinct) submission directory, blockers, elapsed time, health, and
-resource usage. `status --json`, `show`, and `history` retain both `worktree` and
-`submit_directory`, including after completion, so concurrent jobs remain attributable to their
-origin.
+`status` presents each active or queued job as state, kind, task when known, descriptive name, and
+waiting/running duration; its details show provenance, claims, blockers, and health. A live blocker
+also includes its ID, task, and name. `status --json`, `show`, and `history` retain task, worktree,
+submission directory, and claims, including after completion, so concurrent jobs remain
+attributable to their origin.
 `doctor` checks the canonical binaries and client location, Scheduled Task action, responsive
 daemon PID and executable, protocol, authority record, writable data directory, diagnostic log,
 and abandoned installer staging directories. Failures produce a nonzero exit code; warnings are
@@ -277,7 +320,10 @@ Native tools link `jobserver::client`. Transport and JSON details remain private
 
 ```cpp
 auto lease = jobserver::Client::acquire({
-    .metadata = {.name = "native benchmark", .kind = "benchmark", .worktree = root},
+    .metadata = {.name = "native benchmark",
+                 .kind = "benchmark",
+                 .task = "fighter-balance",
+                 .worktree = root},
     .resources = {
         {.name = "machine", .mode = jobserver::ClaimMode::exclusive},
         {.name = "benchmark", .mode = jobserver::ClaimMode::exclusive},
@@ -356,7 +402,8 @@ Both normal and nested launches apply these changes. The job ID variable is alwa
 and cannot be replaced or removed by command overrides.
 
 Protocol 1.1 adds nested validation and nullable environment values. Protocol 1.2 adds optional
-submission-directory provenance; older clients may omit it and older daemons ignore it. New clients
+submission-directory provenance. Protocol 1.3 adds optional logical-task attribution; older
+clients may omit these fields and older daemons ignore them. New clients
 fail closed if an older daemon does not support nested validation. Upgrade the installed CLI and
 daemon together; rebuild native tools statically linked to the client library, since old binaries
 retain the previous nested bypass behavior. The Tracy comparison driver uses a private child marker
