@@ -14,32 +14,105 @@ class BenchmarkToolsBootstrapTests(unittest.TestCase):
     source_dir: Path
     powershell: str
 
-    def test_uses_staged_tool_without_building(self) -> None:
+    def test_uses_staged_tool_without_contacting_jobserver_or_dotnet(self) -> None:
         repository = self.create_temporary_repository()
         runner = self.staged_runner(repository)
         output = self.resolve_runner(repository)
 
         self.assertEqual(output, str(runner))
         self.assertFalse((repository / "build-count.txt").exists())
+        self.assertFalse((repository / "jobserver-count.txt").exists())
 
-    def test_builds_and_stages_missing_tool_in_a_path_with_spaces(self) -> None:
+    def test_missing_tool_submits_one_shared_build_job(self) -> None:
         repository = self.create_temporary_repository()
         output = self.resolve_runner(repository)
         runner = repository / "tools" / "bin" / "BenchmarkTools.exe"
 
         self.assertEqual(output, str(runner))
         self.assertTrue(runner.is_file())
+        self.assertFalse((repository / "build-count.txt").exists())
         self.assertEqual(
-            (repository / "build-count.txt").read_text(encoding="utf-8").splitlines(),
-            ["built"],
+            (repository / "jobserver-count.txt").read_text(encoding="utf-8").splitlines(),
+            ["submitted"],
         )
-        arguments = (repository / "build-arguments.txt").read_text(encoding="utf-8")
-        self.assertIn("build", arguments)
+        arguments = (repository / "jobserver-arguments.txt").read_text(encoding="utf-8")
+        self.assertIn("run", arguments)
+        self.assertIn("--name \"Build BenchmarkTools\"", arguments)
+        self.assertIn("--kind build", arguments)
+        self.assertIn("--worktree", arguments)
+        self.assertIn(str(repository), arguments)
+        self.assertIn("--shared machine", arguments)
+        self.assertIn("-File", arguments)
+        self.assertIn(str(self.source_dir / "Scripts" / "BenchmarkTools.ps1"), arguments)
+        self.assertIn("-RepositoryRoot", arguments)
+        self.assertIn("-DotnetExecutable", arguments)
+        self.assertIn(str(self.fake_dotnet), arguments)
+
+    def test_missing_tool_inside_jobserver_builds_directly_without_recursing(self) -> None:
+        repository = self.create_temporary_repository()
+        output = self.resolve_runner(
+            repository,
+            {"NUKETHEBEES_JOBSERVER_JOB": "job-123"},
+        )
+        runner = repository / "tools" / "bin" / "BenchmarkTools.exe"
+
+        self.assertEqual(output, str(runner))
+        self.assertTrue(runner.is_file())
+        self.assertFalse((repository / "jobserver-count.txt").exists())
+        dotnet_arguments = (repository / "build-arguments.txt").read_text(encoding="utf-8")
+        self.assertIn("build", dotnet_arguments)
         self.assertIn(
             str(repository / "tools" / "BenchmarkTools" / "BenchmarkTools.csproj"),
-            arguments,
+            dotnet_arguments,
         )
-        self.assertIn("-m:1", arguments)
+        self.assertIn("-m:1", dotnet_arguments)
+
+    def test_jobserver_failure_does_not_claim_the_tool_was_staged(self) -> None:
+        repository = self.create_temporary_repository()
+        result = self.invoke_resolver(
+            repository,
+            {"BENCHMARK_TOOLS_TEST_JOBSERVER_EXIT_CODE": "17"},
+        )
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(
+            "BenchmarkTools jobserver build exited with code 17.",
+            result.stdout + result.stderr,
+        )
+        self.assertFalse((repository / "tools" / "bin" / "BenchmarkTools.exe").exists())
+        self.assertFalse((repository / "build-count.txt").exists())
+
+    def test_dotnet_failure_inside_jobserver_propagates(self) -> None:
+        repository = self.create_temporary_repository()
+        result = self.invoke_resolver(
+            repository,
+            {
+                "NUKETHEBEES_JOBSERVER_JOB": "job-123",
+                "BENCHMARK_TOOLS_TEST_DOTNET_EXIT_CODE": "23",
+            },
+        )
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn(
+            "BenchmarkTools build exited with code 23.",
+            result.stdout + result.stderr,
+        )
+        self.assertFalse((repository / "jobserver-count.txt").exists())
+        self.assertFalse((repository / "tools" / "bin" / "BenchmarkTools.exe").exists())
+
+    def test_direct_build_restores_the_previous_msbuild_node_reuse_value(self) -> None:
+        repository = self.create_temporary_repository()
+        result = self.invoke_resolver(
+            repository,
+            {
+                "NUKETHEBEES_JOBSERVER_JOB": "job-123",
+                "MSBUILDDISABLENODEREUSE": "previous-value",
+            },
+            include_node_reuse=True,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("NODE_REUSE:previous-value", result.stdout)
 
     def test_wrappers_use_the_shared_resolver_and_keep_benchmark_options(self) -> None:
         fighter = (self.source_dir / "Scripts" / "run-fighter-simulation-benchmark.ps1").read_text(
@@ -70,9 +143,10 @@ class BenchmarkToolsBootstrapTests(unittest.TestCase):
         project.parent.mkdir(parents=True)
         project.write_text("<Project />\n", encoding="utf-8")
 
-        fake_dotnet = repository / "fake dotnet.cmd"
-        fake_dotnet.write_text(
+        self.fake_dotnet = repository / "fake dotnet.cmd"
+        self.fake_dotnet.write_text(
             "@echo off\r\n"
+            "if \"%BENCHMARK_TOOLS_TEST_DOTNET_EXIT_CODE%\"==\"23\" exit /b 23\r\n"
             "echo built>> \"%BENCHMARK_TOOLS_TEST_ROOT%\\build-count.txt\"\r\n"
             "echo %*>> \"%BENCHMARK_TOOLS_TEST_ROOT%\\build-arguments.txt\"\r\n"
             "if not exist \"%BENCHMARK_TOOLS_TEST_ROOT%\\tools\\bin\" mkdir \"%BENCHMARK_TOOLS_TEST_ROOT%\\tools\\bin\"\r\n"
@@ -80,7 +154,18 @@ class BenchmarkToolsBootstrapTests(unittest.TestCase):
             "exit /b 0\r\n",
             encoding="utf-8",
         )
-        self.fake_dotnet = fake_dotnet
+
+        self.fake_jobserver = repository / "fake jobserver.cmd"
+        self.fake_jobserver.write_text(
+            "@echo off\r\n"
+            "if \"%BENCHMARK_TOOLS_TEST_JOBSERVER_EXIT_CODE%\"==\"17\" exit /b 17\r\n"
+            "echo submitted>> \"%BENCHMARK_TOOLS_TEST_ROOT%\\jobserver-count.txt\"\r\n"
+            "echo %*>> \"%BENCHMARK_TOOLS_TEST_ROOT%\\jobserver-arguments.txt\"\r\n"
+            "if not exist \"%BENCHMARK_TOOLS_TEST_ROOT%\\tools\\bin\" mkdir \"%BENCHMARK_TOOLS_TEST_ROOT%\\tools\\bin\"\r\n"
+            "type nul > \"%BENCHMARK_TOOLS_TEST_ROOT%\\tools\\bin\\BenchmarkTools.exe\"\r\n"
+            "exit /b 0\r\n",
+            encoding="utf-8",
+        )
         return repository
 
     def staged_runner(self, repository: Path) -> Path:
@@ -89,7 +174,21 @@ class BenchmarkToolsBootstrapTests(unittest.TestCase):
         runner.touch()
         return runner
 
-    def resolve_runner(self, repository: Path) -> str:
+    def resolve_runner(self, repository: Path, overrides: dict[str, str] | None = None) -> str:
+        result = self.invoke_resolver(repository, overrides)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        result_lines = [line for line in result.stdout.splitlines() if line.startswith("RESULT:")]
+        self.assertEqual(result_lines, [f"RESULT:{repository / 'tools' / 'bin' / 'BenchmarkTools.exe'}"])
+        return result_lines[0].removeprefix("RESULT:")
+
+    def invoke_resolver(
+        self,
+        repository: Path,
+        overrides: dict[str, str] | None = None,
+        *,
+        include_node_reuse: bool = False,
+    ) -> subprocess.CompletedProcess[str]:
         helper = self.source_dir / "Scripts" / "BenchmarkTools.ps1"
         command = " ".join(
             [
@@ -97,13 +196,19 @@ class BenchmarkToolsBootstrapTests(unittest.TestCase):
                 f". '{self.power_shell_quote(helper)}';",
                 "$runner = Get-BenchmarkToolsPath",
                 f"-RepositoryRoot '{self.power_shell_quote(repository)}'",
-                f"-DotnetExecutable '{self.power_shell_quote(self.fake_dotnet)}';",
-                'Write-Output "RESULT:$runner"',
+                f"-DotnetExecutable '{self.power_shell_quote(self.fake_dotnet)}'",
+                f"-JobserverExecutable '{self.power_shell_quote(self.fake_jobserver)}';",
+                'Write-Output "RESULT:$runner";',
+                'Write-Output "NODE_REUSE:$env:MSBUILDDISABLENODEREUSE"'
+                if include_node_reuse
+                else "",
             ]
         )
         environment = os.environ.copy()
         environment["BENCHMARK_TOOLS_TEST_ROOT"] = str(repository)
-        result = subprocess.run(
+        if overrides is not None:
+            environment.update(overrides)
+        return subprocess.run(
             [self.powershell, "-NoProfile", "-NonInteractive", "-Command", command],
             check=False,
             capture_output=True,
@@ -111,10 +216,6 @@ class BenchmarkToolsBootstrapTests(unittest.TestCase):
             errors="replace",
             env=environment,
         )
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        result_lines = [line for line in result.stdout.splitlines() if line.startswith("RESULT:")]
-        self.assertEqual(result_lines, [f"RESULT:{repository / 'tools' / 'bin' / 'BenchmarkTools.exe'}"])
-        return result_lines[0].removeprefix("RESULT:")
 
     @staticmethod
     def power_shell_quote(path: Path) -> str:
