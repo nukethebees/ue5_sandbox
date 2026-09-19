@@ -8,7 +8,6 @@
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
 #include "HAL/UnrealMemory.h"
-#include "ioj/sim/health_table.h"
 #include "sandbox/core/single_allocation/removal.h"
 #include "sandbox/core/soa_concepts.h"
 #include "SandboxCore/array_utils.h"
@@ -746,7 +745,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataConstView {
                                          self.move_distances,
                                          self.speeds,
                                          self.teams,
-                                         self.health_indices,
+                                         self.healths,
                                          self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
@@ -792,7 +791,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataConstView {
     TConstArrayView<float> move_distances;
     TConstArrayView<float> speeds;
     TConstArrayView<Team> teams;
-    TConstArrayView<HealthIndex> health_indices;
+    TConstArrayView<int32> healths;
     TConstArrayView<EntityId> parent_ids;
     Countdown8::ConstView awareness_scan_countdowns;
     PeriodicCountdown16::ConstView navigation_update_countdowns;
@@ -833,7 +832,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataView {
                                          self.move_distances,
                                          self.speeds,
                                          self.teams,
-                                         self.health_indices,
+                                         self.healths,
                                          self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
@@ -884,7 +883,7 @@ struct SBXCOREEXPERIMENTS_API EntityDataView {
     TArrayView<float> move_distances;
     TArrayView<float> speeds;
     TArrayView<Team> teams;
-    TArrayView<HealthIndex> health_indices;
+    TArrayView<int32> healths;
     TArrayView<EntityId> parent_ids;
     Countdown8::View awareness_scan_countdowns;
     PeriodicCountdown16::View navigation_update_countdowns;
@@ -934,7 +933,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
         move_distances.RemoveAtSwap(index, count, allow_shrinking);
         speeds.RemoveAtSwap(index, count, allow_shrinking);
         teams.RemoveAtSwap(index, count, allow_shrinking);
-        health_indices.RemoveAtSwap(index, count, allow_shrinking);
+        healths.RemoveAtSwap(index, count, allow_shrinking);
         parent_ids.RemoveAtSwap(index, count, allow_shrinking);
         ml::remove_at_swap(awareness_scan_countdowns, index, count, allow_shrinking);
         ml::remove_at_swap(navigation_update_countdowns, index, count, allow_shrinking);
@@ -973,7 +972,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
         ml::copy_element(move_distances, dst_i, other.move_distances, src_i);
         ml::copy_element(speeds, dst_i, other.speeds, src_i);
         ml::copy_element(teams, dst_i, other.teams, src_i);
-        ml::copy_element(health_indices, dst_i, other.health_indices, src_i);
+        ml::copy_element(healths, dst_i, other.healths, src_i);
         ml::copy_element(parent_ids, dst_i, other.parent_ids, src_i);
         ml::copy_element(awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i);
         ml::copy_element(
@@ -1020,7 +1019,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
         ml::copy_elements(move_distances, dst_i, other.move_distances, src_i, count);
         ml::copy_elements(speeds, dst_i, other.speeds, src_i, count);
         ml::copy_elements(teams, dst_i, other.teams, src_i, count);
-        ml::copy_elements(health_indices, dst_i, other.health_indices, src_i, count);
+        ml::copy_elements(healths, dst_i, other.healths, src_i, count);
         ml::copy_elements(parent_ids, dst_i, other.parent_ids, src_i, count);
         ml::copy_elements(
             awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i, count);
@@ -1075,7 +1074,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
         ml::append_from(move_distances, other.move_distances);
         ml::append_from(speeds, other.speeds);
         ml::append_from(teams, other.teams);
-        ml::append_from(health_indices, other.health_indices);
+        ml::append_from(healths, other.healths);
         ml::append_from(parent_ids, other.parent_ids);
         awareness_scan_countdowns.append_from(other.awareness_scan_countdowns);
         navigation_update_countdowns.append_from(other.navigation_update_countdowns);
@@ -1139,7 +1138,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
                                          self.move_distances,
                                          self.speeds,
                                          self.teams,
-                                         self.health_indices,
+                                         self.healths,
                                          self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
@@ -1190,8 +1189,8 @@ struct SBXCOREEXPERIMENTS_API EntityData {
                                          other.speeds,
                                          self.teams,
                                          other.teams,
-                                         self.health_indices,
-                                         other.health_indices,
+                                         self.healths,
+                                         other.healths,
                                          self.parent_ids,
                                          other.parent_ids,
                                          self.awareness_scan_countdowns,
@@ -1260,7 +1259,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
     TArray<float> move_distances;
     TArray<float> speeds;
     TArray<Team> teams;
-    TArray<HealthIndex> health_indices;
+    TArray<int32> healths;
     TArray<EntityId> parent_ids;
     Countdown8 awareness_scan_countdowns;
     PeriodicCountdown16 navigation_update_countdowns;
@@ -1325,8 +1324,8 @@ struct EntityDataSingleLayout {
     inline static constexpr ColLayout<float> MoveDistances{VelocitiesZs};
     inline static constexpr ColLayout<float> Speeds{MoveDistances};
     inline static constexpr ColLayout<Team> Teams{Speeds};
-    inline static constexpr ColLayout<HealthIndex> HealthIndices{Teams};
-    inline static constexpr ColLayout<EntityId> ParentIds{HealthIndices};
+    inline static constexpr ColLayout<int32> Healths{Teams};
+    inline static constexpr ColLayout<EntityId> ParentIds{Healths};
     inline static constexpr ColLayout<int8> AwarenessScanCountdownsCounters{ParentIds};
     inline static constexpr ColLayout<int16> NavigationUpdateCountdownsRemainingTicks{
         AwarenessScanCountdownsCounters};
@@ -1388,7 +1387,7 @@ struct EntityDataSingleLayout {
                                            MoveDistances,
                                            Speeds,
                                            Teams,
-                                           HealthIndices,
+                                           Healths,
                                            ParentIds,
                                            AwarenessScanCountdownsCounters,
                                            NavigationUpdateCountdownsRemainingTicks,
@@ -1450,8 +1449,8 @@ struct EntityDataSingleLayout {
             "Single-allocation leaf teams requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(
-            ml::soa_storage::supported_leaf<HealthIndex>,
-            "Single-allocation leaf health_indices requires a non-cv, trivially "
+            ml::soa_storage::supported_leaf<int32>,
+            "Single-allocation leaf healths requires a non-cv, trivially "
             "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
         static_assert(ml::soa_storage::supported_leaf<int8>,
                       "Single-allocation leaf awareness_scan_countdowns.counters requires a "
@@ -1528,8 +1527,8 @@ struct EntityDataSingleLayout {
                       (max_allocation_size - Speeds.block_offset) / capacity_granularity);
         static_assert(sizeof(Team) <=
                       (max_allocation_size - Teams.block_offset) / capacity_granularity);
-        static_assert(sizeof(HealthIndex) <=
-                      (max_allocation_size - HealthIndices.block_offset) / capacity_granularity);
+        static_assert(sizeof(int32) <=
+                      (max_allocation_size - Healths.block_offset) / capacity_granularity);
         static_assert(sizeof(EntityId) <=
                       (max_allocation_size - ParentIds.block_offset) / capacity_granularity);
         static_assert(sizeof(int8) <=
@@ -1681,7 +1680,7 @@ struct SingleAllocationEntityDataStorage
         Element<float>* move_distances{};
         Element<float>* speeds{};
         Element<Team>* teams{};
-        Element<HealthIndex>* health_indices{};
+        Element<int32>* healths{};
         Element<EntityId>* parent_ids{};
         Element<int8>* awareness_scan_countdowns_counters{};
         Element<int16>* navigation_update_countdowns_remaining_ticks{};
@@ -1741,7 +1740,7 @@ struct SingleAllocationEntityDataStorage
                     move_distances + offset,
                     speeds + offset,
                     teams + offset,
-                    health_indices + offset,
+                    healths + offset,
                     parent_ids + offset,
                     awareness_scan_countdowns_counters + offset,
                     navigation_update_countdowns_remaining_ticks + offset,
@@ -1892,12 +1891,11 @@ struct SingleAllocationEntityDataStorage
         auto const teams_offset{ml::soa_storage::layout_align(
             speeds_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
             Teams.alignment)};
-        auto const health_indices_offset{ml::soa_storage::layout_align(
+        auto const healths_offset{ml::soa_storage::layout_align(
             teams_offset + blocks * capacity_granularity * sizeof(Team) + column_gap,
-            HealthIndices.alignment)};
+            Healths.alignment)};
         auto const parent_ids_offset{ml::soa_storage::layout_align(
-            health_indices_offset + blocks * capacity_granularity * sizeof(HealthIndex) +
-                column_gap,
+            healths_offset + blocks * capacity_granularity * sizeof(int32) + column_gap,
             ParentIds.alignment)};
         auto const awareness_scan_countdowns_counters_offset{ml::soa_storage::layout_align(
             parent_ids_offset + blocks * capacity_granularity * sizeof(EntityId) + column_gap,
@@ -2025,7 +2023,7 @@ struct SingleAllocationEntityDataStorage
             pointer_at(MoveDistances, move_distances_offset),
             pointer_at(Speeds, speeds_offset),
             pointer_at(Teams, teams_offset),
-            pointer_at(HealthIndices, health_indices_offset),
+            pointer_at(Healths, healths_offset),
             pointer_at(ParentIds, parent_ids_offset),
             pointer_at(AwarenessScanCountdownsCounters, awareness_scan_countdowns_counters_offset),
             pointer_at(NavigationUpdateCountdownsRemainingTicks,
@@ -2094,7 +2092,7 @@ struct SingleAllocationEntityDataStorage
         DefaultConstructItems<float>(columns.move_distances, count);
         DefaultConstructItems<float>(columns.speeds, count);
         DefaultConstructItems<Team>(columns.teams, count);
-        DefaultConstructItems<HealthIndex>(columns.health_indices, count);
+        DefaultConstructItems<int32>(columns.healths, count);
         DefaultConstructItems<EntityId>(columns.parent_ids, count);
         DefaultConstructItems<int8>(columns.awareness_scan_countdowns_counters, count);
         DefaultConstructItems<int16>(columns.navigation_update_countdowns_remaining_ticks, count);
@@ -2138,7 +2136,7 @@ struct SingleAllocationEntityDataStorage
         auto const float_biases_bytes{elements_to_move * sizeof(float)};
         auto const tasks_bytes{elements_to_move * sizeof(Task)};
         auto const teams_bytes{elements_to_move * sizeof(Team)};
-        auto const health_indices_bytes{elements_to_move * sizeof(HealthIndex)};
+        auto const healths_bytes{elements_to_move * sizeof(int32)};
         auto const awareness_scan_countdowns_counters_bytes{elements_to_move * sizeof(int8)};
         auto const navigation_update_countdowns_remaining_ticks_bytes{elements_to_move *
                                                                       sizeof(int16)};
@@ -2211,8 +2209,7 @@ struct SingleAllocationEntityDataStorage
             columns.move_distances + index, columns.move_distances + source, float_biases_bytes);
         FMemory::Memcpy(columns.speeds + index, columns.speeds + source, float_biases_bytes);
         FMemory::Memcpy(columns.teams + index, columns.teams + source, teams_bytes);
-        FMemory::Memcpy(
-            columns.health_indices + index, columns.health_indices + source, health_indices_bytes);
+        FMemory::Memcpy(columns.healths + index, columns.healths + source, healths_bytes);
         FMemory::Memcpy(columns.parent_ids + index, columns.parent_ids + source, entity_ids_bytes);
         FMemory::Memcpy(columns.awareness_scan_countdowns_counters + index,
                         columns.awareness_scan_countdowns_counters + source,
@@ -2331,7 +2328,7 @@ struct SingleAllocationEntityDataStorage
                aliases(source.velocities.xs.GetData()) || aliases(source.velocities.ys.GetData()) ||
                aliases(source.velocities.zs.GetData()) ||
                aliases(source.move_distances.GetData()) || aliases(source.speeds.GetData()) ||
-               aliases(source.teams.GetData()) || aliases(source.health_indices.GetData()) ||
+               aliases(source.teams.GetData()) || aliases(source.healths.GetData()) ||
                aliases(source.parent_ids.GetData()) ||
                aliases(source.awareness_scan_countdowns.counters.GetData()) ||
                aliases(source.navigation_update_countdowns.remaining_ticks.GetData()) ||
@@ -2368,7 +2365,7 @@ struct SingleAllocationEntityDataStorage
         auto const float_biases_bytes{elements_to_copy * sizeof(float)};
         auto const tasks_bytes{elements_to_copy * sizeof(Task)};
         auto const teams_bytes{elements_to_copy * sizeof(Team)};
-        auto const health_indices_bytes{elements_to_copy * sizeof(HealthIndex)};
+        auto const healths_bytes{elements_to_copy * sizeof(int32)};
         auto const awareness_scan_countdowns_counters_bytes{elements_to_copy * sizeof(int8)};
         auto const navigation_update_countdowns_remaining_ticks_bytes{elements_to_copy *
                                                                       sizeof(int16)};
@@ -2437,8 +2434,7 @@ struct SingleAllocationEntityDataStorage
             destination.move_distances, source.move_distances.GetData(), float_biases_bytes);
         FMemory::Memcpy(destination.speeds, source.speeds.GetData(), float_biases_bytes);
         FMemory::Memcpy(destination.teams, source.teams.GetData(), teams_bytes);
-        FMemory::Memcpy(
-            destination.health_indices, source.health_indices.GetData(), health_indices_bytes);
+        FMemory::Memcpy(destination.healths, source.healths.GetData(), healths_bytes);
         FMemory::Memcpy(destination.parent_ids, source.parent_ids.GetData(), entity_ids_bytes);
         FMemory::Memcpy(destination.awareness_scan_countdowns_counters,
                         source.awareness_scan_countdowns.counters.GetData(),
@@ -2530,7 +2526,7 @@ struct SingleAllocationEntityDataStorage
             auto const float_biases_bytes{live_count * sizeof(float)};
             auto const tasks_bytes{live_count * sizeof(Task)};
             auto const teams_bytes{live_count * sizeof(Team)};
-            auto const health_indices_bytes{live_count * sizeof(HealthIndex)};
+            auto const healths_bytes{live_count * sizeof(int32)};
             auto const awareness_scan_countdowns_counters_bytes{live_count * sizeof(int8)};
             auto const navigation_update_countdowns_remaining_ticks_bytes{live_count *
                                                                           sizeof(int16)};
@@ -2591,8 +2587,7 @@ struct SingleAllocationEntityDataStorage
             FMemory::Memcpy(destination.move_distances, source.move_distances, float_biases_bytes);
             FMemory::Memcpy(destination.speeds, source.speeds, float_biases_bytes);
             FMemory::Memcpy(destination.teams, source.teams, teams_bytes);
-            FMemory::Memcpy(
-                destination.health_indices, source.health_indices, health_indices_bytes);
+            FMemory::Memcpy(destination.healths, source.healths, healths_bytes);
             FMemory::Memcpy(destination.parent_ids, source.parent_ids, entity_ids_bytes);
             FMemory::Memcpy(destination.awareness_scan_countdowns_counters,
                             source.awareness_scan_countdowns_counters,
@@ -2771,9 +2766,8 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
     auto teams() const -> TArrayView<Team const> {
         return {column_data<Team>(EntityDataSingleLayout::Teams.offset(capacity_blocks())), count_};
     }
-    auto health_indices() const -> TArrayView<HealthIndex const> {
-        return {column_data<HealthIndex>(
-                    EntityDataSingleLayout::HealthIndices.offset(capacity_blocks())),
+    auto healths() const -> TArrayView<int32 const> {
+        return {column_data<int32>(EntityDataSingleLayout::Healths.offset(capacity_blocks())),
                 count_};
     }
     auto parent_ids() const -> TArrayView<EntityId const> {
@@ -2987,9 +2981,7 @@ struct EntityDataSingleConstView : ml::soa_storage::CompactViewState<true> {
              count_},
             {column_data_unchecked<float>(EntityDataSingleLayout::Speeds.offset(blocks)), count_},
             {column_data_unchecked<Team>(EntityDataSingleLayout::Teams.offset(blocks)), count_},
-            {column_data_unchecked<HealthIndex>(
-                 EntityDataSingleLayout::HealthIndices.offset(blocks)),
-             count_},
+            {column_data_unchecked<int32>(EntityDataSingleLayout::Healths.offset(blocks)), count_},
             {column_data_unchecked<EntityId>(EntityDataSingleLayout::ParentIds.offset(blocks)),
              count_},
             Countdown8ConstView{
@@ -3186,9 +3178,8 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
     auto teams() const -> TArrayView<Team> {
         return {column_data<Team>(EntityDataSingleLayout::Teams.offset(capacity_blocks())), count_};
     }
-    auto health_indices() const -> TArrayView<HealthIndex> {
-        return {column_data<HealthIndex>(
-                    EntityDataSingleLayout::HealthIndices.offset(capacity_blocks())),
+    auto healths() const -> TArrayView<int32> {
+        return {column_data<int32>(EntityDataSingleLayout::Healths.offset(capacity_blocks())),
                 count_};
     }
     auto parent_ids() const -> TArrayView<EntityId> {
@@ -3401,9 +3392,7 @@ struct EntityDataSingleView : ml::soa_storage::CompactViewState<false> {
              count_},
             {column_data_unchecked<float>(EntityDataSingleLayout::Speeds.offset(blocks)), count_},
             {column_data_unchecked<Team>(EntityDataSingleLayout::Teams.offset(blocks)), count_},
-            {column_data_unchecked<HealthIndex>(
-                 EntityDataSingleLayout::HealthIndices.offset(blocks)),
-             count_},
+            {column_data_unchecked<int32>(EntityDataSingleLayout::Healths.offset(blocks)), count_},
             {column_data_unchecked<EntityId>(EntityDataSingleLayout::ParentIds.offset(blocks)),
              count_},
             Countdown8View{
@@ -3612,7 +3601,7 @@ struct FMemorySingleEntityDataStorage
         Element<float>* move_distances{};
         Element<float>* speeds{};
         Element<Team>* teams{};
-        Element<HealthIndex>* health_indices{};
+        Element<int32>* healths{};
         Element<EntityId>* parent_ids{};
         Element<int8>* awareness_scan_countdowns_counters{};
         Element<int16>* navigation_update_countdowns_remaining_ticks{};
@@ -3672,7 +3661,7 @@ struct FMemorySingleEntityDataStorage
                     move_distances + offset,
                     speeds + offset,
                     teams + offset,
-                    health_indices + offset,
+                    healths + offset,
                     parent_ids + offset,
                     awareness_scan_countdowns_counters + offset,
                     navigation_update_countdowns_remaining_ticks + offset,
@@ -3823,12 +3812,11 @@ struct FMemorySingleEntityDataStorage
         auto const teams_offset{ml::soa_storage::layout_align(
             speeds_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
             Teams.alignment)};
-        auto const health_indices_offset{ml::soa_storage::layout_align(
+        auto const healths_offset{ml::soa_storage::layout_align(
             teams_offset + blocks * capacity_granularity * sizeof(Team) + column_gap,
-            HealthIndices.alignment)};
+            Healths.alignment)};
         auto const parent_ids_offset{ml::soa_storage::layout_align(
-            health_indices_offset + blocks * capacity_granularity * sizeof(HealthIndex) +
-                column_gap,
+            healths_offset + blocks * capacity_granularity * sizeof(int32) + column_gap,
             ParentIds.alignment)};
         auto const awareness_scan_countdowns_counters_offset{ml::soa_storage::layout_align(
             parent_ids_offset + blocks * capacity_granularity * sizeof(EntityId) + column_gap,
@@ -3956,7 +3944,7 @@ struct FMemorySingleEntityDataStorage
             pointer_at(MoveDistances, move_distances_offset),
             pointer_at(Speeds, speeds_offset),
             pointer_at(Teams, teams_offset),
-            pointer_at(HealthIndices, health_indices_offset),
+            pointer_at(Healths, healths_offset),
             pointer_at(ParentIds, parent_ids_offset),
             pointer_at(AwarenessScanCountdownsCounters, awareness_scan_countdowns_counters_offset),
             pointer_at(NavigationUpdateCountdownsRemainingTicks,
@@ -4025,7 +4013,7 @@ struct FMemorySingleEntityDataStorage
         DefaultConstructItems<float>(columns.move_distances, count);
         DefaultConstructItems<float>(columns.speeds, count);
         DefaultConstructItems<Team>(columns.teams, count);
-        DefaultConstructItems<HealthIndex>(columns.health_indices, count);
+        DefaultConstructItems<int32>(columns.healths, count);
         DefaultConstructItems<EntityId>(columns.parent_ids, count);
         DefaultConstructItems<int8>(columns.awareness_scan_countdowns_counters, count);
         DefaultConstructItems<int16>(columns.navigation_update_countdowns_remaining_ticks, count);
@@ -4069,7 +4057,7 @@ struct FMemorySingleEntityDataStorage
         auto const float_biases_bytes{elements_to_move * sizeof(float)};
         auto const tasks_bytes{elements_to_move * sizeof(Task)};
         auto const teams_bytes{elements_to_move * sizeof(Team)};
-        auto const health_indices_bytes{elements_to_move * sizeof(HealthIndex)};
+        auto const healths_bytes{elements_to_move * sizeof(int32)};
         auto const awareness_scan_countdowns_counters_bytes{elements_to_move * sizeof(int8)};
         auto const navigation_update_countdowns_remaining_ticks_bytes{elements_to_move *
                                                                       sizeof(int16)};
@@ -4142,8 +4130,7 @@ struct FMemorySingleEntityDataStorage
             columns.move_distances + index, columns.move_distances + source, float_biases_bytes);
         FMemory::Memcpy(columns.speeds + index, columns.speeds + source, float_biases_bytes);
         FMemory::Memcpy(columns.teams + index, columns.teams + source, teams_bytes);
-        FMemory::Memcpy(
-            columns.health_indices + index, columns.health_indices + source, health_indices_bytes);
+        FMemory::Memcpy(columns.healths + index, columns.healths + source, healths_bytes);
         FMemory::Memcpy(columns.parent_ids + index, columns.parent_ids + source, entity_ids_bytes);
         FMemory::Memcpy(columns.awareness_scan_countdowns_counters + index,
                         columns.awareness_scan_countdowns_counters + source,
@@ -4262,7 +4249,7 @@ struct FMemorySingleEntityDataStorage
                aliases(source.velocities.xs.GetData()) || aliases(source.velocities.ys.GetData()) ||
                aliases(source.velocities.zs.GetData()) ||
                aliases(source.move_distances.GetData()) || aliases(source.speeds.GetData()) ||
-               aliases(source.teams.GetData()) || aliases(source.health_indices.GetData()) ||
+               aliases(source.teams.GetData()) || aliases(source.healths.GetData()) ||
                aliases(source.parent_ids.GetData()) ||
                aliases(source.awareness_scan_countdowns.counters.GetData()) ||
                aliases(source.navigation_update_countdowns.remaining_ticks.GetData()) ||
@@ -4299,7 +4286,7 @@ struct FMemorySingleEntityDataStorage
         auto const float_biases_bytes{elements_to_copy * sizeof(float)};
         auto const tasks_bytes{elements_to_copy * sizeof(Task)};
         auto const teams_bytes{elements_to_copy * sizeof(Team)};
-        auto const health_indices_bytes{elements_to_copy * sizeof(HealthIndex)};
+        auto const healths_bytes{elements_to_copy * sizeof(int32)};
         auto const awareness_scan_countdowns_counters_bytes{elements_to_copy * sizeof(int8)};
         auto const navigation_update_countdowns_remaining_ticks_bytes{elements_to_copy *
                                                                       sizeof(int16)};
@@ -4368,8 +4355,7 @@ struct FMemorySingleEntityDataStorage
             destination.move_distances, source.move_distances.GetData(), float_biases_bytes);
         FMemory::Memcpy(destination.speeds, source.speeds.GetData(), float_biases_bytes);
         FMemory::Memcpy(destination.teams, source.teams.GetData(), teams_bytes);
-        FMemory::Memcpy(
-            destination.health_indices, source.health_indices.GetData(), health_indices_bytes);
+        FMemory::Memcpy(destination.healths, source.healths.GetData(), healths_bytes);
         FMemory::Memcpy(destination.parent_ids, source.parent_ids.GetData(), entity_ids_bytes);
         FMemory::Memcpy(destination.awareness_scan_countdowns_counters,
                         source.awareness_scan_countdowns.counters.GetData(),
@@ -4461,7 +4447,7 @@ struct FMemorySingleEntityDataStorage
             auto const float_biases_bytes{live_count * sizeof(float)};
             auto const tasks_bytes{live_count * sizeof(Task)};
             auto const teams_bytes{live_count * sizeof(Team)};
-            auto const health_indices_bytes{live_count * sizeof(HealthIndex)};
+            auto const healths_bytes{live_count * sizeof(int32)};
             auto const awareness_scan_countdowns_counters_bytes{live_count * sizeof(int8)};
             auto const navigation_update_countdowns_remaining_ticks_bytes{live_count *
                                                                           sizeof(int16)};
@@ -4522,8 +4508,7 @@ struct FMemorySingleEntityDataStorage
             FMemory::Memcpy(destination.move_distances, source.move_distances, float_biases_bytes);
             FMemory::Memcpy(destination.speeds, source.speeds, float_biases_bytes);
             FMemory::Memcpy(destination.teams, source.teams, teams_bytes);
-            FMemory::Memcpy(
-                destination.health_indices, source.health_indices, health_indices_bytes);
+            FMemory::Memcpy(destination.healths, source.healths, healths_bytes);
             FMemory::Memcpy(destination.parent_ids, source.parent_ids, entity_ids_bytes);
             FMemory::Memcpy(destination.awareness_scan_countdowns_counters,
                             source.awareness_scan_countdowns_counters,
@@ -6529,7 +6514,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataConstView {
                                          self.move_distances,
                                          self.speeds,
                                          self.teams,
-                                         self.health_indices,
+                                         self.healths,
                                          self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
@@ -6575,7 +6560,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataConstView {
     TConstArrayView<float> move_distances;
     TConstArrayView<float> speeds;
     TConstArrayView<Team> teams;
-    TConstArrayView<HealthIndex> health_indices;
+    TConstArrayView<int32> healths;
     TConstArrayView<EntityId> parent_ids;
     MimallocCountdown8::ConstView awareness_scan_countdowns;
     MimallocPeriodicCountdown16::ConstView navigation_update_countdowns;
@@ -6616,7 +6601,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataView {
                                          self.move_distances,
                                          self.speeds,
                                          self.teams,
-                                         self.health_indices,
+                                         self.healths,
                                          self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
@@ -6667,7 +6652,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityDataView {
     TArrayView<float> move_distances;
     TArrayView<float> speeds;
     TArrayView<Team> teams;
-    TArrayView<HealthIndex> health_indices;
+    TArrayView<int32> healths;
     TArrayView<EntityId> parent_ids;
     MimallocCountdown8::View awareness_scan_countdowns;
     MimallocPeriodicCountdown16::View navigation_update_countdowns;
@@ -6717,7 +6702,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
         move_distances.RemoveAtSwap(index, count, allow_shrinking);
         speeds.RemoveAtSwap(index, count, allow_shrinking);
         teams.RemoveAtSwap(index, count, allow_shrinking);
-        health_indices.RemoveAtSwap(index, count, allow_shrinking);
+        healths.RemoveAtSwap(index, count, allow_shrinking);
         parent_ids.RemoveAtSwap(index, count, allow_shrinking);
         ml::remove_at_swap(awareness_scan_countdowns, index, count, allow_shrinking);
         ml::remove_at_swap(navigation_update_countdowns, index, count, allow_shrinking);
@@ -6756,7 +6741,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
         ml::copy_element(move_distances, dst_i, other.move_distances, src_i);
         ml::copy_element(speeds, dst_i, other.speeds, src_i);
         ml::copy_element(teams, dst_i, other.teams, src_i);
-        ml::copy_element(health_indices, dst_i, other.health_indices, src_i);
+        ml::copy_element(healths, dst_i, other.healths, src_i);
         ml::copy_element(parent_ids, dst_i, other.parent_ids, src_i);
         ml::copy_element(awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i);
         ml::copy_element(
@@ -6803,7 +6788,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
         ml::copy_elements(move_distances, dst_i, other.move_distances, src_i, count);
         ml::copy_elements(speeds, dst_i, other.speeds, src_i, count);
         ml::copy_elements(teams, dst_i, other.teams, src_i, count);
-        ml::copy_elements(health_indices, dst_i, other.health_indices, src_i, count);
+        ml::copy_elements(healths, dst_i, other.healths, src_i, count);
         ml::copy_elements(parent_ids, dst_i, other.parent_ids, src_i, count);
         ml::copy_elements(
             awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i, count);
@@ -6858,7 +6843,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
         ml::append_from(move_distances, other.move_distances);
         ml::append_from(speeds, other.speeds);
         ml::append_from(teams, other.teams);
-        ml::append_from(health_indices, other.health_indices);
+        ml::append_from(healths, other.healths);
         ml::append_from(parent_ids, other.parent_ids);
         awareness_scan_countdowns.append_from(other.awareness_scan_countdowns);
         navigation_update_countdowns.append_from(other.navigation_update_countdowns);
@@ -6922,7 +6907,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
                                          self.move_distances,
                                          self.speeds,
                                          self.teams,
-                                         self.health_indices,
+                                         self.healths,
                                          self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
@@ -6973,8 +6958,8 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
                                          other.speeds,
                                          self.teams,
                                          other.teams,
-                                         self.health_indices,
-                                         other.health_indices,
+                                         self.healths,
+                                         other.healths,
                                          self.parent_ids,
                                          other.parent_ids,
                                          self.awareness_scan_countdowns,
@@ -7043,7 +7028,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
     TArray<float, MimallocArrayAllocator> move_distances;
     TArray<float, MimallocArrayAllocator> speeds;
     TArray<Team, MimallocArrayAllocator> teams;
-    TArray<HealthIndex, MimallocArrayAllocator> health_indices;
+    TArray<int32, MimallocArrayAllocator> healths;
     TArray<EntityId, MimallocArrayAllocator> parent_ids;
     MimallocCountdown8 awareness_scan_countdowns;
     MimallocPeriodicCountdown16 navigation_update_countdowns;
@@ -8026,7 +8011,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataConstView {
                                          self.move_distances,
                                          self.speeds,
                                          self.teams,
-                                         self.health_indices,
+                                         self.healths,
                                          self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
@@ -8072,7 +8057,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataConstView {
     TConstArrayView<float> move_distances;
     TConstArrayView<float> speeds;
     TConstArrayView<Team> teams;
-    TConstArrayView<HealthIndex> health_indices;
+    TConstArrayView<int32> healths;
     TConstArrayView<EntityId> parent_ids;
     MallocCountdown8::ConstView awareness_scan_countdowns;
     MallocPeriodicCountdown16::ConstView navigation_update_countdowns;
@@ -8113,7 +8098,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataView {
                                          self.move_distances,
                                          self.speeds,
                                          self.teams,
-                                         self.health_indices,
+                                         self.healths,
                                          self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
@@ -8164,7 +8149,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityDataView {
     TArrayView<float> move_distances;
     TArrayView<float> speeds;
     TArrayView<Team> teams;
-    TArrayView<HealthIndex> health_indices;
+    TArrayView<int32> healths;
     TArrayView<EntityId> parent_ids;
     MallocCountdown8::View awareness_scan_countdowns;
     MallocPeriodicCountdown16::View navigation_update_countdowns;
@@ -8214,7 +8199,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
         move_distances.RemoveAtSwap(index, count, allow_shrinking);
         speeds.RemoveAtSwap(index, count, allow_shrinking);
         teams.RemoveAtSwap(index, count, allow_shrinking);
-        health_indices.RemoveAtSwap(index, count, allow_shrinking);
+        healths.RemoveAtSwap(index, count, allow_shrinking);
         parent_ids.RemoveAtSwap(index, count, allow_shrinking);
         ml::remove_at_swap(awareness_scan_countdowns, index, count, allow_shrinking);
         ml::remove_at_swap(navigation_update_countdowns, index, count, allow_shrinking);
@@ -8253,7 +8238,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
         ml::copy_element(move_distances, dst_i, other.move_distances, src_i);
         ml::copy_element(speeds, dst_i, other.speeds, src_i);
         ml::copy_element(teams, dst_i, other.teams, src_i);
-        ml::copy_element(health_indices, dst_i, other.health_indices, src_i);
+        ml::copy_element(healths, dst_i, other.healths, src_i);
         ml::copy_element(parent_ids, dst_i, other.parent_ids, src_i);
         ml::copy_element(awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i);
         ml::copy_element(
@@ -8300,7 +8285,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
         ml::copy_elements(move_distances, dst_i, other.move_distances, src_i, count);
         ml::copy_elements(speeds, dst_i, other.speeds, src_i, count);
         ml::copy_elements(teams, dst_i, other.teams, src_i, count);
-        ml::copy_elements(health_indices, dst_i, other.health_indices, src_i, count);
+        ml::copy_elements(healths, dst_i, other.healths, src_i, count);
         ml::copy_elements(parent_ids, dst_i, other.parent_ids, src_i, count);
         ml::copy_elements(
             awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i, count);
@@ -8355,7 +8340,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
         ml::append_from(move_distances, other.move_distances);
         ml::append_from(speeds, other.speeds);
         ml::append_from(teams, other.teams);
-        ml::append_from(health_indices, other.health_indices);
+        ml::append_from(healths, other.healths);
         ml::append_from(parent_ids, other.parent_ids);
         awareness_scan_countdowns.append_from(other.awareness_scan_countdowns);
         navigation_update_countdowns.append_from(other.navigation_update_countdowns);
@@ -8419,7 +8404,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
                                          self.move_distances,
                                          self.speeds,
                                          self.teams,
-                                         self.health_indices,
+                                         self.healths,
                                          self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
@@ -8470,8 +8455,8 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
                                          other.speeds,
                                          self.teams,
                                          other.teams,
-                                         self.health_indices,
-                                         other.health_indices,
+                                         self.healths,
+                                         other.healths,
                                          self.parent_ids,
                                          other.parent_ids,
                                          self.awareness_scan_countdowns,
@@ -8540,7 +8525,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
     TArray<float, MallocAllocator> move_distances;
     TArray<float, MallocAllocator> speeds;
     TArray<Team, MallocAllocator> teams;
-    TArray<HealthIndex, MallocAllocator> health_indices;
+    TArray<int32, MallocAllocator> healths;
     TArray<EntityId, MallocAllocator> parent_ids;
     MallocCountdown8 awareness_scan_countdowns;
     MallocPeriodicCountdown16 navigation_update_countdowns;
@@ -9523,7 +9508,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataConstView {
                                          self.move_distances,
                                          self.speeds,
                                          self.teams,
-                                         self.health_indices,
+                                         self.healths,
                                          self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
@@ -9569,7 +9554,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataConstView {
     TConstArrayView<float> move_distances;
     TConstArrayView<float> speeds;
     TConstArrayView<Team> teams;
-    TConstArrayView<HealthIndex> health_indices;
+    TConstArrayView<int32> healths;
     TConstArrayView<EntityId> parent_ids;
     ReallocCountdown8::ConstView awareness_scan_countdowns;
     ReallocPeriodicCountdown16::ConstView navigation_update_countdowns;
@@ -9610,7 +9595,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataView {
                                          self.move_distances,
                                          self.speeds,
                                          self.teams,
-                                         self.health_indices,
+                                         self.healths,
                                          self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
@@ -9661,7 +9646,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityDataView {
     TArrayView<float> move_distances;
     TArrayView<float> speeds;
     TArrayView<Team> teams;
-    TArrayView<HealthIndex> health_indices;
+    TArrayView<int32> healths;
     TArrayView<EntityId> parent_ids;
     ReallocCountdown8::View awareness_scan_countdowns;
     ReallocPeriodicCountdown16::View navigation_update_countdowns;
@@ -9711,7 +9696,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
         move_distances.RemoveAtSwap(index, count, allow_shrinking);
         speeds.RemoveAtSwap(index, count, allow_shrinking);
         teams.RemoveAtSwap(index, count, allow_shrinking);
-        health_indices.RemoveAtSwap(index, count, allow_shrinking);
+        healths.RemoveAtSwap(index, count, allow_shrinking);
         parent_ids.RemoveAtSwap(index, count, allow_shrinking);
         ml::remove_at_swap(awareness_scan_countdowns, index, count, allow_shrinking);
         ml::remove_at_swap(navigation_update_countdowns, index, count, allow_shrinking);
@@ -9750,7 +9735,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
         ml::copy_element(move_distances, dst_i, other.move_distances, src_i);
         ml::copy_element(speeds, dst_i, other.speeds, src_i);
         ml::copy_element(teams, dst_i, other.teams, src_i);
-        ml::copy_element(health_indices, dst_i, other.health_indices, src_i);
+        ml::copy_element(healths, dst_i, other.healths, src_i);
         ml::copy_element(parent_ids, dst_i, other.parent_ids, src_i);
         ml::copy_element(awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i);
         ml::copy_element(
@@ -9797,7 +9782,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
         ml::copy_elements(move_distances, dst_i, other.move_distances, src_i, count);
         ml::copy_elements(speeds, dst_i, other.speeds, src_i, count);
         ml::copy_elements(teams, dst_i, other.teams, src_i, count);
-        ml::copy_elements(health_indices, dst_i, other.health_indices, src_i, count);
+        ml::copy_elements(healths, dst_i, other.healths, src_i, count);
         ml::copy_elements(parent_ids, dst_i, other.parent_ids, src_i, count);
         ml::copy_elements(
             awareness_scan_countdowns, dst_i, other.awareness_scan_countdowns, src_i, count);
@@ -9852,7 +9837,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
         ml::append_from(move_distances, other.move_distances);
         ml::append_from(speeds, other.speeds);
         ml::append_from(teams, other.teams);
-        ml::append_from(health_indices, other.health_indices);
+        ml::append_from(healths, other.healths);
         ml::append_from(parent_ids, other.parent_ids);
         awareness_scan_countdowns.append_from(other.awareness_scan_countdowns);
         navigation_update_countdowns.append_from(other.navigation_update_countdowns);
@@ -9916,7 +9901,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
                                          self.move_distances,
                                          self.speeds,
                                          self.teams,
-                                         self.health_indices,
+                                         self.healths,
                                          self.parent_ids,
                                          self.awareness_scan_countdowns,
                                          self.navigation_update_countdowns,
@@ -9967,8 +9952,8 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
                                          other.speeds,
                                          self.teams,
                                          other.teams,
-                                         self.health_indices,
-                                         other.health_indices,
+                                         self.healths,
+                                         other.healths,
                                          self.parent_ids,
                                          other.parent_ids,
                                          self.awareness_scan_countdowns,
@@ -10037,7 +10022,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
     TArray<float, ReallocAllocator> move_distances;
     TArray<float, ReallocAllocator> speeds;
     TArray<Team, ReallocAllocator> teams;
-    TArray<HealthIndex, ReallocAllocator> health_indices;
+    TArray<int32, ReallocAllocator> healths;
     TArray<EntityId, ReallocAllocator> parent_ids;
     ReallocCountdown8 awareness_scan_countdowns;
     ReallocPeriodicCountdown16 navigation_update_countdowns;

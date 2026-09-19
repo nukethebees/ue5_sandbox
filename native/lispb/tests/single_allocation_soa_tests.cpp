@@ -442,12 +442,15 @@ TEST(SingleAllocationSoa, BenchmarkSchemaTracksFighterLeafOrderAndWidths) {
     ASSERT_EQ(fighter.size(), experiment.size());
     std::map<std::string, std::string> const equivalents{
         {"@native_health", "int32"},
+        {"@native_health_index", "int32"},
         {"@native_unique_id", "@soa_experiment_EntityId"},
         {"@native_fighter_task", "@soa_experiment_Task"},
         {"@native_team", "@soa_experiment_Team"},
         {"@native_vectors_3f", "Vectors"}};
     for (std::size_t index{}; index < fighter.size(); ++index) {
-        EXPECT_EQ(fighter[index].name, experiment[index].name);
+        auto const expected_name{fighter[index].name == "health_indices" ? "healths"
+                                                                         : fighter[index].name};
+        EXPECT_EQ(expected_name, experiment[index].name);
         EXPECT_EQ(fighter[index].kind, experiment[index].kind);
         auto const& type{fighter[index].type.name};
         auto const found{equivalents.find(type)};

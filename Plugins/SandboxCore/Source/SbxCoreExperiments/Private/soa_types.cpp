@@ -918,7 +918,7 @@ auto EntityDataConstView::get_view(int32 const offset, int32 const count) const 
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -960,7 +960,7 @@ auto EntityDataConstView::get_const_view(int32 const offset, int32 const count) 
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -1006,7 +1006,7 @@ void EntityDataConstView::validate_array_sizes() const {
         ml::num(move_distances),
         ml::num(speeds),
         ml::num(teams),
-        ml::num(health_indices),
+        ml::num(healths),
         ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
@@ -1060,7 +1060,7 @@ auto EntityDataView::get_view(int32 const offset, int32 const count) -> View {
         TArrayView<float>{move_distances}.Slice(offset, count),
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<Team>{teams}.Slice(offset, count),
-        TArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
         TArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_view(offset, count),
         navigation_update_countdowns.get_view(offset, count),
@@ -1102,7 +1102,7 @@ auto EntityDataView::get_view(int32 const offset, int32 const count) const -> Co
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -1144,7 +1144,7 @@ auto EntityDataView::get_const_view(int32 const offset, int32 const count) const
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -1190,7 +1190,7 @@ void EntityDataView::validate_array_sizes() const {
         ml::num(move_distances),
         ml::num(speeds),
         ml::num(teams),
-        ml::num(health_indices),
+        ml::num(healths),
         ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
@@ -1251,7 +1251,7 @@ void EntityData::reset() {
     ml::reset(move_distances);
     ml::reset(speeds);
     ml::reset(teams);
-    ml::reset(health_indices);
+    ml::reset(healths);
     ml::reset(parent_ids);
     ml::reset(awareness_scan_countdowns);
     ml::reset(navigation_update_countdowns);
@@ -1287,7 +1287,7 @@ void EntityData::reserve(int32 const count) {
     ml::reserve(move_distances, count);
     ml::reserve(speeds, count);
     ml::reserve(teams, count);
-    ml::reserve(health_indices, count);
+    ml::reserve(healths, count);
     ml::reserve(parent_ids, count);
     ml::reserve(awareness_scan_countdowns, count);
     ml::reserve(navigation_update_countdowns, count);
@@ -1323,7 +1323,7 @@ void EntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(move_distances, count);
     ml::add_uninitialised(speeds, count);
     ml::add_uninitialised(teams, count);
-    ml::add_uninitialised(health_indices, count);
+    ml::add_uninitialised(healths, count);
     ml::add_uninitialised(parent_ids, count);
     ml::add_uninitialised(awareness_scan_countdowns, count);
     ml::add_uninitialised(navigation_update_countdowns, count);
@@ -1359,7 +1359,7 @@ void EntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(move_distances, count);
     ml::add_defaulted(speeds, count);
     ml::add_defaulted(teams, count);
-    ml::add_defaulted(health_indices, count);
+    ml::add_defaulted(healths, count);
     ml::add_defaulted(parent_ids, count);
     ml::add_defaulted(awareness_scan_countdowns, count);
     ml::add_defaulted(navigation_update_countdowns, count);
@@ -1395,7 +1395,7 @@ void EntityData::set_num(int32 const count, EAllowShrinking const allow_shrinkin
     ml::set_num(move_distances, count, allow_shrinking);
     ml::set_num(speeds, count, allow_shrinking);
     ml::set_num(teams, count, allow_shrinking);
-    ml::set_num(health_indices, count, allow_shrinking);
+    ml::set_num(healths, count, allow_shrinking);
     ml::set_num(parent_ids, count, allow_shrinking);
     ml::set_num(awareness_scan_countdowns, count, allow_shrinking);
     ml::set_num(navigation_update_countdowns, count, allow_shrinking);
@@ -1433,7 +1433,7 @@ void EntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(move_distances, indices);
     ml::apply_permutation(speeds, indices);
     ml::apply_permutation(teams, indices);
-    ml::apply_permutation(health_indices, indices);
+    ml::apply_permutation(healths, indices);
     ml::apply_permutation(parent_ids, indices);
     ml::apply_permutation(awareness_scan_countdowns, indices);
     ml::apply_permutation(navigation_update_countdowns, indices);
@@ -1474,7 +1474,7 @@ auto EntityData::get_view(int32 const offset, int32 const count) -> View {
         TArrayView<float>{move_distances}.Slice(offset, count),
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<Team>{teams}.Slice(offset, count),
-        TArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
         TArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_view(offset, count),
         navigation_update_countdowns.get_view(offset, count),
@@ -1516,7 +1516,7 @@ auto EntityData::get_view(int32 const offset, int32 const count) const -> ConstV
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -1558,7 +1558,7 @@ auto EntityData::get_const_view(int32 const offset, int32 const count) const -> 
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -1604,7 +1604,7 @@ void EntityData::validate_array_sizes() const {
         ml::num(move_distances),
         ml::num(speeds),
         ml::num(teams),
-        ml::num(health_indices),
+        ml::num(healths),
         ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
@@ -2898,7 +2898,7 @@ auto MimallocEntityDataConstView::get_view(int32 const offset, int32 const count
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -2941,7 +2941,7 @@ auto MimallocEntityDataConstView::get_const_view(int32 const offset, int32 const
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -2987,7 +2987,7 @@ void MimallocEntityDataConstView::validate_array_sizes() const {
         ml::num(move_distances),
         ml::num(speeds),
         ml::num(teams),
-        ml::num(health_indices),
+        ml::num(healths),
         ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
@@ -3041,7 +3041,7 @@ auto MimallocEntityDataView::get_view(int32 const offset, int32 const count) -> 
         TArrayView<float>{move_distances}.Slice(offset, count),
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<Team>{teams}.Slice(offset, count),
-        TArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
         TArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_view(offset, count),
         navigation_update_countdowns.get_view(offset, count),
@@ -3083,7 +3083,7 @@ auto MimallocEntityDataView::get_view(int32 const offset, int32 const count) con
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -3126,7 +3126,7 @@ auto MimallocEntityDataView::get_const_view(int32 const offset, int32 const coun
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -3172,7 +3172,7 @@ void MimallocEntityDataView::validate_array_sizes() const {
         ml::num(move_distances),
         ml::num(speeds),
         ml::num(teams),
-        ml::num(health_indices),
+        ml::num(healths),
         ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
@@ -3233,7 +3233,7 @@ void MimallocEntityData::reset() {
     ml::reset(move_distances);
     ml::reset(speeds);
     ml::reset(teams);
-    ml::reset(health_indices);
+    ml::reset(healths);
     ml::reset(parent_ids);
     ml::reset(awareness_scan_countdowns);
     ml::reset(navigation_update_countdowns);
@@ -3269,7 +3269,7 @@ void MimallocEntityData::reserve(int32 const count) {
     ml::reserve(move_distances, count);
     ml::reserve(speeds, count);
     ml::reserve(teams, count);
-    ml::reserve(health_indices, count);
+    ml::reserve(healths, count);
     ml::reserve(parent_ids, count);
     ml::reserve(awareness_scan_countdowns, count);
     ml::reserve(navigation_update_countdowns, count);
@@ -3305,7 +3305,7 @@ void MimallocEntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(move_distances, count);
     ml::add_uninitialised(speeds, count);
     ml::add_uninitialised(teams, count);
-    ml::add_uninitialised(health_indices, count);
+    ml::add_uninitialised(healths, count);
     ml::add_uninitialised(parent_ids, count);
     ml::add_uninitialised(awareness_scan_countdowns, count);
     ml::add_uninitialised(navigation_update_countdowns, count);
@@ -3341,7 +3341,7 @@ void MimallocEntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(move_distances, count);
     ml::add_defaulted(speeds, count);
     ml::add_defaulted(teams, count);
-    ml::add_defaulted(health_indices, count);
+    ml::add_defaulted(healths, count);
     ml::add_defaulted(parent_ids, count);
     ml::add_defaulted(awareness_scan_countdowns, count);
     ml::add_defaulted(navigation_update_countdowns, count);
@@ -3377,7 +3377,7 @@ void MimallocEntityData::set_num(int32 const count, EAllowShrinking const allow_
     ml::set_num(move_distances, count, allow_shrinking);
     ml::set_num(speeds, count, allow_shrinking);
     ml::set_num(teams, count, allow_shrinking);
-    ml::set_num(health_indices, count, allow_shrinking);
+    ml::set_num(healths, count, allow_shrinking);
     ml::set_num(parent_ids, count, allow_shrinking);
     ml::set_num(awareness_scan_countdowns, count, allow_shrinking);
     ml::set_num(navigation_update_countdowns, count, allow_shrinking);
@@ -3415,7 +3415,7 @@ void MimallocEntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(move_distances, indices);
     ml::apply_permutation(speeds, indices);
     ml::apply_permutation(teams, indices);
-    ml::apply_permutation(health_indices, indices);
+    ml::apply_permutation(healths, indices);
     ml::apply_permutation(parent_ids, indices);
     ml::apply_permutation(awareness_scan_countdowns, indices);
     ml::apply_permutation(navigation_update_countdowns, indices);
@@ -3456,7 +3456,7 @@ auto MimallocEntityData::get_view(int32 const offset, int32 const count) -> View
         TArrayView<float>{move_distances}.Slice(offset, count),
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<Team>{teams}.Slice(offset, count),
-        TArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
         TArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_view(offset, count),
         navigation_update_countdowns.get_view(offset, count),
@@ -3498,7 +3498,7 @@ auto MimallocEntityData::get_view(int32 const offset, int32 const count) const -
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -3540,7 +3540,7 @@ auto MimallocEntityData::get_const_view(int32 const offset, int32 const count) c
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -3586,7 +3586,7 @@ void MimallocEntityData::validate_array_sizes() const {
         ml::num(move_distances),
         ml::num(speeds),
         ml::num(teams),
-        ml::num(health_indices),
+        ml::num(healths),
         ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
@@ -4880,7 +4880,7 @@ auto MallocEntityDataConstView::get_view(int32 const offset, int32 const count) 
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -4923,7 +4923,7 @@ auto MallocEntityDataConstView::get_const_view(int32 const offset, int32 const c
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -4969,7 +4969,7 @@ void MallocEntityDataConstView::validate_array_sizes() const {
         ml::num(move_distances),
         ml::num(speeds),
         ml::num(teams),
-        ml::num(health_indices),
+        ml::num(healths),
         ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
@@ -5023,7 +5023,7 @@ auto MallocEntityDataView::get_view(int32 const offset, int32 const count) -> Vi
         TArrayView<float>{move_distances}.Slice(offset, count),
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<Team>{teams}.Slice(offset, count),
-        TArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
         TArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_view(offset, count),
         navigation_update_countdowns.get_view(offset, count),
@@ -5065,7 +5065,7 @@ auto MallocEntityDataView::get_view(int32 const offset, int32 const count) const
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -5108,7 +5108,7 @@ auto MallocEntityDataView::get_const_view(int32 const offset, int32 const count)
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -5154,7 +5154,7 @@ void MallocEntityDataView::validate_array_sizes() const {
         ml::num(move_distances),
         ml::num(speeds),
         ml::num(teams),
-        ml::num(health_indices),
+        ml::num(healths),
         ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
@@ -5215,7 +5215,7 @@ void MallocEntityData::reset() {
     ml::reset(move_distances);
     ml::reset(speeds);
     ml::reset(teams);
-    ml::reset(health_indices);
+    ml::reset(healths);
     ml::reset(parent_ids);
     ml::reset(awareness_scan_countdowns);
     ml::reset(navigation_update_countdowns);
@@ -5251,7 +5251,7 @@ void MallocEntityData::reserve(int32 const count) {
     ml::reserve(move_distances, count);
     ml::reserve(speeds, count);
     ml::reserve(teams, count);
-    ml::reserve(health_indices, count);
+    ml::reserve(healths, count);
     ml::reserve(parent_ids, count);
     ml::reserve(awareness_scan_countdowns, count);
     ml::reserve(navigation_update_countdowns, count);
@@ -5287,7 +5287,7 @@ void MallocEntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(move_distances, count);
     ml::add_uninitialised(speeds, count);
     ml::add_uninitialised(teams, count);
-    ml::add_uninitialised(health_indices, count);
+    ml::add_uninitialised(healths, count);
     ml::add_uninitialised(parent_ids, count);
     ml::add_uninitialised(awareness_scan_countdowns, count);
     ml::add_uninitialised(navigation_update_countdowns, count);
@@ -5323,7 +5323,7 @@ void MallocEntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(move_distances, count);
     ml::add_defaulted(speeds, count);
     ml::add_defaulted(teams, count);
-    ml::add_defaulted(health_indices, count);
+    ml::add_defaulted(healths, count);
     ml::add_defaulted(parent_ids, count);
     ml::add_defaulted(awareness_scan_countdowns, count);
     ml::add_defaulted(navigation_update_countdowns, count);
@@ -5359,7 +5359,7 @@ void MallocEntityData::set_num(int32 const count, EAllowShrinking const allow_sh
     ml::set_num(move_distances, count, allow_shrinking);
     ml::set_num(speeds, count, allow_shrinking);
     ml::set_num(teams, count, allow_shrinking);
-    ml::set_num(health_indices, count, allow_shrinking);
+    ml::set_num(healths, count, allow_shrinking);
     ml::set_num(parent_ids, count, allow_shrinking);
     ml::set_num(awareness_scan_countdowns, count, allow_shrinking);
     ml::set_num(navigation_update_countdowns, count, allow_shrinking);
@@ -5397,7 +5397,7 @@ void MallocEntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(move_distances, indices);
     ml::apply_permutation(speeds, indices);
     ml::apply_permutation(teams, indices);
-    ml::apply_permutation(health_indices, indices);
+    ml::apply_permutation(healths, indices);
     ml::apply_permutation(parent_ids, indices);
     ml::apply_permutation(awareness_scan_countdowns, indices);
     ml::apply_permutation(navigation_update_countdowns, indices);
@@ -5438,7 +5438,7 @@ auto MallocEntityData::get_view(int32 const offset, int32 const count) -> View {
         TArrayView<float>{move_distances}.Slice(offset, count),
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<Team>{teams}.Slice(offset, count),
-        TArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
         TArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_view(offset, count),
         navigation_update_countdowns.get_view(offset, count),
@@ -5480,7 +5480,7 @@ auto MallocEntityData::get_view(int32 const offset, int32 const count) const -> 
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -5522,7 +5522,7 @@ auto MallocEntityData::get_const_view(int32 const offset, int32 const count) con
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -5568,7 +5568,7 @@ void MallocEntityData::validate_array_sizes() const {
         ml::num(move_distances),
         ml::num(speeds),
         ml::num(teams),
-        ml::num(health_indices),
+        ml::num(healths),
         ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
@@ -6863,7 +6863,7 @@ auto ReallocEntityDataConstView::get_view(int32 const offset, int32 const count)
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -6906,7 +6906,7 @@ auto ReallocEntityDataConstView::get_const_view(int32 const offset, int32 const 
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -6952,7 +6952,7 @@ void ReallocEntityDataConstView::validate_array_sizes() const {
         ml::num(move_distances),
         ml::num(speeds),
         ml::num(teams),
-        ml::num(health_indices),
+        ml::num(healths),
         ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
@@ -7006,7 +7006,7 @@ auto ReallocEntityDataView::get_view(int32 const offset, int32 const count) -> V
         TArrayView<float>{move_distances}.Slice(offset, count),
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<Team>{teams}.Slice(offset, count),
-        TArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
         TArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_view(offset, count),
         navigation_update_countdowns.get_view(offset, count),
@@ -7048,7 +7048,7 @@ auto ReallocEntityDataView::get_view(int32 const offset, int32 const count) cons
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -7091,7 +7091,7 @@ auto ReallocEntityDataView::get_const_view(int32 const offset, int32 const count
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -7137,7 +7137,7 @@ void ReallocEntityDataView::validate_array_sizes() const {
         ml::num(move_distances),
         ml::num(speeds),
         ml::num(teams),
-        ml::num(health_indices),
+        ml::num(healths),
         ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
@@ -7198,7 +7198,7 @@ void ReallocEntityData::reset() {
     ml::reset(move_distances);
     ml::reset(speeds);
     ml::reset(teams);
-    ml::reset(health_indices);
+    ml::reset(healths);
     ml::reset(parent_ids);
     ml::reset(awareness_scan_countdowns);
     ml::reset(navigation_update_countdowns);
@@ -7234,7 +7234,7 @@ void ReallocEntityData::reserve(int32 const count) {
     ml::reserve(move_distances, count);
     ml::reserve(speeds, count);
     ml::reserve(teams, count);
-    ml::reserve(health_indices, count);
+    ml::reserve(healths, count);
     ml::reserve(parent_ids, count);
     ml::reserve(awareness_scan_countdowns, count);
     ml::reserve(navigation_update_countdowns, count);
@@ -7270,7 +7270,7 @@ void ReallocEntityData::add_uninitialised(int32 const count) {
     ml::add_uninitialised(move_distances, count);
     ml::add_uninitialised(speeds, count);
     ml::add_uninitialised(teams, count);
-    ml::add_uninitialised(health_indices, count);
+    ml::add_uninitialised(healths, count);
     ml::add_uninitialised(parent_ids, count);
     ml::add_uninitialised(awareness_scan_countdowns, count);
     ml::add_uninitialised(navigation_update_countdowns, count);
@@ -7306,7 +7306,7 @@ void ReallocEntityData::add_defaulted(int32 const count) {
     ml::add_defaulted(move_distances, count);
     ml::add_defaulted(speeds, count);
     ml::add_defaulted(teams, count);
-    ml::add_defaulted(health_indices, count);
+    ml::add_defaulted(healths, count);
     ml::add_defaulted(parent_ids, count);
     ml::add_defaulted(awareness_scan_countdowns, count);
     ml::add_defaulted(navigation_update_countdowns, count);
@@ -7342,7 +7342,7 @@ void ReallocEntityData::set_num(int32 const count, EAllowShrinking const allow_s
     ml::set_num(move_distances, count, allow_shrinking);
     ml::set_num(speeds, count, allow_shrinking);
     ml::set_num(teams, count, allow_shrinking);
-    ml::set_num(health_indices, count, allow_shrinking);
+    ml::set_num(healths, count, allow_shrinking);
     ml::set_num(parent_ids, count, allow_shrinking);
     ml::set_num(awareness_scan_countdowns, count, allow_shrinking);
     ml::set_num(navigation_update_countdowns, count, allow_shrinking);
@@ -7380,7 +7380,7 @@ void ReallocEntityData::apply_permutation(TArrayView<int32> indices) {
     ml::apply_permutation(move_distances, indices);
     ml::apply_permutation(speeds, indices);
     ml::apply_permutation(teams, indices);
-    ml::apply_permutation(health_indices, indices);
+    ml::apply_permutation(healths, indices);
     ml::apply_permutation(parent_ids, indices);
     ml::apply_permutation(awareness_scan_countdowns, indices);
     ml::apply_permutation(navigation_update_countdowns, indices);
@@ -7421,7 +7421,7 @@ auto ReallocEntityData::get_view(int32 const offset, int32 const count) -> View 
         TArrayView<float>{move_distances}.Slice(offset, count),
         TArrayView<float>{speeds}.Slice(offset, count),
         TArrayView<Team>{teams}.Slice(offset, count),
-        TArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TArrayView<int32>{healths}.Slice(offset, count),
         TArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_view(offset, count),
         navigation_update_countdowns.get_view(offset, count),
@@ -7463,7 +7463,7 @@ auto ReallocEntityData::get_view(int32 const offset, int32 const count) const ->
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -7505,7 +7505,7 @@ auto ReallocEntityData::get_const_view(int32 const offset, int32 const count) co
         TConstArrayView<float>{move_distances}.Slice(offset, count),
         TConstArrayView<float>{speeds}.Slice(offset, count),
         TConstArrayView<Team>{teams}.Slice(offset, count),
-        TConstArrayView<HealthIndex>{health_indices}.Slice(offset, count),
+        TConstArrayView<int32>{healths}.Slice(offset, count),
         TConstArrayView<EntityId>{parent_ids}.Slice(offset, count),
         awareness_scan_countdowns.get_const_view(offset, count),
         navigation_update_countdowns.get_const_view(offset, count),
@@ -7551,7 +7551,7 @@ void ReallocEntityData::validate_array_sizes() const {
         ml::num(move_distances),
         ml::num(speeds),
         ml::num(teams),
-        ml::num(health_indices),
+        ml::num(healths),
         ml::num(parent_ids),
         ml::num(awareness_scan_countdowns),
         ml::num(navigation_update_countdowns),
