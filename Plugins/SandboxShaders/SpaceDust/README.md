@@ -31,14 +31,20 @@ CPU particle loop.  The vertex shader obtains each instance's stable seed from
 `SV_InstanceID`, hashes it into a local position, subtracts the translation
 phase, and wraps it inside the camera-relative volume.
 
-The shader uses the actual world velocity to derive screen-plane streak
-direction and a bounded pixel length. Visibility remains driven by total world
-speed, so a fast sideways drift remains visible. `lateral_streak_scale` only
-attenuates projected screen-plane velocity when requesting streak length; its
-default of `0.35` keeps strafing and drift readable without turning into heavy
-space rain. Camera rotation changes the observed field naturally, but zero
-translation produces no velocity-driven brightness or stretch. The material
-is additive/unlit, tests normal scene depth, and does not write depth; opaque
+For each particle, the vertex shader analytically projects its current
+camera-relative position and the position from which it would have been seen
+`streak_seconds` earlier. Their difference supplies the particle's apparent
+screen-space direction and pixel displacement. Sideways travel therefore
+produces broadly parallel flow, while forward travel produces perspective
+motion that grows radially and is stronger for nearby particles.
+
+Both total world speed and per-particle pixel displacement gate visibility. A
+particle that does not move far enough on screen fades away instead of
+remaining as a minimum-sized star-like point. Streak length is the measured
+pixel displacement capped by `maximum_streak_pixels`; the soft procedural
+material turns the stretched quad into a subtle ellipse without a texture.
+Camera rotation is not treated as translational motion. The material remains
+additive/unlit, tests normal scene depth, and does not write depth, so opaque
 hulls can occlude dust.
 
 ## Tuning
@@ -47,42 +53,49 @@ hulls can occlude dust.
 
 - enable flag, count, seed, and volume dimensions;
 - size, brightness, and colour;
-- minimum/full visible speed;
-- streak time, lateral streak scale, and maximum pixel length;
+- minimum/full world-speed visibility;
+- streak time, minimum/full apparent-motion pixels, and maximum pixel length;
 - volume-edge fade.
 
-The default is 1,024 instances.  It is intended to be subtle at low speed;
-raise count or brightness only after checking the motion cases below.  Count
-and enabled state recreate the proxy.  Other settings and motion are tiny
-per-frame parameter updates.
+The default is intentionally sparse at 96 candidate instances, with apparent
+motion fading from invisible at 0.75 pixels to fully visible at 4 pixels. The
+candidate count can exceed the number visible in a frame because particles
+outside the view, behind the camera, near volume edges, or below the motion
+threshold contribute nothing. Count and enabled state recreate the proxy.
+Other settings and motion are tiny per-frame parameter updates.
 
 ## Measurement
 
 `SpaceDustSubmit` is a CSV render-thread timing scope around dynamic mesh
 submission.  Unreal Insights/CSV GPU and draw statistics expose the single
-draw and its instance count.  Compare disabled, the default 1,024 instances,
-and a deliberately excessive count such as 4,096.  Submission should remain
+draw and its instance count. Compare disabled, the default 96 instances, and
+a diagnostic count such as 384. Submission should remain
 effectively constant; GPU time should scale approximately with instance count
 and covered pixels.
 
 ## Validation checklist
 
-1. Stopped ship: dust is near-invisible and has no translational streaking.
-2. Forward acceleration: dust flow and visibility increase with speed.
-3. Sideways drift: flow is lateral in screen space.
-4. Rotate while drifting: flow continues to describe the original world
-   velocity rather than the new ship forward direction.
-5. Rotate in place: the field responds to view rotation without artificial
-   translation.
-6. Maximum speed: streaks remain short and bounded, without visible wrapping.
-7. Nearby opaque geometry: dust does not visibly render through hulls.
-8. Long travel, teleports, and reset: no pattern collapse, jitter, or
-   accumulated precision loss.
+1. Stopped: dust is near-invisible, with no field of static white points.
+2. Very slow motion: only occasional subtle particles appear; the background
+   does not become a second starfield.
+3. Sideways drift: sparse short streaks move laterally without space rain.
+4. Forward acceleration: perspective motion emerges radially, with stronger
+   displacement away from the view centre and on nearby particles.
+5. Forward high speed: the effect strengthens but remains sparse and capped.
+6. Combined forward and sideways movement: directions vary naturally per
+   particle rather than sharing one global streak vector.
+7. Rotate while drifting: motion continues to describe world velocity rather
+   than the ship's new forward direction.
+8. Rotate in place: no artificial translational dust becomes visible.
+9. Nearby opaque geometry: dust does not visibly render through hulls.
+10. Long travel, teleports, and reset: no wrapping, precision, or pattern
+    regression appears.
 
-`native/core/tests/space_dust_math_tests.cpp` covers settings normalisation,
-large/negative translation-phase wrapping, and deterministic seed positions
-with GoogleTest. The material generator test also covers the vertex-colour
-material input used by this renderer.
+`native/core/tests/space_dust_math_tests.cpp` covers settings and motion-threshold
+normalisation, sparse defaults, large/negative translation-phase wrapping, and
+deterministic seed positions with GoogleTest. The material compilation test
+also covers the vertex-colour material input and custom vertex factory used by
+this renderer.
 
 ## Flight lab and tuning
 
@@ -99,7 +112,7 @@ live player presentation effect without touching simulation state:
 - `space_dust.preset default`
 - `space_dust.preset strong`
 
-`strong` preserves the active level's volume and colour while raising the
-count, visibility response, brightness, and capped streak length for tuning.
-It caps lateral streak scale at the default `0.35`, so its stronger settings do
-not restore dominant sideways rain.
+`strong` preserves the active level's volume and colour while using 192
+candidates, a 0.5-to-3-pixel motion fade, higher brightness, and a longer
+bounded streak interval. It remains a controlled diagnostic preset rather
+than restoring a dense field.

@@ -409,12 +409,13 @@ void ATestSpaceShip::apply_space_dust_debug_preset(FStringView const preset) {
         settings = FSpaceDustSettings{};
     } else if (preset.Equals(FStringView{TEXT("strong")}, ESearchCase::IgnoreCase)) {
         settings.enabled = true;
-        settings.particle_count = FMath::Max(settings.particle_count, 2048);
-        settings.brightness = 0.7f;
+        settings.particle_count = 192;
+        settings.brightness = 0.55f;
         settings.minimum_visible_speed = 500.0f;
         settings.full_visible_speed = 4000.0f;
         settings.streak_seconds = 0.02f;
-        settings.lateral_streak_scale = FMath::Min(settings.lateral_streak_scale, 0.35f);
+        settings.minimum_motion_pixels = 0.5f;
+        settings.full_motion_pixels = 3.0f;
         settings.maximum_streak_pixels = 32.0f;
     } else {
         UE_LOG(LogSandbox,
