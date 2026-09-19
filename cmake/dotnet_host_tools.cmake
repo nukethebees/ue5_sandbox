@@ -25,6 +25,7 @@ function(sandbox_add_dotnet_host_tool target_name output_variable project_file)
     "${CMAKE_BINARY_DIR}/host-tools/${tool_name}/${dotnet_configuration}"
   )
   set(output_file "${output_directory}/${tool_name}.exe")
+  set(intermediate_directory "${output_directory}/obj/")
 
   add_custom_command(
     OUTPUT "${output_file}"
@@ -33,6 +34,9 @@ function(sandbox_add_dotnet_host_tool target_name output_variable project_file)
       --output "${output_directory}"
       --nologo
       "-p:IsStandaloneTool=false"
+      "-p:BaseIntermediateOutputPath=${intermediate_directory}"
+      "-p:MSBuildProjectExtensionsPath=${intermediate_directory}"
+      "-p:DefaultItemExcludesInProjectFolder=${project_directory}/obj/**"
     DEPENDS
       "${project_file}"
       ${project_sources}
