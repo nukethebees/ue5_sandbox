@@ -329,4 +329,60 @@ TEST(NativeSimulationPowerControl, PowerEnergyRulesAreExplicit) {
     advance_ticks(simulation, 30);
     EXPECT_GT(simulation.get_player_ship_simulation()->get_energy(), after_emergency_braking);
 }
+
+TEST(NativeSimulationPowerControl, EmergencyBrakeFallsBackToBrakeWhenEnergyDepletes) {
+    constexpr float normal_brake_deceleration{50.f};
+    auto data{make_power_data()};
+    data.player->config.brake_depletion_time = 1.f;
+    data.player->config.power_brake_deceleration = normal_brake_deceleration;
+    data.player->config.power_emergency_brake_deceleration = 100.f;
+    LevelSim simulation{std::move(data)};
+    start_power_simulation(simulation);
+    accelerate(simulation);
+    auto* const commands{simulation.get_player_ship_commands()};
+    commands->set_throttle(0.f);
+    commands->start_emergency_brake();
+    advance_ticks(simulation, 62);
+
+    auto const* const player{simulation.get_player_ship_simulation()};
+    ASSERT_NE(player, nullptr);
+    EXPECT_NEAR(player->get_energy(), 0.f, 1.e-6f);
+    EXPECT_EQ(player->get_movement_state().boost_brake_state, player::BoostBrakeState::Brake);
+    auto const before_brake_speed{velocity(simulation).size()};
+    EXPECT_GT(before_brake_speed, 0.0);
+
+    advance_ticks(simulation, 30);
+    auto const after_brake_speed{velocity(simulation).size()};
+    EXPECT_LT(after_brake_speed, before_brake_speed);
+    EXPECT_NEAR(after_brake_speed, before_brake_speed - normal_brake_deceleration * 0.5, 1.e-3);
+    EXPECT_NEAR(player->get_energy(), 0.f, 1.e-6f);
+
+    commands->stop_brake();
+    EXPECT_EQ(player->get_movement_state().boost_brake_state, player::BoostBrakeState::None);
+    advance_ticks(simulation, 30);
+    EXPECT_GT(player->get_energy(), 0.f);
+}
+
+TEST(NativeSimulationPowerControl, EmergencyBrakeWithEmptyEnergyUsesNormalBrake) {
+    auto data{make_power_data()};
+    data.player->config.boost_depletion_time = 1.f;
+    LevelSim simulation{std::move(data)};
+    start_power_simulation(simulation);
+    accelerate(simulation);
+    auto* const commands{simulation.get_player_ship_commands()};
+    commands->set_throttle(0.f);
+    commands->start_boost();
+    advance_ticks(simulation, 61);
+
+    auto const* const player{simulation.get_player_ship_simulation()};
+    ASSERT_NE(player, nullptr);
+    EXPECT_NEAR(player->get_energy(), 0.f, 1.e-6f);
+
+    commands->start_emergency_brake();
+    EXPECT_EQ(player->get_movement_state().boost_brake_state, player::BoostBrakeState::Brake);
+    auto const before_brake_speed{velocity(simulation).size()};
+    advance_ticks(simulation, 30);
+    EXPECT_LT(velocity(simulation).size(), before_brake_speed);
+    EXPECT_NEAR(player->get_energy(), 0.f, 1.e-6f);
+}
 } // namespace ioj::sim::tests

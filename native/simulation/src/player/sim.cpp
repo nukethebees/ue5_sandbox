@@ -386,10 +386,14 @@ void Sim::set_boost_brake_state(BoostBrakeState const state, MovementState& move
 
 void Sim::update_boost_brake(float const dt, MovementState& movement) {
     auto const starting_energy{movement.thrust_energy};
-    if (starting_energy <= 0.f &&
-        (!uses_power_controller() || movement.boost_brake_state == player::BoostBrakeState::Boost ||
-         movement.boost_brake_state == player::BoostBrakeState::EmergencyBrake)) {
-        set_boost_brake_state(player::BoostBrakeState::None, movement);
+    if (starting_energy <= 0.f) {
+        if (uses_power_controller() &&
+            movement.boost_brake_state == player::BoostBrakeState::EmergencyBrake) {
+            set_boost_brake_state(player::BoostBrakeState::Brake, movement);
+        } else if (!uses_power_controller() ||
+                   movement.boost_brake_state == player::BoostBrakeState::Boost) {
+            set_boost_brake_state(player::BoostBrakeState::None, movement);
+        }
     }
 
     movement.thrust_energy += dt * movement.thrust_change_rate;
@@ -554,7 +558,9 @@ void Sim::start_brake() {
 
 void Sim::start_emergency_brake() {
     if (uses_power_controller()) {
-        set_boost_brake_state(player::BoostBrakeState::EmergencyBrake);
+        set_boost_brake_state(movement_state_.thrust_energy > 0.f
+                                  ? player::BoostBrakeState::EmergencyBrake
+                                  : player::BoostBrakeState::Brake);
         return;
     }
     start_brake();
