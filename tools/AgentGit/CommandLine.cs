@@ -6,6 +6,7 @@ internal static class CommandLine
         Usage:
           agent-git status
           agent-git branch-info
+          agent-git integrate --authorized [--keep-branch]
           agent-git policy <add|add-all|commit|switch|switch-create|rebase-base|branch-delete> [branch]
           agent-git [--dry-run] add <path>...
           agent-git [--dry-run] add-all
@@ -64,6 +65,21 @@ internal static class CommandLine
             case "branch-info" when remaining.Length == 0:
                 request = new BranchInfoRequest();
                 return true;
+            case "integrate":
+                if (dry_run)
+                {
+                    error = "--dry-run is not supported for the integration transaction.";
+                    return false;
+                }
+                if (remaining.All(value => value is "--authorized" or "--keep-branch") &&
+                    remaining.Count(value => value == "--authorized") == 1 &&
+                    remaining.Count(value => value == "--keep-branch") <= 1)
+                {
+                    request = new IntegrateRequest(true, remaining.Contains("--keep-branch", StringComparer.Ordinal));
+                    return true;
+                }
+                error = "integrate requires exactly one --authorized and accepts optional --keep-branch.";
+                return false;
             case "policy":
                 return TryParsePolicy(remaining, out request, out error);
             case "add" when remaining.Length > 0:

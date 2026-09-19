@@ -44,4 +44,22 @@ public sealed class CommandLineTests
         Assert.IsFalse(CommandLine.TryParse(["policy", "switch"], out _, out _));
         Assert.IsFalse(CommandLine.TryParse(["policy", "commit", "feature"], out _, out _));
     }
+
+    [TestMethod]
+    public void TryParse_integration_requires_explicit_authorization()
+    {
+        Assert.IsFalse(CommandLine.TryParse(["integrate"], out _, out var missing_error));
+        StringAssert.Contains(missing_error, "--authorized");
+
+        Assert.IsTrue(CommandLine.TryParse(
+            ["integrate", "--authorized", "--keep-branch"],
+            out var request,
+            out var error), error);
+        Assert.IsTrue(((IntegrateRequest)request!).Authorized);
+        Assert.IsTrue(((IntegrateRequest)request).KeepBranch);
+        Assert.IsFalse(CommandLine.TryParse(
+            ["--dry-run", "integrate", "--authorized"],
+            out _,
+            out _));
+    }
 }
