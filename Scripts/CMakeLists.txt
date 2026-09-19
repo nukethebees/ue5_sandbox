@@ -40,6 +40,6 @@ add_test(NAME CMake.DotnetHostTools
     --cmake "${CMAKE_COMMAND}"
 )
 set_tests_properties(CMake.DotnetHostTools PROPERTIES
-  LABELS "unit;all;cmake"
+  LABELS "unit;cmake"
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )

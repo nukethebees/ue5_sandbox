@@ -34,6 +34,12 @@ class DotnetHostToolTests(unittest.TestCase):
                 "using System.Reflection;\n[assembly: AssemblyTitle(\"legacy\")]\n",
                 encoding="utf-8",
             )
+            hidden_source = tool_directory / ".hidden" / "LegacyAssemblyInfo.cs"
+            hidden_source.parent.mkdir()
+            hidden_source.write_text(
+                "using System.Reflection;\n[assembly: AssemblyTitle(\"hidden\")]\n",
+                encoding="utf-8",
+            )
 
             helper_path = (self.source_dir / "cmake" / "dotnet_host_tools.cmake").as_posix()
             (fixture_root / "CMakeLists.txt").write_text(
@@ -62,6 +68,10 @@ class DotnetHostToolTests(unittest.TestCase):
             self.assertEqual(
                 legacy_source.read_text(encoding="utf-8"),
                 "using System.Reflection;\n[assembly: AssemblyTitle(\"legacy\")]\n",
+            )
+            self.assertEqual(
+                hidden_source.read_text(encoding="utf-8"),
+                "using System.Reflection;\n[assembly: AssemblyTitle(\"hidden\")]\n",
             )
             self.assertEqual(
                 [path.relative_to(source_obj_directory) for path in source_obj_directory.rglob("*") if path.is_file()],
