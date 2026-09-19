@@ -4,6 +4,8 @@ The memory layout planner inspects and compares physical memory layouts derived 
 It is a standalone Windows application and does not depend on Unreal Engine, Qt, or C#.
 
 See [architecture](ARCHITECTURE.md) for implementation and dependency details.
+See the [roadmap](ROADMAP.md) for the path from inspection and experiments to full LispB type
+authoring.
 
 ## Build and executable location
 

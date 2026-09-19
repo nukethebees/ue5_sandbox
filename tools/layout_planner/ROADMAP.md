@@ -1,0 +1,128 @@
+# Memory layout planner roadmap
+
+## Product direction
+
+The planner is an authoring tool, not only a schema viewer. LispB S-expressions remain the
+canonical source representation. The application edits a source-aware schema draft, resolves that
+draft into the shared semantic type graph, and uses the graph for layout analysis and C++ code
+generation.
+
+```text
+LispB source
+    <-> parse / source-preserving serialization
+Editable schema document
+    -> resolve and validate
+Semantic type graph
+    -> layout analysis
+    -> GUI visualization
+    -> C++ code generation
+```
+
+The editable document belongs to the LispB/schema library. The GUI must not introduce planner-only
+copies of enums, packed fields, columns, or future type declarations.
+
+## 1. Editable document and command foundation
+
+- Own a mutable draft of the validated LispB declarations.
+- Retain source-file ownership and source ranges for declarations.
+- Assign stable declaration IDs that survive ordinary edits.
+- Apply typed semantic commands rather than text substitutions.
+- Re-resolve and validate the semantic graph after each command.
+- Keep invalid operations from corrupting the last valid draft.
+- Provide undo/redo, dirty state, and a monotonic revision for consumers.
+- Track the saved history position independently from the edit revision.
+- Later extend this foundation with precise serialization, atomic save, diff preview, and
+  reparse-after-save verification.
+
+## 2. Enum authoring vertical slice
+
+- Create an enum in a selected module and namespace.
+- Select its underlying semantic type.
+- Add, remove, duplicate, and reorder enumerators.
+- Edit symbolic names, explicit values, display names, serialized names, hidden markers, and count
+  sentinel semantics already supported by LispB.
+- Rename and delete safely with dependency-aware diagnostics.
+- Save the declaration to LispB, reload it, resolve the same semantic graph, and generate the
+  expected C++.
+
+## 3. Packed-value and bit-field authoring
+
+- Create packed values with a backing storage type and optional invalid raw value.
+- Add, remove, duplicate, and reorder fields.
+- Select each field's logical semantic type.
+- Edit bit width, packed field kind, and existing range-helper metadata.
+- Support both numeric edits and direct divider dragging.
+- Display unused bits, overflow, representable ranges, and dependency edges immediately.
+- Allow creation of a referenced enum from the field workflow.
+- Save and reload the resulting LispB without losing semantics.
+
+The primary acceptance case is creating an enum backed by `uint8`, then creating a packed `uint32`
+value with a 24-bit integer field and an 8-bit field that semantically references that enum.
+
+## 4. SoA authoring
+
+- Create standard-library SoA declarations.
+- Add, remove, duplicate, and reorder columns.
+- Select semantic column types and supported column kinds.
+- Navigate to or create referenced types.
+- Keep planning-only capacity experiments separate from source semantics unless capacity becomes a
+  declared LispB property.
+- Save, reload, analyze, and generate the declaration.
+
+## 5. Relationship and declaration lifecycle operations
+
+- Provide a searchable semantic type picker.
+- Navigate from a field or column to its referenced definition.
+- Rename declarations while updating semantic references deliberately.
+- Report all reverse users before deletion.
+- Reject unsafe deletion or require explicit reference repair.
+- Duplicate declarations under a new stable identity.
+- Move declarations between modules where legal.
+- Keep unresolved references as explicit draft errors; never silently convert them to external
+  leaves.
+
+## 6. Semantic design variants
+
+Evolve variants from physical override maps into typed change sets over the baseline document.
+Variants may add, remove, rename, or structurally edit declarations and relationships. Comparison
+should report both semantic changes and their physical consequences. Recovery state may preserve
+draft work, but accepted durable changes are written to LispB rather than a competing schema
+format.
+
+## 7. Struct and AoS synthesis
+
+Extend the shared type graph and authoring document with structures, typed members, fixed arrays,
+alignment, offsets, internal padding, and tail padding. Support member-order experiments and
+hot/cold grouping using the same command, validation, serialization, and dependency mechanisms.
+
+## 8. Workload and system-level planning
+
+- Compose semantic types into explicit planning scenarios.
+- Model counts, capacities, multiplicity, allocation strategies, and selected access sets.
+- Report payload, padding, capacity slack, allocation count, cache lines, pages, and total memory.
+- Compare complete subsystem costs and identify the largest contributors.
+- Reference semantic types by stable identity rather than redeclaring their schemas.
+
+## 9. Physical-fact accuracy
+
+- Record provenance for every ABI fact.
+- Load generated `sizeof` and `alignof` facts from the real target compiler and configuration.
+- Identify profiles by platform, architecture, compiler, and build configuration.
+- Continue reporting unknown facts instead of guessing.
+- Model allocator and single-allocation details only when the selected backend supplies factual
+  rules.
+
+## 10. Advanced layouts
+
+After the authoring and analysis loop is reliable, extend the semantic graph with unions, tagged
+unions, arrays, AoSoA/chunking, handles, references, containers, and arena/block allocation.
+Performance claims should be based on explicit access patterns or measurements rather than a
+speculative aggregate score.
+
+## Validation strategy
+
+Keep authoring and analysis behavior testable without ImGui. Cover command inversion, undo/redo,
+stable identity, duplicate and unresolved references, source ownership, serialization round trips,
+ABI boundary cases, overflow-safe aggregates, and unchanged generated C++ for unedited schemas.
+Each new declaration kind should have an end-to-end create, save, reload, resolve, analyze, and
+generate acceptance case.
