@@ -23,25 +23,7 @@ internal sealed class ProcessRunner : IProcessRunner
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        var start_info = new ProcessStartInfo
-        {
-            FileName = request.FileName,
-            WorkingDirectory = request.WorkingDirectory,
-            UseShellExecute = false,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            CreateNoWindow = true,
-        };
-        start_info.Environment.Clear();
-        foreach (var pair in request.Environment)
-        {
-            start_info.Environment.Add(pair.Key, pair.Value);
-        }
-
-        foreach (var argument in request.Arguments)
-        {
-            start_info.ArgumentList.Add(argument);
-        }
+        var start_info = CreateStartInfo(request);
 
         using var process = new Process { StartInfo = start_info };
         try
@@ -81,6 +63,31 @@ internal sealed class ProcessRunner : IProcessRunner
         }
 
         return new ProcessResult(process.ExitCode, await output_task, await error_task);
+    }
+
+    internal static ProcessStartInfo CreateStartInfo(ProcessRequest request)
+    {
+        var start_info = new ProcessStartInfo
+        {
+            FileName = request.FileName,
+            WorkingDirectory = request.WorkingDirectory,
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+        };
+        start_info.Environment.Clear();
+        foreach (var pair in request.Environment)
+        {
+            start_info.Environment.Add(pair.Key, pair.Value);
+        }
+
+        foreach (var argument in request.Arguments)
+        {
+            start_info.ArgumentList.Add(argument);
+        }
+
+        return start_info;
     }
 
     private static async Task<byte[]> ReadAllBytesAsync(Stream stream, CancellationToken cancellation_token)

@@ -130,7 +130,9 @@ internal static class TrustStore
 
         var empty_config = Path.Combine(installation_root, "config", "empty.gitconfig");
         var empty_hooks = Path.Combine(installation_root, "config", "empty-hooks");
-        if (!File.Exists(empty_config) || !Directory.Exists(empty_hooks) || Directory.EnumerateFileSystemEntries(empty_hooks).Any())
+        var empty_attributes = Path.Combine(installation_root, "config", "empty.attributes");
+        if (!File.Exists(empty_config) || !File.Exists(empty_attributes) ||
+            !Directory.Exists(empty_hooks) || Directory.EnumerateFileSystemEntries(empty_hooks).Any())
         {
             throw new PolicyConfigurationException("The canonical empty Git configuration or hook directory is missing or invalid.");
         }

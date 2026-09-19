@@ -37,14 +37,26 @@ internal sealed class RepositoryDiscovery(GitClient git)
         }
 
         await ValidateRepositoryConfigurationAsync(root, common_git_directory, cancellation_token);
-        var policy_commit = await git.RequireTextAsync(
-            root,
-            ["rev-parse", "--verify", $"{registration.PolicyRef}^{{commit}}"],
-            cancellation_token);
-        var policy_json = await git.RequireTextAsync(
-            root,
-            ["cat-file", "blob", $"{registration.PolicyRef}:{registration.PolicyPath}"],
-            cancellation_token);
+        await ValidateDirectRefAsync(root, registration.PolicyRef, cancellation_token);
+        string policy_commit;
+        string policy_json;
+        try
+        {
+            policy_commit = await git.RequireTextAsync(
+                root,
+                ["rev-parse", "--verify", $"{registration.PolicyRef}^{{commit}}"],
+                cancellation_token);
+            policy_json = await git.RequireTextAsync(
+                root,
+                ["cat-file", "blob", $"{registration.PolicyRef}:{registration.PolicyPath}"],
+                cancellation_token);
+        }
+        catch (GitCommandException exception)
+        {
+            throw new PolicyConfigurationException(
+                $"Unable to load policy '{registration.PolicyRef}:{registration.PolicyPath}': {exception.Message}",
+                exception);
+        }
         if (Encoding.UTF8.GetByteCount(policy_json) > 64 * 1024)
         {
             throw new PolicyConfigurationException("Policy document exceeds the 64 KiB safety limit.");
@@ -71,7 +83,10 @@ internal sealed class RepositoryDiscovery(GitClient git)
         }
 
         var head = await git.RequireTextAsync(root, ["rev-parse", "--verify", "HEAD^{commit}"], cancellation_token);
-        var branch_result = await git.RunAsync(root, ["symbolic-ref", "--quiet", "--short", "HEAD"], cancellation_token: cancellation_token);
+        var branch_result = await git.RunAsync(
+            root,
+            ["symbolic-ref", "--quiet", "--short", "--no-recurse", "HEAD"],
+            cancellation_token: cancellation_token);
         string? current_branch = branch_result.ExitCode switch
         {
             0 => Encoding.UTF8.GetString(branch_result.StandardOutput).TrimEnd('\r', '\n', '\0'),
@@ -79,6 +94,12 @@ internal sealed class RepositoryDiscovery(GitClient git)
             _ => throw CreateGitFailure("symbolic-ref", branch_result),
         };
         BranchClassification? classification = current_branch is null ? null : policy.Classify(current_branch);
+        if (current_branch is not null)
+        {
+            await ValidateDirectRefAsync(root, $"refs/heads/{current_branch}", cancellation_token);
+        }
+
+        await ValidateDirectRefAsync(root, $"refs/heads/{policy.BaseBranch}", cancellation_token);
         var base_commit = await git.RequireTextAsync(
             root,
             ["rev-parse", "--verify", $"refs/heads/{policy.BaseBranch}^{{commit}}"],
@@ -126,19 +147,7 @@ internal sealed class RepositoryDiscovery(GitClient git)
         }
 
         GitClient.EnsureSuccess(exists, ["show-ref"]);
-        var symref = await git.RunAsync(
-            context.State.WorktreeRoot,
-            ["symbolic-ref", "--quiet", reference],
-            cancellation_token: cancellation_token);
-        if (symref.ExitCode == 0)
-        {
-            throw new RepositoryStateException($"Branch '{branch}' is a symbolic ref and is not safe for agent-git.");
-        }
-
-        if (symref.ExitCode != 1)
-        {
-            GitClient.EnsureSuccess(symref, ["symbolic-ref"]);
-        }
+        await ValidateDirectRefAsync(context.State.WorktreeRoot, reference, cancellation_token);
 
         var commit = await git.RequireTextAsync(
             context.State.WorktreeRoot,
@@ -227,7 +236,6 @@ internal sealed class RepositoryDiscovery(GitClient git)
         string common_git_directory,
         CancellationToken cancellation_token)
     {
-        var dangerous_pattern = "^(include\\.|includeif\\.|filter\\..*\\.(clean|smudge|process)|merge\\..*\\.driver)$";
         var scopes = new List<string> { "--local" };
         var worktree_config = await git.RunAsync(
             worktree_root,
@@ -250,17 +258,12 @@ internal sealed class RepositoryDiscovery(GitClient git)
         {
             var result = await git.RunAsync(
                 worktree_root,
-                ["config", scope, "--name-only", "--get-regexp", dangerous_pattern],
+                ["config", scope, "--name-only", "--list"],
                 cancellation_token: cancellation_token);
-            if (result.ExitCode == 1)
-            {
-                continue;
-            }
-
             GitClient.EnsureSuccess(result, ["config"]);
             var names = Encoding.UTF8.GetString(result.StandardOutput)
                 .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            var unknown = names.Where(name => !name.StartsWith("filter.lfs.", StringComparison.OrdinalIgnoreCase)).ToArray();
+            var unknown = names.Where(IsUnsupportedExecutableConfiguration).ToArray();
             if (unknown.Length > 0)
             {
                 throw new RepositoryStateException(
@@ -272,6 +275,62 @@ internal sealed class RepositoryDiscovery(GitClient git)
         if (File.Exists(alternates))
         {
             throw new RepositoryStateException("Git object alternates are not supported by agent-git.");
+        }
+    }
+
+    private static bool IsUnsupportedExecutableConfiguration(string name)
+    {
+        var lower = name.ToLowerInvariant();
+        if (lower.StartsWith("include.", StringComparison.Ordinal) ||
+            lower.StartsWith("includeif.", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        if (lower.StartsWith("merge.", StringComparison.Ordinal) && lower.EndsWith(".driver", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        if (lower.StartsWith("credential.", StringComparison.Ordinal) ||
+            lower.Equals("credential.helper", StringComparison.Ordinal) ||
+            lower.Equals("core.askpass", StringComparison.Ordinal) ||
+            lower.Equals("core.sshcommand", StringComparison.Ordinal) ||
+            lower.StartsWith("lfs.customtransfer.", StringComparison.Ordinal) ||
+            lower.Equals("lfs.standalonetransferagent", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        if (!lower.StartsWith("filter.", StringComparison.Ordinal) ||
+            !(lower.EndsWith(".clean", StringComparison.Ordinal) ||
+              lower.EndsWith(".smudge", StringComparison.Ordinal) ||
+              lower.EndsWith(".process", StringComparison.Ordinal)))
+        {
+            return false;
+        }
+
+        return !lower.StartsWith("filter.lfs.", StringComparison.Ordinal);
+    }
+
+    private async Task ValidateDirectRefAsync(
+        string worktree_root,
+        string reference,
+        CancellationToken cancellation_token)
+    {
+        var symref = await git.RunAsync(
+            worktree_root,
+            ["symbolic-ref", "--quiet", reference],
+            cancellation_token: cancellation_token);
+        if (symref.ExitCode == 0)
+        {
+            throw new RepositoryStateException(
+                $"Branch ref '{reference}' is symbolic and is not safe for agent-git.");
+        }
+
+        if (symref.ExitCode != 1)
+        {
+            GitClient.EnsureSuccess(symref, ["symbolic-ref"]);
         }
     }
 

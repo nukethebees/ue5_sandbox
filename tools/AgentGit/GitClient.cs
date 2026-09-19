@@ -133,6 +133,7 @@ internal sealed class GitClient
             ["GIT_EDITOR"] = "false",
             ["GIT_SEQUENCE_EDITOR"] = "false",
             ["GIT_PAGER"] = "cat",
+            ["GIT_LFS_SKIP_SMUDGE"] = "1",
         };
     }
 }

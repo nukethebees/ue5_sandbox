@@ -25,6 +25,7 @@ public sealed class ProcessRunnerTests
             Assert.AreEqual(git_path, runner.Request!.FileName);
             Assert.IsTrue(runner.Request.Arguments.Contains("a & b"));
             Assert.AreEqual("0", runner.Request.Environment["GIT_TERMINAL_PROMPT"]);
+            Assert.AreEqual("1", runner.Request.Environment["GIT_LFS_SKIP_SMUDGE"]);
             Assert.AreEqual(config, runner.Request.Environment["GIT_CONFIG_GLOBAL"]);
             Assert.IsFalse(runner.Request.Environment.Keys.Any(key => key.Equals("GIT_DIR", StringComparison.OrdinalIgnoreCase)));
         }
@@ -32,6 +33,26 @@ public sealed class ProcessRunnerTests
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    [TestMethod]
+    public void CreateStartInfo_never_uses_a_shell_and_preserves_argument_boundaries()
+    {
+        var request = new ProcessRequest(
+            "C:/trusted/git.exe",
+            ["commit", "-m", "value & whoami"],
+            Environment.CurrentDirectory,
+            new Dictionary<string, string> { ["SAFE"] = "1" },
+            TimeSpan.FromSeconds(1));
+
+        var start_info = ProcessRunner.CreateStartInfo(request);
+
+        Assert.IsFalse(start_info.UseShellExecute);
+        Assert.IsTrue(start_info.RedirectStandardOutput);
+        Assert.IsTrue(start_info.RedirectStandardError);
+        CollectionAssert.AreEqual(request.Arguments.ToArray(), start_info.ArgumentList.ToArray());
+        Assert.AreEqual("1", start_info.Environment["SAFE"]);
+        Assert.AreEqual(1, start_info.Environment.Count);
     }
 
     private sealed class RecordingRunner : IProcessRunner
