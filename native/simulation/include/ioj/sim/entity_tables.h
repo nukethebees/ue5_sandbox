@@ -6,6 +6,7 @@
 #include <array>
 #include <cassert>
 #include <cstddef>
+#include <functional>
 #include <span>
 
 namespace ioj::sim {
@@ -33,15 +34,10 @@ class EntityComponentIndexBindings {
         auto const& binding{bindings_[static_cast<std::size_t>(owner.entity_type())]};
         assert(binding.owners.size() == binding.indices.size());
 
-        auto row{indexes_.find(owner)};
-        if (row < 0) {
-            if (binding.owners.size() != 1 || binding.owners.front() != owner) {
-                assert(false);
-                return;
-            }
-            row = 0;
-        }
-
+        auto const row{indexes_.find(owner)};
+        // Component compaction runs while every owning entity row is still structurally stable
+        // and bound, including retained dead entities such as the player.
+        assert(row >= 0);
         auto const element{static_cast<std::size_t>(row)};
         if (element >= binding.owners.size() || binding.owners[element] != owner) {
             assert(false);
@@ -52,6 +48,21 @@ class EntityComponentIndexBindings {
             return;
         }
         binding.indices[element] = new_index;
+    }
+
+    template <typename Validate>
+    void validate(Validate&& validate_mapping) const {
+#ifndef NDEBUG
+        for (auto const& binding : bindings_) {
+            assert(binding.owners.size() == binding.indices.size());
+            auto const count{binding.owners.size()};
+            for (std::size_t row{}; row < count; ++row) {
+                std::invoke(validate_mapping, binding.indices[row], binding.owners[row]);
+            }
+        }
+#else
+        static_cast<void>(validate_mapping);
+#endif
     }
   private:
     struct Binding {
@@ -78,6 +89,12 @@ struct EntityTables {
                             std::span<EntityUniqueId const> const owners) {
         health.remove_rows(rows, indices, owners, [this](HealthMove const& move) {
             health_indices_.update(move.owner, move.old_index, move.new_index);
+        });
+    }
+
+    void validate_health_mappings() const {
+        health_indices_.validate([this](HealthIndex const index, EntityUniqueId const owner) {
+            assert(health.contains(index, owner));
         });
     }
 

@@ -83,7 +83,8 @@ struct Sim {
     void generate_fire_commands(ml::FrameScratch& scratch);
     void resolve_damage_events();
     void publish_deaths();
-    void cleanup_entities();
+    void remove_components();
+    void remove_entities();
     void finish_action();
 
     /* **************************************** */

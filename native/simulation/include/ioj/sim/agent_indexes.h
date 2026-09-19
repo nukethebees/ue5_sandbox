@@ -15,8 +15,9 @@
 
 namespace ioj::sim {
 
-// Allocation and ID offsets last for the level lifetime. Retire IDs before removal
-// and bind surviving rows after layout changes, before any subsequent lookup.
+// Allocation and ID offsets last for the level lifetime. Indexes address retained entity storage,
+// not liveness. Retire IDs before storage removal and bind surviving rows after layout changes,
+// before any subsequent lookup.
 class AgentIndexes {
   public:
     inline static constexpr std::uint32_t invalid_index{std::numeric_limits<std::uint32_t>::max()};

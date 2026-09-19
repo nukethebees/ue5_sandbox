@@ -543,9 +543,22 @@ void Sim::publish_deaths() {
         ledger_.record_death(deaths.victims[i], deaths.killers[i], deaths.reasons[i]);
     }
 }
-void Sim::cleanup_entities() {
+void Sim::remove_components() {
     agents_.indexes().assert_removal_allowed();
-    SANDBOX_PROFILE_SCOPE("fighters::Sim::cleanup_entities");
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_components");
+
+    batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
+    if (local_indices_to_remove.empty()) {
+        return;
+    }
+
+    auto const columns{entity_buffers.current().get_const_view().columns()};
+    entity_tables_.remove_health_rows(
+        local_indices_to_remove, columns.health_indices, columns.entity_ids);
+}
+void Sim::remove_entities() {
+    agents_.indexes().assert_removal_allowed();
+    SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_entities");
 
     remove_dead_entities();
     if (!local_indices_to_remove.empty()) {
@@ -1290,10 +1303,7 @@ void Sim::commit_spawns() {
 void Sim::remove_dead_entities() {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::remove_dead_entities");
     auto& data{entity_buffers.current()};
-    batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
     auto const columns{data.get_const_view().columns()};
-    entity_tables_.remove_health_rows(
-        local_indices_to_remove, columns.health_indices, columns.entity_ids);
     for (auto const index : local_indices_to_remove) {
         agents_.indexes().retire(columns.entity_ids[index]);
     }

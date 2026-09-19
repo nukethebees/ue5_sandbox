@@ -46,6 +46,8 @@ struct HealthMove {
 
 class HealthConstView {
   public:
+    // Ephemeral borrowed view. Structural mutation of either HealthTable or the entity storage
+    // supplying indices/owners invalidates this view and its entity-to-component correspondence.
     HealthConstView() = default;
 
     [[nodiscard]] auto num() const noexcept -> std::int32_t {
@@ -76,6 +78,8 @@ class HealthConstView {
 
 class HealthView {
   public:
+    // Ephemeral borrowed view. Structural mutation of either HealthTable or the entity storage
+    // supplying indices/owners invalidates this view and its entity-to-component correspondence.
     HealthView() = default;
 
     [[nodiscard]] auto num() const noexcept -> std::int32_t {
@@ -117,6 +121,8 @@ class HealthTable {
              std::span<HealthIndex> output_indices);
 
     template <typename HandleMove>
+    // Rows are entity-row indices in strictly descending order. The owning entity storage and
+    // its index/owner spans must remain structurally unchanged until every move is handled.
     void remove_rows(std::span<std::int32_t const> const rows,
                      std::span<HealthIndex const> const indices,
                      std::span<EntityUniqueId const> const owners,
@@ -141,16 +147,12 @@ class HealthTable {
         }
     }
 
-    [[nodiscard]] auto get_view(std::span<HealthIndex const> indices) -> HealthView;
     [[nodiscard]] auto get_view(std::span<HealthIndex const> indices,
                                 std::span<EntityUniqueId const> owners) -> HealthView;
-    [[nodiscard]] auto get_const_view(std::span<HealthIndex const> indices) const
-        -> HealthConstView;
     [[nodiscard]] auto get_const_view(std::span<HealthIndex const> indices,
                                       std::span<EntityUniqueId const> owners) const
         -> HealthConstView;
     [[nodiscard]] auto contains(HealthIndex index, EntityUniqueId owner) const noexcept -> bool;
-    [[nodiscard]] auto get_health(HealthIndex index) const -> Health;
     [[nodiscard]] auto get_health(HealthIndex index, EntityUniqueId owner) const -> Health;
     [[nodiscard]] auto get_owner(HealthIndex index) const -> EntityUniqueId;
     [[nodiscard]] auto num_slots() const noexcept -> std::int32_t {

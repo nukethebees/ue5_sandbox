@@ -15,12 +15,8 @@ namespace {
     assert(index.is_valid() && index.raw_value() < owners.size());
     auto const slot{static_cast<std::size_t>(index.raw_value())};
     assert(owners[slot].is_valid());
-#ifndef NDEBUG
-    assert(expected_owners.empty() ||
-           owners[slot] == expected_owners[static_cast<std::size_t>(row)]);
-#else
-    static_cast<void>(expected_owners);
-#endif
+    assert(expected_owners.size() == indices.size());
+    assert(owners[slot] == expected_owners[static_cast<std::size_t>(row)]);
     return slot;
 }
 }
@@ -111,17 +107,10 @@ auto HealthTable::remove(HealthIndex const index, EntityUniqueId const owner)
     owners_.pop_back();
     return move;
 }
-auto HealthTable::get_view(std::span<HealthIndex const> const indices) -> HealthView {
-    return {{values_.data(), values_.size()}, {owners_.data(), owners_.size()}, indices, {}};
-}
 auto HealthTable::get_view(std::span<HealthIndex const> const indices,
                            std::span<EntityUniqueId const> const owners) -> HealthView {
     validate_owners(indices, owners);
     return {{values_.data(), values_.size()}, {owners_.data(), owners_.size()}, indices, owners};
-}
-auto HealthTable::get_const_view(std::span<HealthIndex const> const indices) const
-    -> HealthConstView {
-    return {{values_.data(), values_.size()}, {owners_.data(), owners_.size()}, indices, {}};
 }
 auto HealthTable::get_const_view(std::span<HealthIndex const> const indices,
                                  std::span<EntityUniqueId const> const owners) const
@@ -132,11 +121,6 @@ auto HealthTable::get_const_view(std::span<HealthIndex const> const indices,
 auto HealthTable::contains(HealthIndex const index, EntityUniqueId const owner) const noexcept
     -> bool {
     return valid_slot(index) && owners_[static_cast<std::size_t>(index.raw_value())] == owner;
-}
-auto HealthTable::get_health(HealthIndex const index) const -> Health {
-    assert(valid_slot(index));
-    auto const index_slot{slot(index)};
-    return values_[index_slot];
 }
 auto HealthTable::get_health(HealthIndex const index, EntityUniqueId const owner) const -> Health {
     assert(contains(index, owner));

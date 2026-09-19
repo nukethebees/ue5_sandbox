@@ -480,19 +480,16 @@ void LevelSim::advance(time_type const dt) {
                 SANDBOX_PROFILE_SCOPE("ResolutionCommit");
                 clock_.phase = SimulationPhase::ResolutionCommit;
 
-                auto const capital_count{capital_ships_simulation_.get_num_instances()};
-                capital_ships_phase_.cleanup_entities();
-                if (capital_ships_simulation_.get_num_instances() != capital_count) {
-                    rebuild_agent_indexes();
-                }
+                // Compact every component table while all owning entity rows and reverse indexes
+                // still describe the same stable layout.
+                capital_ships_phase_.remove_components();
+                fighters_phase_.remove_components();
+                turrets_phase_.remove_components();
 
-                auto const fighter_count{fighters_simulation_.get_num_instances()};
-                fighters_phase_.cleanup_entities();
-                if (fighters_simulation_.get_num_instances() != fighter_count) {
-                    rebuild_agent_indexes();
-                }
-
-                turrets_phase_.cleanup_entities();
+                // Entity SOAs may compact only after every component-index fixup is complete.
+                capital_ships_phase_.remove_entities();
+                fighters_phase_.remove_entities();
+                turrets_phase_.remove_entities();
                 lasers_phase_.cleanup_entities();
                 rebuild_agent_indexes();
                 capital_ships_simulation_.refresh_fighter_ids(scratch_scope.scratch());
@@ -556,17 +553,15 @@ void LevelSim::rebuild_agent_indexes() {
 
     // Bind player index
     PlayerAgentView player_view{};
-    if (player_ship_simulation_ && player_ship_simulation_->is_alive()) {
+    if (player_ship_simulation_) {
         auto const& player{*player_ship_simulation_};
         agent_indexes_.bind(EntityType::PlayerShip, {&player.unique_entity_id, 1});
-        player_view = {&player.get_movement_state().transform,
-                       &player.get_movement_state().velocity,
-                       player.get_health_index(),
-                       &player.team,
-                       player.unique_entity_id};
-    } else {
-        if (player_ship_simulation_) {
-            agent_indexes_.retire(player_ship_simulation_->unique_entity_id);
+        if (player.is_alive()) {
+            player_view = {&player.get_movement_state().transform,
+                           &player.get_movement_state().velocity,
+                           player.get_health_index(),
+                           &player.team,
+                           player.unique_entity_id};
         }
     }
 
@@ -577,6 +572,7 @@ void LevelSim::rebuild_agent_indexes() {
     } else {
         entity_tables_.bind_health_indices(EntityType::PlayerShip, {}, {});
     }
+    entity_tables_.validate_health_mappings();
 
     // Publish agent views
     agent_accessor_.bind(capitals, fighters, turrets, spinners, player_view);

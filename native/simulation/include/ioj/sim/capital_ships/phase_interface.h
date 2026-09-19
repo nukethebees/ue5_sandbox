@@ -22,7 +22,9 @@ class PhaseInterface {
 
     void publish_deaths();
 
-    void cleanup_entities();
+    void remove_components();
+
+    void remove_entities();
 
     void finish_action();
 

@@ -48,6 +48,8 @@ struct AgentTargetView {
 
 class AgentAccessor {
   public:
+    // Bound entity and health views are borrowed. Do not query while their backing entity or
+    // component storage is undergoing structural mutation; bind again after the commit.
     AgentAccessor(AgentIndexes& indexes, HealthTable const& health_table) noexcept
         : indexes_{indexes}
         , health_table_{health_table} {}
@@ -194,7 +196,7 @@ class AgentAccessor {
         }
         switch (id.entity_type()) {
             case EntityType::PlayerShip:
-                return player_.health_index.is_valid() &&
+                return player_.transform != nullptr && player_.health_index.is_valid() &&
                        sim::is_alive(health_table_.get_health(player_.health_index, player_.id));
             case EntityType::CapitalShip:
                 return sim::is_alive(

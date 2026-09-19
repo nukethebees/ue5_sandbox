@@ -131,7 +131,8 @@
     (method resolve_damage_events void)
     (method resolve_fighters_of_dying_capitals void)
     (method publish_deaths void)
-    (method cleanup_entities void)
+    (method remove_components void)
+    (method remove_entities void)
     (method finish_action void)))
 
 (facade-module fighters_phase_interface
@@ -161,7 +162,8 @@
     (method commit_spawns void)
     (method resolve_damage_events void)
     (method publish_deaths void)
-    (method cleanup_entities void)
+    (method remove_components void)
+    (method remove_entities void)
     (method finish_action void)))
 
 (facade-module turrets_phase_interface
@@ -187,7 +189,8 @@
       (parameter scratch "ml::FrameScratch&"))
     (method resolve_damage_events void)
     (method publish_deaths void)
-    (method cleanup_entities void)
+    (method remove_components void)
+    (method remove_entities void)
     (method finish_action void)))
 
 (facade-module spinners_phase_interface

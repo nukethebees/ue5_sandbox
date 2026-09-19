@@ -45,8 +45,12 @@ void PhaseInterface::publish_deaths() {
     simulation.publish_deaths();
 }
 
-void PhaseInterface::cleanup_entities() {
-    simulation.cleanup_entities();
+void PhaseInterface::remove_components() {
+    simulation.remove_components();
+}
+
+void PhaseInterface::remove_entities() {
+    simulation.remove_entities();
 }
 
 void PhaseInterface::finish_action() {

@@ -120,7 +120,8 @@ struct Sim {
     void resolve_damage_events();
     void resolve_fighters_of_dying_capitals();
     void publish_deaths();
-    void cleanup_entities();
+    void remove_components();
+    void remove_entities();
     void finish_action();
 
     /* **************************************** */
