@@ -42,7 +42,10 @@ Unreal Engine 5.8 project.
 
 * CMake is used to drive all builds, including UBT
 * Load dev.ps1 when starting a task
-* ctools will build essential tools
+* `ctools` refreshes standalone C# executables under `tools/bin` for direct developer use. CMake
+  workflows build their configuration-local C# host-tool dependencies on demand; do not run
+  `ctools` as a workflow preflight. Native mimalloc validation likewise builds its configuration-
+  local `NativeBinaryTools` host dependency on demand.
 * A canonical per-user jobserver coordinates expensive work across worktrees. Ordinary work shares the machine resource; benchmarks wait for older work to drain and then run exclusively. Use `get-jobserver-state` or the `jobserver-status` target to inspect running and queued jobs. Continue to use repository CMake/PowerShell wrappers for coordinated work; do not bypass them merely to customize queue metadata.
 * Prefer to build native code for the development process; leave Unreal builds to the end of a task to avoid UBT mutex contention
 * Run code/asset generators needed for the task

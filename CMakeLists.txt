@@ -15,8 +15,8 @@ include(cmake/precompiled_headers.cmake)
 
 enable_testing()
 
-include(cmake/staged_csharp_tools.cmake)
 include(cmake/dotnet_host_tools.cmake)
+add_custom_target(csharp-host-tools)
 
 add_subdirectory(cmake)
 

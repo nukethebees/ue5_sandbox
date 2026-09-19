@@ -103,7 +103,7 @@ function(add_unreal_packaging_targets)
       --unreal-pak "${UE_UNREAL_PAK_EXE}"
       --verification-directory "${SANDBOX_GAME_VERIFICATION_ROOT}"
       --configuration "${UE_CONFIGURATION}"
-    DEPENDS sandbox-game-package-tools-preflight
+    DEPENDS game-package-tools-host
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     COMMENT "Verifying archived Sandbox ${UE_PLATFORM} ${UE_CONFIGURATION}"
     USES_TERMINAL

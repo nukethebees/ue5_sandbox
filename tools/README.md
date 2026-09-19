@@ -2,8 +2,9 @@
 
 `tools/` contains standalone utilities shared by repository workflows.
 
-Run `ctools` after creating a worktree to build and stage standalone C# executables in `tools/bin`.
-Workflows that directly use a staged executable require it to be present.
+Run `ctools` when a direct developer command needs a staged executable in `tools/bin`. CMake
+workflows build their own configuration-local C# host-tool outputs on demand and never depend on
+the shared staging directory.
 
 - `jobserver/` is the canonical per-user coordinator for build, Editor, test, commandlet, and
   benchmark resource claims. See its [detailed README](jobserver/README.md).
@@ -17,20 +18,20 @@ Workflows that directly use a staged executable require it to be present.
   absent, without building the rest of the standalone tools or requiring Unreal setup.
 - `NativeBinaryTools/` inspects native object files for build integration checks. Its staged
   executable can be run as `tools/bin/NativeBinaryTools.exe mimalloc-symbols <generate|verify> ...`.
-  Native CMake builds use a configuration-local copy built on demand, so they do not require a
-  prior `ctools` run.
+  Native CMake builds use a configuration-local copy built on demand.
 - `AgentGit/` is the repository-aware, policy-enforcing Git interface intended for autonomous
   agents. Its repository build output is deliberately not trusted for mutations; use
   `install-agent-git` to create the canonical per-user installation described in
   [the agent-git documentation](../docs/agent-git.md). The installer builds and validates in a
   private per-install output directory rather than installing from shared `tools/bin` state.
-- `CodeFormatTools/` is the C# formatter for repository C++ and shader files. Run its staged
-  executable through the `format-code` and `format-all-code` CMake workflows, or directly as
+- `CodeFormatTools/` is the C# formatter for repository C++ and shader files. CMake builds it for
+  the `format-code` and `format-all-code` workflows; it can also be run directly as
   `tools/bin/CodeFormatTools.exe [--all|--changed|--staged] [--jobs N|-j N] [--verbose]` after
-  building tools. Formatting runs concurrently by default with half the logical processor count,
-  capped at 16 jobs; use `--jobs 1` for sequential execution.
-- `ArchitectureChecks/` validates repository architecture invariants. Its staged executable is
-  invoked by `check-space-game-layers` as `tools/bin/ArchitectureChecks.exe --root <path>`.
+  `ctools`. Formatting runs concurrently by default with half the logical processor count, capped
+  at 16 jobs; use `--jobs 1` for sequential execution.
+- `ArchitectureChecks/` validates repository architecture invariants. CMake builds it on demand
+  for `check-space-game-layers`; its staged executable can be run directly as
+  `tools/bin/ArchitectureChecks.exe --root <path>` after `ctools`.
 - `GamePackageTools/` verifies archived game packages through the `verify-package` CMake target.
   Its staged executable accepts `--project-root`, `--package-root`, `--unreal-pak`,
   `--verification-directory`, and `--configuration`.

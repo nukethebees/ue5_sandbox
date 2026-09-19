@@ -14,8 +14,9 @@ csetup
 ```
 
 `csetup` synchronizes submodules, regenerates presets, installs the per-user jobserver when
-needed, and prepares the DebugGame and Development worktrees. Use `csetup native` when only the
-native toolchain is needed; it avoids C# tool staging and Unreal worktree preparation. See the
+needed, and prepares the DebugGame and Development worktrees. Its CMake workflows build their
+configuration-local C# host tools before other worktree dependencies. Use `csetup native` when
+only the native toolchain is needed; it avoids Unreal worktree preparation. See the
 [PowerShell guide](../PowerShell/README.md) for the other session commands.
 
 Alternatively, set `UE_ROOT` in the ignored `CMakeUserPresets.json` using a local configure preset
@@ -47,7 +48,8 @@ runs all first-party tests under `native/`; it does not configure UBT or launch 
 PowerShell shortcut `cbuild` defaults to `native-tests`.
 
 Native mimalloc targets build their configuration-local `NativeBinaryTools` host dependency on
-demand; native workflows do not require a manual `ctools` preflight.
+demand. CMake-owned tools likewise rebuild automatically when their sources change; no CMake
+workflow requires a manual `ctools` preflight.
 
 Do not rebuild Unreal merely because a native implementation has a thin Unreal adapter. Settle the
 native behavior with the smallest target and test subset first.

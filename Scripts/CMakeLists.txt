@@ -24,16 +24,6 @@ set_tests_properties(CMake.NativeWorkflow PROPERTIES
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )
 
-add_test(NAME CMake.StagedCSharpTools
-  COMMAND "${CMAKE_COMMAND}"
-    "-DSANDBOX_SOURCE_DIR=${PROJECT_SOURCE_DIR}"
-    -P "${PROJECT_SOURCE_DIR}/cmake/tests/staged_csharp_tools_test.cmake"
-)
-set_tests_properties(CMake.StagedCSharpTools PROPERTIES
-  LABELS "unit;all;cmake"
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-)
-
 add_test(NAME Scripts.BenchmarkToolsBootstrap
   COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/Scripts/test_benchmark_tools_bootstrap.py"
     --source-dir "${PROJECT_SOURCE_DIR}"

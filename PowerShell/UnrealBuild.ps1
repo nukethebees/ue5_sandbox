@@ -335,15 +335,8 @@ function ctools {
         throw "C# tools solution was not found: $tools_solution"
     }
 
-    $staged_tools_directory = Join-Path $script:dev_project_root 'tools\bin'
-
     Push-Location -LiteralPath $script:dev_project_root
     try {
-        if (Test-Path -LiteralPath $staged_tools_directory -PathType Container) {
-            Write-Host 'Clearing staged C# developer tools.'
-            Remove-Item -LiteralPath $staged_tools_directory -Recurse -Force -ErrorAction Stop
-        }
-
         Write-Host 'Building standalone C# developer tools.'
         & dotnet build $tools_solution -m:1
 
@@ -444,9 +437,6 @@ function csetup {
         Update-WorktreeSubmodules
 
         $requires_unreal_setup = @($configurations | Where-Object { $_ -ne 'native' })
-        if ($requires_unreal_setup.Count -gt 0) {
-            ctools
-        }
 
         $preset_generator = Join-Path $script:dev_project_root 'cmake\presets\generate.py'
         if (-not (Test-Path -LiteralPath $preset_generator -PathType Leaf)) {

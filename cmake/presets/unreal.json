@@ -164,6 +164,20 @@
       ]
     },
     {
+      "name": "csharp-host-tools-debug-game",
+      "configurePreset": "debug-game",
+      "targets": [
+        "csharp-host-tools"
+      ]
+    },
+    {
+      "name": "csharp-host-tools-development",
+      "configurePreset": "development",
+      "targets": [
+        "csharp-host-tools"
+      ]
+    },
+    {
       "name": "debug",
       "configurePreset": "debug",
       "targets": [
@@ -504,6 +518,10 @@
         },
         {
           "type": "build",
+          "name": "csharp-host-tools-debug-game"
+        },
+        {
+          "type": "build",
           "name": "generate-worktree-code-debug-game"
         },
         {
@@ -528,6 +546,10 @@
         {
           "type": "configure",
           "name": "development"
+        },
+        {
+          "type": "build",
+          "name": "csharp-host-tools-development"
         },
         {
           "type": "build",
@@ -575,6 +597,10 @@
         {
           "type": "configure",
           "name": "development"
+        },
+        {
+          "type": "build",
+          "name": "csharp-host-tools-development"
         },
         {
           "type": "build",
@@ -811,6 +837,10 @@
         },
         {
           "type": "build",
+          "name": "csharp-host-tools-debug-game"
+        },
+        {
+          "type": "build",
           "name": "debug-game"
         },
         {
@@ -825,6 +855,10 @@
         {
           "type": "configure",
           "name": "debug-game"
+        },
+        {
+          "type": "build",
+          "name": "csharp-host-tools-debug-game"
         },
         {
           "type": "build",
