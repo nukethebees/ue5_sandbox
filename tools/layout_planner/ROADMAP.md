@@ -21,6 +21,13 @@ Semantic type graph
 The editable document belongs to the LispB/schema library. The GUI must not introduce planner-only
 copies of enums, packed fields, columns, or future type declarations.
 
+## Current milestone
+
+The editable document/command foundation is implemented. The first manual authoring slice can add
+an enum to an existing enum module, edit its enumerators, undo/redo the draft, preview the affected
+LispB source, and explicitly save and reload it. Module creation, enum-type rename/deletion, and
+source-token-preserving edits within an existing enum declaration remain follow-up work.
+
 ## 1. Editable document and command foundation
 
 - Own a mutable draft of the validated LispB declarations.

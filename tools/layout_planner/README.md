@@ -72,6 +72,25 @@ unsupported schemas are reported as diagnostics rather than guessed.
 Column diagrams show aggregate payload only. They do not imply that standard-library vectors share
 an allocation or model allocator overhead, capacity slack, or generated single-allocation gaps.
 
-Variants exist only in memory. The application never writes the project manifest or production
-LispB files; closing it discards every variant. See [architecture](ARCHITECTURE.md) for supported
-constructs, technical limits, and implementation details.
+Layout variants exist only in memory and closing the application discards them. Semantic authoring
+changes remain in an editable draft until the user explicitly previews and saves them from the File
+menu. See [architecture](ARCHITECTURE.md) for supported constructs, technical limits, and
+implementation details.
+
+## Enum authoring preview
+
+The first synthesis workflow is available for enums:
+
+1. Select **+ New enum** in Project / Schema.
+2. Choose an existing enum module, enter the declared name and underlying type, and create it.
+3. In Properties, add values, select a value, and edit its symbolic name, explicit value, display
+   name, serialized name, hidden marker, or count-sentinel role.
+4. Use **File > Undo** and **File > Redo** while designing.
+5. Use **File > Preview LispB changes** to compare the original and complete updated source.
+6. Use **File > Save LispB changes** to validate the rendered sources, replace the affected source
+   file, and reload the semantic document.
+
+Enum creation currently targets an existing enum module; creating modules, renaming enum types,
+and deleting source declarations are not yet exposed. Saving an edited existing enum renders that
+enum declaration canonically, so review the preview for comments or hand formatting inside the
+edited declaration. Unrelated declarations and files are left unchanged.

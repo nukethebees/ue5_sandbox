@@ -30,15 +30,20 @@ LispB S-expressions remain the canonical source. The existing parser loads and v
 codegen and the planner are peer consumers of that graph; the planner does not maintain a second
 schema catalog. See the LispB [semantic graph boundary](../../native/lispb/SEMANTIC_TYPE_GRAPH.md).
 
-`LayoutWorkspace` owns the immutable resolved graph plus session-only variants. `Analyzer` combines
+`EditableSchemaDocument` owns the source-aware mutable declaration draft and resolves a replacement
+graph after every accepted semantic command. It provides stable declaration IDs, validation
+rollback, undo/redo, source preview, and validated source replacement. `LayoutWorkspace` owns a
+snapshot of the resolved graph plus session-only physical variants; graph replacement remaps
+variant overrides through stable type identities. `Analyzer` combines
 a selected semantic type, variant overrides, and an ABI profile to produce factual packed-value or
 SoA analysis results. It follows enum-underlying and packed-storage references only while deriving
 physical facts, preserving the logical nodes and their dependency edges. The GUI owns selections,
 dock layout, cached presentation results, and drawing; it does not own schema semantics or calculate
 layouts.
 
-The application is read-only with respect to LispB. There is currently no serializer, source
-write-back, or persistent variant format.
+Enum authoring is the first write-enabled vertical slice. It can add enums to existing enum modules,
+edit their enumerators, preview affected sources, and explicitly save and reload LispB. Other type
+kinds remain read-only, and there is no persistent variant format.
 
 ## Supported analysis and limits
 
