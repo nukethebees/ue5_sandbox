@@ -9,6 +9,7 @@
 #include <ioj/sim/combat_events.h>
 #include <ioj/sim/entity_ledger.h>
 #include <ioj/sim/lasers/sim.h>
+#include <ioj/sim/player/laser_firing_state.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spatial_query_manager.h>
 #include <SpaceGame/input/ControlProfiles.h>
@@ -22,7 +23,6 @@
 #include <SpaceGame/ui/main_menu/ControlChordCapture.h>
 #include <SpaceGame/ui/main_menu/MainMenuGameMode.h>
 #include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
-#include <SpaceGameSimulation/ships/common/LaserFiringState.h>
 
 #include <Camera/CameraActor.h>
 #include <CQTest.h>
@@ -1104,7 +1104,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                              ship->get_move_input().IsNearlyZero());
         TestRunner->TestTrue(TEXT("Turning is neutralized"), ship->get_turn_input().IsNearlyZero());
         TestRunner->TestTrue(TEXT("Laser firing is stopped"),
-                             ship->get_laser_firing_mode() == ELaserFiringState::idle);
+                             ship->get_laser_firing_mode() == ::ioj::sim::LaserFiringState::idle);
 
         context.shutdown();
         ship->Destroy();
