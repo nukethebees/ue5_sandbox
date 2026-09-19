@@ -7,7 +7,9 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 
 namespace ioj::layout_planner {
@@ -17,14 +19,25 @@ using namespace layout;
 
 inline constexpr ImVec4 changed_color{0.28F, 0.68F, 0.9F, 1.0F};
 inline constexpr ImVec4 selected_color{0.35F, 0.52F, 0.88F, 1.0F};
-inline constexpr ImVec4 unused_color{0.25F, 0.27F, 0.3F, 1.0F};
+inline constexpr ImVec4 unused_color{0.36F, 0.39F, 0.43F, 1.0F};
+inline constexpr ImVec4 unused_hatch_color{0.82F, 0.85F, 0.89F, 0.45F};
+inline constexpr ImVec4 bit_grid_color{0.86F, 0.9F, 0.95F, 0.2F};
 inline constexpr ImVec4 overflow_color{0.85F, 0.55F, 0.2F, 1.0F};
+
+struct PackedDividerAdjustment {
+    std::size_t left_field_index{};
+    std::uint32_t left_width{};
+    std::uint32_t right_width{};
+};
 
 void draw_packed_bar(PackedAnalysis const& analysis,
                      PackedAnalysis const* const baseline,
                      std::string& selected_field,
                      char const* const label,
-                     std::uint64_t const common_bits) {
+                     std::uint64_t const common_bits,
+                     bool const editable,
+                     std::optional<std::size_t>& dragged_divider,
+                     std::optional<PackedDividerAdjustment>& adjustment) {
     ImGui::TextUnformatted(label);
     ImGui::SameLine();
     ImGui::TextDisabled("%s — %s",
@@ -45,13 +58,25 @@ void draw_packed_bar(PackedAnalysis const& analysis,
                        0,
                        2.0F);
 
+    bool has_unused{};
+    float unused_left{};
+    float unused_right{};
     if (analysis.unused_bits.value_or(0) != 0 && analysis.bits_used.has_value()) {
-        auto const left{origin.x +
-                        available * static_cast<float>(*analysis.bits_used) / denominator};
-        draw_list->AddRectFilled({left, origin.y},
-                                 {origin.x + storage_width, origin.y + height},
+        has_unused = true;
+        unused_left = origin.x + available * static_cast<float>(*analysis.bits_used) / denominator;
+        unused_right = origin.x + storage_width;
+        draw_list->AddRectFilled({unused_left, origin.y},
+                                 {unused_right, origin.y + height},
                                  ImGui::GetColorU32(unused_color),
                                  2.0F);
+        draw_list->PushClipRect({unused_left, origin.y}, {unused_right, origin.y + height}, true);
+        constexpr float hatch_spacing{8.0F};
+        for (auto x{unused_left - height}; x < unused_right; x += hatch_spacing) {
+            draw_list->AddLine({x, origin.y + height},
+                               {x + height, origin.y},
+                               ImGui::GetColorU32(unused_hatch_color));
+        }
+        draw_list->PopClipRect();
     }
 
     for (std::size_t index{}; index < analysis.fields.size(); ++index) {
@@ -80,7 +105,43 @@ void draw_packed_bar(PackedAnalysis const& analysis,
                                ImGui::GetColorU32(overflow_color),
                                2.0F);
         }
+    }
 
+    if (analysis.storage_bits.has_value()) {
+        auto const grid_step{*analysis.storage_bits > 128 ? std::uint64_t{8} : std::uint64_t{1}};
+        for (auto bit{grid_step}; bit < *analysis.storage_bits; bit += grid_step) {
+            auto const x{origin.x + available * static_cast<float>(bit) / denominator};
+            draw_list->AddLine(
+                {x, origin.y}, {x, origin.y + height}, ImGui::GetColorU32(bit_grid_color));
+        }
+    }
+
+    if (has_unused) {
+        draw_list->AddRect({unused_left, origin.y},
+                           {unused_right, origin.y + height},
+                           ImGui::GetColorU32(unused_hatch_color),
+                           2.0F,
+                           0,
+                           1.5F);
+        auto const label_text{std::to_string(*analysis.unused_bits) + " unused"};
+        auto const label_size{ImGui::CalcTextSize(label_text.c_str())};
+        if (unused_right - unused_left > label_size.x + 8.0F) {
+            draw_list->AddText({unused_left + (unused_right - unused_left - label_size.x) * 0.5F,
+                                origin.y + height * 0.5F - label_size.y * 0.5F},
+                               ImGui::GetColorU32(ImGuiCol_Text),
+                               label_text.c_str());
+        }
+    }
+
+    for (std::size_t index{}; index < analysis.fields.size(); ++index) {
+        auto const& field{analysis.fields[index]};
+        auto const left{origin.x +
+                        available * static_cast<float>(field.least_significant_bit) / denominator};
+        auto const right{origin.x +
+                         available *
+                             static_cast<float>(field.least_significant_bit + field.bit_width) /
+                             denominator};
+        auto const width{std::max(2.0F, right - left)};
         if (width > 72.0F) {
             draw_list->AddText({left + 6.0F, origin.y + 8.0F},
                                ImGui::GetColorU32(ImGuiCol_Text),
@@ -118,21 +179,50 @@ void draw_packed_bar(PackedAnalysis const& analysis,
     auto const clicked{ImGui::IsItemClicked()};
     auto const hovered{ImGui::IsItemHovered()};
     ImGui::PopID();
+    auto const mouse_position{ImGui::GetIO().MousePos};
+    std::optional<std::size_t> hovered_divider;
+    if (editable) {
+        constexpr float divider_handle_half_width{5.0F};
+        for (std::size_t index{}; index + 1 < analysis.fields.size(); ++index) {
+            auto const& field{analysis.fields[index]};
+            auto const divider_x{
+                origin.x + available *
+                               static_cast<float>(field.least_significant_bit + field.bit_width) /
+                               denominator};
+            auto const within_handle{hovered && std::abs(mouse_position.x - divider_x) <=
+                                                    divider_handle_half_width};
+            auto const active{dragged_divider.has_value() && *dragged_divider == index};
+            auto const divider_color{active || within_handle ? ImGui::GetColorU32(selected_color)
+                                                             : ImGui::GetColorU32(ImGuiCol_Border)};
+            draw_list->AddLine({divider_x, origin.y},
+                               {divider_x, origin.y + height},
+                               divider_color,
+                               active || within_handle ? 3.0F : 1.0F);
+            if (within_handle) {
+                hovered_divider = index;
+            }
+        }
+    }
+    if (editable && (hovered_divider.has_value() || dragged_divider.has_value())) {
+        ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeEW);
+    }
+    if (editable && clicked && hovered_divider.has_value()) {
+        dragged_divider = hovered_divider;
+    }
     if (hovered) {
-        auto const mouse_x{ImGui::GetIO().MousePos.x};
+        auto const mouse_x{mouse_position.x};
         for (auto const& field : analysis.fields) {
-            auto const left{origin.x + available *
-                                           static_cast<float>(field.least_significant_bit) /
+            auto const left{origin.x + available * static_cast<float>(field.least_significant_bit) /
                                            denominator};
-            auto const right{origin.x + available *
-                                            static_cast<float>(field.least_significant_bit +
-                                                               field.bit_width) /
-                                            denominator};
+            auto const right{origin.x +
+                             available *
+                                 static_cast<float>(field.least_significant_bit + field.bit_width) /
+                                 denominator};
             auto const width{std::max(2.0F, right - left)};
             if (mouse_x < left || mouse_x >= left + width) {
                 continue;
             }
-            if (clicked) {
+            if (clicked && !hovered_divider.has_value()) {
                 selected_field = field.name;
             }
             ImGui::BeginTooltip();
@@ -148,6 +238,40 @@ void draw_packed_bar(PackedAnalysis const& analysis,
                         detail::format_number(field.maximum_unsigned_value).c_str());
             ImGui::EndTooltip();
             break;
+        }
+    }
+    if (editable && dragged_divider.has_value()) {
+        if (!ImGui::IsMouseDown(ImGuiMouseButton_Left)) {
+            dragged_divider.reset();
+        } else if (*dragged_divider + 1 < analysis.fields.size()) {
+            auto const index{*dragged_divider};
+            auto const& left_field{analysis.fields[index]};
+            auto const& right_field{analysis.fields[index + 1]};
+            auto const pair_width{static_cast<std::uint64_t>(left_field.bit_width) +
+                                  static_cast<std::uint64_t>(right_field.bit_width)};
+            if (pair_width >= 2) {
+                auto const minimum_left{std::max(
+                    std::uint64_t{1}, pair_width > 64 ? pair_width - 64 : std::uint64_t{1})};
+                auto const maximum_left{std::min(std::uint64_t{64}, pair_width - 1)};
+                if (minimum_left <= maximum_left) {
+                    auto const left_edge{origin.x +
+                                         available *
+                                             static_cast<float>(left_field.least_significant_bit) /
+                                             denominator};
+                    auto const relative_bits{
+                        std::round((mouse_position.x - left_edge) * denominator / available)};
+                    auto const requested_left{relative_bits <= 0.0F
+                                                  ? std::uint64_t{0}
+                                                  : static_cast<std::uint64_t>(relative_bits)};
+                    auto const new_left{std::clamp(requested_left, minimum_left, maximum_left)};
+                    auto const new_right{pair_width - new_left};
+                    if (new_left != left_field.bit_width) {
+                        adjustment = {.left_field_index = index,
+                                      .left_width = static_cast<std::uint32_t>(new_left),
+                                      .right_width = static_cast<std::uint32_t>(new_right)};
+                    }
+                }
+            }
         }
     }
     ImGui::Dummy({available, 24.0F});
@@ -223,9 +347,8 @@ void draw_payload_regions(SoaAnalysis const& analysis,
             if (!column.total_bytes.has_value()) {
                 continue;
             }
-            auto const width{std::max(
-                2.0F,
-                available * static_cast<float>(*column.total_bytes) / denominator)};
+            auto const width{
+                std::max(2.0F, available * static_cast<float>(*column.total_bytes) / denominator)};
             if (mouse_x >= x && mouse_x < x + width) {
                 if (clicked) {
                     selected_field = column.name;
@@ -307,7 +430,7 @@ void draw_cache_line(CacheLineTiling const& tiling) {
 
 } // namespace
 
-void PlannerUi::draw_packed_layout(PackedLayout const&,
+void PlannerUi::draw_packed_layout(PackedLayout const& layout,
                                    PackedAnalysis const& baseline,
                                    PackedAnalysis const& active) {
     ImGui::Text("%s", active.id.schema_name.c_str());
@@ -317,12 +440,45 @@ void PlannerUi::draw_packed_layout(PackedLayout const&,
                                      active.storage_bits.value_or(0),
                                      active.bits_used.value_or(0),
                                      std::uint64_t{1}})};
-    draw_packed_bar(baseline, nullptr, selected_field_, "Baseline", common_bits);
+    std::optional<std::size_t> baseline_divider;
+    std::optional<PackedDividerAdjustment> adjustment;
+    draw_packed_bar(baseline,
+                    nullptr,
+                    selected_field_,
+                    "Baseline",
+                    common_bits,
+                    false,
+                    baseline_divider,
+                    adjustment);
     if (workspace_.active_variant_id() != LayoutWorkspace::baseline_variant_id) {
-        draw_packed_bar(active, &baseline, selected_field_, "Variant", common_bits);
+        draw_packed_bar(active,
+                        &baseline,
+                        selected_field_,
+                        "Variant",
+                        common_bits,
+                        true,
+                        packed_dragged_divider_,
+                        adjustment);
+        ImGui::TextDisabled("Drag a divider to transfer whole bits between adjacent fields.");
+    }
+    if (adjustment.has_value() && adjustment->left_field_index + 1 < layout.fields.size()) {
+        auto const& left_field{layout.fields[adjustment->left_field_index]};
+        auto const& right_field{layout.fields[adjustment->left_field_index + 1]};
+        workspace_.set_packed_field_width(
+            layout.id,
+            left_field.name,
+            adjustment->left_width == left_field.bit_width
+                ? std::optional<std::uint32_t>{}
+                : std::optional<std::uint32_t>{adjustment->left_width});
+        workspace_.set_packed_field_width(
+            layout.id,
+            right_field.name,
+            adjustment->right_width == right_field.bit_width
+                ? std::optional<std::uint32_t>{}
+                : std::optional<std::uint32_t>{adjustment->right_width});
     }
     if (active.unused_bits.value_or(0) != 0) {
-        ImGui::TextDisabled("Grey region: %llu unused storage bit%s.",
+        ImGui::TextDisabled("Hatched region: %llu unused storage bit%s.",
                             static_cast<unsigned long long>(*active.unused_bits),
                             *active.unused_bits == 1 ? "" : "s");
     }

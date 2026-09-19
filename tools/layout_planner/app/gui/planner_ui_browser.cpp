@@ -85,6 +85,7 @@ void PlannerUi::draw_project_panel() {
             if (ImGui::Selectable(id.schema_name.c_str(), selected)) {
                 selected_schema_ = id;
                 selected_field_.clear();
+                packed_dragged_divider_.reset();
             }
             ImGui::SameLine();
             auto const status{complete(definition, baseline, abi_, workspace_.default_capacity())

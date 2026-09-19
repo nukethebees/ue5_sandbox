@@ -6,6 +6,7 @@
 #include <ioj/layout/workspace.hpp>
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <optional>
@@ -21,6 +22,7 @@ class PlannerUi {
     auto draw() -> bool;
   private:
     void setup_default_dock_layout(unsigned int dockspace_id);
+    auto draw_view_menu() -> bool;
     void refresh_analysis();
     void draw_project_panel();
     void draw_layout_panel();
@@ -52,8 +54,10 @@ class PlannerUi {
 
     std::array<char, 128> variant_name_{};
     std::array<char, 128> schema_filter_{};
+    std::optional<std::size_t> packed_dragged_divider_;
     std::uint64_t variant_name_id_{std::numeric_limits<std::uint64_t>::max()};
     std::uint64_t next_variant_number_{1};
+    float text_scale_{1.0F};
     bool dock_layout_initialized_{};
 };
 
