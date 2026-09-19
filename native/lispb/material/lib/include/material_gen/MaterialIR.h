@@ -44,6 +44,7 @@ enum class NodeKind {
     shader_call,
     camera_position,
     step,
+    vertex_color,
 };
 
 struct NodeHandle {

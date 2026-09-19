@@ -36,6 +36,7 @@
 #include "Materials/MaterialExpressionTime.h"
 #include "Materials/MaterialExpressionTransformPosition.h"
 #include "Materials/MaterialExpressionVectorParameter.h"
+#include "Materials/MaterialExpressionVertexColor.h"
 #include "Materials/MaterialExpressionVertexNormalWS.h"
 #include "Materials/MaterialExpressionWorldPosition.h"
 #include "Misc/PackageName.h"
@@ -409,6 +410,9 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
                 break;
             case NodeKind::camera_position:
                 expression = create_expression(UMaterialExpressionCameraPositionWS::StaticClass());
+                break;
+            case NodeKind::vertex_color:
+                expression = create_expression(UMaterialExpressionVertexColor::StaticClass());
                 break;
             case NodeKind::transform_position: {
                 auto* const transform{CastChecked<UMaterialExpressionTransformPosition>(

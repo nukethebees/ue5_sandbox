@@ -15,6 +15,7 @@ public sealed class PackageVerifier
         "Plugins/SpaceGame/Content/UI",
         "Plugins/SpaceGame/Content/Input",
         "Plugins/SandboxShaders/Content/GpuStarfield",
+        "Plugins/SandboxShaders/Content/Generated/Materials",
         "Plugins/SandboxShaders/Content/CelestialBackdrop",
     ];
 

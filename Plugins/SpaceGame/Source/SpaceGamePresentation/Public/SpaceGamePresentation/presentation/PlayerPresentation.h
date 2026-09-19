@@ -4,6 +4,7 @@
 #include <UObject/WeakObjectPtrTemplates.h>
 
 class USceneComponent;
+class USpaceDustComponent;
 class UStaticMeshComponent;
 class UNiagaraComponent;
 struct FPlayerPresentationResources {
@@ -11,6 +12,7 @@ struct FPlayerPresentationResources {
     TWeakObjectPtr<UStaticMeshComponent> mesh;
     TWeakObjectPtr<UNiagaraComponent> pulse;
     TWeakObjectPtr<UNiagaraComponent> engine;
+    TWeakObjectPtr<USpaceDustComponent> space_dust;
     bool debug_forward_socket_direction{};
     bool debug_forward_direction{};
     bool debug_lock_on{};

@@ -155,7 +155,7 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
     auto const node_count{material.nodes.size()};
     for (std::size_t index{}; index < node_count; ++index) {
         auto const& node{material.nodes[index]};
-        if (node.kind < NodeKind::constant || node.kind > NodeKind::step ||
+        if (node.kind < NodeKind::constant || node.kind > NodeKind::vertex_color ||
             node.type == ValueType::invalid) {
             report(diagnostics, node.span, "invalid material node kind or type");
             continue;
@@ -319,6 +319,10 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
                    node.kind == NodeKind::camera_position) {
             if (node.type != ValueType::float3 || !node.inputs.empty()) {
                 report(diagnostics, node.span, "malformed standard material-value node");
+            }
+        } else if (node.kind == NodeKind::vertex_color) {
+            if (node.type != ValueType::float4 || !node.inputs.empty()) {
+                report(diagnostics, node.span, "malformed vertex-color material-value node");
             }
         } else if (node.kind == NodeKind::transform_position) {
             if (node.type != ValueType::float3 || node.inputs.size() != 1 ||

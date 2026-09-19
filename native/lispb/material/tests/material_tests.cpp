@@ -66,6 +66,21 @@ TEST(MaterialFrontend, LowersUiGlowGoldenSourceWithStableHandles) {
     EXPECT_TRUE(validate(material).empty());
 }
 
+TEST(MaterialFrontend, LowersVertexColourForProceduralRendererMaterials) {
+    auto analysis{analyze("vertex-colour.scm",
+                          "(material M (asset \"/Game/Generated/Materials/M\") (domain surface) "
+                          "(blend additive) (shading unlit) "
+                          "(emissive (swizzle (vertex-color) rgb)))",
+                          TextureResolver{nullptr, resolve})};
+    ASSERT_TRUE(analysis.material.has_value());
+    auto const& material{*analysis.material};
+    auto const vertex_colour{std::ranges::find_if(
+        material.nodes, [](Node const& node) { return node.kind == NodeKind::vertex_color; })};
+    ASSERT_NE(vertex_colour, material.nodes.end());
+    EXPECT_EQ(vertex_colour->type, ValueType::float4);
+    EXPECT_TRUE(validate(material).empty());
+}
+
 TEST(CompiledMaterial, RoundTripsDeterministically) {
     auto const source_path{std::filesystem::path{SANDBOX_PROJECT_SOURCE_DIR} /
                            "Plugins/SandboxUI/Source/SandboxUI/Private/materials/"
