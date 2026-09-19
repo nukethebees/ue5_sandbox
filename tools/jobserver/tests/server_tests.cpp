@@ -5,6 +5,7 @@
 
 #include <Windows.h>
 
+#include <sddl.h>
 #include <tlhelp32.h>
 
 #include <gtest/gtest.h>
@@ -1104,6 +1105,216 @@ TEST_F(JobserverIntegration, CrashedLeaseClientReleasesItsResource) {
         .resources = {{.name = "crash-resource", .mode = jobserver::ClaimMode::exclusive}},
     })};
     ASSERT_TRUE(lease.has_value()) << lease.error().message;
+}
+
+TEST_F(JobserverIntegration, LeaseCliRemovesNestedIdentityAndPropagatesChildExit) {
+    auto const environment_arguments{
+        L"lease --name \"lease environment\" --kind integration "
+        L"--exclusive integration/dev -- " +
+        quote(std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.wstring()) +
+        L" check-lease-environment"};
+    auto const environment{run_and_capture(JOBSERVER_CLI_PATH, environment_arguments)};
+    ASSERT_TRUE(environment.has_value());
+    EXPECT_EQ(environment->exit_code, 0U) << environment->output;
+    auto after_success{jobserver::Client::acquire({
+        .metadata = {.name = "after successful lease command", .kind = "test", .worktree = {}},
+        .resources = {{.name = "integration/dev", .mode = jobserver::ClaimMode::exclusive}},
+    })};
+    ASSERT_TRUE(after_success.has_value()) << after_success.error().message;
+    ASSERT_TRUE(after_success->release().has_value());
+
+    auto const failure_arguments{
+        L"lease --name \"lease failure\" --kind integration "
+        L"--exclusive integration/dev -- " +
+        quote(std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.wstring()) + L" exit 37"};
+    auto const failure{run_and_capture(JOBSERVER_CLI_PATH, failure_arguments)};
+    ASSERT_TRUE(failure.has_value());
+    EXPECT_EQ(failure->exit_code, 37U) << failure->output;
+
+    auto replacement{jobserver::Client::acquire({
+        .metadata = {.name = "after failed lease command", .kind = "test", .worktree = {}},
+        .resources = {{.name = "integration/dev", .mode = jobserver::ClaimMode::exclusive}},
+    })};
+    ASSERT_TRUE(replacement.has_value()) << replacement.error().message;
+}
+
+TEST_F(JobserverIntegration, LeaseCliSerializesFifoAcrossWorktreesWithVisibleProvenance) {
+    auto const first_worktree{data_path_ / "lease worktree one"};
+    auto const second_worktree{data_path_ / "lease worktree two"};
+    auto const third_worktree{data_path_ / "lease worktree three"};
+    std::filesystem::create_directories(first_worktree);
+    std::filesystem::create_directories(second_worktree);
+    std::filesystem::create_directories(third_worktree);
+    auto const helper{quote(std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.wstring())};
+    auto arguments = [&](std::wstring const& name,
+                         std::filesystem::path const& worktree,
+                         int const milliseconds) {
+        return L"lease --name \"" + name + L"\" --kind integration --worktree " +
+               quote(worktree.wstring()) + L" --exclusive integration/dev -- " + helper +
+               L" sleep " + std::to_wstring(milliseconds);
+    };
+
+    auto first{launch(JOBSERVER_CLI_PATH, arguments(L"integration first", first_worktree, 500))};
+    ASSERT_NE(first.process, nullptr);
+    auto const first_job{find_job_in_state("integration first", "RUNNING")};
+    ASSERT_TRUE(first_job.has_value());
+    EXPECT_EQ(first_job->value("kind", ""), "integration");
+    EXPECT_EQ(first_job->value("worktree", ""), jobserver::path_to_utf8(first_worktree));
+    EXPECT_EQ(first_job->value("submit_directory", ""),
+              jobserver::path_to_utf8(std::filesystem::current_path()));
+    ASSERT_EQ(first_job->at("claims").size(), 1U);
+    EXPECT_EQ(first_job->at("claims").front().value("name", ""), "integration/dev");
+    EXPECT_EQ(first_job->at("claims").front().value("mode", ""), "exclusive");
+
+    auto second{launch(JOBSERVER_CLI_PATH, arguments(L"integration second", second_worktree, 200))};
+    ASSERT_NE(second.process, nullptr);
+    auto const second_job{find_job_in_state("integration second", "QUEUED")};
+    ASSERT_TRUE(second_job.has_value());
+    EXPECT_EQ(second_job->value("worktree", ""), jobserver::path_to_utf8(second_worktree));
+    auto const second_blockers{second_job->value("blockers", std::vector<std::string>{})};
+    EXPECT_NE(std::ranges::find(second_blockers, first_job->value("id", "")),
+              second_blockers.end());
+
+    auto third{launch(JOBSERVER_CLI_PATH, arguments(L"integration third", third_worktree, 20))};
+    ASSERT_NE(third.process, nullptr);
+    ASSERT_TRUE(find_job_in_state("integration third", "QUEUED").has_value());
+
+    auto const first_exit{wait_for_exit(first, 3s)};
+    ASSERT_TRUE(first_exit.has_value());
+    EXPECT_EQ(*first_exit, 0U);
+    close(first);
+    ASSERT_TRUE(find_job_in_state("integration second", "RUNNING").has_value());
+    EXPECT_TRUE(find_job_in_state("integration third", "QUEUED").has_value());
+    auto const second_exit{wait_for_exit(second, 3s)};
+    ASSERT_TRUE(second_exit.has_value());
+    EXPECT_EQ(*second_exit, 0U);
+    close(second);
+    auto const third_exit{wait_for_exit(third, 3s)};
+    ASSERT_TRUE(third_exit.has_value());
+    EXPECT_EQ(*third_exit, 0U);
+    close(third);
+}
+
+TEST_F(JobserverIntegration, LeasedChildCanSubmitIndependentJobserverWork) {
+    auto const arguments{L"lease --name \"integration with nested work\" --kind integration "
+                         L"--exclusive integration/dev -- " +
+                         quote(std::filesystem::path{JOBSERVER_TEST_CLIENT_PATH}.wstring()) +
+                         L" independent-run machine"};
+    auto client{launch(JOBSERVER_CLI_PATH, arguments)};
+    ASSERT_NE(client.process, nullptr);
+    auto const lease{find_job_in_state("integration with nested work", "RUNNING")};
+    ASSERT_TRUE(lease.has_value());
+    auto const independent{find_job_in_state("independent leased-child submission", "RUNNING")};
+    ASSERT_TRUE(independent.has_value());
+    EXPECT_NE(independent->value("id", ""), lease->value("id", ""));
+    EXPECT_EQ(independent->at("claims").front().value("name", ""), "machine");
+    auto const exit_code{wait_for_exit(client, 3s)};
+    ASSERT_TRUE(exit_code.has_value());
+    EXPECT_EQ(*exit_code, 0U);
+    close(client);
+    EXPECT_TRUE(wait_for_job_to_disappear("integration with nested work", 1s));
+}
+
+TEST_F(JobserverIntegration, CrashedLeaseCliReleasesResourceAndTerminatesChildTree) {
+    auto const root_ready{data_path_ / "lease-crash-root.txt"};
+    auto const child_ready{data_path_ / "lease-crash-child.txt"};
+    auto const arguments{L"lease --name \"crashing integration CLI\" --kind integration "
+                         L"--exclusive integration/dev -- " +
+                         quote(std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.wstring()) +
+                         L" ready-tree " + quote(root_ready.wstring()) + L" " +
+                         quote(child_ready.wstring())};
+    auto client{launch(JOBSERVER_CLI_PATH, arguments)};
+    ASSERT_NE(client.process, nullptr);
+    ASSERT_TRUE(find_job_in_state("crashing integration CLI", "RUNNING").has_value());
+
+    std::vector<ChildProcess> observed;
+    for (auto const& ready : {root_ready, child_ready}) {
+        ASSERT_TRUE(wait_for_file(ready, 2s));
+        DWORD id{};
+        std::ifstream input{ready};
+        input >> id;
+        ASSERT_NE(id, 0U);
+        observed.push_back(observe_process(id));
+    }
+
+    ASSERT_TRUE(TerminateProcess(client.process, 99));
+    ASSERT_TRUE(wait_for_exit(client, 2s).has_value());
+    close(client);
+    for (auto& process : observed) {
+        expect_crash_cleanup(process);
+    }
+    EXPECT_TRUE(wait_for_job_to_disappear("crashing integration CLI", 2s));
+
+    auto replacement{jobserver::Client::acquire({
+        .metadata = {.name = "after crashed lease CLI", .kind = "test", .worktree = {}},
+        .resources = {{.name = "integration/dev", .mode = jobserver::ClaimMode::exclusive}},
+    })};
+    ASSERT_TRUE(replacement.has_value()) << replacement.error().message;
+}
+
+TEST_F(JobserverIntegration, KillingQueuedLeaseCliCancelsWithoutLaunchingChild) {
+    auto active{jobserver::Client::acquire({
+        .metadata = {.name = "active integration", .kind = "integration", .worktree = {}},
+        .resources = {{.name = "integration/dev", .mode = jobserver::ClaimMode::exclusive}},
+    })};
+    ASSERT_TRUE(active.has_value()) << active.error().message;
+    auto const marker{data_path_ / "queued-lease-child.txt"};
+    auto const arguments{L"lease --name \"queued integration\" --kind integration "
+                         L"--exclusive integration/dev -- " +
+                         quote(std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.wstring()) +
+                         L" marker-after " + quote(marker.wstring()) + L" 0"};
+    auto queued{launch(JOBSERVER_CLI_PATH, arguments)};
+    ASSERT_NE(queued.process, nullptr);
+    ASSERT_TRUE(find_job_in_state("queued integration", "QUEUED").has_value());
+
+    ASSERT_TRUE(TerminateProcess(queued.process, 99));
+    ASSERT_TRUE(wait_for_exit(queued, 2s).has_value());
+    close(queued);
+    EXPECT_TRUE(wait_for_job_to_disappear("queued integration", 2s));
+    ASSERT_TRUE(active->release().has_value());
+    std::this_thread::sleep_for(100ms);
+    EXPECT_FALSE(std::filesystem::exists(marker));
+}
+
+TEST_F(JobserverIntegration, DaemonCrashTerminatesLeasedCommandTreeAndAllowsRestart) {
+    auto const root_ready{data_path_ / "lease-daemon-crash-root.txt"};
+    auto const child_ready{data_path_ / "lease-daemon-crash-child.txt"};
+    auto const arguments{L"lease --name \"daemon crash integration\" --kind integration "
+                         L"--exclusive integration/dev -- " +
+                         quote(std::filesystem::path{JOBSERVER_TEST_HELPER_PATH}.wstring()) +
+                         L" ready-tree " + quote(root_ready.wstring()) + L" " +
+                         quote(child_ready.wstring())};
+    auto client{launch(JOBSERVER_CLI_PATH, arguments)};
+    ASSERT_NE(client.process, nullptr);
+    ASSERT_TRUE(find_job_in_state("daemon crash integration", "RUNNING").has_value());
+
+    std::vector<ChildProcess> observed;
+    for (auto const& ready : {root_ready, child_ready}) {
+        ASSERT_TRUE(wait_for_file(ready, 2s));
+        DWORD id{};
+        std::ifstream input{ready};
+        input >> id;
+        ASSERT_NE(id, 0U);
+        observed.push_back(observe_process(id));
+    }
+
+    ASSERT_TRUE(TerminateProcess(daemon_.process, 99));
+    ASSERT_TRUE(wait_for_exit(daemon_, 2s).has_value());
+    close(daemon_);
+    auto const client_exit{wait_for_exit(client, 3s)};
+    ASSERT_TRUE(client_exit.has_value());
+    EXPECT_EQ(*client_exit, 125U);
+    close(client);
+    for (auto& process : observed) {
+        expect_crash_cleanup(process);
+    }
+
+    start_daemon();
+    auto replacement{jobserver::Client::acquire({
+        .metadata = {.name = "after daemon lease crash", .kind = "test", .worktree = {}},
+        .resources = {{.name = "integration/dev", .mode = jobserver::ClaimMode::exclusive}},
+    })};
+    ASSERT_TRUE(replacement.has_value()) << replacement.error().message;
 }
 
 TEST_F(JobserverIntegration, QueuedClientReceivesPeriodicHeartbeat) {
@@ -2272,6 +2483,12 @@ TEST_F(JobserverIntegration, ControlEndpointRejectsJobAdmission) {
 
 TEST_F(JobserverIntegration, ControlClientFallsBackToLegacyMainEndpoint) {
     stop_daemon();
+    PSECURITY_DESCRIPTOR descriptor{};
+    ASSERT_TRUE(ConvertStringSecurityDescriptorToSecurityDescriptorW(
+        L"D:P(A;;GA;;;WD)S:(ML;;NW;;;LW)", SDDL_REVISION_1, &descriptor, nullptr));
+    SECURITY_ATTRIBUTES security{};
+    security.nLength = sizeof(security);
+    security.lpSecurityDescriptor = descriptor;
     auto const pipe{
         CreateNamedPipeW(jobserver::transport::pipe_name().c_str(),
                          PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED | FILE_FLAG_FIRST_PIPE_INSTANCE,
@@ -2280,7 +2497,8 @@ TEST_F(JobserverIntegration, ControlClientFallsBackToLegacyMainEndpoint) {
                          65536,
                          65536,
                          0,
-                         nullptr)};
+                         &security)};
+    LocalFree(descriptor);
     ASSERT_NE(pipe, INVALID_HANDLE_VALUE);
     auto const event{CreateEventW(nullptr, TRUE, FALSE, nullptr)};
     ASSERT_NE(event, nullptr);

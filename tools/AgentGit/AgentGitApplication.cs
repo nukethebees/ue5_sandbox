@@ -10,7 +10,8 @@ internal sealed class AgentGitApplication(
     PolicyEvaluator evaluator,
     OperationExecutor executor,
     TextWriter standard_output,
-    TextWriter standard_error)
+    TextWriter standard_error,
+    IntegrationTransaction? integration = null)
 {
     public async Task<int> RunAsync(
         AgentGitRequest request,
@@ -32,6 +33,12 @@ internal sealed class AgentGitApplication(
                     return await ShowStatusAsync(working_directory, cancellation_token);
                 case BranchInfoRequest:
                     return await ShowBranchInfoAsync(working_directory, cancellation_token);
+                case IntegrateRequest integrate:
+                    if (integration is null)
+                    {
+                        throw new RepositoryStateException("Integration transaction services are unavailable.");
+                    }
+                    return await integration.RunAsync(integrate, working_directory, cancellation_token);
                 case PolicyRequest policy_request:
                     return await ShowPolicyAsync(policy_request, working_directory, cancellation_token);
                 case MutationRequest mutation:

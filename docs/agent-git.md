@@ -104,6 +104,23 @@ agent-git rebase-base
 agent-git branch-delete <branch>
 ```
 
+The repository's `integrate-feature` command is the sole protected-branch exception. After explicit
+user authorization it acquires the jobserver's exclusive `integration/<baseBranch>` lease and then
+invokes:
+
+```text
+agent-git integrate --authorized [--keep-branch]
+```
+
+`agent-git` verifies that the visible lease ID is a running `integration` job for the current
+worktree with the exact exclusive resource. It records local `dev`, rebases onto that commit,
+prints a range-diff and diff summary, and requires an exact review acknowledgement within 15
+minutes. It then runs `debug-game-tests`, any detected benchmark build, and the Development build.
+The final `dev` update is an atomic compare-and-swap from the recorded SHA to a no-fast-forward
+merge commit. A mismatch reports both SHAs and aborts without retrying. Cleanup returns a `devN`
+worktree to its home branch and uses safe branch deletion; cleanup failure retains the branch and
+is reported separately from merge success.
+
 Prefix any mutation with `--dry-run` to perform full discovery and policy evaluation without
 executing a mutating Git command. Policy denial has a different exit code from invalid usage,
 configuration failure, repository failure, and Git execution failure.
@@ -118,9 +135,11 @@ feature branch, proven ancestry into the base, and Git's safe `branch -d` check.
 
 ## Intentionally unsupported
 
-There is no raw/exec/passthrough command, repository/config/Git-path override, merge, push, fetch,
-reset, clean, restore, path checkout, arbitrary rebase target, force deletion, or force push.
-Unsupported mutations must use the normal human-approval route. Raw read-only Git remains suitable
+There is no raw/exec/passthrough command, repository/config/Git-path override, general merge, push,
+fetch, reset, clean, restore, path checkout, arbitrary rebase target, force deletion, or force push.
+The fixed integration transaction above is the only merge path and cannot select another target
+branch or run without its matching jobserver lease. Unsupported mutations must use the normal
+human-approval route. Raw read-only Git remains suitable
 for inspection. Partial-clone/promisor repositories, custom LFS extensions, and redirected LFS
 storage are also unsupported because they can introduce implicit remote processes or filesystem
 writes outside the registered Git state.
@@ -151,6 +170,11 @@ still direct. Branch deletion also re-identifies its base worktree and verifies 
 branch, and HEAD before using it for Git's safe deletion check. The lock coordinates `agent-git`
 processes; raw Git or other programs can still race the small interval after final validation, with
 Git's own ref and index locks providing the final integrity checks.
+The integration transaction takes this repository lock only around its rebase, atomic merge, and
+cleanup mutations; it does not hold the lock during review or expensive validation, so other
+feature work remains concurrent. The separate jobserver integration lease is held for the complete
+transaction. Raw Git can still bypass that protocol, so the final compare-and-swap is authoritative
+and exposes unexpected `dev` movement rather than retrying.
 Worktree roots, mutation paths, and critical Git administrative paths containing filesystem
 reparse points are rejected, as are assume-unchanged and skip-worktree index entries; these states
 can hide changes or redirect I/O outside the registered worktree or common Git directory. Sparse

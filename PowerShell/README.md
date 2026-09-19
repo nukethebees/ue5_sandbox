@@ -9,7 +9,10 @@ dev-help
 ```
 
 `Navigation.ps1` provides `croot`, `cwt`, `cwb`, `cplugin`, and `ctests`. `UnrealBuild.ps1` provides
-`cbuild`, `csetup`, `cplay`, `cprojectfiles`, and jobserver/UBT state helpers. `cbuild` defaults to
+`cbuild`, `csetup`, `cplay`, `cprojectfiles`, `integrate-feature`, and jobserver/UBT state helpers.
+After the user authorizes a ready feature, `integrate-feature` queues the exclusive
+`integration/dev` lease and runs the trusted rebase, review, validation, merge, and cleanup
+transaction. `cbuild` defaults to
 the native test workflow; `csetup native` prepares native-only prerequisites, while `cplay` prepares
 and builds playable Editor configurations.
 

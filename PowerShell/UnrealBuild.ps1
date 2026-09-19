@@ -367,6 +367,61 @@ function install-agent-git {
     }
 }
 
+function integrate-feature {
+    param(
+        [switch]$KeepBranch
+    )
+
+    $agent_git = Join-Path $env:LOCALAPPDATA 'NukeTheBees\agent-git\bin\agent-git.exe'
+    $jobserver = Get-JobserverPath
+    if (-not (Test-Path -LiteralPath $agent_git -PathType Leaf)) {
+        throw "The trusted agent-git executable is not installed. Run 'install-agent-git' first."
+    }
+    if (-not (Test-Path -LiteralPath $jobserver -PathType Leaf)) {
+        throw "The per-user jobserver is not installed. Run 'csetup' first."
+    }
+
+    $status = & $agent_git status
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Unable to inspect the current feature worktree with agent-git.'
+    }
+    $branch_info = & $agent_git branch-info
+    if ($LASTEXITCODE -ne 0) {
+        throw 'Unable to inspect the configured integration branch with agent-git.'
+    }
+    $worktree_line = $status | Where-Object { $_ -match '^Worktree: ' } | Select-Object -First 1
+    $branch_line = $status | Where-Object { $_ -match '^Current branch: ' } | Select-Object -First 1
+    $base_line = $branch_info | Where-Object { $_ -match '^Base branch: ' } | Select-Object -First 1
+    if ($null -eq $worktree_line -or $null -eq $branch_line -or $null -eq $base_line) {
+        throw 'agent-git returned incomplete repository metadata.'
+    }
+
+    $worktree = $worktree_line.Substring('Worktree: '.Length)
+    $branch = $branch_line.Substring('Current branch: '.Length)
+    $base_branch = $base_line.Substring('Base branch: '.Length)
+    $resource = "integration/$base_branch"
+    $arguments = @(
+        'lease',
+        '--name', "Integrate $branch into $base_branch",
+        '--kind', 'integration',
+        '--worktree', $worktree,
+        '--exclusive', $resource,
+        '--',
+        $agent_git,
+        'integrate',
+        '--authorized'
+    )
+    if ($KeepBranch) {
+        $arguments += '--keep-branch'
+    }
+
+    Write-Host "Queueing '$branch' for the exclusive '$resource' integration reservation."
+    & $jobserver @arguments
+    if ($LASTEXITCODE -ne 0) {
+        throw "Feature integration exited with code $LASTEXITCODE."
+    }
+}
+
 function csetup {
     param(
         [Parameter(Position = 0, ValueFromRemainingArguments = $true)]

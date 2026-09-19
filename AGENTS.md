@@ -34,20 +34,36 @@ Unreal Engine 5.8 project.
   them.
 * Prefer multiple coherent commits for substantive work when there are natural implementation
   stages. Do not repeatedly rebase during ordinary feature development without a concrete reason.
-* When preparing a completed feature for integration:
-  1. Commit the completed implementation.
-  2. Rebase the feature branch onto current `dev` and resolve conflicts carefully.
-  3. Review the resulting diff for accidental conflict-resolution changes or lost work.
-  4. Run the applicable merge-ready integration gate from [Builds](#builds) on the rebased branch.
-  5. Diagnose and fix failures using focused validation where appropriate, then rerun the required
-     merge-ready integration gate on the final HEAD.
-  6. As a final check before proposing a merge into `dev`, build every buildable target on the
-     final rebased HEAD, including `cmake --workflow --preset development`. This optimized,
-     `NDEBUG` build is mandatory even when the merge-ready test gate uses DebugGame, so
-     configuration-specific compiler errors cannot reach another worktree.
-  7. Only report the branch as merge-ready after its final rebased HEAD passes the required gate
-     and all buildable targets build successfully. Do not merge it into `dev` without the user's
-     explicit permission; ask for that permission once the branch is ready.
+* A feature is **ready for integration** when its implementation and focused/relevant validation
+  are complete and its commits are coherent. A sensible recent rebase or preflight is allowed, but
+  readiness does not require chasing every later `dev` commit. Report this state and wait for the
+  user's explicit authorization to integrate. Do not acquire an integration reservation while
+  waiting, and do not repeatedly rebase merely because `dev` advances.
+* After the user explicitly authorizes integration, run `integrate-feature` from the feature
+  worktree. This queues fairly for the exclusive `integration/dev` jobserver resource; ordinary
+  feature work and unrelated jobserver resources remain concurrent. Do not bypass this queue for a
+  normal agent merge into `dev`.
+* The granted reservation begins one final integration transaction:
+  1. Record the exact current `dev` HEAD as `integration_base_sha`, then rebase the feature once
+     onto that exact commit. If conflicts occur, abort and release the reservation; resolve them
+     carefully outside the queue and requeue the ready feature.
+  2. Review the rebased range/diff for accidental conflict-resolution changes or lost work and
+     complete the tool's bounded review checkpoint.
+  3. Run the applicable final merge-ready gate from [Builds](#builds), then build every buildable
+     target with `cmake --workflow --preset development`. The optimized `NDEBUG` build remains
+     mandatory even when the test gate uses DebugGame.
+  4. Immediately before merging, verify that current `dev` still equals
+     `integration_base_sha`. If it differs, treat this as an integration-protocol violation: abort,
+     report both SHAs, preserve the feature branch, release the reservation, and do not rebase or
+     restart the validation loop automatically.
+  5. If validation passed and `dev` is unchanged, merge immediately and perform the normal
+     worktree/feature-branch cleanup before releasing the reservation. The user's authorization to
+     enter the queue also authorizes this merge; do not stop after validation to ask a second time.
+* Rebase conflicts or failed validation must not monopolize integration for unbounded debugging.
+  The transaction aborts and releases its reservation; fix the feature with focused validation
+  outside the queue, then report/requeue it when ready. Never automatically retry an entire final
+  integration. The connection-owned lease releases on every normal, failure, cancellation, or
+  disconnect path, and its local process tree is terminated if the lease holder exits.
 * After a feature branch has been successfully merged into `dev`, return its worktree to its
   normal persistent branch when one exists. Infer that branch from the worktree directory name
   only when a matching branch exists; for example, worktrees named `dev1` through `dev10` normally
@@ -57,8 +73,9 @@ Unreal Engine 5.8 project.
   (`git branch -d`), never force-delete an unmerged branch; leave an unmerged branch intact and
   report that cleanup was skipped.
 * A branch task is not complete until its original plan and all approved amendments are complete.
-  A substantive task is not complete merely because implementation is finished: it must also
-  complete the merge-ready process before being reported as done.
+  Before integration authorization, report a completed substantive feature as ready for
+  integration rather than done. After authorization, it is complete only when the transaction and
+  any required cleanup finish.
 
 # Builds
 
@@ -91,13 +108,13 @@ Unreal Engine 5.8 project.
      an Unreal-facing boundary needs checking: module/build definitions, UObject/reflection,
      engine adapters/APIs, UI, assets, editor integration, or ownership/lifetime behavior. A thin
      Unreal adapter alone does not justify rebuilding Unreal after every native implementation edit.
-  3. Run the complete DebugGame integration gate only for final merge readiness after rebasing.
+  3. Run the complete DebugGame integration gate only inside the authorized final integration
+     transaction, after its reserved rebase.
 * The merge-ready integration gate for substantive code, schema, generated-source,
   build-configuration, module, or test changes is `cmake --workflow --preset debug-game-tests`.
-  Follow the [Feature Workflow](#feature-workflow) when applying this gate; do not call the branch
-  merge-ready if it fails, even when the failure appears unrelated. When it exposes a focused
-  native failure, diagnose and fix it with the smallest relevant native build/test, then rerun one
-  final integration gate on the final HEAD.
+  Follow the [Feature Workflow](#feature-workflow) when applying this gate. When it exposes a
+  focused native failure, leave the integration queue, diagnose and fix it with the smallest
+  relevant native build/test, then requeue one final transaction on the resulting HEAD.
 * When a generated-code check reports stale outputs, automatically run its matching `generate-*`
   CMake target, review the generated diff, and rerun the failed check.
 * Changes that affect benchmark sources or benchmark schemas also require the dedicated benchmark build: configure with `cmake --preset benchmark`, then build with `cmake --build --preset benchmark --target benchmarks`. Run benchmark measurements only when the task requires them.

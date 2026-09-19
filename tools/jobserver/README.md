@@ -132,6 +132,10 @@ during test phases. The focused editor configuration-transition regression is th
 holds an exclusive parent engine claim so another worktree cannot invalidate UBT metadata between
 each build and its module-load smoke. Engine identity is generated only by CMake, including
 path/junction canonicalization.
+
+Repository integration uses the ordinary capacity-one resource
+`integration/<integration-branch>`, normally `integration/dev`. The per-user daemon shares that
+resource across every worktree; it is not a separate lock or scheduler primitive.
 After adopting this change, reconfigure every participating worktree using its CMake presets and reload
 `PowerShell/UnrealBuild.ps1` in existing shells. Old generated commands do not claim the gate
 correctly. No daemon/protocol upgrade is required. Manually launched editors, Live Coding, and
@@ -189,8 +193,8 @@ health remain separate structured status fields.
 
 Repository-generated kinds use this bounded vocabulary: `build`, `unreal-build`, `test`,
 `unreal-test`, `unreal-command`, `benchmark`, `static-analysis`, `format`, `generate`, `package`,
-and `command`. Direct callers should select the matching category rather than inventing a new
-description-like kind.
+`integration`, and `command`. Direct callers should select the matching category rather than
+inventing a new description-like kind.
 
 `task` is an attribution label for a logical coding activity, never an operating-system identity or
 an authorization input. A top-level client chooses it in this order: explicit `--task` or typed
@@ -228,6 +232,33 @@ Commands already running inside a supervised job inherit `NUKETHEBEES_JOBSERVER_
 CLI invocation launches locally inside the existing Windows Job Object rather than submitting a
 second job that could deadlock behind its parent. The outer submission must therefore claim the
 complete resource set needed by nested work.
+
+## Holding a lease around a command
+
+`jobserver lease` holds ordinary resource claims while it launches a local command:
+
+```powershell
+jobserver lease `
+  --name "Integrate feature/fighters into dev" `
+  --kind integration `
+  --worktree C:\src\nukethebees\wt\dev1 `
+  --exclusive integration/dev `
+  -- agent-git integrate --authorized
+```
+
+Unlike `run`, `lease` does not submit its child as a daemon-supervised job and does not give it
+`NUKETHEBEES_JOBSERVER_JOB`. The CLI acquires a connection-owned lease, contains the local child
+process tree in a kill-on-close Windows Job Object, streams its output, propagates its exit code,
+and releases the lease after the tree exits. It exposes only `NUKETHEBEES_JOBSERVER_LEASE` so a
+specialized child can verify which visible lease owns its critical section. CMake and jobserver
+commands launched by the child therefore submit independent work normally and can acquire
+`machine`, Unreal engine, benchmark, or other resources without nested-claim validation.
+
+If the lease connection is lost, the local process tree is terminated. If the lease CLI is killed,
+Windows closes both its lease pipe and kill-on-close Job Object, releasing the resource and
+terminating descendants instead of orphaning a critical-section script. Lease owners and queued
+waiters appear in normal status/history with their name, kind, worktree, submit directory, claims,
+and blockers.
 
 ## Inspecting and controlling work
 

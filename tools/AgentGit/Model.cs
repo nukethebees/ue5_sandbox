@@ -41,6 +41,8 @@ internal sealed record StatusRequest : AgentGitRequest;
 
 internal sealed record BranchInfoRequest : AgentGitRequest;
 
+internal sealed record IntegrateRequest(bool Authorized, bool KeepBranch) : AgentGitRequest;
+
 internal sealed record PolicyRequest(AgentGitOperation Operation, string? Target) : AgentGitRequest;
 
 internal abstract record MutationRequest(bool DryRun, AgentGitOperation Operation) : AgentGitRequest;
@@ -126,6 +128,7 @@ internal static class ExitCodes
     public const int PolicyDenied = 5;
     public const int GitFailure = 6;
     public const int StateFailure = 7;
+    public const int CleanupFailure = 8;
 }
 
 internal class AgentGitException(string message, int exit_code, Exception? inner_exception = null)

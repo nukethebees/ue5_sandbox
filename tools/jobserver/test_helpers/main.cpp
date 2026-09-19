@@ -54,6 +54,17 @@ auto wmain(int argc, wchar_t** argv) -> int {
         }
         return 0;
     }
+    if (mode == L"check-lease-environment") {
+        wchar_t value[256]{};
+        if (GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", value, 256) != 0) {
+            return 20;
+        }
+        if (GetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_LEASE", value, 256) == 0 ||
+            std::wstring{value}.empty()) {
+            return 21;
+        }
+        return 0;
+    }
     if (mode == L"exit") {
         return argc >= 3 ? _wtoi(argv[2]) : 0;
     }

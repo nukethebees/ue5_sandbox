@@ -12,6 +12,7 @@ function(sandbox_make_jobserver_command output_variable cli worktree mode kind o
     format
     generate
     package
+    integration
     command
   )
   list(FIND known_kinds "${kind}" kind_index)

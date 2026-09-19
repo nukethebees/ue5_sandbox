@@ -2,6 +2,7 @@
 
 #include "jobserver/client.hpp"
 #include "jobserver/protocol.hpp"
+#include "supervisor.hpp"
 
 #include <Windows.h>
 
@@ -49,6 +50,7 @@ auto narrow(std::wstring_view const text) -> std::string {
 void print_help() {
     std::cout << "NukeTheBees local job scheduler\n\n"
                  "  jobserver run [options] -- <command> [arguments...]\n"
+                 "  jobserver lease [options] -- <command> [arguments...]\n"
                  "  jobserver status [--json]\n"
                  "  jobserver show <job-id>\n"
                  "  jobserver history [--json]\n"
@@ -65,6 +67,9 @@ void print_help() {
                  "  --name <name> --kind <kind> --task <task> --worktree <path>\n"
                  "  --resource <name=units> --shared <name> --exclusive <name>\n"
                  "  --timeout <Nms|Ns|Nm> --suspect-after <Nms|Ns|Nm> --detach\n";
+    std::cout << "\nlease options:\n"
+                 "  --name <name> --kind <kind> --task <task> --worktree <path>\n"
+                 "  --resource <name=units> --shared <name> --exclusive <name>\n";
 }
 
 auto parse_duration(std::string const& text) -> std::chrono::milliseconds {
@@ -317,6 +322,109 @@ auto run_command(std::vector<std::string> const& arguments) -> int {
         })};
     return result ? *result : print_error(result.error());
 }
+
+auto lease_command(std::vector<std::string> const& arguments) -> int {
+    jobserver::AcquireRequest request{
+        .metadata = {.name = "leased command",
+                     .kind = "command",
+                     .worktree = std::filesystem::current_path()},
+        .resources = {},
+    };
+    jobserver::Command command{
+        .executable = {},
+        .arguments = {},
+        .working_directory = std::filesystem::current_path(),
+        .environment = {},
+    };
+    std::size_t index{1};
+    for (; index < arguments.size(); ++index) {
+        auto const& argument{arguments[index]};
+        if (argument == "--") {
+            ++index;
+            break;
+        }
+        auto const* value{require_value(arguments, index)};
+        if (value == nullptr) {
+            std::cerr << "jobserver: " << argument << " requires a value\n";
+            return 2;
+        }
+        if (argument == "--name") {
+            request.metadata.name = *value;
+        } else if (argument == "--kind") {
+            request.metadata.kind = *value;
+        } else if (argument == "--task") {
+            request.metadata.task = *value;
+        } else if (argument == "--worktree") {
+            request.metadata.worktree = jobserver::path_from_utf8(*value);
+        } else if (argument == "--shared") {
+            request.resources.push_back({.name = *value, .mode = jobserver::ClaimMode::shared});
+        } else if (argument == "--exclusive") {
+            request.resources.push_back({.name = *value, .mode = jobserver::ClaimMode::exclusive});
+        } else if (argument == "--resource") {
+            auto const separator{value->find('=')};
+            if (separator == std::string::npos) {
+                std::cerr << "jobserver: counted resources use name=units\n";
+                return 2;
+            }
+            request.resources.push_back({
+                .name = value->substr(0, separator),
+                .mode = jobserver::ClaimMode::counted,
+                .units = static_cast<std::uint32_t>(std::stoul(value->substr(separator + 1))),
+            });
+        } else {
+            std::cerr << "jobserver: unknown lease option " << argument << '\n';
+            return 2;
+        }
+    }
+    if (request.resources.empty()) {
+        std::cerr << "jobserver: lease requires at least one resource claim\n";
+        return 2;
+    }
+    if (index >= arguments.size()) {
+        std::cerr << "jobserver: lease requires a command after --\n";
+        return 2;
+    }
+    command.executable = resolve_executable(jobserver::path_from_utf8(arguments[index++]));
+    command.arguments.assign(arguments.begin() + static_cast<std::ptrdiff_t>(index),
+                             arguments.end());
+
+    auto lease{jobserver::Client::acquire(request)};
+    if (!lease) {
+        return print_error(lease.error());
+    }
+    command.environment.push_back({.name = "NUKETHEBEES_JOBSERVER_JOB", .value = std::nullopt});
+    command.environment.push_back({.name = "NUKETHEBEES_JOBSERVER_LEASE", .value = lease->id()});
+
+    auto lease_lost{false};
+    jobserver::Supervisor supervisor;
+    auto result{supervisor.run(
+        command,
+        std::nullopt,
+        std::nullopt,
+        [](std::string const& stream, std::string const& text) {
+            auto& output{stream == "stderr" ? std::cerr : std::cout};
+            output << text;
+            output.flush();
+        },
+        [](jobserver::JobHealth, std::string) {},
+        [&] {
+            auto const connected{lease->connected()};
+            lease_lost = lease_lost || !connected;
+            return connected;
+        })};
+    if (lease_lost) {
+        return print_error(
+            {"lease_lost", "The jobserver lease was lost; the child was terminated"});
+    }
+    auto released{lease->release()};
+    if (!released) {
+        return print_error(released.error());
+    }
+    if (!result) {
+        return print_error(result.error());
+    }
+    return result->termination_exit_code != 0 ? result->termination_exit_code : result->exit_code;
+}
 }
 
 auto wmain(int argc, wchar_t** argv) -> int {
@@ -332,6 +440,9 @@ auto wmain(int argc, wchar_t** argv) -> int {
     auto const& command{arguments[1]};
     if (command == "run") {
         return run_command(std::vector<std::string>{arguments.begin() + 1, arguments.end()});
+    }
+    if (command == "lease") {
+        return lease_command(std::vector<std::string>{arguments.begin() + 1, arguments.end()});
     }
     if (command == "status" || command == "history") {
         auto const json{arguments.size() >= 3 && arguments[2] == "--json"};

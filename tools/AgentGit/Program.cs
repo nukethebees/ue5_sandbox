@@ -39,7 +39,16 @@ public static class Program
             new PolicyEvaluator(discovery),
             new OperationExecutor(git, discovery),
             Console.Out,
-            Console.Error);
+            Console.Error,
+            new IntegrationTransaction(
+                trust,
+                git,
+                discovery,
+                new JobserverIntegrationLeaseVerifier(),
+                new ConsoleIntegrationReviewer(Console.In, Console.Out),
+                new CMakeIntegrationValidator(),
+                Console.Out,
+                Console.Error));
         return await application.RunAsync(request!, Environment.CurrentDirectory);
     }
 

@@ -296,6 +296,20 @@ public sealed class InstallerIntegrationTests
 
     private static string FindSourceRoot()
     {
+        var configured_source_root = Environment.GetEnvironmentVariable("NUKETHEBEES_AGENT_GIT_SOURCE_ROOT");
+        if (!string.IsNullOrWhiteSpace(configured_source_root))
+        {
+            var full_path = Path.GetFullPath(configured_source_root);
+            if (File.Exists(Path.Combine(full_path, "dev.ps1")) &&
+                File.Exists(Path.Combine(full_path, "tools", "Tools.slnx")))
+            {
+                return full_path;
+            }
+
+            throw new AssertFailedException(
+                $"Configured AgentGit source root is invalid: '{configured_source_root}'.");
+        }
+
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)
         {
             if (File.Exists(Path.Combine(directory.FullName, "dev.ps1")) &&
