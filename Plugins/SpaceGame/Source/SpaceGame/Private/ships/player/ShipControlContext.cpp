@@ -251,10 +251,8 @@ void FShipControlContext::neutralise_ship_input() {
     turn_input_ = FVector2D::ZeroVector;
     pointer_turn_position_ = FVector2D::ZeroVector;
     pointer_turn_engaged_ = false;
-    throttle_gesture_.reset();
-    brake_gesture_.reset();
-    throttle_power_press_active_ = false;
-    brake_power_press_active_ = false;
+
+    reset_power_gesture_state();
 
     auto* const ship{ship_.Get()};
     if (!IsValid(ship) || !ship->has_simulation()) {
@@ -274,6 +272,13 @@ void FShipControlContext::neutralise_ship_input() {
     ship->stop_boost();
     ship->stop_brake();
     ship->stop_fire_laser();
+}
+
+void FShipControlContext::reset_power_gesture_state() {
+    throttle_gesture_.reset();
+    brake_gesture_.reset();
+    throttle_power_press_active_ = false;
+    brake_power_press_active_ = false;
 }
 
 auto FShipControlContext::get_ship() const -> ATestSpaceShip* {
@@ -343,11 +348,13 @@ void FShipControlContext::set_ship_1d_control_y(FInputActionValue const& value) 
     }
 }
 void FShipControlContext::cycle_next_control_mode() {
+    reset_power_gesture_state();
     if (auto* const ship{get_ship()}) {
         ship->select_next_control_mode();
     }
 }
 void FShipControlContext::cycle_previous_control_mode() {
+    reset_power_gesture_state();
     if (auto* const ship{get_ship()}) {
         ship->select_previous_control_mode();
     }
