@@ -17,10 +17,15 @@ TEST_CLASS(SpaceGameUserSettings, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Bloom defaults to enabled"), source->bloom_enabled());
         TestRunner->TestFalse(TEXT("Motion blur defaults to disabled"),
                               source->motion_blur_enabled());
+        TestRunner->TestEqual(TEXT("Planar Velocity is the default flight control preset"),
+                              source->player_ship_flight_control_preset(),
+                              ml::ioj::EPlayerShipFlightControlPreset::PlanarVelocity);
 
         source->set_bloom_enabled(false);
         source->set_motion_blur_enabled(true);
         source->set_master_volume(0.35f);
+        source->set_player_ship_flight_control_preset(
+            ml::ioj::EPlayerShipFlightControlPreset::PlanarPower);
 
         auto const config_path{FPaths::CreateTempFilename(
             *FPaths::ProjectSavedDir(), TEXT("SpaceGameUserSettings"), TEXT(".ini"))};
@@ -40,6 +45,9 @@ TEST_CLASS(SpaceGameUserSettings, "Sandbox.UnitTests")
                              loaded->motion_blur_enabled());
         TestRunner->TestTrue(TEXT("Existing custom settings still round trip"),
                              FMath::IsNearlyEqual(loaded->master_volume(), 0.35f));
+        TestRunner->TestEqual(TEXT("Flight control preset survives a config round trip"),
+                              loaded->player_ship_flight_control_preset(),
+                              ml::ioj::EPlayerShipFlightControlPreset::PlanarPower);
     }
 
     TEST_METHOD(RenderingEffectOverridesTakePrecedenceOverScalability)

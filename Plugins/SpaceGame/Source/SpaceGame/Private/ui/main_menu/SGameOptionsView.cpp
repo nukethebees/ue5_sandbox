@@ -73,6 +73,8 @@ auto section_label(FGameSettingDescriptor const& descriptor) -> FText {
         case EGameSetting::InvertMousePitch:
         case EGameSetting::InvertGamepadPitch:
             return NSLOCTEXT("OptionsMenu", "ResponseSection", "Response");
+        case EGameSetting::PlayerShipFlightControlPreset:
+            return NSLOCTEXT("OptionsMenu", "FlightControlsSection", "Flight Controls");
         case EGameSetting::GamepadTurnDeadZone:
         case EGameSetting::GamepadMoveDeadZone:
             return NSLOCTEXT("OptionsMenu", "DeadZoneSection", "Controller Dead Zones");

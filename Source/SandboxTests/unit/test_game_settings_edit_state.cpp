@@ -11,10 +11,14 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
         applied.vsync = false;
         applied.master_volume = 0.25f;
         applied.bees = 2;
+        applied.player_ship_flight_control_preset =
+            ml::ioj::EPlayerShipFlightControlPreset::PlanarVelocity;
         auto defaults{applied};
         defaults.vsync = true;
         defaults.master_volume = 1.0f;
         defaults.bees = 0;
+        defaults.player_ship_flight_control_preset =
+            ml::ioj::EPlayerShipFlightControlPreset::ForwardSpeed;
 
         ml::ioj::FGameSettingsEditState state;
         state.begin(applied, defaults);
@@ -44,6 +48,16 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
         state.set_setting(ml::ioj::EGameSetting::Bees, ml::ioj::FGameSettingValue{4});
         state.cancel();
         TestRunner->TestEqual(TEXT("Cancel restores the applied value"), state.pending().bees, 2);
+
+        state.set_setting(
+            ml::ioj::EGameSetting::PlayerShipFlightControlPreset,
+            ml::ioj::FGameSettingValue{ml::ioj::EPlayerShipFlightControlPreset::PlanarPower});
+        TestRunner->TestTrue(TEXT("Flight controls are tracked as a Controls setting"),
+                             state.is_dirty(ml::ioj::EGameSettingCategory::Controls));
+        state.reset_category(ml::ioj::EGameSettingCategory::Controls);
+        TestRunner->TestEqual(TEXT("Reset restores the default flight control preset"),
+                              state.pending().player_ship_flight_control_preset,
+                              ml::ioj::EPlayerShipFlightControlPreset::ForwardSpeed);
     }
 
     TEST_METHOD(AvailabilityUsesPendingState)

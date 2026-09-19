@@ -364,6 +364,22 @@ static TArray<FGameSettingDescriptor> const descriptors{
      5,
      1,
      TEXT("")},
+    {EGameSetting::PlayerShipFlightControlPreset,
+     EGameSettingCategory::Controls,
+     EGameSettingValueType::PlayerShipFlightControlPreset,
+     EGameSettingBackend::GameUserSettings,
+     ESettingApplyMode::Immediate,
+     ESettingControlKind::Choice,
+     EGameSettingOptionProvider::PlayerShipFlightControlPresets,
+     EGameSettingAvailabilityProvider::Always,
+     TEXT("player_ship_flight_control_preset"),
+     FText::FromString(TEXT("Flight Controls")),
+     FText::FromString(TEXT("Select the player ship flight model and input interpretation. Planar "
+                            "Power is the experimental inertial scheme.")),
+     0,
+     0,
+     0,
+     TEXT("")},
     {EGameSetting::MouseTurnSensitivity,
      EGameSettingCategory::Controls,
      EGameSettingValueType::Float,
@@ -520,6 +536,8 @@ auto game_setting_value(FGameSettingsState const& state, EGameSetting const id)
             return FGameSettingValue{state.ui_volume};
         case EGameSetting::Bees:
             return FGameSettingValue{state.bees};
+        case EGameSetting::PlayerShipFlightControlPreset:
+            return FGameSettingValue{state.player_ship_flight_control_preset};
         case EGameSetting::MouseTurnSensitivity:
             return FGameSettingValue{state.mouse_turn_sensitivity};
         case EGameSetting::GamepadTurnSensitivity:
@@ -723,6 +741,14 @@ auto set_game_setting_value(FGameSettingsState& state,
                 return false;
             }
             state.bees = *typed_value;
+            return true;
+        }
+        case EGameSetting::PlayerShipFlightControlPreset: {
+            auto const* typed_value{std::get_if<EPlayerShipFlightControlPreset>(&value)};
+            if (typed_value == nullptr) {
+                return false;
+            }
+            state.player_ship_flight_control_preset = *typed_value;
             return true;
         }
         case EGameSetting::MouseTurnSensitivity: {
