@@ -9,6 +9,12 @@
 	"IsBetaVersion": false,
 	"IsExperimentalVersion": false,
 	"Installed": false,
+	"Plugins": [
+		{
+			"Name": "SandboxCore",
+			"Enabled": true
+		}
+	],
 	"Modules": [
 		{
 			"Name": "SandboxShaders",

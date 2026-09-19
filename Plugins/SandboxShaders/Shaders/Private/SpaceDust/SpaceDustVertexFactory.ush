@@ -6,7 +6,7 @@ float3 SpaceDustVolumeDimensions;
 float3 SpaceDustTranslationPhase;
 float3 SpaceDustWorldVelocity;
 float3 SpaceDustColour;
-int SpaceDustRandomSeed;
+uint SpaceDustRandomSeed;
 float SpaceDustParticleSize;
 float SpaceDustBrightness;
 float SpaceDustMinimumVisibleSpeed;
@@ -51,7 +51,7 @@ float space_dust_random(uint value) {
 }
 
 float3 space_dust_random_position(uint instance_id) {
-    uint const seed = instance_id ^ uint(SpaceDustRandomSeed);
+    uint const seed = instance_id ^ SpaceDustRandomSeed;
     return float3(space_dust_random(seed),
                   space_dust_random(seed ^ 0x68bc21ebu),
                   space_dust_random(seed ^ 0x02e5be93u));

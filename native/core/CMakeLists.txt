@@ -14,6 +14,7 @@ target_sources(native-core PRIVATE
   include/sandbox/core/math_types.h
   include/sandbox/core/native_soa/storage.h
   include/sandbox/core/periodic_tick_countdown.h
+  include/sandbox/core/space_dust_math.h
   include/sandbox/core/tick_countdown.h
   include/sandbox/core/vector_normalization.h
   src/generated/array_math_kernels.cpp
@@ -68,6 +69,7 @@ target_sources(native-core-tests PRIVATE
   tests/projectile_intercept_tests.cpp
   tests/quantized_decimal_tests.cpp
   tests/rotation_tests.cpp
+  tests/space_dust_math_tests.cpp
   tests/static_string_view_tests.cpp
   tests/time_series_data_tests.cpp
   tests/timing_tests.cpp

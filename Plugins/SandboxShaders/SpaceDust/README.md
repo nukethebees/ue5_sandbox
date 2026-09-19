@@ -75,6 +75,25 @@ and covered pixels.
 8. Long travel, teleports, and reset: no pattern collapse, jitter, or
    accumulated precision loss.
 
-`Source/SandboxTests/unit/test_space_dust.cpp` covers settings normalisation
-and large/negative translation-phase wrapping.  The material generator test
-also covers the vertex-colour material input used by this renderer.
+`native/core/tests/space_dust_math_tests.cpp` covers settings normalisation,
+large/negative translation-phase wrapping, and deterministic seed positions
+with GoogleTest. The material generator test also covers the vertex-colour
+material input used by this renderer.
+
+## Flight lab and tuning
+
+Select **Development > Space Dust Flight Lab** from the normal level-select
+flow. It uses the standard `GameRuntime` map, starts the player in empty space,
+and places a friendly capital ship ahead as a depth-occlusion reference. Use
+normal controls to check forward flight, sideways drift, rotate-while-drifting,
+and high speed.
+
+In non-shipping builds, the console command `space_dust.preset` changes the
+live player presentation effect without touching simulation state:
+
+- `space_dust.preset off`
+- `space_dust.preset default`
+- `space_dust.preset strong`
+
+`strong` preserves the active level's volume and colour while raising the
+count, visibility response, brightness, and capped streak length for tuning.
