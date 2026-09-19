@@ -13,6 +13,8 @@ Workflows that directly use a staged executable require it to be present.
 - `BenchmarkTools/` owns reusable benchmark orchestration. Its staged executable runs a native S7
   workload as `tools/bin/BenchmarkTools.exe native-simulation --level <path> --seconds <value>`;
   it performs the configured CMake build, then acquires the exclusive benchmark and machine lease.
+  The native benchmark PowerShell entry points build and stage this project on demand when it is
+  absent, without building the rest of the standalone tools or requiring Unreal setup.
 - `NativeBinaryTools/` inspects native object files for build integration checks. Its staged
   executable can be run as `tools/bin/NativeBinaryTools.exe mimalloc-symbols <generate|verify> ...`.
   Native CMake builds use a configuration-local copy built on demand, so they do not require a

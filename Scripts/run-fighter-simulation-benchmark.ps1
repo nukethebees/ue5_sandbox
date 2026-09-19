@@ -20,8 +20,10 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
+. (Join-Path $PSScriptRoot 'BenchmarkTools.ps1')
+
 $repo = [IO.Path]::GetFullPath((Split-Path $PSScriptRoot -Parent))
-$runner = Join-Path $repo 'tools/bin/BenchmarkTools.exe'
+$runner = Get-BenchmarkToolsPath -RepositoryRoot $repo
 $level = Join-Path $repo 'LevelScripts/FighterSchedulingBenchmark.scm'
 
 if ($FighterCaps.Count -eq 0) {
