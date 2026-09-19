@@ -12,7 +12,9 @@ dev-help
 `cbuild`, `csetup`, `cplay`, `cprojectfiles`, `integrate-feature`, and jobserver/UBT state helpers.
 After the user authorizes a ready feature, `integrate-feature` queues the exclusive
 `integration/dev` lease and runs the trusted rebase, review, validation, merge, and cleanup
-transaction. `cbuild` defaults to
+transaction. Gate selection is relevance-based, so tooling/native changes do not automatically use
+Unreal. An explicitly authorized maintainer override is available through
+`integrate-feature -MaintainerOverride -OverrideReason '<reason>'` and is audited. `cbuild` defaults to
 the native test workflow; `csetup native` prepares native-only prerequisites, while `cplay` prepares
 and builds playable Editor configurations.
 

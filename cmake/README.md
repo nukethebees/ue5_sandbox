@@ -38,4 +38,5 @@ preset matrix remains available for explicit compiler, configuration, unity, and
 The normal Unreal presets build `dev-core`, the broad integration aggregate. The focused
 `debug-game-unit-tests` workflow instead builds `unreal-unit-tests` (`editor` plus `native-tests`)
 before running the mixed unit taxonomy. `debug-game-tests` retains `dev-core` as the merge-ready
-integration gate.
+integration gate when the changed dependency surface requires broad Unreal validation; it is not a
+universal gate for standalone tooling or native-only changes.
