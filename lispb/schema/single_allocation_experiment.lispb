@@ -49,7 +49,7 @@
     (member move_distances array float)
     (member speeds array float)
     (member teams array @soa_experiment_Team)
-    (member healths array int32)
+    (member health_indices array @native_health_index)
     (member parent_ids array @soa_experiment_EntityId)
     (member awareness_scan_countdowns nested Countdown8
       :nested-schema Countdown8)
