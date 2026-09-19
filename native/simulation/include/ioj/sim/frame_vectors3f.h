@@ -3,14 +3,13 @@
 #include "ioj/sim/vector_types.h"
 #include "ioj/sim/vectors3f.h"
 #include "sandbox/core/frame_array.h"
-
-#include <memory_resource>
+#include "sandbox/core/frame_memory_resource.h"
 
 namespace ioj::sim {
 struct FrameVectors3f {
     using size_type = std::int32_t;
 
-    explicit FrameVectors3f(std::pmr::memory_resource* resource);
+    explicit FrameVectors3f(ml::FrameScratch& scratch);
 
     FrameVectors3f(FrameVectors3f const&) = delete;
     FrameVectors3f(FrameVectors3f&&) = delete;

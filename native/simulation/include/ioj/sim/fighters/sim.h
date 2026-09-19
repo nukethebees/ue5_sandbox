@@ -24,10 +24,10 @@
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/trace_hits.h>
 
+#include <sandbox/core/frame_memory_resource.h>
 #include <sandbox/core/multi_buffer.h>
 
 #include <array>
-#include <memory_resource>
 
 namespace ioj::sim {
 class EntityLedger;
@@ -62,8 +62,7 @@ struct Sim {
         HealthTable& health_table,
         AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
-        lasers::Sim& laser_simulation,
-        std::pmr::memory_resource& frame_memory_resource) noexcept;
+        lasers::Sim& laser_simulation) noexcept;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -153,10 +152,10 @@ struct Sim {
     /* **************************************** */
     void begin_play();
     void prepare_tick(float dt);
-    void think(float dt);
-    void plan_movement(float dt);
-    void apply_movement();
-    void generate_fire_commands();
+    void think(float dt, ml::FrameScratch& scratch);
+    void plan_movement(float dt, ml::FrameScratch& scratch);
+    void apply_movement(ml::FrameScratch& scratch);
+    void generate_fire_commands(ml::FrameScratch& scratch);
     void resolve_damage_events();
     void publish_deaths();
     void cleanup_entities();
@@ -175,8 +174,8 @@ struct Sim {
     /* **************************************** */
     // Movement
     /* **************************************** */
-    void move(float dt, TaskView const& task_span);
-    void update_navigation_steering();
+    void move(float dt, TaskView const& task_span, ml::FrameScratch& scratch);
+    void update_navigation_steering(ml::FrameScratch& scratch);
     void collect_navigation_updates(NavigationScratch& scratch);
     void update_separation_observations(NavigationScratch& scratch);
     void apply_separation_steering();
@@ -196,7 +195,7 @@ struct Sim {
     /* **************************************** */
     // Combat
     /* **************************************** */
-    void handle_firing(TaskView const& data);
+    void handle_firing(TaskView const& data, ml::FrameScratch& scratch);
 
     /* **************************************** */
     // Spawning
@@ -221,7 +220,7 @@ struct Sim {
     /* **************************************** */
     void set_target_id_unchecked(std::int32_t fighter_index, EntityUniqueId new_target) noexcept;
     void set_target_id(EntityUniqueId fighter, EntityUniqueId new_target) noexcept;
-    void refresh_target_data();
+    void refresh_target_data(ml::FrameScratch& scratch);
 
     /* **************************************** */
     // Tasks
@@ -270,7 +269,6 @@ struct Sim {
     HealthTable& health_table_;
     AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
-    std::pmr::memory_resource& frame_memory_resource;
 
     SingleAllocationFighterSpawnQueue spawn_queue;
 

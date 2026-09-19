@@ -5,13 +5,13 @@
 #include "ioj/sim/laser_source.h"
 #include "ioj/sim/vector_types.h"
 #include "sandbox/core/frame_array.h"
+#include "sandbox/core/frame_memory_resource.h"
 
 #include <cstdint>
-#include <memory_resource>
 
 namespace ioj::sim::lasers {
 struct FrameHitDetails {
-    explicit FrameHitDetails(std::pmr::memory_resource* resource);
+    explicit FrameHitDetails(ml::FrameScratch& scratch);
 
     FrameHitDetails(FrameHitDetails const&) = delete;
     FrameHitDetails(FrameHitDetails&&) = delete;

@@ -23,14 +23,10 @@ namespace ioj::sim::spinners {
 void Sim::set_config(SpinnerSimConfig const& new_config) noexcept {
     config = new_config;
 }
-Sim::Sim(SimClock const& clock,
-         EntityLedger& ledger,
-         lasers::Sim& in_laser_simulation,
-         std::pmr::memory_resource& in_frame_memory_resource) noexcept
+Sim::Sim(SimClock const& clock, EntityLedger& ledger, lasers::Sim& in_laser_simulation) noexcept
     : simulation_clock{clock}
     , ledger_{ledger}
-    , laser_simulation{in_laser_simulation}
-    , frame_memory_resource{in_frame_memory_resource} {}
+    , laser_simulation{in_laser_simulation} {}
 
 /* **************************************** */
 // Sim phases
@@ -56,12 +52,12 @@ void Sim::think(float const dt) {
 
     planned_yaw_delta_ = dt * config.yaw_rotation_speed_degrees;
 }
-void Sim::apply_movement() {
+void Sim::apply_movement(ml::FrameScratch& scratch) {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::apply_movement");
     for (auto& yaw : entities.get_view().yaws()) {
         yaw += planned_yaw_delta_;
     }
-    materialize_fire_commands();
+    materialize_fire_commands(scratch);
 }
 void Sim::generate_fire_commands() {
     SANDBOX_PROFILE_SCOPE("spinners::Sim::generate_fire_commands");
@@ -135,9 +131,9 @@ void Sim::fire_lasers() {
         }
     }
 }
-void Sim::materialize_fire_commands() {
+void Sim::materialize_fire_commands(ml::FrameScratch& scratch) {
     auto const entity_columns{entities.get_view().columns()};
-    lasers::FrameSpawnRequests new_lasers{&frame_memory_resource};
+    lasers::FrameSpawnRequests new_lasers{scratch};
     auto const ready_count{static_cast<std::int32_t>(pending_fire_indices_.size())};
     auto const fire_point_count{static_cast<std::int32_t>(config.fire_point_offsets.size())};
     new_lasers.set_num(ready_count);

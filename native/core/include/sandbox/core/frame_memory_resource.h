@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory_resource>
+#include <span>
 
 namespace ml {
 struct FrameMemoryFailure {
@@ -34,7 +35,9 @@ struct FrameMemoryStats {
 
 class FrameMemoryResource final : public std::pmr::memory_resource {
   public:
-    explicit FrameMemoryResource(std::size_t capacity_bytes);
+    inline static constexpr std::size_t backing_alignment{64};
+
+    explicit FrameMemoryResource(std::span<std::byte> backing);
     ~FrameMemoryResource() override;
 
     FrameMemoryResource(FrameMemoryResource const&) = delete;
@@ -44,7 +47,7 @@ class FrameMemoryResource final : public std::pmr::memory_resource {
 
     auto try_allocate(std::size_t bytes, std::size_t alignment) noexcept -> void*;
 
-    void reclaim();
+    auto try_reclaim() noexcept -> bool;
     void reset();
     auto get_stats() const noexcept -> FrameMemoryStats;
     auto owns(void const* pointer) const noexcept -> bool;
@@ -57,6 +60,10 @@ class FrameMemoryResource final : public std::pmr::memory_resource {
     void record_overflow(std::size_t bytes,
                          std::size_t alignment,
                          std::size_t claimed_bytes) noexcept;
+    void begin_epoch();
+    void end_epoch() noexcept;
+
+    friend class FrameScratchScope;
 
     std::byte* backing_{};
     std::size_t capacity_bytes_{};
@@ -79,5 +86,41 @@ class FrameMemoryResource final : public std::pmr::memory_resource {
     std::atomic<std::size_t> last_failure_requested_bytes_{};
     std::atomic<std::size_t> last_failure_alignment_{};
     std::atomic<std::size_t> last_failure_claimed_bytes_{};
+    bool epoch_active_{};
+};
+
+class FrameScratch final : public std::pmr::memory_resource {
+  public:
+    FrameScratch(FrameScratch const&) = delete;
+    FrameScratch(FrameScratch&&) = delete;
+    auto operator=(FrameScratch const&) -> FrameScratch& = delete;
+    auto operator=(FrameScratch&&) -> FrameScratch& = delete;
+  private:
+    friend class FrameScratchScope;
+
+    explicit FrameScratch(FrameMemoryResource& resource) noexcept
+        : resource_{resource} {}
+
+    auto do_allocate(std::size_t bytes, std::size_t alignment) -> void* override;
+    void do_deallocate(void* pointer, std::size_t bytes, std::size_t alignment) override;
+    auto do_is_equal(std::pmr::memory_resource const& other) const noexcept -> bool override;
+
+    FrameMemoryResource& resource_;
+};
+
+class FrameScratchScope final {
+  public:
+    explicit FrameScratchScope(FrameMemoryResource& resource);
+    ~FrameScratchScope() noexcept;
+
+    FrameScratchScope(FrameScratchScope const&) = delete;
+    FrameScratchScope(FrameScratchScope&&) = delete;
+    auto operator=(FrameScratchScope const&) -> FrameScratchScope& = delete;
+    auto operator=(FrameScratchScope&&) -> FrameScratchScope& = delete;
+
+    auto scratch() noexcept -> FrameScratch& { return scratch_; }
+  private:
+    FrameMemoryResource& resource_;
+    FrameScratch scratch_;
 };
 }

@@ -9,6 +9,7 @@
 #include <ioj/sim/laser_hit_details.h>
 #include <ioj/sim/laser_soa.h>
 #include <ioj/sim/levels/compiled_level_events.h>
+#include <ioj/sim/memory/game_memory.h>
 #include <ioj/sim/spinner_entity_data.h>
 #include <ioj/sim/turret_entity_data.h>
 #include <sandbox/core/frame_memory_resource.h>
@@ -128,14 +129,20 @@ TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
 }
 
 TEST(NativeSimulation, LaserFrameOutputAccumulatesBatchesAndReusesStorage) {
-    ml::FrameMemoryResource frame_memory{1024 * 1024};
-    lasers::FrameHitDetails first_batch{&frame_memory};
+    GameMemory game_memory{{.root_capacity_bytes = 2 * 1024 * 1024}};
+    auto frame_block{
+        game_memory.acquire_block(1024 * 1024, ml::FrameMemoryResource::backing_alignment)};
+    ml::FrameMemoryResource frame_memory{
+        std::span<std::byte>{frame_block.data(), frame_block.size_bytes()}};
+    ml::FrameScratchScope scratch_scope{frame_memory};
+    auto& scratch{scratch_scope.scratch()};
+    lasers::FrameHitDetails first_batch{scratch};
     for (std::int32_t index{}; index < 65; ++index) {
         first_batch.add(HMM_V3(static_cast<float>(index), 1.f, 2.f),
                         HMM_V3(0.f, 1.f, 0.f),
                         {Team::Green, EntityType::Fighter});
     }
-    lasers::FrameHitDetails second_batch{&frame_memory};
+    lasers::FrameHitDetails second_batch{scratch};
     second_batch.add(
         HMM_V3(100.f, 3.f, 4.f), HMM_V3(1.f, 0.f, 0.f), {Team::Red, EntityType::CapitalShip});
     second_batch.add(

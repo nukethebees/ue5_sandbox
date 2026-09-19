@@ -10,6 +10,9 @@
 #include <cstdint>
 #include <cstring>
 #include <memory_resource>
+#include <new>
+#include <span>
+#include <stdexcept>
 #include <thread>
 #include <vector>
 
@@ -25,6 +28,22 @@ struct FTrackedValue {
     ~FTrackedValue() { --live_count; }
 
     inline static int32 live_count{};
+};
+
+class FFrameBacking {
+  public:
+    explicit FFrameBacking(size_t const capacity)
+        : data_{static_cast<std::byte*>(::operator new(capacity, std::align_val_t{ml::FFrameMemoryResource::backing_alignment}))}
+        , capacity_{capacity} {}
+    ~FFrameBacking() { ::operator delete(data_, std::align_val_t{ml::FFrameMemoryResource::backing_alignment}); }
+
+    FFrameBacking(FFrameBacking const&) = delete;
+    FFrameBacking(FFrameBacking&&) = delete;
+
+    operator std::span<std::byte>() const noexcept { return {data_, capacity_}; }
+  private:
+    std::byte* data_{};
+    size_t capacity_{};
 };
 
 class FCountingResource final : public std::pmr::memory_resource {
@@ -45,7 +64,8 @@ class FCountingResource final : public std::pmr::memory_resource {
 }
 
 TEST_CASE("SandboxCore.FFrameMemoryResource aligns arbitrary PMR allocations") {
-    ml::FFrameMemoryResource resource{4096};
+    FFrameBacking backing{4096};
+    ml::FFrameMemoryResource resource{backing};
 
     auto* const byte{resource.allocate(1, 1)};
     auto* const aligned{resource.allocate(sizeof(FOverAlignedValue), alignof(FOverAlignedValue))};
@@ -64,7 +84,8 @@ TEST_CASE("SandboxCore.FFrameMemoryResource aligns arbitrary PMR allocations") {
 }
 
 TEST_CASE("SandboxCore.FFrameMemoryResource supports exact-boundary allocation and overflow") {
-    ml::FFrameMemoryResource resource{256};
+    FFrameBacking backing{256};
+    ml::FFrameMemoryResource resource{backing};
     auto* const exact{resource.allocate(256, 1)};
 
     CHECK(resource.get_stats().current_claimed_bytes == 256);
@@ -80,7 +101,8 @@ TEST_CASE("SandboxCore.FFrameMemoryResource supports exact-boundary allocation a
 }
 
 TEST_CASE("SandboxCore.FFrameMemoryResource reclaims only on explicit reset") {
-    ml::FFrameMemoryResource resource{512};
+    FFrameBacking backing{512};
+    ml::FFrameMemoryResource resource{backing};
     auto* const first{resource.allocate(128, 16)};
     resource.deallocate(first, 128, 16);
 
@@ -100,11 +122,12 @@ TEST_CASE("SandboxCore.FFrameMemoryResource reclaims only on explicit reset") {
 }
 
 TEST_CASE("SandboxCore.FFrameMemoryResource reclaims phases while preserving frame totals") {
-    ml::FFrameMemoryResource resource{512};
+    FFrameBacking backing{512};
+    ml::FFrameMemoryResource resource{backing};
 
     auto* first{resource.allocate(128, 16)};
     resource.deallocate(first, 128, 16);
-    resource.reclaim();
+    CHECK(resource.try_reclaim());
 
     auto* second{resource.allocate(64, 16)};
     resource.deallocate(second, 64, 16);
@@ -134,7 +157,8 @@ TEST_CASE("SandboxCore.FFrameMemoryResource makes concurrent non-overlapping cla
         SIZE_T bytes{};
     };
 
-    ml::FFrameMemoryResource resource{capacity};
+    FFrameBacking backing{capacity};
+    ml::FFrameMemoryResource resource{backing};
     std::array<std::vector<FAllocation>, thread_count> thread_allocations;
     std::vector<std::thread> threads;
     threads.reserve(thread_count);
@@ -182,7 +206,8 @@ TEST_CASE("SandboxCore.FFrameMemoryResource makes concurrent non-overlapping cla
 
 TEST_CASE("SandboxCore frame-backed arrays destroy non-trivial elements before reset") {
     CHECK(FTrackedValue::live_count == 0);
-    ml::FFrameMemoryResource root{4096};
+    FFrameBacking backing{4096};
+    ml::FFrameMemoryResource root{backing};
     {
         ml::TFrameArray<FTrackedValue> values{&root};
         values.reserve(4);
@@ -200,7 +225,8 @@ TEST_CASE("SandboxCore explicit frame resource never consults the default PMR re
     FCountingResource fallback;
     auto* const previous_default{std::pmr::set_default_resource(&fallback)};
     {
-        ml::FFrameMemoryResource root{4096};
+        FFrameBacking backing{4096};
+        ml::FFrameMemoryResource root{backing};
         {
             ml::TFrameArray<int32> values{&root};
             values.reserve(64);
@@ -213,4 +239,68 @@ TEST_CASE("SandboxCore explicit frame resource never consults the default PMR re
     std::pmr::set_default_resource(previous_default);
 
     CHECK(fallback.allocation_count == 0);
+}
+
+TEST_CASE("SandboxCore frame scratch scopes reclaim epochs and preserve tick totals") {
+    FFrameBacking backing{4096};
+    ml::FFrameMemoryResource resource{backing};
+
+    void* first{};
+    {
+        ml::FrameScratchScope scope{resource};
+        first = scope.scratch().allocate(128, 16);
+        scope.scratch().deallocate(first, 128, 16);
+    }
+    CHECK(resource.get_stats().current_claimed_bytes == 0);
+
+    {
+        ml::FrameScratchScope scope{resource};
+        auto* const second{scope.scratch().allocate(64, 16)};
+        CHECK(second == first);
+        scope.scratch().deallocate(second, 64, 16);
+    }
+
+    resource.reset();
+    auto const stats{resource.get_stats()};
+    CHECK(stats.last_frame_claimed_bytes == 128);
+    CHECK(stats.last_frame_payload_bytes == 192);
+    CHECK(stats.last_frame_root_claim_count == 2);
+}
+
+TEST_CASE("SandboxCore frame memory refuses reclaim with an outstanding allocation") {
+    FFrameBacking backing{4096};
+    ml::FFrameMemoryResource resource{backing};
+    auto* const allocation{resource.allocate(64, 16)};
+
+    CHECK_FALSE(resource.try_reclaim());
+    CHECK(resource.get_stats().current_claimed_bytes == 64);
+
+    resource.deallocate(allocation, 64, 16);
+    CHECK(resource.try_reclaim());
+}
+
+TEST_CASE("SandboxCore frame memory validates externally supplied backing") {
+    CHECK_THROWS_AS(ml::FFrameMemoryResource{std::span<std::byte>{}}, std::invalid_argument);
+
+    alignas(ml::FFrameMemoryResource::backing_alignment) std::array<std::byte, 128> backing;
+    CHECK_THROWS_AS(ml::FFrameMemoryResource{std::span<std::byte>{backing}.subspan(1)}, std::invalid_argument);
+}
+
+TEST_CASE("SandboxCore frame scratch scope reclaims during exception unwinding") {
+    FFrameBacking backing{4096};
+    ml::FFrameMemoryResource resource{backing};
+
+    try {
+        ml::FrameScratchScope scope{resource};
+        ml::TFrameArray<int32> values{&scope.scratch()};
+        values.set_num(16);
+        throw 7;
+    } catch (int32 const value) {
+        CHECK(value == 7);
+    }
+
+    auto const stats{resource.get_stats()};
+    CHECK(stats.current_claimed_bytes == 0);
+    CHECK(stats.outstanding_allocation_count == 0);
+    CHECK(stats.current_frame_peak_claimed_bytes > 0);
 }

@@ -9,6 +9,8 @@
 
 #include <array>
 #include <atomic>
+#include <new>
+#include <span>
 #include <string>
 
 namespace ml::frame_memory_benchmarks {
@@ -16,6 +18,20 @@ inline constexpr int32 job_count{8};
 inline constexpr int32 total_element_count{5000};
 inline constexpr int32 timing_repeat_count{64};
 inline constexpr SIZE_T frame_capacity_bytes{16 * 1024 * 1024};
+
+class FFrameBacking {
+  public:
+    FFrameBacking()
+        : data_{static_cast<std::byte*>(::operator new(frame_capacity_bytes, std::align_val_t{FFrameMemoryResource::backing_alignment}))} {}
+    ~FFrameBacking() { ::operator delete(data_, std::align_val_t{FFrameMemoryResource::backing_alignment}); }
+
+    FFrameBacking(FFrameBacking const&) = delete;
+    FFrameBacking(FFrameBacking&&) = delete;
+
+    operator std::span<std::byte>() const noexcept { return {data_, frame_capacity_bytes}; }
+  private:
+    std::byte* data_{};
+};
 
 struct FJobScratch {
     TArray<int32> indices;
@@ -199,7 +215,8 @@ FORCENOINLINE auto run_direct_serial(FFrameMemoryResource& root) -> FMeasurement
 
 TEST_CASE("SandboxCore.FrameMemory.BenchmarkCorrectness") {
     std::array<FJobScratch, job_count> persistent_scratch;
-    FFrameMemoryResource direct_root{frame_capacity_bytes};
+    FFrameBacking backing;
+    FFrameMemoryResource direct_root{backing};
 
     auto const persistent{run_persistent(persistent_scratch, true)};
     auto const direct{run_direct(direct_root, true)};
@@ -212,7 +229,8 @@ TEST_CASE("SandboxCore.FrameMemory.BenchmarkCorrectness") {
 TEST_CASE("SandboxCore.FrameMemory.Timing", "[benchmark]") {
     std::array<FJobScratch, job_count> persistent_scratch;
     FJobScratch persistent_serial_scratch;
-    FFrameMemoryResource direct_root{frame_capacity_bytes};
+    FFrameBacking backing;
+    FFrameMemoryResource direct_root{backing};
 
     // Warm the persistent baseline so its measured behavior matches the existing per-frame reuse.
     run_persistent(persistent_scratch, true);
@@ -241,7 +259,8 @@ TEST_CASE("SandboxCore.FrameMemory.Timing", "[benchmark]") {
 TEST_CASE("SandboxCore.FrameMemory.TransientMemory", "[benchmark]") {
     {
         FJobScratch persistent_scratch;
-        FFrameMemoryResource direct_root{frame_capacity_bytes};
+        FFrameBacking backing;
+        FFrameMemoryResource direct_root{backing};
         auto const persistent{run_persistent_serial(persistent_scratch)};
         auto const direct{run_direct_serial(direct_root)};
 
@@ -252,7 +271,8 @@ TEST_CASE("SandboxCore.FrameMemory.TransientMemory", "[benchmark]") {
 
     for (bool const reserve : {true, false}) {
         std::array<FJobScratch, job_count> persistent_scratch;
-        FFrameMemoryResource direct_root{frame_capacity_bytes};
+        FFrameBacking backing;
+        FFrameMemoryResource direct_root{backing};
         auto const persistent{run_persistent(persistent_scratch, reserve)};
         auto const direct{run_direct(direct_root, reserve)};
 

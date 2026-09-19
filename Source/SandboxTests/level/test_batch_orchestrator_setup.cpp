@@ -19,7 +19,6 @@
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
-#include <SandboxCore/frame_memory_resource.h>
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SandboxISMCComponent.h>
 

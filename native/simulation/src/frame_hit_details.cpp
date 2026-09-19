@@ -1,10 +1,10 @@
 #include "ioj/sim/frame_hit_details.h"
 
 namespace ioj::sim::lasers {
-FrameHitDetails::FrameHitDetails(std::pmr::memory_resource* const resource)
-    : locations{resource}
-    , emission_directions{resource}
-    , sources{resource} {}
+FrameHitDetails::FrameHitDetails(ml::FrameScratch& scratch)
+    : locations{scratch}
+    , emission_directions{scratch}
+    , sources{&scratch} {}
 
 void FrameHitDetails::reserve(std::int32_t const count) {
     locations.reserve(count);

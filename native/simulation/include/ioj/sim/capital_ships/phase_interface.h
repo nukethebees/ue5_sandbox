@@ -14,7 +14,7 @@ class PhaseInterface {
 
     void prepare_tick(float const dt);
 
-    void think(float const dt);
+    void think(float const dt, ml::FrameScratch& scratch);
 
     void resolve_damage_events();
 

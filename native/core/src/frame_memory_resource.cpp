@@ -1,8 +1,11 @@
 #include "sandbox/core/frame_memory_resource.h"
 
+#include "sandbox/core/diagnostics.h"
+
 #include <algorithm>
 #include <bit>
 #include <exception>
+#include <format>
 #include <memory>
 #include <new>
 #include <stdexcept>
@@ -12,25 +15,21 @@
 #endif
 
 namespace ml {
-namespace frame_memory_resource {
-inline constexpr std::size_t backing_alignment{64};
-}
-
-FrameMemoryResource::FrameMemoryResource(std::size_t const capacity_bytes)
-    : capacity_bytes_{capacity_bytes} {
+FrameMemoryResource::FrameMemoryResource(std::span<std::byte> const backing)
+    : backing_{backing.data()}
+    , capacity_bytes_{backing.size_bytes()} {
     if (capacity_bytes_ == 0) {
         throw std::invalid_argument{"Frame memory capacity must be positive"};
     }
-
-    backing_ = static_cast<std::byte*>(::operator new(
-        capacity_bytes_, std::align_val_t{frame_memory_resource::backing_alignment}));
+    if (reinterpret_cast<std::uintptr_t>(backing_) % backing_alignment != 0) {
+        throw std::invalid_argument{"Frame memory backing must be 64-byte aligned"};
+    }
 }
 
 FrameMemoryResource::~FrameMemoryResource() {
-    if (outstanding_allocation_count_.load(std::memory_order_relaxed) != 0) {
+    if (epoch_active_ || outstanding_allocation_count_.load(std::memory_order_relaxed) != 0) {
         std::terminate();
     }
-    ::operator delete(backing_, std::align_val_t{frame_memory_resource::backing_alignment});
 }
 
 auto FrameMemoryResource::try_allocate(std::size_t const bytes,
@@ -73,16 +72,24 @@ auto FrameMemoryResource::try_allocate(std::size_t const bytes,
     }
 }
 
-void FrameMemoryResource::reclaim() {
+auto FrameMemoryResource::try_reclaim() noexcept -> bool {
     if (outstanding_allocation_count_.load(std::memory_order_relaxed) != 0) {
-        throw std::logic_error{"Frame memory cannot be reclaimed with outstanding allocations"};
+        return false;
     }
 
     claimed_bytes_.store(0, std::memory_order_relaxed);
+    return true;
 }
 
 void FrameMemoryResource::reset() {
-    reclaim();
+    if (epoch_active_) {
+        fatal_error("Frame memory cannot complete a tick while a scratch epoch is active");
+    }
+    if (!try_reclaim()) {
+        fatal_error(
+            std::format("Frame memory cannot complete a tick with {} outstanding allocations",
+                        outstanding_allocation_count_.load(std::memory_order_relaxed)));
+    }
 
     last_frame_claimed_bytes_ = frame_peak_claimed_bytes_.load(std::memory_order_relaxed);
     last_frame_payload_bytes_ = payload_bytes_.load(std::memory_order_relaxed);
@@ -167,5 +174,53 @@ void FrameMemoryResource::record_overflow(std::size_t const bytes,
     last_failure_requested_bytes_.store(bytes, std::memory_order_relaxed);
     last_failure_alignment_.store(alignment, std::memory_order_relaxed);
     last_failure_claimed_bytes_.store(claimed_bytes, std::memory_order_relaxed);
+}
+
+void FrameMemoryResource::begin_epoch() {
+    if (epoch_active_) {
+        fatal_error("Frame scratch epochs cannot be nested");
+    }
+    if (outstanding_allocation_count_.load(std::memory_order_relaxed) != 0) {
+        fatal_error("Frame scratch epoch started with outstanding allocations");
+    }
+    epoch_active_ = true;
+}
+
+void FrameMemoryResource::end_epoch() noexcept {
+    if (!epoch_active_) {
+        fatal_error("Frame scratch epoch ended without an active epoch");
+    }
+    if (!try_reclaim()) {
+        auto const stats{get_stats()};
+        fatal_error(std::format(
+            "Frame scratch allocation escaped its epoch: {} allocations, {} claimed bytes",
+            stats.outstanding_allocation_count,
+            stats.current_claimed_bytes));
+    }
+    epoch_active_ = false;
+}
+
+auto FrameScratch::do_allocate(std::size_t const bytes, std::size_t const alignment) -> void* {
+    return resource_.allocate(bytes, alignment);
+}
+
+void FrameScratch::do_deallocate(void* const pointer,
+                                 std::size_t const bytes,
+                                 std::size_t const alignment) {
+    resource_.deallocate(pointer, bytes, alignment);
+}
+
+auto FrameScratch::do_is_equal(std::pmr::memory_resource const& other) const noexcept -> bool {
+    return this == &other;
+}
+
+FrameScratchScope::FrameScratchScope(FrameMemoryResource& resource)
+    : resource_{resource}
+    , scratch_{resource} {
+    resource_.begin_epoch();
+}
+
+FrameScratchScope::~FrameScratchScope() noexcept {
+    resource_.end_epoch();
 }
 }

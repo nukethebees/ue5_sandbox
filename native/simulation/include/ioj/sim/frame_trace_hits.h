@@ -4,13 +4,13 @@
 #include "ioj/sim/frame_vectors3f.h"
 #include "ioj/sim/trace_hits.h"
 #include "sandbox/core/frame_array.h"
+#include "sandbox/core/frame_memory_resource.h"
 
 #include <cstdint>
-#include <memory_resource>
 
 namespace ioj::sim {
 struct FrameTraceHits {
-    explicit FrameTraceHits(std::pmr::memory_resource* resource);
+    explicit FrameTraceHits(ml::FrameScratch& scratch);
 
     FrameTraceHits(FrameTraceHits const&) = delete;
     FrameTraceHits(FrameTraceHits&&) = delete;

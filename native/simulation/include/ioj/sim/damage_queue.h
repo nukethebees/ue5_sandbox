@@ -4,8 +4,7 @@
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/index_span.h>
 #include <sandbox/core/enum_array.h>
-
-#include <memory_resource>
+#include <sandbox/core/frame_memory_resource.h>
 
 namespace ioj::sim {
 class DamageQueue {
@@ -15,7 +14,7 @@ class DamageQueue {
         events_.reset();
         spans_ = {};
     }
-    void prepare(AgentIndexes const& indexes, std::pmr::memory_resource& scratch);
+    void prepare(AgentIndexes const& indexes, ml::FrameScratch& scratch);
     auto events_for(EntityType type) const -> DirectDamageEventsConstView {
         auto const span{spans_[type]};
         return events_.get_const_view(span.offset, span.count);

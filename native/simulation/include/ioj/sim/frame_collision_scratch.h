@@ -4,11 +4,9 @@
 #include "ioj/sim/frame_vectors3f.h"
 
 #include <cstdint>
-#include <memory_resource>
-
 namespace ioj::sim::lasers {
 struct FrameCollisionScratch {
-    explicit FrameCollisionScratch(std::pmr::memory_resource* resource);
+    explicit FrameCollisionScratch(ml::FrameScratch& scratch);
 
     FrameCollisionScratch(FrameCollisionScratch const&) = delete;
     FrameCollisionScratch(FrameCollisionScratch&&) = delete;

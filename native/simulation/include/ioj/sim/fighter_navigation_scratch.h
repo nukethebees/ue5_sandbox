@@ -3,22 +3,22 @@
 #include "ioj/sim/frame_trace_hits.h"
 #include "ioj/sim/frame_vectors3f.h"
 #include "sandbox/core/frame_array.h"
+#include "sandbox/core/frame_memory_resource.h"
 
 #include <cstdint>
-#include <memory_resource>
 
 namespace ioj::sim::fighters {
 struct NavigationScratch {
-    explicit NavigationScratch(std::pmr::memory_resource* resource)
-        : ready_fighter_indices{resource}
-        , line_of_sight_starts{resource}
-        , line_of_sight_ends{resource}
-        , line_of_sight_results{resource}
-        , trace_hits{resource}
-        , blocked_fighter_indices{resource}
-        , trace_fighter_indices{resource}
-        , trace_choice_indices{resource}
-        , observed_risk_tiers{resource} {}
+    explicit NavigationScratch(ml::FrameScratch& scratch)
+        : ready_fighter_indices{&scratch}
+        , line_of_sight_starts{scratch}
+        , line_of_sight_ends{scratch}
+        , line_of_sight_results{&scratch}
+        , trace_hits{scratch}
+        , blocked_fighter_indices{&scratch}
+        , trace_fighter_indices{&scratch}
+        , trace_choice_indices{&scratch}
+        , observed_risk_tiers{&scratch} {}
 
     ml::FrameArray<std::int32_t> ready_fighter_indices;
     FrameVectors3f line_of_sight_starts;

@@ -14,8 +14,6 @@
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
-#include <SandboxCore/frame_memory_resource.h>
-
 #include <Camera/CameraActor.h>
 #include <CQTest.h>
 #include <EnhancedInputComponent.h>
@@ -48,8 +46,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
     ::ioj::sim::AgentIndexes indexes_{clock_};
     ::ioj::sim::AgentAccessor agents_{indexes_, health_table_};
     ::ioj::sim::SpatialQueryManager queries_{agents_};
-    ml::FFrameMemoryResource frame_memory_{1024 * 1024};
-    ::ioj::sim::lasers::Sim lasers_{clock_, combat_events_, queries_, frame_memory_};
+    ::ioj::sim::lasers::Sim lasers_{clock_, combat_events_, queries_};
     ::ioj::sim::player::Sim ship_simulation_{
         clock_, ledger_, combat_events_, health_table_, queries_, lasers_};
     ::ioj::sim::player::CommandInterface ship_commands_{ship_simulation_};

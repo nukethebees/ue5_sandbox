@@ -1,10 +1,10 @@
 #include "ioj/sim/frame_rotators3f.h"
 
 namespace ioj::sim {
-FrameRotators3f::FrameRotators3f(std::pmr::memory_resource* const resource)
-    : pitches{resource}
-    , yaws{resource}
-    , rolls{resource} {}
+FrameRotators3f::FrameRotators3f(ml::FrameScratch& scratch)
+    : pitches{&scratch}
+    , yaws{&scratch}
+    , rolls{&scratch} {}
 
 void FrameRotators3f::reserve(std::int32_t const count) {
     pitches.reserve(count);

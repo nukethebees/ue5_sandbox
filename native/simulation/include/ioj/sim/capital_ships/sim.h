@@ -17,7 +17,7 @@
 #include <ioj/sim/health_table.h>
 #include <ioj/sim/index_span.h>
 
-#include <memory_resource>
+#include <sandbox/core/frame_memory_resource.h>
 
 namespace ioj::sim {
 struct LevelSim;
@@ -44,8 +44,7 @@ struct Sim {
         HealthTable& health_table,
         AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
-        fighters::Sim& fighters,
-        std::pmr::memory_resource& frame_memory_resource);
+        fighters::Sim& fighters);
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -116,7 +115,7 @@ struct Sim {
     /* **************************************** */
     void begin_play();
     void prepare_tick(float dt);
-    void think(float dt);
+    void think(float dt, ml::FrameScratch& scratch);
     void resolve_damage_events();
     void resolve_fighters_of_dying_capitals();
     void publish_deaths();
@@ -136,8 +135,8 @@ struct Sim {
     /* **************************************** */
     // Fighter spawning
     /* **************************************** */
-    void queue_fighter_spawns();
-    void refresh_fighter_ids();
+    void queue_fighter_spawns(ml::FrameScratch& scratch);
+    void refresh_fighter_ids(ml::FrameScratch& scratch);
 
     /* **************************************** */
     // Orders
@@ -171,7 +170,6 @@ struct Sim {
     HealthTable& health_table_;
     AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
-    std::pmr::memory_resource& frame_memory_resource;
 
     EntityStorage entities{};
     std::vector<std::int32_t> local_indices_to_remove;
