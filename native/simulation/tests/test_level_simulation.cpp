@@ -306,6 +306,20 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     tests::expect_equal(turrets.num(), 2, "Both compiled turrets are registered");
 }
 
+TEST(NativeSimulation, PlayerPreservesPartialSpawnHealth) {
+    auto data{make_battle()};
+    add_player_spawn(data, {});
+    data.player->health = {50, 100};
+
+    LevelSim simulation{std::move(data)};
+    simulation.finish_initialisation();
+
+    auto const* const player{simulation.get_player_ship_simulation()};
+    ASSERT_NE(player, nullptr);
+    EXPECT_EQ(player->get_health().health, 50);
+    EXPECT_EQ(player->get_health().max_health, 100);
+}
+
 TEST(NativeSimulation, LevelSimReconstructionTest) {
     std::optional<LevelSim> simulation;
     tests::expect_false(simulation.has_value(), "Construction can be delayed");

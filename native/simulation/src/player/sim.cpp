@@ -53,10 +53,7 @@ void Sim::configure(PlayerSpawnData const& spawn) noexcept {
     laser_fire_rate = spawn.laser_fire_rate;
     max_health_ = spawn.health.max_health;
     unique_entity_id = ledger_.record_spawn(EntityType::PlayerShip, team, spawn.health.is_alive());
-    auto initial_health{spawn.health.health};
-    if (max_health_ > initial_health) {
-        initial_health = max_health_;
-    }
+    auto const initial_health{spawn.health.health};
     health_table_.add(std::span<EntityUniqueId const>{&unique_entity_id, 1},
                       std::span<Health const>{&initial_health, 1},
                       std::span<HealthIndex>{&health_index_, 1});
