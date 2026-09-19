@@ -70,8 +70,20 @@ public sealed class AgentGitAdversarialTests
 
         var result = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "status");
 
-        Assert.AreEqual(ExitCodes.StateFailure, result.ExitCode);
+        Assert.AreEqual(ExitCodes.StateFailure, result.ExitCode, result.Error);
         StringAssert.Contains(result.Error, "unsupported executable settings");
+    }
+
+    [TestMethod]
+    public async Task Local_core_worktree_cannot_expand_the_trusted_repository_root()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        fixture.RunGit("config", "core.worktree", Path.GetDirectoryName(fixture.RepositoryRoot)!);
+
+        var result = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "status");
+
+        Assert.AreEqual(ExitCodes.StateFailure, result.ExitCode, result.Error);
+        StringAssert.Contains(result.Error, "core.worktree");
     }
 
     [TestMethod]
@@ -105,6 +117,25 @@ public sealed class AgentGitAdversarialTests
         var credential = await credential_fixture.RunAgentGitAsync(credential_fixture.RepositoryRoot, "status");
         Assert.AreEqual(ExitCodes.StateFailure, credential.ExitCode);
         StringAssert.Contains(credential.Error, "unsupported executable settings");
+    }
+
+    [TestMethod]
+    public async Task Legacy_grafts_cannot_falsify_branch_ancestry()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        var common_git_directory = fixture.RunGit(
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-common-dir").Trim();
+        Directory.CreateDirectory(Path.Combine(common_git_directory, "info"));
+        File.WriteAllText(
+            Path.Combine(common_git_directory, "info", "grafts"),
+            fixture.RunGit("rev-parse", "HEAD").Trim() + Environment.NewLine);
+
+        var result = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "status");
+
+        Assert.AreEqual(ExitCodes.StateFailure, result.ExitCode, result.Error);
+        StringAssert.Contains(result.Error, "graft files");
     }
 
     [TestMethod]

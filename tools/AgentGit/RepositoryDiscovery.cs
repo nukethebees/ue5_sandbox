@@ -26,17 +26,20 @@ internal sealed class RepositoryDiscovery(GitClient git)
         }
 
         var registration = trust.FindRegistration(common_git_directory);
+        await ValidateRepositoryConfigurationAsync(
+            working_directory,
+            git_directory,
+            common_git_directory,
+            cancellation_token);
         var origin_url = await git.RequireTextAsync(
             root,
             ["config", "--local", "--get", "remote.origin.url"],
             cancellation_token);
         if (!string.Equals(origin_url, registration.OriginUrl, StringComparison.Ordinal))
         {
-            throw new RepositoryException(
-                $"Repository origin '{origin_url}' does not match trusted origin '{registration.OriginUrl}'.");
+            throw new RepositoryException("Repository origin does not match the trusted registration.");
         }
 
-        await ValidateRepositoryConfigurationAsync(root, common_git_directory, cancellation_token);
         await ValidateDirectRefAsync(root, registration.PolicyRef, cancellation_token);
         string policy_commit;
         string policy_json;
@@ -233,6 +236,7 @@ internal sealed class RepositoryDiscovery(GitClient git)
 
     private async Task ValidateRepositoryConfigurationAsync(
         string worktree_root,
+        string git_directory,
         string common_git_directory,
         CancellationToken cancellation_token)
     {
@@ -247,7 +251,20 @@ internal sealed class RepositoryDiscovery(GitClient git)
                 "true",
                 StringComparison.OrdinalIgnoreCase))
         {
-            scopes.Add("--worktree");
+            var worktree_config_path = await git.RequireTextAsync(
+                worktree_root,
+                ["rev-parse", "--path-format=absolute", "--git-path", "config.worktree"],
+                cancellation_token);
+            if (Directory.Exists(worktree_config_path))
+            {
+                throw new RepositoryStateException(
+                    $"Worktree Git configuration path is a directory: '{worktree_config_path}'.");
+            }
+
+            if (File.Exists(worktree_config_path))
+            {
+                scopes.Add("--worktree");
+            }
         }
         else if (worktree_config.ExitCode is not (0 or 1))
         {
@@ -276,6 +293,13 @@ internal sealed class RepositoryDiscovery(GitClient git)
         {
             throw new RepositoryStateException("Git object alternates are not supported by agent-git.");
         }
+
+        var graft_directories = new[] { git_directory, common_git_directory }.Distinct(
+            OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
+        if (graft_directories.Any(directory => File.Exists(Path.Combine(directory, "info", "grafts"))))
+        {
+            throw new RepositoryStateException("Git graft files are not supported by agent-git.");
+        }
     }
 
     private static bool IsUnsupportedExecutableConfiguration(string name)
@@ -296,6 +320,7 @@ internal sealed class RepositoryDiscovery(GitClient git)
             lower.Equals("credential.helper", StringComparison.Ordinal) ||
             lower.Equals("core.askpass", StringComparison.Ordinal) ||
             lower.Equals("core.sshcommand", StringComparison.Ordinal) ||
+            lower.Equals("core.worktree", StringComparison.Ordinal) ||
             lower.StartsWith("lfs.customtransfer.", StringComparison.Ordinal) ||
             lower.Equals("lfs.standalonetransferagent", StringComparison.Ordinal))
         {

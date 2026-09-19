@@ -125,11 +125,21 @@ internal static class PolicyLoader
 
         ValidateBranchNameField(document.RepositoryId, "repositoryId");
         ValidateBranchNameField(document.BaseBranch, "baseBranch");
-        if (document.BranchGroups.Count != 2 ||
+        if (document.BranchGroups is null || document.BranchGroups.Count != 2 ||
             !document.BranchGroups.ContainsKey("protected") ||
             !document.BranchGroups.ContainsKey("workspace"))
         {
             throw new PolicyConfigurationException("branchGroups must contain exactly 'protected' and 'workspace'.");
+        }
+
+        if (document.GitExtensions is null)
+        {
+            throw new PolicyConfigurationException("gitExtensions cannot be null.");
+        }
+
+        if (document.Policies is null)
+        {
+            throw new PolicyConfigurationException("policies cannot be null.");
         }
 
         var protected_matchers = CompileMatchers("protected", document.BranchGroups["protected"]);
@@ -169,9 +179,11 @@ internal static class PolicyLoader
         return policy;
     }
 
-    private static IReadOnlyList<BranchMatcher> CompileMatchers(string group, IReadOnlyList<BranchMatcherDocument> documents)
+    private static IReadOnlyList<BranchMatcher> CompileMatchers(
+        string group,
+        IReadOnlyList<BranchMatcherDocument>? documents)
     {
-        if (documents.Count == 0)
+        if (documents is null || documents.Count == 0)
         {
             throw new PolicyConfigurationException($"Branch group '{group}' must contain at least one matcher.");
         }
@@ -179,6 +191,11 @@ internal static class PolicyLoader
         var result = new List<BranchMatcher>();
         foreach (var document in documents)
         {
+            if (document is null)
+            {
+                throw new PolicyConfigurationException($"Branch group '{group}' cannot contain a null matcher.");
+            }
+
             if ((document.Exact is null) == (document.Regex is null))
             {
                 throw new PolicyConfigurationException(
@@ -211,8 +228,14 @@ internal static class PolicyLoader
         return result;
     }
 
-    private static OperationPolicy CompileOperation(AgentGitOperation operation, OperationPolicyDocument document)
+    private static OperationPolicy CompileOperation(AgentGitOperation operation, OperationPolicyDocument? document)
     {
+        if (document is null)
+        {
+            throw new PolicyConfigurationException(
+                $"Policy '{CommandLine.OperationName(operation)}' cannot be null.");
+        }
+
         var current = CompileGroups(document.AllowedCurrentGroups, operation, "allowedCurrentGroups");
         var target = CompileGroups(document.AllowedTargetGroups, operation, "allowedTargetGroups");
         var require_merged = document.RequireMergedInto is not null;
@@ -227,10 +250,16 @@ internal static class PolicyLoader
     }
 
     private static IReadOnlySet<BranchClassification> CompileGroups(
-        IEnumerable<string> groups,
+        IEnumerable<string>? groups,
         AgentGitOperation operation,
         string field)
     {
+        if (groups is null)
+        {
+            throw new PolicyConfigurationException(
+                $"Policy '{CommandLine.OperationName(operation)}' field '{field}' cannot be null.");
+        }
+
         var result = new HashSet<BranchClassification>();
         foreach (var group in groups)
         {
@@ -276,6 +305,11 @@ internal static class PolicyLoader
         if (operation == AgentGitOperation.SwitchCreate && target.Any(value => value != BranchClassification.Feature))
         {
             throw new PolicyConfigurationException("Switch-create policy may target only feature branches.");
+        }
+
+        if (operation == AgentGitOperation.RebaseBase && !require_clean)
+        {
+            throw new PolicyConfigurationException("Rebase-base policy must require a clean tree.");
         }
 
         if (operation == AgentGitOperation.BranchDelete &&

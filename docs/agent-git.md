@@ -5,6 +5,11 @@ not an argument wrapper: every supported operation is parsed into a semantic req
 against repository and worktree state, and either executed with fixed Git arguments or denied.
 Unknown commands never fall through to Git.
 
+The trusted path stays explicit: CLI parsing creates a closed semantic request; repository
+discovery builds one state snapshot; the policy evaluator returns an allow/deny decision; and an
+operation-specific executor constructs fixed Git arguments. Process launching and shared worktree
+parsing are separate infrastructure. CLI strings never become Git subcommands or options.
+
 ## Trust model and installation
 
 The trusted executable lives outside writable worktrees at:
@@ -41,6 +46,8 @@ Branches matching neither configured group are features. A branch matching both 
 ambiguous and fails closed. Unknown fields, operations, groups, extensions, or malformed patterns
 invalidate the policy. Built-in safety ceilings prevent policy from enabling protected/workspace
 commits, protected switching, arbitrary rebase targets, force deletion, or unsupported operations.
+Every repository command, including inspection commands, requires a valid policy and trust
+registration; broken configuration never creates a less-restricted mode.
 
 In this repository, `dev`, `main`, and `master` are protected; branches matching `^dev[0-9]+$` are
 persistent workspace branches; everything else is a feature branch. Workspace switching is limited
@@ -87,11 +94,15 @@ for inspection.
 The tool invokes a pinned Git executable directly with structured arguments and no shell. It uses
 a controlled environment, disables hooks, signing, editors, pagers, prompts, automatic maintenance,
 replace refs, update-refs rebasing, and inherited repository redirection. Unknown executable filters,
-merge drivers, configuration includes, and object alternates fail closed. Git LFS is the sole
+merge drivers, configuration includes, `core.worktree` redirection, and object alternates fail closed. Git LFS is the sole
 initially modeled external extension.
 LFS clean filtering remains available for staging, while automatic smudging is skipped so a branch
 checkout cannot trigger repository-controlled network or credential activity; explicit LFS content
 downloads remain outside the trusted interface.
+
+Mutations take a lock in the common Git directory and rediscover repository state under that lock
+immediately before policy evaluation. The lock coordinates `agent-git` processes; raw Git or other
+programs can still race it, with Git's own ref and index locks providing the final integrity checks.
 
 ## Codex rule
 

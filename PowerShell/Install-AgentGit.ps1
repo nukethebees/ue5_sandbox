@@ -52,6 +52,16 @@ $origin_url = Invoke-GitText @('-C', $repository_root, 'config', '--local', '--g
 $user_name = Invoke-GitText @('-C', $repository_root, 'config', '--get', 'user.name')
 $user_email = Invoke-GitText @('-C', $repository_root, 'config', '--get', 'user.email')
 $policy_ref = "refs/heads/$BaseBranch"
+$null = Invoke-GitText @('-C', $repository_root, 'check-ref-format', $policy_ref)
+if ([string]::IsNullOrWhiteSpace($PolicyPath) -or
+    $PolicyPath.StartsWith('/') -or
+    $PolicyPath.EndsWith('/') -or
+    $PolicyPath.Contains('\') -or
+    $PolicyPath.Contains(':') -or
+    $PolicyPath -match '[\x00-\x1f\x7f]' -or
+    @($PolicyPath.Split('/') | Where-Object { $_ -in @('', '.', '..') }).Count -ne 0) {
+    throw "PolicyPath must be a safe repository-relative Git path; found '$PolicyPath'."
+}
 $policy_json = Invoke-GitText @('-C', $repository_root, 'cat-file', 'blob', "${policy_ref}:$PolicyPath")
 $policy = $policy_json | ConvertFrom-Json
 if ($policy.version -ne 1) {

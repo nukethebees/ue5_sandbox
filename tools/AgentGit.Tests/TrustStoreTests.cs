@@ -35,4 +35,53 @@ public sealed class TrustStoreTests
         var duplicate = trust with { Repositories = [registration, registration] };
         Assert.ThrowsException<PolicyConfigurationException>(() => duplicate.FindRegistration(registration.CommonGitDirectory));
     }
+
+    [TestMethod]
+    public void ValidateManifest_rejects_unsafe_policy_locations_and_duplicate_registrations()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        var registration = fixture.Trust.Repositories.Single();
+        var manifest = CreateManifest(fixture, registration);
+        TrustStore.ValidateManifest(manifest);
+
+        var unsafe_ref = CopyRegistration(registration, policy_ref: "refs/heads/dev:attacker");
+        Assert.ThrowsException<PolicyConfigurationException>(
+            () => TrustStore.ValidateManifest(CreateManifest(fixture, unsafe_ref)));
+
+        var unsafe_path = CopyRegistration(registration, policy_path: "../.agent-git.json");
+        Assert.ThrowsException<PolicyConfigurationException>(
+            () => TrustStore.ValidateManifest(CreateManifest(fixture, unsafe_path)));
+
+        Assert.ThrowsException<PolicyConfigurationException>(
+            () => TrustStore.ValidateManifest(CreateManifest(fixture, registration, registration)));
+    }
+
+    private static TrustManifest CreateManifest(
+        TemporaryAgentGitRepository fixture,
+        params TrustedRepository[] repositories)
+    {
+        return new TrustManifest
+        {
+            Version = 1,
+            GitExecutable = fixture.GitExecutable,
+            UserName = "Agent Git Test",
+            UserEmail = "agent-git@example.com",
+            Repositories = repositories,
+        };
+    }
+
+    private static TrustedRepository CopyRegistration(
+        TrustedRepository source,
+        string? policy_ref = null,
+        string? policy_path = null)
+    {
+        return new TrustedRepository
+        {
+            RepositoryId = source.RepositoryId,
+            CommonGitDirectory = source.CommonGitDirectory,
+            OriginUrl = source.OriginUrl,
+            PolicyRef = policy_ref ?? source.PolicyRef,
+            PolicyPath = policy_path ?? source.PolicyPath,
+        };
+    }
 }

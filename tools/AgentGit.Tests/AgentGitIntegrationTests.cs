@@ -21,6 +21,17 @@ public sealed class AgentGitIntegrationTests
     }
 
     [TestMethod]
+    public async Task Discovery_allows_enabled_but_absent_worktree_configuration()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        fixture.RunGit("config", "extensions.worktreeConfig", "true");
+
+        var result = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "status");
+
+        Assert.AreEqual(ExitCodes.Success, result.ExitCode, result.Error);
+    }
+
+    [TestMethod]
     public async Task Add_and_commit_are_denied_on_protected_and_workspace_branches()
     {
         using var fixture = new TemporaryAgentGitRepository();

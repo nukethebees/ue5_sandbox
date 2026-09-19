@@ -1,3 +1,4 @@
+using System.Text.Json.Nodes;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AgentGit.Tests;
@@ -60,6 +61,24 @@ public sealed class PolicyLoaderTests
         var exception = Assert.ThrowsException<PolicyConfigurationException>(() => PolicyLoader.Parse(json));
 
         StringAssert.Contains(exception.Message, "cannot allow protected");
+    }
+
+    [TestMethod]
+    public void Parse_rejects_null_structures_and_dirty_rebase_policy()
+    {
+        var null_groups = JsonNode.Parse(ValidPolicy())!.AsObject();
+        null_groups["branchGroups"] = null;
+        Assert.ThrowsException<PolicyConfigurationException>(() => PolicyLoader.Parse(null_groups.ToJsonString()));
+
+        var null_operation = JsonNode.Parse(ValidPolicy())!.AsObject();
+        null_operation["policies"]!["commit"] = null;
+        Assert.ThrowsException<PolicyConfigurationException>(() => PolicyLoader.Parse(null_operation.ToJsonString()));
+
+        var dirty_rebase = JsonNode.Parse(ValidPolicy())!.AsObject();
+        dirty_rebase["policies"]!["rebaseBase"]!["requireClean"] = false;
+        var exception = Assert.ThrowsException<PolicyConfigurationException>(
+            () => PolicyLoader.Parse(dirty_rebase.ToJsonString()));
+        StringAssert.Contains(exception.Message, "must require a clean tree");
     }
 
     internal static string ValidPolicy(bool include_lfs = false)
