@@ -540,6 +540,9 @@ void FTestHUDManagerScenario::registration_process_samples() {
 
     hud->set_crosshair_distances(ui_data->crosshair_distances);
     hud->AddToViewport();
+    checks.are_equal(ESlateVisibility::HitTestInvisible,
+                     hud->GetVisibility(),
+                     TEXT("Ship HUD does not intercept player input"));
     hud_manager.register_hud(*hud);
     checks.are_equal(1,
                      hud_manager.get_registered_hud_count(),

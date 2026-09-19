@@ -7,13 +7,13 @@
 #include "SandboxGameShared/ui/widgets/ValueWidget.h"
 #include "SandboxUI/Radar/SRadarWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/DebugGraphWidget.h"
-#include "SpaceGamePresentation/presentation/widgets/FlightVectorDebugWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/ForceStatusWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/MissionStatusWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipHealthWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipPointsWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipSpeedWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipThrusterEnergyWidget.h"
+#include "SpaceGamePresentation/presentation/widgets/Vector2DWidget.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
@@ -120,6 +120,7 @@ void UShipHudWidget::set_radar_style(FRadarStyle const& style) {
 
 void UShipHudWidget::NativeConstruct() {
     Super::NativeConstruct();
+    SetVisibility(ESlateVisibility::HitTestInvisible);
     set_common_widget_properties();
 
     RETURN_IF_NULLPTR(crosshair_material);
@@ -140,64 +141,21 @@ void UShipHudWidget::NativeConstruct() {
 
 void UShipHudWidget::NativePreConstruct() {
     Super::NativePreConstruct();
-    construct_flight_vector_debug_widget();
+
+    if (IsValid(turn_input_widget)) {
+        turn_input_widget->set_label(INVTEXT("Turning"));
+    }
+    if (IsValid(move_input_widget)) {
+        move_input_widget->set_label(INVTEXT("Movement"));
+    }
+    if (IsValid(target_velocity_vector_widget)) {
+        target_velocity_vector_widget->set_label(INVTEXT("Target velocity"));
+    }
+    if (IsValid(local_velocity_widget)) {
+        local_velocity_widget->set_label(INVTEXT("Local velocity"));
+    }
+
     set_common_widget_properties();
-}
-
-void UShipHudWidget::construct_flight_vector_debug_widget() {
-    if (!WidgetTree || flight_vector_debug_widget) {
-        return;
-    }
-
-    auto* const turning_widget{WidgetTree->FindWidget(TEXT("turning_widget"))};
-    auto* const moving_widget{WidgetTree->FindWidget(TEXT("moving_widget"))};
-    auto* const desired_velocity_scale_widget{
-        WidgetTree->FindWidget(TEXT("desired_velocity_scale_widget"))};
-    auto* const turning_slot{turning_widget ? Cast<UCanvasPanelSlot>(turning_widget->Slot)
-                                            : nullptr};
-    auto* const moving_slot{moving_widget ? Cast<UCanvasPanelSlot>(moving_widget->Slot) : nullptr};
-    auto* const target_velocity_slot{
-        desired_velocity_scale_widget ? Cast<UCanvasPanelSlot>(desired_velocity_scale_widget->Slot)
-                                      : nullptr};
-    if (!turning_slot || !moving_slot || !target_velocity_slot) {
-        UE_LOG(LogSandboxUI, Error, TEXT("Ship HUD has no CanvasPanel flight-vector widgets."));
-        return;
-    }
-
-    auto* const parent{turning_widget->GetParent()};
-    if (!parent || moving_widget->GetParent() != parent ||
-        desired_velocity_scale_widget->GetParent() != parent) {
-        UE_LOG(LogSandboxUI, Error, TEXT("Ship HUD flight-vector widgets have different parents."));
-        return;
-    }
-
-    auto const anchors{turning_slot->GetAnchors()};
-    auto const alignment{turning_slot->GetAlignment()};
-    auto const turning_offsets{turning_slot->GetOffsets()};
-    auto const moving_offsets{moving_slot->GetOffsets()};
-    auto const target_velocity_offsets{target_velocity_slot->GetOffsets()};
-    auto const left{
-        FMath::Min3(turning_offsets.Left, moving_offsets.Left, target_velocity_offsets.Left)};
-    auto const top{
-        FMath::Min3(turning_offsets.Top, moving_offsets.Top, target_velocity_offsets.Top)};
-    auto const right{FMath::Max3(turning_offsets.Left + turning_offsets.Right,
-                                 moving_offsets.Left + moving_offsets.Right,
-                                 target_velocity_offsets.Left + target_velocity_offsets.Right)};
-    auto const bottom{FMath::Max3(turning_offsets.Top + turning_offsets.Bottom,
-                                  moving_offsets.Top + moving_offsets.Bottom,
-                                  target_velocity_offsets.Top + target_velocity_offsets.Bottom)};
-
-    parent->RemoveChild(turning_widget);
-    parent->RemoveChild(moving_widget);
-    parent->RemoveChild(desired_velocity_scale_widget);
-
-    flight_vector_debug_widget = WidgetTree->ConstructWidget<UFlightVectorDebugWidget>(
-        UFlightVectorDebugWidget::StaticClass(), TEXT("flight_vector_debug_widget"));
-    auto* const slot{Cast<UCanvasPanelSlot>(parent->AddChild(flight_vector_debug_widget))};
-    check(slot);
-    slot->SetAnchors(anchors);
-    slot->SetAlignment(alignment);
-    slot->SetOffsets(FMargin{left, top, right - left, bottom - top});
 }
 
 void UShipHudWidget::set_common_widget_properties() {
@@ -208,7 +166,10 @@ void UShipHudWidget::set_common_widget_properties() {
                              fire_rate_widget,
                              target_speed_widget,
                              selected_imc_widget,
-                             flight_vector_debug_widget,
+                             turn_input_widget,
+                             move_input_widget,
+                             target_velocity_vector_widget,
+                             local_velocity_widget,
                              ship_velocity_widget,
                              target_velocity_widget,
                              control_mode_widget,
@@ -259,8 +220,13 @@ void UShipHudWidget::apply_ui_style(ml::ioj::FGameUiStyle const& style) {
     control_mode_widget->set_format_spec(TEXT("CONTROL // {0}"));
     flight_mode_widget->set_format_spec(TEXT("FLIGHT MODE // {0}"));
 
-    if (flight_vector_debug_widget) {
-        flight_vector_debug_widget->apply_hud_style(hud_style);
+    for (auto* const widget : {turn_input_widget,
+                               move_input_widget,
+                               target_velocity_vector_widget,
+                               local_velocity_widget}) {
+        if (IsValid(widget)) {
+            widget->apply_hud_style(hud_style);
+        }
     }
 #if WITH_EDITORONLY_DATA
     if (speed_graph) {
@@ -358,8 +324,15 @@ void UShipHudWidget::set_selected_imc(FStringView value) {
 }
 
 void UShipHudWidget::set_flight_vector_debug(ml::ship_hud::FFlightVectorDebugData const& value) {
-    check(IsValid(flight_vector_debug_widget));
-    flight_vector_debug_widget->update(value);
+    check(IsValid(turn_input_widget));
+    check(IsValid(move_input_widget));
+    check(IsValid(target_velocity_vector_widget));
+    check(IsValid(local_velocity_widget));
+
+    turn_input_widget->update(value.turn_input);
+    move_input_widget->update(value.move_input);
+    target_velocity_vector_widget->update(value.target_velocity);
+    local_velocity_widget->update(value.local_velocity);
 }
 
 void UShipHudWidget::set_ship_velocity(FVector value) {

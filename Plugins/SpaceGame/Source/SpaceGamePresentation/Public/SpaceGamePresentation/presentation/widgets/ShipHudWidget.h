@@ -24,7 +24,7 @@ class UShipThrusterEnergyWidget;
 class UShipPointsWidget;
 
 class UValueWidget;
-class UFlightVectorDebugWidget;
+class UVector2DWidget;
 class UDebugGraphWidget;
 class UForceStatusWidget;
 class UMissionStatusWidget;
@@ -108,7 +108,6 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     void ReleaseSlateResources(bool release_children) override;
 
     void set_common_widget_properties();
-    void construct_flight_vector_debug_widget();
     void update_crosshair_colours();
     void apply_radar_colours();
     void set_widget_visibility_checked(UWidget* const widget,
@@ -131,8 +130,14 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     UValueWidget* target_speed_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UValueWidget* selected_imc_widget{nullptr};
-    UPROPERTY(Transient)
-    UFlightVectorDebugWidget* flight_vector_debug_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UVector2DWidget* turn_input_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UVector2DWidget* move_input_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UVector2DWidget* target_velocity_vector_widget{nullptr};
+    UPROPERTY(meta = (BindWidget))
+    UVector2DWidget* local_velocity_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UValueWidget* ship_velocity_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
