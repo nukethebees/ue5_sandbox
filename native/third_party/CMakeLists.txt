@@ -24,9 +24,6 @@ if(SANDBOX_LAYOUT_PLANNER)
   set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
   set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
   add_subdirectory(sdl EXCLUDE_FROM_ALL)
-  get_target_property(sdl_include_directories SDL3-static INTERFACE_INCLUDE_DIRECTORIES)
-  set_property(TARGET SDL3-static PROPERTY
-    INTERFACE_SYSTEM_INCLUDE_DIRECTORIES "${sdl_include_directories}")
 
   add_library(sandbox-imgui)
   target_sources(sandbox-imgui PRIVATE
