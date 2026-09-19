@@ -353,7 +353,7 @@ auto lower_soa(SoaSchema const& schema,
 
 auto lower_soa_module(SoaModuleSchema const& module, std::map<std::string, CppType> const& types)
     -> Module {
-    if (module.experimental_array_allocators.empty()) {
+    if (module.array_allocators.empty()) {
         return lower_soa_module_impl(module, types);
     }
     if (module.backend == SoaBackend::standard_library) {
@@ -374,7 +374,7 @@ auto lower_soa_module(SoaModuleSchema const& module, std::map<std::string, CppTy
             names.insert(variant.name + "Storage");
         }
     }
-    for (auto const& variant : module.experimental_array_allocators) {
+    for (auto const& variant : module.array_allocators) {
         if (variant.prefix.empty() ||
             !std::isalpha(static_cast<unsigned char>(variant.prefix.front())) ||
             !std::ranges::all_of(variant.prefix,

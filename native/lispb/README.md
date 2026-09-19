@@ -64,8 +64,7 @@ properties, and owned declarations are nested forms:
 `soa-module` defaults to the Unreal backend. Native libraries can select
 `:backend standard-library` and omit `:source`; the generated owning storage uses
 `std::vector`, views use `std::span`, and nested and single-allocation layouts remain available.
-Native targets compiling that output must include `native/lispb/native_soa/include` as well as
-`native/core/include`.
+Native targets compiling that output must include `native/core/include`.
 
 ```lisp
 (soa-module simulation_contacts

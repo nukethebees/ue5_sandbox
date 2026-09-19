@@ -820,7 +820,7 @@ def make_native_benchmark_document() -> dict[str, Any]:
             "configurePreset": "native-soa",
             "filter": {
                 "include": {
-                    "name": "^(native-soa|SingleAllocationSoa\\.|Json\\.LoadsExperimentalStdlibSoa)"
+                    "name": "^(native-soa|SingleAllocationSoa\\.)"
                 }
             },
         },

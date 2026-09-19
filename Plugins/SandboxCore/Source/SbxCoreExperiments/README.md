@@ -1,6 +1,6 @@
 # Single-allocation generated SoA experiment
 
-The comparison uses an opt-in generated owner with one aligned allocation, one size and one capacity for all 53 flattened columns. The runtime and generator mode are now production facilities in SandboxCore, with mimalloc as the Unreal default. Comparison schemas remain experimental and production fighter data is unchanged. See the [storage API and lifetime contract](../SandboxCore/single_allocation_storage.md).
+The comparison uses an opt-in generated owner with one aligned allocation, one size and one capacity for all 53 flattened columns. The runtime and generator mode are production facilities in SandboxCore, with mimalloc as the Unreal default; production simulation stores use generated single-allocation owners. Comparison schemas remain experimental. See the [storage API and lifetime contract](../SandboxCore/single_allocation_storage.md).
 
 The generated single-allocation default now includes a fixed **192-byte gap**
 between columns, followed by any padding required for the next column's alignment.

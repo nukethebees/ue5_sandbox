@@ -168,11 +168,11 @@ TEST(SingleAllocationSoa, EmitsDirectOrdinaryConstViewAppend) {
 }
 
 TEST(SingleAllocationSoa, AllocatorVariantsApplyToNestedColumns) {
-    auto module{SoaModuleSchema{
-        .settings = {.name = "test", .header = "Test.h", .source = "Test.cpp"},
-        .structs = schemas(),
-        .experimental_array_allocators = {{"Malloc", TypeRef{"MallocAllocator"}},
-                                          {"Realloc", TypeRef{"ReallocAllocator"}}}}};
+    auto module{
+        SoaModuleSchema{.settings = {.name = "test", .header = "Test.h", .source = "Test.cpp"},
+                        .structs = schemas(),
+                        .array_allocators = {{"Malloc", TypeRef{"MallocAllocator"}},
+                                             {"Realloc", TypeRef{"ReallocAllocator"}}}}};
     auto const files{render_modules(
         lower_modules(Manifest{.schema_version = manifest_schema_version, .modules = {module}}))};
     auto const& output{files.front().content};
@@ -183,7 +183,7 @@ TEST(SingleAllocationSoa, AllocatorVariantsApplyToNestedColumns) {
     EXPECT_NE(output.find("ReallocChild nested;"), std::string::npos);
     EXPECT_NE(output.find("TArray<uint8> small;"), std::string::npos);
     EXPECT_EQ(output.find("MallocSingleRows"), std::string::npos);
-    module.experimental_array_allocators.push_back({"Malloc", TypeRef{"ReallocAllocator"}});
+    module.array_allocators.push_back({"Malloc", TypeRef{"ReallocAllocator"}});
     EXPECT_THROW(
         lower_modules(Manifest{.schema_version = manifest_schema_version, .modules = {module}}),
         std::invalid_argument);

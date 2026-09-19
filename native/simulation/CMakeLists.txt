@@ -18,7 +18,6 @@ foreach(native_simulation_target IN LISTS native_simulation_targets)
   target_include_directories(${native_simulation_target} PUBLIC
     include
     "${PROJECT_SOURCE_DIR}/native/core/include"
-    "${PROJECT_SOURCE_DIR}/native/lispb/native_soa/include"
   )
   target_link_libraries(${native_simulation_target}
     PUBLIC sandbox::handmade_math native-memory native-core

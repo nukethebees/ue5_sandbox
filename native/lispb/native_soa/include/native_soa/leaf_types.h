@@ -9,6 +9,10 @@ struct Handle {
     std::int32_t generation{-1};
 };
 
+struct EntityId {
+    std::uint32_t value{0xffffffffu};
+};
+
 enum class Task : std::uint8_t { None };
 enum class Team : std::uint8_t { None };
 

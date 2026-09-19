@@ -12,6 +12,7 @@ target_sources(native-core PRIVATE
   include/sandbox/core/enum_traits.h
   include/sandbox/core/countdown_timers.h
   include/sandbox/core/math_types.h
+  include/sandbox/core/native_soa/storage.h
   include/sandbox/core/periodic_tick_countdown.h
   include/sandbox/core/tick_countdown.h
   include/sandbox/core/vector_normalization.h

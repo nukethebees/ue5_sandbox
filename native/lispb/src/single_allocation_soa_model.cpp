@@ -86,7 +86,9 @@ auto make_dialect(bool const native) -> SingleAllocationDialect {
             .default_free_requires_alignment = true,
             .column_iteration_function = "each_column",
             .column_application_function = "each_column",
-            .dependencies = {{"single_allocation_storage", "native_soa/storage.h", {}}},
+            .dependencies = {{"single_allocation_storage",
+                              "sandbox/core/native_soa/storage.h",
+                              {}}},
         };
     }
     return {
@@ -198,7 +200,7 @@ auto build_single_allocation_model(SoaSchema const& schema,
     auto allocator_dependencies =
         native
             ? std::vector<TypeDependency>{{"single_allocation_allocator",
-                                           "native_soa/storage.h",
+                                           "sandbox/core/native_soa/storage.h",
                                            {}}}
             : std::vector<TypeDependency>{
                   {"single_allocation_allocator", "SandboxCore/mimalloc_storage_allocator.h", {}}};

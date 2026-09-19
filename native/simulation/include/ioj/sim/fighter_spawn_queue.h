@@ -7,8 +7,8 @@
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/rotators3f.h"
 #include "ioj/sim/vectors3f.h"
-#include "native_soa/storage.h"
 #include "sandbox/core/address_cast.h"
+#include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/soa_permutation.h"
 
 #include <cstring>

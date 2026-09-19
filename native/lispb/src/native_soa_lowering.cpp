@@ -82,7 +82,7 @@ auto lower_native_soa(SoaSchema const& schema,
     auto const vector3f_schema{is_vector3f_schema(schema, types)};
     std::vector<TypeDependency> dependencies{
         {"address_cast", "sandbox/core/address_cast.h", {}},
-        {"native_storage", "native_soa/storage.h", {}},
+        {"native_storage", "sandbox/core/native_soa/storage.h", {}},
         {"soa_permutation", "sandbox/core/soa_permutation.h", {}},
     };
     if (vector3f_schema) {

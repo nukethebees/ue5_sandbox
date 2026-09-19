@@ -4,8 +4,8 @@
 #pragma once
 
 #include "ioj/sim/vector_types.h"
-#include "native_soa/storage.h"
 #include "sandbox/core/address_cast.h"
+#include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/soa_permutation.h"
 #include "sandbox/core/vector_soa_view.h"
 

@@ -6,7 +6,7 @@ The `single_allocation` schema setting adds an opt-in owning representation alon
 "single_allocation": {"name": "SingleEntityData"}
 ```
 
-The runtime is part of SandboxCore. Comparison types remain in SbxCoreExperiments; production fighter storage has not been migrated. The former `experimental_single_allocation` setting has been renamed; repository manifests have been updated rather than maintaining two spellings.
+The runtime is part of SandboxCore, and production simulation storage uses generated single-allocation owners. Comparison types remain in SbxCoreExperiments. The former `experimental_single_allocation` setting has been renamed; repository manifests have been updated rather than maintaining two spellings.
 
 ## Ownership and layout
 

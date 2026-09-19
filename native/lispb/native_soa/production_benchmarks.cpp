@@ -157,7 +157,8 @@ __declspec(noinline) void fighter_narrow_kernel(ioj::sim::FighterEntityDataView 
     auto const count{view.num()};
     for (std::int32_t index{}; index < count; ++index) {
         view.locations.xs[index] += view.velocities.xs[index] + 1.f;
-        view.healths[index] += 1;
+        view.health_indices[index] =
+            ioj::sim::HealthIndex{static_cast<ioj::sim::HealthIndex::storage_type>(index)};
     }
 }
 

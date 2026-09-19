@@ -34,8 +34,6 @@ public class SandboxCore : ModuleRules
         PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "core", "include"));
         PublicSystemIncludePaths.Add(Path.Combine(repositoryRoot, "native", "simulation", "include"));
         PublicSystemIncludePaths.Add(
-            Path.Combine(repositoryRoot, "native", "lispb", "native_soa", "include"));
-        PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "profiling", "include"));
         PublicSystemIncludePaths.Add(
             Path.Combine(repositoryRoot, "native", "third_party", "handmade_math"));

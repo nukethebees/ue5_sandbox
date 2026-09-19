@@ -17,7 +17,7 @@ struct SoaModuleSchema {
     ModuleSettings settings;
     std::vector<SoaSchema> structs;
     SoaBackend backend{SoaBackend::unreal};
-    std::vector<SoaAllocatorVariant> experimental_array_allocators;
+    std::vector<SoaAllocatorVariant> array_allocators;
 };
 
 } // namespace codegen

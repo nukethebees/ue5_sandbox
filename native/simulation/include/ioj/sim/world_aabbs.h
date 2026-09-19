@@ -3,8 +3,8 @@
 
 #pragma once
 
-#include "native_soa/storage.h"
 #include "sandbox/core/address_cast.h"
+#include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/soa_permutation.h"
 
 #include <cstring>
