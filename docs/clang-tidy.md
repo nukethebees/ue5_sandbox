@@ -23,10 +23,9 @@ Or run both steps together:
 cmake --workflow --preset win-x64-clangcl-debug-tidy
 ```
 
-To rerun tidy after an unchanged build, clean that preset's build tree first:
+To rerun tidy, build the preset again:
 
 ```powershell
-cmake --build --preset win-x64-clangcl-debug-tidy --target clean
 cmake --build --preset win-x64-clangcl-debug-tidy
 ```
 
