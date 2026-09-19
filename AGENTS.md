@@ -21,8 +21,9 @@ Unreal Engine 5.8 project.
 * CMake coordinates Unreal work through a canonical engine read/write gate: builds and UAT packaging acquire it exclusively; managed editor launches, tests, and commandlets acquire it shared for their full process-tree lifetime. Regenerate CMake commands in every worktree and reload PowerShell helpers after coordination changes. Manually launched editors, Visual Studio builds, Live Coding, and UBT launched outside CMake do not participate; do not overlap them with managed Unreal builds.
 * A canonical per-user jobserver coordinates expensive work across worktrees. Ordinary work shares the machine resource; benchmarks wait for older work to drain and then run exclusively. Use `get-jobserver-state` or the `jobserver-status` target to inspect running and queued jobs.
 * Preferred build: `cmake --workflow --preset debug-game`.
-* Completion validation: code, schema, generated-source, build-configuration, module, and test changes require the full DebugGame test workflow before the task is considered complete: `cmake --workflow --preset debug-game-tests`. This builds the normal `dev-core` target, including Unreal test targets, and runs the complete configured test suite; native-only or generated-code checks are not sufficient.
-* If the full validation workflow fails, report the task as having incomplete validation even when the failure appears unrelated. Do not claim the change is fully green until the required workflow succeeds.
+* Use good judgement when selecting validation. For non-trivial changes, run the smallest relevant build or focused test that directly validates the affected area, unless the task specifies a check. Escalate validation when the change's risk or scope warrants it.
+* For trivial non-functional changes such as documentation or comments, do not run tests by default. State that tests were not run because the change was trivial, so the user can request them.
+* Full integration validation applies at merge-ready handoff, not automatically after every change. After the complete task scope has been implemented and the branch has been rebased onto current `dev` with conflicts resolved, run `cmake --workflow --preset debug-game-tests` for substantive code, schema, generated-source, build-configuration, module, or test changes. Do not call the branch merge-ready if this workflow fails, even when the failure appears unrelated.
 * Changes that affect benchmark sources or benchmark schemas also require the dedicated benchmark build: configure with `cmake --preset benchmark`, then build with `cmake --build --preset benchmark --target benchmarks`. Run benchmark measurements only when the task requires them.
 * Targets: `editor`, `game`, `core-tests`, `native-tests`, `dev-core`, `resave-assets`, `generate-project-files`, `cook`, `cook-incremental`, `stage`, `archive`, `run-staged`, and `verify-package`. Cook targets are available from the Development configure preset; stage/archive/run/verify use the current game configuration.
 * Iterative staged game: `cmake --workflow --preset development-staged-game`.
@@ -44,7 +45,7 @@ Unreal Engine 5.8 project.
   * all suites: `cmake --workflow --preset debug-game-tests`
   * unit suites: `cmake --workflow --preset debug-game-unit-tests`
   * level tests after building: `ctest --preset debug-game-level-tests`
-  * focused tests supplement the required full validation workflow; they do not replace it.
+  * use focused tests during implementation when they are the smallest relevant validation; the full workflow is the merge-ready integration gate for substantive changes.
   * If Unreal tests report missing project plugin modules, run `cmake --build --preset debug-game --target editor` to repair stale editor-module BuildIds before rerunning them.
 * Before starting a timed benchmark, complete all build and setup work, then run it without asking the user for confirmation. Use the repository benchmark targets and scripts so the benchmark acquires exclusive machine access from the jobserver, waits for older work, and runs without build interference. If a benchmark entry point does not request benchmark resources, fix or wrap it before collecting timings. Dry runs and correctness tests do not require benchmark access.
 * Run only the benchmark subset needed to answer the current question. Do not run a comprehensive benchmark matrix by default; reserve it for explicitly requested broad validation or when every dimension is materially affected.
@@ -57,6 +58,7 @@ Unreal Engine 5.8 project.
 * Do not inspect Unreal Engine source unless needed to resolve an engine/API behaviour question.
 * Once enough context exists, implement rather than continuing exploration.
 * Prefer the smallest coherent change that fully implements the requested design.
+* A branch task is not complete until its original plan and all approved amendments are complete. For substantive changes, rebase onto current `dev`, resolve conflicts, and pass the merge-ready integration gate before reporting it done.
 * Prefer reusable repository scripts over feeding inline Python code to the interpreter.
 * Treat obvious temporary contention for shared resources, locks, job slots, or capacity as a wait condition: do not repeatedly retry across consecutive turns; sleep within the shell/tool invocation before retrying with 10s, then 30s, then 60s backoff (capped at 60s). Investigate or report the failure if it changes, appears non-transient, or persists unreasonably.
 * Do not preserve architecture the user asked to replace through compatibility wrappers or indirection merely to reduce the diff. Avoid unrelated refactors.
