@@ -134,7 +134,8 @@ void draw_packed_bar(PackedAnalysis const& analysis,
                            ImGui::GetColorU32(ImGuiCol_TextDisabled),
                            text.c_str());
     }
-    ImGui::SetCursorScreenPos({origin.x, origin.y + height + 24.0F});
+    ImGui::SetCursorScreenPos(origin);
+    ImGui::Dummy({available, height + 24.0F});
 }
 
 void draw_payload_regions(SoaAnalysis const& analysis,
@@ -217,7 +218,8 @@ void draw_payload_regions(SoaAnalysis const& analysis,
                        2.0F,
                        0,
                        2.0F);
-    ImGui::SetCursorScreenPos({origin.x, origin.y + height + ImGui::GetStyle().ItemSpacing.y});
+    ImGui::SetCursorScreenPos(origin);
+    ImGui::Dummy({available, height + ImGui::GetStyle().ItemSpacing.y});
 }
 
 void draw_cache_line(CacheLineTiling const& tiling) {
