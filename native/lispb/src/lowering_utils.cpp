@@ -3,11 +3,6 @@
 #include <sstream>
 #include <stdexcept>
 
-#ifdef _WIN32
-#include <algorithm>
-#include <cctype>
-#endif
-
 namespace codegen::detail {
 
 auto join(std::vector<std::string> const& values, std::string_view separator) -> std::string {
@@ -82,7 +77,6 @@ auto title_case_identifier(std::string_view const identifier) -> std::string {
     }
     return result;
 }
-
 auto column_apply_arrays_function(std::vector<std::string> const& columns) -> Node {
     std::vector<std::string> body{"return std::forward<TFunc>(func)("};
     auto const count{columns.size()};

@@ -6,6 +6,7 @@
 #include "lowering_utils.h"
 
 #include <codegen/validation.h>
+#include <lispb/schema/type_graph.h>
 
 #include <iterator>
 #include <set>
@@ -38,7 +39,7 @@ auto lower_umbrella(UmbrellaModuleSchema const& module) -> Module {
 } // namespace
 
 auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
-    validate_manifest(manifest);
+    auto const type_graph{lispb::schema::resolve_type_graph(manifest)};
     std::vector<Module> result;
     for (auto const& schema : manifest.modules) {
         std::visit(
@@ -50,8 +51,8 @@ auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
                                   std::make_move_iterator(lowered.begin()),
                                   std::make_move_iterator(lowered.end()));
                 } else if constexpr (std::is_same_v<T, PackedValueModuleSchema>) {
-                    result.push_back(detail::lower_packed_value_module(
-                        module, manifest.types, manifest.modules));
+                    result.push_back(
+                        detail::lower_packed_value_module(module, manifest.types, type_graph));
                 } else if constexpr (std::is_same_v<T, SoaModuleSchema>) {
                     result.push_back(detail::lower_soa_module(module, manifest.types));
                 } else if constexpr (std::is_same_v<T, StaticTableModuleSchema>) {

@@ -1,6 +1,6 @@
 #include "validation.h"
-#include "lowering_utils.h"
 #include "packed_value_internal.h"
+#include "schema_internal.h"
 
 #include <codegen/path_utils.h>
 

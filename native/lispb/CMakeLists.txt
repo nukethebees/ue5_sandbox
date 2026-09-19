@@ -27,7 +27,25 @@ target_compile_features(lispb-project PUBLIC cxx_std_23)
 target_include_directories(lispb-project PUBLIC include)
 target_link_libraries(lispb-project PRIVATE lispb-syntax sandbox::codegen_warnings)
 
-add_library(codegen-lib
+add_library(lispb-schema)
+target_sources(lispb-schema PRIVATE
+  src/cpp_type.cpp
+  src/packed_value_internal.cpp
+  src/schema.cpp
+  src/source_loader.cpp
+  src/type_graph.cpp
+  src/validation.cpp
+)
+target_compile_features(lispb-schema PUBLIC cxx_std_23)
+target_include_directories(lispb-schema PUBLIC include)
+target_link_libraries(lispb-schema
+  PRIVATE
+    lispb-syntax
+    sandbox::codegen_warnings
+)
+
+add_library(codegen-lib)
+target_sources(codegen-lib PRIVATE
   src/ast.cpp
   src/expr.cpp
   src/enum_lowering.cpp
@@ -40,9 +58,7 @@ add_library(codegen-lib
   src/homogeneous_lowering.cpp
   src/homogeneous_storage_lowering.cpp
   src/homogeneous_view_lowering.cpp
-  src/source_loader.cpp
   src/lowering_utils.cpp
-  src/schema.cpp
   src/settings_lowering.cpp
   src/soa_lowering.cpp
   src/soa_member_resolution.cpp
@@ -51,11 +67,9 @@ add_library(codegen-lib
   src/single_allocation_soa_lowering.cpp
   src/single_allocation_soa_model.cpp
   src/native_soa_lowering.cpp
-  src/packed_value_internal.cpp
   src/packed_value_lowering.cpp
   src/soa_view_lowering.cpp
   src/static_table_lowering.cpp
-  src/validation.cpp
   src/vector_lowering.cpp
 )
 set_target_properties(codegen-lib PROPERTIES UNITY_BUILD OFF)
@@ -64,8 +78,8 @@ target_include_directories(codegen-lib PUBLIC include)
 target_link_libraries(codegen-lib
   PUBLIC
     lispb-output
+    lispb-schema
   PRIVATE
-    lispb-syntax
     sandbox::codegen_warnings
 )
 
@@ -177,6 +191,7 @@ add_executable(codegen-tests
   tests/source_loader_tests.cpp
   tests/lowering_tests.cpp
   tests/packed_value_tests.cpp
+  tests/semantic_model_tests.cpp
   tests/static_table_lowering_tests.cpp
   tests/validation_tests.cpp
 )

@@ -2,6 +2,7 @@
 #include "lowering_utils.h"
 #include "packed_value_internal.h"
 
+#include <algorithm>
 #include <cstdint>
 #include <iomanip>
 #include <limits>
@@ -34,7 +35,7 @@ auto dependency_for_integer(CppType const& type) -> std::optional<TypeDependency
 struct PackedFieldLayout {
     PackedFieldSchema const& field;
     CppType type;
-    EnumSchema const* enum_schema;
+    lispb::schema::EnumType const* enum_type;
     int offset;
     std::uint64_t value_mask;
     std::uint64_t mask;
@@ -44,9 +45,58 @@ auto field_value_mask(int const bits) -> std::uint64_t {
     return bits == 64 ? std::numeric_limits<std::uint64_t>::max() : (std::uint64_t{1} << bits) - 1;
 }
 
+auto enum_type_for_field(lispb::schema::PackedType const& packed,
+                         lispb::schema::TypeGraph const& type_graph,
+                         std::string const& field_name) -> lispb::schema::EnumType const* {
+    auto const field{
+        std::ranges::find(packed.fields, field_name, &lispb::schema::PackedField::name)};
+    if (field == packed.fields.end()) {
+        throw std::invalid_argument{"Missing semantic packed field '" + field_name + "'"};
+    }
+    return std::get_if<lispb::schema::EnumType>(
+        &type_graph.type(field->semantic_type.type).definition);
+}
+
+auto resolve_enum_values(lispb::schema::EnumType const& type)
+    -> std::vector<std::optional<EnumNumericValue>> {
+    std::vector<std::optional<EnumNumericValue>> result;
+    result.reserve(type.enumerators.size());
+    std::optional<EnumNumericValue> next_value{EnumNumericValue{0, false}};
+    for (auto const& enumerator : type.enumerators) {
+        auto resolved{enumerator.explicit_value.has_value()
+                          ? resolve_numeric_literal(*enumerator.explicit_value)
+                          : next_value};
+        result.push_back(resolved);
+        next_value = resolved.has_value() ? next_enum_value(*resolved) : std::nullopt;
+    }
+    return result;
+}
+
+auto enum_required_packed_bits(lispb::schema::EnumType const& type) -> std::optional<int> {
+    auto const values{resolve_enum_values(type)};
+    std::uint64_t maximum_value{};
+    for (std::size_t index{}; index < type.enumerators.size(); ++index) {
+        auto const& enumerator{type.enumerators[index]};
+        if (!type.count.has_value() || enumerator.name != *type.count) {
+            if (!values[index].has_value() || values[index]->is_negative) {
+                return std::nullopt;
+            }
+            maximum_value = std::max(maximum_value, values[index]->magnitude);
+        }
+    }
+
+    int result{};
+    while (maximum_value != 0) {
+        ++result;
+        maximum_value >>= 1;
+    }
+    return result;
+}
+
 auto packed_field_layouts(PackedValueSchema const& schema,
                           std::map<std::string, CppType> const& types,
-                          std::vector<ModuleSchema> const& modules,
+                          lispb::schema::PackedType const& packed,
+                          lispb::schema::TypeGraph const& type_graph,
                           int const storage_bits) -> std::vector<PackedFieldLayout> {
     auto const all_bits{field_value_mask(storage_bits)};
     std::vector<PackedFieldLayout> layouts;
@@ -59,7 +109,7 @@ auto packed_field_layouts(PackedValueSchema const& schema,
         layouts.push_back(PackedFieldLayout{
             .field = field,
             .type = resolve_type(field.type, types),
-            .enum_schema = find_packed_enum(field.type, types, modules),
+            .enum_type = enum_type_for_field(packed, type_graph, field.name),
             .offset = offset,
             .value_mask = value_mask,
             .mask = mask,
@@ -70,14 +120,14 @@ auto packed_field_layouts(PackedValueSchema const& schema,
     return layouts;
 }
 
-auto enum_count_value(EnumSchema const& schema) -> std::optional<std::uint64_t> {
-    if (!schema.count.has_value()) {
+auto enum_count_value(lispb::schema::EnumType const& type) -> std::optional<std::uint64_t> {
+    if (!type.count.has_value()) {
         return std::nullopt;
     }
 
-    auto const values{resolve_enum_values(schema)};
-    for (std::size_t index{}; index < schema.values.size(); ++index) {
-        if (schema.values[index].name == *schema.count && values[index].has_value() &&
+    auto const values{resolve_enum_values(type)};
+    for (std::size_t index{}; index < type.enumerators.size(); ++index) {
+        if (type.enumerators[index].name == *type.count && values[index].has_value() &&
             !values[index]->is_negative) {
             return values[index]->magnitude;
         }
@@ -95,10 +145,10 @@ auto invalid_value_may_be_constructed(std::optional<std::uint64_t> const invalid
     }
 
     for (auto const& packed_field : fields) {
-        if (packed_field.enum_schema == nullptr) {
+        if (packed_field.enum_type == nullptr) {
             continue;
         }
-        auto const count{enum_count_value(*packed_field.enum_schema)};
+        auto const count{enum_count_value(*packed_field.enum_type)};
         if (!count.has_value()) {
             continue;
         }
@@ -137,12 +187,11 @@ void append_immutable_validation(std::string& output,
             continue;
         }
         if (field.kind == PackedFieldKind::enumeration) {
-            if (packed_field.enum_schema != nullptr &&
-                packed_field.enum_schema->count.has_value()) {
+            if (packed_field.enum_type != nullptr && packed_field.enum_type->count.has_value()) {
                 output += "        assert(" + field.name + "_value < " +
-                          packed_field.type.spelling + "::" + *packed_field.enum_schema->count +
+                          packed_field.type.spelling + "::" + *packed_field.enum_type->count +
                           ");\n";
-            } else if (packed_field.enum_schema == nullptr) {
+            } else if (packed_field.enum_type == nullptr) {
                 output += "        assert(static_cast<" + field.name + "_underlying_type>(" +
                           field.name + "_value) <= static_cast<" + field.name +
                           "_underlying_type>(" + field.name + "_value_mask));\n";
@@ -221,10 +270,11 @@ void append_immutable_construction(std::string& output,
 
 auto packed_value_text(PackedValueSchema const& schema,
                        std::map<std::string, CppType> const& types,
-                       std::vector<ModuleSchema> const& modules) -> Raw {
+                       lispb::schema::PackedType const& packed,
+                       lispb::schema::TypeGraph const& type_graph) -> Raw {
     auto const storage{resolve_type(schema.storage_type, types)};
     auto const storage_bits{*packed_unsigned_width(storage.spelling)};
-    auto const fields{packed_field_layouts(schema, types, modules, storage_bits)};
+    auto const fields{packed_field_layouts(schema, types, packed, type_graph, storage_bits)};
 
     std::vector<TypeDependency> dependencies{
         TypeDependency{"assert", "cassert", {}},
@@ -260,7 +310,7 @@ auto packed_value_text(PackedValueSchema const& schema,
         if (field.kind == PackedFieldKind::enumeration) {
             output += "    using " + field.name + "_underlying_type = std::underlying_type_t<" +
                       field_type.spelling + ">;\n";
-            if (packed_field.enum_schema == nullptr) {
+            if (packed_field.enum_type == nullptr) {
                 output += "    static_assert(std::is_enum_v<" + field_type.spelling + ">);\n";
                 output +=
                     "    static_assert(std::is_unsigned_v<" + field.name + "_underlying_type>);\n";
@@ -278,8 +328,8 @@ auto packed_value_text(PackedValueSchema const& schema,
         output += "    inline static constexpr storage_type " + field.name + "_mask{storage_type{" +
                   hex_value(packed_field.mask) + "}};\n";
 
-        if (field.kind == PackedFieldKind::enumeration && packed_field.enum_schema != nullptr &&
-            !enum_required_packed_bits(*packed_field.enum_schema).has_value()) {
+        if (field.kind == PackedFieldKind::enumeration && packed_field.enum_type != nullptr &&
+            !enum_required_packed_bits(*packed_field.enum_type).has_value()) {
             output += "\n    static_assert([]<auto... values>() consteval -> bool {\n";
             output +=
                 "        return ((static_cast<" + field.name + "_underlying_type>(values) <=\n";
@@ -287,9 +337,9 @@ auto packed_value_text(PackedValueSchema const& schema,
                       field.name + "_value_mask)) && ...);\n";
             output += "    }.template operator()<\n";
             bool first_value{true};
-            for (auto const& value : packed_field.enum_schema->values) {
-                if (packed_field.enum_schema->count.has_value() &&
-                    value.name == *packed_field.enum_schema->count) {
+            for (auto const& value : packed_field.enum_type->enumerators) {
+                if (packed_field.enum_type->count.has_value() &&
+                    value.name == *packed_field.enum_type->count) {
                     continue;
                 }
                 if (!first_value) {
@@ -329,9 +379,9 @@ auto packed_value_text(PackedValueSchema const& schema,
         if (field.kind != PackedFieldKind::enumeration) {
             continue;
         }
-        if (packed_field.enum_schema != nullptr && packed_field.enum_schema->count.has_value()) {
+        if (packed_field.enum_type != nullptr && packed_field.enum_type->count.has_value()) {
             validity_checks.push_back(field.name + "() < " + packed_field.type.spelling +
-                                      "::" + *packed_field.enum_schema->count);
+                                      "::" + *packed_field.enum_type->count);
         }
     }
     output += "        return ";
@@ -375,10 +425,9 @@ auto packed_value_text(PackedValueSchema const& schema,
                 output += "        if (underlying > static_cast<" + field.name +
                           "_underlying_type>(" + field.name + "_value_mask)) {\n";
                 output += "            return false;\n        }\n";
-                if (packed_field.enum_schema != nullptr &&
-                    packed_field.enum_schema->count.has_value()) {
+                if (packed_field.enum_type != nullptr && packed_field.enum_type->count.has_value()) {
                     output += "        if (value >= " + field_type.spelling +
-                              "::" + *packed_field.enum_schema->count + ") {\n";
+                              "::" + *packed_field.enum_type->count + ") {\n";
                     output += "            return false;\n        }\n";
                 }
                 output += "        auto const encoded{static_cast<storage_type>(underlying)};\n";
@@ -430,10 +479,18 @@ auto packed_value_text(PackedValueSchema const& schema,
 
 auto lower_packed_value_module(PackedValueModuleSchema const& module,
                                std::map<std::string, CppType> const& types,
-                               std::vector<ModuleSchema> const& modules) -> Module {
+                               lispb::schema::TypeGraph const& type_graph) -> Module {
     NodeListBuilder definitions;
     for (std::size_t index{}; index < module.values.size(); ++index) {
-        definitions.add(packed_value_text(module.values[index], types, modules),
+        auto const type_id{
+            type_graph.find_declared(module.settings.name, module.values[index].name)};
+        if (!type_id.has_value()) {
+            throw std::invalid_argument{"Missing semantic packed type '" +
+                                        module.values[index].name + "'"};
+        }
+        auto const& packed{
+            std::get<lispb::schema::PackedType>(type_graph.type(*type_id).definition)};
+        definitions.add(packed_value_text(module.values[index], types, packed, type_graph),
                         index + 1 < module.values.size() ? 2 : 1);
     }
 
