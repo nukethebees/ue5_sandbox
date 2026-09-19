@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AgentGit.Tests;
@@ -75,7 +76,7 @@ public sealed class TrustStoreTests
     }
 
     [TestMethod]
-    public void ValidateIsolationLayout_requires_empty_files_and_hook_directory()
+    public void ValidateIsolationLayout_reports_invalid_empty_files_and_hook_directory()
     {
         var root = Directory.CreateTempSubdirectory("AgentGitTrust-").FullName;
         try
@@ -89,16 +90,131 @@ public sealed class TrustStoreTests
             File.WriteAllText(empty_attributes, string.Empty);
             TrustStore.ValidateIsolationLayout(root);
 
+            File.Delete(empty_config);
+            AssertIsolationFailure(root, empty_config, "zero-byte regular file", "does not exist");
+            File.WriteAllText(empty_config, string.Empty);
+
             File.WriteAllText(empty_config, "[alias]\nstatus = !arbitrary-command\n");
-            Assert.ThrowsException<PolicyConfigurationException>(() => TrustStore.ValidateIsolationLayout(root));
+            AssertIsolationFailure(root, empty_config, "zero-byte regular file", "bytes");
 
             File.WriteAllText(empty_config, string.Empty);
+            File.Delete(empty_attributes);
+            AssertIsolationFailure(root, empty_attributes, "zero-byte regular file", "does not exist");
+            File.WriteAllText(empty_attributes, string.Empty);
+
+            File.WriteAllText(empty_attributes, "*.txt text\n");
+            AssertIsolationFailure(root, empty_attributes, "zero-byte regular file", "bytes");
+
+            File.WriteAllText(empty_attributes, string.Empty);
+            Directory.Delete(hooks);
+            AssertIsolationFailure(root, hooks, "empty directory", "does not exist");
+            Directory.CreateDirectory(hooks);
+
             File.WriteAllText(Path.Combine(hooks, "post-commit"), "arbitrary-command\n");
-            Assert.ThrowsException<PolicyConfigurationException>(() => TrustStore.ValidateIsolationLayout(root));
+            AssertIsolationFailure(root, hooks, "empty directory", "post-commit");
         }
         finally
         {
             Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [TestMethod]
+    public void ValidateIsolationLayout_reports_reparse_point_directory()
+    {
+        var root = Directory.CreateTempSubdirectory("AgentGitTrust-").FullName;
+        var config = Path.Combine(root, "config");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root, "bin"));
+            var target = Directory.CreateDirectory(Path.Combine(root, "config-target")).FullName;
+            File.WriteAllText(Path.Combine(target, "empty.gitconfig"), string.Empty);
+            File.WriteAllText(Path.Combine(target, "empty.attributes"), string.Empty);
+            Directory.CreateDirectory(Path.Combine(target, "empty-hooks"));
+            CreateDirectoryLink(config, target);
+
+            AssertIsolationFailure(root, config, "normal directory", "reparse point");
+        }
+        finally
+        {
+            if (Directory.Exists(config))
+            {
+                RemoveDirectoryLink(config);
+            }
+
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static void AssertIsolationFailure(string root, string path, params string[] expected_fragments)
+    {
+        var exception = Assert.ThrowsException<PolicyConfigurationException>(
+            () => TrustStore.ValidateIsolationLayout(root));
+
+        StringAssert.Contains(exception.Message, path);
+        foreach (var expected_fragment in expected_fragments)
+        {
+            StringAssert.Contains(exception.Message, expected_fragment);
+        }
+    }
+
+    private static void CreateDirectoryLink(string link, string target)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Directory.CreateSymbolicLink(link, target);
+            return;
+        }
+
+        var start_info = new ProcessStartInfo
+        {
+            FileName = "cmd.exe",
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+        };
+        foreach (var argument in new[] { "/d", "/c", "mklink", "/J", link, target })
+        {
+            start_info.ArgumentList.Add(argument);
+        }
+
+        using var process = Process.Start(start_info) ?? throw new IOException("Unable to start junction test setup.");
+        var output = process.StandardOutput.ReadToEnd();
+        var error = process.StandardError.ReadToEnd();
+        process.WaitForExit();
+        if (process.ExitCode != 0)
+        {
+            throw new IOException($"Unable to create test junction: {output}{error}");
+        }
+    }
+
+    private static void RemoveDirectoryLink(string link)
+    {
+        if (!OperatingSystem.IsWindows())
+        {
+            Directory.Delete(link);
+            return;
+        }
+
+        var start_info = new ProcessStartInfo
+        {
+            FileName = "cmd.exe",
+            UseShellExecute = false,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            CreateNoWindow = true,
+        };
+        foreach (var argument in new[] { "/d", "/c", "rmdir", link })
+        {
+            start_info.ArgumentList.Add(argument);
+        }
+
+        using var process = Process.Start(start_info) ?? throw new IOException("Unable to start junction test cleanup.");
+        process.WaitForExit();
+        if (process.ExitCode != 0)
+        {
+            throw new IOException($"Unable to remove test junction: {process.StandardError.ReadToEnd()}");
         }
     }
 

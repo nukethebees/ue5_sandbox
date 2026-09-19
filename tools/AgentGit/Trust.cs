@@ -147,15 +147,81 @@ internal static class TrustStore
         var empty_config = Path.Combine(installation_root, "config", "empty.gitconfig");
         var empty_hooks = Path.Combine(installation_root, "config", "empty-hooks");
         var empty_attributes = Path.Combine(installation_root, "config", "empty.attributes");
-        if (!Directory.Exists(installation_root) || !Directory.Exists(bin) || !Directory.Exists(config) ||
-            IsReparsePoint(installation_root) || IsReparsePoint(bin) || IsReparsePoint(config) ||
-            !File.Exists(empty_config) || new FileInfo(empty_config).Length != 0 ||
-            !File.Exists(empty_attributes) || new FileInfo(empty_attributes).Length != 0 ||
-            !Directory.Exists(empty_hooks) || Directory.EnumerateFileSystemEntries(empty_hooks).Any() ||
-            IsReparsePoint(empty_config) || IsReparsePoint(empty_attributes) || IsReparsePoint(empty_hooks))
+
+        foreach (var directory in new[] { installation_root, bin, config })
+        {
+            if (!Directory.Exists(directory))
+            {
+                var actual = File.Exists(directory) ? "found a file" : "it does not exist";
+                throw new PolicyConfigurationException(
+                    $"AgentGit isolation validation failed for '{directory}': " +
+                    $"expected an existing normal directory, but {actual}.");
+            }
+        }
+
+        foreach (var directory in new[] { installation_root, bin, config })
+        {
+            if (IsReparsePoint(directory))
+            {
+                throw new PolicyConfigurationException(
+                    $"AgentGit isolation validation failed for '{directory}': " +
+                    "expected a normal directory, but it is a reparse point.");
+            }
+        }
+
+        foreach (var file in new[] { empty_config, empty_attributes })
+        {
+            if (!File.Exists(file))
+            {
+                var actual = Directory.Exists(file) ? "found a directory" : "it does not exist";
+                throw new PolicyConfigurationException(
+                    $"AgentGit isolation validation failed for '{file}': " +
+                    $"expected an existing zero-byte regular file, but {actual}.");
+            }
+        }
+
+        foreach (var file in new[] { empty_config, empty_attributes })
+        {
+            var length = new FileInfo(file).Length;
+            if (length != 0)
+            {
+                throw new PolicyConfigurationException(
+                    $"AgentGit isolation validation failed for '{file}': " +
+                    $"expected an existing zero-byte regular file, but the file is {length} bytes.");
+            }
+        }
+
+        foreach (var file in new[] { empty_config, empty_attributes })
+        {
+            if (IsReparsePoint(file))
+            {
+                throw new PolicyConfigurationException(
+                    $"AgentGit isolation validation failed for '{file}': " +
+                    "expected a regular file, but it is a reparse point.");
+            }
+        }
+
+        if (!Directory.Exists(empty_hooks))
+        {
+            var actual = File.Exists(empty_hooks) ? "found a file" : "it does not exist";
+            throw new PolicyConfigurationException(
+                $"AgentGit isolation validation failed for '{empty_hooks}': " +
+                $"expected an existing empty directory, but {actual}.");
+        }
+
+        if (IsReparsePoint(empty_hooks))
         {
             throw new PolicyConfigurationException(
-                "The canonical empty Git configuration or hook directory is missing or invalid.");
+                $"AgentGit isolation validation failed for '{empty_hooks}': " +
+                "expected a normal directory, but it is a reparse point.");
+        }
+
+        var hook_entry = Directory.EnumerateFileSystemEntries(empty_hooks).FirstOrDefault();
+        if (hook_entry is not null)
+        {
+            throw new PolicyConfigurationException(
+                $"AgentGit isolation validation failed for '{empty_hooks}': " +
+                $"expected an empty directory, but found '{hook_entry}'.");
         }
 
         return (empty_config, empty_hooks);
