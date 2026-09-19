@@ -774,6 +774,10 @@ auto input_category(UInputAction const& action) -> FText {
 }
 
 auto action_display_name(UInputAction const& action) -> FString {
+    if (action.GetFName() == TEXT("IA_Ship_EngagePointerTurn")) {
+        return TEXT("Hold to Steer with Mouse");
+    }
+
     auto result{action.GetName()};
     result.RemoveFromStart(TEXT("IA_"));
     result.RemoveFromStart(TEXT("ship_"));
