@@ -92,6 +92,8 @@ Unreal Engine 5.8 project.
   merge-ready if it fails, even when the failure appears unrelated. When it exposes a focused
   native failure, diagnose and fix it with the smallest relevant native build/test, then rerun one
   final integration gate on the final HEAD.
+* When a generated-code check reports stale outputs, automatically run its matching `generate-*`
+  CMake target, review the generated diff, and rerun the failed check.
 * Changes that affect benchmark sources or benchmark schemas also require the dedicated benchmark build: configure with `cmake --preset benchmark`, then build with `cmake --build --preset benchmark --target benchmarks`. Run benchmark measurements only when the task requires them.
 * Targets: `native-tests`, `native-core-tests`, `native-simulation-tests`, `editor`, `game`,
   `unreal-unit-tests`, `core-tests`, `dev-core`, `resave-assets`, `generate-project-files`, `cook`,
