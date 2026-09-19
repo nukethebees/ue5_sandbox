@@ -222,7 +222,7 @@ void MissionManager::set_save_mission_results(bool const should_save) noexcept {
     assert(mission_state == MissionState::NotStarted);
     save_mission_results = should_save;
 }
-void MissionManager::set_level_identity(std::string const new_level_id, std::string display_name) {
+void MissionManager::set_level_identity(std::string const& new_level_id, std::string display_name) {
     assert(mission_state == MissionState::NotStarted);
     level_id = new_level_id;
     level_display_name = std::move(display_name);

@@ -297,7 +297,7 @@ TEST(Ast, VisitsBothBranchesAndAllSwitchBodiesInOrder) {
 }
 
 TEST(Ast, CollectsDeepControlFlowDependenciesOnlyForDefinitions) {
-    auto symbol = [](std::string name) {
+    auto symbol = [](std::string const& name) {
         auto const header{"Project/" + name + ".h"};
         return named(name, {TypeDependency{name, header, {}}});
     };

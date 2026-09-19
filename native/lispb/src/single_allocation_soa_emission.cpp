@@ -444,7 +444,7 @@ auto ordinary_source_alias_node(SingleAllocationModel const& model) -> Node {
     auto const column_count{model.columns.size()};
     for (std::size_t index{1}; index < column_count; ++index) {
         auto const& column{model.columns[index]};
-        auto const column_aliases{call(named("aliases"), {source_pointer(column)})};
+        auto column_aliases{call(named("aliases"), {source_pointer(column)})};
         aliases = binary(BinaryOperator::logical_or, std::move(aliases), std::move(column_aliases));
     }
     body.add(ReturnStmt{std::move(aliases)});

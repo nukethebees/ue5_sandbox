@@ -62,8 +62,6 @@ TEST(NativeSimulation, GameMemoryTest) {
                             "External game memory uses the leased backing");
     }
     tests::expect_false(backing->is_leased(), "Destroying external game memory releases its lease");
-
-    return;
 }
 
 } // namespace tests

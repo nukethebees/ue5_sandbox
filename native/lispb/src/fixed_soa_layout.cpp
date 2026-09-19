@@ -14,7 +14,7 @@ auto build_soa_layout(SoaSchema const& schema,
                       std::map<std::string, SoaSchema const*> const& schemas,
                       std::map<std::string, CppType> const& types,
                       bool const fixed,
-                      std::vector<std::string> prefix,
+                      std::vector<std::string> const& prefix,
                       std::set<std::string> ancestors) -> FixedLayout {
     if (fixed && !schema.fixed.has_value()) {
         throw std::invalid_argument{"SOA '" + schema.name + "' has no fixed configuration"};
@@ -65,9 +65,9 @@ auto build_soa_layout(SoaSchema const& schema,
 auto build_fixed_layout(SoaSchema const& schema,
                         std::map<std::string, SoaSchema const*> const& schemas,
                         std::map<std::string, CppType> const& types,
-                        std::vector<std::string> prefix,
+                        std::vector<std::string> const& prefix,
                         std::set<std::string> ancestors) -> FixedLayout {
-    return build_soa_layout(schema, schemas, types, true, std::move(prefix), std::move(ancestors));
+    return build_soa_layout(schema, schemas, types, true, prefix, std::move(ancestors));
 }
 
 } // namespace codegen::detail

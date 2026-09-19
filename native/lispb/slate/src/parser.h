@@ -9,6 +9,6 @@
 
 namespace slate_codegen::detail {
 
-auto parse(std::string_view path, std::vector<codegen::sexpr::Form> forms) -> Document;
+auto parse(std::string_view path, std::vector<codegen::sexpr::Form> const& forms) -> Document;
 
 }

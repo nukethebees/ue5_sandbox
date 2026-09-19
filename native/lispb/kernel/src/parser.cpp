@@ -146,7 +146,7 @@ class Parser {
         return result;
     }
   private:
-    [[noreturn]] void fail(SourceSpan const span, std::string const& message) const {
+    [[noreturn]] void fail(SourceSpan const& span, std::string const& message) const {
         throw SourceError{path_, span, message};
     }
 
@@ -690,7 +690,7 @@ class Parser {
         return result;
     }
 
-    void validate_output_path(std::filesystem::path const& path, SourceSpan const span) const {
+    void validate_output_path(std::filesystem::path const& path, SourceSpan const& span) const {
         auto const escapes{std::ranges::any_of(path.lexically_normal(),
                                                [](auto const& part) { return part == ".."; })};
         if (path.empty() || path.is_absolute() || path.has_root_path() || escapes) {

@@ -57,8 +57,6 @@ TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
                        "Swap removal keeps ID paired with integral bias");
     tests::expect_equal(reordered_columns.integral_biases[0], 200u, "Swap removal integral bias");
     tests::expect_equal(reordered_columns.float_biases[0], 0.2f, "Swap removal float bias");
-
-    return;
 }
 
 } // namespace tests

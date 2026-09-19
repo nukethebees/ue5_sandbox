@@ -11,13 +11,13 @@ auto build_soa_layout(SoaSchema const& schema,
                       std::map<std::string, SoaSchema const*> const& schemas,
                       std::map<std::string, CppType> const& types,
                       bool fixed,
-                      std::vector<std::string> prefix = {},
+                      std::vector<std::string> const& prefix = {},
                       std::set<std::string> ancestors = {}) -> FixedLayout;
 
 auto build_fixed_layout(SoaSchema const& schema,
                         std::map<std::string, SoaSchema const*> const& schemas,
                         std::map<std::string, CppType> const& types,
-                        std::vector<std::string> prefix = {},
+                        std::vector<std::string> const& prefix = {},
                         std::set<std::string> ancestors = {}) -> FixedLayout;
 auto fixed_leaf_argument(FixedLeaf const& leaf) -> std::string;
 auto fixed_storage_node(FixedLayout const& layout) -> Node;

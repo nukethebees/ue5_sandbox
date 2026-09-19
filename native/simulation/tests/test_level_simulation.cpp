@@ -156,7 +156,6 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
                         0.25,
                         1.e-9,
                         "Completion and restart preserve the accumulated fractional tick");
-    return;
 }
 
 TEST(NativeSimulation, LevelTelemetryMissionCompletionTest) {
@@ -199,7 +198,6 @@ TEST(NativeSimulation, LevelTelemetryMissionCompletionTest) {
                             MissionState::Succeeded,
                             "Mission state is retained");
     }
-    return;
 }
 
 TEST(NativeSimulation, LaserFrameOutputsTest) {
@@ -246,7 +244,6 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
     tests::expect_equal(simulation.get_read_view().lasers.hits.num(),
                         0,
                         "Next frame does not repeat consumed impacts");
-    return;
 }
 
 TEST(NativeSimulation, LevelSimInitialQueriesTest) {
@@ -268,7 +265,6 @@ TEST(NativeSimulation, LevelSimInitialQueriesTest) {
     simulation.advance(simulation.get_clock().get_tick_period());
     tests::expect_true(queries.trace_closest({{-100.f, 500.f, 0.f}}, {{100.f, 500.f, 0.f}}).hit,
                        "Static collision survives the first dynamic rebuild");
-    return;
 }
 
 TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
@@ -308,7 +304,6 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
                             "Compiled turret rotation is retained");
     }
     tests::expect_equal(turrets.num(), 2, "Both compiled turrets are registered");
-    return;
 }
 
 TEST(NativeSimulation, LevelSimReconstructionTest) {
@@ -337,7 +332,6 @@ TEST(NativeSimulation, LevelSimReconstructionTest) {
                         "Fresh ledger has no prior history");
     tests::expect_false(simulation->take_mission_result().has_value(),
                         "No pending result survives reconstruction");
-    return;
 }
 
 TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
@@ -384,7 +378,6 @@ TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
     tests::expect_true((std::abs(player->target_local_planar_velocity_scale.x) <= 1.e-4 &&
                         std::abs(player->target_local_planar_velocity_scale.y) <= 1.e-4),
                        "Movement offsets remain temporary");
-    return;
 }
 
 TEST(NativeSimulation, LevelSimOverlapResponseTest) {
@@ -433,7 +426,6 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
         "Overlap death uses the environmental death path");
     tests::expect_equal(
         ledger.count_kills(), 0, "Environmental overlap death gives no combat kill");
-    return;
 }
 
 TEST(NativeSimulation, WorldlessLevelSimulationTest) {
@@ -496,7 +488,6 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
     first.advance(dt);
     tests::expect_equal(
         first.get_clock().get_completed_ticks(), paused_ticks + 1, "Battle resumes");
-    return;
 }
 
 TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
