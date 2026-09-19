@@ -78,6 +78,21 @@ Unreal Engine 5.8 project.
   integration rather than done. After authorization, it is complete only when the transaction and
   any required cleanup finish.
 
+### Explicit direct-Git override
+
+Repository Git wrappers and integration commands are the default path, but they are not a reason to block work indefinitely when the tooling itself is broken.
+
+If a required Git helper or integration wrapper fails because of its own installation, configuration, hook, daemon, or infrastructure problem:
+
+1. Report the failure once.
+2. Do not repeatedly retry the same known-broken helper.
+3. If the user explicitly authorizes using ordinary Git, that authorization applies to the remainder of the current commit/integration transaction.
+4. Proceed immediately with the minimal equivalent ordinary Git commands.
+5. Do not ask for the same authorization again unless the requested operation materially changes.
+6. Still perform lightweight sanity checks appropriate to the change before completing the transaction.
+
+Explicit user authorization to bypass a broken repository helper overrides the normal requirement to use that helper for that transaction.
+
 # Builds
 
 * A Windows-only CMake 4.3+/Ninja layer at the repository root invokes UnrealBuildTool through `RunUBT.bat`. `.Target.cs`, `.Build.cs`, and UBT remain authoritative.
