@@ -34,4 +34,4 @@ target_compile_definitions(native-layout-tests PRIVATE
 )
 
 add_test(NAME native-layout-tests COMMAND native-layout-tests)
-set_tests_properties(native-layout-tests PROPERTIES LABELS "unit;all;layout")
+set_tests_properties(native-layout-tests PROPERTIES LABELS "unit;all;native;layout")
