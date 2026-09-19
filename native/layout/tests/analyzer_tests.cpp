@@ -71,6 +71,18 @@ TEST(PackedAnalyzer, ReportsUnusedAndExcessBits) {
     EXPECT_FALSE(analysis.diagnostics.empty());
 }
 
+TEST(PackedAnalyzer, DiagnosesZeroWidthFields) {
+    auto layout{entity_id_layout()};
+    layout.fields[0].bit_width = 0;
+
+    auto const analysis{Analyzer::analyze(layout, Variant{}, AbiProfile::host_common())};
+
+    ASSERT_EQ(analysis.fields.size(), 2);
+    EXPECT_FALSE(analysis.fields[0].most_significant_bit.has_value());
+    EXPECT_EQ(analysis.bits_used, 8);
+    EXPECT_FALSE(analysis.diagnostics.empty());
+}
+
 TEST(PackedAnalyzer, AppliesExplicitVariantOverrides) {
     auto const layout{entity_id_layout()};
     Variant variant;
@@ -117,6 +129,22 @@ TEST(SoaAnalyzer, AppliesCapacityAndColumnTypeOverrides) {
     EXPECT_EQ(analysis.total_payload_bytes, 28 * 4'096);
     EXPECT_EQ(analysis.columns[0].type_facts->size_bytes, 8);
     EXPECT_EQ(analysis.columns[0].elements_per_cache_line, 8);
+}
+
+TEST(SoaAnalyzer, ReportsAnEmptyLayoutAsZeroPayload) {
+    auto const layout{SoaLayout{
+        .id = {.kind = SchemaKind::standard_library_soa,
+               .module_name = "test",
+               .schema_name = "Empty"},
+        .columns = {},
+    }};
+
+    auto const analysis{Analyzer::analyze(layout, Variant{}, AbiProfile::host_common(), 65'536)};
+
+    EXPECT_EQ(analysis.bytes_per_logical_element, 0);
+    EXPECT_EQ(analysis.total_payload_bytes, 0);
+    EXPECT_TRUE(analysis.columns.empty());
+    EXPECT_TRUE(analysis.diagnostics.empty());
 }
 
 TEST(SoaAnalyzer, UnknownTypesRemainUnknown) {

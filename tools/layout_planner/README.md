@@ -4,6 +4,17 @@ The memory layout planner is a standalone Windows C++ application for inspecting
 physical memory layouts derived from the project's LispB schemas. It does not depend on Unreal
 Engine, Qt, or C#.
 
+## Architecture
+
+The headless planner library lives in `native/layout/lib/`; its GoogleTest suite is in
+`native/layout/tests/`. The optional SDL3 and Dear ImGui frontend lives in
+`tools/layout_planner/app/`, with GUI panels in `app/gui/` and SDL-specific headers in
+`app/platform/`.
+
+`native-layout-tests` depends only on `native-layout` and GoogleTest. `layout-planner` depends on
+`native-layout`, SDL3, and Dear ImGui. The planner library has no SDL3, Dear ImGui, graphics, or
+windowing dependency.
+
 ## Build and executable location
 
 From the repository root, initialize the optional UI dependencies and run the dedicated workflow:
