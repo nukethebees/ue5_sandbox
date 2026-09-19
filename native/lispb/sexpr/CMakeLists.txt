@@ -14,4 +14,4 @@ target_link_libraries(lispb-syntax-tests PRIVATE
   sandbox::codegen_warnings
 )
 add_test(NAME LispbSyntaxTests COMMAND lispb-syntax-tests)
-set_tests_properties(LispbSyntaxTests PROPERTIES LABELS "unit;all;codegen")
+set_tests_properties(LispbSyntaxTests PROPERTIES LABELS "unit;all;native;codegen")

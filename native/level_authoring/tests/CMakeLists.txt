@@ -10,4 +10,4 @@ configure_sandbox_s7_abi(native-level-authoring-tests)
 
 add_test(NAME native-level-authoring-tests COMMAND native-level-authoring-tests)
 set_tests_properties(native-level-authoring-tests PROPERTIES
-  LABELS "unit;all;native-level-authoring")
+  LABELS "unit;all;native;native-level-authoring")

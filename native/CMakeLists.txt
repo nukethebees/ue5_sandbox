@@ -73,6 +73,24 @@ add_subdirectory(simulation_benchmark)
 add_subdirectory(image)
 add_subdirectory(mesh_gen)
 
+add_custom_target(native-tests
+  DEPENDS
+    codegen-tests
+    kernel-codegen-tests
+    native-core-tests
+    native-level-authoring-tests
+    native-memory-tests
+    native-simulation-tests
+    native-simulation-benchmark-tests
+    sandbox-image-tests
+    sandbox-s7-tests
+    sbx-mimalloc-tests
+    slate-codegen-tests
+    mesh-gen-tests
+    check-generated-code
+)
+set_property(TARGET native-tests PROPERTY FOLDER "Sandbox/Native/Tests")
+
 sandbox_target_precompile_common_headers(
   native-core
   native-simulation

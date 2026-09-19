@@ -26,7 +26,7 @@ target_link_libraries(slate-codegen-tests PRIVATE
 )
 
 add_test(NAME slate-codegen-tests COMMAND slate-codegen-tests)
-set_tests_properties(slate-codegen-tests PROPERTIES LABELS "unit;all;codegen")
+set_tests_properties(slate-codegen-tests PROPERTIES LABELS "unit;all;native;codegen")
 
 set(SLATE_COMPILE_FIXTURE "${CMAKE_CURRENT_SOURCE_DIR}/tests/compile")
 set(SLATE_COMPILE_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/compile-generated")
@@ -56,7 +56,7 @@ target_include_directories(slate-generated-compile-tests PRIVATE "${SLATE_COMPIL
 target_link_libraries(slate-generated-compile-tests PRIVATE sandbox::codegen_warnings)
 add_dependencies(slate-codegen-tests slate-generated-compile-tests)
 add_test(NAME SlateGeneratedCompileSmoke COMMAND slate-generated-compile-tests)
-set_tests_properties(SlateGeneratedCompileSmoke PROPERTIES LABELS "unit;all;codegen")
+set_tests_properties(SlateGeneratedCompileSmoke PROPERTIES LABELS "unit;all;native;codegen")
 
 add_test(NAME SlateExpandCli
   COMMAND "${CMAKE_COMMAND}"
@@ -66,7 +66,7 @@ add_test(NAME SlateExpandCli
     "-DBUILD_ROOT=${CMAKE_BINARY_DIR}"
     -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/expand_cli.cmake"
 )
-set_tests_properties(SlateExpandCli PROPERTIES LABELS "unit;all;codegen")
+set_tests_properties(SlateExpandCli PROPERTIES LABELS "unit;all;native;codegen")
 
 set(SLATE_CODEGEN_DOCUMENTS
   "Plugins/SandboxUI/Source/SandboxUI/Private/widgets/CoreWidgets.lispb"

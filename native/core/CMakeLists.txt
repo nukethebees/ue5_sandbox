@@ -78,7 +78,7 @@ target_link_libraries(native-core-tests PRIVATE native-core sandbox::warnings_as
 target_link_libraries(native-core-tests PRIVATE GTest::gtest_main)
 
 add_test(NAME native-core-tests COMMAND native-core-tests)
-set_tests_properties(native-core-tests PROPERTIES LABELS "unit;all;native-core")
+set_tests_properties(native-core-tests PROPERTIES LABELS "unit;all;native;native-core")
 
 if(SANDBOX_KERNEL_BENCHMARKS)
   add_executable(native-core-vector-lerp-benchmarks)
@@ -121,7 +121,7 @@ add_test(NAME StaticStringViewRejectsAutomaticStorage
     --target native-core-static-string-view-reject-automatic
 )
 set_tests_properties(StaticStringViewRejectsAutomaticStorage PROPERTIES
-  LABELS "unit;all;native-core"
+  LABELS "unit;all;native;native-core"
   WILL_FAIL TRUE
 )
 

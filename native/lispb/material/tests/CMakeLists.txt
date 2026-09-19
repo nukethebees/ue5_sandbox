@@ -10,4 +10,4 @@ target_compile_definitions(material-gen-tests PRIVATE
 )
 
 add_test(NAME MaterialGenTests COMMAND material-gen-tests)
-set_tests_properties(MaterialGenTests PROPERTIES LABELS "unit;all;codegen")
+set_tests_properties(MaterialGenTests PROPERTIES LABELS "unit;all;native;codegen")

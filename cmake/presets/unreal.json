@@ -199,6 +199,13 @@
       ]
     },
     {
+      "name": "debug-game-unit-prerequisites",
+      "configurePreset": "debug-game",
+      "targets": [
+        "unreal-unit-tests"
+      ]
+    },
+    {
       "name": "debug-msvc",
       "configurePreset": "debug-msvc",
       "targets": [
@@ -231,6 +238,13 @@
       "configurePreset": "test-msvc",
       "targets": [
         "dev-core"
+      ]
+    },
+    {
+      "name": "debug-game-msvc-unit-prerequisites",
+      "configurePreset": "debug-game-msvc",
+      "targets": [
+        "unreal-unit-tests"
       ]
     },
     {
@@ -746,7 +760,7 @@
         },
         {
           "type": "build",
-          "name": "debug-game"
+          "name": "debug-game-unit-prerequisites"
         },
         {
           "type": "test",
@@ -763,7 +777,7 @@
         },
         {
           "type": "build",
-          "name": "debug-game-msvc"
+          "name": "debug-game-msvc-unit-prerequisites"
         },
         {
           "type": "test",

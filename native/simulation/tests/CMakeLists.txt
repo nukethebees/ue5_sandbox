@@ -53,4 +53,4 @@ target_link_libraries(native-simulation-tests PRIVATE
 target_link_libraries(native-simulation-tests PRIVATE GTest::gtest_main)
 
 add_test(NAME native-simulation-tests COMMAND native-simulation-tests)
-set_tests_properties(native-simulation-tests PROPERTIES LABELS "unit;all;native-simulation")
+set_tests_properties(native-simulation-tests PROPERTIES LABELS "unit;all;native;native-simulation")

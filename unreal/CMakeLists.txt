@@ -405,20 +405,18 @@ add_unreal_editor_test(SandboxISMC.RemoteBenchmark
   TIMEOUT 600
 )
 
+add_custom_target(unreal-unit-tests
+  DEPENDS
+    editor
+    native-tests
+)
+set_property(TARGET unreal-unit-tests PROPERTY FOLDER "Sandbox/Unreal/Tests")
+
 add_custom_target(dev-core
   DEPENDS
-    native-core-tests
-    native-simulation-tests
-    native-simulation-benchmark-tests
-    sandbox-image-tests
-    mesh-gen-tests
     editor
-    codegen-tests
-    kernel-codegen-tests
-    native-memory-tests
-    sbx-mimalloc-tests
-    sandbox-s7-tests
-    slate-codegen-tests
+    core-tests
+    native-tests
     jobserver-tests
     check-cmake-presets
 )
@@ -474,20 +472,8 @@ elseif(SANDBOX_TEST_SUITE STREQUAL "default")
   add_low_level_test_suite(core-tests SandboxCoreTests SandboxCore
     AGGREGATE
     LABELS low-level-core)
-  add_custom_target(native-tests
-    DEPENDS
-      native-level-authoring-tests
-      native-simulation-tests
-      native-simulation-benchmark-tests
-  )
 
   add_dependencies(core-tests check-generated-code)
-  add_dependencies(native-tests check-generated-code)
-
-  add_dependencies(dev-core
-    core-tests
-    native-tests
-  )
 elseif(SANDBOX_TEST_SUITE STREQUAL "editor-only")
   # Editor automation tests are registered above and need no low-level test executable.
 else()

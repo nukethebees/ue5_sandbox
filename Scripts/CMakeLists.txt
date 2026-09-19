@@ -14,6 +14,16 @@ set_tests_properties(CMake.Presets PROPERTIES
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )
 
+add_test(NAME CMake.NativeWorkflow
+  COMMAND "${Python3_EXECUTABLE}" "${PROJECT_SOURCE_DIR}/cmake/presets/test_native_workflow.py"
+    --source-dir "${PROJECT_SOURCE_DIR}"
+    --cmake "${CMAKE_COMMAND}"
+)
+set_tests_properties(CMake.NativeWorkflow PROPERTIES
+  LABELS "unit;all;cmake"
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+)
+
 add_test(NAME CMake.StagedCSharpTools
   COMMAND "${CMAKE_COMMAND}"
     "-DSANDBOX_SOURCE_DIR=${PROJECT_SOURCE_DIR}"

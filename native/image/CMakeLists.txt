@@ -58,4 +58,4 @@ target_link_libraries(sandbox-image-tests PRIVATE
 )
 
 add_test(NAME sandbox-image-tests COMMAND sandbox-image-tests)
-set_tests_properties(sandbox-image-tests PROPERTIES LABELS "unit;all;native-image")
+set_tests_properties(sandbox-image-tests PROPERTIES LABELS "unit;all;native;native-image")

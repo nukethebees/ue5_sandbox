@@ -8,4 +8,4 @@ target_link_libraries(sandbox-s7-tests PRIVATE
 configure_sandbox_s7_abi(sandbox-s7-tests)
 
 add_test(NAME sandbox-s7-tests COMMAND sandbox-s7-tests)
-set_tests_properties(sandbox-s7-tests PROPERTIES LABELS "unit;all;native-s7")
+set_tests_properties(sandbox-s7-tests PROPERTIES LABELS "unit;all;native;native-s7")

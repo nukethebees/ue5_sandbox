@@ -30,7 +30,7 @@ target_link_libraries(native-memory-tests PRIVATE
   sandbox::warnings_as_errors
 )
 add_test(NAME native-memory-tests COMMAND native-memory-tests)
-set_tests_properties(native-memory-tests PROPERTIES LABELS "unit;all;native-memory")
+set_tests_properties(native-memory-tests PROPERTIES LABELS "unit;all;native;native-memory")
 
 foreach(native_memory_target IN ITEMS native-memory native-memory-tests)
   set_property(TARGET ${native_memory_target} PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)

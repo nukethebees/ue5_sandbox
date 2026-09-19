@@ -34,7 +34,7 @@ target_link_libraries(kernel-codegen-tests PRIVATE
 )
 
 add_test(NAME kernel-codegen-tests COMMAND kernel-codegen-tests)
-set_tests_properties(kernel-codegen-tests PROPERTIES LABELS "unit;all;codegen")
+set_tests_properties(kernel-codegen-tests PROPERTIES LABELS "unit;all;native;codegen")
 
 set(KERNEL_COMPILE_FIXTURE "${CMAKE_CURRENT_SOURCE_DIR}/tests/compile")
 set(KERNEL_COMPILE_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/compile-generated")
@@ -68,7 +68,7 @@ target_include_directories(kernel-generated-compile-tests PRIVATE
 target_link_libraries(kernel-generated-compile-tests PRIVATE sandbox::codegen_warnings)
 add_dependencies(kernel-codegen-tests kernel-generated-compile-tests)
 add_test(NAME KernelGeneratedCompileSmoke COMMAND kernel-generated-compile-tests)
-set_tests_properties(KernelGeneratedCompileSmoke PROPERTIES LABELS "unit;all;codegen")
+set_tests_properties(KernelGeneratedCompileSmoke PROPERTIES LABELS "unit;all;native;codegen")
 foreach(INVARIANT_CASE IN ITEMS unequal-lengths overlapping-output overlapping-in-place)
   add_test(
     NAME "KernelGeneratedInvariant.${INVARIANT_CASE}"
@@ -77,7 +77,7 @@ foreach(INVARIANT_CASE IN ITEMS unequal-lengths overlapping-output overlapping-i
   set_tests_properties(
     "KernelGeneratedInvariant.${INVARIANT_CASE}"
     PROPERTIES
-      LABELS "unit;all;codegen"
+      LABELS "unit;all;native;codegen"
       WILL_FAIL TRUE
   )
 endforeach()
@@ -127,7 +127,7 @@ target_link_libraries(kernel-generated-standard-tests PRIVATE
   sandbox::codegen_warnings
 )
 add_test(NAME kernel-generated-standard-tests COMMAND kernel-generated-standard-tests)
-set_tests_properties(kernel-generated-standard-tests PROPERTIES LABELS "unit;all;codegen")
+set_tests_properties(kernel-generated-standard-tests PROPERTIES LABELS "unit;all;native;codegen")
 add_dependencies(kernel-codegen-tests kernel-generated-standard-tests)
 
 add_custom_target(generate-kernel-code
@@ -249,7 +249,7 @@ target_link_libraries(kernel-generated-avx2-lab-tests PRIVATE
 add_dependencies(kernel-generated-avx2-lab-tests check-generated-kernel-avx2-lab)
 add_dependencies(kernel-codegen-tests kernel-generated-avx2-lab-tests)
 add_test(NAME kernel-generated-avx2-lab-tests COMMAND kernel-generated-avx2-lab-tests)
-set_tests_properties(kernel-generated-avx2-lab-tests PROPERTIES LABELS "unit;all;codegen")
+set_tests_properties(kernel-generated-avx2-lab-tests PROPERTIES LABELS "unit;all;native;codegen")
 
 if(SANDBOX_KERNEL_BENCHMARKS)
   set(KERNEL_NATIVE_SIMD_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/native-simd-generated")

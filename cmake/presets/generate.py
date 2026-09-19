@@ -27,7 +27,8 @@ CONFIGURATIONS = (
     Configuration("release", "Release", "Release", "DebugGame"),
 )
 
-CODEGEN_CONFIGURATION = "win-x64-clangcl-debug-unity"
+DEFAULT_NATIVE_CONFIGURATION = "native"
+CODEGEN_CONFIGURATION = DEFAULT_NATIVE_CONFIGURATION
 BENCHMARK_CONFIGURATION = "win-x64-clangcl-release-unity"
 
 
@@ -127,8 +128,29 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             preset["environment"] = environment
         configure_presets.append(preset)
 
+    configure_presets.append(
+        {
+            "name": DEFAULT_NATIVE_CONFIGURATION,
+            "displayName": "Native development (Windows x64 clang-cl Debug + Unity)",
+            "inherits": "win-x64-clangcl-debug-unity",
+        }
+    )
+
     document["configurePresets"] = configure_presets
     document["buildPresets"] = [
+        {
+            "name": "native",
+            "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
+            "targets": ["native-tests"],
+        },
+        *(
+            {
+                "name": test_target,
+                "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
+                "targets": [test_target],
+            }
+            for test_target in ("native-core-tests", "native-simulation-tests")
+        ),
         *(
             {"name": combination.name, "configurePreset": combination.name}
             for combination in combinations
@@ -150,6 +172,24 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
         },
     ]
     document["testPresets"] = [
+        {
+            "name": "native-tests",
+            "inherits": "test-base",
+            "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
+            "filter": {"include": {"label": "^native$"}},
+        },
+        *(
+            {
+                "name": test_target,
+                "inherits": "test-base",
+                "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
+                "filter": {"include": {"label": f"^{label}$"}},
+            }
+            for test_target, label in (
+                ("native-core-tests", "native-core"),
+                ("native-simulation-tests", "native-simulation"),
+            )
+        ),
         *(
             {
                 "name": combination.name,
@@ -167,6 +207,26 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
         },
     ]
     document["workflowPresets"] = [
+        {
+            "name": "native-tests",
+            "displayName": "Run the native validation suite",
+            "steps": [
+                {"type": "configure", "name": DEFAULT_NATIVE_CONFIGURATION},
+                {"type": "build", "name": "native"},
+                {"type": "test", "name": "native-tests"},
+            ],
+        },
+        *(
+            {
+                "name": test_target,
+                "steps": [
+                    {"type": "configure", "name": DEFAULT_NATIVE_CONFIGURATION},
+                    {"type": "build", "name": test_target},
+                    {"type": "test", "name": test_target},
+                ],
+            }
+            for test_target in ("native-core-tests", "native-simulation-tests")
+        ),
         *(
             {
                 "name": combination.name,
@@ -301,6 +361,14 @@ def make_unreal_document() -> dict[str, Any]:
                     "targets": [target],
                 }
             )
+
+        build_presets.append(
+            {
+                "name": f"debug-game{suffix}-unit-prerequisites",
+                "configurePreset": f"debug-game{suffix}",
+                "targets": ["unreal-unit-tests"],
+            }
+        )
 
     extra_build_presets = (
         ("resave-assets", "debug-game", "resave-assets"),
@@ -484,7 +552,10 @@ def make_unreal_document() -> dict[str, Any]:
                     "name": test_name,
                     "steps": [
                         {"type": "configure", "name": f"debug-game{suffix}"},
-                        {"type": "build", "name": f"debug-game{suffix}"},
+                        {
+                            "type": "build",
+                            "name": f"debug-game{suffix}-unit-prerequisites",
+                        },
                         {"type": "test", "name": test_name},
                     ],
                 }

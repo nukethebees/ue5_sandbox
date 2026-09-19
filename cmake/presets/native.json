@@ -181,9 +181,35 @@
         "CMAKE_UNITY_BUILD": true,
         "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
       }
+    },
+    {
+      "name": "native",
+      "displayName": "Native development (Windows x64 clang-cl Debug + Unity)",
+      "inherits": "win-x64-clangcl-debug-unity"
     }
   ],
   "buildPresets": [
+    {
+      "name": "native",
+      "configurePreset": "native",
+      "targets": [
+        "native-tests"
+      ]
+    },
+    {
+      "name": "native-core-tests",
+      "configurePreset": "native",
+      "targets": [
+        "native-core-tests"
+      ]
+    },
+    {
+      "name": "native-simulation-tests",
+      "configurePreset": "native",
+      "targets": [
+        "native-simulation-tests"
+      ]
+    },
     {
       "name": "win-x64-clangcl-debug",
       "configurePreset": "win-x64-clangcl-debug"
@@ -234,7 +260,7 @@
     },
     {
       "name": "codegen",
-      "configurePreset": "win-x64-clangcl-debug-unity",
+      "configurePreset": "native",
       "targets": [
         "lispb",
         "codegen-tests",
@@ -244,13 +270,43 @@
     },
     {
       "name": "generate-code",
-      "configurePreset": "win-x64-clangcl-debug-unity",
+      "configurePreset": "native",
       "targets": [
         "generate-code"
       ]
     }
   ],
   "testPresets": [
+    {
+      "name": "native-tests",
+      "inherits": "test-base",
+      "configurePreset": "native",
+      "filter": {
+        "include": {
+          "label": "^native$"
+        }
+      }
+    },
+    {
+      "name": "native-core-tests",
+      "inherits": "test-base",
+      "configurePreset": "native",
+      "filter": {
+        "include": {
+          "label": "^native-core$"
+        }
+      }
+    },
+    {
+      "name": "native-simulation-tests",
+      "inherits": "test-base",
+      "configurePreset": "native",
+      "filter": {
+        "include": {
+          "label": "^native-simulation$"
+        }
+      }
+    },
     {
       "name": "win-x64-clangcl-debug",
       "inherits": "test-base",
@@ -386,7 +442,7 @@
     {
       "name": "codegen-tests",
       "inherits": "test-base",
-      "configurePreset": "win-x64-clangcl-debug-unity",
+      "configurePreset": "native",
       "filter": {
         "include": {
           "label": "codegen"
@@ -395,6 +451,58 @@
     }
   ],
   "workflowPresets": [
+    {
+      "name": "native-tests",
+      "displayName": "Run the native validation suite",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "native"
+        },
+        {
+          "type": "build",
+          "name": "native"
+        },
+        {
+          "type": "test",
+          "name": "native-tests"
+        }
+      ]
+    },
+    {
+      "name": "native-core-tests",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "native"
+        },
+        {
+          "type": "build",
+          "name": "native-core-tests"
+        },
+        {
+          "type": "test",
+          "name": "native-core-tests"
+        }
+      ]
+    },
+    {
+      "name": "native-simulation-tests",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "native"
+        },
+        {
+          "type": "build",
+          "name": "native-simulation-tests"
+        },
+        {
+          "type": "test",
+          "name": "native-simulation-tests"
+        }
+      ]
+    },
     {
       "name": "win-x64-clangcl-debug",
       "steps": [
@@ -604,7 +712,7 @@
       "steps": [
         {
           "type": "configure",
-          "name": "win-x64-clangcl-debug-unity"
+          "name": "native"
         },
         {
           "type": "build",
@@ -621,7 +729,7 @@
       "steps": [
         {
           "type": "configure",
-          "name": "win-x64-clangcl-debug-unity"
+          "name": "native"
         },
         {
           "type": "build",

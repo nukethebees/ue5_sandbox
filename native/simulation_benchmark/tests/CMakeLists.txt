@@ -13,7 +13,7 @@ configure_sandbox_s7_abi(native-simulation-benchmark-tests)
 
 add_test(NAME native-simulation-benchmark-tests COMMAND native-simulation-benchmark-tests)
 set_tests_properties(native-simulation-benchmark-tests PROPERTIES
-  LABELS "unit;all;native-simulation-benchmark"
+  LABELS "unit;all;native;native-simulation-benchmark"
 )
 
 if(SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK)

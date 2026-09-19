@@ -122,4 +122,4 @@ target_link_libraries(sbx-mimalloc-tests PRIVATE
 set_property(TARGET sbx-mimalloc-tests PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
 target_compile_definitions(sbx-mimalloc-tests PRIVATE _ITERATOR_DEBUG_LEVEL=0)
 add_test(NAME sbx-mimalloc-tests COMMAND sbx-mimalloc-tests)
-set_tests_properties(sbx-mimalloc-tests PROPERTIES LABELS "unit;all;sbx-mimalloc")
+set_tests_properties(sbx-mimalloc-tests PROPERTIES LABELS "unit;all;native;sbx-mimalloc")

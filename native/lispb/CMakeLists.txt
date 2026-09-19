@@ -197,9 +197,9 @@ target_compile_definitions(codegen-tests PRIVATE
 )
 
 add_test(NAME codegen-tests COMMAND codegen-tests)
-set_tests_properties(codegen-tests PROPERTIES LABELS "unit;all;codegen")
+set_tests_properties(codegen-tests PROPERTIES LABELS "unit;all;native;codegen")
 add_test(NAME codegen-generated-tests COMMAND codegen-generated-tests)
-set_tests_properties(codegen-generated-tests PROPERTIES LABELS "unit;all;codegen")
+set_tests_properties(codegen-generated-tests PROPERTIES LABELS "unit;all;native;codegen")
 foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
   set(reject_target "codegen-reject-single-${restriction}")
   add_library(${reject_target} OBJECT EXCLUDE_FROM_ALL tests/compile_fixture/rejected_leaf.cpp)
@@ -218,7 +218,7 @@ foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
       "-DREJECT_TARGET=${reject_target}"
       -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/reject_single_allocation_leaf.cmake")
   set_tests_properties("SingleAllocationRejects${restriction}" PROPERTIES
-    LABELS "unit;all;codegen" RESOURCE_LOCK codegen-negative-build)
+    LABELS "unit;all;native;codegen" RESOURCE_LOCK codegen-negative-build)
 endforeach()
 add_test(NAME CodegenCliChecksGeneratedFixture
   COMMAND lispb check
@@ -226,36 +226,36 @@ add_test(NAME CodegenCliChecksGeneratedFixture
     --build-root "${CMAKE_BINARY_DIR}"
     --target cpp-compile-fixture
 )
-set_tests_properties(CodegenCliChecksGeneratedFixture PROPERTIES LABELS "unit;all;codegen")
+set_tests_properties(CodegenCliChecksGeneratedFixture PROPERTIES LABELS "unit;all;native;codegen")
 add_test(NAME CodegenCliRejectsUnknownArgument COMMAND lispb generate --unknown value)
 set_tests_properties(CodegenCliRejectsUnknownArgument PROPERTIES
-  LABELS "unit;all;codegen"
+  LABELS "unit;all;native;codegen"
   WILL_FAIL TRUE
 )
 add_test(NAME CodegenCliRejectsMissingArgumentValue COMMAND lispb generate --target)
 set_tests_properties(CodegenCliRejectsMissingArgumentValue PROPERTIES
-  LABELS "unit;all;codegen"
+  LABELS "unit;all;native;codegen"
   WILL_FAIL TRUE
 )
 add_test(NAME CodegenCliRejectsOptionAsArgumentValue
   COMMAND lispb generate --project --target
 )
 set_tests_properties(CodegenCliRejectsOptionAsArgumentValue PROPERTIES
-  LABELS "unit;all;codegen"
+  LABELS "unit;all;native;codegen"
   WILL_FAIL TRUE
 )
 add_test(NAME CodegenCliRejectsDuplicateArguments
   COMMAND lispb generate --target sandbox-code --target sandbox-code
 )
 set_tests_properties(CodegenCliRejectsDuplicateArguments PROPERTIES
-  LABELS "unit;all;codegen"
+  LABELS "unit;all;native;codegen"
   WILL_FAIL TRUE
 )
 add_test(NAME CodegenCliReportsMissingProject
   COMMAND lispb generate --project missing-project.lispb --target sandbox-code
 )
 set_tests_properties(CodegenCliReportsMissingProject PROPERTIES
-  LABELS "unit;all;codegen"
+  LABELS "unit;all;native;codegen"
   WILL_FAIL TRUE
 )
 
