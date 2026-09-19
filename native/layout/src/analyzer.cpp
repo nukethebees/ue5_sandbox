@@ -1,0 +1,235 @@
+#include <ioj/layout/analyzer.hpp>
+
+#include <limits>
+#include <utility>
+
+namespace ioj::layout {
+namespace {
+
+constexpr std::uint64_t cache_line_bytes{64};
+
+auto checked_add(std::uint64_t const left, std::uint64_t const right)
+    -> std::optional<std::uint64_t> {
+    if (right > std::numeric_limits<std::uint64_t>::max() - left) {
+        return std::nullopt;
+    }
+    return left + right;
+}
+
+auto checked_multiply(std::uint64_t const left, std::uint64_t const right)
+    -> std::optional<std::uint64_t> {
+    if (left != 0 && right > std::numeric_limits<std::uint64_t>::max() / left) {
+        return std::nullopt;
+    }
+    return left * right;
+}
+
+auto maximum_unsigned_value(std::uint32_t const bits) -> std::optional<std::uint64_t> {
+    if (bits > 64) {
+        return std::nullopt;
+    }
+    if (bits == 64) {
+        return std::numeric_limits<std::uint64_t>::max();
+    }
+    return (std::uint64_t{1} << bits) - 1;
+}
+
+auto effective_field_width(PackedLayout const& layout,
+                           PackedField const& field,
+                           Variant const& variant) -> std::uint32_t {
+    auto const found{variant.overrides.packed_field_widths.find(
+        FieldOverrideId{.schema = layout.id, .field_name = field.name})};
+    return found == variant.overrides.packed_field_widths.end() ? field.bit_width : found->second;
+}
+
+auto effective_storage_type(PackedLayout const& layout, Variant const& variant) -> std::string {
+    auto const found{variant.overrides.packed_storage_types.find(layout.id)};
+    return found == variant.overrides.packed_storage_types.end() ? layout.storage_type : found->second;
+}
+
+auto effective_column_type(SoaLayout const& layout,
+                           SoaColumn const& column,
+                           Variant const& variant) -> std::string {
+    auto const found{variant.overrides.soa_column_types.find(
+        FieldOverrideId{.schema = layout.id, .field_name = column.name})};
+    return found == variant.overrides.soa_column_types.end() ? column.logical_type : found->second;
+}
+
+auto minimum_cache_lines(std::uint64_t const bytes) -> std::uint64_t {
+    return bytes / cache_line_bytes + (bytes % cache_line_bytes == 0 ? 0 : 1);
+}
+
+} // namespace
+
+auto Analyzer::analyze(PackedLayout const& layout, Variant const& variant, AbiProfile const& abi)
+    -> PackedAnalysis {
+    PackedAnalysis result{.id = layout.id,
+                          .storage_type = effective_storage_type(layout, variant),
+                          .storage_facts = std::nullopt,
+                          .storage_bits = std::nullopt,
+                          .bits_used = std::nullopt,
+                          .unused_bits = std::nullopt,
+                          .invalid_raw_value = layout.invalid_raw_value,
+                          .fields = {},
+                          .diagnostics = {}};
+    result.storage_facts = abi.find(result.storage_type);
+    if (!result.storage_facts.has_value()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Unknown physical facts for packed storage type '" + result.storage_type + "'."});
+    } else {
+        result.storage_bits = checked_multiply(result.storage_facts->size_bytes, 8);
+        if (!result.storage_bits.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, "Packed storage bit count overflows uint64."});
+        }
+        if (!result.storage_facts->unsigned_value_bits.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::warning,
+                 "Packed storage type '" + result.storage_type +
+                     "' is not described as an unsigned integer by this ABI profile."});
+        }
+    }
+
+    std::uint64_t offset{};
+    bool width_overflow{};
+    result.fields.reserve(layout.fields.size());
+    for (auto const& field : layout.fields) {
+        auto const width{effective_field_width(layout, field, variant)};
+        auto const next_offset{checked_add(offset, width)};
+        PackedFieldAnalysis field_result{.name = field.name,
+                                         .kind = field.kind,
+                                         .bit_width = width,
+                                         .least_significant_bit = offset,
+                                         .most_significant_bit = std::nullopt,
+                                         .maximum_unsigned_value = maximum_unsigned_value(width)};
+        if (width == 0) {
+            result.diagnostics.push_back({DiagnosticSeverity::error,
+                                          "Packed field '" + field.name +
+                                              "' must use at least one bit."});
+        }
+        if (!field_result.maximum_unsigned_value.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Packed field '" + field.name + "' exceeds the 64-bit V1 range limit."});
+        }
+        if (next_offset.has_value()) {
+            if (width != 0) {
+                field_result.most_significant_bit = *next_offset - 1;
+            }
+            offset = *next_offset;
+        } else {
+            width_overflow = true;
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, "Packed field bit offsets overflow uint64."});
+        }
+        result.fields.push_back(std::move(field_result));
+    }
+
+    if (!width_overflow) {
+        result.bits_used = offset;
+        if (result.storage_bits.has_value()) {
+            if (*result.bits_used > *result.storage_bits) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Packed fields use more bits than the selected storage type provides."});
+            } else {
+                result.unused_bits = *result.storage_bits - *result.bits_used;
+            }
+        }
+    }
+
+    if (layout.invalid_raw_value.has_value() && result.storage_bits.has_value() &&
+        *result.storage_bits < 64) {
+        auto const storage_max{maximum_unsigned_value(static_cast<std::uint32_t>(*result.storage_bits))};
+        if (storage_max.has_value() && *layout.invalid_raw_value > *storage_max) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "The invalid raw value does not fit the selected packed storage type."});
+        }
+    }
+    return result;
+}
+
+auto Analyzer::analyze(SoaLayout const& layout,
+                       Variant const& variant,
+                       AbiProfile const& abi,
+                       std::uint64_t const default_capacity) -> SoaAnalysis {
+    auto capacity{default_capacity};
+    if (auto const found{variant.overrides.capacities.find(layout.id)};
+        found != variant.overrides.capacities.end()) {
+        capacity = found->second;
+    }
+    SoaAnalysis result{.id = layout.id,
+                       .capacity = capacity,
+                       .columns = {},
+                       .bytes_per_logical_element = std::nullopt,
+                       .total_payload_bytes = std::nullopt,
+                       .diagnostics = {}};
+    std::uint64_t row_bytes{};
+    std::uint64_t total_bytes{};
+    bool complete{true};
+    result.columns.reserve(layout.columns.size());
+
+    for (auto const& column : layout.columns) {
+        SoaColumnAnalysis column_result{
+            .name = column.name,
+            .physical_type = effective_column_type(layout, column, variant),
+            .type_facts = std::nullopt,
+            .total_bytes = std::nullopt,
+            .minimum_cache_lines = std::nullopt,
+            .elements_per_cache_line = std::nullopt};
+        column_result.type_facts = abi.find(column_result.physical_type);
+        if (!column_result.type_facts.has_value()) {
+            complete = false;
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Unknown physical facts for SoA column '" + column.name + "' type '" +
+                     column_result.physical_type + "'."});
+            result.columns.push_back(std::move(column_result));
+            continue;
+        }
+
+        auto const size{column_result.type_facts->size_bytes};
+        column_result.total_bytes = checked_multiply(size, capacity);
+        if (!column_result.total_bytes.has_value()) {
+            complete = false;
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Byte count overflows uint64 for SoA column '" + column.name + "'."});
+        } else {
+            column_result.minimum_cache_lines = minimum_cache_lines(*column_result.total_bytes);
+        }
+        if (size != 0 && size <= cache_line_bytes && cache_line_bytes % size == 0) {
+            column_result.elements_per_cache_line = cache_line_bytes / size;
+        }
+
+        auto const next_row_bytes{checked_add(row_bytes, size)};
+        if (!next_row_bytes.has_value()) {
+            complete = false;
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, "SoA bytes per logical element overflow uint64."});
+        } else {
+            row_bytes = *next_row_bytes;
+        }
+        if (column_result.total_bytes.has_value()) {
+            auto const next_total{checked_add(total_bytes, *column_result.total_bytes)};
+            if (!next_total.has_value()) {
+                complete = false;
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error, "SoA total payload bytes overflow uint64."});
+            } else {
+                total_bytes = *next_total;
+            }
+        }
+        result.columns.push_back(std::move(column_result));
+    }
+
+    if (complete) {
+        result.bytes_per_logical_element = row_bytes;
+        result.total_payload_bytes = total_bytes;
+    }
+    return result;
+}
+
+} // namespace ioj::layout
