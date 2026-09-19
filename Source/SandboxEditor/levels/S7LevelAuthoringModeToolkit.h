@@ -27,6 +27,7 @@ class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
     auto apply_preview() -> FReply;
     auto save() -> FReply;
     auto save_as() -> FReply;
+    auto save_canonical_from_scene() -> FReply;
 
     TWeakObjectPtr<US7LevelAuthoringMode> mode_{};
     TSharedPtr<IDetailsView> details_{};
