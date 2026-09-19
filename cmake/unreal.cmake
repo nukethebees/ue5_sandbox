@@ -26,7 +26,7 @@ function(add_unreal_target target_name unreal_target)
 endfunction()
 
 function(add_unreal_editor_target target_name)
-  cmake_parse_arguments(PARSE_ARGV 1 editor_target "" "ACTIVITY;COMMENT;EXECUTABLE;FOLDER" "ARGUMENTS;DEPENDS")
+  cmake_parse_arguments(PARSE_ARGV 1 editor_target "UNATTENDED" "ACTIVITY;COMMENT;EXECUTABLE;FOLDER" "ARGUMENTS;DEPENDS")
 
   if(editor_target_UNPARSED_ARGUMENTS)
     message(FATAL_ERROR
@@ -47,8 +47,17 @@ function(add_unreal_editor_target target_name)
     set(editor_target_EXECUTABLE "${UE_EDITOR_CMD_EXE}")
   endif()
 
+  if(editor_target_UNATTENDED)
+    set(editor_target_engine_access SHARED)
+    if(NOT "-unattended" IN_LIST editor_target_ARGUMENTS)
+      list(APPEND editor_target_ARGUMENTS -unattended)
+    endif()
+  else()
+    set(editor_target_engine_access EXCLUSIVE)
+  endif()
+
   sandbox_unreal_jobserver_command(activity_command "${editor_target_ACTIVITY}"
-    "Unreal target: ${target_name}")
+    "${editor_target_engine_access}" "Unreal target: ${target_name}")
   add_custom_target(${target_name}
     COMMAND ${activity_command} "${editor_target_EXECUTABLE}" "${SANDBOX_UPROJECT}"
       ${editor_target_ARGUMENTS}
@@ -83,7 +92,7 @@ function(add_unreal_commandlet_target target_name)
       "add_unreal_commandlet_target(${target_name}) requires COMMENT.")
   endif()
 
-  sandbox_unreal_jobserver_command(activity_command STANDARD
+  sandbox_unreal_jobserver_command(activity_command STANDARD SHARED
     "Unreal commandlet: ${commandlet_COMMANDLET}")
   add_custom_target(${target_name}
     COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
@@ -105,7 +114,7 @@ function(add_unreal_commandlet_target target_name)
 endfunction()
 
 function(add_unreal_benchmark_commandlet_target target_name commandlet)
-  sandbox_unreal_jobserver_command(activity_command BENCHMARK
+  sandbox_unreal_jobserver_command(activity_command BENCHMARK SHARED
     "Unreal benchmark commandlet: ${commandlet}")
   add_custom_target(${target_name}
     COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
@@ -154,7 +163,7 @@ function(add_unreal_editor_test test_name)
     message(FATAL_ERROR
       "add_unreal_editor_test(${test_name}) ACTIVITY must be STANDARD or BENCHMARK.")
   endif()
-  sandbox_unreal_jobserver_command(activity_command "${editor_test_ACTIVITY}"
+  sandbox_unreal_jobserver_command(activity_command "${editor_test_ACTIVITY}" SHARED
     "Unreal test: ${test_name}")
 
   set(editor_test_common_arguments

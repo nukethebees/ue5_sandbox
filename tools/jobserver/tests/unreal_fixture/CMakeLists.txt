@@ -5,8 +5,8 @@ find_program(POWERSHELL_EXECUTABLE pwsh REQUIRED)
 include("${SOURCE_ROOT}/cmake/unreal_jobserver.cmake")
 set(SANDBOX_JOBSERVER_CLI "${CLIENT}")
 sandbox_configure_unreal_jobserver("${ENGINE_ROOT}")
-sandbox_unreal_jobserver_command(reader_command STANDARD "fixture reader")
-sandbox_unreal_jobserver_command(benchmark_command BENCHMARK "fixture benchmark")
+sandbox_unreal_jobserver_command(reader_command STANDARD SHARED "fixture reader")
+sandbox_unreal_jobserver_command(benchmark_command BENCHMARK SHARED "fixture benchmark")
 file(WRITE "${CMAKE_BINARY_DIR}/resource.txt" "${UE_ENGINE_JOBSERVER_RESOURCE}")
 file(WRITE "${CMAKE_BINARY_DIR}/claims.txt" "${UE_JOBSERVER_COMMAND_PREFIX}\n${reader_command}\n${benchmark_command}\n")
 
@@ -26,6 +26,17 @@ set(SANDBOX_LOCAL_DDC_DIR "${CMAKE_BINARY_DIR}/ddc")
 include("${SOURCE_ROOT}/cmake/unreal.cmake")
 add_unreal_target(writer ready-sleep)
 add_custom_target(editor)
+add_unreal_editor_target(interactive-editor
+  EXECUTABLE "${HELPER}"
+  ARGUMENTS "${READY}.interactive"
+  COMMENT "fixture interactive editor"
+)
+add_unreal_editor_target(unattended-editor
+  UNATTENDED
+  EXECUTABLE "${HELPER}"
+  ARGUMENTS "${READY}.unattended"
+  COMMENT "fixture unattended editor"
+)
 add_unreal_editor_test(reader-test ARGUMENTS "${READY}" LABELS unit TIMEOUT 60)
 add_unreal_commandlet_target(commandlet COMMANDLET fixture COMMENT fixture)
 add_unreal_benchmark_commandlet_target(benchmark-commandlet fixture)

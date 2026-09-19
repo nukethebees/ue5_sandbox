@@ -132,6 +132,25 @@ class UnrealIntegrationTests(unittest.TestCase):
         self.cancel(writer)
         self.wait_ready(reader[2])
 
+    def test_unattended_editors_overlap_as_readers(self) -> None:
+        editor, reader = self.configure(), self.configure()
+        self.launch(editor, "unattended-editor")
+        self.wait_ready(Path(f"{editor[2]}.unattended"))
+        self.launch(reader)
+        self.wait_ready(reader[2])
+        self.wait_job(editor, "RUNNING")
+        self.wait_job(reader, "RUNNING")
+
+    def test_interactive_editor_blocks_readers(self) -> None:
+        editor, reader = self.configure(), self.configure()
+        self.launch(editor, "interactive-editor")
+        self.wait_ready(Path(f"{editor[2]}.interactive"))
+        self.launch(reader)
+        self.wait_job(reader, "QUEUED")
+        self.assertFalse(reader[2].exists())
+        self.cancel(editor)
+        self.wait_ready(reader[2])
+
     def test_readers_overlap_and_other_engine_writer_is_independent(self) -> None:
         first, second = self.configure(), self.configure()
         other_engine = self.root / "other engine"
@@ -186,6 +205,14 @@ class UnrealIntegrationTests(unittest.TestCase):
             generated = (original[1] / filename).read_text(encoding="utf-8")
             self.assertIn(f"--shared {resource}", generated.replace('"', ''))
         ninja = (original[1] / "build.ninja").read_text(encoding="utf-8").replace("\\", "/")
+        interactive = ninja.split(
+            "# Custom command for CMakeFiles/interactive-editor\n", 1)[1].split("\n\n", 1)[0]
+        self.assertIn(f"--exclusive {resource}", interactive)
+        self.assertNotIn("-unattended", interactive)
+        unattended = ninja.split(
+            "# Custom command for CMakeFiles/unattended-editor\n", 1)[1].split("\n\n", 1)[0]
+        self.assertIn(f"--shared {resource}", unattended)
+        self.assertIn("-unattended", unattended)
         for target in ("commandlet", "benchmark-commandlet"):
             section = ninja.split(f"# Custom command for CMakeFiles/{target}\n", 1)[1].split("\n\n", 1)[0]
             self.assertIn(f"--shared {resource}", section)
@@ -219,6 +246,16 @@ class UnrealIntegrationTests(unittest.TestCase):
         self.start([str(CLIENT), "run", "--name", "parent", "--worktree", str(fixture[0]),
                     "--shared", "machine", "--exclusive", resource, "--", str(CMAKE),
                     "--build", str(fixture[1]), "--target", "reader"])
+        self.wait_ready(fixture[2])
+        self.assertEqual(len(self.status()["jobs"]), 1)
+        self.cancel(fixture)
+
+    def test_exclusive_parent_covers_nested_writer(self) -> None:
+        fixture = self.configure()
+        resource = (fixture[1] / "resource.txt").read_text()
+        self.start([str(CLIENT), "run", "--name", "parent", "--worktree", str(fixture[0]),
+                    "--shared", "machine", "--exclusive", resource, "--", str(CMAKE),
+                    "--build", str(fixture[1]), "--target", "writer"])
         self.wait_ready(fixture[2])
         self.assertEqual(len(self.status()["jobs"]), 1)
         self.cancel(fixture)
