@@ -37,6 +37,14 @@ Unreal Engine 5.8 project.
      merge-ready integration gate on the final HEAD.
   6. Only report the branch as merge-ready after its final rebased HEAD passes the required gate,
      then merge it into `dev`.
+* After a feature branch has been successfully merged into `dev`, return its worktree to its
+  normal persistent branch when one exists. Infer that branch from the worktree directory name
+  only when a matching branch exists; for example, worktrees named `dev1` through `dev10` normally
+  return to persistent branches with the same names. Never delete a persistent `devN` branch.
+* Once the worktree is no longer on the feature branch, delete that feature branch only if it is
+  fully merged into `dev` and the user has not asked to keep it. Use safe deletion semantics
+  (`git branch -d`), never force-delete an unmerged branch; leave an unmerged branch intact and
+  report that cleanup was skipped.
 * A branch task is not complete until its original plan and all approved amendments are complete.
   A substantive task is not complete merely because implementation is finished: it must also
   complete the merge-ready process before being reported as done.
