@@ -39,7 +39,8 @@ void draw_packed_bar(PackedAnalysis const& analysis,
                      std::uint64_t const common_bits,
                      bool const editable,
                      std::optional<std::size_t>& dragged_divider,
-                     std::optional<PackedDividerAdjustment>& adjustment) {
+                     std::optional<PackedDividerAdjustment>& adjustment,
+                     bool& activated) {
     ImGui::TextUnformatted(label);
     ImGui::SameLine();
     ImGui::TextDisabled("%s — %s",
@@ -179,6 +180,7 @@ void draw_packed_bar(PackedAnalysis const& analysis,
     ImGui::PushID(label);
     ImGui::InvisibleButton("packed-layout", {available, height});
     auto const clicked{ImGui::IsItemClicked()};
+    activated = clicked;
     auto const hovered{ImGui::IsItemHovered()};
     ImGui::PopID();
     auto const mouse_position{ImGui::GetIO().MousePos};
@@ -283,7 +285,8 @@ void draw_payload_regions(SoaAnalysis const& analysis,
                           SoaAnalysis const* const baseline,
                           std::string& selected_field,
                           char const* const label,
-                          std::uint64_t const common_total) {
+                          std::uint64_t const common_total,
+                          bool& activated) {
     ImGui::TextUnformatted(label);
     ImGui::SameLine();
     ImGui::TextDisabled("capacity %llu — %s",
@@ -340,6 +343,7 @@ void draw_payload_regions(SoaAnalysis const& analysis,
     ImGui::PushID(label);
     ImGui::InvisibleButton("payload-layout", {available, height});
     auto const clicked{ImGui::IsItemClicked()};
+    activated = clicked;
     auto const hovered{ImGui::IsItemHovered()};
     ImGui::PopID();
     if (hovered) {
@@ -432,19 +436,20 @@ void draw_cache_line(CacheLineTiling const& tiling) {
 
 } // namespace
 
-void PlannerUi::draw_packed_layout(PackedType const& packed,
-                                   PackedAnalysis const& baseline,
-                                   PackedAnalysis const& active) {
-    auto const& identity{workspace_.types().type(active.type).identity};
+void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis const& baseline) {
+    auto const& identity{workspace_.types().type(baseline.type).identity};
     ImGui::Text("%s", identity.name.c_str());
     ImGui::TextDisabled("%s", identity.module_name.c_str());
-    auto const common_bits{std::max({baseline.storage_bits.value_or(0),
-                                     baseline.bits_used.value_or(0),
-                                     active.storage_bits.value_or(0),
-                                     active.bits_used.value_or(0),
-                                     std::uint64_t{1}})};
+    auto common_bits{std::max(
+        {baseline.storage_bits.value_or(0), baseline.bits_used.value_or(0), std::uint64_t{1}})};
+    for (auto const& [variant_id, analysis] : packed_variants_) {
+        static_cast<void>(variant_id);
+        common_bits = std::max(
+            {common_bits, analysis.storage_bits.value_or(0), analysis.bits_used.value_or(0)});
+    }
     std::optional<std::size_t> baseline_divider;
     std::optional<PackedDividerAdjustment> adjustment;
+    bool activated{};
     draw_packed_bar(baseline,
                     nullptr,
                     selected_field_,
@@ -452,51 +457,84 @@ void PlannerUi::draw_packed_layout(PackedType const& packed,
                     common_bits,
                     false,
                     baseline_divider,
-                    adjustment);
-    if (workspace_.active_variant_id() != LayoutWorkspace::baseline_variant_id) {
-        draw_packed_bar(active,
+                    adjustment,
+                    activated);
+    for (auto const& [variant_id, analysis] : packed_variants_) {
+        auto const* variant{workspace_.variant(variant_id)};
+        if (variant == nullptr) {
+            continue;
+        }
+        auto const label{variant->name +
+                         (variant_id == workspace_.active_variant_id() ? " (editing)" : "")};
+        adjustment.reset();
+        activated = false;
+        std::optional<std::size_t> inactive_divider;
+        auto& dragged_divider{!packed_dragged_variant_id_.has_value() ||
+                                      *packed_dragged_variant_id_ == variant_id
+                                  ? packed_dragged_divider_
+                                  : inactive_divider};
+        ImGui::PushID(static_cast<int>(variant_id));
+        draw_packed_bar(analysis,
                         &baseline,
                         selected_field_,
-                        "Variant",
+                        label.c_str(),
                         common_bits,
                         true,
-                        packed_dragged_divider_,
-                        adjustment);
-        ImGui::TextDisabled("Drag a divider to transfer whole bits between adjacent fields.");
+                        dragged_divider,
+                        adjustment,
+                        activated);
+        ImGui::PopID();
+        if (activated && packed_dragged_divider_.has_value()) {
+            packed_dragged_variant_id_ = variant_id;
+        } else if (packed_dragged_variant_id_.has_value() &&
+                   *packed_dragged_variant_id_ == variant_id &&
+                   !packed_dragged_divider_.has_value()) {
+            packed_dragged_variant_id_.reset();
+        }
+        if (activated && workspace_.active_variant_id() != variant_id) {
+            workspace_.select_variant(variant_id);
+            sync_variant_name();
+        }
+        if (adjustment.has_value() && adjustment->left_field_index + 1 < packed.fields.size()) {
+            if (workspace_.active_variant_id() != variant_id) {
+                workspace_.select_variant(variant_id);
+                sync_variant_name();
+            }
+            auto const& left_field{packed.fields[adjustment->left_field_index]};
+            auto const& right_field{packed.fields[adjustment->left_field_index + 1]};
+            workspace_.set_packed_field_width(
+                analysis.type,
+                left_field.name,
+                adjustment->left_width == left_field.bit_width
+                    ? std::optional<std::uint32_t>{}
+                    : std::optional<std::uint32_t>{adjustment->left_width});
+            workspace_.set_packed_field_width(
+                analysis.type,
+                right_field.name,
+                adjustment->right_width == right_field.bit_width
+                    ? std::optional<std::uint32_t>{}
+                    : std::optional<std::uint32_t>{adjustment->right_width});
+        }
+        if (analysis.unused_bits.value_or(0) != 0) {
+            ImGui::TextDisabled("Hatched region: %llu unused storage bit%s.",
+                                static_cast<unsigned long long>(*analysis.unused_bits),
+                                *analysis.unused_bits == 1 ? "" : "s");
+        }
+        if (analysis.overflow_bits.value_or(0) != 0) {
+            ImGui::TextColored(overflow_color,
+                               "%llu planned bit%s exceed storage.",
+                               static_cast<unsigned long long>(*analysis.overflow_bits),
+                               *analysis.overflow_bits == 1 ? "" : "s");
+        }
     }
-    if (adjustment.has_value() && adjustment->left_field_index + 1 < packed.fields.size()) {
-        auto const& left_field{packed.fields[adjustment->left_field_index]};
-        auto const& right_field{packed.fields[adjustment->left_field_index + 1]};
-        workspace_.set_packed_field_width(
-            active.type,
-            left_field.name,
-            adjustment->left_width == left_field.bit_width
-                ? std::optional<std::uint32_t>{}
-                : std::optional<std::uint32_t>{adjustment->left_width});
-        workspace_.set_packed_field_width(
-            active.type,
-            right_field.name,
-            adjustment->right_width == right_field.bit_width
-                ? std::optional<std::uint32_t>{}
-                : std::optional<std::uint32_t>{adjustment->right_width});
-    }
-    if (active.unused_bits.value_or(0) != 0) {
-        ImGui::TextDisabled("Hatched region: %llu unused storage bit%s.",
-                            static_cast<unsigned long long>(*active.unused_bits),
-                            *active.unused_bits == 1 ? "" : "s");
-    }
-    if (active.overflow_bits.value_or(0) != 0) {
-        ImGui::TextColored(overflow_color,
-                           "%llu planned bit%s exceed storage.",
-                           static_cast<unsigned long long>(*active.overflow_bits),
-                           *active.overflow_bits == 1 ? "" : "s");
+    if (!packed_variants_.empty()) {
+        ImGui::TextDisabled("Click a variant to edit it. Drag a divider to transfer whole bits.");
     }
 }
 
-void PlannerUi::draw_soa_layout(SoaType const& soa,
-                                SoaAnalysis const& baseline,
-                                SoaAnalysis const& active) {
-    auto const& identity{workspace_.types().type(active.type).identity};
+void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline) {
+    auto const& active{*active_soa_};
+    auto const& identity{workspace_.types().type(baseline.type).identity};
     ImGui::Text("%s", identity.name.c_str());
     ImGui::TextDisabled("%s", identity.module_name.c_str());
     if (soa.related_storage_name.has_value()) {
@@ -542,12 +580,30 @@ void PlannerUi::draw_soa_layout(SoaType const& soa,
         ImGui::EndTable();
     }
 
-    auto const common_total{
-        std::max(baseline.total_payload_bytes.value_or(0), active.total_payload_bytes.value_or(0))};
+    auto common_total{baseline.total_payload_bytes.value_or(0)};
+    for (auto const& [variant_id, analysis] : soa_variants_) {
+        static_cast<void>(variant_id);
+        common_total = std::max(common_total, analysis.total_payload_bytes.value_or(0));
+    }
     ImGui::SeparatorText("Aggregate column payload");
-    draw_payload_regions(baseline, nullptr, selected_field_, "Baseline", common_total);
-    if (workspace_.active_variant_id() != LayoutWorkspace::baseline_variant_id) {
-        draw_payload_regions(active, &baseline, selected_field_, "Variant", common_total);
+    bool activated{};
+    draw_payload_regions(baseline, nullptr, selected_field_, "Baseline", common_total, activated);
+    for (auto const& [variant_id, analysis] : soa_variants_) {
+        auto const* variant{workspace_.variant(variant_id)};
+        if (variant == nullptr) {
+            continue;
+        }
+        auto const label{variant->name +
+                         (variant_id == workspace_.active_variant_id() ? " (editing)" : "")};
+        activated = false;
+        ImGui::PushID(static_cast<int>(variant_id));
+        draw_payload_regions(
+            analysis, &baseline, selected_field_, label.c_str(), common_total, activated);
+        ImGui::PopID();
+        if (activated && workspace_.active_variant_id() != variant_id) {
+            workspace_.select_variant(variant_id);
+            sync_variant_name();
+        }
     }
     ImGui::TextDisabled("Regions compare aggregate column payload; standard-library columns remain "
                         "separate allocations.");

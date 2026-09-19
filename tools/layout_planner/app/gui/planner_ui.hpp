@@ -53,11 +53,8 @@ class PlannerUi {
     void draw_variants_panel();
     void draw_comparison_panel();
     void draw_packed_layout(lispb::schema::PackedType const& packed,
-                            layout::PackedAnalysis const& baseline,
-                            layout::PackedAnalysis const& active);
-    void draw_soa_layout(lispb::schema::SoaType const& soa,
-                         layout::SoaAnalysis const& baseline,
-                         layout::SoaAnalysis const& active);
+                            layout::PackedAnalysis const& baseline);
+    void draw_soa_layout(lispb::schema::SoaType const& soa, layout::SoaAnalysis const& baseline);
     void draw_diagnostics(std::vector<layout::Diagnostic> const& diagnostics) const;
     void sync_variant_name();
     void create_variant_for_selected_schema();
@@ -74,8 +71,10 @@ class PlannerUi {
     std::uint64_t cached_comparison_b_variant_id_{std::numeric_limits<std::uint64_t>::max()};
     std::optional<layout::PackedAnalysis> baseline_packed_;
     std::optional<layout::PackedAnalysis> active_packed_;
+    std::vector<std::pair<std::uint64_t, layout::PackedAnalysis>> packed_variants_;
     std::optional<layout::SoaAnalysis> baseline_soa_;
     std::optional<layout::SoaAnalysis> active_soa_;
+    std::vector<std::pair<std::uint64_t, layout::SoaAnalysis>> soa_variants_;
     std::optional<layout::PackedAnalysis> comparison_a_packed_;
     std::optional<layout::PackedAnalysis> comparison_b_packed_;
     std::optional<layout::SoaAnalysis> comparison_a_soa_;
@@ -84,6 +83,7 @@ class PlannerUi {
     std::array<char, 128> variant_name_{};
     std::array<char, 128> schema_filter_{};
     std::optional<std::size_t> packed_dragged_divider_;
+    std::optional<std::uint64_t> packed_dragged_variant_id_;
     std::uint64_t variant_name_id_{std::numeric_limits<std::uint64_t>::max()};
     std::uint64_t next_variant_number_{1};
     std::uint64_t comparison_a_variant_id_{layout::LayoutWorkspace::baseline_variant_id};

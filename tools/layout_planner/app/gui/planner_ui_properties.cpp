@@ -292,6 +292,8 @@ void PlannerUi::draw_variants_panel() {
         if (ImGui::Button("Delete", {-1.0F, 0.0F})) {
             workspace_.delete_variant(workspace_.active_variant_id());
             sync_variant_name();
+            packed_dragged_divider_.reset();
+            packed_dragged_variant_id_.reset();
         }
         ImGui::EndDisabled();
         ImGui::EndTable();
@@ -324,6 +326,7 @@ void PlannerUi::draw_variants_panel() {
                 workspace_.select_variant(variant.id);
                 sync_variant_name();
                 packed_dragged_divider_.reset();
+                packed_dragged_variant_id_.reset();
             }
         }
     }

@@ -225,8 +225,10 @@ void PlannerUi::refresh_analysis() {
     }
     baseline_packed_.reset();
     active_packed_.reset();
+    packed_variants_.clear();
     baseline_soa_.reset();
     active_soa_.reset();
+    soa_variants_.clear();
     comparison_a_packed_.reset();
     comparison_b_packed_.reset();
     comparison_a_soa_.reset();
@@ -248,6 +250,13 @@ void PlannerUi::refresh_analysis() {
             Analyzer::analyze_packed(workspace_.types(), *selected_type_, baseline, abi_);
         active_packed_ =
             Analyzer::analyze_packed(workspace_.types(), *selected_type_, active, abi_);
+        for (auto const& variant : workspace_.variants()) {
+            if (variant.id != LayoutWorkspace::baseline_variant_id) {
+                packed_variants_.emplace_back(
+                    variant.id,
+                    Analyzer::analyze_packed(workspace_.types(), *selected_type_, variant, abi_));
+            }
+        }
         comparison_a_packed_ =
             Analyzer::analyze_packed(workspace_.types(), *selected_type_, comparison_a, abi_);
         comparison_b_packed_ =
@@ -258,6 +267,16 @@ void PlannerUi::refresh_analysis() {
             workspace_.types(), *selected_type_, baseline, abi_, workspace_.default_capacity());
         active_soa_ = Analyzer::analyze_soa(
             workspace_.types(), *selected_type_, active, abi_, workspace_.default_capacity());
+        for (auto const& variant : workspace_.variants()) {
+            if (variant.id != LayoutWorkspace::baseline_variant_id) {
+                soa_variants_.emplace_back(variant.id,
+                                           Analyzer::analyze_soa(workspace_.types(),
+                                                                 *selected_type_,
+                                                                 variant,
+                                                                 abi_,
+                                                                 workspace_.default_capacity()));
+            }
+        }
         comparison_a_soa_ = Analyzer::analyze_soa(
             workspace_.types(), *selected_type_, comparison_a, abi_, workspace_.default_capacity());
         comparison_b_soa_ = Analyzer::analyze_soa(
@@ -267,14 +286,18 @@ void PlannerUi::refresh_analysis() {
 
 void PlannerUi::draw_layout_panel() {
     ImGui::Begin("Layout");
+    if (ImGui::Button("+ Add variant")) {
+        create_variant_for_selected_schema();
+    }
+    ImGui::Separator();
     if (!selected_type_.has_value()) {
         ImGui::TextDisabled("Select a supported schema.");
     } else if (auto const& definition{workspace_.types().type(*selected_type_).definition};
                auto const* packed = std::get_if<PackedType>(&definition)) {
-        draw_packed_layout(*packed, *baseline_packed_, *active_packed_);
+        draw_packed_layout(*packed, *baseline_packed_);
     } else if (auto const* soa{std::get_if<SoaType>(&definition)};
                soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
-        draw_soa_layout(*soa, *baseline_soa_, *active_soa_);
+        draw_soa_layout(*soa, *baseline_soa_);
     } else if (std::holds_alternative<EnumType>(definition)) {
         ImGui::TextDisabled("Enums have semantic metadata but no standalone aggregate layout.");
     } else {

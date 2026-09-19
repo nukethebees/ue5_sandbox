@@ -108,6 +108,7 @@ void PlannerUi::draw_project_panel() {
                 selected_type_ = type;
                 selected_field_.clear();
                 packed_dragged_divider_.reset();
+                packed_dragged_variant_id_.reset();
             }
             ImGui::SameLine();
             auto const* status{
