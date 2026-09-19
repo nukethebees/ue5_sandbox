@@ -1,19 +1,9 @@
 # Memory layout planner
 
-The memory layout planner is a standalone Windows C++ application for inspecting and comparing
-physical memory layouts derived from the project's LispB schemas. It does not depend on Unreal
-Engine, Qt, or C#.
+The memory layout planner inspects and compares physical memory layouts derived from LispB schemas.
+It is a standalone Windows application and does not depend on Unreal Engine, Qt, or C#.
 
-## Architecture
-
-The headless planner library lives in `native/layout/lib/`; its GoogleTest suite is in
-`native/layout/tests/`. The optional SDL3 and Dear ImGui frontend lives in
-`tools/layout_planner/app/`, with GUI panels in `app/gui/` and SDL-specific headers in
-`app/platform/`.
-
-`native-layout-tests` depends only on `native-layout` and GoogleTest. `layout-planner` depends on
-`native-layout`, SDL3, and Dear ImGui. The planner library has no SDL3, Dear ImGui, graphics, or
-windowing dependency.
+See [architecture](ARCHITECTURE.md) for implementation and dependency details.
 
 ## Build and executable location
 
@@ -24,19 +14,14 @@ git submodule update --init native/third_party/sdl native/third_party/imgui
 cmake --workflow --preset layout-planner
 ```
 
-The workflow builds and tests the planner. It places the executable at:
+The workflow builds and tests the planner. The executable is worktree-local:
 
 ```text
 %REPOSITORY_ROOT%\out\build\layout-planner\tools\layout_planner\app\layout-planner.exe
 ```
 
-Here, `%REPOSITORY_ROOT%` means the root of the current worktree. For example, a checkout below a
-Windows user profile would have a path beginning with `%USERPROFILE%\...`; no particular username
-or checkout location is required.
-
-V1 is not installed system-wide, copied to a per-user application directory, or added to `PATH`.
-Each worktree owns its build output, so rebuilding another worktree does not replace this
-executable.
+`%REPOSITORY_ROOT%` is the root of the current worktree. The planner is not installed system-wide
+or added to `PATH`.
 
 ## Run
 
@@ -58,57 +43,21 @@ selection when inspecting another manifest or target:
 Use `--help` to list command-line options. Project-load and schema diagnostics are reported in the
 application and on standard error.
 
-## Supported analysis
+## Getting started
 
-V1 imports these concepts through the existing LispB parser and semantic schema model:
+1. Start the planner from the repository root. The Project / Schema panel lists the supported LispB
+   packed values and standard-library SoAs.
+2. Select `EntityUniqueId` to inspect its proportional packed-bit layout, or `WorldAABBsColumns`
+   to inspect its six SoA columns.
+3. The baseline is read-only. In Variants, select **New** to create an editable in-memory variant.
+4. In Properties, change a packed field width or storage type, or change an SoA capacity or column
+   type. Layout and Analysis update immediately.
+5. Use Analysis to compare the active variant with the baseline. Use **Reset** to remove its
+   overrides or **Delete** to discard the variant.
 
-- packed values, including storage types, field bit ranges, unsigned limits, unused bits, enum bit
-  widths, and invalid raw values;
-- flat SoA modules using the standard-library backend, including column payloads, row payload,
-  capacity, 64-byte cache-line counts, and elements per cache line;
-- common fixed-width integer, floating-point, and Boolean physical facts from the built-in native
-  ABI profile.
-
-`EntityUniqueId` and `WorldAABBs` are the representative project schemas used by the integration
-tests.
-
-Unknown physical types are reported as diagnostics. The planner does not guess their size or
-alignment. Nested SoAs and other unsupported schema constructs are diagnosed instead of being
-included in potentially incorrect totals.
-
-## Working with variants
-
-The baseline always reflects the loaded LispB schema. Session variants can override:
-
-- packed-value storage types;
-- packed-field bit widths;
-- SoA capacity;
-- supported SoA member planning types.
-
-Variants can be created, duplicated, renamed, reset, selected, and deleted. Analysis is recomputed
-only when planner state changes, and the Analysis panel compares the active variant with its
-baseline.
+V1 supports packed values and flat standard-library SoAs. Unknown types and unsupported schemas
+are reported as diagnostics rather than guessed.
 
 Variants exist only in memory. The application never writes the project manifest or production
-LispB source files, and closing the application discards all variants.
-
-## Interface and frame pacing
-
-The single SDL window contains dockable Project/Schema, Layout, Properties, Variants, and Analysis
-panels. Docking is enabled; operating-system multi-viewport windows are not.
-
-Rendering follows recent activity rather than continuously running at display cadence:
-
-- interaction and a short post-input tail render smoothly;
-- a focused but inactive window renders at a reduced idle rate;
-- an unfocused window renders at a low background rate;
-- a minimized window waits for SDL events.
-
-Mouse, keyboard, text input, resizing, focus, restore, and quit events wake the application.
-
-## Deliberate V1 limits
-
-The planner does not currently provide LispB write-back, persistent plan files, arbitrary C++ ABI
-probing, nested-SoA analysis, chunking/AoSoA design, arena planning, performance prediction, or
-live-process inspection. These are future extensions of the native layout model rather than UI
-state.
+LispB files; closing it discards every variant. See [architecture](ARCHITECTURE.md) for supported
+constructs, technical limits, and implementation details.
