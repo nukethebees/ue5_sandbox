@@ -35,8 +35,9 @@ Unreal Engine 5.8 project.
   4. Run the applicable merge-ready integration gate from [Builds](#builds) on the rebased branch.
   5. Diagnose and fix failures using focused validation where appropriate, then rerun the required
      merge-ready integration gate on the final HEAD.
-  6. Only report the branch as merge-ready after its final rebased HEAD passes the required gate,
-     then merge it into `dev`.
+  6. Only report the branch as merge-ready after its final rebased HEAD passes the required gate.
+     Do not merge it into `dev` without the user's explicit permission; ask for that permission
+     once the branch is ready.
 * After a feature branch has been successfully merged into `dev`, return its worktree to its
   normal persistent branch when one exists. Infer that branch from the worktree directory name
   only when a matching branch exists; for example, worktrees named `dev1` through `dev10` normally
