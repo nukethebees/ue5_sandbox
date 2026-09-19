@@ -331,7 +331,8 @@ try {
     $moved_previous_install = $false
     try {
         $null = New-Item -ItemType Directory -Path $staging_bin -Force
-        $null = New-Item -ItemType Directory -Path (Join-Path $staging_config 'empty-hooks') -Force
+        $null = New-Item -ItemType Directory -Path $staging_config -Force
+        $null = New-Item -ItemType File -Path (Join-Path $staging_config 'empty-hooks') -Force
         $null = New-Item -ItemType File -Path (Join-Path $staging_config 'empty.gitconfig') -Force
         $null = New-Item -ItemType File -Path (Join-Path $staging_config 'empty.attributes') -Force
 

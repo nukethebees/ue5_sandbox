@@ -32,7 +32,7 @@ internal sealed class GitClient
             "--literal-pathspecs",
             "-c", "core.protectNTFS=true",
             "-c", "core.protectHFS=true",
-            "-c", $"core.hooksPath={trust.EmptyHooksDirectory}",
+            "-c", $"core.hooksPath={trust.DisabledHooksPath}",
             "-c", "core.fsmonitor=false",
             "-c", "maintenance.auto=false",
             "-c", "gc.auto=0",

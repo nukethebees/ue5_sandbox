@@ -30,7 +30,8 @@ internal sealed class TemporaryAgentGitRepository : IDisposable
         Directory.CreateDirectory(Path.GetDirectoryName(attributes)!);
         File.WriteAllText(config, string.Empty);
         File.WriteAllText(attributes, string.Empty);
-        var hooks = Directory.CreateDirectory(Path.Combine(InstallRoot, "hooks")).FullName;
+        var hooks = Path.Combine(InstallRoot, "config", "empty-hooks");
+        File.WriteAllText(hooks, string.Empty);
         var common_git_directory = RunGit("rev-parse", "--path-format=absolute", "--git-common-dir").Trim();
         GitLfsExecutable = include_lfs ? FindExecutable("git-lfs.exe") : null;
         Trust = new TrustContext(

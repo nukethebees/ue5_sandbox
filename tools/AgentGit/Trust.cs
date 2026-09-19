@@ -38,7 +38,7 @@ internal sealed record TrustContext(
     string UserName,
     string UserEmail,
     string EmptyConfigPath,
-    string EmptyHooksDirectory,
+    string DisabledHooksPath,
     IReadOnlyList<TrustedRepository> Repositories)
 {
     public TrustedRepository FindRegistration(string common_git_directory)
@@ -122,7 +122,7 @@ internal static class TrustStore
             manifest.UserName,
             manifest.UserEmail,
             isolation.EmptyConfig,
-            isolation.EmptyHooks,
+            isolation.DisabledHooks,
             manifest.Repositories);
     }
 
@@ -140,12 +140,12 @@ internal static class TrustStore
         }
     }
 
-    internal static (string EmptyConfig, string EmptyHooks) ValidateIsolationLayout(string installation_root)
+    internal static (string EmptyConfig, string DisabledHooks) ValidateIsolationLayout(string installation_root)
     {
         var bin = Path.Combine(installation_root, "bin");
         var config = Path.Combine(installation_root, "config");
         var empty_config = Path.Combine(installation_root, "config", "empty.gitconfig");
-        var empty_hooks = Path.Combine(installation_root, "config", "empty-hooks");
+        var disabled_hooks = Path.Combine(installation_root, "config", "empty-hooks");
         var empty_attributes = Path.Combine(installation_root, "config", "empty.attributes");
 
         foreach (var directory in new[] { installation_root, bin, config })
@@ -169,7 +169,7 @@ internal static class TrustStore
             }
         }
 
-        foreach (var file in new[] { empty_config, empty_attributes })
+        foreach (var file in new[] { empty_config, disabled_hooks, empty_attributes })
         {
             if (!File.Exists(file))
             {
@@ -180,7 +180,7 @@ internal static class TrustStore
             }
         }
 
-        foreach (var file in new[] { empty_config, empty_attributes })
+        foreach (var file in new[] { empty_config, disabled_hooks, empty_attributes })
         {
             var length = new FileInfo(file).Length;
             if (length != 0)
@@ -191,7 +191,7 @@ internal static class TrustStore
             }
         }
 
-        foreach (var file in new[] { empty_config, empty_attributes })
+        foreach (var file in new[] { empty_config, disabled_hooks, empty_attributes })
         {
             if (IsReparsePoint(file))
             {
@@ -201,30 +201,7 @@ internal static class TrustStore
             }
         }
 
-        if (!Directory.Exists(empty_hooks))
-        {
-            var actual = File.Exists(empty_hooks) ? "found a file" : "it does not exist";
-            throw new PolicyConfigurationException(
-                $"AgentGit isolation validation failed for '{empty_hooks}': " +
-                $"expected an existing empty directory, but {actual}.");
-        }
-
-        if (IsReparsePoint(empty_hooks))
-        {
-            throw new PolicyConfigurationException(
-                $"AgentGit isolation validation failed for '{empty_hooks}': " +
-                "expected a normal directory, but it is a reparse point.");
-        }
-
-        var hook_entry = Directory.EnumerateFileSystemEntries(empty_hooks).FirstOrDefault();
-        if (hook_entry is not null)
-        {
-            throw new PolicyConfigurationException(
-                $"AgentGit isolation validation failed for '{empty_hooks}': " +
-                $"expected an empty directory, but found '{hook_entry}'.");
-        }
-
-        return (empty_config, empty_hooks);
+        return (empty_config, disabled_hooks);
     }
 
     internal static void ValidateManifest(TrustManifest manifest)
