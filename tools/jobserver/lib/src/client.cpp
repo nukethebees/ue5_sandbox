@@ -323,46 +323,74 @@ auto environment_value(wchar_t const* const name) -> std::string {
     return path_to_utf8(std::filesystem::path{value});
 }
 
-auto git_branch(std::filesystem::path worktree) -> std::string {
+auto canonical_path(std::filesystem::path path) -> std::filesystem::path {
     std::error_code error;
+    if (path.empty()) {
+        return {};
+    }
+    auto canonical{std::filesystem::weakly_canonical(path, error)};
+    if (!error) {
+        return canonical;
+    }
+    error.clear();
+    auto absolute{std::filesystem::absolute(path, error)};
+    return error ? path.lexically_normal() : absolute.lexically_normal();
+}
+
+auto git_worktree_root(std::filesystem::path directory) -> std::filesystem::path {
+    if (directory.empty()) {
+        return {};
+    }
+    directory = canonical_path(std::move(directory));
+
+    for (;;) {
+        auto const dot_git{directory / ".git"};
+        std::error_code error;
+        if (std::filesystem::is_regular_file(dot_git, error) ||
+            std::filesystem::is_directory(dot_git, error)) {
+            return directory;
+        }
+        auto const parent{directory.parent_path()};
+        if (parent == directory) {
+            return {};
+        }
+        directory = parent;
+    }
+}
+
+auto worktree_for_path(std::filesystem::path path) -> std::filesystem::path {
+    auto const root{git_worktree_root(path)};
+    return root.empty() ? canonical_path(std::move(path)) : root;
+}
+
+auto git_branch(std::filesystem::path worktree) -> std::string {
+    worktree = git_worktree_root(std::move(worktree));
     if (worktree.empty()) {
         return {};
     }
-    worktree = std::filesystem::absolute(worktree, error);
-    if (error) {
-        return {};
-    }
 
-    for (;;) {
-        auto const dot_git{worktree / ".git"};
-        auto git_directory{dot_git};
-        if (std::filesystem::is_regular_file(dot_git, error)) {
-            std::ifstream git_file{dot_git};
-            std::string line;
-            std::getline(git_file, line);
-            constexpr std::string_view prefix{"gitdir: "};
-            if (!line.starts_with(prefix)) {
-                return {};
-            }
-            git_directory = path_from_utf8(line.substr(prefix.size()));
-            if (git_directory.is_relative()) {
-                git_directory = worktree / git_directory;
-            }
-        } else if (!std::filesystem::is_directory(dot_git, error)) {
-            auto const parent{worktree.parent_path()};
-            if (parent == worktree) {
-                return {};
-            }
-            worktree = parent;
-            continue;
+    auto const dot_git{worktree / ".git"};
+    auto git_directory{dot_git};
+    std::error_code error;
+    if (std::filesystem::is_regular_file(dot_git, error)) {
+        std::ifstream git_file{dot_git};
+        std::string line;
+        std::getline(git_file, line);
+        constexpr std::string_view prefix{"gitdir: "};
+        if (!line.starts_with(prefix)) {
+            return {};
         }
-
-        std::ifstream head{git_directory / "HEAD"};
-        std::string reference;
-        std::getline(head, reference);
-        constexpr std::string_view branch_prefix{"ref: refs/heads/"};
-        return reference.starts_with(branch_prefix) ? reference.substr(branch_prefix.size()) : "";
+        git_directory = path_from_utf8(line.substr(prefix.size()));
+        if (git_directory.is_relative()) {
+            git_directory = worktree / git_directory;
+        }
     }
+
+    std::ifstream head{git_directory / "HEAD"};
+    std::string reference;
+    std::getline(head, reference);
+    constexpr std::string_view branch_prefix{"ref: refs/heads/"};
+    return reference.starts_with(branch_prefix) ? reference.substr(branch_prefix.size()) : "";
 }
 
 auto metadata_json(JobMetadata const& metadata) -> Json {
@@ -374,7 +402,9 @@ auto metadata_json(JobMetadata const& metadata) -> Json {
 }
 
 auto metadata_at_submission(JobMetadata metadata) -> JobMetadata {
-    metadata.submit_directory = std::filesystem::current_path();
+    metadata.submit_directory = canonical_path(std::filesystem::current_path());
+    metadata.worktree = worktree_for_path(metadata.worktree.empty() ? metadata.submit_directory
+                                                                    : metadata.worktree);
     if (metadata.task.empty()) {
         metadata.task = environment_value(L"NUKETHEBEES_JOBSERVER_TASK");
     }
@@ -593,25 +623,26 @@ auto Client::status(bool const include_history) -> std::expected<std::string, Er
 
 auto Client::processes(bool const owned, std::optional<std::filesystem::path> worktree)
     -> std::expected<std::string, Error> {
-    auto request = Json{{"type", "processes"},
-                        {"owned", owned},
-                        {"owner_worktree", path_to_utf8(std::filesystem::current_path())}};
+    auto const owner_worktree{worktree_for_path(std::filesystem::current_path())};
+    auto request = Json{
+        {"type", "processes"}, {"owned", owned}, {"owner_worktree", path_to_utf8(owner_worktree)}};
     if (worktree) {
-        request["worktree"] = path_to_utf8(std::filesystem::absolute(*worktree));
+        request["worktree"] = path_to_utf8(worktree_for_path(*worktree));
     }
     return control_request(request, "processes");
 }
 
 auto Client::process_owner(std::uint32_t const process_id) -> std::expected<std::string, Error> {
+    auto const owner_worktree{worktree_for_path(std::filesystem::current_path())};
     return control_request(Json{{"type", "process_owner"},
                                 {"pid", process_id},
-                                {"owner_worktree", path_to_utf8(std::filesystem::current_path())}},
+                                {"owner_worktree", path_to_utf8(owner_worktree)}},
                            "process_owner");
 }
 
 auto Client::kill_owned(std::optional<std::string> kind) -> std::expected<std::string, Error> {
-    auto request = Json{{"type", "kill_owned"},
-                        {"owner_worktree", path_to_utf8(std::filesystem::current_path())}};
+    auto const owner_worktree{worktree_for_path(std::filesystem::current_path())};
+    auto request = Json{{"type", "kill_owned"}, {"owner_worktree", path_to_utf8(owner_worktree)}};
     if (kind) {
         request["kind"] = *kind;
     }

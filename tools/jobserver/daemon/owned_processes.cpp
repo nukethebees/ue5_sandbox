@@ -12,15 +12,9 @@ namespace {
 using Json = nlohmann::json;
 
 auto owned_process_command_json(Command const& command) -> Json {
-    auto environment = Json::array();
-    for (auto const& change : command.environment) {
-        environment.push_back(
-            {{"name", change.name}, {"value", change.value ? Json(*change.value) : Json(nullptr)}});
-    }
     return {{"executable", path_to_utf8(command.executable)},
             {"arguments", command.arguments},
-            {"working_directory", path_to_utf8(command.working_directory)},
-            {"environment", std::move(environment)}};
+            {"working_directory", path_to_utf8(command.working_directory)}};
 }
 
 auto group_json(OwnedProcessGroup const& group) -> Json {
