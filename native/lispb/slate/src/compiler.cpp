@@ -55,7 +55,8 @@ auto compile_sources(SourceOptions const& options) -> lispb::Compilation {
             }
             result.artifacts.push_back(
                 lispb::TextArtifact{output_path(widget_declaration.name),
-                                    detail::render(input.generic_string(), widget_declaration)});
+                                    detail::render(input.generic_string(), widget_declaration),
+                                    true});
         }
     }
     return result;

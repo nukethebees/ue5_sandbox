@@ -24,6 +24,7 @@ class TemporaryProject {
         std::error_code ignored;
         std::filesystem::remove_all(root_, ignored);
         std::filesystem::create_directories(root_);
+        write(".clang-format", "BasedOnStyle: LLVM\nLineEnding: LF\n");
     }
 
     ~TemporaryProject() {

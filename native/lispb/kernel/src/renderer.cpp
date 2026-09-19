@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <stdexcept>
+#include <utility>
 
 namespace kernel_codegen::detail {
 namespace {
@@ -26,6 +27,13 @@ auto selected_variant(std::vector<ExpandedVariant> const& variants, Emission con
     return *found;
 }
 
+auto formatted(std::vector<lispb::TextArtifact> artifacts) -> std::vector<lispb::TextArtifact> {
+    for (auto& artifact : artifacts) {
+        artifact.format_generated = true;
+    }
+    return artifacts;
+}
+
 }
 
 auto render(KernelModule const& module, Profile const profile) -> std::vector<lispb::TextArtifact> {
@@ -38,8 +46,9 @@ auto render(KernelModule const& module, Profile const profile) -> std::vector<li
     auto const variants{expand(module)};
     if (profile == Profile::unreal_avx2_lab) {
         auto const& selected{selected_variant(variants, *emission)};
-        return {lispb::TextArtifact{emission->header, render_avx2_lab_header(*emission, selected)},
-                lispb::TextArtifact{emission->source, render_avx2_lab_source(*emission, selected)}};
+        return formatted(
+            {lispb::TextArtifact{emission->header, render_avx2_lab_header(*emission, selected)},
+             lispb::TextArtifact{emission->source, render_avx2_lab_source(*emission, selected)}});
     }
     if (profile == Profile::native_x86_simd_lab) {
         auto const& selected{selected_variant(variants, *emission)};
@@ -63,7 +72,7 @@ auto render(KernelModule const& module, Profile const profile) -> std::vector<li
                 *emission->relaxed_avx512_source,
                 render_native_relaxed_autovec_source(*emission, selected, "avx512")});
         }
-        return result;
+        return formatted(std::move(result));
     }
     if (profile == Profile::standard) {
         std::vector<lispb::TextArtifact> result{
@@ -74,12 +83,12 @@ auto render(KernelModule const& module, Profile const profile) -> std::vector<li
             result.push_back(lispb::TextArtifact{
                 *emission->tests, render_standard_tests(*emission, module, variants)});
         }
-        return result;
+        return formatted(std::move(result));
     }
 
-    return {
-        lispb::TextArtifact{emission->header, render_unreal_header(*emission, variants)},
-        lispb::TextArtifact{emission->source, render_unreal_source(module, *emission, variants)}};
+    return formatted(
+        {lispb::TextArtifact{emission->header, render_unreal_header(*emission, variants)},
+         lispb::TextArtifact{emission->source, render_unreal_source(module, *emission, variants)}});
 }
 
 }
