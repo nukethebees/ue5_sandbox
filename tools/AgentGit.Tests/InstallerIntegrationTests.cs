@@ -21,7 +21,9 @@ public sealed class InstallerIntegrationTests
         Assert.AreEqual(0, result.ExitCode, result.Error);
         Assert.IsTrue(File.Exists(Path.Combine(install_root, "bin", "agent-git.exe")));
         Assert.IsTrue(File.Exists(Path.Combine(install_root, "config", "empty.gitconfig")));
-        Assert.IsTrue(Directory.Exists(Path.Combine(install_root, "config", "empty-hooks")));
+        var disabled_hooks = Path.Combine(install_root, "config", "empty-hooks");
+        Assert.IsTrue(File.Exists(disabled_hooks));
+        Assert.AreEqual(0, new FileInfo(disabled_hooks).Length);
         using var manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(install_root, "trust.json")));
         var repository = manifest.RootElement.GetProperty("repositories")[0];
         Assert.AreEqual("test/repository", repository.GetProperty("repositoryId").GetString());

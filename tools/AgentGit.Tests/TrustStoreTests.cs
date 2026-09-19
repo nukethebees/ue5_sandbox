@@ -76,7 +76,7 @@ public sealed class TrustStoreTests
     }
 
     [TestMethod]
-    public void ValidateIsolationLayout_reports_invalid_empty_files_and_hook_directory()
+    public void ValidateIsolationLayout_reports_invalid_empty_files_and_disabled_hook_path()
     {
         var root = Directory.CreateTempSubdirectory("AgentGitTrust-").FullName;
         try
@@ -85,9 +85,10 @@ public sealed class TrustStoreTests
             var config = Directory.CreateDirectory(Path.Combine(root, "config")).FullName;
             var empty_config = Path.Combine(config, "empty.gitconfig");
             var empty_attributes = Path.Combine(config, "empty.attributes");
-            var hooks = Directory.CreateDirectory(Path.Combine(config, "empty-hooks")).FullName;
+            var disabled_hooks = Path.Combine(config, "empty-hooks");
             File.WriteAllText(empty_config, string.Empty);
             File.WriteAllText(empty_attributes, string.Empty);
+            File.WriteAllText(disabled_hooks, string.Empty);
             TrustStore.ValidateIsolationLayout(root);
 
             File.Delete(empty_config);
@@ -106,12 +107,11 @@ public sealed class TrustStoreTests
             AssertIsolationFailure(root, empty_attributes, "zero-byte regular file", "bytes");
 
             File.WriteAllText(empty_attributes, string.Empty);
-            Directory.Delete(hooks);
-            AssertIsolationFailure(root, hooks, "empty directory", "does not exist");
-            Directory.CreateDirectory(hooks);
+            File.Delete(disabled_hooks);
+            AssertIsolationFailure(root, disabled_hooks, "zero-byte regular file", "does not exist");
 
-            File.WriteAllText(Path.Combine(hooks, "post-commit"), "arbitrary-command\n");
-            AssertIsolationFailure(root, hooks, "empty directory", "post-commit");
+            File.WriteAllText(disabled_hooks, "arbitrary-command\n");
+            AssertIsolationFailure(root, disabled_hooks, "zero-byte regular file", "bytes");
         }
         finally
         {
@@ -130,7 +130,7 @@ public sealed class TrustStoreTests
             var target = Directory.CreateDirectory(Path.Combine(root, "config-target")).FullName;
             File.WriteAllText(Path.Combine(target, "empty.gitconfig"), string.Empty);
             File.WriteAllText(Path.Combine(target, "empty.attributes"), string.Empty);
-            Directory.CreateDirectory(Path.Combine(target, "empty-hooks"));
+            File.WriteAllText(Path.Combine(target, "empty-hooks"), string.Empty);
             CreateDirectoryLink(config, target);
 
             AssertIsolationFailure(root, config, "normal directory", "reparse point");

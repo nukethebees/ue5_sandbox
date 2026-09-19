@@ -349,6 +349,8 @@ public sealed class AgentGitAdversarialTests
         StringAssert.StartsWith(staged_blob, "version https://git-lfs.github.com/spec/v1\n");
         StringAssert.Contains(staged_blob, "oid sha256:");
         StringAssert.Contains(staged_blob, "size 22");
+        Assert.IsTrue(File.Exists(fixture.Trust.DisabledHooksPath));
+        Assert.AreEqual(0, new FileInfo(fixture.Trust.DisabledHooksPath).Length);
     }
 
     [TestMethod]
