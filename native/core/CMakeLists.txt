@@ -57,6 +57,9 @@ target_sources(native-core-tests PRIVATE
   tests/vector_lerp_tests.cpp
   tests/array_utils_tests.cpp
   tests/container_tests.cpp
+  tests/fixed_array_tests.cpp
+  tests/frame_array_tests.cpp
+  tests/frame_memory_resource_tests.cpp
   tests/countdown_tests.cpp
   tests/enum_array_tests.cpp
   tests/graph_plot_tests.cpp

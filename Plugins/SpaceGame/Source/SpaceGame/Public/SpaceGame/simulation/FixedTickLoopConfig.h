@@ -7,7 +7,7 @@
 #include "FixedTickLoopConfig.generated.h"
 
 USTRUCT()
-struct FFixedTickLoopConfig {
+struct SPACEGAME_API FFixedTickLoopConfig {
     GENERATED_BODY()
 
     UPROPERTY(EditAnywhere, Category = "Sandbox")
