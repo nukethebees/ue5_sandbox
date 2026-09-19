@@ -22,6 +22,7 @@ inline constexpr float safe_normal_tolerance{1.e-8f};
 inline constexpr float nearly_zero_tolerance{1.e-4f};
 inline constexpr float crowd_goal_score_weight{0.35f};
 inline constexpr float steering_memory_score_weight{0.25f};
+inline constexpr float no_neighbour_distance_squared{std::numeric_limits<float>::infinity()};
 
 auto is_nearly_zero(Vector3f const vector) noexcept -> bool {
     return std::abs(vector.X) <= nearly_zero_tolerance &&
@@ -214,7 +215,7 @@ auto observe_separation(Vector3f const fighter_location,
     std::array<Vector3f, separation_neighbour_limit> directions_to_neighbours;
     std::array<float, separation_neighbour_limit> neighbour_weights;
     auto separation_observation{ml::make_vector3f(0.0f, 0.0f, 0.0f)};
-    auto closest_distance_squared{std::numeric_limits<float>::max()};
+    auto closest_distance_squared{no_neighbour_distance_squared};
     auto const neighbour_count{static_cast<std::int32_t>(neighbours.size())};
     for (std::int32_t neighbour_index{}; neighbour_index < neighbour_count; ++neighbour_index) {
         auto const element{static_cast<std::size_t>(neighbour_index)};

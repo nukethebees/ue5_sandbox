@@ -32,5 +32,7 @@ class SANDBOX_API ULoopingLiftComponent : public UActorComponent {
     FVector origin;
     FVector current_direction;
     FVector original_direction;
-    float pause_timer{std::numeric_limits<float>::infinity()};
+    inline static constexpr float no_active_pause_time{std::numeric_limits<float>::infinity()};
+
+    float pause_timer{no_active_pause_time};
 };

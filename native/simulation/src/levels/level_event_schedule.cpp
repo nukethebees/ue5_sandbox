@@ -1,7 +1,6 @@
 #include <cassert>
 #include <cstdint>
 #include <ioj/sim/levels/level_event_schedule.h>
-#include <limits>
 #include <optional>
 #include <span>
 #include <vector>
@@ -31,7 +30,7 @@ auto LevelEventSchedule::add_spawn_group(EntityType const type,
 
 auto LevelEventSchedule::add_mission_group(LevelMissionEventType const type,
                                            std::span<std::int32_t const> const values) -> bool {
-    if (values.size() > std::numeric_limits<LevelEventCount>::max()) {
+    if (values.size() > max_level_event_count) {
         return false;
     }
     auto const count{static_cast<std::int32_t>(values.size())};

@@ -47,7 +47,9 @@ enum class NodeKind {
 };
 
 struct NodeHandle {
-    std::size_t index{std::numeric_limits<std::size_t>::max()};
+    inline static constexpr std::size_t invalid_index{std::numeric_limits<std::size_t>::max()};
+
+    std::size_t index{invalid_index};
 
     auto operator==(NodeHandle const&) const -> bool = default;
 };

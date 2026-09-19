@@ -48,8 +48,7 @@ auto append_mission_groups(LevelEventSchedule& schedule,
         error = "Level event compilation at tick " +
                 std::to_string(schedule.execution_ticks.back()) + ": " + std::string{name} +
                 " event count " + std::to_string(event_values.size()) +
-                " exceeds the per-tick group limit of " +
-                std::to_string(std::numeric_limits<LevelEventCount>::max());
+                " exceeds the per-tick group limit of " + std::to_string(max_level_event_count);
         return false;
     };
     if (!append(LevelMissionEventType::MustSurvive, values.must_survive, "must-survive") ||
@@ -81,7 +80,7 @@ auto append_spawn_groups(LevelEventSchedule& schedule,
         error = "Level event compilation at tick " +
                 std::to_string(schedule.execution_ticks.back()) + ": " + std::string{name} +
                 " spawn count " + std::to_string(count) + " exceeds the per-tick group limit of " +
-                std::to_string(std::numeric_limits<LevelEventCount>::max());
+                std::to_string(max_level_event_count);
         return false;
     };
     if (!append(
