@@ -279,13 +279,19 @@ try {
             -RuntimeFiles $runtime_files
 
         Write-Host "Running the mandatory AgentGit security test gate against the private build."
-        & $dotnet_path test $validation_project `
-            --no-build --no-restore `
-            --artifacts-path $private_artifacts `
-            $private_stage_property `
-            -m:1 -nr:false
-        if ($LASTEXITCODE -ne 0) {
-            throw "AgentGit security test gate failed with exit code $LASTEXITCODE; installation was not activated."
+        $previous_source_root = $env:NUKETHEBEES_AGENT_GIT_SOURCE_ROOT
+        try {
+            $env:NUKETHEBEES_AGENT_GIT_SOURCE_ROOT = $source_root
+            & $dotnet_path test $validation_project `
+                --no-build --no-restore `
+                --artifacts-path $private_artifacts `
+                $private_stage_property `
+                -m:1 -nr:false
+            if ($LASTEXITCODE -ne 0) {
+                throw "AgentGit security test gate failed with exit code $LASTEXITCODE; installation was not activated."
+            }
+        } finally {
+            $env:NUKETHEBEES_AGENT_GIT_SOURCE_ROOT = $previous_source_root
         }
 
         if ($TestOnlyCorruptValidatedArtifact) {
