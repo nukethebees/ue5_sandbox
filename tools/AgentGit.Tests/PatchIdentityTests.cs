@@ -64,6 +64,74 @@ public sealed class PatchIdentityTests
     }
 
     [TestMethod]
+    public async Task Identical_edit_in_different_function_has_different_fingerprint()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        fixture.WriteFile(
+            "duplicate.cpp",
+            """
+            void First()
+            {
+                enabled = false;
+            }
+
+            void Second()
+            {
+                enabled = false;
+            }
+
+            """);
+        fixture.RunGit("add", "duplicate.cpp");
+        fixture.RunGit("commit", "-qm", "add duplicate regions");
+        var base_commit = fixture.RunGit("rev-parse", "HEAD").Trim();
+
+        fixture.RunGit("switch", "-qc", "feature/first-occurrence");
+        fixture.WriteFile(
+            "duplicate.cpp",
+            """
+            void First()
+            {
+                enabled = true;
+            }
+
+            void Second()
+            {
+                enabled = false;
+            }
+
+            """);
+        fixture.RunGit("add", "duplicate.cpp");
+        fixture.RunGit("commit", "-qm", "change first occurrence");
+        var first_tip = fixture.RunGit("rev-parse", "HEAD").Trim();
+
+        fixture.RunGit("switch", "dev");
+        fixture.RunGit("switch", "-qc", "feature/second-occurrence");
+        fixture.WriteFile(
+            "duplicate.cpp",
+            """
+            void First()
+            {
+                enabled = false;
+            }
+
+            void Second()
+            {
+                enabled = true;
+            }
+
+            """);
+        fixture.RunGit("add", "duplicate.cpp");
+        fixture.RunGit("commit", "-qm", "change second occurrence");
+        var second_tip = fixture.RunGit("rev-parse", "HEAD").Trim();
+
+        var service = CreateService(fixture);
+        var first = await service.ComputeAsync(fixture.RepositoryRoot, base_commit, first_tip, default);
+        var second = await service.ComputeAsync(fixture.RepositoryRoot, base_commit, second_tip, default);
+
+        Assert.AreNotEqual(first.Fingerprint, second.Fingerprint);
+    }
+
+    [TestMethod]
     public async Task Meaningful_or_whitespace_change_invalidates_fingerprint()
     {
         using var fixture = new TemporaryAgentGitRepository();

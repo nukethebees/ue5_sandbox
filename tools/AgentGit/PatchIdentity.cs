@@ -7,7 +7,7 @@ internal sealed record PatchIdentity(string Fingerprint, string Tree, IReadOnlyL
 
 internal sealed class PatchIdentityService(GitClient git)
 {
-    private const string format = "agent-git-patch-v1";
+    private const string format = "agent-git-patch-v2";
 
     public async Task<PatchIdentity> ComputeAsync(
         string worktree,
@@ -19,7 +19,7 @@ internal sealed class PatchIdentityService(GitClient git)
             worktree,
             [
                 "diff", "--binary", "--full-index", "--no-renames", "--no-ext-diff", "--no-textconv",
-                "--unified=0", base_commit, tip_commit, "--",
+                "--unified=3", base_commit, tip_commit, "--",
             ],
             cancellation_token: cancellation_token);
         GitClient.EnsureSuccess(diff, ["diff"]);
@@ -52,7 +52,8 @@ internal sealed class PatchIdentityService(GitClient git)
             }
             if (line.StartsWith("@@ ", StringComparison.Ordinal))
             {
-                result.Append("@@\n");
+                var header_end = line.IndexOf("@@", 2, StringComparison.Ordinal);
+                result.Append("@@").Append(line.AsSpan(header_end + 2)).Append('\n');
                 continue;
             }
 
