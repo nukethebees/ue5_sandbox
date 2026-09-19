@@ -13,6 +13,9 @@ Any workflow that uses one requires its staged executable to be present.
 - `CodeFormatTools/` is the C# formatter for repository C++ and shader files. Run its staged
   executable through the `format-code` and `format-all-code` CMake workflows, or directly as
   `tools/bin/CodeFormatTools.exe [--all|--changed|--staged] [--verbose]` after building tools.
+- `GamePackageTools/` verifies archived game packages through the `verify-package` CMake target.
+  Its staged executable accepts `--project-root`, `--package-root`, `--unreal-pak`,
+  `--verification-directory`, and `--configuration`.
 - `SetLiveCodingDisabled/` is a small C# executable for disabling Live Coding in saved editor
   settings while preserving the file's encoding and line endings.
 - `UnrealBuildTools/` is a C# executable that invokes Unreal targets and verifies Editor module

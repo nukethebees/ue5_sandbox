@@ -12,10 +12,9 @@ dev-help
 `cbuild`, `csetup`, `cplay`, `cprojectfiles`, and jobserver/UBT state helpers. `csetup` is the normal
 way to synchronize a worktree; `cplay` prepares and builds playable Editor configurations.
 
-The remaining scripts implement build safety, packaging, project-file generation, Live Coding
-configuration, and package verification. Treat them as implementation details unless a documented
-workflow calls for one directly. In particular, use CMake workflows rather than calling UBT or its
-batch wrappers yourself.
+The remaining scripts implement build safety, packaging, project-file generation, and Live Coding
+configuration. Treat them as implementation details unless a documented workflow calls for one
+directly. In particular, use CMake workflows rather than calling UBT or its batch wrappers yourself.
 
 See [Build and test](../docs/build-and-test.md) for everyday commands and [the CMake guide](../cmake/README.md)
 for how those commands are coordinated.

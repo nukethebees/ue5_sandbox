@@ -198,10 +198,15 @@ set(SANDBOX_SET_LIVE_CODING_DISABLED_TOOL
 set(SANDBOX_UNREAL_BUILD_TOOLS
   "${PROJECT_SOURCE_DIR}/tools/bin/UnrealBuildTools.exe"
 )
+set(SANDBOX_GAME_PACKAGE_TOOLS
+  "${PROJECT_SOURCE_DIR}/tools/bin/GamePackageTools.exe"
+)
 sandbox_add_staged_csharp_tool_preflight(sandbox-unreal-build-tools-preflight
   "UnrealBuildTools.exe" "${SANDBOX_UNREAL_BUILD_TOOLS}")
 sandbox_add_staged_csharp_tool_preflight(sandbox-set-live-coding-disabled-preflight
   "SetLiveCodingDisabled.exe" "${SANDBOX_SET_LIVE_CODING_DISABLED_TOOL}")
+sandbox_add_staged_csharp_tool_preflight(sandbox-game-package-tools-preflight
+  "GamePackageTools.exe" "${SANDBOX_GAME_PACKAGE_TOOLS}")
 file(MAKE_DIRECTORY "${SANDBOX_LOCAL_DDC_DIR}")
 
 include("${PROJECT_SOURCE_DIR}/cmake/unreal.cmake")

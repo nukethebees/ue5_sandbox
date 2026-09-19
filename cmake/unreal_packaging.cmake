@@ -92,13 +92,13 @@ function(add_unreal_packaging_targets)
   )
 
   add_custom_target(verify-package
-    COMMAND ${unreal_standard_activity_command} "${POWERSHELL_EXECUTABLE}" -NoProfile -File
-      "${PROJECT_SOURCE_DIR}/PowerShell/VerifyGamePackage.ps1"
-      -ProjectRoot "${PROJECT_SOURCE_DIR}"
-      -PackageRoot "${SANDBOX_GAME_ARCHIVE_DIRECTORY}"
-      -UnrealPak "${UE_UNREAL_PAK_EXE}"
-      -VerificationDirectory "${SANDBOX_GAME_VERIFICATION_ROOT}"
-      -Configuration "${UE_CONFIGURATION}"
+    COMMAND ${unreal_standard_activity_command} "${SANDBOX_GAME_PACKAGE_TOOLS}"
+      --project-root "${PROJECT_SOURCE_DIR}"
+      --package-root "${SANDBOX_GAME_ARCHIVE_DIRECTORY}"
+      --unreal-pak "${UE_UNREAL_PAK_EXE}"
+      --verification-directory "${SANDBOX_GAME_VERIFICATION_ROOT}"
+      --configuration "${UE_CONFIGURATION}"
+    DEPENDS sandbox-game-package-tools-preflight
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     COMMENT "Verifying archived Sandbox ${UE_PLATFORM} ${UE_CONFIGURATION}"
     USES_TERMINAL

@@ -1,6 +1,8 @@
 <Solution>
   <Project Path="CodeFormatTools/CodeFormatTools.csproj" />
   <Project Path="CodeFormatTools.Tests/CodeFormatTools.Tests.csproj" />
+  <Project Path="GamePackageTools/GamePackageTools.csproj" />
+  <Project Path="GamePackageTools.Tests/GamePackageTools.Tests.csproj" />
   <Project Path="GitTools/GitTools.csproj" />
   <Project Path="GitTools.Tests/GitTools.Tests.csproj" />
   <Project Path="SetLiveCodingDisabled/SetLiveCodingDisabled.csproj" />
