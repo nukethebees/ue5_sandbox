@@ -40,25 +40,27 @@ internal sealed class PolicyEvaluator(RepositoryDiscovery discovery)
 
         return request switch
         {
-            AddRequest add => EvaluateAdd(add, context, invocation_directory),
-            AddAllRequest => Allowed(request, context, "Staging all changes is permitted on this feature branch."),
+            AddRequest add => await EvaluateAddAsync(
+                add, context, invocation_directory, cancellation_token),
+            AddAllRequest add_all => await EvaluateAddAllAsync(add_all, context, cancellation_token),
             CommitRequest => Allowed(request, context, "Commit is permitted on this feature branch."),
             SwitchRequest switch_request => await EvaluateSwitchAsync(
                 switch_request, context, operation_policy, cancellation_token),
             SwitchCreateRequest create_request => await EvaluateSwitchCreateAsync(
                 create_request, context, operation_policy, cancellation_token),
-            RebaseBaseRequest => Allowed(request, context,
-                $"Feature branch may be rebased onto configured base '{context.Policy.BaseBranch}'."),
+            RebaseBaseRequest rebase_request => await EvaluateRebaseBaseAsync(
+                rebase_request, context, cancellation_token),
             BranchDeleteRequest delete_request => await EvaluateBranchDeleteAsync(
                 delete_request, context, operation_policy, cancellation_token),
             _ => throw new ArgumentOutOfRangeException(nameof(request), request, "Unknown mutation request."),
         };
     }
 
-    private static EvaluatedOperation EvaluateAdd(
+    private async Task<EvaluatedOperation> EvaluateAddAsync(
         AddRequest request,
         RepositoryContext context,
-        string invocation_directory)
+        string invocation_directory,
+        CancellationToken cancellation_token)
     {
         var resolved_paths = new List<string>();
         foreach (var input in request.Paths)
@@ -82,6 +84,13 @@ internal sealed class PolicyEvaluator(RepositoryDiscovery discovery)
             resolved_paths.Add(Path.GetRelativePath(context.State.WorktreeRoot, absolute));
         }
 
+        var unsafe_paths = await discovery.FindUnsafeAddPathsAsync(context, resolved_paths, cancellation_token);
+        if (unsafe_paths.Count > 0)
+        {
+            return Denied(request, context,
+                $"Staging would traverse a linked directory: {string.Join(", ", unsafe_paths)}.");
+        }
+
         return new EvaluatedOperation(
             request,
             context,
@@ -89,6 +98,18 @@ internal sealed class PolicyEvaluator(RepositoryDiscovery discovery)
             null,
             null,
             resolved_paths);
+    }
+
+    private async Task<EvaluatedOperation> EvaluateAddAllAsync(
+        AddAllRequest request,
+        RepositoryContext context,
+        CancellationToken cancellation_token)
+    {
+        var unsafe_paths = await discovery.FindUnsafeAddPathsAsync(context, ["."], cancellation_token);
+        return unsafe_paths.Count > 0
+            ? Denied(request, context,
+                $"Staging would traverse a linked directory: {string.Join(", ", unsafe_paths)}.")
+            : Allowed(request, context, "Staging all changes is permitted on this feature branch.");
     }
 
     private async Task<EvaluatedOperation> EvaluateSwitchAsync(
@@ -123,6 +144,17 @@ internal sealed class PolicyEvaluator(RepositoryDiscovery discovery)
                 $"Branch '{target.Name}' is checked out in worktree '{target.Worktree.Path}'.", target);
         }
 
+        var unsafe_paths = await discovery.FindUnsafeCheckoutPathsAsync(
+            context,
+            target.Commit,
+            cancellation_token);
+        if (unsafe_paths.Count > 0)
+        {
+            return Denied(request, context,
+                $"Switching would overwrite an untracked/ignored path or traverse a linked directory: " +
+                $"{string.Join(", ", unsafe_paths)}.", target);
+        }
+
         return Allowed(request, context, $"Clean worktree may switch to branch '{target.Name}'.", target);
     }
 
@@ -148,6 +180,26 @@ internal sealed class PolicyEvaluator(RepositoryDiscovery discovery)
 
         return Allowed(request, context,
             $"New feature branch '{request.Branch}' may be created without discarding local changes.");
+    }
+
+    private async Task<EvaluatedOperation> EvaluateRebaseBaseAsync(
+        RebaseBaseRequest request,
+        RepositoryContext context,
+        CancellationToken cancellation_token)
+    {
+        var unsafe_paths = await discovery.FindUnsafeCheckoutPathsAsync(
+            context,
+            context.State.BaseCommit,
+            cancellation_token);
+        if (unsafe_paths.Count > 0)
+        {
+            return Denied(request, context,
+                $"Rebase would overwrite an untracked/ignored path or traverse a linked directory: " +
+                $"{string.Join(", ", unsafe_paths)}.");
+        }
+
+        return Allowed(request, context,
+            $"Feature branch may be rebased onto configured base '{context.Policy.BaseBranch}'.");
     }
 
     private async Task<EvaluatedOperation> EvaluateBranchDeleteAsync(

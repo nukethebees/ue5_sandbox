@@ -6,6 +6,107 @@ namespace AgentGit.Tests;
 public sealed class AgentGitOperationTests
 {
     [TestMethod]
+    public async Task Executor_rejects_ref_changes_after_policy_evaluation()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        fixture.RunGit("switch", "-qc", "feature/evaluated");
+        fixture.WriteFile("change.txt", "change\n");
+        fixture.RunGit("add", "change.txt");
+        var git = new GitClient(fixture.Trust, new ProcessRunner());
+        var discovery = new RepositoryDiscovery(git);
+        var context = await discovery.DiscoverAsync(fixture.Trust, fixture.RepositoryRoot);
+        var evaluated = await new PolicyEvaluator(discovery).EvaluateAsync(
+            new CommitRequest(false, "must not commit"),
+            context,
+            fixture.RepositoryRoot);
+        Assert.IsTrue(evaluated.Decision.Allowed);
+        fixture.RunGit("switch", "-qc", "feature/raced");
+
+        var exception = await Assert.ThrowsExceptionAsync<RepositoryStateException>(
+            async () => await new OperationExecutor(git, discovery).ExecuteAsync(evaluated));
+
+        StringAssert.Contains(exception.Message, "changed after policy evaluation");
+        Assert.AreEqual("feature/raced\n", fixture.RunGit("branch", "--show-current"));
+        Assert.AreEqual("initial\n", fixture.RunGit("log", "-1", "--format=%s"));
+    }
+
+    [TestMethod]
+    public async Task Executor_rejects_target_branch_changes_after_policy_evaluation()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        fixture.RunGit("branch", "feature/delete-race", "dev");
+        fixture.RunGit("switch", "-qc", "feature/unmerged");
+        fixture.WriteFile("unmerged.txt", "unmerged\n");
+        fixture.RunGit("add", "unmerged.txt");
+        fixture.RunGit("commit", "-qm", "unmerged target");
+        fixture.RunGit("switch", "-q", "dev");
+        var git = new GitClient(fixture.Trust, new ProcessRunner());
+        var discovery = new RepositoryDiscovery(git);
+        var context = await discovery.DiscoverAsync(fixture.Trust, fixture.RepositoryRoot);
+        var evaluated = await new PolicyEvaluator(discovery).EvaluateAsync(
+            new BranchDeleteRequest(false, "feature/delete-race"),
+            context,
+            fixture.RepositoryRoot);
+        Assert.IsTrue(evaluated.Decision.Allowed);
+        fixture.RunGit("branch", "-f", "feature/delete-race", "feature/unmerged");
+
+        var exception = await Assert.ThrowsExceptionAsync<RepositoryStateException>(
+            async () => await new OperationExecutor(git, discovery).ExecuteAsync(evaluated));
+
+        StringAssert.Contains(exception.Message, "Target branch 'feature/delete-race' changed");
+        StringAssert.Contains(fixture.RunGit("branch", "--list", "feature/delete-race"), "feature/delete-race");
+    }
+
+    [TestMethod]
+    public async Task Executor_rejects_index_changes_after_policy_evaluation()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        fixture.RunGit("switch", "-qc", "feature/index-race");
+        fixture.WriteFile("change.txt", "evaluated\n");
+        fixture.RunGit("add", "change.txt");
+        var git = new GitClient(fixture.Trust, new ProcessRunner());
+        var discovery = new RepositoryDiscovery(git);
+        var context = await discovery.DiscoverAsync(fixture.Trust, fixture.RepositoryRoot);
+        var evaluated = await new PolicyEvaluator(discovery).EvaluateAsync(
+            new CommitRequest(false, "must not commit"),
+            context,
+            fixture.RepositoryRoot);
+        Assert.IsTrue(evaluated.Decision.Allowed);
+        fixture.WriteFile("change.txt", "raced\n");
+        fixture.RunGit("add", "change.txt");
+
+        var exception = await Assert.ThrowsExceptionAsync<RepositoryStateException>(
+            async () => await new OperationExecutor(git, discovery).ExecuteAsync(evaluated));
+
+        StringAssert.Contains(exception.Message, "index or working tree changed");
+        Assert.AreEqual("initial\n", fixture.RunGit("log", "-1", "--format=%s"));
+    }
+
+    [TestMethod]
+    public async Task Executor_rejects_executable_config_changes_after_policy_evaluation()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        fixture.RunGit("switch", "-qc", "feature/config-race");
+        fixture.WriteFile("change.txt", "change\n");
+        fixture.RunGit("add", "change.txt");
+        var git = new GitClient(fixture.Trust, new ProcessRunner());
+        var discovery = new RepositoryDiscovery(git);
+        var context = await discovery.DiscoverAsync(fixture.Trust, fixture.RepositoryRoot);
+        var evaluated = await new PolicyEvaluator(discovery).EvaluateAsync(
+            new CommitRequest(false, "must not commit"),
+            context,
+            fixture.RepositoryRoot);
+        Assert.IsTrue(evaluated.Decision.Allowed);
+        fixture.RunGit("config", "filter.evil.clean", "arbitrary-command");
+
+        var exception = await Assert.ThrowsExceptionAsync<RepositoryStateException>(
+            async () => await new OperationExecutor(git, discovery).ExecuteAsync(evaluated));
+
+        StringAssert.Contains(exception.Message, "unsupported executable settings");
+        Assert.AreEqual("initial\n", fixture.RunGit("log", "-1", "--format=%s"));
+    }
+
+    [TestMethod]
     public async Task Rebase_base_rebases_only_feature_and_does_not_update_sibling_refs()
     {
         using var fixture = new TemporaryAgentGitRepository();
@@ -111,6 +212,104 @@ public sealed class AgentGitOperationTests
         Assert.AreEqual(ExitCodes.PolicyDenied, result.ExitCode);
         StringAssert.Contains(result.Output.Replace('/', Path.DirectorySeparatorChar), other);
         Assert.AreEqual("dev\n", fixture.RunGit("branch", "--show-current"));
+    }
+
+    [TestMethod]
+    public async Task Switch_and_switch_create_reject_missing_existing_and_invalid_targets()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+
+        var missing = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "switch", "feature/missing");
+        Assert.AreEqual(ExitCodes.PolicyDenied, missing.ExitCode, missing.Error);
+        StringAssert.Contains(missing.Output, "does not exist");
+
+        var create = await fixture.RunAgentGitAsync(
+            fixture.RepositoryRoot,
+            "switch-create",
+            "feature/literal&branch");
+        Assert.AreEqual(ExitCodes.Success, create.ExitCode, create.Error);
+        Assert.AreEqual("feature/literal&branch\n", fixture.RunGit("branch", "--show-current"));
+
+        var existing = await fixture.RunAgentGitAsync(
+            fixture.RepositoryRoot,
+            "switch-create",
+            "feature/literal&branch");
+        Assert.AreEqual(ExitCodes.PolicyDenied, existing.ExitCode, existing.Error);
+        StringAssert.Contains(existing.Output, "already exists");
+
+        var invalid = await fixture.RunAgentGitAsync(
+            fixture.RepositoryRoot,
+            "switch-create",
+            "--upload-pack=arbitrary-command");
+        Assert.AreEqual(ExitCodes.StateFailure, invalid.ExitCode, invalid.Error);
+        StringAssert.Contains(invalid.Error, "Invalid local branch name");
+    }
+
+    [TestMethod]
+    public async Task Switch_create_is_allowed_from_workspace_but_rebase_is_feature_only()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        var workspace = fixture.CreateWorktree("dev1");
+
+        var workspace_rebase = await fixture.RunAgentGitAsync(workspace, "rebase-base");
+        Assert.AreEqual(ExitCodes.PolicyDenied, workspace_rebase.ExitCode, workspace_rebase.Error);
+        StringAssert.Contains(workspace_rebase.Output, "workspace branch 'dev1'");
+
+        var create = await fixture.RunAgentGitAsync(workspace, "switch-create", "feature/from-workspace");
+        Assert.AreEqual(ExitCodes.Success, create.ExitCode, create.Error);
+        Assert.AreEqual("feature/from-workspace\n", fixture.RunGitAt(workspace, "branch", "--show-current"));
+
+        var protected_rebase = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "rebase-base");
+        Assert.AreEqual(ExitCodes.PolicyDenied, protected_rebase.ExitCode, protected_rebase.Error);
+        StringAssert.Contains(protected_rebase.Output, "protected branch 'dev'");
+    }
+
+    [TestMethod]
+    public async Task Switch_and_rebase_preserve_ignored_untracked_files_that_targets_would_overwrite()
+    {
+        using var switch_fixture = new TemporaryAgentGitRepository();
+        switch_fixture.RunGit("switch", "-qc", "feature/target");
+        switch_fixture.WriteFile("ignored.txt", "target\n");
+        switch_fixture.RunGit("add", "ignored.txt");
+        switch_fixture.RunGit("commit", "-qm", "target file");
+        switch_fixture.RunGit("switch", "-qc", "feature/current", "dev");
+        switch_fixture.WriteFile(".gitignore", "ignored.txt\n");
+        switch_fixture.RunGit("add", ".gitignore");
+        switch_fixture.RunGit("commit", "-qm", "ignore local file");
+        switch_fixture.WriteFile("ignored.txt", "local data\n");
+
+        var switch_result = await switch_fixture.RunAgentGitAsync(
+            switch_fixture.RepositoryRoot,
+            "switch",
+            "feature/target");
+
+        Assert.AreEqual(ExitCodes.PolicyDenied, switch_result.ExitCode, switch_result.Error);
+        StringAssert.Contains(switch_result.Output, "ignored.txt");
+        Assert.AreEqual(
+            "local data\n",
+            File.ReadAllText(Path.Combine(switch_fixture.RepositoryRoot, "ignored.txt")));
+
+        using var rebase_fixture = new TemporaryAgentGitRepository();
+        rebase_fixture.RunGit("switch", "-qc", "feature/rebase-ignored");
+        rebase_fixture.WriteFile(".gitignore", "ignored.txt\n");
+        rebase_fixture.RunGit("add", ".gitignore");
+        rebase_fixture.RunGit("commit", "-qm", "ignore local file");
+        rebase_fixture.RunGit("switch", "dev");
+        rebase_fixture.WriteFile("ignored.txt", "base data\n");
+        rebase_fixture.RunGit("add", "ignored.txt");
+        rebase_fixture.RunGit("commit", "-qm", "base file");
+        rebase_fixture.RunGit("switch", "feature/rebase-ignored");
+        rebase_fixture.WriteFile("ignored.txt", "local data\n");
+
+        var rebase_result = await rebase_fixture.RunAgentGitAsync(
+            rebase_fixture.RepositoryRoot,
+            "rebase-base");
+
+        Assert.AreEqual(ExitCodes.PolicyDenied, rebase_result.ExitCode, rebase_result.Error);
+        StringAssert.Contains(rebase_result.Output, "ignored.txt");
+        Assert.AreEqual(
+            "local data\n",
+            File.ReadAllText(Path.Combine(rebase_fixture.RepositoryRoot, "ignored.txt")));
     }
 
     [TestMethod]

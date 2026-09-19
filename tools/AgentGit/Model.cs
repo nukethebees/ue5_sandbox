@@ -84,6 +84,7 @@ internal sealed record RepositoryState(
     BranchClassification? CurrentClassification,
     string BaseCommit,
     string PolicyCommit,
+    string MutationFingerprint,
     WorkingTreeStatus Status,
     RepositoryOperationState OperationState,
     IReadOnlyList<Worktree> Worktrees,

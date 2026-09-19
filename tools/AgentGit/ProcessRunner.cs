@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Text;
 
 namespace AgentGit;
 
@@ -8,7 +9,8 @@ internal sealed record ProcessRequest(
     IReadOnlyList<string> Arguments,
     string WorkingDirectory,
     IReadOnlyDictionary<string, string> Environment,
-    TimeSpan Timeout);
+    TimeSpan Timeout,
+    int MaximumCapturedStreamBytes = 64 * 1024 * 1024);
 
 internal sealed record ProcessResult(int ExitCode, byte[] StandardOutput, string StandardError);
 
@@ -22,6 +24,7 @@ internal sealed class ProcessRunner : IProcessRunner
     public async Task<ProcessResult> RunAsync(ProcessRequest request, CancellationToken cancellation_token)
     {
         ArgumentNullException.ThrowIfNull(request);
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(request.MaximumCapturedStreamBytes);
 
         var start_info = CreateStartInfo(request);
 
@@ -38,8 +41,14 @@ internal sealed class ProcessRunner : IProcessRunner
         using var timeout_source = CancellationTokenSource.CreateLinkedTokenSource(cancellation_token);
         timeout_source.CancelAfter(request.Timeout);
         var token = timeout_source.Token;
-        var output_task = ReadAllBytesAsync(process.StandardOutput.BaseStream, token);
-        var error_task = process.StandardError.ReadToEndAsync(token);
+        var output_task = CaptureStreamAsync(
+            process.StandardOutput.BaseStream,
+            request.MaximumCapturedStreamBytes,
+            token);
+        var error_task = CaptureStreamAsync(
+            process.StandardError.BaseStream,
+            request.MaximumCapturedStreamBytes,
+            token);
         try
         {
             await process.WaitForExitAsync(token);
@@ -62,7 +71,16 @@ internal sealed class ProcessRunner : IProcessRunner
                 $"Trusted process '{request.FileName}' timed out after {request.Timeout.TotalSeconds:0} seconds.");
         }
 
-        return new ProcessResult(process.ExitCode, await output_task, await error_task);
+        var output = await output_task;
+        var error = await error_task;
+        if (output.ExceededLimit || error.ExceededLimit)
+        {
+            throw new RepositoryStateException(
+                $"Trusted process '{request.FileName}' exceeded its " +
+                $"{request.MaximumCapturedStreamBytes} byte diagnostic output limit.");
+        }
+
+        return new ProcessResult(process.ExitCode, output.Bytes, Encoding.UTF8.GetString(error.Bytes));
     }
 
     internal static ProcessStartInfo CreateStartInfo(ProcessRequest request)
@@ -90,10 +108,34 @@ internal sealed class ProcessRunner : IProcessRunner
         return start_info;
     }
 
-    private static async Task<byte[]> ReadAllBytesAsync(Stream stream, CancellationToken cancellation_token)
+    private static async Task<CapturedStream> CaptureStreamAsync(
+        Stream stream,
+        int maximum_captured_stream_bytes,
+        CancellationToken cancellation_token)
     {
         await using var output = new MemoryStream();
-        await stream.CopyToAsync(output, cancellation_token);
-        return output.ToArray();
+        var buffer = new byte[81920];
+        var exceeded_limit = false;
+        while (true)
+        {
+            var count = await stream.ReadAsync(buffer, cancellation_token);
+            if (count == 0)
+            {
+                break;
+            }
+
+            if (output.Length + count <= maximum_captured_stream_bytes)
+            {
+                await output.WriteAsync(buffer.AsMemory(0, count), cancellation_token);
+            }
+            else
+            {
+                exceeded_limit = true;
+            }
+        }
+
+        return new CapturedStream(output.ToArray(), exceeded_limit);
     }
+
+    private sealed record CapturedStream(byte[] Bytes, bool ExceededLimit);
 }

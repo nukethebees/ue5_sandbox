@@ -110,6 +110,7 @@ internal static class PolicyLoader
         PolicyDocument document;
         try
         {
+            StrictJson.RejectDuplicateProperties(json);
             document = JsonSerializer.Deserialize<PolicyDocument>(json, json_options)
                 ?? throw new PolicyConfigurationException("Policy JSON contained null.");
         }
@@ -322,9 +323,10 @@ internal static class PolicyLoader
 
     private static void ValidateBranchNameField(string value, string field)
     {
-        if (string.IsNullOrWhiteSpace(value))
+        if (string.IsNullOrWhiteSpace(value) || value.Any(char.IsControl))
         {
-            throw new PolicyConfigurationException($"Policy field '{field}' cannot be empty.");
+            throw new PolicyConfigurationException(
+                $"Policy field '{field}' cannot be empty or contain control characters.");
         }
     }
 }

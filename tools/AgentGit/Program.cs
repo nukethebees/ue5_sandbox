@@ -37,7 +37,7 @@ public static class Program
             trust,
             discovery,
             new PolicyEvaluator(discovery),
-            new OperationExecutor(git),
+            new OperationExecutor(git, discovery),
             Console.Out,
             Console.Error);
         return await application.RunAsync(request!, Environment.CurrentDirectory);
@@ -54,7 +54,7 @@ public static class Program
             trust,
             discovery,
             new PolicyEvaluator(discovery),
-            new OperationExecutor(git),
+            new OperationExecutor(git, discovery),
             Console.Out,
             Console.Error);
     }

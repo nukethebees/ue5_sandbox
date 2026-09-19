@@ -42,11 +42,12 @@ internal sealed class GitClient
         };
         if (trust.GitLfsExecutable is not null)
         {
+            var lfs_command = QuoteFilterExecutable(trust.GitLfsExecutable);
             full_arguments.AddRange(
             [
-                "-c", "filter.lfs.clean=git-lfs clean -- %f",
-                "-c", "filter.lfs.smudge=git-lfs smudge -- %f",
-                "-c", "filter.lfs.process=git-lfs filter-process",
+                "-c", "filter.lfs.clean=",
+                "-c", "filter.lfs.smudge=",
+                "-c", $"filter.lfs.process={lfs_command} filter-process",
                 "-c", "filter.lfs.required=true",
             ]);
         }
@@ -105,8 +106,8 @@ internal sealed class GitClient
         var local_app_data = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         var path_parts = new[]
         {
-            Path.GetDirectoryName(trust.GitExecutable),
             trust.GitLfsExecutable is null ? null : Path.GetDirectoryName(trust.GitLfsExecutable),
+            Path.GetDirectoryName(trust.GitExecutable),
             string.IsNullOrWhiteSpace(windows) ? null : Path.Combine(windows, "System32"),
             windows,
         }.Where(value => !string.IsNullOrWhiteSpace(value)).Distinct(StringComparer.OrdinalIgnoreCase);
@@ -121,7 +122,7 @@ internal sealed class GitClient
             ["TEMP"] = Path.GetTempPath(),
             ["TMP"] = Path.GetTempPath(),
             ["PATH"] = string.Join(Path.PathSeparator, path_parts),
-            ["PATHEXT"] = ".COM;.EXE",
+            ["PATHEXT"] = ".EXE",
             ["LC_ALL"] = "C",
             ["LANG"] = "C",
             ["GIT_CONFIG_NOSYSTEM"] = "1",
@@ -135,5 +136,11 @@ internal sealed class GitClient
             ["GIT_PAGER"] = "cat",
             ["GIT_LFS_SKIP_SMUDGE"] = "1",
         };
+    }
+
+    private static string QuoteFilterExecutable(string path)
+    {
+        var normalized = OperatingSystem.IsWindows() ? path.Replace('\\', '/') : path;
+        return $"'{normalized.Replace("'", "'\\''", StringComparison.Ordinal)}'";
     }
 }

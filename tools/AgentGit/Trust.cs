@@ -94,29 +94,26 @@ internal static class TrustStore
         }
 
         var manifest_path = Path.Combine(installation_root, "trust.json");
-        TrustManifest manifest;
+        string manifest_json;
         try
         {
-            manifest = JsonSerializer.Deserialize<TrustManifest>(File.ReadAllText(manifest_path), json_options)
-                ?? throw new PolicyConfigurationException("Trust manifest contained null.");
+            if (new FileInfo(manifest_path).Length > 64 * 1024)
+            {
+                throw new PolicyConfigurationException("Trust manifest exceeds the 64 KiB safety limit.");
+            }
+
+            manifest_json = File.ReadAllText(manifest_path);
         }
-        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             throw new PolicyConfigurationException(
                 $"Unable to load agent-git trust manifest '{manifest_path}': {exception.Message}", exception);
         }
 
+        var manifest = ParseManifest(manifest_json);
         ValidateManifest(manifest);
 
-        var empty_config = Path.Combine(installation_root, "config", "empty.gitconfig");
-        var empty_hooks = Path.Combine(installation_root, "config", "empty-hooks");
-        var empty_attributes = Path.Combine(installation_root, "config", "empty.attributes");
-        if (!File.Exists(empty_config) || new FileInfo(empty_config).Length != 0 ||
-            !File.Exists(empty_attributes) || new FileInfo(empty_attributes).Length != 0 ||
-            !Directory.Exists(empty_hooks) || Directory.EnumerateFileSystemEntries(empty_hooks).Any())
-        {
-            throw new PolicyConfigurationException("The canonical empty Git configuration or hook directory is missing or invalid.");
-        }
+        var isolation = ValidateIsolationLayout(installation_root);
 
         return new TrustContext(
             installation_root,
@@ -124,9 +121,40 @@ internal static class TrustStore
             manifest.GitLfsExecutable is null ? null : Path.GetFullPath(manifest.GitLfsExecutable),
             manifest.UserName,
             manifest.UserEmail,
-            empty_config,
-            empty_hooks,
+            isolation.EmptyConfig,
+            isolation.EmptyHooks,
             manifest.Repositories);
+    }
+
+    internal static TrustManifest ParseManifest(string json)
+    {
+        try
+        {
+            StrictJson.RejectDuplicateProperties(json);
+            return JsonSerializer.Deserialize<TrustManifest>(json, json_options)
+                ?? throw new PolicyConfigurationException("Trust manifest contained null.");
+        }
+        catch (JsonException exception)
+        {
+            throw new PolicyConfigurationException($"Trust manifest JSON is malformed: {exception.Message}", exception);
+        }
+    }
+
+    internal static (string EmptyConfig, string EmptyHooks) ValidateIsolationLayout(string installation_root)
+    {
+        var empty_config = Path.Combine(installation_root, "config", "empty.gitconfig");
+        var empty_hooks = Path.Combine(installation_root, "config", "empty-hooks");
+        var empty_attributes = Path.Combine(installation_root, "config", "empty.attributes");
+        if (!File.Exists(empty_config) || new FileInfo(empty_config).Length != 0 ||
+            !File.Exists(empty_attributes) || new FileInfo(empty_attributes).Length != 0 ||
+            !Directory.Exists(empty_hooks) || Directory.EnumerateFileSystemEntries(empty_hooks).Any() ||
+            IsReparsePoint(empty_config) || IsReparsePoint(empty_attributes) || IsReparsePoint(empty_hooks))
+        {
+            throw new PolicyConfigurationException(
+                "The canonical empty Git configuration or hook directory is missing or invalid.");
+        }
+
+        return (empty_config, empty_hooks);
     }
 
     internal static void ValidateManifest(TrustManifest manifest)
@@ -174,6 +202,13 @@ internal static class TrustStore
 
             var common_directory = Path.GetFullPath(repository.CommonGitDirectory)
                 .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (IsReparsePoint(common_directory))
+            {
+                throw new PolicyConfigurationException(
+                    $"Registered common Git directory cannot be a symbolic link or reparse point: " +
+                    $"'{repository.CommonGitDirectory}'.");
+            }
+
             if (!common_directories.Add(common_directory))
             {
                 throw new PolicyConfigurationException(
@@ -200,14 +235,26 @@ internal static class TrustStore
         {
             throw new PolicyConfigurationException($"{description} is not an existing absolute file: '{path}'.");
         }
+
+        if (IsReparsePoint(path))
+        {
+            throw new PolicyConfigurationException(
+                $"{description} cannot be a symbolic link or reparse point: '{path}'.");
+        }
     }
 
     private static void ValidateText(string value, string description)
     {
-        if (string.IsNullOrWhiteSpace(value) || value.IndexOf('\0') >= 0)
+        if (string.IsNullOrWhiteSpace(value) || value.Any(char.IsControl))
         {
-            throw new PolicyConfigurationException($"{description} must be non-empty and cannot contain NUL.");
+            throw new PolicyConfigurationException(
+                $"{description} must be non-empty and cannot contain control characters.");
         }
+    }
+
+    private static bool IsReparsePoint(string path)
+    {
+        return (File.GetAttributes(path) & FileAttributes.ReparsePoint) != 0;
     }
 
     private static bool IsValidPolicyRef(string value)

@@ -81,9 +81,11 @@ if (@($policy.gitExtensions) -ccontains 'lfs') {
 }
 
 if ([string]::IsNullOrWhiteSpace($InstallRoot)) {
+    $is_canonical_install = $true
     $install_parent = Join-Path ([Environment]::GetFolderPath('LocalApplicationData')) 'NukeTheBees'
     $install_root = Join-Path $install_parent 'agent-git'
 } else {
+    $is_canonical_install = $false
     $install_root = [System.IO.Path]::GetFullPath($InstallRoot)
     $install_parent = Split-Path -Parent $install_root
 }
@@ -139,16 +141,41 @@ $manifest = [ordered]@{
 }
 $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $staging_root 'trust.json') -Encoding utf8NoBOM
 
+$activated_new_install = $false
+$moved_previous_install = $false
 try {
     if (Test-Path -LiteralPath $previous_root) {
         Remove-Item -LiteralPath $previous_root -Recurse -Force
     }
     if (Test-Path -LiteralPath $install_root) {
         Move-Item -LiteralPath $install_root -Destination $previous_root
+        $moved_previous_install = $true
     }
     Move-Item -LiteralPath $staging_root -Destination $install_root
+    $activated_new_install = $true
+
+    $installed_executable = Join-Path $install_root 'bin\agent-git.exe'
+    & $installed_executable --version
+    if ($LASTEXITCODE -ne 0) {
+        throw 'The installed agent-git executable failed its version smoke test.'
+    }
+
+    if ($is_canonical_install) {
+        Push-Location -LiteralPath $repository_root
+        try {
+            & $installed_executable status
+            if ($LASTEXITCODE -ne 0) {
+                throw 'The installed agent-git executable failed its trusted repository smoke test.'
+            }
+        } finally {
+            Pop-Location
+        }
+    }
 } catch {
-    if (-not (Test-Path -LiteralPath $install_root) -and (Test-Path -LiteralPath $previous_root)) {
+    if ($activated_new_install -and (Test-Path -LiteralPath $install_root)) {
+        Remove-Item -LiteralPath $install_root -Recurse -Force
+    }
+    if ($moved_previous_install -and (Test-Path -LiteralPath $previous_root)) {
         Move-Item -LiteralPath $previous_root -Destination $install_root
     }
     throw
@@ -156,11 +183,6 @@ try {
     if (Test-Path -LiteralPath $staging_root) {
         Remove-Item -LiteralPath $staging_root -Recurse -Force
     }
-}
-
-& (Join-Path $install_root 'bin\agent-git.exe') --version
-if ($LASTEXITCODE -ne 0) {
-    throw 'The installed agent-git executable failed its version smoke test.'
 }
 
 Write-Host "Installed agent-git at '$(Join-Path $install_root 'bin\agent-git.exe')'."

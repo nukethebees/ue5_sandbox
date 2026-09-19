@@ -9,7 +9,7 @@ internal sealed class TemporaryAgentGitRepository : IDisposable
 
     private readonly string root;
 
-    public TemporaryAgentGitRepository()
+    public TemporaryAgentGitRepository(bool include_lfs = false)
     {
         root = Directory.CreateTempSubdirectory("AgentGit-").FullName;
         RepositoryRoot = Directory.CreateDirectory(Path.Combine(root, "main")).FullName;
@@ -20,7 +20,7 @@ internal sealed class TemporaryAgentGitRepository : IDisposable
         RunGit("config", "user.name", "Agent Git Test");
         RunGit("config", "user.email", "agent-git@example.com");
         RunGit("remote", "add", "origin", origin_url);
-        WriteFile(".agent-git.json", PolicyLoaderTests.ValidPolicy());
+        WriteFile(".agent-git.json", PolicyLoaderTests.ValidPolicy(include_lfs));
         WriteFile("README.md", "initial\n");
         RunGit("add", "--all");
         RunGit("commit", "-qm", "initial");
@@ -32,10 +32,11 @@ internal sealed class TemporaryAgentGitRepository : IDisposable
         File.WriteAllText(attributes, string.Empty);
         var hooks = Directory.CreateDirectory(Path.Combine(InstallRoot, "hooks")).FullName;
         var common_git_directory = RunGit("rev-parse", "--path-format=absolute", "--git-common-dir").Trim();
+        GitLfsExecutable = include_lfs ? FindExecutable("git-lfs.exe") : null;
         Trust = new TrustContext(
             InstallRoot,
             GitExecutable,
-            null,
+            GitLfsExecutable,
             "Agent Git Test",
             "agent-git@example.com",
             config,
@@ -57,6 +58,8 @@ internal sealed class TemporaryAgentGitRepository : IDisposable
     public string InstallRoot { get; }
 
     public string GitExecutable { get; }
+
+    public string? GitLfsExecutable { get; }
 
     public TrustContext Trust { get; }
 
@@ -125,7 +128,7 @@ internal sealed class TemporaryAgentGitRepository : IDisposable
             Trust,
             discovery,
             new PolicyEvaluator(discovery),
-            new OperationExecutor(git),
+            new OperationExecutor(git, discovery),
             output,
             error);
         var exit_code = await application.RunAsync(request!, working_directory);

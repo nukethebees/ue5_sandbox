@@ -56,6 +56,51 @@ public sealed class TrustStoreTests
             () => TrustStore.ValidateManifest(CreateManifest(fixture, registration, registration)));
     }
 
+    [TestMethod]
+    public void ParseManifest_rejects_duplicate_json_properties()
+    {
+        var exception = Assert.ThrowsException<PolicyConfigurationException>(() => TrustStore.ParseManifest(
+            """
+            {
+              "version": 1,
+              "version": 1,
+              "gitExecutable": "unused",
+              "userName": "Test",
+              "userEmail": "test@example.com",
+              "repositories": []
+            }
+            """));
+
+        StringAssert.Contains(exception.Message, "Duplicate JSON property 'version'");
+    }
+
+    [TestMethod]
+    public void ValidateIsolationLayout_requires_empty_files_and_hook_directory()
+    {
+        var root = Directory.CreateTempSubdirectory("AgentGitTrust-").FullName;
+        try
+        {
+            var config = Directory.CreateDirectory(Path.Combine(root, "config")).FullName;
+            var empty_config = Path.Combine(config, "empty.gitconfig");
+            var empty_attributes = Path.Combine(config, "empty.attributes");
+            var hooks = Directory.CreateDirectory(Path.Combine(config, "empty-hooks")).FullName;
+            File.WriteAllText(empty_config, string.Empty);
+            File.WriteAllText(empty_attributes, string.Empty);
+            TrustStore.ValidateIsolationLayout(root);
+
+            File.WriteAllText(empty_config, "[alias]\nstatus = !arbitrary-command\n");
+            Assert.ThrowsException<PolicyConfigurationException>(() => TrustStore.ValidateIsolationLayout(root));
+
+            File.WriteAllText(empty_config, string.Empty);
+            File.WriteAllText(Path.Combine(hooks, "post-commit"), "arbitrary-command\n");
+            Assert.ThrowsException<PolicyConfigurationException>(() => TrustStore.ValidateIsolationLayout(root));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     private static TrustManifest CreateManifest(
         TemporaryAgentGitRepository fixture,
         params TrustedRepository[] repositories)

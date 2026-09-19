@@ -27,6 +27,26 @@ public sealed class PolicyLoaderTests
     }
 
     [TestMethod]
+    public void Parse_rejects_duplicate_properties_at_any_depth()
+    {
+        var duplicate_root = ValidPolicy().Replace(
+            "\"version\": 1,",
+            "\"version\": 1, \"version\": 1,",
+            StringComparison.Ordinal);
+        var root_exception = Assert.ThrowsException<PolicyConfigurationException>(
+            () => PolicyLoader.Parse(duplicate_root));
+        StringAssert.Contains(root_exception.Message, "Duplicate JSON property 'version'");
+
+        var duplicate_nested = ValidPolicy().Replace(
+            "\"requireClean\": true",
+            "\"requireClean\": true, \"requireClean\": true",
+            StringComparison.Ordinal);
+        var nested_exception = Assert.ThrowsException<PolicyConfigurationException>(
+            () => PolicyLoader.Parse(duplicate_nested));
+        StringAssert.Contains(nested_exception.Message, "Duplicate JSON property 'requireClean'");
+    }
+
+    [TestMethod]
     public void Parse_rejects_unknown_versions_and_operations()
     {
         var version = ValidPolicy().Replace("\"version\": 1", "\"version\": 2", StringComparison.Ordinal);

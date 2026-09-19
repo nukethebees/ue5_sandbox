@@ -32,6 +32,8 @@ worktree cannot change active permissions before it is reviewed and merged.
 
 Repository build output under `tools/bin` refuses repository operations. This prevents an agent
 from editing the source, rebuilding a permissive binary, and using it through the trusted rule.
+Installation activates a staged copy atomically, smoke-tests both the executable and the registered
+repository trust path, and restores the previous installation if either check fails.
 
 ## Policy
 
@@ -94,15 +96,28 @@ for inspection.
 The tool invokes a pinned Git executable directly with structured arguments and no shell. It uses
 a controlled environment, disables hooks, signing, editors, pagers, prompts, automatic maintenance,
 replace refs, update-refs rebasing, and inherited repository redirection. Unknown executable filters,
-merge drivers, configuration includes, `core.worktree` redirection, and object alternates fail closed. Git LFS is the sole
-initially modeled external extension.
+merge drivers, configuration includes, executable diff/merge/pager/GPG/submodule settings,
+`core.worktree` redirection, hidden exclude files, fsmonitor commands, and object alternates fail
+closed. Git LFS is the sole initially modeled external extension. Git output captured by the tool is
+bounded so hostile repository state cannot cause unbounded diagnostic buffering.
 LFS clean filtering remains available for staging, while automatic smudging is skipped so a branch
 checkout cannot trigger repository-controlled network or credential activity; explicit LFS content
 downloads remain outside the trusted interface.
+On Git for Windows, Git starts the fixed `git-lfs filter-process` command through its bundled shell;
+`agent-git` does not invoke a shell itself. The Git-LFS executable directory is pinned first in the
+controlled `PATH`, the filter command names the trusted absolute executable, legacy fallback filter
+commands are disabled, repository LFS filter commands are overridden, and all non-LFS filters are denied.
 
 Mutations take a lock in the common Git directory and rediscover repository state under that lock
-immediately before policy evaluation. The lock coordinates `agent-git` processes; raw Git or other
-programs can still race it, with Git's own ref and index locks providing the final integrity checks.
+immediately before policy evaluation. Immediately before Git execution, the tool re-audits
+executable configuration and hidden index flags, compares the exact index/worktree fingerprint, and
+revalidates HEAD, current branch, policy, base, and target refs. The lock coordinates `agent-git`
+processes; raw Git or other programs can still race the small interval after final validation, with
+Git's own ref and index locks providing the final integrity checks.
+Worktree roots, mutation paths, and critical Git administrative paths containing filesystem
+reparse points are rejected, as are assume-unchanged and skip-worktree index entries; these states
+can hide changes or redirect I/O outside the registered worktree or common Git directory. Sparse
+worktrees are therefore intentionally unsupported in v1.
 
 ## Codex rule
 
