@@ -15,8 +15,9 @@ csetup
 ```
 
 The leading dot keeps the commands available in the current session. Run `dev-help` for the
-available navigation and build commands. `cplay debug-game` prepares and builds an Editor-ready
-configuration; `cmake --workflow --preset debug-game-unit-tests` runs the fast unit suites.
+available navigation and build commands. Native C++ work normally starts with
+`cmake --workflow --preset native-tests`; use `cplay debug-game` for an Editor-ready
+configuration and `debug-game-unit-tests` only for explicit Unreal-enabled integration validation.
 
 For complete setup, build, testing, debugging, and packaging instructions, see
 [Build and test](docs/build-and-test.md).

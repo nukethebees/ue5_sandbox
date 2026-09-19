@@ -51,16 +51,17 @@ Commands:
   ctests            Change to Source\SandboxTests.
 d=  reset-devs        Hard reset locally checkoutable devN branches to dev.
 
-Build commands:
+Validation and build commands:
   ctools             Build the standalone C# developer tools.
 
-Unreal build commands:
-  cbuild [config ...]      Build the project with one or more CMake workflows in order.
-                           Each config may be debug, debug-game, development, shipping, or test;
-                           default is debug-game. Stops on the first failed workflow.
+  cbuild [workflow ...]    Run one or more validation/build workflows in order.
+                           Workflows include native-tests, native-core-tests, native-simulation-tests,
+                           and the explicit Unreal configurations; default is native-tests.
+                           Stops on the first failed workflow.
   csetup [config ...]      Update pinned submodules, generate native presets, and prepare supported
                            development configurations.
-                           Config may be all, debug-game, or development; default is all.
+                           Config may be native, all, debug-game, or development; default is all.
+                           Native setup avoids Unreal worktree preparation and C# tool staging.
   cplay [config ...]       Prepare and build one or more playable Editor configurations.
                            Config may be debug-game or development; default is debug-game, development.
   cprojectfiles [config]   Regenerate Unreal project files without building dependencies.

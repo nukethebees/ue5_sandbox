@@ -13,31 +13,69 @@ initialize the worktree:
 csetup
 ```
 
-`csetup` synchronizes submodules, regenerates native presets, installs the per-user jobserver when
-needed, and prepares the DebugGame and Development worktrees. Pass `debug-game` or `development`
-to prepare only that configuration. See the [PowerShell guide](../PowerShell/README.md) for the
-other session commands.
+`csetup` synchronizes submodules, regenerates presets, installs the per-user jobserver when
+needed, and prepares the DebugGame and Development worktrees. Use `csetup native` when only the
+native toolchain is needed; it avoids C# tool staging and Unreal worktree preparation. See the
+[PowerShell guide](../PowerShell/README.md) for the other session commands.
 
 Alternatively, set `UE_ROOT` in the ignored `CMakeUserPresets.json` using a local configure preset
 that inherits from `development`. CMake builds pinned native dependencies from source; no package
 manager configuration is needed.
 
-## Everyday workflows
+## Development validation
+
+Use the cheapest tier that validates the changed boundary. Native code is the normal inner loop;
+Unreal is an integration boundary, and the complete DebugGame workflow is the final merge-ready
+gate.
+
+### Native inner loop
 
 ```powershell
-# Prepare and build Editor-ready configurations.
-cplay debug-game
+# Configure the default native clang-cl Debug + unity build. Unreal is disabled.
+cmake --preset native
 
-# Configure and build directly through CMake.
-cmake --workflow --preset debug-game
+# Build only the changed native test target, then run its focused tests.
+cmake --build --preset native --target native-simulation-tests
+ctest --preset native-simulation-tests
 
-# Run all DebugGame test suites, or the unit-labelled suites only.
-cmake --workflow --preset debug-game-tests
+# Run the complete first-party native suite.
+cmake --workflow --preset native-tests
+```
+
+`native-core-tests` and `native-simulation-tests` are focused workflows. `native-tests` builds and
+runs all first-party tests under `native/`; it does not configure UBT or launch UnrealEditor. The
+PowerShell shortcut `cbuild` defaults to `native-tests`.
+
+Do not rebuild Unreal merely because a native implementation has a thin Unreal adapter. Settle the
+native behavior with the smallest target and test subset first.
+
+### Focused Unreal integration
+
+Use Unreal validation once an Unreal-facing boundary needs checking: module/build definitions,
+reflection or UObject lifetime, engine adapters/APIs, UI, assets, or editor behavior.
+
+```powershell
+# Build the smallest broad cross-layer unit prerequisite, then run unit taxonomy tests.
 cmake --workflow --preset debug-game-unit-tests
 
-# Rerun level tests after a build.
-ctest --preset debug-game-level-tests
+# Prepare and build an Editor-ready configuration when interactive validation is needed.
+cplay debug-game
 ```
+
+`debug-game-unit-tests` includes an Editor build and is not a native inner-loop command. For a
+single integration concern, prefer a focused CMake target and CTest name/label filter over this
+workflow.
+
+### Merge-ready integration
+
+After implementation is complete and the feature branch has been rebased onto current `dev`, run:
+
+```powershell
+cmake --workflow --preset debug-game-tests
+```
+
+This is the full DebugGame integration gate. If it finds one native failure, return to that
+target's focused native build/test loop, then rerun this gate once on the final HEAD.
 
 Use `cmake --build --preset debug-game --target run-editor` to build and launch the Editor, or
 `run-editor-debug` to break at startup for an attached debugger. Regenerate Visual Studio project
@@ -71,10 +109,11 @@ pwsh -NoProfile -File PowerShell/PackageGame.ps1
 The `resave-assets` workflow modifies assets, so ensure intended files are writable before running
 it.
 
-CTest discovers Catch2 unit tests, standalone native GoogleTests, and the `Sandbox.LevelTests`
-Unreal Automation group. Low-level tests use the `unit` label and level tests use the `level` label.
-If Unreal tests report missing project plugin modules, build the `editor` target through the
-`debug-game` preset to repair stale Editor-module BuildIds before rerunning them.
+CTest labels separate taxonomy from integration cost: native tests carry `native` plus their
+existing unit/subsystem labels, while Unreal Automation tests retain their semantic labels.
+Use the native presets rather than the generic `unit` label for the everyday native path. If Unreal
+tests report missing project plugin modules, build the `editor` target through the `debug-game`
+preset to repair stale Editor-module BuildIds before rerunning them.
 
 ## Coordination
 

@@ -9,8 +9,9 @@ dev-help
 ```
 
 `Navigation.ps1` provides `croot`, `cwt`, `cwb`, `cplugin`, and `ctests`. `UnrealBuild.ps1` provides
-`cbuild`, `csetup`, `cplay`, `cprojectfiles`, and jobserver/UBT state helpers. `csetup` is the normal
-way to synchronize a worktree; `cplay` prepares and builds playable Editor configurations.
+`cbuild`, `csetup`, `cplay`, `cprojectfiles`, and jobserver/UBT state helpers. `cbuild` defaults to
+the native test workflow; `csetup native` prepares native-only prerequisites, while `cplay` prepares
+and builds playable Editor configurations.
 
 The remaining scripts implement build safety, packaging, project-file generation, and Live Coding
 configuration. Treat them as implementation details unless a documented workflow calls for one

@@ -17,21 +17,21 @@ types, emit material expressions, compile shaders, and save packages.
 Build the native compiler and validate the canonical material:
 
 ```powershell
-cmake --preset win-x64-clangcl-debug-unity
+cmake --preset native
 cmake --build --preset codegen --target lispb
-out/build/win-x64-clangcl-debug-unity/native/lispb/lispb.exe validate --target ui-glow-material
+out/build/native/native/lispb/lispb.exe validate --target ui-glow-material
 ```
 
 Inspect the ordered parameters, stable node handles, bindings, outputs, and texture dependencies:
 
 ```powershell
-out/build/win-x64-clangcl-debug-unity/native/lispb/lispb.exe dump-ir --target ui-glow-material
+out/build/native/native/lispb/lispb.exe dump-ir --target ui-glow-material
 ```
 
 Compile a versioned binary IR artifact:
 
 ```powershell
-out/build/win-x64-clangcl-debug-unity/native/lispb/lispb.exe generate --target ui-glow-material
+out/build/native/native/lispb/lispb.exe generate --target ui-glow-material
 ```
 
 The artifact contains the project-relative source filename, SHA-256 source hash, validated IR, and
@@ -45,13 +45,13 @@ Native texture validation checks that `/Game/...` or `/<Plugin>/...` resolves to
 The repository target performs native validation directly:
 
 ```powershell
-cmake --build --preset debug-game --target validate-ui-glow-material
+cmake --build --preset native --target validate-ui-glow-material
 ```
 
 Compile only the canonical artifact:
 
 ```powershell
-cmake --build --preset debug-game --target compile-ui-glow-material
+cmake --build --preset native --target compile-ui-glow-material
 ```
 
 Validate the compiled artifact and texture object types through Unreal without mutating the

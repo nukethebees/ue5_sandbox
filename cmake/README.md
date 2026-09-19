@@ -1,8 +1,8 @@
 # CMake build layer
 
-The root CMake project is a Windows CMake/Ninja wrapper around UnrealBuildTool. UBT and the Unreal
-`.Target.cs` and `.Build.cs` files remain authoritative for Unreal compilation; use CMake workflows
-and build presets instead of invoking UBT directly.
+The root CMake project supports both standalone native C++ and Windows CMake/Ninja orchestration
+around UnrealBuildTool. UBT and the Unreal `.Target.cs` and `.Build.cs` files remain authoritative
+for Unreal compilation; use CMake workflows and build presets instead of invoking UBT directly.
 
 `CMakePresets.json` includes category files from `cmake/presets/`:
 
@@ -29,7 +29,13 @@ MSVC library-flag escaping, resource identities, command-list boundaries, Unreal
 executable naming, engine-tool paths, and package-artifact paths; the Python jobserver fixture
 remains responsible for integration coverage of generated Ninja and CTest files.
 
-Native preset names encode platform, architecture, compiler, configuration, and optional features.
-The normal Unreal presets build `dev-core` (`editor`, `core-tests`, and `native-tests`); select a
-specific target with `cmake --build --preset <preset> --target <target>` when an aggregate workflow
-would do more than needed.
+`native` is the ordinary clang-cl Debug + unity native-only configuration and inherits
+`SANDBOX_WITH_UNREAL=OFF`. Use `cmake --build --preset native --target <target>` for targeted
+native compilation, `ctest --preset native-simulation-tests` or `native-core-tests` for focused
+tests, and `cmake --workflow --preset native-tests` for the full native suite. The detailed native
+preset matrix remains available for explicit compiler, configuration, unity, and ASan choices.
+
+The normal Unreal presets build `dev-core`, the broad integration aggregate. The focused
+`debug-game-unit-tests` workflow instead builds `unreal-unit-tests` (`editor` plus `native-tests`)
+before running the mixed unit taxonomy. `debug-game-tests` retains `dev-core` as the merge-ready
+integration gate.

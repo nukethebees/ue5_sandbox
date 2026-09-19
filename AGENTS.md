@@ -62,13 +62,28 @@ Unreal Engine 5.8 project.
   workflows do not require this preflight.
 * CMake coordinates Unreal work through a canonical engine read/write gate: builds and UAT packaging acquire it exclusively; managed editor launches, tests, and commandlets acquire it shared for their full process-tree lifetime. Regenerate CMake commands in every worktree and reload PowerShell helpers after coordination changes. Manually launched editors, Visual Studio builds, Live Coding, and UBT launched outside CMake do not participate; do not overlap them with managed Unreal builds.
 * A canonical per-user jobserver coordinates expensive work across worktrees. Ordinary work shares the machine resource; benchmarks wait for older work to drain and then run exclusively. Use `get-jobserver-state` or the `jobserver-status` target to inspect running and queued jobs.
-* Preferred build: `cmake --workflow --preset debug-game`.
+* Development validation has three tiers:
+  1. Native-only validation is the default while implementing independently buildable code under
+     `native/`. Use `cmake --build --preset native --target <target>` and focused native workflows
+     such as `native-simulation-tests`; `cmake --workflow --preset native-tests` runs the complete
+     native suite. These commands do not configure or build Unreal.
+  2. Use the smallest focused Unreal build/test only after native work is substantially settled and
+     an Unreal-facing boundary needs checking: module/build definitions, UObject/reflection,
+     engine adapters/APIs, UI, assets, editor integration, or ownership/lifetime behavior. A thin
+     Unreal adapter alone does not justify rebuilding Unreal after every native implementation edit.
+  3. Run the complete DebugGame integration gate only for final merge readiness after rebasing.
 * The merge-ready integration gate for substantive code, schema, generated-source,
   build-configuration, module, or test changes is `cmake --workflow --preset debug-game-tests`.
   Follow the [Feature Workflow](#feature-workflow) when applying this gate; do not call the branch
-  merge-ready if it fails, even when the failure appears unrelated.
+  merge-ready if it fails, even when the failure appears unrelated. When it exposes a focused
+  native failure, diagnose and fix it with the smallest relevant native build/test, then rerun one
+  final integration gate on the final HEAD.
 * Changes that affect benchmark sources or benchmark schemas also require the dedicated benchmark build: configure with `cmake --preset benchmark`, then build with `cmake --build --preset benchmark --target benchmarks`. Run benchmark measurements only when the task requires them.
-* Targets: `editor`, `game`, `core-tests`, `native-tests`, `dev-core`, `resave-assets`, `generate-project-files`, `cook`, `cook-incremental`, `stage`, `archive`, `run-staged`, and `verify-package`. Cook targets are available from the Development configure preset; stage/archive/run/verify use the current game configuration.
+* Targets: `native-tests`, `native-core-tests`, `native-simulation-tests`, `editor`, `game`,
+  `unreal-unit-tests`, `core-tests`, `dev-core`, `resave-assets`, `generate-project-files`, `cook`,
+  `cook-incremental`, `stage`, `archive`, `run-staged`, and `verify-package`. Cook targets are
+  available from the Development configure preset; stage/archive/run/verify use the current game
+  configuration.
 * Iterative staged game: `cmake --workflow --preset development-staged-game`.
 * Full Development package: `cmake --workflow --preset development-package`.
 * Full Shipping package, including the DebugGame test gate and Development cook: `pwsh -NoProfile -File PowerShell/PackageGame.ps1`. Use `-SkipTests` only when the test gate has already completed.
@@ -85,8 +100,12 @@ Unreal Engine 5.8 project.
   `target_sources`; do not list sources directly in `add_library` or `add_executable`.
 * Regenerate project files after changes to modules/plugins, `.Build.cs`, `.Target.cs`, or project/module definitions. For larger tasks, do this once after the full change rather than after intermediate edits.
 * Tests:
-  * all suites: `cmake --workflow --preset debug-game-tests`
-  * unit suites: `cmake --workflow --preset debug-game-unit-tests`
+  * normal native suite: `cmake --workflow --preset native-tests`
+  * focused native suites: `cmake --workflow --preset native-core-tests` or
+    `cmake --workflow --preset native-simulation-tests`
+  * focused Unreal-enabled unit suites: `cmake --workflow --preset debug-game-unit-tests`;
+    this includes an Editor build and is integration validation, not the default native unit path
+  * final all-suite integration gate: `cmake --workflow --preset debug-game-tests`
   * level tests after building: `ctest --preset debug-game-level-tests`
   * If Unreal tests report missing project plugin modules, run `cmake --build --preset debug-game --target editor` to repair stale editor-module BuildIds before rerunning them.
 * Before starting a timed benchmark, complete all build and setup work, then run it without asking the user for confirmation. Use the repository benchmark targets and scripts so the benchmark acquires exclusive machine access from the jobserver, waits for older work, and runs without build interference. If a benchmark entry point does not request benchmark resources, fix or wrap it before collecting timings. Dry runs and correctness tests do not require benchmark access.

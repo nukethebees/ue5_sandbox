@@ -148,8 +148,8 @@ reviewed and analysed directly. Regeneration compares file contents and leaves u
 untouched:
 
 ```text
-cmake --build --preset debug-game --target generate-codegen-compile-fixture
-cmake --build --preset debug-game --target check-generated-codegen-compile-fixture
+cmake --build --preset native --target generate-codegen-compile-fixture
+cmake --build --preset native --target check-generated-codegen-compile-fixture
 ```
 
 The DebugGame and Development worktree-setup workflows regenerate committed C++ and Slate outputs

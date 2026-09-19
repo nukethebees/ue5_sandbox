@@ -305,8 +305,8 @@ function reset-ubt-build-state {
 function cbuild {
     param(
         [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
-        [ValidateSet('debug', 'debug-game', 'development', 'shipping', 'test')]
-        [string[]]$configuration = @('debug-game')
+        [ValidateSet('native-tests', 'native-core-tests', 'native-simulation-tests', 'debug', 'debug-game', 'development', 'shipping', 'test')]
+        [string[]]$configuration = @('native-tests')
     )
 
     Push-Location -LiteralPath $script:dev_project_root
@@ -358,7 +358,7 @@ function ctools {
 function csetup {
     param(
         [Parameter(Position = 0, ValueFromRemainingArguments = $true)]
-        [ValidateSet('all', 'debug-game', 'development')]
+        [ValidateSet('all', 'native', 'debug-game', 'development')]
         [string[]]$configuration = @('all')
     )
 
@@ -375,38 +375,47 @@ function csetup {
     Push-Location -LiteralPath $script:dev_project_root
     try {
         Update-WorktreeSubmodules
-        ctools
+
+        $requires_unreal_setup = @($configurations | Where-Object { $_ -ne 'native' })
+        if ($requires_unreal_setup.Count -gt 0) {
+            ctools
+        }
 
         $preset_generator = Join-Path $script:dev_project_root 'cmake\presets\generate.py'
         if (-not (Test-Path -LiteralPath $preset_generator -PathType Leaf)) {
             throw "CMake preset generator was not found: $preset_generator"
         }
 
-        Write-Host 'Generating native CMake presets.'
+        Write-Host 'Generating CMake presets.'
         & python $preset_generator
 
         if ($LASTEXITCODE -ne 0) {
             throw "CMake preset generation exited with code $LASTEXITCODE."
         }
 
-        foreach ($current_configuration in $configurations) {
+        foreach ($current_configuration in $requires_unreal_setup) {
             Remove-RetiredVcpkgBuildDirectory -configuration $current_configuration
         }
 
         $jobserver = Get-JobserverPath
         if (-not (Test-Path -LiteralPath $jobserver -PathType Leaf)) {
             Write-Host 'Bootstrapping the canonical per-user jobserver.'
-            & cmake --preset win-x64-clangcl-debug
+            & cmake --preset native
             if ($LASTEXITCODE -ne 0) {
                 throw "Jobserver bootstrap configuration exited with code $LASTEXITCODE."
             }
-            & cmake --build --preset win-x64-clangcl-debug --target install-jobserver
+            & cmake --build --preset native --target install-jobserver
             if ($LASTEXITCODE -ne 0) {
                 throw "Jobserver installation exited with code $LASTEXITCODE."
             }
         }
 
         foreach ($current_configuration in $configurations) {
+            if ($current_configuration -eq 'native') {
+                Write-Host 'Prepared native-only development prerequisites.'
+                continue
+            }
+
             $workflow = "setup-worktree-$current_configuration"
             Write-Host "Preparing worktree with CMake workflow '$workflow'."
             $workflow_result = Invoke-JobserverWorkflow `

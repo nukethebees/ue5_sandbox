@@ -48,8 +48,8 @@ ownership, recording an interrupted lease rather than leaving it stuck.
 Configure and install the canonical per-user binaries with:
 
 ```powershell
-cmake --preset win-x64-clangcl-debug
-cmake --build --preset win-x64-clangcl-debug --target install-jobserver
+cmake --preset native
+cmake --build --preset native --target install-jobserver
 ```
 
 `csetup` performs this bootstrap automatically when the jobserver is not installed.
@@ -284,9 +284,9 @@ returns the child exit code.
 ## Building and testing
 
 ```powershell
-cmake --preset debug-game
-cmake --build --preset debug-game --target jobserver jobserverd jobserver-tests
-ctest --test-dir out/build/debug-game -R '^jobserver-(tests|unreal-integration-tests)$' --output-on-failure
+cmake --preset native
+cmake --build --preset native --target jobserver jobserverd jobserver-tests
+ctest --test-dir out/build/native -R '^jobserver-(tests|unreal-integration-tests)$' --output-on-failure
 ```
 
 Tests use a unique named pipe and temporary state directory, never the installed daemon or its
@@ -304,9 +304,9 @@ The opt-in system tests mutate the canonical per-user installation and create a 
 Git worktree. Run them only when no other local work is using the jobserver:
 
 ```powershell
-cmake --preset debug-game -DSANDBOX_JOBSERVER_SYSTEM_TESTS=ON
-cmake --build --preset debug-game --target jobserver-tests
-ctest --test-dir out/build/debug-game -L jobserver-system --output-on-failure
+cmake --preset native -DSANDBOX_JOBSERVER_SYSTEM_TESTS=ON
+cmake --build --preset native --target jobserver-tests
+ctest --test-dir out/build/native -L jobserver-system --output-on-failure
 ```
 
 They validate a real CMake compile from a worktree path containing spaces and Unicode, cross-

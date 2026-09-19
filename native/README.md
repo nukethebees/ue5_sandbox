@@ -15,14 +15,20 @@ link the resulting artifacts through thin adapters.
 
 ## Standalone workflow
 
-Standalone presets set `SANDBOX_WITH_UNREAL=OFF`, so they do not require `UE_ROOT`. Configure and
-build with a native workflow, for example:
+Standalone presets set `SANDBOX_WITH_UNREAL=OFF`, so they do not require `UE_ROOT`. The default
+native configuration uses Windows clang-cl Debug + unity:
 
 ```powershell
-cmake --workflow --preset win-x64-clangcl-debug
+cmake --preset native
+cmake --build --preset native --target native-simulation-tests
+ctest --preset native-simulation-tests
+
+# Full first-party native validation.
+cmake --workflow --preset native-tests
 ```
 
-Use the corresponding `-unity` preset for faster full builds, or an `-msvc` preset for MSVC.
+Use `native-core-tests` for the core-focused workflow. The detailed matrix presets remain available
+for ASan, non-unity, release, and MSVC selection; `native` is the ordinary fast default.
 Native tests and tools use static Tracy; Unreal-enabled builds additionally publish the shared-Tracy
 simulation artifacts below `Binaries/Native/`.
 
