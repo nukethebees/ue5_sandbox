@@ -3,6 +3,7 @@
 #include "SandboxEditor/levels/S7LevelAuthoringActors.h"
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringModeToolkit.h"
+#include "SandboxEditor/levels/S7LevelObserverCamera.h"
 
 #include <SpaceGameS7/LevelDefinitionReader.h>
 #include <SpaceGameS7/LevelDefinitionWriter.h>
@@ -179,6 +180,19 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
     if (!disk_refreshed || source_session_.has_external_conflict()) {
         return;
     }
+    auto* const active_level{current_level()};
+    if (IsValid(active_level)) {
+        auto const observer_camera{
+            ml::editor::make_s7_observer_camera_transform(*active_level, *document_)};
+        if (!observer_camera) {
+            auto const error{FText::FromString(observer_camera.error())};
+            if (!status_.EqualTo(error)) {
+                set_status(error);
+                changed_.Broadcast();
+            }
+            return;
+        }
+    }
     if (source_session_.is_dirty()) {
         auto const dirty{LOCTEXT("SourceDirty", "The S7 source buffer has unsaved changes.")};
         if (!status_.EqualTo(dirty)) {
@@ -188,9 +202,8 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
         return;
     }
     if (!document_->synchronized_scene_hash.IsEmpty()) {
-        auto* const level{current_level()};
-        auto const definition{IsValid(level)
-                                  ? ml::editor::collect_s7_editor_level(*level, *document_)
+        auto const definition{IsValid(active_level)
+                                  ? ml::editor::collect_s7_editor_level(*active_level, *document_)
                                   : std::expected<ml::FLevelDefinition, FString>{std::unexpected{
                                         TEXT("The current level is unavailable.")}}};
         auto const generated{
@@ -230,6 +243,34 @@ void US7LevelAuthoringMode::Render(FSceneView const* const view,
     draw_roles(document_->mission.heroes, FLinearColor{0.2f, 0.6f, 1.0f}, 18.0f);
     draw_roles(document_->mission.must_survive, FLinearColor{0.2f, 1.0f, 0.35f}, 22.0f);
     draw_roles(document_->mission.required_kills, FLinearColor{1.0f, 0.15f, 0.1f}, 22.0f);
+
+    auto* const level{current_level()};
+    if (!IsValid(level)) {
+        return;
+    }
+    auto const observer_camera{ml::editor::make_s7_observer_camera_transform(*level, *document_)};
+    if (!observer_camera || !observer_camera->IsSet()) {
+        return;
+    }
+
+    auto const& camera{observer_camera->GetValue()};
+    auto const camera_color{FLinearColor{1.0f, 0.8f, 0.2f}};
+    auto const focus_color{FLinearColor{0.75f, 0.35f, 1.0f}};
+    for (auto const target : document_->camera.targets) {
+        pdi->DrawLine(target->GetActorLocation(), camera.focus, focus_color, SDPG_Foreground, 2.0f);
+    }
+    pdi->DrawPoint(camera.focus, focus_color, 28.0f, SDPG_Foreground);
+    pdi->DrawPoint(camera.transform.GetLocation(), camera_color, 28.0f, SDPG_Foreground);
+    pdi->DrawLine(
+        camera.transform.GetLocation(), camera.focus, camera_color, SDPG_Foreground, 2.5f);
+
+    auto const direction{(camera.focus - camera.transform.GetLocation()).GetSafeNormal()};
+    auto const indicator_length{FMath::Clamp(document_->camera.distance * 0.05, 1000.0, 10000.0)};
+    pdi->DrawLine(camera.transform.GetLocation(),
+                  camera.transform.GetLocation() + direction * indicator_length,
+                  camera_color,
+                  SDPG_Foreground,
+                  4.0f);
 }
 
 void US7LevelAuthoringMode::DrawHUD(FEditorViewportClient* const viewport_client,
@@ -274,6 +315,27 @@ void US7LevelAuthoringMode::DrawHUD(FEditorViewportClient* const viewport_client
         label.EnableShadow(FLinearColor::Black);
         canvas->DrawItem(label);
     }
+
+    auto* const level{current_level()};
+    if (!IsValid(level)) {
+        return;
+    }
+    auto const observer_camera{ml::editor::make_s7_observer_camera_transform(*level, *document_)};
+    if (!observer_camera || !observer_camera->IsSet()) {
+        return;
+    }
+    auto const projected{view->Project(observer_camera->GetValue().transform.GetLocation())};
+    if (projected.W <= 0.0) {
+        return;
+    }
+    FCanvasTextItem camera_label{
+        FVector2D{viewport_size.X * 0.5 + viewport_size.X * 0.5 * projected.X,
+                  viewport_size.Y * 0.5 - viewport_size.Y * 0.5 * projected.Y},
+        LOCTEXT("ObserverCameraLabel", "Observer Camera"),
+        GEngine->GetSmallFont(),
+        FLinearColor{1.0f, 0.8f, 0.2f}};
+    camera_label.EnableShadow(FLinearColor::Black);
+    canvas->DrawItem(camera_label);
 }
 
 auto US7LevelAuthoringMode::document() const -> AS7LevelAuthoringDocument* {

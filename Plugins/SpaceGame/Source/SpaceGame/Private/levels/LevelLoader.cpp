@@ -1,5 +1,7 @@
 #include "SpaceGame/levels/LevelLoader.h"
 
+#include "SpaceGame/levels/ObserverCameraTransform.h"
+
 #include "LevelEntityTableOperations.h"
 
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
@@ -95,16 +97,17 @@ auto spawn_player(UWorld& world,
 auto initial_camera_transform(FLevelDefinition const& definition,
                               FLevelEntityTableConstView const& entities) -> FTransform {
     auto const& camera{definition.camera.GetValue()};
-    FVector focus{FVector::ZeroVector};
+    TArray<FVector> target_positions;
+    target_positions.Reserve(camera.target_entity_ids.Num());
     for (auto const target_id : camera.target_entity_ids) {
         auto const target_index{level_entity_table_detail::find_index(entities, target_id)};
         check(target_index != INDEX_NONE);
-        focus += level_entity_table_detail::get(entities, target_index).position;
+        target_positions.Add(level_entity_table_detail::get(entities, target_index).position);
     }
-    focus /= camera.target_entity_ids.Num();
-
-    auto const position{focus + camera.offset_direction.GetSafeNormal() * camera.distance};
-    return FTransform{(focus - position).Rotation(), position};
+    auto const transform{
+        make_observer_camera_transform(target_positions, camera.offset_direction, camera.distance)};
+    check(transform.IsSet());
+    return transform->transform;
 }
 
 auto spawn_initial_camera(UWorld& world,

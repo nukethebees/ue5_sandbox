@@ -2,6 +2,7 @@
 #include <SandboxEditor/levels/S7LevelAuthoringMode.h>
 #include <SandboxEditor/levels/S7LevelAuthoringPreview.h>
 #include <SandboxEditor/levels/S7LevelAuthoringSession.h>
+#include <SandboxEditor/levels/S7LevelObserverCamera.h>
 #include <SandboxEditor/levels/S7LevelReconciliation.h>
 #include <SandboxEditor/levels/S7LevelSourceSession.h>
 #include <SandboxEditor/SandboxEditor.h>
@@ -180,6 +181,76 @@ void assert_stale_preview_does_not_apply(TTestRunner& test_runner,
 
 TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
 {
+    TEST_METHOD(ObserverCameraTransformMatchesRuntimeCalculation)
+    {
+        auto fixture{make_preview_fixture()};
+        if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
+            return;
+        }
+
+        fixture.player->SetActorLocation(FVector{100.0, 200.0, 300.0});
+        fixture.enemy->SetActorLocation(FVector{700.0, 1000.0, 1300.0});
+        fixture.document->use_observer_camera = true;
+        fixture.document->camera.targets = {fixture.player};
+        fixture.document->camera.offset_direction = FVector{3.0, 4.0, 0.0};
+        fixture.document->camera.distance = 1000.0;
+
+        auto const one_target{ml::editor::make_s7_observer_camera_transform(
+            *fixture.world->GetCurrentLevel(), *fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Single-target observer camera is valid"),
+                                  one_target.has_value()) ||
+            !TestRunner->TestTrue(TEXT("Single-target transform is present"),
+                                  one_target && one_target->IsSet())) {
+            return;
+        }
+        auto const expected_one_target_position{FVector{700.0, 1000.0, 300.0}};
+        TestRunner->TestTrue(
+            TEXT("Single target determines focus"),
+            one_target->GetValue().focus.Equals(fixture.player->GetActorLocation(), 0.001));
+        TestRunner->TestTrue(TEXT("Offset direction is normalized before distance"),
+                             one_target->GetValue().transform.GetLocation().Equals(
+                                 expected_one_target_position, 0.001));
+        TestRunner->TestTrue(
+            TEXT("Observer camera looks back at focus"),
+            one_target->GetValue().transform.GetRotation().Rotator().Equals(
+                (one_target->GetValue().focus - expected_one_target_position).Rotation(), 0.001));
+
+        fixture.document->camera.targets = {fixture.player, fixture.enemy};
+        auto const multiple_targets{ml::editor::make_s7_observer_camera_transform(
+            *fixture.world->GetCurrentLevel(), *fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Multiple-target observer camera is valid"),
+                                  multiple_targets.has_value()) ||
+            !TestRunner->TestTrue(TEXT("Multiple-target transform is present"),
+                                  multiple_targets && multiple_targets->IsSet())) {
+            return;
+        }
+        auto const expected_focus{FVector{400.0, 600.0, 800.0}};
+        TestRunner->TestTrue(TEXT("Multiple targets average to focus"),
+                             multiple_targets->GetValue().focus.Equals(expected_focus, 0.001));
+        TestRunner->TestTrue(TEXT("Multiple-target camera position matches runtime formula"),
+                             multiple_targets->GetValue().transform.GetLocation().Equals(
+                                 FVector{1000.0, 1400.0, 800.0}, 0.001));
+
+        fixture.document->camera.targets.Reset();
+        auto const missing_targets{ml::editor::make_s7_observer_camera_transform(
+            *fixture.world->GetCurrentLevel(), *fixture.document)};
+        TestRunner->TestFalse(TEXT("Missing camera targets are rejected"),
+                              missing_targets.has_value());
+
+        fixture.document->camera.targets = {fixture.player};
+        fixture.document->camera.offset_direction = FVector::ZeroVector;
+        auto const invalid_direction{ml::editor::make_s7_observer_camera_transform(
+            *fixture.world->GetCurrentLevel(), *fixture.document)};
+        TestRunner->TestFalse(TEXT("Zero camera direction is rejected"),
+                              invalid_direction.has_value());
+
+        fixture.document->use_observer_camera = false;
+        auto const player_camera{ml::editor::make_s7_observer_camera_transform(
+            *fixture.world->GetCurrentLevel(), *fixture.document)};
+        TestRunner->TestTrue(TEXT("Player-authored levels have no observer visualization"),
+                             player_camera.has_value() && !player_camera->IsSet());
+    }
+
     TEST_METHOD(StalePreviewRejectsChangedSourceAndPath)
     {
         auto fixture{make_preview_fixture()};
