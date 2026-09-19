@@ -43,9 +43,10 @@ selection when inspecting another manifest or target:
 Use `--help` to list command-line options. Project-load and schema diagnostics are reported in the
 application and on standard error.
 
-Panel placement, dock split ratios, and text size are saved in the per-user application preferences
-directory and restored on the next launch. Use **View > Reset panel layout** to return to the
-default arrangement.
+Window size, panel placement, dock split ratios, and text size are saved in the per-user application
+preferences directory and restored on the next launch. Maximized, minimized, and fullscreen sizes
+do not replace the last normal window size. Use **View > Reset panel layout** to return to the
+default panel arrangement.
 
 ## Getting started
 

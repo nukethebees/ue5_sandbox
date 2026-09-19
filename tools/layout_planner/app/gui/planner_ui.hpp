@@ -19,11 +19,18 @@ struct ImGuiTextBuffer;
 
 namespace ioj::layout_planner {
 
+struct WindowSize {
+    int width{};
+    int height{};
+};
+
 class PlannerUi {
   public:
     explicit PlannerUi(layout::SchemaLoadResult loaded);
 
     void register_settings_handler();
+    auto saved_window_size() const -> std::optional<WindowSize>;
+    void remember_window_size(WindowSize size);
     auto draw() -> bool;
   private:
     static auto settings_read_open(ImGuiContext* context,
@@ -73,6 +80,8 @@ class PlannerUi {
     std::uint64_t variant_name_id_{std::numeric_limits<std::uint64_t>::max()};
     std::uint64_t next_variant_number_{1};
     float text_scale_{1.0F};
+    std::optional<int> window_width_;
+    std::optional<int> window_height_;
     bool dock_layout_initialized_{};
     bool reset_dock_layout_requested_{};
 };

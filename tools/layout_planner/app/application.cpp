@@ -30,6 +30,7 @@ class Application {
     auto run() -> int;
   private:
     void process_event(SDL_Event const& event);
+    void remember_window_size();
     void wait_for_events();
     auto render_frame() -> bool;
     static auto is_interaction_event(Uint32 type) -> bool;
@@ -87,34 +88,8 @@ auto Application::initialize() -> bool {
     }
     sdl_initialized_ = true;
 
-    auto const scale{SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay())};
-    auto const flags{SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY};
-    window_ = SDL_CreateWindow("Memory Layout Planner",
-                               static_cast<int>(1440.0F * scale),
-                               static_cast<int>(900.0F * scale),
-                               flags);
-    if (window_ == nullptr) {
-        std::fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
-        return false;
-    }
-    SDL_SetWindowPosition(window_, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
-
-    constexpr auto shader_formats{SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL |
-                                  SDL_GPU_SHADERFORMAT_MSL | SDL_GPU_SHADERFORMAT_METALLIB};
-    gpu_device_ = SDL_CreateGPUDevice(shader_formats, true, nullptr);
-    if (gpu_device_ == nullptr) {
-        std::fprintf(stderr, "SDL_CreateGPUDevice failed: %s\n", SDL_GetError());
-        return false;
-    }
-    if (!SDL_ClaimWindowForGPUDevice(gpu_device_, window_)) {
-        std::fprintf(stderr, "SDL_ClaimWindowForGPUDevice failed: %s\n", SDL_GetError());
-        return false;
-    }
-    if (!SDL_SetGPUSwapchainParameters(
-            gpu_device_, window_, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_VSYNC)) {
-        std::fprintf(stderr, "SDL_SetGPUSwapchainParameters failed: %s\n", SDL_GetError());
-        return false;
-    }
+    auto const primary_display{SDL_GetPrimaryDisplay()};
+    auto const scale{SDL_GetDisplayContentScale(primary_display)};
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -133,11 +108,51 @@ auto Application::initialize() -> bool {
         io.IniFilename = nullptr;
     }
     ui_.register_settings_handler();
+    if (io.IniFilename != nullptr) {
+        ImGui::LoadIniSettingsFromDisk(io.IniFilename);
+    }
     ImGui::StyleColorsDark();
     auto& style{ImGui::GetStyle()};
     style.ScaleAllSizes(scale);
     style.FontScaleDpi = scale;
     io.Fonts->AddFontDefaultVector();
+
+    auto window_size{ui_.saved_window_size().value_or(WindowSize{
+        .width = static_cast<int>(1440.0F * scale), .height = static_cast<int>(900.0F * scale)})};
+    SDL_Rect usable_bounds{};
+    if (SDL_GetDisplayUsableBounds(primary_display, &usable_bounds)) {
+        auto const minimum_width{std::min(640, usable_bounds.w)};
+        auto const minimum_height{std::min(480, usable_bounds.h)};
+        window_size.width = std::clamp(window_size.width, minimum_width, usable_bounds.w);
+        window_size.height = std::clamp(window_size.height, minimum_height, usable_bounds.h);
+    }
+
+    auto const flags{SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY};
+    window_ =
+        SDL_CreateWindow("Memory Layout Planner", window_size.width, window_size.height, flags);
+    if (window_ == nullptr) {
+        std::fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
+        return false;
+    }
+    ui_.remember_window_size(window_size);
+    SDL_SetWindowPosition(window_, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+
+    constexpr auto shader_formats{SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL |
+                                  SDL_GPU_SHADERFORMAT_MSL | SDL_GPU_SHADERFORMAT_METALLIB};
+    gpu_device_ = SDL_CreateGPUDevice(shader_formats, true, nullptr);
+    if (gpu_device_ == nullptr) {
+        std::fprintf(stderr, "SDL_CreateGPUDevice failed: %s\n", SDL_GetError());
+        return false;
+    }
+    if (!SDL_ClaimWindowForGPUDevice(gpu_device_, window_)) {
+        std::fprintf(stderr, "SDL_ClaimWindowForGPUDevice failed: %s\n", SDL_GetError());
+        return false;
+    }
+    if (!SDL_SetGPUSwapchainParameters(
+            gpu_device_, window_, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_VSYNC)) {
+        std::fprintf(stderr, "SDL_SetGPUSwapchainParameters failed: %s\n", SDL_GetError());
+        return false;
+    }
 
     if (!ImGui_ImplSDL3_InitForSDLGPU(window_)) {
         std::fprintf(stderr, "ImGui SDL3 platform initialization failed.\n");
@@ -188,6 +203,24 @@ void Application::process_event(SDL_Event const& event) {
     if (is_interaction_event(event.type)) {
         pacing_state_.last_interaction = std::chrono::steady_clock::now();
         pacing_state_.explicit_refresh = true;
+    }
+    if ((event.type == SDL_EVENT_WINDOW_RESIZED || event.type == SDL_EVENT_WINDOW_RESTORED) &&
+        event.window.windowID == SDL_GetWindowID(window_)) {
+        remember_window_size();
+    }
+}
+
+void Application::remember_window_size() {
+    auto const flags{SDL_GetWindowFlags(window_)};
+    constexpr auto excluded_states{SDL_WINDOW_FULLSCREEN | SDL_WINDOW_MAXIMIZED |
+                                   SDL_WINDOW_MINIMIZED};
+    if ((flags & excluded_states) != 0) {
+        return;
+    }
+
+    WindowSize size;
+    if (SDL_GetWindowSize(window_, &size.width, &size.height)) {
+        ui_.remember_window_size(size);
     }
 }
 

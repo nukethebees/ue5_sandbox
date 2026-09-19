@@ -18,6 +18,30 @@ namespace {
 using namespace layout;
 using namespace lispb::schema;
 
+auto parse_float_setting(std::string_view const line, std::string_view const prefix)
+    -> std::optional<float> {
+    if (!line.starts_with(prefix)) {
+        return std::nullopt;
+    }
+    auto const value{line.substr(prefix.size())};
+    float parsed{};
+    auto const [end, error]{std::from_chars(value.data(), value.data() + value.size(), parsed)};
+    return error == std::errc{} && end == value.data() + value.size() ? std::optional{parsed}
+                                                                      : std::nullopt;
+}
+
+auto parse_int_setting(std::string_view const line, std::string_view const prefix)
+    -> std::optional<int> {
+    if (!line.starts_with(prefix)) {
+        return std::nullopt;
+    }
+    auto const value{line.substr(prefix.size())};
+    int parsed{};
+    auto const [end, error]{std::from_chars(value.data(), value.data() + value.size(), parsed)};
+    return error == std::errc{} && end == value.data() + value.size() ? std::optional{parsed}
+                                                                      : std::nullopt;
+}
+
 } // namespace
 
 PlannerUi::PlannerUi(SchemaLoadResult loaded)
@@ -49,6 +73,24 @@ void PlannerUi::register_settings_handler() {
     ImGui::AddSettingsHandler(&handler);
 }
 
+auto PlannerUi::saved_window_size() const -> std::optional<WindowSize> {
+    if (!window_width_.has_value() || !window_height_.has_value() || *window_width_ <= 0 ||
+        *window_height_ <= 0) {
+        return std::nullopt;
+    }
+    return WindowSize{.width = *window_width_, .height = *window_height_};
+}
+
+void PlannerUi::remember_window_size(WindowSize const size) {
+    if (size.width <= 0 || size.height <= 0 ||
+        (window_width_ == size.width && window_height_ == size.height)) {
+        return;
+    }
+    window_width_ = size.width;
+    window_height_ = size.height;
+    ImGui::MarkIniSettingsDirty();
+}
+
 auto PlannerUi::settings_read_open(ImGuiContext*, ImGuiSettingsHandler* handler, char const* name)
     -> void* {
     return std::strcmp(name, "Settings") == 0 ? handler->UserData : nullptr;
@@ -59,17 +101,17 @@ void PlannerUi::settings_read_line(ImGuiContext*,
                                    void* entry,
                                    char const* line) {
     auto* ui{static_cast<PlannerUi*>(entry)};
-    constexpr std::string_view prefix{"TextScale="};
-    auto value{std::string_view{line}};
-    if (!value.starts_with(prefix)) {
+    auto const value{std::string_view{line}};
+    if (auto const text_scale{parse_float_setting(value, "TextScale=")}) {
+        ui->text_scale_ = std::clamp(*text_scale, 0.75F, 1.75F);
         return;
     }
-    value.remove_prefix(prefix.size());
-
-    float text_scale{};
-    auto const [end, error]{std::from_chars(value.data(), value.data() + value.size(), text_scale)};
-    if (error == std::errc{} && end == value.data() + value.size()) {
-        ui->text_scale_ = std::clamp(text_scale, 0.75F, 1.75F);
+    if (auto const width{parse_int_setting(value, "WindowWidth=")}) {
+        ui->window_width_ = *width;
+        return;
+    }
+    if (auto const height{parse_int_setting(value, "WindowHeight=")}) {
+        ui->window_height_ = *height;
     }
 }
 
@@ -78,7 +120,12 @@ void PlannerUi::settings_write_all(ImGuiContext*,
                                    ImGuiTextBuffer* output) {
     auto const* ui{static_cast<PlannerUi const*>(handler->UserData)};
     output->appendf("[%s][Settings]\n", handler->TypeName);
-    output->appendf("TextScale=%g\n\n", ui->text_scale_);
+    output->appendf("TextScale=%g\n", ui->text_scale_);
+    if (auto const size{ui->saved_window_size()}) {
+        output->appendf("WindowWidth=%d\n", size->width);
+        output->appendf("WindowHeight=%d\n", size->height);
+    }
+    output->append("\n");
 }
 
 auto PlannerUi::draw() -> bool {
