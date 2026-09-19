@@ -3,6 +3,7 @@
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/system_read_views.h>
 #include <ioj/sim/turret_spawn_data.h>
+#include <sandbox/core/frame_memory_resource.h>
 #include <span>
 #include <vector>
 
@@ -38,8 +39,7 @@ struct Sim {
         HealthTable& health_table,
         AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
-        lasers::Sim& laser_simulation,
-        std::pmr::memory_resource& frame_memory_resource) noexcept;
+        lasers::Sim& laser_simulation) noexcept;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -78,8 +78,8 @@ struct Sim {
     /* **************************************** */
     void begin_play();
     void prepare_tick(float dt);
-    void think(float dt);
-    void generate_fire_commands();
+    void think(float dt, ml::FrameScratch& scratch);
+    void generate_fire_commands(ml::FrameScratch& scratch);
     void resolve_damage_events();
     void publish_deaths();
     void cleanup_entities();
@@ -98,8 +98,8 @@ struct Sim {
     /* **************************************** */
     // Searching
     /* **************************************** */
-    void perform_search();
-    void refresh_target_data();
+    void perform_search(ml::FrameScratch& scratch);
+    void refresh_target_data(ml::FrameScratch& scratch);
     void perform_search_on_slice(std::int32_t job_index,
                                  std::int32_t n_turrets,
                                  std::int32_t turrets_per_job,
@@ -108,7 +108,7 @@ struct Sim {
     /* **************************************** */
     // Attacking
     /* **************************************** */
-    void fire_at_enemies();
+    void fire_at_enemies(ml::FrameScratch& scratch);
     auto get_disengage_radius() const -> float;
 
     /* **************************************** */
@@ -134,7 +134,6 @@ struct Sim {
     AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
     lasers::Sim& laser_simulation;
-    std::pmr::memory_resource& frame_memory_resource;
     EntityStorage entities{};
     EntityDeathInfo entity_death_info;
     std::vector<EntityFrameChange> frame_changes_;

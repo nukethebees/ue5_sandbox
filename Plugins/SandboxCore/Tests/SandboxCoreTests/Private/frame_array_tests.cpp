@@ -95,7 +95,7 @@ struct FMoveOnlyValue {
 TEST_CASE("SandboxCore.TFrameArray has fixed identity and an int32 size API") {
     using FArray = ml::TFrameArray<int32>;
 
-    static_assert(std::is_default_constructible_v<FArray>);
+    static_assert(!std::is_default_constructible_v<FArray>);
     static_assert(std::is_constructible_v<FArray, std::pmr::memory_resource*>);
     static_assert(!std::is_copy_constructible_v<FArray>);
     static_assert(!std::is_copy_assignable_v<FArray>);
@@ -105,8 +105,8 @@ TEST_CASE("SandboxCore.TFrameArray has fixed identity and an int32 size API") {
     static_assert(std::is_same_v<decltype(&FArray::reserve), void (FArray::*)(int32)>);
 }
 
-TEST_CASE("SandboxCore.TFrameArray default construction exposes an empty active range") {
-    ml::TFrameArray<int32> values{};
+TEST_CASE("SandboxCore.TFrameArray construction exposes an empty active range") {
+    ml::TFrameArray<int32> values{std::pmr::new_delete_resource()};
     auto const& const_values{values};
 
     CHECK(values.num() == 0);
@@ -123,7 +123,7 @@ TEST_CASE("SandboxCore.TFrameArray add copies and moves values") {
     FTrackedValue::reset_counts();
 
     {
-        ml::TFrameArray<FTrackedValue> values{};
+        ml::TFrameArray<FTrackedValue> values{std::pmr::new_delete_resource()};
         values.reserve(2);
         FTrackedValue copied_source{10};
         FTrackedValue moved_source{20};
@@ -148,7 +148,7 @@ TEST_CASE("SandboxCore.TFrameArray add copies and moves values") {
 }
 
 TEST_CASE("SandboxCore.TFrameArray emplace constructs non-trivial values in place") {
-    ml::TFrameArray<FEmplacedValue> values{};
+    ml::TFrameArray<FEmplacedValue> values{std::pmr::new_delete_resource()};
     values.reserve(2);
 
     auto& first{values.emplace(7, TEXT("alpha"))};
@@ -163,7 +163,7 @@ TEST_CASE("SandboxCore.TFrameArray emplace constructs non-trivial values in plac
 }
 
 TEST_CASE("SandboxCore.TFrameArray indexing preserves order and supports mutation") {
-    ml::TFrameArray<int32> values{};
+    ml::TFrameArray<int32> values{std::pmr::new_delete_resource()};
     values.add(10);
     values.add(20);
     values.add(30);
@@ -180,7 +180,7 @@ TEST_CASE("SandboxCore.TFrameArray indexing preserves order and supports mutatio
 }
 
 TEST_CASE("SandboxCore.TFrameArray reserve stabilises storage and clear permits reuse") {
-    ml::TFrameArray<int32> values{};
+    ml::TFrameArray<int32> values{std::pmr::new_delete_resource()};
     values.reserve(4);
 
     values.add(10);
@@ -207,7 +207,7 @@ TEST_CASE("SandboxCore.TFrameArray reserve stabilises storage and clear permits 
 }
 
 TEST_CASE("SandboxCore.TFrameArray named and implicit views preserve constness") {
-    ml::TFrameArray<int32> values{};
+    ml::TFrameArray<int32> values{std::pmr::new_delete_resource()};
     values.add(10);
     values.add(20);
     auto const& const_values{values};
@@ -235,7 +235,7 @@ TEST_CASE("SandboxCore.TFrameArray named and implicit views preserve constness")
 }
 
 TEST_CASE("SandboxCore.TFrameArray range iteration is mutable and const-correct") {
-    ml::TFrameArray<int32> values{};
+    ml::TFrameArray<int32> values{std::pmr::new_delete_resource()};
     values.add(1);
     values.add(2);
     values.add(3);
@@ -260,7 +260,7 @@ TEST_CASE("SandboxCore.TFrameArray clear destroys every active element exactly o
     FTrackedValue::reset_counts();
 
     {
-        ml::TFrameArray<FTrackedValue> values{};
+        ml::TFrameArray<FTrackedValue> values{std::pmr::new_delete_resource()};
         values.reserve(3);
         values.emplace(10);
         values.emplace(20);
@@ -284,7 +284,7 @@ TEST_CASE("SandboxCore.TFrameArray destruction destroys every active element exa
     FTrackedValue::reset_counts();
 
     {
-        ml::TFrameArray<FTrackedValue> values{};
+        ml::TFrameArray<FTrackedValue> values{std::pmr::new_delete_resource()};
         values.reserve(3);
         values.emplace(10);
         values.emplace(20);
@@ -299,7 +299,7 @@ TEST_CASE("SandboxCore.TFrameArray destruction destroys every active element exa
 }
 
 TEST_CASE("SandboxCore.TFrameArray supports move-only element types") {
-    ml::TFrameArray<FMoveOnlyValue> values{};
+    ml::TFrameArray<FMoveOnlyValue> values{std::pmr::new_delete_resource()};
     values.reserve(2);
     FMoveOnlyValue source{10};
 
@@ -313,7 +313,7 @@ TEST_CASE("SandboxCore.TFrameArray supports move-only element types") {
 }
 
 TEST_CASE("SandboxCore.TFrameArray resizes and removes without changing identity") {
-    ml::TFrameArray<int32> values{};
+    ml::TFrameArray<int32> values{std::pmr::new_delete_resource()};
     values.set_num(3);
     values[0] = 10;
     values[1] = 20;
@@ -335,7 +335,7 @@ TEST_CASE("SandboxCore.TFrameArray preserves values through repeated growth") {
 
     int32 storage_change_count{0};
     {
-        ml::TFrameArray<FTrackedValue> values{};
+        ml::TFrameArray<FTrackedValue> values{std::pmr::new_delete_resource()};
         FTrackedValue* previous_data{values.data()};
 
         for (int32 i{0}; i < element_count; ++i) {
@@ -377,7 +377,7 @@ TEST_CASE("SandboxCore.TFrameArray accepts a borrowed standard memory resource")
 
 TEST_CASE("SandboxCore.TFrameArray handles practical int32 count conversions") {
     static constexpr int32 element_count{static_cast<int32>(std::numeric_limits<uint16>::max()) + 1};
-    ml::TFrameArray<int32> values{};
+    ml::TFrameArray<int32> values{std::pmr::new_delete_resource()};
 
     values.reserve(0);
     values.reserve(element_count);

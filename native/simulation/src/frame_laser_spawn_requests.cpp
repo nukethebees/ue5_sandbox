@@ -13,15 +13,15 @@ auto FrameSpawnRequests::get_const_view() const -> lasers::SpawnRequestsConstVie
             instigator_ids.view(),
             sources.view()};
 }
-FrameSpawnRequests::FrameSpawnRequests(std::pmr::memory_resource* const resource)
-    : locations{resource}
-    , rotations{resource}
-    , base_velocities{resource}
-    , damages{resource}
-    , speeds{resource}
-    , max_distances{resource}
-    , instigator_ids{resource}
-    , sources{resource} {}
+FrameSpawnRequests::FrameSpawnRequests(ml::FrameScratch& scratch)
+    : locations{scratch}
+    , rotations{scratch}
+    , base_velocities{scratch}
+    , damages{&scratch}
+    , speeds{&scratch}
+    , max_distances{&scratch}
+    , instigator_ids{&scratch}
+    , sources{&scratch} {}
 
 void FrameSpawnRequests::reserve(std::int32_t const count) {
     locations.reserve(count);

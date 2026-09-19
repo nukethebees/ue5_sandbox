@@ -14,9 +14,6 @@ namespace ml {
 template <typename T>
 class FrameArray {
   public:
-    FrameArray()
-        : FrameArray{std::pmr::new_delete_resource()} {}
-
     explicit FrameArray(std::pmr::memory_resource* const resource)
         : values_{checked_resource(resource)} {}
 

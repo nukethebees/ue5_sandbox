@@ -4,10 +4,10 @@
 #include <ioj/sim/damage_queue.h>
 #include <ioj/sim/entity_death_info.h>
 #include <ioj/sim/entity_ledger.h>
+#include <sandbox/core/frame_memory_resource.h>
 
 #include <array>
 #include <gtest/gtest.h>
-#include <memory_resource>
 #include <utility>
 #include <vector>
 
@@ -41,8 +41,12 @@ TEST(DamageQueue, GroupsMixedOwnerEventsAndFiltersRetiredRecipients) {
     queue.append(second.get_const_view());
     first.damage_amounts[0] = 999;
 
-    std::pmr::monotonic_buffer_resource scratch;
-    queue.prepare(indexes, scratch);
+    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
+    ml::FrameMemoryResource frame_memory{backing};
+    {
+        ml::FrameScratchScope scratch_scope{frame_memory};
+        queue.prepare(indexes, scratch_scope.scratch());
+    }
 
     auto const turret_events{queue.events_for(EntityType::Turret)};
     ASSERT_EQ(turret_events.num(), 1);
@@ -92,8 +96,12 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     auto const fighter_type{std::to_underlying(EntityType::Fighter)};
     EXPECT_EQ(ledger.get_combat_telemetry().hits[red][turret_type], 0u);
 
-    std::pmr::monotonic_buffer_resource scratch;
-    events.prepare(indexes, scratch);
+    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 4096> backing;
+    ml::FrameMemoryResource frame_memory{backing};
+    {
+        ml::FrameScratchScope scratch_scope{frame_memory};
+        events.prepare(indexes, scratch_scope.scratch());
+    }
     ASSERT_EQ(events.all_events().num(), 3);
 
     std::array ids{victim};

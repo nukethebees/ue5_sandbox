@@ -3,13 +3,13 @@
 #include "ioj/sim/rotator_types.h"
 #include "ioj/sim/rotators3f.h"
 #include "sandbox/core/frame_array.h"
+#include "sandbox/core/frame_memory_resource.h"
 
 #include <cstdint>
-#include <memory_resource>
 
 namespace ioj::sim {
 struct FrameRotators3f {
-    explicit FrameRotators3f(std::pmr::memory_resource* resource);
+    explicit FrameRotators3f(ml::FrameScratch& scratch);
 
     FrameRotators3f(FrameRotators3f const&) = delete;
     FrameRotators3f(FrameRotators3f&&) = delete;

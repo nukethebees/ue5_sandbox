@@ -16,7 +16,7 @@ class PhaseInterface {
 
     void think(float const dt);
 
-    void apply_movement();
+    void apply_movement(ml::FrameScratch& scratch);
 
     void generate_fire_commands();
 

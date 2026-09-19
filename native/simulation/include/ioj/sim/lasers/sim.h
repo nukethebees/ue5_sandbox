@@ -11,7 +11,7 @@
 #include <ioj/sim/lasers/frame_scratch.h>
 #include <ioj/sim/sim_clock.h>
 
-#include <memory_resource>
+#include <sandbox/core/frame_memory_resource.h>
 
 namespace ioj::sim {
 class CombatEvents;
@@ -32,8 +32,7 @@ struct Sim {
     /* **************************************** */
     Sim(SimClock const& clock,
         CombatEvents& combat_events,
-        SpatialQueryManager& query_manager,
-        std::pmr::memory_resource& frame_memory_resource) noexcept;
+        SpatialQueryManager& query_manager) noexcept;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -65,7 +64,7 @@ struct Sim {
     void begin_play();
     void commit_spawns();
     void cleanup_entities();
-    void simulate(float dt);
+    void simulate(float dt, ml::FrameScratch& scratch);
     void finish_action();
 
     /* **************************************** */
@@ -77,9 +76,9 @@ struct Sim {
     /* **************************************** */
     // Movement and collision
     /* **************************************** */
-    void expire_instances(float dt);
+    void expire_instances(float dt, ml::FrameScratch& scratch);
     void update_locations(float dt);
-    void handle_collisions(float dt);
+    void handle_collisions(float dt, ml::FrameScratch& scratch);
     void remove_instances(std::span<std::int32_t const> indices);
 
     /* **************************************** */
@@ -92,7 +91,6 @@ struct Sim {
 
     CombatEvents& combat_events;
     SpatialQueryManager& query_manager;
-    std::pmr::memory_resource& frame_memory_resource;
     SimClock const& simulation_clock;
     LaserSimConfig config{};
 

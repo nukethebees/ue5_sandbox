@@ -186,15 +186,13 @@ Sim::Sim(SimClock const& clock,
          HealthTable& health_table,
          AgentAccessor const& agents,
          SpatialQueryManager const& in_spatial_query_manager,
-         lasers::Sim& in_laser_simulation,
-         std::pmr::memory_resource& in_frame_memory_resource) noexcept
+         lasers::Sim& in_laser_simulation) noexcept
     : simulation_clock{clock}
     , ledger_{ledger}
     , combat_events_{combat_events}
     , health_table_{health_table}
     , agents_{agents}
     , spatial_query_manager{in_spatial_query_manager}
-    , frame_memory_resource{in_frame_memory_resource}
     , laser_simulation{in_laser_simulation} {}
 
 /* **************************************** */
@@ -292,8 +290,8 @@ void Sim::prepare_tick(float const dt) {
     }
     ml::tick_countdowns<std::int16_t>(data.attack_cooldowns, attack_cleaner_, 16384);
 }
-void Sim::think(float const dt) {
-    refresh_target_data();
+void Sim::think(float const dt, ml::FrameScratch& scratch) {
+    refresh_target_data(scratch);
     SANDBOX_PROFILE_SCOPE("fighters::Sim::think");
 
     auto const data{entity_buffers.current().get_view().columns()};
@@ -344,10 +342,10 @@ void Sim::think(float const dt) {
             }
         }
     }
-    refresh_target_data();
-    plan_movement(dt);
+    refresh_target_data(scratch);
+    plan_movement(dt, scratch);
 }
-void Sim::plan_movement(float const dt) {
+void Sim::plan_movement(float const dt, ml::FrameScratch& scratch) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::plan_movement");
 
     auto const d_turn{std::min(1.f, config.turn_speed_unitless * dt)};
@@ -421,7 +419,7 @@ void Sim::plan_movement(float const dt) {
                                             destinations.ys,
                                             destinations.zs,
                                             data.num());
-    update_navigation_steering();
+    update_navigation_steering(scratch);
     if (do_move) {
         auto const& movement_directions{move_view.movement_directions};
         lerp_in_place(move_view.planned_aim_directions, movement_directions, d_turn);
@@ -456,7 +454,7 @@ void Sim::plan_movement(float const dt) {
         attack_view.target_distances[index] = std::sqrt(distance_sq);
     }
 }
-void Sim::apply_movement() {
+void Sim::apply_movement(ml::FrameScratch& scratch) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::apply_movement");
     auto const data{entity_buffers.current().get_view().columns()};
     collision_dirty_entities_.clear();
@@ -476,13 +474,13 @@ void Sim::apply_movement() {
     }
     data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
     copy_vectors(data.aim_directions, data.planned_aim_directions.get_const_view());
-    move(movement_tick_period_, get_task_view(Task::MoveToDestination));
-    move(movement_tick_period_, get_task_view(Task::Attack));
+    move(movement_tick_period_, get_task_view(Task::MoveToDestination), scratch);
+    move(movement_tick_period_, get_task_view(Task::Attack), scratch);
     std::ranges::sort(collision_dirty_entities_);
     auto const duplicates{std::ranges::unique(collision_dirty_entities_)};
     collision_dirty_entities_.erase(duplicates.begin(), duplicates.end());
 
-    lasers::FrameSpawnRequests requests{&frame_memory_resource};
+    lasers::FrameSpawnRequests requests{scratch};
     for (auto const index : pending_fire_indices_) {
         auto const direction{data.aim_directions[index]};
         requests.add(data.locations[index] + direction * fire_point_distance_,
@@ -497,9 +495,9 @@ void Sim::apply_movement() {
     laser_simulation.queue_laser_spawns(requests.get_const_view());
     pending_fire_indices_.clear();
 }
-void Sim::generate_fire_commands() {
+void Sim::generate_fire_commands(ml::FrameScratch& scratch) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::generate_fire_commands");
-    handle_firing(get_task_view(Task::Attack));
+    handle_firing(get_task_view(Task::Attack), scratch);
 }
 void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::resolve_damage_events");
@@ -566,11 +564,11 @@ void Sim::finish_action() {
 /* **************************************** */
 // Movement
 /* **************************************** */
-void Sim::move(float const dt, TaskView const& fighters) {
+void Sim::move(float const dt, TaskView const& fighters, ml::FrameScratch& scratch) {
     assert(dt > 0.f);
     auto const count{fighters.num()};
     auto const directions{fighters.movement_directions.get_const_view()};
-    FrameVectors3f previous_locations{&frame_memory_resource};
+    FrameVectors3f previous_locations{scratch};
     previous_locations.set_num(count);
     copy_vectors(previous_locations.get_view(), fighters.locations.get_const_view());
     for (std::int32_t index{}; index < count; ++index) {
@@ -597,7 +595,7 @@ void Sim::move(float const dt, TaskView const& fighters) {
         }
     }
 }
-void Sim::update_navigation_steering() {
+void Sim::update_navigation_steering(ml::FrameScratch& frame_scratch) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::update_navigation_steering");
 
     auto const clearance{collision_radius_ + config.avoidance_clearance_buffer};
@@ -609,7 +607,7 @@ void Sim::update_navigation_steering() {
                            simulation_clock.get_tick_period())};
     auto const safe_progress_time{active_update_interval * 1.25f};
     navigation_telemetry = {};
-    NavigationScratch scratch{&frame_memory_resource};
+    NavigationScratch scratch{frame_scratch};
 
     // Only expired countdowns observe the world. Held steering is applied to every mover.
     collect_navigation_updates(scratch);
@@ -1074,11 +1072,11 @@ void Sim::set_target_id_unchecked(std::int32_t const fighter_index,
 void Sim::set_target_id(EntityUniqueId const fighter, EntityUniqueId const new_target) noexcept {
     set_target_id_unchecked(find_index(fighter), new_target);
 }
-void Sim::refresh_target_data() {
+void Sim::refresh_target_data(ml::FrameScratch& scratch) {
     auto const data{entity_buffers.current().get_view().columns()};
     auto const count{data.num()};
-    ml::FrameArray<std::int32_t> order{&frame_memory_resource};
-    ml::FrameArray<std::uint8_t> alive{&frame_memory_resource};
+    ml::FrameArray<std::int32_t> order{&scratch};
+    ml::FrameArray<std::uint8_t> alive{&scratch};
     order.set_num(count);
     alive.set_num(count);
     for (std::int32_t index{}; index < count; ++index) {
@@ -1304,7 +1302,7 @@ void Sim::remove_dead_entities() {
 /* **************************************** */
 // Combat
 /* **************************************** */
-void Sim::handle_firing(TaskView const& data) {
+void Sim::handle_firing(TaskView const& data, ml::FrameScratch& scratch) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::handle_firing");
 
     auto predicted_location = [&data](std::int32_t const index) {
@@ -1319,14 +1317,14 @@ void Sim::handle_firing(TaskView const& data) {
                                        config.attack_distance_band.desired_ratio};
     auto const arrival_distance{config.arrival_distance};
     auto const attack_position_arrival_distance_sq{arrival_distance * arrival_distance};
-    ml::FrameArray<float> aiming_dot_products{&frame_memory_resource};
-    ml::FrameArray<std::int32_t> can_fire{&frame_memory_resource};
-    FrameVectors3f line_of_sight_starts{&frame_memory_resource};
-    FrameVectors3f line_of_sight_ends{&frame_memory_resource};
-    ml::FrameArray<std::uint8_t> line_of_sight_results{&frame_memory_resource};
-    ml::FrameArray<EntityUniqueId> firing_ignored_entities{&frame_memory_resource};
-    ml::FrameArray<std::int32_t> firing_position_fighter_indices{&frame_memory_resource};
-    FrameVectors3f firing_position_candidates{&frame_memory_resource};
+    ml::FrameArray<float> aiming_dot_products{&scratch};
+    ml::FrameArray<std::int32_t> can_fire{&scratch};
+    FrameVectors3f line_of_sight_starts{scratch};
+    FrameVectors3f line_of_sight_ends{scratch};
+    ml::FrameArray<std::uint8_t> line_of_sight_results{&scratch};
+    ml::FrameArray<EntityUniqueId> firing_ignored_entities{&scratch};
+    ml::FrameArray<std::int32_t> firing_position_fighter_indices{&scratch};
+    FrameVectors3f firing_position_candidates{scratch};
 
     firing_position_fighter_indices.reserve(n_ships);
     firing_position_candidates.reserve(n_ships);

@@ -12,7 +12,7 @@ class PhaseInterface {
 
     void begin_play();
 
-    void simulate(float const dt);
+    void simulate(float const dt, ml::FrameScratch& scratch);
 
     void commit_spawns();
 

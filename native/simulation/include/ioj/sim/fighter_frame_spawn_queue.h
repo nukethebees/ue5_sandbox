@@ -4,10 +4,11 @@
 #include "ioj/sim/frame_rotators3f.h"
 #include "ioj/sim/frame_vectors3f.h"
 #include "sandbox/core/frame_array.h"
+#include "sandbox/core/frame_memory_resource.h"
 
 namespace ioj::sim::fighters {
 struct FrameSpawnQueue {
-    explicit FrameSpawnQueue(std::pmr::memory_resource* resource);
+    explicit FrameSpawnQueue(ml::FrameScratch& scratch);
     void reserve(std::int32_t count);
     void clear();
     void add(Vector3f location,

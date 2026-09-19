@@ -17,8 +17,8 @@ void PhaseInterface::prepare_tick(float const dt) {
     simulation.prepare_tick(dt);
 }
 
-void PhaseInterface::think(float const dt) {
-    simulation.think(dt);
+void PhaseInterface::think(float const dt, ml::FrameScratch& scratch) {
+    simulation.think(dt, scratch);
 }
 
 void PhaseInterface::resolve_damage_events() {

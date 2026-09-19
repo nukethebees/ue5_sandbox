@@ -9,7 +9,6 @@
 #include <ioj/sim/level_telemetry_manager.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spatial_query_manager.h>
-#include <sandbox/core/frame_memory_resource.h>
 
 namespace ioj::sim {
 
@@ -42,8 +41,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     HealthTable health_table;
     AgentAccessor agents{indexes, health_table};
     SpatialQueryManager spatial_queries{agents};
-    ml::FrameMemoryResource frame_memory{1024 * 1024};
-    lasers::Sim lasers{clock, combat_events, spatial_queries, frame_memory};
+    lasers::Sim lasers{clock, combat_events, spatial_queries};
     GameMemory game_memory{{.root_capacity_bytes = 2u * 1024u * 1024u}};
     LevelTelemetryManager telemetry_manager{
         clock,

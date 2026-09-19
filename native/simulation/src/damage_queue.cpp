@@ -3,7 +3,7 @@
 #include <sandbox/core/frame_array.h>
 
 namespace ioj::sim {
-void DamageQueue::prepare(AgentIndexes const& indexes, std::pmr::memory_resource& scratch) {
+void DamageQueue::prepare(AgentIndexes const& indexes, ml::FrameScratch& scratch) {
     SANDBOX_PROFILE_SCOPE("DamageQueue::prepare");
     spans_ = {};
     auto const count{events_.num()};

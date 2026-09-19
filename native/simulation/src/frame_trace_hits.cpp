@@ -1,11 +1,11 @@
 #include "ioj/sim/frame_trace_hits.h"
 
 namespace ioj::sim {
-FrameTraceHits::FrameTraceHits(std::pmr::memory_resource* const resource)
-    : locations{resource}
-    , entities{resource}
-    , static_geometry_indices{resource}
-    , hits{resource} {}
+FrameTraceHits::FrameTraceHits(ml::FrameScratch& scratch)
+    : locations{scratch}
+    , entities{&scratch}
+    , static_geometry_indices{&scratch}
+    , hits{&scratch} {}
 
 void FrameTraceHits::set_num(std::int32_t const count) {
     locations.set_num(count);

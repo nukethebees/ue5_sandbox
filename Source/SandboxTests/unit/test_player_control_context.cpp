@@ -24,8 +24,6 @@
 #include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
 #include <SpaceGameSimulation/ships/common/LaserFiringState.h>
 
-#include <SandboxCore/frame_memory_resource.h>
-
 #include <Camera/CameraActor.h>
 #include <CQTest.h>
 #include <Engine/Engine.h>
@@ -763,8 +761,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         ::ioj::sim::HealthTable health_table;
         ::ioj::sim::AgentAccessor agents{indexes, health_table};
         ::ioj::sim::SpatialQueryManager queries{agents};
-        ml::FFrameMemoryResource frame_memory{1024 * 1024};
-        ::ioj::sim::lasers::Sim lasers{clock, combat_events, queries, frame_memory};
+        ::ioj::sim::lasers::Sim lasers{clock, combat_events, queries};
         ::ioj::sim::player::Sim simulation{
             clock, ledger, combat_events, health_table, queries, lasers};
         simulation.start_sampling();
@@ -795,8 +792,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         ::ioj::sim::HealthTable health_table;
         ::ioj::sim::AgentAccessor agents{indexes, health_table};
         ::ioj::sim::SpatialQueryManager queries{agents};
-        ml::FFrameMemoryResource frame_memory{1024 * 1024};
-        ::ioj::sim::lasers::Sim lasers{clock, combat_events, queries, frame_memory};
+        ::ioj::sim::lasers::Sim lasers{clock, combat_events, queries};
         ::ioj::sim::player::Sim simulation{
             clock, ledger, combat_events, health_table, queries, lasers};
         ::ioj::sim::PlayerSimConfig config;
@@ -1070,8 +1066,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         ::ioj::sim::HealthTable health_table;
         ::ioj::sim::AgentAccessor agents{indexes, health_table};
         ::ioj::sim::SpatialQueryManager queries{agents};
-        ml::FFrameMemoryResource frame_memory{1024 * 1024};
-        ::ioj::sim::lasers::Sim lasers{clock, combat_events, queries, frame_memory};
+        ::ioj::sim::lasers::Sim lasers{clock, combat_events, queries};
         ::ioj::sim::player::Sim simulation{
             clock, ledger, combat_events, health_table, queries, lasers};
         ::ioj::sim::player::CommandInterface commands{simulation};

@@ -87,6 +87,32 @@ void kill_enemy(LevelSim& simulation) {
 }
 }
 
+TEST(NativeSimulation, LevelSimFrameMemoryUsesAndReturnsGameMemoryBlock) {
+    constexpr std::size_t frame_capacity{1024 * 1024};
+    GameMemory memory{{.root_capacity_bytes = frame_capacity * 2}};
+    auto const* const backing_address{memory.backing_address()};
+    auto data{make_battle()};
+    data.game_memory = &memory;
+    data.frame_memory_capacity_bytes = frame_capacity;
+
+    {
+        LevelSim simulation{std::move(data)};
+        auto const stats{memory.get_stats()};
+        EXPECT_EQ(stats.live_block_count, 1);
+        EXPECT_EQ(stats.live_block_bytes, frame_capacity);
+        EXPECT_EQ(stats.claimed_bytes, frame_capacity);
+        EXPECT_EQ(simulation.get_frame_memory_stats().capacity_bytes, frame_capacity);
+    }
+
+    auto const released{memory.get_stats()};
+    EXPECT_EQ(released.live_block_count, 0);
+    EXPECT_EQ(released.live_block_bytes, 0u);
+    EXPECT_EQ(released.reusable_range_count, 1);
+
+    auto reused{memory.acquire_block(frame_capacity, ml::FrameMemoryResource::backing_alignment)};
+    EXPECT_EQ(reused.data(), backing_address);
+}
+
 TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     auto data{make_battle()};
     data.telemetry_metadata.emplace();

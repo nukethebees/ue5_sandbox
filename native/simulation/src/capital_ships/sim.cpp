@@ -34,14 +34,12 @@ Sim::Sim(EntityLedger& ledger,
          HealthTable& health_table,
          AgentAccessor const& agents,
          SpatialQueryManager const& in_spatial_query_manager,
-         fighters::Sim& fighters,
-         std::pmr::memory_resource& in_frame_memory_resource)
+         fighters::Sim& fighters)
     : ledger_{ledger}
     , combat_events_{combat_events}
     , health_table_{health_table}
     , agents_{agents}
     , spatial_query_manager{in_spatial_query_manager}
-    , frame_memory_resource{in_frame_memory_resource}
     , fighters_interface{fighters} {}
 
 /* **************************************** */
@@ -60,7 +58,7 @@ void Sim::prepare_tick(float const dt) {
     auto const entities{this->entities.get_view().columns()};
     ml::tick_countdowns(entities.fighter_spawn_timers, dt);
 }
-void Sim::think(float const) {
+void Sim::think(float const, ml::FrameScratch& scratch) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::think");
 
     auto const entities{this->entities.get_view().columns()};
@@ -69,7 +67,7 @@ void Sim::think(float const) {
             target = {};
         }
     }
-    ml::FrameArray<std::int32_t> indices_without_targets{&frame_memory_resource};
+    ml::FrameArray<std::int32_t> indices_without_targets{&scratch};
     auto const n_capitals{static_cast<std::int32_t>(entities.target_ids.size())};
     indices_without_targets.reserve(n_capitals);
     for (std::int32_t index{}; index < n_capitals; ++index) {
@@ -81,7 +79,7 @@ void Sim::think(float const) {
         entities.target_ids[index] = spatial_query_manager.get_any_non_team_entity(
             entities.teams[index], EntityType::CapitalShip);
     }
-    queue_fighter_spawns();
+    queue_fighter_spawns(scratch);
     queue_fighter_orders();
 }
 void Sim::resolve_fighters_of_dying_capitals() {
@@ -235,14 +233,14 @@ void Sim::spawn_ships(CapitalSpawnDataConstView const spawn_data) {
 auto Sim::get_fighter_spawn_slots() const noexcept -> std::int32_t {
     return config.fighter_spawn_slots;
 }
-void Sim::queue_fighter_spawns() {
+void Sim::queue_fighter_spawns(ml::FrameScratch& scratch) {
     SANDBOX_PROFILE_SCOPE("capital_ships::Sim::queue_fighter_spawns");
     if (!diagnostics_enabled_) {}
 
     auto const entities{this->entities.get_view().columns()};
 
     auto const n_capital_ships{get_num_instances()};
-    ml::FrameArray<std::int32_t> ships_ready_to_spawn_fighters_indices{&frame_memory_resource};
+    ml::FrameArray<std::int32_t> ships_ready_to_spawn_fighters_indices{&scratch};
     ships_ready_to_spawn_fighters_indices.set_num(n_capital_ships);
     ships_ready_to_spawn_fighters_indices.set_num(
         ml::kernel::collect_indices_less_equal(entities.fighter_spawn_timers.data(),
@@ -259,7 +257,7 @@ void Sim::queue_fighter_spawns() {
     }
 
     auto const& relative_transforms{config.fighter_spawn_slots_relative_transforms};
-    fighters::FrameSpawnQueue fighter_spawn_wave{&frame_memory_resource};
+    fighters::FrameSpawnQueue fighter_spawn_wave{scratch};
     assert(std::in_range<std::int32_t>(relative_transforms.size()));
     fighter_spawn_wave.reserve(static_cast<std::int32_t>(relative_transforms.size()));
     for (auto const capital_index : ships_ready_to_spawn_fighters_indices) {
@@ -285,15 +283,15 @@ void Sim::queue_fighter_spawns() {
             entities.fighter_spawn_cooldowns[capital_index];
     }
 }
-void Sim::refresh_fighter_ids() {
+void Sim::refresh_fighter_ids(ml::FrameScratch& scratch) {
     auto const entities{this->entities.get_view().columns()};
     auto const ids{fighters_interface.get_entity_ids()};
     auto const parents{fighters_interface.get_parent_ids()};
     auto const healths{fighters_interface.get_healths()};
     auto const capital_count{entities.num()};
     auto const fighter_count{ids.size()};
-    ml::FrameArray<std::int32_t> counts{&frame_memory_resource};
-    ml::FrameArray<std::int32_t> owners{&frame_memory_resource};
+    ml::FrameArray<std::int32_t> counts{&scratch};
+    ml::FrameArray<std::int32_t> owners{&scratch};
     counts.set_num(capital_count);
     owners.set_num(static_cast<std::int32_t>(fighter_count));
     std::ranges::fill(owners, -1);

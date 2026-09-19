@@ -10,7 +10,7 @@
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spinner_entity_data.h>
 
-#include <memory_resource>
+#include <sandbox/core/frame_memory_resource.h>
 
 namespace ioj::sim {
 struct LevelSim;
@@ -25,10 +25,7 @@ struct Sim {
     using EntityData = SpinnerEntityData;
     using EntityStorage = SingleAllocationSpinnerEntityData;
 
-    Sim(SimClock const& clock,
-        EntityLedger& ledger,
-        lasers::Sim& laser_simulation,
-        std::pmr::memory_resource& frame_memory_resource) noexcept;
+    Sim(SimClock const& clock, EntityLedger& ledger, lasers::Sim& laser_simulation) noexcept;
     Sim(Sim const&) = delete;
     Sim(Sim&&) = delete;
     auto operator=(Sim const&) -> Sim& = delete;
@@ -57,9 +54,9 @@ struct Sim {
     void begin_play();
     void prepare_tick(float dt);
     void think(float dt);
-    void apply_movement();
+    void apply_movement(ml::FrameScratch& scratch);
     void generate_fire_commands();
-    void materialize_fire_commands();
+    void materialize_fire_commands(ml::FrameScratch& scratch);
     std::vector<std::int32_t> pending_fire_indices_;
     void finish_action();
 
@@ -93,7 +90,6 @@ struct Sim {
     SimClock const& simulation_clock;
     EntityLedger& ledger_;
     lasers::Sim& laser_simulation;
-    std::pmr::memory_resource& frame_memory_resource;
     EntityStorage entities{};
 };
 } // namespace ioj::sim::spinners
