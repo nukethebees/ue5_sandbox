@@ -26,11 +26,15 @@ install-agent-git -BaseBranch dev
 ```
 
 The installer is intentionally separate from `agent-git` and must not be included in an
-unconditional agent allow rule. A canonical install builds the tools, runs the complete
-`AgentGit.Tests` security regression suite, and only then prepares and activates a staged copy.
-The security gate cannot be skipped or replaced for a canonical install. A failed gate leaves the
-existing installation untouched; a failed activation or post-install smoke check restores the
-previous installation.
+unconditional agent allow rule. A canonical install creates a random private build and staging
+area for that invocation, builds AgentGit there, and runs the complete `AgentGit.Tests` security
+regression suite against that build. It records SHA-256 hashes for every required runtime artifact
+before the tests, rejects any post-validation change, copies only those private artifacts, and
+verifies the staged and activated copies against the same hashes. It never returns to shared
+`tools/bin` output after validation. The security gate and validation project cannot be skipped or
+replaced for a canonical install; test-only controls are limited to temporary non-canonical
+installs. A failed gate leaves the existing installation untouched; a failed activation or
+post-install smoke check restores the previous installation.
 
 The installer records the repository's canonical common Git directory,
 origin URL, trusted Git and Git-LFS executables, user identity, and `refs/heads/dev` as the policy
@@ -54,8 +58,9 @@ absolute executable path receives unconditional execution permission. Agents mus
 unconditional permission to run the installer, invoke raw mutating Git, replace or modify the
 canonical installation, trust manifest, or isolation configuration, change the permission rule, or
 directly edit Git administrative data as a substitute for an unsupported operation. Deployment also
-assumes a reviewed trusted source checkout that is not being modified concurrently while the human-controlled
-installer runs. These are deployment assumptions, not guarantees provided by `agent-git` itself.
+assumes a reviewed trusted source checkout that is not being modified concurrently while the
+human-controlled installer runs, and trusted local .NET, Git, and optional Git-LFS executables.
+These are deployment assumptions, not guarantees provided by `agent-git` itself.
 
 ## Policy
 
@@ -140,8 +145,10 @@ commands are disabled, repository LFS filter commands are overridden, and all no
 
 Mutations take a lock in the common Git directory and rediscover repository state under that lock
 immediately before policy evaluation. Immediately before Git execution, the tool re-audits
-executable configuration and hidden index flags, compares the exact index/worktree fingerprint, and
-revalidates HEAD, current branch, policy, base, and target refs. The lock coordinates `agent-git`
+executable configuration and hidden index flags, compares the exact index/worktree fingerprint,
+revalidates HEAD, current branch, policy, base, and target refs, and confirms those branch refs are
+still direct. Branch deletion also re-identifies its base worktree and verifies its repository,
+branch, and HEAD before using it for Git's safe deletion check. The lock coordinates `agent-git`
 processes; raw Git or other programs can still race the small interval after final validation, with
 Git's own ref and index locks providing the final integrity checks.
 Worktree roots, mutation paths, and critical Git administrative paths containing filesystem

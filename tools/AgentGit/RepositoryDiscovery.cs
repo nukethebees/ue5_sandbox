@@ -158,11 +158,83 @@ internal sealed class RepositoryDiscovery(GitClient git)
             state.CommonGitDirectory,
             cancellation_token);
         await ValidateIndexFlagsAsync(state.WorktreeRoot, cancellation_token);
+        await ValidateDirectRefAsync(
+            state.WorktreeRoot,
+            context.Registration.PolicyRef,
+            cancellation_token);
+        await ValidateDirectRefAsync(
+            state.WorktreeRoot,
+            $"refs/heads/{context.Policy.BaseBranch}",
+            cancellation_token);
+        if (state.CurrentBranch is not null)
+        {
+            await ValidateDirectRefAsync(
+                state.WorktreeRoot,
+                $"refs/heads/{state.CurrentBranch}",
+                cancellation_token);
+        }
+
         var snapshot = await DiscoverStatusSnapshotAsync(state.WorktreeRoot, cancellation_token);
         if (!string.Equals(snapshot.Fingerprint, state.MutationFingerprint, StringComparison.Ordinal))
         {
             throw new RepositoryStateException(
                 "The index or working tree changed after policy evaluation; no mutation was executed.");
+        }
+    }
+
+    public async Task RevalidateDirectBranchAsync(
+        string worktree_root,
+        string branch,
+        CancellationToken cancellation_token = default)
+    {
+        await ValidateBranchNameAsync(worktree_root, branch, cancellation_token);
+        await ValidateDirectRefAsync(worktree_root, $"refs/heads/{branch}", cancellation_token);
+    }
+
+    public async Task RevalidateWorktreeAsync(
+        RepositoryContext context,
+        Worktree worktree,
+        string expected_branch,
+        string expected_commit,
+        CancellationToken cancellation_token = default)
+    {
+        try
+        {
+            var root = await DiscoverPathAsync(worktree.Path, "--show-toplevel", cancellation_token);
+            var git_directory = await DiscoverPathAsync(worktree.Path, "--git-dir", cancellation_token);
+            var common_git_directory = await DiscoverPathAsync(worktree.Path, "--git-common-dir", cancellation_token);
+            if (!PathsEqual(root, worktree.Path) || IsReparseDirectory(root) ||
+                !PathsEqual(common_git_directory, context.State.CommonGitDirectory))
+            {
+                throw new RepositoryStateException(
+                    $"Worktree '{worktree.Path}' no longer belongs to the evaluated repository.");
+            }
+
+            await ValidateRepositoryConfigurationAsync(
+                root,
+                git_directory,
+                common_git_directory,
+                cancellation_token);
+            var branch = await git.RequireTextAsync(
+                root,
+                ["symbolic-ref", "--quiet", "--short", "--no-recurse", "HEAD"],
+                cancellation_token);
+            var head = await git.RequireTextAsync(
+                root,
+                ["rev-parse", "--verify", "HEAD^{commit}"],
+                cancellation_token);
+            if (!string.Equals(branch, expected_branch, StringComparison.Ordinal) ||
+                !string.Equals(head, expected_commit, StringComparison.Ordinal))
+            {
+                throw new RepositoryStateException(
+                    $"Worktree '{worktree.Path}' changed branch or HEAD after policy evaluation.");
+            }
+        }
+        catch (GitCommandException exception)
+        {
+            throw new RepositoryStateException(
+                $"Unable to revalidate worktree '{worktree.Path}' immediately before mutation.",
+                exception);
         }
     }
 
@@ -206,9 +278,12 @@ internal sealed class RepositoryDiscovery(GitClient git)
 
         var result = await git.RunAsync(
             worktree_root,
-            ["check-ref-format", $"refs/heads/{branch}"],
+            ["check-ref-format", "--branch", branch],
             cancellation_token: cancellation_token);
-        if (result.ExitCode != 0)
+        var normalized = result.ExitCode == 0
+            ? Encoding.UTF8.GetString(result.StandardOutput).TrimEnd('\r', '\n', '\0')
+            : null;
+        if (result.ExitCode != 0 || !string.Equals(normalized, branch, StringComparison.Ordinal))
         {
             throw new RepositoryStateException($"Invalid local branch name '{branch}'.");
         }
@@ -414,8 +489,7 @@ internal sealed class RepositoryDiscovery(GitClient git)
                 ["config", scope, "--null", "--name-only", "--list"],
                 cancellation_token: cancellation_token);
             GitClient.EnsureSuccess(result, ["config"]);
-            var names = Encoding.UTF8.GetString(result.StandardOutput)
-                .Split('\0', StringSplitOptions.RemoveEmptyEntries);
+            var names = GitOutputParsers.ParseConfigNames(result.StandardOutput);
             var unknown = names.Where(name =>
                 IsUnsupportedExecutableConfiguration(name, git.HasTrustedGitLfs)).ToArray();
             if (unknown.Length > 0)
@@ -628,58 +702,12 @@ internal sealed class RepositoryDiscovery(GitClient git)
             cancellation_token: cancellation_token);
         GitClient.EnsureSuccess(index_result, ["ls-files"]);
 
-        var staged = false;
-        var unstaged = false;
-        var untracked = false;
-        var conflicts = false;
-        var records = Encoding.UTF8.GetString(status_result.StandardOutput).Split('\0');
-        for (var index = 0; index < records.Length; ++index)
-        {
-            var record = records[index];
-            if (record.Length == 0)
-            {
-                continue;
-            }
-
-            if (record.StartsWith("? ", StringComparison.Ordinal))
-            {
-                untracked = true;
-                continue;
-            }
-
-            if (record.StartsWith("u ", StringComparison.Ordinal))
-            {
-                conflicts = true;
-                staged = true;
-                unstaged = true;
-                continue;
-            }
-
-            if (record.StartsWith("1 ", StringComparison.Ordinal) || record.StartsWith("2 ", StringComparison.Ordinal))
-            {
-                if (record.Length < 4)
-                {
-                    throw new RepositoryException($"Git status returned malformed record '{record}'.");
-                }
-
-                staged |= record[2] != '.';
-                unstaged |= record[3] != '.';
-                if (record[0] == '2')
-                {
-                    ++index;
-                }
-
-                continue;
-            }
-
-            throw new RepositoryException(
-                $"Git status returned an unsupported porcelain-v2 record '{record}'.");
-        }
+        var status = GitOutputParsers.ParseStatus(status_result.StandardOutput);
 
         var fingerprint = $"{Convert.ToHexString(SHA256.HashData(status_result.StandardOutput))}:" +
             Convert.ToHexString(SHA256.HashData(index_result.StandardOutput));
         return new StatusSnapshot(
-            new WorkingTreeStatus(staged, unstaged, untracked, conflicts),
+            status,
             fingerprint);
     }
 

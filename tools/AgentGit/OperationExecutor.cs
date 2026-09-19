@@ -95,6 +95,10 @@ internal sealed class OperationExecutor(GitClient git, RepositoryDiscovery disco
 
             if (operation.TargetBranch is not null)
             {
+                await discovery.RevalidateDirectBranchAsync(
+                    root,
+                    operation.TargetBranch.Name,
+                    cancellation_token);
                 var target_commit = await git.RequireTextAsync(
                     root,
                     ["rev-parse", "--verify", $"refs/heads/{operation.TargetBranch.Name}^{{commit}}"],
@@ -105,6 +109,16 @@ internal sealed class OperationExecutor(GitClient git, RepositoryDiscovery disco
                         $"Target branch '{operation.TargetBranch.Name}' changed after policy evaluation; " +
                         "no mutation was executed.");
                 }
+            }
+
+            if (operation.BaseWorktree is not null)
+            {
+                await discovery.RevalidateWorktreeAsync(
+                    context,
+                    operation.BaseWorktree,
+                    context.Policy.BaseBranch,
+                    context.State.BaseCommit,
+                    cancellation_token);
             }
         }
         catch (GitCommandException exception)

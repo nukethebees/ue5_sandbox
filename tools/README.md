@@ -17,7 +17,8 @@ Workflows that directly use a staged executable require it to be present.
 - `AgentGit/` is the repository-aware, policy-enforcing Git interface intended for autonomous
   agents. Its repository build output is deliberately not trusted for mutations; use
   `install-agent-git` to create the canonical per-user installation described in
-  [the agent-git documentation](../docs/agent-git.md).
+  [the agent-git documentation](../docs/agent-git.md). The installer builds and validates in a
+  private per-install output directory rather than installing from shared `tools/bin` state.
 - `CodeFormatTools/` is the C# formatter for repository C++ and shader files. Run its staged
   executable through the `format-code` and `format-all-code` CMake workflows, or directly as
   `tools/bin/CodeFormatTools.exe [--all|--changed|--staged] [--jobs N|-j N] [--verbose]` after

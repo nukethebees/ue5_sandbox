@@ -1,5 +1,8 @@
 using System.Diagnostics;
+using System.Security;
+using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AgentGit.Tests;
@@ -89,13 +92,114 @@ public sealed class InstallerIntegrationTests
         Assert.IsFalse(Directory.Exists(install_root));
     }
 
+    [TestMethod]
+    public void Canonical_installation_rejects_test_validation_controls()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        var source_root = FindSourceRoot();
+        var canonical_root = Path.GetFullPath(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "NukeTheBees",
+            "agent-git"));
+
+        var result = RunInstaller(
+            source_root,
+            fixture.RepositoryRoot,
+            canonical_root,
+            skip_validation: true);
+
+        Assert.AreNotEqual(0, result.ExitCode);
+        StringAssert.Contains(result.Error, "Canonical installation cannot skip or override");
+    }
+
+    [TestMethod]
+    public void Changed_private_artifact_after_validation_cannot_replace_existing_installation()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        var source_root = FindSourceRoot();
+        var install_root = Directory.CreateDirectory(
+            Path.Combine(fixture.InstallRoot, "tamper-rejected-agent-git")).FullName;
+        var marker = Path.Combine(install_root, "known-good.marker");
+        File.WriteAllText(marker, "known-good");
+        var validation_project = CreateValidationProject(fixture, source_root);
+
+        var result = RunInstaller(
+            source_root,
+            fixture.RepositoryRoot,
+            install_root,
+            validation_project: validation_project,
+            corrupt_validated_artifact: true);
+
+        Assert.AreNotEqual(0, result.ExitCode);
+        StringAssert.Contains(result.Error, "runtime artifact changed after validation");
+        Assert.AreEqual("known-good", File.ReadAllText(marker));
+        Assert.IsFalse(File.Exists(Path.Combine(install_root, "bin", "agent-git.exe")));
+        Assert.IsFalse(Directory.EnumerateDirectories(
+            fixture.InstallRoot,
+            "tamper-rejected-agent-git.validation.*").Any());
+    }
+
+    [TestMethod]
+    public void Installed_executable_matches_validated_private_artifact()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        var source_root = FindSourceRoot();
+        var install_root = Path.Combine(fixture.InstallRoot, "validated-agent-git");
+        var validation_project = CreateValidationProject(fixture, source_root);
+
+        var result = RunInstaller(
+            source_root,
+            fixture.RepositoryRoot,
+            install_root,
+            validation_project: validation_project);
+
+        Assert.AreEqual(0, result.ExitCode, result.Error);
+        var match = Regex.Match(
+            result.Output,
+            "Validated private artifact SHA256 agent-git\\.exe=(?<hash>[A-F0-9]{64})",
+            RegexOptions.CultureInvariant);
+        Assert.IsTrue(match.Success, result.Output);
+        var installed_hash = Convert.ToHexString(SHA256.HashData(
+            File.ReadAllBytes(Path.Combine(install_root, "bin", "agent-git.exe"))));
+        Assert.AreEqual(match.Groups["hash"].Value, installed_hash);
+        Assert.IsFalse(Directory.EnumerateDirectories(
+            fixture.InstallRoot,
+            "validated-agent-git.validation.*").Any());
+    }
+
+    [TestMethod]
+    public void Post_install_failure_restores_previous_installation()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        var source_root = FindSourceRoot();
+        var install_root = Directory.CreateDirectory(
+            Path.Combine(fixture.InstallRoot, "rollback-agent-git")).FullName;
+        var marker = Path.Combine(install_root, "known-good.marker");
+        File.WriteAllText(marker, "known-good");
+
+        var result = RunInstaller(
+            source_root,
+            fixture.RepositoryRoot,
+            install_root,
+            skip_validation: true,
+            fail_post_install: true);
+
+        Assert.AreNotEqual(0, result.ExitCode);
+        StringAssert.Contains(result.Error, "Test-only post-install failure");
+        Assert.AreEqual("known-good", File.ReadAllText(marker));
+        Assert.IsFalse(File.Exists(Path.Combine(install_root, "bin", "agent-git.exe")));
+        Assert.IsFalse(Directory.Exists(Path.Combine(fixture.InstallRoot, "rollback-agent-git.previous")));
+    }
+
     private static InstallerResult RunInstaller(
         string source_root,
         string repository_root,
         string install_root,
         string policy_path = ".agent-git.json",
         string? validation_project = null,
-        bool skip_validation = false)
+        bool skip_validation = false,
+        bool corrupt_validated_artifact = false,
+        bool fail_post_install = false)
     {
         var installer = Path.Combine(source_root, "PowerShell", "Install-AgentGit.ps1");
         var start_info = new ProcessStartInfo
@@ -127,6 +231,16 @@ public sealed class InstallerIntegrationTests
         if (skip_validation)
         {
             start_info.ArgumentList.Add("-SkipValidation");
+            start_info.ArgumentList.Add("-TestOnlyArtifactRoot");
+            start_info.ArgumentList.Add(AppContext.BaseDirectory);
+        }
+        if (corrupt_validated_artifact)
+        {
+            start_info.ArgumentList.Add("-TestOnlyCorruptValidatedArtifact");
+        }
+        if (fail_post_install)
+        {
+            start_info.ArgumentList.Add("-TestOnlyFailPostInstall");
         }
 
         using var process = Process.Start(start_info) ?? throw new AssertFailedException("Unable to start installer.");
@@ -134,6 +248,50 @@ public sealed class InstallerIntegrationTests
         var error = process.StandardError.ReadToEnd();
         process.WaitForExit();
         return new InstallerResult(process.ExitCode, output, error);
+    }
+
+    private static string CreateValidationProject(TemporaryAgentGitRepository fixture, string source_root)
+    {
+        var project_root = Directory.CreateDirectory(
+            Path.Combine(fixture.InstallRoot, $"validation-project-{Guid.NewGuid():N}")).FullName;
+        var agent_git_project = SecurityElement.Escape(
+            Path.Combine(source_root, "tools", "AgentGit", "AgentGit.csproj"));
+        var project =
+            $$"""
+            <Project Sdk="Microsoft.NET.Sdk">
+              <PropertyGroup>
+                <TargetFramework>net10.0</TargetFramework>
+                <ImplicitUsings>enable</ImplicitUsings>
+                <Nullable>enable</Nullable>
+                <IsPackable>false</IsPackable>
+                <IsTestProject>true</IsTestProject>
+              </PropertyGroup>
+              <ItemGroup>
+                <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+                <PackageReference Include="MSTest.TestAdapter" Version="3.6.4" />
+                <PackageReference Include="MSTest.TestFramework" Version="3.6.4" />
+                <ProjectReference Include="{{agent_git_project}}" />
+              </ItemGroup>
+            </Project>
+            """;
+        var project_path = Path.Combine(project_root, "InstallerValidation.csproj");
+        File.WriteAllText(project_path, project);
+        File.WriteAllText(
+            Path.Combine(project_root, "ValidationTests.cs"),
+            """
+            using Microsoft.VisualStudio.TestTools.UnitTesting;
+
+            [TestClass]
+            public sealed class ValidationTests
+            {
+                [TestMethod]
+                public void Validated_build_loads()
+                {
+                    Assert.IsNotNull(typeof(object).Assembly);
+                }
+            }
+            """);
+        return project_path;
     }
 
     private static string FindSourceRoot()

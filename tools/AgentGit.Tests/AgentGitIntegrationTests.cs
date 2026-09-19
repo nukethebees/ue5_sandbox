@@ -32,6 +32,17 @@ public sealed class AgentGitIntegrationTests
     }
 
     [TestMethod]
+    public async Task Config_name_parser_accepts_real_subsection_whitespace()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        fixture.RunGit("config", "remote.name with spaces.url", "https://example.invalid/unused.git");
+
+        var result = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "status");
+
+        Assert.AreEqual(ExitCodes.Success, result.ExitCode, result.Error);
+    }
+
+    [TestMethod]
     public async Task Add_and_commit_are_denied_on_protected_and_workspace_branches()
     {
         using var fixture = new TemporaryAgentGitRepository();

@@ -270,7 +270,8 @@ internal static class TrustStore
         }
 
         var branch = value[prefix.Length..];
-        if (branch.Length == 0 || branch.StartsWith('/') || branch.EndsWith('/') || branch.EndsWith('.') ||
+        if (branch.Length == 0 || branch[0] == '-' || branch.Equals("HEAD", StringComparison.Ordinal) ||
+            branch.StartsWith('/') || branch.EndsWith('/') || branch.EndsWith('.') ||
             branch.Contains("..", StringComparison.Ordinal) || branch.Contains("//", StringComparison.Ordinal) ||
             branch.Contains("@{", StringComparison.Ordinal) || branch.Split('/').Any(part => part.EndsWith(".lock", StringComparison.OrdinalIgnoreCase)))
         {

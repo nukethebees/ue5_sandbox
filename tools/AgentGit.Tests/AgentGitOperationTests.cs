@@ -31,6 +31,32 @@ public sealed class AgentGitOperationTests
     }
 
     [TestMethod]
+    public async Task Executor_rejects_symbolic_current_ref_introduced_after_policy_evaluation()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        fixture.RunGit("switch", "-qc", "feature/symbolic-race");
+        fixture.WriteFile("change.txt", "change\n");
+        fixture.RunGit("add", "change.txt");
+        var protected_commit = fixture.RunGit("rev-parse", "dev").Trim();
+        var git = new GitClient(fixture.Trust, new ProcessRunner());
+        var discovery = new RepositoryDiscovery(git);
+        var context = await discovery.DiscoverAsync(fixture.Trust, fixture.RepositoryRoot);
+        var evaluated = await new PolicyEvaluator(discovery).EvaluateAsync(
+            new CommitRequest(false, "must not commit"),
+            context,
+            fixture.RepositoryRoot);
+        Assert.IsTrue(evaluated.Decision.Allowed);
+        fixture.RunGit("symbolic-ref", "refs/heads/feature/symbolic-race", "refs/heads/dev");
+
+        var exception = await Assert.ThrowsExceptionAsync<RepositoryStateException>(
+            async () => await new OperationExecutor(git, discovery).ExecuteAsync(evaluated));
+
+        StringAssert.Contains(exception.Message, "is symbolic");
+        Assert.AreEqual(protected_commit, fixture.RunGit("rev-parse", "dev").Trim());
+        Assert.AreEqual("initial\n", fixture.RunGit("log", "-1", "--format=%s"));
+    }
+
+    [TestMethod]
     public async Task Executor_rejects_target_branch_changes_after_policy_evaluation()
     {
         using var fixture = new TemporaryAgentGitRepository();
@@ -54,6 +80,43 @@ public sealed class AgentGitOperationTests
             async () => await new OperationExecutor(git, discovery).ExecuteAsync(evaluated));
 
         StringAssert.Contains(exception.Message, "Target branch 'feature/delete-race' changed");
+        StringAssert.Contains(fixture.RunGit("branch", "--list", "feature/delete-race"), "feature/delete-race");
+    }
+
+    [TestMethod]
+    public async Task Executor_rejects_replaced_base_worktree_before_branch_deletion()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        fixture.RunGit("switch", "-qc", "feature/current");
+        var base_worktree = Path.Combine(fixture.InstallRoot, "base-worktree");
+        fixture.RunGit("worktree", "add", "-q", base_worktree, "dev");
+        fixture.RunGit("branch", "feature/delete-race", "dev");
+        var git = new GitClient(fixture.Trust, new ProcessRunner());
+        var discovery = new RepositoryDiscovery(git);
+        var context = await discovery.DiscoverAsync(fixture.Trust, fixture.RepositoryRoot);
+        var evaluated = await new PolicyEvaluator(discovery).EvaluateAsync(
+            new BranchDeleteRequest(false, "feature/delete-race"),
+            context,
+            fixture.RepositoryRoot);
+        Assert.IsTrue(evaluated.Decision.Allowed);
+
+        fixture.RunGit("worktree", "remove", "--force", base_worktree);
+        Directory.CreateDirectory(base_worktree);
+        fixture.RunGitAt(base_worktree, "init", "-q", "--initial-branch=unrelated");
+        fixture.RunGitAt(base_worktree, "config", "user.name", "Unrelated Test");
+        fixture.RunGitAt(base_worktree, "config", "user.email", "unrelated@example.com");
+        File.WriteAllText(Path.Combine(base_worktree, "unrelated.txt"), "unrelated\n");
+        fixture.RunGitAt(base_worktree, "add", "unrelated.txt");
+        fixture.RunGitAt(base_worktree, "commit", "-qm", "unrelated");
+        fixture.RunGitAt(base_worktree, "branch", "feature/delete-race");
+
+        var exception = await Assert.ThrowsExceptionAsync<RepositoryStateException>(
+            async () => await new OperationExecutor(git, discovery).ExecuteAsync(evaluated));
+
+        StringAssert.Contains(exception.Message, "no longer belongs to the evaluated repository");
+        StringAssert.Contains(
+            fixture.RunGitAt(base_worktree, "branch", "--list", "feature/delete-race"),
+            "feature/delete-race");
         StringAssert.Contains(fixture.RunGit("branch", "--list", "feature/delete-race"), "feature/delete-race");
     }
 
@@ -261,6 +324,13 @@ public sealed class AgentGitOperationTests
             "--upload-pack=arbitrary-command");
         Assert.AreEqual(ExitCodes.StateFailure, invalid.ExitCode, invalid.Error);
         StringAssert.Contains(invalid.Error, "Invalid local branch name");
+
+        var pseudo_ref = await fixture.RunAgentGitAsync(
+            fixture.RepositoryRoot,
+            "switch-create",
+            "HEAD");
+        Assert.AreEqual(ExitCodes.StateFailure, pseudo_ref.ExitCode, pseudo_ref.Error);
+        StringAssert.Contains(pseudo_ref.Error, "Invalid local branch name");
     }
 
     [TestMethod]

@@ -12,7 +12,13 @@ param(
 
     [string]$ValidationProject,
 
-    [switch]$SkipValidation
+    [switch]$SkipValidation,
+
+    [string]$TestOnlyArtifactRoot,
+
+    [switch]$TestOnlyCorruptValidatedArtifact,
+
+    [switch]$TestOnlyFailPostInstall
 )
 
 $ErrorActionPreference = 'Stop'
@@ -83,9 +89,62 @@ function Test-PathWithin {
         -not $relative.StartsWith("..$([System.IO.Path]::DirectorySeparatorChar)")
 }
 
+function Get-RuntimeArtifactHashes {
+    param(
+        [Parameter(Mandatory)]
+        [string]$ArtifactRoot,
+
+        [Parameter(Mandatory)]
+        [string[]]$RuntimeFiles
+    )
+
+    $hashes = @{}
+    foreach ($file in $RuntimeFiles) {
+        $path = Join-Path $ArtifactRoot $file
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            throw "Required AgentGit runtime artifact is missing: '$path'."
+        }
+        if (Test-PathIsReparsePoint -LiteralPath $path) {
+            throw "AgentGit runtime artifact cannot be a symbolic link or reparse point: '$path'."
+        }
+
+        $hashes[$file] = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+    }
+
+    $hashes
+}
+
+function Assert-RuntimeArtifactHashes {
+    param(
+        [Parameter(Mandatory)]
+        [string]$ArtifactRoot,
+
+        [Parameter(Mandatory)]
+        [string[]]$RuntimeFiles,
+
+        [Parameter(Mandatory)]
+        [hashtable]$ExpectedHashes
+    )
+
+    $actual_hashes = Get-RuntimeArtifactHashes -ArtifactRoot $ArtifactRoot -RuntimeFiles $RuntimeFiles
+    foreach ($file in $RuntimeFiles) {
+        if (-not [System.StringComparer]::OrdinalIgnoreCase.Equals(
+                $ExpectedHashes[$file],
+                $actual_hashes[$file])) {
+            throw "Validated AgentGit runtime artifact changed after validation: '$file'."
+        }
+    }
+}
+
 $repository_root = (Resolve-Path -LiteralPath $Repository).Path
 $source_root = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
-$staged_bin = Join-Path $source_root 'tools\bin'
+$runtime_files = @(
+    'agent-git.exe',
+    'agent-git.dll',
+    'agent-git.deps.json',
+    'agent-git.runtimeconfig.json',
+    'GitSupport.dll'
+)
 
 $git_command = Get-Command git.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1
 $script:git_path = $git_command.Source
@@ -103,8 +162,11 @@ $common_git_directory = Invoke-GitText @('-C', $repository_root, 'rev-parse', '-
 $origin_url = Invoke-GitText @('-C', $repository_root, 'config', '--local', '--get', 'remote.origin.url')
 $user_name = Invoke-GitText @('-C', $repository_root, 'config', '--get', 'user.name')
 $user_email = Invoke-GitText @('-C', $repository_root, 'config', '--get', 'user.email')
+$validated_base_branch = Invoke-GitText @('-C', $repository_root, 'check-ref-format', '--branch', $BaseBranch)
+if ($validated_base_branch -cne $BaseBranch) {
+    throw "BaseBranch must be a direct local branch name; found '$BaseBranch'."
+}
 $policy_ref = "refs/heads/$BaseBranch"
-$null = Invoke-GitText @('-C', $repository_root, 'check-ref-format', $policy_ref)
 if ([string]::IsNullOrWhiteSpace($PolicyPath) -or
     $PolicyPath.StartsWith('/') -or
     $PolicyPath.EndsWith('/') -or
@@ -140,6 +202,7 @@ $install_root = if ([string]::IsNullOrWhiteSpace($InstallRoot)) {
     [System.IO.Path]::GetFullPath($InstallRoot)
 }
 $install_parent = Split-Path -Parent $install_root
+$install_name = Split-Path -Leaf $install_root
 $is_canonical_install = [System.StringComparer]::OrdinalIgnoreCase.Equals(
     [System.IO.Path]::TrimEndingDirectorySeparator($install_root),
     [System.IO.Path]::TrimEndingDirectorySeparator($canonical_root))
@@ -152,153 +215,218 @@ if (Test-PathIsReparsePoint -LiteralPath $install_root) {
 }
 
 if ($is_canonical_install -and
-    ($SkipValidation -or -not [string]::IsNullOrWhiteSpace($ValidationProject))) {
+    ($SkipValidation -or -not [string]::IsNullOrWhiteSpace($ValidationProject) -or
+        -not [string]::IsNullOrWhiteSpace($TestOnlyArtifactRoot) -or
+        $TestOnlyCorruptValidatedArtifact -or $TestOnlyFailPostInstall)) {
     throw 'Canonical installation cannot skip or override the AgentGit validation project.'
 }
-if (($SkipValidation -or -not [string]::IsNullOrWhiteSpace($ValidationProject)) -and
+if (($SkipValidation -or -not [string]::IsNullOrWhiteSpace($ValidationProject) -or
+        -not [string]::IsNullOrWhiteSpace($TestOnlyArtifactRoot) -or
+        $TestOnlyCorruptValidatedArtifact -or $TestOnlyFailPostInstall) -and
     -not (Test-PathWithin -Root ([System.IO.Path]::GetTempPath()) -Candidate $install_root)) {
     throw 'Non-canonical validation controls are restricted to test installations under the system temporary directory.'
 }
-
-if ($SkipValidation) {
-    Write-Host 'Skipping AgentGit validation for a non-canonical test installation.'
-} else {
-    if ([string]::IsNullOrWhiteSpace($ValidationProject)) {
-        $validation_project = Join-Path $source_root 'tools\AgentGit.Tests\AgentGit.Tests.csproj'
-    } else {
-        $validation_project = [System.IO.Path]::GetFullPath($ValidationProject)
-    }
-    if (-not (Test-Path -LiteralPath $validation_project -PathType Leaf)) {
-        throw "AgentGit validation project was not found at '$validation_project'."
-    }
-
-    $dotnet_command = Get-Command dotnet.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1
-    $dotnet_path = $dotnet_command.Source
-    Write-Host "Building the trusted AgentGit source: '$validation_project'."
-    & $dotnet_path build $validation_project -m:1 -nr:false
-    if ($LASTEXITCODE -ne 0) {
-        throw "AgentGit validation build failed with exit code $LASTEXITCODE; installation was not activated."
-    }
-
-    Write-Host "Running the mandatory AgentGit security test gate: '$validation_project'."
-    & $dotnet_path test $validation_project --no-build --no-restore -m:1 -nr:false
-    if ($LASTEXITCODE -ne 0) {
-        throw "AgentGit security test gate failed with exit code $LASTEXITCODE; installation was not activated."
-    }
+if ($SkipValidation -and $TestOnlyCorruptValidatedArtifact) {
+    throw 'TestOnlyCorruptValidatedArtifact requires a validation build.'
+}
+if ($SkipValidation -ne (-not [string]::IsNullOrWhiteSpace($TestOnlyArtifactRoot))) {
+    throw 'SkipValidation and TestOnlyArtifactRoot must be specified together.'
 }
 
-$agent_git = Join-Path $staged_bin 'agent-git.exe'
-if (-not (Test-Path -LiteralPath $agent_git -PathType Leaf)) {
-    throw "Validated staged agent-git was not found at '$agent_git'."
-}
-
-$install_name = Split-Path -Leaf $install_root
-$staging_root = Join-Path $install_parent "$install_name.staging.$([guid]::NewGuid().ToString('N'))"
-$previous_root = Join-Path $install_parent "$install_name.previous"
-if (Test-PathIsReparsePoint -LiteralPath $previous_root) {
-    throw "Previous installation path cannot be a symbolic link or reparse point: '$previous_root'."
-}
-$staging_bin = Join-Path $staging_root 'bin'
-$staging_config = Join-Path $staging_root 'config'
-$activated_new_install = $false
-$moved_previous_install = $false
+$validation_root = $null
+$artifact_root = $null
+$artifact_hashes = $null
 try {
-    $null = New-Item -ItemType Directory -Path $staging_bin -Force
-    $null = New-Item -ItemType Directory -Path (Join-Path $staging_config 'empty-hooks') -Force
-    $null = New-Item -ItemType File -Path (Join-Path $staging_config 'empty.gitconfig') -Force
-    $null = New-Item -ItemType File -Path (Join-Path $staging_config 'empty.attributes') -Force
-
-    $runtime_files = @(
-        'agent-git.exe',
-        'agent-git.dll',
-        'agent-git.deps.json',
-        'agent-git.runtimeconfig.json',
-        'GitSupport.dll'
-    )
-    foreach ($file in $runtime_files) {
-        $source = Join-Path $staged_bin $file
-        if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
-            throw "Required staged runtime file is missing: '$source'."
+    if ($SkipValidation) {
+        Write-Host 'Skipping AgentGit validation for a non-canonical test installation.'
+        $artifact_root = [System.IO.Path]::GetFullPath($TestOnlyArtifactRoot)
+        if (Test-PathHasReparsePoint -LiteralPath $artifact_root) {
+            throw "Test artifact path cannot contain a symbolic link or reparse point: '$artifact_root'."
         }
-        Copy-Item -LiteralPath $source -Destination (Join-Path $staging_bin $file)
-    }
-
-    $repositories = @()
-    if (Test-Path -LiteralPath (Join-Path $install_root 'trust.json') -PathType Leaf) {
-        $existing = Get-Content -LiteralPath (Join-Path $install_root 'trust.json') -Raw | ConvertFrom-Json
-        if ($existing.version -eq 1) {
-            $repositories = @($existing.repositories | Where-Object {
-                    [System.IO.Path]::GetFullPath($_.commonGitDirectory) -ine [System.IO.Path]::GetFullPath($common_git_directory)
-                })
+        $artifact_hashes = Get-RuntimeArtifactHashes `
+            -ArtifactRoot $artifact_root `
+            -RuntimeFiles $runtime_files
+    } else {
+        if ([string]::IsNullOrWhiteSpace($ValidationProject)) {
+            $validation_project = Join-Path $source_root 'tools\AgentGit.Tests\AgentGit.Tests.csproj'
+        } else {
+            $validation_project = [System.IO.Path]::GetFullPath($ValidationProject)
         }
-    }
+        if (-not (Test-Path -LiteralPath $validation_project -PathType Leaf)) {
+            throw "AgentGit validation project was not found at '$validation_project'."
+        }
 
-    $repositories += [ordered]@{
-        repositoryId = $policy.repositoryId
-        commonGitDirectory = [System.IO.Path]::GetFullPath($common_git_directory)
-        originUrl = $origin_url
-        policyRef = $policy_ref
-        policyPath = $PolicyPath
-    }
-    $manifest = [ordered]@{
-        version = 1
-        gitExecutable = $script:git_path
-        gitLfsExecutable = $git_lfs_path
-        userName = $user_name
-        userEmail = $user_email
-        repositories = $repositories
-    }
-    $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $staging_root 'trust.json') -Encoding utf8NoBOM
+        $validation_root = Join-Path $install_parent "$install_name.validation.$([guid]::NewGuid().ToString('N'))"
+        $private_artifacts = Join-Path $validation_root 'artifacts'
+        $artifact_root = Join-Path $validation_root 'runtime'
+        $null = New-Item -ItemType Directory -Path $private_artifacts -Force
+        $null = New-Item -ItemType Directory -Path $artifact_root -Force
 
-    if (Test-Path -LiteralPath $previous_root) {
-        Remove-Item -LiteralPath $previous_root -Recurse -Force
-    }
-    if (Test-Path -LiteralPath $install_root) {
-        Move-Item -LiteralPath $install_root -Destination $previous_root
-        $moved_previous_install = $true
-    }
-    Move-Item -LiteralPath $staging_root -Destination $install_root
-    $activated_new_install = $true
+        $dotnet_command = Get-Command dotnet.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1
+        $dotnet_path = $dotnet_command.Source
+        $private_stage_property = "-p:StandaloneToolsBinDirectory=$artifact_root$([System.IO.Path]::DirectorySeparatorChar)"
+        Write-Host "Building trusted AgentGit source into a private installation directory."
+        & $dotnet_path build $validation_project `
+            --artifacts-path $private_artifacts `
+            $private_stage_property `
+            -m:1 -nr:false
+        if ($LASTEXITCODE -ne 0) {
+            throw "AgentGit validation build failed with exit code $LASTEXITCODE; installation was not activated."
+        }
 
-    $installed_executable = Join-Path $install_root 'bin\agent-git.exe'
-    & $installed_executable --version
-    if ($LASTEXITCODE -ne 0) {
-        throw 'The installed agent-git executable failed its version smoke test.'
-    }
+        $artifact_hashes = Get-RuntimeArtifactHashes `
+            -ArtifactRoot $artifact_root `
+            -RuntimeFiles $runtime_files
 
-    if ($is_canonical_install) {
-        Push-Location -LiteralPath $repository_root
-        try {
-            & $installed_executable status
-            if ($LASTEXITCODE -ne 0) {
-                throw 'The installed agent-git executable failed its trusted repository smoke test.'
-            }
-        } finally {
-            Pop-Location
+        Write-Host "Running the mandatory AgentGit security test gate against the private build."
+        & $dotnet_path test $validation_project `
+            --no-build --no-restore `
+            --artifacts-path $private_artifacts `
+            $private_stage_property `
+            -m:1 -nr:false
+        if ($LASTEXITCODE -ne 0) {
+            throw "AgentGit security test gate failed with exit code $LASTEXITCODE; installation was not activated."
+        }
+
+        if ($TestOnlyCorruptValidatedArtifact) {
+            Add-Content `
+                -LiteralPath (Join-Path $artifact_root 'agent-git.dll') `
+                -Value 'test-only-corruption' `
+                -NoNewline
+        }
+
+        Assert-RuntimeArtifactHashes `
+            -ArtifactRoot $artifact_root `
+            -RuntimeFiles $runtime_files `
+            -ExpectedHashes $artifact_hashes
+        foreach ($file in $runtime_files) {
+            Write-Host "Validated private artifact SHA256 $file=$($artifact_hashes[$file])"
         }
     }
-} catch {
-    $installation_error = $_
+
+    Assert-RuntimeArtifactHashes `
+        -ArtifactRoot $artifact_root `
+        -RuntimeFiles $runtime_files `
+        -ExpectedHashes $artifact_hashes
+
+    $agent_git = Join-Path $artifact_root 'agent-git.exe'
+    if (-not (Test-Path -LiteralPath $agent_git -PathType Leaf)) {
+        throw "Validated private agent-git was not found at '$agent_git'."
+    }
+
+    $staging_root = Join-Path $install_parent "$install_name.staging.$([guid]::NewGuid().ToString('N'))"
+    $previous_root = Join-Path $install_parent "$install_name.previous"
+    if (Test-PathIsReparsePoint -LiteralPath $previous_root) {
+        throw "Previous installation path cannot be a symbolic link or reparse point: '$previous_root'."
+    }
+    $staging_bin = Join-Path $staging_root 'bin'
+    $staging_config = Join-Path $staging_root 'config'
+    $activated_new_install = $false
+    $moved_previous_install = $false
     try {
-        if ($activated_new_install -and (Test-Path -LiteralPath $install_root)) {
-            Move-Item -LiteralPath $install_root -Destination $staging_root
-            $activated_new_install = $false
+        $null = New-Item -ItemType Directory -Path $staging_bin -Force
+        $null = New-Item -ItemType Directory -Path (Join-Path $staging_config 'empty-hooks') -Force
+        $null = New-Item -ItemType File -Path (Join-Path $staging_config 'empty.gitconfig') -Force
+        $null = New-Item -ItemType File -Path (Join-Path $staging_config 'empty.attributes') -Force
+
+        foreach ($file in $runtime_files) {
+            $source = Join-Path $artifact_root $file
+            Copy-Item -LiteralPath $source -Destination (Join-Path $staging_bin $file)
         }
-        if ($moved_previous_install -and (Test-Path -LiteralPath $previous_root)) {
-            Move-Item -LiteralPath $previous_root -Destination $install_root
-            $moved_previous_install = $false
+        Assert-RuntimeArtifactHashes `
+            -ArtifactRoot $staging_bin `
+            -RuntimeFiles $runtime_files `
+            -ExpectedHashes $artifact_hashes
+
+        $repositories = @()
+        if (Test-Path -LiteralPath (Join-Path $install_root 'trust.json') -PathType Leaf) {
+            $existing = Get-Content -LiteralPath (Join-Path $install_root 'trust.json') -Raw | ConvertFrom-Json
+            if ($existing.version -eq 1) {
+                $repositories = @($existing.repositories | Where-Object {
+                        [System.IO.Path]::GetFullPath($_.commonGitDirectory) -ine [System.IO.Path]::GetFullPath($common_git_directory)
+                    })
+            }
+        }
+
+        $repositories += [ordered]@{
+            repositoryId = $policy.repositoryId
+            commonGitDirectory = [System.IO.Path]::GetFullPath($common_git_directory)
+            originUrl = $origin_url
+            policyRef = $policy_ref
+            policyPath = $PolicyPath
+        }
+        $manifest = [ordered]@{
+            version = 1
+            gitExecutable = $script:git_path
+            gitLfsExecutable = $git_lfs_path
+            userName = $user_name
+            userEmail = $user_email
+            repositories = $repositories
+        }
+        $manifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $staging_root 'trust.json') -Encoding utf8NoBOM
+
+        if (Test-Path -LiteralPath $previous_root) {
+            Remove-Item -LiteralPath $previous_root -Recurse -Force
+        }
+        if (Test-Path -LiteralPath $install_root) {
+            Move-Item -LiteralPath $install_root -Destination $previous_root
+            $moved_previous_install = $true
+        }
+        Move-Item -LiteralPath $staging_root -Destination $install_root
+        $activated_new_install = $true
+
+        $installed_executable = Join-Path $install_root 'bin\agent-git.exe'
+        & $installed_executable --version
+        if ($LASTEXITCODE -ne 0) {
+            throw 'The installed agent-git executable failed its version smoke test.'
+        }
+        Assert-RuntimeArtifactHashes `
+            -ArtifactRoot (Join-Path $install_root 'bin') `
+            -RuntimeFiles $runtime_files `
+            -ExpectedHashes $artifact_hashes
+
+        if ($TestOnlyFailPostInstall) {
+            throw 'Test-only post-install failure.'
+        }
+
+        if ($is_canonical_install) {
+            Push-Location -LiteralPath $repository_root
+            try {
+                & $installed_executable status
+                if ($LASTEXITCODE -ne 0) {
+                    throw 'The installed agent-git executable failed its trusted repository smoke test.'
+                }
+            } finally {
+                Pop-Location
+            }
         }
     } catch {
-        throw "agent-git installation failed and rollback also failed. " +
-            "The previous installation may remain at '$previous_root'. " +
-            "Installation failure: $installation_error Rollback failure: $_"
+        $installation_error = $_
+        try {
+            if ($activated_new_install -and (Test-Path -LiteralPath $install_root)) {
+                Move-Item -LiteralPath $install_root -Destination $staging_root
+                $activated_new_install = $false
+            }
+            if ($moved_previous_install -and (Test-Path -LiteralPath $previous_root)) {
+                Move-Item -LiteralPath $previous_root -Destination $install_root
+                $moved_previous_install = $false
+            }
+        } catch {
+            throw "agent-git installation failed and rollback also failed. " +
+                "The previous installation may remain at '$previous_root'. " +
+                "Installation failure: $installation_error Rollback failure: $_"
+        }
+        throw $installation_error
+    } finally {
+        if (Test-Path -LiteralPath $staging_root) {
+            Remove-Item -LiteralPath $staging_root -Recurse -Force
+        }
     }
-    throw $installation_error
+
+    Write-Host "Installed agent-git at '$(Join-Path $install_root 'bin\agent-git.exe')'."
+    Write-Host "Registered repository '$($policy.repositoryId)' with policy ref '$policy_ref'."
 } finally {
-    if (Test-Path -LiteralPath $staging_root) {
-        Remove-Item -LiteralPath $staging_root -Recurse -Force
+    if ($null -ne $validation_root -and (Test-Path -LiteralPath $validation_root)) {
+        Remove-Item -LiteralPath $validation_root -Recurse -Force
     }
 }
-
-Write-Host "Installed agent-git at '$(Join-Path $install_root 'bin\agent-git.exe')'."
-Write-Host "Registered repository '$($policy.repositoryId)' with policy ref '$policy_ref'."
