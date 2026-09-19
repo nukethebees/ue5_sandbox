@@ -6,9 +6,11 @@ set(SBX_MIMALLOC_SOURCE "${SBX_MIMALLOC_ROOT}/src/static.c")
 set(SBX_MIMALLOC_PREFIX_HEADER
   "${CMAKE_CURRENT_BINARY_DIR}/generated/sbx_mimalloc_prefix.h"
 )
-set(SBX_MIMALLOC_SYMBOL_SCRIPT
-  "${PROJECT_SOURCE_DIR}/Scripts/sbx_mimalloc_symbols.py"
+set(SANDBOX_NATIVE_BINARY_TOOLS
+  "${PROJECT_SOURCE_DIR}/tools/bin/NativeBinaryTools.exe"
 )
+sandbox_add_staged_csharp_tool_preflight(native-binary-tools-preflight
+  "NativeBinaryTools.exe" "${SANDBOX_NATIVE_BINARY_TOOLS}")
 
 set_source_files_properties("${SBX_MIMALLOC_SOURCE}" PROPERTIES LANGUAGE CXX)
 
@@ -33,12 +35,12 @@ configure_sbx_mimalloc_object(sbx-mimalloc-prefix-probe)
 
 add_custom_command(
   OUTPUT "${SBX_MIMALLOC_PREFIX_HEADER}"
-  COMMAND "${Python3_EXECUTABLE}" "${SBX_MIMALLOC_SYMBOL_SCRIPT}" generate
+  COMMAND "${SANDBOX_NATIVE_BINARY_TOOLS}" mimalloc-symbols generate
     --nm "${SBX_LLVM_NM}"
     --readobj "${SBX_LLVM_READOBJ}"
     --output "${SBX_MIMALLOC_PREFIX_HEADER}"
     $<TARGET_OBJECTS:sbx-mimalloc-prefix-probe>
-  DEPENDS $<TARGET_OBJECTS:sbx-mimalloc-prefix-probe> "${SBX_MIMALLOC_SYMBOL_SCRIPT}"
+  DEPENDS $<TARGET_OBJECTS:sbx-mimalloc-prefix-probe> native-binary-tools-preflight
   COMMAND_EXPAND_LISTS
   VERBATIM
 )
@@ -66,12 +68,12 @@ endif()
 set(SBX_MIMALLOC_AUDIT_STAMP "${CMAKE_CURRENT_BINARY_DIR}/sbx-mimalloc-symbol-audit.stamp")
 add_custom_command(
   OUTPUT "${SBX_MIMALLOC_AUDIT_STAMP}"
-  COMMAND "${Python3_EXECUTABLE}" "${SBX_MIMALLOC_SYMBOL_SCRIPT}" verify
+  COMMAND "${SANDBOX_NATIVE_BINARY_TOOLS}" mimalloc-symbols verify
     --nm "${SBX_LLVM_NM}"
     --readobj "${SBX_LLVM_READOBJ}"
     $<TARGET_OBJECTS:sbx-mimalloc-implementation>
   COMMAND "${CMAKE_COMMAND}" -E touch "${SBX_MIMALLOC_AUDIT_STAMP}"
-  DEPENDS sbx-mimalloc-implementation "${SBX_MIMALLOC_SYMBOL_SCRIPT}"
+  DEPENDS sbx-mimalloc-implementation native-binary-tools-preflight
   COMMAND_EXPAND_LISTS
   VERBATIM
 )

@@ -376,10 +376,9 @@ function csetup {
     try {
         Update-WorktreeSubmodules
 
+        ctools
+
         $requires_unreal_setup = @($configurations | Where-Object { $_ -ne 'native' })
-        if ($requires_unreal_setup.Count -gt 0) {
-            ctools
-        }
 
         $preset_generator = Join-Path $script:dev_project_root 'cmake\presets\generate.py'
         if (-not (Test-Path -LiteralPath $preset_generator -PathType Leaf)) {

@@ -7,6 +7,8 @@
   <Project Path="GamePackageTools.Tests/GamePackageTools.Tests.csproj" />
   <Project Path="GitTools/GitTools.csproj" />
   <Project Path="GitTools.Tests/GitTools.Tests.csproj" />
+  <Project Path="NativeBinaryTools/NativeBinaryTools.csproj" />
+  <Project Path="NativeBinaryTools.Tests/NativeBinaryTools.Tests.csproj" />
   <Project Path="SetLiveCodingDisabled/SetLiveCodingDisabled.csproj" />
   <Project Path="SetLiveCodingDisabled.Tests/SetLiveCodingDisabled.Tests.csproj" />
   <Project Path="UnrealBuildTools/UnrealBuildTools.csproj" />

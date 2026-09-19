@@ -10,6 +10,10 @@ Any workflow that uses one requires its staged executable to be present.
 - `perf/` contains performance tooling integrated into the root CMake project.
 - `GitTools/` is a small C# executable for Git worktree discovery. Build the complete C# tooling
   workspace with `dotnet build tools/Tools.slnx` or `ctools` after loading `dev.ps1`.
+- `NativeBinaryTools/` inspects native object files for build integration checks. Its staged
+  executable runs mimalloc prefix-header generation and verification as
+  `tools/bin/NativeBinaryTools.exe mimalloc-symbols <generate|verify> ...`; native setup runs
+  `ctools` so these CMake targets are ready after `csetup native`.
 - `CodeFormatTools/` is the C# formatter for repository C++ and shader files. Run its staged
   executable through the `format-code` and `format-all-code` CMake workflows, or directly as
   `tools/bin/CodeFormatTools.exe [--all|--changed|--staged] [--jobs N|-j N] [--verbose]` after

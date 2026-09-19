@@ -14,7 +14,8 @@
   migration-audit contract.
 - `test_*.py` files: focused Python script validation support. Repository C++ and shader
   formatting is provided by the C# `CodeFormatTools` developer tool under `tools/`.
-- `sbx_mimalloc_symbols.py` and `soa_spacing_confirmation.py`: targeted native-analysis helpers.
+- `soa_spacing_confirmation.py`: targeted native-analysis helper. Mimalloc object-symbol analysis
+  is provided by the `NativeBinaryTools` C# tool under `tools/`.
 
 Run scripts from the repository root unless their own help says otherwise. Python scripts use the
 repository's supported Python environment; run Pyright when changing one. Benchmark outputs belong
