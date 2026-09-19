@@ -9,19 +9,6 @@
   :equivalent-type @vector_2f
   :export-specifier SANDBOXCORE_API)
 
-(vector-soa-module soa_vectors_3f
-  :header "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_3f.h"
-  :source "Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_3f.cpp"
-  :header-include "SandboxCore/soa_vectors_3f.h"
-  :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  :storage-name FVectors3f
-  :value-type float
-  :components (xs ys zs)
-  :equivalent-type @vector_3f_value
-  :export-specifier SANDBOXCORE_API
-  (fixed TVectors3fFixedStorage
-    :containers (TFixedVectors3f)))
-
 (vector-soa-module soa_vectors_3d
   :header "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_3d.h"
   :source "Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_3d.cpp"
@@ -35,7 +22,7 @@
 
 (umbrella-module sandbox_core_soa_vectors
   :header "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors.h"
-  :headers ("SandboxCore/soa_vectors_2f.h" "SandboxCore/soa_vectors_3f.h" "SandboxCore/soa_vectors_3d.h"))
+  :headers ("SandboxCore/soa_vectors_2f.h" "SandboxCore/soa_vectors_3d.h"))
 
 (homogeneous-soa-module sandbox_core_soa_rotators
   :header "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_rotators.h"
@@ -46,9 +33,6 @@
     :components (pitches yaws rolls)
     :input-members (Pitch Yaw Roll)
     :export-specifier SANDBOXCORE_API
-    (value-type float f
-      :equivalent-type @rotator_3f
-      :input-types (@rotator_3f))
     (value-type double d
       :equivalent-type @rotator_3d
       :input-types (@rotator_3d))))

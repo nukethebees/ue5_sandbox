@@ -28,9 +28,6 @@
 #include <EngineUtils.h>
 #include <Kismet/GameplayStatics.h>
 
-#include <SandboxCore/soa_rotator_utils.h>
-#include <SandboxCore/soa_vector_utils.h>
-
 #include <vector>
 
 namespace ml::level_simulation_builder {

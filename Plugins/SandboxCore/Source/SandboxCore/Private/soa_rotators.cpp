@@ -8,14 +8,6 @@
 #include "CoreMinimal.h"
 #include "Containers/ArrayView.h"
 
-void FRotatorsf::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(pitches, indices);
-    ml::apply_permutation(yaws, indices);
-    ml::apply_permutation(rolls, indices);
-}
-
 void FRotatorsd::apply_permutation(TArrayView<int32> indices) {
     validate_array_sizes();
     check(indices.Num() == num());

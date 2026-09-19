@@ -6,8 +6,7 @@
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_checks.h>
-#include <SandboxCore/soa_rotator_utils.h>
-#include <SandboxCore/soa_vector_utils.h>
+#include <SandboxCore/array_utils.h>
 #include <SandboxISMCComponent.h>
 #include <SpaceGameRendering/SparkEffects.h>
 

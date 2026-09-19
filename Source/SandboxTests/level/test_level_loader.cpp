@@ -20,7 +20,6 @@
 #include <SpaceGameS7/LevelDefinitionReader.h>
 #include <SpaceGameSimulation/entities/TestEntityType.h>
 
-#include <SandboxCore/soa_vector_utils.h>
 #include <SandboxCoreEngine/actor_utils.h>
 
 #include <Camera/CameraActor.h>

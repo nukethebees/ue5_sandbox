@@ -5,4 +5,3 @@
 
 #include "SandboxCore/soa_vectors_2f.h"
 #include "SandboxCore/soa_vectors_3d.h"
-#include "SandboxCore/soa_vectors_3f.h"

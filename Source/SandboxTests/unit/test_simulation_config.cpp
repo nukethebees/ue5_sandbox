@@ -1,6 +1,5 @@
 #include <SandboxTests/support/SimulationTestAssets.h>
 
-#include <SandboxCore/soa_rotator_utils.h>
 #include <SpaceGame/combat/lasers/TestLasersConfig.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnersConfig.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsConfig.h>

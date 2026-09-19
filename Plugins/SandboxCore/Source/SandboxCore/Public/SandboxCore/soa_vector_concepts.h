@@ -1,29 +1,18 @@
 #pragma once
 
-#include "soa_vectors.h"
-
-#include <concepts>
-#include <type_traits>
-
 namespace ml {
 template <typename T>
-concept is_vec3f = std::same_as<std::remove_cvref_t<T>, FVectors3f> ||
-                   std::same_as<std::remove_cvref_t<T>, FVectors3f::View> ||
-                   std::same_as<std::remove_cvref_t<T>, FVectors3f::ConstView>;
-
-template <typename T>
-concept is_mutable_vec3f =
-    (std::same_as<T, FVectors3f&> || std::same_as<std::remove_cvref_t<T>, FVectors3f::View>) &&
-    requires(T&& value) {
-        { value.xs.GetData() } -> std::convertible_to<float*>;
-        { value.ys.GetData() } -> std::convertible_to<float*>;
-        { value.zs.GetData() } -> std::convertible_to<float*>;
-    };
-
-template <typename T>
-concept is_readable_vec3f = is_vec3f<T> && requires(T const& value) {
-    { value.xs.GetData() } -> std::convertible_to<float const*>;
-    { value.ys.GetData() } -> std::convertible_to<float const*>;
-    { value.zs.GetData() } -> std::convertible_to<float const*>;
+concept is_readable_vec3f = requires(T const& value) {
+    value.num();
+    value.xs.GetData();
+    value.ys.GetData();
+    value.zs.GetData();
 };
-}
+
+template <typename T>
+concept is_mutable_vec3f = is_readable_vec3f<T> && requires(T&& value) {
+    value.xs.GetData();
+    value.ys.GetData();
+    value.zs.GetData();
+};
+} // namespace ml

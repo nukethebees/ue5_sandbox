@@ -255,15 +255,6 @@
   :spelling "FRotator3d"
   :header "CoreMinimal.h")
 
-(type rotators_f
-  :spelling "FRotatorsf"
-  :header "SandboxCore/soa_rotators.h"
-  (operation add-element add
-    :pass-by value)
-  (operation remove-at-swap remove_at_swap)
-  (operation set-element set
-    :pass-by value))
-
 (type rotators_d
   :spelling "FRotatorsd"
   :header "SandboxCore/soa_rotators.h"
@@ -272,10 +263,6 @@
   (operation remove-at-swap remove_at_swap)
   (operation set-element set
     :pass-by const-ref))
-
-(type soa_vector_fill
-  :spelling "ml::fill"
-  :header "SandboxCore/soa_vector_utils.h")
 
 (type shared_ptr_int32
   :spelling "TSharedPtr<int32>"
@@ -354,15 +341,6 @@
   :spelling "FQuat4f"
   :header "CoreMinimal.h"
   :pass-by value)
-
-(type vectors_3f
-  :spelling "FVectors3f"
-  :header "SandboxCore/soa_vectors_3f.h"
-  (operation add-element add
-    :pass-by value)
-  (operation remove-at-swap remove_at_swap)
-  (operation set-element set
-    :pass-by value))
 
 (type transform
   :spelling "FTransform"

@@ -2,12 +2,10 @@ lispb-outputs-v1
 Plugins/SandboxCore/Source/SandboxCore/Private/soa_rotators.cpp
 Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_2f.cpp
 Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_3d.cpp
-Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_3f.cpp
 Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_rotators.h
 Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors.h
 Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_2f.h
 Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_3d.h
-Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_3f.h
 Plugins/SandboxCore/Source/SbxCoreExperiments/Private/soa_spacing_shapes.cpp
 Plugins/SandboxCore/Source/SbxCoreExperiments/Private/soa_types.cpp
 Plugins/SandboxCore/Source/SbxCoreExperiments/Public/SbxCoreExperiments/soa_spacing_shapes.h

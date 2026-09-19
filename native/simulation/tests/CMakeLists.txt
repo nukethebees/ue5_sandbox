@@ -41,6 +41,7 @@ target_sources(native-simulation-tests PRIVATE
   ship_health_tests.cpp
   spatial_tests.cpp
   step_response_tests.cpp
+  vectors3f_tests.cpp
 )
 target_compile_features(native-simulation-tests PRIVATE cxx_std_23)
 target_link_libraries(native-simulation-tests PRIVATE

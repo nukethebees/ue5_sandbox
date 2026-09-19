@@ -21,8 +21,6 @@
 #include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
 #include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
-#include <SandboxCore/soa_rotator_utils.h>
-
 #include <Dom/JsonObject.h>
 #include <Engine/World.h>
 #include <HAL/FileManager.h>
