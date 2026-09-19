@@ -16,6 +16,9 @@ and builds playable Editor configurations.
 The remaining scripts implement build safety, packaging, project-file generation, and Live Coding
 configuration. Treat them as implementation details unless a documented workflow calls for one
 directly. In particular, use CMake workflows rather than calling UBT or its batch wrappers yourself.
+`TestUnrealEditorConfigurationTransition.ps1` is the focused DebugGame-to-Development-to-DebugGame
+module-loading regression. It holds the canonical engine resource exclusively across the sequence
+and invokes only nested coordinated CMake and CTest entry points.
 
 See [Build and test](../docs/build-and-test.md) for everyday commands and [the CMake guide](../cmake/README.md)
 for how those commands are coordinated.

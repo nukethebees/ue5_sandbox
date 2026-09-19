@@ -118,19 +118,26 @@ Built-in resources are:
 | `gpu` | 1 | Exclusive GPU work |
 
 Unknown named resources are created with capacity one. Unreal uses `unreal-build/<hash>` derived
-from the canonical engine checkout as a read/write gate: builds, project generation, and UAT
-packaging acquire it exclusively; editor launches, tests, commandlets, and package verification
-acquire it shared for their entire supervised process-tree lifetime. Readers can overlap, but
-cannot overlap a writer on the same engine. Other engines and ordinary native work remain
-independent. Staged games use copied package binaries and require only machine access.
+from the canonical engine checkout as a read/write gate: builds, project generation, UAT
+packaging, and interactive managed editor launches acquire it exclusively; unattended editor
+tests, commandlets, and package verification acquire it shared for their entire supervised
+process-tree lifetime. Unreal's interactive startup may invoke UBT after a missing-module prompt,
+so only launches using `-unattended` qualify as editor readers. Readers can overlap, but cannot
+overlap a writer on the same engine. Other engines and ordinary native work remain independent.
+Staged games use copied package binaries and require only machine access.
 
-PowerShell build/setup helpers do not reserve an engine around the whole CMake workflow. Each
-CMake operation acquires its own claims, avoiding nested upgrades and unnecessary exclusion during
-test phases. Engine identity is generated only by CMake, including path/junction canonicalization.
+Ordinary PowerShell build/setup helpers do not reserve an engine around the whole CMake workflow.
+Each CMake operation acquires its own claims, avoiding nested upgrades and unnecessary exclusion
+during test phases. The focused editor configuration-transition regression is the exception: it
+holds an exclusive parent engine claim so another worktree cannot invalidate UBT metadata between
+each build and its module-load smoke. Engine identity is generated only by CMake, including
+path/junction canonicalization.
 After adopting this change, reconfigure every participating worktree using its CMake presets and reload
 `PowerShell/UnrealBuild.ps1` in existing shells. Old generated commands do not claim the gate
 correctly. No daemon/protocol upgrade is required. Manually launched editors, Live Coding, and
 external VS/UBT builds remain outside this protection; do not overlap them with managed writers.
+The gate schedules process behavior; it does not inspect or reconstruct UBT's BuildId and module
+manifest state.
 
 Older conflicting requests take precedence. Independent jobs may pass each other, but later
 shared work cannot starve an older exclusive request. Requests larger than a resource's capacity

@@ -62,7 +62,18 @@ Unreal Engine 5.8 project.
   workflow that invokes one, run `ctools` if its executable is absent. Unreal workflows require
   `UnrealBuildTools.exe`; formatting workflows require `CodeFormatTools.exe`. Native-only
   workflows do not require this preflight.
-* CMake coordinates Unreal work through a canonical engine read/write gate: builds and UAT packaging acquire it exclusively; managed editor launches, tests, and commandlets acquire it shared for their full process-tree lifetime. Regenerate CMake commands in every worktree and reload PowerShell helpers after coordination changes. Manually launched editors, Visual Studio builds, Live Coding, and UBT launched outside CMake do not participate; do not overlap them with managed Unreal builds.
+* CMake coordinates Unreal work through a canonical engine read/write gate: builds, UAT packaging,
+  and interactive managed editor launches acquire it exclusively; unattended managed editor tests
+  and commandlets acquire it shared for their full process-tree lifetime. Shared editor readers must
+  use `-unattended` so startup cannot prompt to compile modules. Regenerate CMake commands in every
+  worktree and reload PowerShell helpers after coordination changes. Manually launched editors,
+  Visual Studio builds, Live Coding, and UBT launched outside CMake do not participate; do not
+  overlap them with managed Unreal builds.
+* UBT is authoritative for BuildIds, target receipts, and module manifests. Do not inspect, edit,
+  copy, or synchronize BuildIds in project tooling. Normal project builds do not use
+  `-NoEngineChanges`: project-owned runtime dependencies such as `SandboxTracyClient.dll` are
+  legitimately staged into the Editor target's engine output directory. The exclusive engine gate
+  serializes those writes.
 * A canonical per-user jobserver coordinates expensive work across worktrees. Ordinary work shares the machine resource; benchmarks wait for older work to drain and then run exclusively. Use `get-jobserver-state` or the `jobserver-status` target to inspect running and queued jobs.
 * Development validation has three tiers:
   1. Native-only validation is the default while implementing independently buildable code under
@@ -109,7 +120,9 @@ Unreal Engine 5.8 project.
     this includes an Editor build and is integration validation, not the default native unit path
   * final all-suite integration gate: `cmake --workflow --preset debug-game-tests`
   * level tests after building: `ctest --preset debug-game-level-tests`
-  * If Unreal tests report missing project plugin modules, run `cmake --build --preset debug-game --target editor` to repair stale editor-module BuildIds before rerunning them.
+  * If Unreal tests report missing or stale project/plugin modules, explicitly build the relevant
+    `editor` target through its CMake preset before rerunning them. Let UBT regenerate its receipts
+    and module manifests; never edit or synchronize BuildIds manually.
 * Before starting a timed benchmark, complete all build and setup work, then run it without asking the user for confirmation. Use the repository benchmark targets and scripts so the benchmark acquires exclusive machine access from the jobserver, waits for older work, and runs without build interference. If a benchmark entry point does not request benchmark resources, fix or wrap it before collecting timings. Dry runs and correctness tests do not require benchmark access.
 * Run only the benchmark subset needed to answer the current question. Do not run a comprehensive benchmark matrix by default; reserve it for explicitly requested broad validation or when every dimension is materially affected.
 * For repeated Unreal level benchmark samples, run the iterations within one editor process rather than launching the editor once per sample. For revision comparisons, group each revision's samples into as few editor launches as practical.

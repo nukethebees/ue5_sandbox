@@ -112,16 +112,34 @@ it.
 CTest labels separate taxonomy from integration cost: native tests carry `native` plus their
 existing unit/subsystem labels, while Unreal Automation tests retain their semantic labels.
 Use the native presets rather than the generic `unit` label for the everyday native path. If Unreal
-tests report missing project plugin modules, build the `editor` target through the `debug-game`
-preset to repair stale Editor-module BuildIds before rerunning them.
+tests report missing or stale project/plugin modules, build the `editor` target through the matching
+CMake preset before rerunning them. UBT owns target receipts, module manifests, and BuildIds; do not
+edit or synchronize that metadata manually.
+
+Run the focused configuration transition regression with:
+
+```powershell
+pwsh -NoProfile -File PowerShell/TestUnrealEditorConfigurationTransition.ps1
+```
+
+It takes one exclusive engine lease, then builds and smoke-tests `SandboxEditor` as DebugGame,
+Development, then DebugGame again without asserting any particular BuildId value. Holding the
+parent lease prevents another worktree from invalidating one step's UBT metadata before its smoke
+reader starts.
 
 ## Coordination
 
-CMake-managed Unreal builds take the repository's canonical engine gate; managed editor processes,
-tests, and commandlets hold a compatible shared claim for their lifetime. The per-user jobserver
-also coordinates costly work across worktrees. Load `dev.ps1` and run `get-jobserver-state` to
-inspect it. Do not overlap manually launched Editors, Visual Studio builds, Live Coding, or direct
-UBT work with a managed Unreal build.
+CMake-managed Unreal builds take the repository's canonical engine gate exclusively. Unattended
+editor tests and commandlets hold a compatible shared claim for their lifetime; interactive managed
+editor launches hold it exclusively because Unreal can prompt to compile missing modules during
+startup. The per-user jobserver also coordinates costly work across worktrees. Load `dev.ps1` and
+run `get-jobserver-state` to inspect it. Do not overlap manually launched Editors, Visual Studio
+builds, Live Coding, or direct UBT work with a managed Unreal build.
+
+Normal project builds intentionally do not pass `-NoEngineChanges`. Project-owned runtime
+dependencies such as `SandboxTracyClient.dll` are staged into the Editor target's engine output
+directory, which that option treats as an engine change. Correctness instead comes from routing the
+entire UBT process tree through the exclusive canonical engine claim.
 
 See [the CMake guide](../cmake/README.md) for preset structure and [the native guide](../native/README.md)
 for standalone-only workflows. Use [Benchmarks](benchmarks.md) for exclusive performance
