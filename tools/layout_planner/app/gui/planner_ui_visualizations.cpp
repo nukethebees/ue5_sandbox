@@ -81,27 +81,6 @@ void draw_packed_bar(PackedAnalysis const& analysis,
                                2.0F);
         }
 
-        ImGui::SetCursorScreenPos({left, origin.y});
-        ImGui::PushID(static_cast<int>(index));
-        ImGui::InvisibleButton("packed-field", {width, height});
-        if (ImGui::IsItemClicked()) {
-            selected_field = field.name;
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::BeginTooltip();
-            ImGui::TextUnformatted(field.name.c_str());
-            ImGui::Text("Logical type: %s", field.logical_type.c_str());
-            ImGui::Text("Planning width: %u bits", field.bit_width);
-            if (field.most_significant_bit.has_value()) {
-                ImGui::Text("Bit range: [%llu:%llu]",
-                            static_cast<unsigned long long>(*field.most_significant_bit),
-                            static_cast<unsigned long long>(field.least_significant_bit));
-            }
-            ImGui::Text("Maximum unsigned value: %s",
-                        detail::format_number(field.maximum_unsigned_value).c_str());
-            ImGui::EndTooltip();
-        }
-        ImGui::PopID();
         if (width > 72.0F) {
             draw_list->AddText({left + 6.0F, origin.y + 8.0F},
                                ImGui::GetColorU32(ImGuiCol_Text),
@@ -134,8 +113,44 @@ void draw_packed_bar(PackedAnalysis const& analysis,
                            ImGui::GetColorU32(ImGuiCol_TextDisabled),
                            text.c_str());
     }
-    ImGui::SetCursorScreenPos(origin);
-    ImGui::Dummy({available, height + 24.0F});
+    ImGui::PushID(label);
+    ImGui::InvisibleButton("packed-layout", {available, height});
+    auto const clicked{ImGui::IsItemClicked()};
+    auto const hovered{ImGui::IsItemHovered()};
+    ImGui::PopID();
+    if (hovered) {
+        auto const mouse_x{ImGui::GetIO().MousePos.x};
+        for (auto const& field : analysis.fields) {
+            auto const left{origin.x + available *
+                                           static_cast<float>(field.least_significant_bit) /
+                                           denominator};
+            auto const right{origin.x + available *
+                                            static_cast<float>(field.least_significant_bit +
+                                                               field.bit_width) /
+                                            denominator};
+            auto const width{std::max(2.0F, right - left)};
+            if (mouse_x < left || mouse_x >= left + width) {
+                continue;
+            }
+            if (clicked) {
+                selected_field = field.name;
+            }
+            ImGui::BeginTooltip();
+            ImGui::TextUnformatted(field.name.c_str());
+            ImGui::Text("Logical type: %s", field.logical_type.c_str());
+            ImGui::Text("Planning width: %u bits", field.bit_width);
+            if (field.most_significant_bit.has_value()) {
+                ImGui::Text("Bit range: [%llu:%llu]",
+                            static_cast<unsigned long long>(*field.most_significant_bit),
+                            static_cast<unsigned long long>(field.least_significant_bit));
+            }
+            ImGui::Text("Maximum unsigned value: %s",
+                        detail::format_number(field.maximum_unsigned_value).c_str());
+            ImGui::EndTooltip();
+            break;
+        }
+    }
+    ImGui::Dummy({available, 24.0F});
 }
 
 void draw_payload_regions(SoaAnalysis const& analysis,
@@ -179,28 +194,6 @@ void draw_payload_regions(SoaAnalysis const& analysis,
             {x, origin.y}, {x + width, origin.y + height}, ImGui::GetColorU32(color), 2.0F);
         draw_list->AddRect(
             {x, origin.y}, {x + width, origin.y + height}, ImGui::GetColorU32(ImGuiCol_Border));
-        ImGui::SetCursorScreenPos({x, origin.y});
-        ImGui::PushID(static_cast<int>(index));
-        ImGui::InvisibleButton("payload-region", {width, height});
-        if (ImGui::IsItemClicked()) {
-            selected_field = column.name;
-        }
-        if (ImGui::IsItemHovered()) {
-            ImGui::BeginTooltip();
-            ImGui::TextUnformatted(column.name.c_str());
-            ImGui::Text("Schema type: %s", column.schema_type.c_str());
-            ImGui::Text("Planning type: %s", column.physical_type.c_str());
-            ImGui::Text(
-                "Element size: %s",
-                detail::format_number(column.type_facts.transform([](TypeFacts const& facts) {
-                    return facts.size_bytes;
-                })).c_str());
-            ImGui::Text("Payload: %s", detail::format_bytes(column.total_bytes).c_str());
-            ImGui::Text("Minimum cache lines: %s",
-                        detail::format_number(column.minimum_cache_lines).c_str());
-            ImGui::EndTooltip();
-        }
-        ImGui::PopID();
         if (width > 78.0F) {
             draw_list->AddText({x + 5.0F, origin.y + 7.0F},
                                ImGui::GetColorU32(ImGuiCol_Text),
@@ -218,8 +211,44 @@ void draw_payload_regions(SoaAnalysis const& analysis,
                        2.0F,
                        0,
                        2.0F);
-    ImGui::SetCursorScreenPos(origin);
-    ImGui::Dummy({available, height + ImGui::GetStyle().ItemSpacing.y});
+    ImGui::PushID(label);
+    ImGui::InvisibleButton("payload-layout", {available, height});
+    auto const clicked{ImGui::IsItemClicked()};
+    auto const hovered{ImGui::IsItemHovered()};
+    ImGui::PopID();
+    if (hovered) {
+        auto const mouse_x{ImGui::GetIO().MousePos.x};
+        auto x{origin.x};
+        for (auto const& column : analysis.columns) {
+            if (!column.total_bytes.has_value()) {
+                continue;
+            }
+            auto const width{std::max(
+                2.0F,
+                available * static_cast<float>(*column.total_bytes) / denominator)};
+            if (mouse_x >= x && mouse_x < x + width) {
+                if (clicked) {
+                    selected_field = column.name;
+                }
+                ImGui::BeginTooltip();
+                ImGui::TextUnformatted(column.name.c_str());
+                ImGui::Text("Schema type: %s", column.schema_type.c_str());
+                ImGui::Text("Planning type: %s", column.physical_type.c_str());
+                ImGui::Text(
+                    "Element size: %s",
+                    detail::format_number(column.type_facts.transform([](TypeFacts const& facts) {
+                        return facts.size_bytes;
+                    })).c_str());
+                ImGui::Text("Payload: %s", detail::format_bytes(column.total_bytes).c_str());
+                ImGui::Text("Minimum cache lines: %s",
+                            detail::format_number(column.minimum_cache_lines).c_str());
+                ImGui::EndTooltip();
+                break;
+            }
+            x += width;
+        }
+    }
+    ImGui::Dummy({available, ImGui::GetStyle().ItemSpacing.y});
 }
 
 void draw_cache_line(CacheLineTiling const& tiling) {
@@ -261,7 +290,7 @@ void draw_cache_line(CacheLineTiling const& tiling) {
                                index.c_str());
         }
     }
-    ImGui::SetCursorScreenPos({origin.x, origin.y + height + ImGui::GetStyle().ItemSpacing.y});
+    ImGui::Dummy({available, height});
     if (tiling.exact_elements_per_cache_line.has_value()) {
         ImGui::Text("%llu elements / 64-byte line",
                     static_cast<unsigned long long>(*tiling.exact_elements_per_cache_line));
