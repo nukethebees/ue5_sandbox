@@ -32,10 +32,14 @@ CPU particle loop.  The vertex shader obtains each instance's stable seed from
 phase, and wraps it inside the camera-relative volume.
 
 The shader uses the actual world velocity to derive screen-plane streak
-direction and a bounded pixel length.  Camera rotation changes the observed
-field naturally, but zero translation produces no velocity-driven brightness
-or stretch.  The material is additive/unlit, tests normal scene depth, and
-does not write depth; opaque hulls can occlude dust.
+direction and a bounded pixel length. Visibility remains driven by total world
+speed, so a fast sideways drift remains visible. `lateral_streak_scale` only
+attenuates projected screen-plane velocity when requesting streak length; its
+default of `0.35` keeps strafing and drift readable without turning into heavy
+space rain. Camera rotation changes the observed field naturally, but zero
+translation produces no velocity-driven brightness or stretch. The material
+is additive/unlit, tests normal scene depth, and does not write depth; opaque
+hulls can occlude dust.
 
 ## Tuning
 
@@ -44,7 +48,7 @@ does not write depth; opaque hulls can occlude dust.
 - enable flag, count, seed, and volume dimensions;
 - size, brightness, and colour;
 - minimum/full visible speed;
-- streak time and maximum pixel length;
+- streak time, lateral streak scale, and maximum pixel length;
 - volume-edge fade.
 
 The default is 1,024 instances.  It is intended to be subtle at low speed;
@@ -97,3 +101,5 @@ live player presentation effect without touching simulation state:
 
 `strong` preserves the active level's volume and colour while raising the
 count, visibility response, brightness, and capped streak length for tuning.
+It caps lateral streak scale at the default `0.35`, so its stronger settings do
+not restore dominant sideways rain.

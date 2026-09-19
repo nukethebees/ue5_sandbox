@@ -45,6 +45,9 @@ struct SANDBOXSHADERS_API FSpaceDustSettings {
     float streak_seconds{0.0125f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Space Dust", meta = (ClampMin = "0.0"))
+    float lateral_streak_scale{0.35f};
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Space Dust", meta = (ClampMin = "0.0"))
     float maximum_streak_pixels{24.0f};
 
     UPROPERTY(EditAnywhere,

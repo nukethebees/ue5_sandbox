@@ -63,6 +63,8 @@ constexpr TCHAR construction_material_path[]{
     TEXT("/SandboxShaders/Experiments/ConstructionSpawn/M_ConstructionSpawn.M_ConstructionSpawn")};
 constexpr TCHAR energy_beam_material_path[]{
     TEXT("/SandboxShaders/Experiments/EnergyBeam/M_EnergyBeam.M_EnergyBeam")};
+constexpr TCHAR space_dust_material_path[]{
+    TEXT("/SandboxShaders/Generated/Materials/M_SpaceDust.M_SpaceDust")};
 constexpr TCHAR showcase_object_path[]{
     TEXT("/SandboxShaders/Showcase/SandboxShaders_Showcase.SandboxShaders_Showcase")};
 constexpr TCHAR showcase_package_path[]{TEXT("/SandboxShaders/Showcase/SandboxShaders_Showcase")};
@@ -218,6 +220,7 @@ TEST_CLASS(MaterialCompilation, "SandboxShaders.MaterialCompilation")
         auto* const construction_material{
             LoadObject<UMaterial>(nullptr, construction_material_path)};
         auto* const energy_beam_material{LoadObject<UMaterial>(nullptr, energy_beam_material_path)};
+        auto* const space_dust_material{LoadObject<UMaterial>(nullptr, space_dust_material_path)};
         if (!TestRunner->TestNotNull(TEXT("Energy shield material loads"), shield_material) ||
             !TestRunner->TestNotNull(TEXT("Space field material loads"), display_material) ||
             !TestRunner->TestNotNull(TEXT("Shield impact material loads"), impact_material) ||
@@ -236,7 +239,8 @@ TEST_CLASS(MaterialCompilation, "SandboxShaders.MaterialCompilation")
                                      celestial_analytic_material) ||
             !TestRunner->TestNotNull(TEXT("Construction spawn material loads"),
                                      construction_material) ||
-            !TestRunner->TestNotNull(TEXT("Energy beam material loads"), energy_beam_material)) {
+            !TestRunner->TestNotNull(TEXT("Energy beam material loads"), energy_beam_material) ||
+            !TestRunner->TestNotNull(TEXT("Space dust material loads"), space_dust_material)) {
             return;
         }
         TestRunner->TestTrue(TEXT("Energy shield shader compiles without errors"),
@@ -277,6 +281,9 @@ TEST_CLASS(MaterialCompilation, "SandboxShaders.MaterialCompilation")
         TestRunner->TestTrue(
             TEXT("Energy beam shader compiles without errors"),
             UMaterialEditingLibrary::RecompileMaterial(energy_beam_material).IsEmpty());
+        TestRunner->TestTrue(
+            TEXT("Space dust shader compiles without errors"),
+            UMaterialEditingLibrary::RecompileMaterial(space_dust_material).IsEmpty());
 
         auto* const level_editor{
             GEditor != nullptr ? GEditor->GetEditorSubsystem<ULevelEditorSubsystem>() : nullptr};
