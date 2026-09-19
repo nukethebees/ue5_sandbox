@@ -14,9 +14,31 @@
 #include <DrawDebugHelpers.h>
 #include <Engine/StaticMesh.h>
 #include <Engine/World.h>
+#include <EngineUtils.h>
+#include <HAL/IConsoleManager.h>
 #include <NiagaraComponent.h>
 
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
+
+namespace {
+#if !UE_BUILD_SHIPPING
+void apply_space_dust_preset_command(TArray<FString> const& arguments, UWorld* const world) {
+    if (!IsValid(world) || arguments.Num() != 1) {
+        UE_LOG(LogSandbox, Warning, TEXT("Usage: space_dust.preset <off|default|strong>."));
+        return;
+    }
+
+    for (TActorIterator<ATestSpaceShip> player_ship{world}; player_ship; ++player_ship) {
+        player_ship->apply_space_dust_debug_preset(arguments[0]);
+    }
+}
+
+FAutoConsoleCommandWithWorldAndArgs space_dust_preset_console_command{
+    TEXT("space_dust.preset"),
+    TEXT("Applies the off, default, or strong space-dust tuning preset to player ships."),
+    FConsoleCommandWithWorldAndArgsDelegate::CreateStatic(&apply_space_dust_preset_command)};
+#endif
+}
 
 /* **************************************** */
 // Lifecycle and simulation binding
@@ -372,3 +394,36 @@ auto ATestSpaceShip::get_presentation_resources() const -> FPlayerPresentationRe
 #endif
     return resources;
 }
+
+#if !UE_BUILD_SHIPPING
+void ATestSpaceShip::apply_space_dust_debug_preset(FStringView const preset) {
+    if (!IsValid(space_dust)) {
+        UE_LOG(LogSandbox, Warning, TEXT("Space dust component is unavailable."));
+        return;
+    }
+
+    auto settings{space_dust->get_settings()};
+    if (preset.Equals(FStringView{TEXT("off")}, ESearchCase::IgnoreCase)) {
+        settings.enabled = false;
+    } else if (preset.Equals(FStringView{TEXT("default")}, ESearchCase::IgnoreCase)) {
+        settings = FSpaceDustSettings{};
+    } else if (preset.Equals(FStringView{TEXT("strong")}, ESearchCase::IgnoreCase)) {
+        settings.enabled = true;
+        settings.particle_count = FMath::Max(settings.particle_count, 2048);
+        settings.brightness = 0.7f;
+        settings.minimum_visible_speed = 500.0f;
+        settings.full_visible_speed = 4000.0f;
+        settings.streak_seconds = 0.02f;
+        settings.maximum_streak_pixels = 32.0f;
+    } else {
+        UE_LOG(LogSandbox,
+               Warning,
+               TEXT("Unknown space-dust preset '%.*s'. Use off, default, or strong."),
+               preset.Len(),
+               preset.GetData());
+        return;
+    }
+
+    space_dust->apply_settings(settings);
+}
+#endif
