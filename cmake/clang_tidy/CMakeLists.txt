@@ -45,6 +45,7 @@ function(sandbox_add_native_clang_tidy_target)
       "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/run_clang_tidy.ps1"
       -PythonExecutable "${Python3_EXECUTABLE}"
       -RunClangTidyExecutable "${SANDBOX_RUN_CLANG_TIDY_EXECUTABLE}"
+      -ClangTidyExecutable "${SANDBOX_CLANG_TIDY_EXECUTABLE}"
       -LogFile "${sandbox_native_clang_tidy_log}"
       -CompilationDatabase "${CMAKE_BINARY_DIR}"
       -Checks "${sandbox_native_clang_tidy_checks}"
