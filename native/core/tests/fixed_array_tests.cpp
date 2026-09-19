@@ -60,6 +60,43 @@ struct alignas(64) OverAlignedValue {
 
     std::int32_t value{};
 };
+
+struct ResultHandle {
+    std::int32_t index{};
+    std::int32_t generation{};
+};
+
+static_assert(std::is_trivially_copyable_v<ResultHandle>);
+static_assert(std::is_trivially_destructible_v<ResultHandle>);
+
+auto write_results(std::span<ResultHandle> const output,
+                   std::int32_t const result_count,
+                   std::int32_t const generation) -> std::int32_t {
+    EXPECT_GE(result_count, 0);
+    EXPECT_LE(result_count, static_cast<std::int32_t>(output.size()));
+
+    for (std::int32_t index{}; index < result_count; ++index) {
+        output[index] = {.index = index, .generation = generation};
+    }
+
+    return result_count;
+}
+
+void expect_results(ml::FixedArray<ResultHandle, 8> const& values,
+                    std::int32_t const expected_count,
+                    std::int32_t const expected_generation) {
+    ASSERT_EQ(values.num(), expected_count);
+
+    std::int32_t expected_index{};
+    for (ResultHandle const& result : values) {
+        EXPECT_EQ(result.index, expected_index);
+        EXPECT_EQ(result.generation, expected_generation);
+        EXPECT_EQ(values[expected_index].index, expected_index);
+        EXPECT_EQ(values[expected_index].generation, expected_generation);
+        ++expected_index;
+    }
+}
+
 TEST(NativeCoreFixedStorage, DefersLifetimeAndPreservesAlignment) {
     EXPECT_EQ(LifetimeTrackedValue::live_count, 0);
 
@@ -196,5 +233,43 @@ TEST(NativeCoreFixedArray, DestroysRemovedElementsAndReusesStorage) {
         EXPECT_EQ(values[0], iteration);
         EXPECT_EQ(values[1], iteration + 1);
     }
+}
+
+TEST(NativeCoreFixedArray, SupportsUninitialisedQueryResultBuffers) {
+    ml::FixedArray<ResultHandle, 8> results;
+
+    results.set_num_uninitialised(write_results(results.capacity_view(), 3, 10));
+    expect_results(results, 3, 10);
+
+    results.set_num_uninitialised(write_results(results.capacity_view(), 0, 11));
+    EXPECT_TRUE(results.is_empty());
+    EXPECT_EQ(results.begin(), results.end());
+
+    results.set_num_uninitialised(write_results(results.capacity_view(), results.capacity(), 12));
+    EXPECT_TRUE(results.is_full());
+    expect_results(results, results.capacity(), 12);
+
+    results.set_num_uninitialised(2);
+    results.set_num_uninitialised(write_results(results.capacity_view(), 5, 13));
+    expect_results(results, 5, 13);
+
+    for (std::int32_t iteration{}; iteration < 1024; ++iteration) {
+        auto const count{iteration % (results.capacity() + 1)};
+        auto const generation{100 + iteration};
+        results.set_num_uninitialised(write_results(results.capacity_view(), count, generation));
+        expect_results(results, count, generation);
+    }
+}
+
+TEST(NativeCoreFixedArray, CopiesAndMovesUninitialisedQueryResults) {
+    ml::FixedArray<ResultHandle, 8> source;
+    source.set_num_uninitialised(write_results(source.capacity_view(), 4, 27));
+
+    ml::FixedArray<ResultHandle, 8> copied{source};
+    ml::FixedArray<ResultHandle, 8> moved{std::move(source)};
+
+    EXPECT_TRUE(source.is_empty());
+    expect_results(copied, 4, 27);
+    expect_results(moved, 4, 27);
 }
 }
