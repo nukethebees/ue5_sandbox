@@ -1,3 +1,4 @@
+#include <ioj/sim/entity_identity_layout.h>
 #include <ioj/sim/health_table.h>
 
 #include <array>
