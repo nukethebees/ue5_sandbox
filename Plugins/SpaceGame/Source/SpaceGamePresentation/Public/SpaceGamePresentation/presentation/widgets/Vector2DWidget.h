@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SpaceGamePresentation/ui/style/GameUiStyle.h"
+
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
 
@@ -7,31 +9,31 @@
 
 class UBorder;
 class UCanvasPanel;
+class USizeBox;
 class UTextBlock;
-namespace ml::ioj {
-struct FGameHudStyle;
-}
-
 UCLASS()
 class SPACEGAMEPRESENTATION_API UVector2DWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    void NativeConstruct() override;
-
     void update(FVector2D const value);
     void apply_hud_style(ml::ioj::FGameHudStyle const& style);
     void set_font_size(int32 const new_font_size);
+    void set_label(FText new_label);
     auto get_font_size() const noexcept -> int32 { return font_size; }
   protected:
-    UPROPERTY(meta = (BindWidget))
+    void NativePreConstruct() override;
+
+    UPROPERTY(Transient)
+    USizeBox* root_size_box_{nullptr};
+    UPROPERTY(Transient)
     UCanvasPanel* canvas_panel{nullptr};
-    UPROPERTY(meta = (BindWidget))
+    UPROPERTY(Transient)
     UBorder* background_widget{nullptr};
-    UPROPERTY(meta = (BindWidget))
+    UPROPERTY(Transient)
     UBorder* cursor_widget{nullptr};
-    UPROPERTY(meta = (BindWidget))
+    UPROPERTY(Transient)
     UTextBlock* name_text{nullptr};
-    UPROPERTY(meta = (BindWidget))
+    UPROPERTY(Transient)
     UTextBlock* value_text{nullptr};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
@@ -40,4 +42,10 @@ class SPACEGAMEPRESENTATION_API UVector2DWidget : public UUserWidget {
     bool show_value{true};
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "UI")
     int32 font_size{24};
+  private:
+    void rebuild_widget_tree();
+    void update_widgets();
+
+    FVector2D value_{};
+    TOptional<ml::ioj::FGameHudStyle> hud_style_{};
 };

@@ -11,6 +11,7 @@
 #include <SpaceGamePresentation/presentation/HudUpdateSettings.h>
 #include <SpaceGamePresentation/presentation/LevelPresentationSettings.h>
 #include <SpaceGamePresentation/presentation/RadarSource.h>
+#include <SpaceGamePresentation/presentation/widgets/FlightVectorDebugData.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudKillData.h>
 #include <SpaceGamePresentation/presentation/WorldSoftTargetMaterialData.h>
 #include <SpaceGameSimulation/entities/TestEntityType.h>
@@ -124,9 +125,7 @@ struct FPlayerFlightDataCache {
     bool operator==(FPlayerFlightDataCache const& other) const noexcept = default;
 
     bool has_player_ship{false};
-    FVector2D turning{};
-    FVector2D moving{};
-    FVector2D desired_velocity_scale{};
+    ml::ship_hud::FFlightVectorDebugData flight_vector_debug{};
     FVector ship_velocity{};
     FVector target_velocity{};
     ETestSpaceShipControlMode control_mode{};

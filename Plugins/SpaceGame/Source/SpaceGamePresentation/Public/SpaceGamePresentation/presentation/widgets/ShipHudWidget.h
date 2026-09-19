@@ -24,7 +24,7 @@ class UShipThrusterEnergyWidget;
 class UShipPointsWidget;
 
 class UValueWidget;
-class UVector2DWidget;
+class UFlightVectorDebugWidget;
 class UDebugGraphWidget;
 class UForceStatusWidget;
 class UMissionStatusWidget;
@@ -32,6 +32,9 @@ class SEntityOverlayWidget;
 class SRadarWidget;
 namespace ml::hud_manager {
 struct FMissionDataCache;
+}
+namespace ml::ship_hud {
+struct FFlightVectorDebugData;
 }
 namespace ml::ioj {
 class FGameUiStyle;
@@ -79,9 +82,7 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
 
     void set_selected_imc(FStringView value);
 
-    void set_turning(FVector2D value);
-    void set_moving(FVector2D value);
-    void set_desired_velocity_scale(FVector2D value);
+    void set_flight_vector_debug(ml::ship_hud::FFlightVectorDebugData const& value);
     void set_ship_velocity(FVector value);
     void set_target_velocity(FVector value);
     void set_control_mode(FStringView value);
@@ -107,6 +108,7 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     void ReleaseSlateResources(bool release_children) override;
 
     void set_common_widget_properties();
+    void construct_flight_vector_debug_widget();
     void update_crosshair_colours();
     void apply_radar_colours();
     void set_widget_visibility_checked(UWidget* const widget,
@@ -129,12 +131,8 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     UValueWidget* target_speed_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UValueWidget* selected_imc_widget{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UVector2DWidget* turning_widget{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UVector2DWidget* moving_widget{nullptr};
-    UPROPERTY(meta = (BindWidget))
-    UVector2DWidget* desired_velocity_scale_widget{nullptr};
+    UPROPERTY(Transient)
+    UFlightVectorDebugWidget* flight_vector_debug_widget{nullptr};
     UPROPERTY(meta = (BindWidget))
     UValueWidget* ship_velocity_widget{nullptr};
     UPROPERTY(meta = (BindWidget))

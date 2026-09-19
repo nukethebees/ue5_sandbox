@@ -951,13 +951,22 @@ bool FHUDManager::collect_player_flight_data() {
     if (validate_player_ship_for_collection()) {
         auto const ship_socket{player_ship->get_middle_socket()};
         auto const lock_on_target{player_ship->lock_on_target};
+        auto const& movement_state{player_ship->get_movement_state()};
+        auto const local_velocity{
+            movement_state.transform.inverse_transform_vector_no_scale(movement_state.velocity)};
 
         next_data.has_player_ship = true;
-        next_data.turning = ml::to_unreal(player_ship->rotation_input);
-        next_data.moving = ml::to_unreal(player_ship->planar_movement_direction);
-        next_data.desired_velocity_scale =
-            ml::to_unreal(player_ship->target_local_planar_velocity_scale);
-        next_data.ship_velocity = ml::to_unreal(player_ship->get_movement_state().velocity);
+        next_data.flight_vector_debug = {
+            .turn_input = ml::to_unreal(player_ship->rotation_input),
+            .move_input = ml::to_unreal(player_ship->planar_movement_direction),
+            .target_velocity = ml::to_unreal(player_ship->target_local_planar_velocity_scale),
+            .local_velocity =
+                {
+                    static_cast<float>(local_velocity.y / player_ship->get_cruise_speed()),
+                    static_cast<float>(local_velocity.x / player_ship->get_cruise_speed()),
+                },
+        };
+        next_data.ship_velocity = ml::to_unreal(movement_state.velocity);
         next_data.target_velocity = ml::to_unreal(player_ship->target_local_planar_velocity);
         next_data.control_mode = ml::to_unreal(player_ship->control_mode);
         next_data.flight_mode = ml::to_unreal(player_ship->flight_mode);
@@ -1084,9 +1093,7 @@ void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
     hud.set_crosshair_widget_visibility(ESlateVisibility::Visible);
     hud.set_lock_on_widget_visibility(data.has_lock_on_target);
     hud.set_selected_imc(FStringView{data.selected_mapping_context});
-    hud.set_turning(data.turning);
-    hud.set_moving(data.moving);
-    hud.set_desired_velocity_scale(data.desired_velocity_scale);
+    hud.set_flight_vector_debug(data.flight_vector_debug);
     hud.set_ship_velocity(data.ship_velocity);
     hud.set_target_velocity(data.target_velocity);
     hud.set_control_mode(*ml::to_string_without_type_prefix(data.control_mode));

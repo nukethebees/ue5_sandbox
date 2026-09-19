@@ -144,6 +144,7 @@ struct Sim {
 
     auto get_kills() const -> std::int32_t;
     auto get_speed() const noexcept -> float;
+    auto get_cruise_speed() const noexcept -> float { return config.cruise_speed; }
     auto get_energy() const -> float;
     auto energy_is_full() const -> bool;
     auto get_middle_socket() const -> Transform3d;
