@@ -35,6 +35,42 @@
 #include <Misc/Guid.h>
 #include <UObject/UnrealType.h>
 
+struct FShipControlContextTestAccess {
+    static void
+        start_throttle(FShipControlContext& context, float const input, double const time_seconds) {
+        context.start_throttle_at(input, time_seconds);
+    }
+
+    static void set_throttle(FShipControlContext& context, float const input) {
+        context.set_throttle_value(input);
+    }
+
+    static void stop_throttle(FShipControlContext& context, double const time_seconds) {
+        context.stop_throttle_at(time_seconds);
+    }
+
+    static void start_brake(FShipControlContext& context, double const time_seconds) {
+        context.start_brake_at(time_seconds);
+    }
+
+    static void stop_brake(FShipControlContext& context, double const time_seconds) {
+        context.stop_brake_at(time_seconds);
+    }
+
+    static void seed_throttle_tap(FShipControlContext& context) {
+        context.throttle_gesture_.begin_press(1.0);
+        context.throttle_gesture_.end_press(1.1);
+    }
+
+    static auto begin_throttle_press(FShipControlContext& context) -> bool {
+        return context.throttle_gesture_.begin_press(1.2);
+    }
+
+    static void neutralise_ship_input(FShipControlContext& context) {
+        context.neutralise_ship_input();
+    }
+};
+
 TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
 {
     TEST_METHOD(ProductionModesUseCanonicalController)
@@ -366,6 +402,16 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
 
         gesture.reset();
         TestRunner->TestFalse(TEXT("Reset clears a pending tap"), gesture.begin_press(2.0));
+    }
+
+    TEST_METHOD(NeutralisationResetsGestureStateWithoutShip)
+    {
+        FShipControlContext context;
+        FShipControlContextTestAccess::seed_throttle_tap(context);
+        FShipControlContextTestAccess::neutralise_ship_input(context);
+
+        TestRunner->TestFalse(TEXT("A gesture cannot survive neutralisation without a ship"),
+                              FShipControlContextTestAccess::begin_throttle_press(context));
     }
 
     TEST_METHOD(ControlProfilesRegisterAndCycle)
@@ -1111,6 +1157,73 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Repeated bind does not duplicate handlers"),
                               input_component->GetActionEventBindings().Num(),
                               bindings_after_bind);
+
+        simulation.flight_mode = ::ioj::sim::SpaceShipFlightMode::PlanarVelocity;
+        simulation.control_mode = ::ioj::sim::SpaceShipControlMode::Power;
+
+        FShipControlContextTestAccess::start_throttle(context, 0.5f, 1.0);
+        TestRunner->TestTrue(TEXT("Power throttle receives analog input"),
+                             FMath::IsNearlyEqual(ship->get_throttle(), 0.5f));
+        FShipControlContextTestAccess::stop_throttle(context, 1.1);
+        TestRunner->TestTrue(TEXT("Power throttle release clears input"),
+                             FMath::IsNearlyZero(ship->get_throttle()));
+
+        FShipControlContextTestAccess::start_throttle(context, 1.f, 2.0);
+        FShipControlContextTestAccess::stop_throttle(context, 2.1);
+        FShipControlContextTestAccess::start_throttle(context, 1.f, 2.2);
+        TestRunner->TestTrue(TEXT("Power throttle double-tap starts boost"),
+                             simulation.get_movement_state().boost_brake_state ==
+                                 ::ioj::sim::player::BoostBrakeState::Boost);
+        FShipControlContextTestAccess::stop_throttle(context, 2.3);
+
+        FShipControlContextTestAccess::start_brake(context, 3.0);
+        TestRunner->TestTrue(TEXT("Power brake starts normal braking"),
+                             simulation.get_movement_state().boost_brake_state ==
+                                 ::ioj::sim::player::BoostBrakeState::Brake);
+        FShipControlContextTestAccess::stop_brake(context, 3.1);
+
+        FShipControlContextTestAccess::start_brake(context, 4.0);
+        FShipControlContextTestAccess::stop_brake(context, 4.1);
+        FShipControlContextTestAccess::start_brake(context, 4.2);
+        TestRunner->TestTrue(TEXT("Power brake double-tap starts emergency braking"),
+                             simulation.get_movement_state().boost_brake_state ==
+                                 ::ioj::sim::player::BoostBrakeState::EmergencyBrake);
+        FShipControlContextTestAccess::stop_brake(context, 4.3);
+
+        commands.select_previous_control_mode();
+        FShipControlContextTestAccess::start_throttle(context, 0.5f, 5.0);
+        TestRunner->TestTrue(TEXT("Velocity throttle press preserves ordinary boost"),
+                             simulation.get_movement_state().boost_brake_state ==
+                                 ::ioj::sim::player::BoostBrakeState::Boost);
+        TestRunner->TestTrue(TEXT("Velocity throttle does not set Power throttle"),
+                             FMath::IsNearlyZero(ship->get_throttle()));
+        FShipControlContextTestAccess::stop_throttle(context, 5.1);
+        TestRunner->TestTrue(TEXT("Velocity throttle release stops boost"),
+                             simulation.get_movement_state().boost_brake_state ==
+                                 ::ioj::sim::player::BoostBrakeState::None);
+
+        FShipControlContextTestAccess::start_throttle(context, 0.5f, 5.2);
+        commands.select_next_control_mode();
+        FShipControlContextTestAccess::set_throttle(context, 0.5f);
+        TestRunner->TestTrue(TEXT("Velocity-to-Power held throttle becomes analog thrust"),
+                             FMath::IsNearlyEqual(ship->get_throttle(), 0.5f));
+        FShipControlContextTestAccess::stop_throttle(context, 5.3);
+        TestRunner->TestTrue(TEXT("Mode-switch release clears throttle"),
+                             FMath::IsNearlyZero(ship->get_throttle()));
+        TestRunner->TestTrue(TEXT("Mode-switch release leaves boost clear"),
+                             simulation.get_movement_state().boost_brake_state ==
+                                 ::ioj::sim::player::BoostBrakeState::None);
+
+        FShipControlContextTestAccess::start_throttle(context, 0.5f, 5.4);
+        commands.select_previous_control_mode();
+        FShipControlContextTestAccess::set_throttle(context, 0.5f);
+        TestRunner->TestTrue(TEXT("Power-to-Velocity held throttle starts ordinary boost"),
+                             simulation.get_movement_state().boost_brake_state ==
+                                 ::ioj::sim::player::BoostBrakeState::Boost);
+        FShipControlContextTestAccess::stop_throttle(context, 5.5);
+        TestRunner->TestTrue(TEXT("Power-to-Velocity release stops boost"),
+                             simulation.get_movement_state().boost_brake_state ==
+                                 ::ioj::sim::player::BoostBrakeState::None);
 
         ship->set_move_input(FVector2D{0.5f, -0.25f});
         ship->turn(FVector2D{0.25f, 0.75f});
