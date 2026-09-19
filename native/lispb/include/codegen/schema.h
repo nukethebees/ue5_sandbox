@@ -45,6 +45,7 @@
 namespace codegen {
 
 auto resolve_type(TypeRef const& reference, std::map<std::string, CppType> const& types) -> CppType;
+auto native_spelling(std::string const& spelling) -> std::string;
 auto all_storage_operations() -> std::vector<StorageOperation>;
 
 } // namespace codegen

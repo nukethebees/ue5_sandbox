@@ -1349,3 +1349,11 @@ void validate_manifest(Manifest const& manifest) {
 }
 
 } // namespace codegen::detail
+
+namespace codegen {
+
+void validate_manifest(Manifest const& manifest) {
+    detail::validate_manifest(manifest);
+}
+
+} // namespace codegen
