@@ -1,11 +1,13 @@
 #include <sandbox/core/fixed_array.h>
 #include <sandbox/core/frame_array.h>
+#include <sandbox/core/frame_memory_resource.h>
 #include <sandbox/core/multi_buffer.h>
 #include <sandbox/core/soa_permutation.h>
 
 #include <gtest/gtest.h>
 
 #include <array>
+#include <cstdint>
 #include <memory_resource>
 #include <string>
 #include <vector>
@@ -39,6 +41,39 @@ TEST(NativeCoreFrameArray, UsesBorrowedPmrStorageAndRemovesBySwap) {
     ASSERT_EQ(values.num(), 2);
     EXPECT_EQ(values[0], 10);
     EXPECT_EQ(values[1], 30);
+}
+
+TEST(NativeCoreFrameMemoryResource, AlignsTracksAndReclaimsAllocations) {
+    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 512> backing{};
+    ml::FrameMemoryResource resource{backing};
+
+    auto* const first{resource.allocate(7, 1)};
+    auto* const aligned{resource.allocate(32, 32)};
+
+    EXPECT_TRUE(resource.owns(first));
+    EXPECT_EQ(reinterpret_cast<std::uintptr_t>(aligned) % 32, 0);
+    EXPECT_EQ(resource.get_stats().outstanding_allocation_count, 2);
+
+    resource.deallocate(aligned, 32, 32);
+    resource.deallocate(first, 7, 1);
+    resource.reset();
+
+    auto const stats{resource.get_stats()};
+    EXPECT_EQ(stats.current_claimed_bytes, 0);
+    EXPECT_EQ(stats.last_frame_payload_bytes, 39);
+    EXPECT_EQ(stats.last_frame_root_claim_count, 2);
+}
+
+TEST(NativeCoreFrameMemoryResource, RecordsOverflowWithoutClaimingMemory) {
+    alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 64> backing{};
+    ml::FrameMemoryResource resource{backing};
+
+    EXPECT_EQ(resource.try_allocate(128, 16), nullptr);
+
+    auto const stats{resource.get_stats()};
+    EXPECT_EQ(stats.overflow_count, 1);
+    EXPECT_EQ(stats.last_failure.requested_bytes, 128);
+    EXPECT_EQ(stats.current_claimed_bytes, 0);
 }
 
 TEST(NativeCoreMultiBuffer, CyclesPreviousCurrentAndNextRoles) {

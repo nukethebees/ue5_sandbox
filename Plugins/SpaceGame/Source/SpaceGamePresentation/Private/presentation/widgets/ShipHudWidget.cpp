@@ -355,7 +355,7 @@ void UShipHudWidget::set_flight_mode(FStringView value) {
     flight_mode_widget->update(value);
 }
 
-void UShipHudWidget::set_mission_state(ETestMissionState const new_state) {
+void UShipHudWidget::set_mission_state(::ioj::sim::MissionState const new_state) {
     if (mission_status_panel) {
         mission_status_panel->set_mission_state(new_state);
     }

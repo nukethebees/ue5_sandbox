@@ -1,10 +1,10 @@
 #pragma once
 
 #include "ioj/sim/level_telemetry_snapshot.h"
+#include "SpaceGame/missions/TestMissionFailReason.h"
+#include "SpaceGame/missions/TestMissionState.h"
 #include "SpaceGame/ui/common/MenuActivatableWidget.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
-#include "SpaceGameSimulation/missions/TestMissionFailReason.h"
-#include "SpaceGameSimulation/missions/TestMissionState.h"
 
 #include "LevelCompletionWidget.generated.h"
 

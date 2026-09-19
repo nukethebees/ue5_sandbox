@@ -1,6 +1,6 @@
 #pragma once
 
-#include <SpaceGameSimulation/missions/TestMissionMode.h>
+#include <SpaceGame/missions/TestMissionMode.h>
 
 #include <CoreMinimal.h>
 #include <GameFramework/Info.h>

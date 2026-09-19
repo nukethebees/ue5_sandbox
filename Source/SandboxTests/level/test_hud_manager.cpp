@@ -24,9 +24,14 @@
 #include <array>
 #include <Engine/World.h>
 #include <GameFramework/PlayerController.h>
+#include <ioj/sim/missions/mission_fail_reason.h>
+#include <ioj/sim/missions/mission_mode.h>
+#include <ioj/sim/missions/mission_state.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/Optional.h>
-#include <SpaceGameSimulation/missions/NativeMissionTypes.h>
+#include <SpaceGame/missions/TestMissionFailReasonConversion.h>
+#include <SpaceGame/missions/TestMissionModeConversion.h>
+#include <SpaceGame/missions/TestMissionStateConversion.h>
 
 namespace ml {
 namespace {
@@ -108,7 +113,7 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
     checks.are_equal(harness.get_ledger().count_alive(),
                      count_worldless_hud_entities(hud),
                      TEXT("Initial entity cache matches ledger"));
-    checks.are_equal(ml::to_unreal(mission.get_mission_state()),
+    checks.are_equal(mission.get_mission_state(),
                      hud.get_mission_data().status_data.mission_state,
                      TEXT("Mission state is cached"));
     if (scenario == EHUDManagerScenario::InitialCachesPopulateWithoutHUD) {
@@ -138,8 +143,9 @@ void run_worldless_hud_manager_scenario(FAutomationTestBase& test,
                          TEXT("Entity cache updates without a HUD"));
     } else if (scenario == EHUDManagerScenario::MissionAndDefenceDataUpdateWithoutHUD) {
         auto const& status{hud.get_mission_data().status_data};
-        checks.are_equal(
-            ETestMissionState::Failed, status.mission_state, TEXT("Defence failure is cached"));
+        checks.are_equal(::ioj::sim::MissionState::Failed,
+                         status.mission_state,
+                         TEXT("Defence failure is cached"));
         checks.is_true(status.surviving_entity_health[0].health <= 0,
                        TEXT("Destroyed survivor health is cached"));
         checks.is_true(status.required_kill_entity_health[0].health <= 0,
@@ -207,7 +213,7 @@ void FTestHUDManagerScenario::initial_caches_process_samples() {
                      TEXT("Initial entity count cache matches the ledger"));
 
     auto const& mission_data{hud_manager.get_mission_data()};
-    checks.are_equal(ml::to_unreal(mission_manager.get_mission_state()),
+    checks.are_equal(mission_manager.get_mission_state(),
                      mission_data.status_data.mission_state,
                      TEXT("Mission state is cached"));
     checks.are_equal(mission_manager.get_mission_stopwatch(),
@@ -336,8 +342,9 @@ void FTestHUDManagerScenario::defence_process_samples() {
     SANDBOX_TESTS_ASSERT_ALL_PASSED(checks);
 
     auto const& sample{defence_samples.nearest_value(test_duration)};
-    checks.are_equal(
-        ETestMissionState::Failed, sample.mission_state, TEXT("Defence mission failure is cached"));
+    checks.are_equal(::ioj::sim::MissionState::Failed,
+                     sample.mission_state,
+                     TEXT("Defence mission failure is cached"));
     checks.is_less_equal_than(
         sample.defended_entity_health, 0, TEXT("Destroyed must-survive health is cached"));
     checks.is_less_equal_than(
@@ -808,7 +815,7 @@ auto FTestHUDManagerScenario::count_cached_entities(FHUDManager const& manager) 
     int32 total{0};
     auto const& counts{manager.get_entity_count_data().alive_per_team_and_type};
     constexpr auto n_teams{ml::EnumCountTrait<ETestTeam>::count_value};
-    constexpr auto n_types{ml::EnumCountTrait<ETestEntityType>::count_value};
+    constexpr auto n_types{ml::EnumCountTrait<::ioj::sim::EntityType>::count_value};
     for (int32 team{0}; team < n_teams; ++team) {
         for (int32 type{0}; type < n_types; ++type) {
             total += counts[team][type];

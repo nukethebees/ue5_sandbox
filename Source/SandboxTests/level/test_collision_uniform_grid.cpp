@@ -9,7 +9,7 @@
 #include <SandboxTests/support/TestCollisionActor.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 
 TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
 {

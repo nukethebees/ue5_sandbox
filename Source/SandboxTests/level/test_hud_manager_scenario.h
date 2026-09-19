@@ -2,10 +2,10 @@
 
 #include <SandboxTests/support/SimulationTestScenario.h>
 
+#include <ioj/sim/entity_type.h>
+#include <SpaceGame/missions/TestMissionState.h>
+#include <SpaceGamePresentation/entities/TestTeam.h>
 #include <SpaceGamePresentation/presentation/HUDManager.h>
-#include <SpaceGameSimulation/entities/TestEntityType.h>
-#include <SpaceGameSimulation/entities/TestTeam.h>
-#include <SpaceGameSimulation/missions/TestMissionState.h>
 
 #include <sandbox/core/time_series_data.h>
 
@@ -35,7 +35,7 @@ class FTestHUDManagerScenario final : public FSimulationTestScenario {
         int32 registered_hud_count{0};
     };
     struct FDefenceSample {
-        ETestMissionState mission_state{ETestMissionState::NotStarted};
+        ::ioj::sim::MissionState mission_state{::ioj::sim::MissionState::NotStarted};
         int32 defended_entity_health{INDEX_NONE};
         int32 required_kill_entity_health{INDEX_NONE};
         float mission_stopwatch{0.f};

@@ -1,11 +1,19 @@
-#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
-#include <SpaceGameSimulation/missions/NativeMissionTypes.h>
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
+#include <ioj/sim/entity_types.h>
+#include <ioj/sim/laser_source.h>
+#include <ioj/sim/missions/mission_fail_reason.h>
+#include <ioj/sim/missions/mission_mode.h>
+#include <ioj/sim/missions/mission_state.h>
+#include <SpaceGame/missions/TestMissionFailReasonConversion.h>
+#include <SpaceGame/missions/TestMissionModeConversion.h>
+#include <SpaceGame/missions/TestMissionStateConversion.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 #include "test_level_loader_scenario.h"
 
 #include <SandboxTests/support/PlayerControllerTestAccess.h>
 #include <SandboxTests/support/time_series_test_data.h>
 
+#include <ioj/sim/entity_type.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/levels/ExampleLevels.h>
 #include <SpaceGame/levels/LevelDefinition.h>
@@ -18,7 +26,6 @@
 #include <SpaceGamePresentation/presentation/widgets/BenchmarkHudWidget.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudWidget.h>
 #include <SpaceGameS7/LevelDefinitionReader.h>
-#include <SpaceGameSimulation/entities/TestEntityType.h>
 
 #include <SandboxCoreEngine/actor_utils.h>
 
@@ -171,8 +178,8 @@ void FLevelLoaderCameraScenario::sample_runtime(ATestBatchOrchestrator& orchestr
     auto const& counts{orchestrator.get_entity_ledger().get_combat_telemetry().spawned};
     auto const blue{std::to_underlying(ETestTeam::Blue)};
     auto const red{std::to_underlying(ETestTeam::Red)};
-    auto const capital{std::to_underlying(ETestEntityType::CapitalShip)};
-    auto const turret{std::to_underlying(ETestEntityType::Turret)};
+    auto const capital{std::to_underlying(::ioj::sim::EntityType::CapitalShip)};
+    auto const turret{std::to_underlying(::ioj::sim::EntityType::Turret)};
     entity_counts_.add(test_driver->get_time(),
                        static_cast<int32>(counts[blue][capital] + counts[blue][turret] +
                                           counts[red][capital] + counts[red][turret]));
@@ -432,9 +439,9 @@ void FLevelLoaderScenario::sample_runtime(ATestBatchOrchestrator& orchestrator) 
     auto const counts{ledger.count_alive_per_team_and_type()};
     auto const blue{std::to_underlying(ETestTeam::Blue)};
     auto const red{std::to_underlying(ETestTeam::Red)};
-    auto const player_type{std::to_underlying(ETestEntityType::PlayerShip)};
-    auto const capital_type{std::to_underlying(ETestEntityType::CapitalShip)};
-    auto const turret_type{std::to_underlying(ETestEntityType::Turret)};
+    auto const player_type{std::to_underlying(::ioj::sim::EntityType::PlayerShip)};
+    auto const capital_type{std::to_underlying(::ioj::sim::EntityType::CapitalShip)};
+    auto const turret_type{std::to_underlying(::ioj::sim::EntityType::Turret)};
 
     FSample sample{
         .authored_entities = counts[blue][player_type] + counts[blue][capital_type] +

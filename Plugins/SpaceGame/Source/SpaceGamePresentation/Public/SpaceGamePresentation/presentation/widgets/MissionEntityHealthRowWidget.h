@@ -1,8 +1,8 @@
 #pragma once
 
+#include <ioj/sim/entity_type.h>
 #include <ioj/sim/entity_types.h>
-#include <SpaceGameSimulation/entities/TestEntityType.h>
-#include <SpaceGameSimulation/ships/common/ShipHealth.h>
+#include <SpaceGamePresentation/entities/ShipHealth.h>
 
 #include <Blueprint/UserWidget.h>
 #include <CoreMinimal.h>
@@ -20,7 +20,7 @@ UCLASS()
 class SPACEGAMEPRESENTATION_API UMissionEntityHealthRowWidget : public UUserWidget {
     GENERATED_BODY()
   public:
-    void set_entity(::ioj::sim::EntityUniqueId unique_id, ETestEntityType entity_type);
+    void set_entity(::ioj::sim::EntityUniqueId unique_id, ::ioj::sim::EntityType entity_type);
     void set_health(FShipHealth health);
     void apply_hud_style(ml::ioj::FGameHudStyle const& style);
     void set_font_size(int32 const new_font_size);

@@ -1,7 +1,7 @@
 #include <SpaceGame/simulation/SimulationConfigConversion.h>
-#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
-#include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
+#include <SpaceGamePresentation/integration/RotatorConversion.h>
+#include <SpaceGamePresentation/integration/TransformConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 
 auto make_simulation_config(FLaserWeaponConfig const& source) -> ::ioj::sim::LaserWeaponSimConfig {
     ::ioj::sim::LaserWeaponSimConfig result;

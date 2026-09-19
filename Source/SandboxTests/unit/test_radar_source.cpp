@@ -1,8 +1,10 @@
+#include <ioj/sim/entity_type.h>
+#include <ioj/sim/entity_types.h>
+#include <ioj/sim/laser_source.h>
 #include <SandboxTests/support/DisplayEntityTestData.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 #include <SpaceGamePresentation/presentation/RadarSource.h>
-#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
-#include <SpaceGameSimulation/entities/TestEntityType.h>
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <CQTest.h>
 #include <ioj/sim/entity_identity_layout.h>
@@ -31,7 +33,7 @@ auto make_view(ml::tests::FDisplayEntityTestData const& entities,
 void add_entity(ml::tests::FDisplayEntityTestData& entities,
                 FVector3f const location,
                 ETestTeam const team,
-                ETestEntityType const type,
+                ::ioj::sim::EntityType const type,
                 bool const alive = true) {
     auto const index{entities.num()};
     entities.add_defaulted(1);
@@ -81,21 +83,21 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
     {
         ml::tests::FDisplayEntityTestData entities;
         ml::test_radar_source::add_entity(
-            entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
+            entities, FVector3f::ZeroVector, ETestTeam::Blue, ::ioj::sim::EntityType::PlayerShip);
         ml::test_radar_source::add_entity(
-            entities, {50.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::Fighter);
+            entities, {50.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
         ml::test_radar_source::add_entity(
-            entities, {0.0f, 50.0f, 25.0f}, ETestTeam::Green, ETestEntityType::CapitalShip);
+            entities, {0.0f, 50.0f, 25.0f}, ETestTeam::Green, ::ioj::sim::EntityType::CapitalShip);
         ml::test_radar_source::add_entity(
-            entities, {-50.0f, 0.0f, 0.0f}, ETestTeam::Yellow, ETestEntityType::Turret);
+            entities, {-50.0f, 0.0f, 0.0f}, ETestTeam::Yellow, ::ioj::sim::EntityType::Turret);
         ml::test_radar_source::add_entity(
-            entities, {0.0f, -50.0f, 0.0f}, ETestTeam::White, ETestEntityType::TubeSpinner);
+            entities, {0.0f, -50.0f, 0.0f}, ETestTeam::White, ::ioj::sim::EntityType::TubeSpinner);
         ml::test_radar_source::add_entity(
-            entities, {100.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::Turret);
+            entities, {100.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Turret);
         ml::test_radar_source::add_entity(
-            entities, {25.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::Fighter, false);
+            entities, {25.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Fighter, false);
         ml::test_radar_source::add_entity(
-            entities, {101.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::CapitalShip);
+            entities, {101.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::CapitalShip);
 
         std::vector<::ioj::sim::EntityUniqueId> ids;
         for (int32 index{}; index < entities.num(); ++index) {
@@ -180,13 +182,13 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
     {
         ml::tests::FDisplayEntityTestData entities;
         ml::test_radar_source::add_entity(
-            entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
+            entities, FVector3f::ZeroVector, ETestTeam::Blue, ::ioj::sim::EntityType::PlayerShip);
         ml::test_radar_source::add_entity(
-            entities, {10.0f, 0.0f, 0.0f}, ETestTeam::Blue, ETestEntityType::Fighter);
+            entities, {10.0f, 0.0f, 0.0f}, ETestTeam::Blue, ::ioj::sim::EntityType::Fighter);
         ml::test_radar_source::add_entity(
-            entities, {20.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::CapitalShip);
+            entities, {20.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::CapitalShip);
         ml::test_radar_source::add_entity(
-            entities, {30.0f, 0.0f, 0.0f}, ETestTeam::White, ETestEntityType::Turret);
+            entities, {30.0f, 0.0f, 0.0f}, ETestTeam::White, ::ioj::sim::EntityType::Turret);
 
         std::vector<::ioj::sim::EntityUniqueId> ids;
         for (int32 index{}; index < entities.num(); ++index) {
@@ -230,10 +232,12 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
             FVector3f{player_location + no_roll_rotation.RotateVector(FVector{local_contact})}};
 
         ml::tests::FDisplayEntityTestData entities;
+        ml::test_radar_source::add_entity(entities,
+                                          FVector3f{player_location},
+                                          ETestTeam::Blue,
+                                          ::ioj::sim::EntityType::PlayerShip);
         ml::test_radar_source::add_entity(
-            entities, FVector3f{player_location}, ETestTeam::Blue, ETestEntityType::PlayerShip);
-        ml::test_radar_source::add_entity(
-            entities, world_contact, ETestTeam::Red, ETestEntityType::Fighter);
+            entities, world_contact, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
         std::vector<::ioj::sim::EntityUniqueId> ids;
         for (int32 index{}; index < entities.num(); ++index) {
             ids.push_back(::ioj::sim::EntityUniqueId::make(static_cast<std::uint32_t>(index),
@@ -357,9 +361,9 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         auto const settings{ml::test_radar_source::nonlinear_settings()};
         ml::tests::FDisplayEntityTestData entities;
         ml::test_radar_source::add_entity(
-            entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
+            entities, FVector3f::ZeroVector, ETestTeam::Blue, ::ioj::sim::EntityType::PlayerShip);
         ml::test_radar_source::add_entity(
-            entities, {250.0f, -80.0f, 40.0f}, ETestTeam::Red, ETestEntityType::Fighter);
+            entities, {250.0f, -80.0f, 40.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
         std::vector<::ioj::sim::EntityUniqueId> ids;
         for (int32 index{}; index < entities.num(); ++index) {
             ids.push_back(::ioj::sim::EntityUniqueId::make(static_cast<std::uint32_t>(index),
@@ -381,8 +385,10 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                                   frame));
         auto const original_position{frame.instances[0].radar_position};
 
-        ml::test_radar_source::add_entity(
-            entities, {1500.0f, 100.0f, 0.0f}, ETestTeam::Green, ETestEntityType::CapitalShip);
+        ml::test_radar_source::add_entity(entities,
+                                          {1500.0f, 100.0f, 0.0f},
+                                          ETestTeam::Green,
+                                          ::ioj::sim::EntityType::CapitalShip);
         ids.push_back(::ioj::sim::EntityUniqueId::make(
             static_cast<std::uint32_t>(entities.num() - 1), entities.entity_types.back()));
         objective_roles.Add(EEntityOverlayObjectiveRole::None);
@@ -409,13 +415,13 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
         auto const settings{ml::test_radar_source::nonlinear_settings()};
         ml::tests::FDisplayEntityTestData entities;
         ml::test_radar_source::add_entity(
-            entities, FVector3f::ZeroVector, ETestTeam::Blue, ETestEntityType::PlayerShip);
+            entities, FVector3f::ZeroVector, ETestTeam::Blue, ::ioj::sim::EntityType::PlayerShip);
         ml::test_radar_source::add_entity(
-            entities, {1999.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::Fighter);
+            entities, {1999.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
         ml::test_radar_source::add_entity(
-            entities, {2000.0f, 0.0f, 0.0f}, ETestTeam::Red, ETestEntityType::CapitalShip);
+            entities, {2000.0f, 0.0f, 0.0f}, ETestTeam::Red, ::ioj::sim::EntityType::CapitalShip);
         ml::test_radar_source::add_entity(
-            entities, {1600.0f, 0.0f, 1200.0f}, ETestTeam::Red, ETestEntityType::Turret);
+            entities, {1600.0f, 0.0f, 1200.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Turret);
         std::vector<::ioj::sim::EntityUniqueId> ids;
         for (int32 index{}; index < entities.num(); ++index) {
             ids.push_back(::ioj::sim::EntityUniqueId::make(static_cast<std::uint32_t>(index),

@@ -1,8 +1,10 @@
 #include "SpaceGamePresentation/presentation/widgets/TopKillersWidget.h"
+#include <SpaceGamePresentation/entities/EntityTypeDisplayNames.h>
 
+#include <ioj/sim/entity_types.h>
 #include <SandboxCoreEngine/enums.h>
 #include <SandboxCoreEngine/strings.h>
-#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
 
 #include <Blueprint/WidgetTree.h>
 #include <Components/Border.h>
@@ -23,15 +25,15 @@ void UTopKillersWidget::NativePreConstruct() {
 
         top_killers.reset();
         top_killers.add(::ioj::sim::EntityUniqueId::make(14, ::ioj::sim::EntityType::Fighter),
-                        ETestEntityType::Fighter,
+                        ::ioj::sim::EntityType::Fighter,
                         ETestTeam::Green,
                         18);
         top_killers.add(::ioj::sim::EntityUniqueId::make(7, ::ioj::sim::EntityType::Turret),
-                        ETestEntityType::Turret,
+                        ::ioj::sim::EntityType::Turret,
                         ETestTeam::Red,
                         13);
         top_killers.add(::ioj::sim::EntityUniqueId::make(2, ::ioj::sim::EntityType::CapitalShip),
-                        ETestEntityType::CapitalShip,
+                        ::ioj::sim::EntityType::CapitalShip,
                         ETestTeam::Blue,
                         9);
     }

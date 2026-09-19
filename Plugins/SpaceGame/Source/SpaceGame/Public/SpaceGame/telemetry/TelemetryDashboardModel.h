@@ -1,7 +1,7 @@
 #pragma once
 
+#include <ioj/sim/telemetry/level_telemetry_run_end_reason.h>
 #include <SpaceGame/telemetry/LevelTelemetryReport.h>
-#include <SpaceGameSimulation/telemetry/LevelTelemetryRunEndReason.h>
 
 #include <expected>
 
@@ -54,7 +54,8 @@ struct SPACEGAME_API FTelemetryRunSummary {
     FName level_id{NAME_None};
     FString level_display_name{};
     FString launched_utc{};
-    ELevelTelemetryRunEndReason completion_reason{ELevelTelemetryRunEndReason::WorldEnd};
+    ::ioj::sim::LevelTelemetryRunEndReason completion_reason{
+        ::ioj::sim::LevelTelemetryRunEndReason::WorldEnd};
 
     [[nodiscard]] auto level_label() const -> FString;
 };

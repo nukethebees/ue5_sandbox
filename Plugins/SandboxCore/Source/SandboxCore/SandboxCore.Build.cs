@@ -60,22 +60,6 @@ public class SandboxCore : ModuleRules
             ExternalDependencies.Add(nativeCoreLibrary);
         }
 
-        if (Target.Platform == UnrealTargetPlatform.Win64)
-        {
-            Target.Logger.LogInformation($"Target.WindowsPlatform.ToolChainDir : {Target.WindowsPlatform.ToolChainDir}");
-            Target.Logger.LogInformation($"Target.WindowsPlatform.WindowsSdkDir : {Target.WindowsPlatform.WindowsSdkDir}");
-            Target.Logger.LogInformation($"Target.WindowsPlatform.WindowsSdkVersion : {Target.WindowsPlatform.WindowsSdkVersion}");
-
-            string OneCoreLib = Path.Combine(Target.WindowsPlatform.WindowsSdkDir,
-                "Lib",
-                Target.WindowsPlatform.WindowsSdkVersion,
-                "um",
-                "x64",
-                "OneCore.lib"
-            );
-
-            PublicAdditionalLibraries.Add(OneCoreLib);
-        }
         string includeDirectory = Path.Combine(repositoryRoot, "native", "sbx_mimalloc", "include");
         PrivateIncludePaths.Add(includeDirectory);
         if (!Target.bGenerateProjectFiles)
@@ -105,7 +89,6 @@ public class SandboxCore : ModuleRules
                 "psapi.lib",
                 "shell32.lib",
                 "user32.lib",
-                "advapi32.lib",
                 "bcrypt.lib",
             }
             );

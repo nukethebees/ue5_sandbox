@@ -5,9 +5,9 @@
     :native-api true
     :count COUNT
     (unreal-projection ETestTeam
-      :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestTeam.h"
-      :header-include "SpaceGameSimulation/entities/TestTeam.h"
-      :conversion-header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/entities/TestTeamConversion.h"
+      :header "Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/entities/TestTeam.h"
+      :header-include "SpaceGamePresentation/entities/TestTeam.h"
+      :conversion-header "Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/entities/TestTeamConversion.h"
       :native-header-include "ioj/sim/team.h"
       :reflection uenum)
     (value White :value "0" :serialized-name "white")
@@ -24,9 +24,9 @@
   (enum MissionMode @native_uint8
     :native-api true
     (unreal-projection ETestMissionMode
-      :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionMode.h"
-      :header-include "SpaceGameSimulation/missions/TestMissionMode.h"
-      :conversion-header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionModeConversion.h"
+      :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionMode.h"
+      :header-include "SpaceGame/missions/TestMissionMode.h"
+      :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionModeConversion.h"
       :native-header-include "ioj/sim/missions/mission_mode.h"
       :reflection uenum)
     (value None :value "0" :serialized-name "none")
@@ -40,9 +40,9 @@
   (enum MissionState @native_uint8
     :native-api true
     (unreal-projection ETestMissionState
-      :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionState.h"
-      :header-include "SpaceGameSimulation/missions/TestMissionState.h"
-      :conversion-header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionStateConversion.h"
+      :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionState.h"
+      :header-include "SpaceGame/missions/TestMissionState.h"
+      :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionStateConversion.h"
       :native-header-include "ioj/sim/missions/mission_state.h"
       :reflection uenum)
     (value NotStarted :value "0" :display-name "Not Started" :serialized-name "not_started")
@@ -57,9 +57,9 @@
   (enum MissionFailReason @native_uint8
     :native-api true
     (unreal-projection ETestMissionFailReason
-      :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionFailReason.h"
-      :header-include "SpaceGameSimulation/missions/TestMissionFailReason.h"
-      :conversion-header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/missions/TestMissionFailReasonConversion.h"
+      :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionFailReason.h"
+      :header-include "SpaceGame/missions/TestMissionFailReason.h"
+      :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/missions/TestMissionFailReasonConversion.h"
       :native-header-include "ioj/sim/missions/mission_fail_reason.h"
       :reflection uenum)
     (value None :value "0" :display-name "None" :serialized-name "none")
@@ -82,9 +82,9 @@
   (enum ShipLaserMode @native_uint8
     :native-api true
     (unreal-projection EShipLaserMode
-      :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/common/ShipLaserMode.h"
-      :header-include "SpaceGameSimulation/ships/common/ShipLaserMode.h"
-      :conversion-header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/common/ShipLaserModeConversion.h"
+      :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/common/ShipLaserMode.h"
+      :header-include "SpaceGame/ships/common/ShipLaserMode.h"
+      :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/common/ShipLaserModeConversion.h"
       :native-header-include "ioj/sim/player/ship_laser_mode.h"
       :reflection blueprint)
     (value Single :value "0" :display-name "Single" :serialized-name "single")
@@ -109,9 +109,9 @@
     :native-api true
     :count COUNT
     (unreal-projection ETestShipFireRate
-      :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/player/TestShipFireRate.h"
-      :header-include "SpaceGameSimulation/ships/player/TestShipFireRate.h"
-      :conversion-header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/player/TestShipFireRateConversion.h"
+      :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRate.h"
+      :header-include "SpaceGame/ships/player/TestShipFireRate.h"
+      :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRateConversion.h"
       :native-header-include "ioj/sim/player/fire_rate.h"
       :reflection uenum)
     (value Single :value "0" :display-name "Single" :serialized-name "single")
@@ -125,9 +125,9 @@
   (enum SpaceShipFlightMode @native_uint8
     :native-api true
     (unreal-projection ETestSpaceShipFlightMode
-      :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/player/TestSpaceShipFlightMode.h"
-      :header-include "SpaceGameSimulation/ships/player/TestSpaceShipFlightMode.h"
-      :conversion-header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/player/TestSpaceShipFlightModeConversion.h"
+      :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestSpaceShipFlightMode.h"
+      :header-include "SpaceGame/ships/player/TestSpaceShipFlightMode.h"
+      :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestSpaceShipFlightModeConversion.h"
       :native-header-include "ioj/sim/player/flight_mode.h"
       :reflection uenum)
     (value ForwardSpeed :value "0" :display-name "Forward Speed" :serialized-name "forward_speed")
@@ -140,9 +140,9 @@
     :native-api true
     :count COUNT
     (unreal-projection ETestSpaceShipControlMode
-      :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/player/TestSpaceShipControlMode.h"
-      :header-include "SpaceGameSimulation/ships/player/TestSpaceShipControlMode.h"
-      :conversion-header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/ships/player/TestSpaceShipControlModeConversion.h"
+      :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestSpaceShipControlMode.h"
+      :header-include "SpaceGame/ships/player/TestSpaceShipControlMode.h"
+      :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestSpaceShipControlModeConversion.h"
       :native-header-include "ioj/sim/player/control_mode.h"
       :reflection uenum)
     (value Velocity :value "0" :display-name "Velocity" :serialized-name "velocity")

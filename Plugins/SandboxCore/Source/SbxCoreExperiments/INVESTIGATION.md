@@ -392,7 +392,7 @@ The normal production Unreal generator remains one TArray-backed implementation.
 | Native projection, runtime and benchmarks | `native/lispb/native_soa/` |
 | Catch2 benchmark and separate CSV/diagnostics translation unit | `Plugins/SandboxCore/Tests/SandboxCoreBenchmarks/Private/single_allocation_soa_*.cpp` |
 
-Paths without a repository prefix in this table are relative to this experimental module. The existing FBlockAllocator was inspected, but its ownership model and large-page/VirtualAlloc2 experiments were not needed. No allocator refactor or large-page support was introduced.
+Paths without a repository prefix in this table are relative to this experimental module. No allocator refactor or large-page support was introduced.
 
 Readability work accompanied the prototype: `size_type` and maximum-size constants replaced repeated numeric limits; bytes-to-copy are computed once per distinct leaf type; capacity blocks and all data pointers are computed together; nullable and unchecked pointer construction are separated; zero-offset overloads avoid adding zero. Generated storage owns allocation/resizing and the owner constructs views, with C++23 explicit-object-parameter operations sharing control flow. Static assertions are collected in foldable consteval validation, and code generation formats this output before writing it. These changes reduce generated repetition without adding per-entity address calculations.
 

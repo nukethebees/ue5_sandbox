@@ -54,66 +54,30 @@
   :spelling "Aligned256"
   :header "SbxCoreExperiments/soa_leaf_types.h")
 
-(type array_fill
-  :spelling "ml::fill"
-  :header "SandboxCore/array_utils.h")
 
-(type array_math
-  :spelling "ml::subtract_in_place"
-  :header "SandboxCore/array_math.h")
 
-(type actor_ptr
-  :spelling "AActor*"
-  :header "GameFramework/Actor.h"
-  :pass-by value)
 
-(type actor_weak_ptr
-  :spelling "TWeakObjectPtr<AActor>"
-  :header "GameFramework/Actor.h"
-  :pass-by value)
 
-(type check
-  :spelling "check"
-  :header "CoreMinimal.h")
 
-(type death_reason
-  :spelling "ETestDeathReason"
-  :header "ioj/sim/entities/TestDeathReason.h"
-  :pass-by value)
 
 (type collision_enabled
   :spelling "ECollisionEnabled::Type"
   :header "Engine/EngineTypes.h"
   :pass-by value)
 
-(type entity_type
-  :spelling "ETestEntityType"
-  :header "SpaceGameSimulation/entities/TestEntityType.h"
-  :pass-by value)
 
-(type fighter_order
-  :spelling "FighterOrder"
-  :header "ioj/sim/fighter_types.h")
 
 (type fighter_order_queue
   :spelling "FighterOrderQueue"
   :header "ioj/sim/fighter_order_queue.h"
   (operation remove-at-swap remove_at_swap))
 
-(type fighter_spawn_queue
-  :spelling "FighterSpawnQueue"
-  :header "ioj/sim/fighter_spawn_queue.h"
-  (operation remove-at-swap remove_at_swap))
 
 (type fighter_spawn_queue_const_view
   :spelling "FighterSpawnQueueConstView"
   :header "ioj/sim/fighter_spawn_queue.h"
   :pass-by value)
 
-(type fighter_task
-  :spelling "FighterTask"
-  :header "ioj/sim/fighter_types.h"
-  :pass-by value)
 
 (type fstring
   :spelling "FString"
@@ -134,24 +98,9 @@
   :header "SpaceGameSimulation/levels/LevelTypes.h"
   :pass-by value)
 
-(type index_span
-  :spelling "FIndexSpan"
-  :header "SpaceGameSimulation/support/IndexSpan.h"
-  :pass-by value)
 
-(type instance_data
-  :spelling "FInstancedStaticMeshInstanceData"
-  :header "Components/InstancedStaticMeshComponent.h")
 
-(type linear_color
-  :spelling "FLinearColor"
-  :header "Math/Color.h"
-  :pass-by value)
 
-(type primitive_component_const_ptr
-  :spelling "UPrimitiveComponent const*"
-  :header "Components/PrimitiveComponent.h"
-  :pass-by value)
 
 (type primitive_component_ptr
   :spelling "UPrimitiveComponent*"
@@ -256,10 +205,6 @@
   :header "ioj/sim/rotator_types.h"
   :pass-by value)
 
-(type rotator_3f
-  :spelling "FRotator3f"
-  :header "CoreMinimal.h"
-  :pass-by value)
 
 (type rotator_3d
   :spelling "FRotator3d"
@@ -278,25 +223,13 @@
   :spelling "TSharedPtr<int32>"
   :header "Templates/SharedPointer.h")
 
-(type team
-  :spelling "ETestTeam"
-  :header "SpaceGameSimulation/entities/TestTeam.h"
-  :pass-by value)
 
-(type unique_id
-  :spelling "TestEntityUniqueId"
-  :header "ioj/sim/entities/TestEntityUniqueId.h"
-  :pass-by value)
 
 (type vector_2f
   :spelling "FVector2f"
   :header "CoreMinimal.h"
   :pass-by value)
 
-(type vector_2d
-  :spelling "FVector2d"
-  :header "CoreMinimal.h"
-  :pass-by value)
 
 (type int_point
   :spelling "FIntPoint"
@@ -323,10 +256,6 @@
   :header "SpaceGame/settings/GameSettingsTypes.h"
   :pass-by value)
 
-(type uint_point
-  :spelling "FUintPoint"
-  :header "CoreMinimal.h"
-  :pass-by value)
 
 (type vector_3f_value
   :spelling "FVector3f"
@@ -337,24 +266,13 @@
   :spelling "FVector3d"
   :header "CoreMinimal.h")
 
-(type int_vector
-  :spelling "FIntVector"
-  :header "CoreMinimal.h"
-  :pass-by value)
 
-(type uint_vector_3
-  :spelling "FUintVector3"
-  :header "CoreMinimal.h"
-  :pass-by value)
 
 (type quat_4f
   :spelling "FQuat4f"
   :header "CoreMinimal.h"
   :pass-by value)
 
-(type transform
-  :spelling "FTransform"
-  :header "Math/Transform.h")
 
 (type vectors_3d
   :spelling "FVectors3d"

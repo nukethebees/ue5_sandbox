@@ -3,10 +3,10 @@
 #include <SpaceGameRendering/SparkBurstStyle.h>
 #include <SpaceGameRendering/SparkRendererSettings.h>
 
+#include <SpaceGamePresentation/config/AttackDistanceBand.h>
+#include <SpaceGamePresentation/config/BarrelRollConfig.h>
 #include <SpaceGamePresentation/presentation/LevelPresentationSettings.h>
 #include <SpaceGamePresentation/support/DrawDebugConfig.h>
-#include <SpaceGameSimulation/combat/lasers/AttackDistanceBand.h>
-#include <SpaceGameSimulation/ships/common/BarrelRoll.h>
 
 #include <SandboxCoreEngine/collision_settings.h>
 #include <SandboxCoreEngine/SpeedResponse.h>

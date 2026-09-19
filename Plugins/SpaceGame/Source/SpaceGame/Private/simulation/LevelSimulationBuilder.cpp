@@ -1,12 +1,17 @@
 #include "SpaceGame/simulation/LevelSimulationBuilder.h"
+#include <ioj/sim/entity_types.h>
+#include <ioj/sim/laser_source.h>
 #include <ioj/sim/levels/fighter_spawn_slot_validation.h>
 #include <ioj/sim/levels/level_initialisation_data.h>
+#include <ioj/sim/missions/mission_fail_reason.h>
+#include <ioj/sim/missions/mission_mode.h>
+#include <ioj/sim/missions/mission_state.h>
 #include <ioj/sim/rotator_math.h>
-#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
-#include <SpaceGameSimulation/missions/NativeMissionTypes.h>
-#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
-#include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
+#include <SpaceGame/missions/TestMissionModeConversion.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
+#include <SpaceGamePresentation/integration/RotatorConversion.h>
+#include <SpaceGamePresentation/integration/TransformConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include <SandboxGameShared/core/SandboxDeveloperSettings.h>
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
@@ -17,10 +22,9 @@
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/simulation/SimulationConfigConversion.h>
 
+#include <ioj/sim/entity_type.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGameSimulation/entities/TestEntityType.h>
-#include <SpaceGameSimulation/simulation/EntityWorldBounds.h>
 
 #include <Engine/StaticMesh.h>
 #include <Engine/StaticMeshSocket.h>
@@ -240,11 +244,11 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     data.cell_size = ml::to_native(config.collision_grid.cell_size);
 
     ioj::FLevelCollisionHost::EntityMeshes meshes{};
-    meshes[ETestEntityType::PlayerShip] = player_collision_mesh;
-    meshes[ETestEntityType::CapitalShip] = config.capital_ships.mesh;
-    meshes[ETestEntityType::Fighter] = config.fighters.mesh;
-    meshes[ETestEntityType::Turret] = config.turrets.mesh;
-    meshes[ETestEntityType::TubeSpinner] = config.tube_spinners.mesh;
+    meshes[std::to_underlying(::ioj::sim::EntityType::PlayerShip)] = player_collision_mesh;
+    meshes[std::to_underlying(::ioj::sim::EntityType::CapitalShip)] = config.capital_ships.mesh;
+    meshes[std::to_underlying(::ioj::sim::EntityType::Fighter)] = config.fighters.mesh;
+    meshes[std::to_underlying(::ioj::sim::EntityType::Turret)] = config.turrets.mesh;
+    meshes[std::to_underlying(::ioj::sim::EntityType::TubeSpinner)] = config.tube_spinners.mesh;
     auto bounds{ioj::FLevelCollisionHost::extract_entity_bounds(meshes)};
     if (!bounds) {
         return FLevelSimBuildResult{std::unexpect, MoveTemp(bounds.error())};

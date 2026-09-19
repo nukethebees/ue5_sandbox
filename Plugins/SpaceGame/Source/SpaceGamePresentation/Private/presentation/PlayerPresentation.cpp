@@ -2,8 +2,8 @@
 #include <Components/StaticMeshComponent.h>
 #include <DrawDebugHelpers.h>
 #include <NiagaraComponent.h>
+#include <SpaceGamePresentation/integration/TransformConversion.h>
 #include <SpaceGamePresentation/presentation/PlayerPresentation.h>
-#include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 FPlayerPresentation::FPlayerPresentation(FPlayerPresentationResources resources,

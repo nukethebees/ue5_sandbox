@@ -1,6 +1,6 @@
 #pragma once
 #include <CoreMinimal.h>
-#include <SpaceGameSimulation/entities/TestTeam.h>
+#include <SpaceGamePresentation/entities/TestTeam.h>
 #include <span>
 
 #include <ioj/sim/level_sim.h>

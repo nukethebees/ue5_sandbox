@@ -1,7 +1,8 @@
 #include "SpaceGamePresentation/presentation/TurretPresentation.h"
-#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
-#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
+#include <ioj/sim/entity_types.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
+#include <SpaceGamePresentation/integration/RotatorConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>

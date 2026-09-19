@@ -1,25 +1,26 @@
 #include "SpaceGamePresentation/presentation/RadarSource.h"
-#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
+#include <ioj/sim/entity_types.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 
+#include "ioj/sim/entity_type.h"
 #include "ioj/sim/health.h"
-#include "SpaceGameSimulation/entities/TestEntityType.h"
 
 namespace ml::radar_source {
 inline constexpr float hex_inradius{0.8660254f};
 
-auto glyph(ETestEntityType const type) -> ERadarGlyph {
+auto glyph(::ioj::sim::EntityType const type) -> ERadarGlyph {
     switch (type) {
-        case ETestEntityType::PlayerShip: {
+        case ::ioj::sim::EntityType::PlayerShip: {
             return ERadarGlyph::Player;
         }
-        case ETestEntityType::Fighter: {
+        case ::ioj::sim::EntityType::Fighter: {
             return ERadarGlyph::Fighter;
         }
-        case ETestEntityType::CapitalShip: {
+        case ::ioj::sim::EntityType::CapitalShip: {
             return ERadarGlyph::CapitalShip;
         }
-        case ETestEntityType::Turret: {
+        case ::ioj::sim::EntityType::Turret: {
             return ERadarGlyph::Turret;
         }
         default: {
@@ -36,15 +37,15 @@ auto colour(ETestTeam const team, ETestTeam const player_team, FRadarContactColo
     return team == player_team ? colours.friendly : colours.hostile;
 }
 
-auto size_scale(ETestEntityType const type) -> float {
+auto size_scale(::ioj::sim::EntityType const type) -> float {
     switch (type) {
-        case ETestEntityType::CapitalShip: {
+        case ::ioj::sim::EntityType::CapitalShip: {
             return 1.1f;
         }
-        case ETestEntityType::Turret: {
+        case ::ioj::sim::EntityType::Turret: {
             return 1.0f;
         }
-        case ETestEntityType::Fighter: {
+        case ::ioj::sim::EntityType::Fighter: {
             return 1.0f;
         }
         default: {
@@ -207,7 +208,7 @@ auto collect_radar_instances(std::span<::ioj::sim::AgentDisplayBatch const> cons
                     no_roll_transform.InverseTransformVectorNoScale(FVector{world_delta})}};
                 auto const entity_type{batch.type};
                 auto heading_radians{0.0f};
-                if (entity_type == ETestEntityType::Fighter) {
+                if (entity_type == ::ioj::sim::EntityType::Fighter) {
                     auto const world_velocity{ml::to_unreal(batch.velocity(index))};
                     auto const local_velocity{FVector3f{
                         no_roll_transform.InverseTransformVectorNoScale(FVector{world_velocity})}};

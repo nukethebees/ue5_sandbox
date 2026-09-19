@@ -1,5 +1,5 @@
 #include "SandboxEditor/Commandlets/EntityOverlayBenchmarkCommandlet.h"
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include "ioj/sim/entity_identity_layout.h"
 #include "ioj/sim/turret_entity_data.h"

@@ -1,8 +1,8 @@
 #include "WorldlessSimulationTest.h"
 #include <ioj/sim/testing/level_sim_test_access.h>
 #include <SpaceGame/simulation/SimulationConfigConversion.h>
-#include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
+#include <SpaceGamePresentation/integration/TransformConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include <ioj/sim/direct_damage_events.h>
 #include <ioj/sim/sim_config.h>

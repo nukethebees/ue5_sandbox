@@ -5,9 +5,9 @@
 #include <SandboxCoreEngine/enums.h>
 #include <SandboxCoreEngine/strings.h>
 #include <SandboxGameShared/core/levels/levels.h>
-#include <SpaceGameSimulation/missions/TestMissionFailReasonConversion.h>
-#include <SpaceGameSimulation/missions/TestMissionModeConversion.h>
-#include <SpaceGameSimulation/missions/TestMissionStateConversion.h>
+#include <SpaceGame/missions/TestMissionFailReasonConversion.h>
+#include <SpaceGame/missions/TestMissionModeConversion.h>
+#include <SpaceGame/missions/TestMissionStateConversion.h>
 
 namespace ml::ioj::save_profile {
 namespace profile_adapter {

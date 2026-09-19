@@ -1,9 +1,19 @@
 #pragma once
 #include <ioj/sim/entity_types.h>
+#include <ioj/sim/laser_source.h>
+#include <ioj/sim/player/control_mode.h>
+#include <ioj/sim/player/fire_rate.h>
+#include <ioj/sim/player/flight_mode.h>
+#include <ioj/sim/player/laser_firing_state.h>
+#include <ioj/sim/player/ship_laser_mode.h>
+#include <ioj/sim/player/space_ship_common.h>
+#include <SpaceGame/ships/common/ShipLaserModeConversion.h>
+#include <SpaceGame/ships/player/TestShipFireRateConversion.h>
+#include <SpaceGame/ships/player/TestSpaceShipControlModeConversion.h>
+#include <SpaceGame/ships/player/TestSpaceShipFlightModeConversion.h>
+#include <SpaceGamePresentation/entities/ShipHealth.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/presentation/PlayerPresentation.h>
-#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
-#include <SpaceGameSimulation/ships/common/NativeShipHealth.h>
-#include <SpaceGameSimulation/ships/player/NativePlayerTypes.h>
 
 #include <ioj/sim/player/command_interface.h>
 #include <ioj/sim/player/sim.h>

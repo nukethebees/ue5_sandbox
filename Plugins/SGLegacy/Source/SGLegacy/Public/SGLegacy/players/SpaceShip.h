@@ -3,10 +3,10 @@
 #include <ioj/sim/ship_flight_model.h>
 #include "SandboxCoreEngine/SpeedResponse.h"
 #include "SGLegacy/combat/DamageableShip.h"
+#include "SGLegacy/players/BarrelRoll.h"
 #include "SGLegacy/players/ShipHealthComponent.h"
-#include "SpaceGameSimulation/ships/common/BarrelRoll.h"
+#include "SpaceGame/ships/common/ShipLaserMode.h"
 #include "SpaceGameSimulation/ships/common/LaserFiringState.h"
-#include "SpaceGameSimulation/ships/common/ShipLaserMode.h"
 #include "SpaceGameSimulation/ships/common/SpaceShipCommon.h"
 
 #include "CoreMinimal.h"

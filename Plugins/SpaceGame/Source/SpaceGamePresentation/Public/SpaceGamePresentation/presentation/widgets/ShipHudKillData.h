@@ -1,9 +1,9 @@
 #pragma once
 
+#include <ioj/sim/entity_type.h>
 #include <ioj/sim/entity_types.h>
 #include <SandboxCoreEngine/enums.h>
-#include <SpaceGameSimulation/entities/TestEntityType.h>
-#include <SpaceGameSimulation/entities/TestTeam.h>
+#include <SpaceGamePresentation/entities/TestTeam.h>
 
 #include <SandboxCore/soa_array_mixin.h>
 
@@ -23,7 +23,7 @@ struct FTopKillerEntries : public ml::FSoAArrayMixin {
     }
 
     void add(::ioj::sim::EntityUniqueId const entity_id,
-             ETestEntityType const entity_type,
+             ::ioj::sim::EntityType const entity_type,
              ETestTeam const team,
              int32 const kill_count) {
         entity_ids.Add(entity_id);
@@ -39,14 +39,14 @@ struct FTopKillerEntries : public ml::FSoAArrayMixin {
     }
 
     TArray<::ioj::sim::EntityUniqueId, TInlineAllocator<minimum_size>> entity_ids;
-    TArray<ETestEntityType, TInlineAllocator<minimum_size>> entity_types;
+    TArray<::ioj::sim::EntityType, TInlineAllocator<minimum_size>> entity_types;
     TArray<ETestTeam, TInlineAllocator<minimum_size>> teams;
     TArray<int32, TInlineAllocator<minimum_size>> kills;
 };
 
 struct FTeamKillMatrix {
     static constexpr int32 team_count{ml::EnumCountTrait<ETestTeam>::count_value};
-    static constexpr int32 entity_type_count{ml::EnumCountTrait<ETestEntityType>::count_value};
+    static constexpr int32 entity_type_count{static_cast<int32>(::ioj::sim::EntityType::COUNT)};
     static constexpr int32 count{team_count * entity_type_count};
 
     bool operator==(FTeamKillMatrix const&) const noexcept = default;
@@ -54,21 +54,25 @@ struct FTeamKillMatrix {
     static constexpr auto team_to_index(ETestTeam const team) -> int32 {
         return std::to_underlying(team);
     }
-    static constexpr auto to_index(ETestTeam const team, ETestEntityType const entity_type)
+    static constexpr auto to_index(ETestTeam const team, ::ioj::sim::EntityType const entity_type)
         -> int32 {
         return team_to_index(team) * entity_type_count + std::to_underlying(entity_type);
     }
 
-    auto get(ETestTeam const team, ETestEntityType const entity_type) const -> int32 {
+    auto get(ETestTeam const team, ::ioj::sim::EntityType const entity_type) const -> int32 {
         return kills[to_index(team, entity_type)];
     }
     auto get_team_kills(ETestTeam const team) const -> TConstArrayView<int32> {
         return {kills.GetData() + team_to_index(team) * entity_type_count, entity_type_count};
     }
-    void set(ETestTeam const team, ETestEntityType const entity_type, int32 const kill_count) {
+    void set(ETestTeam const team,
+             ::ioj::sim::EntityType const entity_type,
+             int32 const kill_count) {
         kills[to_index(team, entity_type)] = kill_count;
     }
-    void add(ETestTeam const team, ETestEntityType const entity_type, int32 const kill_count = 1) {
+    void add(ETestTeam const team,
+             ::ioj::sim::EntityType const entity_type,
+             int32 const kill_count = 1) {
         kills[to_index(team, entity_type)] += kill_count;
     }
 

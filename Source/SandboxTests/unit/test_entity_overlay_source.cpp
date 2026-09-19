@@ -1,10 +1,12 @@
+#include <ioj/sim/entity_types.h>
+#include <ioj/sim/laser_source.h>
 #include <SandboxTests/support/DisplayEntityTestData.h>
-#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 #include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
 
-#include "SpaceGameSimulation/entities/TestEntityType.h"
-#include "SpaceGameSimulation/entities/TestTeam.h"
+#include "ioj/sim/entity_type.h"
+#include "SpaceGamePresentation/entities/TestTeam.h"
 
 #include <CQTest.h>
 #include <vector>
@@ -44,7 +46,7 @@ void add_entity(ml::tests::FDisplayEntityTestData& entities,
                 EntityTypeRadii& entity_type_radii,
                 FVector3f const position,
                 int32 const health,
-                ETestEntityType const type,
+                ::ioj::sim::EntityType const type,
                 float const radius = 1.0f,
                 bool const alive = true,
                 ETestTeam const team = ETestTeam::White) {
@@ -112,29 +114,47 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
     {
         ml::tests::FDisplayEntityTestData entities;
         auto entity_type_radii{make_entity_type_radii()};
-        add_entity(
-            entities, entity_type_radii, {10.0f, 0.0f, 0.0f}, 10, ETestEntityType::Turret, 50.0f);
-        add_entity(
-            entities, entity_type_radii, {20.0f, 0.0f, 0.0f}, 25, ETestEntityType::Fighter, 100.0f);
+        add_entity(entities,
+                   entity_type_radii,
+                   {10.0f, 0.0f, 0.0f},
+                   10,
+                   ::ioj::sim::EntityType::Turret,
+                   50.0f);
+        add_entity(entities,
+                   entity_type_radii,
+                   {20.0f, 0.0f, 0.0f},
+                   25,
+                   ::ioj::sim::EntityType::Fighter,
+                   100.0f);
         add_entity(entities,
                    entity_type_radii,
                    {30.0f, 0.0f, 0.0f},
                    2500,
-                   ETestEntityType::CapitalShip,
+                   ::ioj::sim::EntityType::CapitalShip,
                    1000.0f);
         add_entity(entities,
                    entity_type_radii,
                    {40.0f, 0.0f, 0.0f},
                    20,
-                   ETestEntityType::Turret,
+                   ::ioj::sim::EntityType::Turret,
                    50.0f,
                    false);
-        add_entity(
-            entities, entity_type_radii, {50.0f, 0.0f, 0.0f}, 100, ETestEntityType::PlayerShip);
-        add_entity(
-            entities, entity_type_radii, {60.0f, 0.0f, 0.0f}, 100, ETestEntityType::TubeSpinner);
-        add_entity(
-            entities, entity_type_radii, {101.0f, 0.0f, 0.0f}, 20, ETestEntityType::Turret, 50.0f);
+        add_entity(entities,
+                   entity_type_radii,
+                   {50.0f, 0.0f, 0.0f},
+                   100,
+                   ::ioj::sim::EntityType::PlayerShip);
+        add_entity(entities,
+                   entity_type_radii,
+                   {60.0f, 0.0f, 0.0f},
+                   100,
+                   ::ioj::sim::EntityType::TubeSpinner);
+        add_entity(entities,
+                   entity_type_radii,
+                   {101.0f, 0.0f, 0.0f},
+                   20,
+                   ::ioj::sim::EntityType::Turret,
+                   50.0f);
 
         FEntityOverlayCollector collector;
         TArray<FEntityOverlayInstance> output;
@@ -165,9 +185,13 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
     {
         ml::tests::FDisplayEntityTestData entities;
         auto entity_type_radii{make_entity_type_radii()};
+        add_entity(entities,
+                   entity_type_radii,
+                   FVector3f::ZeroVector,
+                   -10,
+                   ::ioj::sim::EntityType::Turret);
         add_entity(
-            entities, entity_type_radii, FVector3f::ZeroVector, -10, ETestEntityType::Turret);
-        add_entity(entities, entity_type_radii, FVector3f::ZeroVector, 40, ETestEntityType::Turret);
+            entities, entity_type_radii, FVector3f::ZeroVector, 40, ::ioj::sim::EntityType::Turret);
 
         FEntityOverlayCollector collector;
         TArray<FEntityOverlayInstance> output;
@@ -195,7 +219,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
                    entity_type_radii,
                    {1000.0f, 0.0f, 0.0f},
                    20,
-                   ETestEntityType::Turret,
+                   ::ioj::sim::EntityType::Turret,
                    0.0f,
                    true,
                    ETestTeam::Green);
@@ -203,7 +227,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
                    entity_type_radii,
                    {1000.0f, 50.0f, 0.0f},
                    20,
-                   ETestEntityType::Turret,
+                   ::ioj::sim::EntityType::Turret,
                    0.0f,
                    true,
                    ETestTeam::Red);
@@ -211,7 +235,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
                    entity_type_radii,
                    {1000.0f, 80.0f, 0.0f},
                    20,
-                   ETestEntityType::Turret,
+                   ::ioj::sim::EntityType::Turret,
                    0.0f,
                    true,
                    ETestTeam::Blue);
@@ -219,7 +243,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
                    entity_type_radii,
                    {1000.0f, 0.0f, 0.0f},
                    20,
-                   ETestEntityType::Turret,
+                   ::ioj::sim::EntityType::Turret,
                    0.0f,
                    false,
                    ETestTeam::Red);
@@ -238,7 +262,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
                    entity_type_radii,
                    {1000.0f, 65.0f, 0.0f},
                    20,
-                   ETestEntityType::Turret,
+                   ::ioj::sim::EntityType::Turret,
                    0.0f,
                    true,
                    ETestTeam::Red);
@@ -246,7 +270,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
                    entity_type_radii,
                    {1000.0f, 80.0f, 0.0f},
                    20,
-                   ETestEntityType::Turret,
+                   ::ioj::sim::EntityType::Turret,
                    0.0f,
                    true,
                    ETestTeam::Blue);
@@ -282,7 +306,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
                    entity_type_radii,
                    {2000.0f, 80.0f, 0.0f},
                    20,
-                   ETestEntityType::CapitalShip,
+                   ::ioj::sim::EntityType::CapitalShip,
                    800.0f,
                    true,
                    ETestTeam::Red);
@@ -290,7 +314,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
                    entity_type_radii,
                    {1000.0f, 20.0f, 0.0f},
                    20,
-                   ETestEntityType::Turret,
+                   ::ioj::sim::EntityType::Turret,
                    5.0f,
                    true,
                    ETestTeam::Blue);
@@ -309,7 +333,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
                    entity_type_radii,
                    {2000.0f, 0.0f, 0.0f},
                    20,
-                   ETestEntityType::CapitalShip,
+                   ::ioj::sim::EntityType::CapitalShip,
                    100.0f,
                    true,
                    ETestTeam::Red);
@@ -317,7 +341,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
                    entity_type_radii,
                    {1000.0f, 0.0f, 0.0f},
                    20,
-                   ETestEntityType::Turret,
+                   ::ioj::sim::EntityType::Turret,
                    5.0f,
                    true,
                    ETestTeam::Blue);
@@ -341,7 +365,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
                    entity_type_radii,
                    {5000.0f, 0.0f, 0.0f},
                    20,
-                   ETestEntityType::Turret,
+                   ::ioj::sim::EntityType::Turret,
                    0.0f,
                    true,
                    ETestTeam::Red);
@@ -357,7 +381,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
             TEXT("Mid-transition range alpha is linear"), approaching.range_alpha, 0.5f);
 
         entities.locations.xs[0] = 1100.0f;
-        entity_type_radii[static_cast<std::size_t>(ETestEntityType::Turret)] = 100.0f;
+        entity_type_radii[static_cast<std::size_t>(::ioj::sim::EntityType::Turret)] = 100.0f;
         auto const at_range_boundary{select_target(entities, entity_type_radii)};
         TestRunner->TestEqual(TEXT("Surface at range boundary has full range alpha"),
                               at_range_boundary.range_alpha,
@@ -382,7 +406,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
                    entity_type_radii,
                    {1100.0f, 0.0f, 0.0f},
                    20,
-                   ETestEntityType::Turret,
+                   ::ioj::sim::EntityType::Turret,
                    100.0f,
                    true,
                    ETestTeam::Red);
@@ -401,7 +425,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
                    entity_type_radii,
                    {1000.0f, 0.0f, 0.0f},
                    20,
-                   ETestEntityType::Turret,
+                   ::ioj::sim::EntityType::Turret,
                    2.0f,
                    true,
                    ETestTeam::Red);
@@ -413,7 +437,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
                              distant.indicator_radius_pixels >
                                  2.0f / distant.world_units_per_pixel);
 
-        entity_type_radii[static_cast<std::size_t>(ETestEntityType::Turret)] = 0.0f;
+        entity_type_radii[static_cast<std::size_t>(::ioj::sim::EntityType::Turret)] = 0.0f;
         auto const zero_radius{select_target(entities, entity_type_radii)};
         TestRunner->TestTrue(TEXT("Zero-radius targets still have a usable projection scale"),
                              zero_radius.world_units_per_pixel > 0.0f);

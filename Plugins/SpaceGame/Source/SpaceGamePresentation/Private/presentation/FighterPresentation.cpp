@@ -1,6 +1,7 @@
 #include "SpaceGamePresentation/presentation/FighterPresentation.h"
-#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
+#include <ioj/sim/entity_types.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>

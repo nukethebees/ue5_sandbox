@@ -1,11 +1,13 @@
 #include "SpaceGame/simulation/TestBatchOrchestrator.h"
+#include <HAL/IConsoleManager.h>
+#include <ioj/sim/entity_types.h>
+#include <SpaceGame/missions/TestMissionFailReasonConversion.h>
+#include <SpaceGame/missions/TestMissionModeConversion.h>
+#include <SpaceGame/missions/TestMissionStateConversion.h>
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
-#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
-#include <SpaceGameSimulation/missions/NativeMissionTypes.h>
-#include <SpaceGameSimulation/simulation/FighterDiagnostics.h>
-#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
-#include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
+#include <SpaceGamePresentation/integration/RotatorConversion.h>
+#include <SpaceGamePresentation/integration/TransformConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include "SpaceGame/levels/LevelLoader.h"
 #include "SpaceGame/system/GameSubsystem.h"
@@ -52,6 +54,13 @@
 #include <Misc/DateTime.h>
 #include <SpaceGame/persistence/SpaceSaveGame.h>
 #include <SpaceGame/persistence/SpaceSaveSubsystem.h>
+
+namespace ml::fighter_diagnostics {
+inline TAutoConsoleVariable<int32> enabled{
+    TEXT("sg.FighterDiagnostics"),
+    0,
+    TEXT("Log bounded fighter spawn and blocked-navigation reports. Toggle off/on to rearm.")};
+}
 
 namespace {
 auto end_play_reason_name(EEndPlayReason::Type const reason) -> FString {

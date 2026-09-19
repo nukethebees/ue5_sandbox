@@ -1,5 +1,5 @@
 #pragma once
-#include <SpaceGameSimulation/missions/TestMissionMode.h>
+#include <SpaceGame/missions/TestMissionMode.h>
 
 #include <GameFramework/Actor.h>
 

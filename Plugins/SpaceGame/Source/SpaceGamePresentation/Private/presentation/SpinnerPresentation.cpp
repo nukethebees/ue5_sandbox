@@ -1,5 +1,5 @@
 #include "SpaceGamePresentation/presentation/SpinnerPresentation.h"
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include <SandboxGameShared/utilities/actor_utils.h>
 #include <SpaceGamePresentation/entities/TestBatchActorCore.h>

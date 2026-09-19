@@ -256,7 +256,7 @@ void FTestBatchOrchestratorSetupScenario::on_level_telemetry_end_tick(
     check(!entity_count_data.is_empty());
     check(!kill_count_data.is_empty());
 
-    auto const player_type{std::to_underlying(ETestEntityType::PlayerShip)};
+    auto const player_type{std::to_underlying(::ioj::sim::EntityType::PlayerShip)};
     auto const alive_entity_counts{test_driver->get_ledger().count_alive_per_team_and_type()};
 
     telemetry_observations.add(

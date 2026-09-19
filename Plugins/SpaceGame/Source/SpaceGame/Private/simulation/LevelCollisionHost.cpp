@@ -1,10 +1,9 @@
 #include "SpaceGame/simulation/LevelCollisionHost.h"
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
+#include <ioj/sim/entity_type.h>
 #include <ioj/sim/world_aabb_operations.h>
 #include <ioj/sim/world_aabbs.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGameSimulation/entities/TestEntityType.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/container_ops.h>
@@ -23,12 +22,17 @@
 
 namespace ml::ioj {
 namespace {
-static_assert(FEntityAABBs::space_ship_index == std::to_underlying(ETestEntityType::PlayerShip));
-static_assert(FEntityAABBs::static_turret_index == std::to_underlying(ETestEntityType::Turret));
-static_assert(FEntityAABBs::capital_ship_index == std::to_underlying(ETestEntityType::CapitalShip));
-static_assert(FEntityAABBs::fighter_index == std::to_underlying(ETestEntityType::Fighter));
-static_assert(FEntityAABBs::tube_spinner_index == std::to_underlying(ETestEntityType::TubeSpinner));
-static_assert(FEntityAABBs::num_rows == std::to_underlying(ETestEntityType::COUNT));
+using EntityAABBs = ::ioj::sim::collision::EntityAABBs;
+static_assert(EntityAABBs::space_ship_index ==
+              std::to_underlying(::ioj::sim::EntityType::PlayerShip));
+static_assert(EntityAABBs::static_turret_index ==
+              std::to_underlying(::ioj::sim::EntityType::Turret));
+static_assert(EntityAABBs::capital_ship_index ==
+              std::to_underlying(::ioj::sim::EntityType::CapitalShip));
+static_assert(EntityAABBs::fighter_index == std::to_underlying(::ioj::sim::EntityType::Fighter));
+static_assert(EntityAABBs::tube_spinner_index ==
+              std::to_underlying(::ioj::sim::EntityType::TubeSpinner));
+static_assert(EntityAABBs::num_rows == std::to_underlying(::ioj::sim::EntityType::COUNT));
 
 auto get_aabb(FKAggregateGeom const& geometry, FTransform const& local_to_world) -> FBox {
     auto const scale{local_to_world.GetScale3D()};
@@ -93,12 +97,12 @@ auto get_aabb(UStaticMesh const& mesh) -> FBox {
     return get_aabb(body_setup->AggGeom, FTransform::Identity);
 }
 
-void clear_aabb(FEntityAABBs& aabbs, int32 const index) {
-    aabbs.set_centre(index, FVector3f::ZeroVector);
-    aabbs.set_half_extents(index, FVector3f::ZeroVector);
+void clear_aabb(EntityAABBs& aabbs, int32 const index) {
+    aabbs.set_centre(index, ml::make_vector3f(0.f, 0.f, 0.f));
+    aabbs.set_half_extents(index, ml::make_vector3f(0.f, 0.f, 0.f));
 }
 
-void set_mesh_aabb(FEntityAABBs& aabbs,
+void set_mesh_aabb(EntityAABBs& aabbs,
                    int32 const index,
                    TCHAR const* const entity_name,
                    UStaticMesh const* const mesh,
@@ -122,8 +126,9 @@ void set_mesh_aabb(FEntityAABBs& aabbs,
     FVector3f const centre{aabb.GetCenter()};
     FVector3f const half_extents{aabb.GetExtent()};
 
-    aabbs.set_centre(index, centre);
-    aabbs.set_half_extents(index, half_extents);
+    aabbs.set_centre(index, ml::make_vector3f(centre.X, centre.Y, centre.Z));
+    aabbs.set_half_extents(index,
+                           ml::make_vector3f(half_extents.X, half_extents.Y, half_extents.Z));
 }
 
 auto has_unsupported_geometry(FKAggregateGeom const& geometry) -> bool {
@@ -190,8 +195,9 @@ auto extract_static_collision_component(
 
     FVector3f const min_point{aabb.Min};
     FVector3f const max_point{aabb.Max};
-    auto const [min_coord, max_coord]{
-        uniform_grid.to_cell_coord_bounds(ml::to_native(min_point), ml::to_native(max_point))};
+    auto const [min_coord, max_coord]{uniform_grid.to_cell_coord_bounds(
+        ml::make_vector3f(min_point.X, min_point.Y, min_point.Z),
+        ml::make_vector3f(max_point.X, max_point.Y, max_point.Z))};
     if (min_point.ContainsNaN() || max_point.ContainsNaN() ||
         !uniform_grid.is_cell_coord_in_bounds(min_coord, max_coord)) {
         rejection_reason = TEXT("world AABB is invalid or outside the collision grid");
@@ -211,11 +217,11 @@ auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes)
     FEntityBoundsExtractionResult result{std::in_place};
     auto& bounds{result.value()};
     FLevelStartErrors errors;
-    auto const count{FEntityAABBs::num()};
+    auto const count{EntityAABBs::num()};
     for (int32 i{0}; i < count; ++i) {
-        auto const entity_type{static_cast<ETestEntityType>(i)};
+        auto const entity_type{static_cast<::ioj::sim::EntityType>(i)};
         auto const entity_name{ml::to_fstring(::ioj::sim::to_string(entity_type))};
-        set_mesh_aabb(bounds, i, *entity_name, meshes[entity_type], errors);
+        set_mesh_aabb(bounds, i, *entity_name, meshes[static_cast<std::size_t>(i)], errors);
     }
     if (errors.has_errors()) {
         return FEntityBoundsExtractionResult{std::unexpect, MoveTemp(errors)};
@@ -352,8 +358,9 @@ auto FLevelCollisionHost::add_static_geometry(
     check(uniform_grid_.get_static_aabbs().num() == static_collision_sources_.num());
     static_collision_sources_.add(&component, data->original_collision_mode);
     component.SetCollisionEnabled(ECollisionEnabled::NoCollision);
-    return ::ioj::sim::collision::WorldAABB{ml::to_native(data->min_point),
-                                            ml::to_native(data->max_point)};
+    return ::ioj::sim::collision::WorldAABB{
+        ml::make_vector3f(data->min_point.X, data->min_point.Y, data->min_point.Z),
+        ml::make_vector3f(data->max_point.X, data->max_point.Y, data->max_point.Z)};
 }
 void FLevelCollisionHost::restore_collision() {
     auto const sources{static_collision_sources_.get_const_view()};

@@ -2,7 +2,7 @@
 
 #include <Containers/ArrayView.h>
 #include <CoreMinimal.h>
-#include <SpaceGameSimulation/entities/TestTeam.h>
+#include <SpaceGamePresentation/entities/TestTeam.h>
 
 namespace ml {
 struct FSoftTestAssertions;

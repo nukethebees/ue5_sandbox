@@ -3,7 +3,6 @@
 #include "SpaceGame/entities/TestProxyActorFunctions.h"
 #include "SpaceGame/simulation/TestBatchOrchestrator.h"
 #include "SpaceGamePresentation/entities/TestTeamVisualData.h"
-#include "SpaceGameSimulation/entities/TestTeamUtils.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <SandboxCoreEngine/actor_components.h>
@@ -20,9 +19,9 @@
 #include <EngineUtils.h>
 
 #if WITH_EDITOR
+#include <ioj/sim/entity_world_bounds.h>
 #include <ScopedTransaction.h>
 #include <SpaceGame/simulation/LevelCollisionHost.h>
-#include <SpaceGameSimulation/simulation/EntityWorldBounds.h>
 #endif
 
 ATestCapitalShipProxy::ATestCapitalShipProxy()
@@ -154,8 +153,8 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
     }
 
     ml::ioj::FLevelCollisionHost::EntityMeshes meshes{};
-    meshes[ETestEntityType::CapitalShip] = config->capital_ships.mesh;
-    meshes[ETestEntityType::Fighter] = config->fighters.mesh;
+    meshes[std::to_underlying(::ioj::sim::EntityType::CapitalShip)] = config->capital_ships.mesh;
+    meshes[std::to_underlying(::ioj::sim::EntityType::Fighter)] = config->fighters.mesh;
     auto const local_bounds{ml::ioj::FLevelCollisionHost::extract_entity_bounds(meshes)};
     if (!local_bounds) {
         report_error(local_bounds.error().format());
@@ -170,21 +169,29 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
     }
     spawn_preview_error.Reset();
     // Runtime uses the actor pivot/rotation, not the preview mesh component's relative transform.
-    auto const bounds{ml::ioj::to_unreal(
-        ml::ioj::make_entity_world_bounds(*local_bounds,
-                                          ml::ioj::FEntityAABBs::capital_ship_index,
-                                          FVector3f{GetActorLocation()},
-                                          FRotator3f{GetActorRotation()}))};
+    auto const make_world_bounds{[&local_bounds](int32 const type_index,
+                                                 FVector3f const position,
+                                                 FRotator3f const rotation) {
+        auto const orientation{rotation.Quaternion()};
+        auto const native_bounds{::ioj::sim::collision::make_entity_world_bounds(
+            *local_bounds,
+            type_index,
+            ml::make_vector3f(position.X, position.Y, position.Z),
+            ml::make_quaternion4f(orientation.X, orientation.Y, orientation.Z, orientation.W))};
+        return FBox3f{FVector3f{native_bounds.min.X, native_bounds.min.Y, native_bounds.min.Z},
+                      FVector3f{native_bounds.max.X, native_bounds.max.Y, native_bounds.max.Z}};
+    }};
+    auto const bounds{make_world_bounds(::ioj::sim::collision::EntityAABBs::capital_ship_index,
+                                        FVector3f{GetActorLocation()},
+                                        FRotator3f{GetActorRotation()})};
     auto const clearance{config->fighters.avoidance_clearance_buffer};
     TArray<FBox3f> fighter_bounds;
     fighter_bounds.SetNum(slot_count);
     for (int32 i{}; i < slot_count; ++i) {
         auto const* const arrow{fighter_spawn_slots[i].Get()};
-        fighter_bounds[i] = ml::ioj::to_unreal(
-            ml::ioj::make_entity_world_bounds(*local_bounds,
-                                              ml::ioj::FEntityAABBs::fighter_index,
+        fighter_bounds[i] = make_world_bounds(::ioj::sim::collision::EntityAABBs::fighter_index,
                                               FVector3f{arrow->GetComponentLocation()},
-                                              FRotator3f{arrow->GetComponentRotation()}));
+                                              FRotator3f{arrow->GetComponentRotation()});
     }
 
     DrawDebugBox(

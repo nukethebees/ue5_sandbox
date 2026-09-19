@@ -1,11 +1,11 @@
 #pragma once
 
+#include "ioj/sim/missions/mission_state.h"
 #include "SandboxUI/Radar/RadarFrameStore.h"
 #include "SandboxUI/Radar/RadarTypes.h"
+#include "SpaceGamePresentation/entities/ShipHealth.h"
 #include "SpaceGamePresentation/presentation/HudCrosshairDistances.h"
 #include "SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h"
-#include "SpaceGameSimulation/missions/TestMissionState.h"
-#include "SpaceGameSimulation/ships/common/ShipHealth.h"
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"
@@ -89,7 +89,7 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     void set_flight_mode(FStringView value);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
-    void set_mission_state(ETestMissionState const new_state);
+    void set_mission_state(::ioj::sim::MissionState const new_state);
     void set_mission_time(float const mission_time);
     void set_mission_time_remaining(float const time_remaining);
     void set_mission_enemies_remaining(int32 const enemies_remaining);

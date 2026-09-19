@@ -1,8 +1,10 @@
 #include "SpaceGamePresentation/presentation/LaserPresentation.h"
 
+#include <ioj/sim/entity_types.h>
+#include <ioj/sim/laser_source.h>
 #include <SandboxGameShared/utilities/actor_utils.h>
-#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <SandboxCore/array_checks.h>

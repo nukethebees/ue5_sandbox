@@ -1,11 +1,11 @@
 #pragma once
 #include <ioj/sim/collision/collision_system.h>
-#include <SandboxCore/enum_array.h>
+#include <ioj/sim/entity_aabbs.h>
+#include <ioj/sim/entity_type.h>
 #include <SpaceGame/simulation/StaticCollisionSources.h>
-#include <SpaceGameSimulation/entities/TestEntityType.h>
 #include <SpaceGameSimulation/levels/LevelStartErrors.h>
-#include <SpaceGameSimulation/simulation/EntityAABBs.h>
 
+#include <array>
 #include <expected>
 #include <optional>
 
@@ -14,10 +14,12 @@ class UWorld;
 struct FCollisionGridConfig;
 
 namespace ml::ioj {
-using FEntityBoundsExtractionResult = std::expected<FEntityAABBs, FLevelStartErrors>;
+using FEntityBoundsExtractionResult =
+    std::expected<::ioj::sim::collision::EntityAABBs, FLevelStartErrors>;
 
 struct SPACEGAME_API FLevelCollisionHost {
-    using EntityMeshes = TEnumArray<ETestEntityType, UStaticMesh const*>;
+    using EntityMeshes =
+        std::array<UStaticMesh const*, ::ioj::sim::collision::EntityAABBs::num_rows>;
     static auto extract_entity_bounds(EntityMeshes const& meshes) -> FEntityBoundsExtractionResult;
     auto initialise_static_geometry(UWorld& world,
                                     FCollisionGridConfig const& config,

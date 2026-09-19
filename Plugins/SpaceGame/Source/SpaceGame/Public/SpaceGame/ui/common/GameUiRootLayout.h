@@ -1,8 +1,8 @@
 #pragma once
 
 #include <ioj/sim/level_telemetry_snapshot.h>
-#include <SpaceGameSimulation/missions/TestMissionFailReason.h>
-#include <SpaceGameSimulation/missions/TestMissionState.h>
+#include <SpaceGame/missions/TestMissionFailReason.h>
+#include <SpaceGame/missions/TestMissionState.h>
 
 #include <CommonActivatableWidget.h>
 

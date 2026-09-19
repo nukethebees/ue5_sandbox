@@ -1,5 +1,5 @@
 #pragma once
-#include <SpaceGameSimulation/entities/TestTeam.h>
+#include <SpaceGamePresentation/entities/TestTeam.h>
 
 #include "ioj/sim/agent_display_batch.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"

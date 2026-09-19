@@ -8,6 +8,7 @@ public class SpaceGameSimulation : ModuleRules
         CppStandard = CppStandardVersion.Latest;
         bAllowUETypesInNamespaces = true;
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
-        PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "NativeMemory", "NativeSimulation", "SandboxCore", "SandboxCoreEngine" });
+        PublicDependencyModuleNames.AddRange(
+            new string[] { "Core", "NativeSimulation", "SandboxCore" });
     }
 }

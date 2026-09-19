@@ -1,9 +1,10 @@
 #include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
-#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
+#include <ioj/sim/entity_types.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 
+#include "ioj/sim/entity_type.h"
 #include "ioj/sim/health.h"
-#include "SpaceGameSimulation/entities/TestEntityType.h"
 
 #include <limits>
 #include <utility>
@@ -64,24 +65,24 @@ auto project_to_overlay(FEntityOverlayView const& view,
     return true;
 }
 
-auto is_supported_entity_type(ETestEntityType const type) -> bool {
-    return type == ETestEntityType::CapitalShip || type == ETestEntityType::Fighter ||
-           type == ETestEntityType::Turret;
+auto is_supported_entity_type(::ioj::sim::EntityType const type) -> bool {
+    return type == ::ioj::sim::EntityType::CapitalShip || type == ::ioj::sim::EntityType::Fighter ||
+           type == ::ioj::sim::EntityType::Turret;
 }
 
-auto inverse_maximum_health(ETestEntityType const type,
+auto inverse_maximum_health(::ioj::sim::EntityType const type,
                             FEntityOverlayHealthMaximums const& maximums) -> float {
     int32 maximum{0};
     switch (type) {
-        case ETestEntityType::CapitalShip: {
+        case ::ioj::sim::EntityType::CapitalShip: {
             maximum = maximums.capital_ship;
             break;
         }
-        case ETestEntityType::Fighter: {
+        case ::ioj::sim::EntityType::Fighter: {
             maximum = maximums.fighter;
             break;
         }
-        case ETestEntityType::Turret: {
+        case ::ioj::sim::EntityType::Turret: {
             maximum = maximums.turret;
             break;
         }
@@ -92,17 +93,17 @@ auto inverse_maximum_health(ETestEntityType const type,
     return maximum > 0 ? 1.0f / static_cast<float>(maximum) : 0.0f;
 }
 
-auto team_colour(ETestEntityType const type,
+auto team_colour(::ioj::sim::EntityType const type,
                  ETestTeam const team,
                  FEntityOverlayTeamColours const& colours) -> FLinearColor {
     switch (type) {
-        case ETestEntityType::CapitalShip: {
+        case ::ioj::sim::EntityType::CapitalShip: {
             return colours.capital_ship[team];
         }
-        case ETestEntityType::Fighter: {
+        case ::ioj::sim::EntityType::Fighter: {
             return colours.fighter[team];
         }
-        case ETestEntityType::Turret: {
+        case ::ioj::sim::EntityType::Turret: {
             return colours.turret[team];
         }
         default: {

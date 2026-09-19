@@ -69,7 +69,13 @@ class NativeWorkflowTests(unittest.TestCase):
             self.assertIn("SANDBOX_WITH_UNREAL:BOOL=OFF", cache)
 
             dry_run = self.run_cmake(
-                "--build", str(build_directory), "--target", "native-tests", "--", "-n"
+                "--build",
+                str(build_directory),
+                "--target",
+                "native-tests",
+                "--",
+                "-t",
+                "commands",
             )
             self.assertNotRegex(dry_run, r"UnrealBuildTools|UnrealEditor|RunUBT")
             self.assertNotRegex(dry_run, r"(?i)(?:^|[\\/\s])unreal(?:[\\/\s]|$)")
@@ -85,7 +91,7 @@ class NativeWorkflowTests(unittest.TestCase):
             self.assertNotIn("tools/bin/NativeBinaryTools.exe", dry_run)
 
             build_ninja = (build_directory / "build.ninja").read_text(encoding="utf-8")
-            normalized_build_ninja = build_ninja.replace("\\", "/")
+            normalized_build_ninja = build_ninja.replace("\\", "/").replace("$:", ":")
             native_binary_tools_directory = self.source_dir / "tools" / "NativeBinaryTools"
             self.assertIn(
                 (native_binary_tools_directory / "Program.cs").as_posix(),

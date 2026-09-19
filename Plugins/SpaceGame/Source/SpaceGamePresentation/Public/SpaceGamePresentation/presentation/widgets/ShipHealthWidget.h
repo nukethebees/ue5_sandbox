@@ -1,7 +1,7 @@
 #pragma once
 
+#include "SpaceGamePresentation/entities/ShipHealth.h"
 #include "SpaceGamePresentation/ui/style/GameUiStyle.h"
-#include "SpaceGameSimulation/ships/common/ShipHealth.h"
 
 #include "CoreMinimal.h"
 #include "Blueprint/UserWidget.h"

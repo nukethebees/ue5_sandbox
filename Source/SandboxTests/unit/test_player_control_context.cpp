@@ -3,7 +3,7 @@
 #include <SandboxTests/support/test_setup.h>
 #include <SandboxTests/support/TestActorSpawning.h>
 #include <SandboxTests/support/TestEnhancedInputSubsystem.h>
-#include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
+#include <SpaceGamePresentation/integration/TransformConversion.h>
 
 #include <ioj/sim/agent_accessor.h>
 #include <ioj/sim/combat_events.h>

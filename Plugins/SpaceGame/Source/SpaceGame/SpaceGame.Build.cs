@@ -31,7 +31,6 @@ public class SpaceGame : ModuleRules
             "GameplayTags",
             "InputCore",
             "RenderCore",
-            "SandboxUI",
             "SlateCore",
             "SpaceGameRendering",
             "UMG",

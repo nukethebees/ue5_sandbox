@@ -1,6 +1,6 @@
 #include "SpaceGame/ui/telemetry/TelemetryDashboardWidget.h"
+#include <ioj/sim/entity_types.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
-#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
 
 #include "SpaceGame/system/GameSubsystem.h"
 #include "SpaceGamePresentation/ui/style/SpaceGameUiTheme.h"

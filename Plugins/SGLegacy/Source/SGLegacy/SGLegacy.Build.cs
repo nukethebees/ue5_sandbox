@@ -17,6 +17,7 @@ public class SGLegacy : ModuleRules
             "SandboxCoreEngine",
             "SandboxGameShared",
             "SpaceGame",
+            "SpaceGamePresentation",
             "NativeSimulation",
         });
 

@@ -1,13 +1,20 @@
 #pragma once
 
 #include <ioj/sim/entity_ledger.h>
+#include <ioj/sim/entity_type.h>
 #include <ioj/sim/fixed_tick_loop.h>
+#include <ioj/sim/missions/mission_mode.h>
+#include <ioj/sim/missions/mission_state.h>
+#include <ioj/sim/player/control_mode.h>
+#include <ioj/sim/player/fire_rate.h>
+#include <ioj/sim/player/flight_mode.h>
 #include <sandbox/core/multi_buffer.h>
 #include <sandbox/core/periodic_tick_countdown.h>
 #include <SandboxUI/EntityOverlay/EntityOverlayFrameStore.h>
 #include <SandboxUI/EntityOverlay/EntityOverlayTypes.h>
 #include <SandboxUI/Radar/RadarFrameStore.h>
 #include <SandboxUI/Radar/RadarTypes.h>
+#include <SpaceGamePresentation/entities/ShipHealth.h>
 #include <SpaceGamePresentation/presentation/EntityOverlaySource.h>
 #include <SpaceGamePresentation/presentation/HudUpdateSettings.h>
 #include <SpaceGamePresentation/presentation/LevelPresentationSettings.h>
@@ -15,13 +22,6 @@
 #include <SpaceGamePresentation/presentation/widgets/FlightVectorDebugData.h>
 #include <SpaceGamePresentation/presentation/widgets/ShipHudKillData.h>
 #include <SpaceGamePresentation/presentation/WorldSoftTargetMaterialData.h>
-#include <SpaceGameSimulation/entities/TestEntityType.h>
-#include <SpaceGameSimulation/missions/TestMissionMode.h>
-#include <SpaceGameSimulation/missions/TestMissionState.h>
-#include <SpaceGameSimulation/ships/common/ShipHealth.h>
-#include <SpaceGameSimulation/ships/player/TestShipFireRate.h>
-#include <SpaceGameSimulation/ships/player/TestSpaceShipControlMode.h>
-#include <SpaceGameSimulation/ships/player/TestSpaceShipFlightMode.h>
 
 #include <CoreMinimal.h>
 #include <HAL/Platform.h>
@@ -70,17 +70,17 @@ namespace ml::hud_manager {
 struct FMissionStaticDataCache {
     bool operator==(FMissionStaticDataCache const& other) const noexcept = default;
 
-    ETestMissionMode mission_mode{ETestMissionMode::None};
+    ::ioj::sim::MissionMode mission_mode{::ioj::sim::MissionMode::None};
     TArray<::ioj::sim::EntityUniqueId> surviving_entity_ids;
-    TArray<ETestEntityType> surviving_entity_types;
+    TArray<::ioj::sim::EntityType> surviving_entity_types;
     TArray<::ioj::sim::EntityUniqueId> required_kill_entity_ids;
-    TArray<ETestEntityType> required_kill_entity_types;
+    TArray<::ioj::sim::EntityType> required_kill_entity_types;
 };
 
 struct FMissionStatusDataCache {
     bool operator==(FMissionStatusDataCache const& other) const noexcept = default;
 
-    ETestMissionState mission_state{ETestMissionState::NotStarted};
+    ::ioj::sim::MissionState mission_state{::ioj::sim::MissionState::NotStarted};
     float mission_stopwatch{0.f};
     float time_remaining{0.f};
     int32 enemies_remaining{0};
@@ -117,7 +117,7 @@ struct FPlayerStatusDataCache {
     float target_speed{0.f};
     float energy{1.f};
     int32 points{0};
-    ETestShipFireRate fire_rate{ETestShipFireRate::Single};
+    ::ioj::sim::ShipFireRate fire_rate{::ioj::sim::ShipFireRate::Single};
     bool crosshair_targeting{false};
 };
 
@@ -128,8 +128,8 @@ struct FPlayerFlightDataCache {
     ml::ship_hud::FFlightVectorDebugData flight_vector_debug{};
     FVector ship_velocity{};
     FVector target_velocity{};
-    ETestSpaceShipControlMode control_mode{};
-    ETestSpaceShipFlightMode flight_mode{};
+    ::ioj::sim::SpaceShipControlMode control_mode{};
+    ::ioj::sim::SpaceShipFlightMode flight_mode{};
     FVector crosshair_origin{};
     FVector crosshair_direction{};
     bool has_lock_on_target{false};

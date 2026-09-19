@@ -1,8 +1,8 @@
 #pragma once
 #include <SpaceGame/entities/ProxyEntityMap.h>
 #include <SpaceGame/missions/MissionCompletion.h>
+#include <SpaceGame/simulation/FixedTickLoopConfig.h>
 #include <SpaceGame/telemetry/LevelTelemetryReport.h>
-#include <SpaceGameSimulation/support/FixedTickLoopConfig.h>
 
 #include <ioj/sim/level_sim.h>
 #include <SpaceGame/missions/LevelMissionDefinition.h>

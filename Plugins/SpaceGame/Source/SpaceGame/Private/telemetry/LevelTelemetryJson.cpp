@@ -1,7 +1,10 @@
+#include <ioj/sim/entity_types.h>
+#include <ioj/sim/telemetry/level_telemetry_run_end_reason.h>
+#include <SpaceGame/missions/TestMissionFailReasonConversion.h>
+#include <SpaceGame/missions/TestMissionModeConversion.h>
+#include <SpaceGame/missions/TestMissionStateConversion.h>
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
-#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
-#include <SpaceGameSimulation/missions/NativeMissionTypes.h>
-#include <SpaceGameSimulation/telemetry/LevelTelemetryRunEndReason.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
 
 #include <ioj/sim/telemetry/level_telemetry_json_validation.h>
 
@@ -417,7 +420,7 @@ auto parse_serialized_enum(FString const& value, FString const& path)
         if (auto const result{::ioj::sim::try_parse_serialized_mission_fail_reason(encoded)}) {
             return ml::to_unreal(*result);
         }
-    } else if constexpr (std::is_same_v<Enum, ELevelTelemetryRunEndReason>) {
+    } else if constexpr (std::is_same_v<Enum, ::ioj::sim::LevelTelemetryRunEndReason>) {
         if (auto const result{
                 ::ioj::sim::try_parse_serialized_level_telemetry_run_end_reason(encoded)}) {
             return *result;
@@ -860,10 +863,10 @@ auto deserialize_level_telemetry_run(FString const& json)
     FString reason_name;
     READ_REQUIRED(reason_name,
                   required_string(**completion, TEXT("reason"), TEXT("completion.reason")));
-    ELevelTelemetryRunEndReason parsed_reason{};
-    READ_REQUIRED(
-        parsed_reason,
-        parse_serialized_enum<ELevelTelemetryRunEndReason>(reason_name, TEXT("completion.reason")));
+    ::ioj::sim::LevelTelemetryRunEndReason parsed_reason{};
+    READ_REQUIRED(parsed_reason,
+                  parse_serialized_enum<::ioj::sim::LevelTelemetryRunEndReason>(
+                      reason_name, TEXT("completion.reason")));
     result.completion.reason = parsed_reason;
     READ_REQUIRED(result.completion.interrupted,
                   required_bool(**completion, TEXT("interrupted"), TEXT("completion.interrupted")));

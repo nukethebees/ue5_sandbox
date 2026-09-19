@@ -1,3 +1,6 @@
+#include <ioj/sim/entity_type.h>
+#include <ioj/sim/entity_types.h>
+#include <ioj/sim/laser_source.h>
 #include <ioj/sim/level_sim.h>
 #include <ioj/sim/levels/level_event_manager.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
@@ -14,13 +17,12 @@
 #include <SpaceGame/levels/LevelDefinition.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/telemetry/LevelTelemetryJson.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
+#include <SpaceGamePresentation/integration/RotatorConversion.h>
+#include <SpaceGamePresentation/integration/TransformConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 #include <SpaceGamePresentation/presentation/LevelPresentation.h>
 #include <SpaceGameRendering/SparkRendererComponent.h>
-#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
-#include <SpaceGameSimulation/entities/TestEntityType.h>
-#include <SpaceGameSimulation/simulation/NativeRotatorTypes.h>
-#include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
 #include <Dom/JsonObject.h>
 #include <Engine/World.h>
@@ -651,7 +653,7 @@ auto FLaserPresentationIndexingTest::RunTest(FString const&) -> bool {
             requests.max_distances[spawn] = requests.speeds[spawn] * initial_lifetime;
             requests.instigator_ids[spawn] = {};
             requests.sources[spawn] = {ml::to_native(ETestTeam::White),
-                                       ETestEntityType::TubeSpinner};
+                                       ::ioj::sim::EntityType::TubeSpinner};
             expected_material_data.Add(
                 {.colour = colour,
                  .initial_lifetime = initial_lifetime,

@@ -1,5 +1,5 @@
-#include <SandboxCore/frame_array.h>
-#include <SandboxCore/frame_memory_resource.h>
+#include <sandbox/core/frame_array.h>
+#include <sandbox/core/frame_memory_resource.h>
 
 #include "CoreMinimal.h"
 #include "TestHarness.h"
@@ -22,8 +22,8 @@ inline constexpr SIZE_T frame_capacity_bytes{16 * 1024 * 1024};
 class FFrameBacking {
   public:
     FFrameBacking()
-        : data_{static_cast<std::byte*>(::operator new(frame_capacity_bytes, std::align_val_t{FFrameMemoryResource::backing_alignment}))} {}
-    ~FFrameBacking() { ::operator delete(data_, std::align_val_t{FFrameMemoryResource::backing_alignment}); }
+        : data_{static_cast<std::byte*>(::operator new(frame_capacity_bytes, std::align_val_t{FrameMemoryResource::backing_alignment}))} {}
+    ~FFrameBacking() { ::operator delete(data_, std::align_val_t{FrameMemoryResource::backing_alignment}); }
 
     FFrameBacking(FFrameBacking const&) = delete;
     FFrameBacking(FFrameBacking&&) = delete;
@@ -154,13 +154,13 @@ FORCENOINLINE auto run_fresh_tarray(bool const reserve) -> FMeasurement {
             .payload_bytes = allocated_bytes.load(std::memory_order_relaxed)};
 }
 
-FORCENOINLINE auto run_direct(FFrameMemoryResource& root, bool const reserve) -> FMeasurement {
+FORCENOINLINE auto run_direct(FrameMemoryResource& root, bool const reserve) -> FMeasurement {
     std::atomic<uint64> checksum{};
     ParallelFor(job_count, [&root, &checksum, reserve](int32 const job_index) {
         auto const begin{job_index * total_element_count / job_count};
         auto const end{(job_index + 1) * total_element_count / job_count};
-        TFrameArray<int32> indices{&root};
-        TFrameArray<uint64> handles{&root};
+        FrameArray<int32> indices{&root};
+        FrameArray<uint64> handles{&root};
         checksum.fetch_add(populate(indices, handles, begin, end, reserve), std::memory_order_relaxed);
     });
 
@@ -196,11 +196,11 @@ FORCENOINLINE auto run_persistent_serial(FJobScratch& scratch) -> FMeasurement {
     return {.checksum = checksum, .claimed_bytes = allocated_bytes, .payload_bytes = allocated_bytes};
 }
 
-FORCENOINLINE auto run_direct_serial(FFrameMemoryResource& root) -> FMeasurement {
+FORCENOINLINE auto run_direct_serial(FrameMemoryResource& root) -> FMeasurement {
     uint64 checksum{};
     {
-        TFrameArray<int32> indices{&root};
-        TFrameArray<uint64> handles{&root};
+        FrameArray<int32> indices{&root};
+        FrameArray<uint64> handles{&root};
         checksum = populate_turret_scratch(indices, handles);
     }
     auto const stats{root.get_stats()};
@@ -216,7 +216,7 @@ FORCENOINLINE auto run_direct_serial(FFrameMemoryResource& root) -> FMeasurement
 TEST_CASE("SandboxCore.FrameMemory.BenchmarkCorrectness") {
     std::array<FJobScratch, job_count> persistent_scratch;
     FFrameBacking backing;
-    FFrameMemoryResource direct_root{backing};
+    FrameMemoryResource direct_root{backing};
 
     auto const persistent{run_persistent(persistent_scratch, true)};
     auto const direct{run_direct(direct_root, true)};
@@ -230,7 +230,7 @@ TEST_CASE("SandboxCore.FrameMemory.Timing", "[benchmark]") {
     std::array<FJobScratch, job_count> persistent_scratch;
     FJobScratch persistent_serial_scratch;
     FFrameBacking backing;
-    FFrameMemoryResource direct_root{backing};
+    FrameMemoryResource direct_root{backing};
 
     // Warm the persistent baseline so its measured behavior matches the existing per-frame reuse.
     run_persistent(persistent_scratch, true);
@@ -260,7 +260,7 @@ TEST_CASE("SandboxCore.FrameMemory.TransientMemory", "[benchmark]") {
     {
         FJobScratch persistent_scratch;
         FFrameBacking backing;
-        FFrameMemoryResource direct_root{backing};
+        FrameMemoryResource direct_root{backing};
         auto const persistent{run_persistent_serial(persistent_scratch)};
         auto const direct{run_direct_serial(direct_root)};
 
@@ -272,7 +272,7 @@ TEST_CASE("SandboxCore.FrameMemory.TransientMemory", "[benchmark]") {
     for (bool const reserve : {true, false}) {
         std::array<FJobScratch, job_count> persistent_scratch;
         FFrameBacking backing;
-        FFrameMemoryResource direct_root{backing};
+        FrameMemoryResource direct_root{backing};
         auto const persistent{run_persistent(persistent_scratch, reserve)};
         auto const direct{run_direct(direct_root, reserve)};
 

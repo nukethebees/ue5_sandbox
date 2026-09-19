@@ -1,4 +1,5 @@
 #include "SpaceGamePresentation/presentation/widgets/MissionEntityHealthRowWidget.h"
+#include <SpaceGamePresentation/entities/EntityTypeDisplayNames.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
 
 #include <SandboxCore/error_msg.h>
@@ -37,7 +38,7 @@ auto UMissionEntityHealthRowWidget::check_widget_bindings() const -> bool {
 }
 
 void UMissionEntityHealthRowWidget::set_entity(::ioj::sim::EntityUniqueId const unique_id,
-                                               ETestEntityType const entity_type) {
+                                               ::ioj::sim::EntityType const entity_type) {
     entity_name->SetText(FText::Format(INVTEXT("{0} {1}"),
                                        FText::FromString(ml::get_entity_class_name(entity_type)),
                                        unique_id.index()));

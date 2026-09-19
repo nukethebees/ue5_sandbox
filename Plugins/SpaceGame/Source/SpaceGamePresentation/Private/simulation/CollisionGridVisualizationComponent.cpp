@@ -2,7 +2,7 @@
 
 #include <ioj/sim/collision/collision_system.h>
 #include <ioj/sim/world_aabb_operations.h>
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include <Engine/EngineTypes.h>
 #include <MeshElementCollector.h>

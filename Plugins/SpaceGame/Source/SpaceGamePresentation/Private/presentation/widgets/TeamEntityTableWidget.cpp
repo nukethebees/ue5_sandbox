@@ -1,8 +1,10 @@
 #include "SpaceGamePresentation/presentation/widgets/TeamEntityTableWidget.h"
+#include <SpaceGamePresentation/entities/EntityTypeDisplayNames.h>
 
+#include <ioj/sim/entity_types.h>
 #include <SandboxCoreEngine/enums.h>
 #include <SandboxCoreEngine/strings.h>
-#include <SpaceGameSimulation/entities/NativeEntityTypes.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
 
 #include <Blueprint/WidgetTree.h>
 #include <Components/Border.h>
@@ -15,7 +17,7 @@ void UTeamEntityTableWidget::NativePreConstruct() {
 
     if (IsDesignTime()) {
         constexpr auto n_teams{ml::EnumCountTrait<ETestTeam>::count_value};
-        constexpr auto n_types{ml::EnumCountTrait<ETestEntityType>::count_value};
+        constexpr auto n_types{static_cast<int32>(::ioj::sim::EntityType::COUNT)};
         for (int32 team{0}; team < n_teams; ++team) {
             for (int32 type{0}; type < n_types; ++type) {
                 values[team][type] = 10 + team + type;
@@ -50,7 +52,7 @@ void UTeamEntityTableWidget::set_team_kill_matrix(ml::ship_hud::FTeamKillMatrix 
     for (int32 team{0}; team < n_teams; ++team) {
         auto const team_value{static_cast<ETestTeam>(team)};
         for (int32 type{0}; type < n_types; ++type) {
-            auto const type_value{static_cast<ETestEntityType>(type)};
+            auto const type_value{static_cast<::ioj::sim::EntityType>(type)};
             values[team][type] = new_matrix.get(team_value, type_value);
         }
     }
@@ -107,7 +109,7 @@ void UTeamEntityTableWidget::rebuild_table() {
     constexpr auto row_heading{0};
     constexpr auto first_team_column{1};
     constexpr auto n_teams{ml::EnumCountTrait<ETestTeam>::count_value};
-    constexpr auto n_types{ml::EnumCountTrait<ETestEntityType>::count_value};
+    constexpr auto n_types{static_cast<int32>(::ioj::sim::EntityType::COUNT)};
     auto const n_data_rows{n_types + (show_team_totals ? 1 : 0)};
 
     team_entity_grid->SetColumnFill(0, 1.f);
@@ -173,7 +175,7 @@ void UTeamEntityTableWidget::rebuild_table() {
     }
 
     for (int32 type{0}; type < n_types; ++type) {
-        auto const type_value{static_cast<ETestEntityType>(type)};
+        auto const type_value{static_cast<::ioj::sim::EntityType>(type)};
         auto const row{type + 1};
         if (hud_style_) {
             auto* const row_background{WidgetTree->ConstructWidget<UBorder>(

@@ -1,6 +1,6 @@
 #include "SpaceGame/ships/player/TestSpaceShip.h"
 #include <SpaceGame/simulation/SimulationConfigConversion.h>
-#include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
+#include <SpaceGamePresentation/integration/TransformConversion.h>
 
 #include <SpaceGamePresentation/entities/TestTeamVisualData.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
@@ -53,7 +53,7 @@ auto ATestSpaceShip::make_spawn_data() const -> ::ioj::sim::player::PlayerSpawnD
     result.control_mode = ml::to_native(control_mode);
     result.laser_mode = ml::to_native(laser_mode);
     result.laser_fire_rate = ml::to_native(laser_fire_rate);
-    result.health = ml::to_native(health);
+    result.health = {health.health, health.max_health};
 
     if (actor_config) {
         result.config = make_simulation_config(*actor_config);
@@ -323,7 +323,11 @@ void ATestSpaceShip::add_health(int32 const added_health) {
 }
 
 auto ATestSpaceShip::get_health_info() const -> FShipHealth {
-    return bound_simulation ? ml::to_unreal(bound_simulation->get_health()) : health;
+    if (!bound_simulation) {
+        return health;
+    }
+    auto const native_health{bound_simulation->get_health()};
+    return {native_health.health, native_health.max_health};
 }
 
 auto ATestSpaceShip::is_alive() const noexcept -> bool {

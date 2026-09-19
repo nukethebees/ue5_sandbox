@@ -1,9 +1,22 @@
 #pragma once
 
+#include <SpaceGamePresentation/entities/TestTeam.h>
+
+#include <Containers/StaticArray.h>
 #include <Math/Color.h>
-#include <SpaceGameSimulation/entities/TestTeamUtils.h>
 
 #include <utility>
+
+namespace ml {
+inline constexpr int32 test_team_count{std::to_underlying(ETestTeam::COUNT)};
+
+template <typename T>
+using TStaticTeamArray = TStaticArray<T, test_team_count>;
+
+constexpr bool is_valid(ETestTeam const team) {
+    return std::to_underlying(team) < std::to_underlying(ETestTeam::COUNT);
+}
+}
 
 struct FTeamColours {
     FTeamColours() {

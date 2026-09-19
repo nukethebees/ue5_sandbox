@@ -1,11 +1,10 @@
 #include "SpaceGamePresentation/presentation/HUDManager.h"
+#include <SpaceGamePresentation/integration/TransformConversion.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 #include <SpaceGamePresentation/support/logging/PresentationLogCategories.h>
-#include <SpaceGameSimulation/missions/NativeMissionTypes.h>
-#include <SpaceGameSimulation/ships/common/NativeShipHealth.h>
-#include <SpaceGameSimulation/ships/player/NativePlayerTypes.h>
-#include <SpaceGameSimulation/simulation/NativeTransformTypes.h>
-#include <SpaceGameSimulation/simulation/NativeVectorTypes.h>
 
+#include <ioj/sim/entity_types.h>
+#include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/presentation/LevelActorSettings.h>
 #include "ioj/sim/agent_accessor.h"
 #include "ioj/sim/mission_manager.h"
@@ -14,7 +13,6 @@
 #include "SpaceGamePresentation/entities/TestTeamVisualData.h"
 #include "SpaceGamePresentation/presentation/widgets/ShipHudWidget.h"
 #include "SpaceGamePresentation/presentation/widgets/SimulationHudWidget.h"
-#include "SpaceGameSimulation/entities/NativeEntityTypes.h"
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <sandbox/core/timing.h>
@@ -817,7 +815,7 @@ void FHUDManager::read_mission_data(ml::hud_manager::FMissionDataCache& out) con
     check(mission_manager);
 
     auto& static_data{out.static_data};
-    static_data.mission_mode = ml::to_unreal(mission_manager->get_mission_mode());
+    static_data.mission_mode = mission_manager->get_mission_mode();
     static_data.surviving_entity_ids.Reset();
     for (auto const value : mission_manager->get_entity_ids_that_must_survive()) {
         static_data.surviving_entity_ids.Add(value);
@@ -836,17 +834,17 @@ void FHUDManager::read_mission_data(ml::hud_manager::FMissionDataCache& out) con
     }
 
     auto& status_data{out.status_data};
-    status_data.mission_state = ml::to_unreal(mission_manager->get_mission_state());
+    status_data.mission_state = mission_manager->get_mission_state();
     status_data.mission_stopwatch = mission_manager->get_mission_stopwatch();
     status_data.time_remaining = mission_manager->get_time_remaining();
     status_data.enemies_remaining = mission_manager->get_kills_remaining();
     status_data.surviving_entity_health.Reset();
     for (auto const value : mission_manager->get_entity_health_that_must_survive()) {
-        status_data.surviving_entity_health.Add(ml::to_unreal(value));
+        status_data.surviving_entity_health.Add({value.health, value.max_health});
     }
     status_data.required_kill_entity_health.Reset();
     for (auto const value : mission_manager->get_entity_health_required_to_kill()) {
-        status_data.required_kill_entity_health.Add(ml::to_unreal(value));
+        status_data.required_kill_entity_health.Add({value.health, value.max_health});
     }
 }
 bool FHUDManager::collect_entity_count_data() {
@@ -926,12 +924,13 @@ bool FHUDManager::collect_player_status_data() {
 
     if (validate_player_ship_for_collection()) {
         next_data.has_player_ship = true;
-        next_data.health = ml::to_unreal(player_ship->get_health());
+        auto const player_health{player_ship->get_health()};
+        next_data.health = {player_health.health, player_health.max_health};
         next_data.speed = player_ship->get_speed();
         next_data.target_speed = player_ship->get_movement_state().target_speed;
         next_data.energy = player_ship->get_energy();
         next_data.points = player_ship->get_kills();
-        next_data.fire_rate = ml::to_unreal(player_ship->laser_fire_rate);
+        next_data.fire_rate = player_ship->laser_fire_rate;
 
         auto const firing_mode{player_ship->laser_firing_mode};
         if (firing_mode == ::ioj::sim::LaserFiringState::lock_on_searching ||
@@ -969,8 +968,8 @@ bool FHUDManager::collect_player_flight_data() {
         };
         next_data.ship_velocity = ml::to_unreal(movement_state.velocity);
         next_data.target_velocity = ml::to_unreal(player_ship->target_local_planar_velocity);
-        next_data.control_mode = ml::to_unreal(player_ship->control_mode);
-        next_data.flight_mode = ml::to_unreal(player_ship->flight_mode);
+        next_data.control_mode = player_ship->control_mode;
+        next_data.flight_mode = player_ship->flight_mode;
         next_data.crosshair_origin = ml::to_unreal(ship_socket.location);
         next_data.crosshair_direction = ml::to_unreal(ship_socket.forward());
         auto const target{agents_->read_spatial(lock_on_target)};
@@ -1079,7 +1078,7 @@ void FHUDManager::update_player_status_hud(UShipHudWidget& hud) const {
     hud.set_target_speed(data.target_speed);
     hud.set_energy(data.energy);
     hud.set_points(data.points);
-    hud.set_fire_rate(ml::to_fstring(::ioj::sim::to_string(ml::to_native(data.fire_rate))));
+    hud.set_fire_rate(ml::to_fstring(::ioj::sim::to_string(data.fire_rate)));
     hud.set_crosshair_targeting(data.crosshair_targeting);
 }
 void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
@@ -1097,8 +1096,8 @@ void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
     hud.set_flight_vector_debug(data.flight_vector_debug);
     hud.set_ship_velocity(data.ship_velocity);
     hud.set_target_velocity(data.target_velocity);
-    hud.set_control_mode(ml::to_fstring(::ioj::sim::to_string(ml::to_native(data.control_mode))));
-    hud.set_flight_mode(ml::to_fstring(::ioj::sim::to_string(ml::to_native(data.flight_mode))));
+    hud.set_control_mode(ml::to_fstring(::ioj::sim::to_string(data.control_mode)));
+    hud.set_flight_mode(ml::to_fstring(::ioj::sim::to_string(data.flight_mode)));
 
     auto* const controller{hud.GetOwningPlayer()};
     check(IsValid(controller));

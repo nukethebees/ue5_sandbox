@@ -3,7 +3,7 @@
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
 #include "SpaceGame/entities/TestEntity.h"
-#include "SpaceGameSimulation/entities/TestTeam.h"
+#include "SpaceGamePresentation/entities/TestTeam.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
