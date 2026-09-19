@@ -33,4 +33,10 @@ enum class EGameGraphicsPreset : uint8 {
     Epic,
 };
 
+enum class EPlayerShipFlightControlPreset : uint8 {
+    ForwardSpeed,
+    PlanarVelocity,
+    PlanarPower,
+};
+
 } // namespace ml::ioj

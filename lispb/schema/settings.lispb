@@ -198,6 +198,14 @@
       :min 0
       :max 5
       :step 1))
+  (setting player_ship_flight_control_preset "Flight Controls"
+    :tooltip "Select the player ship flight model and input interpretation. Planar Power is the experimental inertial scheme."
+    :category controls
+    :value-type @player_ship_flight_control_preset
+    :backend game_user_settings
+    :apply immediate
+    (control choice
+      :options-provider player_ship_flight_control_presets))
   (setting mouse_turn_sensitivity "Mouse Sensitivity"
     :tooltip "Mouse virtual-stick sensitivity multiplier. 1.0 reaches full deflection after 400 mouse counts."
     :category controls
