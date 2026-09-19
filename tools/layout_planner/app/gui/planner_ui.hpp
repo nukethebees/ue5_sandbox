@@ -13,14 +13,29 @@
 #include <string>
 #include <vector>
 
+struct ImGuiContext;
+struct ImGuiSettingsHandler;
+struct ImGuiTextBuffer;
+
 namespace ioj::layout_planner {
 
 class PlannerUi {
   public:
     explicit PlannerUi(layout::SchemaLoadResult loaded);
 
+    void register_settings_handler();
     auto draw() -> bool;
   private:
+    static auto settings_read_open(ImGuiContext* context,
+                                   ImGuiSettingsHandler* handler,
+                                   char const* name) -> void*;
+    static void settings_read_line(ImGuiContext* context,
+                                   ImGuiSettingsHandler* handler,
+                                   void* entry,
+                                   char const* line);
+    static void settings_write_all(ImGuiContext* context,
+                                   ImGuiSettingsHandler* handler,
+                                   ImGuiTextBuffer* output);
     void setup_default_dock_layout(unsigned int dockspace_id);
     auto draw_view_menu() -> bool;
     void refresh_analysis();
@@ -59,6 +74,7 @@ class PlannerUi {
     std::uint64_t next_variant_number_{1};
     float text_scale_{1.0F};
     bool dock_layout_initialized_{};
+    bool reset_dock_layout_requested_{};
 };
 
 } // namespace ioj::layout_planner

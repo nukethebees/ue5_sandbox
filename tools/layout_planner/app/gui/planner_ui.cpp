@@ -5,7 +5,10 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <charconv>
 #include <cstdio>
+#include <cstring>
+#include <string_view>
 #include <utility>
 #include <variant>
 
@@ -35,6 +38,49 @@ PlannerUi::PlannerUi(SchemaLoadResult loaded)
     sync_variant_name();
 }
 
+void PlannerUi::register_settings_handler() {
+    ImGuiSettingsHandler handler;
+    handler.TypeName = "MemoryLayoutPlanner";
+    handler.TypeHash = ImHashStr(handler.TypeName);
+    handler.ReadOpenFn = settings_read_open;
+    handler.ReadLineFn = settings_read_line;
+    handler.WriteAllFn = settings_write_all;
+    handler.UserData = this;
+    ImGui::AddSettingsHandler(&handler);
+}
+
+auto PlannerUi::settings_read_open(ImGuiContext*, ImGuiSettingsHandler* handler, char const* name)
+    -> void* {
+    return std::strcmp(name, "Settings") == 0 ? handler->UserData : nullptr;
+}
+
+void PlannerUi::settings_read_line(ImGuiContext*,
+                                   ImGuiSettingsHandler*,
+                                   void* entry,
+                                   char const* line) {
+    auto* ui{static_cast<PlannerUi*>(entry)};
+    constexpr std::string_view prefix{"TextScale="};
+    auto value{std::string_view{line}};
+    if (!value.starts_with(prefix)) {
+        return;
+    }
+    value.remove_prefix(prefix.size());
+
+    float text_scale{};
+    auto const [end, error]{std::from_chars(value.data(), value.data() + value.size(), text_scale)};
+    if (error == std::errc{} && end == value.data() + value.size()) {
+        ui->text_scale_ = std::clamp(text_scale, 0.75F, 1.75F);
+    }
+}
+
+void PlannerUi::settings_write_all(ImGuiContext*,
+                                   ImGuiSettingsHandler* handler,
+                                   ImGuiTextBuffer* output) {
+    auto const* ui{static_cast<PlannerUi const*>(handler->UserData)};
+    output->appendf("[%s][Settings]\n", handler->TypeName);
+    output->appendf("TextScale=%g\n\n", ui->text_scale_);
+}
+
 auto PlannerUi::draw() -> bool {
     ImGui::GetStyle().FontScaleMain = text_scale_;
     auto const view_changed{draw_view_menu()};
@@ -62,10 +108,16 @@ auto PlannerUi::draw_view_menu() -> bool {
         auto percentage{text_scale_ * 100.0F};
         if (ImGui::SliderFloat("Text size", &percentage, 75.0F, 175.0F, "%.0f%%")) {
             text_scale_ = percentage / 100.0F;
+            ImGui::MarkIniSettingsDirty();
             changed = true;
         }
         if (ImGui::MenuItem("Reset text size")) {
             text_scale_ = 1.0F;
+            ImGui::MarkIniSettingsDirty();
+            changed = true;
+        }
+        if (ImGui::MenuItem("Reset panel layout")) {
+            reset_dock_layout_requested_ = true;
             changed = true;
         }
         ImGui::EndMenu();
@@ -76,7 +128,8 @@ auto PlannerUi::draw_view_menu() -> bool {
 
 void PlannerUi::setup_default_dock_layout(unsigned int const dockspace_id) {
     auto const* existing_node{ImGui::DockBuilderGetNode(dockspace_id)};
-    if (dock_layout_initialized_ || existing_node == nullptr || existing_node->IsSplitNode()) {
+    if (!reset_dock_layout_requested_ &&
+        (dock_layout_initialized_ || existing_node == nullptr || existing_node->IsSplitNode())) {
         dock_layout_initialized_ = true;
         return;
     }
@@ -101,6 +154,7 @@ void PlannerUi::setup_default_dock_layout(unsigned int const dockspace_id) {
     ImGui::DockBuilderDockWindow("Comparison", comparison_id);
     ImGui::DockBuilderFinish(dockspace_id);
     dock_layout_initialized_ = true;
+    reset_dock_layout_requested_ = false;
 }
 
 void PlannerUi::refresh_analysis() {

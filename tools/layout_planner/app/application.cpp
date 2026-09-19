@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <string>
 #include <utility>
 
 namespace ioj::layout_planner {
@@ -41,6 +42,7 @@ class Application {
     bool imgui_platform_initialized_{};
     bool imgui_renderer_initialized_{};
     bool done_{};
+    std::string imgui_ini_path_;
     FramePacingState pacing_state_{
         .focused = true,
         .minimized = false,
@@ -121,7 +123,16 @@ auto Application::initialize() -> bool {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     io.ConfigDpiScaleFonts = true;
-    io.IniFilename = nullptr;
+    if (auto* preference_path{SDL_GetPrefPath("NukeTheBees", "MemoryLayoutPlanner")}) {
+        imgui_ini_path_ = preference_path;
+        SDL_free(preference_path);
+        imgui_ini_path_ += "imgui.ini";
+        io.IniFilename = imgui_ini_path_.c_str();
+    } else {
+        std::fprintf(stderr, "SDL_GetPrefPath failed: %s\n", SDL_GetError());
+        io.IniFilename = nullptr;
+    }
+    ui_.register_settings_handler();
     ImGui::StyleColorsDark();
     auto& style{ImGui::GetStyle()};
     style.ScaleAllSizes(scale);

@@ -282,27 +282,34 @@ void PlannerUi::draw_variants_panel() {
         }
     }
     ImGui::Separator();
-    if (ImGui::Button("New experiment")) {
-        create_variant_for_selected_schema();
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Duplicate")) {
-        auto const name{workspace_.active_variant().name + " copy"};
-        workspace_.duplicate_variant(workspace_.active_variant_id(), name);
-        sync_variant_name();
-    }
-
     auto const baseline{workspace_.active_variant_id() == LayoutWorkspace::baseline_variant_id};
+    if (ImGui::BeginTable("variant-actions",
+                          2,
+                          ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoSavedSettings)) {
+        ImGui::TableNextColumn();
+        if (ImGui::Button("New experiment", {-1.0F, 0.0F})) {
+            create_variant_for_selected_schema();
+        }
+        ImGui::TableNextColumn();
+        if (ImGui::Button("Duplicate", {-1.0F, 0.0F})) {
+            auto const name{workspace_.active_variant().name + " copy"};
+            workspace_.duplicate_variant(workspace_.active_variant_id(), name);
+            sync_variant_name();
+        }
+        ImGui::TableNextColumn();
+        ImGui::BeginDisabled(baseline);
+        if (ImGui::Button("Reset all overrides", {-1.0F, 0.0F})) {
+            workspace_.reset_variant(workspace_.active_variant_id());
+        }
+        ImGui::TableNextColumn();
+        if (ImGui::Button("Delete", {-1.0F, 0.0F})) {
+            workspace_.delete_variant(workspace_.active_variant_id());
+            sync_variant_name();
+        }
+        ImGui::EndDisabled();
+        ImGui::EndTable();
+    }
     ImGui::BeginDisabled(baseline);
-    ImGui::SameLine();
-    if (ImGui::Button("Reset all overrides")) {
-        workspace_.reset_variant(workspace_.active_variant_id());
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Delete")) {
-        workspace_.delete_variant(workspace_.active_variant_id());
-        sync_variant_name();
-    }
     if (variant_name_id_ != workspace_.active_variant_id()) {
         sync_variant_name();
     }
