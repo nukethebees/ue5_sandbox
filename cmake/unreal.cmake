@@ -7,8 +7,17 @@ function(add_unreal_target target_name unreal_target)
     list(APPEND unreal_target_dependencies sandbox-unreal-build-tools-preflight)
   endif()
 
+  if(unreal_target STREQUAL "SandboxEditor")
+    set(unreal_build_operation "Build Unreal Editor")
+  elseif(unreal_target STREQUAL "Sandbox")
+    set(unreal_build_operation "Build Unreal Game")
+  else()
+    set(unreal_build_operation "Build Unreal ${unreal_target}")
+  endif()
+  sandbox_unreal_build_jobserver_command(activity_command "${unreal_build_operation}")
+
   add_custom_target(${target_name}
-    COMMAND ${UE_JOBSERVER_COMMAND_PREFIX}
+    COMMAND ${activity_command}
       ${SANDBOX_UNREAL_BUILD_TOOLS}
       --build-script "${UE_BUILD_SCRIPT}"
       --target ${unreal_target}
@@ -57,7 +66,8 @@ function(add_unreal_editor_target target_name)
   endif()
 
   sandbox_unreal_jobserver_command(activity_command "${editor_target_ACTIVITY}"
-    "${editor_target_engine_access}" "Unreal target: ${target_name}")
+    "${editor_target_engine_access}" unreal-command
+    "${editor_target_COMMENT}")
   add_custom_target(${target_name}
     COMMAND ${activity_command} "${editor_target_EXECUTABLE}" "${SANDBOX_UPROJECT}"
       ${editor_target_ARGUMENTS}
@@ -92,8 +102,8 @@ function(add_unreal_commandlet_target target_name)
       "add_unreal_commandlet_target(${target_name}) requires COMMENT.")
   endif()
 
-  sandbox_unreal_jobserver_command(activity_command STANDARD SHARED
-    "Unreal commandlet: ${commandlet_COMMANDLET}")
+  sandbox_unreal_jobserver_command(activity_command STANDARD SHARED unreal-command
+    "Run Unreal commandlet: ${commandlet_COMMANDLET}")
   add_custom_target(${target_name}
     COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
       "-run=${commandlet_COMMANDLET}"
@@ -114,8 +124,8 @@ function(add_unreal_commandlet_target target_name)
 endfunction()
 
 function(add_unreal_benchmark_commandlet_target target_name commandlet)
-  sandbox_unreal_jobserver_command(activity_command BENCHMARK SHARED
-    "Unreal benchmark commandlet: ${commandlet}")
+  sandbox_unreal_jobserver_command(activity_command BENCHMARK SHARED benchmark
+    "Benchmark Unreal commandlet: ${commandlet}")
   add_custom_target(${target_name}
     COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
       "-run=${commandlet}"
@@ -163,7 +173,13 @@ function(add_unreal_editor_test test_name)
     message(FATAL_ERROR
       "add_unreal_editor_test(${test_name}) ACTIVITY must be STANDARD or BENCHMARK.")
   endif()
+  if(editor_test_ACTIVITY STREQUAL "BENCHMARK")
+    set(editor_test_kind benchmark)
+  else()
+    set(editor_test_kind unreal-test)
+  endif()
   sandbox_unreal_jobserver_command(activity_command "${editor_test_ACTIVITY}" SHARED
+    "${editor_test_kind}"
     "Unreal test: ${test_name}")
 
   set(editor_test_common_arguments

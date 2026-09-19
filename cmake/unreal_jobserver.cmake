@@ -10,18 +10,9 @@ function(sandbox_configure_unreal_jobserver engine_root)
     "Canonical jobserver resource for the configured Unreal engine" FORCE)
   set(UE_ENGINE_JOBSERVER_RESOURCE "${resource}" PARENT_SCOPE)
 
-  set(build_command
-    "${SANDBOX_JOBSERVER_CLI}" run
-    --name "Unreal build: ${canonical_root}"
-    --kind unreal-build
-    --worktree "${PROJECT_SOURCE_DIR}"
-    --shared machine
-    --exclusive "${resource}"
-    --)
-  set(UE_JOBSERVER_COMMAND_PREFIX "${build_command}" PARENT_SCOPE)
 endfunction()
 
-function(sandbox_unreal_jobserver_command output_variable mode engine_access operation)
+function(sandbox_unreal_jobserver_command output_variable mode engine_access kind operation)
   if(NOT UE_ENGINE_JOBSERVER_RESOURCE)
     message(FATAL_ERROR "Configure the Unreal jobserver engine resource before creating commands.")
   endif()
@@ -30,12 +21,22 @@ function(sandbox_unreal_jobserver_command output_variable mode engine_access ope
       "Unreal jobserver engine access must be SHARED or EXCLUSIVE, got '${engine_access}'.")
   endif()
 
-  sandbox_jobserver_command(command "${mode}" "${operation}")
+  sandbox_jobserver_command(command "${mode}" "${kind}" "${operation}")
   list(POP_BACK command)
   if(engine_access STREQUAL "SHARED")
     list(APPEND command --shared "${UE_ENGINE_JOBSERVER_RESOURCE}" --)
   else()
     list(APPEND command --exclusive "${UE_ENGINE_JOBSERVER_RESOURCE}" --)
   endif()
+  set(${output_variable} "${command}" PARENT_SCOPE)
+endfunction()
+
+function(sandbox_unreal_build_jobserver_command output_variable operation)
+  sandbox_unreal_jobserver_command(command STANDARD EXCLUSIVE unreal-build "${operation}")
+  set(${output_variable} "${command}" PARENT_SCOPE)
+endfunction()
+
+function(sandbox_unreal_exclusive_jobserver_command output_variable kind operation)
+  sandbox_unreal_jobserver_command(command STANDARD EXCLUSIVE "${kind}" "${operation}")
   set(${output_variable} "${command}" PARENT_SCOPE)
 endfunction()

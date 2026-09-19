@@ -16,7 +16,12 @@ function(add_low_level_test_suite target_name unreal_target test_name_prefix)
     "${PROJECT_SOURCE_DIR}" "${UE_PLATFORM}" "${unreal_target}" "${UE_CONFIGURATION}")
 
   if(test_suite_ACTIVITY)
-    sandbox_jobserver_command(test_command "${test_suite_ACTIVITY}"
+    if(test_suite_ACTIVITY STREQUAL "BENCHMARK")
+      set(test_kind benchmark)
+    else()
+      set(test_kind test)
+    endif()
+    sandbox_jobserver_command(test_command "${test_suite_ACTIVITY}" "${test_kind}"
       "Low-level test: ${unreal_target}")
   endif()
 

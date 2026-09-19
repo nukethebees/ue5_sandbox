@@ -74,7 +74,7 @@ Unreal Engine 5.8 project.
   `-NoEngineChanges`: project-owned runtime dependencies such as `SandboxTracyClient.dll` are
   legitimately staged into the Editor target's engine output directory. The exclusive engine gate
   serializes those writes.
-* A canonical per-user jobserver coordinates expensive work across worktrees. Ordinary work shares the machine resource; benchmarks wait for older work to drain and then run exclusively. Use `get-jobserver-state` or the `jobserver-status` target to inspect running and queued jobs.
+* A canonical per-user jobserver coordinates expensive work across worktrees. Ordinary work shares the machine resource; benchmarks wait for older work to drain and then run exclusively. Use `get-jobserver-state` or the `jobserver-status` target to inspect running and queued jobs. Continue to use repository CMake/PowerShell wrappers for coordinated work; do not bypass them merely to customize queue metadata.
 * Development validation has three tiers:
   1. Native-only validation is the default while implementing independently buildable code under
      `native/`. Use `cmake --build --preset native --target <target>` and focused native workflows
@@ -135,6 +135,7 @@ Unreal Engine 5.8 project.
 * Once enough context exists, implement rather than continuing exploration.
 * Prefer the smallest coherent change that fully implements the requested design.
 * Prefer reusable repository scripts over feeding inline Python code to the interpreter.
+* When directly submitting a coordinated job, provide a descriptive operation name and an established jobserver kind; another human or agent must be able to identify its work from `jobserver status`, `show`, or `history`. Use `NUKETHEBEES_JOBSERVER_TASK` for a session label only when branch-derived task attribution is insufficient, and never invent worktree provenance. Use queue metadata to understand ownership and contention; never cancel or kill another agent's job simply because it blocks yours.
 * Treat obvious temporary contention for shared resources, locks, job slots, or capacity as a wait condition: do not repeatedly retry across consecutive turns; sleep within the shell/tool invocation before retrying with 10s, then 30s, then 60s backoff (capped at 60s). Investigate or report the failure if it changes, appears non-transient, or persists unreasonably.
 * Do not preserve architecture the user asked to replace through compatibility wrappers or indirection merely to reduce the diff. Avoid unrelated refactors.
 * When explicitly granted autonomy, use judgement to resolve reasonable ambiguities while keeping scope controlled.

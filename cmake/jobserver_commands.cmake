@@ -1,7 +1,24 @@
 include_guard(GLOBAL)
 
-function(sandbox_make_jobserver_command output_variable cli worktree mode operation)
-  string(TOLOWER "${mode}" mode_lower)
+function(sandbox_make_jobserver_command output_variable cli worktree mode kind operation)
+  set(known_kinds
+    build
+    unreal-build
+    test
+    unreal-test
+    unreal-command
+    benchmark
+    static-analysis
+    format
+    generate
+    package
+    command
+  )
+  list(FIND known_kinds "${kind}" kind_index)
+  if(kind_index EQUAL -1)
+    message(FATAL_ERROR "Unknown jobserver kind '${kind}'.")
+  endif()
+
   if(mode STREQUAL "BENCHMARK")
     set(machine_claim --exclusive machine --exclusive benchmark)
   elseif(mode STREQUAL "STANDARD")
@@ -13,7 +30,7 @@ function(sandbox_make_jobserver_command output_variable cli worktree mode operat
   set(command
     "${cli}" run
     --name "${operation}"
-    --kind "${mode_lower}"
+    --kind "${kind}"
     --worktree "${worktree}"
     ${machine_claim}
     --

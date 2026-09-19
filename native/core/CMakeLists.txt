@@ -92,9 +92,11 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     sandbox::warnings_as_errors
   )
 
+  sandbox_jobserver_command(native_core_vector_lerp_benchmark_command BENCHMARK benchmark
+    "Native core vector lerp benchmark")
   add_custom_target(native-core-vector-lerp-benchmark-report
     COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/out/benchmarks/native-core"
-    COMMAND ${benchmark_activity_command} native-core-vector-lerp-benchmarks
+    COMMAND ${native_core_vector_lerp_benchmark_command} native-core-vector-lerp-benchmarks
       --benchmark_repetitions=7
       --benchmark_min_time=0.05s
       --benchmark_enable_random_interleaving=true

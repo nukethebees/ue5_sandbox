@@ -5,10 +5,10 @@ if(NOT DEFINED JOBSERVER_CLI OR NOT DEFINED JOBSERVER_WORKTREE)
 endif()
 
 set(CMAKE_CXX_COMPILER_LAUNCHER
-  "${JOBSERVER_CLI};run;--name;system-test-compilation;--kind;standard;--worktree;${JOBSERVER_WORKTREE};--shared;machine;--"
+  "${JOBSERVER_CLI};run;--name;Compile system test source;--kind;build;--worktree;${JOBSERVER_WORKTREE};--shared;machine;--"
 )
 set(CMAKE_CXX_LINKER_LAUNCHER
-  "${JOBSERVER_CLI};run;--name;system-test-link;--kind;standard;--worktree;${JOBSERVER_WORKTREE};--shared;machine;--"
+  "${JOBSERVER_CLI};run;--name;Link system test executable;--kind;build;--worktree;${JOBSERVER_WORKTREE};--shared;machine;--"
 )
 
 project(JobserverSystemFixture LANGUAGES CXX)

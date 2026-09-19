@@ -39,8 +39,10 @@ endfunction()
 function(sandbox_add_native_clang_tidy_target)
   list(JOIN SANDBOX_NATIVE_CLANG_TIDY_CHECKS "," sandbox_native_clang_tidy_checks)
   set(sandbox_native_clang_tidy_log "${CMAKE_BINARY_DIR}/clang-tidy.log")
+  sandbox_jobserver_command(clang_tidy_command STANDARD static-analysis
+    "clang-tidy: first-party native sources")
   add_custom_target(native-clang-tidy
-    COMMAND ${standard_activity_command}
+    COMMAND ${clang_tidy_command}
       "${SANDBOX_POWERSHELL_EXECUTABLE}" -NoProfile -File
       "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/run_clang_tidy.ps1"
       -PythonExecutable "${Python3_EXECUTABLE}"

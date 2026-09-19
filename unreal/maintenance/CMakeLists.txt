@@ -1,8 +1,11 @@
+sandbox_unreal_exclusive_jobserver_command(generate_project_files_command generate
+  "Generate Unreal project files")
+
 add_custom_target(generate-project-files
   COMMAND "${SANDBOX_SET_LIVE_CODING_DISABLED_TOOL}"
     --settings-path
     "${PROJECT_SOURCE_DIR}/Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"
-  COMMAND ${UE_JOBSERVER_COMMAND_PREFIX}
+  COMMAND ${generate_project_files_command}
     "${CMAKE_COMMAND}" -E env
     "SANDBOX_NATIVE_TOOLCHAIN=${SANDBOX_NATIVE_TOOLCHAIN}"
     "${UE_GENERATE_PROJECT_FILES_SCRIPT}"

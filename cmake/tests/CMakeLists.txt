@@ -8,11 +8,11 @@ include("${PROJECT_SOURCE_DIR}/cmake/clang_cl_asan_paths.cmake")
 set(cmake_test_cli [=[C:\Users\Test User\jobserver.exe]=])
 set(cmake_test_worktree [=[C:\src\Sandbox Worktree]=])
 sandbox_make_jobserver_command(standard_command "${cmake_test_cli}"
-  "${cmake_test_worktree}" STANDARD "Editor command α")
+  "${cmake_test_worktree}" STANDARD command "Editor command α")
 set(expected_standard_command
   "${cmake_test_cli}" run
   --name "Editor command α"
-  --kind standard
+  --kind command
   --worktree "${cmake_test_worktree}"
   --shared machine
   --
@@ -21,7 +21,7 @@ sandbox_assert_list_equal("standard jobserver command preserves Windows paths"
   "${standard_command}" "${expected_standard_command}")
 
 sandbox_make_jobserver_command(benchmark_command "${cmake_test_cli}"
-  "${cmake_test_worktree}" BENCHMARK "Benchmark command")
+  "${cmake_test_worktree}" BENCHMARK benchmark "Benchmark command")
 set(expected_benchmark_command
   "${cmake_test_cli}" run
   --name "Benchmark command"

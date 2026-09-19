@@ -460,6 +460,7 @@ if(SANDBOX_KERNEL_BENCHMARKS)
       if(REPORT_FILTER)
         set(filter_argument "--benchmark_filter=${REPORT_FILTER}")
       endif()
+      sandbox_jobserver_command(kernel_benchmark_command BENCHMARK benchmark "${REPORT_COMMENT}")
 
       add_custom_target(${target_name}
         COMMAND "${CMAKE_COMMAND}" -E remove_directory
@@ -469,7 +470,7 @@ if(SANDBOX_KERNEL_BENCHMARKS)
         COMMAND "${CMAKE_COMMAND}" -E make_directory
           "${KERNEL_BENCHMARK_RESULTS_DIRECTORY}"
           "${KERNEL_BENCHMARK_PLOTS_DIRECTORY}"
-        COMMAND ${benchmark_activity_command} kernel-native-benchmarks
+        COMMAND ${kernel_benchmark_command} kernel-native-benchmarks
           --benchmark_repetitions=7
           --benchmark_min_time=0.05s
           --benchmark_enable_random_interleaving=true

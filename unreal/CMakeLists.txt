@@ -129,8 +129,6 @@ sandbox_resolve_unreal_root(UE_ROOT_ABSOLUTE UE_ROOT_CANONICAL
 
 include("${PROJECT_SOURCE_DIR}/cmake/unreal_jobserver.cmake")
 sandbox_configure_unreal_jobserver("${UE_ROOT_CANONICAL}")
-sandbox_unreal_jobserver_command(unreal_standard_activity_command STANDARD SHARED "Unreal command")
-sandbox_unreal_jobserver_command(unreal_benchmark_activity_command BENCHMARK SHARED "Unreal benchmark")
 
 sandbox_get_unreal_editor_names(UE_EDITOR_NAME UE_EDITOR_CMD_NAME "${UE_CONFIGURATION}")
 sandbox_configure_unreal_engine_paths(UE "${UE_ROOT_ABSOLUTE}"
@@ -434,15 +432,19 @@ if(SANDBOX_TEST_SUITE STREQUAL "benchmark")
     LABELS benchmark
   )
   add_dependencies(benchmarks check-generated-code)
+  sandbox_jobserver_command(soa_spacing_command BENCHMARK benchmark
+    "Single-allocation SoA spacing benchmark")
   add_custom_target(single-allocation-soa-spacing
-    COMMAND ${benchmark_activity_command} uv run
+    COMMAND ${soa_spacing_command} uv run
       "${PROJECT_SOURCE_DIR}/Scripts/run-soa-spacing-experiment.py"
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     USES_TERMINAL
     VERBATIM
   )
+  sandbox_jobserver_command(soa_spacing_confirmation_command BENCHMARK benchmark
+    "Single-allocation SoA spacing confirmation")
   add_custom_target(single-allocation-soa-spacing-confirmation
-    COMMAND ${benchmark_activity_command} uv run
+    COMMAND ${soa_spacing_confirmation_command} uv run
       "${PROJECT_SOURCE_DIR}/Scripts/run-soa-spacing-experiment.py" --suite confirmation
       --cpu-group "${SANDBOX_SOA_SPACING_CPU_GROUP}" --cpu "${SANDBOX_SOA_SPACING_CPU}"
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
@@ -523,13 +525,17 @@ add_unreal_editor_target(validate-ui-glow-material-unreal
   FOLDER "Sandbox/Unreal/Maintenance"
 )
 
+sandbox_unreal_jobserver_command(generate_world_soft_target_material_command STANDARD SHARED generate
+  "Generate world soft target material")
+sandbox_unreal_jobserver_command(generate_world_soft_target_assets_command STANDARD SHARED generate
+  "Generate world soft target assets")
 add_custom_target(generate-world-soft-target-assets
-  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${generate_world_soft_target_material_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=MaterialSynth
     "-Artifact=${WORLD_SOFT_TARGET_MATERIAL_ARTIFACT}"
     -Generate -RenderOffscreen -AllowCommandletRendering
     -unattended -nop4 -nosplash -nosound -stdout
-  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${generate_world_soft_target_assets_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     -run=GenerateWorldSoftTargetAssets -RenderOffscreen -AllowCommandletRendering
     -unattended -nop4 -nosplash -nosound -stdout
   DEPENDS editor
@@ -607,9 +613,11 @@ add_unreal_editor_test(SandboxUI.EntityOverlayBenchmark
   TIMEOUT 1200
 )
 
+sandbox_unreal_jobserver_command(gpu_starfield_benchmark_command BENCHMARK SHARED benchmark
+  "GPU starfield benchmark")
 add_test(
   NAME SandboxShaders.GpuStarfieldBenchmark
-  COMMAND ${unreal_benchmark_activity_command} "${Python3_EXECUTABLE}"
+  COMMAND ${gpu_starfield_benchmark_command} "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/Scripts/run-gpu-starfield-benchmark.py"
     "--editor=${UE_EDITOR_CMD_EXE}"
     "--project=${SANDBOX_UPROJECT}"
@@ -621,9 +629,11 @@ set_tests_properties(SandboxShaders.GpuStarfieldBenchmark PROPERTIES
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )
 
+sandbox_unreal_jobserver_command(gpu_starfield_matrix_command BENCHMARK SHARED benchmark
+  "GPU starfield benchmark matrix")
 add_test(
   NAME SandboxShaders.GpuStarfieldMatrix
-  COMMAND ${unreal_benchmark_activity_command} "${Python3_EXECUTABLE}"
+  COMMAND ${gpu_starfield_matrix_command} "${Python3_EXECUTABLE}"
     "${PROJECT_SOURCE_DIR}/Scripts/run-gpu-starfield-benchmark.py"
     "--editor=${UE_EDITOR_CMD_EXE}"
     "--project=${SANDBOX_UPROJECT}"
@@ -639,8 +649,10 @@ set_tests_properties(SandboxShaders.GpuStarfieldMatrix PROPERTIES
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )
 
+sandbox_unreal_jobserver_command(gpu_tutorial_shader_tests_command STANDARD SHARED unreal-test
+  "Test SandboxGpuTutorials shaders")
 add_custom_target(gpu-tutorial-shader-tests
-  COMMAND ${unreal_standard_activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+  COMMAND ${gpu_tutorial_shader_tests_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
     "-ExecCmds=Automation Now; Automation RunTests StartsWith:SandboxGpuTutorials.UnitTests; Quit"
     -unattended
     -nop4

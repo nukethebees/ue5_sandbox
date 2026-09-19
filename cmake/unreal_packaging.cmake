@@ -13,9 +13,10 @@ function(add_unreal_build_cook_run_target target_name)
     message(FATAL_ERROR
       "add_unreal_build_cook_run_target(${target_name}) requires COMMENT.")
   endif()
+  sandbox_unreal_exclusive_jobserver_command(activity_command package "${uat_COMMENT}")
 
   add_custom_target(${target_name}
-    COMMAND ${UE_JOBSERVER_COMMAND_PREFIX}
+    COMMAND ${activity_command}
       "${CMAKE_COMMAND}" -E env
       "SANDBOX_NATIVE_TOOLCHAIN=${SANDBOX_NATIVE_TOOLCHAIN}"
       "UE-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
@@ -81,8 +82,10 @@ function(add_unreal_packaging_targets)
       "-archivedirectory=${SANDBOX_GAME_ARCHIVE_ROOT}"
   )
 
+  sandbox_jobserver_command(run_staged_command STANDARD command
+    "Run staged Sandbox ${UE_PLATFORM} ${UE_CONFIGURATION}")
   add_custom_target(run-staged
-    COMMAND ${standard_activity_command} "${CMAKE_COMMAND}" -E chdir
+    COMMAND ${run_staged_command} "${CMAKE_COMMAND}" -E chdir
       "${SANDBOX_GAME_STAGE_DIRECTORY}"
       "${SANDBOX_GAME_STAGE_EXECUTABLE}"
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
@@ -91,8 +94,10 @@ function(add_unreal_packaging_targets)
     VERBATIM
   )
 
+  sandbox_unreal_jobserver_command(verify_package_command STANDARD SHARED package
+    "Verify Sandbox package ${UE_PLATFORM} ${UE_CONFIGURATION}")
   add_custom_target(verify-package
-    COMMAND ${unreal_standard_activity_command} "${SANDBOX_GAME_PACKAGE_TOOLS}"
+    COMMAND ${verify_package_command} "${SANDBOX_GAME_PACKAGE_TOOLS}"
       --project-root "${PROJECT_SOURCE_DIR}"
       --package-root "${SANDBOX_GAME_ARCHIVE_DIRECTORY}"
       --unreal-pak "${UE_UNREAL_PAK_EXE}"

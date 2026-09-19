@@ -64,8 +64,10 @@ add_test(NAME native-soa-plot-smoke COMMAND "${UV_EXECUTABLE}" run "${PROJECT_SO
 set_tests_properties(native-soa-plot-smoke PROPERTIES LABELS "native-soa" FIXTURES_REQUIRED native-soa-json)
 
 set(NATIVE_SOA_RESULTS "${CMAKE_BINARY_DIR}/native-soa-results.json")
+sandbox_jobserver_command(native_soa_reserve_report_command BENCHMARK benchmark
+  "Native SoA reserve benchmark")
 add_custom_target(native-soa-reserve-report
-  COMMAND ${benchmark_activity_command} native-soa-benchmarks
+  COMMAND ${native_soa_reserve_report_command} native-soa-benchmarks
     --benchmark_filter=/reserve/ --benchmark_repetitions=9
     --benchmark_enable_random_interleaving=true --benchmark_min_time=0.1s
     "--benchmark_out=${NATIVE_SOA_RESULTS}" --benchmark_out_format=json
@@ -73,32 +75,40 @@ add_custom_target(native-soa-reserve-report
     --input "${NATIVE_SOA_RESULTS}" --output-dir "${CMAKE_BINARY_DIR}/native-soa-plots"
   DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
 
+sandbox_jobserver_command(native_soa_production_report_command BENCHMARK benchmark
+  "Native SoA production benchmark")
 add_custom_target(native-soa-production-report
-  COMMAND ${benchmark_activity_command} native-soa-benchmarks
+  COMMAND ${native_soa_production_report_command} native-soa-benchmarks
     "--benchmark_filter=Production/" --benchmark_repetitions=7
     --benchmark_enable_random_interleaving=true --benchmark_min_time=0.1s
     "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-production-results.json"
     --benchmark_out_format=json
   DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
 
+sandbox_jobserver_command(native_soa_candidate_report_command BENCHMARK benchmark
+  "Native SoA candidate benchmark")
 add_custom_target(native-soa-candidate-report
-  COMMAND ${benchmark_activity_command} native-soa-benchmarks
+  COMMAND ${native_soa_candidate_report_command} native-soa-benchmarks
     "--benchmark_filter=Production/(Spinner|LaserHit)/" --benchmark_repetitions=7
     --benchmark_enable_random_interleaving=true --benchmark_min_time=0.1s
     "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-candidate-results.json"
     --benchmark_out_format=json
   DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
 
+sandbox_jobserver_command(native_soa_laser_hit_report_command BENCHMARK benchmark
+  "Native SoA laser-hit append benchmark")
 add_custom_target(native-soa-laser-hit-append-report
-  COMMAND ${benchmark_activity_command} native-soa-benchmarks
+  COMMAND ${native_soa_laser_hit_report_command} native-soa-benchmarks
     "--benchmark_filter=Production/LaserHit/" --benchmark_repetitions=9
     --benchmark_enable_random_interleaving=true --benchmark_min_time=0.3s
     "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-laser-hit-append-results.json"
     --benchmark_out_format=json
   DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
 
+sandbox_jobserver_command(native_soa_reserve_matrix_command BENCHMARK benchmark
+  "Native SoA reserve matrix")
 add_custom_target(native-soa-reserve-matrix-report
-  COMMAND ${benchmark_activity_command} "${UV_EXECUTABLE}" run
+  COMMAND ${native_soa_reserve_matrix_command} "${UV_EXECUTABLE}" run
     "${PROJECT_SOURCE_DIR}/Scripts/run-native-soa-reserve-matrix.py"
     --standard "$<TARGET_FILE:native-soa-reserve-matrix>"
     --mimalloc "$<TARGET_FILE:native-soa-reserve-matrix-mimalloc>"
