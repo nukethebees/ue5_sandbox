@@ -3,6 +3,7 @@
 #include "SpaceGame/persistence/SpaceSaveGame.h"
 
 #include <SandboxCoreEngine/enums.h>
+#include <SandboxCoreEngine/strings.h>
 #include <SandboxGameShared/core/levels/levels.h>
 #include <SpaceGameSimulation/missions/TestMissionFailReasonConversion.h>
 #include <SpaceGameSimulation/missions/TestMissionModeConversion.h>
@@ -53,13 +54,12 @@ auto make_report(FString profile_id, TConstArrayView<FScoreRecord> records) -> F
         outcome.completed_at = record.date;
         outcome.simulation_duration_seconds = record.time_seconds;
         outcome.kills = record.kills;
-        outcome.result =
-            UTF8_TO_TCHAR(::ioj::sim::to_string(ml::to_native(record.end_state)).data());
+        outcome.result = ml::to_fstring(::ioj::sim::to_string(ml::to_native(record.end_state)));
 
         profile_adapter::add_statistic(
             outcome,
             TEXT("Mission mode"),
-            UTF8_TO_TCHAR(::ioj::sim::to_string(ml::to_native(record.mission_mode)).data()));
+            ml::to_fstring(::ioj::sim::to_string(ml::to_native(record.mission_mode))));
         switch (record.mission_mode) {
             case ETestMissionMode::None: {
                 break;
@@ -91,7 +91,7 @@ auto make_report(FString profile_id, TConstArrayView<FScoreRecord> records) -> F
             profile_adapter::add_statistic(
                 outcome,
                 TEXT("Failure reason"),
-                UTF8_TO_TCHAR(::ioj::sim::to_string(ml::to_native(record.fail_reason)).data()));
+                ml::to_fstring(::ioj::sim::to_string(ml::to_native(record.fail_reason))));
         }
     }
     return report;

@@ -2,17 +2,10 @@
 
 #include <SpaceGame/levels/NativeLevelDefinitionConversion.h>
 
-#include <Containers/StringConv.h>
 #include <ioj/sim/levels/level_compilation.h>
+#include <SandboxCoreEngine/strings.h>
 
 namespace ml {
-namespace {
-auto to_compilation_fstring(std::string const& value) -> FString {
-    auto const converted{FUTF8ToTCHAR{value.data(), static_cast<int32>(value.size())}};
-    return FString{converted.Length(), converted.Get()};
-}
-} // namespace
-
 auto compile_level_events(FLevelDefinition const& definition,
                           ::ioj::sim::SimClock const& clock,
                           ::ioj::sim::CapitalShipSimConfig const& capital_config,
@@ -26,7 +19,7 @@ auto compile_level_events(FLevelDefinition const& definition,
 
     FLevelStartErrors errors;
     for (auto const& error : result.error()) {
-        errors.add(to_compilation_fstring(error));
+        errors.add(to_fstring(error));
     }
     return FLevelEventCompilationResult{std::unexpect, MoveTemp(errors)};
 }

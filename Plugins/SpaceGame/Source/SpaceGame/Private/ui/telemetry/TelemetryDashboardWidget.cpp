@@ -7,6 +7,8 @@
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 #include "STelemetryDashboardView.h"
 
+#include <SandboxCoreEngine/strings.h>
+
 #include <Engine/GameInstance.h>
 
 namespace ml::ioj {
@@ -136,13 +138,15 @@ void UTelemetryDashboardWidget::rebuild_state() {
         .level_id = FName{UTF8_TO_TCHAR(record->metadata.level_id.c_str())},
         .level_display_name = UTF8_TO_TCHAR(record->metadata.level_display_name.c_str())}
                          .level_label()};
+    auto const completion_reason{
+        ml::to_fstring(::ioj::sim::to_serialized_string(record->completion.reason))};
     state_.header = FText::FromString(FString::Printf(
         TEXT("%s\nLAUNCHED // %s    END // %s\nREQUESTED // "
              "%.3gx    MODE // %s    DURATION // %s\nBUILD // %s    "
              "PLATFORM // %s\nSOURCE SHA-256 // %s\nRUN // %s"),
         *level,
         UTF8_TO_TCHAR(record->metadata.launched_utc.c_str()),
-        UTF8_TO_TCHAR(::ioj::sim::to_serialized_string(record->completion.reason).data()),
+        *completion_reason,
         record->metadata.initial_requested_time_scale,
         *record->metadata.presentation_mode,
         record->metadata.requested_duration_seconds.has_value()
@@ -207,14 +211,13 @@ void UTelemetryDashboardWidget::rebuild_state() {
             return total;
         };
         auto const& combat{record->battle_samples.Last().combat};
-        auto const winner{
-            record->completion.reason == ::ioj::sim::LevelTelemetryRunEndReason::BattleResolved
-                ? (record->completion.winning_team.has_value()
-                       ? FString{UTF8_TO_TCHAR(::ioj::sim::to_serialized_string(
-                                                   record->completion.winning_team.value())
-                                                   .data())}
-                       : FString{TEXT("draw")})
-                : FString{TEXT("—")}};
+        auto const winner{record->completion.reason ==
+                                  ::ioj::sim::LevelTelemetryRunEndReason::BattleResolved
+                              ? (record->completion.winning_team.has_value()
+                                     ? ml::to_fstring(::ioj::sim::to_serialized_string(
+                                           record->completion.winning_team.value()))
+                                     : FString{TEXT("draw")})
+                              : FString{TEXT("—")}};
         summary += FString::Printf(
             TEXT("\nBATTLE RESULT  //  %s    SAMPLES // %d\nCOMBAT  //  SHOTS %llu  HITS %llu  "
                  "DAMAGE %.0f  KILLS %llu  LOSSES %llu"),

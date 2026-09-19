@@ -6,6 +6,7 @@
 #include <ioj/sim/telemetry/level_telemetry_json_validation.h>
 
 #include <SandboxCore/container_ops.h>
+#include <SandboxCoreEngine/strings.h>
 
 #include <Dom/JsonObject.h>
 #include <HAL/FileManager.h>
@@ -19,32 +20,28 @@
 
 namespace {
 
-auto to_unreal_string(std::string_view const value) -> FString {
-    return UTF8_TO_TCHAR(value.data());
-}
-
 auto serialized_name(::ioj::sim::EntityType const value) -> FString {
-    return to_unreal_string(::ioj::sim::to_serialized_string(value));
+    return ml::to_fstring(::ioj::sim::to_serialized_string(value));
 }
 
 auto serialized_name(::ioj::sim::Team const value) -> FString {
-    return to_unreal_string(::ioj::sim::to_serialized_string(value));
+    return ml::to_fstring(::ioj::sim::to_serialized_string(value));
 }
 
 auto serialized_name(::ioj::sim::MissionMode const value) -> FString {
-    return to_unreal_string(::ioj::sim::to_serialized_string(value));
+    return ml::to_fstring(::ioj::sim::to_serialized_string(value));
 }
 
 auto serialized_name(::ioj::sim::MissionState const value) -> FString {
-    return to_unreal_string(::ioj::sim::to_serialized_string(value));
+    return ml::to_fstring(::ioj::sim::to_serialized_string(value));
 }
 
 auto serialized_name(::ioj::sim::MissionFailReason const value) -> FString {
-    return to_unreal_string(::ioj::sim::to_serialized_string(value));
+    return ml::to_fstring(::ioj::sim::to_serialized_string(value));
 }
 
 auto serialized_name(::ioj::sim::LevelTelemetryRunEndReason const value) -> FString {
-    return to_unreal_string(::ioj::sim::to_serialized_string(value));
+    return ml::to_fstring(::ioj::sim::to_serialized_string(value));
 }
 
 void set_optional_number(FJsonObject& object,

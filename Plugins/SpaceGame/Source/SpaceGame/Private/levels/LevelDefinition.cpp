@@ -3,7 +3,7 @@
 #include <SpaceGame/levels/NativeLevelDefinitionConversion.h>
 #include "LevelEntityTableOperations.h"
 
-#include <Containers/StringConv.h>
+#include <SandboxCoreEngine/strings.h>
 
 namespace ml {
 namespace {
@@ -14,10 +14,6 @@ auto columns_have_equal_size(FLevelEntityTable const& entities) -> bool {
            entities.spawn_times_seconds.Num() == count;
 }
 
-auto to_validation_fstring(std::string const& value) -> FString {
-    auto const converted{FUTF8ToTCHAR{value.data(), static_cast<int32>(value.size())}};
-    return FString{converted.Length(), converted.Get()};
-}
 } // namespace
 
 void FLevelBuilder::set_metadata(FLevelMetadata const& metadata) {
@@ -71,7 +67,7 @@ auto validate_level(FLevelDefinition const& definition) -> FLevelValidationResul
     auto native_result{::ioj::sim::levels::validate_level(level_authoring::to_native(definition))};
     result.errors.Reserve(static_cast<int32>(native_result.errors.size()));
     for (auto& error : native_result.errors) {
-        result.errors.Add({.code = error.code, .message = to_validation_fstring(error.message)});
+        result.errors.Add({.code = error.code, .message = to_fstring(error.message)});
     }
     return result;
 }

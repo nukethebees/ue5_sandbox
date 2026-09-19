@@ -1,9 +1,9 @@
 #include <SpaceGameS7/LevelDefinitionReader.h>
 
 #include <sandbox/level_authoring/LevelDefinitionReader.h>
+#include <SandboxCoreEngine/strings.h>
 #include <SpaceGame/levels/NativeLevelDefinitionConversion.h>
 
-#include <Containers/StringConv.h>
 #include <Misc/FileHelper.h>
 #include <Misc/Paths.h>
 
@@ -11,22 +11,18 @@
 
 namespace ml::s7 {
 namespace {
-auto to_fstring(std::string_view const value) -> FString {
-    auto const converted{FUTF8ToTCHAR{value.data(), static_cast<int32>(value.size())}};
-    return FString{converted.Length(), converted.Get()};
-}
-
 auto to_unreal(level_authoring::LevelDefinitionReadResult native) -> FLevelDefinitionReadResult {
     FLevelDefinitionReadResult result;
-    result.script_error = to_fstring(native.script_error);
+    result.script_error = ml::to_fstring(native.script_error);
     result.decode_errors.Reserve(static_cast<int32>(native.decode_errors.size()));
     for (auto& error : native.decode_errors) {
         result.decode_errors.Add(
-            {.path = to_fstring(error.path), .message = to_fstring(error.message)});
+            {.path = ml::to_fstring(error.path), .message = ml::to_fstring(error.message)});
     }
     result.validation_errors.Reserve(static_cast<int32>(native.validation_errors.size()));
     for (auto& error : native.validation_errors) {
-        result.validation_errors.Add({.code = error.code, .message = to_fstring(error.message)});
+        result.validation_errors.Add(
+            {.code = error.code, .message = ml::to_fstring(error.message)});
     }
     if (native.definition) {
         result.definition.Emplace(level_authoring::to_unreal(std::move(*native.definition)));

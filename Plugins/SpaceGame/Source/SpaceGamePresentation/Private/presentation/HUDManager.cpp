@@ -18,6 +18,7 @@
 #include "SpaceGameSimulation/support/logging/SandboxLogCategories.h"
 
 #include <sandbox/core/timing.h>
+#include <SandboxCoreEngine/strings.h>
 
 #include <Algo/Sort.h>
 #include <Blueprint/WidgetLayoutLibrary.h>
@@ -1078,7 +1079,7 @@ void FHUDManager::update_player_status_hud(UShipHudWidget& hud) const {
     hud.set_target_speed(data.target_speed);
     hud.set_energy(data.energy);
     hud.set_points(data.points);
-    hud.set_fire_rate(UTF8_TO_TCHAR(::ioj::sim::to_string(ml::to_native(data.fire_rate)).data()));
+    hud.set_fire_rate(ml::to_fstring(::ioj::sim::to_string(ml::to_native(data.fire_rate))));
     hud.set_crosshair_targeting(data.crosshair_targeting);
 }
 void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
@@ -1096,10 +1097,8 @@ void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
     hud.set_flight_vector_debug(data.flight_vector_debug);
     hud.set_ship_velocity(data.ship_velocity);
     hud.set_target_velocity(data.target_velocity);
-    hud.set_control_mode(
-        UTF8_TO_TCHAR(::ioj::sim::to_string(ml::to_native(data.control_mode)).data()));
-    hud.set_flight_mode(
-        UTF8_TO_TCHAR(::ioj::sim::to_string(ml::to_native(data.flight_mode)).data()));
+    hud.set_control_mode(ml::to_fstring(::ioj::sim::to_string(ml::to_native(data.control_mode))));
+    hud.set_flight_mode(ml::to_fstring(::ioj::sim::to_string(ml::to_native(data.flight_mode))));
 
     auto* const controller{hud.GetOwningPlayer()};
     check(IsValid(controller));

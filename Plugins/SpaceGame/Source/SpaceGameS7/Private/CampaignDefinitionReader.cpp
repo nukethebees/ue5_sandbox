@@ -1,34 +1,29 @@
 #include <SpaceGameS7/CampaignDefinitionReader.h>
 
 #include <sandbox/level_authoring/CampaignDefinitionReader.h>
+#include <SandboxCoreEngine/strings.h>
 
-#include <Containers/StringConv.h>
 #include <Misc/FileHelper.h>
 #include <Misc/Paths.h>
 
 namespace ml::s7 {
 namespace {
-auto campaign_to_fstring(std::string_view const value) -> FString {
-    auto const converted{FUTF8ToTCHAR{value.data(), static_cast<int32>(value.size())}};
-    return FString{converted.Length(), converted.Get()};
-}
-
 auto to_unreal(level_authoring::CampaignDefinitionReadResult native)
     -> FCampaignDefinitionReadResult {
     FCampaignDefinitionReadResult result;
-    result.script_error = campaign_to_fstring(native.script_error);
+    result.script_error = ml::to_fstring(native.script_error);
     result.decode_errors.Reserve(static_cast<int32>(native.decode_errors.size()));
     for (auto const& error : native.decode_errors) {
-        result.decode_errors.Add({.path = campaign_to_fstring(error.path),
-                                  .message = campaign_to_fstring(error.message)});
+        result.decode_errors.Add(
+            {.path = ml::to_fstring(error.path), .message = ml::to_fstring(error.message)});
     }
     if (native.definition) {
         FCampaignDefinition definition;
-        definition.id = FCampaignId{FName{campaign_to_fstring(native.definition->id)}};
-        definition.title = campaign_to_fstring(native.definition->title);
+        definition.id = FCampaignId{FName{ml::to_fstring(native.definition->id)}};
+        definition.title = ml::to_fstring(native.definition->title);
         definition.level_ids.Reserve(static_cast<int32>(native.definition->level_ids.size()));
         for (auto const& level_id : native.definition->level_ids) {
-            definition.level_ids.Add(FLevelId{FName{campaign_to_fstring(level_id)}});
+            definition.level_ids.Add(FLevelId{FName{ml::to_fstring(level_id)}});
         }
         result.definition.Emplace(MoveTemp(definition));
     }

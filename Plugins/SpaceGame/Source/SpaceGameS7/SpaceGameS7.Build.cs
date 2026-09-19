@@ -27,6 +27,7 @@ public class SpaceGameS7 : ModuleRules
             "NativeLevelAuthoring",
             "PlatformCrypto",
             "PlatformCryptoContext",
+            "SandboxCoreEngine",
             "Slate",
             "SlateCore",
         });
