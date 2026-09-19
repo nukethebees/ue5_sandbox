@@ -12,7 +12,8 @@ float SpaceDustBrightness;
 float SpaceDustMinimumVisibleSpeed;
 float SpaceDustFullVisibleSpeed;
 float SpaceDustStreakSeconds;
-float SpaceDustLateralStreakScale;
+float SpaceDustMinimumMotionPixels;
+float SpaceDustFullMotionPixels;
 float SpaceDustMaximumStreakPixels;
 float SpaceDustVolumeEdgeFadeFraction;
 
@@ -62,6 +63,30 @@ float3 space_dust_wrap(float3 position, float3 dimensions) {
     return frac(position / dimensions + 0.5) * dimensions - dimensions * 0.5;
 }
 
+struct FSpaceDustProjection {
+    float2 PixelPosition;
+    float ViewDepth;
+    float IsValid;
+};
+
+FSpaceDustProjection space_dust_project(float3 relative_position, bool is_orthographic) {
+    float3 const TranslatedWorldPosition =
+        ResolvedView.TranslatedWorldCameraOrigin + relative_position;
+    float4 const ClipPosition =
+        mul(float4(TranslatedWorldPosition, 1.0), ResolvedView.TranslatedWorldToClip);
+    float const ViewDepth = dot(relative_position, ResolvedView.ViewForward);
+    float const HasSafeW = step(0.0001, abs(ClipPosition.w));
+    float const SafeW = HasSafeW > 0.0 ? ClipPosition.w : 1.0;
+    float const IsInFront =
+        is_orthographic ? 1.0 : step(1.0, ViewDepth) * step(0.0001, ClipPosition.w);
+
+    FSpaceDustProjection projection;
+    projection.PixelPosition = ClipPosition.xy / SafeW * ResolvedView.ViewSizeAndInvSize.xy * 0.5;
+    projection.ViewDepth = ViewDepth;
+    projection.IsValid = HasSafeW * IsInFront;
+    return projection;
+}
+
 FPrimitiveSceneData GetPrimitiveData(FVertexFactoryIntermediates Intermediates) {
     return Intermediates.SceneData.Primitive;
 }
@@ -79,37 +104,57 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
     float const SpeedVisibility =
         saturate((TotalSpeed - SpaceDustMinimumVisibleSpeed) /
                  max(SpaceDustFullVisibleSpeed - SpaceDustMinimumVisibleSpeed, 0.001));
-    float3 const ProjectedVelocity =
-        SpaceDustWorldVelocity -
-        ResolvedView.ViewForward * dot(SpaceDustWorldVelocity, ResolvedView.ViewForward);
-    float const ProjectedSpeed = length(ProjectedVelocity);
-    float3 const StreakDirection =
-        ProjectedSpeed > 0.01 ? ProjectedVelocity / ProjectedSpeed : ResolvedView.ViewRight;
-    float3 const ThicknessDirection = normalize(cross(ResolvedView.ViewForward, StreakDirection));
 
     bool const IsOrthographic = IsOrthoProjection(ResolvedView.ViewToClip);
-    float const ProjectionDepth =
-        IsOrthographic ? 1.0 : max(abs(dot(RelativePosition, ResolvedView.ViewForward)), 1.0);
-    float const ViewToPixels =
-        ResolvedView.ViewToClip[1][1] * ResolvedView.ViewSizeAndInvSize.y * 0.5;
-    float const WorldUnitsPerPixel = ProjectionDepth / max(ViewToPixels, 0.0001);
-    float const HalfThickness = max(SpaceDustParticleSize * 0.5, WorldUnitsPerPixel * 0.5);
-    float const RequestedLength =
-        max(SpaceDustParticleSize,
-            ProjectedSpeed * SpaceDustLateralStreakScale * SpaceDustStreakSeconds);
-    float const Length = min(RequestedLength, SpaceDustMaximumStreakPixels * WorldUnitsPerPixel);
-    float const HalfLength = Length * 0.5;
-    float3 const Centre = RelativePosition + StreakDirection * HalfLength;
-    float3 const BillboardOffset = StreakDirection * Input.Corner.x * HalfLength +
-                                   ThicknessDirection * Input.Corner.y * HalfThickness;
+    // The earlier camera origin was -velocity * dt, so the same world point was +velocity * dt.
+    float3 const ReferenceRelativePosition =
+        RelativePosition + SpaceDustWorldVelocity * SpaceDustStreakSeconds;
+    FSpaceDustProjection const CurrentProjection =
+        space_dust_project(RelativePosition, IsOrthographic);
+    FSpaceDustProjection const ReferenceProjection =
+        space_dust_project(ReferenceRelativePosition, IsOrthographic);
+    float2 const PixelDisplacement =
+        CurrentProjection.PixelPosition - ReferenceProjection.PixelPosition;
+    float const MotionPixels = sqrt(max(dot(PixelDisplacement, PixelDisplacement), 0.0));
+    float const ProjectionVisibility = CurrentProjection.IsValid * ReferenceProjection.IsValid;
+    float const MotionVisibility =
+        smoothstep(SpaceDustMinimumMotionPixels, SpaceDustFullMotionPixels, MotionPixels) *
+        ProjectionVisibility;
+    float2 const PixelDirection =
+        MotionPixels > 0.0001 ? PixelDisplacement / MotionPixels : float2(1.0, 0.0);
+    float2 const ThicknessPixelDirection = float2(-PixelDirection.y, PixelDirection.x);
+
+    float const ProjectionDepth = IsOrthographic ? 1.0 : max(CurrentProjection.ViewDepth, 1.0);
+    float2 const ViewToPixels =
+        float2(ResolvedView.ViewToClip[0][0] * ResolvedView.ViewSizeAndInvSize.x,
+               ResolvedView.ViewToClip[1][1] * ResolvedView.ViewSizeAndInvSize.y) *
+        0.5;
+    float2 const SafeViewToPixels = float2(abs(ViewToPixels.x) > 0.0001 ? ViewToPixels.x : 0.0001,
+                                           abs(ViewToPixels.y) > 0.0001 ? ViewToPixels.y : 0.0001);
+    float2 const WorldUnitsPerPixel = ProjectionDepth / SafeViewToPixels;
+    float3 const StreakOffsetPerPixel =
+        ResolvedView.ViewRight * PixelDirection.x * WorldUnitsPerPixel.x +
+        ResolvedView.ViewUp * PixelDirection.y * WorldUnitsPerPixel.y;
+    float3 const ThicknessOffsetPerPixel =
+        ResolvedView.ViewRight * ThicknessPixelDirection.x * WorldUnitsPerPixel.x +
+        ResolvedView.ViewUp * ThicknessPixelDirection.y * WorldUnitsPerPixel.y;
+    float const ParticleSizePixels = SpaceDustParticleSize / max(abs(WorldUnitsPerPixel.y), 0.0001);
+    float const ThicknessPixels = clamp(ParticleSizePixels, 1.5, 3.0);
+    float const LengthPixels =
+        min(max(ParticleSizePixels, MotionPixels), SpaceDustMaximumStreakPixels);
+    float const HalfLengthPixels = LengthPixels * 0.5;
+    float const HalfThicknessPixels = ThicknessPixels * 0.5;
+    float3 const Centre = RelativePosition - StreakOffsetPerPixel * HalfLengthPixels;
+    float3 const BillboardOffset = StreakOffsetPerPixel * Input.Corner.x * HalfLengthPixels +
+                                   ThicknessOffsetPerPixel * Input.Corner.y * HalfThicknessPixels;
 
     float3 const EdgeDistance = 1.0 - abs(RelativePosition) / (SpaceDustVolumeDimensions * 0.5);
     float const EdgeFade = saturate(min(EdgeDistance.x, min(EdgeDistance.y, EdgeDistance.z)) /
                                     max(SpaceDustVolumeEdgeFadeFraction, 0.001));
     float const FrontFade = step(1.0, dot(RelativePosition, ResolvedView.ViewForward));
-    float const HeadFade = saturate(1.0 - (Input.Corner.x * 0.5 + 0.5) * 0.45);
-    Intermediates.Colour =
-        SpaceDustColour * SpaceDustBrightness * SpeedVisibility * EdgeFade * FrontFade * HeadFade;
+    float const HeadFade = saturate(0.55 + (Input.Corner.x * 0.5 + 0.5) * 0.45);
+    Intermediates.Colour = SpaceDustColour * SpaceDustBrightness * SpeedVisibility *
+                           MotionVisibility * EdgeFade * FrontFade * HeadFade;
     Intermediates.WorldPosition =
         float4(ResolvedView.TranslatedWorldCameraOrigin + Centre + BillboardOffset, 1.0);
     Intermediates.PositionInstanceSpace = RelativePosition;

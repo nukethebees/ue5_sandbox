@@ -12,7 +12,7 @@ inline constexpr std::int32_t maximum_particle_count{65536};
 
 struct Tuning {
     bool enabled{true};
-    std::int32_t particle_count{1024};
+    std::int32_t particle_count{96};
     std::uint32_t random_seed{1337};
     Vector3f volume_dimensions{make_vector3f(16000.0f, 12000.0f, 8000.0f)};
     float particle_size{8.0f};
@@ -21,7 +21,8 @@ struct Tuning {
     float minimum_visible_speed{1000.0f};
     float full_visible_speed{8000.0f};
     float streak_seconds{0.0125f};
-    float lateral_streak_scale{0.35f};
+    float minimum_motion_pixels{0.75f};
+    float full_motion_pixels{4.0f};
     float maximum_streak_pixels{24.0f};
     float volume_edge_fade_fraction{0.15f};
 };
@@ -47,7 +48,10 @@ struct WorldLocation {
         std::max(tuning.full_visible_speed,
                  tuning.minimum_visible_speed + std::numeric_limits<float>::epsilon());
     tuning.streak_seconds = std::max(tuning.streak_seconds, 0.0f);
-    tuning.lateral_streak_scale = std::max(tuning.lateral_streak_scale, 0.0f);
+    tuning.minimum_motion_pixels = std::max(tuning.minimum_motion_pixels, 0.0f);
+    tuning.full_motion_pixels = std::max(
+        tuning.full_motion_pixels,
+        std::nextafter(tuning.minimum_motion_pixels, std::numeric_limits<float>::infinity()));
     tuning.maximum_streak_pixels = std::max(tuning.maximum_streak_pixels, 0.0f);
     tuning.volume_edge_fade_fraction = std::clamp(tuning.volume_edge_fade_fraction, 0.0f, 0.49f);
     return tuning;
