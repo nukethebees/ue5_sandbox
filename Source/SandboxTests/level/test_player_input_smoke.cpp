@@ -621,6 +621,12 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 checks.is_true(has_ship_mapping(
                                    profile, ship_input.fire_laser, EKeys::Gamepad_RightTriggerAxis),
                                TEXT("Gamepad profile maps the right trigger to fire"));
+                checks.is_true(
+                    has_ship_mapping(profile, ship_input.throttle, EKeys::Gamepad_LeftTriggerAxis),
+                    TEXT("Gamepad profile maps the left trigger to analog throttle"));
+                checks.is_true(
+                    has_ship_mapping(profile, ship_input.brake, EKeys::Gamepad_LeftShoulder),
+                    TEXT("Gamepad profile maps the left shoulder to braking"));
                 press_key(EKeys::Gamepad_Right2D, FVector{0.65, 0.8, 0.0});
             })
             .Until(

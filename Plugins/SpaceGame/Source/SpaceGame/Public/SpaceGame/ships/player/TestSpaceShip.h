@@ -84,9 +84,11 @@ class SPACEGAME_API ATestSpaceShip
     void stop_sampling();
     void adjust_desired_forward_velocity(float direction);
     void turn(FVector2D direction);
+    void set_throttle(float input);
     void start_boost();
     void stop_boost();
     void start_brake();
+    void start_emergency_brake();
     void stop_brake();
     auto get_velocity() const -> FVector;
     auto get_speed() const -> float;
@@ -100,6 +102,7 @@ class SPACEGAME_API ATestSpaceShip
     auto is_sampling() const -> bool;
     auto get_target_local_planar_velocity() const -> FVector;
     auto get_turn_input() const -> FVector2D;
+    auto get_throttle() const -> float;
 
     /* **************************************** */
     // Energy and weapons

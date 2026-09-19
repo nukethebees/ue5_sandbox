@@ -119,6 +119,12 @@ constexpr TCHAR ship_move_aim_mapping_object_path[]{
 constexpr TCHAR ship_z_roll_aim_mapping_object_path[]{
     TEXT("/SpaceGame/Input/SpaceShip/IMC_space_ship_twinstick_z-roll_aim."
          "IMC_space_ship_twinstick_z-roll_aim")};
+constexpr TCHAR ship_boost_action_object_path[]{
+    TEXT("/SpaceGame/Input/SpaceShip/IA_ship_boost.IA_ship_boost")};
+constexpr TCHAR ship_brake_action_object_path[]{
+    TEXT("/SpaceGame/Input/SpaceShip/IA_ship_brake.IA_ship_brake")};
+constexpr TCHAR ship_fire_action_object_path[]{
+    TEXT("/SpaceGame/Input/SpaceShip/IA_ship_fire.IA_ship_fire")};
 FName const scripted_level_generation_context{TEXT("GenerateScriptedLevelAssets")};
 constexpr TCHAR runtime_config_package_name[]{TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig")};
 constexpr TCHAR runtime_config_asset_name[]{TEXT("DA_GameRuntimeLevelConfig")};
@@ -849,8 +855,12 @@ void configure_mapping(FEnhancedActionKeyMapping& mapping,
                                      modifier->IsA<ml::ioj::USpaceGameInputModifier>());
     });
 
-    auto* const response_modifier{NewObject<ml::ioj::USpaceGameInputModifier>(&owner)};
     auto const action_name{mapping.Action->GetName()};
+    if (action_name.Contains(TEXT("Throttle"), ESearchCase::IgnoreCase)) {
+        return;
+    }
+
+    auto* const response_modifier{NewObject<ml::ioj::USpaceGameInputModifier>(&owner)};
     if (mapping_device_is_mouse(mapping)) {
         if (!action_name.Contains(TEXT("Turn"), ESearchCase::IgnoreCase)) {
             return;
@@ -941,11 +951,12 @@ auto set_profile_override(UInputMappingContext& destination,
 struct FGeneratedShipInputActions {
     UInputAction* pointer_delta{nullptr};
     UInputAction* engage_pointer{nullptr};
+    UInputAction* throttle{nullptr};
     UInputAction* increase_desired_forward_velocity{nullptr};
     UInputAction* decrease_desired_forward_velocity{nullptr};
 
     auto is_valid() const -> bool {
-        return IsValid(pointer_delta) && IsValid(engage_pointer) &&
+        return IsValid(pointer_delta) && IsValid(engage_pointer) && IsValid(throttle) &&
                IsValid(increase_desired_forward_velocity) &&
                IsValid(decrease_desired_forward_velocity);
     }
@@ -959,6 +970,8 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
         .engage_pointer = create_input_action(ship_input_package_path,
                                               TEXT("IA_Ship_EngagePointerTurn"),
                                               EInputActionValueType::Boolean),
+        .throttle = create_input_action(
+            ship_input_package_path, TEXT("IA_ship_throttle"), EInputActionValueType::Axis1D),
         .increase_desired_forward_velocity =
             create_input_action(ship_input_package_path,
                                 TEXT("IA_ship_increase_desired_forward_velocity"),
@@ -975,11 +988,30 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
         LoadObject<UInputMappingContext>(nullptr, ship_move_aim_mapping_object_path)};
     auto* const z_roll_aim{
         LoadObject<UInputMappingContext>(nullptr, ship_z_roll_aim_mapping_object_path)};
+    auto* const boost{LoadObject<UInputAction>(nullptr, ship_boost_action_object_path)};
+    auto* const brake{LoadObject<UInputAction>(nullptr, ship_brake_action_object_path)};
+    auto* const fire{LoadObject<UInputAction>(nullptr, ship_fire_action_object_path)};
     if (!actions.is_valid() || !IsValid(base) || !IsValid(aim_move) || !IsValid(move_aim) ||
-        !IsValid(z_roll_aim)) {
-        UE_LOG(LogTemp, Error, TEXT("Could not load ship input mapping contexts"));
+        !IsValid(z_roll_aim) || !IsValid(boost) || !IsValid(brake) || !IsValid(fire)) {
+        UE_LOG(LogTemp, Error, TEXT("Could not load ship input actions or mapping contexts"));
         return {};
     }
+
+    auto configure_power_gamepad_mappings =
+        [&actions, boost, brake, fire](UInputMappingContext& mapping) {
+            mapping.Modify();
+            mapping.UnmapKey(boost, EKeys::Gamepad_LeftTriggerAxis);
+            mapping.UnmapKey(actions.throttle, EKeys::Gamepad_LeftTriggerAxis);
+            mapping.MapKey(actions.throttle, EKeys::Gamepad_LeftTriggerAxis);
+            mapping.UnmapKey(brake, EKeys::Gamepad_LeftShoulder);
+            mapping.MapKey(brake, EKeys::Gamepad_LeftShoulder);
+            mapping.UnmapKey(fire, EKeys::Gamepad_RightTriggerAxis);
+            mapping.MapKey(fire, EKeys::Gamepad_RightTriggerAxis);
+        };
+    configure_power_gamepad_mappings(*base);
+    configure_power_gamepad_mappings(*aim_move);
+    configure_power_gamepad_mappings(*move_aim);
+    configure_power_gamepad_mappings(*z_roll_aim);
 
     base->Modify();
     base->UnmapKey(actions.engage_pointer, EKeys::RightMouseButton);
@@ -1000,8 +1032,10 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
         set_profile_override(
             *base, profiles[3].id, *z_roll_aim, default_mappings, *actions.pointer_delta)};
     return success && save_asset(*actions.pointer_delta) && save_asset(*actions.engage_pointer) &&
+                   save_asset(*actions.throttle) &&
                    save_asset(*actions.increase_desired_forward_velocity) &&
-                   save_asset(*actions.decrease_desired_forward_velocity) && save_asset(*base)
+                   save_asset(*actions.decrease_desired_forward_velocity) && save_asset(*base) &&
+                   save_asset(*aim_move) && save_asset(*move_aim) && save_asset(*z_roll_aim)
              ? actions
              : FGeneratedShipInputActions{};
 }
@@ -1121,6 +1155,7 @@ auto configure_gameplay_inputs(UBlueprint& blueprint,
     input->mapping_context = &mapping_context;
     input->turn_pointer_delta = actions.pointer_delta;
     input->engage_pointer_turn = actions.engage_pointer;
+    input->throttle = actions.throttle;
     input->increase_desired_forward_velocity = actions.increase_desired_forward_velocity;
     input->decrease_desired_forward_velocity = actions.decrease_desired_forward_velocity;
     FBlueprintEditorUtils::MarkBlueprintAsModified(&blueprint);

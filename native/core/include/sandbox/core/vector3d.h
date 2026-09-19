@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <cmath>
 
 namespace ml {
@@ -33,5 +34,17 @@ inline auto dot(Vector3d const a, Vector3d const b) -> double {
 }
 inline auto cross(Vector3d const a, Vector3d const b) -> Vector3d {
     return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+}
+inline auto move_towards(Vector3d const current, Vector3d const target, double const max_delta)
+    -> Vector3d {
+    auto const delta{target - current};
+    auto const distance{delta.size()};
+    if (distance <= max_delta) {
+        return target;
+    }
+    if (distance <= 0.0 || max_delta <= 0.0) {
+        return current;
+    }
+    return current + delta * (max_delta / distance);
 }
 }

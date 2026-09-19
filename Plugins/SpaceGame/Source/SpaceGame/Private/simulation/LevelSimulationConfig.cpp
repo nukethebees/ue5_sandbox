@@ -23,6 +23,12 @@ auto make_simulation_config(FPlayerShipConfig const& source) -> ::ioj::sim::Play
     result.boost_forward_speed_addition_multiplier = source.boost_forward_speed_addition_multiplier;
     result.brake_depletion_time = source.brake_depletion_time;
     result.brake_speed = source.brake_speed;
+    result.power_max_speed = source.power_max_speed;
+    result.power_acceleration = source.power_acceleration;
+    result.power_boost_max_speed = source.power_boost_max_speed;
+    result.power_boost_acceleration = source.power_boost_acceleration;
+    result.power_brake_deceleration = source.power_brake_deceleration;
+    result.power_emergency_brake_deceleration = source.power_emergency_brake_deceleration;
     result.rotation_speed = source.rotation_speed;
     result.pitch_angle_max = source.pitch_angle_max;
     result.pitch_speed = source.pitch_speed;
