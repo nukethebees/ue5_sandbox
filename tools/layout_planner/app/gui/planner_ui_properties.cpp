@@ -97,19 +97,16 @@ void PlannerUi::draw_properties_panel() {
         }
         ImGui::TextDisabled("Internal structure is not declared in LispB.");
     } else {
-        auto editable{workspace_.active_variant_id() != LayoutWorkspace::baseline_variant_id};
+        auto const editable{workspace_.active_variant_id() != LayoutWorkspace::baseline_variant_id};
         if (!editable) {
             ImGui::SeparatorText("Baseline");
             ImGui::TextDisabled("Loaded from LispB — read only.");
             ImGui::TextWrapped(
                 "Experiments are session-only variants. The production schema is never modified.");
+            ImGui::TextDisabled("Use + Add variant in the Layout panel to create an experiment.");
             if (std::holds_alternative<SoaType>(node.definition)) {
                 ImGui::TextDisabled("Capacity uses the planner default of %llu.",
                                     static_cast<unsigned long long>(workspace_.default_capacity()));
-            }
-            if (ImGui::Button("Create editable variant", {-1.0F, 0.0F})) {
-                create_variant_for_selected_schema();
-                editable = true;
             }
         } else {
             ImGui::SeparatorText("Experiment");
