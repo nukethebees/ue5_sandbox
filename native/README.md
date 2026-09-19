@@ -27,6 +27,9 @@ ctest --preset native-simulation-tests
 cmake --workflow --preset native-tests
 ```
 
+Mimalloc validation builds its small `NativeBinaryTools` host dependency into the native build
+tree when needed. Native workflows do not require a prior `ctools` run.
+
 Use `native-core-tests` for the core-focused workflow. The detailed matrix presets remain available
 for ASan, non-unity, release, and MSVC selection; `native` is the ordinary fast default.
 Native tests and tools use static Tracy; Unreal-enabled builds additionally publish the shared-Tracy

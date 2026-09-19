@@ -6,11 +6,11 @@ set(SBX_MIMALLOC_SOURCE "${SBX_MIMALLOC_ROOT}/src/static.c")
 set(SBX_MIMALLOC_PREFIX_HEADER
   "${CMAKE_CURRENT_BINARY_DIR}/generated/sbx_mimalloc_prefix.h"
 )
-set(SANDBOX_NATIVE_BINARY_TOOLS
-  "${PROJECT_SOURCE_DIR}/tools/bin/NativeBinaryTools.exe"
+sandbox_add_dotnet_host_tool(
+  native-binary-tools-host
+  SANDBOX_NATIVE_BINARY_TOOLS
+  "${PROJECT_SOURCE_DIR}/tools/NativeBinaryTools/NativeBinaryTools.csproj"
 )
-sandbox_add_staged_csharp_tool_preflight(native-binary-tools-preflight
-  "NativeBinaryTools.exe" "${SANDBOX_NATIVE_BINARY_TOOLS}")
 
 set_source_files_properties("${SBX_MIMALLOC_SOURCE}" PROPERTIES LANGUAGE CXX)
 
@@ -40,7 +40,7 @@ add_custom_command(
     --readobj "${SBX_LLVM_READOBJ}"
     --output "${SBX_MIMALLOC_PREFIX_HEADER}"
     $<TARGET_OBJECTS:sbx-mimalloc-prefix-probe>
-  DEPENDS $<TARGET_OBJECTS:sbx-mimalloc-prefix-probe> native-binary-tools-preflight
+  DEPENDS $<TARGET_OBJECTS:sbx-mimalloc-prefix-probe> native-binary-tools-host
   COMMAND_EXPAND_LISTS
   VERBATIM
 )
@@ -73,7 +73,7 @@ add_custom_command(
     --readobj "${SBX_LLVM_READOBJ}"
     $<TARGET_OBJECTS:sbx-mimalloc-implementation>
   COMMAND "${CMAKE_COMMAND}" -E touch "${SBX_MIMALLOC_AUDIT_STAMP}"
-  DEPENDS sbx-mimalloc-implementation native-binary-tools-preflight
+  DEPENDS sbx-mimalloc-implementation native-binary-tools-host
   COMMAND_EXPAND_LISTS
   VERBATIM
 )

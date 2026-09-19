@@ -46,6 +46,9 @@ cmake --workflow --preset native-tests
 runs all first-party tests under `native/`; it does not configure UBT or launch UnrealEditor. The
 PowerShell shortcut `cbuild` defaults to `native-tests`.
 
+Native mimalloc targets build their configuration-local `NativeBinaryTools` host dependency on
+demand; native workflows do not require a manual `ctools` preflight.
+
 Do not rebuild Unreal merely because a native implementation has a thin Unreal adapter. Settle the
 native behavior with the smallest target and test subset first.
 

@@ -48,8 +48,10 @@ class NativeWorkflowTests(unittest.TestCase):
         )
 
     def test_native_target_dry_run_has_no_unreal_dependency(self) -> None:
-        with tempfile.TemporaryDirectory(prefix="sandbox-native-workflow-") as temporary_root:
-            build_directory = Path(temporary_root) / "build"
+        with tempfile.TemporaryDirectory(
+            prefix="sandbox native workflow "
+        ) as temporary_root:
+            build_directory = Path(temporary_root) / "build with spaces"
             self.run_cmake(
                 "-S",
                 str(self.source_dir),
@@ -71,6 +73,20 @@ class NativeWorkflowTests(unittest.TestCase):
             self.assertNotRegex(dry_run, r"UnrealBuildTools|UnrealEditor|RunUBT")
             self.assertNotRegex(dry_run, r"(?i)(?:^|[\\/\s])unreal(?:[\\/\s]|$)")
 
+            host_tool = (
+                build_directory
+                / "host-tools"
+                / "NativeBinaryTools"
+                / "Debug"
+                / "NativeBinaryTools.exe"
+            )
+            self.assertIn(str(host_tool), dry_run)
+            self.assertNotIn("tools/bin/NativeBinaryTools.exe", dry_run)
+
+            build_ninja = (build_directory / "build.ninja").read_text(encoding="utf-8")
+            self.assertIn(str(self.source_dir / "tools" / "NativeBinaryTools" / "Program.cs"), build_ninja)
+            self.assertIn(str(self.source_dir / "tools" / "Directory.Build.targets"), build_ninja)
+
     def run_cmake(self, *arguments: str) -> str:
         result = subprocess.run(
             [self.cmake, *arguments],
@@ -89,6 +105,6 @@ if __name__ == "__main__":
     parser.add_argument("--source-dir", type=Path, required=True)
     parser.add_argument("--cmake", required=True)
     arguments, unittest_arguments = parser.parse_known_args()
-    NativeWorkflowTests.source_dir = arguments.source_dir
+    NativeWorkflowTests.source_dir = arguments.source_dir.resolve()
     NativeWorkflowTests.cmake = arguments.cmake
     unittest.main(argv=[sys.argv[0], *unittest_arguments])

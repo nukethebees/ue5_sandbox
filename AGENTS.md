@@ -61,7 +61,8 @@ Unreal Engine 5.8 project.
 * `ctools` builds and stages standalone C# developer-tool executables under `tools/bin`. Before a
   workflow that invokes one, run `ctools` if its executable is absent. Unreal workflows require
   `UnrealBuildTools.exe`; formatting workflows require `CodeFormatTools.exe`. Native-only
-  workflows do not require this preflight.
+  workflows do not require this preflight: their mimalloc validation builds its configuration-local
+  `NativeBinaryTools` host dependency on demand.
 * CMake coordinates Unreal work through a canonical engine read/write gate: builds, UAT packaging,
   and interactive managed editor launches acquire it exclusively; unattended managed editor tests
   and commandlets acquire it shared for their full process-tree lifetime. Shared editor readers must
