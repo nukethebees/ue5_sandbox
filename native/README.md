@@ -52,8 +52,12 @@ git submodule update --init native/third_party/sdl native/third_party/imgui
 cmake --workflow --preset layout-planner
 ```
 
-Run `out/build/layout-planner/tools/layout_planner/layout-planner.exe` from the repository root to
-load `lispb/project.lispb`, or pass `--project` and `--target` explicitly.
+The executable remains local to the worktree at
+`%REPOSITORY_ROOT%\out\build\layout-planner\tools\layout_planner\layout-planner.exe`; it is not
+installed system-wide or added to `PATH`. Run it from the repository root to load
+`lispb/project.lispb`, or pass `--project` and `--target` explicitly. See the
+[memory layout planner guide](../tools/layout_planner/README.md) for usage, supported analysis, and
+V1 limitations.
 
 Simulation tests live in `simulation/tests/`. Asset/configuration conversion and presentation remain
 covered by Unreal tests. See [Build and test](../docs/build-and-test.md) for the full test workflows

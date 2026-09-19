@@ -7,6 +7,9 @@ Workflows that directly use a staged executable require it to be present.
 
 - `jobserver/` is the canonical per-user coordinator for build, Editor, test, commandlet, and
   benchmark resource claims. See its [detailed README](jobserver/README.md).
+- `layout_planner/` is the standalone SDL3/ImGui workbench for analysing packed values and
+  standard-library SoAs from LispB schemas. Its [guide](layout_planner/README.md) documents the
+  build-output location, launch options, and supported V1 workflow.
 - `perf/` contains performance tooling integrated into the root CMake project.
 - `GitTools/` is a small C# executable for Git worktree discovery. Build the complete C# tooling
   workspace with `dotnet build tools/Tools.slnx` or `ctools` after loading `dev.ps1`.
