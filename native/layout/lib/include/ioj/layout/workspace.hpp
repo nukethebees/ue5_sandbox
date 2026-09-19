@@ -48,6 +48,7 @@ class LayoutWorkspace {
     auto active_variant() const -> Variant const&;
     auto active_variant_id() const -> std::uint64_t;
     auto revision() const -> std::uint64_t;
+    void replace_types(lispb::schema::TypeGraph types);
 
     auto select_variant(std::uint64_t id) -> bool;
     auto create_variant(std::string name) -> std::uint64_t;

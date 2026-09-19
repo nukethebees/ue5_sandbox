@@ -5,12 +5,21 @@
 #include <codegen/source_loader.h>
 
 #include <algorithm>
+#include <array>
 #include <fstream>
+#include <functional>
 #include <iterator>
+#include <map>
+#include <set>
+#include <sstream>
 #include <stdexcept>
 #include <string_view>
 #include <type_traits>
 #include <utility>
+
+#if defined(_WIN32)
+#include <Windows.h>
+#endif
 
 namespace lispb::schema {
 namespace {
@@ -33,6 +42,155 @@ auto form_range(Form const& form, std::size_t const source_file_index) -> Source
             .end_offset = end_offset,
             .line = form.token.span.line,
             .column = form.token.span.column};
+}
+
+auto quote(std::string_view const value) -> std::string {
+    std::string result{"\""};
+    for (auto const character : value) {
+        switch (character) {
+            case '\\':
+                result += "\\\\";
+                break;
+            case '"':
+                result += "\\\"";
+                break;
+            case '\n':
+                result += "\\n";
+                break;
+            case '\r':
+                result += "\\r";
+                break;
+            case '\t':
+                result += "\\t";
+                break;
+            default:
+                result += character;
+                break;
+        }
+    }
+    result += '"';
+    return result;
+}
+
+auto render_type_ref(codegen::TypeRef const& type) -> std::string {
+    if (type.suffix.empty() && !type.nested.has_value()) {
+        return type.name;
+    }
+    auto result{"(type-ref " + type.name};
+    if (!type.suffix.empty()) {
+        result += " :suffix " + quote(type.suffix);
+    }
+    if (type.nested.has_value()) {
+        result += " :nested " + quote(*type.nested);
+    }
+    return result + ')';
+}
+
+auto reflection_name(codegen::EnumReflection const reflection) -> std::string_view {
+    switch (reflection) {
+        case codegen::EnumReflection::none:
+            return "none";
+        case codegen::EnumReflection::uenum:
+            return "uenum";
+        case codegen::EnumReflection::blueprint:
+            return "blueprint";
+    }
+    return "none";
+}
+
+auto conversion_name(codegen::EnumConversion const conversion) -> std::string_view {
+    switch (conversion) {
+        case codegen::EnumConversion::lex_to_string:
+            return "lex-to-string";
+        case codegen::EnumConversion::string_view:
+            return "string-view";
+        case codegen::EnumConversion::string:
+            return "string";
+        case codegen::EnumConversion::lex_to_display_string:
+            return "lex-to-display-string";
+        case codegen::EnumConversion::display_string_view:
+            return "display-string-view";
+        case codegen::EnumConversion::display_string:
+            return "display-string";
+        case codegen::EnumConversion::lex_to_serialized_string:
+            return "lex-to-serialized-string";
+        case codegen::EnumConversion::try_parse_serialized:
+            return "try-parse-serialized";
+    }
+    return "lex-to-string";
+}
+
+auto render_enum(codegen::EnumSchema const& schema) -> std::string {
+    std::ostringstream output;
+    output << "(enum " << schema.name << ' ' << render_type_ref(schema.underlying_type);
+    if (schema.reflection != codegen::EnumReflection::none) {
+        output << "\n    :reflection " << reflection_name(schema.reflection);
+    }
+    if (schema.enum_array) {
+        output << "\n    :enum-array true";
+    }
+    if (schema.count.has_value()) {
+        output << "\n    :count " << *schema.count;
+    }
+    if (!schema.conversions.empty()) {
+        output << "\n    :conversions (";
+        for (std::size_t index{}; index < schema.conversions.size(); ++index) {
+            output << (index == 0 ? "" : " ") << conversion_name(schema.conversions[index]);
+        }
+        output << ')';
+    }
+    if (schema.export_specifier.has_value()) {
+        output << "\n    :export-specifier " << *schema.export_specifier;
+    }
+    if (schema.native_api) {
+        output << "\n    :native-api true";
+    }
+    for (auto const& value : schema.values) {
+        output << "\n    (value " << value.name;
+        if (value.initializer.has_value()) {
+            output << "\n      :value " << quote(*value.initializer);
+        }
+        if (value.display_name.has_value()) {
+            output << "\n      :display-name " << quote(*value.display_name);
+        }
+        if (value.hidden) {
+            output << "\n      :hidden true";
+        }
+        if (value.serialized_name.has_value()) {
+            output << "\n      :serialized-name " << quote(*value.serialized_name);
+        }
+        output << ')';
+    }
+    if (schema.unreal_projection.has_value()) {
+        auto const& projection{*schema.unreal_projection};
+        output << "\n    (unreal-projection " << projection.name << "\n      :header "
+               << quote(projection.header.string()) << "\n      :header-include "
+               << quote(projection.header_include) << "\n      :conversion-header "
+               << quote(projection.conversion_header.string()) << "\n      :native-header-include "
+               << quote(projection.native_header_include);
+        if (projection.reflection != codegen::EnumReflection::uenum) {
+            output << "\n      :reflection " << reflection_name(projection.reflection);
+        }
+        output << ')';
+    }
+    output << ')';
+    return output.str();
+}
+
+void replace_file(std::filesystem::path const& source, std::filesystem::path const& destination) {
+#if defined(_WIN32)
+    if (!MoveFileExW(source.c_str(),
+                     destination.c_str(),
+                     MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
+        throw std::filesystem::filesystem_error{
+            "Cannot replace LispB source file",
+            source,
+            destination,
+            std::error_code{static_cast<int>(GetLastError()), std::system_category()}};
+    }
+#else
+    std::filesystem::rename(source, destination);
+#endif
 }
 
 auto declaration_head(codegen::ModuleSchema const& module) -> std::string_view {
@@ -102,10 +260,14 @@ void for_each_declaration(codegen::Manifest const& manifest, Function&& function
 } // namespace
 
 EditableSchemaDocument::EditableSchemaDocument(codegen::Manifest manifest,
-                                               std::vector<SchemaSourceFile> source_files)
+                                               std::vector<SchemaSourceFile> source_files,
+                                               std::filesystem::path types_path,
+                                               std::vector<std::filesystem::path> module_paths)
     : manifest_{std::move(manifest)}
     , types_{resolve_type_graph(manifest_)}
-    , source_files_{std::move(source_files)} {}
+    , source_files_{std::move(source_files)}
+    , types_path_{std::move(types_path)}
+    , module_paths_{std::move(module_paths)} {}
 
 auto EditableSchemaDocument::from_manifest(codegen::Manifest manifest) -> EditableSchemaDocument {
     EditableSchemaDocument result{std::move(manifest), {}};
@@ -138,6 +300,23 @@ auto EditableSchemaDocument::find_declaration(TypeIdentity const& identity) cons
     -> std::optional<DeclarationId> {
     auto const found{std::ranges::find(declarations_, identity, &DeclarationInfo::identity)};
     return found == declarations_.end() ? std::nullopt : std::optional{found->id};
+}
+
+auto EditableSchemaDocument::enum_schema(DeclarationId const declaration_id) const
+    -> codegen::EnumSchema const* {
+    auto const* info{declaration(declaration_id)};
+    if (info == nullptr) {
+        return nullptr;
+    }
+    auto const* module{
+        std::get_if<codegen::EnumModuleSchema>(&manifest_.modules[info->module_index])};
+    return module == nullptr || info->declaration_index >= module->enums.size()
+             ? nullptr
+             : &module->enums[info->declaration_index];
+}
+
+auto EditableSchemaDocument::allocate_declaration_id() -> DeclarationId {
+    return DeclarationId{next_declaration_id_++};
 }
 
 auto EditableSchemaDocument::apply(SchemaEditCommand command)
@@ -216,6 +395,156 @@ void EditableSchemaDocument::mark_saved() {
     saved_history_position_ = history_position_;
 }
 
+auto EditableSchemaDocument::preview_source_updates() const
+    -> std::expected<std::vector<SchemaSourceUpdate>, SchemaEditError> {
+    if (!dirty()) {
+        return std::vector<SchemaSourceUpdate>{};
+    }
+    if (source_files_.empty() || module_source_ranges_.size() != manifest_.modules.size()) {
+        return std::unexpected{SchemaEditError{"Schema draft has no source ownership information"}};
+    }
+
+    std::set<DeclarationId> touched;
+    for (std::size_t index{}; index < history_position_; ++index) {
+        std::visit(
+            [&](auto const& edit) {
+                if constexpr (requires { edit.enum_declaration; }) {
+                    touched.insert(edit.enum_declaration);
+                } else {
+                    touched.insert(edit.declaration);
+                }
+            },
+            history_[index].forward);
+    }
+
+    struct Replacement {
+        std::size_t begin{};
+        std::size_t end{};
+        std::string text;
+    };
+    std::vector<std::vector<Replacement>> replacements(source_files_.size());
+    std::map<std::size_t, std::set<DeclarationId>> insertions;
+    for (auto const id : touched) {
+        auto const* info{declaration(id)};
+        auto const* schema{enum_schema(id)};
+        if (info == nullptr || schema == nullptr) {
+            continue;
+        }
+        if (info->source.has_value()) {
+            replacements[info->source->source_file_index].push_back(
+                {.begin = info->source->begin_offset,
+                 .end = info->source->end_offset,
+                 .text = render_enum(*schema)});
+        } else {
+            insertions[info->module_index].insert(id);
+        }
+    }
+    for (auto const& [module_index, ids] : insertions) {
+        if (module_index >= module_source_ranges_.size() ||
+            !module_source_ranges_[module_index].has_value()) {
+            return std::unexpected{SchemaEditError{"New enum's module has no source range"}};
+        }
+        auto const& module_range{*module_source_ranges_[module_index]};
+        std::string insertion;
+        auto const* module{
+            std::get_if<codegen::EnumModuleSchema>(&manifest_.modules[module_index])};
+        for (std::size_t enum_index{}; enum_index < module->enums.size(); ++enum_index) {
+            auto const found{std::ranges::find_if(declarations_, [&](DeclarationInfo const& info) {
+                return info.module_index == module_index && info.declaration_index == enum_index &&
+                       ids.contains(info.id);
+            })};
+            if (found != declarations_.end()) {
+                insertion += "\n  " + render_enum(module->enums[enum_index]);
+            }
+        }
+        replacements[module_range.source_file_index].push_back(
+            {.begin = module_range.end_offset - 1,
+             .end = module_range.end_offset - 1,
+             .text = std::move(insertion)});
+    }
+
+    std::vector<SchemaSourceUpdate> updates;
+    for (std::size_t source_index{}; source_index < replacements.size(); ++source_index) {
+        auto& source_replacements{replacements[source_index]};
+        if (source_replacements.empty()) {
+            continue;
+        }
+        std::ranges::sort(source_replacements, std::greater{}, &Replacement::begin);
+        auto updated{source_files_[source_index].text};
+        for (auto const& replacement : source_replacements) {
+            if (replacement.begin > replacement.end || replacement.end > updated.size()) {
+                return std::unexpected{SchemaEditError{"Invalid source replacement range"}};
+            }
+            updated.replace(
+                replacement.begin, replacement.end - replacement.begin, replacement.text);
+        }
+        updates.push_back({.path = source_files_[source_index].path,
+                           .original = source_files_[source_index].text,
+                           .updated = std::move(updated)});
+    }
+    return updates;
+}
+
+auto EditableSchemaDocument::save()
+    -> std::expected<std::vector<std::filesystem::path>, SchemaEditError> {
+    auto updates{preview_source_updates()};
+    if (!updates.has_value()) {
+        return std::unexpected{std::move(updates.error())};
+    }
+    if (updates->empty()) {
+        return std::vector<std::filesystem::path>{};
+    }
+
+    std::map<std::filesystem::path, std::filesystem::path> temporary_paths;
+    auto cleanup{[&] {
+        std::error_code ignored;
+        for (auto const& [path, temporary] : temporary_paths) {
+            static_cast<void>(path);
+            std::filesystem::remove(temporary, ignored);
+        }
+    }};
+    try {
+        for (auto const& update : *updates) {
+            auto temporary{update.path};
+            temporary += ".layout-planner.tmp";
+            std::error_code ignored;
+            std::filesystem::remove(temporary, ignored);
+            std::ofstream output{temporary, std::ios::binary | std::ios::trunc};
+            output.write(update.updated.data(),
+                         static_cast<std::streamsize>(update.updated.size()));
+            output.close();
+            if (!output) {
+                throw std::runtime_error{"Cannot write temporary LispB source: " +
+                                         temporary.string()};
+            }
+            temporary_paths.emplace(update.path, std::move(temporary));
+        }
+
+        std::vector<std::filesystem::path> validation_modules;
+        validation_modules.reserve(module_paths_.size());
+        for (auto const& path : module_paths_) {
+            auto const temporary{temporary_paths.find(path)};
+            validation_modules.push_back(temporary == temporary_paths.end() ? path
+                                                                            : temporary->second);
+        }
+        auto const validated{codegen::load_sources(types_path_, validation_modules)};
+        static_cast<void>(resolve_type_graph(validated));
+
+        std::vector<std::filesystem::path> saved;
+        saved.reserve(updates->size());
+        for (auto const& update : *updates) {
+            replace_file(temporary_paths.at(update.path), update.path);
+            saved.push_back(update.path);
+        }
+        auto reloaded{load_editable_schema_document(types_path_, module_paths_)};
+        *this = std::move(reloaded);
+        return saved;
+    } catch (std::exception const& error) {
+        cleanup();
+        return std::unexpected{SchemaEditError{error.what()}};
+    }
+}
+
 void EditableSchemaDocument::initialize_declarations(
     std::vector<std::optional<SourceRange>> source_ranges) {
     declarations_.clear();
@@ -244,6 +573,7 @@ void EditableSchemaDocument::initialize_declarations(
     if (!source_ranges.empty() && source_index != source_ranges.size()) {
         throw std::logic_error{"Source declaration count does not match resolved schema"};
     }
+    next_declaration_id_ = next_id;
 }
 
 auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
@@ -327,6 +657,124 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                     SetEnumeratorName{.enum_declaration = edit.enum_declaration,
                                       .current_name = edit.new_name,
                                       .new_name = edit.current_name}};
+            } else if constexpr (std::is_same_v<Edit, CreateEnum>) {
+                if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
+                    return std::unexpected{
+                        SchemaEditError{"New enum requires a unique declaration id"}};
+                }
+                if (edit.module_index >= manifest_.modules.size()) {
+                    return std::unexpected{SchemaEditError{"Unknown enum module index"}};
+                }
+                auto* module{
+                    std::get_if<codegen::EnumModuleSchema>(&manifest_.modules[edit.module_index])};
+                if (module == nullptr) {
+                    return std::unexpected{
+                        SchemaEditError{"New enums can only be added to enum modules"}};
+                }
+                auto const insertion_index{edit.insertion_index.value_or(module->enums.size())};
+                if (insertion_index > module->enums.size()) {
+                    return std::unexpected{SchemaEditError{"Invalid enum insertion index"}};
+                }
+
+                module->enums.insert(module->enums.begin() +
+                                         static_cast<std::ptrdiff_t>(insertion_index),
+                                     edit.schema);
+                for (auto& existing : declarations_) {
+                    if (existing.module_index == edit.module_index &&
+                        existing.declaration_index >= insertion_index) {
+                        ++existing.declaration_index;
+                    }
+                }
+                auto const namespace_name{module->settings.namespace_name.value_or("")};
+                declarations_.push_back(
+                    {.id = edit.declaration,
+                     .identity = TypeIdentity{.origin = TypeOrigin::declaration,
+                                              .module_name = module->settings.name,
+                                              .namespace_name = namespace_name,
+                                              .name = edit.schema.name},
+                     .module_index = edit.module_index,
+                     .declaration_index = insertion_index,
+                     .source = std::nullopt});
+                try {
+                    types_ = resolve_type_graph(manifest_);
+                } catch (std::exception const& error) {
+                    declarations_.pop_back();
+                    for (auto& existing : declarations_) {
+                        if (existing.module_index == edit.module_index &&
+                            existing.declaration_index > insertion_index) {
+                            --existing.declaration_index;
+                        }
+                    }
+                    module->enums.erase(module->enums.begin() +
+                                        static_cast<std::ptrdiff_t>(insertion_index));
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+                return SchemaEditCommand{DeleteEnum{.declaration = edit.declaration}};
+            } else if constexpr (std::is_same_v<Edit, ReplaceEnum>) {
+                auto const* info{declaration(edit.declaration)};
+                auto const* current{enum_schema(edit.declaration)};
+                if (info == nullptr || current == nullptr) {
+                    return std::unexpected{SchemaEditError{"Unknown enum declaration"}};
+                }
+                if (edit.schema.name != current->name) {
+                    return std::unexpected{SchemaEditError{
+                        "ReplaceEnum cannot rename a declaration; use a rename command"}};
+                }
+                auto* module{
+                    std::get_if<codegen::EnumModuleSchema>(&manifest_.modules[info->module_index])};
+                auto previous{module->enums[info->declaration_index]};
+                module->enums[info->declaration_index] = edit.schema;
+                try {
+                    types_ = resolve_type_graph(manifest_);
+                } catch (std::exception const& error) {
+                    module->enums[info->declaration_index] = std::move(previous);
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+                return SchemaEditCommand{
+                    ReplaceEnum{.declaration = edit.declaration, .schema = std::move(previous)}};
+            } else if constexpr (std::is_same_v<Edit, DeleteEnum>) {
+                auto const* found{declaration(edit.declaration)};
+                auto const* current{enum_schema(edit.declaration)};
+                if (found == nullptr || current == nullptr) {
+                    return std::unexpected{SchemaEditError{"Unknown enum declaration"}};
+                }
+                if (found->source.has_value()) {
+                    return std::unexpected{SchemaEditError{
+                        "Deleting source declarations is not enabled in this authoring slice"}};
+                }
+                auto const info{*found};
+                auto schema{*current};
+                auto* module{
+                    std::get_if<codegen::EnumModuleSchema>(&manifest_.modules[info.module_index])};
+                module->enums.erase(module->enums.begin() +
+                                    static_cast<std::ptrdiff_t>(info.declaration_index));
+                declarations_.erase(
+                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id));
+                for (auto& existing : declarations_) {
+                    if (existing.module_index == info.module_index &&
+                        existing.declaration_index > info.declaration_index) {
+                        --existing.declaration_index;
+                    }
+                }
+                try {
+                    types_ = resolve_type_graph(manifest_);
+                } catch (std::exception const& error) {
+                    module->enums.insert(module->enums.begin() +
+                                             static_cast<std::ptrdiff_t>(info.declaration_index),
+                                         schema);
+                    for (auto& existing : declarations_) {
+                        if (existing.module_index == info.module_index &&
+                            existing.declaration_index >= info.declaration_index) {
+                            ++existing.declaration_index;
+                        }
+                    }
+                    declarations_.push_back(info);
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+                return SchemaEditCommand{CreateEnum{.declaration = edit.declaration,
+                                                    .module_index = info.module_index,
+                                                    .schema = std::move(schema),
+                                                    .insertion_index = info.declaration_index}};
             }
         },
         command);
@@ -340,6 +788,7 @@ auto load_editable_schema_document(std::filesystem::path const& types_path,
     sources.push_back({.path = types_path, .text = read_file(types_path)});
 
     std::vector<std::optional<SourceRange>> declaration_ranges;
+    std::vector<std::optional<SourceRange>> module_ranges;
     auto module_index{std::size_t{}};
     for (auto const& path : module_paths) {
         auto source{read_file(path)};
@@ -351,6 +800,7 @@ auto load_editable_schema_document(std::filesystem::path const& types_path,
                 throw std::logic_error{"Source contains more modules than the loaded manifest"};
             }
             auto const& module{manifest.modules[module_index++]};
+            module_ranges.push_back(form_range(form, source_file_index));
             auto const expected_count{declaration_count(module)};
             if (expected_count == 0) {
                 continue;
@@ -376,7 +826,11 @@ auto load_editable_schema_document(std::filesystem::path const& types_path,
         throw std::logic_error{"Source contains fewer modules than the loaded manifest"};
     }
 
-    EditableSchemaDocument result{std::move(manifest), std::move(sources)};
+    EditableSchemaDocument result{std::move(manifest),
+                                  std::move(sources),
+                                  types_path,
+                                  {module_paths.begin(), module_paths.end()}};
+    result.module_source_ranges_ = std::move(module_ranges);
     result.initialize_declarations(std::move(declaration_ranges));
     return result;
 }

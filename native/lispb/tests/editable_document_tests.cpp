@@ -4,10 +4,45 @@
 
 #include <array>
 #include <filesystem>
+#include <fstream>
 #include <string_view>
 
 namespace lispb::schema {
 namespace {
+
+class TemporarySchema {
+  public:
+    TemporarySchema() {
+        static int sequence{};
+        directory_ = std::filesystem::temp_directory_path() /
+                     ("editable-lispb-schema-" + std::to_string(++sequence));
+        std::filesystem::create_directories(directory_);
+        write("types.lispb", "");
+        write("modules.lispb", R"((enum-module authored_enums
+  :header "AuthoredEnums.h"
+  :namespace authored
+  (enum Existing std::uint8_t
+    (value Zero :value "0")))
+)");
+    }
+    ~TemporarySchema() {
+        std::error_code ignored;
+        std::filesystem::remove_all(directory_, ignored);
+    }
+
+    auto load() const -> EditableSchemaDocument {
+        auto const modules{std::array{path("modules.lispb")}};
+        return load_editable_schema_document(path("types.lispb"), modules);
+    }
+    auto path(std::string const& name) const -> std::filesystem::path { return directory_ / name; }
+  private:
+    void write(std::string const& name, std::string_view const text) const {
+        std::ofstream output{path(name), std::ios::binary};
+        output << text;
+    }
+
+    std::filesystem::path directory_;
+};
 
 auto fixture_document() -> EditableSchemaDocument {
     auto const root{std::filesystem::path{SANDBOX_CODEGEN_SOURCE_DIR} / "tests" /
@@ -128,6 +163,88 @@ TEST(EditableSchemaDocument, EnumeratorRenamePreservesCountSentinelSemantics) {
     EXPECT_EQ(restored.count, "COUNT");
     EXPECT_EQ(restored.enumerators[1].name, "COUNT");
     EXPECT_TRUE(restored.enumerators[1].count_sentinel);
+}
+
+TEST(EditableSchemaDocument, CreatesPreviewsSavesAndReloadsEnumDeclarations) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const existing{document.find_declaration(TypeIdentity{.origin = TypeOrigin::declaration,
+                                                               .module_name = "authored_enums",
+                                                               .namespace_name = "authored",
+                                                               .name = "Existing"})};
+    ASSERT_TRUE(existing.has_value());
+    auto const module_index{document.declaration(*existing)->module_index};
+    auto const created{document.allocate_declaration_id()};
+    auto create{document.apply(CreateEnum{
+        .declaration = created,
+        .module_index = module_index,
+        .schema = codegen::EnumSchema{.name = "DesignedState",
+                                      .underlying_type = codegen::TypeRef{"std::uint8_t"},
+                                      .values = {{.name = "Idle",
+                                                  .initializer = "0",
+                                                  .display_name = "Idle State",
+                                                  .serialized_name = "idle"},
+                                                 {.name = "Active",
+                                                  .initializer = "1",
+                                                  .display_name = "Active State",
+                                                  .serialized_name = "active"}}}})};
+    ASSERT_TRUE(create.has_value());
+    EXPECT_TRUE(*create);
+
+    auto const semantic{document.types().find_declared("authored_enums", "DesignedState")};
+    ASSERT_TRUE(semantic.has_value());
+    auto const& type{std::get<EnumType>(document.types().type(*semantic).definition)};
+    ASSERT_EQ(type.enumerators.size(), 2);
+    EXPECT_EQ(type.enumerators[1].serialized_name, "active");
+
+    auto replacement{*document.enum_schema(created)};
+    replacement.values[1].display_name = "Enabled";
+    auto replaced{
+        document.apply(ReplaceEnum{.declaration = created, .schema = std::move(replacement)})};
+    ASSERT_TRUE(replaced.has_value());
+    EXPECT_TRUE(*replaced);
+    EXPECT_EQ(
+        std::get<EnumType>(document.types().type(*semantic).definition).enumerators[1].display_name,
+        "Enabled");
+    auto undo{document.undo()};
+    ASSERT_TRUE(undo.has_value());
+    EXPECT_TRUE(*undo);
+    EXPECT_EQ(
+        std::get<EnumType>(document.types().type(*semantic).definition).enumerators[1].display_name,
+        "Active State");
+    auto redo{document.redo()};
+    ASSERT_TRUE(redo.has_value());
+    EXPECT_TRUE(*redo);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value());
+    ASSERT_EQ(preview->size(), 1);
+    EXPECT_NE(preview->front().updated.find("(enum DesignedState std::uint8_t"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":display-name \"Idle State\""), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(enum Existing"), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    ASSERT_EQ(saved->size(), 1);
+    EXPECT_EQ(saved->front(), files.path("modules.lispb"));
+    EXPECT_FALSE(std::filesystem::exists(files.path("modules.lispb.layout-planner.tmp")));
+
+    auto reloaded{files.load()};
+    auto const reloaded_type{reloaded.types().find_declared("authored_enums", "DesignedState")};
+    ASSERT_TRUE(reloaded_type.has_value());
+    auto const& reloaded_enum{std::get<EnumType>(reloaded.types().type(*reloaded_type).definition)};
+    ASSERT_EQ(reloaded_enum.enumerators.size(), 2);
+    EXPECT_EQ(reloaded_enum.enumerators[0].display_name, "Idle State");
+    EXPECT_EQ(reloaded_enum.enumerators[1].display_name, "Enabled");
+    EXPECT_EQ(reloaded_enum.enumerators[1].serialized_name, "active");
+    EXPECT_FALSE(document.dirty());
+    auto const saved_declaration{
+        document.find_declaration(TypeIdentity{.origin = TypeOrigin::declaration,
+                                               .module_name = "authored_enums",
+                                               .namespace_name = "authored",
+                                               .name = "DesignedState"})};
+    ASSERT_TRUE(saved_declaration.has_value());
+    EXPECT_TRUE(document.declaration(*saved_declaration)->source.has_value());
 }
 
 } // namespace

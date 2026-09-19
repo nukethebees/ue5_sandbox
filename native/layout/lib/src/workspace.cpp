@@ -42,6 +42,45 @@ auto LayoutWorkspace::revision() const -> std::uint64_t {
     return revision_;
 }
 
+void LayoutWorkspace::replace_types(lispb::schema::TypeGraph types) {
+    auto remap_type{
+        [&](lispb::schema::TypeId const old_type) -> std::optional<lispb::schema::TypeId> {
+            if (!old_type.valid() || old_type.value >= types_.types().size()) {
+                return std::nullopt;
+            }
+            return types.find(types_.type(old_type).identity);
+        }};
+    for (auto& variant : variants_) {
+        VariantOverrides remapped;
+        for (auto const& [type, spelling] : variant.overrides.packed_storage_types) {
+            if (auto const replacement{remap_type(type)}) {
+                remapped.packed_storage_types.emplace(*replacement, spelling);
+            }
+        }
+        for (auto const& [field, width] : variant.overrides.packed_field_widths) {
+            if (auto const replacement{remap_type(field.type)}) {
+                remapped.packed_field_widths.emplace(
+                    FieldOverrideId{.type = *replacement, .field_name = field.field_name}, width);
+            }
+        }
+        for (auto const& [field, spelling] : variant.overrides.soa_column_types) {
+            if (auto const replacement{remap_type(field.type)}) {
+                remapped.soa_column_types.emplace(
+                    FieldOverrideId{.type = *replacement, .field_name = field.field_name},
+                    spelling);
+            }
+        }
+        for (auto const& [type, capacity] : variant.overrides.capacities) {
+            if (auto const replacement{remap_type(type)}) {
+                remapped.capacities.emplace(*replacement, capacity);
+            }
+        }
+        variant.overrides = std::move(remapped);
+    }
+    types_ = std::move(types);
+    ++revision_;
+}
+
 auto LayoutWorkspace::select_variant(std::uint64_t const id) -> bool {
     if (variant(id) == nullptr || active_variant_id_ == id) {
         return false;

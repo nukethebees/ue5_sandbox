@@ -5,7 +5,9 @@
 #include <imgui.h>
 
 #include <algorithm>
+#include <array>
 #include <cstdint>
+#include <cstdio>
 #include <string>
 
 namespace ioj::layout_planner {
@@ -23,6 +25,16 @@ void draw_override_note(bool const overridden) {
 
 void draw_optional_text(std::optional<std::string> const& value) {
     ImGui::TextUnformatted(value.has_value() ? value->c_str() : "-");
+}
+
+template <std::size_t Size>
+void set_buffer(std::array<char, Size>& buffer, std::optional<std::string> const& value) {
+    std::snprintf(buffer.data(), buffer.size(), "%s", value.value_or("").c_str());
+}
+
+template <std::size_t Size>
+auto optional_text(std::array<char, Size> const& buffer) -> std::optional<std::string> {
+    return buffer.front() == '\0' ? std::nullopt : std::optional<std::string>{buffer.data()};
 }
 
 } // namespace
@@ -53,6 +65,12 @@ void PlannerUi::draw_properties_panel() {
         if (enumeration->count.has_value()) {
             ImGui::Text("Count sentinel: %s", enumeration->count->c_str());
         }
+        auto const revision_before_edit{workspace_.revision()};
+        draw_enum_editor(node, *enumeration);
+        if (workspace_.revision() != revision_before_edit) {
+            ImGui::End();
+            return;
+        }
 
         if (ImGui::BeginTable("enumerators",
                               5,
@@ -67,7 +85,9 @@ void PlannerUi::draw_properties_panel() {
             for (auto const& value : enumeration->enumerators) {
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                ImGui::TextUnformatted(value.name.c_str());
+                if (ImGui::Selectable(value.name.c_str(), selected_enumerator_ == value.name)) {
+                    selected_enumerator_ = value.name;
+                }
                 ImGui::TableNextColumn();
                 draw_optional_text(value.explicit_value);
                 ImGui::TableNextColumn();
@@ -261,6 +281,121 @@ void PlannerUi::draw_properties_panel() {
     draw_links("Depends on", workspace_.types().dependencies_of(selected));
     draw_links("Used by", workspace_.types().users_of(selected));
     ImGui::End();
+}
+
+void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
+    if (!document_.has_value()) {
+        return;
+    }
+    auto const declaration{document_->find_declaration(node.identity)};
+    if (!declaration.has_value()) {
+        return;
+    }
+    auto const* schema{document_->enum_schema(*declaration)};
+    if (schema == nullptr) {
+        return;
+    }
+
+    if (ImGui::Button("+ Enumerator")) {
+        auto replacement{*schema};
+        auto suffix{replacement.values.size()};
+        std::string name;
+        do {
+            name = "Value" + std::to_string(suffix++);
+        } while (std::ranges::find(replacement.values, name, &codegen::EnumeratorSchema::name) !=
+                 replacement.values.end());
+        replacement.values.push_back({.name = name,
+                                      .initializer = std::nullopt,
+                                      .display_name = std::nullopt,
+                                      .hidden = false,
+                                      .serialized_name = std::nullopt});
+        if (apply_document_edit(
+                ReplaceEnum{.declaration = *declaration, .schema = std::move(replacement)})) {
+            selected_enumerator_ = std::move(name);
+            return;
+        }
+    }
+    ImGui::SameLine();
+    auto const selected{
+        std::ranges::find(schema->values, selected_enumerator_, &codegen::EnumeratorSchema::name)};
+    ImGui::BeginDisabled(selected == schema->values.end());
+    if (ImGui::Button("Edit selected")) {
+        std::snprintf(
+            enum_value_name_.data(), enum_value_name_.size(), "%s", selected->name.c_str());
+        set_buffer(enum_value_initializer_, selected->initializer);
+        set_buffer(enum_value_display_name_, selected->display_name);
+        set_buffer(enum_value_serialized_name_, selected->serialized_name);
+        enum_value_hidden_ = selected->hidden;
+        enum_value_count_sentinel_ = schema->count == selected->name;
+        open_enum_value_dialog_ = true;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Delete selected")) {
+        auto replacement{*schema};
+        replacement.values.erase(std::ranges::find(
+            replacement.values, selected_enumerator_, &codegen::EnumeratorSchema::name));
+        if (replacement.count == selected_enumerator_) {
+            replacement.count.reset();
+        }
+        if (apply_document_edit(
+                ReplaceEnum{.declaration = *declaration, .schema = std::move(replacement)})) {
+            selected_enumerator_.clear();
+        }
+    }
+    ImGui::EndDisabled();
+
+    if (open_enum_value_dialog_) {
+        ImGui::OpenPopup("Edit enumerator");
+        open_enum_value_dialog_ = false;
+    }
+    if (!ImGui::BeginPopupModal("Edit enumerator", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        return;
+    }
+    ImGui::InputText("Name", enum_value_name_.data(), enum_value_name_.size());
+    ImGui::InputText(
+        "Explicit value", enum_value_initializer_.data(), enum_value_initializer_.size());
+    ImGui::InputText(
+        "Display name", enum_value_display_name_.data(), enum_value_display_name_.size());
+    ImGui::InputText(
+        "Serialized name", enum_value_serialized_name_.data(), enum_value_serialized_name_.size());
+    ImGui::Checkbox("Hidden", &enum_value_hidden_);
+    ImGui::Checkbox("Count sentinel", &enum_value_count_sentinel_);
+    ImGui::BeginDisabled(enum_value_name_.front() == '\0');
+    if (ImGui::Button("Apply")) {
+        auto replacement{*document_->enum_schema(*declaration)};
+        auto value{std::ranges::find(
+            replacement.values, selected_enumerator_, &codegen::EnumeratorSchema::name)};
+        if (value == replacement.values.end()) {
+            schema_edit_message_ = "The selected enumerator no longer exists.";
+        } else {
+            auto const previous_name{value->name};
+            value->name = enum_value_name_.data();
+            value->initializer = optional_text(enum_value_initializer_);
+            value->display_name = optional_text(enum_value_display_name_);
+            value->serialized_name = optional_text(enum_value_serialized_name_);
+            value->hidden = enum_value_hidden_;
+            if (enum_value_count_sentinel_) {
+                replacement.count = value->name;
+            } else if (replacement.count == previous_name) {
+                replacement.count.reset();
+            }
+            auto const new_name{value->name};
+            if (apply_document_edit(
+                    ReplaceEnum{.declaration = *declaration, .schema = std::move(replacement)})) {
+                selected_enumerator_ = new_name;
+                ImGui::CloseCurrentPopup();
+            }
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel")) {
+        ImGui::CloseCurrentPopup();
+    }
+    if (!schema_edit_message_.empty()) {
+        ImGui::TextWrapped("%s", schema_edit_message_.c_str());
+    }
+    ImGui::EndPopup();
 }
 
 void PlannerUi::draw_variants_panel() {

@@ -46,6 +46,15 @@ class PlannerUi {
     void validate_comparison_variants();
     void setup_default_dock_layout(unsigned int dockspace_id);
     auto draw_view_menu() -> bool;
+    auto draw_file_menu() -> bool;
+    void draw_source_preview();
+    void draw_new_enum_dialog();
+    void draw_enum_editor(lispb::schema::TypeNode const& node,
+                          lispb::schema::EnumType const& enumeration);
+    auto apply_document_edit(lispb::schema::SchemaEditCommand command,
+                             std::optional<lispb::schema::TypeIdentity> selection = std::nullopt)
+        -> bool;
+    void sync_document_graph(std::optional<lispb::schema::TypeIdentity> selection);
     void refresh_analysis();
     void draw_project_panel();
     void draw_layout_panel();
@@ -59,6 +68,7 @@ class PlannerUi {
     void sync_variant_name();
     void create_variant_for_selected_schema();
 
+    std::optional<lispb::schema::EditableSchemaDocument> document_;
     layout::LayoutWorkspace workspace_;
     layout::AbiProfile abi_{layout::AbiProfile::host_common()};
     std::vector<layout::Diagnostic> load_diagnostics_;
@@ -82,6 +92,15 @@ class PlannerUi {
 
     std::array<char, 128> variant_name_{};
     std::array<char, 128> schema_filter_{};
+    std::array<char, 128> new_enum_name_{};
+    std::array<char, 128> new_enum_underlying_type_{"std::uint8_t"};
+    std::array<char, 128> enum_value_name_{};
+    std::array<char, 128> enum_value_initializer_{};
+    std::array<char, 128> enum_value_display_name_{};
+    std::array<char, 128> enum_value_serialized_name_{};
+    std::string selected_enumerator_;
+    std::string schema_edit_message_;
+    std::size_t new_enum_module_index_{};
     std::optional<std::size_t> packed_dragged_divider_;
     std::optional<std::uint64_t> packed_dragged_variant_id_;
     std::uint64_t variant_name_id_{std::numeric_limits<std::uint64_t>::max()};
@@ -94,6 +113,11 @@ class PlannerUi {
     bool dock_layout_initialized_{};
     bool reset_dock_layout_requested_{};
     bool comparison_b_follows_active_{true};
+    bool open_new_enum_dialog_{};
+    bool open_enum_value_dialog_{};
+    bool open_source_preview_{};
+    bool enum_value_hidden_{};
+    bool enum_value_count_sentinel_{};
 };
 
 } // namespace ioj::layout_planner

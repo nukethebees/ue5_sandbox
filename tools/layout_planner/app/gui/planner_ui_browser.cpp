@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdio>
 #include <string>
 #include <string_view>
 
@@ -72,6 +73,15 @@ auto complete(TypeGraph const& types,
 
 void PlannerUi::draw_project_panel() {
     ImGui::Begin("Project / Schema");
+    ImGui::BeginDisabled(!document_.has_value());
+    if (ImGui::Button("+ New enum")) {
+        open_new_enum_dialog_ = true;
+    }
+    ImGui::EndDisabled();
+    if (!schema_edit_message_.empty()) {
+        ImGui::SameLine();
+        ImGui::TextWrapped("%s", schema_edit_message_.c_str());
+    }
     ImGui::SetNextItemWidth(-1.0F);
     ImGui::InputTextWithHint(
         "##schema-filter", "Filter semantic types", schema_filter_.data(), schema_filter_.size());
@@ -125,6 +135,117 @@ void PlannerUi::draw_project_panel() {
         draw_diagnostics(load_diagnostics_);
     }
     ImGui::End();
+}
+
+void PlannerUi::draw_new_enum_dialog() {
+    if (open_new_enum_dialog_) {
+        ImGui::OpenPopup("New enum");
+        open_new_enum_dialog_ = false;
+    }
+    if (!ImGui::BeginPopupModal("New enum", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        return;
+    }
+    if (!document_.has_value()) {
+        ImGui::TextDisabled("No editable LispB document is loaded.");
+        if (ImGui::Button("Close")) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+        return;
+    }
+
+    auto const& modules{document_->manifest().modules};
+    auto first_enum_module{std::optional<std::size_t>{}};
+    for (std::size_t index{}; index < modules.size(); ++index) {
+        if (std::holds_alternative<codegen::EnumModuleSchema>(modules[index])) {
+            first_enum_module = index;
+            break;
+        }
+    }
+    if (!first_enum_module.has_value()) {
+        ImGui::TextDisabled("The target has no enum module to receive a new declaration.");
+    } else {
+        if (new_enum_module_index_ >= modules.size() ||
+            !std::holds_alternative<codegen::EnumModuleSchema>(modules[new_enum_module_index_])) {
+            new_enum_module_index_ = *first_enum_module;
+        }
+        auto const& selected_module{
+            std::get<codegen::EnumModuleSchema>(modules[new_enum_module_index_])};
+        if (ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
+            for (std::size_t index{}; index < modules.size(); ++index) {
+                auto const* module{std::get_if<codegen::EnumModuleSchema>(&modules[index])};
+                if (module == nullptr) {
+                    continue;
+                }
+                if (ImGui::Selectable(module->settings.name.c_str(),
+                                      index == new_enum_module_index_)) {
+                    new_enum_module_index_ = index;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::InputText("Name", new_enum_name_.data(), new_enum_name_.size());
+        ImGui::InputText(
+            "Underlying type", new_enum_underlying_type_.data(), new_enum_underlying_type_.size());
+        ImGui::TextDisabled("Use a registered name such as @native_uint8 or a C++ spelling.");
+
+        auto const ready{new_enum_name_.front() != '\0' &&
+                         new_enum_underlying_type_.front() != '\0'};
+        ImGui::BeginDisabled(!ready);
+        if (ImGui::Button("Create")) {
+            auto const& module{
+                std::get<codegen::EnumModuleSchema>(modules[new_enum_module_index_])};
+            auto const name{std::string{new_enum_name_.data()}};
+            auto const identity{
+                TypeIdentity{.origin = TypeOrigin::declaration,
+                             .module_name = module.settings.name,
+                             .namespace_name = module.settings.namespace_name.value_or(""),
+                             .name = name}};
+            auto const id{document_->allocate_declaration_id()};
+            if (apply_document_edit(
+                    CreateEnum{
+                        .declaration = id,
+                        .module_index = new_enum_module_index_,
+                        .schema =
+                            codegen::EnumSchema{
+                                .name = name,
+                                .underlying_type =
+                                    codegen::TypeRef{.name = new_enum_underlying_type_.data(),
+                                                     .suffix = {},
+                                                     .nested = std::nullopt},
+                                .reflection = codegen::EnumReflection::none,
+                                .values = {{.name = "Value0",
+                                            .initializer = "0",
+                                            .display_name = std::nullopt,
+                                            .hidden = false,
+                                            .serialized_name = std::nullopt}},
+                                .enum_array = false,
+                                .count = std::nullopt,
+                                .conversions = {},
+                                .export_specifier = std::nullopt,
+                                .native_api = false,
+                                .unreal_projection = std::nullopt},
+                        .insertion_index = std::nullopt},
+                    identity)) {
+                new_enum_name_.fill('\0');
+                std::snprintf(new_enum_underlying_type_.data(),
+                              new_enum_underlying_type_.size(),
+                              "%s",
+                              "std::uint8_t");
+                selected_enumerator_ = "Value0";
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+    }
+    if (ImGui::Button("Cancel")) {
+        ImGui::CloseCurrentPopup();
+    }
+    if (!schema_edit_message_.empty()) {
+        ImGui::TextWrapped("%s", schema_edit_message_.c_str());
+    }
+    ImGui::EndPopup();
 }
 
 } // namespace ioj::layout_planner

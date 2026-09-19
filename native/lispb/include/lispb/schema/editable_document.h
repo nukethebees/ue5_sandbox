@@ -62,10 +62,33 @@ struct SetEnumeratorName {
     std::string new_name;
 };
 
-using SchemaEditCommand = std::variant<SetEnumeratorDisplayName, SetEnumeratorName>;
+struct CreateEnum {
+    DeclarationId declaration;
+    std::size_t module_index{};
+    codegen::EnumSchema schema;
+    std::optional<std::size_t> insertion_index;
+};
+
+struct ReplaceEnum {
+    DeclarationId declaration;
+    codegen::EnumSchema schema;
+};
+
+struct DeleteEnum {
+    DeclarationId declaration;
+};
+
+using SchemaEditCommand =
+    std::variant<SetEnumeratorDisplayName, SetEnumeratorName, CreateEnum, ReplaceEnum, DeleteEnum>;
 
 struct SchemaEditError {
     std::string message;
+};
+
+struct SchemaSourceUpdate {
+    std::filesystem::path path;
+    std::string original;
+    std::string updated;
 };
 
 class EditableSchemaDocument {
@@ -78,6 +101,8 @@ class EditableSchemaDocument {
     auto declarations() const -> std::span<DeclarationInfo const>;
     auto declaration(DeclarationId id) const -> DeclarationInfo const*;
     auto find_declaration(TypeIdentity const& identity) const -> std::optional<DeclarationId>;
+    auto enum_schema(DeclarationId declaration) const -> codegen::EnumSchema const*;
+    auto allocate_declaration_id() -> DeclarationId;
 
     auto apply(SchemaEditCommand command) -> std::expected<bool, SchemaEditError>;
     auto undo() -> std::expected<bool, SchemaEditError>;
@@ -87,6 +112,9 @@ class EditableSchemaDocument {
     auto dirty() const -> bool;
     auto revision() const -> std::uint64_t;
     void mark_saved();
+    auto preview_source_updates() const
+        -> std::expected<std::vector<SchemaSourceUpdate>, SchemaEditError>;
+    auto save() -> std::expected<std::vector<std::filesystem::path>, SchemaEditError>;
   private:
     friend auto load_editable_schema_document(std::filesystem::path const& types_path,
                                               std::span<std::filesystem::path const> module_paths)
@@ -98,7 +126,9 @@ class EditableSchemaDocument {
     };
 
     explicit EditableSchemaDocument(codegen::Manifest manifest,
-                                    std::vector<SchemaSourceFile> source_files);
+                                    std::vector<SchemaSourceFile> source_files,
+                                    std::filesystem::path types_path = {},
+                                    std::vector<std::filesystem::path> module_paths = {});
 
     void initialize_declarations(std::vector<std::optional<SourceRange>> source_ranges);
     auto execute(SchemaEditCommand const& command)
@@ -107,10 +137,14 @@ class EditableSchemaDocument {
     codegen::Manifest manifest_;
     TypeGraph types_;
     std::vector<SchemaSourceFile> source_files_;
+    std::filesystem::path types_path_;
+    std::vector<std::filesystem::path> module_paths_;
+    std::vector<std::optional<SourceRange>> module_source_ranges_;
     std::vector<DeclarationInfo> declarations_;
     std::vector<HistoryEntry> history_;
     std::size_t history_position_{};
     std::optional<std::size_t> saved_history_position_{0};
+    std::uint64_t next_declaration_id_{1};
     std::uint64_t revision_{};
 };
 

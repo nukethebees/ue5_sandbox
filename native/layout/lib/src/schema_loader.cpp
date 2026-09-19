@@ -1,7 +1,7 @@
 #include <ioj/layout/schema_loader.hpp>
 
-#include <codegen/source_loader.h>
 #include <lispb/project.h>
+#include <lispb/schema/editable_document.h>
 
 #include <exception>
 #include <utility>
@@ -33,8 +33,8 @@ auto load_lispb_schema(std::filesystem::path const& project_path, std::string co
         for (auto const& source : target->sources) {
             sources.push_back(project.root / source);
         }
-        auto const manifest{codegen::load_sources(project.root / target->types, sources)};
-        result.types = lispb::schema::resolve_type_graph(manifest);
+        result.document =
+            lispb::schema::load_editable_schema_document(project.root / target->types, sources);
         result.loaded = true;
     } catch (std::exception const& error) {
         result.diagnostics.push_back({DiagnosticSeverity::error, error.what()});

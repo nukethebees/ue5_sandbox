@@ -45,7 +45,8 @@ auto parse_int_setting(std::string_view const line, std::string_view const prefi
 } // namespace
 
 PlannerUi::PlannerUi(SchemaLoadResult loaded)
-    : workspace_{std::move(loaded.types)}
+    : document_{std::move(loaded.document)}
+    , workspace_{document_.has_value() ? document_->types() : TypeGraph{}}
     , load_diagnostics_{std::move(loaded.diagnostics)} {
     auto const types{workspace_.types().types()};
     auto const found{std::ranges::find_if(types, [](auto const& type) {
@@ -155,6 +156,8 @@ auto PlannerUi::draw() -> bool {
     draw_variants_panel();
     refresh_analysis();
     draw_comparison_panel();
+    draw_new_enum_dialog();
+    draw_source_preview();
     return view_changed || revision_before != workspace_.revision();
 }
 
@@ -163,6 +166,7 @@ auto PlannerUi::draw_view_menu() -> bool {
     if (!ImGui::BeginMainMenuBar()) {
         return false;
     }
+    changed |= draw_file_menu();
     if (ImGui::BeginMenu("View")) {
         auto percentage{text_scale_ * 100.0F};
         if (ImGui::SliderFloat("Text size", &percentage, 75.0F, 175.0F, "%.0f%%")) {
@@ -181,8 +185,139 @@ auto PlannerUi::draw_view_menu() -> bool {
         }
         ImGui::EndMenu();
     }
+    if (document_.has_value() && document_->dirty()) {
+        ImGui::SameLine();
+        ImGui::TextColored({0.95F, 0.72F, 0.25F, 1.0F}, "Unsaved LispB changes");
+    }
     ImGui::EndMainMenuBar();
     return changed;
+}
+
+auto PlannerUi::draw_file_menu() -> bool {
+    bool changed{};
+    if (!ImGui::BeginMenu("File")) {
+        return false;
+    }
+    auto const has_document{document_.has_value()};
+    ImGui::BeginDisabled(!has_document || !document_->can_undo());
+    if (ImGui::MenuItem("Undo")) {
+        auto const selection{selected_type_.transform(
+            [&](TypeId const type) { return workspace_.types().type(type).identity; })};
+        auto result{document_->undo()};
+        if (result.has_value() && *result) {
+            sync_document_graph(selection);
+            changed = true;
+        } else if (!result.has_value()) {
+            schema_edit_message_ = result.error().message;
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::BeginDisabled(!has_document || !document_->can_redo());
+    if (ImGui::MenuItem("Redo")) {
+        auto const selection{selected_type_.transform(
+            [&](TypeId const type) { return workspace_.types().type(type).identity; })};
+        auto result{document_->redo()};
+        if (result.has_value() && *result) {
+            sync_document_graph(selection);
+            changed = true;
+        } else if (!result.has_value()) {
+            schema_edit_message_ = result.error().message;
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::Separator();
+    ImGui::BeginDisabled(!has_document || !document_->dirty());
+    if (ImGui::MenuItem("Preview LispB changes")) {
+        open_source_preview_ = true;
+    }
+    if (ImGui::MenuItem("Save LispB changes")) {
+        auto const selection{selected_type_.transform(
+            [&](TypeId const type) { return workspace_.types().type(type).identity; })};
+        auto result{document_->save()};
+        if (result.has_value()) {
+            sync_document_graph(selection);
+            schema_edit_message_ =
+                "Saved and reloaded " + std::to_string(result->size()) + " LispB source file(s).";
+            changed = true;
+        } else {
+            schema_edit_message_ = result.error().message;
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::EndMenu();
+
+    return changed;
+}
+
+void PlannerUi::draw_source_preview() {
+    if (open_source_preview_) {
+        ImGui::OpenPopup("LispB source preview");
+        open_source_preview_ = false;
+    }
+    if (!ImGui::BeginPopupModal(
+            "LispB source preview", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        return;
+    }
+    auto updates{document_->preview_source_updates()};
+    if (!updates.has_value()) {
+        ImGui::TextWrapped("%s", updates.error().message.c_str());
+    } else {
+        for (auto const& update : *updates) {
+            ImGui::SeparatorText(update.path.string().c_str());
+            if (ImGui::BeginTabBar(update.path.string().c_str())) {
+                if (ImGui::BeginTabItem("Updated")) {
+                    ImGui::BeginChild("updated-source", {760.0F, 360.0F}, true);
+                    ImGui::TextUnformatted(update.updated.c_str());
+                    ImGui::EndChild();
+                    ImGui::EndTabItem();
+                }
+                if (ImGui::BeginTabItem("Original")) {
+                    ImGui::BeginChild("original-source", {760.0F, 360.0F}, true);
+                    ImGui::TextUnformatted(update.original.c_str());
+                    ImGui::EndChild();
+                    ImGui::EndTabItem();
+                }
+                ImGui::EndTabBar();
+            }
+        }
+    }
+    if (ImGui::Button("Close")) {
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
+}
+
+auto PlannerUi::apply_document_edit(SchemaEditCommand command,
+                                    std::optional<TypeIdentity> selection) -> bool {
+    if (!document_.has_value()) {
+        schema_edit_message_ = "No editable LispB document is loaded.";
+        return false;
+    }
+    if (!selection.has_value() && selected_type_.has_value()) {
+        selection = workspace_.types().type(*selected_type_).identity;
+    }
+    auto result{document_->apply(std::move(command))};
+    if (!result.has_value()) {
+        schema_edit_message_ = result.error().message;
+        return false;
+    }
+    if (!*result) {
+        return false;
+    }
+    schema_edit_message_.clear();
+    sync_document_graph(std::move(selection));
+    return true;
+}
+
+void PlannerUi::sync_document_graph(std::optional<TypeIdentity> selection) {
+    workspace_.replace_types(document_->types());
+    selected_type_.reset();
+    if (selection.has_value()) {
+        selected_type_ = workspace_.types().find(*selection);
+    }
+    selected_field_.clear();
+    packed_dragged_divider_.reset();
+    packed_dragged_variant_id_.reset();
 }
 
 void PlannerUi::setup_default_dock_layout(unsigned int const dockspace_id) {
