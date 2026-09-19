@@ -16,15 +16,23 @@ struct ProcessResult {
     bool timed_out{};
 };
 
+struct ProcessIdentity {
+    std::uint32_t process_id{};
+    std::uint64_t creation_time{};
+};
+
 class Supervisor {
   public:
     using Output = std::function<void(std::string const&, std::string const&)>;
     using Health = std::function<void(JobHealth, std::string)>;
+    using Started = std::function<std::expected<void, Error>(ProcessIdentity)>;
 
     Supervisor() = default;
     Supervisor(Supervisor const&) = delete;
     auto operator=(Supervisor const&) -> Supervisor& = delete;
     ~Supervisor();
+
+    void set_started_callback(Started callback);
 
     [[nodiscard]] auto run(Command const& command,
                            std::optional<std::chrono::milliseconds> timeout,
@@ -39,6 +47,7 @@ class Supervisor {
         return output_stop_.get_token();
     }
     [[nodiscard]] auto contains_process(std::uint32_t process_id) -> bool;
+    [[nodiscard]] auto has_active_processes() -> bool;
   private:
     void terminate(bool killed);
 
@@ -48,5 +57,6 @@ class Supervisor {
     bool cancellation_requested_{};
     bool kill_requested_{};
     int termination_exit_code_{};
+    Started started_;
 };
 }

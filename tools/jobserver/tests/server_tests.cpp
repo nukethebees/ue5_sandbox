@@ -80,6 +80,20 @@ class TestEnvironmentValue {
     bool had_previous_{};
 };
 
+class TestCurrentPath {
+  public:
+    explicit TestCurrentPath(std::filesystem::path const& path)
+        : previous_{std::filesystem::current_path()} {
+        std::filesystem::current_path(path);
+    }
+    ~TestCurrentPath() { std::filesystem::current_path(previous_); }
+
+    TestCurrentPath(TestCurrentPath const&) = delete;
+    auto operator=(TestCurrentPath const&) -> TestCurrentPath& = delete;
+  private:
+    std::filesystem::path previous_;
+};
+
 struct TestPipes {
     std::vector<HANDLE> handles;
     ~TestPipes() {
@@ -485,6 +499,20 @@ auto wait_for_file(std::filesystem::path const& path, std::chrono::milliseconds 
     return false;
 }
 
+auto read_process_id(std::filesystem::path const& path, std::chrono::milliseconds const timeout)
+    -> std::optional<std::uint32_t> {
+    auto const deadline{std::chrono::steady_clock::now() + timeout};
+    while (std::chrono::steady_clock::now() < deadline) {
+        std::ifstream input{path};
+        std::uint32_t process_id{};
+        if (input >> process_id; process_id != 0) {
+            return process_id;
+        }
+        std::this_thread::sleep_for(10ms);
+    }
+    return std::nullopt;
+}
+
 class JobserverIntegration : public ::testing::Test {
   protected:
     static void SetUpTestSuite() {
@@ -622,6 +650,111 @@ TEST_F(JobserverIntegration, PingConfirmsResponsiveControlPlane) {
     EXPECT_GE(daemon.value("last_audit_ms", 0LL), 1);
     EXPECT_GE(daemon.value("active_handlers", 0U), 1U);
     EXPECT_EQ(daemon.value("protocol_major", 0), jobserver::protocol::major_version);
+}
+
+TEST_F(JobserverIntegration, ExplicitOwnershipAuthorizesOnlyTheCurrentWorktreeAndKillsDescendants) {
+    auto const owner_worktree{data_path_ / "ownership-owner"};
+    auto const other_worktree{data_path_ / "ownership-other"};
+    std::filesystem::create_directories(owner_worktree);
+    std::filesystem::create_directories(other_worktree);
+    auto const owner_root_ready{data_path_ / "ownership-owner-root.txt"};
+    auto const owner_child_ready{data_path_ / "ownership-owner-child.txt"};
+    auto const other_root_ready{data_path_ / "ownership-other-root.txt"};
+    auto const other_child_ready{data_path_ / "ownership-other-child.txt"};
+
+    auto owner_request{submit_request(
+        "owned process group",
+        {},
+        {"ready-tree", owner_root_ready.string(), owner_child_ready.string(), "20000"})};
+    owner_request.metadata.worktree = owner_worktree;
+    auto other_request{submit_request(
+        "other process group",
+        {},
+        {"ready-tree", other_root_ready.string(), other_child_ready.string(), "20000"})};
+    other_request.metadata.worktree = other_worktree;
+    auto owner_result{std::async(std::launch::async, [request = std::move(owner_request)] {
+        return jobserver::Client::run(request, [](std::string const&, std::string const&) {});
+    })};
+    auto other_result{std::async(std::launch::async, [request = std::move(other_request)] {
+        return jobserver::Client::run(request, [](std::string const&, std::string const&) {});
+    })};
+
+    auto const owner_child_id{read_process_id(owner_child_ready, 3s)};
+    auto const other_child_id{read_process_id(other_child_ready, 3s)};
+    ASSERT_TRUE(owner_child_id.has_value());
+    ASSERT_TRUE(other_child_id.has_value());
+    ASSERT_TRUE(std::filesystem::exists(data_path_ / "active-processes.json"));
+    auto owner_child{observe_process(*owner_child_id)};
+    auto other_child{observe_process(*other_child_id)};
+    ASSERT_NE(owner_child.process, nullptr);
+    ASSERT_NE(other_child.process, nullptr);
+
+    {
+        TestCurrentPath const owner_path{owner_worktree};
+        auto owner{jobserver::Client::process_owner(*owner_child_id)};
+        ASSERT_TRUE(owner.has_value()) << owner.error().code << ": " << owner.error().message;
+        auto const owner_json = Json::parse(*owner);
+        EXPECT_TRUE(owner_json.value("safe_kill", false));
+        EXPECT_EQ(owner_json.value("worktree", ""), jobserver::path_to_utf8(owner_worktree));
+
+        auto other{jobserver::Client::process_owner(*other_child_id)};
+        ASSERT_TRUE(other.has_value()) << other.error().code << ": " << other.error().message;
+        EXPECT_FALSE(Json::parse(*other).value("safe_kill", true));
+
+        auto owned{jobserver::Client::processes(true)};
+        ASSERT_TRUE(owned.has_value()) << owned.error().code << ": " << owned.error().message;
+        auto const groups = Json::parse(*owned).value("groups", Json::array());
+        ASSERT_EQ(groups.size(), 1U);
+        EXPECT_EQ(groups.front().value("name", ""), "owned process group");
+
+        auto killed{jobserver::Client::kill_owned()};
+        ASSERT_TRUE(killed.has_value()) << killed.error().code << ": " << killed.error().message;
+        auto const cleanup = Json::parse(*killed);
+        ASSERT_EQ(cleanup.value("killed", Json::array()).size(), 1U);
+        ASSERT_EQ(cleanup.value("refused", Json::array()).size(), 1U);
+    }
+
+    ASSERT_TRUE(wait_for_exit(owner_child, 3s).has_value());
+    ASSERT_EQ(owner_result.wait_for(6s), std::future_status::ready);
+    auto const owner_exit{owner_result.get()};
+    ASSERT_TRUE(owner_exit.has_value());
+    EXPECT_EQ(*owner_exit, 137);
+    EXPECT_EQ(WaitForSingleObject(other_child.process, 0), WAIT_TIMEOUT);
+
+    {
+        TestCurrentPath const other_path{other_worktree};
+        auto killed{jobserver::Client::kill_owned()};
+        ASSERT_TRUE(killed.has_value());
+        EXPECT_EQ(Json::parse(*killed).value("killed", Json::array()).size(), 1U);
+    }
+    ASSERT_TRUE(wait_for_exit(other_child, 3s).has_value());
+    ASSERT_EQ(other_result.wait_for(6s), std::future_status::ready);
+    auto const other_exit{other_result.get()};
+    ASSERT_TRUE(other_exit.has_value());
+    EXPECT_EQ(*other_exit, 137);
+    close(owner_child);
+    close(other_child);
+}
+
+TEST_F(JobserverIntegration, UnknownAndRecoveredOwnershipRecordsAreNeverSafeToKill) {
+    auto unknown{jobserver::Client::process_owner(GetCurrentProcessId())};
+    ASSERT_TRUE(unknown.has_value()) << unknown.error().code << ": " << unknown.error().message;
+    EXPECT_FALSE(Json::parse(*unknown).value("safe_kill", true));
+
+    stop_daemon();
+    {
+        auto records_json = Json::object();
+        records_json["groups"] = Json::array();
+        records_json["groups"].push_back({{"job_id", "stale"},
+                                          {"root_pid", GetCurrentProcessId()},
+                                          {"root_creation_time", 1ULL}});
+        std::ofstream records{data_path_ / "active-processes.json", std::ios::trunc};
+        records << records_json.dump();
+    }
+    start_daemon();
+    auto stale{jobserver::Client::process_owner(GetCurrentProcessId())};
+    ASSERT_TRUE(stale.has_value()) << stale.error().code << ": " << stale.error().message;
+    EXPECT_FALSE(Json::parse(*stale).value("safe_kill", true));
 }
 
 TEST_F(JobserverIntegration, RecoveryRefusesResponsiveDaemon) {

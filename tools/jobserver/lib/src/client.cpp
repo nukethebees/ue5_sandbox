@@ -274,6 +274,32 @@ auto connect_pipe(bool const control = false) -> std::expected<void*, Error> {
     });
 }
 
+auto control_request(Json const& request, std::string_view const expected_type)
+    -> std::expected<std::string, Error> {
+    auto handle{connect_pipe(true)};
+    if (!handle) {
+        return std::unexpected(handle.error());
+    }
+    auto const sent{transport::write_message(*handle, request.dump(), control_timeout())};
+    if (!sent) {
+        close_handle(*handle);
+        return std::unexpected(sent.error());
+    }
+    auto response{transport::read_message(*handle, control_timeout())};
+    close_handle(*handle);
+    if (!response) {
+        return std::unexpected(response.error());
+    }
+    auto const parsed = Json::parse(*response, nullptr, false);
+    if (!parsed.is_object() || parsed.value("type", "") != expected_type) {
+        return std::unexpected(Error{
+            parsed.is_object() ? parsed.value("code", "invalid_response") : "invalid_response",
+            parsed.is_object() ? parsed.value("message", "Invalid jobserver response")
+                               : "Invalid jobserver response"});
+    }
+    return response;
+}
+
 auto claims_json(std::vector<ResourceClaim> const& claims) -> Json {
     auto result = Json::array();
     for (auto const& claim : claims) {
@@ -563,6 +589,33 @@ auto Client::status(bool const include_history) -> std::expected<std::string, Er
         }
     }
     return response;
+}
+
+auto Client::processes(bool const owned, std::optional<std::filesystem::path> worktree)
+    -> std::expected<std::string, Error> {
+    auto request = Json{{"type", "processes"},
+                        {"owned", owned},
+                        {"owner_worktree", path_to_utf8(std::filesystem::current_path())}};
+    if (worktree) {
+        request["worktree"] = path_to_utf8(std::filesystem::absolute(*worktree));
+    }
+    return control_request(request, "processes");
+}
+
+auto Client::process_owner(std::uint32_t const process_id) -> std::expected<std::string, Error> {
+    return control_request(Json{{"type", "process_owner"},
+                                {"pid", process_id},
+                                {"owner_worktree", path_to_utf8(std::filesystem::current_path())}},
+                           "process_owner");
+}
+
+auto Client::kill_owned(std::optional<std::string> kind) -> std::expected<std::string, Error> {
+    auto request = Json{{"type", "kill_owned"},
+                        {"owner_worktree", path_to_utf8(std::filesystem::current_path())}};
+    if (kind) {
+        request["kind"] = *kind;
+    }
+    return control_request(request, "kill_owned");
 }
 
 auto Client::ping() -> std::expected<void, Error> {
