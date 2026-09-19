@@ -1,7 +1,7 @@
 #include "application.hpp"
 
-#include "planner_ui.hpp"
-#include "sdl_headers.hpp"
+#include "gui/planner_ui.hpp"
+#include "platform/sdl_headers.hpp"
 
 #include <ioj/layout/frame_pacer.hpp>
 
