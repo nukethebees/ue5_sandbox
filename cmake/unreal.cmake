@@ -3,8 +3,12 @@ include("${CMAKE_CURRENT_LIST_DIR}/unreal_arguments.cmake")
 
 function(add_unreal_target target_name unreal_target)
   set(unreal_target_arguments)
+  set(unreal_target_dependencies)
   if(unreal_target STREQUAL "SandboxEditor")
     list(APPEND unreal_target_arguments --verify-editor-modules)
+  endif()
+  if(TARGET sandbox-unreal-build-tools-preflight)
+    list(APPEND unreal_target_dependencies sandbox-unreal-build-tools-preflight)
   endif()
 
   add_custom_target(${target_name}
@@ -19,7 +23,7 @@ function(add_unreal_target target_name unreal_target)
       ${unreal_target_arguments}
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     COMMENT "Building ${unreal_target} ${UE_PLATFORM} ${UE_CONFIGURATION} through UnrealBuildTool"
-    DEPENDS sandbox-unreal-build-tools-preflight
+    DEPENDS ${unreal_target_dependencies}
     USES_TERMINAL
     VERBATIM
   )
