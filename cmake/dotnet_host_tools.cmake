@@ -17,10 +17,9 @@ function(sandbox_add_dotnet_host_tool target_name output_variable project_file)
 
   find_program(SANDBOX_DOTNET_EXECUTABLE NAMES dotnet REQUIRED)
 
-  file(GLOB_RECURSE project_sources CONFIGURE_DEPENDS
+  file(GLOB project_sources CONFIGURE_DEPENDS
     "${project_directory}/*.cs"
   )
-  list(FILTER project_sources EXCLUDE REGEX "[/\\\\](obj|bin)[/\\\\]")
 
   set(output_directory
     "${CMAKE_BINARY_DIR}/host-tools/${tool_name}/${dotnet_configuration}"

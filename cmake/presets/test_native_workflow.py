@@ -48,6 +48,7 @@ class NativeWorkflowTests(unittest.TestCase):
         )
 
     def test_native_target_dry_run_has_no_unreal_dependency(self) -> None:
+        generated_sources = self.create_generated_source_sentinels()
         with tempfile.TemporaryDirectory(
             prefix="sandbox native workflow "
         ) as temporary_root:
@@ -102,6 +103,27 @@ class NativeWorkflowTests(unittest.TestCase):
                 (native_binary_tools_directory / "bin").as_posix(),
                 normalized_build_ninja,
             )
+            for generated_source in generated_sources:
+                self.assertNotIn(generated_source.as_posix(), normalized_build_ninja)
+
+    def create_generated_source_sentinels(self) -> tuple[Path, ...]:
+        native_binary_tools_directory = self.source_dir / "tools" / "NativeBinaryTools"
+        generated_sources = (
+            native_binary_tools_directory / "obj" / "cmake-native-workflow-test" / "Ignored.cs",
+            native_binary_tools_directory / "bin" / "cmake-native-workflow-test" / "Ignored.cs",
+        )
+        for generated_source in generated_sources:
+            generated_source.parent.mkdir(parents=True, exist_ok=True)
+            generated_source.write_text("// CMake source-discovery sentinel.\n", encoding="utf-8")
+
+        self.addCleanup(self.remove_generated_source_sentinels, generated_sources)
+        return generated_sources
+
+    @staticmethod
+    def remove_generated_source_sentinels(generated_sources: tuple[Path, ...]) -> None:
+        for generated_source in generated_sources:
+            generated_source.unlink(missing_ok=True)
+            generated_source.parent.rmdir()
 
     def run_cmake(self, *arguments: str) -> str:
         result = subprocess.run(
