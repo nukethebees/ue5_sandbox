@@ -263,6 +263,24 @@ def make_unreal_document() -> dict[str, Any]:
 
     build_presets: list[dict[str, Any]] = [
         {
+            "name": "generate-worktree-code-debug-game",
+            "configurePreset": "debug-game",
+            "targets": [
+                "generate-code",
+                "generate-codegen-compile-fixture",
+                "generate-slate-code",
+            ],
+        },
+        {
+            "name": "generate-worktree-code-development",
+            "configurePreset": "development",
+            "targets": [
+                "generate-code",
+                "generate-codegen-compile-fixture",
+                "generate-slate-code",
+            ],
+        },
+        {
             "name": "worktree-dependencies-debug-game",
             "configurePreset": "debug-game",
             "targets": ["worktree-dependencies"],
@@ -414,6 +432,7 @@ def make_unreal_document() -> dict[str, Any]:
             "description": "Build DebugGame dependencies, import optional audio, and generate project files",
             "steps": [
                 {"type": "configure", "name": "debug-game"},
+                {"type": "build", "name": "generate-worktree-code-debug-game"},
                 {"type": "build", "name": "worktree-dependencies-debug-game"},
                 {"type": "build", "name": "import-game-audio"},
                 {"type": "build", "name": "generate-project-files"},
@@ -425,6 +444,7 @@ def make_unreal_document() -> dict[str, Any]:
             "description": "Build non-Unreal Development dependencies and generate project files",
             "steps": [
                 {"type": "configure", "name": "development"},
+                {"type": "build", "name": "generate-worktree-code-development"},
                 {"type": "build", "name": "worktree-dependencies-development"},
                 {"type": "build", "name": "generate-project-files-development"},
             ],

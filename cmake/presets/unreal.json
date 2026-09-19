@@ -132,6 +132,24 @@
   ],
   "buildPresets": [
     {
+      "name": "generate-worktree-code-debug-game",
+      "configurePreset": "debug-game",
+      "targets": [
+        "generate-code",
+        "generate-codegen-compile-fixture",
+        "generate-slate-code"
+      ]
+    },
+    {
+      "name": "generate-worktree-code-development",
+      "configurePreset": "development",
+      "targets": [
+        "generate-code",
+        "generate-codegen-compile-fixture",
+        "generate-slate-code"
+      ]
+    },
+    {
       "name": "worktree-dependencies-debug-game",
       "configurePreset": "debug-game",
       "targets": [
@@ -472,6 +490,10 @@
         },
         {
           "type": "build",
+          "name": "generate-worktree-code-debug-game"
+        },
+        {
+          "type": "build",
           "name": "worktree-dependencies-debug-game"
         },
         {
@@ -492,6 +514,10 @@
         {
           "type": "configure",
           "name": "development"
+        },
+        {
+          "type": "build",
+          "name": "generate-worktree-code-development"
         },
         {
           "type": "build",

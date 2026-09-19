@@ -17,8 +17,64 @@ function Invoke-JobserverWorkflow {
         throw "The per-user jobserver is not installed. Run 'csetup' first."
     }
 
+    $log_directory = Join-Path $script:dev_project_root '.local\logs'
+    New-Item -ItemType Directory -Path $log_directory -Force | Out-Null
+    $log_path = Join-Path $log_directory "cmake-workflow-$Preset.log"
+
     Write-Host $Name
-    & cmake --workflow --preset $Preset
+    & cmake --workflow --preset $Preset 2>&1 | Tee-Object -FilePath $log_path | Out-Host
+    $exit_code = $LASTEXITCODE
+
+    [PSCustomObject]@{
+        ExitCode = $exit_code
+        LogPath = $log_path
+    }
+}
+
+function Get-WorkflowFailureMessage {
+    param(
+        [Parameter(Mandatory)]
+        [string]$workflow,
+        [Parameter(Mandatory)]
+        [int]$exit_code,
+        [Parameter(Mandatory)]
+        [string]$log_path
+    )
+
+    $tail = if (Test-Path -LiteralPath $log_path -PathType Leaf) {
+        (Get-Content -LiteralPath $log_path -Tail 25) -join [Environment]::NewLine
+    } else {
+        'No CMake workflow log was written.'
+    }
+
+    "CMake workflow '$workflow' exited with code $exit_code.`n" +
+    "Last CMake output:`n$tail`n" +
+    "Full workflow output: $log_path"
+}
+
+function Write-GeneratedSourceWarning {
+    param(
+        [Parameter(Mandatory)]
+        [string]$log_path
+    )
+
+    if (-not (Test-Path -LiteralPath $log_path -PathType Leaf)) {
+        return
+    }
+
+    $updated_files = @(
+        Select-String -LiteralPath $log_path -Pattern '^(?:Updated|Wrote) (?<path>.+)$' |
+        ForEach-Object { $_.Matches[0].Groups['path'].Value } |
+        Select-Object -Unique
+    )
+    if ($updated_files.Count -eq 0) {
+        return
+    }
+
+    $message = "Generated committed source files were updated. Review and commit them:`n" +
+        ($updated_files | ForEach-Object { "  $_" } | Join-String -Separator [Environment]::NewLine)
+    Add-Content -LiteralPath $log_path -Value "`nWARNING: $message"
+    Write-Warning $message
 }
 
 function Update-WorktreeSubmodules {
@@ -257,12 +313,15 @@ function cbuild {
     try {
         foreach ($current_configuration in $configuration) {
             Write-Host "Building the project with CMake workflow '$current_configuration'."
-            Invoke-JobserverWorkflow `
+            $workflow_result = Invoke-JobserverWorkflow `
                 -Name "CMake workflow: $current_configuration" `
                 -Preset $current_configuration
 
-            if ($LASTEXITCODE -ne 0) {
-                throw "CMake workflow '$current_configuration' exited with code $LASTEXITCODE."
+            if ($workflow_result.ExitCode -ne 0) {
+                throw (Get-WorkflowFailureMessage `
+                    -workflow $current_configuration `
+                    -exit_code $workflow_result.ExitCode `
+                    -log_path $workflow_result.LogPath)
             }
         }
     } finally {
@@ -350,13 +409,18 @@ function csetup {
         foreach ($current_configuration in $configurations) {
             $workflow = "setup-worktree-$current_configuration"
             Write-Host "Preparing worktree with CMake workflow '$workflow'."
-            Invoke-JobserverWorkflow `
+            $workflow_result = Invoke-JobserverWorkflow `
                 -Name "CMake setup workflow: $current_configuration" `
                 -Preset $workflow
 
-            if ($LASTEXITCODE -ne 0) {
-                throw "CMake workflow '$workflow' exited with code $LASTEXITCODE."
+            if ($workflow_result.ExitCode -ne 0) {
+                throw (Get-WorkflowFailureMessage `
+                    -workflow $workflow `
+                    -exit_code $workflow_result.ExitCode `
+                    -log_path $workflow_result.LogPath)
             }
+
+            Write-GeneratedSourceWarning -log_path $workflow_result.LogPath
         }
     } finally {
         Pop-Location

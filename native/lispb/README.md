@@ -151,3 +151,7 @@ untouched:
 cmake --build --preset debug-game --target generate-codegen-compile-fixture
 cmake --build --preset debug-game --target check-generated-codegen-compile-fixture
 ```
+
+The DebugGame and Development worktree-setup workflows regenerate committed C++ and Slate outputs
+before checking them. When this changes files, `csetup` prints a warning and records the affected
+paths in its workflow log so they can be reviewed and committed.
