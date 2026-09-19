@@ -43,6 +43,7 @@ class PlannerUi {
     static void settings_write_all(ImGuiContext* context,
                                    ImGuiSettingsHandler* handler,
                                    ImGuiTextBuffer* output);
+    void validate_comparison_variants();
     void setup_default_dock_layout(unsigned int dockspace_id);
     auto draw_view_menu() -> bool;
     void refresh_analysis();
@@ -69,21 +70,30 @@ class PlannerUi {
 
     std::uint64_t cached_revision_{};
     std::optional<lispb::schema::TypeId> cached_type_;
+    std::uint64_t cached_comparison_a_variant_id_{std::numeric_limits<std::uint64_t>::max()};
+    std::uint64_t cached_comparison_b_variant_id_{std::numeric_limits<std::uint64_t>::max()};
     std::optional<layout::PackedAnalysis> baseline_packed_;
     std::optional<layout::PackedAnalysis> active_packed_;
     std::optional<layout::SoaAnalysis> baseline_soa_;
     std::optional<layout::SoaAnalysis> active_soa_;
+    std::optional<layout::PackedAnalysis> comparison_a_packed_;
+    std::optional<layout::PackedAnalysis> comparison_b_packed_;
+    std::optional<layout::SoaAnalysis> comparison_a_soa_;
+    std::optional<layout::SoaAnalysis> comparison_b_soa_;
 
     std::array<char, 128> variant_name_{};
     std::array<char, 128> schema_filter_{};
     std::optional<std::size_t> packed_dragged_divider_;
     std::uint64_t variant_name_id_{std::numeric_limits<std::uint64_t>::max()};
     std::uint64_t next_variant_number_{1};
+    std::uint64_t comparison_a_variant_id_{layout::LayoutWorkspace::baseline_variant_id};
+    std::uint64_t comparison_b_variant_id_{layout::LayoutWorkspace::baseline_variant_id};
     float text_scale_{1.0F};
     std::optional<int> window_width_;
     std::optional<int> window_height_;
     bool dock_layout_initialized_{};
     bool reset_dock_layout_requested_{};
+    bool comparison_b_follows_active_{true};
 };
 
 } // namespace ioj::layout_planner

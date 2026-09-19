@@ -5,6 +5,7 @@
 #include <imgui.h>
 
 #include <string>
+#include <utility>
 
 namespace ioj::layout_planner {
 namespace {
@@ -52,52 +53,112 @@ auto column_by_name(layout::SoaAnalysis const& analysis, std::string const& name
 void PlannerUi::draw_comparison_panel() {
     ImGui::Begin("Comparison");
     ImGui::TextDisabled("ABI profile: %s", abi_.name().c_str());
-    if (workspace_.active_variant_id() == LayoutWorkspace::baseline_variant_id) {
-        ImGui::TextDisabled(
-            "Baseline is selected. Create an experiment to compare a planning change.");
+
+    auto draw_variant_selector = [&](char const* id, std::uint64_t& selected_id) {
+        auto changed{false};
+        auto const* selected{workspace_.variant(selected_id)};
+        ImGui::SetNextItemWidth(-1.0F);
+        ImGui::PushID(id);
+        if (ImGui::BeginCombo("##variant", selected->name.c_str())) {
+            for (auto const& variant : workspace_.variants()) {
+                auto const is_selected{variant.id == selected_id};
+                if (ImGui::Selectable(variant.name.c_str(), is_selected)) {
+                    selected_id = variant.id;
+                    changed = true;
+                }
+                if (is_selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::PopID();
+        return changed;
+    };
+
+    auto selection_changed{false};
+    if (ImGui::BeginTable("comparison-variants",
+                          2,
+                          ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoSavedSettings)) {
+        ImGui::TableNextColumn();
+        ImGui::TextUnformatted("A");
+        selection_changed |= draw_variant_selector("comparison-a", comparison_a_variant_id_);
+        ImGui::TableNextColumn();
+        ImGui::TextUnformatted("B");
+        if (draw_variant_selector("comparison-b", comparison_b_variant_id_)) {
+            comparison_b_follows_active_ = false;
+            selection_changed = true;
+        }
+        ImGui::TableNextColumn();
+        if (ImGui::Button("Swap A / B", {-1.0F, 0.0F})) {
+            std::swap(comparison_a_variant_id_, comparison_b_variant_id_);
+            comparison_b_follows_active_ = false;
+            selection_changed = true;
+        }
+        ImGui::TableNextColumn();
+        ImGui::BeginDisabled(comparison_b_follows_active_ &&
+                             comparison_b_variant_id_ == workspace_.active_variant_id());
+        if (ImGui::Button("Use active variant for B", {-1.0F, 0.0F})) {
+            comparison_b_variant_id_ = workspace_.active_variant_id();
+            comparison_b_follows_active_ = true;
+            selection_changed = true;
+        }
+        ImGui::EndDisabled();
+        ImGui::EndTable();
+    }
+    if (comparison_b_follows_active_) {
+        ImGui::TextDisabled("B follows the active editing variant.");
+    }
+    if (selection_changed) {
+        refresh_analysis();
     }
 
-    if (baseline_packed_.has_value() && active_packed_.has_value()) {
+    auto const& comparison_a{*workspace_.variant(comparison_a_variant_id_)};
+    auto const& comparison_b{*workspace_.variant(comparison_b_variant_id_)};
+
+    if (comparison_a_packed_.has_value() && comparison_b_packed_.has_value()) {
         if (ImGui::BeginTable("packed-comparison",
                               4,
                               ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                   ImGuiTableFlags_Resizable)) {
             ImGui::TableSetupColumn("Fact");
-            ImGui::TableSetupColumn("Baseline");
-            ImGui::TableSetupColumn("Variant");
+            ImGui::TableSetupColumn(comparison_a.name.c_str());
+            ImGui::TableSetupColumn(comparison_b.name.c_str());
             ImGui::TableSetupColumn("Difference");
             ImGui::TableHeadersRow();
-            comparison_row(
-                "Storage type", baseline_packed_->storage_type, active_packed_->storage_type);
+            comparison_row("Storage type",
+                           comparison_a_packed_->storage_type,
+                           comparison_b_packed_->storage_type);
             comparison_row(
                 "Storage bytes",
-                detail::format_bytes(baseline_packed_->storage_facts.transform(
+                detail::format_bytes(comparison_a_packed_->storage_facts.transform(
                     [](layout::TypeFacts const& facts) { return facts.size_bytes; })),
-                detail::format_bytes(active_packed_->storage_facts.transform(
+                detail::format_bytes(comparison_b_packed_->storage_facts.transform(
                     [](layout::TypeFacts const& facts) { return facts.size_bytes; })),
                 detail::format_delta_bytes(layout::numeric_delta(
-                    baseline_packed_->storage_facts.transform(
+                    comparison_a_packed_->storage_facts.transform(
                         [](layout::TypeFacts const& facts) { return facts.size_bytes; }),
-                    active_packed_->storage_facts.transform(
+                    comparison_b_packed_->storage_facts.transform(
                         [](layout::TypeFacts const& facts) { return facts.size_bytes; }))));
-            comparison_row("Storage bits",
-                           detail::format_number(baseline_packed_->storage_bits),
-                           detail::format_number(active_packed_->storage_bits),
-                           detail::format_delta_number(layout::numeric_delta(
-                               baseline_packed_->storage_bits, active_packed_->storage_bits)));
+            comparison_row(
+                "Storage bits",
+                detail::format_number(comparison_a_packed_->storage_bits),
+                detail::format_number(comparison_b_packed_->storage_bits),
+                detail::format_delta_number(layout::numeric_delta(
+                    comparison_a_packed_->storage_bits, comparison_b_packed_->storage_bits)));
             comparison_row("Bits used",
-                           detail::format_number(baseline_packed_->bits_used),
-                           detail::format_number(active_packed_->bits_used),
+                           detail::format_number(comparison_a_packed_->bits_used),
+                           detail::format_number(comparison_b_packed_->bits_used),
                            detail::format_delta_number(layout::numeric_delta(
-                               baseline_packed_->bits_used, active_packed_->bits_used)));
+                               comparison_a_packed_->bits_used, comparison_b_packed_->bits_used)));
             comparison_row("Unused bits",
-                           detail::format_number(baseline_packed_->unused_bits),
-                           detail::format_number(active_packed_->unused_bits));
+                           detail::format_number(comparison_a_packed_->unused_bits),
+                           detail::format_number(comparison_b_packed_->unused_bits));
             comparison_row("Overflow bits",
-                           detail::format_number(baseline_packed_->overflow_bits),
-                           detail::format_number(active_packed_->overflow_bits));
-            for (auto const& baseline : baseline_packed_->fields) {
-                auto const* active{field_by_name(*active_packed_, baseline.name)};
+                           detail::format_number(comparison_a_packed_->overflow_bits),
+                           detail::format_number(comparison_b_packed_->overflow_bits));
+            for (auto const& baseline : comparison_a_packed_->fields) {
+                auto const* active{field_by_name(*comparison_b_packed_, baseline.name)};
                 if (active == nullptr) {
                     continue;
                 }
@@ -123,36 +184,36 @@ void PlannerUi::draw_comparison_panel() {
             }
             ImGui::EndTable();
         }
-        draw_diagnostics(active_packed_->diagnostics);
-    } else if (baseline_soa_.has_value() && active_soa_.has_value()) {
+        draw_diagnostics(comparison_b_packed_->diagnostics);
+    } else if (comparison_a_soa_.has_value() && comparison_b_soa_.has_value()) {
         if (ImGui::BeginTable("soa-comparison",
                               4,
                               ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                   ImGuiTableFlags_Resizable)) {
             ImGui::TableSetupColumn("Fact");
-            ImGui::TableSetupColumn("Baseline");
-            ImGui::TableSetupColumn("Variant");
+            ImGui::TableSetupColumn(comparison_a.name.c_str());
+            ImGui::TableSetupColumn(comparison_b.name.c_str());
             ImGui::TableSetupColumn("Difference");
             ImGui::TableHeadersRow();
             comparison_row("Capacity",
-                           std::to_string(baseline_soa_->capacity),
-                           std::to_string(active_soa_->capacity),
+                           std::to_string(comparison_a_soa_->capacity),
+                           std::to_string(comparison_b_soa_->capacity),
                            detail::format_delta_number(layout::numeric_delta(
-                               baseline_soa_->capacity, active_soa_->capacity)));
+                               comparison_a_soa_->capacity, comparison_b_soa_->capacity)));
             comparison_row("Bytes / logical entity",
-                           detail::format_bytes(baseline_soa_->bytes_per_logical_element),
-                           detail::format_bytes(active_soa_->bytes_per_logical_element),
+                           detail::format_bytes(comparison_a_soa_->bytes_per_logical_element),
+                           detail::format_bytes(comparison_b_soa_->bytes_per_logical_element),
+                           detail::format_delta_bytes(layout::numeric_delta(
+                               comparison_a_soa_->bytes_per_logical_element,
+                               comparison_b_soa_->bytes_per_logical_element)));
+            comparison_row("Total payload",
+                           detail::format_bytes(comparison_a_soa_->total_payload_bytes),
+                           detail::format_bytes(comparison_b_soa_->total_payload_bytes),
                            detail::format_delta_bytes(
-                               layout::numeric_delta(baseline_soa_->bytes_per_logical_element,
-                                                     active_soa_->bytes_per_logical_element)));
-            comparison_row(
-                "Total payload",
-                detail::format_bytes(baseline_soa_->total_payload_bytes),
-                detail::format_bytes(active_soa_->total_payload_bytes),
-                detail::format_delta_bytes(layout::numeric_delta(
-                    baseline_soa_->total_payload_bytes, active_soa_->total_payload_bytes)));
-            for (auto const& baseline : baseline_soa_->columns) {
-                auto const* active{column_by_name(*active_soa_, baseline.name)};
+                               layout::numeric_delta(comparison_a_soa_->total_payload_bytes,
+                                                     comparison_b_soa_->total_payload_bytes)));
+            for (auto const& baseline : comparison_a_soa_->columns) {
+                auto const* active{column_by_name(*comparison_b_soa_, baseline.name)};
                 if (active == nullptr) {
                     continue;
                 }
@@ -186,7 +247,7 @@ void PlannerUi::draw_comparison_panel() {
         }
         ImGui::TextDisabled("Cache-line counts are minimum payload coverage, not allocator traffic "
                             "or a performance estimate.");
-        draw_diagnostics(active_soa_->diagnostics);
+        draw_diagnostics(comparison_b_soa_->diagnostics);
     }
     ImGui::End();
 }

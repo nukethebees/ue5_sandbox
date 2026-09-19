@@ -91,6 +91,17 @@ void PlannerUi::remember_window_size(WindowSize const size) {
     ImGui::MarkIniSettingsDirty();
 }
 
+void PlannerUi::validate_comparison_variants() {
+    if (workspace_.variant(comparison_a_variant_id_) == nullptr) {
+        comparison_a_variant_id_ = LayoutWorkspace::baseline_variant_id;
+    }
+    if (comparison_b_follows_active_) {
+        comparison_b_variant_id_ = workspace_.active_variant_id();
+    } else if (workspace_.variant(comparison_b_variant_id_) == nullptr) {
+        comparison_b_variant_id_ = LayoutWorkspace::baseline_variant_id;
+    }
+}
+
 auto PlannerUi::settings_read_open(ImGuiContext*, ImGuiSettingsHandler* handler, char const* name)
     -> void* {
     return std::strcmp(name, "Settings") == 0 ? handler->UserData : nullptr;
@@ -142,6 +153,7 @@ auto PlannerUi::draw() -> bool {
     draw_layout_panel();
     draw_properties_panel();
     draw_variants_panel();
+    refresh_analysis();
     draw_comparison_panel();
     return view_changed || revision_before != workspace_.revision();
 }
@@ -205,32 +217,51 @@ void PlannerUi::setup_default_dock_layout(unsigned int const dockspace_id) {
 }
 
 void PlannerUi::refresh_analysis() {
-    if (cached_revision_ == workspace_.revision() && cached_type_ == selected_type_) {
+    validate_comparison_variants();
+    if (cached_revision_ == workspace_.revision() && cached_type_ == selected_type_ &&
+        cached_comparison_a_variant_id_ == comparison_a_variant_id_ &&
+        cached_comparison_b_variant_id_ == comparison_b_variant_id_) {
         return;
     }
     baseline_packed_.reset();
     active_packed_.reset();
     baseline_soa_.reset();
     active_soa_.reset();
+    comparison_a_packed_.reset();
+    comparison_b_packed_.reset();
+    comparison_a_soa_.reset();
+    comparison_b_soa_.reset();
     cached_revision_ = workspace_.revision();
     cached_type_ = selected_type_;
+    cached_comparison_a_variant_id_ = comparison_a_variant_id_;
+    cached_comparison_b_variant_id_ = comparison_b_variant_id_;
     if (!selected_type_.has_value()) {
         return;
     }
     auto const& definition{workspace_.types().type(*selected_type_).definition};
     auto const& baseline{*workspace_.variant(LayoutWorkspace::baseline_variant_id)};
     auto const& active{workspace_.active_variant()};
+    auto const& comparison_a{*workspace_.variant(comparison_a_variant_id_)};
+    auto const& comparison_b{*workspace_.variant(comparison_b_variant_id_)};
     if (std::holds_alternative<PackedType>(definition)) {
         baseline_packed_ =
             Analyzer::analyze_packed(workspace_.types(), *selected_type_, baseline, abi_);
         active_packed_ =
             Analyzer::analyze_packed(workspace_.types(), *selected_type_, active, abi_);
+        comparison_a_packed_ =
+            Analyzer::analyze_packed(workspace_.types(), *selected_type_, comparison_a, abi_);
+        comparison_b_packed_ =
+            Analyzer::analyze_packed(workspace_.types(), *selected_type_, comparison_b, abi_);
     } else if (auto const* soa{std::get_if<SoaType>(&definition)};
                soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
         baseline_soa_ = Analyzer::analyze_soa(
             workspace_.types(), *selected_type_, baseline, abi_, workspace_.default_capacity());
         active_soa_ = Analyzer::analyze_soa(
             workspace_.types(), *selected_type_, active, abi_, workspace_.default_capacity());
+        comparison_a_soa_ = Analyzer::analyze_soa(
+            workspace_.types(), *selected_type_, comparison_a, abi_, workspace_.default_capacity());
+        comparison_b_soa_ = Analyzer::analyze_soa(
+            workspace_.types(), *selected_type_, comparison_b, abi_, workspace_.default_capacity());
     }
 }
 

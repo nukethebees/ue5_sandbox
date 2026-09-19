@@ -59,7 +59,8 @@ default panel arrangement.
 4. In Properties, change a packed field width or storage type, or change an SoA capacity or column
    type. Schema values, planning values, and active overrides are shown separately.
 5. Layout shows linked packed-bit, aggregate column-payload, and cache-line views. Comparison
-   shows baseline, variant, and factual deltas without ranking either representation.
+   lets you select any two variants as A and B and shows factual deltas without ranking either
+   representation. B follows the actively edited variant until you choose or swap it explicitly.
 
 The planner supports enum inspection, packed values, flat standard-library SoAs, and
 standard-library vector SoAs. Enum-backed packed fields retain links to their enum definitions;
