@@ -1338,6 +1338,153 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         modes.DeactivateMode(US7LevelAuthoringMode::mode_id);
     }
 
+    TEST_METHOD(RepairBindingsCleansReferencesAdoptsDuplicatesAndUndoes)
+    {
+        auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
+        auto* const document{spawn<AS7LevelAuthoringDocument>(*world, TEXT("S7 Document"))};
+        auto* const level_config{config(*world)};
+        if (!TestRunner->TestNotNull(TEXT("Document"), document) ||
+            !TestRunner->TestNotNull(TEXT("Config"), level_config) ||
+            !TestRunner->TestNotNull(TEXT("Capital class"),
+                                     level_config->classes.capital_ship_proxy_class.Get())) {
+            return;
+        }
+
+        auto* const retained{spawn<ATestCapitalShipProxy>(
+            *world, TEXT("Retained"), level_config->classes.capital_ship_proxy_class.Get())};
+        auto* const deleted{spawn<ATestCapitalShipProxy>(
+            *world, TEXT("Deleted"), level_config->classes.capital_ship_proxy_class.Get())};
+        auto* const duplicate_one{spawn<ATestCapitalShipProxy>(
+            *world, TEXT("Enemy Group"), level_config->classes.capital_ship_proxy_class.Get())};
+        auto* const duplicate_two{spawn<ATestCapitalShipProxy>(
+            *world, TEXT("Enemy-Group"), level_config->classes.capital_ship_proxy_class.Get())};
+        if (!TestRunner->TestNotNull(TEXT("Retained actor"), retained) ||
+            !TestRunner->TestNotNull(TEXT("Deleted actor"), deleted) ||
+            !TestRunner->TestNotNull(TEXT("First duplicate"), duplicate_one) ||
+            !TestRunner->TestNotNull(TEXT("Second duplicate"), duplicate_two)) {
+            return;
+        }
+        retained->set_team(ETestTeam::Blue);
+        deleted->set_team(ETestTeam::Red);
+        duplicate_one->set_team(ETestTeam::Red);
+        duplicate_two->set_team(ETestTeam::Red);
+        deleted->Destroy();
+
+        document->entities = {{.id = TEXT("enemy-group"), .actor = retained},
+                              {.id = TEXT("deleted"), .actor = deleted},
+                              {.id = TEXT("enemy"), .actor = retained}};
+        document->camera.targets = {retained, deleted, duplicate_one};
+        document->mission.heroes = {retained, deleted};
+        document->mission.must_survive = {deleted};
+        document->mission.required_kills = {duplicate_two};
+
+        auto const repaired{
+            ml::editor::repair_s7_level_bindings(*world->GetCurrentLevel(), *document)};
+        if (!TestRunner->TestTrue(TEXT("Bindings repair succeeds"), repaired.has_value())) {
+            TestRunner->AddError(repaired.error());
+            return;
+        }
+        TestRunner->TestEqual(
+            TEXT("Dead and duplicate bindings are removed"), repaired->removed_bindings, 2);
+        TestRunner->TestEqual(TEXT("Invalid and formerly unbound references are removed"),
+                              repaired->removed_references,
+                              5);
+        TestRunner->TestEqual(
+            TEXT("Both duplicated actors are adopted"), repaired->adopted_entities, 2);
+        TestRunner->TestTrue(TEXT("Stable binding ID is preserved"),
+                             bound_actor(*document, TEXT("enemy-group")) == retained);
+        TestRunner->TestTrue(TEXT("First canonical collision receives suffix"),
+                             bound_actor(*document, TEXT("enemy-group-2")) == duplicate_one);
+        TestRunner->TestTrue(TEXT("Second canonical collision receives suffix"),
+                             bound_actor(*document, TEXT("enemy-group-3")) == duplicate_two);
+        TestRunner->TestEqual(
+            TEXT("Only retained camera reference survives"), document->camera.targets.Num(), 1);
+        TestRunner->TestTrue(TEXT("Camera reference remains bound"),
+                             document->camera.targets[0] == retained);
+        TestRunner->TestEqual(
+            TEXT("Only retained hero reference survives"), document->mission.heroes.Num(), 1);
+        TestRunner->TestTrue(TEXT("No stale must-survive references remain"),
+                             document->mission.must_survive.IsEmpty());
+        TestRunner->TestTrue(TEXT("No stale required-kill references remain"),
+                             document->mission.required_kills.IsEmpty());
+
+        GEditor->UndoTransaction();
+
+        TestRunner->TestEqual(TEXT("Repair undo restores bindings"), document->entities.Num(), 3);
+        TestRunner->TestEqual(
+            TEXT("Repair undo restores camera references"), document->camera.targets.Num(), 3);
+        TestRunner->TestEqual(
+            TEXT("Repair undo restores mission references"), document->mission.heroes.Num(), 2);
+    }
+
+    TEST_METHOD(SelectedEntityIdRenameValidatesAndUndoes)
+    {
+        auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
+        auto* const document{spawn<AS7LevelAuthoringDocument>(*world, TEXT("S7 Document"))};
+        auto* const level_config{config(*world)};
+        if (!TestRunner->TestNotNull(TEXT("Document"), document) ||
+            !TestRunner->TestNotNull(TEXT("Config"), level_config) ||
+            !TestRunner->TestNotNull(TEXT("Capital class"),
+                                     level_config->classes.capital_ship_proxy_class.Get())) {
+            return;
+        }
+
+        auto* const first{spawn<ATestCapitalShipProxy>(
+            *world, TEXT("First"), level_config->classes.capital_ship_proxy_class.Get())};
+        auto* const second{spawn<ATestCapitalShipProxy>(
+            *world, TEXT("Second"), level_config->classes.capital_ship_proxy_class.Get())};
+        if (!TestRunner->TestNotNull(TEXT("First actor"), first) ||
+            !TestRunner->TestNotNull(TEXT("Second actor"), second)) {
+            return;
+        }
+        first->set_team(ETestTeam::Blue);
+        second->set_team(ETestTeam::Red);
+        document->entities = {{.id = TEXT("first"), .actor = first},
+                              {.id = TEXT("second"), .actor = second}};
+
+        auto& modes{GLevelEditorModeTools()};
+        modes.ActivateMode(US7LevelAuthoringMode::mode_id);
+        auto* const mode{Cast<US7LevelAuthoringMode>(
+            modes.GetActiveScriptableMode(US7LevelAuthoringMode::mode_id))};
+        if (!TestRunner->TestNotNull(TEXT("Authoring mode"), mode)) {
+            return;
+        }
+
+        GEditor->SelectNone(false, true);
+        GEditor->SelectActor(first, true, true);
+        mode->rename_selected_entity(TEXT("renamed-first"));
+        TestRunner->TestTrue(TEXT("Selected binding is renamed"),
+                             bound_actor(*document, TEXT("renamed-first")) == first);
+
+        GEditor->UndoTransaction();
+        TestRunner->TestTrue(TEXT("Rename undo restores ID"),
+                             bound_actor(*document, TEXT("first")) == first);
+
+        mode->rename_selected_entity(TEXT("Invalid ID"));
+        TestRunner->TestTrue(TEXT("Invalid symbol does not mutate binding"),
+                             bound_actor(*document, TEXT("first")) == first);
+        mode->rename_selected_entity(TEXT("Uppercase"));
+        TestRunner->TestTrue(TEXT("Uppercase symbol does not mutate binding"),
+                             bound_actor(*document, TEXT("first")) == first);
+        mode->rename_selected_entity(TEXT("second"));
+        TestRunner->TestTrue(TEXT("Duplicate ID does not mutate binding"),
+                             bound_actor(*document, TEXT("first")) == first);
+
+        GEditor->SelectNone(false, true);
+        mode->rename_selected_entity(TEXT("unselected"));
+        TestRunner->TestTrue(TEXT("No-selection error leaves binding unchanged"),
+                             bound_actor(*document, TEXT("first")) == first);
+
+        GEditor->SelectActor(first, true, true);
+        GEditor->SelectActor(second, true, true);
+        mode->rename_selected_entity(TEXT("multiple"));
+        TestRunner->TestTrue(TEXT("Multiple-selection error leaves binding unchanged"),
+                             bound_actor(*document, TEXT("first")) == first);
+
+        GEditor->SelectNone(false, true);
+        modes.DeactivateMode(US7LevelAuthoringMode::mode_id);
+    }
+
     TEST_METHOD(DelayedSpawnsApplyUpdateAndRoundTrip)
     {
         auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};

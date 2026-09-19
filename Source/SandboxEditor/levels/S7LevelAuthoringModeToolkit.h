@@ -3,6 +3,7 @@
 #include <Toolkits/BaseToolkit.h>
 
 class IDetailsView;
+class SEditableTextBox;
 class STextBlock;
 class UEdMode;
 class US7LevelAuthoringMode;
@@ -17,7 +18,8 @@ class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
   private:
     void refresh();
     auto create_document() -> FReply;
-    auto adopt_entities() -> FReply;
+    auto repair_and_adopt_entities() -> FReply;
+    auto rename_selected_entity() -> FReply;
     auto assign_selected_heroes() -> FReply;
     auto assign_selected_must_survive() -> FReply;
     auto assign_selected_required_kills() -> FReply;
@@ -32,6 +34,7 @@ class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
 
     TWeakObjectPtr<US7LevelAuthoringMode> mode_{};
     TSharedPtr<IDetailsView> details_{};
+    TSharedPtr<SEditableTextBox> entity_id_{};
     TSharedPtr<STextBlock> status_{};
     TSharedPtr<SWidget> content_{};
 };

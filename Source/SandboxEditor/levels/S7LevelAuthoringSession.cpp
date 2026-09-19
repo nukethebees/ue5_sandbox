@@ -130,6 +130,87 @@ auto adopt_unbound_level_entities(ULevel& level, AS7LevelAuthoringDocument& docu
     return adopted;
 }
 
+auto repair_s7_level_bindings(ULevel& level, AS7LevelAuthoringDocument& document)
+    -> std::expected<FS7LevelBindingRepairResult, FString> {
+    FS7LevelBindingRepairResult result;
+    TArray<FS7LevelEntityBinding> repaired_bindings;
+    repaired_bindings.Reserve(document.entities.Num());
+    TSet<AActor const*> bound_actors;
+    TSet<FName> ids;
+
+    for (auto const& binding : document.entities) {
+        auto* const actor{binding.actor.Get()};
+        if (!IsValid(actor) || actor->GetLevel() != &level ||
+            !resolve_s7_level_actor(*actor).IsSet() ||
+            !is_canonical_s7_level_entity_id(binding.id) || bound_actors.Contains(actor) ||
+            ids.Contains(binding.id)) {
+            ++result.removed_bindings;
+            continue;
+        }
+        repaired_bindings.Add(binding);
+        bound_actors.Add(actor);
+        ids.Add(binding.id);
+    }
+
+    auto remove_unbound_references = [&bound_actors](TArray<TObjectPtr<AActor>>& references) {
+        TArray<TObjectPtr<AActor>> repaired_references;
+        repaired_references.Reserve(references.Num());
+        int32 removed{};
+        for (auto const actor : references) {
+            if (IsValid(actor) && bound_actors.Contains(actor)) {
+                repaired_references.Add(actor);
+            } else {
+                ++removed;
+            }
+        }
+        references = MoveTemp(repaired_references);
+        return removed;
+    };
+
+    auto camera_targets{document.camera.targets};
+    auto mission_heroes{document.mission.heroes};
+    auto mission_must_survive{document.mission.must_survive};
+    auto mission_required_kills{document.mission.required_kills};
+    result.removed_references += remove_unbound_references(camera_targets);
+    result.removed_references += remove_unbound_references(mission_heroes);
+    result.removed_references += remove_unbound_references(mission_must_survive);
+    result.removed_references += remove_unbound_references(mission_required_kills);
+
+    for (auto const actor_ptr : level.Actors) {
+        auto* const actor{actor_ptr.Get()};
+        auto const resolved{IsValid(actor) ? resolve_s7_level_actor(*actor) : NullOpt};
+        if (!resolved.IsSet() || bound_actors.Contains(actor)) {
+            continue;
+        }
+
+        auto const fallback{to_level_archetype_id(resolved->archetype).value.ToString()};
+        auto id{canonical_s7_level_entity_id(actor->GetActorLabel(), fallback)};
+        auto const base{id.ToString()};
+        int32 suffix{2};
+        while (ids.Contains(id)) {
+            id = FName{FString::Printf(TEXT("%s-%d"), *base, suffix++)};
+        }
+        repaired_bindings.Add({.id = id, .actor = actor});
+        bound_actors.Add(actor);
+        ids.Add(id);
+        ++result.adopted_entities;
+    }
+
+    if (!result.has_changes()) {
+        return result;
+    }
+
+    FScopedTransaction transaction{
+        NSLOCTEXT("S7LevelAuthoring", "RepairBindings", "Repair S7 Level Bindings")};
+    document.Modify();
+    document.entities = MoveTemp(repaired_bindings);
+    document.camera.targets = MoveTemp(camera_targets);
+    document.mission.heroes = MoveTemp(mission_heroes);
+    document.mission.must_survive = MoveTemp(mission_must_survive);
+    document.mission.required_kills = MoveTemp(mission_required_kills);
+    return result;
+}
+
 auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument const& document)
     -> std::expected<FLevelDefinition, FString> {
     TMap<AActor const*, FLevelEntityId> ids_by_actor;
@@ -144,8 +225,9 @@ auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument cons
     TSet<FLevelTeamId> teams;
     TArray<FEntitySpawnDefinition> entities;
     for (auto const& binding : document.entities) {
-        if (!IsValid(binding.actor) || binding.id.IsNone()) {
-            return std::unexpected{TEXT("Every entity binding must have a valid actor and id.")};
+        if (!IsValid(binding.actor) || !is_canonical_s7_level_entity_id(binding.id)) {
+            return std::unexpected{
+                TEXT("Every entity binding must have a valid actor and canonical S7 id.")};
         }
         if (binding.actor->GetLevel() != &level) {
             return std::unexpected{FString::Printf(TEXT("Entity '%s' belongs to another level."),
