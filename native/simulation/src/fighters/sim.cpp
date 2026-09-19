@@ -183,14 +183,14 @@ void Sim::set_config(FighterSimConfig const& new_config,
 Sim::Sim(SimClock const& clock,
          EntityLedger& ledger,
          CombatEvents const& combat_events,
-         HealthTable& health_table,
+         EntityTables& entity_tables,
          AgentAccessor const& agents,
          SpatialQueryManager const& in_spatial_query_manager,
          lasers::Sim& in_laser_simulation) noexcept
     : simulation_clock{clock}
     , ledger_{ledger}
     , combat_events_{combat_events}
-    , health_table_{health_table}
+    , entity_tables_{entity_tables}
     , agents_{agents}
     , spatial_query_manager{in_spatial_query_manager}
     , laser_simulation{in_laser_simulation} {}
@@ -503,7 +503,7 @@ void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::resolve_damage_events");
 
     auto const data{entity_buffers.current().get_view().columns()};
-    auto const healths{health_table_.get_view(data.health_indices)};
+    auto const healths{entity_tables_.health.get_view(data.health_indices, data.entity_ids)};
     auto const damage_events{combat_events_.events_for(EntityType::Fighter)};
     batch::resolve_damage_events(damage_events,
                                  agents_.indexes(),
@@ -651,7 +651,7 @@ void Sim::collect_navigation_updates(NavigationScratch& scratch) {
 }
 void Sim::update_separation_observations(NavigationScratch& scratch) {
     auto const data{entity_buffers.current().get_view().columns()};
-    auto const healths{health_table_.get_const_view(data.health_indices)};
+    auto const healths{entity_tables_.health.get_const_view(data.health_indices, data.entity_ids)};
     // Fixed capacity bounds scoring work and keeps neighbour storage off the heap.
     std::array<EntityUniqueId, max_separation_neighbours> nearby_fighters;
     std::array<SeparationNeighbour, max_separation_neighbours> neighbours;
@@ -1258,9 +1258,10 @@ void Sim::commit_spawns() {
         data.entity_ids[index] =
             ledger_.record_spawn(EntityType::Fighter, data.teams[index], is_alive(config.health));
     }
-    health_table_.add(std::span<EntityUniqueId const>{data.entity_ids}.subspan(n_cur, n_new),
-                      config.health,
-                      std::span<HealthIndex>{data.health_indices}.subspan(n_cur, n_new));
+    entity_tables_.health.add(
+        std::span<EntityUniqueId const>{data.entity_ids}.subspan(n_cur, n_new),
+        config.health,
+        std::span<HealthIndex>{data.health_indices}.subspan(n_cur, n_new));
     if (diagnostics_enabled_) {
         for (std::int32_t i{}; i < n_new; ++i) {
             if (!diagnostics::take_report(diagnostics_enabled_, diagnostic_spawn_reports, 64)) {
@@ -1291,11 +1292,12 @@ void Sim::remove_dead_entities() {
     auto& data{entity_buffers.current()};
     batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
     auto const columns{data.get_const_view().columns()};
-    health_table_.remove_rows(local_indices_to_remove, columns.health_indices, columns.entity_ids);
+    entity_tables_.remove_health_rows(
+        local_indices_to_remove, columns.health_indices, columns.entity_ids);
     for (auto const index : local_indices_to_remove) {
         agents_.indexes().retire(columns.entity_ids[index]);
-        data.remove_at_swap(index, 1);
     }
+    data.remove_at_swap(local_indices_to_remove);
     validate_array_sizes();
 }
 
@@ -1470,7 +1472,7 @@ void Sim::commit_orders() {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::commit_orders");
 
     auto const data{entity_buffers.current().get_view().columns()};
-    auto const healths{health_table_.get_const_view(data.health_indices)};
+    auto const healths{entity_tables_.health.get_const_view(data.health_indices, data.entity_ids)};
     auto const n_orders{order_queue.num()};
     if (n_orders < 1) {
         return;

@@ -95,14 +95,14 @@ LevelSim::LevelSim(LevelSimInitData data)
     , fighters_simulation_{clock_,
                            entity_ledger_,
                            combat_events_,
-                           entity_tables_.health,
+                           entity_tables_,
                            agent_accessor_,
                            query_manager_,
                            lasers_simulation_}
     , fighters_phase_{fighters_simulation_}
     , capital_ships_simulation_{entity_ledger_,
                                 combat_events_,
-                                entity_tables_.health,
+                                entity_tables_,
                                 agent_accessor_,
                                 query_manager_,
                                 fighters_simulation_}
@@ -110,7 +110,7 @@ LevelSim::LevelSim(LevelSimInitData data)
     , turrets_simulation_{clock_,
                           entity_ledger_,
                           combat_events_,
-                          entity_tables_.health,
+                          entity_tables_,
                           agent_accessor_,
                           query_manager_,
                           lasers_simulation_}
@@ -480,8 +480,18 @@ void LevelSim::advance(time_type const dt) {
                 SANDBOX_PROFILE_SCOPE("ResolutionCommit");
                 clock_.phase = SimulationPhase::ResolutionCommit;
 
+                auto const capital_count{capital_ships_simulation_.get_num_instances()};
                 capital_ships_phase_.cleanup_entities();
+                if (capital_ships_simulation_.get_num_instances() != capital_count) {
+                    rebuild_agent_indexes();
+                }
+
+                auto const fighter_count{fighters_simulation_.get_num_instances()};
                 fighters_phase_.cleanup_entities();
+                if (fighters_simulation_.get_num_instances() != fighter_count) {
+                    rebuild_agent_indexes();
+                }
+
                 turrets_phase_.cleanup_entities();
                 lasers_phase_.cleanup_entities();
                 rebuild_agent_indexes();
@@ -531,6 +541,19 @@ void LevelSim::rebuild_agent_indexes() {
     agent_indexes_.bind(EntityType::Turret, turrets.entity_ids);
     agent_indexes_.bind(EntityType::TubeSpinner, spinners.entity_ids);
 
+    // Bind entity-side component mappings while the owning storage is current.
+    auto const capital_health_indices{
+        capital_ships_simulation_.entities.get_view().health_indices()};
+    auto const fighter_health_indices{
+        fighters_simulation_.entity_buffers.current().get_view().health_indices()};
+    auto const turret_health_indices{turrets_simulation_.entities.get_view().health_indices()};
+    entity_tables_.bind_health_indices(
+        EntityType::CapitalShip, capitals.entity_ids, capital_health_indices);
+    entity_tables_.bind_health_indices(
+        EntityType::Fighter, fighters.entity_ids, fighter_health_indices);
+    entity_tables_.bind_health_indices(
+        EntityType::Turret, turrets.entity_ids, turret_health_indices);
+
     // Bind player index
     PlayerAgentView player_view{};
     if (player_ship_simulation_ && player_ship_simulation_->is_alive()) {
@@ -545,6 +568,14 @@ void LevelSim::rebuild_agent_indexes() {
         if (player_ship_simulation_) {
             agent_indexes_.retire(player_ship_simulation_->unique_entity_id);
         }
+    }
+
+    if (player_ship_simulation_) {
+        auto& player{*player_ship_simulation_};
+        entity_tables_.bind_health_indices(
+            EntityType::PlayerShip, {&player.unique_entity_id, 1}, {&player.health_index_, 1});
+    } else {
+        entity_tables_.bind_health_indices(EntityType::PlayerShip, {}, {});
     }
 
     // Publish agent views

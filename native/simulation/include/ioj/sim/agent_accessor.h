@@ -71,19 +71,19 @@ class AgentAccessor {
              capitals_.entity_ids,
              capitals_.locations,
              {},
-             health_table_.get_const_view(capitals_.health_indices),
+             health_table_.get_const_view(capitals_.health_indices, capitals_.entity_ids),
              capitals_.teams},
             {EntityType::Fighter,
              fighters_.entity_ids,
              fighters_.locations,
              fighters_.velocities,
-             health_table_.get_const_view(fighters_.health_indices),
+             health_table_.get_const_view(fighters_.health_indices, fighters_.entity_ids),
              fighters_.teams},
             {EntityType::Turret,
              turrets_.entity_ids,
              turrets_.locations,
              {},
-             health_table_.get_const_view(turrets_.health_indices),
+             health_table_.get_const_view(turrets_.health_indices, turrets_.entity_ids),
              turrets_.teams},
             {EntityType::TubeSpinner, spinners_.entity_ids, spinners_.locations, {}, {}, {}},
         }};
@@ -93,13 +93,14 @@ class AgentAccessor {
     template <typename Visitor>
     void for_each_alive_spatial(Visitor&& visit) const {
         if (player_.transform != nullptr &&
-            sim::is_alive(health_table_.get_health(player_.health_index))) {
+            sim::is_alive(health_table_.get_health(player_.health_index, player_.id))) {
             visit(player_.id,
                   to_float(player_.transform->location),
                   to_float(player_.transform->rotator()),
                   *player_.team);
         }
-        auto const capital_healths{health_table_.get_const_view(capitals_.health_indices)};
+        auto const capital_healths{
+            health_table_.get_const_view(capitals_.health_indices, capitals_.entity_ids)};
         auto const capital_count{capitals_.num()};
         for (std::int32_t i{}; i < capital_count; ++i) {
             if (sim::is_alive(capital_healths.health(i))) {
@@ -109,7 +110,8 @@ class AgentAccessor {
                       capitals_.teams[i]);
             }
         }
-        auto const turret_healths{health_table_.get_const_view(turrets_.health_indices)};
+        auto const turret_healths{
+            health_table_.get_const_view(turrets_.health_indices, turrets_.entity_ids)};
         auto const turret_count{turrets_.num()};
         for (std::int32_t i{}; i < turret_count; ++i) {
             if (sim::is_alive(turret_healths.health(i))) {
@@ -119,7 +121,8 @@ class AgentAccessor {
                       turrets_.teams[i]);
             }
         }
-        auto const fighter_healths{health_table_.get_const_view(fighters_.health_indices)};
+        auto const fighter_healths{
+            health_table_.get_const_view(fighters_.health_indices, fighters_.entity_ids)};
         auto const fighter_count{fighters_.num()};
         for (std::int32_t i{}; i < fighter_count; ++i) {
             if (sim::is_alive(fighter_healths.health(i))) {
@@ -156,22 +159,25 @@ class AgentAccessor {
                     return std::nullopt;
                 }
                 return AgentSpatialState{to_float(player_.transform->location),
-                                         health_table_.get_health(player_.health_index),
+                                         health_table_.get_health(player_.health_index, player_.id),
                                          *player_.team};
             case EntityType::CapitalShip:
                 return AgentSpatialState{
                     capitals_.locations[index],
-                    health_table_.get_const_view(capitals_.health_indices).health(index),
+                    health_table_.get_const_view(capitals_.health_indices, capitals_.entity_ids)
+                        .health(index),
                     capitals_.teams[index]};
             case EntityType::Fighter:
                 return AgentSpatialState{
                     fighters_.locations[index],
-                    health_table_.get_const_view(fighters_.health_indices).health(index),
+                    health_table_.get_const_view(fighters_.health_indices, fighters_.entity_ids)
+                        .health(index),
                     fighters_.teams[index]};
             case EntityType::Turret:
                 return AgentSpatialState{
                     turrets_.locations[index],
-                    health_table_.get_const_view(turrets_.health_indices).health(index),
+                    health_table_.get_const_view(turrets_.health_indices, turrets_.entity_ids)
+                        .health(index),
                     turrets_.teams[index]};
             case EntityType::TubeSpinner:
                 return AgentSpatialState{spinners_.locations[index], 1000000, Team::White};
@@ -189,16 +195,19 @@ class AgentAccessor {
         switch (id.entity_type()) {
             case EntityType::PlayerShip:
                 return player_.health_index.is_valid() &&
-                       sim::is_alive(health_table_.get_health(player_.health_index));
+                       sim::is_alive(health_table_.get_health(player_.health_index, player_.id));
             case EntityType::CapitalShip:
                 return sim::is_alive(
-                    health_table_.get_const_view(capitals_.health_indices).health(index));
+                    health_table_.get_const_view(capitals_.health_indices, capitals_.entity_ids)
+                        .health(index));
             case EntityType::Fighter:
                 return sim::is_alive(
-                    health_table_.get_const_view(fighters_.health_indices).health(index));
+                    health_table_.get_const_view(fighters_.health_indices, fighters_.entity_ids)
+                        .health(index));
             case EntityType::Turret:
                 return sim::is_alive(
-                    health_table_.get_const_view(turrets_.health_indices).health(index));
+                    health_table_.get_const_view(turrets_.health_indices, turrets_.entity_ids)
+                        .health(index));
             case EntityType::TubeSpinner:
                 return true;
             case EntityType::COUNT:
@@ -233,28 +242,31 @@ class AgentAccessor {
                 return AgentState{to_float(player_.transform->location),
                                   to_float(*player_.velocity),
                                   to_float(player_.transform->rotator()),
-                                  health_table_.get_health(player_.health_index),
+                                  health_table_.get_health(player_.health_index, player_.id),
                                   *player_.team};
             case EntityType::CapitalShip:
                 return AgentState{
                     capitals_.locations[index],
                     {},
                     capitals_.rotations[index],
-                    health_table_.get_const_view(capitals_.health_indices).health(index),
+                    health_table_.get_const_view(capitals_.health_indices, capitals_.entity_ids)
+                        .health(index),
                     capitals_.teams[index]};
             case EntityType::Fighter:
                 return AgentState{
                     fighters_.locations[index],
                     fighters_.velocities[index],
                     direction_to_rotation(fighters_.aim_directions[index]),
-                    health_table_.get_const_view(fighters_.health_indices).health(index),
+                    health_table_.get_const_view(fighters_.health_indices, fighters_.entity_ids)
+                        .health(index),
                     fighters_.teams[index]};
             case EntityType::Turret:
                 return AgentState{
                     turrets_.locations[index],
                     {},
                     turrets_.rotations[index],
-                    health_table_.get_const_view(turrets_.health_indices).health(index),
+                    health_table_.get_const_view(turrets_.health_indices, turrets_.entity_ids)
+                        .health(index),
                     turrets_.teams[index]};
             case EntityType::TubeSpinner:
                 return AgentState{spinners_.locations[index],

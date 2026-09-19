@@ -6,7 +6,9 @@
 #include <cassert>
 #include <compare>
 #include <cstdint>
+#include <functional>
 #include <limits>
+#include <optional>
 #include <span>
 #include <type_traits>
 #include <vector>
@@ -36,6 +38,12 @@ static_assert(std::is_standard_layout_v<HealthIndex>);
 
 class HealthTable;
 
+struct HealthMove {
+    EntityUniqueId owner{};
+    HealthIndex old_index{};
+    HealthIndex new_index{};
+};
+
 class HealthConstView {
   public:
     HealthConstView() = default;
@@ -53,14 +61,17 @@ class HealthConstView {
 
     HealthConstView(std::span<Health const> values,
                     std::span<EntityUniqueId const> owners,
-                    std::span<HealthIndex const> indices) noexcept
+                    std::span<HealthIndex const> indices,
+                    std::span<EntityUniqueId const> expected_owners) noexcept
         : values_{values}
         , owners_{owners}
-        , indices_{indices} {}
+        , indices_{indices}
+        , expected_owners_{expected_owners} {}
 
     std::span<Health const> values_{};
     std::span<EntityUniqueId const> owners_{};
     std::span<HealthIndex const> indices_{};
+    std::span<EntityUniqueId const> expected_owners_{};
 };
 
 class HealthView {
@@ -81,18 +92,19 @@ class HealthView {
 
     HealthView(std::span<Health> values,
                std::span<EntityUniqueId const> owners,
-               std::span<HealthIndex const> indices) noexcept
+               std::span<HealthIndex const> indices,
+               std::span<EntityUniqueId const> expected_owners) noexcept
         : values_{values}
         , owners_{owners}
-        , indices_{indices} {}
+        , indices_{indices}
+        , expected_owners_{expected_owners} {}
 
     std::span<Health> values_{};
     std::span<EntityUniqueId const> owners_{};
     std::span<HealthIndex const> indices_{};
+    std::span<EntityUniqueId const> expected_owners_{};
 };
 
-// Health slots are stable until removed. A free-list avoids component relocation while
-// entity SOAs swap-remove and fighters reorder; owners make a later compacting policy possible.
 class HealthTable {
   public:
     void reserve(std::size_t capacity);
@@ -103,26 +115,56 @@ class HealthTable {
     void add(std::span<EntityUniqueId const> owners,
              Health initial_value,
              std::span<HealthIndex> output_indices);
-    void remove_rows(std::span<std::int32_t const> rows,
-                     std::span<HealthIndex const> indices,
-                     std::span<EntityUniqueId const> owners);
+
+    template <typename HandleMove>
+    void remove_rows(std::span<std::int32_t const> const rows,
+                     std::span<HealthIndex const> const indices,
+                     std::span<EntityUniqueId const> const owners,
+                     HandleMove&& handle_move) {
+        assert(indices.size() == owners.size());
+#ifndef NDEBUG
+        auto previous_row{static_cast<std::int32_t>(indices.size())};
+        for (auto const row : rows) {
+            assert(row >= 0 && row < previous_row);
+            auto const element{static_cast<std::size_t>(row)};
+            assert(contains(indices[element], owners[element]));
+            previous_row = row;
+        }
+#endif
+
+        for (auto const row : rows) {
+            auto const element{static_cast<std::size_t>(row)};
+            auto const move{remove(indices[element], owners[element])};
+            if (move.has_value()) {
+                std::invoke(handle_move, move.value());
+            }
+        }
+    }
 
     [[nodiscard]] auto get_view(std::span<HealthIndex const> indices) -> HealthView;
+    [[nodiscard]] auto get_view(std::span<HealthIndex const> indices,
+                                std::span<EntityUniqueId const> owners) -> HealthView;
     [[nodiscard]] auto get_const_view(std::span<HealthIndex const> indices) const
+        -> HealthConstView;
+    [[nodiscard]] auto get_const_view(std::span<HealthIndex const> indices,
+                                      std::span<EntityUniqueId const> owners) const
         -> HealthConstView;
     [[nodiscard]] auto contains(HealthIndex index, EntityUniqueId owner) const noexcept -> bool;
     [[nodiscard]] auto get_health(HealthIndex index) const -> Health;
+    [[nodiscard]] auto get_health(HealthIndex index, EntityUniqueId owner) const -> Health;
     [[nodiscard]] auto get_owner(HealthIndex index) const -> EntityUniqueId;
     [[nodiscard]] auto num_slots() const noexcept -> std::int32_t {
         return static_cast<std::int32_t>(values_.size());
     }
   private:
+    [[nodiscard]] auto remove(HealthIndex index, EntityUniqueId owner) -> std::optional<HealthMove>;
+    void validate_owners(std::span<HealthIndex const> indices,
+                         std::span<EntityUniqueId const> owners) const;
     [[nodiscard]] auto valid_slot(HealthIndex index) const noexcept -> bool;
     [[nodiscard]] auto slot(HealthIndex index) const -> std::size_t;
 
     std::vector<Health> values_{};
     std::vector<EntityUniqueId> owners_{};
-    std::vector<HealthIndex> free_indices_{};
 };
 
 } // namespace ioj::sim

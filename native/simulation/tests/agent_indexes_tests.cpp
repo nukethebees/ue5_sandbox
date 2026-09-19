@@ -61,7 +61,7 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
         agents.gather_targets({}, {}, {});
     };
     check_bulk();
-    health_table.get_view(data.health_indices).health(0) = 0;
+    health_table.get_view(data.health_indices, data.entity_ids).health(0) = 0;
     EXPECT_EQ(indexes.find(id), 0);
     EXPECT_TRUE(agents.read(id));
     EXPECT_FALSE(agents.read_alive(id));
@@ -70,7 +70,7 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
     clock.phase = SimulationPhase::Preparation;
     indexes.retire(id);
     std::array const rows{0};
-    health_table.remove_rows(rows, data.health_indices, data.entity_ids);
+    health_table.remove_rows(rows, data.health_indices, data.entity_ids, [](HealthMove const&) {});
     fighters.remove_at_swap(0, 1);
     indexes.bind(EntityType::Fighter, fighters.get_const_view().entity_ids());
     agents.bind({}, fighters.get_const_view().columns(), {}, {});

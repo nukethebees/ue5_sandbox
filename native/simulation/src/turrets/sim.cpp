@@ -40,14 +40,14 @@ void Sim::set_config(TurretSimConfig const& new_config) noexcept {
 Sim::Sim(SimClock const& clock,
          EntityLedger& ledger,
          CombatEvents const& combat_events,
-         HealthTable& health_table,
+         EntityTables& entity_tables,
          AgentAccessor const& agents,
          SpatialQueryManager const& in_spatial_query_manager,
          lasers::Sim& in_laser_simulation) noexcept
     : simulation_clock{clock}
     , ledger_{ledger}
     , combat_events_{combat_events}
-    , health_table_{health_table}
+    , entity_tables_{entity_tables}
     , agents_{agents}
     , spatial_query_manager{in_spatial_query_manager}
     , laser_simulation{in_laser_simulation} {}
@@ -105,11 +105,11 @@ auto Sim::register_turrets(TurretSpawnDataConstView const spawn_data,
         new_ids.push_back(id);
         entities.entity_ids[first_new_index + i] = id;
     }
-    health_table_.add(std::span<EntityUniqueId const>{entities.entity_ids}.subspan(
-                          static_cast<std::size_t>(first_new_index), spawn_count),
-                      spawn_data.healths,
-                      std::span<HealthIndex>{entities.health_indices}.subspan(
-                          static_cast<std::size_t>(first_new_index), spawn_count));
+    entity_tables_.health.add(std::span<EntityUniqueId const>{entities.entity_ids}.subspan(
+                                  static_cast<std::size_t>(first_new_index), spawn_count),
+                              spawn_data.healths,
+                              std::span<HealthIndex>{entities.health_indices}.subspan(
+                                  static_cast<std::size_t>(first_new_index), spawn_count));
     make_deterministic_biases(std::span<EntityUniqueId const>{entities.entity_ids}.subspan(
                                   static_cast<std::size_t>(first_new_index), spawn_count),
                               std::span<std::uint32_t>{entities.integral_biases}.subspan(
@@ -138,7 +138,7 @@ void Sim::handle_dead_entities() {
 
     batch::sort_and_deduplicate_removal_indices(local_indices_to_remove);
     auto const entities{this->entities.get_const_view().columns()};
-    health_table_.remove_rows(
+    entity_tables_.remove_health_rows(
         local_indices_to_remove, entities.health_indices, entities.entity_ids);
 
     for (auto const index : local_indices_to_remove) {
@@ -148,8 +148,8 @@ void Sim::handle_dead_entities() {
     }
     for (auto const index : local_indices_to_remove) {
         agents_.indexes().retire(entities.entity_ids[index]);
-        this->entities.remove_at_swap(index, 1);
     }
+    this->entities.remove_at_swap(local_indices_to_remove);
 }
 
 /* **************************************** */
@@ -206,7 +206,8 @@ void Sim::resolve_damage_events() {
     SANDBOX_PROFILE_SCOPE("turrets::Sim::resolve_damage_events");
 
     auto const entities{this->entities.get_view().columns()};
-    auto const healths{health_table_.get_view(entities.health_indices)};
+    auto const healths{
+        entity_tables_.health.get_view(entities.health_indices, entities.entity_ids)};
     batch::resolve_damage_events(combat_events_.events_for(EntityType::Turret),
                                  agents_.indexes(),
                                  entities.entity_ids,

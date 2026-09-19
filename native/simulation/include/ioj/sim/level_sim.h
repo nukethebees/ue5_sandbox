@@ -181,8 +181,8 @@ struct LevelSim {
     ml::FrameMemoryResource frame_memory_;
     EntityLedger entity_ledger_;
     CombatEvents combat_events_{entity_ledger_};
-    EntityTables entity_tables_{};
     AgentIndexes agent_indexes_{clock_};
+    EntityTables entity_tables_{agent_indexes_};
     AgentAccessor agent_accessor_{agent_indexes_, entity_tables_.health};
     SpatialQueryManager query_manager_;
     OverlapHandler overlap_handler_;

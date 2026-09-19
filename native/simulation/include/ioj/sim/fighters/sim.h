@@ -14,11 +14,11 @@
 #include <ioj/sim/sim_config.h>
 
 #include <ioj/sim/entity_death_info.h>
+#include <ioj/sim/entity_tables.h>
 #include <ioj/sim/fighter_entity_data.h>
 #include <ioj/sim/fighter_order_queue.h>
 #include <ioj/sim/fighter_spawn_queue.h>
 #include <ioj/sim/fighter_types.h>
-#include <ioj/sim/health_table.h>
 #include <ioj/sim/index_span.h>
 #include <ioj/sim/lasers/sim.h>
 #include <ioj/sim/sim_clock.h>
@@ -60,7 +60,7 @@ struct Sim {
     Sim(SimClock const& clock,
         EntityLedger& ledger,
         CombatEvents const& combat_events,
-        HealthTable& health_table,
+        EntityTables& entity_tables,
         AgentAccessor const& agents,
         SpatialQueryManager const& spatial_query_manager,
         lasers::Sim& laser_simulation) noexcept;
@@ -74,7 +74,8 @@ struct Sim {
     /* **************************************** */
     auto get_read_view() const -> FighterReadView {
         auto const entities{entity_buffers.current().get_const_view().columns()};
-        return {entities, health_table_.get_const_view(entities.health_indices)};
+        return {entities,
+                entity_tables_.health.get_const_view(entities.health_indices, entities.entity_ids)};
     }
     void set_config(FighterSimConfig const& new_config, FighterLevelData level_data) noexcept;
     void set_diagnostics_enabled(bool enabled) noexcept { diagnostics_enabled_ = enabled; }
@@ -97,7 +98,7 @@ struct Sim {
     }
     auto get_healths() const -> HealthConstView {
         auto const entities{entity_buffers.current().get_const_view().columns()};
-        return health_table_.get_const_view(entities.health_indices);
+        return entity_tables_.health.get_const_view(entities.health_indices, entities.entity_ids);
     }
     void set_parent_id(EntityUniqueId fighter, EntityUniqueId parent) {
         assert(fighter.is_valid() && fighter.entity_type() == EntityType::Fighter);
@@ -242,6 +243,7 @@ struct Sim {
 
     friend class CommandInterface;
     friend class PhaseInterface;
+    friend struct sim::LevelSim;
 
     float movement_tick_period_{};
     FighterSimConfig config{};
@@ -267,7 +269,7 @@ struct Sim {
     EntityBuffers entity_buffers{};
     EntityLedger& ledger_;
     CombatEvents const& combat_events_;
-    HealthTable& health_table_;
+    EntityTables& entity_tables_;
     AgentAccessor const& agents_;
     SpatialQueryManager const& spatial_query_manager;
 

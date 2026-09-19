@@ -241,6 +241,7 @@ struct Sim {
     // Dependencies and internal state
     /* **************************************** */
     friend class PhaseInterface;
+    friend struct sim::LevelSim;
     friend struct sim::PlayerSimTestAccess;
 
     PlayerSimConfig config{};

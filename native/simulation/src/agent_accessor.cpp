@@ -86,11 +86,12 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
                         to_float(player_.transform->location),
                         to_float(*player_.velocity),
                         *player_.team,
-                        sim::is_alive(health_table_.get_health(player_.health_index))};
+                        sim::is_alive(health_table_.get_health(player_.health_index, player_.id))};
                 });
                 break;
             case EntityType::CapitalShip: {
-                auto const healths{health_table_.get_const_view(capitals_.health_indices)};
+                auto const healths{
+                    health_table_.get_const_view(capitals_.health_indices, capitals_.entity_ids)};
                 gather_group(group, type, [&](std::int32_t const index) {
                     return agent_accessor_detail::TargetState{capitals_.locations[index],
                                                               {},
@@ -99,7 +100,8 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
                 });
             } break;
             case EntityType::Fighter: {
-                auto const healths{health_table_.get_const_view(fighters_.health_indices)};
+                auto const healths{
+                    health_table_.get_const_view(fighters_.health_indices, fighters_.entity_ids)};
                 gather_group(group, type, [&](std::int32_t const index) {
                     return agent_accessor_detail::TargetState{fighters_.locations[index],
                                                               fighters_.velocities[index],
@@ -108,7 +110,8 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
                 });
             } break;
             case EntityType::Turret: {
-                auto const healths{health_table_.get_const_view(turrets_.health_indices)};
+                auto const healths{
+                    health_table_.get_const_view(turrets_.health_indices, turrets_.entity_ids)};
                 gather_group(group, type, [&](std::int32_t const index) {
                     return agent_accessor_detail::TargetState{turrets_.locations[index],
                                                               {},
