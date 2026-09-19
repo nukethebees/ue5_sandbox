@@ -84,6 +84,22 @@ public sealed class PolicyLoaderTests
     }
 
     [TestMethod]
+    public void Parse_rejects_switch_policies_that_allow_protected_current_branches()
+    {
+        foreach (var operation in new[] { "switch", "switchCreate" })
+        {
+            var document = JsonNode.Parse(ValidPolicy())!.AsObject();
+            document["policies"]![operation]!["allowedCurrentGroups"] =
+                new JsonArray("protected", "workspace", "feature");
+
+            var exception = Assert.ThrowsException<PolicyConfigurationException>(
+                () => PolicyLoader.Parse(document.ToJsonString()));
+
+            StringAssert.Contains(exception.Message, "protected current");
+        }
+    }
+
+    [TestMethod]
     public void Parse_rejects_null_structures_and_dirty_rebase_policy()
     {
         var null_groups = JsonNode.Parse(ValidPolicy())!.AsObject();
@@ -118,12 +134,12 @@ public sealed class PolicyLoaderTests
                 "addAll": { "allowedCurrentGroups": ["feature"] },
                 "commit": { "allowedCurrentGroups": ["feature"] },
                 "switch": {
-                  "allowedCurrentGroups": ["protected", "workspace", "feature"],
+                  "allowedCurrentGroups": ["workspace", "feature"],
                   "allowedTargetGroups": ["workspace", "feature"],
                   "requireClean": true
                 },
                 "switchCreate": {
-                  "allowedCurrentGroups": ["protected", "workspace", "feature"],
+                  "allowedCurrentGroups": ["workspace", "feature"],
                   "allowedTargetGroups": ["feature"]
                 },
                 "rebaseBase": {

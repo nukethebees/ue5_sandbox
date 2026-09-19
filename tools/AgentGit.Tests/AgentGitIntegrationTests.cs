@@ -52,22 +52,101 @@ public sealed class AgentGitIntegrationTests
     }
 
     [TestMethod]
+    public async Task Switch_and_switch_create_cannot_move_a_protected_worktree()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        fixture.RunGit("branch", "feature/existing", "dev");
+        var original_head = fixture.RunGit("rev-parse", "HEAD").Trim();
+
+        var switch_result = await fixture.RunAgentGitAsync(
+            fixture.RepositoryRoot,
+            "switch",
+            "feature/existing");
+        var create_result = await fixture.RunAgentGitAsync(
+            fixture.RepositoryRoot,
+            "switch-create",
+            "feature/new");
+
+        Assert.AreEqual(ExitCodes.PolicyDenied, switch_result.ExitCode, switch_result.Error);
+        Assert.AreEqual(ExitCodes.PolicyDenied, create_result.ExitCode, create_result.Error);
+        StringAssert.Contains(switch_result.Output, "protected branch 'dev'");
+        StringAssert.Contains(create_result.Output, "protected branch 'dev'");
+        Assert.AreEqual("dev\n", fixture.RunGit("branch", "--show-current"));
+        Assert.AreEqual(original_head, fixture.RunGit("rev-parse", "HEAD").Trim());
+        Assert.AreEqual(string.Empty, fixture.RunGit("branch", "--list", "feature/new"));
+    }
+
+    [TestMethod]
+    public async Task Permissive_switch_policy_cannot_move_a_protected_worktree()
+    {
+        foreach (var operation in new[] { "switch", "switchCreate" })
+        {
+            using var fixture = new TemporaryAgentGitRepository();
+            fixture.RunGit("branch", "feature/existing", "dev");
+            var policy = System.Text.Json.Nodes.JsonNode.Parse(PolicyLoaderTests.ValidPolicy())!.AsObject();
+            policy["policies"]![operation]!["allowedCurrentGroups"] =
+                new System.Text.Json.Nodes.JsonArray("protected", "workspace", "feature");
+            fixture.WriteFile(".agent-git.json", policy.ToJsonString());
+            fixture.RunGit("add", ".agent-git.json");
+            fixture.RunGit("commit", "-qm", "attempt to broaden switch policy");
+            var original_head = fixture.RunGit("rev-parse", "HEAD").Trim();
+
+            var result = operation == "switch"
+                ? await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "switch", "feature/existing")
+                : await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "switch-create", "feature/new");
+
+            Assert.AreEqual(ExitCodes.ConfigurationFailure, result.ExitCode, result.Error);
+            StringAssert.Contains(result.Error, "protected current");
+            Assert.AreEqual("dev\n", fixture.RunGit("branch", "--show-current"));
+            Assert.AreEqual(original_head, fixture.RunGit("rev-parse", "HEAD").Trim());
+            Assert.AreEqual(string.Empty, fixture.RunGit("branch", "--list", "feature/new"));
+        }
+    }
+
+    [TestMethod]
+    public async Task Malformed_policy_cannot_move_a_protected_worktree()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        fixture.RunGit("branch", "feature/existing", "dev");
+        fixture.WriteFile(".agent-git.json", "{ malformed policy }");
+        fixture.RunGit("add", ".agent-git.json");
+        fixture.RunGit("commit", "-qm", "malformed policy");
+        var original_head = fixture.RunGit("rev-parse", "HEAD").Trim();
+
+        var switch_result = await fixture.RunAgentGitAsync(
+            fixture.RepositoryRoot,
+            "switch",
+            "feature/existing");
+        var create_result = await fixture.RunAgentGitAsync(
+            fixture.RepositoryRoot,
+            "switch-create",
+            "feature/new");
+
+        Assert.AreEqual(ExitCodes.ConfigurationFailure, switch_result.ExitCode, switch_result.Error);
+        Assert.AreEqual(ExitCodes.ConfigurationFailure, create_result.ExitCode, create_result.Error);
+        Assert.AreEqual("dev\n", fixture.RunGit("branch", "--show-current"));
+        Assert.AreEqual(original_head, fixture.RunGit("rev-parse", "HEAD").Trim());
+        Assert.AreEqual(string.Empty, fixture.RunGit("branch", "--list", "feature/new"));
+    }
+
+    [TestMethod]
     public async Task Switch_create_carries_changes_then_add_and_commit_preserve_metacharacters_as_data()
     {
         using var fixture = new TemporaryAgentGitRepository();
+        var workspace = fixture.CreateWorktree("dev1");
         const string file_name = "odd & name.txt";
         const string message = "literal & whoami; $(touch escaped-marker)";
-        fixture.WriteFile(file_name, "content\n");
+        fixture.WriteFile(file_name, "content\n", workspace);
 
-        var create = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "switch-create", "feature/odd-input");
-        var add = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "add", file_name);
-        var commit = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "commit", "-m", message);
+        var create = await fixture.RunAgentGitAsync(workspace, "switch-create", "feature/odd-input");
+        var add = await fixture.RunAgentGitAsync(workspace, "add", file_name);
+        var commit = await fixture.RunAgentGitAsync(workspace, "commit", "-m", message);
 
         Assert.AreEqual(ExitCodes.Success, create.ExitCode, create.Error);
         Assert.AreEqual(ExitCodes.Success, add.ExitCode, add.Error);
         Assert.AreEqual(ExitCodes.Success, commit.ExitCode, commit.Error);
-        Assert.AreEqual(message + "\n", fixture.RunGit("log", "-1", "--format=%s"));
-        Assert.IsFalse(File.Exists(Path.Combine(fixture.RepositoryRoot, "escaped-marker")));
+        Assert.AreEqual(message + "\n", fixture.RunGitAt(workspace, "log", "-1", "--format=%s"));
+        Assert.IsFalse(File.Exists(Path.Combine(workspace, "escaped-marker")));
     }
 
     [TestMethod]
@@ -116,16 +195,17 @@ public sealed class AgentGitIntegrationTests
     public async Task Dry_run_evaluates_without_mutating()
     {
         using var fixture = new TemporaryAgentGitRepository();
+        var workspace = fixture.CreateWorktree("dev1");
 
         var result = await fixture.RunAgentGitAsync(
-            fixture.RepositoryRoot,
+            workspace,
             "--dry-run",
             "switch-create",
             "feature/dry-run");
 
         Assert.AreEqual(ExitCodes.Success, result.ExitCode, result.Error);
         StringAssert.Contains(result.Output, "Dry run: no mutation executed");
-        Assert.AreEqual("dev\n", fixture.RunGit("branch", "--show-current"));
+        Assert.AreEqual("dev1\n", fixture.RunGitAt(workspace, "branch", "--show-current"));
         Assert.AreEqual(string.Empty, fixture.RunGit("branch", "--list", "feature/dry-run"));
     }
 }

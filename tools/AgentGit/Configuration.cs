@@ -298,14 +298,20 @@ internal static class PolicyLoader
         }
 
         if (operation == AgentGitOperation.Switch &&
-            (target.Contains(BranchClassification.Protected) || !require_clean))
+            (current.Contains(BranchClassification.Protected) ||
+             target.Contains(BranchClassification.Protected) ||
+             !require_clean))
         {
-            throw new PolicyConfigurationException("Switch policy must require a clean tree and cannot target protected branches.");
+            throw new PolicyConfigurationException(
+                "Switch policy must require a clean tree and cannot allow protected current or target branches.");
         }
 
-        if (operation == AgentGitOperation.SwitchCreate && target.Any(value => value != BranchClassification.Feature))
+        if (operation == AgentGitOperation.SwitchCreate &&
+            (current.Contains(BranchClassification.Protected) ||
+             target.Any(value => value != BranchClassification.Feature)))
         {
-            throw new PolicyConfigurationException("Switch-create policy may target only feature branches.");
+            throw new PolicyConfigurationException(
+                "Switch-create policy cannot allow protected current branches and may target only feature branches.");
         }
 
         if (operation == AgentGitOperation.RebaseBase && !require_clean)

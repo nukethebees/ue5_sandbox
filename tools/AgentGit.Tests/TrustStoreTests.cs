@@ -80,6 +80,7 @@ public sealed class TrustStoreTests
         var root = Directory.CreateTempSubdirectory("AgentGitTrust-").FullName;
         try
         {
+            Directory.CreateDirectory(Path.Combine(root, "bin"));
             var config = Directory.CreateDirectory(Path.Combine(root, "config")).FullName;
             var empty_config = Path.Combine(config, "empty.gitconfig");
             var empty_attributes = Path.Combine(config, "empty.attributes");

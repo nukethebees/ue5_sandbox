@@ -29,6 +29,7 @@ public sealed class ProcessRunnerTests
             Assert.AreEqual(git_path, runner.Request!.FileName);
             Assert.IsTrue(runner.Request.Arguments.Contains("a & b"));
             Assert.AreEqual("0", runner.Request.Environment["GIT_TERMINAL_PROMPT"]);
+            Assert.AreEqual("0", runner.Request.Environment["GIT_OPTIONAL_LOCKS"]);
             Assert.AreEqual("1", runner.Request.Environment["GIT_LFS_SKIP_SMUDGE"]);
             Assert.AreEqual(config, runner.Request.Environment["GIT_CONFIG_GLOBAL"]);
             Assert.AreEqual(
@@ -39,6 +40,8 @@ public sealed class ProcessRunnerTests
                 $"filter.lfs.process='{normalized_lfs_path}' filter-process"));
             Assert.IsTrue(runner.Request.Arguments.Contains("filter.lfs.clean="));
             Assert.IsTrue(runner.Request.Arguments.Contains("filter.lfs.smudge="));
+            AssertFixedConfig(runner.Request.Arguments, "core.protectNTFS=true");
+            AssertFixedConfig(runner.Request.Arguments, "core.protectHFS=true");
             foreach (var unsafe_variable in new[]
                      {
                          "GIT_DIR",
@@ -57,6 +60,13 @@ public sealed class ProcessRunnerTests
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    private static void AssertFixedConfig(IReadOnlyList<string> arguments, string expected)
+    {
+        var index = arguments.ToList().IndexOf(expected);
+        Assert.IsTrue(index > 0, $"Missing fixed Git configuration '{expected}'.");
+        Assert.AreEqual("-c", arguments[index - 1]);
     }
 
     [TestMethod]

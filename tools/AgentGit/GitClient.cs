@@ -17,6 +17,8 @@ internal sealed class GitClient
         environment = CreateEnvironment(trust);
     }
 
+    public bool HasTrustedGitLfs => trust.GitLfsExecutable is not null;
+
     public async Task<ProcessResult> RunAsync(
         string working_directory,
         IReadOnlyList<string> arguments,
@@ -27,6 +29,8 @@ internal sealed class GitClient
         {
             "--no-pager",
             "--literal-pathspecs",
+            "-c", "core.protectNTFS=true",
+            "-c", "core.protectHFS=true",
             "-c", $"core.hooksPath={trust.EmptyHooksDirectory}",
             "-c", "core.fsmonitor=false",
             "-c", "maintenance.auto=false",
@@ -129,6 +133,7 @@ internal sealed class GitClient
             ["GIT_CONFIG_GLOBAL"] = trust.EmptyConfigPath,
             ["GIT_ATTR_NOSYSTEM"] = "1",
             ["GIT_NO_REPLACE_OBJECTS"] = "1",
+            ["GIT_OPTIONAL_LOCKS"] = "0",
             ["GIT_TERMINAL_PROMPT"] = "0",
             ["GCM_INTERACTIVE"] = "Never",
             ["GIT_EDITOR"] = "false",

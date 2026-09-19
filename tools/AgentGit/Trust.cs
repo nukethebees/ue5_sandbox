@@ -142,10 +142,14 @@ internal static class TrustStore
 
     internal static (string EmptyConfig, string EmptyHooks) ValidateIsolationLayout(string installation_root)
     {
+        var bin = Path.Combine(installation_root, "bin");
+        var config = Path.Combine(installation_root, "config");
         var empty_config = Path.Combine(installation_root, "config", "empty.gitconfig");
         var empty_hooks = Path.Combine(installation_root, "config", "empty-hooks");
         var empty_attributes = Path.Combine(installation_root, "config", "empty.attributes");
-        if (!File.Exists(empty_config) || new FileInfo(empty_config).Length != 0 ||
+        if (!Directory.Exists(installation_root) || !Directory.Exists(bin) || !Directory.Exists(config) ||
+            IsReparsePoint(installation_root) || IsReparsePoint(bin) || IsReparsePoint(config) ||
+            !File.Exists(empty_config) || new FileInfo(empty_config).Length != 0 ||
             !File.Exists(empty_attributes) || new FileInfo(empty_attributes).Length != 0 ||
             !Directory.Exists(empty_hooks) || Directory.EnumerateFileSystemEntries(empty_hooks).Any() ||
             IsReparsePoint(empty_config) || IsReparsePoint(empty_attributes) || IsReparsePoint(empty_hooks))

@@ -26,12 +26,12 @@
       "allowedCurrentGroups": ["feature"]
     },
     "switch": {
-      "allowedCurrentGroups": ["protected", "workspace", "feature"],
+      "allowedCurrentGroups": ["workspace", "feature"],
       "allowedTargetGroups": ["workspace", "feature"],
       "requireClean": true
     },
     "switchCreate": {
-      "allowedCurrentGroups": ["protected", "workspace", "feature"],
+      "allowedCurrentGroups": ["workspace", "feature"],
       "allowedTargetGroups": ["feature"]
     },
     "rebaseBase": {

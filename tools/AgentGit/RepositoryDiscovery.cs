@@ -416,7 +416,8 @@ internal sealed class RepositoryDiscovery(GitClient git)
             GitClient.EnsureSuccess(result, ["config"]);
             var names = Encoding.UTF8.GetString(result.StandardOutput)
                 .Split(['\r', '\n'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            var unknown = names.Where(IsUnsupportedExecutableConfiguration).ToArray();
+            var unknown = names.Where(name =>
+                IsUnsupportedExecutableConfiguration(name, git.HasTrustedGitLfs)).ToArray();
             if (unknown.Length > 0)
             {
                 throw new RepositoryStateException(
@@ -503,7 +504,7 @@ internal sealed class RepositoryDiscovery(GitClient git)
         }
     }
 
-    private static bool IsUnsupportedExecutableConfiguration(string name)
+    private static bool IsUnsupportedExecutableConfiguration(string name, bool has_trusted_git_lfs)
     {
         var lower = name.ToLowerInvariant();
         if (lower.StartsWith("include.", StringComparison.Ordinal) ||
@@ -531,12 +532,18 @@ internal sealed class RepositoryDiscovery(GitClient git)
             lower.Equals("core.sshcommand", StringComparison.Ordinal) ||
             lower.Equals("core.worktree", StringComparison.Ordinal) ||
             lower.Equals("diff.external", StringComparison.Ordinal) ||
+            lower.Equals("extensions.partialclone", StringComparison.Ordinal) ||
             (lower.StartsWith("gpg.", StringComparison.Ordinal) &&
              lower.EndsWith(".program", StringComparison.Ordinal)) ||
             lower.Equals("gpg.program", StringComparison.Ordinal) ||
             lower.Equals("interactive.difffilter", StringComparison.Ordinal) ||
             lower.StartsWith("lfs.customtransfer.", StringComparison.Ordinal) ||
+            lower.StartsWith("lfs.extension.", StringComparison.Ordinal) ||
+            lower.Equals("lfs.storage", StringComparison.Ordinal) ||
             lower.Equals("lfs.standalonetransferagent", StringComparison.Ordinal) ||
+            (lower.StartsWith("remote.", StringComparison.Ordinal) &&
+             (lower.EndsWith(".promisor", StringComparison.Ordinal) ||
+              lower.EndsWith(".partialclonefilter", StringComparison.Ordinal))) ||
             lower.StartsWith("submodule.", StringComparison.Ordinal) && lower.EndsWith(".update", StringComparison.Ordinal))
         {
             return true;
@@ -557,7 +564,7 @@ internal sealed class RepositoryDiscovery(GitClient git)
             return false;
         }
 
-        return !lower.StartsWith("filter.lfs.", StringComparison.Ordinal);
+        return !has_trusted_git_lfs || !lower.StartsWith("filter.lfs.", StringComparison.Ordinal);
     }
 
     private async Task ValidateIndexFlagsAsync(

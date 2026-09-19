@@ -172,6 +172,22 @@ public sealed class AgentGitOperationTests
     }
 
     [TestMethod]
+    public async Task Branch_delete_remains_available_from_a_protected_branch()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        fixture.RunGit("branch", "feature/already-merged", "dev");
+
+        var result = await fixture.RunAgentGitAsync(
+            fixture.RepositoryRoot,
+            "branch-delete",
+            "feature/already-merged");
+
+        Assert.AreEqual(ExitCodes.Success, result.ExitCode, result.Error);
+        Assert.AreEqual("dev\n", fixture.RunGit("branch", "--show-current"));
+        Assert.AreEqual(string.Empty, fixture.RunGit("branch", "--list", "feature/already-merged"));
+    }
+
+    [TestMethod]
     public async Task Branch_delete_rejects_unmerged_protected_workspace_current_and_owned_branches()
     {
         using var fixture = new TemporaryAgentGitRepository();
@@ -206,18 +222,20 @@ public sealed class AgentGitOperationTests
     {
         using var fixture = new TemporaryAgentGitRepository();
         var other = fixture.CreateWorktree("feature/owned", "dev1");
+        fixture.RunGit("switch", "-qc", "feature/current");
 
         var result = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "switch", "feature/owned");
 
         Assert.AreEqual(ExitCodes.PolicyDenied, result.ExitCode);
         StringAssert.Contains(result.Output.Replace('/', Path.DirectorySeparatorChar), other);
-        Assert.AreEqual("dev\n", fixture.RunGit("branch", "--show-current"));
+        Assert.AreEqual("feature/current\n", fixture.RunGit("branch", "--show-current"));
     }
 
     [TestMethod]
     public async Task Switch_and_switch_create_reject_missing_existing_and_invalid_targets()
     {
         using var fixture = new TemporaryAgentGitRepository();
+        fixture.RunGit("switch", "-qc", "feature/current");
 
         var missing = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "switch", "feature/missing");
         Assert.AreEqual(ExitCodes.PolicyDenied, missing.ExitCode, missing.Error);
@@ -262,6 +280,27 @@ public sealed class AgentGitOperationTests
         var protected_rebase = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "rebase-base");
         Assert.AreEqual(ExitCodes.PolicyDenied, protected_rebase.ExitCode, protected_rebase.Error);
         StringAssert.Contains(protected_rebase.Output, "protected branch 'dev'");
+    }
+
+    [TestMethod]
+    public async Task Switch_supports_workspace_to_feature_feature_to_feature_and_return_to_own_workspace()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        var workspace = fixture.CreateWorktree("dev1");
+        fixture.RunGit("branch", "feature/first", "dev");
+        fixture.RunGit("branch", "feature/second", "dev");
+
+        var from_workspace = await fixture.RunAgentGitAsync(workspace, "switch", "feature/first");
+        Assert.AreEqual(ExitCodes.Success, from_workspace.ExitCode, from_workspace.Error);
+        Assert.AreEqual("feature/first\n", fixture.RunGitAt(workspace, "branch", "--show-current"));
+
+        var between_features = await fixture.RunAgentGitAsync(workspace, "switch", "feature/second");
+        Assert.AreEqual(ExitCodes.Success, between_features.ExitCode, between_features.Error);
+        Assert.AreEqual("feature/second\n", fixture.RunGitAt(workspace, "branch", "--show-current"));
+
+        var return_home = await fixture.RunAgentGitAsync(workspace, "switch", "dev1");
+        Assert.AreEqual(ExitCodes.Success, return_home.ExitCode, return_home.Error);
+        Assert.AreEqual("dev1\n", fixture.RunGitAt(workspace, "branch", "--show-current"));
     }
 
     [TestMethod]

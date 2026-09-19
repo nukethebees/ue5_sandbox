@@ -63,6 +63,18 @@ public sealed class AgentGitAdversarialTests
     }
 
     [TestMethod]
+    public async Task Lfs_filter_configuration_requires_the_trusted_lfs_extension()
+    {
+        using var fixture = new TemporaryAgentGitRepository();
+        fixture.RunGit("config", "filter.lfs.clean", "arbitrary-command");
+
+        var result = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "status");
+
+        Assert.AreEqual(ExitCodes.StateFailure, result.ExitCode, result.Error);
+        StringAssert.Contains(result.Error, "filter.lfs.clean");
+    }
+
+    [TestMethod]
     public async Task Local_config_include_fails_closed()
     {
         using var fixture = new TemporaryAgentGitRepository();
@@ -126,6 +138,10 @@ public sealed class AgentGitAdversarialTests
                      (Name: "core.fsmonitor", Value: "arbitrary-command"),
                      (Name: "diff.evil.textconv", Value: "arbitrary-command"),
                      (Name: "gpg.ssh.program", Value: "arbitrary-command"),
+                     (Name: "lfs.extension.evil.clean", Value: "arbitrary-command"),
+                     (Name: "lfs.storage", Value: "C:/outside-agent-git"),
+                     (Name: "remote.origin.promisor", Value: "true"),
+                     (Name: "remote.origin.partialCloneFilter", Value: "blob:none"),
                      (Name: "submodule.example.update", Value: "!arbitrary-command"),
                  })
         {
@@ -421,16 +437,17 @@ public sealed class AgentGitAdversarialTests
     public async Task Dry_run_and_policy_inspection_never_execute_hooks_or_mutate_refs()
     {
         using var fixture = new TemporaryAgentGitRepository();
+        var workspace = fixture.CreateWorktree("dev1");
         var before = fixture.RunGit("show-ref");
-        fixture.WriteFile("change.txt", "change\n");
+        fixture.WriteFile("change.txt", "change\n", workspace);
 
         var dry_run = await fixture.RunAgentGitAsync(
-            fixture.RepositoryRoot,
+            workspace,
             "--dry-run",
             "switch-create",
             "feature/inspection");
         var policy = await fixture.RunAgentGitAsync(
-            fixture.RepositoryRoot,
+            workspace,
             "policy",
             "switch-create",
             "feature/inspection");
@@ -438,6 +455,6 @@ public sealed class AgentGitAdversarialTests
         Assert.AreEqual(ExitCodes.Success, dry_run.ExitCode, dry_run.Error);
         Assert.AreEqual(ExitCodes.Success, policy.ExitCode, policy.Error);
         Assert.AreEqual(before, fixture.RunGit("show-ref"));
-        Assert.IsTrue(File.Exists(Path.Combine(fixture.RepositoryRoot, "change.txt")));
+        Assert.IsTrue(File.Exists(Path.Combine(workspace, "change.txt")));
     }
 }
