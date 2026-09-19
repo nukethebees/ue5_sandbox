@@ -2,6 +2,9 @@
 
 `tools/` contains standalone utilities shared by repository workflows.
 
+Run `ctools` after creating a worktree to build and stage standalone C# executables in `tools/bin`.
+Any workflow that uses one requires its staged executable to be present.
+
 - `jobserver/` is the canonical per-user coordinator for build, Editor, test, commandlet, and
   benchmark resource claims. See its [detailed README](jobserver/README.md).
 - `perf/` contains performance tooling integrated into the root CMake project.

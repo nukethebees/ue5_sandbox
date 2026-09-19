@@ -15,6 +15,8 @@ include(cmake/precompiled_headers.cmake)
 
 enable_testing()
 
+include(cmake/staged_csharp_tools.cmake)
+
 add_subdirectory(cmake)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)

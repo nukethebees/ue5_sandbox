@@ -74,6 +74,7 @@ add_custom_target(worktree-dependencies
     --settings-path
     "${PROJECT_SOURCE_DIR}/Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"
   DEPENDS
+    sandbox-set-live-coding-disabled-preflight
     unreal-native-dependencies
     sandbox-image
     sandbox-material-gen

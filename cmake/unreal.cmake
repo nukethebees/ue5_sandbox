@@ -19,6 +19,7 @@ function(add_unreal_target target_name unreal_target)
       ${unreal_target_arguments}
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     COMMENT "Building ${unreal_target} ${UE_PLATFORM} ${UE_CONFIGURATION} through UnrealBuildTool"
+    DEPENDS sandbox-unreal-build-tools-preflight
     USES_TERMINAL
     VERBATIM
   )

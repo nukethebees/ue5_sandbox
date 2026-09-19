@@ -54,9 +54,10 @@ Unreal Engine 5.8 project.
 
 * A Windows-only CMake 4.3+/Ninja layer at the repository root invokes UnrealBuildTool through `RunUBT.bat`. `.Target.cs`, `.Build.cs`, and UBT remain authoritative.
 * Use the CMake layer for builds; do not invoke UBT, `RunUBT.bat`, or `Build.bat` directly.
-* Before the first Unreal CMake workflow in a worktree, verify that
-  `tools/bin/UnrealBuildTools.exe` exists. If it does not, run `ctools` to build and stage the
-  standalone C# tools. Native-only workflows do not require this preflight.
+* `ctools` builds and stages standalone C# developer-tool executables under `tools/bin`. Before a
+  workflow that invokes one, run `ctools` if its executable is absent. Unreal workflows require
+  `UnrealBuildTools.exe`; formatting workflows require `CodeFormatTools.exe`. Native-only
+  workflows do not require this preflight.
 * CMake coordinates Unreal work through a canonical engine read/write gate: builds and UAT packaging acquire it exclusively; managed editor launches, tests, and commandlets acquire it shared for their full process-tree lifetime. Regenerate CMake commands in every worktree and reload PowerShell helpers after coordination changes. Manually launched editors, Visual Studio builds, Live Coding, and UBT launched outside CMake do not participate; do not overlap them with managed Unreal builds.
 * A canonical per-user jobserver coordinates expensive work across worktrees. Ordinary work shares the machine resource; benchmarks wait for older work to drain and then run exclusively. Use `get-jobserver-state` or the `jobserver-status` target to inspect running and queued jobs.
 * Preferred build: `cmake --workflow --preset debug-game`.
