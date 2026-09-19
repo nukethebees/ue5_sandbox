@@ -360,7 +360,6 @@ function install-agent-git {
         [string]$BaseBranch = 'dev'
     )
 
-    ctools
     $installer = Join-Path $script:dev_project_root 'PowerShell\Install-AgentGit.ps1'
     & $installer -Repository $script:dev_project_root -BaseBranch $BaseBranch
     if ($LASTEXITCODE -ne 0) {
