@@ -8,10 +8,9 @@ Unreal Engine 5.8 project.
 * Entity data is largely stored in cache-friendly arrays / SOA structures rather than represented entirely by Actors.
 * UI is a presentation layer over simulation state and must not own gameplay logic.
 * Determinism, debuggability, simple control flow, and performance are important.
-* Prefer implementing and testing work under `native/` until Unreal Engine integration is needed,
-  then integrate it with Unreal through a thin adapter.
-* Use the local native testing infrastructure where possible to keep iteration fast and avoid
-  clashes with the shared Unreal build mutex.
+* Prefer implementing work under `native/` until Unreal Engine integration is needed, then add a
+  thin adapter after the native implementation is substantially settled. Local native validation is
+  the fast path and avoids contention on shared Unreal engine resources.
 * External standalone developer tools may live under `tools/`.
 
 # Feature Workflow
@@ -27,18 +26,20 @@ Unreal Engine 5.8 project.
   worktrees.
 * Use the CMake workflows and repository jobserver described in [Builds](#builds) for expensive
   jobs. Do not bypass that coordination or interfere with jobs owned by other worktrees or agents.
-* During feature development, run only the smallest relevant build or focused test that directly
-  validates the current work. Escalate validation when the change's risk or scope warrants it.
-  For trivial non-functional changes such as documentation or comments, do not run tests by
-  default; state that tests were not run because the change was trivial, so the user can request
-  them.
+* **Fast default:** understand the task; finish the coherent implementation and required cleanup;
+  format and review it; run the smallest useful native/focused validation; fix with focused checks;
+  then report ready. Do not routinely stop to build or test intermediate states. Do so only when a
+  result is needed to continue—for example, to resolve uncertain compiler/API or generated-code
+  behaviour, check a consequential assumption cheaply, or debug an observed failure.
+* Use the smallest non-overlapping validation that answers the question; do not run broader suites
+  merely for reassurance. For trivial non-functional changes such as documentation or comments, do
+  not run tests by default; state that tests were not run because the change was trivial.
 * Prefer multiple coherent commits for substantive work when there are natural implementation
-  stages. Do not repeatedly rebase during ordinary feature development without a concrete reason.
-* A feature is **ready for integration** when its implementation and focused/relevant validation
-  are complete and its commits are coherent. A sensible recent rebase or preflight is allowed, but
-  readiness does not require chasing every later `dev` commit. Report this state and wait for the
-  user's explicit authorization to integrate. Do not acquire an integration reservation while
-  waiting, and do not repeatedly rebase merely because `dev` advances.
+  stages.
+* A feature is **ready for integration** when its implementation is formatted, reviewed, and given
+  credible light/focused validation, and its commits are coherent. Do not repeatedly rebase merely
+  because `dev` advanced; rebase during development only for a specific known dependency. Report
+  readiness and wait for the user's explicit authorization without acquiring a reservation.
 * After the user explicitly authorizes integration, run `integrate-feature` from the feature
   worktree. This queues fairly for the exclusive `integration/dev` jobserver resource; ordinary
   feature work and unrelated jobserver resources remain concurrent. Do not bypass this queue for a
@@ -59,11 +60,11 @@ Unreal Engine 5.8 project.
   5. If validation passed and `dev` is unchanged, merge immediately and perform the normal
      worktree/feature-branch cleanup before releasing the reservation. The user's authorization to
      enter the queue also authorizes this merge; do not stop after validation to ask a second time.
-* Rebase conflicts or failed validation must not monopolize integration for unbounded debugging.
-  The transaction aborts and releases its reservation; fix the feature with focused validation
-  outside the queue, then report/requeue it when ready. Never automatically retry an entire final
-  integration. The connection-owned lease releases on every normal, failure, cancellation, or
-  disconnect path, and its local process tree is terminated if the lease holder exits.
+* Rebase conflicts or failed final validation abort the transaction and release its reservation.
+  Resolve or fix the feature outside the queue with focused validation, then requeue it when ready;
+  never use the reservation for open-ended debugging or automatically retry an entire integration.
+  The connection-owned lease releases on every normal, failure, cancellation, or disconnect path,
+  and its local process tree is terminated if the lease holder exits.
 * After a feature branch has been successfully merged into `dev`, return its worktree to its
   normal persistent branch when one exists. Infer that branch from the worktree directory name
   only when a matching branch exists; for example, worktrees named `dev1` through `dev10` normally
@@ -99,22 +100,17 @@ Unreal Engine 5.8 project.
   legitimately staged into the Editor target's engine output directory. The exclusive engine gate
   serializes those writes.
 * A canonical per-user jobserver coordinates expensive work across worktrees. Ordinary work shares the machine resource; benchmarks wait for older work to drain and then run exclusively. Use `get-jobserver-state` or the `jobserver-status` target to inspect running and queued jobs. Continue to use repository CMake/PowerShell wrappers for coordinated work; do not bypass them merely to customize queue metadata.
-* Development validation has three tiers:
-  1. Native-only validation is the default while implementing independently buildable code under
-     `native/`. Use `cmake --build --preset native --target <target>` and focused native workflows
-     such as `native-simulation-tests`; `cmake --workflow --preset native-tests` runs the complete
-     native suite. These commands do not configure or build Unreal.
-  2. Use the smallest focused Unreal build/test only after native work is substantially settled and
-     an Unreal-facing boundary needs checking: module/build definitions, UObject/reflection,
-     engine adapters/APIs, UI, assets, editor integration, or ownership/lifetime behavior. A thin
-     Unreal adapter alone does not justify rebuilding Unreal after every native implementation edit.
-  3. Run the complete DebugGame integration gate only inside the authorized final integration
-     transaction, after its reserved rebase.
-* The merge-ready integration gate for substantive code, schema, generated-source,
-  build-configuration, module, or test changes is `cmake --workflow --preset debug-game-tests`.
-  Follow the [Feature Workflow](#feature-workflow) when applying this gate. When it exposes a
-  focused native failure, leave the integration queue, diagnose and fix it with the smallest
-  relevant native build/test, then requeue one final transaction on the resulting HEAD.
+* Cheap native validation: build the affected target with
+  `cmake --build --preset native --target <target>`, then run the applicable focused native
+  workflow. `cmake --workflow --preset native-tests` is the broader native suite. These commands
+  do not configure or build Unreal.
+* Unreal-facing validation: use the smallest focused Unreal build/test only when the boundary
+  itself needs checking, such as module/build definitions, UObject/reflection, adapters/APIs, UI,
+  assets, editor integration, or ownership/lifetime behaviour.
+* Final integration validation for substantive code, schema, generated-source, build-configuration,
+  module, or test changes is `cmake --workflow --preset debug-game-tests`, followed by the required
+  `cmake --workflow --preset development`, only inside the authorized reserved transaction after
+  its rebase.
 * When a generated-code check reports stale outputs, automatically run its matching `generate-*`
   CMake target, review the generated diff, and rerun the failed check.
 * Changes that affect benchmark sources or benchmark schemas also require the dedicated benchmark build: configure with `cmake --preset benchmark`, then build with `cmake --build --preset benchmark --target benchmarks`. Run benchmark measurements only when the task requires them.
@@ -208,7 +204,8 @@ Unreal Engine 5.8 project.
 
 # Formatting
 
-* Format changed C++ files with `cmake --workflow --preset format-code`.
+* Format changed C++ files with `cmake --workflow --preset format-code` once implementation has
+  substantially settled.
 * Do not invoke `clang-format` directly for normal repository work.
 * Use `format-all-code` only for explicitly requested repository-wide formatting.
 
