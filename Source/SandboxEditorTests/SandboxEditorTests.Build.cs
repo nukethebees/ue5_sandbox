@@ -27,6 +27,8 @@ public class SandboxEditorTests : ModuleRules
             "MaterialEditor",
             "RenderCore",
             "RHI",
+            "Slate",
+            "SlateCore",
         });
     }
 }

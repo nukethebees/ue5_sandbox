@@ -2,6 +2,7 @@
 
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringMode.h"
+#include "SandboxEditor/SandboxEditor.h"
 
 #include <IDetailsView.h>
 #include <Modules/ModuleManager.h>
@@ -82,7 +83,11 @@ void FS7LevelAuthoringModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_
                       [SNew(SButton)
                            .Text(LOCTEXT("SaveCanonical", "Save Canonical from Scene"))
                            .OnClicked(this,
-                                      &FS7LevelAuthoringModeToolkit::save_canonical_from_scene)]] +
+                                      &FS7LevelAuthoringModeToolkit::save_canonical_from_scene)] +
+                  SUniformGridPanel::Slot(0, 6)
+                      [SNew(SButton)
+                           .Text(LOCTEXT("OpenScriptEditor", "Open Script Editor"))
+                           .OnClicked(this, &FS7LevelAuthoringModeToolkit::open_script_editor)]] +
              SVerticalBox::Slot().AutoHeight().Padding(
                  4.0f)[SAssignNew(status_, STextBlock).AutoWrapText(true)] +
              SVerticalBox::Slot().AutoHeight()[details_.ToSharedRef()]];
@@ -128,6 +133,10 @@ FORWARD_ACTION(assign_selected_must_survive)
 FORWARD_ACTION(assign_selected_required_kills)
 FORWARD_ACTION(clear_selected_objectives)
 FORWARD_ACTION(load_s7)
+auto FS7LevelAuthoringModeToolkit::open_script_editor() -> FReply {
+    FSandboxEditorModule::open_s7_level_script_editor();
+    return FReply::Handled();
+}
 FORWARD_ACTION(preview_apply)
 FORWARD_ACTION(apply_preview)
 FORWARD_ACTION(save)

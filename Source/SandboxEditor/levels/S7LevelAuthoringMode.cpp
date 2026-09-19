@@ -14,7 +14,9 @@
 #include <Engine/Level.h>
 #include <Engine/Selection.h>
 #include <Framework/Application/SlateApplication.h>
+#include <HAL/FileManager.h>
 #include <IDesktopPlatform.h>
+#include <Misc/MessageDialog.h>
 #include <Misc/PackageName.h>
 #include <SceneManagement.h>
 #include <SceneView.h>
@@ -55,6 +57,22 @@ auto select_source_path(bool const save, FString const& suggested_filename) -> T
     }
     return MoveTemp(paths[0]);
 }
+
+auto confirm_discard_source_buffer() -> bool {
+    return FMessageDialog::Open(
+               EAppMsgType::YesNo,
+               LOCTEXT("DiscardSourceBuffer",
+                       "Discard the unsaved S7 source buffer and reload the file from disk?")) ==
+           EAppReturnType::Yes;
+}
+
+auto confirm_replace_source(FStringView const path) -> bool {
+    return FMessageDialog::Open(
+               EAppMsgType::YesNo,
+               FText::Format(
+                   LOCTEXT("ReplaceSource", "The S7 source file '{0}' already exists. Replace it?"),
+                   FText::FromString(FString{path}))) == EAppReturnType::Yes;
+}
 }
 
 using namespace ml::editor::s7_level_authoring_mode_detail;
@@ -76,6 +94,8 @@ void US7LevelAuthoringMode::Enter() {
 
 void US7LevelAuthoringMode::Exit() {
     preview_.Reset();
+    preview_stale_ = false;
+    scene_dirty_ = false;
     document_.Reset();
     Super::Exit();
 }
@@ -122,6 +142,7 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
                                      std::unexpected{TEXT("The current level is unavailable.")}}};
         if (!current) {
             preview_.Reset();
+            preview_stale_ = true;
             set_status(FText::FromString(current.error()));
             changed_.Broadcast();
         }
@@ -149,12 +170,15 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
                        : std::expected<FString, FString>{std::unexpected{definition.error()}}};
         if (!generated || document_->synchronized_scene_hash !=
                               ml::editor::FS7LevelSourceSession::source_digest(*generated)) {
+            scene_dirty_ = true;
             auto const dirty{
                 LOCTEXT("SceneDirty", "The scene has unsaved level-authoring changes.")};
             if (!status_.EqualTo(dirty)) {
                 set_status(dirty);
                 changed_.Broadcast();
             }
+        } else {
+            scene_dirty_ = false;
         }
     }
 }
@@ -230,6 +254,25 @@ auto US7LevelAuthoringMode::document() const -> AS7LevelAuthoringDocument* {
 
 auto US7LevelAuthoringMode::source_session() -> ml::editor::FS7LevelSourceSession& {
     return source_session_;
+}
+
+auto US7LevelAuthoringMode::source_session() const -> ml::editor::FS7LevelSourceSession const& {
+    return source_session_;
+}
+
+auto US7LevelAuthoringMode::script_editor_state() const -> FS7LevelScriptEditorState {
+    auto const has_document{document_.IsValid()};
+    auto const attached{source_session_.is_attached() &&
+                        source_session_.document() == document_.Get()};
+    return {.path = source_session_.path(),
+            .source_dirty = source_session_.is_dirty(),
+            .unapplied_buffer = has_document && source_session_.has_unapplied_buffer(
+                                                    document_->synchronized_source_hash),
+            .scene_dirty = scene_dirty_,
+            .disk_conflict = source_session_.has_external_conflict(),
+            .preview_valid = preview_.IsSet() && !preview_stale_,
+            .preview_stale = preview_stale_,
+            .detached = !attached};
 }
 
 auto US7LevelAuthoringMode::status() const -> FText const& {
@@ -401,6 +444,36 @@ void US7LevelAuthoringMode::load_s7() {
     preview_apply();
 }
 
+void US7LevelAuthoringMode::reload_s7() {
+    if (!source_session_.is_attached() || source_session_.path().IsEmpty()) {
+        set_status(LOCTEXT("NoReloadableSource", "Choose an S7 source file before reloading."));
+        changed_.Broadcast();
+        return;
+    }
+    if (source_session_.is_dirty() && !confirm_discard_source_buffer()) {
+        return;
+    }
+
+    auto const reloaded{source_session_.reload()};
+    if (!reloaded) {
+        set_status(FText::FromString(reloaded.error()));
+    } else {
+        preview_.Reset();
+        preview_stale_ = false;
+        set_status(FText::FromString(FString::Printf(TEXT("Reloaded the S7 source buffer from %s."),
+                                                     *source_session_.path())));
+    }
+    changed_.Broadcast();
+}
+
+void US7LevelAuthoringMode::set_source_buffer(FString source) {
+    source_session_.set_buffer(MoveTemp(source));
+    if (preview_.IsSet()) {
+        preview_stale_ = true;
+    }
+    changed_.Broadcast();
+}
+
 void US7LevelAuthoringMode::preview_apply() {
     auto* const level{current_level()};
     if (!IsValid(level) || !document_.IsValid() || source_session_.document() != document_.Get()) {
@@ -414,6 +487,7 @@ void US7LevelAuthoringMode::preview_apply() {
                                          ? read.script_error
                                          : TEXT("The S7 level did not decode or validate.")));
         preview_.Reset();
+        preview_stale_ = false;
         changed_.Broadcast();
         return;
     }
@@ -421,6 +495,7 @@ void US7LevelAuthoringMode::preview_apply() {
     if (!plan) {
         set_status(FText::FromString(plan.error()));
         preview_.Reset();
+        preview_stale_ = false;
         changed_.Broadcast();
         return;
     }
@@ -429,10 +504,12 @@ void US7LevelAuthoringMode::preview_apply() {
     if (!preview) {
         set_status(FText::FromString(preview.error()));
         preview_.Reset();
+        preview_stale_ = false;
         changed_.Broadcast();
         return;
     }
     preview_ = MoveTemp(*preview);
+    preview_stale_ = false;
     if (!preview_->plan.has_changes()) {
         set_status(LOCTEXT("PreviewMatches", "Preview: the source and scene already match."));
     } else {
@@ -478,6 +555,7 @@ void US7LevelAuthoringMode::apply_preview() {
         set_status(FText::FromString(applied.error()));
         if (applied.error().StartsWith(TEXT("Preview is stale"))) {
             preview_.Reset();
+            preview_stale_ = true;
         }
     } else {
         document_->synchronized_source_hash =
@@ -491,6 +569,8 @@ void US7LevelAuthoringMode::apply_preview() {
                 ml::editor::FS7LevelSourceSession::source_digest(*generated);
         }
         preview_.Reset();
+        preview_stale_ = false;
+        scene_dirty_ = false;
         set_status(LOCTEXT("Applied", "The scene now matches the S7 source."));
     }
     changed_.Broadcast();
@@ -531,8 +611,14 @@ void US7LevelAuthoringMode::save_as() {
     if (!selected.IsSet()) {
         return;
     }
-    auto const saved{source_session_.save_as(
-        selected.GetValue(), ml::editor::ES7SourceOverwritePolicy::ReplaceExisting)};
+    auto overwrite{ml::editor::ES7SourceOverwritePolicy::RefuseExisting};
+    if (IFileManager::Get().FileExists(*selected.GetValue())) {
+        if (!confirm_replace_source(selected.GetValue())) {
+            return;
+        }
+        overwrite = ml::editor::ES7SourceOverwritePolicy::ReplaceExisting;
+    }
+    auto const saved{source_session_.save_as(selected.GetValue(), overwrite)};
     if (!saved) {
         set_status(FText::FromString(saved.error()));
     } else {
@@ -575,11 +661,15 @@ void US7LevelAuthoringMode::save_canonical_from_scene() {
         if (!selected.IsSet()) {
             return;
         }
+        auto overwrite{ml::editor::ES7SourceOverwritePolicy::RefuseExisting};
+        if (IFileManager::Get().FileExists(*selected.GetValue())) {
+            if (!confirm_replace_source(selected.GetValue())) {
+                return;
+            }
+            overwrite = ml::editor::ES7SourceOverwritePolicy::ReplaceExisting;
+        }
         saved = source_session_.save_replacement_as(
-            *source,
-            selected.GetValue(),
-            document_->synchronized_source_hash,
-            ml::editor::ES7SourceOverwritePolicy::ReplaceExisting);
+            *source, selected.GetValue(), document_->synchronized_source_hash, overwrite);
     } else {
         saved = source_session_.save_replacement(*source, document_->synchronized_source_hash);
     }

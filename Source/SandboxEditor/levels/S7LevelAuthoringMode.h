@@ -13,6 +13,17 @@ class AS7LevelAuthoringDocument;
 
 DECLARE_MULTICAST_DELEGATE(FOnS7LevelAuthoringChanged);
 
+struct SANDBOXEDITOR_API FS7LevelScriptEditorState {
+    FString path{};
+    bool source_dirty{};
+    bool unapplied_buffer{};
+    bool scene_dirty{};
+    bool disk_conflict{};
+    bool preview_valid{};
+    bool preview_stale{};
+    bool detached{};
+};
+
 UCLASS(Transient)
 class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEdMode {
     GENERATED_BODY()
@@ -35,6 +46,8 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
 
     [[nodiscard]] auto document() const -> AS7LevelAuthoringDocument*;
     [[nodiscard]] auto source_session() -> ml::editor::FS7LevelSourceSession&;
+    [[nodiscard]] auto source_session() const -> ml::editor::FS7LevelSourceSession const&;
+    [[nodiscard]] auto script_editor_state() const -> FS7LevelScriptEditorState;
     [[nodiscard]] auto status() const -> FText const&;
     auto on_changed() -> FOnS7LevelAuthoringChanged&;
 
@@ -45,6 +58,8 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     void assign_selected_required_kills();
     void clear_selected_objectives();
     void load_s7();
+    void reload_s7();
+    void set_source_buffer(FString source);
     void preview_apply();
     void apply_preview();
     void save();
@@ -63,4 +78,6 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     FText status_{};
     FOnS7LevelAuthoringChanged changed_{};
     float refresh_elapsed_seconds_{};
+    bool scene_dirty_{};
+    bool preview_stale_{};
 };
