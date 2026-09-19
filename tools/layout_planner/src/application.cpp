@@ -121,6 +121,7 @@ auto Application::initialize() -> bool {
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
     io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     io.ConfigDpiScaleFonts = true;
+    io.IniFilename = nullptr;
     ImGui::StyleColorsDark();
     auto& style{ImGui::GetStyle()};
     style.ScaleAllSizes(scale);
