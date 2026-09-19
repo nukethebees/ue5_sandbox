@@ -8,6 +8,7 @@
 #include <ioj/sim/player/control_mode.h>
 #include <ioj/sim/player/fire_rate.h>
 #include <ioj/sim/player/flight_mode.h>
+#include <ioj/sim/player/space_ship_common.h>
 #include <sandbox/core/multi_buffer.h>
 #include <sandbox/core/periodic_tick_countdown.h>
 #include <SandboxUI/EntityOverlay/EntityOverlayFrameStore.h>
@@ -130,6 +131,8 @@ struct FPlayerFlightDataCache {
     FVector target_velocity{};
     ::ioj::sim::SpaceShipControlMode control_mode{};
     ::ioj::sim::SpaceShipFlightMode flight_mode{};
+    float throttle{};
+    ::ioj::sim::player::BoostBrakeState boost_brake_state{};
     FVector crosshair_origin{};
     FVector crosshair_direction{};
     bool has_lock_on_target{false};

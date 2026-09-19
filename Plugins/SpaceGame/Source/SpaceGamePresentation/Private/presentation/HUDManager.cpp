@@ -970,6 +970,8 @@ bool FHUDManager::collect_player_flight_data() {
         next_data.target_velocity = ml::to_unreal(player_ship->target_local_planar_velocity);
         next_data.control_mode = player_ship->control_mode;
         next_data.flight_mode = player_ship->flight_mode;
+        next_data.throttle = player_ship->throttle;
+        next_data.boost_brake_state = movement_state.boost_brake_state;
         next_data.crosshair_origin = ml::to_unreal(ship_socket.location);
         next_data.crosshair_direction = ml::to_unreal(ship_socket.forward());
         auto const target{agents_->read_spatial(lock_on_target)};
@@ -1096,7 +1098,14 @@ void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
     hud.set_flight_vector_debug(data.flight_vector_debug);
     hud.set_ship_velocity(data.ship_velocity);
     hud.set_target_velocity(data.target_velocity);
-    hud.set_control_mode(ml::to_fstring(::ioj::sim::to_string(data.control_mode)));
+    auto control_mode{ml::to_fstring(::ioj::sim::to_string(data.control_mode))};
+    if (data.control_mode == ::ioj::sim::SpaceShipControlMode::Power) {
+        control_mode +=
+            FString::Printf(TEXT(" // THROTTLE %.2f // %s"),
+                            data.throttle,
+                            *ml::to_fstring(::ioj::sim::player::to_string(data.boost_brake_state)));
+    }
+    hud.set_control_mode(control_mode);
     hud.set_flight_mode(ml::to_fstring(::ioj::sim::to_string(data.flight_mode)));
 
     auto* const controller{hud.GetOwningPlayer()};

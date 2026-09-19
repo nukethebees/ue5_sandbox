@@ -49,11 +49,15 @@ class CommandInterface {
 
     void turn(ml::Vector2d direction) noexcept { simulation.turn(direction); }
 
+    void set_throttle(float input) noexcept { simulation.set_throttle(input); }
+
     void start_boost() { simulation.start_boost(); }
 
     void stop_boost() { simulation.stop_boost(); }
 
     void start_brake() { simulation.start_brake(); }
+
+    void start_emergency_brake() { simulation.start_emergency_brake(); }
 
     void stop_brake() { simulation.stop_brake(); }
 

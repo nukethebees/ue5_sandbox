@@ -26,6 +26,12 @@ struct PlayerSimConfig {
     float boost_forward_speed_addition_multiplier{2.f};
     float brake_depletion_time{6.f};
     float brake_speed{1000.f};
+    float power_max_speed{8000.f};
+    float power_acceleration{10000.f};
+    float power_boost_max_speed{16000.f};
+    float power_boost_acceleration{20000.f};
+    float power_brake_deceleration{14000.f};
+    float power_emergency_brake_deceleration{32000.f};
     float rotation_speed{60.f};
     float pitch_angle_max{30.f};
     float pitch_speed{3.f};
