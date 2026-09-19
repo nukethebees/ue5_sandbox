@@ -208,6 +208,7 @@ auto emit(MaterialIR const& ir, FString const& source_filename, FString const& s
     material->bDisableDepthTest = ir.settings.disable_depth_test;
     material->SetUsageByFlag(MATUSAGE_InstancedStaticMeshes,
                              ir.settings.used_with_instanced_static_meshes);
+    material->SetUsageByFlag(MATUSAGE_ParticleSprites, ir.settings.used_with_particle_sprites);
 
     TArray<ExpressionValue> expressions;
     expressions.Reserve(static_cast<int32>(ir.nodes.size()));

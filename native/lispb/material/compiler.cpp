@@ -181,7 +181,8 @@ void dump_ir(std::ostream& stream, material_synth::MaterialIR const& material) {
            << "domain " << domain << "\nblend " << blend << "\nshading " << shading << '\n'
            << "two-sided " << material.settings.two_sided << "\ndisable-depth-test "
            << material.settings.disable_depth_test << "\nused-with-instanced-static-meshes "
-           << material.settings.used_with_instanced_static_meshes << "\nadopt-existing "
+           << material.settings.used_with_instanced_static_meshes << "\nused-with-particle-sprites "
+           << material.settings.used_with_particle_sprites << "\nadopt-existing "
            << material.settings.adopt_existing << "\nopacity-mask-clip "
            << material.settings.opacity_mask_clip_value << '\n';
 

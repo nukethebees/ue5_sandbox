@@ -4,6 +4,7 @@
   (blend additive)
   (shading unlit)
   (two-sided true)
+  (usage particle-sprites)
 
   (let uv (texcoord 0))
   (let vertex_colour (vertex-color))

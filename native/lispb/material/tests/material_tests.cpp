@@ -70,6 +70,7 @@ TEST(MaterialFrontend, LowersVertexColourForProceduralRendererMaterials) {
     auto analysis{analyze("vertex-colour.scm",
                           "(material M (asset \"/Game/Generated/Materials/M\") (domain surface) "
                           "(blend additive) (shading unlit) "
+                          "(usage particle-sprites) "
                           "(emissive (swizzle (vertex-color) rgb)))",
                           TextureResolver{nullptr, resolve})};
     ASSERT_TRUE(analysis.material.has_value());
@@ -78,6 +79,7 @@ TEST(MaterialFrontend, LowersVertexColourForProceduralRendererMaterials) {
         material.nodes, [](Node const& node) { return node.kind == NodeKind::vertex_color; })};
     ASSERT_NE(vertex_colour, material.nodes.end());
     EXPECT_EQ(vertex_colour->type, ValueType::float4);
+    EXPECT_TRUE(material.settings.used_with_particle_sprites);
     EXPECT_TRUE(validate(material).empty());
 }
 
