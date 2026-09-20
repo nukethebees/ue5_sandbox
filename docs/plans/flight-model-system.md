@@ -188,7 +188,9 @@ struct TranslationAxisConfig {
     TranslationDriveConfig normal{};
     TranslationDriveConfig boosted{};
     float passive_drag{};
+    ReferenceFrame passive_drag_reference_frame{ReferenceFrame::Ship};
     float active_stabilization_rate{};
+    ReferenceFrame active_stabilization_reference_frame{ReferenceFrame::Ship};
 };
 
 struct TranslationAxesConfig {
@@ -223,6 +225,11 @@ contributions. Disabled-channel tuning data may remain populated so semantics ca
 without destructive edits. Active stabilization engages only when neither the manual nor automatic
 channel currently commands movement, so it does not silently counter a configured automatic
 channel or a non-zero persistent target.
+
+Passive drag and active stabilization each carry their own explicit `ReferenceFrame`. They do not
+inherit either channel's frame: manual and automatic commands, passive drag, and neutral
+stabilization may all resolve different ship-local or world axes deterministically. Both axis-level
+frames default to `Ship`, preserving the four named preset behaviours.
 
 Rotation data:
 
@@ -513,6 +520,12 @@ First implementation UI/settings behavior:
   cap, and resultant-limit fields with mode-appropriate visibility/labels. Unlimited caps use an
   explicit editor toggle backed by the same largest-finite-float runtime value.
 - Apply valid edits immediately to the active native slot and display `Custom (based on X)`.
+- Treat translation-semantic selection as one editor transaction. Selecting manual `TargetSpeed`
+  or `TargetVelocity` disables an existing automatic target semantic, and selecting an automatic
+  target disables an existing manual target semantic. Other channel tuning remains populated;
+  acceleration semantics are never disabled by this rule. Manual `TargetSpeed` selects `Axis`
+  input in the same transaction so every normal UI operation reaches native validation as a valid
+  profile.
 - Keep custom numeric edits session-scoped for the first implementation.
 - Replace the broad settings callback with targeted flight-setting synchronization so changing an
   unrelated setting cannot reset the active model.
@@ -797,3 +810,18 @@ Final-pass validation repeated formatting, all 233 native simulation tests, the 
 unit workflow, the 40-test DebugGame/game automation workflow, the editor target build, and the
 280-test C# tool workflow. Codegen checks report all committed outputs current after refreshing the
 post-rebase `PackedValues.h` fixture.
+
+## Final corrective pass
+
+- [x] Passive drag and active stabilization now declare independent ship/world reference frames;
+  the evaluator and validation no longer consult an unrelated channel frame.
+- [x] Runtime-editor target-semantic changes are transactional and symmetric while retaining
+  native ambiguous-target validation as the final boundary.
+- [x] Focused evaluator/config tests, settings/UI tests, full native simulation tests, DebugGame
+  tests, editor build, formatting, and affected generated-output checks pass.
+- [x] `cplay debug-game` builds the playable DebugGame editor configuration successfully.
+
+Validation completed with the native simulation workflow, the 82-test DebugGame unit workflow,
+the 81-test full DebugGame workflow (including all Unreal automation tests), the formatting
+workflow, and `cplay debug-game`. Both DebugGame builds reported all affected codegen/generated
+outputs current.

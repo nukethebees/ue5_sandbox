@@ -159,6 +159,10 @@ namespace ioj::sim::player::flight_model_config_detail {
 
 [[nodiscard]] auto validate_axis(TranslationAxisConfig const& config) noexcept
     -> std::expected<void, FlightModelConfigError> {
+    if (!valid_enum(config.passive_drag_reference_frame) ||
+        !valid_enum(config.active_stabilization_reference_frame)) {
+        return std::unexpected{FlightModelConfigError::InvalidEnumValue};
+    }
     if (auto const result{validate_channel(config.manual, false)}; !result) {
         return result;
     }

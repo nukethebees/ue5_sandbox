@@ -47,6 +47,10 @@ TEST(FlightModelConfig, PresetsExpressDifferentVelocitySemantics) {
     EXPECT_EQ(fighter.config.translation.forward.manual.input_source,
               TranslationInputSource::Accelerator);
     EXPECT_GT(fighter.config.translation.forward.passive_drag, 0.f);
+    EXPECT_EQ(fighter.config.translation.forward.passive_drag_reference_frame,
+              ReferenceFrame::Ship);
+    EXPECT_EQ(fighter.config.translation.forward.active_stabilization_reference_frame,
+              ReferenceFrame::Ship);
     EXPECT_EQ(fighter.config.facing_velocity.mode, FacingVelocityCoupling::LockedToFacing);
     EXPECT_EQ(skater.config.translation.forward.manual.semantic, TranslationSemantic::Acceleration);
     EXPECT_EQ(skater.config.translation.forward.passive_drag, 0.f);
@@ -84,6 +88,17 @@ TEST(FlightModelConfig, ValidationRejectsInvalidEnumsAndIgnoredChannelFields) {
     config.translation.forward.automatic.automatic_value = 1.01f;
     EXPECT_EQ(validate_flight_model_config(config).error(),
               FlightModelConfigError::InputValueOutOfRange);
+
+    config = make_flight_model_profile(FlightModelPreset::Fighter).config;
+    config.translation.forward.passive_drag_reference_frame = static_cast<ReferenceFrame>(255);
+    EXPECT_EQ(validate_flight_model_config(config).error(),
+              FlightModelConfigError::InvalidEnumValue);
+
+    config = make_flight_model_profile(FlightModelPreset::Fighter).config;
+    config.translation.forward.active_stabilization_reference_frame =
+        static_cast<ReferenceFrame>(255);
+    EXPECT_EQ(validate_flight_model_config(config).error(),
+              FlightModelConfigError::InvalidEnumValue);
 }
 
 TEST(FlightModelConfig, ValidationDefinesManualAndAutomaticComposition) {

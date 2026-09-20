@@ -169,6 +169,9 @@ void integrate_axis(float const dt,
     auto const manual_input{channel_input(axis, axis.config.manual)};
     auto const manual_axis{axis_vector(axis, axis.config.manual.reference_frame)};
     auto const automatic_axis{axis_vector(axis, axis.config.automatic.reference_frame)};
+    auto const passive_drag_axis{axis_vector(axis, axis.config.passive_drag_reference_frame)};
+    auto const active_stabilization_axis{
+        axis_vector(axis, axis.config.active_stabilization_reference_frame)};
     auto const automatic_input{axis.config.automatic.automatic_value};
     auto const& manual_response_config{boosting ? boost.response : axis.config.manual.response};
     auto const& automatic_response_config{boosting ? boost.response
@@ -221,7 +224,7 @@ void integrate_axis(float const dt,
     };
 
     if (axis.config.passive_drag > 0.f) {
-        move_component_toward_zero(manual_axis, axis.config.passive_drag);
+        move_component_toward_zero(passive_drag_axis, axis.config.passive_drag);
     }
     auto const manual_command_active{
         axis.config.manual.semantic == TranslationSemantic::TargetSpeed
@@ -231,7 +234,8 @@ void integrate_axis(float const dt,
         axis.config.automatic.semantic != TranslationSemantic::Disabled && automatic_input != 0.f};
     if (!manual_command_active && !automatic_command_active &&
         axis.config.active_stabilization_rate > 0.f) {
-        move_component_toward_zero(manual_axis, axis.config.active_stabilization_rate);
+        move_component_toward_zero(active_stabilization_axis,
+                                   axis.config.active_stabilization_rate);
     }
 }
 

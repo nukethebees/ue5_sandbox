@@ -2,6 +2,7 @@
 
 #include "SandboxUI/slate/SlateSlots.h"
 #include "SandboxUI/widgets/SettingsWidgets.h"
+#include "SpaceGame/settings/FlightModelEditor.h"
 #include "SpaceGame/settings/GameSettingsBackend.h"
 #include "SpaceGame/settings/GameSettingsSubsystem.h"
 #include "SpaceGame/system/GameSubsystem.h"
@@ -778,6 +779,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
     using ReferenceFrame = ::ioj::sim::player::ReferenceFrame;
     using InputSource = ::ioj::sim::player::TranslationInputSource;
     using FacingCoupling = ::ioj::sim::player::FacingVelocityCoupling;
+    using TranslationChannel = EFlightModelTranslationChannel;
 
     auto flight_rows{SNew(SVerticalBox)};
     auto const weak_settings{settings_};
@@ -1047,10 +1049,10 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                 return static_cast<int32>(axis(config).manual.semantic);
             },
             [axis](FlightConfig& config, int32 const index) {
-                axis(config).manual.semantic = static_cast<TranslationSemantic>(index);
-                if (axis(config).manual.semantic == TranslationSemantic::TargetSpeed) {
-                    axis(config).manual.input_source = InputSource::Axis;
-                }
+                apply_flight_model_translation_semantic_edit(
+                    axis(config),
+                    TranslationChannel::Manual,
+                    static_cast<TranslationSemantic>(index));
             });
         if (current_axis.manual.semantic != TranslationSemantic::Disabled) {
             add_flight_choice(
@@ -1100,7 +1102,10 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                 return static_cast<int32>(axis(config).automatic.semantic);
             },
             [axis](FlightConfig& config, int32 const index) {
-                axis(config).automatic.semantic = static_cast<TranslationSemantic>(index);
+                apply_flight_model_translation_semantic_edit(
+                    axis(config),
+                    TranslationChannel::Automatic,
+                    static_cast<TranslationSemantic>(index));
             });
         if (current_axis.automatic.semantic != TranslationSemantic::Disabled) {
             add_flight_choice(
@@ -1266,6 +1271,20 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                 [axis](FlightConfig& config, float const value) {
                     axis(config).passive_drag = value;
                 });
+            add_flight_choice(
+                field_label(axis_name,
+                            NSLOCTEXT("OptionsMenu", "PassiveDragFrame", "Passive Drag Frame")),
+                NSLOCTEXT("OptionsMenu",
+                          "PassiveDragFrameTip",
+                          "Apply passive drag along the ship-local or world axis."),
+                {NSLOCTEXT("OptionsMenu", "PassiveDragShipFrame", "Ship"),
+                 NSLOCTEXT("OptionsMenu", "PassiveDragWorldFrame", "World")},
+                [axis](FlightConfig const& config) {
+                    return static_cast<int32>(axis(config).passive_drag_reference_frame);
+                },
+                [axis](FlightConfig& config, int32 const index) {
+                    axis(config).passive_drag_reference_frame = static_cast<ReferenceFrame>(index);
+                });
             add_flight_slider(
                 field_label(
                     axis_name,
@@ -1281,6 +1300,23 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                 },
                 [axis](FlightConfig& config, float const value) {
                     axis(config).active_stabilization_rate = value;
+                });
+            add_flight_choice(
+                field_label(axis_name,
+                            NSLOCTEXT("OptionsMenu",
+                                      "ActiveStabilizationFrame",
+                                      "Active Stabilization Frame")),
+                NSLOCTEXT("OptionsMenu",
+                          "ActiveStabilizationFrameTip",
+                          "Apply neutral stabilization along the ship-local or world axis."),
+                {NSLOCTEXT("OptionsMenu", "ActiveStabilizationShipFrame", "Ship"),
+                 NSLOCTEXT("OptionsMenu", "ActiveStabilizationWorldFrame", "World")},
+                [axis](FlightConfig const& config) {
+                    return static_cast<int32>(axis(config).active_stabilization_reference_frame);
+                },
+                [axis](FlightConfig& config, int32 const index) {
+                    axis(config).active_stabilization_reference_frame =
+                        static_cast<ReferenceFrame>(index);
                 });
         }
         add_section(

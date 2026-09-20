@@ -1,4 +1,5 @@
 #include <SpaceGame/settings/ControlSettingsTypes.h>
+#include <SpaceGame/settings/FlightModelEditor.h>
 #include <SpaceGame/settings/GameSettingsBackend.h>
 #include <SpaceGame/settings/GameSettingsEditState.h>
 #include <SpaceGame/settings/GameSettingsSubsystem.h>
@@ -263,5 +264,110 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
                                  !settings->flight_model_profile().customized);
         TestRunner->TestEqual(
             TEXT("Observing a native selection does not reapply configuration"), change_count, 1);
+    }
+
+    TEST_METHOD(RuntimeFlightModelSemanticEditsAreTransactional)
+    {
+        using ::ioj::sim::player::ReferenceFrame;
+        using ::ioj::sim::player::TranslationInputSource;
+        using ::ioj::sim::player::TranslationSemantic;
+        using ml::ioj::EFlightModelTranslationChannel;
+
+        auto* const settings{NewObject<ml::ioj::UGameSettingsSubsystem>()};
+        int32 change_count{};
+        settings->flight_model_config_changed.AddLambda([&change_count] { ++change_count; });
+
+        auto profile{::ioj::sim::player::make_flight_model_profile(
+            ::ioj::sim::player::FlightModelPreset::Starfox)};
+        auto& forward{profile.config.translation.forward};
+        auto const preserved_automatic_value{forward.automatic.automatic_value};
+        auto const preserved_automatic_response{forward.automatic.response};
+        ml::ioj::apply_flight_model_translation_semantic_edit(
+            forward, EFlightModelTranslationChannel::Manual, TranslationSemantic::TargetVelocity);
+
+        TestRunner->TestTrue(TEXT("Manual target selection disables the automatic target only"),
+                             forward.manual.semantic == TranslationSemantic::TargetVelocity &&
+                                 forward.automatic.semantic == TranslationSemantic::Disabled);
+        TestRunner->TestTrue(
+            TEXT("Disabled automatic channel tuning is preserved"),
+            FMath::IsNearlyEqual(forward.automatic.automatic_value, preserved_automatic_value) &&
+                forward.automatic.response == preserved_automatic_response);
+        TestRunner->TestTrue(
+            TEXT("Transactional manual target edit remains valid"),
+            ::ioj::sim::player::validate_flight_model_config(profile.config).has_value());
+        TestRunner->TestTrue(TEXT("Transactional edit reaches the active runtime profile"),
+                             settings->set_flight_model_profile(profile));
+        TestRunner->TestTrue(TEXT("Transactional runtime edit is marked custom"),
+                             settings->flight_model_profile().customized);
+
+        profile = settings->flight_model_profile();
+        auto& automatic_forward{profile.config.translation.forward};
+        automatic_forward.manual.reference_frame = ReferenceFrame::World;
+        auto const preserved_manual_frame{automatic_forward.manual.reference_frame};
+        ml::ioj::apply_flight_model_translation_semantic_edit(
+            automatic_forward,
+            EFlightModelTranslationChannel::Automatic,
+            TranslationSemantic::TargetSpeed);
+        TestRunner->TestTrue(
+            TEXT("Automatic target selection disables the manual target only"),
+            automatic_forward.automatic.semantic == TranslationSemantic::TargetSpeed &&
+                automatic_forward.manual.semantic == TranslationSemantic::Disabled);
+        TestRunner->TestTrue(TEXT("Disabled manual channel tuning is preserved"),
+                             automatic_forward.manual.reference_frame == preserved_manual_frame);
+        TestRunner->TestTrue(
+            TEXT("Transactional automatic target edit remains valid"),
+            ::ioj::sim::player::validate_flight_model_config(profile.config).has_value());
+        TestRunner->TestTrue(TEXT("Automatic target edit reaches the active runtime profile"),
+                             settings->set_flight_model_profile(profile));
+
+        profile = settings->flight_model_profile();
+        auto& composed_forward{profile.config.translation.forward};
+        ml::ioj::apply_flight_model_translation_semantic_edit(
+            composed_forward,
+            EFlightModelTranslationChannel::Manual,
+            TranslationSemantic::TargetVelocity);
+        ml::ioj::apply_flight_model_translation_semantic_edit(
+            composed_forward,
+            EFlightModelTranslationChannel::Automatic,
+            TranslationSemantic::Acceleration);
+        TestRunner->TestTrue(
+            TEXT("Target plus acceleration remains intact"),
+            composed_forward.manual.semantic == TranslationSemantic::TargetVelocity &&
+                composed_forward.automatic.semantic == TranslationSemantic::Acceleration);
+        TestRunner->TestTrue(
+            TEXT("Target plus acceleration remains valid"),
+            ::ioj::sim::player::validate_flight_model_config(profile.config).has_value());
+
+        ml::ioj::apply_flight_model_translation_semantic_edit(
+            composed_forward,
+            EFlightModelTranslationChannel::Manual,
+            TranslationSemantic::Acceleration);
+        TestRunner->TestTrue(
+            TEXT("Acceleration plus acceleration remains intact"),
+            composed_forward.manual.semantic == TranslationSemantic::Acceleration &&
+                composed_forward.automatic.semantic == TranslationSemantic::Acceleration);
+        TestRunner->TestTrue(
+            TEXT("Acceleration plus acceleration remains valid"),
+            ::ioj::sim::player::validate_flight_model_config(profile.config).has_value());
+
+        composed_forward.automatic.semantic = TranslationSemantic::Disabled;
+        composed_forward.manual.input_source = TranslationInputSource::Accelerator;
+        ml::ioj::apply_flight_model_translation_semantic_edit(
+            composed_forward,
+            EFlightModelTranslationChannel::Manual,
+            TranslationSemantic::TargetSpeed);
+        TestRunner->TestTrue(TEXT("Manual target speed atomically selects axis input"),
+                             composed_forward.manual.semantic == TranslationSemantic::TargetSpeed &&
+                                 composed_forward.manual.input_source ==
+                                     TranslationInputSource::Axis);
+        TestRunner->TestTrue(
+            TEXT("Dependent target-speed edit remains valid"),
+            ::ioj::sim::player::validate_flight_model_config(profile.config).has_value());
+        TestRunner->TestTrue(TEXT("Composed semantic edit reaches the active runtime profile"),
+                             settings->set_flight_model_profile(profile));
+        TestRunner->TestTrue(TEXT("Applied semantic edits remain custom"),
+                             settings->flight_model_profile().customized);
+        TestRunner->TestEqual(
+            TEXT("Each accepted transaction emits one runtime change"), change_count, 3);
     }
 };
