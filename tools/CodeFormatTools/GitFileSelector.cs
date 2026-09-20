@@ -42,16 +42,20 @@ internal sealed class GitFileSelector(IProcessRunner process_runner)
         FormattingScope scope,
         CancellationToken cancellation_token)
     {
-        var changed_paths = await GetPathsAsync(
+        var unstaged_paths = await GetPathsAsync(
             repository_root,
-            ["diff", "--name-only", "-z", "HEAD"],
+            ["diff", "--name-only", "-z"],
+            cancellation_token);
+        var staged_paths = await GetPathsAsync(
+            repository_root,
+            ["diff", "--cached", "--name-only", "-z"],
             cancellation_token);
         var untracked_paths = await GetPathsAsync(
             repository_root,
             ["ls-files", "--others", "--exclude-standard", "-z"],
             cancellation_token);
 
-        return FilterAndSort(changed_paths.Concat(untracked_paths), scope);
+        return FilterAndSort(unstaged_paths.Concat(staged_paths).Concat(untracked_paths), scope);
     }
 
     public async Task<IReadOnlyList<string>> SelectUnstagedAsync(
