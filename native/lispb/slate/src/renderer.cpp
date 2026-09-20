@@ -1,5 +1,7 @@
 #include "renderer.h"
 
+#include <codegen/cpp_string.h>
+
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -93,7 +95,8 @@ class Renderer {
     void append_source_line(SourceSpan const& span) {
         append_line(0,
                     "#line " + std::to_string(span.line) + " \"" +
-                        escape_cpp_string(span.path.empty() ? source_path_ : span.path) + "\"");
+                        codegen::escape_cpp_string(span.path.empty() ? source_path_ : span.path) +
+                        "\"");
     }
 
     void render_function(SlateFunction const& function, bool const library) {
@@ -208,13 +211,13 @@ class Renderer {
 
     static auto render_value(Value const& value) -> std::string {
         if (value.kind == ValueKind::text) {
-            return "FText::FromString(TEXT(\"" + escape_cpp_string(value.text) + "\"))";
+            return "FText::FromString(TEXT(\"" + codegen::escape_cpp_string(value.text) + "\"))";
         }
         if (value.kind == ValueKind::localized_text) {
             auto const& localized{*value.localized_text};
-            return "NSLOCTEXT(\"" + escape_cpp_string(localized.context) + "\", \"" +
-                   escape_cpp_string(localized.key) + "\", \"" + escape_cpp_string(localized.text) +
-                   "\")";
+            return "NSLOCTEXT(\"" + codegen::escape_cpp_string(localized.context) + "\", \"" +
+                   codegen::escape_cpp_string(localized.key) + "\", \"" +
+                   codegen::escape_cpp_string(localized.text) + "\")";
         }
         return value.text;
     }
@@ -319,33 +322,6 @@ class Renderer {
             return "VAlign_Fill";
         }
         return std::string{value};
-    }
-
-    static auto escape_cpp_string(std::string_view const value) -> std::string {
-        std::string result;
-        for (auto const character : value) {
-            switch (character) {
-                case '\\':
-                    result += "\\\\";
-                    break;
-                case '"':
-                    result += "\\\"";
-                    break;
-                case '\n':
-                    result += "\\n";
-                    break;
-                case '\r':
-                    result += "\\r";
-                    break;
-                case '\t':
-                    result += "\\t";
-                    break;
-                default:
-                    result += character;
-                    break;
-            }
-        }
-        return result;
     }
 
     std::string source_path_;

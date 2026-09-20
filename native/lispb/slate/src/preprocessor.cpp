@@ -1,5 +1,6 @@
 #include "preprocessor.h"
 
+#include <codegen/cpp_string.h>
 #include <codegen/sexpr/reader.h>
 
 #include <algorithm>
@@ -40,30 +41,7 @@ auto format_token(Token const& token) -> std::string {
     if (token.kind != TokenKind::string) {
         return token.text;
     }
-    std::string result{"\""};
-    for (auto const character : token.text) {
-        switch (character) {
-            case '\\':
-                result += "\\\\";
-                break;
-            case '"':
-                result += "\\\"";
-                break;
-            case '\n':
-                result += "\\n";
-                break;
-            case '\r':
-                result += "\\r";
-                break;
-            case '\t':
-                result += "\\t";
-                break;
-            default:
-                result += character;
-                break;
-        }
-    }
-    return result + '"';
+    return '"' + codegen::escape_cpp_string(token.text) + '"';
 }
 
 void format_form(Form const& form, std::size_t indent, std::string& output) {

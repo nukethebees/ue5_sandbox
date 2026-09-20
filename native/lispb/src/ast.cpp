@@ -1,4 +1,5 @@
 #include <codegen/ast.h>
+#include <codegen/cpp_string.h>
 
 #include <algorithm>
 #include <cctype>
@@ -34,31 +35,7 @@ auto trim_newlines(std::string value) -> std::string {
 }
 
 auto cpp_string_literal(std::string_view const value) -> std::string {
-    std::string result{"\""};
-    for (auto const character : value) {
-        switch (character) {
-            case '\\':
-                result += "\\\\";
-                break;
-            case '"':
-                result += "\\\"";
-                break;
-            case '\n':
-                result += "\\n";
-                break;
-            case '\r':
-                result += "\\r";
-                break;
-            case '\t':
-                result += "\\t";
-                break;
-            default:
-                result += character;
-                break;
-        }
-    }
-    result += '"';
-    return result;
+    return '"' + escape_cpp_string(value) + '"';
 }
 
 auto default_parameter_passing(std::string_view const spelling) -> ParameterPassing {
