@@ -253,7 +253,10 @@ delta while leaving placement-dependent bytes and traffic unspecified.
 
 Standard-library SoAs can likewise be created with **+ New SoA**. Columns support inline name,
 semantic type, and array/nested kind editing plus add, duplicate, delete, button reorder, and drag
-reorder. Capacity remains a planner experiment setting and is not written into LispB.
+reorder. Selected nested columns also expose optional fixed-schema and nested-schema references;
+switching back to array removes those invalid nested-only properties. Existing mask metadata is
+shown read-only until its generated field-mask/storage configuration can be edited as one valid
+operation. Capacity remains a planner experiment setting and is not written into LispB.
 
 Raw unions use **+ New union** and an existing `union-module`. Alternatives are edited inline with
 the shared semantic type picker and may be scalars or positive fixed arrays. Add, duplicate,

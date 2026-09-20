@@ -255,6 +255,8 @@ class PlannerUi {
     std::array<char, 128> tagged_union_alternative_type_{};
     std::array<char, 128> soa_member_name_{};
     std::array<char, 128> soa_member_type_{};
+    std::array<char, 128> soa_member_fixed_schema_{};
+    std::array<char, 128> soa_member_nested_schema_{};
     std::string selected_enumerator_;
     std::set<std::string, std::less<>> record_access_members_;
     std::map<lispb::schema::TypeIdentity, std::vector<VarintDistributionRow>> varint_distributions_;

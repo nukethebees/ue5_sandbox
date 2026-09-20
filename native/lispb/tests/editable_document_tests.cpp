@@ -150,7 +150,9 @@ class TemporarySchema {
     (function clear void
       ; Keep the custom function note.
       :body ("values.clear();")
-      :noexcept true)))
+      :noexcept true))
+  (struct NestedFlags
+    (member bits array std::uint8_t)))
 )");
     }
     ~TemporarySchema() {
@@ -3075,7 +3077,10 @@ TEST(EditableSchemaDocument, PreservesSoaMembersAndAdvancedFormsForStructuralEdi
     auto values{replacement.members[0]};
     auto flags{replacement.members[1]};
     values.type.name = "std::uint16_t";
+    flags.kind = codegen::SoaMemberKind::nested;
     flags.type.name = "std::uint32_t";
+    flags.fixed_schema = "FixedFlags";
+    flags.nested_schema = "NestedFlags";
     auto duplicate{flags};
     duplicate.name = "flags_copy";
     duplicate.type.name = "std::uint8_t";
@@ -3107,8 +3112,10 @@ TEST(EditableSchemaDocument, PreservesSoaMembersAndAdvancedFormsForStructuralEdi
     EXPECT_LT(copy_position, values_comment);
     EXPECT_LT(values_comment, values_position);
     EXPECT_LT(values_position, function_position);
-    EXPECT_NE(source.find("(member flags array std::uint32_t)"), std::string::npos);
-    EXPECT_NE(source.find("(member flags_copy array std::uint8_t)"), std::string::npos);
+    EXPECT_NE(source.find("(member flags nested std::uint32_t"), std::string::npos);
+    EXPECT_NE(source.find("(member flags_copy nested std::uint8_t"), std::string::npos);
+    EXPECT_NE(source.find(":fixed-schema FixedFlags"), std::string::npos);
+    EXPECT_NE(source.find(":nested-schema NestedFlags"), std::string::npos);
     EXPECT_NE(source.find("(member values array   std::uint16_t)"), std::string::npos);
     EXPECT_NE(source.find("; SoA values trailing note"), std::string::npos);
     EXPECT_NE(source.find("; Keep the SoA declaration note"), std::string::npos);
@@ -3156,7 +3163,10 @@ TEST(EditableSchemaDocument, PreservesSoaMembersAndAdvancedFormsForStructuralEdi
     EXPECT_EQ(schema->export_specifier, "SOA_API");
     ASSERT_EQ(schema->members.size(), 2U);
     EXPECT_EQ(schema->members[0].name, "flags_copy");
+    EXPECT_EQ(schema->members[0].kind, codegen::SoaMemberKind::nested);
     EXPECT_EQ(schema->members[0].type.name, "std::uint8_t");
+    EXPECT_EQ(schema->members[0].fixed_schema, "FixedFlags");
+    EXPECT_EQ(schema->members[0].nested_schema, "NestedFlags");
     EXPECT_EQ(schema->members[1].name, "values");
     EXPECT_EQ(schema->members[1].type.name, "std::uint16_t");
     ASSERT_EQ(schema->functions.size(), 1U);

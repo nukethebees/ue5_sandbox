@@ -4726,6 +4726,14 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                           soa_member_type_.size(),
                           "%s",
                           selected->type.name.c_str());
+            std::snprintf(soa_member_fixed_schema_.data(),
+                          soa_member_fixed_schema_.size(),
+                          "%s",
+                          selected->fixed_schema.value_or("").c_str());
+            std::snprintf(soa_member_nested_schema_.data(),
+                          soa_member_nested_schema_.size(),
+                          "%s",
+                          selected->nested_schema.value_or("").c_str());
         }
     }
 
@@ -4888,6 +4896,10 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                 if (ImGui::Selectable("array", member.kind == codegen::SoaMemberKind::array)) {
                     pending = *schema;
                     pending->members[index].kind = codegen::SoaMemberKind::array;
+                    pending->members[index].fixed_schema.reset();
+                    pending->members[index].nested_schema.reset();
+                    soa_member_fixed_schema_.front() = '\0';
+                    soa_member_nested_schema_.front() = '\0';
                 }
                 if (ImGui::Selectable("nested", member.kind == codegen::SoaMemberKind::nested)) {
                     pending = *schema;
@@ -4900,6 +4912,58 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             ImGui::PopID();
         }
         ImGui::EndTable();
+    }
+
+    if (selected_index.has_value()) {
+        auto const& member{schema->members[*selected_index]};
+        ImGui::SeparatorText("Selected column details");
+        if (member.kind == codegen::SoaMemberKind::nested) {
+            ImGui::SetNextItemWidth(-1.0F);
+            auto const fixed_submitted{ImGui::InputText("Fixed schema (optional)",
+                                                        soa_member_fixed_schema_.data(),
+                                                        soa_member_fixed_schema_.size(),
+                                                        ImGuiInputTextFlags_EnterReturnsTrue)};
+            if (fixed_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                if (!pending.has_value()) {
+                    pending = *schema;
+                }
+                auto value{std::string{soa_member_fixed_schema_.data()}};
+                if (value.empty()) {
+                    pending->members[*selected_index].fixed_schema.reset();
+                } else {
+                    pending->members[*selected_index].fixed_schema = std::move(value);
+                }
+            }
+
+            ImGui::SetNextItemWidth(-1.0F);
+            auto const nested_submitted{ImGui::InputText("Nested schema (optional)",
+                                                         soa_member_nested_schema_.data(),
+                                                         soa_member_nested_schema_.size(),
+                                                         ImGuiInputTextFlags_EnterReturnsTrue)};
+            if (nested_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                if (!pending.has_value()) {
+                    pending = *schema;
+                }
+                auto value{std::string{soa_member_nested_schema_.data()}};
+                if (value.empty()) {
+                    pending->members[*selected_index].nested_schema.reset();
+                } else {
+                    pending->members[*selected_index].nested_schema = std::move(value);
+                }
+            }
+        } else {
+            ImGui::TextDisabled("Fixed and nested schema references apply only to nested columns.");
+        }
+
+        ImGui::Text("Mask field: %s", member.mask_field ? "yes" : "no");
+        if (!member.mask_dimensions.empty()) {
+            ImGui::TextDisabled("Mask dimensions");
+            for (auto const& dimension : member.mask_dimensions) {
+                ImGui::BulletText("%s: %s", dimension.index_name.c_str(), dimension.extent.c_str());
+            }
+        }
+        ImGui::TextDisabled(
+            "Mask editing requires coordinated field-mask and storage-column configuration.");
     }
 
     if (navigate_to.has_value()) {
