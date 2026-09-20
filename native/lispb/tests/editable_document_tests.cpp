@@ -143,7 +143,10 @@ class TemporarySchema {
     :const-view-name ExistingSoaConstView
     :operations (reserve set-num)
     :using-declarations ("Base::reset")
-    (member values array   std::uint32_t) ; SoA member note
+    ; Keep the values SoA member note.
+    (member values array   std::uint32_t) ; SoA values trailing note
+    ; Keep the flags SoA member note.
+    (member flags array std::uint8_t)
     (function clear void
       ; Keep the custom function note.
       :body ("values.clear();")
@@ -3039,7 +3042,7 @@ TEST(EditableSchemaDocument, SoaColumnEditPreservesOtherDeclarationMetadata) {
     EXPECT_NE(source.find(":body (\"values.clear();\")"), std::string::npos);
     EXPECT_NE(source.find(":noexcept true"), std::string::npos);
     EXPECT_NE(source.find("(member values array   std::uint16_t)"), std::string::npos);
-    EXPECT_NE(source.find("; SoA member note"), std::string::npos);
+    EXPECT_NE(source.find("; SoA values trailing note"), std::string::npos);
 
     auto saved{document.save()};
     ASSERT_TRUE(saved.has_value()) << saved.error().message;
@@ -3063,15 +3066,20 @@ TEST(EditableSchemaDocument, SoaColumnEditPreservesOtherDeclarationMetadata) {
     EXPECT_EQ(schema->members.front().type.name, "std::uint16_t");
 }
 
-TEST(EditableSchemaDocument, FallsBackToCanonicalSoaRenderingForStructuralEdits) {
+TEST(EditableSchemaDocument, PreservesSoaMembersAndAdvancedFormsForStructuralEdits) {
     TemporarySchema files;
     auto document{files.load()};
     auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
     auto replacement{*document.soa_schema(declaration)};
-    replacement.members.push_back(
-        codegen::SoaMemberSchema{.name = "other",
-                                 .kind = codegen::SoaMemberKind::array,
-                                 .type = codegen::TypeRef{"std::uint8_t"}});
+    replacement.export_specifier = "SOA_API";
+    auto values{replacement.members[0]};
+    auto flags{replacement.members[1]};
+    values.type.name = "std::uint16_t";
+    flags.type.name = "std::uint32_t";
+    auto duplicate{flags};
+    duplicate.name = "flags_copy";
+    duplicate.type.name = "std::uint8_t";
+    replacement.members = {flags, duplicate, values};
 
     auto applied{
         document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
@@ -3082,10 +3090,77 @@ TEST(EditableSchemaDocument, FallsBackToCanonicalSoaRenderingForStructuralEdits)
     ASSERT_TRUE(preview.has_value()) << preview.error().message;
     ASSERT_EQ(preview->size(), 1U);
     auto const& source{preview->front().updated};
-    EXPECT_NE(source.find("(member other array std::uint8_t)"), std::string::npos);
-    EXPECT_EQ(source.find("; Keep the SoA declaration note"), std::string::npos);
-    EXPECT_EQ(source.find("; Keep the custom function note"), std::string::npos);
-    EXPECT_EQ(source.find("; SoA member note"), std::string::npos);
+    auto const flags_comment{source.find("; Keep the flags SoA member note.")};
+    auto const flags_position{source.find("(member flags ")};
+    auto const copy_position{source.find("(member flags_copy ")};
+    auto const values_comment{source.find("; Keep the values SoA member note.")};
+    auto const values_position{source.find("(member values ")};
+    auto const function_position{source.find("(function clear void")};
+    ASSERT_NE(flags_comment, std::string::npos);
+    ASSERT_NE(flags_position, std::string::npos);
+    ASSERT_NE(copy_position, std::string::npos);
+    ASSERT_NE(values_comment, std::string::npos);
+    ASSERT_NE(values_position, std::string::npos);
+    ASSERT_NE(function_position, std::string::npos);
+    EXPECT_LT(flags_comment, flags_position);
+    EXPECT_LT(flags_position, copy_position);
+    EXPECT_LT(copy_position, values_comment);
+    EXPECT_LT(values_comment, values_position);
+    EXPECT_LT(values_position, function_position);
+    EXPECT_NE(source.find("(member flags array std::uint32_t)"), std::string::npos);
+    EXPECT_NE(source.find("(member flags_copy array std::uint8_t)"), std::string::npos);
+    EXPECT_NE(source.find("(member values array   std::uint16_t)"), std::string::npos);
+    EXPECT_NE(source.find("; SoA values trailing note"), std::string::npos);
+    EXPECT_NE(source.find("; Keep the SoA declaration note"), std::string::npos);
+    EXPECT_NE(source.find("; Keep the custom function note"), std::string::npos);
+    EXPECT_NE(source.find(":body (\"values.clear();\")"), std::string::npos);
+    EXPECT_NE(source.find(":noexcept true"), std::string::npos);
+    EXPECT_NE(source.find(":export-specifier SOA_API"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+
+    auto deletion{*document.soa_schema(declaration)};
+    std::erase_if(deletion.members, [](auto const& member) { return member.name == "flags"; });
+    applied = document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(deletion)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated.find("(member flags "), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find("; Keep the flags SoA member note."),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(member flags_copy "), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the values SoA member note."),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the custom function note"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_NE(preview->front().updated.find("(member flags "), std::string::npos);
+    ASSERT_TRUE(document.redo().value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    auto const* schema{reloaded.soa_schema(reloaded_declaration)};
+    ASSERT_NE(schema, nullptr);
+    EXPECT_EQ(schema->export_specifier, "SOA_API");
+    ASSERT_EQ(schema->members.size(), 2U);
+    EXPECT_EQ(schema->members[0].name, "flags_copy");
+    EXPECT_EQ(schema->members[0].type.name, "std::uint8_t");
+    EXPECT_EQ(schema->members[1].name, "values");
+    EXPECT_EQ(schema->members[1].type.name, "std::uint16_t");
+    ASSERT_EQ(schema->functions.size(), 1U);
+    EXPECT_EQ(schema->functions[0].body_lines, std::vector<std::string>{"values.clear();"});
 }
 
 } // namespace

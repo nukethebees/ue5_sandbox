@@ -46,9 +46,11 @@ rendered canonically. Record members and raw-union alternatives also preserve st
 blocks through insertion, duplication, deletion, and reorder, rendering only new children
 canonically. Tagged-union alternatives now use the same stable named-block behavior while keeping
 discriminant/export properties outside the ordered alternative region. Structural child edits for
-other declaration kinds still use canonical rendering. Stable ordinary SoA member/top-level
-edits preserve source too, after advanced untouched forms are semantically verified; unsupported or
-ambiguous edits retain canonical fallback.
+other declaration kinds still use canonical rendering. Ordinary standard-library SoA members use a
+bounded named-block region that stops before custom functions, fixed layouts, and single-allocation
+forms. Stable members retain comments and token-local kind/type/property edits through structural
+changes while advanced untouched forms are semantically verified; unsupported or ambiguous edits
+retain canonical fallback.
 
 Project Open, Save, validated Save As cloning, persisted recent-project history, and module-first
 schema browsing are implemented. A native file picker and richer multi-target project selection are

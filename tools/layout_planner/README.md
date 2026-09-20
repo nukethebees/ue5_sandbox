@@ -315,9 +315,9 @@ kinds deliberately fall back to canonical declaration rendering. Record members 
 alternatives preserve stable named blocks and their comments through insertion, duplication,
 deletion, and reorder, rendering only new children canonically. Tagged-union alternatives now use
 the same stable named-block behavior for structural edits while preserving declaration-level
-discriminant/export source independently. Ordinary standard-library SoAs preserve stable
-member and top-level edits as well, including untouched custom functions and advanced forms whose
-semantics can be proven unchanged. Structural or unsupported edits remain visible as canonical
+discriminant/export source independently. Ordinary standard-library SoAs preserve stable named
+member blocks through structural edits, with the editable region bounded before untouched custom
+functions and advanced forms whose semantics are proven unchanged. Unsupported edits remain visible as canonical
 fallbacks in preview. Unrelated declarations and files are left unchanged.
 
 Closing the application with dirty semantic edits offers Save, Discard, and Cancel choices. The

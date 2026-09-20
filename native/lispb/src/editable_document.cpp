@@ -1521,6 +1521,32 @@ auto try_render_source_preserved_tagged_union(codegen::TaggedUnionSchema const& 
     return apply_source_replacements(original, std::move(replacements));
 }
 
+auto render_soa_member(codegen::SoaMemberSchema const& member) -> std::string {
+    std::ostringstream output;
+    output << "(member " << member.name << ' ' << soa_member_kind_name(member.kind) << ' '
+           << render_type_ref(member.type);
+    if (member.fixed_schema.has_value()) {
+        output << "\n      :fixed-schema " << *member.fixed_schema;
+    }
+    if (member.nested_schema.has_value()) {
+        output << "\n      :nested-schema " << *member.nested_schema;
+    }
+    if (member.mask_field) {
+        output << "\n      :mask-field true";
+    }
+    if (!member.mask_dimensions.empty()) {
+        output << "\n      :mask-dimensions (";
+        for (std::size_t index{}; index < member.mask_dimensions.size(); ++index) {
+            auto const& dimension{member.mask_dimensions[index]};
+            output << (index == 0 ? "" : " ") << '(' << dimension.index_name << ' '
+                   << quote(dimension.extent) << ')';
+        }
+        output << ')';
+    }
+    output << ')';
+    return output.str();
+}
+
 auto render_soa(codegen::SoaSchema const& schema) -> std::string {
     std::ostringstream output;
     output << "(struct " << schema.name;
@@ -1560,27 +1586,7 @@ auto render_soa(codegen::SoaSchema const& schema) -> std::string {
         output << "\n    :field-enum-name " << *schema.field_enum_name;
     }
     for (auto const& member : schema.members) {
-        output << "\n    (member " << member.name << ' ' << soa_member_kind_name(member.kind) << ' '
-               << render_type_ref(member.type);
-        if (member.fixed_schema.has_value()) {
-            output << "\n      :fixed-schema " << *member.fixed_schema;
-        }
-        if (member.nested_schema.has_value()) {
-            output << "\n      :nested-schema " << *member.nested_schema;
-        }
-        if (member.mask_field) {
-            output << "\n      :mask-field true";
-        }
-        if (!member.mask_dimensions.empty()) {
-            output << "\n      :mask-dimensions (";
-            for (std::size_t index{}; index < member.mask_dimensions.size(); ++index) {
-                auto const& dimension{member.mask_dimensions[index]};
-                output << (index == 0 ? "" : " ") << '(' << dimension.index_name << ' '
-                       << quote(dimension.extent) << ')';
-            }
-            output << ')';
-        }
-        output << ')';
+        output << "\n    " << render_soa_member(member);
     }
     for (auto const& function : schema.functions) {
         output << '\n';
@@ -1625,27 +1631,34 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
     std::vector<Form const*> functions;
     Form const* fixed{};
     Form const* single_allocation{};
+    auto members_limit{parsed->closing.span.offset};
+    auto found_member{false};
+    auto member_region_ended{false};
     for (auto const& child : parsed->children) {
         if (child.head() == "member") {
+            if (member_region_ended || child.children.size() < 4) {
+                return std::nullopt;
+            }
+            found_member = true;
             members.push_back(&child);
-        } else if (child.head() == "function") {
-            functions.push_back(&child);
-        } else if (child.head() == "fixed") {
-            fixed = &child;
-        } else if (child.head() == "single-allocation") {
-            single_allocation = &child;
+        } else {
+            if (found_member && !member_region_ended) {
+                member_region_ended = true;
+                members_limit = child.token.span.offset;
+            }
+            if (child.head() == "function") {
+                functions.push_back(&child);
+            } else if (child.head() == "fixed") {
+                fixed = &child;
+            } else if (child.head() == "single-allocation") {
+                single_allocation = &child;
+            }
         }
     }
-    if (members.size() != schema.members.size() || functions.size() != schema.functions.size() ||
+    if (functions.size() != schema.functions.size() ||
         (fixed != nullptr) != schema.fixed.has_value() ||
         (single_allocation != nullptr) != schema.single_allocation.has_value()) {
         return std::nullopt;
-    }
-    for (std::size_t index{}; index < members.size(); ++index) {
-        if (members[index]->children.size() < 4 ||
-            members[index]->children[1].token.text != schema.members[index].name) {
-            return std::nullopt;
-        }
     }
     for (std::size_t index{}; index < functions.size(); ++index) {
         std::ostringstream rendered;
@@ -1720,16 +1733,77 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
         return std::nullopt;
     }
 
-    for (std::size_t index{}; index < members.size(); ++index) {
-        auto const& member{schema.members[index]};
-        if (!patch_source_form(members[index]->children[2],
+    if (members.empty()) {
+        return schema.members.empty() ? apply_source_replacements(original, std::move(replacements))
+                                      : std::nullopt;
+    }
+
+    auto const first_member_offset{members.front()->token.span.offset};
+    auto members_begin{std::size_t{}};
+    for (auto const& child : parsed->children) {
+        if (child.token.span.offset >= first_member_offset) {
+            continue;
+        }
+        auto const child_end{source_form_line_end(child, original, first_member_offset)};
+        if (!child_end.has_value()) {
+            return std::nullopt;
+        }
+        members_begin = (std::max)(members_begin, *child_end);
+    }
+    if (members_begin > first_member_offset || members_limit < first_member_offset) {
+        return std::nullopt;
+    }
+
+    struct SourceMember {
+        Form const* form{};
+        std::size_t begin{};
+        std::size_t end{};
+    };
+    std::map<std::string_view, SourceMember> source_by_name;
+    auto row_begin{members_begin};
+    for (auto const* member : members) {
+        auto const row_end{source_form_line_end(*member, original, members_limit)};
+        if (!row_end.has_value() || row_begin > member->token.span.offset ||
+            *row_end < member->closing.span.offset + 1) {
+            return std::nullopt;
+        }
+        if (!source_by_name
+                 .emplace(member->children[1].token.text,
+                          SourceMember{.form = member, .begin = row_begin, .end = *row_end})
+                 .second) {
+            return std::nullopt;
+        }
+        row_begin = *row_end;
+    }
+
+    auto const members_end{row_begin};
+    auto rendered_members{std::string{}};
+    auto append_row = [&](std::string row) {
+        auto const preceding_newline{rendered_members.empty()
+                                         ? members_begin > 0 && original[members_begin - 1] == '\n'
+                                         : rendered_members.back() == '\n'};
+        if (!preceding_newline && (row.empty() || row.front() != '\n')) {
+            rendered_members += '\n';
+        }
+        rendered_members += std::move(row);
+    };
+
+    for (auto const& member : schema.members) {
+        auto const found{source_by_name.find(member.name)};
+        if (found == source_by_name.end()) {
+            append_row("    " + render_soa_member(member));
+            continue;
+        }
+
+        std::vector<SourceReplacement> member_replacements;
+        if (!patch_source_form(found->second.form->children[2],
                                std::string{soa_member_kind_name(member.kind)},
                                original,
-                               replacements) ||
-            !patch_source_form(members[index]->children[3],
+                               member_replacements) ||
+            !patch_source_form(found->second.form->children[3],
                                render_type_ref(member.type),
                                original,
-                               replacements)) {
+                               member_replacements)) {
             return std::nullopt;
         }
         std::string dimensions;
@@ -1750,11 +1824,23 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                       member.mask_field ? std::optional<std::string>{"true"} : std::nullopt},
             std::pair{"mask-dimensions",
                       dimensions.empty() ? std::nullopt : std::optional{dimensions}}}};
-        if (!patch_source_properties(
-                *members[index], 3, member_properties, "      ", original, replacements)) {
+        if (!patch_source_properties(*found->second.form,
+                                     3,
+                                     member_properties,
+                                     "      ",
+                                     original,
+                                     member_replacements)) {
             return std::nullopt;
         }
+        auto rendered{apply_source_replacements_to_range(
+            original, found->second.begin, found->second.end, std::move(member_replacements))};
+        if (!rendered.has_value()) {
+            return std::nullopt;
+        }
+        append_row(std::move(*rendered));
     }
+    replacements.push_back(
+        {.begin = members_begin, .end = members_end, .text = std::move(rendered_members)});
     return apply_source_replacements(original, std::move(replacements));
 }
 

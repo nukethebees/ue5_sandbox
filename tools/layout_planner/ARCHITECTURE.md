@@ -59,8 +59,9 @@ declaration renderer. Records and raw unions use bounded named member/alternativ
 children retain comments and token-local type/count edits across insertion, duplication, deletion,
 and reorder; new children render canonically. Tagged unions use the same bounded named alternative
 blocks for structural edits while patching tags and keeping discriminant/export properties outside
-the ordered region. Other structural edits retain canonical fallback. Standard-library SoAs patch stable member/top-level properties only
-after functions, fixed layouts, and single-allocation forms are proven semantically unchanged;
+the ordered region. Other structural edits retain canonical fallback. Standard-library SoAs use a
+bounded named-member region ending before functions, fixed layouts, and single-allocation forms.
+Stable members can be structurally edited only after those advanced forms are proven semantically unchanged;
 unsupported derived allocator/mutable-view surfaces take canonical fallback.
 
 Declaration rename is a typed document transaction rather than text replacement. Supported enum,
