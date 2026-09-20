@@ -29,7 +29,7 @@
     {
       "name": "gpu-starfield-benchmark",
       "configurePreset": "development",
-      "targets": ["editor"]
+      "targets": ["editor", "benchmark-tools-host"]
     },
     {
       "name": "sandbox-ismc-benchmark",

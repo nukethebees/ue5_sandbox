@@ -114,7 +114,7 @@ class BenchmarkToolsBootstrapTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("NODE_REUSE:previous-value", result.stdout)
 
-    def test_wrappers_use_the_shared_resolver_and_keep_benchmark_options(self) -> None:
+    def test_wrappers_only_bootstrap_and_forward_to_benchmark_tools(self) -> None:
         fighter = (self.source_dir / "Scripts" / "run-fighter-simulation-benchmark.ps1").read_text(
             encoding="utf-8"
         )
@@ -126,13 +126,13 @@ class BenchmarkToolsBootstrapTests(unittest.TestCase):
             self.assertIn(". (Join-Path $PSScriptRoot 'BenchmarkTools.ps1')", contents)
             self.assertIn("$runner = Get-BenchmarkToolsPath -RepositoryRoot $repo", contents)
 
-        self.assertIn("'--fighter-stress-caps'", fighter)
+        self.assertIn("'fighter-simulation'", fighter)
+        self.assertIn("'--fighter-caps'", fighter)
         self.assertIn("'--warmup-seconds'", fighter)
         self.assertIn("'--saturation-timeout-seconds'", fighter)
-        self.assertIn("'--game-speed'", frame_memory)
-        self.assertIn("'100'", frame_memory)
-        self.assertIn("'--build-preset'", frame_memory)
-        self.assertIn("'frame-memory-level-benchmark'", frame_memory)
+        self.assertIn("'frame-memory-level'", frame_memory)
+        self.assertNotIn("ConvertFrom-Json", fighter)
+        self.assertNotIn("ConvertFrom-Json", frame_memory)
 
     def create_temporary_repository(self) -> Path:
         temporary_root = self.source_dir / ".local" / f"benchmark tools bootstrap {uuid.uuid4()}"

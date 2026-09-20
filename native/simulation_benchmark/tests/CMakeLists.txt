@@ -18,10 +18,7 @@ set_tests_properties(native-simulation-benchmark-tests PROPERTIES
 
 if(SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK)
   add_test(NAME native-frame-memory-level-benchmark
-    COMMAND powershell -NoProfile -File
-      "${PROJECT_SOURCE_DIR}/Scripts/run-frame-memory-level-benchmark.ps1"
-      -Seconds 20
-      -SkipBuild
+    COMMAND "${SANDBOX_BENCHMARK_TOOLS}" frame-memory-level --seconds 20 --skip-build
   )
   set_tests_properties(native-frame-memory-level-benchmark PROPERTIES
     LABELS "frame-memory-level-benchmark"

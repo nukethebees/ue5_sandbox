@@ -15,8 +15,10 @@ and native validation does not run this suite.
 - `perf/` contains performance tooling integrated into the root CMake project.
 - `GitTools/` is a small C# executable for Git worktree discovery. Build the complete C# tooling
   workspace with `dotnet build tools/Tools.slnx` or `ctools` after loading `dev.ps1`.
-- `BenchmarkTools/` owns reusable benchmark orchestration. Its staged executable runs a native S7
-  workload as `tools/bin/BenchmarkTools.exe native-simulation --level <path> --seconds <value>`;
+- `BenchmarkTools/` owns reusable benchmark orchestration. Its staged executable runs native S7,
+  fighter, frame-memory, telemetry, GPU-starfield, revision-comparison, and native-SoA benchmark
+  commands; `native-simulation --level <path> --seconds <value>` remains the generic level entry
+  point.
   it performs the configured CMake build, then acquires the exclusive benchmark and machine lease.
   The native benchmark PowerShell entry points build and stage this project on demand when it is
   absent, without building the rest of the standalone tools or requiring Unreal setup.

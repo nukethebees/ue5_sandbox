@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace BenchmarkTools;
 
 internal interface IEnvironment
@@ -23,7 +25,14 @@ internal sealed class BenchmarkToolsApplication(
     TextWriter standard_error,
     string executable_path)
 {
-    private const string usage = "Usage: BenchmarkTools native-simulation --level <path> --seconds <value> [--game-speed <value>] [--telemetry] [--fighter-stress-cap <value> | --fighter-stress-caps <a,b,c>] [--warmup-seconds <value>] [--saturation-timeout-seconds <value>] [--build-preset <preset>] [--skip-build]";
+    private const string usage = "Usage: BenchmarkTools <native-simulation|fighter-simulation|frame-memory-level|frame-memory-revision-ab|level-telemetry|gpu-starfield|native-soa-reserve-matrix> [options]";
+
+    internal IProcessRunner ProcessRunner => process_runner;
+    internal IJobserverLocator JobserverLocator => jobserver_locator;
+    internal IEnvironment Environment => environment;
+    internal string ExecutablePath => executable_path;
+    internal TextWriter StandardOutput => standard_output;
+    internal TextWriter StandardError => standard_error;
 
     public async Task<int> RunAsync(
         IReadOnlyList<string> arguments,
@@ -37,30 +46,48 @@ internal sealed class BenchmarkToolsApplication(
             standard_output.WriteLine(usage);
             return 0;
         }
-        if (arguments.Count == 0 || !string.Equals(arguments[0], "native-simulation", StringComparison.Ordinal))
+        if (arguments.Count == 0)
         {
-            return WriteUsage("Expected the 'native-simulation' command.");
+            return WriteUsage("A benchmark command is required.");
         }
         if (arguments.Count == 2 && arguments[1] is "--help" or "-h")
         {
             standard_output.WriteLine(usage);
             return 0;
         }
-        if (!NativeSimulationBenchmarkCommand.TryParse(arguments.Skip(1).ToArray(), out var request, out var error))
-        {
-            return WriteUsage(error);
-        }
-
         try
         {
             var repository_paths = RepositoryPaths.Find(working_directory);
-            return await RunNativeSimulationAsync(repository_paths, request!, cancellation_token);
+            return arguments[0] switch
+            {
+                "native-simulation" => await RunNativeSimulationCommandAsync(repository_paths, arguments.Skip(1).ToArray(), cancellation_token),
+                "fighter-simulation" => await FighterSimulationBenchmarkCommand.RunAsync(this, repository_paths, arguments.Skip(1).ToArray(), cancellation_token),
+                "frame-memory-level" => await FrameMemoryLevelBenchmarkCommand.RunAsync(this, repository_paths, arguments.Skip(1).ToArray(), cancellation_token),
+                "frame-memory-revision-ab" => await FrameMemoryRevisionAbBenchmarkCommand.RunAsync(this, repository_paths, arguments.Skip(1).ToArray(), cancellation_token),
+                "level-telemetry" => await LevelTelemetryBenchmarkCommand.RunAsync(this, repository_paths, arguments.Skip(1).ToArray(), cancellation_token),
+                "gpu-starfield" => await GpuStarfieldBenchmarkCommand.RunAsync(this, repository_paths, arguments.Skip(1).ToArray(), cancellation_token),
+                "native-soa-reserve-matrix" => await NativeSoaReserveMatrixBenchmarkCommand.RunAsync(this, repository_paths, arguments.Skip(1).ToArray(), cancellation_token),
+                _ => WriteUsage($"Unknown benchmark command '{arguments[0]}'."),
+            };
         }
-        catch (Exception exception) when (exception is BenchmarkToolException or ProcessLaunchException or IOException or UnauthorizedAccessException)
+        catch (Exception exception) when (exception is BenchmarkToolException or ProcessLaunchException or ProcessTimeoutException or IOException or UnauthorizedAccessException or JsonException)
         {
             standard_error.WriteLine($"BenchmarkTools: {exception.Message}");
             return 1;
         }
+    }
+
+    private async Task<int> RunNativeSimulationCommandAsync(
+        RepositoryPaths repository_paths,
+        IReadOnlyList<string> arguments,
+        CancellationToken cancellation_token)
+    {
+        if (!NativeSimulationBenchmarkCommand.TryParse(arguments, out var request, out var error))
+        {
+            return WriteUsage(error);
+        }
+
+        return await RunNativeSimulationAsync(repository_paths, request!, cancellation_token);
     }
 
     private async Task<int> RunNativeSimulationAsync(
@@ -94,12 +121,13 @@ internal sealed class BenchmarkToolsApplication(
 
         if (string.IsNullOrWhiteSpace(environment.GetEnvironmentVariable("NUKETHEBEES_JOBSERVER_JOB")))
         {
-            var jobserver_request = JobserverExecution.CreateRequest(
+            var jobserver_request = JobserverExecution.CreateNativeSimulationRequest(
                 jobserver_locator.Locate(),
                 executable_path,
                 repository_paths,
                 request);
             var jobserver_result = await process_runner.RunAsync(jobserver_request, cancellation_token);
+            WriteProcessOutput(jobserver_result);
             return jobserver_result.ExitCode;
         }
 
@@ -112,6 +140,7 @@ internal sealed class BenchmarkToolsApplication(
         var benchmark_result = await process_runner.RunAsync(
             new ProcessRequest(benchmark_path, request.ToBenchmarkArguments(), repository_paths.Root),
             cancellation_token);
+        WriteProcessOutput(benchmark_result);
         return benchmark_result.ExitCode;
     }
 
@@ -120,5 +149,17 @@ internal sealed class BenchmarkToolsApplication(
         standard_error.WriteLine(error);
         standard_error.WriteLine(usage);
         return 2;
+    }
+
+    internal void WriteProcessOutput(ProcessResult result)
+    {
+        if (!string.IsNullOrEmpty(result.StandardOutput))
+        {
+            standard_output.Write(result.StandardOutput);
+        }
+        if (!string.IsNullOrEmpty(result.StandardError))
+        {
+            standard_error.Write(result.StandardError);
+        }
     }
 }
