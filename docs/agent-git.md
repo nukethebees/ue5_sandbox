@@ -25,16 +25,21 @@ After the implementation has been reviewed and merged to `dev`, load `dev.ps1` a
 install-agent-git -BaseBranch dev
 ```
 
-The installer is intentionally separate from `agent-git` and must not be included in an
-unconditional agent allow rule. A canonical install creates a random private build and staging
-area for that invocation, builds AgentGit there, and runs the complete `AgentGit.Tests` security
-regression suite against that build. It records SHA-256 hashes for every required runtime artifact
-before the tests, rejects any post-validation change, copies only those private artifacts, and
-verifies the staged and activated copies against the same hashes. It never returns to shared
-`tools/bin` output after validation. The security gate and validation project cannot be skipped or
-replaced for a canonical install; test-only controls are limited to temporary non-canonical
-installs. A failed gate leaves the existing installation untouched; a failed activation or
-post-install smoke check restores the previous installation.
+The dedicated C# installer is intentionally separate from `agent-git` and must not be included in
+an unconditional agent allow rule. The `install-agent-git` PowerShell command is only a bootstrap:
+it publishes `tools/AgentGitInstaller` into a new temporary directory, invokes that private copy,
+and removes it afterward. Neither the bootstrap nor the installer uses a previously staged
+`tools/bin` executable.
+
+A canonical install creates random private validation and staging areas for that invocation,
+builds AgentGit there, and runs the complete `AgentGit.Tests` security regression suite against
+that build. It records SHA-256 hashes for every required runtime artifact before the tests, rejects
+any post-validation change, copies only those private artifacts, and verifies the staged and
+activated copies against the same hashes before executing them. The security gate and validation
+project cannot be skipped or replaced for a canonical install; test-only controls are limited to
+temporary non-canonical installs. A failed gate leaves the existing installation untouched; a
+failed activation, artifact verification, cleanup, or post-install smoke check restores the
+previous installation.
 
 The installer records the repository's canonical common Git directory,
 origin URL, trusted Git and Git-LFS executables, user identity, and `refs/heads/dev` as the policy

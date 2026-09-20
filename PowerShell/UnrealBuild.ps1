@@ -301,10 +301,46 @@ function install-agent-git {
         [string]$BaseBranch = 'dev'
     )
 
-    $installer = Join-Path $script:dev_project_root 'PowerShell\Install-AgentGit.ps1'
-    & $installer -Repository $script:dev_project_root -BaseBranch $BaseBranch
-    if ($LASTEXITCODE -ne 0) {
-        throw "agent-git installation exited with code $LASTEXITCODE."
+    $installer_project = Join-Path $script:dev_project_root 'tools\AgentGitInstaller\AgentGitInstaller.csproj'
+    if (-not (Test-Path -LiteralPath $installer_project -PathType Leaf)) {
+        throw "The AgentGit installer project was not found: '$installer_project'."
+    }
+
+    $dotnet_command = Get-Command dotnet.exe -CommandType Application -ErrorAction Stop | Select-Object -First 1
+    $bootstrap_root = [System.IO.Directory]::CreateTempSubdirectory('AgentGitInstaller-').FullName
+    try {
+        $bootstrap_output = Join-Path $bootstrap_root 'bin'
+        $bootstrap_artifacts = Join-Path $bootstrap_root 'artifacts'
+        $private_stage = Join-Path $bootstrap_root 'standalone-tools'
+        $stage_property = "-p:StandaloneToolsBinDirectory=$private_stage$([System.IO.Path]::DirectorySeparatorChar)"
+
+        Write-Host 'Building the AgentGit installer into a private bootstrap directory.'
+        & $dotnet_command.Source publish $installer_project `
+            --configuration Debug `
+            --artifacts-path $bootstrap_artifacts `
+            --output $bootstrap_output `
+            $stage_property `
+            -m:1 -nr:false
+        if ($LASTEXITCODE -ne 0) {
+            throw "AgentGit installer bootstrap build exited with code $LASTEXITCODE."
+        }
+
+        $installer = Join-Path $bootstrap_output 'agent-git-installer.exe'
+        if (-not (Test-Path -LiteralPath $installer -PathType Leaf)) {
+            throw "The privately built AgentGit installer was not found: '$installer'."
+        }
+
+        & $installer `
+            --source-root $script:dev_project_root `
+            --repository $script:dev_project_root `
+            --base-branch $BaseBranch
+        if ($LASTEXITCODE -ne 0) {
+            throw "agent-git installation exited with code $LASTEXITCODE."
+        }
+    } finally {
+        if (Test-Path -LiteralPath $bootstrap_root) {
+            Remove-Item -LiteralPath $bootstrap_root -Recurse -Force
+        }
     }
 }
 

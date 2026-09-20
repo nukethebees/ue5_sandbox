@@ -28,6 +28,10 @@ and native validation does not run this suite.
   `install-agent-git` to create the canonical per-user installation described in
   [the agent-git documentation](../docs/agent-git.md). The installer builds and validates in a
   private per-install output directory rather than installing from shared `tools/bin` state.
+- `AgentGitInstaller/` owns the AgentGit installation transaction. The `install-agent-git`
+  PowerShell command privately builds this project for each invocation; the installer is
+  intentionally not staged into `tools/bin` and remains outside the unconditional AgentGit allow
+  rule.
 - `CodeFormatTools/` is the C# formatter for repository C++ and shader files. CMake builds it for
   the `format-code` and `format-all-code` workflows; it can also be run directly as
   `tools/bin/CodeFormatTools.exe [--all|--changed|--staged] [--jobs N|-j N] [--verbose]` after
@@ -58,11 +62,12 @@ New standalone C# tools should use their own project and test project under this
 developer-tool validation, subprocess execution, filesystem work, jobserver integration, and
 benchmark/report orchestration; PowerShell remains the interactive shell façade and Python remains
 appropriate for plotting or scientific analysis.
-Executable command projects opt into staging with `IsStandaloneTool=true`; their normal Debug and
-Release output remains project-local, while the post-build target copies the complete runtime output
-tree for the most recently built configuration into `tools/bin/` using the tool's unique executable
-name. Test projects and class libraries are not staged. Add shared infrastructure only when more
-than one tool needs it.
+Executable command projects that are safe to invoke from shared build output opt into staging with
+`IsStandaloneTool=true`; their normal Debug and Release output remains project-local, while the
+post-build target copies the complete runtime output tree for the most recently built configuration
+into `tools/bin/` using the tool's unique executable name. AgentGitInstaller deliberately uses only
+its privately built bootstrap output. Test projects, class libraries, and the installer are not
+staged. Add shared infrastructure only when more than one tool needs it.
 
 Normal development uses the jobserver indirectly through CMake workflows and `dev.ps1`. Query its
 current state with `get-jobserver-state` after loading `dev.ps1`; see [Build and test](../docs/build-and-test.md)
