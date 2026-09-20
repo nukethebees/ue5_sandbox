@@ -10,7 +10,7 @@ public sealed class ModuleMigrationCheckerTests
     public async Task Check_reports_a_class_move_with_a_matching_redirect()
     {
         using var fixture = new ModuleMigrationFixture();
-        var baseline = CreateMigrationBaseline(fixture, "actors/Ship.h", "UCLASS()\nclass SANDBOX_API AShip {};", "ShooterGame");
+        var baseline = CreateMigrationBaseline(fixture, "actors/Ship.h", "UCLASS()\nclass SANDBOX_API AShip {};");
         fixture.Move("Source/Sandbox/actors/Ship.h", Destination("ShooterGame", "actors/Ship.h"));
         fixture.WriteFile("Config/DefaultEngine.ini", Redirect(ReflectedTypeKind.Class, "Ship", "ShooterGame"));
         fixture.Commit("Move Ship");
@@ -27,7 +27,7 @@ public sealed class ModuleMigrationCheckerTests
     public async Task Check_reports_a_missing_class_redirect()
     {
         using var fixture = new ModuleMigrationFixture();
-        var baseline = CreateMigrationBaseline(fixture, "actors/Ship.h", "UCLASS() class SANDBOX_API AShip {};", "ShooterGame");
+        var baseline = CreateMigrationBaseline(fixture, "actors/Ship.h", "UCLASS() class SANDBOX_API AShip {};");
         fixture.Move("Source/Sandbox/actors/Ship.h", Destination("ShooterGame", "actors/Ship.h"));
         fixture.Commit("Move Ship");
 
@@ -44,7 +44,7 @@ public sealed class ModuleMigrationCheckerTests
     public async Task Check_reports_struct_and_enum_moves(string declaration, ReflectedTypeKind kind, string reflection_name)
     {
         using var fixture = new ModuleMigrationFixture();
-        var baseline = CreateMigrationBaseline(fixture, "data/Types.h", declaration, "SandboxGameShared");
+        var baseline = CreateMigrationBaseline(fixture, "data/Types.h", declaration);
         fixture.Move("Source/Sandbox/data/Types.h", Destination("SandboxGameShared", "data/Types.h"));
         fixture.WriteFile("Config/DefaultEngine.ini", Redirect(kind, reflection_name, "SandboxGameShared"));
         fixture.Commit("Move Types");
@@ -65,7 +65,7 @@ public sealed class ModuleMigrationCheckerTests
             class SANDBOX_API UTargetable : public UInterface {};
             class SANDBOX_API ITargetable { };
             """;
-        var baseline = CreateMigrationBaseline(fixture, "interfaces/Targetable.h", declaration, "ShooterGame");
+        var baseline = CreateMigrationBaseline(fixture, "interfaces/Targetable.h", declaration);
         fixture.Move("Source/Sandbox/interfaces/Targetable.h", Destination("ShooterGame", "interfaces/Targetable.h"));
         fixture.WriteFile("Config/DefaultEngine.ini", Redirect(ReflectedTypeKind.Class, "Targetable", "ShooterGame"));
         fixture.Commit("Move interface");
@@ -88,7 +88,7 @@ public sealed class ModuleMigrationCheckerTests
             // Stable declaration context.
             UCLASS() class SANDBOX_API AShip {};
             """;
-        var baseline = CreateMigrationBaseline(fixture, "actors/Ship.h", source, "ShooterGame");
+        var baseline = CreateMigrationBaseline(fixture, "actors/Ship.h", source);
         fixture.Move("Source/Sandbox/actors/Ship.h", Destination("ShooterGame", "actors/Ship.h"));
         fixture.WriteFile(Destination("ShooterGame", "actors/Ship.h"), source.Replace("AShip", "AOtherShip", StringComparison.Ordinal));
         fixture.Commit("Rename unrelated header");
@@ -111,7 +111,7 @@ public sealed class ModuleMigrationCheckerTests
             UENUM()
             enum class EShipState : uint8 { Idle };
             """;
-        var baseline = CreateMigrationBaseline(fixture, "actors/Ship.h", declarations, "ShooterGame");
+        var baseline = CreateMigrationBaseline(fixture, "actors/Ship.h", declarations);
         fixture.Move("Source/Sandbox/actors/Ship.h", Destination("ShooterGame", "actors/Ship.h"));
         fixture.WriteFile(
             "Config/DefaultEngine.ini",
@@ -131,7 +131,7 @@ public sealed class ModuleMigrationCheckerTests
     public async Task Check_reports_a_clean_migration_without_missing_redirects_or_include_findings()
     {
         using var fixture = new ModuleMigrationFixture();
-        var baseline = CreateMigrationBaseline(fixture, "actors/Clean.h", "UCLASS() class SANDBOX_API AClean {};", "ShooterGame");
+        var baseline = CreateMigrationBaseline(fixture, "actors/Clean.h", "UCLASS() class SANDBOX_API AClean {};");
         fixture.Move("Source/Sandbox/actors/Clean.h", Destination("ShooterGame", "actors/Clean.h"));
         fixture.WriteFile("Config/DefaultEngine.ini", Redirect(ReflectedTypeKind.Class, "Clean", "ShooterGame"));
         fixture.Commit("Clean migration");
@@ -150,7 +150,7 @@ public sealed class ModuleMigrationCheckerTests
     public async Task Check_identifies_destination_modules_from_the_selected_plugin_set()
     {
         using var fixture = new ModuleMigrationFixture();
-        CreateMigrationBaseline(fixture, "actors/One.h", "UCLASS() class SANDBOX_API AOne {};", "ShooterGame");
+        CreateMigrationBaseline(fixture, "actors/One.h", "UCLASS() class SANDBOX_API AOne {};");
         fixture.WriteFile("Source/Sandbox/actors/Two.h", "UCLASS() class SANDBOX_API ATwo {};");
         var baseline = fixture.Commit("Add second type");
         fixture.Move("Source/Sandbox/actors/One.h", Destination("ShooterGame", "actors/One.h"));
@@ -248,7 +248,7 @@ public sealed class ModuleMigrationCheckerTests
     public async Task Check_accepts_spaces_in_renamed_paths()
     {
         using var fixture = new ModuleMigrationFixture();
-        var baseline = CreateMigrationBaseline(fixture, "actors/Space Ship.h", "UCLASS() class SANDBOX_API ASpaceShip {};", "ShooterGame");
+        var baseline = CreateMigrationBaseline(fixture, "actors/Space Ship.h", "UCLASS() class SANDBOX_API ASpaceShip {};");
         fixture.Move("Source/Sandbox/actors/Space Ship.h", Destination("ShooterGame", "actors/Space Ship.h"));
         fixture.Commit("Move space path");
 
@@ -258,7 +258,7 @@ public sealed class ModuleMigrationCheckerTests
         Assert.AreEqual("ASpaceShip", result.MovedTypes[0].Type.CppName);
     }
 
-    private static string CreateMigrationBaseline(ModuleMigrationFixture fixture, string relative_header, string contents, string _)
+    private static string CreateMigrationBaseline(ModuleMigrationFixture fixture, string relative_header, string contents)
     {
         fixture.WriteFile(Path.Combine("Source", "Sandbox", relative_header), contents);
         return fixture.Commit("Baseline");

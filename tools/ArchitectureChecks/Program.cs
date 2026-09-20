@@ -96,8 +96,7 @@ public static class Program
         string? root_path = null;
         var baseline = "HEAD";
         var old_module = "Sandbox";
-        var plugin_modules = new List<string>();
-        var has_explicit_plugin_modules = false;
+        var plugin_modules = new List<string> { "ShooterGame", "SandboxGameShared" };
         var has_baseline = false;
         var has_old_module = false;
 
@@ -129,12 +128,6 @@ public static class Program
                     has_old_module = true;
                     break;
                 case "--plugin-module":
-                    if (!has_explicit_plugin_modules)
-                    {
-                        plugin_modules.Clear();
-                        has_explicit_plugin_modules = true;
-                    }
-
                     plugin_modules.Add(value);
                     break;
                 default:
@@ -145,11 +138,6 @@ public static class Program
         if (string.IsNullOrWhiteSpace(root_path))
         {
             return false;
-        }
-
-        if (!has_explicit_plugin_modules)
-        {
-            plugin_modules.AddRange(["ShooterGame", "SandboxGameShared"]);
         }
 
         if (!IsModuleName(old_module) || plugin_modules.Count == 0 || plugin_modules.Any(module => !IsModuleName(module)))
@@ -179,7 +167,7 @@ public static class Program
 
         output.WriteLine("Usage: ArchitectureChecks module-migration --root <path> [--baseline <revision>] [--old-module <module>] [--plugin-module <module>]...");
         output.WriteLine("Defaults: old module Sandbox; plugin modules ShooterGame and SandboxGameShared.");
-        output.WriteLine("Explicit --plugin-module arguments replace the default plugin modules.");
+        output.WriteLine("Each --plugin-module argument adds to the default plugin modules; duplicates are ignored.");
         output.WriteLine("The audit is advisory: findings do not cause a failure exit code.");
     }
 
