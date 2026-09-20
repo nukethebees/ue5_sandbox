@@ -62,6 +62,8 @@ Physical member offsets and padding remain target analysis, not durable semantic
 The record analyzer recursively derives nested-record facts, fixed-array extents, offsets, object
 alignment, and internal/tail padding from the selected ABI profile. Unknown target facts stay
 Unknown, while illegal by-value record cycles are rejected during semantic resolution.
+Record create/replace/delete commands share the same stable declaration identity, validation
+rollback, undo/redo, preview, and atomic save/reload path as enum, packed, and SoA declarations.
 
 The planner supports enum value-domain analysis, packed storage type/bit-range analysis, and flat
 standard-library SoA/vector-SoA payload analysis. Enum analysis derives implicit literal values,
@@ -78,7 +80,7 @@ For standard-library SoAs, page footprints are calculated per column because eac
 separate allocation. The displayed aggregate is the sum of those minimum per-column page counts;
 it does not assume shared pages or include allocator overhead.
 
-Record authoring, arbitrary ABI probing, persistent plans, chunking/AoSoA, arena planning,
+Strong aliases, arbitrary ABI probing, persistent plans, chunking/AoSoA, arena planning,
 performance prediction, and live-process inspection remain incomplete. Planner semantic changes
 write back through LispB rather than a parallel persistence format.
 

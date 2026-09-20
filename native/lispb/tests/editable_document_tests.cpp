@@ -35,6 +35,12 @@ class TemporarySchema {
     :storage std::uint8_t
     (field value std::uint8_t :bits 8)))
 
+(record-module authored_records
+  :header "AuthoredRecords.h"
+  :namespace authored
+  (record ExistingRecord
+    (member value std::uint32_t)))
+
 (soa-module authored_soa
   :header "AuthoredSoa.h"
   :namespace authored
@@ -105,6 +111,15 @@ auto packed_type(EditableSchemaDocument const& document, DeclarationId const dec
     auto const type{document.types().find(info->identity)};
     EXPECT_TRUE(type.has_value());
     return std::get<PackedType>(document.types().type(*type).definition);
+}
+
+auto record_type(EditableSchemaDocument const& document, DeclarationId const declaration)
+    -> RecordType const& {
+    auto const* info{document.declaration(declaration)};
+    EXPECT_NE(info, nullptr);
+    auto const type{document.types().find(info->identity)};
+    EXPECT_TRUE(type.has_value());
+    return std::get<RecordType>(document.types().type(*type).definition);
 }
 
 auto soa_type(EditableSchemaDocument const& document, DeclarationId const declaration)
@@ -398,6 +413,97 @@ TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsPackedValues) {
               reloaded.types()
                   .dependencies_of(*reloaded.types().find_declared("authored_packed", "DesignedId"))
                   .end());
+}
+
+TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsRecords) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const existing{document.find_declaration(TypeIdentity{.origin = TypeOrigin::declaration,
+                                                               .module_name = "authored_records",
+                                                               .namespace_name = "authored",
+                                                               .name = "ExistingRecord"})};
+    ASSERT_TRUE(existing.has_value());
+    auto const module_index{document.declaration(*existing)->module_index};
+    auto const created{document.allocate_declaration_id()};
+
+    auto create{document.apply(CreateRecord{
+        .declaration = created,
+        .module_index = module_index,
+        .schema = codegen::RecordSchema{.name = "DesignedRecord",
+                                        .members = {{.name = "items",
+                                                     .type = codegen::TypeRef{"ExistingRecord"},
+                                                     .count = 2},
+                                                    {.name = "tag",
+                                                     .type = codegen::TypeRef{"std::uint8_t"}}},
+                                        .export_specifier = "PROJECT_API"},
+        .insertion_index = std::nullopt})};
+    ASSERT_TRUE(create.has_value()) << create.error().message;
+    ASSERT_TRUE(*create);
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.declaration(created), nullptr);
+    ASSERT_TRUE(document.redo().value());
+
+    auto const& created_type{record_type(document, created)};
+    ASSERT_EQ(created_type.members.size(), 2U);
+    EXPECT_EQ(created_type.members[0].count, 2);
+    EXPECT_EQ(document.types().type(created_type.members[0].semantic_type.type).identity.name,
+              "ExistingRecord");
+
+    auto invalid{*document.record_schema(created)};
+    invalid.members[1].name = "items";
+    auto rejected{
+        document.apply(ReplaceRecord{.declaration = created, .schema = std::move(invalid)})};
+    ASSERT_FALSE(rejected.has_value());
+    EXPECT_NE(rejected.error().message.find("duplicate"), std::string::npos);
+
+    auto recursive{*document.record_schema(created)};
+    recursive.members[1].type = codegen::TypeRef{"DesignedRecord"};
+    rejected =
+        document.apply(ReplaceRecord{.declaration = created, .schema = std::move(recursive)});
+    ASSERT_FALSE(rejected.has_value());
+    EXPECT_NE(rejected.error().message.find("cycle"), std::string::npos);
+
+    auto reordered{*document.record_schema(created)};
+    std::swap(reordered.members[0], reordered.members[1]);
+    auto replaced{
+        document.apply(ReplaceRecord{.declaration = created, .schema = std::move(reordered)})};
+    ASSERT_TRUE(replaced.has_value()) << replaced.error().message;
+    EXPECT_EQ(record_type(document, created).members[0].name, "tag");
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(record_type(document, created).members[0].name, "items");
+    ASSERT_TRUE(document.redo().value());
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find("(record DesignedRecord"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":export-specifier PROJECT_API"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(member items ExistingRecord :count 2)"),
+              std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    EXPECT_FALSE(document.dirty());
+
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        reloaded.find_declaration(TypeIdentity{.origin = TypeOrigin::declaration,
+                                               .module_name = "authored_records",
+                                               .namespace_name = "authored",
+                                               .name = "DesignedRecord"})};
+    ASSERT_TRUE(reloaded_declaration.has_value());
+    auto const* schema{reloaded.record_schema(*reloaded_declaration)};
+    ASSERT_NE(schema, nullptr);
+    EXPECT_EQ(schema->export_specifier, "PROJECT_API");
+    ASSERT_EQ(schema->members.size(), 2U);
+    EXPECT_EQ(schema->members[0].name, "tag");
+    EXPECT_EQ(schema->members[1].name, "items");
+    EXPECT_EQ(schema->members[1].count, 2);
+    auto const& reloaded_type{record_type(reloaded, *reloaded_declaration)};
+    auto const dependency{reloaded_type.members[1].semantic_type.type};
+    auto const declared{*reloaded.types().find_declared("authored_records", "DesignedRecord")};
+    EXPECT_NE(std::ranges::find(reloaded.types().dependencies_of(declared), dependency),
+              reloaded.types().dependencies_of(declared).end());
 }
 
 TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsSoas) {

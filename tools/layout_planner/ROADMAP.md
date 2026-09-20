@@ -50,7 +50,9 @@ members and optional fixed element counts, resolve to `RecordType` nodes and dep
 lower to dependency-ordered ordinary C++ structs with `std::array` for fixed arrays. Illegal
 by-value record cycles are rejected. Target-derived record analysis reports recursive member
 offsets, fixed-array extents, alignment, internal/tail padding, and total size in a byte map while
-keeping unknown facts explicit. Editable-document commands are the next vertical step.
+keeping unknown facts explicit. Record declarations are now source-backed and editable through a
+flat member grid with add/duplicate/delete/reorder, scalar/fixed-array cardinality, preview,
+undo/redo, and save/reload. Cache/page scaling and richer member type selection remain follow-up.
 
 ## 1. Editable document and command foundation
 

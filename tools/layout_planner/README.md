@@ -56,8 +56,9 @@ default panel arrangement.
    values, records, and supported standard-library SoAs from the shared semantic graph.
 2. Select `EntityUniqueId` to inspect its proportional packed-bit layout, or `WorldAABBsColumns`
    to inspect its six SoA columns.
-3. Enum, packed-value, and standard-library SoA baselines are editable LispB declarations. Their
-   inline Properties editors issue validated semantic commands and participate in File > Undo/Redo.
+3. Enum, packed-value, record, and standard-library SoA baselines are editable LispB declarations.
+   Their inline Properties editors issue validated semantic commands and participate in File >
+   Undo/Redo. Record members support scalar or fixed-array cardinality and update the byte map live.
 4. Use **Create editable variant** for an in-memory physical experiment. In a variant, change a
    packed field width/storage type or a SoA capacity/column type without modifying LispB. Schema
    values, planning values, and active overrides are shown separately.

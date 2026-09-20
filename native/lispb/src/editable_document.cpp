@@ -304,6 +304,23 @@ auto render_packed_value(codegen::PackedValueSchema const& schema) -> std::strin
     return output.str();
 }
 
+auto render_record(codegen::RecordSchema const& schema) -> std::string {
+    std::ostringstream output;
+    output << "(record " << schema.name;
+    if (schema.export_specifier.has_value()) {
+        output << "\n    :export-specifier " << *schema.export_specifier;
+    }
+    for (auto const& member : schema.members) {
+        output << "\n    (member " << member.name << ' ' << render_type_ref(member.type);
+        if (member.count.has_value()) {
+            output << " :count " << *member.count;
+        }
+        output << ')';
+    }
+    output << ')';
+    return output.str();
+}
+
 auto render_soa(codegen::SoaSchema const& schema) -> std::string {
     std::ostringstream output;
     output << "(struct " << schema.name;
@@ -551,6 +568,19 @@ auto EditableSchemaDocument::packed_value_schema(DeclarationId const declaration
              : &module->values[info->declaration_index];
 }
 
+auto EditableSchemaDocument::record_schema(DeclarationId const declaration_id) const
+    -> codegen::RecordSchema const* {
+    auto const* info{declaration(declaration_id)};
+    if (info == nullptr) {
+        return nullptr;
+    }
+    auto const* module{
+        std::get_if<codegen::RecordModuleSchema>(&manifest_.modules[info->module_index])};
+    return module == nullptr || info->declaration_index >= module->records.size()
+             ? nullptr
+             : &module->records[info->declaration_index];
+}
+
 auto EditableSchemaDocument::soa_schema(DeclarationId const declaration_id) const
     -> codegen::SoaSchema const* {
     auto const* info{declaration(declaration_id)};
@@ -679,6 +709,9 @@ auto EditableSchemaDocument::preview_source_updates() const
         }
         if (auto const* schema{packed_value_schema(id)}) {
             return render_packed_value(*schema);
+        }
+        if (auto const* schema{record_schema(id)}) {
+            return render_record(*schema);
         }
         if (auto const* schema{soa_schema(id)}) {
             return render_soa(*schema);
@@ -1160,6 +1193,124 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                                       .module_index = info.module_index,
                                       .schema = std::move(schema),
                                       .insertion_index = info.declaration_index}};
+            } else if constexpr (std::is_same_v<Edit, CreateRecord>) {
+                if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
+                    return std::unexpected{
+                        SchemaEditError{"New record requires a unique declaration id"}};
+                }
+                if (edit.module_index >= manifest_.modules.size()) {
+                    return std::unexpected{SchemaEditError{"Unknown record module index"}};
+                }
+                auto* module{std::get_if<codegen::RecordModuleSchema>(
+                    &manifest_.modules[edit.module_index])};
+                if (module == nullptr) {
+                    return std::unexpected{
+                        SchemaEditError{"New records can only be added to record modules"}};
+                }
+                auto const insertion_index{edit.insertion_index.value_or(module->records.size())};
+                if (insertion_index > module->records.size()) {
+                    return std::unexpected{SchemaEditError{"Invalid record insertion index"}};
+                }
+
+                module->records.insert(module->records.begin() +
+                                           static_cast<std::ptrdiff_t>(insertion_index),
+                                       edit.schema);
+                for (auto& existing : declarations_) {
+                    if (existing.module_index == edit.module_index &&
+                        existing.declaration_index >= insertion_index) {
+                        ++existing.declaration_index;
+                    }
+                }
+                auto const namespace_name{module->settings.namespace_name.value_or("")};
+                declarations_.push_back(
+                    {.id = edit.declaration,
+                     .identity = TypeIdentity{.origin = TypeOrigin::declaration,
+                                              .module_name = module->settings.name,
+                                              .namespace_name = namespace_name,
+                                              .name = edit.schema.name},
+                     .module_index = edit.module_index,
+                     .declaration_index = insertion_index,
+                     .source = std::nullopt});
+                try {
+                    types_ = resolve_type_graph(manifest_);
+                } catch (std::exception const& error) {
+                    declarations_.pop_back();
+                    for (auto& existing : declarations_) {
+                        if (existing.module_index == edit.module_index &&
+                            existing.declaration_index > insertion_index) {
+                            --existing.declaration_index;
+                        }
+                    }
+                    module->records.erase(module->records.begin() +
+                                          static_cast<std::ptrdiff_t>(insertion_index));
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+                return SchemaEditCommand{DeleteRecord{.declaration = edit.declaration}};
+            } else if constexpr (std::is_same_v<Edit, ReplaceRecord>) {
+                auto const* info{declaration(edit.declaration)};
+                auto const* current{record_schema(edit.declaration)};
+                if (info == nullptr || current == nullptr) {
+                    return std::unexpected{SchemaEditError{"Unknown record declaration"}};
+                }
+                if (edit.schema.name != current->name) {
+                    return std::unexpected{SchemaEditError{
+                        "ReplaceRecord cannot rename a declaration; use a rename command"}};
+                }
+                auto* module{std::get_if<codegen::RecordModuleSchema>(
+                    &manifest_.modules[info->module_index])};
+                auto previous{module->records[info->declaration_index]};
+                module->records[info->declaration_index] = edit.schema;
+                try {
+                    types_ = resolve_type_graph(manifest_);
+                } catch (std::exception const& error) {
+                    module->records[info->declaration_index] = std::move(previous);
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+                return SchemaEditCommand{
+                    ReplaceRecord{.declaration = edit.declaration, .schema = std::move(previous)}};
+            } else if constexpr (std::is_same_v<Edit, DeleteRecord>) {
+                auto const* found{declaration(edit.declaration)};
+                auto const* current{record_schema(edit.declaration)};
+                if (found == nullptr || current == nullptr) {
+                    return std::unexpected{SchemaEditError{"Unknown record declaration"}};
+                }
+                if (found->source.has_value()) {
+                    return std::unexpected{SchemaEditError{
+                        "Deleting source declarations is not enabled in this authoring slice"}};
+                }
+                auto const info{*found};
+                auto schema{*current};
+                auto* module{std::get_if<codegen::RecordModuleSchema>(
+                    &manifest_.modules[info.module_index])};
+                module->records.erase(module->records.begin() +
+                                      static_cast<std::ptrdiff_t>(info.declaration_index));
+                declarations_.erase(
+                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id));
+                for (auto& existing : declarations_) {
+                    if (existing.module_index == info.module_index &&
+                        existing.declaration_index > info.declaration_index) {
+                        --existing.declaration_index;
+                    }
+                }
+                try {
+                    types_ = resolve_type_graph(manifest_);
+                } catch (std::exception const& error) {
+                    module->records.insert(module->records.begin() +
+                                               static_cast<std::ptrdiff_t>(info.declaration_index),
+                                           schema);
+                    for (auto& existing : declarations_) {
+                        if (existing.module_index == info.module_index &&
+                            existing.declaration_index >= info.declaration_index) {
+                            ++existing.declaration_index;
+                        }
+                    }
+                    declarations_.push_back(info);
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+                return SchemaEditCommand{CreateRecord{.declaration = edit.declaration,
+                                                      .module_index = info.module_index,
+                                                      .schema = std::move(schema),
+                                                      .insertion_index = info.declaration_index}};
             } else if constexpr (std::is_same_v<Edit, CreateSoa>) {
                 if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
                     return std::unexpected{

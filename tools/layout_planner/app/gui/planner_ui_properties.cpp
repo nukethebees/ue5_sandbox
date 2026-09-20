@@ -77,6 +77,17 @@ auto unique_member_name(std::vector<codegen::SoaMemberSchema> const& members,
     return candidate;
 }
 
+auto unique_record_member_name(std::vector<codegen::RecordMemberSchema> const& members,
+                               std::string const& stem) -> std::string {
+    auto suffix{std::size_t{1}};
+    auto candidate{stem};
+    while (std::ranges::find(members, candidate, &codegen::RecordMemberSchema::name) !=
+           members.end()) {
+        candidate = stem + std::to_string(suffix++);
+    }
+    return candidate;
+}
+
 template <typename Value>
 void move_element(std::vector<Value>& values,
                   std::size_t const source_index,
@@ -173,39 +184,11 @@ void PlannerUi::draw_properties_panel() {
             return;
         }
     } else if (auto const* record{std::get_if<RecordType>(&node.definition)}) {
-        ImGui::SeparatorText("Record members");
-        if (ImGui::BeginTable("record-members",
-                              3,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_Resizable)) {
-            ImGui::TableSetupColumn("Member");
-            ImGui::TableSetupColumn("Semantic type");
-            ImGui::TableSetupColumn("Count", ImGuiTableColumnFlags_WidthFixed);
-            ImGui::TableHeadersRow();
-            for (auto const& member : record->members) {
-                ImGui::PushID(member.name.c_str());
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                if (ImGui::Selectable(member.name.c_str(), selected_field_ == member.name)) {
-                    selected_field_ = member.name;
-                }
-                ImGui::TableNextColumn();
-                auto const& member_type{workspace_.types().type(member.semantic_type.type)};
-                if (ImGui::SmallButton(member_type.cpp_spelling.c_str())) {
-                    selected_type_ = member.semantic_type.type;
-                    selected_field_.clear();
-                }
-                ImGui::TableNextColumn();
-                if (member.count.has_value()) {
-                    ImGui::Text("%llu", static_cast<unsigned long long>(*member.count));
-                } else {
-                    ImGui::TextUnformatted("1");
-                }
-                ImGui::PopID();
-            }
-            ImGui::EndTable();
+        ImGui::SeparatorText("LispB record declaration");
+        if (draw_record_editor(node, *record)) {
+            ImGui::End();
+            return;
         }
-        ImGui::TextDisabled("Record authoring commands are not enabled yet.");
     } else if (auto const* external{std::get_if<ExternalType>(&node.definition)}) {
         ImGui::SeparatorText("External type");
         ImGui::Text("C++ spelling: %s", external->cpp_type.spelling.c_str());
@@ -983,6 +966,248 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         }
         if (apply_document_edit(
                 ReplacePackedValue{.declaration = *declaration, .schema = std::move(*pending)})) {
+            selected_field_ = std::move(selected_after_edit);
+            return true;
+        }
+    }
+    return false;
+}
+
+auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const&) -> bool {
+    if (!document_.has_value()) {
+        return false;
+    }
+    auto const declaration{document_->find_declaration(node.identity)};
+    if (!declaration.has_value()) {
+        return false;
+    }
+    auto const* schema{document_->record_schema(*declaration)};
+    if (schema == nullptr) {
+        return false;
+    }
+
+    if (selected_field_.empty() && !schema->members.empty()) {
+        selected_field_ = schema->members.front().name;
+    }
+    auto selected{
+        std::ranges::find(schema->members, selected_field_, &codegen::RecordMemberSchema::name)};
+    if (selected == schema->members.end() && !schema->members.empty()) {
+        selected = schema->members.begin();
+        selected_field_ = selected->name;
+    }
+    auto const selected_index{selected == schema->members.end()
+                                  ? std::optional<std::size_t>{}
+                                  : std::optional<std::size_t>{static_cast<std::size_t>(
+                                        selected - schema->members.begin())}};
+
+    if (record_editor_declaration_ != declaration || record_editor_member_ != selected_field_) {
+        record_editor_declaration_ = declaration;
+        record_editor_member_ = selected_field_;
+        if (selected != schema->members.end()) {
+            std::snprintf(record_member_name_.data(),
+                          record_member_name_.size(),
+                          "%s",
+                          selected->name.c_str());
+            std::snprintf(record_member_type_.data(),
+                          record_member_type_.size(),
+                          "%s",
+                          selected->type.name.c_str());
+            record_member_is_array_ = selected->count.has_value();
+            record_member_count_ = selected->count.value_or(1);
+        }
+    }
+
+    if (ImGui::Button("+ Member")) {
+        auto replacement{*schema};
+        auto name{unique_record_member_name(replacement.members, "member")};
+        replacement.members.push_back(codegen::RecordMemberSchema{
+            .name = name,
+            .type = codegen::TypeRef{.name = "std::uint32_t", .suffix = {}, .nested = std::nullopt},
+            .count = std::nullopt});
+        if (apply_document_edit(
+                ReplaceRecord{.declaration = *declaration, .schema = std::move(replacement)})) {
+            selected_field_ = std::move(name);
+            return true;
+        }
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!selected_index.has_value());
+    if (ImGui::Button("Duplicate")) {
+        auto replacement{*schema};
+        auto copy{replacement.members[*selected_index]};
+        copy.name = unique_record_member_name(replacement.members, copy.name + "_copy");
+        replacement.members.insert(
+            replacement.members.begin() + static_cast<std::ptrdiff_t>(*selected_index + 1), copy);
+        if (apply_document_edit(
+                ReplaceRecord{.declaration = *declaration, .schema = std::move(replacement)})) {
+            selected_field_ = std::move(copy.name);
+            return true;
+        }
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!selected_index.has_value() || *selected_index == 0);
+    if (ImGui::Button("Move up")) {
+        auto replacement{*schema};
+        std::swap(replacement.members[*selected_index], replacement.members[*selected_index - 1]);
+        if (apply_document_edit(
+                ReplaceRecord{.declaration = *declaration, .schema = std::move(replacement)})) {
+            selected_field_ = record_editor_member_;
+            return true;
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!selected_index.has_value() ||
+                         *selected_index + 1 >= schema->members.size());
+    if (ImGui::Button("Move down")) {
+        auto replacement{*schema};
+        std::swap(replacement.members[*selected_index], replacement.members[*selected_index + 1]);
+        if (apply_document_edit(
+                ReplaceRecord{.declaration = *declaration, .schema = std::move(replacement)})) {
+            selected_field_ = record_editor_member_;
+            return true;
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!selected_index.has_value() || schema->members.size() == 1);
+    if (ImGui::Button("Delete")) {
+        auto replacement{*schema};
+        replacement.members.erase(replacement.members.begin() +
+                                  static_cast<std::ptrdiff_t>(*selected_index));
+        auto const next_index{std::min(*selected_index, replacement.members.size() - 1)};
+        auto const next_name{replacement.members[next_index].name};
+        if (apply_document_edit(
+                ReplaceRecord{.declaration = *declaration, .schema = std::move(replacement)})) {
+            selected_field_ = next_name;
+            return true;
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::EndDisabled();
+
+    std::optional<codegen::RecordSchema> pending;
+    auto selected_after_edit{selected_field_};
+    if (ImGui::BeginTable("record-schema-members",
+                          5,
+                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                              ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Name");
+        ImGui::TableSetupColumn("Semantic type");
+        ImGui::TableSetupColumn("Fixed array", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Count", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableHeadersRow();
+        for (std::size_t index{}; index < schema->members.size(); ++index) {
+            auto const& member{schema->members[index]};
+            auto const row_selected{selected_field_ == member.name};
+            ImGui::PushID(static_cast<int>(index));
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+                selected_field_ = member.name;
+                record_editor_declaration_.reset();
+            }
+            if (ImGui::BeginDragDropSource()) {
+                ImGui::SetDragDropPayload("RECORD_MEMBER_ROW", &index, sizeof(index));
+                ImGui::Text("Move %s", member.name.c_str());
+                ImGui::EndDragDropSource();
+            }
+            if (ImGui::BeginDragDropTarget()) {
+                if (auto const* payload{ImGui::AcceptDragDropPayload("RECORD_MEMBER_ROW")}) {
+                    auto const source_index{*static_cast<std::size_t const*>(payload->Data)};
+                    if (source_index < schema->members.size() && source_index != index) {
+                        pending = *schema;
+                        selected_after_edit = pending->members[source_index].name;
+                        move_element(pending->members, source_index, index);
+                    }
+                }
+                ImGui::EndDragDropTarget();
+            }
+
+            ImGui::TableNextColumn();
+            if (row_selected) {
+                ImGui::SetNextItemWidth(-1.0F);
+                auto const submitted{ImGui::InputText("##name",
+                                                      record_member_name_.data(),
+                                                      record_member_name_.size(),
+                                                      ImGuiInputTextFlags_EnterReturnsTrue)};
+                if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                    pending = *schema;
+                    pending->members[index].name = record_member_name_.data();
+                    selected_after_edit = pending->members[index].name;
+                }
+            } else {
+                ImGui::TextUnformatted(member.name.c_str());
+            }
+
+            ImGui::TableNextColumn();
+            if (row_selected) {
+                ImGui::SetNextItemWidth(-1.0F);
+                auto const submitted{ImGui::InputText("##type",
+                                                      record_member_type_.data(),
+                                                      record_member_type_.size(),
+                                                      ImGuiInputTextFlags_EnterReturnsTrue)};
+                if (!pending.has_value() && (submitted || ImGui::IsItemDeactivatedAfterEdit())) {
+                    pending = *schema;
+                    pending->members[index].type.name = record_member_type_.data();
+                }
+            } else {
+                ImGui::TextUnformatted(member.type.name.c_str());
+            }
+
+            ImGui::TableNextColumn();
+            if (row_selected) {
+                if (ImGui::Checkbox("##fixed-array", &record_member_is_array_)) {
+                    pending = *schema;
+                    pending->members[index].count = record_member_is_array_
+                                                      ? std::optional{record_member_count_}
+                                                      : std::nullopt;
+                }
+            } else {
+                ImGui::TextUnformatted(member.count.has_value() ? "yes" : "-");
+            }
+
+            ImGui::TableNextColumn();
+            if (row_selected && record_member_is_array_) {
+                ImGui::SetNextItemWidth(96.0F);
+                auto const submitted{ImGui::InputScalar("##count",
+                                                        ImGuiDataType_U64,
+                                                        &record_member_count_,
+                                                        nullptr,
+                                                        nullptr,
+                                                        "%llu",
+                                                        ImGuiInputTextFlags_EnterReturnsTrue)};
+                if (!pending.has_value() && (submitted || ImGui::IsItemDeactivatedAfterEdit())) {
+                    pending = *schema;
+                    pending->members[index].count = record_member_count_;
+                }
+            } else if (member.count.has_value()) {
+                ImGui::Text("%llu", static_cast<unsigned long long>(*member.count));
+            } else {
+                ImGui::TextUnformatted("1");
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+
+    if (pending.has_value()) {
+        auto const invalid_member{std::ranges::find_if(pending->members, [](auto const& member) {
+            return member.name.empty() || member.type.name.empty() || member.count == 0;
+        })};
+        if (invalid_member != pending->members.end()) {
+            if (invalid_member->name.empty()) {
+                schema_edit_message_ = "Record member name cannot be empty.";
+            } else if (invalid_member->type.name.empty()) {
+                schema_edit_message_ = "Record member type cannot be empty.";
+            } else {
+                schema_edit_message_ = "Fixed array count must be greater than zero.";
+            }
+            return false;
+        }
+        if (apply_document_edit(
+                ReplaceRecord{.declaration = *declaration, .schema = std::move(*pending)})) {
             selected_field_ = std::move(selected_after_edit);
             return true;
         }

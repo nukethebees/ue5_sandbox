@@ -120,6 +120,10 @@ void PlannerUi::draw_project_panel() {
         open_new_packed_value_dialog_ = true;
     }
     ImGui::SameLine();
+    if (ImGui::Button("+ New record")) {
+        open_new_record_dialog_ = true;
+    }
+    ImGui::SameLine();
     if (ImGui::Button("+ New SoA")) {
         open_new_soa_dialog_ = true;
     }
@@ -406,6 +410,106 @@ void PlannerUi::draw_new_packed_value_dialog() {
                 new_packed_value_name_.fill('\0');
                 std::snprintf(new_packed_storage_type_.data(),
                               new_packed_storage_type_.size(),
+                              "%s",
+                              "std::uint32_t");
+                selected_field_ = "value";
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+    }
+    if (ImGui::Button("Cancel")) {
+        ImGui::CloseCurrentPopup();
+    }
+    if (!schema_edit_message_.empty()) {
+        ImGui::TextWrapped("%s", schema_edit_message_.c_str());
+    }
+    ImGui::EndPopup();
+}
+
+void PlannerUi::draw_new_record_dialog() {
+    if (open_new_record_dialog_) {
+        ImGui::OpenPopup("New record");
+        open_new_record_dialog_ = false;
+    }
+    if (!ImGui::BeginPopupModal("New record", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        return;
+    }
+    if (!document_.has_value()) {
+        ImGui::TextDisabled("No editable LispB document is loaded.");
+        if (ImGui::Button("Close")) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+        return;
+    }
+
+    auto const& modules{document_->manifest().modules};
+    auto first_record_module{std::optional<std::size_t>{}};
+    for (std::size_t index{}; index < modules.size(); ++index) {
+        if (std::holds_alternative<codegen::RecordModuleSchema>(modules[index])) {
+            first_record_module = index;
+            break;
+        }
+    }
+    if (!first_record_module.has_value()) {
+        ImGui::TextDisabled("The target has no record module to receive a new declaration.");
+    } else {
+        if (new_record_module_index_ >= modules.size() ||
+            !std::holds_alternative<codegen::RecordModuleSchema>(
+                modules[new_record_module_index_])) {
+            new_record_module_index_ = *first_record_module;
+        }
+        auto const& selected_module{
+            std::get<codegen::RecordModuleSchema>(modules[new_record_module_index_])};
+        if (ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
+            for (std::size_t index{}; index < modules.size(); ++index) {
+                auto const* module{std::get_if<codegen::RecordModuleSchema>(&modules[index])};
+                if (module == nullptr) {
+                    continue;
+                }
+                if (ImGui::Selectable(module->settings.name.c_str(),
+                                      index == new_record_module_index_)) {
+                    new_record_module_index_ = index;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::InputText("Name", new_record_name_.data(), new_record_name_.size());
+        ImGui::InputText(
+            "First member type", new_record_member_type_.data(), new_record_member_type_.size());
+        ImGui::TextDisabled("The declaration starts with one editable scalar member.");
+
+        auto const ready{new_record_name_.front() != '\0' &&
+                         new_record_member_type_.front() != '\0'};
+        ImGui::BeginDisabled(!ready);
+        if (ImGui::Button("Create")) {
+            auto const& module{
+                std::get<codegen::RecordModuleSchema>(modules[new_record_module_index_])};
+            auto const name{std::string{new_record_name_.data()}};
+            auto const identity{
+                TypeIdentity{.origin = TypeOrigin::declaration,
+                             .module_name = module.settings.name,
+                             .namespace_name = module.settings.namespace_name.value_or(""),
+                             .name = name}};
+            auto const id{document_->allocate_declaration_id()};
+            auto schema{codegen::RecordSchema{
+                .name = name,
+                .members = {{.name = "value",
+                             .type = codegen::TypeRef{.name = new_record_member_type_.data(),
+                                                      .suffix = {},
+                                                      .nested = std::nullopt},
+                             .count = std::nullopt}},
+                .export_specifier = std::nullopt}};
+            if (apply_document_edit(CreateRecord{.declaration = id,
+                                                 .module_index = new_record_module_index_,
+                                                 .schema = std::move(schema),
+                                                 .insertion_index = std::nullopt},
+                                    identity)) {
+                new_record_name_.fill('\0');
+                std::snprintf(new_record_member_type_.data(),
+                              new_record_member_type_.size(),
                               "%s",
                               "std::uint32_t");
                 selected_field_ = "value";

@@ -94,6 +94,22 @@ struct DeletePackedValue {
     DeclarationId declaration;
 };
 
+struct CreateRecord {
+    DeclarationId declaration;
+    std::size_t module_index{};
+    codegen::RecordSchema schema;
+    std::optional<std::size_t> insertion_index;
+};
+
+struct ReplaceRecord {
+    DeclarationId declaration;
+    codegen::RecordSchema schema;
+};
+
+struct DeleteRecord {
+    DeclarationId declaration;
+};
+
 struct CreateSoa {
     DeclarationId declaration;
     std::size_t module_index{};
@@ -118,6 +134,9 @@ using SchemaEditCommand = std::variant<SetEnumeratorDisplayName,
                                        CreatePackedValue,
                                        ReplacePackedValue,
                                        DeletePackedValue,
+                                       CreateRecord,
+                                       ReplaceRecord,
+                                       DeleteRecord,
                                        CreateSoa,
                                        ReplaceSoa,
                                        DeleteSoa>;
@@ -144,6 +163,7 @@ class EditableSchemaDocument {
     auto find_declaration(TypeIdentity const& identity) const -> std::optional<DeclarationId>;
     auto enum_schema(DeclarationId declaration) const -> codegen::EnumSchema const*;
     auto packed_value_schema(DeclarationId declaration) const -> codegen::PackedValueSchema const*;
+    auto record_schema(DeclarationId declaration) const -> codegen::RecordSchema const*;
     auto soa_schema(DeclarationId declaration) const -> codegen::SoaSchema const*;
     auto allocate_declaration_id() -> DeclarationId;
 
