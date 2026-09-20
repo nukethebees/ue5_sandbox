@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <expected>
 #include <filesystem>
+#include <map>
 #include <optional>
 #include <span>
 #include <string>
@@ -94,6 +95,123 @@ struct DeletePackedValue {
     DeclarationId declaration;
 };
 
+struct CreateIntegerScalar {
+    DeclarationId declaration;
+    std::size_t module_index{};
+    codegen::IntegerScalarSchema schema;
+    std::optional<std::size_t> insertion_index;
+};
+
+struct ReplaceIntegerScalar {
+    DeclarationId declaration;
+    codegen::IntegerScalarSchema schema;
+};
+
+struct RenameDeclaration {
+    DeclarationId declaration;
+    std::string new_name;
+};
+
+struct DeleteIntegerScalar {
+    DeclarationId declaration;
+};
+
+struct CreateLinearQuantized {
+    DeclarationId declaration;
+    std::size_t module_index{};
+    codegen::LinearQuantizedSchema schema;
+    std::optional<std::size_t> insertion_index;
+};
+
+struct ReplaceLinearQuantized {
+    DeclarationId declaration;
+    codegen::LinearQuantizedSchema schema;
+};
+
+struct DeleteLinearQuantized {
+    DeclarationId declaration;
+};
+
+struct CreateIntegerVarint {
+    DeclarationId declaration;
+    std::size_t module_index{};
+    codegen::IntegerVarintSchema schema;
+    std::optional<std::size_t> insertion_index;
+};
+
+struct ReplaceIntegerVarint {
+    DeclarationId declaration;
+    codegen::IntegerVarintSchema schema;
+};
+
+struct DeleteIntegerVarint {
+    DeclarationId declaration;
+};
+
+struct CreateFixedPoint {
+    DeclarationId declaration;
+    std::size_t module_index{};
+    codegen::FixedPointSchema schema;
+    std::optional<std::size_t> insertion_index;
+};
+
+struct ReplaceFixedPoint {
+    DeclarationId declaration;
+    codegen::FixedPointSchema schema;
+};
+
+struct DeleteFixedPoint {
+    DeclarationId declaration;
+};
+
+struct CreateOptionalSentinel {
+    DeclarationId declaration;
+    std::size_t module_index{};
+    codegen::OptionalSentinelSchema schema;
+    std::optional<std::size_t> insertion_index;
+};
+
+struct ReplaceOptionalSentinel {
+    DeclarationId declaration;
+    codegen::OptionalSentinelSchema schema;
+};
+
+struct DeleteOptionalSentinel {
+    DeclarationId declaration;
+};
+
+struct CreateOptionalPresenceBit {
+    DeclarationId declaration;
+    std::size_t module_index{};
+    codegen::OptionalPresenceBitSchema schema;
+    std::optional<std::size_t> insertion_index;
+};
+
+struct ReplaceOptionalPresenceBit {
+    DeclarationId declaration;
+    codegen::OptionalPresenceBitSchema schema;
+};
+
+struct DeleteOptionalPresenceBit {
+    DeclarationId declaration;
+};
+
+struct CreateMiniFloat {
+    DeclarationId declaration;
+    std::size_t module_index{};
+    codegen::MiniFloatSchema schema;
+    std::optional<std::size_t> insertion_index;
+};
+
+struct ReplaceMiniFloat {
+    DeclarationId declaration;
+    codegen::MiniFloatSchema schema;
+};
+
+struct DeleteMiniFloat {
+    DeclarationId declaration;
+};
+
 struct CreateRecord {
     DeclarationId declaration;
     std::size_t module_index{};
@@ -107,6 +225,38 @@ struct ReplaceRecord {
 };
 
 struct DeleteRecord {
+    DeclarationId declaration;
+};
+
+struct CreateUnion {
+    DeclarationId declaration;
+    std::size_t module_index{};
+    codegen::UnionSchema schema;
+    std::optional<std::size_t> insertion_index;
+};
+
+struct ReplaceUnion {
+    DeclarationId declaration;
+    codegen::UnionSchema schema;
+};
+
+struct DeleteUnion {
+    DeclarationId declaration;
+};
+
+struct CreateTaggedUnion {
+    DeclarationId declaration;
+    std::size_t module_index{};
+    codegen::TaggedUnionSchema schema;
+    std::optional<std::size_t> insertion_index;
+};
+
+struct ReplaceTaggedUnion {
+    DeclarationId declaration;
+    codegen::TaggedUnionSchema schema;
+};
+
+struct DeleteTaggedUnion {
     DeclarationId declaration;
 };
 
@@ -134,9 +284,37 @@ using SchemaEditCommand = std::variant<SetEnumeratorDisplayName,
                                        CreatePackedValue,
                                        ReplacePackedValue,
                                        DeletePackedValue,
+                                       CreateIntegerScalar,
+                                       ReplaceIntegerScalar,
+                                       RenameDeclaration,
+                                       DeleteIntegerScalar,
+                                       CreateLinearQuantized,
+                                       ReplaceLinearQuantized,
+                                       DeleteLinearQuantized,
+                                       CreateIntegerVarint,
+                                       ReplaceIntegerVarint,
+                                       DeleteIntegerVarint,
+                                       CreateFixedPoint,
+                                       ReplaceFixedPoint,
+                                       DeleteFixedPoint,
+                                       CreateOptionalSentinel,
+                                       ReplaceOptionalSentinel,
+                                       DeleteOptionalSentinel,
+                                       CreateOptionalPresenceBit,
+                                       ReplaceOptionalPresenceBit,
+                                       DeleteOptionalPresenceBit,
+                                       CreateMiniFloat,
+                                       ReplaceMiniFloat,
+                                       DeleteMiniFloat,
                                        CreateRecord,
                                        ReplaceRecord,
                                        DeleteRecord,
+                                       CreateUnion,
+                                       ReplaceUnion,
+                                       DeleteUnion,
+                                       CreateTaggedUnion,
+                                       ReplaceTaggedUnion,
+                                       DeleteTaggedUnion,
                                        CreateSoa,
                                        ReplaceSoa,
                                        DeleteSoa>;
@@ -163,7 +341,21 @@ class EditableSchemaDocument {
     auto find_declaration(TypeIdentity const& identity) const -> std::optional<DeclarationId>;
     auto enum_schema(DeclarationId declaration) const -> codegen::EnumSchema const*;
     auto packed_value_schema(DeclarationId declaration) const -> codegen::PackedValueSchema const*;
+    auto integer_scalar_schema(DeclarationId declaration) const
+        -> codegen::IntegerScalarSchema const*;
+    auto linear_quantized_schema(DeclarationId declaration) const
+        -> codegen::LinearQuantizedSchema const*;
+    auto integer_varint_schema(DeclarationId declaration) const
+        -> codegen::IntegerVarintSchema const*;
+    auto fixed_point_schema(DeclarationId declaration) const -> codegen::FixedPointSchema const*;
+    auto optional_sentinel_schema(DeclarationId declaration) const
+        -> codegen::OptionalSentinelSchema const*;
+    auto optional_presence_bit_schema(DeclarationId declaration) const
+        -> codegen::OptionalPresenceBitSchema const*;
+    auto mini_float_schema(DeclarationId declaration) const -> codegen::MiniFloatSchema const*;
     auto record_schema(DeclarationId declaration) const -> codegen::RecordSchema const*;
+    auto union_schema(DeclarationId declaration) const -> codegen::UnionSchema const*;
+    auto tagged_union_schema(DeclarationId declaration) const -> codegen::TaggedUnionSchema const*;
     auto soa_schema(DeclarationId declaration) const -> codegen::SoaSchema const*;
     auto allocate_declaration_id() -> DeclarationId;
 
@@ -204,6 +396,7 @@ class EditableSchemaDocument {
     std::vector<std::filesystem::path> module_paths_;
     std::vector<std::optional<SourceRange>> module_source_ranges_;
     std::vector<DeclarationInfo> declarations_;
+    std::map<DeclarationId, SourceRange> source_tombstones_;
     std::vector<HistoryEntry> history_;
     std::size_t history_position_{};
     std::optional<std::size_t> saved_history_position_{0};

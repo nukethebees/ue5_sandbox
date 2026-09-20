@@ -9,14 +9,21 @@
 #include <codegen/schema/facade_method_schema.h>
 #include <codegen/schema/facade_module_schema.h>
 #include <codegen/schema/facade_schema.h>
+#include <codegen/schema/fixed_point_schema.h>
 #include <codegen/schema/fixed_soa_schema.h>
 #include <codegen/schema/function_schema.h>
 #include <codegen/schema/homogeneous_layout_schema.h>
 #include <codegen/schema/homogeneous_module_schema.h>
 #include <codegen/schema/homogeneous_value_schema.h>
+#include <codegen/schema/integer_scalar_schema.h>
+#include <codegen/schema/integer_varint_schema.h>
+#include <codegen/schema/linear_quantized_schema.h>
 #include <codegen/schema/manifest.h>
+#include <codegen/schema/mini_float_schema.h>
 #include <codegen/schema/module_schema.h>
 #include <codegen/schema/module_settings.h>
+#include <codegen/schema/optional_presence_bit_schema.h>
+#include <codegen/schema/optional_sentinel_schema.h>
 #include <codegen/schema/packed_field_kind.h>
 #include <codegen/schema/packed_field_schema.h>
 #include <codegen/schema/packed_value_module_schema.h>
@@ -25,6 +32,8 @@
 #include <codegen/schema/record_member_schema.h>
 #include <codegen/schema/record_module_schema.h>
 #include <codegen/schema/record_schema.h>
+#include <codegen/schema/representation_module_schema.h>
+#include <codegen/schema/scalar_module_schema.h>
 #include <codegen/schema/schema_version.h>
 #include <codegen/schema/settings_module_schema.h>
 #include <codegen/schema/soa_member_kind.h>
@@ -37,8 +46,13 @@
 #include <codegen/schema/static_table_row_schema.h>
 #include <codegen/schema/static_table_schema.h>
 #include <codegen/schema/storage_operation.h>
+#include <codegen/schema/tagged_union_alternative_schema.h>
+#include <codegen/schema/tagged_union_schema.h>
 #include <codegen/schema/type_ref.h>
 #include <codegen/schema/umbrella_module_schema.h>
+#include <codegen/schema/union_alternative_schema.h>
+#include <codegen/schema/union_module_schema.h>
+#include <codegen/schema/union_schema.h>
 #include <codegen/schema/vector_module_schema.h>
 
 #include <map>

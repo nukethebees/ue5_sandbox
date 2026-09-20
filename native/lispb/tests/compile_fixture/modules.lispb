@@ -67,7 +67,24 @@
   (packed-value PackedWide
     :storage std::uint64_t
     :mutable true
-    (field value std::uint64_t :bits 64))
+    (field value std::uint64_t :bits auto :minimum 0 :maximum 18446744073709551615))
+  (packed-value SignedDelta
+    :storage std::uint32_t
+    :mutable true
+    (field delta std::int32_t :bits 17 :kind signed)
+    (reserved future :bits 15))
+  (packed-value SignedWide
+    :storage std::uint64_t
+    :mutable true
+    (field delta std::int64_t :bits auto :kind signed
+      :minimum -9223372036854775808 :maximum 9223372036854775807))
+  (packed-value SignedTemperature
+    :storage std::uint32_t
+    :mutable true
+    (field temperature std::int16_t :bits auto :kind signed :minimum -100 :maximum 100
+      (code Freezing :value 0)
+      (code Unknown :value -128 :sentinel true))
+    (reserved future :bits 24))
   (packed-value PackedTinyState
     :storage std::uint8_t
     :mutable true

@@ -1,6 +1,7 @@
 #include <codegen/source_loader.h>
 
 #include <codegen/manifest_error.h>
+#include <codegen/validation.h>
 
 #include <gtest/gtest.h>
 
@@ -145,7 +146,11 @@ TEST(SourceLoader, ReadsPackedValueModule) {
     :storage std::uint32_t
     :invalid-value 0x7fffffff
     :mutable true
-    (field entity_index std::uint32_t :bits 24 :range-helper true)
+    (field entity_index std::uint32_t :bits auto :range-helper true :minimum 0 :maximum 1000000
+      (code Player :value 42)
+      (code Invalid :value 1048575 :sentinel true)
+      (relation index_into FighterState))
+    (reserved future :bits 4)
     (field state State :bits 8 :kind enum)))
 )");
 
@@ -157,12 +162,254 @@ TEST(SourceLoader, ReadsPackedValueModule) {
     EXPECT_EQ(value.storage_type.name, "std::uint32_t");
     EXPECT_EQ(value.invalid_value, std::uint64_t{0x7fffffff});
     EXPECT_TRUE(value.mutable_value);
-    ASSERT_EQ(value.fields.size(), 2);
-    EXPECT_EQ(value.fields[0].bits, 24);
-    EXPECT_EQ(value.fields[0].kind, PackedFieldKind::unsigned_integer);
-    EXPECT_TRUE(value.fields[0].range_helper);
-    EXPECT_EQ(value.fields[1].bits, 8);
-    EXPECT_EQ(value.fields[1].kind, PackedFieldKind::enumeration);
+    ASSERT_EQ(value.segments.size(), 3);
+    auto const& index{std::get<PackedFieldSchema>(value.segments[0])};
+    EXPECT_FALSE(index.bits.has_value());
+    EXPECT_EQ(index.kind, PackedFieldKind::unsigned_integer);
+    EXPECT_TRUE(index.range_helper);
+    EXPECT_EQ(index.minimum_value, 0U);
+    EXPECT_EQ(index.maximum_value, 1'000'000U);
+    ASSERT_EQ(index.named_codes.size(), 2U);
+    EXPECT_EQ(index.named_codes[0].name, "Player");
+    EXPECT_EQ(index.named_codes[0].value, 42U);
+    EXPECT_FALSE(index.named_codes[0].sentinel);
+    EXPECT_EQ(index.named_codes[1].name, "Invalid");
+    EXPECT_EQ(index.named_codes[1].value, 1'048'575U);
+    EXPECT_TRUE(index.named_codes[1].sentinel);
+    ASSERT_TRUE(index.relationship.has_value());
+    EXPECT_EQ(index.relationship->kind, PackedFieldRelationKind::index_into);
+    EXPECT_EQ(index.relationship->target.name, "FighterState");
+    auto const& reserved{std::get<PackedReservedBitsSchema>(value.segments[1])};
+    EXPECT_EQ(reserved.name, "future");
+    EXPECT_EQ(reserved.bits, 4);
+    auto const& state{std::get<PackedFieldSchema>(value.segments[2])};
+    EXPECT_EQ(state.bits, 8);
+    EXPECT_EQ(state.kind, PackedFieldKind::enumeration);
+}
+
+TEST(SourceLoader, ReadsSignedArbitraryWidthPackedField) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(packed-value-module packed
+  :header "Packed.h"
+  (packed-value SignedDelta
+    :storage std::uint32_t
+    (field delta std::int32_t :bits auto :kind signed :minimum -100 :maximum 100
+      (code Origin :value 0)
+      (code Unknown :value -128 :sentinel true))
+    (reserved future :bits 24)))
+)");
+
+    auto const manifest{files.load()};
+    auto const& value{std::get<PackedValueModuleSchema>(manifest.modules.front()).values.front()};
+    auto const& delta{std::get<PackedFieldSchema>(value.segments.front())};
+    EXPECT_EQ(delta.type.name, "std::int32_t");
+    EXPECT_FALSE(delta.bits.has_value());
+    EXPECT_EQ(delta.kind, PackedFieldKind::signed_integer);
+    EXPECT_EQ(delta.minimum_value, PackedIntegerValue{-100});
+    EXPECT_EQ(delta.maximum_value, PackedIntegerValue{100});
+    ASSERT_EQ(delta.named_codes.size(), 2U);
+    EXPECT_EQ(delta.named_codes[0].value, PackedIntegerValue{0});
+    EXPECT_EQ(delta.named_codes[1].value, PackedIntegerValue{-128});
+    EXPECT_TRUE(delta.named_codes[1].sentinel);
+}
+
+TEST(SourceLoader, ReadsStandaloneIntegerScalarDomain) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(scalar-module semantic_values
+  :header "SemanticValues.h"
+  :namespace project
+  (integer-scalar DamageReason
+    :signed false
+    :minimum 0
+    :maximum 10
+    :bit-width auto
+    (code Unknown :value 0)
+    (code Invalid :value 15 :sentinel true)))
+)");
+
+    auto const manifest{files.load()};
+    auto const& module{std::get<ScalarModuleSchema>(manifest.modules.front())};
+    ASSERT_EQ(module.scalars.size(), 1U);
+    auto const& scalar{module.scalars.front()};
+    EXPECT_EQ(scalar.name, "DamageReason");
+    EXPECT_FALSE(scalar.signedness);
+    EXPECT_EQ(scalar.minimum_value, PackedIntegerValue{0});
+    EXPECT_EQ(scalar.maximum_value, PackedIntegerValue{10});
+    EXPECT_FALSE(scalar.bit_width.has_value());
+    ASSERT_EQ(scalar.named_codes.size(), 2U);
+    EXPECT_EQ(scalar.named_codes[1].value, PackedIntegerValue{15});
+    EXPECT_TRUE(scalar.named_codes[1].sentinel);
+}
+
+TEST(SourceLoader, ReadsPhysicalRepresentations) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(scalar-module semantic_values
+  :header "SemanticValues.h"
+  :namespace project
+  (integer-scalar Health
+    :signed false
+    :minimum 0
+    :maximum 1000
+    :bit-width auto
+    (code Invalid :value 1023 :sentinel true)))
+(representation-module representations
+  :header "Representations.h"
+  :namespace project
+  (linear-quantized HealthQ8
+    :source project::Health
+    :bits 8
+    :reserved-codes 1
+    :clipping clamp)
+  (integer-varint HealthVarint
+    :source project::Health
+    :encoding unsigned)
+  (fixed-point VelocityQ12_4
+    :signed true
+    :total-bits 16
+    :fractional-bits 4
+    :rounding toward-zero)
+  (mini-float CompactFloat
+    :sign-bits 1
+    :exponent-bits 5
+    :significand-bits 10
+    :bias 15)
+  (optional-sentinel OptionalHealth
+    :source project::Health
+    :sentinel Invalid)
+  (optional-presence-bit PresentHealth
+    :source project::Health))
+)");
+
+    auto const manifest{files.load()};
+    ASSERT_EQ(manifest.modules.size(), 2U);
+    auto const& module{std::get<RepresentationModuleSchema>(manifest.modules[1])};
+    ASSERT_EQ(module.linear_quantized.size(), 1U);
+    auto const& representation{module.linear_quantized.front()};
+    EXPECT_EQ(representation.name, "HealthQ8");
+    EXPECT_EQ(representation.source.name, "project::Health");
+    EXPECT_EQ(representation.bit_width, 8U);
+    EXPECT_EQ(representation.reserved_codes, 1U);
+    EXPECT_EQ(representation.clipping, QuantizationClipping::clamp);
+    ASSERT_EQ(module.integer_varints.size(), 1U);
+    auto const& varint{module.integer_varints.front()};
+    EXPECT_EQ(varint.name, "HealthVarint");
+    EXPECT_EQ(varint.source.name, "project::Health");
+    EXPECT_EQ(varint.encoding, IntegerVarintEncoding::unsigned_varint);
+    ASSERT_EQ(module.fixed_points.size(), 1U);
+    auto const& fixed_point{module.fixed_points.front()};
+    EXPECT_EQ(fixed_point.name, "VelocityQ12_4");
+    EXPECT_TRUE(fixed_point.signedness);
+    EXPECT_EQ(fixed_point.total_bits, 16U);
+    EXPECT_EQ(fixed_point.fractional_bits, 4U);
+    EXPECT_EQ(fixed_point.rounding, FixedPointRounding::toward_zero);
+    ASSERT_EQ(module.mini_floats.size(), 1U);
+    auto const& mini_float{module.mini_floats.front()};
+    EXPECT_EQ(mini_float.name, "CompactFloat");
+    EXPECT_EQ(mini_float.sign_bits, 1U);
+    EXPECT_EQ(mini_float.exponent_bits, 5U);
+    EXPECT_EQ(mini_float.significand_bits, 10U);
+    EXPECT_EQ(mini_float.exponent_bias, 15);
+    ASSERT_EQ(module.optional_sentinels.size(), 1U);
+    auto const& optional{module.optional_sentinels.front()};
+    EXPECT_EQ(optional.name, "OptionalHealth");
+    EXPECT_EQ(optional.source.name, "project::Health");
+    EXPECT_EQ(optional.sentinel, "Invalid");
+    ASSERT_EQ(module.optional_presence_bits.size(), 1U);
+    auto const& presence{module.optional_presence_bits.front()};
+    EXPECT_EQ(presence.name, "PresentHealth");
+    EXPECT_EQ(presence.source.name, "project::Health");
+}
+
+TEST(SourceLoader, RejectsInvalidMiniFloatWidthsAndBias) {
+    auto load_mini_float = [](std::string const& properties) {
+        TemporaryManifest files;
+        files.write_root("(representation-module representations\n"
+                         "  :header \"Representations.h\"\n"
+                         "  (mini-float Invalid " +
+                         properties + "))\n");
+        return files.load();
+    };
+
+    EXPECT_THROW(load_mini_float(":sign-bits 2 :exponent-bits 5 :significand-bits 10 :bias 15"),
+                 ManifestError);
+    EXPECT_THROW(load_mini_float(":sign-bits 1 :exponent-bits 1 :significand-bits 10 :bias 15"),
+                 ManifestError);
+    EXPECT_THROW(load_mini_float(":sign-bits 1 :exponent-bits 5 :significand-bits 63 :bias 15"),
+                 ManifestError);
+    EXPECT_THROW(load_mini_float(":sign-bits 1 :exponent-bits 15 :significand-bits 49 :bias 15"),
+                 ManifestError);
+    EXPECT_THROW(load_mini_float(":sign-bits 1 :exponent-bits 5 :significand-bits 10 :bias 32768"),
+                 ManifestError);
+}
+
+TEST(SourceLoader, ReadsExplicitEnumBitWidth) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(enum-module states
+  :header "States.h"
+  (enum State std::uint8_t
+    :bit-width 3
+    :signed false
+    (value Idle :value "0")
+    (value Active :value "7")))
+)");
+
+    auto const manifest{files.load()};
+    auto const& schema{std::get<EnumModuleSchema>(manifest.modules.front()).enums.front()};
+    EXPECT_EQ(schema.bit_width, 3);
+    EXPECT_EQ(schema.signedness, false);
+}
+
+TEST(SourceLoader, ReadsExplicitSignedEnumDomain) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(enum-module states
+  :header "States.h"
+  (enum Delta std::int8_t
+    :signed true
+    (value Below :value "-1")
+    (value Above :value "1")))
+)");
+
+    auto const manifest{files.load()};
+    auto const& schema{std::get<EnumModuleSchema>(manifest.modules.front()).enums.front()};
+    EXPECT_EQ(schema.signedness, true);
+    EXPECT_FALSE(schema.bit_width.has_value());
+}
+
+TEST(SourceLoader, ReadsNamedEnumSentinels) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(enum-module states
+  :header "States.h"
+  (enum State std::uint8_t
+    (value Ready :value "0")
+    (value Invalid :value "0xff" :sentinel true)
+    (value Pending :value "0xfe" :sentinel true)))
+)");
+
+    auto const manifest{files.load()};
+    auto const& values{std::get<EnumModuleSchema>(manifest.modules.front()).enums.front().values};
+    ASSERT_EQ(values.size(), 3U);
+    EXPECT_FALSE(values[0].sentinel);
+    EXPECT_TRUE(values[1].sentinel);
+    EXPECT_TRUE(values[2].sentinel);
+}
+
+TEST(SourceLoader, RejectsEnumBitWidthOutsideNativeAnalysisRange) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(enum-module states
+  :header "States.h"
+  (enum State std::uint8_t
+    :bit-width 65
+    (value Idle)))
+)");
+
+    EXPECT_THROW(static_cast<void>(files.load()), ManifestError);
 }
 
 TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
@@ -227,6 +474,105 @@ TEST(SourceLoader, ReadsRecordModuleAndFixedArrays) {
     EXPECT_FALSE(module.records[0].members[0].count.has_value());
     EXPECT_EQ(module.records[1].export_specifier, "PROJECT_API");
     EXPECT_EQ(module.records[1].members[0].count, 4);
+}
+
+TEST(SourceLoader, ReadsRawUnionModuleAndFixedArrayAlternatives) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(union-module payloads
+  :header "Payloads.h"
+  :namespace project
+  (union Payload
+    :export-specifier PROJECT_API
+    (alternative identifier std::uint32_t)
+    (alternative bytes std::uint8_t :count 12)))
+)");
+
+    auto const manifest{files.load()};
+    auto const& module{std::get<UnionModuleSchema>(manifest.modules.front())};
+    ASSERT_EQ(module.unions.size(), 1U);
+    EXPECT_EQ(module.unions[0].name, "Payload");
+    EXPECT_EQ(module.unions[0].export_specifier, "PROJECT_API");
+    ASSERT_EQ(module.unions[0].alternatives.size(), 2U);
+    EXPECT_EQ(module.unions[0].alternatives[0].name, "identifier");
+    EXPECT_FALSE(module.unions[0].alternatives[0].count.has_value());
+    EXPECT_EQ(module.unions[0].alternatives[1].type.name, "std::uint8_t");
+    EXPECT_EQ(module.unions[0].alternatives[1].count, 12);
+}
+
+TEST(SourceLoader, RejectsInvalidRawUnionAlternatives) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(union-module payloads
+  :header "Payloads.h"
+  (union Payload
+    (alternative value std::uint32_t :count 0)))
+)");
+    EXPECT_THROW(validate_manifest(files.load()), std::invalid_argument);
+
+    files.write_root(R"(
+(union-module payloads
+  :header "Payloads.h"
+  (union Payload
+    (alternative value std::uint32_t)
+    (alternative value std::uint16_t)))
+)");
+    EXPECT_THROW(validate_manifest(files.load()), std::invalid_argument);
+}
+
+TEST(SourceLoader, ReadsTaggedUnionDiscriminantAndSymbolicMappings) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(enum-module events
+  :header "Events.h"
+  (enum EventKind std::uint8_t
+    (value Spawn)
+    (value Damage)
+    (value Invalid :sentinel true)))
+(union-module payloads
+  :header "Payloads.h"
+  (tagged-union Event
+    :discriminant events::EventKind
+    :export-specifier PROJECT_API
+    (alternative spawn std::uint32_t :tag Spawn)
+    (alternative damage std::uint16_t :count 4 :tag Damage)))
+)");
+
+    auto const manifest{files.load()};
+    auto const& module{std::get<UnionModuleSchema>(manifest.modules[1])};
+    ASSERT_EQ(module.tagged_unions.size(), 1U);
+    auto const& tagged{module.tagged_unions.front()};
+    EXPECT_EQ(tagged.name, "Event");
+    EXPECT_EQ(tagged.discriminant.name, "events::EventKind");
+    EXPECT_EQ(tagged.export_specifier, "PROJECT_API");
+    ASSERT_EQ(tagged.alternatives.size(), 2U);
+    EXPECT_EQ(tagged.alternatives[0].tag, "Spawn");
+    EXPECT_FALSE(tagged.alternatives[0].count.has_value());
+    EXPECT_EQ(tagged.alternatives[1].tag, "Damage");
+    EXPECT_EQ(tagged.alternatives[1].count, 4);
+}
+
+TEST(SourceLoader, RejectsDuplicateTaggedUnionNamesAndTags) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(union-module payloads
+  :header "Payloads.h"
+  (tagged-union Event
+    :discriminant std::uint8_t
+    (alternative value std::uint32_t :tag Value)
+    (alternative value std::uint16_t :tag Other)))
+)");
+    EXPECT_THROW(validate_manifest(files.load()), std::invalid_argument);
+
+    files.write_root(R"(
+(union-module payloads
+  :header "Payloads.h"
+  (tagged-union Event
+    :discriminant std::uint8_t
+    (alternative first std::uint32_t :tag Value)
+    (alternative second std::uint16_t :tag Value)))
+)");
+    EXPECT_THROW(validate_manifest(files.load()), std::invalid_argument);
 }
 
 TEST(SourceLoader, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {

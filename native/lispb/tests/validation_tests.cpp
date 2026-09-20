@@ -123,6 +123,132 @@ auto valid_native_enum_module() -> EnumModuleSchema {
     };
 }
 
+auto valid_integer_scalar_module() -> ScalarModuleSchema {
+    return ScalarModuleSchema{
+        .settings = ModuleSettings{.name = "scalars", .header = "Scalars.h"},
+        .scalars = {IntegerScalarSchema{
+            .name = "DamageReason",
+            .signedness = false,
+            .minimum_value = 0,
+            .maximum_value = 10,
+            .bit_width = std::nullopt,
+            .named_codes = {{.name = "Unknown", .value = 0, .sentinel = false},
+                            {.name = "Invalid", .value = 15, .sentinel = true}},
+        }},
+    };
+}
+
+auto valid_linear_quantized_manifest() -> Manifest {
+    auto scalar{valid_integer_scalar_module()};
+    RepresentationModuleSchema representations{
+        .settings = ModuleSettings{.name = "representations", .header = "Representations.h"},
+        .linear_quantized = {LinearQuantizedSchema{
+            .name = "DamageReasonQ4",
+            .source = TypeRef{"DamageReason"},
+            .bit_width = 4,
+            .reserved_codes = 1,
+            .clipping = QuantizationClipping::reject,
+        }},
+        .integer_varints = {},
+        .fixed_points = {},
+        .optional_sentinels = {},
+    };
+    return Manifest{.schema_version = manifest_schema_version,
+                    .types = {},
+                    .modules = {std::move(scalar), std::move(representations)}};
+}
+
+auto valid_integer_varint_manifest(
+    bool const signedness = false,
+    IntegerVarintEncoding const encoding = IntegerVarintEncoding::unsigned_varint) -> Manifest {
+    auto scalar{valid_integer_scalar_module()};
+    if (signedness) {
+        scalar.scalars.front().signedness = true;
+        scalar.scalars.front().minimum_value = -100;
+        scalar.scalars.front().maximum_value = 100;
+        scalar.scalars.front().named_codes.clear();
+    }
+    RepresentationModuleSchema representations{
+        .settings = ModuleSettings{.name = "representations", .header = "Representations.h"},
+        .linear_quantized = {},
+        .integer_varints = {IntegerVarintSchema{
+            .name = "DamageReasonVarint", .source = TypeRef{"DamageReason"}, .encoding = encoding}},
+        .fixed_points = {},
+        .optional_sentinels = {},
+    };
+    return Manifest{.schema_version = manifest_schema_version,
+                    .types = {},
+                    .modules = {std::move(scalar), std::move(representations)}};
+}
+
+auto valid_fixed_point_manifest(bool const signedness = true) -> Manifest {
+    RepresentationModuleSchema representations{
+        .settings = ModuleSettings{.name = "representations", .header = "Representations.h"},
+        .linear_quantized = {},
+        .integer_varints = {},
+        .fixed_points = {FixedPointSchema{.name = "VelocityQ12_4",
+                                          .signedness = signedness,
+                                          .total_bits = 16,
+                                          .fractional_bits = 4,
+                                          .rounding = FixedPointRounding::nearest_even}},
+        .optional_sentinels = {},
+    };
+    return Manifest{.schema_version = manifest_schema_version,
+                    .types = {},
+                    .modules = {std::move(representations)}};
+}
+
+auto valid_mini_float_manifest() -> Manifest {
+    RepresentationModuleSchema representations{
+        .settings = ModuleSettings{.name = "representations", .header = "Representations.h"},
+        .linear_quantized = {},
+        .integer_varints = {},
+        .fixed_points = {},
+        .optional_sentinels = {},
+        .optional_presence_bits = {},
+        .mini_floats = {MiniFloatSchema{.name = "CompactFloat",
+                                        .sign_bits = 1,
+                                        .exponent_bits = 5,
+                                        .significand_bits = 10,
+                                        .exponent_bias = 15}},
+    };
+    return Manifest{.schema_version = manifest_schema_version,
+                    .types = {},
+                    .modules = {std::move(representations)}};
+}
+
+auto valid_optional_sentinel_manifest() -> Manifest {
+    auto scalar{valid_integer_scalar_module()};
+    RepresentationModuleSchema representations{
+        .settings = ModuleSettings{.name = "representations", .header = "Representations.h"},
+        .linear_quantized = {},
+        .integer_varints = {},
+        .fixed_points = {},
+        .optional_sentinels = {OptionalSentinelSchema{.name = "OptionalDamageReason",
+                                                      .source = TypeRef{"DamageReason"},
+                                                      .sentinel = "Invalid"}},
+    };
+    return Manifest{.schema_version = manifest_schema_version,
+                    .types = {},
+                    .modules = {std::move(scalar), std::move(representations)}};
+}
+
+auto valid_optional_presence_bit_manifest() -> Manifest {
+    auto scalar{valid_integer_scalar_module()};
+    RepresentationModuleSchema representations{
+        .settings = ModuleSettings{.name = "representations", .header = "Representations.h"},
+        .linear_quantized = {},
+        .integer_varints = {},
+        .fixed_points = {},
+        .optional_sentinels = {},
+        .optional_presence_bits = {OptionalPresenceBitSchema{.name = "PresentDamageReason",
+                                                             .source = TypeRef{"DamageReason"}}},
+    };
+    return Manifest{.schema_version = manifest_schema_version,
+                    .types = {},
+                    .modules = {std::move(scalar), std::move(representations)}};
+}
+
 auto valid_static_table_module() -> StaticTableModuleSchema {
     return StaticTableModuleSchema{
         .settings = ModuleSettings{.name = "tables", .header = "Tables.h"},
@@ -161,6 +287,279 @@ TEST(Validation, RejectsInvalidEnumDefinitions) {
     module = valid_enum_module();
     module.enums.front().underlying_type = TypeRef{"@missing"};
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
+TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
+    auto module{valid_enum_module()};
+    module.enums.front().reflection = EnumReflection::none;
+    module.enums.front().bit_width = 0;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_enum_module();
+    module.enums.front().reflection = EnumReflection::none;
+    module.enums.front().bit_width = 65;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_enum_module();
+    module.enums.front().reflection = EnumReflection::none;
+    module.enums.front().values = {EnumeratorSchema{"Zero", "0"}, EnumeratorSchema{"Seven", "7"}};
+    module.enums.front().bit_width = 2;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_enum_module();
+    module.enums.front().reflection = EnumReflection::none;
+    module.enums.front().values = {EnumeratorSchema{"Zero", "0"}, EnumeratorSchema{"Seven", "7"}};
+    module.enums.front().bit_width = 3;
+    EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
+}
+
+TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
+    auto module{valid_enum_module()};
+    module.enums.front().reflection = EnumReflection::none;
+    module.enums.front().values = {EnumeratorSchema{"Negative", "-1"},
+                                   EnumeratorSchema{"Positive", "1"}};
+    module.enums.front().signedness = false;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_enum_module();
+    module.enums.front().reflection = EnumReflection::none;
+    module.enums.front().values = {EnumeratorSchema{"Zero", "0"}, EnumeratorSchema{"Seven", "7"}};
+    module.enums.front().signedness = true;
+    module.enums.front().bit_width = 3;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_enum_module();
+    module.enums.front().reflection = EnumReflection::none;
+    module.enums.front().values = {EnumeratorSchema{"Zero", "0"}, EnumeratorSchema{"Seven", "7"}};
+    module.enums.front().signedness = true;
+    module.enums.front().bit_width = 4;
+    EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
+}
+
+TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
+    auto module{valid_integer_scalar_module()};
+    module.scalars.front().bit_width = 3;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_integer_scalar_module();
+    module.scalars.front().minimum_value = -1;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_integer_scalar_module();
+    module.scalars.front().named_codes[1].value = 10;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_integer_scalar_module();
+    module.scalars.front().named_codes[0].value = 11;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_integer_scalar_module();
+    module.scalars.front().named_codes[1].name = "Unknown";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_integer_scalar_module();
+    module.scalars.front().named_codes[1].value = 0;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_integer_scalar_module();
+    module.settings.source = "Scalars.cpp";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_integer_scalar_module();
+    auto const lowered{lower_modules(manifest_with(std::move(module)))};
+    ASSERT_EQ(lowered.size(), 1U);
+    ASSERT_TRUE(lowered.front().header.has_value());
+    EXPECT_EQ(lowered.front().header->path, "Scalars.h");
+    EXPECT_TRUE(lowered.front().header->nodes.empty());
+}
+
+TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHeader) {
+    auto manifest{valid_linear_quantized_manifest()};
+    auto lowered{lower_modules(manifest)};
+    ASSERT_EQ(lowered.size(), 2U);
+    ASSERT_TRUE(lowered[1].header.has_value());
+    EXPECT_EQ(lowered[1].header->path, "Representations.h");
+    EXPECT_TRUE(lowered[1].header->nodes.empty());
+
+    manifest = valid_linear_quantized_manifest();
+    std::get<RepresentationModuleSchema>(manifest.modules[1]).linear_quantized.front().bit_width =
+        1;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    manifest = valid_linear_quantized_manifest();
+    auto& representation{
+        std::get<RepresentationModuleSchema>(manifest.modules[1]).linear_quantized.front()};
+    representation.bit_width = 2;
+    representation.reserved_codes = 3;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    manifest = valid_linear_quantized_manifest();
+    std::get<ScalarModuleSchema>(manifest.modules[0]).scalars.front().maximum_value = 0;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    manifest = valid_linear_quantized_manifest();
+    std::get<RepresentationModuleSchema>(manifest.modules[1]).linear_quantized.front().source =
+        TypeRef{"std::uint32_t"};
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    manifest = valid_linear_quantized_manifest();
+    std::get<RepresentationModuleSchema>(manifest.modules[1]).settings.source =
+        "Representations.cpp";
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+}
+
+TEST(Validation, ValidatesIntegerVarintSourceAndSignedness) {
+    EXPECT_NO_THROW(lower_modules(valid_integer_varint_manifest()));
+    EXPECT_NO_THROW(
+        lower_modules(valid_integer_varint_manifest(true, IntegerVarintEncoding::signed_varint)));
+    EXPECT_NO_THROW(
+        lower_modules(valid_integer_varint_manifest(true, IntegerVarintEncoding::zigzag_varint)));
+
+    EXPECT_THROW(
+        lower_modules(valid_integer_varint_manifest(true, IntegerVarintEncoding::unsigned_varint)),
+        std::invalid_argument);
+    EXPECT_THROW(
+        lower_modules(valid_integer_varint_manifest(false, IntegerVarintEncoding::signed_varint)),
+        std::invalid_argument);
+    EXPECT_THROW(
+        lower_modules(valid_integer_varint_manifest(false, IntegerVarintEncoding::zigzag_varint)),
+        std::invalid_argument);
+
+    auto manifest{valid_integer_varint_manifest()};
+    std::get<RepresentationModuleSchema>(manifest.modules[1]).integer_varints.front().source =
+        TypeRef{"std::uint32_t"};
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    manifest = valid_integer_varint_manifest();
+    auto& representations{std::get<RepresentationModuleSchema>(manifest.modules[1])};
+    representations.linear_quantized.push_back(
+        LinearQuantizedSchema{.name = representations.integer_varints.front().name,
+                              .source = TypeRef{"DamageReason"},
+                              .bit_width = 4,
+                              .reserved_codes = 0,
+                              .clipping = QuantizationClipping::reject});
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+}
+
+TEST(Validation, ValidatesFixedPointWidthsAndEmitsOnlyConfiguredHeader) {
+    auto manifest{valid_fixed_point_manifest()};
+    auto lowered{lower_modules(manifest)};
+    ASSERT_EQ(lowered.size(), 1U);
+    ASSERT_TRUE(lowered.front().header.has_value());
+    EXPECT_EQ(lowered.front().header->path, "Representations.h");
+    EXPECT_TRUE(lowered.front().header->nodes.empty());
+
+    manifest = valid_fixed_point_manifest(false);
+    auto& unsigned_fixed{
+        std::get<RepresentationModuleSchema>(manifest.modules.front()).fixed_points.front()};
+    unsigned_fixed.total_bits = 8;
+    unsigned_fixed.fractional_bits = 8;
+    EXPECT_NO_THROW(lower_modules(manifest));
+
+    manifest = valid_fixed_point_manifest();
+    std::get<RepresentationModuleSchema>(manifest.modules.front())
+        .fixed_points.front()
+        .fractional_bits = 16;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    manifest = valid_fixed_point_manifest();
+    std::get<RepresentationModuleSchema>(manifest.modules.front()).fixed_points.front().total_bits =
+        0;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    manifest = valid_fixed_point_manifest();
+    auto& representations{std::get<RepresentationModuleSchema>(manifest.modules.front())};
+    representations.fixed_points.push_back(representations.fixed_points.front());
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+}
+
+TEST(Validation, ValidatesMiniFloatEncodingAndEmitsNoPhysicalType) {
+    auto manifest{valid_mini_float_manifest()};
+    auto lowered{lower_modules(manifest)};
+    ASSERT_EQ(lowered.size(), 1U);
+    ASSERT_TRUE(lowered.front().header.has_value());
+    EXPECT_EQ(lowered.front().header->path, "Representations.h");
+    EXPECT_TRUE(lowered.front().header->nodes.empty());
+
+    auto invalidate = [](auto edit) {
+        auto invalid{valid_mini_float_manifest()};
+        edit(std::get<RepresentationModuleSchema>(invalid.modules.front()).mini_floats.front());
+        EXPECT_THROW(lower_modules(invalid), std::invalid_argument);
+    };
+    invalidate([](MiniFloatSchema& value) { value.sign_bits = 2; });
+    invalidate([](MiniFloatSchema& value) { value.exponent_bits = 1; });
+    invalidate([](MiniFloatSchema& value) { value.exponent_bits = 16; });
+    invalidate([](MiniFloatSchema& value) { value.significand_bits = 63; });
+    invalidate([](MiniFloatSchema& value) {
+        value.exponent_bits = 15;
+        value.significand_bits = 49;
+    });
+    invalidate([](MiniFloatSchema& value) { value.exponent_bias = -32'769; });
+    invalidate([](MiniFloatSchema& value) { value.exponent_bias = 32'768; });
+
+    manifest = valid_mini_float_manifest();
+    auto& representations{std::get<RepresentationModuleSchema>(manifest.modules.front())};
+    representations.fixed_points.push_back(FixedPointSchema{
+        .name = representations.mini_floats.front().name,
+        .signedness = true,
+        .total_bits = 16,
+        .fractional_bits = 4,
+        .rounding = FixedPointRounding::nearest_even,
+    });
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+}
+
+TEST(Validation, ValidatesOptionalSentinelSourceAndCodeRole) {
+    EXPECT_NO_THROW(lower_modules(valid_optional_sentinel_manifest()));
+
+    auto manifest{valid_optional_sentinel_manifest()};
+    auto& optional{
+        std::get<RepresentationModuleSchema>(manifest.modules[1]).optional_sentinels.front()};
+    optional.source = TypeRef{"std::uint32_t"};
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    manifest = valid_optional_sentinel_manifest();
+    std::get<RepresentationModuleSchema>(manifest.modules[1]).optional_sentinels.front().sentinel =
+        "Missing";
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    manifest = valid_optional_sentinel_manifest();
+    std::get<RepresentationModuleSchema>(manifest.modules[1]).optional_sentinels.front().sentinel =
+        "Unknown";
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    manifest = valid_optional_sentinel_manifest();
+    std::get<ScalarModuleSchema>(manifest.modules[0]).scalars.front().named_codes.clear();
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    manifest = valid_optional_sentinel_manifest();
+    auto& representations{std::get<RepresentationModuleSchema>(manifest.modules[1])};
+    representations.fixed_points.push_back(FixedPointSchema{
+        .name = representations.optional_sentinels.front().name,
+        .signedness = false,
+        .total_bits = 8,
+        .fractional_bits = 0,
+        .rounding = FixedPointRounding::nearest_even,
+    });
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+}
+
+TEST(Validation, ValidatesOptionalPresenceBitSourceAndSharedNames) {
+    EXPECT_NO_THROW(lower_modules(valid_optional_presence_bit_manifest()));
+
+    auto manifest{valid_optional_presence_bit_manifest()};
+    std::get<RepresentationModuleSchema>(manifest.modules[1])
+        .optional_presence_bits.front()
+        .source = TypeRef{"std::uint32_t"};
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    manifest = valid_optional_presence_bit_manifest();
+    auto& representations{std::get<RepresentationModuleSchema>(manifest.modules[1])};
+    representations.optional_sentinels.push_back(
+        OptionalSentinelSchema{.name = representations.optional_presence_bits.front().name,
+                               .source = TypeRef{"DamageReason"},
+                               .sentinel = "Invalid"});
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 }
 
 TEST(Validation, RejectsInvalidEnumModuleConfiguration) {

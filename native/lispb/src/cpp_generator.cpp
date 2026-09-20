@@ -36,6 +36,23 @@ auto lower_umbrella(UmbrellaModuleSchema const& module) -> Module {
     };
 }
 
+auto lower_semantic_module(ModuleSettings const& settings) -> Module {
+    NodeListBuilder nodes;
+    if (!settings.prelude_lines.empty()) {
+        nodes.add(raw(detail::join_lines(settings.prelude_lines)));
+    }
+    return Module{
+        .name = settings.name,
+        .header =
+            CppFile{
+                .path = settings.header,
+                .nodes = nodes.build(),
+                .clang_format_off = true,
+                .include_order = settings.include_order,
+            },
+    };
+}
+
 } // namespace
 
 auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
@@ -53,8 +70,14 @@ auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
                 } else if constexpr (std::is_same_v<T, PackedValueModuleSchema>) {
                     result.push_back(
                         detail::lower_packed_value_module(module, manifest.types, type_graph));
+                } else if constexpr (std::is_same_v<T, ScalarModuleSchema>) {
+                    result.push_back(lower_semantic_module(module.settings));
+                } else if constexpr (std::is_same_v<T, RepresentationModuleSchema>) {
+                    result.push_back(lower_semantic_module(module.settings));
                 } else if constexpr (std::is_same_v<T, RecordModuleSchema>) {
                     result.push_back(detail::lower_record_module(module, manifest.types));
+                } else if constexpr (std::is_same_v<T, UnionModuleSchema>) {
+                    result.push_back(detail::lower_union_module(module, manifest.types));
                 } else if constexpr (std::is_same_v<T, SoaModuleSchema>) {
                     result.push_back(detail::lower_soa_module(module, manifest.types));
                 } else if constexpr (std::is_same_v<T, StaticTableModuleSchema>) {

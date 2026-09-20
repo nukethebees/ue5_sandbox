@@ -3,6 +3,8 @@
 #include <codegen/manifest_error.h>
 #include <codegen/sexpr/fields.h>
 
+#include <algorithm>
+#include <array>
 #include <cstdint>
 #include <fstream>
 #include <span>
@@ -78,6 +80,30 @@ auto unsigned_integer(Form const& form, std::string_view const purpose) -> std::
     }
 }
 
+auto packed_integer(Form const& form, std::string_view const purpose) -> PackedIntegerValue {
+    auto value{text(form, purpose)};
+    auto negative{false};
+    if (!value.empty() && (value.front() == '-' || value.front() == '+')) {
+        negative = value.front() == '-';
+        value.erase(value.begin());
+    }
+    if (value.empty()) {
+        fail(form.token.span, std::string{purpose} + " must be an integer");
+    }
+    try {
+        std::size_t parsed{};
+        auto const magnitude{std::stoull(value, &parsed, 0)};
+        if (parsed != value.size()) {
+            fail(form.token.span, std::string{purpose} + " must be an integer");
+        }
+        return PackedIntegerValue::from_parts(negative, magnitude);
+    } catch (std::invalid_argument const&) {
+        fail(form.token.span, std::string{purpose} + " must be an integer");
+    } catch (std::out_of_range const&) {
+        fail(form.token.span, std::string{purpose} + " is out of range");
+    }
+}
+
 auto text_list(Form const& form, std::string_view const purpose) -> std::vector<std::string> {
     return sexpr::text_list(form, purpose, fail);
 }
@@ -113,6 +139,11 @@ auto boolean_or(Fields const& fields, std::string_view const name, bool const fa
     -> bool {
     auto const* value{fields.optional(name)};
     return value == nullptr ? fallback : boolean(*value, name);
+}
+
+auto optional_boolean(Fields const& fields, std::string_view const name) -> std::optional<bool> {
+    auto const* value{fields.optional(name)};
+    return value == nullptr ? std::nullopt : std::optional<bool>{boolean(*value, name)};
 }
 
 auto parse_type_ref(Form const& form) -> TypeRef {
@@ -437,46 +468,119 @@ auto parse_enum_unreal_projection(Form const& form) -> EnumUnrealProjection {
     };
 }
 
+auto parse_packed_relationship_kind(Form const& form) -> PackedFieldRelationKind {
+    auto const name{text(form, "packed field relationship kind")};
+    constexpr std::array kinds{
+        std::pair{"index_into", PackedFieldRelationKind::index_into},
+        std::pair{"count_of", PackedFieldRelationKind::count_of},
+        std::pair{"offset_into", PackedFieldRelationKind::offset_into},
+        std::pair{"discriminates", PackedFieldRelationKind::discriminates},
+        std::pair{"contains", PackedFieldRelationKind::contains},
+        std::pair{"member_of", PackedFieldRelationKind::member_of},
+        std::pair{"quantises", PackedFieldRelationKind::quantises},
+        std::pair{"encoded_as", PackedFieldRelationKind::encoded_as},
+        std::pair{"references", PackedFieldRelationKind::references},
+    };
+    auto const found{std::ranges::find_if(
+        kinds, [&](auto const& candidate) { return candidate.first == name; })};
+    if (found == kinds.end()) {
+        fail(form.token.span, "unknown packed field relationship kind: " + name);
+    }
+    return found->second;
+}
+
 auto parse_packed_field(Form const& form) -> PackedFieldSchema {
     Fields const fields{form, "field", 2};
-    fields.validate({"bits", "kind", "range-helper"});
+    fields.validate({"bits", "kind", "range-helper", "minimum", "maximum"}, {"code", "relation"});
 
     auto kind{PackedFieldKind::unsigned_integer};
     if (auto const* value{fields.optional("kind")}) {
         auto const name{text(*value, "packed field kind")};
         if (name == "unsigned") {
             kind = PackedFieldKind::unsigned_integer;
+        } else if (name == "signed") {
+            kind = PackedFieldKind::signed_integer;
         } else if (name == "enum") {
             kind = PackedFieldKind::enumeration;
         } else {
-            fail(value->token.span, "packed field kind must be 'unsigned' or 'enum'");
+            fail(value->token.span, "packed field kind must be 'unsigned', 'signed', or 'enum'");
         }
     }
 
+    auto const* minimum{fields.optional("minimum")};
+    auto const* maximum{fields.optional("maximum")};
+    auto const& bits_form{fields.required("bits")};
+    auto const bits_text{text(bits_form, "packed field bits")};
+    auto const bits{bits_text == "auto"
+                        ? std::optional<int>{}
+                        : std::optional<int>{integer(bits_form, "packed field bits")}};
+    std::vector<PackedNamedCodeSchema> named_codes;
+    named_codes.reserve(fields.declarations().size());
+    std::optional<PackedFieldRelationSchema> relationship;
+    for (auto const* declaration : fields.declarations()) {
+        if (declaration->head() == "relation") {
+            if (relationship.has_value()) {
+                fail(declaration->token.span, "packed field may have only one relationship");
+            }
+            Fields const relation{*declaration, "relation", 2};
+            relation.validate({});
+            relationship = {
+                .kind = parse_packed_relationship_kind(relation.positional(0)),
+                .target = parse_type_ref(relation.positional(1)),
+            };
+            continue;
+        }
+        Fields const code{*declaration, "code", 1};
+        code.validate({"value", "sentinel"});
+        named_codes.push_back(
+            {.name = text(code.positional(0), "packed named code name"),
+             .value = packed_integer(code.required("value"), "packed named code value"),
+             .sentinel = boolean_or(code, "sentinel")});
+    }
     return PackedFieldSchema{
         .name = text(fields.positional(0), "packed field name"),
         .type = parse_type_ref(fields.positional(1)),
-        .bits = integer(fields.required("bits"), "packed field bits"),
+        .bits = bits,
         .kind = kind,
         .range_helper = boolean_or(fields, "range-helper"),
+        .minimum_value = minimum == nullptr ? std::nullopt
+                                            : std::optional<PackedIntegerValue>{packed_integer(
+                                                  *minimum, "packed field minimum")},
+        .maximum_value = maximum == nullptr ? std::nullopt
+                                            : std::optional<PackedIntegerValue>{packed_integer(
+                                                  *maximum, "packed field maximum")},
+        .named_codes = std::move(named_codes),
+        .relationship = std::move(relationship),
     };
+}
+
+auto parse_packed_reserved_bits(Form const& form) -> PackedReservedBitsSchema {
+    Fields const fields{form, "reserved", 1};
+    fields.validate({"bits"});
+    return {.name = text(fields.positional(0), "packed reserved-region name"),
+            .bits = integer(fields.required("bits"), "packed reserved-region bits")};
 }
 
 auto parse_packed_value(Form const& form) -> PackedValueSchema {
     Fields const fields{form, "packed-value", 1};
-    fields.validate({"storage", "invalid-value", "export-specifier", "mutable"}, {"field"});
+    fields.validate({"storage", "invalid-value", "export-specifier", "mutable"},
+                    {"field", "reserved"});
     auto const* invalid_value{fields.optional("invalid-value")};
 
-    std::vector<PackedFieldSchema> packed_fields;
-    packed_fields.reserve(fields.declarations().size());
+    std::vector<PackedSegmentSchema> segments;
+    segments.reserve(fields.declarations().size());
     for (auto const* declaration : fields.declarations()) {
-        packed_fields.push_back(parse_packed_field(*declaration));
+        if (declaration->head() == "field") {
+            segments.emplace_back(parse_packed_field(*declaration));
+        } else {
+            segments.emplace_back(parse_packed_reserved_bits(*declaration));
+        }
     }
 
     return PackedValueSchema{
         .name = text(fields.positional(0), "packed value name"),
         .storage_type = parse_type_ref(fields.required("storage")),
-        .fields = std::move(packed_fields),
+        .segments = std::move(segments),
         .invalid_value = invalid_value == nullptr ? std::nullopt
                                                   : std::optional<std::uint64_t>{unsigned_integer(
                                                         *invalid_value, "packed invalid value")},
@@ -487,21 +591,28 @@ auto parse_packed_value(Form const& form) -> PackedValueSchema {
 
 auto parse_enum(Form const& form) -> EnumSchema {
     Fields const fields{form, "enum", 2};
-    fields.validate(
-        {"reflection", "enum-array", "count", "conversions", "export-specifier", "native-api"},
-        {"value", "unreal-projection"});
+    fields.validate({"reflection",
+                     "enum-array",
+                     "count",
+                     "conversions",
+                     "export-specifier",
+                     "native-api",
+                     "bit-width",
+                     "signed"},
+                    {"value", "unreal-projection"});
     std::vector<EnumeratorSchema> values;
     std::optional<EnumUnrealProjection> unreal_projection;
     for (auto const* declaration : fields.declarations()) {
         if (declaration->head() == "value") {
             Fields const value{*declaration, "value", 1};
-            value.validate({"value", "display-name", "hidden", "serialized-name"});
+            value.validate({"value", "display-name", "hidden", "serialized-name", "sentinel"});
             values.push_back(EnumeratorSchema{
                 .name = text(value.positional(0), "enumerator name"),
                 .initializer = optional_text(value, "value"),
                 .display_name = optional_text(value, "display-name"),
                 .hidden = boolean_or(value, "hidden"),
                 .serialized_name = optional_text(value, "serialized-name"),
+                .sentinel = boolean_or(value, "sentinel"),
             });
         } else {
             if (unreal_projection.has_value()) {
@@ -523,9 +634,19 @@ auto parse_enum(Form const& form) -> EnumSchema {
     if (auto const* value{fields.optional("reflection")}) {
         reflection = parse_enum_reflection(*value);
     }
+    std::optional<std::uint32_t> bit_width;
+    if (auto const* value{fields.optional("bit-width")}) {
+        auto const parsed{unsigned_integer(*value, "enum bit width")};
+        if (parsed == 0 || parsed > 64) {
+            fail(value->token.span, "enum bit width must be between 1 and 64 bits");
+        }
+        bit_width = static_cast<std::uint32_t>(parsed);
+    }
     return EnumSchema{
         .name = text(fields.positional(0), "enum name"),
         .underlying_type = parse_type_ref(fields.positional(1)),
+        .bit_width = bit_width,
+        .signedness = optional_boolean(fields, "signed"),
         .reflection = reflection,
         .values = std::move(values),
         .enum_array = boolean_or(fields, "enum-array"),
@@ -726,8 +847,295 @@ auto parse_record(Form const& form) -> RecordSchema {
     };
 }
 
+auto parse_union_alternative(Form const& form) -> UnionAlternativeSchema {
+    Fields const fields{form, "alternative", 2};
+    fields.validate({"count"});
+    auto const* count{fields.optional("count")};
+    return UnionAlternativeSchema{
+        .name = text(fields.positional(0), "union alternative name"),
+        .type = parse_type_ref(fields.positional(1)),
+        .count =
+            count == nullptr
+                ? std::nullopt
+                : std::optional<std::uint64_t>{unsigned_integer(*count, "union alternative count")},
+    };
+}
+
+auto parse_union(Form const& form) -> UnionSchema {
+    Fields const fields{form, "union", 1};
+    fields.validate({"export-specifier"}, {"alternative"});
+    std::vector<UnionAlternativeSchema> alternatives;
+    alternatives.reserve(fields.declarations().size());
+    for (auto const* declaration : fields.declarations()) {
+        alternatives.push_back(parse_union_alternative(*declaration));
+    }
+    return UnionSchema{
+        .name = text(fields.positional(0), "union name"),
+        .alternatives = std::move(alternatives),
+        .export_specifier = optional_text(fields, "export-specifier"),
+    };
+}
+
+auto parse_tagged_union_alternative(Form const& form) -> TaggedUnionAlternativeSchema {
+    Fields const fields{form, "alternative", 2};
+    fields.validate({"count", "tag"});
+    auto const* count{fields.optional("count")};
+    return TaggedUnionAlternativeSchema{
+        .name = text(fields.positional(0), "tagged union alternative name"),
+        .type = parse_type_ref(fields.positional(1)),
+        .count = count == nullptr ? std::nullopt
+                                  : std::optional<std::uint64_t>{unsigned_integer(
+                                        *count, "tagged union alternative count")},
+        .tag = text(fields.required("tag"), "tagged union alternative tag"),
+    };
+}
+
+auto parse_tagged_union(Form const& form) -> TaggedUnionSchema {
+    Fields const fields{form, "tagged-union", 1};
+    fields.validate({"discriminant", "export-specifier"}, {"alternative"});
+    std::vector<TaggedUnionAlternativeSchema> alternatives;
+    alternatives.reserve(fields.declarations().size());
+    for (auto const* declaration : fields.declarations()) {
+        alternatives.push_back(parse_tagged_union_alternative(*declaration));
+    }
+    return TaggedUnionSchema{
+        .name = text(fields.positional(0), "tagged union name"),
+        .discriminant = parse_type_ref(fields.required("discriminant")),
+        .alternatives = std::move(alternatives),
+        .export_specifier = optional_text(fields, "export-specifier"),
+    };
+}
+
+auto parse_integer_scalar(Form const& form) -> IntegerScalarSchema {
+    Fields const fields{form, "integer-scalar", 1};
+    fields.validate({"signed", "minimum", "maximum", "bit-width"}, {"code"});
+
+    std::optional<std::uint32_t> bit_width;
+    if (auto const* width{fields.optional("bit-width")}) {
+        auto const width_text{text(*width, "integer scalar bit width")};
+        if (width_text != "auto") {
+            auto const parsed{integer(*width, "integer scalar bit width")};
+            if (parsed <= 0 || parsed > 64) {
+                fail(width->token.span, "integer scalar bit width must be in the range 1..64");
+            }
+            bit_width = static_cast<std::uint32_t>(parsed);
+        }
+    }
+
+    std::vector<PackedNamedCodeSchema> named_codes;
+    named_codes.reserve(fields.declarations().size());
+    for (auto const* declaration : fields.declarations()) {
+        Fields const code{*declaration, "code", 1};
+        code.validate({"value", "sentinel"});
+        named_codes.push_back(
+            {.name = text(code.positional(0), "integer scalar code name"),
+             .value = packed_integer(code.required("value"), "integer scalar code value"),
+             .sentinel = boolean_or(code, "sentinel")});
+    }
+
+    return IntegerScalarSchema{
+        .name = text(fields.positional(0), "integer scalar name"),
+        .signedness = boolean(fields.required("signed"), "integer scalar signedness"),
+        .minimum_value = packed_integer(fields.required("minimum"), "integer scalar minimum"),
+        .maximum_value = packed_integer(fields.required("maximum"), "integer scalar maximum"),
+        .bit_width = bit_width,
+        .named_codes = std::move(named_codes),
+    };
+}
+
+auto parse_linear_quantized(Form const& form) -> LinearQuantizedSchema {
+    Fields const fields{form, "linear-quantized", 1};
+    fields.validate({"source", "bits", "reserved-codes", "clipping"});
+
+    auto clipping{QuantizationClipping::reject};
+    if (auto const* value{fields.optional("clipping")}) {
+        auto const name{text(*value, "linear quantization clipping policy")};
+        if (name == "clamp") {
+            clipping = QuantizationClipping::clamp;
+        } else if (name != "reject") {
+            fail(value->token.span, "linear quantization clipping must be reject or clamp");
+        }
+    }
+
+    auto const bits{integer(fields.required("bits"), "linear quantization bit width")};
+    if (bits <= 0 || bits > 64) {
+        fail(fields.required("bits").token.span,
+             "linear quantization bit width must be in the range 1..64");
+    }
+    auto const* reserved{fields.optional("reserved-codes")};
+    return LinearQuantizedSchema{
+        .name = text(fields.positional(0), "linear quantization name"),
+        .source = parse_type_ref(fields.required("source")),
+        .bit_width = static_cast<std::uint32_t>(bits),
+        .reserved_codes = reserved != nullptr
+                            ? unsigned_integer(*reserved, "linear quantization reserved code count")
+                            : 0,
+        .clipping = clipping,
+    };
+}
+
+auto parse_integer_varint(Form const& form) -> IntegerVarintSchema {
+    Fields const fields{form, "integer-varint", 1};
+    fields.validate({"source", "encoding"});
+
+    auto const encoding_name{text(fields.required("encoding"), "integer varint encoding")};
+    IntegerVarintEncoding encoding;
+    if (encoding_name == "unsigned") {
+        encoding = IntegerVarintEncoding::unsigned_varint;
+    } else if (encoding_name == "signed") {
+        encoding = IntegerVarintEncoding::signed_varint;
+    } else if (encoding_name == "zigzag") {
+        encoding = IntegerVarintEncoding::zigzag_varint;
+    } else {
+        fail(fields.required("encoding").token.span,
+             "integer varint encoding must be unsigned, signed, or zigzag");
+    }
+
+    return {.name = text(fields.positional(0), "integer varint name"),
+            .source = parse_type_ref(fields.required("source")),
+            .encoding = encoding};
+}
+
+auto parse_fixed_point(Form const& form) -> FixedPointSchema {
+    Fields const fields{form, "fixed-point", 1};
+    fields.validate({"signed", "total-bits", "fractional-bits", "rounding"});
+
+    auto const total_bits{integer(fields.required("total-bits"), "fixed-point total width")};
+    if (total_bits <= 0 || total_bits > 64) {
+        fail(fields.required("total-bits").token.span,
+             "fixed-point total width must be in the range 1..64");
+    }
+    auto const fractional_bits{
+        integer(fields.required("fractional-bits"), "fixed-point fractional width")};
+    if (fractional_bits < 0 || fractional_bits > 64) {
+        fail(fields.required("fractional-bits").token.span,
+             "fixed-point fractional width must be in the range 0..64");
+    }
+
+    auto rounding{FixedPointRounding::nearest_even};
+    if (auto const* value{fields.optional("rounding")}) {
+        auto const name{text(*value, "fixed-point rounding policy")};
+        if (name == "toward-zero") {
+            rounding = FixedPointRounding::toward_zero;
+        } else if (name != "nearest-even") {
+            fail(value->token.span, "fixed-point rounding must be nearest-even or toward-zero");
+        }
+    }
+
+    return {.name = text(fields.positional(0), "fixed-point name"),
+            .signedness = boolean(fields.required("signed"), "fixed-point signedness"),
+            .total_bits = static_cast<std::uint32_t>(total_bits),
+            .fractional_bits = static_cast<std::uint32_t>(fractional_bits),
+            .rounding = rounding};
+}
+
+auto parse_mini_float(Form const& form) -> MiniFloatSchema {
+    Fields const fields{form, "mini-float", 1};
+    fields.validate({"sign-bits", "exponent-bits", "significand-bits", "bias"});
+
+    auto const sign_bits{integer(fields.required("sign-bits"), "mini-float sign width")};
+    if (sign_bits < 0 || sign_bits > 1) {
+        fail(fields.required("sign-bits").token.span, "mini-float sign width must be zero or one");
+    }
+    auto const exponent_bits{
+        integer(fields.required("exponent-bits"), "mini-float exponent width")};
+    if (exponent_bits < 2 || exponent_bits > 15) {
+        fail(fields.required("exponent-bits").token.span,
+             "mini-float exponent width must be in the range 2..15");
+    }
+    auto const significand_bits{
+        integer(fields.required("significand-bits"), "mini-float significand width")};
+    if (significand_bits < 0 || significand_bits > 62) {
+        fail(fields.required("significand-bits").token.span,
+             "mini-float significand width must be in the range 0..62");
+    }
+    if (sign_bits + exponent_bits + significand_bits > 64) {
+        fail(form.token.span, "mini-float total width must not exceed 64 bits");
+    }
+    auto const exponent_bias{integer(fields.required("bias"), "mini-float exponent bias")};
+    if (exponent_bias < -32'768 || exponent_bias > 32'767) {
+        fail(fields.required("bias").token.span,
+             "mini-float exponent bias must be in the range -32768..32767");
+    }
+
+    return {.name = text(fields.positional(0), "mini-float name"),
+            .sign_bits = static_cast<std::uint32_t>(sign_bits),
+            .exponent_bits = static_cast<std::uint32_t>(exponent_bits),
+            .significand_bits = static_cast<std::uint32_t>(significand_bits),
+            .exponent_bias = exponent_bias};
+}
+
+auto parse_optional_sentinel(Form const& form) -> OptionalSentinelSchema {
+    Fields const fields{form, "optional-sentinel", 1};
+    fields.validate({"source", "sentinel"});
+
+    return {.name = text(fields.positional(0), "optional sentinel name"),
+            .source = parse_type_ref(fields.required("source")),
+            .sentinel = text(fields.required("sentinel"), "optional sentinel code")};
+}
+
+auto parse_optional_presence_bit(Form const& form) -> OptionalPresenceBitSchema {
+    Fields const fields{form, "optional-presence-bit", 1};
+    fields.validate({"source"});
+
+    return {.name = text(fields.positional(0), "optional presence-bit name"),
+            .source = parse_type_ref(fields.required("source"))};
+}
+
 auto parse_module(Form const& form) -> ModuleSchema {
     auto const head{form.head()};
+    if (head == "representation-module") {
+        Fields const fields{form, head, 1};
+        fields.validate(
+            {"header", "source", "header-include", "namespace", "include-order", "prelude"},
+            {"linear-quantized",
+             "integer-varint",
+             "fixed-point",
+             "mini-float",
+             "optional-sentinel",
+             "optional-presence-bit"});
+        std::vector<LinearQuantizedSchema> linear_quantized;
+        std::vector<IntegerVarintSchema> integer_varints;
+        std::vector<FixedPointSchema> fixed_points;
+        std::vector<MiniFloatSchema> mini_floats;
+        std::vector<OptionalSentinelSchema> optional_sentinels;
+        std::vector<OptionalPresenceBitSchema> optional_presence_bits;
+        for (auto const* declaration : fields.declarations()) {
+            if (declaration->head() == "linear-quantized") {
+                linear_quantized.push_back(parse_linear_quantized(*declaration));
+            } else if (declaration->head() == "integer-varint") {
+                integer_varints.push_back(parse_integer_varint(*declaration));
+            } else if (declaration->head() == "fixed-point") {
+                fixed_points.push_back(parse_fixed_point(*declaration));
+            } else if (declaration->head() == "mini-float") {
+                mini_floats.push_back(parse_mini_float(*declaration));
+            } else if (declaration->head() == "optional-sentinel") {
+                optional_sentinels.push_back(parse_optional_sentinel(*declaration));
+            } else {
+                optional_presence_bits.push_back(parse_optional_presence_bit(*declaration));
+            }
+        }
+        return RepresentationModuleSchema{.settings = parse_module_settings(fields),
+                                          .linear_quantized = std::move(linear_quantized),
+                                          .integer_varints = std::move(integer_varints),
+                                          .fixed_points = std::move(fixed_points),
+                                          .optional_sentinels = std::move(optional_sentinels),
+                                          .optional_presence_bits =
+                                              std::move(optional_presence_bits),
+                                          .mini_floats = std::move(mini_floats)};
+    }
+    if (head == "scalar-module") {
+        Fields const fields{form, head, 1};
+        fields.validate(
+            {"header", "source", "header-include", "namespace", "include-order", "prelude"},
+            {"integer-scalar"});
+        std::vector<IntegerScalarSchema> scalars;
+        scalars.reserve(fields.declarations().size());
+        for (auto const* declaration : fields.declarations()) {
+            scalars.push_back(parse_integer_scalar(*declaration));
+        }
+        return ScalarModuleSchema{parse_module_settings(fields), std::move(scalars)};
+    }
     if (head == "packed-value-module") {
         Fields const fields{form, head, 1};
         fields.validate(
@@ -751,6 +1159,24 @@ auto parse_module(Form const& form) -> ModuleSchema {
             records.push_back(parse_record(*declaration));
         }
         return RecordModuleSchema{parse_module_settings(fields), std::move(records)};
+    }
+    if (head == "union-module") {
+        Fields const fields{form, head, 1};
+        fields.validate(
+            {"header", "source", "header-include", "namespace", "include-order", "prelude"},
+            {"union", "tagged-union"});
+        std::vector<UnionSchema> unions;
+        std::vector<TaggedUnionSchema> tagged_unions;
+        for (auto const* declaration : fields.declarations()) {
+            if (declaration->head() == "union") {
+                unions.push_back(parse_union(*declaration));
+            } else {
+                tagged_unions.push_back(parse_tagged_union(*declaration));
+            }
+        }
+        return UnionModuleSchema{.settings = parse_module_settings(fields),
+                                 .unions = std::move(unions),
+                                 .tagged_unions = std::move(tagged_unions)};
     }
     if (head == "soa-module") {
         Fields const fields{form, head, 1};

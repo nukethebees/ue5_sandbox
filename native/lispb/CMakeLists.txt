@@ -31,6 +31,7 @@ add_library(lispb-schema)
 target_sources(lispb-schema PRIVATE
   src/cpp_type.cpp
   src/editable_document.cpp
+  src/enum_domain.cpp
   src/packed_value_internal.cpp
   src/schema.cpp
   src/source_loader.cpp
@@ -68,8 +69,9 @@ target_sources(codegen-lib PRIVATE
   src/single_allocation_soa_lowering.cpp
   src/single_allocation_soa_model.cpp
   src/native_soa_lowering.cpp
-  src/packed_value_lowering.cpp
+    src/packed_value_lowering.cpp
   src/record_lowering.cpp
+  src/union_lowering.cpp
   src/soa_view_lowering.cpp
   src/static_table_lowering.cpp
   src/vector_lowering.cpp
@@ -195,6 +197,7 @@ add_executable(codegen-tests
   tests/lowering_tests.cpp
   tests/packed_value_tests.cpp
   tests/record_lowering_tests.cpp
+  tests/union_lowering_tests.cpp
   tests/semantic_model_tests.cpp
   tests/static_table_lowering_tests.cpp
   tests/validation_tests.cpp

@@ -299,7 +299,10 @@ struct PackedWide {
         return result;
     }
 
-    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return ((value() >= static_cast<std::uint64_t>(0) &&
+                 value() <= static_cast<std::uint64_t>(18446744073709551615ULL)));
+    }
 
     [[nodiscard]] constexpr auto operator<=>(PackedWide const&) const noexcept = default;
 
@@ -310,6 +313,10 @@ struct PackedWide {
 
     [[nodiscard]] constexpr auto try_set_value(std::uint64_t const value) noexcept -> bool {
         if (value > static_cast<std::uint64_t>(value_value_mask)) {
+            return false;
+        }
+        if ((value < static_cast<std::uint64_t>(0) ||
+             value > static_cast<std::uint64_t>(18446744073709551615ULL))) {
             return false;
         }
         auto const encoded{static_cast<storage_type>(value)};
@@ -332,6 +339,279 @@ struct PackedWide {
 static_assert(sizeof(PackedWide) == sizeof(PackedWide::storage_type));
 static_assert(std::is_trivially_copyable_v<PackedWide>);
 static_assert(std::is_standard_layout_v<PackedWide>);
+
+struct SignedDelta {
+    using storage_type = std::uint32_t;
+    static_assert(std::is_unsigned_v<storage_type>);
+    static_assert(std::numeric_limits<storage_type>::digits == 32);
+    using delta_type = std::int32_t;
+    static_assert(std::is_signed_v<std::int32_t>);
+    static_assert(std::numeric_limits<std::int32_t>::digits + 1 >= 17);
+
+    inline static constexpr int delta_offset{0};
+    inline static constexpr int delta_bits{17};
+    inline static constexpr storage_type delta_value_mask{storage_type{0x1ffff}};
+    inline static constexpr storage_type delta_mask{storage_type{0x1ffff}};
+    inline static constexpr std::int32_t delta_minimum{static_cast<std::int32_t>(-65536)};
+    inline static constexpr std::int32_t delta_maximum{static_cast<std::int32_t>(65535)};
+
+    constexpr SignedDelta() noexcept = default;
+    explicit constexpr SignedDelta(storage_type const raw) noexcept
+        : value_{raw} {}
+
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+
+    [[nodiscard]] static constexpr auto try_make(std::int32_t const delta_value,
+                                                 SignedDelta& out_result) noexcept -> bool {
+        SignedDelta result{storage_type{0}};
+        if (!result.try_set_delta(delta_value)) {
+            return false;
+        }
+        if (!result.is_valid()) {
+            return false;
+        }
+        out_result = result;
+        return true;
+    }
+
+    [[nodiscard]] static constexpr auto make(std::int32_t const delta_value) noexcept
+        -> SignedDelta {
+        SignedDelta result;
+        [[maybe_unused]] auto const success{try_make(delta_value, result)};
+        assert(success && "Packed field value does not fit.");
+        return result;
+    }
+
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+
+    [[nodiscard]] constexpr auto operator<=>(SignedDelta const&) const noexcept = default;
+
+    [[nodiscard]] constexpr auto delta() const noexcept -> std::int32_t {
+        auto const encoded{static_cast<storage_type>(value_ >> delta_offset) & delta_value_mask};
+        auto const sign_bit{storage_type{0x10000}};
+        if ((encoded & sign_bit) == 0) {
+            return static_cast<std::int32_t>(encoded);
+        }
+        auto const magnitude{static_cast<storage_type>(
+            static_cast<storage_type>(~encoded & delta_value_mask) + storage_type{1})};
+        if (magnitude == sign_bit) {
+            return delta_minimum;
+        }
+        return static_cast<std::int32_t>(-static_cast<std::int32_t>(magnitude));
+    }
+
+    [[nodiscard]] constexpr auto try_set_delta(std::int32_t const value) noexcept -> bool {
+        if (value < delta_minimum || value > delta_maximum) {
+            return false;
+        }
+        auto const encoded{static_cast<storage_type>(value)};
+        auto const cleared{
+            static_cast<storage_type>(value_ & static_cast<storage_type>(~delta_mask))};
+        auto const shifted{static_cast<storage_type>(
+            static_cast<storage_type>(encoded & delta_value_mask) << delta_offset)};
+        value_ = static_cast<storage_type>(cleared | shifted);
+        return true;
+    }
+
+    constexpr void set_delta(std::int32_t const value) noexcept {
+        if (!try_set_delta(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(sizeof(SignedDelta) == sizeof(SignedDelta::storage_type));
+static_assert(std::is_trivially_copyable_v<SignedDelta>);
+static_assert(std::is_standard_layout_v<SignedDelta>);
+
+struct SignedWide {
+    using storage_type = std::uint64_t;
+    static_assert(std::is_unsigned_v<storage_type>);
+    static_assert(std::numeric_limits<storage_type>::digits == 64);
+    using delta_type = std::int64_t;
+    static_assert(std::is_signed_v<std::int64_t>);
+    static_assert(std::numeric_limits<std::int64_t>::digits + 1 >= 64);
+
+    inline static constexpr int delta_offset{0};
+    inline static constexpr int delta_bits{64};
+    inline static constexpr storage_type delta_value_mask{storage_type{0xffffffffffffffff}};
+    inline static constexpr storage_type delta_mask{storage_type{0xffffffffffffffff}};
+    inline static constexpr std::int64_t delta_minimum{std::numeric_limits<std::int64_t>::min()};
+    inline static constexpr std::int64_t delta_maximum{std::numeric_limits<std::int64_t>::max()};
+
+    constexpr SignedWide() noexcept = default;
+    explicit constexpr SignedWide(storage_type const raw) noexcept
+        : value_{raw} {}
+
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+
+    [[nodiscard]] static constexpr auto try_make(std::int64_t const delta_value,
+                                                 SignedWide& out_result) noexcept -> bool {
+        SignedWide result{storage_type{0}};
+        if (!result.try_set_delta(delta_value)) {
+            return false;
+        }
+        if (!result.is_valid()) {
+            return false;
+        }
+        out_result = result;
+        return true;
+    }
+
+    [[nodiscard]] static constexpr auto make(std::int64_t const delta_value) noexcept
+        -> SignedWide {
+        SignedWide result;
+        [[maybe_unused]] auto const success{try_make(delta_value, result)};
+        assert(success && "Packed field value does not fit.");
+        return result;
+    }
+
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return ((delta() >= std::numeric_limits<std::int64_t>::min() &&
+                 delta() <= static_cast<std::int64_t>(9223372036854775807)));
+    }
+
+    [[nodiscard]] constexpr auto operator<=>(SignedWide const&) const noexcept = default;
+
+    [[nodiscard]] constexpr auto delta() const noexcept -> std::int64_t {
+        auto const encoded{static_cast<storage_type>(value_ >> delta_offset) & delta_value_mask};
+        auto const sign_bit{storage_type{0x8000000000000000}};
+        if ((encoded & sign_bit) == 0) {
+            return static_cast<std::int64_t>(encoded);
+        }
+        auto const magnitude{static_cast<storage_type>(
+            static_cast<storage_type>(~encoded & delta_value_mask) + storage_type{1})};
+        if (magnitude == sign_bit) {
+            return delta_minimum;
+        }
+        return static_cast<std::int64_t>(-static_cast<std::int64_t>(magnitude));
+    }
+
+    [[nodiscard]] constexpr auto try_set_delta(std::int64_t const value) noexcept -> bool {
+        if (value < delta_minimum || value > delta_maximum) {
+            return false;
+        }
+        if ((value < std::numeric_limits<std::int64_t>::min() ||
+             value > static_cast<std::int64_t>(9223372036854775807))) {
+            return false;
+        }
+        auto const encoded{static_cast<storage_type>(value)};
+        auto const cleared{
+            static_cast<storage_type>(value_ & static_cast<storage_type>(~delta_mask))};
+        auto const shifted{static_cast<storage_type>(
+            static_cast<storage_type>(encoded & delta_value_mask) << delta_offset)};
+        value_ = static_cast<storage_type>(cleared | shifted);
+        return true;
+    }
+
+    constexpr void set_delta(std::int64_t const value) noexcept {
+        if (!try_set_delta(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(sizeof(SignedWide) == sizeof(SignedWide::storage_type));
+static_assert(std::is_trivially_copyable_v<SignedWide>);
+static_assert(std::is_standard_layout_v<SignedWide>);
+
+struct SignedTemperature {
+    using storage_type = std::uint32_t;
+    static_assert(std::is_unsigned_v<storage_type>);
+    static_assert(std::numeric_limits<storage_type>::digits == 32);
+    using temperature_type = std::int16_t;
+    static_assert(std::is_signed_v<std::int16_t>);
+    static_assert(std::numeric_limits<std::int16_t>::digits + 1 >= 8);
+
+    inline static constexpr int temperature_offset{0};
+    inline static constexpr int temperature_bits{8};
+    inline static constexpr storage_type temperature_value_mask{storage_type{0xff}};
+    inline static constexpr storage_type temperature_mask{storage_type{0xff}};
+    inline static constexpr std::int16_t temperature_minimum{static_cast<std::int16_t>(-128)};
+    inline static constexpr std::int16_t temperature_maximum{static_cast<std::int16_t>(127)};
+    inline static constexpr std::int16_t temperature_Freezing{static_cast<std::int16_t>(0)};
+    inline static constexpr std::int16_t temperature_Unknown{static_cast<std::int16_t>(-128)};
+
+    constexpr SignedTemperature() noexcept = default;
+    explicit constexpr SignedTemperature(storage_type const raw) noexcept
+        : value_{raw} {}
+
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+
+    [[nodiscard]] static constexpr auto try_make(std::int16_t const temperature_value,
+                                                 SignedTemperature& out_result) noexcept -> bool {
+        SignedTemperature result{storage_type{0}};
+        if (!result.try_set_temperature(temperature_value)) {
+            return false;
+        }
+        if (!result.is_valid()) {
+            return false;
+        }
+        out_result = result;
+        return true;
+    }
+
+    [[nodiscard]] static constexpr auto make(std::int16_t const temperature_value) noexcept
+        -> SignedTemperature {
+        SignedTemperature result;
+        [[maybe_unused]] auto const success{try_make(temperature_value, result)};
+        assert(success && "Packed field value does not fit.");
+        return result;
+    }
+
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return ((temperature() >= static_cast<std::int16_t>(-100) &&
+                 temperature() <= static_cast<std::int16_t>(100)) ||
+                temperature() == temperature_Unknown);
+    }
+
+    [[nodiscard]] constexpr auto operator<=>(SignedTemperature const&) const noexcept = default;
+
+    [[nodiscard]] constexpr auto temperature() const noexcept -> std::int16_t {
+        auto const encoded{static_cast<storage_type>(value_ >> temperature_offset) &
+                           temperature_value_mask};
+        auto const sign_bit{storage_type{0x80}};
+        if ((encoded & sign_bit) == 0) {
+            return static_cast<std::int16_t>(encoded);
+        }
+        auto const magnitude{static_cast<storage_type>(
+            static_cast<storage_type>(~encoded & temperature_value_mask) + storage_type{1})};
+        if (magnitude == sign_bit) {
+            return temperature_minimum;
+        }
+        return static_cast<std::int16_t>(-static_cast<std::int16_t>(magnitude));
+    }
+
+    [[nodiscard]] constexpr auto try_set_temperature(std::int16_t const value) noexcept -> bool {
+        if (value < temperature_minimum || value > temperature_maximum) {
+            return false;
+        }
+        if ((value < static_cast<std::int16_t>(-100) || value > static_cast<std::int16_t>(100)) &&
+            value != temperature_Unknown) {
+            return false;
+        }
+        auto const encoded{static_cast<storage_type>(value)};
+        auto const cleared{
+            static_cast<storage_type>(value_ & static_cast<storage_type>(~temperature_mask))};
+        auto const shifted{static_cast<storage_type>(
+            static_cast<storage_type>(encoded & temperature_value_mask) << temperature_offset)};
+        value_ = static_cast<storage_type>(cleared | shifted);
+        return true;
+    }
+
+    constexpr void set_temperature(std::int16_t const value) noexcept {
+        if (!try_set_temperature(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(sizeof(SignedTemperature) == sizeof(SignedTemperature::storage_type));
+static_assert(std::is_trivially_copyable_v<SignedTemperature>);
+static_assert(std::is_standard_layout_v<SignedTemperature>);
 
 struct PackedTinyState {
     using storage_type = std::uint8_t;

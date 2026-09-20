@@ -50,26 +50,52 @@ struct Enumerator {
     std::optional<std::string> display_name;
     std::optional<std::string> serialized_name;
     bool hidden{};
+    bool sentinel{};
     bool count_sentinel{};
 };
 
 struct EnumType {
     ResolvedTypeRef underlying_type;
+    std::optional<std::uint32_t> bit_width;
+    std::optional<bool> signedness;
     std::vector<Enumerator> enumerators;
     std::optional<std::string> count;
+};
+
+struct PackedNamedCode {
+    std::string name;
+    codegen::PackedIntegerValue value;
+    bool sentinel{};
+};
+
+struct PackedFieldRelationship {
+    codegen::PackedFieldRelationKind kind{codegen::PackedFieldRelationKind::references};
+    ResolvedTypeRef target;
 };
 
 struct PackedField {
     std::string name;
     ResolvedTypeRef semantic_type;
     std::uint32_t bit_width{};
+    bool bit_width_auto{};
     codegen::PackedFieldKind kind{codegen::PackedFieldKind::unsigned_integer};
     bool range_helper{};
+    std::optional<codegen::PackedIntegerValue> minimum_value;
+    std::optional<codegen::PackedIntegerValue> maximum_value;
+    std::vector<PackedNamedCode> named_codes;
+    std::optional<PackedFieldRelationship> relationship;
 };
+
+struct PackedReservedBits {
+    std::string name;
+    std::uint32_t bit_width{};
+};
+
+using PackedSegment = std::variant<PackedField, PackedReservedBits>;
 
 struct PackedType {
     ResolvedTypeRef storage_type;
-    std::vector<PackedField> fields;
+    std::vector<PackedSegment> segments;
     std::optional<std::uint64_t> invalid_raw_value;
 };
 
@@ -81,6 +107,76 @@ struct RecordMember {
 
 struct RecordType {
     std::vector<RecordMember> members;
+};
+
+struct UnionAlternative {
+    std::string name;
+    ResolvedTypeRef semantic_type;
+    std::optional<std::uint64_t> count;
+};
+
+struct UnionType {
+    std::vector<UnionAlternative> alternatives;
+};
+
+struct TaggedUnionAlternative {
+    std::string name;
+    ResolvedTypeRef semantic_type;
+    std::optional<std::uint64_t> count;
+    std::string tag;
+};
+
+struct TaggedUnionType {
+    ResolvedTypeRef discriminant;
+    std::vector<TaggedUnionAlternative> alternatives;
+};
+
+struct IntegerScalarType {
+    bool signedness{};
+    codegen::PackedIntegerValue minimum_value;
+    codegen::PackedIntegerValue maximum_value;
+    std::uint32_t bit_width{};
+    bool bit_width_auto{};
+    std::vector<PackedNamedCode> named_codes;
+};
+
+struct LinearQuantizedType {
+    ResolvedTypeRef source;
+    std::uint32_t bit_width{};
+    std::uint64_t reserved_codes{};
+    codegen::QuantizationClipping clipping{codegen::QuantizationClipping::reject};
+};
+
+struct IntegerVarintType {
+    ResolvedTypeRef source;
+    codegen::IntegerVarintEncoding encoding{codegen::IntegerVarintEncoding::unsigned_varint};
+};
+
+struct FixedPointType {
+    bool signedness{};
+    std::uint32_t total_bits{};
+    std::uint32_t fractional_bits{};
+    codegen::FixedPointRounding rounding{codegen::FixedPointRounding::nearest_even};
+};
+
+struct MiniFloatType {
+    std::uint32_t sign_bits{};
+    std::uint32_t exponent_bits{};
+    std::uint32_t significand_bits{};
+    std::int32_t exponent_bias{};
+};
+
+struct OptionalSentinelType {
+    ResolvedTypeRef source;
+    std::string sentinel_name;
+    codegen::PackedIntegerValue sentinel_value;
+    std::uint32_t bit_width{};
+};
+
+struct OptionalPresenceBitType {
+    ResolvedTypeRef source;
+    std::uint32_t payload_bits{};
+    std::uint32_t encoded_bits{};
 };
 
 enum class SoaSourceKind { structure, vector };
@@ -99,7 +195,20 @@ struct SoaType {
     std::optional<std::string> related_storage_name;
 };
 
-using TypeDefinition = std::variant<ExternalType, EnumType, PackedType, RecordType, SoaType>;
+using TypeDefinition = std::variant<ExternalType,
+                                    EnumType,
+                                    IntegerScalarType,
+                                    LinearQuantizedType,
+                                    IntegerVarintType,
+                                    FixedPointType,
+                                    MiniFloatType,
+                                    OptionalSentinelType,
+                                    OptionalPresenceBitType,
+                                    PackedType,
+                                    RecordType,
+                                    UnionType,
+                                    TaggedUnionType,
+                                    SoaType>;
 
 struct TypeNode {
     TypeIdentity identity;

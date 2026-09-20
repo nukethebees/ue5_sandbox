@@ -378,6 +378,7 @@ TEST(GeneratedPackedValue, ExhaustivelyRoundTripsUint8Storage) {
 
 TEST(GeneratedPackedValue, HandlesFullWidthStorageAndNarrowEnums) {
     auto const maximum{std::numeric_limits<std::uint64_t>::max()};
+    static_assert(PackedWide::value_bits == 64);
     PackedWide wide;
     EXPECT_TRUE(wide.try_set_value(maximum));
     EXPECT_EQ(wide.value(), maximum);
@@ -395,6 +396,56 @@ TEST(GeneratedPackedValue, HandlesFullWidthStorageAndNarrowEnums) {
     EXPECT_EQ(tiny.raw_value(), before_failure);
     EXPECT_EQ(tiny.state(), TinyState::One);
     EXPECT_EQ(tiny.payload(), std::uint8_t{42});
+}
+
+TEST(GeneratedPackedValue, RoundTripsSignedArbitraryWidthBoundaries) {
+    static_assert(SignedWide::delta_bits == 64);
+    SignedDelta delta;
+    EXPECT_TRUE(delta.try_set_delta(-65'536));
+    EXPECT_EQ(delta.delta(), -65'536);
+    EXPECT_EQ(delta.raw_value(), std::uint32_t{0x10000});
+    EXPECT_TRUE(delta.try_set_delta(-1));
+    EXPECT_EQ(delta.delta(), -1);
+    EXPECT_EQ(delta.raw_value(), std::uint32_t{0x1ffff});
+    EXPECT_TRUE(delta.try_set_delta(65'535));
+    EXPECT_EQ(delta.delta(), 65'535);
+    EXPECT_EQ(delta.raw_value(), std::uint32_t{0xffff});
+
+    auto const before_failure{delta.raw_value()};
+    EXPECT_FALSE(delta.try_set_delta(-65'537));
+    EXPECT_FALSE(delta.try_set_delta(65'536));
+    EXPECT_EQ(delta.raw_value(), before_failure);
+    EXPECT_EQ(SignedDelta{std::uint32_t{0x1ffff}}.delta(), -1);
+    EXPECT_EQ(SignedDelta{std::uint32_t{0x10000}}.delta(), -65'536);
+
+    SignedWide wide;
+    EXPECT_TRUE(wide.try_set_delta(std::numeric_limits<std::int64_t>::min()));
+    EXPECT_EQ(wide.delta(), std::numeric_limits<std::int64_t>::min());
+    EXPECT_TRUE(wide.try_set_delta(std::numeric_limits<std::int64_t>::max()));
+    EXPECT_EQ(wide.delta(), std::numeric_limits<std::int64_t>::max());
+    EXPECT_EQ(SignedWide{std::numeric_limits<std::uint64_t>::max()}.delta(), -1);
+}
+
+TEST(GeneratedPackedValue, EnforcesSignedSemanticRangeAndSentinel) {
+    static_assert(SignedTemperature::temperature_bits == 8);
+    static_assert(SignedTemperature::temperature_Freezing == 0);
+    static_assert(SignedTemperature::temperature_Unknown == -128);
+
+    SignedTemperature temperature;
+    EXPECT_TRUE(temperature.try_set_temperature(-100));
+    EXPECT_EQ(temperature.temperature(), -100);
+    EXPECT_TRUE(temperature.is_valid());
+    EXPECT_TRUE(temperature.try_set_temperature(100));
+    EXPECT_EQ(temperature.temperature(), 100);
+    EXPECT_TRUE(temperature.try_set_temperature(SignedTemperature::temperature_Unknown));
+    EXPECT_EQ(temperature.temperature(), -128);
+    EXPECT_TRUE(temperature.is_valid());
+
+    auto const before_failure{temperature.raw_value()};
+    EXPECT_FALSE(temperature.try_set_temperature(-101));
+    EXPECT_FALSE(temperature.try_set_temperature(101));
+    EXPECT_EQ(temperature.raw_value(), before_failure);
+    EXPECT_FALSE(SignedTemperature{std::uint32_t{0x9b}}.is_valid());
 }
 
 TEST(GeneratedPackedValue, GeneratesConstructionValidationAndRangeHelpers) {
