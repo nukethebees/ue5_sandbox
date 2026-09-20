@@ -4,15 +4,26 @@ public static class Program
 {
     public static int Main(string[] arguments)
     {
-        if (!TryParse(arguments, out var request))
+        if (TryParse(arguments, out var request))
         {
-            Console.Error.WriteLine("Usage: ArchitectureChecks --root <path>");
-            return 2;
+            return RunSpaceGameLayerCheck(request!);
         }
 
+        if (TryParseModuleMigration(arguments, out var module_migration_request))
+        {
+            return RunModuleMigrationCheck(module_migration_request!);
+        }
+
+        Console.Error.WriteLine("Usage: ArchitectureChecks --root <path>");
+        Console.Error.WriteLine("       ArchitectureChecks module-migration --root <path> [--baseline <revision>] [--old-module <module>] [--plugin-module <module>]...");
+        return 2;
+    }
+
+    private static int RunSpaceGameLayerCheck(ArchitectureCheckRequest request)
+    {
         try
         {
-            var result = new SpaceGameLayerChecker().Check(request!);
+            var result = new SpaceGameLayerChecker().Check(request);
             if (result.IsValid)
             {
                 Console.Out.WriteLine("SpaceGame module boundaries are valid.");
@@ -33,6 +44,21 @@ public static class Program
         }
     }
 
+    private static int RunModuleMigrationCheck(ModuleMigrationRequest request)
+    {
+        try
+        {
+            var result = new ModuleMigrationChecker().CheckAsync(request, CancellationToken.None).GetAwaiter().GetResult();
+            ModuleMigrationRenderer.Render(result, Console.Out);
+            return 0;
+        }
+        catch (Exception exception) when (exception is ArgumentException or DirectoryNotFoundException or IOException or UnauthorizedAccessException or ModuleMigrationException)
+        {
+            Console.Error.WriteLine($"ArchitectureChecks: {exception.Message}");
+            return 1;
+        }
+    }
+
     internal static bool TryParse(IReadOnlyList<string> arguments, out ArchitectureCheckRequest? request)
     {
         ArgumentNullException.ThrowIfNull(arguments);
@@ -47,5 +73,97 @@ public static class Program
 
         request = new ArchitectureCheckRequest(arguments[1]);
         return true;
+    }
+
+    internal static bool TryParseModuleMigration(
+        IReadOnlyList<string> arguments,
+        out ModuleMigrationRequest? request)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+
+        request = null;
+        if (arguments.Count == 0 || !string.Equals(arguments[0], "module-migration", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        string? root_path = null;
+        var baseline = "HEAD";
+        var old_module = "Sandbox";
+        var plugin_modules = new List<string>();
+        var has_explicit_plugin_modules = false;
+        var has_baseline = false;
+        var has_old_module = false;
+
+        for (var index = 1; index < arguments.Count; ++index)
+        {
+            var option = arguments[index];
+            if (index + 1 >= arguments.Count)
+            {
+                return false;
+            }
+
+            var value = arguments[++index];
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return false;
+            }
+
+            switch (option)
+            {
+                case "--root" when root_path is null:
+                    root_path = value;
+                    break;
+                case "--baseline" when !has_baseline:
+                    baseline = value;
+                    has_baseline = true;
+                    break;
+                case "--old-module" when !has_old_module:
+                    old_module = value;
+                    has_old_module = true;
+                    break;
+                case "--plugin-module":
+                    if (!has_explicit_plugin_modules)
+                    {
+                        plugin_modules.Clear();
+                        has_explicit_plugin_modules = true;
+                    }
+
+                    plugin_modules.Add(value);
+                    break;
+                default:
+                    return false;
+            }
+        }
+
+        if (string.IsNullOrWhiteSpace(root_path))
+        {
+            return false;
+        }
+
+        if (!has_explicit_plugin_modules)
+        {
+            plugin_modules.AddRange(["ShooterGame", "SandboxGameShared"]);
+        }
+
+        if (!IsModuleName(old_module) || plugin_modules.Count == 0 || plugin_modules.Any(module => !IsModuleName(module)))
+        {
+            return false;
+        }
+
+        plugin_modules = plugin_modules.Distinct(StringComparer.Ordinal).ToList();
+
+        request = new ModuleMigrationRequest(root_path, baseline, old_module, plugin_modules);
+        return true;
+    }
+
+    private static bool IsModuleName(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value) || !(char.IsAsciiLetter(value[0]) || value[0] == '_'))
+        {
+            return false;
+        }
+
+        return value.All(character => char.IsAsciiLetterOrDigit(character) || character == '_');
     }
 }
