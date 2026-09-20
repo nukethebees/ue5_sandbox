@@ -316,7 +316,7 @@ function install-agent-git {
 
         Write-Host 'Building the AgentGit installer into a private bootstrap directory.'
         & $dotnet_command.Source publish $installer_project `
-            --configuration Debug `
+            --configuration Release `
             --artifacts-path $bootstrap_artifacts `
             --output $bootstrap_output `
             $stage_property `

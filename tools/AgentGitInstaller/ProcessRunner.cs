@@ -80,13 +80,11 @@ internal sealed class ProcessRunner : IProcessRunner
             await process.WaitForExitAsync(timeout_source.Token);
             await Task.WhenAll(output_task, error_task);
         }
-        catch (OperationCanceledException) when (!cancellation_token.IsCancellationRequested)
+        catch (OperationCanceledException)
         {
-            if (!process.HasExited)
-            {
-                process.Kill(entireProcessTree: true);
-                await process.WaitForExitAsync(CancellationToken.None);
-            }
+            await TerminateProcessAsync(process, output_task, error_task);
+
+            cancellation_token.ThrowIfCancellationRequested();
 
             throw new InstallerException(
                 $"Executable '{request.FileName}' timed out after " +
@@ -106,6 +104,73 @@ internal sealed class ProcessRunner : IProcessRunner
             process.ExitCode,
             Encoding.UTF8.GetString(output.Bytes),
             Encoding.UTF8.GetString(error.Bytes));
+    }
+
+    private static async Task TerminateProcessAsync(
+        Process process,
+        Task<CapturedStream> output_task,
+        Task<CapturedStream> error_task)
+    {
+        Exception? termination_failure = null;
+        try
+        {
+            try
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+            }
+            catch (InvalidOperationException)
+            {
+                // The process exited between the state check and the termination request.
+            }
+            catch (Win32Exception) when (HasExited(process))
+            {
+                // Windows can report that the process no longer exists after a concurrent natural exit.
+            }
+
+            try
+            {
+                await process.WaitForExitAsync(CancellationToken.None);
+            }
+            catch (InvalidOperationException)
+            {
+                // The process exited before WaitForExitAsync registered its wait handle.
+            }
+        }
+        catch (Exception exception)
+        {
+            termination_failure = exception;
+        }
+
+        try
+        {
+            await Task.WhenAll(output_task, error_task);
+        }
+        catch (Exception exception) when (exception is OperationCanceledException or IOException)
+        {
+            // Cancellation closes the redirected streams after the process tree has been terminated.
+        }
+
+        if (termination_failure is not null)
+        {
+            throw new InstallerException(
+                $"Unable to terminate cancelled executable '{process.StartInfo.FileName}'.",
+                termination_failure);
+        }
+    }
+
+    private static bool HasExited(Process process)
+    {
+        try
+        {
+            return process.HasExited;
+        }
+        catch (InvalidOperationException)
+        {
+            return true;
+        }
     }
 
     private static async Task<CapturedStream> CaptureStreamAsync(

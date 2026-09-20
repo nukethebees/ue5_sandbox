@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
@@ -42,12 +43,14 @@ internal sealed class AgentGitInstallerApplication(
 
         var git_path = executable_locator.Find(OperatingSystem.IsWindows() ? "git.exe" : "git");
         PathSafety.EnsureNoReparsePoints(git_path, "Trusted Git executable path", file_system);
-        await ValidateGitVersionAsync(git_path, repository_root, cancellation_token);
+        var git_environment = CreateGitInspectionEnvironment();
+        await ValidateGitVersionAsync(git_path, repository_root, git_environment, cancellation_token);
         var repository = await InspectRepositoryAsync(
             git_path,
             repository_root,
             request.BaseBranch,
             request.PolicyPath,
+            git_environment,
             cancellation_token);
 
         var local_app_data = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -255,10 +258,16 @@ internal sealed class AgentGitInstallerApplication(
     private async Task ValidateGitVersionAsync(
         string git_path,
         string repository_root,
+        IReadOnlyDictionary<string, string?> git_environment,
         CancellationToken cancellation_token)
     {
         var result = await process_runner.RunAsync(
-            new ProcessRequest(git_path, ["--version"], repository_root, Timeout: TimeSpan.FromSeconds(30)),
+            new ProcessRequest(
+                git_path,
+                ["--version"],
+                repository_root,
+                git_environment,
+                TimeSpan.FromSeconds(30)),
             cancellation_token);
         var match = Regex.Match(
             result.StandardOutput.Trim(),
@@ -283,12 +292,14 @@ internal sealed class AgentGitInstallerApplication(
         string repository_root,
         string base_branch,
         string policy_path,
+        IReadOnlyDictionary<string, string?> git_environment,
         CancellationToken cancellation_token)
     {
         var validated_branch = await RunGitTextAsync(
             git_path,
             repository_root,
             ["check-ref-format", "--branch", base_branch],
+            git_environment,
             cancellation_token);
         if (!string.Equals(validated_branch, base_branch, StringComparison.Ordinal))
         {
@@ -300,11 +311,13 @@ internal sealed class AgentGitInstallerApplication(
             git_path,
             repository_root,
             ["rev-parse", "--verify", $"{policy_ref}^{{commit}}"],
+            git_environment,
             cancellation_token);
         var common_git_directory = Path.GetFullPath(await RunGitTextAsync(
             git_path,
             repository_root,
             ["rev-parse", "--path-format=absolute", "--git-common-dir"],
+            git_environment,
             cancellation_token));
         if (!file_system.DirectoryExists(common_git_directory))
         {
@@ -317,22 +330,26 @@ internal sealed class AgentGitInstallerApplication(
             git_path,
             repository_root,
             ["config", "--local", "--get", "remote.origin.url"],
+            git_environment,
             cancellation_token);
         var user_name = await RunGitTextAsync(
             git_path,
             repository_root,
             ["config", "--get", "user.name"],
+            git_environment,
             cancellation_token);
         var user_email = await RunGitTextAsync(
             git_path,
             repository_root,
             ["config", "--get", "user.email"],
+            git_environment,
             cancellation_token);
         var policy_object = $"{policy_commit}:{policy_path}";
         var policy_size_text = await RunGitTextAsync(
             git_path,
             repository_root,
             ["cat-file", "-s", policy_object],
+            git_environment,
             cancellation_token);
         if (!long.TryParse(policy_size_text, out var policy_size) || policy_size is < 0 or > 64 * 1024)
         {
@@ -344,6 +361,7 @@ internal sealed class AgentGitInstallerApplication(
             git_path,
             repository_root,
             ["cat-file", "blob", policy_object],
+            git_environment,
             cancellation_token);
         var policy = PolicyLoader.Parse(policy_json);
         if (!string.Equals(policy.BaseBranch, base_branch, StringComparison.Ordinal))
@@ -366,11 +384,17 @@ internal sealed class AgentGitInstallerApplication(
         string git_path,
         string repository_root,
         IReadOnlyList<string> arguments,
+        IReadOnlyDictionary<string, string?> git_environment,
         CancellationToken cancellation_token)
     {
         var prefixed_arguments = new[] { "-C", repository_root }.Concat(arguments).ToArray();
         var result = await process_runner.RunAsync(
-            new ProcessRequest(git_path, prefixed_arguments, repository_root, Timeout: TimeSpan.FromSeconds(30)),
+            new ProcessRequest(
+                git_path,
+                prefixed_arguments,
+                repository_root,
+                git_environment,
+                TimeSpan.FromSeconds(30)),
             cancellation_token);
         if (result.ExitCode != 0)
         {
@@ -382,6 +406,35 @@ internal sealed class AgentGitInstallerApplication(
         }
 
         return result.StandardOutput.Trim();
+    }
+
+    private static IReadOnlyDictionary<string, string?> CreateGitInspectionEnvironment()
+    {
+        var environment = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        foreach (DictionaryEntry entry in Environment.GetEnvironmentVariables())
+        {
+            if (entry.Key is string name && name.StartsWith("GIT_", StringComparison.OrdinalIgnoreCase))
+            {
+                environment[name] = null;
+            }
+        }
+
+        var user_profile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        if (!string.IsNullOrWhiteSpace(user_profile))
+        {
+            environment["USERPROFILE"] = user_profile;
+            environment["HOME"] = user_profile;
+            environment["XDG_CONFIG_HOME"] = null;
+        }
+
+        environment["LC_ALL"] = "C";
+        environment["LANG"] = "C";
+        environment["GIT_CONFIG_NOSYSTEM"] = "1";
+        environment["GIT_NO_REPLACE_OBJECTS"] = "1";
+        environment["GIT_OPTIONAL_LOCKS"] = "0";
+        environment["GIT_TERMINAL_PROMPT"] = "0";
+        environment["GCM_INTERACTIVE"] = "Never";
+        return environment;
     }
 
     private async Task<PreparedArtifacts> PrepareArtifactsAsync(
@@ -546,12 +599,13 @@ internal sealed class AgentGitInstallerApplication(
         var repositories = existing_manifest?.Repositories
             .Where(item => !PathSafety.PathsEqual(item.CommonGitDirectory, repository.CommonGitDirectory))
             .ToList() ?? [];
-        var requires_lfs = repository.Policy.GitExtensions.Contains("lfs");
-        if (repositories.Count != 0 && (existing_manifest!.GitLfsExecutable is not null) != requires_lfs)
-        {
-            throw new InstallerException(
-                "The repository's Git LFS mode is incompatible with registrations preserved from the existing trust manifest.");
-        }
+        var manifest_settings = ResolveManifestSettings(
+            existing_manifest,
+            repositories.Count != 0,
+            git_path,
+            git_lfs_path,
+            repository.UserName,
+            repository.UserEmail);
 
         repositories.Add(new TrustedRepository
         {
@@ -564,16 +618,71 @@ internal sealed class AgentGitInstallerApplication(
         var manifest = new TrustManifest
         {
             Version = 1,
-            GitExecutable = git_path,
-            GitLfsExecutable = git_lfs_path,
-            UserName = repository.UserName,
-            UserEmail = repository.UserEmail,
+            GitExecutable = manifest_settings.GitExecutable,
+            GitLfsExecutable = manifest_settings.GitLfsExecutable,
+            UserName = manifest_settings.UserName,
+            UserEmail = manifest_settings.UserEmail,
             Repositories = repositories.ToArray(),
         };
         TrustStore.ValidateManifest(manifest);
         file_system.WriteAllText(
             Path.Combine(staging_root, "trust.json"),
             JsonSerializer.Serialize(manifest, trust_json_options));
+    }
+
+    private static ManifestSettings ResolveManifestSettings(
+        TrustManifest? existing_manifest,
+        bool preserves_other_repositories,
+        string git_path,
+        string? git_lfs_path,
+        string user_name,
+        string user_email)
+    {
+        if (!preserves_other_repositories)
+        {
+            return new ManifestSettings(git_path, git_lfs_path, user_name, user_email);
+        }
+
+        var existing = existing_manifest
+            ?? throw new InstallerException("Cannot preserve repository registrations without an existing trust manifest.");
+        if (!PathSafety.PathsEqual(existing.GitExecutable, git_path))
+        {
+            throw new InstallerException(
+                "Cannot preserve existing repository registrations because the trusted Git executable differs. " +
+                $"Existing: '{existing.GitExecutable}'. Requested: '{git_path}'.");
+        }
+
+        if (existing.GitLfsExecutable is null != (git_lfs_path is null))
+        {
+            throw new InstallerException(
+                "Cannot preserve existing repository registrations because the trusted Git LFS mode differs.");
+        }
+        if (existing.GitLfsExecutable is not null &&
+            !PathSafety.PathsEqual(existing.GitLfsExecutable, git_lfs_path!))
+        {
+            throw new InstallerException(
+                "Cannot preserve existing repository registrations because the trusted Git LFS executable differs. " +
+                $"Existing: '{existing.GitLfsExecutable}'. Requested: '{git_lfs_path}'.");
+        }
+
+        if (!string.Equals(existing.UserName, user_name, StringComparison.Ordinal))
+        {
+            throw new InstallerException(
+                "Cannot preserve existing repository registrations because the trusted Git user name differs. " +
+                $"Existing: '{existing.UserName}'. Requested: '{user_name}'.");
+        }
+        if (!string.Equals(existing.UserEmail, user_email, StringComparison.Ordinal))
+        {
+            throw new InstallerException(
+                "Cannot preserve existing repository registrations because the trusted Git user email differs. " +
+                $"Existing: '{existing.UserEmail}'. Requested: '{user_email}'.");
+        }
+
+        return new ManifestSettings(
+            existing.GitExecutable,
+            existing.GitLfsExecutable,
+            existing.UserName,
+            existing.UserEmail);
     }
 
     private TrustManifest? LoadExistingManifest(string install_root)
@@ -683,4 +792,10 @@ internal sealed class AgentGitInstallerApplication(
         string Root,
         IReadOnlyDictionary<string, string> Hashes,
         string? ValidationRoot);
+
+    private sealed record ManifestSettings(
+        string GitExecutable,
+        string? GitLfsExecutable,
+        string UserName,
+        string UserEmail);
 }

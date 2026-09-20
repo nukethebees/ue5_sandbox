@@ -44,7 +44,13 @@ previous installation.
 The installer records the repository's canonical common Git directory,
 origin URL, trusted Git and Git-LFS executables, user identity, and `refs/heads/dev` as the policy
 authority. Runtime policy is read from `refs/heads/dev:.agent-git.json`; an edit in a feature
-worktree cannot change active permissions before it is reviewed and merged.
+worktree cannot change active permissions before it is reviewed and merged. Installer Git
+inspection removes inherited `GIT_*` overrides so ambient repository or configuration redirection
+cannot replace the explicitly selected repository. When an installation retains registrations for
+multiple repositories, its manifest-wide Git executable, Git-LFS mode and executable, and Git user
+identity must remain compatible; an incompatible additional repository is rejected without
+changing the active installation. Reinstalling the sole registered repository may refresh those
+manifest-wide settings.
 
 Repository build output under `tools/bin` refuses repository operations. This prevents an agent
 from editing the source, rebuilding a permissive binary, and using it through the trusted rule.

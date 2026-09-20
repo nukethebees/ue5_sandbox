@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Security;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace AgentGitInstaller.Tests;
@@ -34,6 +35,8 @@ public sealed class InstallerIntegrationTests
         await InstallFromTestArtifactsAsync(fixture, install_root);
         File.WriteAllText(Path.Combine(install_root, "first-install.marker"), "known-good");
         fixture.CommitPolicy("test/updated", "dev");
+        fixture.RunGit("config", "user.name", "Updated Installer Test");
+        fixture.RunGit("config", "user.email", "updated-installer@example.com");
 
         await InstallFromTestArtifactsAsync(fixture, install_root);
 
@@ -43,6 +46,8 @@ public sealed class InstallerIntegrationTests
         var repositories = manifest.RootElement.GetProperty("repositories");
         Assert.AreEqual(1, repositories.GetArrayLength());
         Assert.AreEqual("test/updated", repositories[0].GetProperty("repositoryId").GetString());
+        Assert.AreEqual("Updated Installer Test", manifest.RootElement.GetProperty("userName").GetString());
+        Assert.AreEqual("updated-installer@example.com", manifest.RootElement.GetProperty("userEmail").GetString());
     }
 
     [TestMethod]
@@ -52,6 +57,8 @@ public sealed class InstallerIntegrationTests
         using var second = new TemporaryInstallerRepository("test/second");
         var install_root = Path.Combine(first.InstallParent, "multiple-agent-git");
         await InstallFromTestArtifactsAsync(first, install_root);
+        var original_manifest = File.ReadAllText(Path.Combine(install_root, "trust.json"));
+        using var original_document = JsonDocument.Parse(original_manifest);
         await InstallFromTestArtifactsAsync(second, install_root);
 
         using var manifest = LoadManifest(install_root);
@@ -62,6 +69,114 @@ public sealed class InstallerIntegrationTests
             repositories.EnumerateArray()
                 .Select(item => item.GetProperty("repositoryId").GetString())
                 .ToArray());
+        Assert.AreEqual(
+            original_document.RootElement.GetProperty("gitExecutable").GetString(),
+            manifest.RootElement.GetProperty("gitExecutable").GetString());
+        Assert.AreEqual(
+            original_document.RootElement.GetProperty("gitLfsExecutable").GetString(),
+            manifest.RootElement.GetProperty("gitLfsExecutable").GetString());
+        Assert.AreEqual(
+            original_document.RootElement.GetProperty("userName").GetString(),
+            manifest.RootElement.GetProperty("userName").GetString());
+        Assert.AreEqual(
+            original_document.RootElement.GetProperty("userEmail").GetString(),
+            manifest.RootElement.GetProperty("userEmail").GetString());
+    }
+
+    [TestMethod]
+    public async Task Different_user_name_cannot_change_globals_for_preserved_repository()
+    {
+        await AssertGlobalMismatchPreservesInstallAsync(
+            (fixture, _) => fixture.RunGit("config", "user.name", "Different Installer User"),
+            "trusted Git user name differs");
+    }
+
+    [TestMethod]
+    public async Task Different_user_email_cannot_change_globals_for_preserved_repository()
+    {
+        await AssertGlobalMismatchPreservesInstallAsync(
+            (fixture, _) => fixture.RunGit("config", "user.email", "different-installer@example.com"),
+            "trusted Git user email differs");
+    }
+
+    [TestMethod]
+    public async Task Different_git_lfs_mode_cannot_change_globals_for_preserved_repository()
+    {
+        await AssertGlobalMismatchPreservesInstallAsync(
+            (_, install_root) => RewriteManifestProperty(
+                install_root,
+                "gitLfsExecutable",
+                FindExecutable(OperatingSystem.IsWindows() ? "git.exe" : "git")),
+            "trusted Git LFS mode differs");
+    }
+
+    [TestMethod]
+    public async Task Different_git_executable_cannot_change_globals_for_preserved_repository()
+    {
+        using var first = new TemporaryInstallerRepository("test/first");
+        using var second = new TemporaryInstallerRepository("test/second");
+        var install_root = Path.Combine(first.InstallParent, "git-mismatch-agent-git");
+        await InstallFromTestArtifactsAsync(first, install_root);
+        var marker = Path.Combine(install_root, "known-good.marker");
+        File.WriteAllText(marker, "known-good");
+        var original_manifest = File.ReadAllText(Path.Combine(install_root, "trust.json"));
+        var alternate_git = Path.Combine(second.InstallParent, "alternate-git.exe");
+        File.WriteAllText(alternate_git, "test executable seam");
+        var runner = new SubstitutingExecutableProcessRunner(new ProcessRunner(), alternate_git, second.GitExecutable);
+        var locator = new FixedGitExecutableLocator(new ExecutableLocator(), alternate_git);
+
+        var exception = await Assert.ThrowsExceptionAsync<InstallerException>(() =>
+            CreateApplication(runner, executable_locator: locator).InstallAsync(
+                CreateRequest(second, install_root),
+                CancellationToken.None));
+
+        StringAssert.Contains(exception.Message, "trusted Git executable differs");
+        Assert.AreEqual("known-good", File.ReadAllText(marker));
+        Assert.AreEqual(original_manifest, File.ReadAllText(Path.Combine(install_root, "trust.json")));
+        using var manifest = LoadManifest(install_root);
+        Assert.AreEqual(1, manifest.RootElement.GetProperty("repositories").GetArrayLength());
+    }
+
+    [TestMethod]
+    [DoNotParallelize]
+    public async Task Git_inspection_ignores_hostile_repository_and_config_environment()
+    {
+        using var requested = new TemporaryInstallerRepository("test/requested");
+        using var hostile = new TemporaryInstallerRepository("test/hostile");
+        requested.RunGit("config", "user.name", "Requested Installer User");
+        requested.RunGit("config", "user.email", "requested-installer@example.com");
+        var expected_common_directory = requested.CommonGitDirectory;
+        var expected_origin = requested.RunGit("config", "--local", "--get", "remote.origin.url").Trim();
+        var hostile_common_directory = hostile.CommonGitDirectory;
+        var install_root = Path.Combine(requested.InstallParent, "sanitized-environment-agent-git");
+        var hostile_global_config = Path.Combine(requested.InstallParent, "hostile-global.gitconfig");
+        File.WriteAllText(
+            hostile_global_config,
+            "[user]\n\tname = Hostile Global User\n\temail = hostile-global@example.com\n");
+
+        using (new EnvironmentVariableScope(new Dictionary<string, string?>
+        {
+            ["GIT_DIR"] = hostile_common_directory,
+            ["GIT_WORK_TREE"] = hostile.RepositoryRoot,
+            ["GIT_CONFIG_GLOBAL"] = hostile_global_config,
+            ["GIT_CONFIG_COUNT"] = "2",
+            ["GIT_CONFIG_KEY_0"] = "user.name",
+            ["GIT_CONFIG_VALUE_0"] = "Hostile Environment User",
+            ["GIT_CONFIG_KEY_1"] = "remote.origin.url",
+            ["GIT_CONFIG_VALUE_1"] = "https://example.invalid/hostile-environment.git",
+        }))
+        {
+            await InstallFromTestArtifactsAsync(requested, install_root);
+        }
+
+        using var manifest = LoadManifest(install_root);
+        Assert.AreEqual("Requested Installer User", manifest.RootElement.GetProperty("userName").GetString());
+        Assert.AreEqual("requested-installer@example.com", manifest.RootElement.GetProperty("userEmail").GetString());
+        var registration = manifest.RootElement.GetProperty("repositories")[0];
+        Assert.IsTrue(PathSafety.PathsEqual(
+            expected_common_directory,
+            registration.GetProperty("commonGitDirectory").GetString()!));
+        Assert.AreEqual(expected_origin, registration.GetProperty("originUrl").GetString());
     }
 
     [TestMethod]
@@ -433,14 +548,57 @@ public sealed class InstallerIntegrationTests
 
     private static AgentGitInstallerApplication CreateApplication(
         IProcessRunner? process_runner = null,
-        IInstallerFileSystem? file_system = null)
+        IInstallerFileSystem? file_system = null,
+        IExecutableLocator? executable_locator = null)
     {
         return new AgentGitInstallerApplication(
             process_runner ?? new ProcessRunner(),
-            new ExecutableLocator(),
+            executable_locator ?? new ExecutableLocator(),
             file_system ?? new InstallerFileSystem(),
             new Sha256ArtifactHasher(),
             TextWriter.Null);
+    }
+
+    private static async Task AssertGlobalMismatchPreservesInstallAsync(
+        Action<TemporaryInstallerRepository, string> arrange_mismatch,
+        string expected_diagnostic)
+    {
+        using var first = new TemporaryInstallerRepository("test/first");
+        using var second = new TemporaryInstallerRepository("test/second");
+        var install_name = $"global-mismatch-{Guid.NewGuid():N}";
+        var install_root = Path.Combine(first.InstallParent, install_name);
+        await InstallFromTestArtifactsAsync(first, install_root);
+        var marker = Path.Combine(install_root, "known-good.marker");
+        File.WriteAllText(marker, "known-good");
+        arrange_mismatch(second, install_root);
+        var original_manifest = File.ReadAllText(Path.Combine(install_root, "trust.json"));
+
+        var exception = await Assert.ThrowsExceptionAsync<InstallerException>(() =>
+            InstallFromTestArtifactsAsync(second, install_root));
+
+        StringAssert.Contains(exception.Message, expected_diagnostic);
+        Assert.AreEqual("known-good", File.ReadAllText(marker));
+        Assert.AreEqual(original_manifest, File.ReadAllText(Path.Combine(install_root, "trust.json")));
+        using var manifest = LoadManifest(install_root);
+        Assert.AreEqual(1, manifest.RootElement.GetProperty("repositories").GetArrayLength());
+        Assert.AreEqual(
+            "test/first",
+            manifest.RootElement.GetProperty("repositories")[0].GetProperty("repositoryId").GetString());
+        AssertNoTransientDirectories(first.InstallParent, install_name);
+    }
+
+    private static void RewriteManifestProperty(string install_root, string property_name, string value)
+    {
+        var manifest_path = Path.Combine(install_root, "trust.json");
+        var manifest = JsonNode.Parse(File.ReadAllText(manifest_path))?.AsObject()
+            ?? throw new AssertFailedException("Unable to parse test trust manifest.");
+        manifest[property_name] = value;
+        File.WriteAllText(manifest_path, manifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+    }
+
+    private static string FindExecutable(string name)
+    {
+        return new ExecutableLocator().Find(name);
     }
 
     private static Task InstallFromTestArtifactsAsync(TemporaryInstallerRepository fixture, string install_root)
@@ -657,6 +815,57 @@ public sealed class InstallerIntegrationTests
             }
 
             return result;
+        }
+    }
+
+    private sealed class FixedGitExecutableLocator(IExecutableLocator inner, string git_executable)
+        : IExecutableLocator
+    {
+        public string Find(string executable_name)
+        {
+            return executable_name.Equals("git", StringComparison.OrdinalIgnoreCase) ||
+                executable_name.Equals("git.exe", StringComparison.OrdinalIgnoreCase)
+                ? git_executable
+                : inner.Find(executable_name);
+        }
+    }
+
+    private sealed class SubstitutingExecutableProcessRunner(
+        IProcessRunner inner,
+        string requested_executable,
+        string actual_executable) : IProcessRunner
+    {
+        public Task<ProcessResult> RunAsync(ProcessRequest request, CancellationToken cancellation_token)
+        {
+            var effective_request = PathSafety.PathsEqual(request.FileName, requested_executable)
+                ? request with { FileName = actual_executable }
+                : request;
+            return inner.RunAsync(effective_request, cancellation_token);
+        }
+    }
+
+    private sealed class EnvironmentVariableScope : IDisposable
+    {
+        private readonly IReadOnlyDictionary<string, string?> original_values;
+
+        public EnvironmentVariableScope(IReadOnlyDictionary<string, string?> values)
+        {
+            original_values = values.Keys.ToDictionary(
+                name => name,
+                Environment.GetEnvironmentVariable,
+                StringComparer.OrdinalIgnoreCase);
+            foreach (var pair in values)
+            {
+                Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+            }
+        }
+
+        public void Dispose()
+        {
+            foreach (var pair in original_values)
+            {
+                Environment.SetEnvironmentVariable(pair.Key, pair.Value);
+            }
         }
     }
 
