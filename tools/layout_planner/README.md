@@ -311,8 +311,10 @@ duplication, deletion, and reorder preserve unchanged existing rows and their co
 rendered canonically. Packed field/reserved insertion, duplication, deletion, and reorder likewise
 preserve stable segment blocks and their comments, including unchanged named-code and relationship
 text, while rendering only new segments canonically. Structural child changes in other declaration
-kinds deliberately fall back to canonical declaration rendering. Stable record members and raw/tagged union alternatives receive the same preservation for
-type, count, tag, discriminant, and export edits. Ordinary standard-library SoAs preserve stable
+kinds deliberately fall back to canonical declaration rendering. Record members and raw-union
+alternatives preserve stable named blocks and their comments through insertion, duplication,
+deletion, and reorder, rendering only new children canonically. Tagged-union alternatives preserve
+stable type, count, tag, discriminant, and export edits. Ordinary standard-library SoAs preserve stable
 member and top-level edits as well, including untouched custom functions and advanced forms whose
 semantics can be proven unchanged. Structural or unsupported edits remain visible as canonical
 fallbacks in preview. Unrelated declarations and files are left unchanged.

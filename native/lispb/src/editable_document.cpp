@@ -1184,6 +1184,17 @@ auto try_render_source_preserved_optional_presence_bit(
         "optional-presence-bit", schema.name, properties, original);
 }
 
+template <typename Child>
+auto render_aggregate_child(std::string_view const head, Child const& child) -> std::string {
+    std::ostringstream output;
+    output << '(' << head << ' ' << child.name << ' ' << render_type_ref(child.type);
+    if (child.count.has_value()) {
+        output << " :count " << *child.count;
+    }
+    output << ')';
+    return output.str();
+}
+
 auto render_record(codegen::RecordSchema const& schema) -> std::string {
     std::ostringstream output;
     output << "(record " << schema.name;
@@ -1191,11 +1202,7 @@ auto render_record(codegen::RecordSchema const& schema) -> std::string {
         output << "\n    :export-specifier " << *schema.export_specifier;
     }
     for (auto const& member : schema.members) {
-        output << "\n    (member " << member.name << ' ' << render_type_ref(member.type);
-        if (member.count.has_value()) {
-            output << " :count " << *member.count;
-        }
-        output << ')';
+        output << "\n    " << render_aggregate_child("member", member);
     }
     output << ')';
     return output.str();
@@ -1208,12 +1215,7 @@ auto render_union(codegen::UnionSchema const& schema) -> std::string {
         output << "\n    :export-specifier " << *schema.export_specifier;
     }
     for (auto const& alternative : schema.alternatives) {
-        output << "\n    (alternative " << alternative.name << ' '
-               << render_type_ref(alternative.type);
-        if (alternative.count.has_value()) {
-            output << " :count " << *alternative.count;
-        }
-        output << ')';
+        output << "\n    " << render_aggregate_child("alternative", alternative);
     }
     output << ')';
     return output.str();
@@ -1254,16 +1256,10 @@ auto try_render_source_preserved_aggregate(std::string_view const declaration_he
     std::vector<Form const*> source_children;
     for (auto const& child : parsed->children) {
         if (child.head() == child_head) {
+            if (child.children.size() < 3) {
+                return std::nullopt;
+            }
             source_children.push_back(&child);
-        }
-    }
-    if (source_children.size() != children.size()) {
-        return std::nullopt;
-    }
-    for (std::size_t index{}; index < source_children.size(); ++index) {
-        if (source_children[index]->children.size() < 3 ||
-            source_children[index]->children[1].token.text != children[index].name) {
-            return std::nullopt;
         }
     }
 
@@ -1273,22 +1269,98 @@ auto try_render_source_preserved_aggregate(std::string_view const declaration_he
     if (!patch_source_properties(*parsed, 1, properties, "    ", original, replacements)) {
         return std::nullopt;
     }
-    for (std::size_t index{}; index < source_children.size(); ++index) {
-        auto const& child{children[index]};
-        if (!patch_source_form(source_children[index]->children[2],
+
+    if (source_children.empty()) {
+        return children.empty() ? apply_source_replacements(original, std::move(replacements))
+                                : std::nullopt;
+    }
+
+    auto const first_child_offset{source_children.front()->token.span.offset};
+    for (auto const& child : parsed->children) {
+        if (child.token.span.offset > first_child_offset && child.head() != child_head) {
+            return std::nullopt;
+        }
+    }
+
+    auto children_begin{std::size_t{}};
+    for (auto const& child : parsed->children) {
+        if (child.token.span.offset >= first_child_offset) {
+            continue;
+        }
+        auto const child_end{source_form_line_end(child, original, first_child_offset)};
+        if (!child_end.has_value()) {
+            return std::nullopt;
+        }
+        children_begin = (std::max)(children_begin, *child_end);
+    }
+    if (children_begin > first_child_offset) {
+        return std::nullopt;
+    }
+
+    struct SourceChild {
+        Form const* form{};
+        std::size_t begin{};
+        std::size_t end{};
+    };
+    std::map<std::string_view, SourceChild> source_by_name;
+    auto row_begin{children_begin};
+    for (auto const* child : source_children) {
+        auto const row_end{source_form_line_end(*child, original, parsed->closing.span.offset)};
+        if (!row_end.has_value() || row_begin > child->token.span.offset ||
+            *row_end < child->closing.span.offset + 1) {
+            return std::nullopt;
+        }
+        if (!source_by_name
+                 .emplace(child->children[1].token.text,
+                          SourceChild{.form = child, .begin = row_begin, .end = *row_end})
+                 .second) {
+            return std::nullopt;
+        }
+        row_begin = *row_end;
+    }
+
+    auto const children_end{row_begin};
+    auto rendered_children{std::string{}};
+    auto append_row = [&](std::string row) {
+        auto const preceding_newline{
+            rendered_children.empty() ? children_begin > 0 && original[children_begin - 1] == '\n'
+                                      : rendered_children.back() == '\n'};
+        if (!preceding_newline && (row.empty() || row.front() != '\n')) {
+            rendered_children += '\n';
+        }
+        rendered_children += std::move(row);
+    };
+
+    for (auto const& child : children) {
+        auto const found{source_by_name.find(child.name)};
+        if (found == source_by_name.end()) {
+            append_row("    " + render_aggregate_child(child_head, child));
+            continue;
+        }
+
+        std::vector<SourceReplacement> child_replacements;
+        if (!patch_source_form(found->second.form->children[2],
                                render_type_ref(child.type),
                                original,
-                               replacements)) {
+                               child_replacements)) {
             return std::nullopt;
         }
         auto const child_properties{std::array<SourceProperty, 1>{std::pair{
             "count",
             child.count.has_value() ? std::optional{std::to_string(*child.count)} : std::nullopt}}};
         if (!patch_source_properties(
-                *source_children[index], 2, child_properties, "      ", original, replacements)) {
+                *found->second.form, 2, child_properties, "      ", original, child_replacements)) {
             return std::nullopt;
         }
+        auto rendered{apply_source_replacements_to_range(
+            original, found->second.begin, found->second.end, std::move(child_replacements))};
+        if (!rendered.has_value()) {
+            return std::nullopt;
+        }
+        append_row(std::move(*rendered));
     }
+    replacements.push_back(
+        {.begin = children_begin, .end = children_end, .text = std::move(rendered_children)});
     return apply_source_replacements(original, std::move(replacements));
 }
 

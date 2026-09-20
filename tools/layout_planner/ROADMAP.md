@@ -42,9 +42,10 @@ duplication, deletion, and reorder now preserve stable existing row blocks with 
 trailing comments while rendering only new rows canonically. Packed field/reserved insertion,
 duplication, deletion, and reorder use the same bounded-block approach, keyed by segment kind and
 name; stable nested named codes and relationships retain their source text while new segments are
-rendered canonically. Structural child edits for other declaration kinds still use canonical
-rendering. Stable record members and raw/tagged union
-alternatives preserve type/count/tag/discriminant/export edits. Stable ordinary SoA member/top-level
+rendered canonically. Record members and raw-union alternatives also preserve stable named row
+blocks through insertion, duplication, deletion, and reorder, rendering only new children
+canonically. Structural child edits for other declaration kinds still use canonical rendering.
+Stable tagged-union alternatives preserve type/count/tag/discriminant/export edits. Stable ordinary SoA member/top-level
 edits preserve source too, after advanced untouched forms are semantically verified; unsupported or
 ambiguous edits retain canonical fallback.
 

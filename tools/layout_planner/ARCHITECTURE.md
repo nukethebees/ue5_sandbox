@@ -55,9 +55,11 @@ by segment kind and name. Stable segments retain leading/trailing comments and t
 their types, widths, kinds, named codes, and relationships through reorder or neighboring
 insertion/deletion; only new segments use the canonical single-segment renderer. Unreal projections,
 ambiguous source shapes, and changed nested packed structure still fall back to the canonical
-declaration renderer. Other structural edits retain canonical fallback. Records and raw/tagged unions
-use ordered member/alternative identity checks before patching types, counts, tags, discriminants,
-and exports. Standard-library SoAs patch stable member/top-level properties only
+declaration renderer. Records and raw unions use bounded named member/alternative blocks so stable
+children retain comments and token-local type/count edits across insertion, duplication, deletion,
+and reorder; new children render canonically. Other structural edits retain canonical fallback.
+Tagged unions use ordered alternative identity checks before patching types, counts, tags,
+discriminants, and exports. Standard-library SoAs patch stable member/top-level properties only
 after functions, fixed layouts, and single-allocation forms are proven semantically unchanged;
 unsupported derived allocator/mutable-view surfaces take canonical fallback.
 

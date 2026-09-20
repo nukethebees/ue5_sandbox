@@ -112,7 +112,9 @@ class TemporarySchema {
   :namespace authored
   (record ExistingRecord
     ; Keep the record note.
-    (member value   std::uint32_t)
+    ; Keep the value member note.
+    (member value   std::uint32_t) ; value member trailing note
+    ; Keep the flag member note.
     (member flag std::uint8_t)))
 
 (union-module authored_unions
@@ -120,7 +122,10 @@ class TemporarySchema {
   :namespace authored
   (union ExistingUnion
     ; Keep the raw union note.
-    (alternative value   std::uint32_t))
+    ; Keep the value alternative note.
+    (alternative value   std::uint32_t) ; value alternative trailing note
+    ; Keep the small alternative note.
+    (alternative small std::uint8_t))
   (tagged-union ExistingTagged
     ; Keep the tagged union note.
     :discriminant   authored::Existing
@@ -935,12 +940,20 @@ TEST(EditableSchemaDocument, PreservesAggregateFormattingForNonStructuralEdits) 
     EXPECT_EQ(tagged_schema->alternatives[0].tag, "One");
 }
 
-TEST(EditableSchemaDocument, FallsBackToCanonicalAggregateRenderingForStructuralEdits) {
+TEST(EditableSchemaDocument, PreservesRecordMembersAndCommentsForStructuralEdits) {
     TemporarySchema files;
     auto document{files.load()};
     auto const record{declaration_id(document, "authored_records", "ExistingRecord", "authored")};
     auto replacement{*document.record_schema(record)};
-    std::ranges::swap(replacement.members[0], replacement.members[1]);
+    replacement.export_specifier = "RECORD_API";
+    auto value{replacement.members[0]};
+    auto flag{replacement.members[1]};
+    value.type.name = "std::uint64_t";
+    value.count = 2;
+    auto duplicate{flag};
+    duplicate.name = "flag_copy";
+    duplicate.count = 3;
+    replacement.members = {flag, duplicate, value};
 
     auto applied{
         document.apply(ReplaceRecord{.declaration = record, .schema = std::move(replacement)})};
@@ -951,12 +964,140 @@ TEST(EditableSchemaDocument, FallsBackToCanonicalAggregateRenderingForStructural
     ASSERT_TRUE(preview.has_value()) << preview.error().message;
     ASSERT_EQ(preview->size(), 1U);
     auto const& updated{preview->front().updated};
-    auto const flag{updated.find("(member flag")};
-    auto const value{updated.find("(member value")};
-    ASSERT_NE(flag, std::string::npos);
-    ASSERT_NE(value, std::string::npos);
-    EXPECT_LT(flag, value);
-    EXPECT_EQ(updated.find("; Keep the record note"), std::string::npos);
+    auto const flag_comment{updated.find("; Keep the flag member note.")};
+    auto const flag_position{updated.find("(member flag ")};
+    auto const copy_position{updated.find("(member flag_copy ")};
+    auto const record_comment{updated.find("; Keep the record note.")};
+    auto const value_comment{updated.find("; Keep the value member note.")};
+    auto const value_position{updated.find("(member value ")};
+    ASSERT_NE(flag_comment, std::string::npos);
+    ASSERT_NE(flag_position, std::string::npos);
+    ASSERT_NE(copy_position, std::string::npos);
+    ASSERT_NE(record_comment, std::string::npos);
+    ASSERT_NE(value_comment, std::string::npos);
+    ASSERT_NE(value_position, std::string::npos);
+    EXPECT_LT(flag_comment, flag_position);
+    EXPECT_LT(flag_position, copy_position);
+    EXPECT_LT(copy_position, record_comment);
+    EXPECT_LT(record_comment, value_comment);
+    EXPECT_LT(value_comment, value_position);
+    EXPECT_NE(updated.find("(member value   std::uint64_t"), std::string::npos);
+    EXPECT_NE(updated.find(":count 2"), std::string::npos);
+    EXPECT_NE(updated.find("(member flag_copy std::uint8_t :count 3)"), std::string::npos);
+    EXPECT_NE(updated.find("; value member trailing note"), std::string::npos);
+    EXPECT_NE(updated.find(":export-specifier RECORD_API"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+
+    auto deletion{*document.record_schema(record)};
+    std::erase_if(deletion.members, [](auto const& member) { return member.name == "value"; });
+    applied = document.apply(ReplaceRecord{.declaration = record, .schema = std::move(deletion)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated.find("(member value "), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find("; Keep the record note."), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find("; Keep the value member note."), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find("; value member trailing note"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the flag member note."), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_NE(preview->front().updated.find("(member value "), std::string::npos);
+    ASSERT_TRUE(document.redo().value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_record{
+        declaration_id(reloaded, "authored_records", "ExistingRecord", "authored")};
+    auto const* schema{reloaded.record_schema(reloaded_record)};
+    ASSERT_NE(schema, nullptr);
+    EXPECT_EQ(schema->export_specifier, "RECORD_API");
+    ASSERT_EQ(schema->members.size(), 2U);
+    EXPECT_EQ(schema->members[0].name, "flag");
+    EXPECT_EQ(schema->members[1].name, "flag_copy");
+    EXPECT_EQ(schema->members[1].count, 3U);
+
+    auto const module_source{std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
+        return source.path.filename() == "modules.lispb";
+    })};
+    ASSERT_NE(module_source, reloaded.source_files().end());
+    EXPECT_EQ(module_source->text.find("; Keep the record note."), std::string::npos);
+    EXPECT_EQ(module_source->text.find("; Keep the value member note."), std::string::npos);
+    EXPECT_NE(module_source->text.find("; Keep the flag member note."), std::string::npos);
+}
+
+TEST(EditableSchemaDocument, PreservesRawUnionAlternativesForStructuralEdits) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const raw{declaration_id(document, "authored_unions", "ExistingUnion", "authored")};
+    auto replacement{*document.union_schema(raw)};
+    auto value{replacement.alternatives[0]};
+    auto small{replacement.alternatives[1]};
+    value.type.name = "std::uint64_t";
+    value.count = 2;
+    auto duplicate{small};
+    duplicate.name = "small_copy";
+    duplicate.count = 3;
+    replacement.alternatives = {small, duplicate, value};
+
+    auto applied{
+        document.apply(ReplaceUnion{.declaration = raw, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& updated{preview->front().updated};
+    auto const small_comment{updated.find("; Keep the small alternative note.")};
+    auto const small_position{updated.find("(alternative small ")};
+    auto const copy_position{updated.find("(alternative small_copy ")};
+    auto const value_comment{updated.find("; Keep the value alternative note.")};
+    auto const value_position{updated.find("(alternative value ")};
+    ASSERT_NE(small_comment, std::string::npos);
+    ASSERT_NE(small_position, std::string::npos);
+    ASSERT_NE(copy_position, std::string::npos);
+    ASSERT_NE(value_comment, std::string::npos);
+    ASSERT_NE(value_position, std::string::npos);
+    EXPECT_LT(small_comment, small_position);
+    EXPECT_LT(small_position, copy_position);
+    EXPECT_LT(copy_position, value_comment);
+    EXPECT_LT(value_comment, value_position);
+    EXPECT_NE(updated.find("(alternative value   std::uint64_t"), std::string::npos);
+    EXPECT_NE(updated.find(":count 2"), std::string::npos);
+    EXPECT_NE(updated.find("(alternative small_copy std::uint8_t :count 3)"), std::string::npos);
+    EXPECT_NE(updated.find("; value alternative trailing note"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_raw{
+        declaration_id(reloaded, "authored_unions", "ExistingUnion", "authored")};
+    auto const* schema{reloaded.union_schema(reloaded_raw)};
+    ASSERT_NE(schema, nullptr);
+    ASSERT_EQ(schema->alternatives.size(), 3U);
+    EXPECT_EQ(schema->alternatives[0].name, "small");
+    EXPECT_EQ(schema->alternatives[1].name, "small_copy");
+    EXPECT_EQ(schema->alternatives[2].name, "value");
+    EXPECT_EQ(schema->alternatives[1].count, 3U);
+    EXPECT_EQ(schema->alternatives[2].type.name, "std::uint64_t");
+    EXPECT_EQ(schema->alternatives[2].count, 2U);
 }
 
 TEST(EditableSchemaDocument, DeletesTaggedUnionThroughItsExactSourceRange) {
