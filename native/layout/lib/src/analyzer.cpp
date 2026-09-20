@@ -8,8 +8,6 @@
 namespace ioj::layout {
 namespace {
 
-constexpr std::uint64_t cache_line_bytes{64};
-
 auto checked_add(std::uint64_t const left, std::uint64_t const right)
     -> std::optional<std::uint64_t> {
     if (right > std::numeric_limits<std::uint64_t>::max() - left) {
@@ -69,11 +67,12 @@ auto effective_column_type(lispb::schema::TypeGraph const& types,
         .value_or(column.semantic_type.cpp_type.spelling);
 }
 
-auto minimum_cache_lines(std::uint64_t const bytes) -> std::uint64_t {
-    return bytes / cache_line_bytes + (bytes % cache_line_bytes == 0 ? 0 : 1);
+auto minimum_regions(std::uint64_t const bytes, std::uint64_t const region_bytes) -> std::uint64_t {
+    return bytes / region_bytes + (bytes % region_bytes == 0 ? 0 : 1);
 }
 
-auto cache_line_tiling(std::uint64_t const element_bytes) -> CacheLineTiling {
+auto cache_line_tiling(std::uint64_t const element_bytes, std::uint64_t const cache_line_bytes)
+    -> CacheLineTiling {
     auto const complete_elements{
         element_bytes <= cache_line_bytes ? cache_line_bytes / element_bytes : std::uint64_t{0}};
     return {.cache_line_bytes = cache_line_bytes,
@@ -85,7 +84,7 @@ auto cache_line_tiling(std::uint64_t const element_bytes) -> CacheLineTiling {
             .complete_elements_from_line_start = complete_elements,
             .boundary_fragment_bytes =
                 element_bytes <= cache_line_bytes ? cache_line_bytes % element_bytes : 0,
-            .minimum_cache_lines_per_element = minimum_cache_lines(element_bytes)};
+            .minimum_cache_lines_per_element = minimum_regions(element_bytes, cache_line_bytes)};
 }
 
 } // namespace
@@ -138,7 +137,8 @@ auto numeric_delta(std::optional<std::uint64_t> const baseline,
 auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                               lispb::schema::TypeId const type,
                               Variant const& variant,
-                              AbiProfile const& abi) -> PackedAnalysis {
+                              AbiProfile const& abi,
+                              std::uint64_t const element_count) -> PackedAnalysis {
     auto const& packed{std::get<lispb::schema::PackedType>(types.type(type).definition)};
     auto const schema_storage{physical_type_spelling(types, packed.storage_type.type)
                                   .value_or(packed.storage_type.cpp_type.spelling)};
@@ -154,7 +154,17 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                           .overflow_bits = std::nullopt,
                           .invalid_raw_value = packed.invalid_raw_value,
                           .fields = {},
-                          .diagnostics = {}};
+                          .diagnostics = {},
+                          .aggregate = {.element_count = element_count,
+                                        .total_storage_bytes = std::nullopt,
+                                        .total_payload_bits = std::nullopt,
+                                        .total_unused_bits = std::nullopt,
+                                        .cache_line_bytes = std::nullopt,
+                                        .minimum_cache_lines = std::nullopt,
+                                        .complete_elements_per_cache_line = std::nullopt,
+                                        .page_bytes = std::nullopt,
+                                        .minimum_pages = std::nullopt,
+                                        .complete_elements_per_page = std::nullopt}};
     result.storage_facts = abi.find(result.storage_type);
     if (!result.storage_facts.has_value()) {
         result.diagnostics.push_back(
@@ -239,6 +249,70 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                  "The invalid raw value does not fit the selected packed storage type."});
         }
     }
+
+    if (result.storage_facts.has_value()) {
+        auto const element_bytes{result.storage_facts->size_bytes};
+        if (element_bytes == 0) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, "Packed storage type has a zero-byte physical size."});
+        } else {
+            result.aggregate.total_storage_bytes = checked_multiply(element_bytes, element_count);
+            if (!result.aggregate.total_storage_bytes.has_value()) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error, "Packed aggregate byte count overflows uint64."});
+            }
+
+            auto const& memory{abi.memory_facts()};
+            result.aggregate.cache_line_bytes = memory.cache_line_bytes;
+            if (!memory.cache_line_bytes.has_value()) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::warning,
+                     "Cache-line size is unknown for ABI profile '" + abi.name() + "'."});
+            } else if (*memory.cache_line_bytes == 0) {
+                result.aggregate.cache_line_bytes.reset();
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error, "ABI profile cache-line size must be non-zero."});
+            } else {
+                if (result.aggregate.total_storage_bytes.has_value()) {
+                    result.aggregate.minimum_cache_lines = minimum_regions(
+                        *result.aggregate.total_storage_bytes, *memory.cache_line_bytes);
+                }
+                result.aggregate.complete_elements_per_cache_line =
+                    *memory.cache_line_bytes / element_bytes;
+            }
+
+            result.aggregate.page_bytes = memory.page_bytes;
+            if (!memory.page_bytes.has_value()) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::warning,
+                     "Page size is unknown for ABI profile '" + abi.name() + "'."});
+            } else if (*memory.page_bytes == 0) {
+                result.aggregate.page_bytes.reset();
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error, "ABI profile page size must be non-zero."});
+            } else {
+                if (result.aggregate.total_storage_bytes.has_value()) {
+                    result.aggregate.minimum_pages =
+                        minimum_regions(*result.aggregate.total_storage_bytes, *memory.page_bytes);
+                }
+                result.aggregate.complete_elements_per_page = *memory.page_bytes / element_bytes;
+            }
+        }
+    }
+    if (result.bits_used.has_value()) {
+        result.aggregate.total_payload_bits = checked_multiply(*result.bits_used, element_count);
+        if (!result.aggregate.total_payload_bits.has_value()) {
+            result.diagnostics.push_back({DiagnosticSeverity::error,
+                                          "Packed aggregate payload bit count overflows uint64."});
+        }
+    }
+    if (result.unused_bits.has_value()) {
+        result.aggregate.total_unused_bits = checked_multiply(*result.unused_bits, element_count);
+        if (!result.aggregate.total_unused_bits.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, "Packed aggregate unused bit count overflows uint64."});
+        }
+    }
     return result;
 }
 
@@ -262,6 +336,16 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
                        .bytes_per_logical_element = std::nullopt,
                        .total_payload_bytes = std::nullopt,
                        .diagnostics = {}};
+    auto const cache_line_bytes{abi.memory_facts().cache_line_bytes};
+    auto const has_cache_line_size{cache_line_bytes.has_value() && *cache_line_bytes != 0};
+    if (!cache_line_bytes.has_value()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::warning,
+             "Cache-line size is unknown for ABI profile '" + abi.name() + "'."});
+    } else if (*cache_line_bytes == 0) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error, "ABI profile cache-line size must be non-zero."});
+    }
     std::uint64_t row_bytes{};
     std::uint64_t total_bytes{};
     bool complete{true};
@@ -305,12 +389,15 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
                  "Byte count overflows uint64 for SoA column '" + column.name + "'."});
-        } else {
-            column_result.minimum_cache_lines = minimum_cache_lines(*column_result.total_bytes);
+        } else if (has_cache_line_size) {
+            column_result.minimum_cache_lines =
+                minimum_regions(*column_result.total_bytes, *cache_line_bytes);
         }
-        column_result.cache_line_tiling = cache_line_tiling(size);
-        column_result.elements_per_cache_line =
-            column_result.cache_line_tiling->exact_elements_per_cache_line;
+        if (has_cache_line_size) {
+            column_result.cache_line_tiling = cache_line_tiling(size, *cache_line_bytes);
+            column_result.elements_per_cache_line =
+                column_result.cache_line_tiling->exact_elements_per_cache_line;
+        }
 
         auto const next_row_bytes{checked_add(row_bytes, size)};
         if (!next_row_bytes.has_value()) {

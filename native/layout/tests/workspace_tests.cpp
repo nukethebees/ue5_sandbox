@@ -75,6 +75,19 @@ TEST(LayoutWorkspace, OnlyChangesRevisionWhenStateChanges) {
     EXPECT_EQ(workspace.revision(), initial_revision);
 }
 
+TEST(LayoutWorkspace, TracksPositiveAnalysisElementCount) {
+    LayoutWorkspace workspace;
+    auto const initial_revision{workspace.revision()};
+
+    EXPECT_EQ(workspace.element_count(), 1);
+    EXPECT_FALSE(workspace.set_element_count(0));
+    EXPECT_FALSE(workspace.set_element_count(1));
+    EXPECT_EQ(workspace.revision(), initial_revision);
+    EXPECT_TRUE(workspace.set_element_count(100'000));
+    EXPECT_EQ(workspace.element_count(), 100'000);
+    EXPECT_EQ(workspace.revision(), initial_revision + 1);
+}
+
 TEST(LayoutWorkspace, ResetsIndividualPlanningOverrides) {
     LayoutWorkspace workspace;
     auto const packed{lispb::schema::TypeId{1}};

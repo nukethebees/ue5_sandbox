@@ -33,6 +33,11 @@ Project Open, Save, validated Save As cloning, persisted recent-project history,
 schema browsing are implemented. A native file picker and richer multi-target project selection are
 later usability work; the current path dialogs deliberately keep the file workflow simple.
 
+Packed analysis also supports selectable element-count presets and custom counts, reporting
+overflow-safe aggregate bytes, unused bits, minimum cache lines, and minimum pages. Cache-line and
+page sizes now come from an explicit x86/x86-64 baseline profile with provenance; unknown profile
+facts remain unknown rather than falling back to analyzer literals.
+
 ## 1. Editable document and command foundation
 
 - Own a mutable draft of the validated LispB declarations.

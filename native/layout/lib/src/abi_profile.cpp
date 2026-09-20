@@ -34,6 +34,15 @@ AbiProfile::AbiProfile(std::string name)
 
 auto AbiProfile::host_common() -> AbiProfile {
     AbiProfile result{"Host common native"};
+#if defined(_M_X64) || defined(_M_IX86) || defined(__x86_64__) || defined(__i386__)
+    result.set_memory_facts({.cache_line_bytes = 64,
+                             .page_bytes = 4'096,
+                             .provenance = "Explicit x86/x86-64 baseline profile"});
+#else
+    result.set_memory_facts({.cache_line_bytes = std::nullopt,
+                             .page_bytes = std::nullopt,
+                             .provenance = "Unspecified host architecture"});
+#endif
     result.set("std::uint8_t", integer_facts<std::uint8_t>());
     result.set("std::uint16_t", integer_facts<std::uint16_t>());
     result.set("std::uint32_t", integer_facts<std::uint32_t>());
@@ -59,6 +68,10 @@ void AbiProfile::set_representation(std::string spelling, std::string represente
     representations_.insert_or_assign(std::move(spelling), std::move(represented_by));
 }
 
+void AbiProfile::set_memory_facts(MemoryFacts facts) {
+    memory_facts_ = std::move(facts);
+}
+
 auto AbiProfile::find(std::string const& spelling) const -> std::optional<TypeFacts> {
     std::set<std::string, std::less<>> visited;
     auto current{spelling};
@@ -81,6 +94,10 @@ auto AbiProfile::name() const -> std::string const& {
 
 auto AbiProfile::types() const -> std::map<std::string, TypeFacts, std::less<>> const& {
     return types_;
+}
+
+auto AbiProfile::memory_facts() const -> MemoryFacts const& {
+    return memory_facts_;
 }
 
 } // namespace ioj::layout

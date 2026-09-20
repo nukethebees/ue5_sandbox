@@ -62,9 +62,11 @@ default panel arrangement.
 4. Use **Create editable variant** for an in-memory physical experiment. In a variant, change a
    packed field width/storage type or a SoA capacity/column type without modifying LispB. Schema
    values, planning values, and active overrides are shown separately.
-5. Layout shows linked packed-bit, aggregate column-payload, and cache-line views. Comparison
-   lets you select any two variants as A and B and shows factual deltas without ranking either
-   representation. B follows the actively edited variant until you choose or swap it explicitly.
+5. Layout shows linked packed-bit, aggregate column-payload, and cache-line views. For packed values,
+   choose an element-count preset or custom count to see overflow-safe storage, unused-bit,
+   cache-line, and page totals from the explicit target profile. Comparison lets you select any two
+   variants as A and B and shows factual deltas without ranking either representation. B follows the
+   actively edited variant until you choose or swap it explicitly.
 
 The planner supports enum inspection, packed values, flat standard-library SoAs, and
 standard-library vector SoAs. Enum-backed packed fields retain links to their enum definitions;

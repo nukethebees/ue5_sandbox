@@ -33,8 +33,8 @@ schema catalog. See the LispB [semantic graph boundary](../../native/lispb/SEMAN
 `EditableSchemaDocument` owns the source-aware mutable declaration draft and resolves a replacement
 graph after every accepted semantic command. It provides stable declaration IDs, validation
 rollback, undo/redo, source preview, and validated source replacement. `LayoutWorkspace` owns a
-snapshot of the resolved graph plus session-only physical variants; graph replacement remaps
-variant overrides through stable type identities. `Analyzer` combines
+snapshot of the resolved graph, the selected aggregate analysis scale, and session-only physical
+variants; graph replacement remaps variant overrides through stable type identities. `Analyzer` combines
 a selected semantic type, variant overrides, and an ABI profile to produce factual packed-value or
 SoA analysis results. It follows enum-underlying and packed-storage references only while deriving
 physical facts, preserving the logical nodes and their dependency edges. The GUI owns selections,
@@ -55,10 +55,12 @@ and declaration ownership rather than inventing type-kind folders.
 ## Supported analysis and limits
 
 The planner supports packed storage type/bit-range analysis plus flat standard-library SoA and
-vector-SoA payload analysis. It reports 64-byte cache-line tiling and factual baseline/variant
-deltas. The built-in ABI profile provides facts for common fixed-width integer, floating-point,
-and Boolean types. Unknown physical types and nested SoAs produce diagnostics rather than guessed
-results. The fixed cache-line fact remains planned target-profile work rather than semantic data.
+vector-SoA payload analysis. Packed analysis reports overflow-safe aggregate storage, payload bits,
+unused packed bits, cache lines, and pages at a selected element count. The built-in x86/x86-64
+baseline ABI profile explicitly provides 64-byte cache-line and 4 KiB page facts with provenance,
+along with common fixed-width integer, floating-point, and Boolean type facts. SoA cache tiling now
+consumes the same profile fact rather than an analyzer constant. Missing profile facts, unknown
+physical types, and nested SoAs produce diagnostics and Unknown results rather than guesses.
 
 AoS padding, arbitrary ABI probing, persistent plans, LispB write-back, chunking/AoSoA, arena
 planning, performance prediction, and live-process inspection are intentionally deferred. A later

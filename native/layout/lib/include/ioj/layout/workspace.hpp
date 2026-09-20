@@ -43,6 +43,7 @@ class LayoutWorkspace {
 
     auto types() const -> lispb::schema::TypeGraph const&;
     auto default_capacity() const -> std::uint64_t;
+    auto element_count() const -> std::uint64_t;
     auto variants() const -> std::vector<Variant> const&;
     auto variant(std::uint64_t id) const -> Variant const*;
     auto active_variant() const -> Variant const&;
@@ -67,12 +68,14 @@ class LayoutWorkspace {
                              std::string column_name,
                              std::optional<std::string> spelling) -> bool;
     auto set_capacity(lispb::schema::TypeId type, std::optional<std::uint64_t> capacity) -> bool;
+    auto set_element_count(std::uint64_t count) -> bool;
   private:
     auto editable_active_variant() -> Variant*;
     void note_change(Variant& variant);
 
     lispb::schema::TypeGraph types_;
     std::uint64_t default_capacity_{};
+    std::uint64_t element_count_{1};
     std::vector<Variant> variants_;
     std::uint64_t active_variant_id_{baseline_variant_id};
     std::uint64_t next_variant_id_{1};

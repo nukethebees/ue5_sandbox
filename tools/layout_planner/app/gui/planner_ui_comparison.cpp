@@ -157,6 +157,32 @@ void PlannerUi::draw_comparison_panel() {
             comparison_row("Overflow bits",
                            detail::format_number(comparison_a_packed_->overflow_bits),
                            detail::format_number(comparison_b_packed_->overflow_bits));
+            comparison_row(
+                "Scaled storage",
+                detail::format_bytes(comparison_a_packed_->aggregate.total_storage_bytes),
+                detail::format_bytes(comparison_b_packed_->aggregate.total_storage_bytes),
+                detail::format_delta_bytes(
+                    layout::numeric_delta(comparison_a_packed_->aggregate.total_storage_bytes,
+                                          comparison_b_packed_->aggregate.total_storage_bytes)));
+            comparison_row("Scaled unused bits",
+                           detail::format_number(comparison_a_packed_->aggregate.total_unused_bits),
+                           detail::format_number(comparison_b_packed_->aggregate.total_unused_bits),
+                           detail::format_delta_number(layout::numeric_delta(
+                               comparison_a_packed_->aggregate.total_unused_bits,
+                               comparison_b_packed_->aggregate.total_unused_bits)));
+            comparison_row(
+                "Minimum cache lines",
+                detail::format_number(comparison_a_packed_->aggregate.minimum_cache_lines),
+                detail::format_number(comparison_b_packed_->aggregate.minimum_cache_lines),
+                detail::format_delta_number(
+                    layout::numeric_delta(comparison_a_packed_->aggregate.minimum_cache_lines,
+                                          comparison_b_packed_->aggregate.minimum_cache_lines)));
+            comparison_row("Minimum pages",
+                           detail::format_number(comparison_a_packed_->aggregate.minimum_pages),
+                           detail::format_number(comparison_b_packed_->aggregate.minimum_pages),
+                           detail::format_delta_number(layout::numeric_delta(
+                               comparison_a_packed_->aggregate.minimum_pages,
+                               comparison_b_packed_->aggregate.minimum_pages)));
             for (auto const& baseline : comparison_a_packed_->fields) {
                 auto const* active{field_by_name(*comparison_b_packed_, baseline.name)};
                 if (active == nullptr) {

@@ -440,6 +440,72 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
     auto const& identity{workspace_.types().type(baseline.type).identity};
     ImGui::Text("%s", identity.name.c_str());
     ImGui::TextDisabled("%s", identity.module_name.c_str());
+
+    ImGui::SeparatorText("Analysis scale");
+    struct CountPreset {
+        char const* label;
+        std::uint64_t count;
+    };
+    constexpr std::array count_presets{CountPreset{"1", 1},
+                                       CountPreset{"100", 100},
+                                       CountPreset{"1K", 1'000},
+                                       CountPreset{"10K", 10'000},
+                                       CountPreset{"100K", 100'000},
+                                       CountPreset{"1M", 1'000'000}};
+    bool count_changed{};
+    for (auto const& preset : count_presets) {
+        ImGui::PushID(preset.label);
+        if (ImGui::SmallButton(preset.label)) {
+            count_changed = workspace_.set_element_count(preset.count) || count_changed;
+        }
+        ImGui::PopID();
+        ImGui::SameLine();
+    }
+    auto custom_count{workspace_.element_count()};
+    ImGui::SetNextItemWidth(150.0F);
+    if (ImGui::InputScalar("Elements", ImGuiDataType_U64, &custom_count) && custom_count != 0) {
+        count_changed = workspace_.set_element_count(custom_count) || count_changed;
+    }
+    if (count_changed) {
+        return;
+    }
+
+    auto const& scale_analysis{*active_packed_};
+    auto const& aggregate{scale_analysis.aggregate};
+    if (ImGui::BeginTable("packed-aggregate",
+                          2,
+                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                              ImGuiTableFlags_SizingStretchProp)) {
+        auto draw_stat{[](char const* const label, std::string const& value) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(label);
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(value.c_str());
+        }};
+        draw_stat("Physical storage", detail::format_bytes(aggregate.total_storage_bytes));
+        draw_stat("Payload bits", detail::format_number(aggregate.total_payload_bits));
+        draw_stat("Unused packed bits", detail::format_number(aggregate.total_unused_bits));
+        draw_stat("Minimum cache lines", detail::format_number(aggregate.minimum_cache_lines));
+        draw_stat("Complete elements / cache line",
+                  detail::format_number(aggregate.complete_elements_per_cache_line));
+        draw_stat("Minimum pages", detail::format_number(aggregate.minimum_pages));
+        draw_stat("Complete elements / page",
+                  detail::format_number(aggregate.complete_elements_per_page));
+        ImGui::EndTable();
+    }
+    if (scale_analysis.storage_bits.has_value() && scale_analysis.unused_bits.has_value() &&
+        *scale_analysis.storage_bits != 0) {
+        auto const waste{static_cast<double>(*scale_analysis.unused_bits) * 100.0 /
+                         static_cast<double>(*scale_analysis.storage_bits)};
+        ImGui::TextDisabled("Per-element packed-bit waste: %.3f%% (%llu of %llu bits).",
+                            waste,
+                            static_cast<unsigned long long>(*scale_analysis.unused_bits),
+                            static_cast<unsigned long long>(*scale_analysis.storage_bits));
+    }
+    ImGui::TextDisabled("Target memory facts: %s", abi_.memory_facts().provenance.c_str());
+
+    ImGui::SeparatorText("Bit layout");
     auto common_bits{std::max(
         {baseline.storage_bits.value_or(0), baseline.bits_used.value_or(0), std::uint64_t{1}})};
     for (auto const& [variant_id, analysis] : packed_variants_) {

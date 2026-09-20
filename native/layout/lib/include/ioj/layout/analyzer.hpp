@@ -37,6 +37,19 @@ struct PackedFieldAnalysis {
     std::optional<std::uint64_t> maximum_unsigned_value;
 };
 
+struct PackedAggregateAnalysis {
+    std::uint64_t element_count{1};
+    std::optional<std::uint64_t> total_storage_bytes;
+    std::optional<std::uint64_t> total_payload_bits;
+    std::optional<std::uint64_t> total_unused_bits;
+    std::optional<std::uint64_t> cache_line_bytes;
+    std::optional<std::uint64_t> minimum_cache_lines;
+    std::optional<std::uint64_t> complete_elements_per_cache_line;
+    std::optional<std::uint64_t> page_bytes;
+    std::optional<std::uint64_t> minimum_pages;
+    std::optional<std::uint64_t> complete_elements_per_page;
+};
+
 struct PackedAnalysis {
     lispb::schema::TypeId type;
     std::string schema_storage_type;
@@ -50,6 +63,7 @@ struct PackedAnalysis {
     std::optional<std::uint64_t> invalid_raw_value;
     std::vector<PackedFieldAnalysis> fields;
     std::vector<Diagnostic> diagnostics;
+    PackedAggregateAnalysis aggregate;
 };
 
 struct CacheLineTiling {
@@ -89,7 +103,8 @@ class Analyzer {
     static auto analyze_packed(lispb::schema::TypeGraph const& types,
                                lispb::schema::TypeId type,
                                Variant const& variant,
-                               AbiProfile const& abi) -> PackedAnalysis;
+                               AbiProfile const& abi,
+                               std::uint64_t element_count = 1) -> PackedAnalysis;
     static auto analyze_soa(lispb::schema::TypeGraph const& types,
                             lispb::schema::TypeId type,
                             Variant const& variant,

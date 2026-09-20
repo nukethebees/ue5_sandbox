@@ -120,10 +120,11 @@ TEST(PackedAnalyzer, ReportsUnusedAndExcessBits) {
     auto const fixture{entity_id_type()};
     Variant variant;
     variant.overrides.packed_field_widths[{.type = fixture.type, .field_name = "index"}] = 20;
-    auto analysis{
-        Analyzer::analyze_packed(fixture.types, fixture.type, variant, AbiProfile::host_common())};
+    auto analysis{Analyzer::analyze_packed(
+        fixture.types, fixture.type, variant, AbiProfile::host_common(), 100)};
     EXPECT_EQ(analysis.bits_used, 28);
     EXPECT_EQ(analysis.unused_bits, 4);
+    EXPECT_EQ(analysis.aggregate.total_unused_bits, 400);
 
     variant.overrides.packed_field_widths[{.type = fixture.type, .field_name = "index"}] = 25;
     analysis =
@@ -179,6 +180,53 @@ TEST(PackedAnalyzer, AppliesExplicitVariantOverrides) {
     EXPECT_EQ(analysis.unused_bits, 16);
 }
 
+TEST(PackedAnalyzer, ReportsOverflowSafeAggregateMemoryAtSelectedScale) {
+    auto const fixture{entity_id_type()};
+    auto const analysis{Analyzer::analyze_packed(
+        fixture.types, fixture.type, Variant{}, AbiProfile::host_common(), 1'000)};
+
+    EXPECT_EQ(analysis.aggregate.element_count, 1'000);
+    EXPECT_EQ(analysis.aggregate.total_storage_bytes, 4'000);
+    EXPECT_EQ(analysis.aggregate.total_payload_bits, 32'000);
+    EXPECT_EQ(analysis.aggregate.total_unused_bits, 0);
+    EXPECT_EQ(analysis.aggregate.cache_line_bytes, 64);
+    EXPECT_EQ(analysis.aggregate.minimum_cache_lines, 63);
+    EXPECT_EQ(analysis.aggregate.complete_elements_per_cache_line, 16);
+    EXPECT_EQ(analysis.aggregate.page_bytes, 4'096);
+    EXPECT_EQ(analysis.aggregate.minimum_pages, 1);
+    EXPECT_EQ(analysis.aggregate.complete_elements_per_page, 1'024);
+}
+
+TEST(PackedAnalyzer, KeepsUnknownTargetMemoryFactsUnknown) {
+    auto const fixture{entity_id_type()};
+    AbiProfile abi{"unknown memory"};
+    abi.set("std::uint32_t", {.size_bytes = 4, .alignment_bytes = 4, .unsigned_value_bits = 32});
+
+    auto const analysis{Analyzer::analyze_packed(fixture.types, fixture.type, Variant{}, abi, 10)};
+
+    EXPECT_EQ(analysis.aggregate.total_storage_bytes, 40);
+    EXPECT_FALSE(analysis.aggregate.cache_line_bytes.has_value());
+    EXPECT_FALSE(analysis.aggregate.minimum_cache_lines.has_value());
+    EXPECT_FALSE(analysis.aggregate.page_bytes.has_value());
+    EXPECT_FALSE(analysis.aggregate.minimum_pages.has_value());
+    EXPECT_FALSE(analysis.diagnostics.empty());
+}
+
+TEST(PackedAnalyzer, DiagnosesAggregateOverflow) {
+    auto const fixture{entity_id_type()};
+    auto const analysis{Analyzer::analyze_packed(fixture.types,
+                                                 fixture.type,
+                                                 Variant{},
+                                                 AbiProfile::host_common(),
+                                                 std::numeric_limits<std::uint64_t>::max())};
+
+    EXPECT_FALSE(analysis.aggregate.total_storage_bytes.has_value());
+    EXPECT_FALSE(analysis.aggregate.total_payload_bits.has_value());
+    EXPECT_FALSE(analysis.aggregate.minimum_cache_lines.has_value());
+    EXPECT_FALSE(analysis.aggregate.minimum_pages.has_value());
+    EXPECT_FALSE(analysis.diagnostics.empty());
+}
+
 TEST(SoaAnalyzer, ReportsSixFloatPayloadAcrossCapacities) {
     auto const fixture{soa_type()};
     auto const abi{AbiProfile::host_common()};
@@ -221,6 +269,8 @@ TEST(SoaAnalyzer, ReportsCacheLineTilingForNonDivisibleAndOversizedElements) {
     AbiProfile abi{"test"};
     abi.set("three_bytes", {.size_bytes = 3, .alignment_bytes = 1, .unsigned_value_bits = {}});
     abi.set("wide", {.size_bytes = 80, .alignment_bytes = 16, .unsigned_value_bits = {}});
+    abi.set_memory_facts(
+        {.cache_line_bytes = 64, .page_bytes = 4'096, .provenance = "test profile"});
 
     auto const analysis{Analyzer::analyze_soa(fixture.types, fixture.type, Variant{}, abi, 1)};
 
@@ -266,6 +316,27 @@ TEST(AbiProfile, ResolvesSchemaRepresentationsWithoutGuessingCycles) {
     EXPECT_EQ(abi.find("EntityUniqueId")->size_bytes, 4);
     EXPECT_FALSE(abi.find("CycleA").has_value());
     EXPECT_FALSE(abi.find("Unknown").has_value());
+}
+
+TEST(AbiProfile, ExposesExplicitX86MemoryFactsWithProvenance) {
+    auto const abi{AbiProfile::host_common()};
+
+    EXPECT_EQ(abi.memory_facts().cache_line_bytes, 64);
+    EXPECT_EQ(abi.memory_facts().page_bytes, 4'096);
+    EXPECT_FALSE(abi.memory_facts().provenance.empty());
+}
+
+TEST(SoaAnalyzer, LeavesCacheStatisticsUnknownWithoutTargetFact) {
+    auto const fixture{soa_type({{"values", "four"}})};
+    AbiProfile abi{"unknown memory"};
+    abi.set("four", {.size_bytes = 4, .alignment_bytes = 4, .unsigned_value_bits = {}});
+
+    auto const analysis{Analyzer::analyze_soa(fixture.types, fixture.type, Variant{}, abi, 100)};
+
+    EXPECT_EQ(analysis.columns[0].total_bytes, 400);
+    EXPECT_FALSE(analysis.columns[0].minimum_cache_lines.has_value());
+    EXPECT_FALSE(analysis.columns[0].cache_line_tiling.has_value());
+    EXPECT_FALSE(analysis.diagnostics.empty());
 }
 
 TEST(SoaAnalyzer, UnknownTypesRemainUnknown) {

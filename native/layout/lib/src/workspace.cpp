@@ -21,6 +21,10 @@ auto LayoutWorkspace::default_capacity() const -> std::uint64_t {
     return default_capacity_;
 }
 
+auto LayoutWorkspace::element_count() const -> std::uint64_t {
+    return element_count_;
+}
+
 auto LayoutWorkspace::variants() const -> std::vector<Variant> const& {
     return variants_;
 }
@@ -235,6 +239,15 @@ auto LayoutWorkspace::set_capacity(lispb::schema::TypeId const type,
         return false;
     }
     note_change(*selected);
+    return true;
+}
+
+auto LayoutWorkspace::set_element_count(std::uint64_t const count) -> bool {
+    if (count == 0 || element_count_ == count) {
+        return false;
+    }
+    element_count_ = count;
+    ++revision_;
     return true;
 }
 

@@ -630,22 +630,24 @@ void PlannerUi::refresh_analysis() {
     auto const& active{workspace_.active_variant()};
     auto const& comparison_a{*workspace_.variant(comparison_a_variant_id_)};
     auto const& comparison_b{*workspace_.variant(comparison_b_variant_id_)};
+    auto const element_count{workspace_.element_count()};
     if (std::holds_alternative<PackedType>(definition)) {
-        baseline_packed_ =
-            Analyzer::analyze_packed(workspace_.types(), *selected_type_, baseline, abi_);
-        active_packed_ =
-            Analyzer::analyze_packed(workspace_.types(), *selected_type_, active, abi_);
+        baseline_packed_ = Analyzer::analyze_packed(
+            workspace_.types(), *selected_type_, baseline, abi_, element_count);
+        active_packed_ = Analyzer::analyze_packed(
+            workspace_.types(), *selected_type_, active, abi_, element_count);
         for (auto const& variant : workspace_.variants()) {
             if (variant.id != LayoutWorkspace::baseline_variant_id) {
                 packed_variants_.emplace_back(
                     variant.id,
-                    Analyzer::analyze_packed(workspace_.types(), *selected_type_, variant, abi_));
+                    Analyzer::analyze_packed(
+                        workspace_.types(), *selected_type_, variant, abi_, element_count));
             }
         }
-        comparison_a_packed_ =
-            Analyzer::analyze_packed(workspace_.types(), *selected_type_, comparison_a, abi_);
-        comparison_b_packed_ =
-            Analyzer::analyze_packed(workspace_.types(), *selected_type_, comparison_b, abi_);
+        comparison_a_packed_ = Analyzer::analyze_packed(
+            workspace_.types(), *selected_type_, comparison_a, abi_, element_count);
+        comparison_b_packed_ = Analyzer::analyze_packed(
+            workspace_.types(), *selected_type_, comparison_b, abi_, element_count);
     } else if (auto const* soa{std::get_if<SoaType>(&definition)};
                soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
         baseline_soa_ = Analyzer::analyze_soa(
