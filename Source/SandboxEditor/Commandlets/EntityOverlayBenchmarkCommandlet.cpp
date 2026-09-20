@@ -2,6 +2,7 @@
 #include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include "ioj/sim/entity_identity_layout.h"
+#include "ioj/sim/entity_type_radii.h"
 #include "ioj/sim/turret_entity_data.h"
 #include "SandboxUI/EntityOverlay/EntityOverlayBenchmark.h"
 #include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
@@ -54,8 +55,10 @@ auto write_debug_frames(FString const& output_directory) -> bool {
         {-10.0f, -5.0f, -5.0f},
     };
     ::ioj::sim::Health const health[]{0, 25, 50, 75, 100, 75, 100, 100, 100, 50};
-    std::array<float, static_cast<std::size_t>(::ioj::sim::EntityType::COUNT)> const
-        entity_type_radii{200.0f, 200.0f, 200.0f, 200.0f, 200.0f};
+    ::ioj::sim::EntityTypeRadii entity_type_radii;
+    for (auto const type : ml::EnumTraits<::ioj::sim::EntityType>::values) {
+        entity_type_radii[type] = 200.0f;
+    }
     auto const count{UE_ARRAY_COUNT(positions)};
     entities.add_defaulted(count);
     for (int32 index{0}; index < count; ++index) {

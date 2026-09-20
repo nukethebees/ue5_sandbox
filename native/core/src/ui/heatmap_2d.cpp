@@ -7,8 +7,6 @@
 
 namespace ml::ui::heatmap_2d {
 namespace {
-constexpr std::int32_t maximum_cells_per_batch{16384};
-
 auto is_finite(Vector2f const value) noexcept -> bool {
     return std::isfinite(value.x) && std::isfinite(value.y);
 }

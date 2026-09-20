@@ -4,6 +4,7 @@
 #include "Styling/CoreStyle.h"
 
 #include <sandbox/core/ui/chart_layout.h>
+#include <sandbox/core/ui/stacked_bar_chart.h>
 
 namespace {
 void draw_stacked_bar_box(FSlateWindowElementList& out_draw_elements,
@@ -27,8 +28,17 @@ void draw_stacked_bar_box(FSlateWindowElementList& out_draw_elements,
 }
 }
 
+struct SStackedBarChart::FData {
+    ml::ui::stacked_bar_chart::Data native;
+};
+
 FStackedBarChartStyle::FStackedBarChartStyle()
     : label_font{FCoreStyle::GetDefaultFontStyle("Regular", 8)} {}
+
+SStackedBarChart::SStackedBarChart()
+    : data_{MakeUnique<FData>()} {}
+
+SStackedBarChart::~SStackedBarChart() = default;
 
 void SStackedBarChart::Construct(FArguments const& args) {
     style_ = args._Style;
@@ -40,31 +50,39 @@ void SStackedBarChart::Construct(FArguments const& args) {
 void SStackedBarChart::set_bars(TArray<FStackedBar> bars) {
     std::vector<ml::ui::stacked_bar_chart::Bar> native_bars;
     native_bars.reserve(static_cast<std::size_t>(bars.Num()));
-    labels_.Reset(bars.Num());
-    segment_colors_.Reset(bars.Num());
+    TArray<FText> labels;
+    labels.Reserve(bars.Num());
+    TArray<TArray<FLinearColor>> segment_colors;
+    segment_colors.Reserve(bars.Num());
     for (auto& bar : bars) {
         auto& values{native_bars.emplace_back()};
         values.reserve(static_cast<std::size_t>(bar.segments.Num()));
-        auto& colors{segment_colors_.AddDefaulted_GetRef()};
+        auto& colors{segment_colors.AddDefaulted_GetRef()};
         colors.Reserve(bar.segments.Num());
         for (auto const& segment : bar.segments) {
             values.push_back(segment.value);
             colors.Add(segment.color);
         }
-        labels_.Add(MoveTemp(bar.label));
+        labels.Add(MoveTemp(bar.label));
     }
-    data_.set_bars(MoveTemp(native_bars));
+
+    data_->native.set_bars(std::move(native_bars));
+    labels_ = MoveTemp(labels);
+    segment_colors_ = MoveTemp(segment_colors);
+    check_invariants();
     Invalidate(EInvalidateWidgetReason::Paint);
 }
 
 void SStackedBarChart::clear_bars() {
-    if (data_.bars().empty()) {
+    check_invariants();
+    if (data_->native.bars().empty()) {
         return;
     }
 
-    data_.clear_bars();
+    data_->native.clear_bars();
     labels_.Reset();
     segment_colors_.Reset();
+    check_invariants();
     Invalidate(EInvalidateWidgetReason::Paint);
 }
 
@@ -78,6 +96,25 @@ bool SStackedBarChart::set_style(FStackedBarChartStyle style) {
     return true;
 }
 
+auto SStackedBarChart::get_bars() const -> TArray<FStackedBar> {
+    check_invariants();
+    auto const native_bars{data_->native.bars()};
+    TArray<FStackedBar> result;
+    result.Reserve(labels_.Num());
+    for (int32 bar_index{}; bar_index < labels_.Num(); ++bar_index) {
+        auto& bar{result.AddDefaulted_GetRef()};
+        bar.label = labels_[bar_index];
+        auto const& values{native_bars[static_cast<std::size_t>(bar_index)]};
+        auto const& colors{segment_colors_[bar_index]};
+        bar.segments.Reserve(colors.Num());
+        for (int32 segment_index{}; segment_index < colors.Num(); ++segment_index) {
+            bar.segments.Add({.value = values[static_cast<std::size_t>(segment_index)],
+                              .color = colors[segment_index]});
+        }
+    }
+    return result;
+}
+
 FVector2D SStackedBarChart::ComputeDesiredSize(float) const {
     return FVector2D{style_.desired_size};
 }
@@ -89,6 +126,7 @@ int32 SStackedBarChart::OnPaint(FPaintArgs const&,
                                 int32 const layer_id,
                                 FWidgetStyle const& widget_style,
                                 bool const parent_enabled) const {
+    check_invariants();
     auto const widget_size{FVector2f{allotted_geometry.GetLocalSize()}};
     auto const native_layout{
         ml::ui::chart_layout::make_layout({widget_size.X, widget_size.Y},
@@ -106,7 +144,7 @@ int32 SStackedBarChart::OnPaint(FPaintArgs const&,
     auto const draw_effect{enabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect};
     auto const inherited_tint{widget_style.GetColorAndOpacityTint()};
     auto const chart_geometry{ml::ui::stacked_bar_chart::build_geometry(
-        data_.bars(), {plot_size.X, plot_size.Y}, style_.bar_gap)};
+        data_->native.bars(), {plot_size.X, plot_size.Y}, style_.bar_gap)};
     auto const segment_layer{layer_id};
     if (plot_size.X > 0.0f && plot_size.Y > 0.0f) {
         auto const clip_geometry{
@@ -184,4 +222,14 @@ bool SStackedBarChart::is_valid_style(FStackedBarChartStyle const& style) {
            FMath::IsFinite(style.bar_gap) && style.bar_gap >= 0.0f &&
            FMath::IsFinite(style.axis_thickness) && style.axis_thickness > 0.0f &&
            FMath::IsFinite(style.label_area_height) && style.label_area_height >= 0.0f;
+}
+
+void SStackedBarChart::check_invariants() const {
+    auto const bars{data_->native.bars()};
+    check(static_cast<int32>(bars.size()) == labels_.Num());
+    check(labels_.Num() == segment_colors_.Num());
+    for (int32 bar_index{}; bar_index < labels_.Num(); ++bar_index) {
+        check(static_cast<int32>(bars[static_cast<std::size_t>(bar_index)].size()) ==
+              segment_colors_[bar_index].Num());
+    }
 }

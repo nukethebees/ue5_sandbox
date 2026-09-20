@@ -108,6 +108,11 @@ TEST(GraphPlot, FindsNearestVisibleXAcrossSeries) {
     std::array const non_finite_x{std::numeric_limits<float>::quiet_NaN(), 4.0f};
     EXPECT_EQ(ml::graph::nearest_sample_index({non_finite_x, second_y}, 3.1), 1);
     EXPECT_FALSE(ml::graph::nearest_sample_index({first_x, second_y}, 3.1));
+
+    std::array const tied_x{0.0f, 2.0f};
+    EXPECT_EQ(ml::graph::nearest_sample_index({tied_x, second_y}, 1.0), 0);
+    std::array const tied_series{ml::graph::SeriesView{tied_x, second_y}};
+    EXPECT_EQ(ml::graph::nearest_x(tied_series, 1.0), 0.0);
 }
 
 TEST(GraphPlot, ValidatesPortableLayoutSettings) {

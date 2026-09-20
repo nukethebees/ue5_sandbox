@@ -5,6 +5,7 @@
 #include "Styling/CoreStyle.h"
 
 #include <sandbox/core/ui/chart_layout.h>
+#include <sandbox/core/ui/histogram.h>
 
 namespace {
 void draw_histogram_box(FSlateWindowElementList& out_draw_elements,
@@ -49,9 +50,18 @@ void draw_histogram_label(FSlateWindowElementList& out_draw_elements,
 
 }
 
+struct SHistogram::FData {
+    ml::ui::histogram::Data native;
+};
+
 FHistogramStyle::FHistogramStyle()
     : label_font{FCoreStyle::GetDefaultFontStyle("Regular", 8)}
     , empty_text{NSLOCTEXT("SandboxUI", "HistogramEmpty", "No interval data")} {}
+
+SHistogram::SHistogram()
+    : data_{MakeUnique<FData>()} {}
+
+SHistogram::~SHistogram() = default;
 
 void SHistogram::Construct(FArguments const& args) {
     style_ = args._Style;
@@ -59,8 +69,9 @@ void SHistogram::Construct(FArguments const& args) {
         style_ = FHistogramStyle{};
     }
 
-    if (!data_.set_configuration(args._DomainMinimum, args._DomainMaximum, args._BinCount)) {
-        verify(data_.set_configuration(0.0f, 1.0f, 10));
+    if (!data_->native.set_configuration(
+            args._DomainMinimum, args._DomainMaximum, args._BinCount)) {
+        verify(data_->native.set_configuration(0.0f, 1.0f, 10));
     }
 }
 
@@ -70,23 +81,23 @@ void SHistogram::set_samples(TArray<float> samples) {
     for (auto const sample : samples) {
         native_samples.push_back(sample);
     }
-    data_.set_samples(MoveTemp(native_samples));
+    data_->native.set_samples(std::move(native_samples));
     Invalidate(EInvalidateWidgetReason::Paint);
 }
 
 void SHistogram::clear_samples() {
-    if (data_.samples().empty()) {
+    if (data_->native.samples().empty()) {
         return;
     }
 
-    data_.clear_samples();
+    data_->native.clear_samples();
     Invalidate(EInvalidateWidgetReason::Paint);
 }
 
 bool SHistogram::set_bin_configuration(float const domain_minimum,
                                        float const domain_maximum,
                                        int32 const bin_count) {
-    if (!data_.set_configuration(domain_minimum, domain_maximum, bin_count)) {
+    if (!data_->native.set_configuration(domain_minimum, domain_maximum, bin_count)) {
         return false;
     }
     Invalidate(EInvalidateWidgetReason::Paint);
@@ -94,13 +105,25 @@ bool SHistogram::set_bin_configuration(float const domain_minimum,
 }
 
 auto SHistogram::get_samples() const noexcept -> TConstArrayView<float> {
-    auto const samples{data_.samples()};
+    auto const samples{data_->native.samples()};
     return {samples.data(), static_cast<int32>(samples.size())};
 }
 
 auto SHistogram::get_bins() const noexcept -> TConstArrayView<int32> {
-    auto const bins{data_.bins()};
+    auto const bins{data_->native.bins()};
     return {bins.data(), static_cast<int32>(bins.size())};
+}
+
+auto SHistogram::get_domain_minimum() const noexcept -> float {
+    return data_->native.domain_minimum();
+}
+
+auto SHistogram::get_domain_maximum() const noexcept -> float {
+    return data_->native.domain_maximum();
+}
+
+auto SHistogram::get_bin_count() const noexcept -> int32 {
+    return data_->native.bin_count();
 }
 
 bool SHistogram::set_style(FHistogramStyle style) {
@@ -141,7 +164,7 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
     auto const draw_effect{enabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect};
     auto const inherited_tint{widget_style.GetColorAndOpacityTint()};
     auto const histogram_geometry{ml::ui::histogram::build_geometry(
-        data_.bins(), {plot_size.X, plot_size.Y}, style_.bar_gap)};
+        data_->native.bins(), {plot_size.X, plot_size.Y}, style_.bar_gap)};
     draw_histogram_box(out_draw_elements,
                        layer_id,
                        allotted_geometry,
@@ -194,8 +217,9 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
                        axis_tint);
 
     if (label_height <= 0.0f || plot_size.X <= 0.0f ||
-        !ml::ui::histogram::is_valid_configuration(
-            data_.domain_minimum(), data_.domain_maximum(), data_.bin_count())) {
+        !ml::ui::histogram::is_valid_configuration(data_->native.domain_minimum(),
+                                                   data_->native.domain_maximum(),
+                                                   data_->native.bin_count())) {
         return axis_layer;
     }
 
@@ -207,7 +231,7 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
                          allotted_geometry,
                          {plot_origin.X, label_y},
                          {label_width, label_height},
-                         FText::AsNumber(data_.domain_minimum()),
+                         FText::AsNumber(data_->native.domain_minimum()),
                          style_.label_font,
                          draw_effect,
                          label_tint);
@@ -216,7 +240,7 @@ int32 SHistogram::OnPaint(FPaintArgs const&,
                          allotted_geometry,
                          {plot_origin.X + label_width, label_y},
                          {label_width, label_height},
-                         FText::AsNumber(data_.domain_maximum()),
+                         FText::AsNumber(data_->native.domain_maximum()),
                          style_.label_font,
                          draw_effect,
                          label_tint);
@@ -268,13 +292,15 @@ auto SHistogram::OnMouseMove(FGeometry const& geometry, FPointerEvent const& eve
     auto const native_hovered{ml::ui::histogram::hit_test_bin({local.X, local.Y},
                                                               {plot_origin.X, plot_origin.Y},
                                                               {plot_size.X, plot_size.Y},
-                                                              data_.bin_count())};
+                                                              data_->native.bin_count())};
     auto const hovered{native_hovered.value_or(INDEX_NONE)};
     if (hovered != hovered_bin_) {
         hovered_bin_ = hovered;
-        auto const bins{data_.bins()};
-        auto const range{ml::ui::histogram::bin_range(
-            data_.domain_minimum(), data_.domain_maximum(), data_.bin_count(), hovered_bin_)};
+        auto const bins{data_->native.bins()};
+        auto const range{ml::ui::histogram::bin_range(data_->native.domain_minimum(),
+                                                      data_->native.domain_maximum(),
+                                                      data_->native.bin_count(),
+                                                      hovered_bin_)};
         if (range && hovered_bin_ < static_cast<int32>(bins.size())) {
             SetToolTipText(FText::FromString(FString::Printf(TEXT("%.5g – %.5g\n%d intervals"),
                                                              range->minimum,

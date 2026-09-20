@@ -85,16 +85,16 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
     TEST_METHOD(RotatedWorldBoundsEncloseTransformedCorners)
     {
         ::ioj::sim::collision::EntityAABBs bounds{};
-        auto const index{::ioj::sim::collision::EntityAABBs::capital_ship_index};
-        bounds.set_centre(index, {30.f, -10.f, 0.f});
-        bounds.set_half_extents(index, {100.f, 20.f, 5.f});
+        auto const type{::ioj::sim::EntityType::CapitalShip};
+        bounds.set_centre(type, {30.f, -10.f, 0.f});
+        bounds.set_half_extents(type, {100.f, 20.f, 5.f});
         FVector3f const position{400.f, -200.f, 100.f};
         for (auto const rotation :
              {FRotator3f::ZeroRotator, FRotator3f{0.f, 90.f, 0.f}, FRotator3f{23.f, 47.f, -16.f}}) {
             FBox3f expected{ForceInit};
-            auto const native_centre{bounds.get_centre(index)};
+            auto const native_centre{bounds.get_centre(type)};
             FVector3f const centre{native_centre.X, native_centre.Y, native_centre.Z};
-            auto const extent{bounds.get_half_extents(index)};
+            auto const extent{bounds.get_half_extents(type)};
             for (int32 corner{}; corner < 8; ++corner) {
                 FVector3f const offset{(corner & 1) ? extent.X : -extent.X,
                                        (corner & 2) ? extent.Y : -extent.Y,
@@ -104,7 +104,7 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             auto const orientation{rotation.Quaternion()};
             auto const native_bounds{::ioj::sim::collision::make_entity_world_bounds(
                 bounds,
-                index,
+                type,
                 ml::make_vector3f(position.X, position.Y, position.Z),
                 ml::make_quaternion4f(orientation.X, orientation.Y, orientation.Z, orientation.W))};
             FBox3f const actual{
@@ -119,10 +119,9 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
     TEST_METHOD(RotatedCapitalSpawnClearance)
     {
         ::ioj::sim::LevelSimInitData data;
-        auto const index{::ioj::sim::collision::EntityAABBs::capital_ship_index};
-        data.entity_bounds.set_half_extents(index, {{100.f, 20.f, 10.f}});
-        auto const fighter_index{::ioj::sim::collision::EntityAABBs::fighter_index};
-        data.entity_bounds.set_half_extents(fighter_index, {{5.f, 0.f, 0.f}});
+        data.entity_bounds.set_half_extents(::ioj::sim::EntityType::CapitalShip,
+                                            {{100.f, 20.f, 10.f}});
+        data.entity_bounds.set_half_extents(::ioj::sim::EntityType::Fighter, {{5.f, 0.f, 0.f}});
         data.fighters.avoidance_clearance_buffer = 1.f;
         data.capital_ships.fighter_spawn_slots_relative_transforms = {
             {.location = {0.0, 40.0, 0.0}}};

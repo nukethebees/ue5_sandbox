@@ -8,6 +8,8 @@
 #include "Textures/SlateShaderResource.h"
 #include "WidgetMath.h"
 
+#include <sandbox/core/ui/heatmap_2d.h>
+
 namespace {
 int32 constexpr color_lut_entry_count{256};
 
@@ -22,6 +24,40 @@ auto to_native(FLinearColor const color) -> ml::ui::Color4f {
 
 auto to_unreal(ml::ui::Vector2f const value) -> FVector2f {
     return {value.x, value.y};
+}
+
+auto to_native(FHeatmapGrid const& grid) -> ml::ui::heatmap_2d::Grid {
+    ml::ui::heatmap_2d::Grid result{.columns = grid.columns, .rows = grid.rows};
+    result.values.reserve(static_cast<std::size_t>(grid.values.Num()));
+    for (auto const value : grid.values) {
+        result.values.push_back(value);
+    }
+    return result;
+}
+
+auto to_unreal(ml::ui::heatmap_2d::Grid const& grid) -> FHeatmapGrid {
+    FHeatmapGrid result{.columns = grid.columns, .rows = grid.rows};
+    result.values.Reserve(static_cast<int32>(grid.values.size()));
+    for (auto const value : grid.values) {
+        result.values.Add(value);
+    }
+    return result;
+}
+
+auto to_native(FHeatmapValueRange const range) -> ml::ui::heatmap_2d::ValueRange {
+    return {range.minimum, range.maximum};
+}
+
+auto to_unreal(ml::ui::heatmap_2d::ValueRange const range) -> FHeatmapValueRange {
+    return {range.minimum, range.maximum};
+}
+
+auto to_native(FHeatmapDomain const domain) -> ml::ui::heatmap_2d::Domain {
+    return {domain.minimum_x, domain.maximum_x, domain.minimum_y, domain.maximum_y};
+}
+
+auto to_unreal(ml::ui::heatmap_2d::Domain const domain) -> FHeatmapDomain {
+    return {domain.minimum_x, domain.maximum_x, domain.minimum_y, domain.maximum_y};
 }
 
 auto native_color_stops(TConstArrayView<FHeatmapColorStop> const stops)
@@ -86,6 +122,10 @@ void draw_heatmap_label(FSlateWindowElementList& out_draw_elements,
 }
 }
 
+struct SHeatmap2D::FData {
+    ml::ui::heatmap_2d::Data native;
+};
+
 struct SHeatmap2D::FRenderCache {
     struct FTransformedBatch {
         TArray<FSlateVertex> vertices;
@@ -116,13 +156,14 @@ FHeatmap2DStyle::FHeatmap2DStyle()
 }
 
 SHeatmap2D::SHeatmap2D()
-    : render_cache_{MakeUnique<FRenderCache>()} {}
+    : data_{MakeUnique<FData>()}
+    , render_cache_{MakeUnique<FRenderCache>()} {}
 
 SHeatmap2D::~SHeatmap2D() = default;
 
 void SHeatmap2D::Construct(FArguments const& args) {
-    static_cast<void>(data_.set_value_range(args._ValueRange));
-    static_cast<void>(data_.set_domain(args._Domain));
+    static_cast<void>(data_->native.set_value_range(to_native(args._ValueRange)));
+    static_cast<void>(data_->native.set_domain(to_native(args._Domain)));
 
     style_ = args._Style;
     if (!is_valid_style(style_)) {
@@ -131,7 +172,8 @@ void SHeatmap2D::Construct(FArguments const& args) {
 }
 
 bool SHeatmap2D::set_grid(FHeatmapGrid grid) {
-    if (!data_.set_grid(MoveTemp(grid))) {
+    auto native_grid{to_native(grid)};
+    if (!data_->native.set_grid(std::move(native_grid))) {
         return false;
     }
     invalidate_heatmap_cache(false);
@@ -140,17 +182,17 @@ bool SHeatmap2D::set_grid(FHeatmapGrid grid) {
 }
 
 void SHeatmap2D::clear_grid() {
-    if (data_.grid().values.empty()) {
+    if (data_->native.grid().values.empty()) {
         return;
     }
 
-    data_.clear_grid();
+    data_->native.clear_grid();
     invalidate_heatmap_cache(false);
     Invalidate(EInvalidateWidgetReason::Paint);
 }
 
 bool SHeatmap2D::set_value_range(FHeatmapValueRange const range) {
-    if (!data_.set_value_range(range)) {
+    if (!data_->native.set_value_range(to_native(range))) {
         return false;
     }
     invalidate_heatmap_cache(false);
@@ -159,11 +201,23 @@ bool SHeatmap2D::set_value_range(FHeatmapValueRange const range) {
 }
 
 bool SHeatmap2D::set_domain(FHeatmapDomain const domain) {
-    if (!data_.set_domain(domain)) {
+    if (!data_->native.set_domain(to_native(domain))) {
         return false;
     }
     Invalidate(EInvalidateWidgetReason::Paint);
     return true;
+}
+
+auto SHeatmap2D::get_grid() const -> FHeatmapGrid {
+    return to_unreal(data_->native.grid());
+}
+
+auto SHeatmap2D::get_value_range() const noexcept -> FHeatmapValueRange {
+    return to_unreal(data_->native.value_range());
+}
+
+auto SHeatmap2D::get_domain() const noexcept -> FHeatmapDomain {
+    return to_unreal(data_->native.domain());
 }
 
 bool SHeatmap2D::set_style(FHeatmap2DStyle style) {
@@ -215,7 +269,7 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
     if (cache.local_geometry_dirty || cache.plot_origin != plot_origin ||
         cache.plot_size != plot_size) {
         cache.cells = ml::ui::heatmap_2d::build_cell_geometry(
-            data_.grid(), data_.value_range(), cache.color_lut, layout.plot_size);
+            data_->native.grid(), data_->native.value_range(), cache.color_lut, layout.plot_size);
         cache.local_batches =
             ml::ui::heatmap_2d::build_mesh_batches(cache.cells, layout.plot_origin);
         cache.transformed_batches.SetNum(static_cast<int32>(cache.local_batches.size()));
@@ -330,7 +384,7 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
                        allotted_geometry,
                        {plot_origin.X, x_label_y},
                        {half_plot_width, layout.x_label_area_height},
-                       FText::AsNumber(data_.domain().minimum_x),
+                       FText::AsNumber(data_->native.domain().minimum_x),
                        style_.label_font,
                        draw_effect,
                        label_tint);
@@ -339,7 +393,7 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
                        allotted_geometry,
                        {plot_origin.X + half_plot_width, x_label_y},
                        {half_plot_width, layout.x_label_area_height},
-                       FText::AsNumber(data_.domain().maximum_x),
+                       FText::AsNumber(data_->native.domain().maximum_x),
                        style_.label_font,
                        draw_effect,
                        label_tint);
@@ -351,7 +405,7 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
                        allotted_geometry,
                        {y_label_x, plot_origin.Y},
                        {layout.y_label_area_width, half_plot_height},
-                       FText::AsNumber(data_.domain().maximum_y),
+                       FText::AsNumber(data_->native.domain().maximum_y),
                        style_.label_font,
                        draw_effect,
                        label_tint);
@@ -360,7 +414,7 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
                        allotted_geometry,
                        {y_label_x, plot_origin.Y + half_plot_height},
                        {layout.y_label_area_width, half_plot_height},
-                       FText::AsNumber(data_.domain().minimum_y),
+                       FText::AsNumber(data_->native.domain().minimum_y),
                        style_.label_font,
                        draw_effect,
                        label_tint);

@@ -6,20 +6,22 @@
 #include "SpaceGamePresentation/presentation/EntityOverlaySource.h"
 
 #include "ioj/sim/entity_type.h"
+#include "ioj/sim/entity_type_radii.h"
 #include "SpaceGamePresentation/entities/TestTeam.h"
 
 #include <CQTest.h>
 #include <vector>
 
-#include <array>
 #include <ioj/sim/entity_identity_layout.h>
 
 namespace {
-using EntityTypeRadii = std::array<float, static_cast<std::size_t>(::ioj::sim::EntityType::COUNT)>;
+using EntityTypeRadii = ::ioj::sim::EntityTypeRadii;
 
 auto make_entity_type_radii() -> EntityTypeRadii {
     EntityTypeRadii radii{};
-    radii.fill(1.0f);
+    for (auto const type : ml::EnumTraits<::ioj::sim::EntityType>::values) {
+        radii[type] = 1.0f;
+    }
     return radii;
 }
 
@@ -53,7 +55,7 @@ void add_entity(ml::tests::FDisplayEntityTestData& entities,
     auto const index{entities.num()};
     entities.add_defaulted(1);
     entities.locations.set(index, ml::to_native(position));
-    entity_type_radii[static_cast<std::size_t>(type)] = radius;
+    entity_type_radii[type] = radius;
     entities.teams[index] = ml::to_native(team);
     entities.entity_types[index] = type;
     auto const owner{::ioj::sim::EntityUniqueId::make(
@@ -381,7 +383,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
             TEXT("Mid-transition range alpha is linear"), approaching.range_alpha, 0.5f);
 
         entities.locations.xs[0] = 1100.0f;
-        entity_type_radii[static_cast<std::size_t>(::ioj::sim::EntityType::Turret)] = 100.0f;
+        entity_type_radii[::ioj::sim::EntityType::Turret] = 100.0f;
         auto const at_range_boundary{select_target(entities, entity_type_radii)};
         TestRunner->TestEqual(TEXT("Surface at range boundary has full range alpha"),
                               at_range_boundary.range_alpha,
@@ -437,7 +439,7 @@ TEST_CLASS(EntityOverlaySource, "Sandbox.UnitTests")
                              distant.indicator_radius_pixels >
                                  2.0f / distant.world_units_per_pixel);
 
-        entity_type_radii[static_cast<std::size_t>(::ioj::sim::EntityType::Turret)] = 0.0f;
+        entity_type_radii[::ioj::sim::EntityType::Turret] = 0.0f;
         auto const zero_radius{select_target(entities, entity_type_radii)};
         TestRunner->TestTrue(TEXT("Zero-radius targets still have a usable projection scale"),
                              zero_radius.world_units_per_pixel > 0.0f);

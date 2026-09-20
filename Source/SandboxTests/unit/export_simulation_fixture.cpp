@@ -1,3 +1,5 @@
+#include "ioj/sim/entity_type.h"
+
 #include <CQTest.h>
 #include <format>
 #include <fstream>
@@ -37,12 +39,16 @@ void write(std::ostream& out, char const* path, T const value) {
 }
 
 template <typename Vector>
-void write_vector3(std::ostream& out, char const* function, int const index, Vector const value) {
+void write_vector3(std::ostream& out,
+                   char const* function,
+                   ::ioj::sim::EntityType const type,
+                   Vector const value) {
     auto output{std::ostreambuf_iterator<char>{out}};
     std::format_to(output,
-                   "    {}({}, {{{{{:.9e}f, {:.9e}f, {:.9e}f}}}});\n",
+                   "    {}(static_cast<::ioj::sim::EntityType>({}), "
+                   "{{{{{:.9e}f, {:.9e}f, {:.9e}f}}}});\n",
                    function,
-                   index,
+                   static_cast<int>(type),
                    value.X,
                    value.Y,
                    value.Z);
@@ -357,13 +363,13 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
             ml::fixture_export::write(out, (path + ".rotation.yaw").c_str(), point.rotation.yaw);
             ml::fixture_export::write(out, (path + ".rotation.roll").c_str(), point.rotation.roll);
         }
-        for (int i{}; i < data.entity_bounds.num(); ++i) {
+        for (auto const type : ml::EnumTraits<::ioj::sim::EntityType>::values) {
             ml::fixture_export::write_vector3(
-                out, "data.entity_bounds.set_centre", i, data.entity_bounds.get_centre(i));
+                out, "data.entity_bounds.set_centre", type, data.entity_bounds.get_centre(type));
             ml::fixture_export::write_vector3(out,
                                               "data.entity_bounds.set_half_extents",
-                                              i,
-                                              data.entity_bounds.get_half_extents(i));
+                                              type,
+                                              data.entity_bounds.get_half_extents(type));
         }
         out << "    return fixture;\n}\n}\n";
         out.flush();
