@@ -722,3 +722,13 @@ Skater, Gunship, transitions, and Unreal command routing have their replacement 
 - `cmake --workflow --preset debug-game-tests`: 40/40 passed.
 - `ctest --preset tool-tests -V`: passed; all reported C# tool projects passed (277 tests).
 - `generate-scripted-level-assets`: passed and produced the intended input/controller assets.
+
+## Post-launch corrections
+
+- Player actors now cache flight-model profile and slot changes made before native simulation
+  binding and include them in `PlayerSpawnData`. This restores the old pre-bind configuration
+  lifecycle and prevents possession from requiring a command interface prematurely.
+- Switching the controls page between keyboard/mouse and controller now preserves its scroll
+  offset while rebuilding the device-specific rows.
+- The focused DebugGame unit workflow passes all 41 tests after these corrections, including a
+  regression test for pre-bind profile selection.
