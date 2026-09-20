@@ -109,14 +109,26 @@ The test suites cover compact view sizes and trivial copyability, mutable/const 
 Run correctness validation from the repository root:
 
 ```powershell
-cmake --workflow --preset codegen
+cmake --workflow --preset native-tests
 cmake --workflow --preset native-soa
-cmake --workflow --preset debug-game
-cmake --build --preset debug-game --target core-tests
-ctest --preset debug-game-unit-tests -R '^SandboxCore\.'
+cmake --build --preset generate-code
+cmake --build out/build/native --target check-generated-code
 ```
 
-The native workflow includes benchmark pipeline smoke checks, not a timed comparison. The benchmark commands and reports remain separate. Allocation counting uses the compile fixture's allocator adapter; actual mimalloc storage and alignment are exercised separately by the native and Unreal suites.
+`native-tests` is the normal native correctness suite. `native-soa` builds and runs both native
+SoA allocation variants (`native-soa-tests` and `native-soa-tests-mimalloc`) and its benchmark
+smoke checks; it is not a timed performance comparison. `generate-code` and
+`check-generated-code` validate committed generated output. Allocation counting uses the compile
+fixture's allocator adapter, while the native SoA suites exercise actual standard and mimalloc
+storage and alignment.
+
+For Unreal-dependent behavior, build the Editor and run the existing CQTest/Unreal Automation
+unit suite:
+
+```powershell
+cmake --workflow --preset debug-game
+ctest --test-dir out/build/debug-game -R '^Sandbox\.UnitTests$' --output-on-failure
+```
 
 The native standard-allocation suite also passes Clang 21 AddressSanitizer on Win64. The generated
 clang-cl presets ending in `-asan` enable the instrumentation and place the required Clang runtime

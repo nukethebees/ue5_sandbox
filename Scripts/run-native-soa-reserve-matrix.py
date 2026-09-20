@@ -8,12 +8,14 @@ from __future__ import annotations
 import argparse
 import csv
 import importlib
+import io
 import json
 import math
 import os
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 from typing import Any, cast
 
@@ -45,6 +47,25 @@ def run_with_benchmark_access() -> int | None:
 
 OWNERS = (1, 2, 4, 8, 16, 32, 64, 128, 200, 256, 512)
 IMPLEMENTATIONS = ("Vector", "Single", "RawMalloc", "RawRealloc")
+
+
+def save_figure(plt: Any, figure: Any, output: Path, name: str) -> None:
+    for extension in ("png", "svg"):
+        destination = output / f"{name}.{extension}"
+        image = io.BytesIO()
+        figure.savefig(image, format=extension, dpi=160, bbox_inches="tight")
+        with tempfile.NamedTemporaryFile(
+            dir=output, prefix=f"{name}-", suffix=f".{extension}", delete=False
+        ) as temporary:
+            temporary.write(image.getvalue())
+            temporary_path = Path(temporary.name)
+        try:
+            os.replace(temporary_path, destination)
+        except OSError as error:
+            print(f"Could not replace {destination} ({error}); saved a new image instead.", file=sys.stderr)
+            destination = temporary_path
+        print(destination)
+    plt.close(figure)
 
 
 def plot(document: dict[str, Any], output: Path) -> None:
@@ -83,8 +104,7 @@ def plot(document: dict[str, Any], output: Path) -> None:
     prefix = "DRY RUN — " if document["dry_run"] else ""
     figure.suptitle(f"{prefix}Native reserve: {document['rows']:,} rows — fresh process per entry, includes cleanup\nMean and min–max across repetitions (not confidence intervals)")
     figure.tight_layout()
-    helpers = cast(Any, importlib.import_module("plot-single-allocation-soa-benchmarks"))
-    helpers.save_figure(plt, figure, output, "native-reserve-matrix")
+    save_figure(plt, figure, output, "native-reserve-matrix")
     with (output / "native-reserve-matrix.csv").open("w", newline="", encoding="utf-8") as stream:
         writer = csv.writer(stream)
         writer.writerow(["owners", *labels])

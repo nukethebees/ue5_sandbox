@@ -7,10 +7,33 @@ from __future__ import annotations
 
 import argparse
 import importlib
+import io
 import json
 import math
+import os
+import sys
+import tempfile
 from pathlib import Path
 from typing import Any, cast
+
+
+def save_figure(plt: Any, figure: Any, output: Path, name: str) -> None:
+    for extension in ("png", "svg"):
+        destination = output / f"{name}.{extension}"
+        image = io.BytesIO()
+        figure.savefig(image, format=extension, dpi=160, bbox_inches="tight")
+        with tempfile.NamedTemporaryFile(
+            dir=output, prefix=f"{name}-", suffix=f".{extension}", delete=False
+        ) as temporary:
+            temporary.write(image.getvalue())
+            temporary_path = Path(temporary.name)
+        try:
+            os.replace(temporary_path, destination)
+        except OSError as error:
+            print(f"Could not replace {destination} ({error}); saved a new image instead.", file=sys.stderr)
+            destination = temporary_path
+        print(destination)
+    plt.close(figure)
 
 
 def main() -> int:
@@ -54,9 +77,7 @@ def main() -> int:
     figure.suptitle("Native SoA: mean and min–max across repetitions (not confidence intervals)")
     figure.tight_layout()
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    # Reuse the existing atomic image writer, including its locked-viewer fallback.
-    helpers = cast(Any, importlib.import_module("plot-single-allocation-soa-benchmarks"))
-    helpers.save_figure(plt, figure, args.output_dir, "native-soa-timings")
+    save_figure(plt, figure, args.output_dir, "native-soa-timings")
     return 0
 
 
