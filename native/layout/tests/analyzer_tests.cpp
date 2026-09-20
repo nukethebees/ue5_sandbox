@@ -2931,5 +2931,85 @@ TEST(SoaAnalyzer, ReportsIntegerOverflow) {
     EXPECT_FALSE(analysis.diagnostics.empty());
 }
 
+TEST(SoaAnalyzer, ReportsSelectedColumnAccessFootprints) {
+    auto const fixture{soa_type(
+        {{"small", "std::uint8_t"}, {"medium", "std::uint32_t"}, {"wide", "std::uint64_t"}})};
+    auto const abi{AbiProfile::host_common()};
+    auto const soa{Analyzer::analyze_soa(fixture.types, fixture.type, Variant{}, abi, 1'000)};
+    std::vector<std::string> const columns{"wide", "small", "wide"};
+
+    auto const access{Analyzer::analyze_soa_access(soa, columns, abi, 100)};
+
+    EXPECT_EQ(access.column_names, (std::vector<std::string>{"wide", "small"}));
+    EXPECT_EQ(access.element_count, 100);
+    EXPECT_EQ(access.useful_bytes, 900);
+    EXPECT_EQ(access.full_logical_payload_bytes, 1'300);
+    EXPECT_EQ(access.unselected_payload_bytes, 400);
+    EXPECT_EQ(access.allocated_capacity_payload_bytes, 13'000);
+    EXPECT_EQ(access.capacity_slack_payload_bytes, 11'700);
+    EXPECT_EQ(access.cache_line_bytes, 64);
+    EXPECT_EQ(access.minimum_cache_lines_touched, 15);
+    EXPECT_EQ(access.minimum_cache_bytes_touched, 960);
+    EXPECT_EQ(access.non_payload_cache_bytes, 60);
+    EXPECT_EQ(access.page_bytes, 4'096);
+    EXPECT_EQ(access.minimum_pages_touched, 2);
+    EXPECT_EQ(access.minimum_page_bytes_touched, 8'192);
+    EXPECT_EQ(access.non_payload_page_bytes, 7'292);
+    EXPECT_TRUE(access.diagnostics.empty());
+}
+
+TEST(SoaAnalyzer, KeepsIncompleteSelectedColumnAccessUnknown) {
+    auto const fixture{soa_type({{"known", "std::uint32_t"}, {"unknown", "UnknownUserType"}})};
+    AbiProfile abi{"partial"};
+    abi.set("std::uint32_t",
+            {.size_bytes = 4,
+             .alignment_bytes = 4,
+             .integer_signed = false,
+             .unsigned_value_bits = 32,
+             .provenance = "test"});
+    auto const soa{Analyzer::analyze_soa(fixture.types, fixture.type, Variant{}, abi, 10)};
+    std::vector<std::string> const columns{"known", "unknown", "missing"};
+
+    auto const access{Analyzer::analyze_soa_access(soa, columns, abi, 10)};
+
+    EXPECT_EQ(access.column_names, (std::vector<std::string>{"known", "unknown"}));
+    EXPECT_FALSE(access.useful_bytes.has_value());
+    EXPECT_FALSE(access.full_logical_payload_bytes.has_value());
+    EXPECT_FALSE(access.unselected_payload_bytes.has_value());
+    EXPECT_FALSE(access.capacity_slack_payload_bytes.has_value());
+    EXPECT_FALSE(access.minimum_cache_lines_touched.has_value());
+    EXPECT_FALSE(access.minimum_pages_touched.has_value());
+    EXPECT_FALSE(access.cache_line_bytes.has_value());
+    EXPECT_FALSE(access.page_bytes.has_value());
+    EXPECT_FALSE(access.diagnostics.empty());
+
+    auto const empty{Analyzer::analyze_soa_access(soa, {}, abi, 10)};
+    EXPECT_TRUE(empty.column_names.empty());
+    EXPECT_FALSE(empty.useful_bytes.has_value());
+    EXPECT_FALSE(empty.diagnostics.empty());
+}
+
+TEST(SoaAnalyzer, DiagnosesSelectedColumnAccessOverflowAndExcessCapacity) {
+    auto const fixture{soa_type({{"huge", "huge"}})};
+    auto abi{AbiProfile::host_common()};
+    abi.set("huge",
+            {.size_bytes = std::numeric_limits<std::uint64_t>::max(),
+             .alignment_bytes = 1,
+             .integer_signed = std::nullopt,
+             .unsigned_value_bits = std::nullopt,
+             .provenance = "test"});
+    auto const soa{Analyzer::analyze_soa(fixture.types, fixture.type, Variant{}, abi, 1)};
+    std::vector<std::string> const columns{"huge"};
+
+    auto const access{Analyzer::analyze_soa_access(soa, columns, abi, 2)};
+
+    EXPECT_FALSE(access.useful_bytes.has_value());
+    EXPECT_FALSE(access.full_logical_payload_bytes.has_value());
+    EXPECT_FALSE(access.capacity_slack_payload_bytes.has_value());
+    EXPECT_FALSE(access.minimum_cache_lines_touched.has_value());
+    EXPECT_FALSE(access.minimum_pages_touched.has_value());
+    EXPECT_FALSE(access.diagnostics.empty());
+}
+
 } // namespace
 } // namespace ioj::layout

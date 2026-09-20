@@ -667,6 +667,7 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     selected_field_.clear();
     selected_enumerator_.clear();
     record_access_members_.clear();
+    soa_access_columns_.clear();
     varint_distributions_.clear();
     tagged_union_distributions_.clear();
     ++tagged_distribution_revision_;
@@ -674,6 +675,7 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     new_varint_distribution_value_[0] = '0';
     new_varint_distribution_weight_ = 1;
     record_access_set_explicit_ = false;
+    soa_access_set_explicit_ = false;
     rename_editor_declaration_.reset();
     declaration_name_.fill('\0');
     delete_declaration_.reset();
@@ -772,6 +774,22 @@ void PlannerUi::setup_default_dock_layout(unsigned int const dockspace_id) {
 
 void PlannerUi::refresh_analysis() {
     validate_comparison_variants();
+
+    if (cached_type_ != selected_type_) {
+        soa_access_columns_.clear();
+        soa_access_set_explicit_ = false;
+    }
+    if (selected_type_.has_value()) {
+        auto const* selected_soa{
+            std::get_if<SoaType>(&workspace_.types().type(*selected_type_).definition)};
+        if (selected_soa != nullptr &&
+            selected_soa->backend == codegen::SoaBackend::standard_library) {
+            std::erase_if(soa_access_columns_, [&](std::string const& name) {
+                return std::ranges::none_of(
+                    selected_soa->columns, [&](auto const& column) { return column.name == name; });
+            });
+        }
+    }
 
     if (selected_type_.has_value()) {
         auto const* selected_quantized{
@@ -889,6 +907,8 @@ void PlannerUi::refresh_analysis() {
         cached_selected_field_ == selected_field_ &&
         cached_record_access_members_ == record_access_members_ &&
         cached_record_access_set_explicit_ == record_access_set_explicit_ &&
+        cached_soa_access_columns_ == soa_access_columns_ &&
+        cached_soa_access_set_explicit_ == soa_access_set_explicit_ &&
         cached_comparison_a_variant_id_ == comparison_a_variant_id_ &&
         cached_comparison_b_variant_id_ == comparison_b_variant_id_ &&
         cached_quantized_comparison_type_ == quantized_comparison_type_ &&
@@ -913,6 +933,7 @@ void PlannerUi::refresh_analysis() {
     packed_variants_.clear();
     baseline_soa_.reset();
     active_soa_.reset();
+    soa_access_analysis_.reset();
     soa_variants_.clear();
     comparison_a_packed_.reset();
     comparison_b_packed_.reset();
@@ -928,6 +949,8 @@ void PlannerUi::refresh_analysis() {
     cached_selected_field_ = selected_field_;
     cached_record_access_members_ = record_access_members_;
     cached_record_access_set_explicit_ = record_access_set_explicit_;
+    cached_soa_access_columns_ = soa_access_columns_;
+    cached_soa_access_set_explicit_ = soa_access_set_explicit_;
     cached_comparison_a_variant_id_ = comparison_a_variant_id_;
     cached_comparison_b_variant_id_ = comparison_b_variant_id_;
     cached_quantized_comparison_type_ = quantized_comparison_type_;
@@ -1054,6 +1077,16 @@ void PlannerUi::refresh_analysis() {
             workspace_.types(), *selected_type_, baseline, abi_, workspace_.default_capacity());
         active_soa_ = Analyzer::analyze_soa(
             workspace_.types(), *selected_type_, active, abi_, workspace_.default_capacity());
+        std::vector<std::string> access_columns{soa_access_columns_.begin(),
+                                                soa_access_columns_.end()};
+        if (!soa_access_set_explicit_ && !selected_field_.empty()) {
+            access_columns.clear();
+            access_columns.push_back(selected_field_);
+        }
+        if (!access_columns.empty()) {
+            soa_access_analysis_ = Analyzer::analyze_soa_access(
+                *active_soa_, access_columns, abi_, workspace_.element_count());
+        }
         for (auto const& variant : workspace_.variants()) {
             if (variant.id != LayoutWorkspace::baseline_variant_id) {
                 soa_variants_.emplace_back(variant.id,

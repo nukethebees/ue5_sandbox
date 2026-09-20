@@ -90,6 +90,13 @@ from range/code facts and enum widths from the enum semantic domain, then retain
 concrete physical width for analysis and lowering. Unknown domains are rejected rather than guessed.
 Standard-library SoA analysis also reports per-column and aggregate minimum pages using the target
 page size, treating each vector as a separate allocation and excluding unknown allocator overhead.
+An explicit session-only SoA access set now reports useful and unselected logical payload at the
+shared element count, allocated payload at the independently modeled capacity, and the sum of each
+selected column's minimum cache-line/page footprint. It also reports unused allocated-capacity
+payload separately from unselected-column payload at the workload count. Flat Access checkboxes plus
+selected-only/all actions drive the analysis; unknown target facts and arithmetic overflow remain
+Unknown, and the UI labels region bytes as minimum physical footprints rather than measured traffic
+or performance.
 
 Enum declarations now support an optional durable semantic `:bit-width`; absence means auto width
 derived from literal and implicit values. Individual values may be marked `:sentinel true`, including
@@ -393,6 +400,12 @@ hot/cold grouping using the same command, validation, serialization, and depende
 - Report payload, padding, capacity slack, allocation count, cache lines, pages, and total memory.
 - Compare complete subsystem costs and identify the largest contributors.
 - Reference semantic types by stable identity rather than redeclaring their schemas.
+
+Initial explicit access sets are implemented for AoS records and standard-library SoAs. Record
+analysis computes exact touched-region unions for a contiguous aligned object array. SoA analysis
+uses the distinct physical model of one allocation per selected column and reports minimum region
+footprints; element count remains session workload state and is not conflated with SoA allocation
+capacity or persisted into LispB.
 
 ## 9. Physical-fact accuracy
 

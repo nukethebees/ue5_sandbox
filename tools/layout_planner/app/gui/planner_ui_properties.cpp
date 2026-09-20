@@ -5121,27 +5121,44 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                          selected_is_mask_storage || selected_is_final_mask_field);
     if (ImGui::Button("Delete")) {
         auto replacement{*schema};
+        auto const deleted_name{replacement.members[*selected_index].name};
         replacement.members.erase(replacement.members.begin() +
                                   static_cast<std::ptrdiff_t>(*selected_index));
         auto const next_index{std::min(*selected_index, replacement.members.size() - 1)};
         auto const next_name{replacement.members[next_index].name};
         if (apply_document_edit(
                 ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            soa_access_columns_.erase(deleted_name);
             selected_field_ = next_name;
             return true;
         }
     }
     ImGui::EndDisabled();
     ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Selected only")) {
+        soa_access_columns_.clear();
+        soa_access_set_explicit_ = false;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Access all")) {
+        soa_access_columns_.clear();
+        for (auto const& member : schema->members) {
+            soa_access_columns_.insert(member.name);
+        }
+        soa_access_set_explicit_ = true;
+    }
 
     std::optional<codegen::SoaSchema> pending;
     std::optional<TypeId> navigate_to;
+    std::optional<std::pair<std::string, std::string>> renamed_member;
     auto selected_after_edit{selected_field_};
     if (ImGui::BeginTable("soa-schema-members",
-                          4,
+                          5,
                           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                               ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Access", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Name");
         ImGui::TableSetupColumn("Semantic type");
         ImGui::TableSetupColumn("Kind");
@@ -5174,6 +5191,24 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             }
 
             ImGui::TableNextColumn();
+            auto accessed{soa_access_set_explicit_ ? soa_access_columns_.contains(member.name)
+                                                   : selected_field_ == member.name};
+            if (ImGui::Checkbox("##access", &accessed)) {
+                if (!soa_access_set_explicit_) {
+                    soa_access_columns_.clear();
+                    if (!selected_field_.empty()) {
+                        soa_access_columns_.insert(selected_field_);
+                    }
+                    soa_access_set_explicit_ = true;
+                }
+                if (accessed) {
+                    soa_access_columns_.insert(member.name);
+                } else {
+                    soa_access_columns_.erase(member.name);
+                }
+            }
+
+            ImGui::TableNextColumn();
             auto const row_mask_storage{schema->field_mask_name.has_value() &&
                                         member.type.name == *schema->field_mask_name};
             if (row_selected) {
@@ -5186,6 +5221,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                     pending = *schema;
                     pending->members[index].name = soa_member_name_.data();
                     selected_after_edit = pending->members[index].name;
+                    renamed_member = std::pair{member.name, selected_after_edit};
                 }
             } else {
                 ImGui::TextUnformatted(member.name.c_str());
@@ -7233,6 +7269,10 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
         }
         if (apply_document_edit(
                 ReplaceSoa{.declaration = *declaration, .schema = std::move(*pending)})) {
+            if (soa_access_set_explicit_ && renamed_member.has_value() &&
+                soa_access_columns_.erase(renamed_member->first) != 0) {
+                soa_access_columns_.insert(renamed_member->second);
+            }
             selected_field_ = std::move(selected_after_edit);
             soa_editor_declaration_.reset();
             return true;

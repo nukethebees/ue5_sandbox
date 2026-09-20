@@ -2685,4 +2685,189 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
     return result;
 }
 
+auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
+                                  std::span<std::string const> const column_names,
+                                  AbiProfile const& abi,
+                                  std::uint64_t const element_count) -> SoaAccessAnalysis {
+    SoaAccessAnalysis result{.column_names = {},
+                             .element_count = element_count,
+                             .useful_bytes = std::uint64_t{},
+                             .full_logical_payload_bytes = std::nullopt,
+                             .unselected_payload_bytes = std::nullopt,
+                             .allocated_capacity_payload_bytes = soa.total_payload_bytes,
+                             .capacity_slack_payload_bytes = std::nullopt,
+                             .cache_line_bytes = abi.memory_facts().cache_line_bytes,
+                             .minimum_cache_lines_touched = std::uint64_t{},
+                             .minimum_cache_bytes_touched = std::nullopt,
+                             .non_payload_cache_bytes = std::nullopt,
+                             .page_bytes = abi.memory_facts().page_bytes,
+                             .minimum_pages_touched = std::uint64_t{},
+                             .minimum_page_bytes_touched = std::nullopt,
+                             .non_payload_page_bytes = std::nullopt,
+                             .diagnostics = {}};
+    if (!result.cache_line_bytes.has_value() || *result.cache_line_bytes == 0) {
+        result.minimum_cache_lines_touched.reset();
+    }
+    if (!result.page_bytes.has_value() || *result.page_bytes == 0) {
+        result.minimum_pages_touched.reset();
+    }
+    if (soa.bytes_per_logical_element.has_value()) {
+        result.full_logical_payload_bytes =
+            checked_multiply(*soa.bytes_per_logical_element, element_count);
+        if (!result.full_logical_payload_bytes.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Complete SoA logical payload at the selected count overflows uint64."});
+        }
+    }
+    if (element_count > soa.capacity) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::warning,
+             "Selected access count exceeds the modeled SoA allocation capacity."});
+    }
+    if (result.allocated_capacity_payload_bytes.has_value() &&
+        result.full_logical_payload_bytes.has_value() &&
+        *result.allocated_capacity_payload_bytes >= *result.full_logical_payload_bytes) {
+        result.capacity_slack_payload_bytes =
+            *result.allocated_capacity_payload_bytes - *result.full_logical_payload_bytes;
+    }
+    std::set<std::string, std::less<>> unique_names;
+    for (auto const& column_name : column_names) {
+        if (!unique_names.insert(column_name).second) {
+            continue;
+        }
+        auto const column{std::ranges::find(soa.columns, column_name, &SoaColumnAnalysis::name)};
+        if (column == soa.columns.end()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Selected SoA column '" + column_name + "' no longer exists."});
+            continue;
+        }
+        result.column_names.push_back(column_name);
+
+        auto accumulate = [&](std::optional<std::uint64_t> const value,
+                              std::optional<std::uint64_t>& total,
+                              std::string_view const fact) {
+            if (!value.has_value() || !total.has_value()) {
+                total.reset();
+                if (!value.has_value()) {
+                    result.diagnostics.push_back({DiagnosticSeverity::warning,
+                                                  "Selected SoA column '" + column_name +
+                                                      "' has Unknown " + std::string{fact} + "."});
+                }
+                return;
+            }
+            total = checked_add(*total, *value);
+            if (!total.has_value()) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Selected SoA " + std::string{fact} + " total overflows uint64."});
+            }
+        };
+        std::optional<std::uint64_t> flat_accessed_bytes;
+        if (column->type_facts.has_value()) {
+            flat_accessed_bytes = checked_multiply(column->type_facts->size_bytes, element_count);
+            if (!flat_accessed_bytes.has_value()) {
+                result.diagnostics.push_back({DiagnosticSeverity::error,
+                                              "Selected SoA column '" + column_name +
+                                                  "' payload byte count overflows uint64."});
+            }
+        }
+        if (flat_accessed_bytes.has_value()) {
+            accumulate(flat_accessed_bytes, result.useful_bytes, "payload bytes");
+        } else {
+            result.useful_bytes.reset();
+            if (!column->type_facts.has_value()) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::warning,
+                     "Selected SoA column '" + column_name + "' has Unknown payload bytes."});
+            }
+        }
+        if (result.minimum_cache_lines_touched.has_value()) {
+            auto const cache_lines{flat_accessed_bytes.transform([&](std::uint64_t const bytes) {
+                return minimum_regions(bytes, *result.cache_line_bytes);
+            })};
+            accumulate(cache_lines, result.minimum_cache_lines_touched, "minimum cache-line count");
+        }
+        if (result.minimum_pages_touched.has_value()) {
+            auto const pages{flat_accessed_bytes.transform([&](std::uint64_t const bytes) {
+                return minimum_regions(bytes, *result.page_bytes);
+            })};
+            accumulate(pages, result.minimum_pages_touched, "minimum page count");
+        }
+    }
+
+    if (result.column_names.empty()) {
+        result.useful_bytes.reset();
+        result.minimum_cache_lines_touched.reset();
+        result.minimum_pages_touched.reset();
+        if (result.diagnostics.empty()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::warning, "No SoA columns are selected for access."});
+        }
+        return result;
+    }
+
+    if (result.full_logical_payload_bytes.has_value() && result.useful_bytes.has_value()) {
+        if (*result.full_logical_payload_bytes >= *result.useful_bytes) {
+            result.unselected_payload_bytes =
+                *result.full_logical_payload_bytes - *result.useful_bytes;
+        } else {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Selected SoA payload bytes exceed the complete logical payload."});
+        }
+    }
+    auto derive_region_bytes = [&](std::optional<std::uint64_t>& region_size,
+                                   std::optional<std::uint64_t> const regions,
+                                   std::optional<std::uint64_t>& touched_bytes,
+                                   std::optional<std::uint64_t>& non_payload_bytes,
+                                   char const* const region_name) {
+        if (!region_size.has_value()) {
+            result.diagnostics.push_back({DiagnosticSeverity::warning,
+                                          std::string{region_name} +
+                                              " size is unknown for ABI profile '" + abi.name() +
+                                              "'."});
+            return;
+        }
+        if (*region_size == 0) {
+            region_size.reset();
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, std::string{region_name} + " size must be non-zero."});
+            return;
+        }
+        if (!regions.has_value()) {
+            return;
+        }
+        touched_bytes = checked_multiply(*regions, *region_size);
+        if (!touched_bytes.has_value()) {
+            result.diagnostics.push_back({DiagnosticSeverity::error,
+                                          "Selected SoA minimum " + std::string{region_name} +
+                                              " footprint overflows uint64."});
+            return;
+        }
+        if (result.useful_bytes.has_value()) {
+            if (*touched_bytes >= *result.useful_bytes) {
+                non_payload_bytes = *touched_bytes - *result.useful_bytes;
+            } else {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Selected SoA minimum " + std::string{region_name} +
+                         " footprint is smaller than useful payload bytes."});
+            }
+        }
+    };
+    derive_region_bytes(result.cache_line_bytes,
+                        result.minimum_cache_lines_touched,
+                        result.minimum_cache_bytes_touched,
+                        result.non_payload_cache_bytes,
+                        "cache-line");
+    derive_region_bytes(result.page_bytes,
+                        result.minimum_pages_touched,
+                        result.minimum_page_bytes_touched,
+                        result.non_payload_page_bytes,
+                        "page");
+    return result;
+}
+
 } // namespace ioj::layout

@@ -571,6 +571,25 @@ struct SoaAnalysis {
     std::vector<Diagnostic> diagnostics;
 };
 
+struct SoaAccessAnalysis {
+    std::vector<std::string> column_names;
+    std::uint64_t element_count{};
+    std::optional<std::uint64_t> useful_bytes;
+    std::optional<std::uint64_t> full_logical_payload_bytes;
+    std::optional<std::uint64_t> unselected_payload_bytes;
+    std::optional<std::uint64_t> allocated_capacity_payload_bytes;
+    std::optional<std::uint64_t> capacity_slack_payload_bytes;
+    std::optional<std::uint64_t> cache_line_bytes;
+    std::optional<std::uint64_t> minimum_cache_lines_touched;
+    std::optional<std::uint64_t> minimum_cache_bytes_touched;
+    std::optional<std::uint64_t> non_payload_cache_bytes;
+    std::optional<std::uint64_t> page_bytes;
+    std::optional<std::uint64_t> minimum_pages_touched;
+    std::optional<std::uint64_t> minimum_page_bytes_touched;
+    std::optional<std::uint64_t> non_payload_page_bytes;
+    std::vector<Diagnostic> diagnostics;
+};
+
 class Analyzer {
   public:
     static auto analyze_enum(lispb::schema::TypeGraph const& types,
@@ -657,6 +676,10 @@ class Analyzer {
                             Variant const& variant,
                             AbiProfile const& abi,
                             std::uint64_t default_capacity) -> SoaAnalysis;
+    static auto analyze_soa_access(SoaAnalysis const& soa,
+                                   std::span<std::string const> column_names,
+                                   AbiProfile const& abi,
+                                   std::uint64_t element_count) -> SoaAccessAnalysis;
 };
 
 auto physical_type_spelling(lispb::schema::TypeGraph const& types, lispb::schema::TypeId type)

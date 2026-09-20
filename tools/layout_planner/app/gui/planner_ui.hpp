@@ -144,6 +144,8 @@ class PlannerUi {
     std::string cached_selected_field_;
     std::set<std::string, std::less<>> cached_record_access_members_;
     bool cached_record_access_set_explicit_{};
+    std::set<std::string, std::less<>> cached_soa_access_columns_;
+    bool cached_soa_access_set_explicit_{};
     std::uint64_t cached_comparison_a_variant_id_{std::numeric_limits<std::uint64_t>::max()};
     std::uint64_t cached_comparison_b_variant_id_{std::numeric_limits<std::uint64_t>::max()};
     std::optional<lispb::schema::TypeIdentity> cached_quantized_comparison_type_;
@@ -166,6 +168,7 @@ class PlannerUi {
     std::vector<std::pair<std::uint64_t, layout::PackedAnalysis>> packed_variants_;
     std::optional<layout::SoaAnalysis> baseline_soa_;
     std::optional<layout::SoaAnalysis> active_soa_;
+    std::optional<layout::SoaAccessAnalysis> soa_access_analysis_;
     std::vector<std::pair<std::uint64_t, layout::SoaAnalysis>> soa_variants_;
     std::optional<layout::PackedAnalysis> comparison_a_packed_;
     std::optional<layout::PackedAnalysis> comparison_b_packed_;
@@ -291,6 +294,7 @@ class PlannerUi {
     std::optional<std::size_t> soa_mask_dimension_index_;
     std::string selected_enumerator_;
     std::set<std::string, std::less<>> record_access_members_;
+    std::set<std::string, std::less<>> soa_access_columns_;
     std::map<lispb::schema::TypeIdentity, std::vector<VarintDistributionRow>> varint_distributions_;
     std::map<lispb::schema::DeclarationId, std::map<std::string, std::uint64_t>>
         tagged_union_distributions_;
@@ -298,6 +302,7 @@ class PlannerUi {
     std::array<char, 32> new_varint_distribution_value_{"0"};
     std::uint64_t new_varint_distribution_weight_{1};
     bool record_access_set_explicit_{};
+    bool soa_access_set_explicit_{};
     std::optional<lispb::schema::DeclarationId> rename_editor_declaration_;
     std::array<char, 128> declaration_name_{};
     std::optional<lispb::schema::DeclarationId> delete_declaration_;

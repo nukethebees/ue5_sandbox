@@ -976,6 +976,10 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
         ImGui::TextDisabled("Related generated storage: %s (padding and gaps not modeled).",
                             soa.related_storage_name->c_str());
     }
+    ImGui::SeparatorText("Analysis scale");
+    if (draw_element_count()) {
+        return;
+    }
     if (ImGui::BeginTable("soa-columns",
                           9,
                           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
@@ -1034,6 +1038,60 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
                 detail::format_fit(active.cache_capacity.fits_l1_data).c_str());
     ImGui::Text("Fits L2 cache: %s", detail::format_fit(active.cache_capacity.fits_l2).c_str());
     ImGui::Text("Fits L3 cache: %s", detail::format_fit(active.cache_capacity.fits_l3).c_str());
+
+    ImGui::SeparatorText("Sequential access set");
+    if (soa_access_analysis_.has_value()) {
+        auto const& access{*soa_access_analysis_};
+        std::string column_names;
+        for (auto const& column_name : access.column_names) {
+            if (!column_names.empty()) {
+                column_names += ", ";
+            }
+            column_names += column_name;
+        }
+        ImGui::TextWrapped("Columns: %s", column_names.c_str());
+        if (ImGui::BeginTable("soa-column-access",
+                              2,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_SizingStretchProp)) {
+            auto draw_stat{[](char const* const label, std::string const& value) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(label);
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(value.c_str());
+            }};
+            draw_stat("Useful selected payload", detail::format_bytes(access.useful_bytes));
+            draw_stat("Complete logical payload at count",
+                      detail::format_bytes(access.full_logical_payload_bytes));
+            draw_stat("Unselected payload at count",
+                      detail::format_bytes(access.unselected_payload_bytes));
+            draw_stat("Allocated payload at capacity",
+                      detail::format_bytes(access.allocated_capacity_payload_bytes));
+            draw_stat("Unused allocated capacity payload",
+                      detail::format_bytes(access.capacity_slack_payload_bytes));
+            draw_stat("Minimum cache lines touched",
+                      detail::format_number(access.minimum_cache_lines_touched));
+            draw_stat("Minimum cache-line footprint",
+                      detail::format_bytes(access.minimum_cache_bytes_touched));
+            draw_stat("Non-payload bytes in minimum cache footprint",
+                      detail::format_bytes(access.non_payload_cache_bytes));
+            draw_stat("Minimum pages touched", detail::format_number(access.minimum_pages_touched));
+            draw_stat("Minimum page footprint",
+                      detail::format_bytes(access.minimum_page_bytes_touched));
+            draw_stat("Non-payload bytes in minimum page footprint",
+                      detail::format_bytes(access.non_payload_page_bytes));
+            ImGui::EndTable();
+        }
+        ImGui::TextDisabled(
+            "One sequential access to each selected column at the current count. Each standard-"
+            "library column is a separate allocation; line/page values are minimum footprints, "
+            "not measured traffic or performance.");
+        draw_diagnostics(access.diagnostics);
+    } else {
+        ImGui::TextDisabled("Select SoA columns in the Access column to define the access set.");
+    }
+
     bool activated{};
     draw_payload_regions(baseline, nullptr, selected_field_, "Baseline", common_total, activated);
     for (auto const& [variant_id, analysis] : soa_variants_) {
