@@ -9,12 +9,15 @@
 namespace ioj::layout {
 namespace {
 
+inline constexpr char compiler_fact_provenance[]{"Compiler-derived sizeof/alignof for this build"};
+
 template <typename T>
 auto integer_facts() -> TypeFacts {
     TypeFacts facts{.size_bytes = sizeof(T),
                     .alignment_bytes = alignof(T),
                     .integer_signed = std::is_signed_v<T>,
-                    .unsigned_value_bits = std::nullopt};
+                    .unsigned_value_bits = std::nullopt,
+                    .provenance = compiler_fact_provenance};
     if constexpr (std::is_unsigned_v<T>) {
         facts.unsigned_value_bits = std::numeric_limits<T>::digits;
     }
@@ -26,23 +29,36 @@ auto value_facts() -> TypeFacts {
     return {.size_bytes = sizeof(T),
             .alignment_bytes = alignof(T),
             .integer_signed = std::nullopt,
-            .unsigned_value_bits = std::nullopt};
+            .unsigned_value_bits = std::nullopt,
+            .provenance = compiler_fact_provenance};
 }
 
 } // namespace
 
-AbiProfile::AbiProfile(std::string name)
-    : name_{std::move(name)} {}
+AbiProfile::AbiProfile(std::string name, AbiProfileIdentity identity)
+    : name_{std::move(name)}
+    , identity_{std::move(identity)} {}
 
 auto AbiProfile::host_common() -> AbiProfile {
-    AbiProfile result{"Host common native"};
+    AbiProfile result{"Host compiler profile",
+                      {.platform = IOJ_LAYOUT_TARGET_PLATFORM,
+                       .architecture = IOJ_LAYOUT_TARGET_ARCHITECTURE,
+                       .abi = std::nullopt,
+                       .compiler = IOJ_LAYOUT_TARGET_COMPILER,
+                       .build_configuration = IOJ_LAYOUT_BUILD_CONFIGURATION}};
 #if defined(_M_X64) || defined(_M_IX86) || defined(__x86_64__) || defined(__i386__)
     result.set_memory_facts({.cache_line_bytes = 64,
                              .page_bytes = 4'096,
+                             .l1_data_cache_bytes = std::nullopt,
+                             .l2_cache_bytes = std::nullopt,
+                             .l3_cache_bytes = std::nullopt,
                              .provenance = "Explicit x86/x86-64 baseline profile"});
 #else
     result.set_memory_facts({.cache_line_bytes = std::nullopt,
                              .page_bytes = std::nullopt,
+                             .l1_data_cache_bytes = std::nullopt,
+                             .l2_cache_bytes = std::nullopt,
+                             .l3_cache_bytes = std::nullopt,
                              .provenance = "Unspecified host architecture"});
 #endif
     result.set("std::uint8_t", integer_facts<std::uint8_t>());
@@ -59,7 +75,8 @@ auto AbiProfile::host_common() -> AbiProfile {
                TypeFacts{.size_bytes = sizeof(bool),
                          .alignment_bytes = alignof(bool),
                          .integer_signed = false,
-                         .unsigned_value_bits = 1});
+                         .unsigned_value_bits = 1,
+                         .provenance = compiler_fact_provenance});
     return result;
 }
 
@@ -73,6 +90,10 @@ void AbiProfile::set_representation(std::string spelling, std::string represente
 
 void AbiProfile::set_memory_facts(MemoryFacts facts) {
     memory_facts_ = std::move(facts);
+}
+
+void AbiProfile::set_identity(AbiProfileIdentity identity) {
+    identity_ = std::move(identity);
 }
 
 auto AbiProfile::find(std::string const& spelling) const -> std::optional<TypeFacts> {
@@ -93,6 +114,10 @@ auto AbiProfile::find(std::string const& spelling) const -> std::optional<TypeFa
 
 auto AbiProfile::name() const -> std::string const& {
     return name_;
+}
+
+auto AbiProfile::identity() const -> AbiProfileIdentity const& {
+    return identity_;
 }
 
 auto AbiProfile::types() const -> std::map<std::string, TypeFacts, std::less<>> const& {

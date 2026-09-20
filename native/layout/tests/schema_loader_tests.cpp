@@ -3,6 +3,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 
@@ -47,6 +48,25 @@ class TemporarySchemaProject {
   (packed-value ExistingPacked
     :storage std::uint8_t
     (field value std::uint8_t :bits 8)))
+
+(scalar-module scalars
+  :header "Scalars.h"
+  :namespace test
+  (integer-scalar Health
+    :signed false
+    :minimum 0
+    :maximum 1000
+    :bit-width auto
+    (code Invalid :value 1023 :sentinel true)))
+
+(representation-module representations
+  :header "Representations.h"
+  :namespace test
+  (linear-quantized ExistingHealthQ8
+    :source test::Health
+    :bits 8
+    :reserved-codes 0
+    :clipping reject))
 
 (record-module records
   :header "Records.h"
@@ -103,8 +123,9 @@ TEST(SchemaLoader, LoadsSemanticEnumsPackedValuesAndSoas) {
     EXPECT_EQ(enumeration.enumerators.front().display_name, "Player Ship");
 
     auto const& packed{std::get<lispb::schema::PackedType>(types.type(*entity_id).definition)};
-    ASSERT_EQ(packed.fields.size(), 2U);
-    EXPECT_EQ(packed.fields[1].semantic_type.type, *entity_type);
+    ASSERT_EQ(packed.segments.size(), 2U);
+    EXPECT_EQ(std::get<lispb::schema::PackedField>(packed.segments[1]).semantic_type.type,
+              *entity_type);
     EXPECT_EQ(packed.invalid_raw_value, 0xffffffffU);
 
     auto const& soa{std::get<lispb::schema::SoaType>(types.type(*world_aabbs).definition)};
@@ -188,33 +209,57 @@ TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesPackedValue) {
     ASSERT_TRUE(existing.has_value());
 
     auto const created{loaded.document->allocate_declaration_id()};
-    auto applied{
-        loaded.document->apply(
-            lispb::schema::CreatePackedValue{
-                .declaration = created,
-                .module_index = loaded.document->declaration(*existing)->module_index,
-                .schema =
-                    codegen::PackedValueSchema{
-                        .name = "DesignedId",
-                        .storage_type = codegen::TypeRef{.name = "std::uint32_t",
-                                                         .suffix = {},
-                                                         .nested = std::nullopt},
-                        .fields = {codegen::PackedFieldSchema{"entity_index",
-                                                              codegen::TypeRef{
-                                                                  .name = "std::uint32_t",
-                                                                  .suffix = {},
-                                                                  .nested = std::nullopt},
-                                                              24},
-                                   codegen::
-                                       PackedFieldSchema{"state",
-                                                         codegen::TypeRef{.name = "@state",
-                                                                          .suffix = {},
-                                                                          .nested = std::nullopt},
-                                                         8,
-                                                         codegen::PackedFieldKind::enumeration}},
-                        .invalid_value = 0xffffffffU,
-                        .export_specifier = std::nullopt},
-                .insertion_index = std::nullopt})};
+    auto applied{loaded.document->apply(lispb::schema::CreatePackedValue{
+        .declaration = created,
+        .module_index = loaded.document->declaration(*existing)->module_index,
+        .schema =
+            codegen::PackedValueSchema{.name = "DesignedId",
+                                       .storage_type = codegen::TypeRef{.name = "std::uint32_t",
+                                                                        .suffix = {},
+                                                                        .nested = std::nullopt},
+                                       .segments = {codegen::PackedFieldSchema{.name =
+                                                                                   "entity_index",
+                                                                               .type = codegen::TypeRef{.name =
+                                                                                                            "std::uint32_t",
+                                                                                                        .suffix = {},
+                                                                                                        .nested = std::
+                                                                                                            nullopt},
+                                                                               .bits = 24,
+                                                                               .kind =
+                                                                                   codegen::
+                                                                                       PackedFieldKind::
+                                                                                           unsigned_integer,
+                                                                               .range_helper =
+                                                                                   false,
+                                                                               .minimum_value =
+                                                                                   std::nullopt,
+                                                                               .maximum_value =
+                                                                                   std::nullopt,
+                                                                               .named_codes = {},
+                                                                               .relationship =
+                                                                                   std::nullopt},
+                                                    codegen::PackedFieldSchema{.name = "state",
+                                                                               .type =
+                                                                                   codegen::TypeRef{.name = "@st"
+                                                                                                            "at"
+                                                                                                            "e",
+                                                                                                    .suffix = {},
+                                                                                                    .nested = std::nullopt},
+                                                                               .bits = 8,
+                                                                               .kind = codegen::
+                                                                                   PackedFieldKind::enumeration,
+                                                                               .range_helper =
+                                                                                   false,
+                                                                               .minimum_value =
+                                                                                   std::nullopt,
+                                                                               .maximum_value =
+                                                                                   std::nullopt,
+                                                                               .named_codes = {},
+                                                                               .relationship =
+                                                                                   std::nullopt}},
+                                       .invalid_value = 0xffffffffU,
+                                       .export_specifier = std::nullopt},
+        .insertion_index = std::nullopt})};
     ASSERT_TRUE(applied.has_value()) << applied.error().message;
     ASSERT_TRUE(*applied);
 
@@ -237,19 +282,351 @@ TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesPackedValue) {
     ASSERT_TRUE(reloaded_designed.has_value());
     auto const& packed{std::get<lispb::schema::PackedType>(
         reloaded.document->types().type(*reloaded_designed).definition)};
-    ASSERT_EQ(packed.fields.size(), 2U);
-    EXPECT_EQ(packed.fields[0].name, "entity_index");
-    EXPECT_EQ(packed.fields[0].bit_width, 24U);
-    EXPECT_EQ(packed.fields[1].name, "state");
-    EXPECT_EQ(packed.fields[1].bit_width, 8U);
-    EXPECT_EQ(reloaded.document->types().type(packed.fields[1].semantic_type.type).identity.name,
-              "State");
+    ASSERT_EQ(packed.segments.size(), 2U);
+    auto const& index{std::get<lispb::schema::PackedField>(packed.segments[0])};
+    auto const& state{std::get<lispb::schema::PackedField>(packed.segments[1])};
+    EXPECT_EQ(index.name, "entity_index");
+    EXPECT_EQ(index.bit_width, 24U);
+    EXPECT_EQ(state.name, "state");
+    EXPECT_EQ(state.bit_width, 8U);
+    EXPECT_EQ(reloaded.document->types().type(state.semantic_type.type).identity.name, "State");
 
     analysis = Analyzer::analyze_packed(
         reloaded.document->types(), *reloaded_designed, Variant{}, AbiProfile::host_common());
     EXPECT_EQ(analysis.storage_bits, 32U);
     EXPECT_EQ(analysis.bits_used, 32U);
     EXPECT_TRUE(analysis.diagnostics.empty());
+}
+
+TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesLinearQuantizedRepresentation) {
+    TemporarySchemaProject files;
+    auto loaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
+    ASSERT_TRUE(loaded.document.has_value());
+    auto const existing{
+        loaded.document->find_declaration({.origin = lispb::schema::TypeOrigin::declaration,
+                                           .module_name = "representations",
+                                           .namespace_name = "test",
+                                           .name = "ExistingHealthQ8"})};
+    ASSERT_TRUE(existing.has_value());
+
+    auto const created{loaded.document->allocate_declaration_id()};
+    auto applied{loaded.document->apply(lispb::schema::CreateLinearQuantized{
+        .declaration = created,
+        .module_index = loaded.document->declaration(*existing)->module_index,
+        .schema = codegen::LinearQuantizedSchema{.name = "HealthQ10",
+                                                 .source = codegen::TypeRef{.name = "test::Health",
+                                                                            .suffix = {},
+                                                                            .nested = std::nullopt},
+                                                 .bit_width = 10,
+                                                 .reserved_codes = 1,
+                                                 .clipping = codegen::QuantizationClipping::clamp},
+        .insertion_index = std::nullopt})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto const designed{loaded.document->types().find_declared("representations", "HealthQ10")};
+    ASSERT_TRUE(designed.has_value());
+    auto analysis{Analyzer::analyze_linear_quantized(loaded.document->types(), *designed)};
+    EXPECT_EQ(analysis.encoded_storage_bits, 10U);
+    EXPECT_EQ(analysis.total_code_count, (ExactCodeCount{.value = 1024, .two_to_64 = false}));
+    EXPECT_EQ(analysis.usable_code_count, (ExactCodeCount{.value = 1023, .two_to_64 = false}));
+    EXPECT_EQ(analysis.source_span, 1000U);
+    EXPECT_NEAR(static_cast<double>(analysis.resolution), 1000.0 / 1022.0, 1e-12);
+
+    auto saved{loaded.document->save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    ASSERT_EQ(saved->size(), 1U);
+
+    auto reloaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(reloaded.loaded) << diagnostic_text(reloaded);
+    ASSERT_TRUE(reloaded.document.has_value());
+    auto const reloaded_designed{
+        reloaded.document->types().find_declared("representations", "HealthQ10")};
+    ASSERT_TRUE(reloaded_designed.has_value());
+    auto const& quantized{std::get<lispb::schema::LinearQuantizedType>(
+        reloaded.document->types().type(*reloaded_designed).definition)};
+    EXPECT_EQ(quantized.bit_width, 10U);
+    EXPECT_EQ(quantized.reserved_codes, 1U);
+    EXPECT_EQ(quantized.clipping, codegen::QuantizationClipping::clamp);
+    EXPECT_EQ(reloaded.document->types().type(quantized.source.type).identity.name, "Health");
+
+    analysis = Analyzer::analyze_linear_quantized(reloaded.document->types(), *reloaded_designed);
+    EXPECT_EQ(analysis.usable_code_count, (ExactCodeCount{.value = 1023, .two_to_64 = false}));
+    EXPECT_NEAR(static_cast<double>(analysis.maximum_rounding_error), 500.0 / 1022.0, 1e-12);
+}
+
+TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesIntegerVarintRepresentation) {
+    TemporarySchemaProject files;
+    auto loaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
+    ASSERT_TRUE(loaded.document.has_value());
+    auto const existing{
+        loaded.document->find_declaration({.origin = lispb::schema::TypeOrigin::declaration,
+                                           .module_name = "representations",
+                                           .namespace_name = "test",
+                                           .name = "ExistingHealthQ8"})};
+    ASSERT_TRUE(existing.has_value());
+
+    auto const created{loaded.document->allocate_declaration_id()};
+    auto applied{loaded.document->apply(lispb::schema::CreateIntegerVarint{
+        .declaration = created,
+        .module_index = loaded.document->declaration(*existing)->module_index,
+        .schema =
+            codegen::IntegerVarintSchema{
+                .name = "HealthVarint",
+                .source =
+                    codegen::TypeRef{.name = "test::Health", .suffix = {}, .nested = std::nullopt},
+                .encoding = codegen::IntegerVarintEncoding::unsigned_varint},
+        .insertion_index = std::nullopt})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto const designed{loaded.document->types().find_declared("representations", "HealthVarint")};
+    ASSERT_TRUE(designed.has_value());
+    auto analysis{Analyzer::analyze_integer_varint(loaded.document->types(), *designed, 100)};
+    EXPECT_EQ(analysis.minimum_encoded_bytes, 1U);
+    EXPECT_EQ(analysis.maximum_encoded_bytes, 2U);
+    EXPECT_EQ(analysis.minimum_total_bytes, 100U);
+    EXPECT_EQ(analysis.maximum_total_bytes, 200U);
+
+    auto saved{loaded.document->save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(reloaded.loaded) << diagnostic_text(reloaded);
+    ASSERT_TRUE(reloaded.document.has_value());
+    auto const reloaded_designed{
+        reloaded.document->types().find_declared("representations", "HealthVarint")};
+    ASSERT_TRUE(reloaded_designed.has_value());
+    auto const& varint{std::get<lispb::schema::IntegerVarintType>(
+        reloaded.document->types().type(*reloaded_designed).definition)};
+    EXPECT_EQ(varint.encoding, codegen::IntegerVarintEncoding::unsigned_varint);
+    EXPECT_EQ(reloaded.document->types().type(varint.source.type).identity.name, "Health");
+
+    analysis =
+        Analyzer::analyze_integer_varint(reloaded.document->types(), *reloaded_designed, 100);
+    EXPECT_EQ(analysis.minimum_total_bytes, 100U);
+    EXPECT_EQ(analysis.maximum_total_bytes, 200U);
+}
+
+TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesFixedPointRepresentation) {
+    TemporarySchemaProject files;
+    auto loaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
+    ASSERT_TRUE(loaded.document.has_value());
+    auto const existing{
+        loaded.document->find_declaration({.origin = lispb::schema::TypeOrigin::declaration,
+                                           .module_name = "representations",
+                                           .namespace_name = "test",
+                                           .name = "ExistingHealthQ8"})};
+    ASSERT_TRUE(existing.has_value());
+
+    auto const created{loaded.document->allocate_declaration_id()};
+    auto applied{loaded.document->apply(lispb::schema::CreateFixedPoint{
+        .declaration = created,
+        .module_index = loaded.document->declaration(*existing)->module_index,
+        .schema = codegen::FixedPointSchema{.name = "VelocityQ8_8",
+                                            .signedness = true,
+                                            .total_bits = 16,
+                                            .fractional_bits = 8,
+                                            .rounding = codegen::FixedPointRounding::nearest_even},
+        .insertion_index = std::nullopt})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto const designed{loaded.document->types().find_declared("representations", "VelocityQ8_8")};
+    ASSERT_TRUE(designed.has_value());
+    auto analysis{Analyzer::analyze_fixed_point(loaded.document->types(), *designed, 100)};
+    EXPECT_EQ(analysis.total_encoded_bits, 1'600U);
+    EXPECT_DOUBLE_EQ(static_cast<double>(analysis.resolution), 1.0 / 256.0);
+    EXPECT_DOUBLE_EQ(static_cast<double>(analysis.minimum_value), -128.0);
+    EXPECT_DOUBLE_EQ(static_cast<double>(analysis.maximum_value), 127.0 + 255.0 / 256.0);
+
+    auto saved{loaded.document->save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(reloaded.loaded) << diagnostic_text(reloaded);
+    ASSERT_TRUE(reloaded.document.has_value());
+    auto const reloaded_designed{
+        reloaded.document->types().find_declared("representations", "VelocityQ8_8")};
+    ASSERT_TRUE(reloaded_designed.has_value());
+    auto const& fixed{std::get<lispb::schema::FixedPointType>(
+        reloaded.document->types().type(*reloaded_designed).definition)};
+    EXPECT_TRUE(fixed.signedness);
+    EXPECT_EQ(fixed.total_bits, 16U);
+    EXPECT_EQ(fixed.fractional_bits, 8U);
+    EXPECT_EQ(fixed.rounding, codegen::FixedPointRounding::nearest_even);
+
+    analysis = Analyzer::analyze_fixed_point(reloaded.document->types(), *reloaded_designed, 100);
+    EXPECT_EQ(analysis.total_encoded_bits, 1'600U);
+    EXPECT_DOUBLE_EQ(static_cast<double>(analysis.maximum_rounding_error), 1.0 / 512.0);
+}
+
+TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesMiniFloatRepresentation) {
+    TemporarySchemaProject files;
+    auto loaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
+    ASSERT_TRUE(loaded.document.has_value());
+    auto const existing{
+        loaded.document->find_declaration({.origin = lispb::schema::TypeOrigin::declaration,
+                                           .module_name = "representations",
+                                           .namespace_name = "test",
+                                           .name = "ExistingHealthQ8"})};
+    ASSERT_TRUE(existing.has_value());
+
+    auto const created{loaded.document->allocate_declaration_id()};
+    auto applied{loaded.document->apply(lispb::schema::CreateMiniFloat{
+        .declaration = created,
+        .module_index = loaded.document->declaration(*existing)->module_index,
+        .schema = codegen::MiniFloatSchema{.name = "CompactFloat",
+                                           .sign_bits = 1,
+                                           .exponent_bits = 5,
+                                           .significand_bits = 10,
+                                           .exponent_bias = 15},
+        .insertion_index = std::nullopt})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto const designed{loaded.document->types().find_declared("representations", "CompactFloat")};
+    ASSERT_TRUE(designed.has_value());
+    auto analysis{Analyzer::analyze_mini_float(loaded.document->types(), *designed, 100)};
+    EXPECT_EQ(analysis.total_bits, 16U);
+    EXPECT_EQ(analysis.total_encoded_bits, 1'600U);
+    EXPECT_EQ(analysis.nan_code_count, 2'046U);
+    EXPECT_DOUBLE_EQ(static_cast<double>(*analysis.maximum_finite), 65'504.0);
+
+    auto saved{loaded.document->save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(reloaded.loaded) << diagnostic_text(reloaded);
+    ASSERT_TRUE(reloaded.document.has_value());
+    auto const reloaded_designed{
+        reloaded.document->types().find_declared("representations", "CompactFloat")};
+    ASSERT_TRUE(reloaded_designed.has_value());
+    auto const& mini_float{std::get<lispb::schema::MiniFloatType>(
+        reloaded.document->types().type(*reloaded_designed).definition)};
+    EXPECT_EQ(mini_float.sign_bits, 1U);
+    EXPECT_EQ(mini_float.exponent_bits, 5U);
+    EXPECT_EQ(mini_float.significand_bits, 10U);
+    EXPECT_EQ(mini_float.exponent_bias, 15);
+
+    analysis = Analyzer::analyze_mini_float(reloaded.document->types(), *reloaded_designed, 100);
+    EXPECT_EQ(analysis.total_encoded_bits, 1'600U);
+    EXPECT_DOUBLE_EQ(static_cast<double>(*analysis.minimum_positive_subnormal),
+                     std::ldexp(1.0, -24));
+}
+
+TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesOptionalSentinelRepresentation) {
+    TemporarySchemaProject files;
+    auto loaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
+    ASSERT_TRUE(loaded.document.has_value());
+    auto const existing{
+        loaded.document->find_declaration({.origin = lispb::schema::TypeOrigin::declaration,
+                                           .module_name = "representations",
+                                           .namespace_name = "test",
+                                           .name = "ExistingHealthQ8"})};
+    ASSERT_TRUE(existing.has_value());
+
+    auto const created{loaded.document->allocate_declaration_id()};
+    auto applied{loaded.document->apply(lispb::schema::CreateOptionalSentinel{
+        .declaration = created,
+        .module_index = loaded.document->declaration(*existing)->module_index,
+        .schema =
+            codegen::OptionalSentinelSchema{
+                .name = "OptionalHealth",
+                .source =
+                    codegen::TypeRef{.name = "test::Health", .suffix = {}, .nested = std::nullopt},
+                .sentinel = "Invalid"},
+        .insertion_index = std::nullopt})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto const designed{
+        loaded.document->types().find_declared("representations", "OptionalHealth")};
+    ASSERT_TRUE(designed.has_value());
+    auto analysis{Analyzer::analyze_optional_sentinel(loaded.document->types(), *designed, 1'000)};
+    EXPECT_EQ(analysis.present_value_count, 1'001U);
+    EXPECT_EQ(analysis.absence_code_count, 1U);
+    EXPECT_EQ(analysis.other_sentinel_code_count, 0U);
+    EXPECT_EQ(analysis.unused_code_count, 22U);
+    EXPECT_EQ(analysis.encoded_storage_bits, 10U);
+    EXPECT_EQ(analysis.total_encoded_bits, 10'000U);
+
+    auto saved{loaded.document->save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(reloaded.loaded) << diagnostic_text(reloaded);
+    ASSERT_TRUE(reloaded.document.has_value());
+    auto const reloaded_designed{
+        reloaded.document->types().find_declared("representations", "OptionalHealth")};
+    ASSERT_TRUE(reloaded_designed.has_value());
+    auto const& optional{std::get<lispb::schema::OptionalSentinelType>(
+        reloaded.document->types().type(*reloaded_designed).definition)};
+    EXPECT_EQ(optional.sentinel_name, "Invalid");
+    EXPECT_EQ(optional.sentinel_value, codegen::PackedIntegerValue{1023});
+    EXPECT_EQ(optional.bit_width, 10U);
+    EXPECT_EQ(reloaded.document->types().type(optional.source.type).identity.name, "Health");
+
+    analysis =
+        Analyzer::analyze_optional_sentinel(reloaded.document->types(), *reloaded_designed, 1'000);
+    EXPECT_EQ(analysis.total_encoded_bits, 10'000U);
+}
+
+TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesOptionalPresenceBitRepresentation) {
+    TemporarySchemaProject files;
+    auto loaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
+    ASSERT_TRUE(loaded.document.has_value());
+    auto const existing{
+        loaded.document->find_declaration({.origin = lispb::schema::TypeOrigin::declaration,
+                                           .module_name = "representations",
+                                           .namespace_name = "test",
+                                           .name = "ExistingHealthQ8"})};
+    ASSERT_TRUE(existing.has_value());
+
+    auto const created{loaded.document->allocate_declaration_id()};
+    auto applied{loaded.document->apply(lispb::schema::CreateOptionalPresenceBit{
+        .declaration = created,
+        .module_index = loaded.document->declaration(*existing)->module_index,
+        .schema =
+            codegen::OptionalPresenceBitSchema{
+                .name = "PresentHealth",
+                .source =
+                    codegen::TypeRef{.name = "test::Health", .suffix = {}, .nested = std::nullopt}},
+        .insertion_index = std::nullopt})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto const designed{loaded.document->types().find_declared("representations", "PresentHealth")};
+    ASSERT_TRUE(designed.has_value());
+    auto analysis{
+        Analyzer::analyze_optional_presence_bit(loaded.document->types(), *designed, 1'000)};
+    EXPECT_EQ(analysis.present_value_count, 1'001U);
+    EXPECT_EQ(analysis.canonical_absence_state_count, 1U);
+    EXPECT_EQ(analysis.source_sentinel_code_count, 1U);
+    EXPECT_EQ(analysis.source_unused_payload_codes, 22U);
+    EXPECT_EQ(analysis.payload_bits, 10U);
+    EXPECT_EQ(analysis.encoded_storage_bits, 11U);
+    EXPECT_EQ(analysis.total_encoded_bits, 11'000U);
+
+    auto saved{loaded.document->save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(reloaded.loaded) << diagnostic_text(reloaded);
+    ASSERT_TRUE(reloaded.document.has_value());
+    auto const reloaded_designed{
+        reloaded.document->types().find_declared("representations", "PresentHealth")};
+    ASSERT_TRUE(reloaded_designed.has_value());
+    auto const& optional{std::get<lispb::schema::OptionalPresenceBitType>(
+        reloaded.document->types().type(*reloaded_designed).definition)};
+    EXPECT_EQ(optional.payload_bits, 10U);
+    EXPECT_EQ(optional.encoded_bits, 11U);
+    EXPECT_EQ(reloaded.document->types().type(optional.source.type).identity.name, "Health");
+
+    analysis = Analyzer::analyze_optional_presence_bit(
+        reloaded.document->types(), *reloaded_designed, 1'000);
+    EXPECT_EQ(analysis.total_encoded_bits, 11'000U);
 }
 
 TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesSoa) {
