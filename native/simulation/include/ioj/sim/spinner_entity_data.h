@@ -230,17 +230,15 @@ struct SpinnerEntityData {
              float const new_yaws,
              std::int16_t const new_laser_cooldowns,
              std::int32_t const new_next_fire_point_indices) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index,
-            new_entity_ids,
-            new_locations_xs,
-            new_locations_ys,
-            new_locations_zs,
-            new_yaws,
-            new_laser_cooldowns,
-            new_next_fire_point_indices);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            entity_ids.emplace_back(new_entity_ids);
+            locations.xs.emplace_back(new_locations_xs);
+            locations.ys.emplace_back(new_locations_ys);
+            locations.zs.emplace_back(new_locations_zs);
+            yaws.emplace_back(new_yaws);
+            laser_cooldowns.emplace_back(new_laser_cooldowns);
+            next_fire_point_indices.emplace_back(new_next_fire_point_indices);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -292,18 +290,23 @@ struct SpinnerEntityData {
                                     address >= begin + next_fire_point_indices.size() *
                                                            sizeof(std::int32_t));
         }
-        entity_ids.insert(
-            entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
-        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
-        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
-        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
-        yaws.insert(yaws.end(), source.yaws.data(), source.yaws.data() + count);
-        laser_cooldowns.insert(laser_cooldowns.end(),
-                               source.laser_cooldowns.data(),
-                               source.laser_cooldowns.data() + count);
-        next_fire_point_indices.insert(next_fire_point_indices.end(),
-                                       source.next_fire_point_indices.data(),
-                                       source.next_fire_point_indices.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            entity_ids.insert(
+                entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
+            locations.xs.insert(
+                locations.xs.end(), source.locations.xs, source.locations.xs + count);
+            locations.ys.insert(
+                locations.ys.end(), source.locations.ys, source.locations.ys + count);
+            locations.zs.insert(
+                locations.zs.end(), source.locations.zs, source.locations.zs + count);
+            yaws.insert(yaws.end(), source.yaws.data(), source.yaws.data() + count);
+            laser_cooldowns.insert(laser_cooldowns.end(),
+                                   source.laser_cooldowns.data(),
+                                   source.laser_cooldowns.data() + count);
+            next_fire_point_indices.insert(next_fire_point_indices.end(),
+                                           source.next_fire_point_indices.data(),
+                                           source.next_fire_point_indices.data() + count);
+        });
     }
     auto get_view() -> View {
         return {

@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
+#include <stdexcept>
 
 namespace ml::native_soa {
 namespace {
@@ -99,6 +100,39 @@ TEST(NativeSoaVectorStorageOps, MutationsKeepColumnsAligned) {
     EXPECT_EQ(soa.num(), 0);
     EXPECT_EQ(soa.ids.capacity(), ids_capacity);
     EXPECT_EQ(soa.values.capacity(), values_capacity);
+}
+
+TEST(NativeSoaVectorStorageOps, AppendRowsPublishesCompleteRowsAndRollsBackFailures) {
+    SyntheticSoa soa;
+
+    EXPECT_EQ(vector_storage_ops::append_rows(soa,
+                                              1,
+                                              [&] {
+                                                  soa.ids.emplace_back(3);
+                                                  soa.values.emplace_back(30.0f);
+                                              }),
+              0);
+    EXPECT_EQ(vector_storage_ops::append_rows(soa,
+                                              1,
+                                              [&] {
+                                                  soa.ids.emplace_back(7);
+                                                  soa.values.emplace_back(70.0f);
+                                              }),
+              1);
+    EXPECT_EQ(soa.ids, (Vector<std::int32_t>{3, 7}));
+    EXPECT_EQ(soa.values, (Vector<float>{30.0f, 70.0f}));
+    expect_aligned(soa);
+
+    EXPECT_THROW(vector_storage_ops::append_rows(soa,
+                                                 1,
+                                                 [&] {
+                                                     soa.ids.emplace_back(9);
+                                                     throw std::runtime_error{"append failed"};
+                                                 }),
+                 std::runtime_error);
+    EXPECT_EQ(soa.ids, (Vector<std::int32_t>{3, 7}));
+    EXPECT_EQ(soa.values, (Vector<float>{30.0f, 70.0f}));
+    expect_aligned(soa);
 }
 
 } // namespace

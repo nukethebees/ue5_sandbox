@@ -130,7 +130,7 @@ void Sim::process_pending_spawns() {
     auto const requests{pending_spawns.get_const_view().columns()};
     auto const simulation_time{static_cast<float>(simulation_clock.get_simulation_time())};
     constexpr float fixed_spawn_offset{10.f};
-    entities.add_defaulted(n_to_add);
+    entities.add_uninitialised(n_to_add);
     auto const output{entities.get_view().right(n_to_add).columns()};
     for (std::int32_t spawn_index{}; spawn_index < n_to_add; ++spawn_index) {
         output.active[spawn_index] = 1;

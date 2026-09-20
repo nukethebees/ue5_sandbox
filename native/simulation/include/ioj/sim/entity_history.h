@@ -229,16 +229,14 @@ struct EntityHistoryColumns {
              std::uint32_t const new_kills,
              EntityUniqueId const new_killed_by,
              LifeState const new_life_state) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index,
-            new_entity_ids,
-            new_entity_types,
-            new_teams,
-            new_kills,
-            new_killed_by,
-            new_life_state);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            entity_ids.emplace_back(new_entity_ids);
+            entity_types.emplace_back(new_entity_types);
+            teams.emplace_back(new_teams);
+            kills.emplace_back(new_kills);
+            killed_by.emplace_back(new_killed_by);
+            life_state.emplace_back(new_life_state);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -284,15 +282,18 @@ struct EntityHistoryColumns {
             ml::native_soa::require(address < begin ||
                                     address >= begin + life_state.size() * sizeof(LifeState));
         }
-        entity_ids.insert(
-            entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
-        entity_types.insert(
-            entity_types.end(), source.entity_types.data(), source.entity_types.data() + count);
-        teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
-        kills.insert(kills.end(), source.kills.data(), source.kills.data() + count);
-        killed_by.insert(killed_by.end(), source.killed_by.data(), source.killed_by.data() + count);
-        life_state.insert(
-            life_state.end(), source.life_state.data(), source.life_state.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            entity_ids.insert(
+                entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
+            entity_types.insert(
+                entity_types.end(), source.entity_types.data(), source.entity_types.data() + count);
+            teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
+            kills.insert(kills.end(), source.kills.data(), source.kills.data() + count);
+            killed_by.insert(
+                killed_by.end(), source.killed_by.data(), source.killed_by.data() + count);
+            life_state.insert(
+                life_state.end(), source.life_state.data(), source.life_state.data() + count);
+        });
     }
     auto get_view() -> View {
         return {

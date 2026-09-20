@@ -170,10 +170,11 @@ struct EntityDeathInfo {
     auto add(DeathReason const new_reasons,
              EntityUniqueId const new_victims,
              EntityUniqueId const new_killers) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index, new_reasons, new_victims, new_killers);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            reasons.emplace_back(new_reasons);
+            victims.emplace_back(new_victims);
+            killers.emplace_back(new_killers);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -200,9 +201,11 @@ struct EntityDeathInfo {
             ml::native_soa::require(address < begin ||
                                     address >= begin + killers.size() * sizeof(EntityUniqueId));
         }
-        reasons.insert(reasons.end(), source.reasons.data(), source.reasons.data() + count);
-        victims.insert(victims.end(), source.victims.data(), source.victims.data() + count);
-        killers.insert(killers.end(), source.killers.data(), source.killers.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            reasons.insert(reasons.end(), source.reasons.data(), source.reasons.data() + count);
+            victims.insert(victims.end(), source.victims.data(), source.victims.data() + count);
+            killers.insert(killers.end(), source.killers.data(), source.killers.data() + count);
+        });
     }
     auto get_view() -> View {
         return {

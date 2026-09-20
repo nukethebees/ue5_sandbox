@@ -179,10 +179,12 @@ struct TraceHits {
              EntityUniqueId const entity,
              std::int32_t const static_geometry_index,
              std::uint8_t const hit) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index, location, entity, static_geometry_index, hit);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            locations.add(location);
+            entities.emplace_back(entity);
+            static_geometry_indices.emplace_back(static_geometry_index);
+            hits.emplace_back(hit);
+        });
     }
     template <typename Other>
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {

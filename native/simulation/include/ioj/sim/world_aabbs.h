@@ -217,10 +217,14 @@ struct WorldAABBsColumns {
              float const new_max_xs,
              float const new_max_ys,
              float const new_max_zs) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index, new_min_xs, new_min_ys, new_min_zs, new_max_xs, new_max_ys, new_max_zs);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            min_xs.emplace_back(new_min_xs);
+            min_ys.emplace_back(new_min_ys);
+            min_zs.emplace_back(new_min_zs);
+            max_xs.emplace_back(new_max_xs);
+            max_ys.emplace_back(new_max_ys);
+            max_zs.emplace_back(new_max_zs);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -265,12 +269,14 @@ struct WorldAABBsColumns {
             ml::native_soa::require(address < begin ||
                                     address >= begin + max_zs.size() * sizeof(float));
         }
-        min_xs.insert(min_xs.end(), source.min_xs.data(), source.min_xs.data() + count);
-        min_ys.insert(min_ys.end(), source.min_ys.data(), source.min_ys.data() + count);
-        min_zs.insert(min_zs.end(), source.min_zs.data(), source.min_zs.data() + count);
-        max_xs.insert(max_xs.end(), source.max_xs.data(), source.max_xs.data() + count);
-        max_ys.insert(max_ys.end(), source.max_ys.data(), source.max_ys.data() + count);
-        max_zs.insert(max_zs.end(), source.max_zs.data(), source.max_zs.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            min_xs.insert(min_xs.end(), source.min_xs.data(), source.min_xs.data() + count);
+            min_ys.insert(min_ys.end(), source.min_ys.data(), source.min_ys.data() + count);
+            min_zs.insert(min_zs.end(), source.min_zs.data(), source.min_zs.data() + count);
+            max_xs.insert(max_xs.end(), source.max_xs.data(), source.max_xs.data() + count);
+            max_ys.insert(max_ys.end(), source.max_ys.data(), source.max_ys.data() + count);
+            max_zs.insert(max_zs.end(), source.max_zs.data(), source.max_zs.data() + count);
+        });
     }
     auto get_view() -> View {
         return {

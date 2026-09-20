@@ -162,10 +162,10 @@ struct EntityEntityOverlaps {
     }
     auto add(EntityUniqueId const new_first_entities, EntityUniqueId const new_second_entities)
         -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index, new_first_entities, new_second_entities);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            first_entities.emplace_back(new_first_entities);
+            second_entities.emplace_back(new_second_entities);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -188,12 +188,14 @@ struct EntityEntityOverlaps {
                                     address >=
                                         begin + second_entities.size() * sizeof(EntityUniqueId));
         }
-        first_entities.insert(first_entities.end(),
-                              source.first_entities.data(),
-                              source.first_entities.data() + count);
-        second_entities.insert(second_entities.end(),
-                               source.second_entities.data(),
-                               source.second_entities.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            first_entities.insert(first_entities.end(),
+                                  source.first_entities.data(),
+                                  source.first_entities.data() + count);
+            second_entities.insert(second_entities.end(),
+                                   source.second_entities.data(),
+                                   source.second_entities.data() + count);
+        });
     }
     auto get_view() -> View {
         return {
@@ -394,10 +396,10 @@ struct EntityStaticOverlaps {
     }
     auto add(EntityUniqueId const new_entities, std::int32_t const new_static_geometry_indices)
         -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index, new_entities, new_static_geometry_indices);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            entities.emplace_back(new_entities);
+            static_geometry_indices.emplace_back(new_static_geometry_indices);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -419,10 +421,12 @@ struct EntityStaticOverlaps {
                                     address >= begin + static_geometry_indices.size() *
                                                            sizeof(std::int32_t));
         }
-        entities.insert(entities.end(), source.entities.data(), source.entities.data() + count);
-        static_geometry_indices.insert(static_geometry_indices.end(),
-                                       source.static_geometry_indices.data(),
-                                       source.static_geometry_indices.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            entities.insert(entities.end(), source.entities.data(), source.entities.data() + count);
+            static_geometry_indices.insert(static_geometry_indices.end(),
+                                           source.static_geometry_indices.data(),
+                                           source.static_geometry_indices.data() + count);
+        });
     }
     auto get_view() -> View {
         return {

@@ -911,66 +911,66 @@ struct FighterEntityData {
              float const new_target_distance_sq,
              float const new_target_distances,
              float const new_target_radii) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index,
-            new_entity_ids,
-            new_integral_biases,
-            new_float_biases,
-            new_tasks,
-            new_locations_xs,
-            new_locations_ys,
-            new_locations_zs,
-            new_desired_move_locations_xs,
-            new_desired_move_locations_ys,
-            new_desired_move_locations_zs,
-            new_aim_directions_xs,
-            new_aim_directions_ys,
-            new_aim_directions_zs,
-            new_planned_aim_directions_xs,
-            new_planned_aim_directions_ys,
-            new_planned_aim_directions_zs,
-            new_desired_aiming_directions_xs,
-            new_desired_aiming_directions_ys,
-            new_desired_aiming_directions_zs,
-            new_movement_directions_xs,
-            new_movement_directions_ys,
-            new_movement_directions_zs,
-            new_velocities_xs,
-            new_velocities_ys,
-            new_velocities_zs,
-            new_move_distances,
-            new_speeds,
-            new_teams,
-            new_health_indices,
-            new_parent_ids,
-            new_awareness_scan_countdowns,
-            new_navigation_update_countdowns_remaining_ticks,
-            new_navigation_update_countdowns_periods,
-            new_separation_steering_xs,
-            new_separation_steering_ys,
-            new_separation_steering_zs,
-            new_navigation_risk_tiers,
-            new_navigation_lower_risk_scan_counts,
-            new_avoidance_choice_indices,
-            new_avoidance_clear_scan_counts,
-            new_attack_reposition_countdowns,
-            new_attack_cooldowns,
-            new_target_ids,
-            new_target_locations_xs,
-            new_target_locations_ys,
-            new_target_locations_zs,
-            new_target_velocities_xs,
-            new_target_velocities_ys,
-            new_target_velocities_zs,
-            new_target_directions_xs,
-            new_target_directions_ys,
-            new_target_directions_zs,
-            new_intercept_times,
-            new_target_distance_sq,
-            new_target_distances,
-            new_target_radii);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            entity_ids.emplace_back(new_entity_ids);
+            integral_biases.emplace_back(new_integral_biases);
+            float_biases.emplace_back(new_float_biases);
+            tasks.emplace_back(new_tasks);
+            locations.xs.emplace_back(new_locations_xs);
+            locations.ys.emplace_back(new_locations_ys);
+            locations.zs.emplace_back(new_locations_zs);
+            desired_move_locations.xs.emplace_back(new_desired_move_locations_xs);
+            desired_move_locations.ys.emplace_back(new_desired_move_locations_ys);
+            desired_move_locations.zs.emplace_back(new_desired_move_locations_zs);
+            aim_directions.xs.emplace_back(new_aim_directions_xs);
+            aim_directions.ys.emplace_back(new_aim_directions_ys);
+            aim_directions.zs.emplace_back(new_aim_directions_zs);
+            planned_aim_directions.xs.emplace_back(new_planned_aim_directions_xs);
+            planned_aim_directions.ys.emplace_back(new_planned_aim_directions_ys);
+            planned_aim_directions.zs.emplace_back(new_planned_aim_directions_zs);
+            desired_aiming_directions.xs.emplace_back(new_desired_aiming_directions_xs);
+            desired_aiming_directions.ys.emplace_back(new_desired_aiming_directions_ys);
+            desired_aiming_directions.zs.emplace_back(new_desired_aiming_directions_zs);
+            movement_directions.xs.emplace_back(new_movement_directions_xs);
+            movement_directions.ys.emplace_back(new_movement_directions_ys);
+            movement_directions.zs.emplace_back(new_movement_directions_zs);
+            velocities.xs.emplace_back(new_velocities_xs);
+            velocities.ys.emplace_back(new_velocities_ys);
+            velocities.zs.emplace_back(new_velocities_zs);
+            move_distances.emplace_back(new_move_distances);
+            speeds.emplace_back(new_speeds);
+            teams.emplace_back(new_teams);
+            health_indices.emplace_back(new_health_indices);
+            parent_ids.emplace_back(new_parent_ids);
+            awareness_scan_countdowns.emplace_back(new_awareness_scan_countdowns);
+            navigation_update_countdowns_remaining_ticks.emplace_back(
+                new_navigation_update_countdowns_remaining_ticks);
+            navigation_update_countdowns_periods.emplace_back(
+                new_navigation_update_countdowns_periods);
+            separation_steering.xs.emplace_back(new_separation_steering_xs);
+            separation_steering.ys.emplace_back(new_separation_steering_ys);
+            separation_steering.zs.emplace_back(new_separation_steering_zs);
+            navigation_risk_tiers.emplace_back(new_navigation_risk_tiers);
+            navigation_lower_risk_scan_counts.emplace_back(new_navigation_lower_risk_scan_counts);
+            avoidance_choice_indices.emplace_back(new_avoidance_choice_indices);
+            avoidance_clear_scan_counts.emplace_back(new_avoidance_clear_scan_counts);
+            attack_reposition_countdowns.emplace_back(new_attack_reposition_countdowns);
+            attack_cooldowns.emplace_back(new_attack_cooldowns);
+            target_ids.emplace_back(new_target_ids);
+            target_locations.xs.emplace_back(new_target_locations_xs);
+            target_locations.ys.emplace_back(new_target_locations_ys);
+            target_locations.zs.emplace_back(new_target_locations_zs);
+            target_velocities.xs.emplace_back(new_target_velocities_xs);
+            target_velocities.ys.emplace_back(new_target_velocities_ys);
+            target_velocities.zs.emplace_back(new_target_velocities_zs);
+            target_directions.xs.emplace_back(new_target_directions_xs);
+            target_directions.ys.emplace_back(new_target_directions_ys);
+            target_directions.zs.emplace_back(new_target_directions_zs);
+            intercept_times.emplace_back(new_intercept_times);
+            target_distance_sq.emplace_back(new_target_distance_sq);
+            target_distances.emplace_back(new_target_distances);
+            target_radii.emplace_back(new_target_radii);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -1342,154 +1342,162 @@ struct FighterEntityData {
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_radii.size() * sizeof(float));
         }
-        entity_ids.insert(
-            entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
-        integral_biases.insert(integral_biases.end(),
-                               source.integral_biases.data(),
-                               source.integral_biases.data() + count);
-        float_biases.insert(
-            float_biases.end(), source.float_biases.data(), source.float_biases.data() + count);
-        tasks.insert(tasks.end(), source.tasks.data(), source.tasks.data() + count);
-        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
-        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
-        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
-        desired_move_locations.xs.insert(desired_move_locations.xs.end(),
-                                         source.desired_move_locations.xs,
-                                         source.desired_move_locations.xs + count);
-        desired_move_locations.ys.insert(desired_move_locations.ys.end(),
-                                         source.desired_move_locations.ys,
-                                         source.desired_move_locations.ys + count);
-        desired_move_locations.zs.insert(desired_move_locations.zs.end(),
-                                         source.desired_move_locations.zs,
-                                         source.desired_move_locations.zs + count);
-        aim_directions.xs.insert(
-            aim_directions.xs.end(), source.aim_directions.xs, source.aim_directions.xs + count);
-        aim_directions.ys.insert(
-            aim_directions.ys.end(), source.aim_directions.ys, source.aim_directions.ys + count);
-        aim_directions.zs.insert(
-            aim_directions.zs.end(), source.aim_directions.zs, source.aim_directions.zs + count);
-        planned_aim_directions.xs.insert(planned_aim_directions.xs.end(),
-                                         source.planned_aim_directions.xs,
-                                         source.planned_aim_directions.xs + count);
-        planned_aim_directions.ys.insert(planned_aim_directions.ys.end(),
-                                         source.planned_aim_directions.ys,
-                                         source.planned_aim_directions.ys + count);
-        planned_aim_directions.zs.insert(planned_aim_directions.zs.end(),
-                                         source.planned_aim_directions.zs,
-                                         source.planned_aim_directions.zs + count);
-        desired_aiming_directions.xs.insert(desired_aiming_directions.xs.end(),
-                                            source.desired_aiming_directions.xs,
-                                            source.desired_aiming_directions.xs + count);
-        desired_aiming_directions.ys.insert(desired_aiming_directions.ys.end(),
-                                            source.desired_aiming_directions.ys,
-                                            source.desired_aiming_directions.ys + count);
-        desired_aiming_directions.zs.insert(desired_aiming_directions.zs.end(),
-                                            source.desired_aiming_directions.zs,
-                                            source.desired_aiming_directions.zs + count);
-        movement_directions.xs.insert(movement_directions.xs.end(),
-                                      source.movement_directions.xs,
-                                      source.movement_directions.xs + count);
-        movement_directions.ys.insert(movement_directions.ys.end(),
-                                      source.movement_directions.ys,
-                                      source.movement_directions.ys + count);
-        movement_directions.zs.insert(movement_directions.zs.end(),
-                                      source.movement_directions.zs,
-                                      source.movement_directions.zs + count);
-        velocities.xs.insert(
-            velocities.xs.end(), source.velocities.xs, source.velocities.xs + count);
-        velocities.ys.insert(
-            velocities.ys.end(), source.velocities.ys, source.velocities.ys + count);
-        velocities.zs.insert(
-            velocities.zs.end(), source.velocities.zs, source.velocities.zs + count);
-        move_distances.insert(move_distances.end(),
-                              source.move_distances.data(),
-                              source.move_distances.data() + count);
-        speeds.insert(speeds.end(), source.speeds.data(), source.speeds.data() + count);
-        teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
-        health_indices.insert(health_indices.end(),
-                              source.health_indices.data(),
-                              source.health_indices.data() + count);
-        parent_ids.insert(
-            parent_ids.end(), source.parent_ids.data(), source.parent_ids.data() + count);
-        awareness_scan_countdowns.insert(awareness_scan_countdowns.end(),
-                                         source.awareness_scan_countdowns.data(),
-                                         source.awareness_scan_countdowns.data() + count);
-        navigation_update_countdowns_remaining_ticks.insert(
-            navigation_update_countdowns_remaining_ticks.end(),
-            source.navigation_update_countdowns_remaining_ticks.data(),
-            source.navigation_update_countdowns_remaining_ticks.data() + count);
-        navigation_update_countdowns_periods.insert(
-            navigation_update_countdowns_periods.end(),
-            source.navigation_update_countdowns_periods.data(),
-            source.navigation_update_countdowns_periods.data() + count);
-        separation_steering.xs.insert(separation_steering.xs.end(),
-                                      source.separation_steering.xs,
-                                      source.separation_steering.xs + count);
-        separation_steering.ys.insert(separation_steering.ys.end(),
-                                      source.separation_steering.ys,
-                                      source.separation_steering.ys + count);
-        separation_steering.zs.insert(separation_steering.zs.end(),
-                                      source.separation_steering.zs,
-                                      source.separation_steering.zs + count);
-        navigation_risk_tiers.insert(navigation_risk_tiers.end(),
-                                     source.navigation_risk_tiers.data(),
-                                     source.navigation_risk_tiers.data() + count);
-        navigation_lower_risk_scan_counts.insert(navigation_lower_risk_scan_counts.end(),
-                                                 source.navigation_lower_risk_scan_counts.data(),
-                                                 source.navigation_lower_risk_scan_counts.data() +
-                                                     count);
-        avoidance_choice_indices.insert(avoidance_choice_indices.end(),
-                                        source.avoidance_choice_indices.data(),
-                                        source.avoidance_choice_indices.data() + count);
-        avoidance_clear_scan_counts.insert(avoidance_clear_scan_counts.end(),
-                                           source.avoidance_clear_scan_counts.data(),
-                                           source.avoidance_clear_scan_counts.data() + count);
-        attack_reposition_countdowns.insert(attack_reposition_countdowns.end(),
-                                            source.attack_reposition_countdowns.data(),
-                                            source.attack_reposition_countdowns.data() + count);
-        attack_cooldowns.insert(attack_cooldowns.end(),
-                                source.attack_cooldowns.data(),
-                                source.attack_cooldowns.data() + count);
-        target_ids.insert(
-            target_ids.end(), source.target_ids.data(), source.target_ids.data() + count);
-        target_locations.xs.insert(target_locations.xs.end(),
-                                   source.target_locations.xs,
-                                   source.target_locations.xs + count);
-        target_locations.ys.insert(target_locations.ys.end(),
-                                   source.target_locations.ys,
-                                   source.target_locations.ys + count);
-        target_locations.zs.insert(target_locations.zs.end(),
-                                   source.target_locations.zs,
-                                   source.target_locations.zs + count);
-        target_velocities.xs.insert(target_velocities.xs.end(),
-                                    source.target_velocities.xs,
-                                    source.target_velocities.xs + count);
-        target_velocities.ys.insert(target_velocities.ys.end(),
-                                    source.target_velocities.ys,
-                                    source.target_velocities.ys + count);
-        target_velocities.zs.insert(target_velocities.zs.end(),
-                                    source.target_velocities.zs,
-                                    source.target_velocities.zs + count);
-        target_directions.xs.insert(target_directions.xs.end(),
-                                    source.target_directions.xs,
-                                    source.target_directions.xs + count);
-        target_directions.ys.insert(target_directions.ys.end(),
-                                    source.target_directions.ys,
-                                    source.target_directions.ys + count);
-        target_directions.zs.insert(target_directions.zs.end(),
-                                    source.target_directions.zs,
-                                    source.target_directions.zs + count);
-        intercept_times.insert(intercept_times.end(),
-                               source.intercept_times.data(),
-                               source.intercept_times.data() + count);
-        target_distance_sq.insert(target_distance_sq.end(),
-                                  source.target_distance_sq.data(),
-                                  source.target_distance_sq.data() + count);
-        target_distances.insert(target_distances.end(),
-                                source.target_distances.data(),
-                                source.target_distances.data() + count);
-        target_radii.insert(
-            target_radii.end(), source.target_radii.data(), source.target_radii.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            entity_ids.insert(
+                entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
+            integral_biases.insert(integral_biases.end(),
+                                   source.integral_biases.data(),
+                                   source.integral_biases.data() + count);
+            float_biases.insert(
+                float_biases.end(), source.float_biases.data(), source.float_biases.data() + count);
+            tasks.insert(tasks.end(), source.tasks.data(), source.tasks.data() + count);
+            locations.xs.insert(
+                locations.xs.end(), source.locations.xs, source.locations.xs + count);
+            locations.ys.insert(
+                locations.ys.end(), source.locations.ys, source.locations.ys + count);
+            locations.zs.insert(
+                locations.zs.end(), source.locations.zs, source.locations.zs + count);
+            desired_move_locations.xs.insert(desired_move_locations.xs.end(),
+                                             source.desired_move_locations.xs,
+                                             source.desired_move_locations.xs + count);
+            desired_move_locations.ys.insert(desired_move_locations.ys.end(),
+                                             source.desired_move_locations.ys,
+                                             source.desired_move_locations.ys + count);
+            desired_move_locations.zs.insert(desired_move_locations.zs.end(),
+                                             source.desired_move_locations.zs,
+                                             source.desired_move_locations.zs + count);
+            aim_directions.xs.insert(aim_directions.xs.end(),
+                                     source.aim_directions.xs,
+                                     source.aim_directions.xs + count);
+            aim_directions.ys.insert(aim_directions.ys.end(),
+                                     source.aim_directions.ys,
+                                     source.aim_directions.ys + count);
+            aim_directions.zs.insert(aim_directions.zs.end(),
+                                     source.aim_directions.zs,
+                                     source.aim_directions.zs + count);
+            planned_aim_directions.xs.insert(planned_aim_directions.xs.end(),
+                                             source.planned_aim_directions.xs,
+                                             source.planned_aim_directions.xs + count);
+            planned_aim_directions.ys.insert(planned_aim_directions.ys.end(),
+                                             source.planned_aim_directions.ys,
+                                             source.planned_aim_directions.ys + count);
+            planned_aim_directions.zs.insert(planned_aim_directions.zs.end(),
+                                             source.planned_aim_directions.zs,
+                                             source.planned_aim_directions.zs + count);
+            desired_aiming_directions.xs.insert(desired_aiming_directions.xs.end(),
+                                                source.desired_aiming_directions.xs,
+                                                source.desired_aiming_directions.xs + count);
+            desired_aiming_directions.ys.insert(desired_aiming_directions.ys.end(),
+                                                source.desired_aiming_directions.ys,
+                                                source.desired_aiming_directions.ys + count);
+            desired_aiming_directions.zs.insert(desired_aiming_directions.zs.end(),
+                                                source.desired_aiming_directions.zs,
+                                                source.desired_aiming_directions.zs + count);
+            movement_directions.xs.insert(movement_directions.xs.end(),
+                                          source.movement_directions.xs,
+                                          source.movement_directions.xs + count);
+            movement_directions.ys.insert(movement_directions.ys.end(),
+                                          source.movement_directions.ys,
+                                          source.movement_directions.ys + count);
+            movement_directions.zs.insert(movement_directions.zs.end(),
+                                          source.movement_directions.zs,
+                                          source.movement_directions.zs + count);
+            velocities.xs.insert(
+                velocities.xs.end(), source.velocities.xs, source.velocities.xs + count);
+            velocities.ys.insert(
+                velocities.ys.end(), source.velocities.ys, source.velocities.ys + count);
+            velocities.zs.insert(
+                velocities.zs.end(), source.velocities.zs, source.velocities.zs + count);
+            move_distances.insert(move_distances.end(),
+                                  source.move_distances.data(),
+                                  source.move_distances.data() + count);
+            speeds.insert(speeds.end(), source.speeds.data(), source.speeds.data() + count);
+            teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
+            health_indices.insert(health_indices.end(),
+                                  source.health_indices.data(),
+                                  source.health_indices.data() + count);
+            parent_ids.insert(
+                parent_ids.end(), source.parent_ids.data(), source.parent_ids.data() + count);
+            awareness_scan_countdowns.insert(awareness_scan_countdowns.end(),
+                                             source.awareness_scan_countdowns.data(),
+                                             source.awareness_scan_countdowns.data() + count);
+            navigation_update_countdowns_remaining_ticks.insert(
+                navigation_update_countdowns_remaining_ticks.end(),
+                source.navigation_update_countdowns_remaining_ticks.data(),
+                source.navigation_update_countdowns_remaining_ticks.data() + count);
+            navigation_update_countdowns_periods.insert(
+                navigation_update_countdowns_periods.end(),
+                source.navigation_update_countdowns_periods.data(),
+                source.navigation_update_countdowns_periods.data() + count);
+            separation_steering.xs.insert(separation_steering.xs.end(),
+                                          source.separation_steering.xs,
+                                          source.separation_steering.xs + count);
+            separation_steering.ys.insert(separation_steering.ys.end(),
+                                          source.separation_steering.ys,
+                                          source.separation_steering.ys + count);
+            separation_steering.zs.insert(separation_steering.zs.end(),
+                                          source.separation_steering.zs,
+                                          source.separation_steering.zs + count);
+            navigation_risk_tiers.insert(navigation_risk_tiers.end(),
+                                         source.navigation_risk_tiers.data(),
+                                         source.navigation_risk_tiers.data() + count);
+            navigation_lower_risk_scan_counts.insert(
+                navigation_lower_risk_scan_counts.end(),
+                source.navigation_lower_risk_scan_counts.data(),
+                source.navigation_lower_risk_scan_counts.data() + count);
+            avoidance_choice_indices.insert(avoidance_choice_indices.end(),
+                                            source.avoidance_choice_indices.data(),
+                                            source.avoidance_choice_indices.data() + count);
+            avoidance_clear_scan_counts.insert(avoidance_clear_scan_counts.end(),
+                                               source.avoidance_clear_scan_counts.data(),
+                                               source.avoidance_clear_scan_counts.data() + count);
+            attack_reposition_countdowns.insert(attack_reposition_countdowns.end(),
+                                                source.attack_reposition_countdowns.data(),
+                                                source.attack_reposition_countdowns.data() + count);
+            attack_cooldowns.insert(attack_cooldowns.end(),
+                                    source.attack_cooldowns.data(),
+                                    source.attack_cooldowns.data() + count);
+            target_ids.insert(
+                target_ids.end(), source.target_ids.data(), source.target_ids.data() + count);
+            target_locations.xs.insert(target_locations.xs.end(),
+                                       source.target_locations.xs,
+                                       source.target_locations.xs + count);
+            target_locations.ys.insert(target_locations.ys.end(),
+                                       source.target_locations.ys,
+                                       source.target_locations.ys + count);
+            target_locations.zs.insert(target_locations.zs.end(),
+                                       source.target_locations.zs,
+                                       source.target_locations.zs + count);
+            target_velocities.xs.insert(target_velocities.xs.end(),
+                                        source.target_velocities.xs,
+                                        source.target_velocities.xs + count);
+            target_velocities.ys.insert(target_velocities.ys.end(),
+                                        source.target_velocities.ys,
+                                        source.target_velocities.ys + count);
+            target_velocities.zs.insert(target_velocities.zs.end(),
+                                        source.target_velocities.zs,
+                                        source.target_velocities.zs + count);
+            target_directions.xs.insert(target_directions.xs.end(),
+                                        source.target_directions.xs,
+                                        source.target_directions.xs + count);
+            target_directions.ys.insert(target_directions.ys.end(),
+                                        source.target_directions.ys,
+                                        source.target_directions.ys + count);
+            target_directions.zs.insert(target_directions.zs.end(),
+                                        source.target_directions.zs,
+                                        source.target_directions.zs + count);
+            intercept_times.insert(intercept_times.end(),
+                                   source.intercept_times.data(),
+                                   source.intercept_times.data() + count);
+            target_distance_sq.insert(target_distance_sq.end(),
+                                      source.target_distance_sq.data(),
+                                      source.target_distance_sq.data() + count);
+            target_distances.insert(target_distances.end(),
+                                    source.target_distances.data(),
+                                    source.target_distances.data() + count);
+            target_radii.insert(
+                target_radii.end(), source.target_radii.data(), source.target_radii.data() + count);
+        });
     }
     auto get_view() -> View {
         return {

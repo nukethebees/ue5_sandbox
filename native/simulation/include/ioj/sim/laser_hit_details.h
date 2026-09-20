@@ -211,17 +211,15 @@ struct LaserHitDetails {
              float const new_emission_directions_ys,
              float const new_emission_directions_zs,
              LaserSource const new_sources) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index,
-            new_locations_xs,
-            new_locations_ys,
-            new_locations_zs,
-            new_emission_directions_xs,
-            new_emission_directions_ys,
-            new_emission_directions_zs,
-            new_sources);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            locations.xs.emplace_back(new_locations_xs);
+            locations.ys.emplace_back(new_locations_ys);
+            locations.zs.emplace_back(new_locations_zs);
+            emission_directions.xs.emplace_back(new_emission_directions_xs);
+            emission_directions.ys.emplace_back(new_emission_directions_ys);
+            emission_directions.zs.emplace_back(new_emission_directions_zs);
+            sources.emplace_back(new_sources);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -275,19 +273,24 @@ struct LaserHitDetails {
             ml::native_soa::require(address < begin ||
                                     address >= begin + sources.size() * sizeof(LaserSource));
         }
-        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
-        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
-        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
-        emission_directions.xs.insert(emission_directions.xs.end(),
-                                      source.emission_directions.xs,
-                                      source.emission_directions.xs + count);
-        emission_directions.ys.insert(emission_directions.ys.end(),
-                                      source.emission_directions.ys,
-                                      source.emission_directions.ys + count);
-        emission_directions.zs.insert(emission_directions.zs.end(),
-                                      source.emission_directions.zs,
-                                      source.emission_directions.zs + count);
-        sources.insert(sources.end(), source.sources.data(), source.sources.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            locations.xs.insert(
+                locations.xs.end(), source.locations.xs, source.locations.xs + count);
+            locations.ys.insert(
+                locations.ys.end(), source.locations.ys, source.locations.ys + count);
+            locations.zs.insert(
+                locations.zs.end(), source.locations.zs, source.locations.zs + count);
+            emission_directions.xs.insert(emission_directions.xs.end(),
+                                          source.emission_directions.xs,
+                                          source.emission_directions.xs + count);
+            emission_directions.ys.insert(emission_directions.ys.end(),
+                                          source.emission_directions.ys,
+                                          source.emission_directions.ys + count);
+            emission_directions.zs.insert(emission_directions.zs.end(),
+                                          source.emission_directions.zs,
+                                          source.emission_directions.zs + count);
+            sources.insert(sources.end(), source.sources.data(), source.sources.data() + count);
+        });
     }
     auto get_view() -> View {
         return {

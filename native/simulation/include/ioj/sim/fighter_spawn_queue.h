@@ -246,19 +246,17 @@ struct FighterSpawnQueue {
              Team const new_teams,
              EntityUniqueId const new_parents,
              EntityUniqueId const new_targets) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index,
-            new_locations_xs,
-            new_locations_ys,
-            new_locations_zs,
-            new_rotations_pitches,
-            new_rotations_yaws,
-            new_rotations_rolls,
-            new_teams,
-            new_parents,
-            new_targets);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            locations.xs.emplace_back(new_locations_xs);
+            locations.ys.emplace_back(new_locations_ys);
+            locations.zs.emplace_back(new_locations_zs);
+            rotations.pitches.emplace_back(new_rotations_pitches);
+            rotations.yaws.emplace_back(new_rotations_yaws);
+            rotations.rolls.emplace_back(new_rotations_rolls);
+            teams.emplace_back(new_teams);
+            parents.emplace_back(new_parents);
+            targets.emplace_back(new_targets);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -321,21 +319,26 @@ struct FighterSpawnQueue {
             ml::native_soa::require(address < begin ||
                                     address >= begin + targets.size() * sizeof(EntityUniqueId));
         }
-        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
-        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
-        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
-        rotations.pitches.insert(rotations.pitches.end(),
-                                 source.rotations.pitches.data(),
-                                 source.rotations.pitches.data() + count);
-        rotations.yaws.insert(rotations.yaws.end(),
-                              source.rotations.yaws.data(),
-                              source.rotations.yaws.data() + count);
-        rotations.rolls.insert(rotations.rolls.end(),
-                               source.rotations.rolls.data(),
-                               source.rotations.rolls.data() + count);
-        teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
-        parents.insert(parents.end(), source.parents.data(), source.parents.data() + count);
-        targets.insert(targets.end(), source.targets.data(), source.targets.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            locations.xs.insert(
+                locations.xs.end(), source.locations.xs, source.locations.xs + count);
+            locations.ys.insert(
+                locations.ys.end(), source.locations.ys, source.locations.ys + count);
+            locations.zs.insert(
+                locations.zs.end(), source.locations.zs, source.locations.zs + count);
+            rotations.pitches.insert(rotations.pitches.end(),
+                                     source.rotations.pitches.data(),
+                                     source.rotations.pitches.data() + count);
+            rotations.yaws.insert(rotations.yaws.end(),
+                                  source.rotations.yaws.data(),
+                                  source.rotations.yaws.data() + count);
+            rotations.rolls.insert(rotations.rolls.end(),
+                                   source.rotations.rolls.data(),
+                                   source.rotations.rolls.data() + count);
+            teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
+            parents.insert(parents.end(), source.parents.data(), source.parents.data() + count);
+            targets.insert(targets.end(), source.targets.data(), source.targets.data() + count);
+        });
     }
     auto get_view() -> View {
         return {

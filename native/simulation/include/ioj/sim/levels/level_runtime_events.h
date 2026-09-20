@@ -177,10 +177,11 @@ struct LevelSpawnGroups {
     auto add(ioj::sim::EntityType const new_types,
              std::int32_t const new_offsets,
              LevelEventCount const new_counts) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index, new_types, new_offsets, new_counts);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            types.emplace_back(new_types);
+            offsets.emplace_back(new_offsets);
+            counts.emplace_back(new_counts);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -207,9 +208,11 @@ struct LevelSpawnGroups {
             ml::native_soa::require(address < begin ||
                                     address >= begin + counts.size() * sizeof(LevelEventCount));
         }
-        types.insert(types.end(), source.types.data(), source.types.data() + count);
-        offsets.insert(offsets.end(), source.offsets.data(), source.offsets.data() + count);
-        counts.insert(counts.end(), source.counts.data(), source.counts.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            types.insert(types.end(), source.types.data(), source.types.data() + count);
+            offsets.insert(offsets.end(), source.offsets.data(), source.offsets.data() + count);
+            counts.insert(counts.end(), source.counts.data(), source.counts.data() + count);
+        });
     }
     auto get_view() -> View {
         return {
@@ -558,22 +561,20 @@ struct LevelCapitalSpawnEvents {
              Health const new_healths,
              float const new_initial_fighter_spawn_delays,
              float const new_fighter_spawn_cooldowns) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index,
-            new_entity_indices,
-            new_target_entity_indices,
-            new_locations_xs,
-            new_locations_ys,
-            new_locations_zs,
-            new_rotations_pitches,
-            new_rotations_yaws,
-            new_rotations_rolls,
-            new_teams,
-            new_healths,
-            new_initial_fighter_spawn_delays,
-            new_fighter_spawn_cooldowns);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            entity_indices.emplace_back(new_entity_indices);
+            target_entity_indices.emplace_back(new_target_entity_indices);
+            locations.xs.emplace_back(new_locations_xs);
+            locations.ys.emplace_back(new_locations_ys);
+            locations.zs.emplace_back(new_locations_zs);
+            rotations.pitches.emplace_back(new_rotations_pitches);
+            rotations.yaws.emplace_back(new_rotations_yaws);
+            rotations.rolls.emplace_back(new_rotations_rolls);
+            teams.emplace_back(new_teams);
+            healths.emplace_back(new_healths);
+            initial_fighter_spawn_delays.emplace_back(new_initial_fighter_spawn_delays);
+            fighter_spawn_cooldowns.emplace_back(new_fighter_spawn_cooldowns);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -657,32 +658,37 @@ struct LevelCapitalSpawnEvents {
                                     address >=
                                         begin + fighter_spawn_cooldowns.size() * sizeof(float));
         }
-        entity_indices.insert(entity_indices.end(),
-                              source.entity_indices.data(),
-                              source.entity_indices.data() + count);
-        target_entity_indices.insert(target_entity_indices.end(),
-                                     source.target_entity_indices.data(),
-                                     source.target_entity_indices.data() + count);
-        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
-        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
-        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
-        rotations.pitches.insert(rotations.pitches.end(),
-                                 source.rotations.pitches.data(),
-                                 source.rotations.pitches.data() + count);
-        rotations.yaws.insert(rotations.yaws.end(),
-                              source.rotations.yaws.data(),
-                              source.rotations.yaws.data() + count);
-        rotations.rolls.insert(rotations.rolls.end(),
-                               source.rotations.rolls.data(),
-                               source.rotations.rolls.data() + count);
-        teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
-        healths.insert(healths.end(), source.healths.data(), source.healths.data() + count);
-        initial_fighter_spawn_delays.insert(initial_fighter_spawn_delays.end(),
-                                            source.initial_fighter_spawn_delays.data(),
-                                            source.initial_fighter_spawn_delays.data() + count);
-        fighter_spawn_cooldowns.insert(fighter_spawn_cooldowns.end(),
-                                       source.fighter_spawn_cooldowns.data(),
-                                       source.fighter_spawn_cooldowns.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            entity_indices.insert(entity_indices.end(),
+                                  source.entity_indices.data(),
+                                  source.entity_indices.data() + count);
+            target_entity_indices.insert(target_entity_indices.end(),
+                                         source.target_entity_indices.data(),
+                                         source.target_entity_indices.data() + count);
+            locations.xs.insert(
+                locations.xs.end(), source.locations.xs, source.locations.xs + count);
+            locations.ys.insert(
+                locations.ys.end(), source.locations.ys, source.locations.ys + count);
+            locations.zs.insert(
+                locations.zs.end(), source.locations.zs, source.locations.zs + count);
+            rotations.pitches.insert(rotations.pitches.end(),
+                                     source.rotations.pitches.data(),
+                                     source.rotations.pitches.data() + count);
+            rotations.yaws.insert(rotations.yaws.end(),
+                                  source.rotations.yaws.data(),
+                                  source.rotations.yaws.data() + count);
+            rotations.rolls.insert(rotations.rolls.end(),
+                                   source.rotations.rolls.data(),
+                                   source.rotations.rolls.data() + count);
+            teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
+            healths.insert(healths.end(), source.healths.data(), source.healths.data() + count);
+            initial_fighter_spawn_delays.insert(initial_fighter_spawn_delays.end(),
+                                                source.initial_fighter_spawn_delays.data(),
+                                                source.initial_fighter_spawn_delays.data() + count);
+            fighter_spawn_cooldowns.insert(fighter_spawn_cooldowns.end(),
+                                           source.fighter_spawn_cooldowns.data(),
+                                           source.fighter_spawn_cooldowns.data() + count);
+        });
     }
     auto get_view() -> View {
         return {
@@ -1735,20 +1741,18 @@ struct LevelTurretSpawnEvents {
              Team const new_teams,
              Health const new_healths,
              std::int32_t const new_laser_damages) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index,
-            new_entity_indices,
-            new_locations_xs,
-            new_locations_ys,
-            new_locations_zs,
-            new_rotations_pitches,
-            new_rotations_yaws,
-            new_rotations_rolls,
-            new_teams,
-            new_healths,
-            new_laser_damages);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            entity_indices.emplace_back(new_entity_indices);
+            locations.xs.emplace_back(new_locations_xs);
+            locations.ys.emplace_back(new_locations_ys);
+            locations.zs.emplace_back(new_locations_zs);
+            rotations.pitches.emplace_back(new_rotations_pitches);
+            rotations.yaws.emplace_back(new_rotations_yaws);
+            rotations.rolls.emplace_back(new_rotations_rolls);
+            teams.emplace_back(new_teams);
+            healths.emplace_back(new_healths);
+            laser_damages.emplace_back(new_laser_damages);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -1817,25 +1821,31 @@ struct LevelTurretSpawnEvents {
             ml::native_soa::require(address < begin ||
                                     address >= begin + laser_damages.size() * sizeof(std::int32_t));
         }
-        entity_indices.insert(entity_indices.end(),
-                              source.entity_indices.data(),
-                              source.entity_indices.data() + count);
-        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
-        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
-        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
-        rotations.pitches.insert(rotations.pitches.end(),
-                                 source.rotations.pitches.data(),
-                                 source.rotations.pitches.data() + count);
-        rotations.yaws.insert(rotations.yaws.end(),
-                              source.rotations.yaws.data(),
-                              source.rotations.yaws.data() + count);
-        rotations.rolls.insert(rotations.rolls.end(),
-                               source.rotations.rolls.data(),
-                               source.rotations.rolls.data() + count);
-        teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
-        healths.insert(healths.end(), source.healths.data(), source.healths.data() + count);
-        laser_damages.insert(
-            laser_damages.end(), source.laser_damages.data(), source.laser_damages.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            entity_indices.insert(entity_indices.end(),
+                                  source.entity_indices.data(),
+                                  source.entity_indices.data() + count);
+            locations.xs.insert(
+                locations.xs.end(), source.locations.xs, source.locations.xs + count);
+            locations.ys.insert(
+                locations.ys.end(), source.locations.ys, source.locations.ys + count);
+            locations.zs.insert(
+                locations.zs.end(), source.locations.zs, source.locations.zs + count);
+            rotations.pitches.insert(rotations.pitches.end(),
+                                     source.rotations.pitches.data(),
+                                     source.rotations.pitches.data() + count);
+            rotations.yaws.insert(rotations.yaws.end(),
+                                  source.rotations.yaws.data(),
+                                  source.rotations.yaws.data() + count);
+            rotations.rolls.insert(rotations.rolls.end(),
+                                   source.rotations.rolls.data(),
+                                   source.rotations.rolls.data() + count);
+            teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
+            healths.insert(healths.end(), source.healths.data(), source.healths.data() + count);
+            laser_damages.insert(laser_damages.end(),
+                                 source.laser_damages.data(),
+                                 source.laser_damages.data() + count);
+        });
     }
     auto get_view() -> View {
         return {
@@ -2741,16 +2751,14 @@ struct LevelSpinnerSpawnEvents {
              float const new_locations_zs,
              float const new_yaws,
              std::int32_t const new_initial_fire_point_indices) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index,
-            new_entity_indices,
-            new_locations_xs,
-            new_locations_ys,
-            new_locations_zs,
-            new_yaws,
-            new_initial_fire_point_indices);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            entity_indices.emplace_back(new_entity_indices);
+            locations.xs.emplace_back(new_locations_xs);
+            locations.ys.emplace_back(new_locations_ys);
+            locations.zs.emplace_back(new_locations_zs);
+            yaws.emplace_back(new_yaws);
+            initial_fire_point_indices.emplace_back(new_initial_fire_point_indices);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -2796,16 +2804,21 @@ struct LevelSpinnerSpawnEvents {
                                     address >= begin + initial_fire_point_indices.size() *
                                                            sizeof(std::int32_t));
         }
-        entity_indices.insert(entity_indices.end(),
-                              source.entity_indices.data(),
-                              source.entity_indices.data() + count);
-        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
-        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
-        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
-        yaws.insert(yaws.end(), source.yaws.data(), source.yaws.data() + count);
-        initial_fire_point_indices.insert(initial_fire_point_indices.end(),
-                                          source.initial_fire_point_indices.data(),
-                                          source.initial_fire_point_indices.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            entity_indices.insert(entity_indices.end(),
+                                  source.entity_indices.data(),
+                                  source.entity_indices.data() + count);
+            locations.xs.insert(
+                locations.xs.end(), source.locations.xs, source.locations.xs + count);
+            locations.ys.insert(
+                locations.ys.end(), source.locations.ys, source.locations.ys + count);
+            locations.zs.insert(
+                locations.zs.end(), source.locations.zs, source.locations.zs + count);
+            yaws.insert(yaws.end(), source.yaws.data(), source.yaws.data() + count);
+            initial_fire_point_indices.insert(initial_fire_point_indices.end(),
+                                              source.initial_fire_point_indices.data(),
+                                              source.initial_fire_point_indices.data() + count);
+        });
     }
     auto get_view() -> View {
         return {
@@ -3519,10 +3532,11 @@ struct LevelMissionEventGroups {
     auto add(LevelMissionEventType const new_types,
              std::int32_t const new_offsets,
              LevelEventCount const new_counts) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index, new_types, new_offsets, new_counts);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            types.emplace_back(new_types);
+            offsets.emplace_back(new_offsets);
+            counts.emplace_back(new_counts);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -3549,9 +3563,11 @@ struct LevelMissionEventGroups {
             ml::native_soa::require(address < begin ||
                                     address >= begin + counts.size() * sizeof(LevelEventCount));
         }
-        types.insert(types.end(), source.types.data(), source.types.data() + count);
-        offsets.insert(offsets.end(), source.offsets.data(), source.offsets.data() + count);
-        counts.insert(counts.end(), source.counts.data(), source.counts.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            types.insert(types.end(), source.types.data(), source.types.data() + count);
+            offsets.insert(offsets.end(), source.offsets.data(), source.offsets.data() + count);
+            counts.insert(counts.end(), source.counts.data(), source.counts.data() + count);
+        });
     }
     auto get_view() -> View {
         return {

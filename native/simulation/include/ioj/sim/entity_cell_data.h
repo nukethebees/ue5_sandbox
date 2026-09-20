@@ -339,23 +339,21 @@ struct EntityCellDataColumns {
              std::int32_t const new_max_cell_ys,
              std::int32_t const new_max_cell_zs,
              EntityUniqueId const new_entity_ids) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index,
-            new_min_point_xs,
-            new_min_point_ys,
-            new_min_point_zs,
-            new_max_point_xs,
-            new_max_point_ys,
-            new_max_point_zs,
-            new_min_cell_xs,
-            new_min_cell_ys,
-            new_min_cell_zs,
-            new_max_cell_xs,
-            new_max_cell_ys,
-            new_max_cell_zs,
-            new_entity_ids);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            min_point_xs.emplace_back(new_min_point_xs);
+            min_point_ys.emplace_back(new_min_point_ys);
+            min_point_zs.emplace_back(new_min_point_zs);
+            max_point_xs.emplace_back(new_max_point_xs);
+            max_point_ys.emplace_back(new_max_point_ys);
+            max_point_zs.emplace_back(new_max_point_zs);
+            min_cell_xs.emplace_back(new_min_cell_xs);
+            min_cell_ys.emplace_back(new_min_cell_ys);
+            min_cell_zs.emplace_back(new_min_cell_zs);
+            max_cell_xs.emplace_back(new_max_cell_xs);
+            max_cell_ys.emplace_back(new_max_cell_ys);
+            max_cell_zs.emplace_back(new_max_cell_zs);
+            entity_ids.emplace_back(new_entity_ids);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -442,32 +440,34 @@ struct EntityCellDataColumns {
             ml::native_soa::require(address < begin ||
                                     address >= begin + entity_ids.size() * sizeof(EntityUniqueId));
         }
-        min_point_xs.insert(
-            min_point_xs.end(), source.min_point_xs.data(), source.min_point_xs.data() + count);
-        min_point_ys.insert(
-            min_point_ys.end(), source.min_point_ys.data(), source.min_point_ys.data() + count);
-        min_point_zs.insert(
-            min_point_zs.end(), source.min_point_zs.data(), source.min_point_zs.data() + count);
-        max_point_xs.insert(
-            max_point_xs.end(), source.max_point_xs.data(), source.max_point_xs.data() + count);
-        max_point_ys.insert(
-            max_point_ys.end(), source.max_point_ys.data(), source.max_point_ys.data() + count);
-        max_point_zs.insert(
-            max_point_zs.end(), source.max_point_zs.data(), source.max_point_zs.data() + count);
-        min_cell_xs.insert(
-            min_cell_xs.end(), source.min_cell_xs.data(), source.min_cell_xs.data() + count);
-        min_cell_ys.insert(
-            min_cell_ys.end(), source.min_cell_ys.data(), source.min_cell_ys.data() + count);
-        min_cell_zs.insert(
-            min_cell_zs.end(), source.min_cell_zs.data(), source.min_cell_zs.data() + count);
-        max_cell_xs.insert(
-            max_cell_xs.end(), source.max_cell_xs.data(), source.max_cell_xs.data() + count);
-        max_cell_ys.insert(
-            max_cell_ys.end(), source.max_cell_ys.data(), source.max_cell_ys.data() + count);
-        max_cell_zs.insert(
-            max_cell_zs.end(), source.max_cell_zs.data(), source.max_cell_zs.data() + count);
-        entity_ids.insert(
-            entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            min_point_xs.insert(
+                min_point_xs.end(), source.min_point_xs.data(), source.min_point_xs.data() + count);
+            min_point_ys.insert(
+                min_point_ys.end(), source.min_point_ys.data(), source.min_point_ys.data() + count);
+            min_point_zs.insert(
+                min_point_zs.end(), source.min_point_zs.data(), source.min_point_zs.data() + count);
+            max_point_xs.insert(
+                max_point_xs.end(), source.max_point_xs.data(), source.max_point_xs.data() + count);
+            max_point_ys.insert(
+                max_point_ys.end(), source.max_point_ys.data(), source.max_point_ys.data() + count);
+            max_point_zs.insert(
+                max_point_zs.end(), source.max_point_zs.data(), source.max_point_zs.data() + count);
+            min_cell_xs.insert(
+                min_cell_xs.end(), source.min_cell_xs.data(), source.min_cell_xs.data() + count);
+            min_cell_ys.insert(
+                min_cell_ys.end(), source.min_cell_ys.data(), source.min_cell_ys.data() + count);
+            min_cell_zs.insert(
+                min_cell_zs.end(), source.min_cell_zs.data(), source.min_cell_zs.data() + count);
+            max_cell_xs.insert(
+                max_cell_xs.end(), source.max_cell_xs.data(), source.max_cell_xs.data() + count);
+            max_cell_ys.insert(
+                max_cell_ys.end(), source.max_cell_ys.data(), source.max_cell_ys.data() + count);
+            max_cell_zs.insert(
+                max_cell_zs.end(), source.max_cell_zs.data(), source.max_cell_zs.data() + count);
+            entity_ids.insert(
+                entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
+        });
     }
     auto get_view() -> View {
         return {
