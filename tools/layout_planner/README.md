@@ -58,7 +58,9 @@ default panel arrangement.
    to inspect its six SoA columns.
 3. Enum, packed-value, record, and standard-library SoA baselines are editable LispB declarations.
    Their inline Properties editors issue validated semantic commands and participate in File >
-   Undo/Redo. Record members support scalar or fixed-array cardinality and update the byte map live.
+   Undo/Redo. Packed fields, record members, and SoA columns offer a searchable graph-backed type
+   chooser plus direct navigation while retaining free-text references. Record members support
+   scalar or fixed-array cardinality and update the byte map live.
 4. Use **Create editable variant** for an in-memory physical experiment. In a variant, change a
    packed field width/storage type or a SoA capacity/column type without modifying LispB. Schema
    values, planning values, and active overrides are shown separately.

@@ -6,10 +6,12 @@
 
 #include <algorithm>
 #include <array>
+#include <cctype>
 #include <charconv>
 #include <cstdint>
 #include <cstdio>
 #include <limits>
+#include <set>
 #include <string>
 #include <string_view>
 
@@ -104,6 +106,73 @@ void move_element(std::vector<Value>& values,
 }
 
 } // namespace
+
+auto PlannerUi::draw_type_picker(std::string_view const module_name, TypeIdentity const& owner)
+    -> std::optional<std::string> {
+    if (ImGui::SmallButton("...")) {
+        type_picker_filter_.fill('\0');
+        ImGui::OpenPopup("semantic-type-picker");
+    }
+    if (!ImGui::BeginPopup("semantic-type-picker")) {
+        return std::nullopt;
+    }
+
+    ImGui::SetNextItemWidth(420.0F);
+    ImGui::InputTextWithHint("##type-filter",
+                             "Filter semantic or physical types",
+                             type_picker_filter_.data(),
+                             type_picker_filter_.size());
+    auto lowercase{[](std::string text) {
+        std::ranges::transform(text, text.begin(), [](unsigned char const character) {
+            return static_cast<char>(std::tolower(character));
+        });
+        return text;
+    }};
+    auto const filter{lowercase(type_picker_filter_.data())};
+    std::set<std::string, std::less<>> seen;
+    std::optional<std::string> selected;
+    auto draw_candidate = [&](std::string reference, std::string const& description) {
+        if (!seen.insert(reference).second) {
+            return;
+        }
+        auto const label{reference + "  [" + description + "]"};
+        if (!filter.empty() && lowercase(label).find(filter) == std::string::npos) {
+            return;
+        }
+        if (ImGui::Selectable(label.c_str())) {
+            selected = std::move(reference);
+            ImGui::CloseCurrentPopup();
+        }
+    };
+
+    ImGui::BeginChild("type-candidates", {420.0F, 260.0F}, true);
+    ImGui::SeparatorText("Local declarations");
+    for (auto const& declaration : document_->declarations()) {
+        if (declaration.identity.module_name == module_name && declaration.identity != owner) {
+            auto const type{workspace_.types().find(declaration.identity)};
+            if (type.has_value()) {
+                draw_candidate(declaration.identity.name,
+                               workspace_.types().type(*type).cpp_spelling);
+            }
+        }
+    }
+    ImGui::SeparatorText("Registered semantic types");
+    auto const owner_type{workspace_.types().find(owner)};
+    for (auto const& [name, cpp_type] : document_->manifest().types) {
+        auto const type{workspace_.types().find_registered(name)};
+        if (type.has_value() && type != owner_type) {
+            draw_candidate("@" + name, cpp_type.spelling);
+        }
+    }
+    ImGui::SeparatorText("Target physical types");
+    for (auto const& [spelling, facts] : abi_.types()) {
+        static_cast<void>(facts);
+        draw_candidate(spelling, "target ABI type");
+    }
+    ImGui::EndChild();
+    ImGui::EndPopup();
+    return selected;
+}
 
 void PlannerUi::draw_properties_panel() {
     ImGui::Begin("Properties");
@@ -825,6 +894,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
     ImGui::EndDisabled();
 
     std::optional<codegen::PackedValueSchema> pending;
+    std::optional<TypeId> navigate_to;
     auto selected_after_edit{selected_field_};
     if (ImGui::BeginTable("packed-schema-fields",
                           7,
@@ -883,7 +953,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
 
             ImGui::TableNextColumn();
             if (row_selected) {
-                ImGui::SetNextItemWidth(-1.0F);
+                ImGui::SetNextItemWidth(std::max(60.0F, ImGui::GetContentRegionAvail().x - 58.0F));
                 auto const submitted{ImGui::InputText("##type",
                                                       packed_field_type_.data(),
                                                       packed_field_type_.size(),
@@ -891,6 +961,15 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 if (!pending.has_value() && (submitted || ImGui::IsItemDeactivatedAfterEdit())) {
                     pending = *schema;
                     pending->fields[index].type.name = packed_field_type_.data();
+                }
+                ImGui::SameLine();
+                if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
+                    pending = *schema;
+                    pending->fields[index].type.name = std::move(*picked);
+                }
+                ImGui::SameLine();
+                if (index < packed.fields.size() && ImGui::SmallButton(">")) {
+                    navigate_to = packed.fields[index].semantic_type.type;
                 }
             } else {
                 ImGui::TextUnformatted(field.type.name.c_str());
@@ -955,6 +1034,12 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         ImGui::EndTable();
     }
 
+    if (navigate_to.has_value()) {
+        selected_type_ = *navigate_to;
+        selected_field_.clear();
+        return true;
+    }
+
     if (pending.has_value()) {
         if (pending->fields[*selected_index].name.empty()) {
             schema_edit_message_ = "Packed field name cannot be empty.";
@@ -973,7 +1058,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
     return false;
 }
 
-auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const&) -> bool {
+auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& record) -> bool {
     if (!document_.has_value()) {
         return false;
     }
@@ -1087,6 +1172,7 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const&) -> b
     ImGui::EndDisabled();
 
     std::optional<codegen::RecordSchema> pending;
+    std::optional<TypeId> navigate_to;
     auto selected_after_edit{selected_field_};
     if (ImGui::BeginTable("record-schema-members",
                           5,
@@ -1143,7 +1229,7 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const&) -> b
 
             ImGui::TableNextColumn();
             if (row_selected) {
-                ImGui::SetNextItemWidth(-1.0F);
+                ImGui::SetNextItemWidth(std::max(60.0F, ImGui::GetContentRegionAvail().x - 58.0F));
                 auto const submitted{ImGui::InputText("##type",
                                                       record_member_type_.data(),
                                                       record_member_type_.size(),
@@ -1151,6 +1237,15 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const&) -> b
                 if (!pending.has_value() && (submitted || ImGui::IsItemDeactivatedAfterEdit())) {
                     pending = *schema;
                     pending->members[index].type.name = record_member_type_.data();
+                }
+                ImGui::SameLine();
+                if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
+                    pending = *schema;
+                    pending->members[index].type.name = std::move(*picked);
+                }
+                ImGui::SameLine();
+                if (index < record.members.size() && ImGui::SmallButton(">")) {
+                    navigate_to = record.members[index].semantic_type.type;
                 }
             } else {
                 ImGui::TextUnformatted(member.type.name.c_str());
@@ -1192,6 +1287,12 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const&) -> b
         ImGui::EndTable();
     }
 
+    if (navigate_to.has_value()) {
+        selected_type_ = *navigate_to;
+        selected_field_.clear();
+        return true;
+    }
+
     if (pending.has_value()) {
         auto const invalid_member{std::ranges::find_if(pending->members, [](auto const& member) {
             return member.name.empty() || member.type.name.empty() || member.count == 0;
@@ -1215,7 +1316,7 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const&) -> b
     return false;
 }
 
-auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const&) -> bool {
+auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> bool {
     if (!document_.has_value()) {
         return false;
     }
@@ -1329,6 +1430,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const&) -> bool {
     ImGui::EndDisabled();
 
     std::optional<codegen::SoaSchema> pending;
+    std::optional<TypeId> navigate_to;
     auto selected_after_edit{selected_field_};
     if (ImGui::BeginTable("soa-schema-members",
                           4,
@@ -1384,7 +1486,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const&) -> bool {
 
             ImGui::TableNextColumn();
             if (row_selected) {
-                ImGui::SetNextItemWidth(-1.0F);
+                ImGui::SetNextItemWidth(std::max(60.0F, ImGui::GetContentRegionAvail().x - 58.0F));
                 auto const submitted{ImGui::InputText("##type",
                                                       soa_member_type_.data(),
                                                       soa_member_type_.size(),
@@ -1392,6 +1494,15 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const&) -> bool {
                 if (!pending.has_value() && (submitted || ImGui::IsItemDeactivatedAfterEdit())) {
                     pending = *schema;
                     pending->members[index].type.name = soa_member_type_.data();
+                }
+                ImGui::SameLine();
+                if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
+                    pending = *schema;
+                    pending->members[index].type.name = std::move(*picked);
+                }
+                ImGui::SameLine();
+                if (index < soa.columns.size() && ImGui::SmallButton(">")) {
+                    navigate_to = soa.columns[index].semantic_type.type;
                 }
             } else {
                 ImGui::TextUnformatted(member.type.name.c_str());
@@ -1416,6 +1527,12 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const&) -> bool {
             ImGui::PopID();
         }
         ImGui::EndTable();
+    }
+
+    if (navigate_to.has_value()) {
+        selected_type_ = *navigate_to;
+        selected_field_.clear();
+        return true;
     }
 
     if (pending.has_value()) {

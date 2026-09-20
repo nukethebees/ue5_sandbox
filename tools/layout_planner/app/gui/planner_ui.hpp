@@ -12,6 +12,7 @@
 #include <limits>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 
 struct ImGuiContext;
@@ -69,6 +70,8 @@ class PlannerUi {
     auto apply_document_edit(lispb::schema::SchemaEditCommand command,
                              std::optional<lispb::schema::TypeIdentity> selection = std::nullopt)
         -> bool;
+    auto draw_type_picker(std::string_view module_name, lispb::schema::TypeIdentity const& owner)
+        -> std::optional<std::string>;
     void sync_document_graph(std::optional<lispb::schema::TypeIdentity> selection);
     auto load_project(std::filesystem::path const& path, bool allow_dirty = false) -> bool;
     void adopt_loaded_schema(layout::SchemaLoadResult loaded);
@@ -117,6 +120,7 @@ class PlannerUi {
 
     std::array<char, 128> variant_name_{};
     std::array<char, 128> schema_filter_{};
+    std::array<char, 128> type_picker_filter_{};
     std::array<char, 1024> open_project_path_{};
     std::array<char, 1024> save_as_project_path_{};
     std::array<char, 128> new_enum_name_{};

@@ -64,6 +64,9 @@ alignment, and internal/tail padding from the selected ABI profile. Unknown targ
 Unknown, while illegal by-value record cycles are rejected during semantic resolution.
 Record create/replace/delete commands share the same stable declaration identity, validation
 rollback, undo/redo, preview, and atomic save/reload path as enum, packed, and SoA declarations.
+The inline type chooser derives valid local names and registered `@name` references from the shared
+document/type graph and target primitive spellings from the ABI profile; it does not own a parallel
+type registry.
 Record aggregate analysis uses the planner's selected element count and target profile to report
 total storage, member extents, ABI padding, minimum cache lines, and minimum pages. Arithmetic
 overflow and absent target facts remain explicit diagnostics/Unknown values.

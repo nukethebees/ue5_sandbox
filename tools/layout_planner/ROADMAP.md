@@ -56,6 +56,8 @@ undo/redo, and save/reload. Configurable-count record totals now cover storage, 
 internal/tail padding, minimum cache lines, and minimum pages with overflow-safe arithmetic. Richer
 member type selection and explicit access-set traffic remain follow-up. Cache-line/page boundary
 crossing counts use an explicit contiguous, region-aligned array model and avoid performance claims.
+Packed, record, and SoA inline type cells now share a searchable chooser for valid local,
+registered, and target-physical references plus navigation to the resolved semantic type.
 
 ## 1. Editable document and command foundation
 
