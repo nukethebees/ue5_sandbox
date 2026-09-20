@@ -1055,6 +1055,7 @@ TEST(SourceLoader, LoadsSettingsControls) {
     :value-type float
     :backend engine
     :apply deferred
+    :device keyboard-mouse
     (control float-range :min 50 :max 100 :step 0.5)))
 )");
 
@@ -1062,8 +1063,30 @@ TEST(SourceLoader, LoadsSettingsControls) {
     auto const& module{std::get<SettingsModuleSchema>(manifest.modules.front())};
     ASSERT_EQ(module.settings_list.size(), 1);
     EXPECT_EQ(module.settings_list.front().apply_mode, SettingApplyMode::deferred);
+    EXPECT_EQ(module.settings_list.front().device, SettingDevice::keyboard_mouse);
     EXPECT_EQ(module.settings_list.front().control.kind, SettingControlKind::float_range);
     EXPECT_EQ(module.settings_list.front().control.step, 0.5);
+}
+
+TEST(SourceLoader, SettingsDeviceDefaultsToShared) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(settings-module settings
+  :header "Settings.h"
+  :api-name TSettingsAccess
+  :state-name FSettingsState
+  (category video "Video")
+  (setting vsync "VSync"
+    :category video
+    :value-type bool
+    :backend engine
+    :apply deferred
+    (control toggle)))
+)");
+
+    auto const manifest{files.load()};
+    auto const& module{std::get<SettingsModuleSchema>(manifest.modules.front())};
+    EXPECT_EQ(module.settings_list.front().device, SettingDevice::shared);
 }
 
 } // namespace

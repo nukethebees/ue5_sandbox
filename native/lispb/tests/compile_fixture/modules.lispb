@@ -189,6 +189,7 @@
     :value-type float
     :backend engine
     :apply immediate
+    :device controller
     (control choice
       :options-provider frame_limits
       :availability-provider frame_limit))

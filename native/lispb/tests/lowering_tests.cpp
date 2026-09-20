@@ -799,6 +799,7 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
                     .value_type = TypeRef{"float"},
                     .backend = "engine",
                     .apply_mode = SettingApplyMode::immediate,
+                    .device = SettingDevice::controller,
                     .control =
                         SettingControlSchema{
                             .kind = SettingControlKind::choice,
@@ -815,6 +816,8 @@ TEST(Lowering, GeneratesTypedSettingsApiAndRuntimeDescriptors) {
     EXPECT_NE(output.header.find("auto operator==(FSettingsState const&) const -> bool = default"),
               std::string::npos);
     EXPECT_NE(output.source.find("ESettingApplyMode::Deferred"), std::string::npos);
+    EXPECT_NE(output.header.find("enum class EGameSettingDevice"), std::string::npos);
+    EXPECT_NE(output.source.find("EGameSettingDevice::Controller"), std::string::npos);
     EXPECT_NE(output.source.find("EGameSettingOptionProvider::FrameLimits"), std::string::npos);
     EXPECT_NE(output.source.find("std::get_if<float>"), std::string::npos);
 }
