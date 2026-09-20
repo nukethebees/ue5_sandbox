@@ -233,6 +233,18 @@ auto source_form_end(Form const& form, std::string_view const source)
     if (begin >= source.size()) {
         return std::nullopt;
     }
+    if (form.token.kind == codegen::sexpr::TokenKind::raw_literal) {
+        auto const opening{"#" + form.token.tag + "{"};
+        auto const closing{"}" + form.token.tag + "#"};
+        if (source.substr(begin, opening.size()) != opening) {
+            return std::nullopt;
+        }
+        auto const closing_begin{source.find(closing, begin + opening.size())};
+        if (closing_begin == std::string_view::npos) {
+            return std::nullopt;
+        }
+        return closing_begin + closing.size();
+    }
     if (form.token.kind == codegen::sexpr::TokenKind::string) {
         auto escaped{false};
         for (auto index{begin + 1}; index < source.size(); ++index) {
@@ -1984,18 +1996,20 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                           ? std::optional{quote(*function.requires_clause)}
                           : std::nullopt}};
     };
-    auto advanced_function_fields_match = [&](Form const& source,
-                                              codegen::FunctionSchema const& function) {
-        auto const body{function.body_lines.empty()
-                            ? std::nullopt
-                            : std::optional{render_quoted_values(function.body_lines)}};
+    auto body_property_matches = [&](Form const& source, codegen::FunctionSchema const& function) {
         auto const* source_body{source_property(source, "body")};
-        if ((source_body != nullptr &&
-             source_body->token.kind == codegen::sexpr::TokenKind::raw_literal &&
-             !property_matches(source, "body", body))) {
-            return false;
+        if (source_body == nullptr ||
+            source_body->token.kind != codegen::sexpr::TokenKind::raw_literal) {
+            auto const body{function.body_lines.empty()
+                                ? std::nullopt
+                                : std::optional{render_quoted_values(function.body_lines)}};
+            return property_matches(source, "body", body);
         }
-        return true;
+        return source_body->token.tag == "cpp" &&
+               (function.body_lines.empty()
+                    ? source_body->token.text.empty()
+                    : function.body_lines.size() == 1 &&
+                          function.body_lines.front() == source_body->token.text);
     };
     auto parameter_fields_match_except_name = [&](Form const& source,
                                                   codegen::ParameterSchema const& parameter) {
@@ -2014,9 +2028,13 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
             return false;
         }
         auto const properties{rendered_function_properties(function)};
-        if (!std::ranges::all_of(properties, [&](auto const& property) {
-                return property_matches(source, property.first, property.second);
-            })) {
+        auto properties_match{body_property_matches(source, function)};
+        for (std::size_t index{1}; index < properties.size(); ++index) {
+            properties_match =
+                properties_match &&
+                property_matches(source, properties[index].first, properties[index].second);
+        }
+        if (!properties_match) {
             return false;
         }
 
@@ -2311,10 +2329,6 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                 append_function(render_function_row(function));
                 continue;
             }
-            if (!advanced_function_fields_match(*found->form, function)) {
-                return std::nullopt;
-            }
-
             std::vector<SourceReplacement> function_replacements;
             if (!patch_source_form(
                     found->form->children[1], function.name, original, function_replacements) ||
@@ -2324,7 +2338,18 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                                    function_replacements)) {
                 return std::nullopt;
             }
-            auto const function_properties{rendered_function_properties(function)};
+            auto function_properties{rendered_function_properties(function)};
+            auto const* source_body{source_property(*found->form, "body")};
+            if (source_body != nullptr &&
+                source_body->token.kind == codegen::sexpr::TokenKind::raw_literal &&
+                body_property_matches(*found->form, function)) {
+                auto const body_end{source_form_end(*source_body, original)};
+                if (!body_end.has_value()) {
+                    return std::nullopt;
+                }
+                function_properties.front().second = std::string{original.substr(
+                    source_body->token.span.offset, *body_end - source_body->token.span.offset)};
+            }
             if (!patch_source_properties(*found->form,
                                          2,
                                          function_properties,

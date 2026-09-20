@@ -319,7 +319,10 @@ requires-clause text is authorable with resizable inline inputs and shared nonbl
 Stable uniquely named function and parameter rows preserve surrounding source comments; list-form
 function properties patch locally. A conservative one-to-one unmatched-row matcher also preserves
 function and parameter blocks during unambiguous direct renames; overload ambiguity, multiple
-simultaneous unmatched rows, and raw `#cpp` body renames retain canonical fallback.
+simultaneous unmatched rows, and ambiguous rename/reorder combinations retain canonical fallback.
+Unchanged raw `#cpp` bodies retain their exact spelling through unambiguous function and parameter
+renames. Editing a raw body replaces only its bounded property value with the canonical quoted-list
+form, preserving the containing function's comments and other properties.
 
 - Create standard-library SoA declarations.
 - Add, remove, duplicate, and reorder columns.

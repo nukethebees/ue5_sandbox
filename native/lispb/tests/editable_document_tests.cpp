@@ -6,6 +6,7 @@
 #include <array>
 #include <filesystem>
 #include <fstream>
+#include <stdexcept>
 #include <string_view>
 #include <utility>
 
@@ -172,6 +173,18 @@ class TemporarySchema {
         return load_editable_schema_document(path("types.lispb"), modules);
     }
     auto path(std::string const& name) const -> std::filesystem::path { return directory_ / name; }
+    void replace_module_text(std::string_view const old_text,
+                             std::string_view const new_text) const {
+        std::ifstream input{path("modules.lispb"), std::ios::binary};
+        auto source{
+            std::string{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}}};
+        auto const position{source.find(old_text)};
+        if (position == std::string::npos) {
+            throw std::runtime_error{"Temporary schema source fragment was not found"};
+        }
+        source.replace(position, old_text.size(), new_text);
+        write("modules.lispb", source);
+    }
   private:
     void write(std::string const& name, std::string_view const text) const {
         std::ofstream output{path(name), std::ios::binary};
@@ -4268,6 +4281,62 @@ TEST(EditableSchemaDocument, PreservesSoaFunctionAndParameterRowsDuringRename) {
     ASSERT_NE(module_source, reloaded.source_files().end());
     EXPECT_NE(module_source->text.find("; Keep the custom function note."), std::string::npos);
     EXPECT_NE(module_source->text.find("; Keep the count parameter note."), std::string::npos);
+}
+
+TEST(EditableSchemaDocument, PreservesAndLocallyEditsRawSoaFunctionBodies) {
+    TemporarySchema files;
+    files.replace_module_text(":body (\"values.clear();\")", ":body #cpp{values.clear();}cpp#");
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+
+    auto replacement{*document.soa_schema(declaration)};
+    replacement.functions.front().name = "clear_items";
+    replacement.functions.front().parameters.front().name = "element_count";
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find(":body #cpp{values.clear();}cpp#"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the custom function note."), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the count parameter note."), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    replacement = *reloaded.soa_schema(reloaded_declaration);
+    replacement.functions.front().body_lines = {"values.reserve(element_count);"};
+    applied = reloaded.apply(
+        ReplaceSoa{.declaration = reloaded_declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = reloaded.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& updated{preview->front().updated};
+    EXPECT_EQ(updated.find("#cpp{"), std::string::npos);
+    EXPECT_NE(updated.find(":body (\"values.reserve(element_count);\")"), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the custom function note."), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the count parameter note."), std::string::npos);
+    EXPECT_NE(updated.find("(parameter element_count std::uint32_t :default \"0\")"),
+              std::string::npos);
+
+    saved = reloaded.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto final_document{files.load()};
+    auto const final_declaration{
+        declaration_id(final_document, "authored_soa", "ExistingSoa", "authored")};
+    auto const* schema{final_document.soa_schema(final_declaration)};
+    EXPECT_EQ(schema->functions.front().name, "clear_items");
+    EXPECT_EQ(schema->functions.front().parameters.front().name, "element_count");
+    EXPECT_EQ(schema->functions.front().body_lines,
+              std::vector<std::string>{"values.reserve(element_count);"});
 }
 
 TEST(EditableSchemaDocument, PreservesSoaMembersAndAdvancedFormsForStructuralEdits) {
