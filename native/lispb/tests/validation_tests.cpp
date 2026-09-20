@@ -1056,6 +1056,16 @@ TEST(Validation, RejectsEmptyOptionalSoaViewNames) {
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
+TEST(Validation, RejectsBlankSoaUsingDeclarations) {
+    for (auto const* declaration : {"", " \t\r\n"}) {
+        SCOPED_TRACE(declaration);
+        auto module{valid_soa_module()};
+        module.structs.front().using_declarations.emplace_back(declaration);
+
+        EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+    }
+}
+
 TEST(Validation, RejectsDuplicateCustomSoaFunctionParameters) {
     auto module{valid_soa_module()};
     module.structs.front().functions = {FunctionSchema{

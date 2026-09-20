@@ -24,6 +24,13 @@ void require_value(std::string_view value, std::string const& context) {
     }
 }
 
+void require_non_blank_value(std::string_view value, std::string const& context) {
+    require_value(value, context);
+    if (value.find_first_not_of(" \t\r\n") == std::string_view::npos) {
+        throw std::invalid_argument{context + " must not be blank"};
+    }
+}
+
 auto is_identifier_start(unsigned char const character) -> bool {
     return std::isalpha(character) != 0 || character == '_';
 }
@@ -1329,6 +1336,9 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
         require_unique_operations(schema.operations, "SOA '" + schema.name + "' operations");
         validate_export_specifier(schema.export_specifier,
                                   "SOA '" + schema.name + "' export specifier");
+        for (auto const& declaration : schema.using_declarations) {
+            require_non_blank_value(declaration, "SOA '" + schema.name + "' using declaration");
+        }
         if (schema.fixed.has_value()) {
             require_identifier(schema.fixed->storage_name,
                                "SOA '" + schema.name + "' fixed storage name");

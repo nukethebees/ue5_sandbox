@@ -259,6 +259,8 @@ class PlannerUi {
     std::array<char, 128> soa_member_nested_schema_{};
     std::array<char, 128> soa_equivalent_type_{};
     std::array<char, 128> soa_export_specifier_{};
+    std::vector<std::array<char, 256>> soa_using_declarations_;
+    std::optional<std::size_t> soa_using_declaration_index_;
     std::array<char, 128> soa_view_name_{};
     std::array<char, 128> soa_const_view_name_{};
     std::array<char, 128> soa_single_allocation_name_{};

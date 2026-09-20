@@ -82,6 +82,30 @@ auto with_storage_operation(std::vector<codegen::StorageOperation> const& operat
     return result;
 }
 
+auto unique_soa_using_declaration(std::vector<std::string> const& declarations) -> std::string {
+    auto alias{std::string{"alias"}};
+    for (auto suffix{2U};; ++suffix) {
+        auto const alias_taken{std::ranges::any_of(declarations, [&](std::string const& value) {
+            auto const equals{value.find('=')};
+            if (equals == std::string::npos) {
+                return false;
+            }
+            auto name{std::string_view{value}.substr(0, equals)};
+            while (!name.empty() && std::isspace(static_cast<unsigned char>(name.front()))) {
+                name.remove_prefix(1);
+            }
+            while (!name.empty() && std::isspace(static_cast<unsigned char>(name.back()))) {
+                name.remove_suffix(1);
+            }
+            return name == alias;
+        })};
+        if (!alias_taken) {
+            return alias + " = std::uint32_t";
+        }
+        alias = "alias" + std::to_string(suffix);
+    }
+}
+
 void draw_override_note(bool const overridden) {
     if (overridden) {
         ImGui::SameLine();
@@ -4802,6 +4826,20 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                       soa_export_specifier_.size(),
                       "%s",
                       schema->export_specifier.value_or("").c_str());
+        soa_using_declarations_.clear();
+        soa_using_declarations_.reserve(schema->using_declarations.size());
+        for (auto const& using_declaration : schema->using_declarations) {
+            std::array<char, 256> declaration_text{};
+            std::snprintf(
+                declaration_text.data(), declaration_text.size(), "%s", using_declaration.c_str());
+            soa_using_declarations_.push_back(declaration_text);
+        }
+        if (schema->using_declarations.empty()) {
+            soa_using_declaration_index_.reset();
+        } else if (!soa_using_declaration_index_.has_value() ||
+                   *soa_using_declaration_index_ >= schema->using_declarations.size()) {
+            soa_using_declaration_index_ = 0;
+        }
         std::snprintf(soa_single_allocation_name_.data(),
                       soa_single_allocation_name_.size(),
                       "%s",
@@ -5358,14 +5396,15 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
     }
 
     ImGui::SeparatorText("Storage operations");
-    ImGui::BeginDisabled(pending.has_value());
     auto const all_storage_operations{codegen::all_storage_operations()};
     auto const all_operations_enabled{
         std::ranges::all_of(all_storage_operations, [&](auto const operation) {
             return has_storage_operation(schema->operations, operation);
         })};
-    ImGui::BeginDisabled(all_operations_enabled);
-    if (ImGui::Button("Enable all operations")) {
+    ImGui::BeginDisabled(pending.has_value() || all_operations_enabled);
+    auto const enable_all_operations{ImGui::Button("Enable all operations")};
+    ImGui::EndDisabled();
+    if (enable_all_operations) {
         auto replacement{*schema};
         replacement.operations = all_storage_operations;
         if (apply_document_edit(
@@ -5373,10 +5412,11 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             return true;
         }
     }
-    ImGui::EndDisabled();
     ImGui::SameLine();
-    ImGui::BeginDisabled(schema->operations.empty());
-    if (ImGui::Button("Disable all operations")) {
+    ImGui::BeginDisabled(pending.has_value() || schema->operations.empty());
+    auto const disable_all_operations{ImGui::Button("Disable all operations")};
+    ImGui::EndDisabled();
+    if (disable_all_operations) {
         auto replacement{*schema};
         replacement.operations.clear();
         if (apply_document_edit(
@@ -5384,29 +5424,34 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             return true;
         }
     }
-    ImGui::EndDisabled();
+    auto operation_applied{false};
+    ImGui::BeginDisabled(pending.has_value());
     if (ImGui::BeginTable("soa-storage-operations", 2, ImGuiTableFlags_SizingStretchSame)) {
         for (auto const operation : all_storage_operations) {
             auto const descriptor{storage_operation_descriptor(operation)};
             ImGui::TableNextColumn();
             auto enabled{has_storage_operation(schema->operations, operation)};
-            if (ImGui::Checkbox(descriptor.source_name, &enabled)) {
+            auto const toggled{ImGui::Checkbox(descriptor.source_name, &enabled)};
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("%s", descriptor.description);
+            }
+            if (toggled) {
                 auto replacement{*schema};
                 replacement.operations =
                     with_storage_operation(schema->operations, operation, enabled);
                 if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
                                                    .schema = std::move(replacement)})) {
-                    ImGui::EndTable();
-                    return true;
+                    operation_applied = true;
+                    break;
                 }
-            }
-            if (ImGui::IsItemHovered()) {
-                ImGui::SetTooltip("%s", descriptor.description);
             }
         }
         ImGui::EndTable();
     }
     ImGui::EndDisabled();
+    if (operation_applied) {
+        return true;
+    }
 
     ImGui::SeparatorText("Generation policy");
     ImGui::SetNextItemWidth(-1.0F);
@@ -5461,9 +5506,15 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
     }
     ImGui::EndDisabled();
 
-    ImGui::BeginDisabled(pending.has_value());
     auto layout_only{schema->layout_only};
-    if (ImGui::Checkbox("Layout only", &layout_only)) {
+    ImGui::BeginDisabled(pending.has_value());
+    auto const layout_only_toggled{ImGui::Checkbox("Layout only", &layout_only)};
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Keep this declaration available as a nested layout without emitting its "
+                          "standalone storage/view API.");
+    }
+    ImGui::EndDisabled();
+    if (layout_only_toggled) {
         auto replacement{*schema};
         replacement.layout_only = layout_only;
         if (apply_document_edit(
@@ -5471,12 +5522,16 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             return true;
         }
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Keep this declaration available as a nested layout without emitting its "
-                          "standalone storage/view API.");
-    }
     auto copy_element_memberwise{schema->copy_element_memberwise};
-    if (ImGui::Checkbox("Copy elements memberwise", &copy_element_memberwise)) {
+    ImGui::BeginDisabled(pending.has_value());
+    auto const copy_memberwise_toggled{
+        ImGui::Checkbox("Copy elements memberwise", &copy_element_memberwise)};
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Generate direct member assignment for copy-element; this has no effect "
+                          "unless the copy-element storage operation is enabled.");
+    }
+    ImGui::EndDisabled();
+    if (copy_memberwise_toggled) {
         auto replacement{*schema};
         replacement.copy_element_memberwise = copy_element_memberwise;
         if (apply_document_edit(
@@ -5484,9 +5539,127 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             return true;
         }
     }
-    if (ImGui::IsItemHovered()) {
-        ImGui::SetTooltip("Generate direct member assignment for copy-element; this has no effect "
-                          "unless the copy-element storage operation is enabled.");
+
+    ImGui::SeparatorText("Using declarations");
+    ImGui::BeginDisabled(pending.has_value());
+    auto const add_using_declaration{ImGui::Button("+ Using declaration")};
+    ImGui::EndDisabled();
+    if (add_using_declaration) {
+        auto replacement{*schema};
+        replacement.using_declarations.push_back(
+            unique_soa_using_declaration(replacement.using_declarations));
+        auto const new_index{replacement.using_declarations.size() - 1};
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            soa_using_declaration_index_ = new_index;
+            soa_editor_declaration_.reset();
+            return true;
+        }
+    }
+    ImGui::SameLine();
+    auto const using_index{soa_using_declaration_index_};
+    auto const has_using{using_index.has_value() &&
+                         *using_index < schema->using_declarations.size()};
+    ImGui::BeginDisabled(pending.has_value() || !has_using || *using_index == 0);
+    auto const move_using_up{ImGui::Button("Using up")};
+    ImGui::EndDisabled();
+    if (move_using_up) {
+        auto replacement{*schema};
+        std::swap(replacement.using_declarations[*using_index],
+                  replacement.using_declarations[*using_index - 1]);
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            soa_using_declaration_index_ = *using_index - 1;
+            soa_editor_declaration_.reset();
+            return true;
+        }
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(pending.has_value() || !has_using ||
+                         *using_index + 1 >= schema->using_declarations.size());
+    auto const move_using_down{ImGui::Button("Using down")};
+    ImGui::EndDisabled();
+    if (move_using_down) {
+        auto replacement{*schema};
+        std::swap(replacement.using_declarations[*using_index],
+                  replacement.using_declarations[*using_index + 1]);
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            soa_using_declaration_index_ = *using_index + 1;
+            soa_editor_declaration_.reset();
+            return true;
+        }
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(pending.has_value() || !has_using);
+    auto const delete_using{ImGui::Button("Delete using")};
+    ImGui::EndDisabled();
+    if (delete_using) {
+        auto replacement{*schema};
+        replacement.using_declarations.erase(replacement.using_declarations.begin() +
+                                             static_cast<std::ptrdiff_t>(*using_index));
+        auto const next_index{
+            replacement.using_declarations.empty()
+                ? std::optional<std::size_t>{}
+                : std::optional{std::min(*using_index, replacement.using_declarations.size() - 1)}};
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            soa_using_declaration_index_ = next_index;
+            soa_editor_declaration_.reset();
+            return true;
+        }
+    }
+
+    ImGui::BeginDisabled(pending.has_value());
+    if (soa_using_declarations_.size() == schema->using_declarations.size() &&
+        ImGui::BeginTable("soa-using-declarations",
+                          2,
+                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                              ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Declaration after 'using'");
+        ImGui::TableHeadersRow();
+        for (std::size_t index{}; index < schema->using_declarations.size(); ++index) {
+            ImGui::PushID(static_cast<int>(index));
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            auto const row_selected{soa_using_declaration_index_ == index};
+            if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+                soa_using_declaration_index_ = index;
+            }
+            if (ImGui::BeginDragDropSource()) {
+                ImGui::SetDragDropPayload("SOA_USING_DECLARATION_ROW", &index, sizeof(index));
+                ImGui::Text("Move %s", schema->using_declarations[index].c_str());
+                ImGui::EndDragDropSource();
+            }
+            if (ImGui::BeginDragDropTarget()) {
+                if (auto const* payload{
+                        ImGui::AcceptDragDropPayload("SOA_USING_DECLARATION_ROW")}) {
+                    auto const source_index{*static_cast<std::size_t const*>(payload->Data)};
+                    if (source_index < schema->using_declarations.size() && source_index != index) {
+                        pending = *schema;
+                        move_element(pending->using_declarations, source_index, index);
+                        soa_using_declaration_index_ = index;
+                    }
+                }
+                ImGui::EndDragDropTarget();
+            }
+
+            ImGui::TableNextColumn();
+            ImGui::SetNextItemWidth(-1.0F);
+            auto const submitted{ImGui::InputText("##declaration",
+                                                  soa_using_declarations_[index].data(),
+                                                  soa_using_declarations_[index].size(),
+                                                  ImGuiInputTextFlags_EnterReturnsTrue)};
+            if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                if (!pending.has_value()) {
+                    pending = *schema;
+                }
+                pending->using_declarations[index] = soa_using_declarations_[index].data();
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
     }
     ImGui::EndDisabled();
 
@@ -6019,6 +6192,12 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             std::ranges::any_of(pending->fixed->containers,
                                 [](std::string const& name) { return name.empty(); })) {
             schema_edit_message_ = "Fixed-layout container type cannot be empty.";
+            return false;
+        }
+        if (std::ranges::any_of(pending->using_declarations, [](std::string const& declaration) {
+                return declaration.find_first_not_of(" \t\r\n") == std::string::npos;
+            })) {
+            schema_edit_message_ = "SoA using declaration cannot be empty.";
             return false;
         }
         auto const invalid_variant{

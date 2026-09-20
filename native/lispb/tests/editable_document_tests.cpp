@@ -3741,6 +3741,85 @@ TEST(EditableSchemaDocument, AuthorsAndRemovesSoaGenerationPolicy) {
     EXPECT_FALSE(schema->layout_only);
 }
 
+TEST(EditableSchemaDocument, AuthorsReordersAndRemovesSoaUsingDeclarations) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+
+    auto const original_revision{document.revision()};
+    auto replacement{*document.soa_schema(declaration)};
+    replacement.using_declarations.push_back(" \t");
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
+    ASSERT_FALSE(applied.has_value());
+    EXPECT_NE(applied.error().message.find("using declaration"), std::string::npos);
+    EXPECT_EQ(document.revision(), original_revision);
+    EXPECT_EQ(document.soa_schema(declaration)->using_declarations,
+              std::vector<std::string>{"Base::reset"});
+
+    replacement = *document.soa_schema(declaration);
+    replacement.using_declarations.push_back("Index = std::uint32_t");
+    replacement.using_declarations.push_back("Weight = float");
+    applied =
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    replacement = *document.soa_schema(declaration);
+    std::rotate(replacement.using_declarations.begin(),
+                replacement.using_declarations.end() - 1,
+                replacement.using_declarations.end());
+    applied =
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    auto const reordered{
+        std::vector<std::string>{"Weight = float", "Base::reset", "Index = std::uint32_t"}};
+    EXPECT_EQ(document.soa_schema(declaration)->using_declarations, reordered);
+
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.soa_schema(declaration)->using_declarations,
+              (std::vector<std::string>{"Base::reset", "Index = std::uint32_t", "Weight = float"}));
+    ASSERT_TRUE(document.redo().value());
+    EXPECT_EQ(document.soa_schema(declaration)->using_declarations, reordered);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& source{preview->front().updated};
+    EXPECT_NE(source.find(":using-declarations (\"Weight = float\" \"Base::reset\" "
+                          "\"Index = std::uint32_t\")"),
+              std::string::npos);
+    EXPECT_NE(source.find("; Keep the SoA declaration note"), std::string::npos);
+    EXPECT_NE(source.find("; Keep the custom function note"), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    EXPECT_EQ(reloaded.soa_schema(reloaded_declaration)->using_declarations, reordered);
+
+    replacement = *reloaded.soa_schema(reloaded_declaration);
+    replacement.using_declarations.clear();
+    applied = reloaded.apply(
+        ReplaceSoa{.declaration = reloaded_declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    preview = reloaded.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated.find(":using-declarations"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the custom function note"), std::string::npos);
+    saved = reloaded.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto final_document{files.load()};
+    auto const final_declaration{
+        declaration_id(final_document, "authored_soa", "ExistingSoa", "authored")};
+    EXPECT_TRUE(final_document.soa_schema(final_declaration)->using_declarations.empty());
+}
+
 TEST(EditableSchemaDocument, PreservesSoaMembersAndAdvancedFormsForStructuralEdits) {
     TemporarySchema files;
     auto document{files.load()};

@@ -302,6 +302,9 @@ Generation policy is authorable inline: optional export and equivalent-row types
 emission, and memberwise copy behavior all remain source-backed. Equivalent-row types are resolved
 semantic graph dependencies, appear as labeled graph edges, participate in rename/deletion safety,
 and support type picking plus direct navigation.
+Opaque generated `using` declaration fragments have a flat ordered editor with add, direct edit,
+delete, button reorder, and drag reorder. They remain source-backed escaped strings rather than
+being misrepresented as semantic graph relationships.
 
 - Create standard-library SoA declarations.
 - Add, remove, duplicate, and reorder columns.
