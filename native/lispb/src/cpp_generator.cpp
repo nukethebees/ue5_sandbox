@@ -1,4 +1,5 @@
 #include <codegen/generator.h>
+#include <codegen/path_utils.h>
 #include <codegen/source_loader.h>
 
 #include "lowering.h"
@@ -81,7 +82,7 @@ auto render_modules(std::vector<Module> const& modules) -> std::vector<Generated
                 continue;
             }
             auto const normalized{file->path.lexically_normal()};
-            if (!paths.insert(detail::output_path_key(normalized)).second) {
+            if (!paths.insert(codegen::output_path_key(normalized)).second) {
                 throw std::invalid_argument{"Duplicate generated output path: " +
                                             normalized.string()};
             }

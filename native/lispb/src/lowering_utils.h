@@ -12,7 +12,6 @@ auto source_include(ModuleSettings const& settings) -> std::string;
 auto dependency_for_key(std::string const& key, std::map<std::string, CppType> const& types)
     -> TypeDependency;
 auto qualify(CppType type, std::string const& suffix) -> CppType;
-auto output_path_key(std::filesystem::path const& path) -> std::string;
 auto native_spelling(std::string const& spelling) -> std::string;
 auto title_case_identifier(std::string_view const identifier) -> std::string;
 auto column_apply_arrays_function(std::vector<std::string> const& columns) -> Node;

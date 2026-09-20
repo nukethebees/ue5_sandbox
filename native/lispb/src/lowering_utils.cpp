@@ -49,16 +49,6 @@ auto qualify(CppType type, std::string const& suffix) -> CppType {
     return type;
 }
 
-auto output_path_key(std::filesystem::path const& path) -> std::string {
-    auto result{path.lexically_normal().generic_string()};
-#ifdef _WIN32
-    std::ranges::transform(result, result.begin(), [](unsigned char const character) {
-        return static_cast<char>(std::tolower(character));
-    });
-#endif
-    return result;
-}
-
 auto native_spelling(std::string const& spelling) -> std::string {
     constexpr std::array integer_types{
         std::pair{"int8", "std::int8_t"},
