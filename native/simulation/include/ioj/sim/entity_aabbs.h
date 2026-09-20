@@ -1,54 +1,42 @@
 #pragma once
 
+#include "ioj/sim/entity_type.h"
 #include "ioj/sim/vector_types.h"
+#include "sandbox/core/enum_array.h"
 
-#include <array>
-#include <cstdint>
+#include <cstddef>
 
 namespace ioj::sim::collision {
 struct EntityAABBs {
-    using size_type = std::int32_t;
-
-    static constexpr size_type num_rows{5};
-
-    static constexpr size_type space_ship_index{0};
-    static constexpr size_type static_turret_index{1};
-    static constexpr size_type capital_ship_index{2};
-    static constexpr size_type fighter_index{3};
-    static constexpr size_type tube_spinner_index{4};
-
-    static constexpr auto num() noexcept -> size_type { return num_rows; }
-
-    constexpr void set_centre(size_type const index, Vector3f const centre) noexcept {
-        auto const element{static_cast<std::size_t>(index)};
-        centre_xs_[element] = centre.X;
-        centre_ys_[element] = centre.Y;
-        centre_zs_[element] = centre.Z;
+    constexpr void set_centre(EntityType const type, Vector3f const centre) noexcept {
+        centre_xs_[type] = centre.X;
+        centre_ys_[type] = centre.Y;
+        centre_zs_[type] = centre.Z;
     }
 
-    constexpr void set_half_extents(size_type const index, Vector3f const half_extents) noexcept {
-        auto const element{static_cast<std::size_t>(index)};
-        half_extent_xs_[element] = half_extents.X;
-        half_extent_ys_[element] = half_extents.Y;
-        half_extent_zs_[element] = half_extents.Z;
+    constexpr void set_half_extents(EntityType const type, Vector3f const half_extents) noexcept {
+        half_extent_xs_[type] = half_extents.X;
+        half_extent_ys_[type] = half_extents.Y;
+        half_extent_zs_[type] = half_extents.Z;
     }
 
-    [[nodiscard]] constexpr auto get_centre(size_type const index) const noexcept -> Vector3f {
-        auto const element{static_cast<std::size_t>(index)};
-        return ml::make_vector3f(centre_xs_[element], centre_ys_[element], centre_zs_[element]);
+    [[nodiscard]] constexpr auto get_centre(EntityType const type) const noexcept -> Vector3f {
+        return ml::make_vector3f(centre_xs_[type], centre_ys_[type], centre_zs_[type]);
     }
-    [[nodiscard]] constexpr auto get_half_extents(size_type const index) const noexcept
+    [[nodiscard]] constexpr auto get_half_extents(EntityType const type) const noexcept
         -> Vector3f {
-        auto const element{static_cast<std::size_t>(index)};
         return ml::make_vector3f(
-            half_extent_xs_[element], half_extent_ys_[element], half_extent_zs_[element]);
+            half_extent_xs_[type], half_extent_ys_[type], half_extent_zs_[type]);
     }
   private:
-    std::array<float, num_rows> centre_xs_{};
-    std::array<float, num_rows> centre_ys_{};
-    std::array<float, num_rows> centre_zs_{};
-    std::array<float, num_rows> half_extent_xs_{};
-    std::array<float, num_rows> half_extent_ys_{};
-    std::array<float, num_rows> half_extent_zs_{};
+    using Values =
+        ml::EnumArray<EntityType, float, static_cast<std::size_t>(EntityType::COUNT)>;
+
+    Values centre_xs_{};
+    Values centre_ys_{};
+    Values centre_zs_{};
+    Values half_extent_xs_{};
+    Values half_extent_ys_{};
+    Values half_extent_zs_{};
 };
 } // namespace ioj::sim::collision

@@ -48,9 +48,8 @@ auto make_battle() -> LevelSimInitData {
     data.capital_ships.fighter_spawn_slots = 0;
     add_capital_spawn(data, {{-1000.f, 0.f, 0.f}}, Team::Green, -1, 60.f, 60.f, 100);
     add_capital_spawn(data, {{1000.f, 0.f, 0.f}}, Team::White, -1, 60.f, 60.f, 100);
-    auto const count{collision::EntityAABBs::num()};
-    for (std::int32_t index{}; index < count; ++index) {
-        data.entity_bounds.set_half_extents(index, {{10.f, 10.f, 10.f}});
+    for (auto const type : ml::EnumTraits<EntityType>::values) {
+        data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
     return data;
 }
@@ -63,7 +62,7 @@ auto make_overlap_response_battle() -> LevelSimInitData {
     data.player->transform.location = {-1000.0, 0.0, 0.0};
     data.player->config.lateral_adjustment_speed = 1.f;
     data.player->health = {150, 150};
-    data.entity_bounds.set_half_extents(collision::EntityAABBs::capital_ship_index,
+    data.entity_bounds.set_half_extents(EntityType::CapitalShip,
                                         {{100.f, 100.f, 100.f}});
     return data;
 }

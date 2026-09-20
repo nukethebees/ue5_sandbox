@@ -18,11 +18,11 @@ auto absolute(Vector3f const vector) noexcept -> Vector3f {
 }
 
 auto make_entity_world_bounds(EntityAABBs const& bounds,
-                              std::int32_t const type_index,
+                              EntityType const type,
                               Vector3f const position,
                               Quaternion4f const orientation) noexcept -> WorldAABB {
-    auto const centre{position + rotate_vector(orientation, bounds.get_centre(type_index))};
-    auto const local_extent{bounds.get_half_extents(type_index)};
+    auto const centre{position + rotate_vector(orientation, bounds.get_centre(type))};
+    auto const local_extent{bounds.get_half_extents(type)};
     auto const extent{
         absolute(rotate_vector(orientation, ml::make_vector3f(local_extent.X, 0.0f, 0.0f))) +
         absolute(rotate_vector(orientation, ml::make_vector3f(0.0f, local_extent.Y, 0.0f))) +
@@ -30,8 +30,8 @@ auto make_entity_world_bounds(EntityAABBs const& bounds,
     return {centre - extent, centre + extent};
 }
 
-auto get_entity_radius(EntityAABBs const& bounds, std::int32_t const type_index) noexcept -> float {
-    auto const half_extents{bounds.get_half_extents(type_index)};
+auto get_entity_radius(EntityAABBs const& bounds, EntityType const type) noexcept -> float {
+    auto const half_extents{bounds.get_half_extents(type)};
     return std::max(std::max(half_extents.X, half_extents.Y), half_extents.Z);
 }
 } // namespace collision

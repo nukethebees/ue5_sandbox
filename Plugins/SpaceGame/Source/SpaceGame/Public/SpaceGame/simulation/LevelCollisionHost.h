@@ -5,7 +5,7 @@
 #include <SpaceGame/simulation/StaticCollisionSources.h>
 #include <SpaceGameSimulation/levels/LevelStartErrors.h>
 
-#include <array>
+#include <cstddef>
 #include <expected>
 #include <optional>
 
@@ -18,8 +18,9 @@ using FEntityBoundsExtractionResult =
     std::expected<::ioj::sim::collision::EntityAABBs, FLevelStartErrors>;
 
 struct SPACEGAME_API FLevelCollisionHost {
-    using EntityMeshes =
-        std::array<UStaticMesh const*, ::ioj::sim::collision::EntityAABBs::num_rows>;
+    using EntityMeshes = ml::EnumArray<::ioj::sim::EntityType,
+                                       UStaticMesh const*,
+                                       static_cast<std::size_t>(::ioj::sim::EntityType::COUNT)>;
     static auto extract_entity_bounds(EntityMeshes const& meshes) -> FEntityBoundsExtractionResult;
     auto initialise_static_geometry(UWorld& world,
                                     FCollisionGridConfig const& config,

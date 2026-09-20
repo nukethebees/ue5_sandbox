@@ -10,13 +10,11 @@ struct OverlapFixture {
                             Vector3f const capital_centre = Vector3f{},
                             Vector3f const turret_half_extents = {{10.f, 10.f, 10.f}})
         : query_manager{owners.agents} {
-        auto const type_count{collision::EntityAABBs::num()};
-        for (std::int32_t type_index{}; type_index < type_count; ++type_index) {
-            set_bounds(type_index, Vector3f{}, Vector3f{{10.f, 10.f, 10.f}});
+        for (auto const type : ml::EnumTraits<EntityType>::values) {
+            set_bounds(type, Vector3f{}, Vector3f{{10.f, 10.f, 10.f}});
         }
-        set_bounds(
-            collision::EntityAABBs::capital_ship_index, capital_centre, capital_half_extents);
-        set_bounds(collision::EntityAABBs::static_turret_index, Vector3f{}, turret_half_extents);
+        set_bounds(EntityType::CapitalShip, capital_centre, capital_half_extents);
+        set_bounds(EntityType::Turret, Vector3f{}, turret_half_extents);
 
         query_manager.initialise({40, 40, 40}, {{50.f, 50.f, 50.f}}, entity_bounds);
     }
@@ -83,11 +81,11 @@ struct OverlapFixture {
             .entity_static_overlaps;
     }
 
-    void set_bounds(std::int32_t const type_index,
+    void set_bounds(EntityType const type,
                     Vector3f const centre,
                     Vector3f const half_extents) {
-        entity_bounds.set_centre(type_index, centre);
-        entity_bounds.set_half_extents(type_index, half_extents);
+        entity_bounds.set_centre(type, centre);
+        entity_bounds.set_half_extents(type, half_extents);
     }
 
     CollisionAgentStorage owners;
@@ -259,7 +257,7 @@ TEST(EntityAABBOverlaps, RotatedConservativeWorldBoundsUseExistingBoundsRules) {
     auto const rotation{Rotator3f{0.f, 90.f, 0.f}};
     auto const expected_bounds{
         collision::make_entity_world_bounds(fixture.entity_bounds,
-                                            collision::EntityAABBs::capital_ship_index,
+                                            EntityType::CapitalShip,
                                             Vector3f{},
                                             to_quaternion(rotation))};
     tests::expect_true(expected_bounds.min.Y <= 55.f && expected_bounds.max.Y >= 65.f,

@@ -34,7 +34,7 @@ void run_worldless_fighter_obstacle_avoidance(tests::SimulationFixture const& co
     tests::add_capital_spawn(
         data, Vector3f{{target_x, 0.f, 0.f}}, Team::Red, 0, 60.f, 60.f, 100000);
     auto const fighter_radius{
-        collision::get_entity_radius(data.entity_bounds, collision::EntityAABBs::fighter_index)};
+        collision::get_entity_radius(data.entity_bounds, EntityType::Fighter)};
 
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
@@ -125,12 +125,12 @@ void run_worldless_fighter_capital_obstruction(tests::SimulationFixture const& c
 
     auto const obstacle_bounds{
         collision::make_entity_world_bounds(data.entity_bounds,
-                                            collision::EntityAABBs::capital_ship_index,
+                                            EntityType::CapitalShip,
                                             obstacle,
                                             to_quaternion(obstacle_rotation))};
     auto const capital_half_extent{((obstacle_bounds.max - obstacle_bounds.min) * 0.5f)};
     auto const fighter_radius{
-        collision::get_entity_radius(data.entity_bounds, collision::EntityAABBs::fighter_index)};
+        collision::get_entity_radius(data.entity_bounds, EntityType::Fighter)};
     auto const clearance{fighter_radius + data.fighters.avoidance_clearance_buffer};
     Vector3f const clearance_extent{{clearance, clearance, clearance}};
     tests::WorldlessSimulationTest harness{std::move(data)};
@@ -330,7 +330,7 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
                       3600.f);
     DenseNavigationResult result;
     result.collision_distance =
-        collision::get_entity_radius(data.entity_bounds, collision::EntityAABBs::fighter_index) *
+        collision::get_entity_radius(data.entity_bounds, EntityType::Fighter) *
         2.f;
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
@@ -446,7 +446,7 @@ void run_worldless_fighter_hard_avoidance_authority(tests::SimulationFixture con
     data.static_bounds.add_defaulted(1);
     collision::set(data.static_bounds, 0, obstacle_min, obstacle_max);
     auto const fighter_radius{
-        collision::get_entity_radius(data.entity_bounds, collision::EntityAABBs::fighter_index)};
+        collision::get_entity_radius(data.entity_bounds, EntityType::Fighter)};
     auto const clearance{fighter_radius + data.fighters.avoidance_clearance_buffer};
     Vector3f const clearance_extent{{clearance, clearance, clearance}};
     auto const expanded_min{obstacle_min - clearance_extent};

@@ -32,7 +32,7 @@ auto validate_fighter_spawn_slots(CapitalShipSimConfig const& capital_config,
     -> std::vector<FighterSpawnSlotValidationError> {
     auto const capital_bounds{
         collision::make_entity_world_bounds(entity_bounds,
-                                            collision::EntityAABBs::capital_ship_index,
+                                            EntityType::CapitalShip,
                                             {},
                                             ml::make_quaternion4f(0.0f, 0.0f, 0.0f, 1.0f))};
     auto const clearance{fighter_config.avoidance_clearance_buffer};
@@ -45,7 +45,7 @@ auto validate_fighter_spawn_slots(CapitalShipSimConfig const& capital_config,
         auto const& slot{slots[index]};
         fighter_bounds.push_back(collision::make_entity_world_bounds(
             entity_bounds,
-            collision::EntityAABBs::fighter_index,
+            EntityType::Fighter,
             to_float(slot.location),
             to_quaternion(to_float(to_rotator(slot.rotation)))));
         if (intersects(capital_bounds, fighter_bounds.back(), 0.0f, clearance)) {
@@ -81,7 +81,7 @@ auto validate_world_fighter_spawn_slots(LevelSimInitData const& data)
             auto const capital_orientation{to_quaternion(capital_rotation)};
             auto const capital_bounds{
                 collision::make_entity_world_bounds(data.entity_bounds,
-                                                    collision::EntityAABBs::capital_ship_index,
+                                                    EntityType::CapitalShip,
                                                     capital_position,
                                                     capital_orientation)};
             for (std::size_t slot_index{}; slot_index < slots.size(); ++slot_index) {
@@ -96,7 +96,7 @@ auto validate_world_fighter_spawn_slots(LevelSimInitData const& data)
                                                to_quaternion(to_float(to_rotator(slot.rotation)))};
                 auto const fighter_bounds{
                     collision::make_entity_world_bounds(data.entity_bounds,
-                                                        collision::EntityAABBs::fighter_index,
+                                                        EntityType::Fighter,
                                                         fighter_position,
                                                         fighter_orientation)};
                 if (intersects(capital_bounds, fighter_bounds, 0.0f, clearance)) {

@@ -244,11 +244,11 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     data.cell_size = ml::to_native(config.collision_grid.cell_size);
 
     ioj::FLevelCollisionHost::EntityMeshes meshes{};
-    meshes[std::to_underlying(::ioj::sim::EntityType::PlayerShip)] = player_collision_mesh;
-    meshes[std::to_underlying(::ioj::sim::EntityType::CapitalShip)] = config.capital_ships.mesh;
-    meshes[std::to_underlying(::ioj::sim::EntityType::Fighter)] = config.fighters.mesh;
-    meshes[std::to_underlying(::ioj::sim::EntityType::Turret)] = config.turrets.mesh;
-    meshes[std::to_underlying(::ioj::sim::EntityType::TubeSpinner)] = config.tube_spinners.mesh;
+    meshes[::ioj::sim::EntityType::PlayerShip] = player_collision_mesh;
+    meshes[::ioj::sim::EntityType::CapitalShip] = config.capital_ships.mesh;
+    meshes[::ioj::sim::EntityType::Fighter] = config.fighters.mesh;
+    meshes[::ioj::sim::EntityType::Turret] = config.turrets.mesh;
+    meshes[::ioj::sim::EntityType::TubeSpinner] = config.tube_spinners.mesh;
     auto bounds{ioj::FLevelCollisionHost::extract_entity_bounds(meshes)};
     if (!bounds) {
         return FLevelSimBuildResult{std::unexpect, MoveTemp(bounds.error())};

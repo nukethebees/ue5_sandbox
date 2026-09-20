@@ -114,13 +114,12 @@ auto team_colour(::ioj::sim::EntityType const type,
 }
 
 auto select_soft_target(std::span<::ioj::sim::AgentDisplayBatch const> const batches,
-                        std::span<float const> const entity_type_radii,
+                        ::ioj::sim::EntityTypeRadii const& entity_type_radii,
                         TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
                         FSoftTargetSelectionContext const& context,
                         FSoftTargetSelectionSettings const& settings,
                         ::ioj::sim::EntityUniqueId const current_target)
     -> FSoftTargetSelectionResult {
-    check(entity_type_radii.size() == static_cast<std::size_t>(::ioj::sim::EntityType::COUNT));
     check(objective_roles.Num() == ::ioj::sim::display_entity_count(batches));
     if (!context.view.is_valid()) {
         return {};
@@ -187,8 +186,7 @@ auto select_soft_target(std::span<::ioj::sim::AgentDisplayBatch const> const bat
                 continue;
             }
 
-            auto const type_index{static_cast<std::size_t>(batch.type)};
-            auto const world_radius{FMath::Max(entity_type_radii[type_index], 0.0f)};
+            auto const world_radius{FMath::Max(entity_type_radii[batch.type], 0.0f)};
             float projected_radius{};
             FProjectedPosition projected_edge;
             if (project_to_overlay(
@@ -297,7 +295,7 @@ auto select_soft_target(std::span<::ioj::sim::AgentDisplayBatch const> const bat
 
 auto collect_entity_overlay_instances(
     std::span<::ioj::sim::AgentDisplayBatch const> const batches,
-    std::span<float const> const entity_type_radii,
+    ::ioj::sim::EntityTypeRadii const& entity_type_radii,
     TConstArrayView<EEntityOverlayObjectiveRole> const objective_roles,
     FEntityOverlayTeamColours const& team_colours,
     FEntityOverlayHealthMaximums const& maximum_health,
@@ -306,7 +304,6 @@ auto collect_entity_overlay_instances(
     TArray<FEntityOverlayInstance>& output_instances,
     FEntityOverlayCollector& collector) -> FEntityOverlayCollectionResult {
     TRACE_CPUPROFILER_EVENT_SCOPE(EntityOverlay::CollectAgentSource);
-    check(entity_type_radii.size() == static_cast<std::size_t>(::ioj::sim::EntityType::COUNT));
     check(objective_roles.Num() == ::ioj::sim::display_entity_count(batches));
     collector.begin(origin, FMath::Max(maximum_range, 0.0f), output_instances);
 
@@ -330,7 +327,7 @@ auto collect_entity_overlay_instances(
             static_cast<void>(collector.try_add_colored(
                 ml::to_unreal(batch.locations[index]),
                 static_cast<float>(batch.health(index)) * inverse_health,
-                entity_type_radii[static_cast<std::size_t>(entity_type)],
+                entity_type_radii[entity_type],
                 team_colour(entity_type, ml::to_unreal(batch.team(index)), team_colours),
                 objective_role,
                 objective_role != EEntityOverlayObjectiveRole::None));

@@ -313,10 +313,8 @@ void SpatialQueryManager::initialise(collision::CellCoord const grid_dimensions,
 
     collision.initialise(entity_bounds);
 
-    auto const radius_count{static_cast<std::int32_t>(entity_radii_.size())};
-    for (std::int32_t type_index{}; type_index < radius_count; ++type_index) {
-        entity_radii_[static_cast<std::size_t>(type_index)] =
-            collision::get_entity_radius(entity_bounds, type_index);
+    for (auto const type : ml::EnumTraits<EntityType>::values) {
+        entity_radii_[type] = collision::get_entity_radius(entity_bounds, type);
     }
 }
 
@@ -497,12 +495,10 @@ void SpatialQueryManager::are_spheres_in_bounds(Vectors3fConstView const centres
 
 auto SpatialQueryManager::get_entity_type_radius(EntityType const entity_type) const noexcept
     -> float {
-    auto const index{static_cast<std::size_t>(entity_type)};
-    assert(index < entity_radii_.size());
-    return entity_radii_[index];
+    return entity_radii_[entity_type];
 }
 
-auto SpatialQueryManager::get_entity_type_radii() const noexcept -> std::span<float const> {
+auto SpatialQueryManager::get_entity_type_radii() const noexcept -> EntityTypeRadii const& {
     return entity_radii_;
 }
 

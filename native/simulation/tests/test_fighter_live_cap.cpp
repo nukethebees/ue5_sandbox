@@ -41,9 +41,8 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
             .target_entity_indices()[capital_index] = entity_index;
     }
 
-    auto const bounds_count{data.entity_bounds.num()};
-    for (std::int32_t index{}; index < bounds_count; ++index) {
-        data.entity_bounds.set_half_extents(index, {{10.f, 10.f, 10.f}});
+    for (auto const type : ml::EnumTraits<EntityType>::values) {
+        data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
     return data;
 }

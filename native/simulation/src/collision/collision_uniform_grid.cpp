@@ -403,20 +403,6 @@ void append_grid_overlaps(GridGeometry const geometry,
 }
 }
 
-namespace {
-static_assert(collision::EntityAABBs::space_ship_index ==
-              std::to_underlying(EntityType::PlayerShip));
-static_assert(collision::EntityAABBs::static_turret_index ==
-              std::to_underlying(EntityType::Turret));
-static_assert(collision::EntityAABBs::capital_ship_index ==
-              std::to_underlying(EntityType::CapitalShip));
-static_assert(collision::EntityAABBs::fighter_index == std::to_underlying(EntityType::Fighter));
-static_assert(collision::EntityAABBs::tube_spinner_index ==
-              std::to_underlying(EntityType::TubeSpinner));
-static_assert(collision::EntityAABBs::num_rows == std::to_underlying(EntityType::COUNT));
-
-}
-
 auto CollisionUniformGrid::get_grid_dims() const noexcept -> collision::CellCoord {
     return geometry_.dimensions;
 }
@@ -515,7 +501,7 @@ void CollisionUniformGrid::rebuild_grid(collision::EntityAABBs const& entity_aab
                                            Team) {
             auto const entity_type{id.entity_type()};
             auto const bounds{collision::make_entity_world_bounds(
-                entity_aabbs, std::to_underlying(entity_type), location, to_quaternion(rotation))};
+                entity_aabbs, entity_type, location, to_quaternion(rotation))};
             auto const [min_coord, max_coord]{
                 collision::to_cell_coord_bounds(geometry, bounds.min, bounds.max)};
             if (!is_cell_coord_in_bounds(min_coord, max_coord)) {

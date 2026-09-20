@@ -153,8 +153,8 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
     }
 
     ml::ioj::FLevelCollisionHost::EntityMeshes meshes{};
-    meshes[std::to_underlying(::ioj::sim::EntityType::CapitalShip)] = config->capital_ships.mesh;
-    meshes[std::to_underlying(::ioj::sim::EntityType::Fighter)] = config->fighters.mesh;
+    meshes[::ioj::sim::EntityType::CapitalShip] = config->capital_ships.mesh;
+    meshes[::ioj::sim::EntityType::Fighter] = config->fighters.mesh;
     auto const local_bounds{ml::ioj::FLevelCollisionHost::extract_entity_bounds(meshes)};
     if (!local_bounds) {
         report_error(local_bounds.error().format());
@@ -169,19 +169,19 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
     }
     spawn_preview_error.Reset();
     // Runtime uses the actor pivot/rotation, not the preview mesh component's relative transform.
-    auto const make_world_bounds{[&local_bounds](int32 const type_index,
+    auto const make_world_bounds{[&local_bounds](::ioj::sim::EntityType const type,
                                                  FVector3f const position,
                                                  FRotator3f const rotation) {
         auto const orientation{rotation.Quaternion()};
         auto const native_bounds{::ioj::sim::collision::make_entity_world_bounds(
             *local_bounds,
-            type_index,
+            type,
             ml::make_vector3f(position.X, position.Y, position.Z),
             ml::make_quaternion4f(orientation.X, orientation.Y, orientation.Z, orientation.W))};
         return FBox3f{FVector3f{native_bounds.min.X, native_bounds.min.Y, native_bounds.min.Z},
                       FVector3f{native_bounds.max.X, native_bounds.max.Y, native_bounds.max.Z}};
     }};
-    auto const bounds{make_world_bounds(::ioj::sim::collision::EntityAABBs::capital_ship_index,
+    auto const bounds{make_world_bounds(::ioj::sim::EntityType::CapitalShip,
                                         FVector3f{GetActorLocation()},
                                         FRotator3f{GetActorRotation()})};
     auto const clearance{config->fighters.avoidance_clearance_buffer};
@@ -189,7 +189,7 @@ void ATestCapitalShipProxy::draw_fighter_spawn_preview() {
     fighter_bounds.SetNum(slot_count);
     for (int32 i{}; i < slot_count; ++i) {
         auto const* const arrow{fighter_spawn_slots[i].Get()};
-        fighter_bounds[i] = make_world_bounds(::ioj::sim::collision::EntityAABBs::fighter_index,
+        fighter_bounds[i] = make_world_bounds(::ioj::sim::EntityType::Fighter,
                                               FVector3f{arrow->GetComponentLocation()},
                                               FRotator3f{arrow->GetComponentRotation()});
     }

@@ -55,10 +55,8 @@ void CollisionSystem::collect_overlaps_for_moved_entities(
             continue;
         }
 
-        auto const bounds{collision::make_entity_world_bounds(entity_aabbs_,
-                                                              std::to_underlying(id.entity_type()),
-                                                              state->location,
-                                                              to_quaternion(state->rotation))};
+        auto const bounds{collision::make_entity_world_bounds(
+            entity_aabbs_, id.entity_type(), state->location, to_quaternion(state->rotation))};
 
         overlapping_entities_scratch_.clear();
         overlapping_static_geometry_indices_scratch_.clear();

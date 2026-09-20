@@ -49,9 +49,8 @@ struct TraceFixture {
     void set_entity_aabb(EntityType const entity_type,
                          Vector3f const centre,
                          Vector3f const half_extents) {
-        auto const aabb_index{std::to_underlying(entity_type)};
-        aabbs.set_centre(aabb_index, centre);
-        aabbs.set_half_extents(aabb_index, half_extents);
+        aabbs.set_centre(entity_type, centre);
+        aabbs.set_half_extents(entity_type, half_extents);
     }
 
     void update_entities(std::span<Vector3f const> const locations,
@@ -260,13 +259,15 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
         return;
     }
 
-    std::array<EntityUniqueId, 5> const expected_ids{
-        player->unique_entity_id,
-        simulation.get_capital_ships().get_id(0),
-        fighter_ids[0],
-        simulation.get_turrets().get_read_view().entities.entity_ids[0],
-        simulation.get_spinners().get_read_view().entities.entity_ids[0],
-    };
+    ml::EnumArray<EntityType, EntityUniqueId, static_cast<std::size_t>(EntityType::COUNT)>
+        expected_ids{};
+    expected_ids[EntityType::PlayerShip] = player->unique_entity_id;
+    expected_ids[EntityType::Turret] =
+        simulation.get_turrets().get_read_view().entities.entity_ids[0];
+    expected_ids[EntityType::CapitalShip] = simulation.get_capital_ships().get_id(0);
+    expected_ids[EntityType::Fighter] = fighter_ids[0];
+    expected_ids[EntityType::TubeSpinner] =
+        simulation.get_spinners().get_read_view().entities.entity_ids[0];
     auto const& agents{simulation.get_agent_accessor()};
     auto const& collision{simulation.get_spatial_query_manager().get_collision_system()};
     auto const& grid{collision.get_uniform_grid()};
@@ -277,20 +278,17 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
     auto const cell_dimensions_match{grid.get_cell_dims() == cell_dims};
     tests::expect_true(cell_dimensions_match != 0, "Collision grid uses the production cell size");
 
-    auto const id_count{static_cast<std::int32_t>(expected_ids.size())};
-    for (std::int32_t i{}; i < id_count; ++i) {
-        auto const id{expected_ids[i]};
-        auto const entity_type{static_cast<EntityType>(i)};
+    for (auto const entity_type : ml::EnumTraits<EntityType>::values) {
+        auto const id{expected_ids[entity_type]};
         if (!tests::expect_true(agents.is_alive(id),
                                 "Expected collision-grid  entity is alive" +
                                     ::testing::PrintToString(entity_type))) {
             continue;
         }
 
-        auto const aabb_index{std::to_underlying(id.entity_type())};
         auto const entity_location{agents.read(id)->location};
-        auto const local_aabb_centre{entity_aabbs.get_centre(aabb_index)};
-        auto const half_extents{entity_aabbs.get_half_extents(aabb_index)};
+        auto const local_aabb_centre{entity_aabbs.get_centre(id.entity_type())};
+        auto const half_extents{entity_aabbs.get_half_extents(id.entity_type())};
         auto const world_aabb_centre{entity_location + local_aabb_centre};
         auto const [min_coord, max_coord]{grid.to_cell_coord_bounds(
             world_aabb_centre - half_extents, world_aabb_centre + half_extents)};
@@ -313,7 +311,7 @@ void run_worldless_collision_uniform_grid_membership(tests::SimulationFixture co
         tests::expect_equal(expected_cell_count,
                             found_cell_count,
                             "Expected entity has the expected collision-grid membership",
-                            i);
+                            std::to_underlying(entity_type));
     }
 }
 
@@ -608,8 +606,8 @@ void CollisionUniformGridTraceRunner::test_applies_aabb_centre() {
         {{16.f, 17.f, 18.f}},
     };
     TraceFixture mixed_fixture{mixed_locations,
-                               half_extents[collision::EntityAABBs::capital_ship_index],
-                               local_centres[collision::EntityAABBs::capital_ship_index],
+                               {},
+                               {},
                                trace_grid_dims,
                                trace_cell_dims,
                                entity_types};

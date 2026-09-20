@@ -1,9 +1,8 @@
 #pragma once
 
 #include "ioj/sim/entity_aabbs.h"
+#include "ioj/sim/entity_type.h"
 #include "ioj/sim/vector_types.h"
-
-#include <cstdint>
 
 namespace ioj::sim::collision {
 struct WorldAABB {
@@ -12,9 +11,9 @@ struct WorldAABB {
 };
 
 [[nodiscard]] auto make_entity_world_bounds(EntityAABBs const& bounds,
-                                            std::int32_t type_index,
+                                            EntityType type,
                                             Vector3f position,
                                             Quaternion4f orientation) noexcept -> WorldAABB;
-[[nodiscard]] auto get_entity_radius(EntityAABBs const& bounds, std::int32_t type_index) noexcept
+[[nodiscard]] auto get_entity_radius(EntityAABBs const& bounds, EntityType type) noexcept
     -> float;
 } // namespace ioj::sim::collision

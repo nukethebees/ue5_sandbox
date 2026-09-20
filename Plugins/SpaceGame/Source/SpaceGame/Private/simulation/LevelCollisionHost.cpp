@@ -23,16 +23,6 @@
 namespace ml::ioj {
 namespace {
 using EntityAABBs = ::ioj::sim::collision::EntityAABBs;
-static_assert(EntityAABBs::space_ship_index ==
-              std::to_underlying(::ioj::sim::EntityType::PlayerShip));
-static_assert(EntityAABBs::static_turret_index ==
-              std::to_underlying(::ioj::sim::EntityType::Turret));
-static_assert(EntityAABBs::capital_ship_index ==
-              std::to_underlying(::ioj::sim::EntityType::CapitalShip));
-static_assert(EntityAABBs::fighter_index == std::to_underlying(::ioj::sim::EntityType::Fighter));
-static_assert(EntityAABBs::tube_spinner_index ==
-              std::to_underlying(::ioj::sim::EntityType::TubeSpinner));
-static_assert(EntityAABBs::num_rows == std::to_underlying(::ioj::sim::EntityType::COUNT));
 
 auto get_aabb(FKAggregateGeom const& geometry, FTransform const& local_to_world) -> FBox {
     auto const scale{local_to_world.GetScale3D()};
@@ -97,17 +87,17 @@ auto get_aabb(UStaticMesh const& mesh) -> FBox {
     return get_aabb(body_setup->AggGeom, FTransform::Identity);
 }
 
-void clear_aabb(EntityAABBs& aabbs, int32 const index) {
-    aabbs.set_centre(index, ml::make_vector3f(0.f, 0.f, 0.f));
-    aabbs.set_half_extents(index, ml::make_vector3f(0.f, 0.f, 0.f));
+void clear_aabb(EntityAABBs& aabbs, ::ioj::sim::EntityType const type) {
+    aabbs.set_centre(type, ml::make_vector3f(0.f, 0.f, 0.f));
+    aabbs.set_half_extents(type, ml::make_vector3f(0.f, 0.f, 0.f));
 }
 
 void set_mesh_aabb(EntityAABBs& aabbs,
-                   int32 const index,
+                   ::ioj::sim::EntityType const type,
                    TCHAR const* const entity_name,
                    UStaticMesh const* const mesh,
                    FLevelStartErrors& errors) {
-    clear_aabb(aabbs, index);
+    clear_aabb(aabbs, type);
 
     if (!IsValid(mesh)) {
         return;
@@ -126,8 +116,8 @@ void set_mesh_aabb(EntityAABBs& aabbs,
     FVector3f const centre{aabb.GetCenter()};
     FVector3f const half_extents{aabb.GetExtent()};
 
-    aabbs.set_centre(index, ml::make_vector3f(centre.X, centre.Y, centre.Z));
-    aabbs.set_half_extents(index,
+    aabbs.set_centre(type, ml::make_vector3f(centre.X, centre.Y, centre.Z));
+    aabbs.set_half_extents(type,
                            ml::make_vector3f(half_extents.X, half_extents.Y, half_extents.Z));
 }
 
@@ -217,11 +207,9 @@ auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes)
     FEntityBoundsExtractionResult result{std::in_place};
     auto& bounds{result.value()};
     FLevelStartErrors errors;
-    auto const count{EntityAABBs::num()};
-    for (int32 i{0}; i < count; ++i) {
-        auto const entity_type{static_cast<::ioj::sim::EntityType>(i)};
+    for (auto const entity_type : ml::EnumTraits<::ioj::sim::EntityType>::values) {
         auto const entity_name{ml::to_fstring(::ioj::sim::to_string(entity_type))};
-        set_mesh_aabb(bounds, i, *entity_name, meshes[static_cast<std::size_t>(i)], errors);
+        set_mesh_aabb(bounds, entity_type, *entity_name, meshes[entity_type], errors);
     }
     if (errors.has_errors()) {
         return FEntityBoundsExtractionResult{std::unexpect, MoveTemp(errors)};

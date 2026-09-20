@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ioj/sim/agent_display_batch.h"
+#include "ioj/sim/entity_type_radii.h"
 #include "SpaceGamePresentation/entities/TeamColours.h"
 
 #include "ioj/sim/entity_unique_id.h"
@@ -57,7 +58,7 @@ struct SPACEGAMEPRESENTATION_API FEntityOverlayCollectionResult {
 
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto
     select_soft_target(std::span<::ioj::sim::AgentDisplayBatch const> batches,
-                       std::span<float const> entity_type_radii,
+                       ::ioj::sim::EntityTypeRadii const& entity_type_radii,
                        TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
                        FSoftTargetSelectionContext const& context,
                        FSoftTargetSelectionSettings const& settings,
@@ -65,7 +66,7 @@ struct SPACEGAMEPRESENTATION_API FEntityOverlayCollectionResult {
 
 [[nodiscard]] SPACEGAMEPRESENTATION_API auto
     collect_entity_overlay_instances(std::span<::ioj::sim::AgentDisplayBatch const> batches,
-                                     std::span<float const> entity_type_radii,
+                                     ::ioj::sim::EntityTypeRadii const& entity_type_radii,
                                      TConstArrayView<EEntityOverlayObjectiveRole> objective_roles,
                                      FEntityOverlayTeamColours const& team_colours,
                                      FEntityOverlayHealthMaximums const& maximum_health,

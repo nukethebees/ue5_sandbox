@@ -1,8 +1,8 @@
 #pragma once
 
-#include <array>
 #include <cstddef>
 #include <cstdint>
+#include <ioj/sim/entity_type_radii.h>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/line_traces.h>
 #include <span>
@@ -111,7 +111,7 @@ struct SpatialQueryManager {
                                float radius,
                                std::span<std::uint8_t> out_results) const;
     auto get_entity_type_radius(EntityType entity_type) const noexcept -> float;
-    auto get_entity_type_radii() const noexcept -> std::span<float const>;
+    auto get_entity_type_radii() const noexcept -> EntityTypeRadii const&;
     void copy_entity_radii(std::span<EntityUniqueId const> ids, std::span<float> out_radii) const;
 
     /* **************************************** */
@@ -142,6 +142,6 @@ struct SpatialQueryManager {
     mutable QueryThreadBufferPool thread_buffer_pool_;
 
     collision::CollisionSystem collision;
-    std::array<float, static_cast<std::size_t>(EntityType::COUNT)> entity_radii_{};
+    EntityTypeRadii entity_radii_{};
 };
 }

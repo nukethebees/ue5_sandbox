@@ -11,9 +11,8 @@ auto make_world() -> LevelSimInitData {
     data.lasers.n_preallocated_instances = 8;
     data.overlap_response.damage_per_overlap_detection = 25;
 
-    auto const count{data.entity_bounds.num()};
-    for (std::int32_t index{}; index < count; ++index) {
-        data.entity_bounds.set_half_extents(index, {{10.f, 10.f, 10.f}});
+    for (auto const type : ml::EnumTraits<EntityType>::values) {
+        data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
 
     return data;
