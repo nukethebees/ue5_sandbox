@@ -32,9 +32,8 @@ auto make_data(player::FlightModelPreset const preset) -> LevelSimInitData {
     data.lasers.n_preallocated_instances = 16;
     data.capital_ships.fighter_spawn_slots = 0;
     data.clock_settings.tick_rate = 60.0;
-    auto const count{collision::EntityAABBs::num()};
-    for (std::int32_t index{}; index < count; ++index) {
-        data.entity_bounds.set_half_extents(index, {{10.f, 10.f, 10.f}});
+    for (auto const type : ml::EnumTraits<EntityType>::values) {
+        data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
 
     player::PlayerSpawnData spawn{};
