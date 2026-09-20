@@ -317,7 +317,9 @@ shared validator. Optional trailing returns atomically switch the declared retur
 support shared type picking, and remain valid across enable/disable; opaque template-parameter and
 requires-clause text is authorable with resizable inline inputs and shared nonblank validation.
 Stable uniquely named function and parameter rows preserve surrounding source comments; list-form
-function properties patch locally while raw `#cpp` bodies retain safe canonical fallback.
+function properties patch locally. A conservative one-to-one unmatched-row matcher also preserves
+function and parameter blocks during unambiguous direct renames; overload ambiguity, multiple
+simultaneous unmatched rows, and raw `#cpp` body renames retain canonical fallback.
 
 - Create standard-library SoA declarations.
 - Add, remove, duplicate, and reorder columns.

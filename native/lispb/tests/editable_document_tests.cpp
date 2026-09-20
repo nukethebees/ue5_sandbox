@@ -4217,6 +4217,59 @@ TEST(EditableSchemaDocument, AuthorsSoaFunctionAdvancedSignatureProperties) {
     EXPECT_FALSE(schema->functions.front().requires_clause.has_value());
 }
 
+TEST(EditableSchemaDocument, PreservesSoaFunctionAndParameterRowsDuringRename) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+
+    auto replacement{*document.soa_schema(declaration)};
+    replacement.functions.front().name = "clear_items";
+    replacement.functions.front().parameters.front().name = "element_count";
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.soa_schema(declaration)->functions.front().name, "clear");
+    EXPECT_EQ(document.soa_schema(declaration)->functions.front().parameters.front().name, "count");
+    ASSERT_TRUE(document.redo().value());
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& source{preview->front().updated};
+    auto const function_comment{source.find("; Keep the custom function note.")};
+    auto const body{source.find(":body (\"values.clear();\")")};
+    auto const parameter_comment{source.find("; Keep the count parameter note.")};
+    auto const parameter{source.find("(parameter element_count std::uint32_t :default \"0\")")};
+    EXPECT_NE(source.find("(function clear_items void"), std::string::npos);
+    EXPECT_EQ(source.find("(function clear void"), std::string::npos);
+    ASSERT_NE(function_comment, std::string::npos);
+    ASSERT_NE(body, std::string::npos);
+    ASSERT_NE(parameter_comment, std::string::npos);
+    ASSERT_NE(parameter, std::string::npos);
+    EXPECT_LT(function_comment, body);
+    EXPECT_LT(body, parameter_comment);
+    EXPECT_LT(parameter_comment, parameter);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    auto const* schema{reloaded.soa_schema(reloaded_declaration)};
+    EXPECT_EQ(schema->functions.front().name, "clear_items");
+    EXPECT_EQ(schema->functions.front().parameters.front().name, "element_count");
+    EXPECT_EQ(schema->functions.front().body_lines, std::vector<std::string>{"values.clear();"});
+    auto const module_source{
+        std::ranges::find_if(reloaded.source_files(), [](auto const& source_file) {
+            return source_file.path.filename() == "modules.lispb";
+        })};
+    ASSERT_NE(module_source, reloaded.source_files().end());
+    EXPECT_NE(module_source->text.find("; Keep the custom function note."), std::string::npos);
+    EXPECT_NE(module_source->text.find("; Keep the count parameter note."), std::string::npos);
+}
+
 TEST(EditableSchemaDocument, PreservesSoaMembersAndAdvancedFormsForStructuralEdits) {
     TemporarySchema files;
     auto document{files.load()};

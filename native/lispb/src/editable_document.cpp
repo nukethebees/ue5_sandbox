@@ -1950,6 +1950,40 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                  ? value != nullptr && source_form_matches_rendered(*value, *expected)
                  : value == nullptr;
     };
+    auto rendered_function_properties = [&](codegen::FunctionSchema const& function) {
+        auto const body{function.body_lines.empty()
+                            ? std::nullopt
+                            : std::optional{render_quoted_values(function.body_lines)}};
+        auto const dependencies{function.dependencies.empty()
+                                    ? std::nullopt
+                                    : std::optional{render_quoted_values(function.dependencies)}};
+        return std::array<SourceProperty, 10>{
+            std::pair{"body", body},
+            std::pair{"dependencies", dependencies},
+            std::pair{"trailing-return-type",
+                      function.trailing_return_type.has_value()
+                          ? std::optional{render_type_ref(*function.trailing_return_type)}
+                          : std::nullopt},
+            std::pair{"const",
+                      function.is_const ? std::optional<std::string>{"true"} : std::nullopt},
+            std::pair{"noexcept",
+                      function.is_noexcept ? std::optional<std::string>{"true"} : std::nullopt},
+            std::pair{"static",
+                      function.is_static ? std::optional<std::string>{"true"} : std::nullopt},
+            std::pair{"inline",
+                      function.is_inline ? std::optional<std::string>{"true"} : std::nullopt},
+            std::pair{"definition-in-source",
+                      function.definition_in_source ? std::optional<std::string>{"true"}
+                                                    : std::nullopt},
+            std::pair{"template-parameters",
+                      function.template_parameters.has_value()
+                          ? std::optional{quote(*function.template_parameters)}
+                          : std::nullopt},
+            std::pair{"requires",
+                      function.requires_clause.has_value()
+                          ? std::optional{quote(*function.requires_clause)}
+                          : std::nullopt}};
+    };
     auto advanced_function_fields_match = [&](Form const& source,
                                               codegen::FunctionSchema const& function) {
         auto const body{function.body_lines.empty()
@@ -1962,6 +1996,52 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
             return false;
         }
         return true;
+    };
+    auto parameter_fields_match_except_name = [&](Form const& source,
+                                                  codegen::ParameterSchema const& parameter) {
+        auto const expected_default{parameter.default_value.has_value()
+                                        ? std::optional{quote(*parameter.default_value)}
+                                        : std::nullopt};
+        return source.children.size() >= 3 &&
+               source_form_matches_rendered(source.children[2], render_type_ref(parameter.type)) &&
+               property_matches(source, "default", expected_default);
+    };
+    auto function_fields_match_except_name = [&](Form const& source,
+                                                 codegen::FunctionSchema const& function) {
+        if (source.children.size() < 3 ||
+            !source_form_matches_rendered(source.children[2],
+                                          render_type_ref(function.return_type))) {
+            return false;
+        }
+        auto const properties{rendered_function_properties(function)};
+        if (!std::ranges::all_of(properties, [&](auto const& property) {
+                return property_matches(source, property.first, property.second);
+            })) {
+            return false;
+        }
+
+        std::vector<Form const*> source_parameters;
+        for (auto const& child : source.children) {
+            if (child.head() == "parameter") {
+                source_parameters.push_back(&child);
+            }
+        }
+        if (source_parameters.size() != function.parameters.size()) {
+            return false;
+        }
+        auto renamed_parameters{std::size_t{}};
+        for (std::size_t index{}; index < source_parameters.size(); ++index) {
+            if (source_parameters[index]->children.size() < 2 ||
+                !parameter_fields_match_except_name(*source_parameters[index],
+                                                    function.parameters[index])) {
+                return false;
+            }
+            if (source_parameters[index]->children[1].token.text !=
+                function.parameters[index].name) {
+                ++renamed_parameters;
+            }
+        }
+        return renamed_parameters <= 1;
     };
 
     auto render_parameter_row = [](codegen::ParameterSchema const& parameter) {
@@ -2049,6 +2129,40 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
 
         auto const parameters_end{row_begin};
         std::set<std::string> schema_names;
+        std::vector<SourceParameter const*> source_for_parameter(function.parameters.size());
+        std::set<std::string_view> matched_source_names;
+        for (std::size_t index{}; index < function.parameters.size(); ++index) {
+            auto const& parameter{function.parameters[index]};
+            if (!schema_names.insert(parameter.name).second) {
+                return false;
+            }
+            auto const found{source_by_name.find(parameter.name)};
+            if (found != source_by_name.end()) {
+                source_for_parameter[index] = &found->second;
+                matched_source_names.insert(found->first);
+            }
+        }
+        std::vector<std::size_t> unmatched_schema_indices;
+        for (std::size_t index{}; index < source_for_parameter.size(); ++index) {
+            if (source_for_parameter[index] == nullptr) {
+                unmatched_schema_indices.push_back(index);
+            }
+        }
+        std::vector<SourceParameter const*> unmatched_source_parameters;
+        for (auto const& [name, source_parameter] : source_by_name) {
+            if (!matched_source_names.contains(name)) {
+                unmatched_source_parameters.push_back(&source_parameter);
+            }
+        }
+        if (function.parameters.size() == source_parameters.size() &&
+            unmatched_schema_indices.size() == 1 && unmatched_source_parameters.size() == 1) {
+            auto const index{unmatched_schema_indices.front()};
+            if (parameter_fields_match_except_name(*unmatched_source_parameters.front()->form,
+                                                   function.parameters[index])) {
+                source_for_parameter[index] = unmatched_source_parameters.front();
+            }
+        }
+
         std::string rendered_parameters;
         auto append_parameter = [&](std::string row) {
             auto const preceding_newline{rendered_parameters.empty()
@@ -2060,18 +2174,18 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
             }
             rendered_parameters += std::move(row);
         };
-        for (auto const& parameter : function.parameters) {
-            if (!schema_names.insert(parameter.name).second) {
-                return false;
-            }
-            auto const found{source_by_name.find(parameter.name)};
-            if (found == source_by_name.end()) {
+        for (std::size_t index{}; index < function.parameters.size(); ++index) {
+            auto const& parameter{function.parameters[index]};
+            auto const* found{source_for_parameter[index]};
+            if (found == nullptr) {
                 append_parameter(render_parameter_row(parameter));
                 continue;
             }
 
             std::vector<SourceReplacement> parameter_replacements;
-            if (!patch_source_form(found->second.form->children[2],
+            if (!patch_source_form(
+                    found->form->children[1], parameter.name, original, parameter_replacements) ||
+                !patch_source_form(found->form->children[2],
                                    render_type_ref(parameter.type),
                                    original,
                                    parameter_replacements)) {
@@ -2081,7 +2195,7 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                 "default",
                 parameter.default_value.has_value() ? std::optional{quote(*parameter.default_value)}
                                                     : std::nullopt}}};
-            if (!patch_source_properties(*found->second.form,
+            if (!patch_source_properties(*found->form,
                                          2,
                                          parameter_properties,
                                          "        ",
@@ -2089,10 +2203,8 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                                          parameter_replacements)) {
                 return false;
             }
-            auto rendered{apply_source_replacements_to_range(original,
-                                                             found->second.begin,
-                                                             found->second.end,
-                                                             std::move(parameter_replacements))};
+            auto rendered{apply_source_replacements_to_range(
+                original, found->begin, found->end, std::move(parameter_replacements))};
             if (!rendered.has_value()) {
                 return false;
             }
@@ -2147,6 +2259,40 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
 
         auto const functions_end{row_begin};
         std::set<std::string> schema_names;
+        std::vector<SourceFunction const*> source_for_function(schema.functions.size());
+        std::set<std::string_view> matched_source_names;
+        for (std::size_t index{}; index < schema.functions.size(); ++index) {
+            auto const& function{schema.functions[index]};
+            if (!schema_names.insert(function.name).second) {
+                return std::nullopt;
+            }
+            auto const found{source_by_name.find(function.name)};
+            if (found != source_by_name.end()) {
+                source_for_function[index] = &found->second;
+                matched_source_names.insert(found->first);
+            }
+        }
+        std::vector<std::size_t> unmatched_schema_indices;
+        for (std::size_t index{}; index < source_for_function.size(); ++index) {
+            if (source_for_function[index] == nullptr) {
+                unmatched_schema_indices.push_back(index);
+            }
+        }
+        std::vector<SourceFunction const*> unmatched_source_functions;
+        for (auto const& [name, source_function] : source_by_name) {
+            if (!matched_source_names.contains(name)) {
+                unmatched_source_functions.push_back(&source_function);
+            }
+        }
+        if (schema.functions.size() == functions.size() && unmatched_schema_indices.size() == 1 &&
+            unmatched_source_functions.size() == 1) {
+            auto const index{unmatched_schema_indices.front()};
+            if (function_fields_match_except_name(*unmatched_source_functions.front()->form,
+                                                  schema.functions[index])) {
+                source_for_function[index] = unmatched_source_functions.front();
+            }
+        }
+
         std::string rendered_functions;
         auto append_function = [&](std::string row) {
             auto const preceding_newline{rendered_functions.empty()
@@ -2158,60 +2304,28 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
             }
             rendered_functions += std::move(row);
         };
-        for (auto const& function : schema.functions) {
-            if (!schema_names.insert(function.name).second) {
-                return std::nullopt;
-            }
-            auto const found{source_by_name.find(function.name)};
-            if (found == source_by_name.end()) {
+        for (std::size_t index{}; index < schema.functions.size(); ++index) {
+            auto const& function{schema.functions[index]};
+            auto const* found{source_for_function[index]};
+            if (found == nullptr) {
                 append_function(render_function_row(function));
                 continue;
             }
-            if (!advanced_function_fields_match(*found->second.form, function)) {
+            if (!advanced_function_fields_match(*found->form, function)) {
                 return std::nullopt;
             }
 
             std::vector<SourceReplacement> function_replacements;
-            if (!patch_source_form(found->second.form->children[2],
+            if (!patch_source_form(
+                    found->form->children[1], function.name, original, function_replacements) ||
+                !patch_source_form(found->form->children[2],
                                    render_type_ref(function.return_type),
                                    original,
                                    function_replacements)) {
                 return std::nullopt;
             }
-            auto const body{function.body_lines.empty()
-                                ? std::nullopt
-                                : std::optional{render_quoted_values(function.body_lines)}};
-            auto const dependencies{
-                function.dependencies.empty()
-                    ? std::nullopt
-                    : std::optional{render_quoted_values(function.dependencies)}};
-            auto const function_properties{std::array<SourceProperty, 10>{
-                std::pair{"body", body},
-                std::pair{"dependencies", dependencies},
-                std::pair{"trailing-return-type",
-                          function.trailing_return_type.has_value()
-                              ? std::optional{render_type_ref(*function.trailing_return_type)}
-                              : std::nullopt},
-                std::pair{"const",
-                          function.is_const ? std::optional<std::string>{"true"} : std::nullopt},
-                std::pair{"noexcept",
-                          function.is_noexcept ? std::optional<std::string>{"true"} : std::nullopt},
-                std::pair{"static",
-                          function.is_static ? std::optional<std::string>{"true"} : std::nullopt},
-                std::pair{"inline",
-                          function.is_inline ? std::optional<std::string>{"true"} : std::nullopt},
-                std::pair{"definition-in-source",
-                          function.definition_in_source ? std::optional<std::string>{"true"}
-                                                        : std::nullopt},
-                std::pair{"template-parameters",
-                          function.template_parameters.has_value()
-                              ? std::optional{quote(*function.template_parameters)}
-                              : std::nullopt},
-                std::pair{"requires",
-                          function.requires_clause.has_value()
-                              ? std::optional{quote(*function.requires_clause)}
-                              : std::nullopt}}};
-            if (!patch_source_properties(*found->second.form,
+            auto const function_properties{rendered_function_properties(function)};
+            if (!patch_source_properties(*found->form,
                                          2,
                                          function_properties,
                                          "      ",
@@ -2219,13 +2333,11 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                                          function_replacements)) {
                 return std::nullopt;
             }
-            if (!patch_function_parameters(*found->second.form, function, function_replacements)) {
+            if (!patch_function_parameters(*found->form, function, function_replacements)) {
                 return std::nullopt;
             }
-            auto rendered{apply_source_replacements_to_range(original,
-                                                             found->second.begin,
-                                                             found->second.end,
-                                                             std::move(function_replacements))};
+            auto rendered{apply_source_replacements_to_range(
+                original, found->begin, found->end, std::move(function_replacements))};
             if (!rendered.has_value()) {
                 return std::nullopt;
             }
