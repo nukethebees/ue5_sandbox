@@ -1,5 +1,7 @@
 #include <codegen/generator.h>
 
+#include "test_utilities.h"
+
 #include <gtest/gtest.h>
 
 #include <map>
@@ -61,16 +63,6 @@ auto basic_schema() -> SoaSchema {
                 SoaMemberSchema{"weights", SoaMemberKind::array, TypeRef{"float"}},
             },
     };
-}
-
-auto occurrences(std::string const& text, std::string const& value) -> std::size_t {
-    std::size_t count{};
-    auto position{text.find(value)};
-    while (position != std::string::npos) {
-        ++count;
-        position = text.find(value, position + value.size());
-    }
-    return count;
 }
 
 TEST(Lowering, EmitsOnlyRequestedStorageOperations) {
