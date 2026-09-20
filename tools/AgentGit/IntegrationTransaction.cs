@@ -261,9 +261,6 @@ internal sealed class IntegrationTransaction(
         string integration_base_sha,
         CancellationToken cancellation_token)
     {
-        await using var repository_lock = await RepositoryLock.AcquireAsync(
-            context.State.CommonGitDirectory,
-            cancellation_token);
         var result = await git.RunMutationAsync(
             context.State.WorktreeRoot,
             ["rebase", "--no-autostash", "--no-update-refs", "--no-rebase-merges", integration_base_sha],
@@ -340,9 +337,6 @@ internal sealed class IntegrationTransaction(
         bool review_was_skipped,
         CancellationToken cancellation_token)
     {
-        await using var repository_lock = await RepositoryLock.AcquireAsync(
-            initial_context.State.CommonGitDirectory,
-            cancellation_token);
         var feature_context = await discovery.DiscoverAsync(
             trust,
             initial_context.State.WorktreeRoot,
@@ -504,9 +498,6 @@ internal sealed class IntegrationTransaction(
         string rebased_tip,
         CancellationToken cancellation_token)
     {
-        await using var repository_lock = await RepositoryLock.AcquireAsync(
-            initial_context.State.CommonGitDirectory,
-            cancellation_token);
         var feature_branch = initial_context.State.CurrentBranch!;
         var home_branch = initial_context.State.HomeBranch;
         if (home_branch is null)
