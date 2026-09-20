@@ -339,16 +339,29 @@ internal sealed class ModuleMigrationChecker
         return header_extensions.Contains(Path.GetExtension(path));
     }
 
-    private static string ToFullPath(string repository_root, string repository_path)
+    internal static string ToFullPath(string repository_root, string repository_path)
     {
+        if (Path.IsPathRooted(repository_path))
+        {
+            throw new ModuleMigrationException($"Git reported a path outside the repository: '{repository_path}'.");
+        }
+
         var path = Path.GetFullPath(Path.Combine(repository_root, repository_path.Replace('/', Path.DirectorySeparatorChar)));
         var relative = Path.GetRelativePath(repository_root, path);
-        if (relative.StartsWith("..", StringComparison.Ordinal) || Path.IsPathRooted(relative))
+        if (IsParentEscape(relative))
         {
             throw new ModuleMigrationException($"Git reported a path outside the repository: '{repository_path}'.");
         }
 
         return path;
+    }
+
+    private static bool IsParentEscape(string path)
+    {
+        return path == ".." ||
+               path.StartsWith($"..{Path.DirectorySeparatorChar}", StringComparison.Ordinal) ||
+               Path.AltDirectorySeparatorChar != Path.DirectorySeparatorChar &&
+               path.StartsWith($"..{Path.AltDirectorySeparatorChar}", StringComparison.Ordinal);
     }
 
     private static string ToRepositoryPath(string root, string path)

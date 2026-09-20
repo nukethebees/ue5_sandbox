@@ -63,37 +63,50 @@ internal sealed class CoreRedirectParser
 
             if (key_start == index)
             {
-                return fields;
+                return NoFields();
             }
 
             var key = value[key_start..index];
             SkipWhitespace(value, ref index);
             if (index >= value.Length || value[index++] != '=')
             {
-                return fields;
+                return NoFields();
             }
 
             SkipWhitespace(value, ref index);
-            if (index >= value.Length || value[index++] != '"')
+            var quoted = index < value.Length && value[index] == '"';
+            string? field_value = null;
+            if (quoted)
             {
-                return fields;
+                ++index;
+                field_value = ReadQuotedValue(value, ref index);
+                if (field_value is null)
+                {
+                    return NoFields();
+                }
+            }
+            else if (!SkipUnquotedValue(value, ref index))
+            {
+                return NoFields();
             }
 
-            var field_value = ReadQuotedValue(value, ref index);
-            if (field_value is null)
+            if (quoted && (key == "OldName" || key == "NewName"))
             {
-                return fields;
+                fields[key] = field_value!;
             }
 
-            fields[key] = field_value;
             SkipWhitespace(value, ref index);
             if (index < value.Length && value[index] == ',')
             {
                 ++index;
             }
+            else if (index < value.Length && value[index] != ')')
+            {
+                return NoFields();
+            }
         }
 
-        return fields;
+        return NoFields();
     }
 
     private static string? ReadQuotedValue(string value, ref int index)
@@ -116,6 +129,22 @@ internal sealed class CoreRedirectParser
         }
 
         return null;
+    }
+
+    private static bool SkipUnquotedValue(string value, ref int index)
+    {
+        var value_start = index;
+        while (index < value.Length && value[index] is not ',' and not ')')
+        {
+            ++index;
+        }
+
+        return index > value_start;
+    }
+
+    private static IReadOnlyDictionary<string, string> NoFields()
+    {
+        return new Dictionary<string, string>(StringComparer.Ordinal);
     }
 
     private static void SkipWhitespace(string value, ref int index)

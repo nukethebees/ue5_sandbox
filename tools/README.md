@@ -40,7 +40,8 @@ and native validation does not run this suite.
   [--old-module <module>] [--plugin-module <module> ...]`. It defaults to auditing migrations from
   `Sandbox` into `ShooterGame` and `SandboxGameShared`; specifying plugin modules replaces that
   default set. The audit reports review findings but exits successfully unless its arguments,
-  repository access, or read-only Git queries fail.
+  repository access, or read-only Git queries fail. Run `ArchitectureChecks.exe module-migration
+  --help` for its command summary.
 - `GamePackageTools/` verifies archived game packages through the `verify-package` CMake target.
   Its staged executable accepts `--project-root`, `--package-root`, `--unreal-pak`,
   `--verification-directory`, and `--configuration`.
