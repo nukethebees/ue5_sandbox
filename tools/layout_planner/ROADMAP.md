@@ -47,8 +47,10 @@ future shared-schema change rather than planner-only metadata.
 
 The shared LispB schema now has an initial ordinary `record-module`: records contain semantic
 members and optional fixed element counts, resolve to `RecordType` nodes and dependency edges, and
-lower to ordinary C++ structs with `std::array` for fixed arrays. Editable-document commands and
-target-derived record layout are the next vertical steps.
+lower to dependency-ordered ordinary C++ structs with `std::array` for fixed arrays. Illegal
+by-value record cycles are rejected. Target-derived record analysis reports recursive member
+offsets, fixed-array extents, alignment, internal/tail padding, and total size in a byte map while
+keeping unknown facts explicit. Editable-document commands are the next vertical step.
 
 ## 1. Editable document and command foundation
 

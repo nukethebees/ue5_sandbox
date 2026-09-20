@@ -27,7 +27,10 @@ auto graph_column(TypeDefinition const& definition) -> std::size_t {
     if (std::holds_alternative<PackedType>(definition)) {
         return 2;
     }
-    return 3;
+    if (std::holds_alternative<RecordType>(definition)) {
+        return 3;
+    }
+    return 4;
 }
 
 auto graph_kind(TypeDefinition const& definition) -> char const* {
@@ -39,6 +42,9 @@ auto graph_kind(TypeDefinition const& definition) -> char const* {
     }
     if (std::holds_alternative<PackedType>(definition)) {
         return "packed";
+    }
+    if (std::holds_alternative<RecordType>(definition)) {
+        return "record";
     }
     return "SoA";
 }
@@ -55,6 +61,9 @@ auto node_color(TypeDefinition const& definition, bool const selected) -> ImU32 
     }
     if (std::holds_alternative<SoaType>(definition)) {
         return IM_COL32(65, 130, 118, 255);
+    }
+    if (std::holds_alternative<RecordType>(definition)) {
+        return IM_COL32(148, 104, 64, 255);
     }
     return IM_COL32(80, 86, 96, 255);
 }
@@ -92,6 +101,12 @@ auto edge_label(TypeGraph const& types, TypeId const user, TypeId const dependen
             }
             if (column.nested_type == dependency) {
                 append_edge_label(result, column.name + " nested");
+            }
+        }
+    } else if (auto const* record{std::get_if<RecordType>(&definition)}) {
+        for (auto const& member : record->members) {
+            if (member.semantic_type.type == dependency) {
+                append_edge_label(result, member.name);
             }
         }
     }
@@ -173,7 +188,7 @@ void PlannerUi::draw_graph_panel() {
         constexpr float column_spacing{260.0F};
         constexpr float row_spacing{92.0F};
         std::vector<ImVec2> positions(types.size());
-        std::array<std::size_t, 4> rows{};
+        std::array<std::size_t, 5> rows{};
         for (std::size_t index{}; index < types.size(); ++index) {
             auto const column{graph_column(types[index].definition)};
             positions[index] = {32.0F + static_cast<float>(column) * column_spacing,

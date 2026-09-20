@@ -33,6 +33,9 @@ auto visible_type(TypeNode const& node) -> bool {
     if (std::holds_alternative<PackedType>(node.definition)) {
         return true;
     }
+    if (std::holds_alternative<RecordType>(node.definition)) {
+        return true;
+    }
     if (auto const* soa{std::get_if<SoaType>(&node.definition)};
         soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
         return true;
@@ -47,6 +50,9 @@ auto type_kind(TypeNode const& node) -> char const* {
     if (std::holds_alternative<PackedType>(node.definition)) {
         return "packed value";
     }
+    if (std::holds_alternative<RecordType>(node.definition)) {
+        return "record";
+    }
     return "SoA";
 }
 
@@ -57,8 +63,9 @@ auto module_label(codegen::ModuleSchema const& module) -> std::string {
             auto const* kind{std::is_same_v<Module, codegen::EnumModuleSchema> ? "enums"
                              : std::is_same_v<Module, codegen::PackedValueModuleSchema>
                                  ? "packed values"
-                             : std::is_same_v<Module, codegen::SoaModuleSchema> ? "SoA"
-                                                                                : "vectors"};
+                             : std::is_same_v<Module, codegen::RecordModuleSchema> ? "records"
+                             : std::is_same_v<Module, codegen::SoaModuleSchema>    ? "SoA"
+                                                                                   : "vectors"};
             return value.settings.name + "  [" + kind + "]";
         },
         module);
@@ -88,6 +95,10 @@ auto complete(TypeGraph const& types,
     }
     if (std::holds_alternative<PackedType>(definition)) {
         return !detail::has_error(Analyzer::analyze_packed(types, type, baseline, abi).diagnostics);
+    }
+    if (std::holds_alternative<RecordType>(definition)) {
+        auto const analysis{Analyzer::analyze_record(types, type, abi)};
+        return analysis.size_bytes.has_value() && !detail::has_error(analysis.diagnostics);
     }
     auto const analysis{Analyzer::analyze_soa(types, type, baseline, abi, default_capacity)};
     return analysis.total_payload_bytes.has_value() && !detail::has_error(analysis.diagnostics);

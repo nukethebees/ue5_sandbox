@@ -59,6 +59,9 @@ Ordinary AoS semantics use `record-module` / `record` declarations rather than o
 columns. A record member references the shared semantic type graph and may have a fixed element
 count; C++ lowering is one consumer and emits an ordinary struct plus `std::array` where needed.
 Physical member offsets and padding remain target analysis, not durable semantic properties.
+The record analyzer recursively derives nested-record facts, fixed-array extents, offsets, object
+alignment, and internal/tail padding from the selected ABI profile. Unknown target facts stay
+Unknown, while illegal by-value record cycles are rejected during semantic resolution.
 
 The planner supports enum value-domain analysis, packed storage type/bit-range analysis, and flat
 standard-library SoA/vector-SoA payload analysis. Enum analysis derives implicit literal values,
@@ -75,11 +78,9 @@ For standard-library SoAs, page footprints are calculated per column because eac
 separate allocation. The displayed aggregate is the sum of those minimum per-column page counts;
 it does not assume shared pages or include allocator overhead.
 
-AoS padding, arbitrary ABI probing, persistent plans, LispB write-back, chunking/AoSoA, arena
-planning, performance prediction, and live-process inspection are intentionally deferred. A later
-composite-layout milestone can compose named typed arrays and existing layout definitions for
-structures such as collision-grid or health storage; V2 deliberately adds neither a composite DSL
-nor planner persistence.
+Record authoring, arbitrary ABI probing, persistent plans, chunking/AoSoA, arena planning,
+performance prediction, and live-process inspection remain incomplete. Planner semantic changes
+write back through LispB rather than a parallel persistence format.
 
 ## Frontend behavior
 

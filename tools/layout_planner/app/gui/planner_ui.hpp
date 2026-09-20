@@ -79,6 +79,7 @@ class PlannerUi {
     void draw_graph_panel();
     void draw_packed_layout(lispb::schema::PackedType const& packed,
                             layout::PackedAnalysis const& baseline);
+    void draw_record_layout(layout::RecordAnalysis const& analysis);
     void draw_soa_layout(lispb::schema::SoaType const& soa, layout::SoaAnalysis const& baseline);
     void draw_diagnostics(std::vector<layout::Diagnostic> const& diagnostics) const;
     void sync_variant_name();
@@ -107,6 +108,7 @@ class PlannerUi {
     std::vector<std::pair<std::uint64_t, layout::SoaAnalysis>> soa_variants_;
     std::optional<layout::PackedAnalysis> comparison_a_packed_;
     std::optional<layout::PackedAnalysis> comparison_b_packed_;
+    std::optional<layout::RecordAnalysis> record_analysis_;
     std::optional<layout::SoaAnalysis> comparison_a_soa_;
     std::optional<layout::SoaAnalysis> comparison_b_soa_;
 

@@ -53,7 +53,8 @@ PlannerUi::PlannerUi(SchemaLoadResult loaded)
     auto const types{workspace_.types().types()};
     auto const found{std::ranges::find_if(types, [](auto const& type) {
         if (std::holds_alternative<EnumType>(type.definition) ||
-            std::holds_alternative<PackedType>(type.definition)) {
+            std::holds_alternative<PackedType>(type.definition) ||
+            std::holds_alternative<RecordType>(type.definition)) {
             return true;
         }
         auto const* soa{std::get_if<SoaType>(&type.definition)};
@@ -545,6 +546,7 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
         auto const* soa{std::get_if<SoaType>(&definition)};
         if (std::holds_alternative<EnumType>(definition) ||
             std::holds_alternative<PackedType>(definition) ||
+            std::holds_alternative<RecordType>(definition) ||
             (soa != nullptr && soa->backend == codegen::SoaBackend::standard_library)) {
             selected_type_ = TypeId{static_cast<std::uint32_t>(index)};
             break;
@@ -641,6 +643,7 @@ void PlannerUi::refresh_analysis() {
     comparison_b_packed_.reset();
     comparison_a_soa_.reset();
     comparison_b_soa_.reset();
+    record_analysis_.reset();
     cached_revision_ = workspace_.revision();
     cached_type_ = selected_type_;
     cached_comparison_a_variant_id_ = comparison_a_variant_id_;
@@ -656,6 +659,8 @@ void PlannerUi::refresh_analysis() {
     auto const element_count{workspace_.element_count()};
     if (std::holds_alternative<EnumType>(definition)) {
         enum_domain_ = Analyzer::analyze_enum(workspace_.types(), *selected_type_, abi_);
+    } else if (std::holds_alternative<RecordType>(definition)) {
+        record_analysis_ = Analyzer::analyze_record(workspace_.types(), *selected_type_, abi_);
     } else if (std::holds_alternative<PackedType>(definition)) {
         baseline_packed_ = Analyzer::analyze_packed(
             workspace_.types(), *selected_type_, baseline, abi_, element_count);
@@ -710,6 +715,8 @@ void PlannerUi::draw_layout_panel() {
     } else if (auto const* soa{std::get_if<SoaType>(&definition)};
                soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
         draw_soa_layout(*soa, *baseline_soa_);
+    } else if (std::holds_alternative<RecordType>(definition)) {
+        draw_record_layout(*record_analysis_);
     } else if (std::holds_alternative<EnumType>(definition)) {
         ImGui::TextDisabled("Enums have semantic metadata but no standalone aggregate layout.");
     } else {

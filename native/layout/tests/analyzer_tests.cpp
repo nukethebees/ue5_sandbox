@@ -126,6 +126,29 @@ auto enum_value(std::string name, std::optional<std::string> initializer)
             .serialized_name = std::nullopt};
 }
 
+auto record_member(std::string name,
+                   std::string type,
+                   std::optional<std::uint64_t> count = std::nullopt)
+    -> codegen::RecordMemberSchema {
+    return {.name = std::move(name),
+            .type = codegen::TypeRef{.name = std::move(type), .suffix = {}, .nested = std::nullopt},
+            .count = count};
+}
+
+auto record_type(std::vector<codegen::RecordSchema> records, std::string selected = "Record")
+    -> TypeFixture {
+    codegen::RecordModuleSchema module{};
+    module.settings.name = "records";
+    module.settings.header = "Records.h";
+    module.records = std::move(records);
+    codegen::Manifest manifest{};
+    manifest.schema_version = codegen::manifest_schema_version;
+    manifest.modules = {std::move(module)};
+    auto types{lispb::schema::resolve_type_graph(manifest)};
+    auto const type{*types.find_declared("records", selected)};
+    return {std::move(types), type};
+}
+
 TEST(EnumAnalyzer, DerivesUnsignedImplicitValuesAndCountSentinelWidth) {
     auto const fixture{enum_domain_type({enum_value("First", "0"),
                                          enum_value("Second", std::nullopt),
@@ -217,6 +240,82 @@ TEST(EnumAnalyzer, DiagnosesDomainsThatDoNotFitBackingSignedness) {
     EXPECT_EQ(unsigned_analysis.minimum_required_bits, 1);
     EXPECT_EQ(unsigned_analysis.backing_can_represent_domain, false);
     EXPECT_FALSE(unsigned_analysis.diagnostics.empty());
+}
+
+TEST(RecordAnalyzer, ReportsOffsetsInternalAndTailPadding) {
+    auto const fixture{
+        record_type({codegen::RecordSchema{.name = "Record",
+                                           .members = {record_member("small", "std::uint8_t"),
+                                                       record_member("wide", "std::uint32_t"),
+                                                       record_member("medium", "std::uint16_t")},
+                                           .export_specifier = std::nullopt}})};
+
+    auto const analysis{
+        Analyzer::analyze_record(fixture.types, fixture.type, AbiProfile::host_common())};
+
+    ASSERT_EQ(analysis.members.size(), 3U);
+    EXPECT_EQ(analysis.members[0].offset_bytes, 0);
+    EXPECT_EQ(analysis.members[1].offset_bytes, 4);
+    EXPECT_EQ(analysis.members[1].padding_before_bytes, 3);
+    EXPECT_EQ(analysis.members[2].offset_bytes, 8);
+    EXPECT_EQ(analysis.payload_bytes, 7);
+    EXPECT_EQ(analysis.internal_padding_bytes, 3);
+    EXPECT_EQ(analysis.tail_padding_bytes, 2);
+    EXPECT_EQ(analysis.size_bytes, 12);
+    EXPECT_EQ(analysis.alignment_bytes, 4);
+    EXPECT_TRUE(analysis.diagnostics.empty());
+}
+
+TEST(RecordAnalyzer, HandlesFixedArraysAndNestedRecords) {
+    auto const fixture{record_type(
+        {codegen::RecordSchema{.name = "Inner",
+                               .members = {record_member("tag", "std::uint8_t"),
+                                           record_member("value", "std::uint32_t")},
+                               .export_specifier = std::nullopt},
+         codegen::RecordSchema{.name = "Record",
+                               .members = {record_member("prefix", "std::uint8_t"),
+                                           record_member("inner", "Inner"),
+                                           record_member("samples", "std::uint16_t", 2)},
+                               .export_specifier = std::nullopt}},
+        "Record")};
+
+    auto const analysis{
+        Analyzer::analyze_record(fixture.types, fixture.type, AbiProfile::host_common())};
+
+    ASSERT_EQ(analysis.members.size(), 3U);
+    EXPECT_EQ(analysis.members[1].element_facts->size_bytes, 8);
+    EXPECT_EQ(analysis.members[1].offset_bytes, 4);
+    EXPECT_EQ(analysis.members[2].element_count, 2);
+    EXPECT_EQ(analysis.members[2].extent_bytes, 4);
+    EXPECT_EQ(analysis.members[2].offset_bytes, 12);
+    EXPECT_EQ(analysis.payload_bytes, 13);
+    EXPECT_EQ(analysis.internal_padding_bytes, 3);
+    EXPECT_EQ(analysis.tail_padding_bytes, 0);
+    EXPECT_EQ(analysis.size_bytes, 16);
+    EXPECT_EQ(analysis.alignment_bytes, 4);
+    EXPECT_TRUE(analysis.diagnostics.empty());
+}
+
+TEST(RecordAnalyzer, KeepsUnknownAndOverflowedLayoutsUnknown) {
+    auto const unknown{
+        record_type({codegen::RecordSchema{.name = "Record",
+                                           .members = {record_member("value", "UnknownType")},
+                                           .export_specifier = std::nullopt}})};
+    auto const unknown_analysis{
+        Analyzer::analyze_record(unknown.types, unknown.type, AbiProfile::host_common())};
+    EXPECT_FALSE(unknown_analysis.size_bytes.has_value());
+    EXPECT_FALSE(unknown_analysis.diagnostics.empty());
+
+    auto const overflow{record_type({codegen::RecordSchema{
+        .name = "Record",
+        .members = {record_member(
+            "values", "std::uint64_t", std::numeric_limits<std::uint64_t>::max())},
+        .export_specifier = std::nullopt}})};
+    auto const overflow_analysis{
+        Analyzer::analyze_record(overflow.types, overflow.type, AbiProfile::host_common())};
+    EXPECT_FALSE(overflow_analysis.size_bytes.has_value());
+    EXPECT_FALSE(overflow_analysis.members[0].extent_bytes.has_value());
+    EXPECT_FALSE(overflow_analysis.diagnostics.empty());
 }
 
 TEST(PackedAnalyzer, ReportsEntityUniqueIdLayout) {

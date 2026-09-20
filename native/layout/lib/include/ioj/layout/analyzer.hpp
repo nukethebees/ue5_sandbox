@@ -98,6 +98,27 @@ struct PackedAnalysis {
     PackedAggregateAnalysis aggregate;
 };
 
+struct RecordMemberAnalysis {
+    std::string name;
+    lispb::schema::TypeId semantic_type;
+    std::uint64_t element_count{1};
+    std::optional<TypeFacts> element_facts;
+    std::optional<std::uint64_t> offset_bytes;
+    std::optional<std::uint64_t> extent_bytes;
+    std::optional<std::uint64_t> padding_before_bytes;
+};
+
+struct RecordAnalysis {
+    lispb::schema::TypeId type;
+    std::vector<RecordMemberAnalysis> members;
+    std::optional<std::uint64_t> payload_bytes;
+    std::optional<std::uint64_t> internal_padding_bytes;
+    std::optional<std::uint64_t> tail_padding_bytes;
+    std::optional<std::uint64_t> size_bytes;
+    std::optional<std::uint64_t> alignment_bytes;
+    std::vector<Diagnostic> diagnostics;
+};
+
 struct CacheLineTiling {
     std::uint64_t cache_line_bytes{};
     std::uint64_t element_bytes{};
@@ -144,6 +165,9 @@ class Analyzer {
                                Variant const& variant,
                                AbiProfile const& abi,
                                std::uint64_t element_count = 1) -> PackedAnalysis;
+    static auto analyze_record(lispb::schema::TypeGraph const& types,
+                               lispb::schema::TypeId type,
+                               AbiProfile const& abi) -> RecordAnalysis;
     static auto analyze_soa(lispb::schema::TypeGraph const& types,
                             lispb::schema::TypeId type,
                             Variant const& variant,

@@ -53,7 +53,7 @@ default panel arrangement.
 ## Getting started
 
 1. Start the planner from the repository root. The Project / Schema panel lists LispB enums, packed
-   values, and supported standard-library SoAs from the shared semantic graph.
+   values, records, and supported standard-library SoAs from the shared semantic graph.
 2. Select `EntityUniqueId` to inspect its proportional packed-bit layout, or `WorldAABBsColumns`
    to inspect its six SoA columns.
 3. Enum, packed-value, and standard-library SoA baselines are editable LispB declarations. Their
@@ -61,7 +61,9 @@ default panel arrangement.
 4. Use **Create editable variant** for an in-memory physical experiment. In a variant, change a
    packed field width/storage type or a SoA capacity/column type without modifying LispB. Schema
    values, planning values, and active overrides are shown separately.
-5. Layout shows linked packed-bit, aggregate column-payload, and cache-line views. For packed values,
+5. Layout shows linked packed-bit, record byte maps, aggregate column-payload, and cache-line views.
+   Record maps derive member offsets, fixed-array extents, alignment, internal padding, and tail
+   padding from the active target profile. For packed values,
    choose an element-count preset or custom count to see overflow-safe storage, unused-bit,
    cache-line, and page totals from the explicit target profile. Comparison lets you select any two
    variants as A and B and shows factual deltas without ranking either representation. B follows the
@@ -69,7 +71,7 @@ default panel arrangement.
 6. Graph shows the resolved semantic types and their labeled underlying/storage/field/column
    dependencies. Middle-drag to pan, use the wheel to zoom, and click a node to navigate to it.
 
-The planner supports enum inspection, packed values, flat standard-library SoAs, and
+The planner supports enum inspection, packed values, records, flat standard-library SoAs, and
 standard-library vector SoAs. Enum-backed packed fields retain links to their enum definitions;
 physical facts are derived separately from declared underlying or storage types. Unknown types and
 unsupported schemas are reported as diagnostics rather than guessed.

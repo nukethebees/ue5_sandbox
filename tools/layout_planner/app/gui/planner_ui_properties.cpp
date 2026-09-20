@@ -172,6 +172,40 @@ void PlannerUi::draw_properties_panel() {
             ImGui::End();
             return;
         }
+    } else if (auto const* record{std::get_if<RecordType>(&node.definition)}) {
+        ImGui::SeparatorText("Record members");
+        if (ImGui::BeginTable("record-members",
+                              3,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_Resizable)) {
+            ImGui::TableSetupColumn("Member");
+            ImGui::TableSetupColumn("Semantic type");
+            ImGui::TableSetupColumn("Count", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableHeadersRow();
+            for (auto const& member : record->members) {
+                ImGui::PushID(member.name.c_str());
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                if (ImGui::Selectable(member.name.c_str(), selected_field_ == member.name)) {
+                    selected_field_ = member.name;
+                }
+                ImGui::TableNextColumn();
+                auto const& member_type{workspace_.types().type(member.semantic_type.type)};
+                if (ImGui::SmallButton(member_type.cpp_spelling.c_str())) {
+                    selected_type_ = member.semantic_type.type;
+                    selected_field_.clear();
+                }
+                ImGui::TableNextColumn();
+                if (member.count.has_value()) {
+                    ImGui::Text("%llu", static_cast<unsigned long long>(*member.count));
+                } else {
+                    ImGui::TextUnformatted("1");
+                }
+                ImGui::PopID();
+            }
+            ImGui::EndTable();
+        }
+        ImGui::TextDisabled("Record authoring commands are not enabled yet.");
     } else if (auto const* external{std::get_if<ExternalType>(&node.definition)}) {
         ImGui::SeparatorText("External type");
         ImGui::Text("C++ spelling: %s", external->cpp_type.spelling.c_str());

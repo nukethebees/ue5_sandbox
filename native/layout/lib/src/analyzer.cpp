@@ -2,6 +2,7 @@
 
 #include <codegen/schema.h>
 
+#include <algorithm>
 #include <cctype>
 #include <charconv>
 #include <limits>
@@ -227,6 +228,182 @@ auto physical_type_spelling(lispb::schema::TypeGraph const& types, lispb::schema
     return std::nullopt;
 }
 
+namespace {
+
+auto align_up(std::uint64_t const value, std::uint64_t const alignment)
+    -> std::optional<std::uint64_t> {
+    if (alignment == 0) {
+        return std::nullopt;
+    }
+    auto const remainder{value % alignment};
+    return remainder == 0 ? std::optional{value} : checked_add(value, alignment - remainder);
+}
+
+class RecordLayoutAnalyzer {
+  public:
+    RecordLayoutAnalyzer(lispb::schema::TypeGraph const& types, AbiProfile const& abi)
+        : types_{types}
+        , abi_{abi} {}
+
+    auto analyze(lispb::schema::TypeId const type) -> RecordAnalysis {
+        std::vector<lispb::schema::TypeId> active;
+        return analyze(type, active);
+    }
+  private:
+    auto facts_for(lispb::schema::TypeId const type,
+                   std::vector<lispb::schema::TypeId>& active,
+                   std::vector<Diagnostic>& diagnostics,
+                   std::string const& context) -> std::optional<TypeFacts> {
+        auto const& node{types_.type(type)};
+        if (std::holds_alternative<lispb::schema::RecordType>(node.definition)) {
+            auto nested{analyze(type, active)};
+            for (auto& diagnostic : nested.diagnostics) {
+                diagnostics.push_back(
+                    {diagnostic.severity, context + ": " + std::move(diagnostic.message)});
+            }
+            if (!nested.size_bytes.has_value() || !nested.alignment_bytes.has_value()) {
+                return std::nullopt;
+            }
+            return TypeFacts{.size_bytes = *nested.size_bytes,
+                             .alignment_bytes = *nested.alignment_bytes,
+                             .integer_signed = std::nullopt,
+                             .unsigned_value_bits = std::nullopt};
+        }
+        auto const spelling{physical_type_spelling(types_, type)};
+        if (!spelling.has_value()) {
+            diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 context + " has no target-layout representation in this analyzer."});
+            return std::nullopt;
+        }
+        auto const facts{abi_.find(*spelling)};
+        if (!facts.has_value()) {
+            diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 context + " has unknown physical facts for type '" + *spelling + "'."});
+        }
+        return facts;
+    }
+
+    auto analyze(lispb::schema::TypeId const type, std::vector<lispb::schema::TypeId>& active)
+        -> RecordAnalysis {
+        RecordAnalysis result{.type = type,
+                              .members = {},
+                              .payload_bytes = std::nullopt,
+                              .internal_padding_bytes = std::nullopt,
+                              .tail_padding_bytes = std::nullopt,
+                              .size_bytes = std::nullopt,
+                              .alignment_bytes = std::nullopt,
+                              .diagnostics = {}};
+        auto const& node{types_.type(type)};
+        auto const* record{std::get_if<lispb::schema::RecordType>(&node.definition)};
+        if (record == nullptr) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, "Selected semantic type is not a record."});
+            return result;
+        }
+        if (std::ranges::find(active, type) != active.end()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Illegal by-value record cycle involving '" + node.identity.name + "'."});
+            return result;
+        }
+        active.push_back(type);
+
+        std::uint64_t offset{};
+        std::uint64_t payload{};
+        std::uint64_t internal_padding{};
+        std::uint64_t record_alignment{1};
+        bool complete{true};
+        result.members.reserve(record->members.size());
+        for (auto const& member : record->members) {
+            auto member_result{RecordMemberAnalysis{.name = member.name,
+                                                    .semantic_type = member.semantic_type.type,
+                                                    .element_count = member.count.value_or(1),
+                                                    .element_facts = std::nullopt,
+                                                    .offset_bytes = std::nullopt,
+                                                    .extent_bytes = std::nullopt,
+                                                    .padding_before_bytes = std::nullopt}};
+            auto const context{"Record '" + node.identity.name + "' member '" + member.name + "'"};
+            member_result.element_facts =
+                facts_for(member.semantic_type.type, active, result.diagnostics, context);
+            if (!member_result.element_facts.has_value()) {
+                complete = false;
+                result.members.push_back(std::move(member_result));
+                continue;
+            }
+            auto const alignment{member_result.element_facts->alignment_bytes};
+            if (member_result.element_facts->size_bytes == 0 || alignment == 0) {
+                complete = false;
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error, context + " has zero-sized target facts."});
+                result.members.push_back(std::move(member_result));
+                continue;
+            }
+            member_result.extent_bytes = checked_multiply(member_result.element_facts->size_bytes,
+                                                          member_result.element_count);
+            if (!member_result.extent_bytes.has_value()) {
+                complete = false;
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error, context + " fixed-array extent overflows uint64."});
+                result.members.push_back(std::move(member_result));
+                continue;
+            }
+            if (!complete) {
+                result.members.push_back(std::move(member_result));
+                continue;
+            }
+            auto const aligned{align_up(offset, alignment)};
+            if (!aligned.has_value()) {
+                complete = false;
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error, context + " aligned offset overflows uint64."});
+                result.members.push_back(std::move(member_result));
+                continue;
+            }
+            member_result.offset_bytes = *aligned;
+            member_result.padding_before_bytes = *aligned - offset;
+            auto const next_offset{checked_add(*aligned, *member_result.extent_bytes)};
+            auto const next_payload{checked_add(payload, *member_result.extent_bytes)};
+            auto const next_padding{
+                checked_add(internal_padding, *member_result.padding_before_bytes)};
+            if (!next_offset.has_value() || !next_payload.has_value() ||
+                !next_padding.has_value()) {
+                complete = false;
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error, context + " layout arithmetic overflows uint64."});
+            } else {
+                offset = *next_offset;
+                payload = *next_payload;
+                internal_padding = *next_padding;
+                record_alignment = std::max(record_alignment, alignment);
+            }
+            result.members.push_back(std::move(member_result));
+        }
+
+        if (complete) {
+            auto const size{align_up(offset, record_alignment)};
+            if (!size.has_value()) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error, "Record tail alignment overflows uint64."});
+            } else {
+                result.payload_bytes = payload;
+                result.internal_padding_bytes = internal_padding;
+                result.tail_padding_bytes = *size - offset;
+                result.size_bytes = *size;
+                result.alignment_bytes = record_alignment;
+            }
+        }
+        active.pop_back();
+        return result;
+    }
+
+    lispb::schema::TypeGraph const& types_;
+    AbiProfile const& abi_;
+};
+
+} // namespace
+
 auto numeric_delta(std::optional<std::uint64_t> const baseline,
                    std::optional<std::uint64_t> const variant) -> std::optional<NumericDelta> {
     if (!baseline.has_value() || !variant.has_value()) {
@@ -378,6 +555,12 @@ auto Analyzer::analyze_enum(lispb::schema::TypeGraph const& types,
         }
     }
     return result;
+}
+
+auto Analyzer::analyze_record(lispb::schema::TypeGraph const& types,
+                              lispb::schema::TypeId const type,
+                              AbiProfile const& abi) -> RecordAnalysis {
+    return RecordLayoutAnalyzer{types, abi}.analyze(type);
 }
 
 auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,

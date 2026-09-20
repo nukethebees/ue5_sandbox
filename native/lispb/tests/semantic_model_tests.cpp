@@ -133,6 +133,26 @@ TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
     EXPECT_NE(std::ranges::find(graph.users_of(*position), *path), graph.users_of(*position).end());
 }
 
+TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {
+    auto module{codegen::RecordModuleSchema{
+        .settings = codegen::ModuleSettings{.name = "records", .header = "Records.h"},
+        .records = {codegen::RecordSchema{
+            .name = "Record", .members = {{.name = "self", .type = codegen::TypeRef{"Record"}}}}},
+    }};
+    auto manifest{
+        codegen::Manifest{.schema_version = codegen::manifest_schema_version, .modules = {module}}};
+    EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
+
+    module.records = {
+        codegen::RecordSchema{.name = "First",
+                              .members = {{.name = "second", .type = codegen::TypeRef{"Second"}}}},
+        codegen::RecordSchema{.name = "Second",
+                              .members = {{.name = "first", .type = codegen::TypeRef{"First"}}}},
+    };
+    manifest.modules = {module};
+    EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
+}
+
 TEST(SemanticTypeGraph, KeepsUnknownRegisteredTypesAsExternalLeaves) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,

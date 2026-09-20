@@ -653,6 +653,108 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
     }
 }
 
+void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
+    auto const& node{workspace_.types().type(analysis.type)};
+    ImGui::Text("%s", node.identity.name.c_str());
+    ImGui::TextDisabled("%s", node.identity.module_name.c_str());
+    ImGui::Text("Size: %s B    Alignment: %s B",
+                detail::format_number(analysis.size_bytes).c_str(),
+                detail::format_number(analysis.alignment_bytes).c_str());
+    ImGui::Text("Payload: %s B    Internal padding: %s B    Tail padding: %s B",
+                detail::format_number(analysis.payload_bytes).c_str(),
+                detail::format_number(analysis.internal_padding_bytes).c_str(),
+                detail::format_number(analysis.tail_padding_bytes).c_str());
+
+    if (analysis.size_bytes.has_value() && *analysis.size_bytes != 0) {
+        auto const width{std::max(1.0F, ImGui::GetContentRegionAvail().x)};
+        auto const origin{ImGui::GetCursorScreenPos()};
+        constexpr auto height{58.0F};
+        auto* const draw_list{ImGui::GetWindowDrawList()};
+        draw_list->AddRectFilled(
+            origin, {origin.x + width, origin.y + height}, ImGui::GetColorU32(unused_color), 3.0F);
+        for (std::size_t index{}; index < analysis.members.size(); ++index) {
+            auto const& member{analysis.members[index]};
+            if (!member.offset_bytes.has_value() || !member.extent_bytes.has_value()) {
+                continue;
+            }
+            auto const left{origin.x + width * static_cast<float>(*member.offset_bytes) /
+                                           static_cast<float>(*analysis.size_bytes)};
+            auto const member_width{width * static_cast<float>(*member.extent_bytes) /
+                                    static_cast<float>(*analysis.size_bytes)};
+            auto const selected{selected_field_ == member.name};
+            auto const color{
+                selected
+                    ? selected_color
+                    : ImVec4{0.48F + 0.07F * static_cast<float>(index % 2), 0.34F, 0.18F, 1.0F}};
+            draw_list->AddRectFilled({left, origin.y},
+                                     {left + member_width, origin.y + height},
+                                     ImGui::GetColorU32(color),
+                                     2.0F);
+            draw_list->AddRect({left, origin.y},
+                               {left + member_width, origin.y + height},
+                               ImGui::GetColorU32(ImGuiCol_Border));
+            if (member_width >= 42.0F) {
+                draw_list->AddText({left + 4.0F, origin.y + 5.0F},
+                                   ImGui::GetColorU32(packed_detail_text_color),
+                                   member.name.c_str());
+                auto const range{std::to_string(*member.offset_bytes) + ".." +
+                                 std::to_string(*member.offset_bytes + *member.extent_bytes - 1)};
+                draw_list->AddText({left + 4.0F, origin.y + 27.0F},
+                                   ImGui::GetColorU32(packed_detail_text_color),
+                                   range.c_str());
+            }
+        }
+        draw_list->AddRect(origin,
+                           {origin.x + width, origin.y + height},
+                           ImGui::GetColorU32(ImGuiCol_Border),
+                           3.0F,
+                           0,
+                           2.0F);
+        ImGui::Dummy({width, height + 4.0F});
+    }
+
+    if (ImGui::BeginTable("record-layout",
+                          7,
+                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                              ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Member");
+        ImGui::TableSetupColumn("Type");
+        ImGui::TableSetupColumn("Count");
+        ImGui::TableSetupColumn("Offset B");
+        ImGui::TableSetupColumn("Extent B");
+        ImGui::TableSetupColumn("Align B");
+        ImGui::TableSetupColumn("Pad before B");
+        ImGui::TableHeadersRow();
+        for (auto const& member : analysis.members) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            if (ImGui::Selectable(member.name.c_str(),
+                                  selected_field_ == member.name,
+                                  ImGuiSelectableFlags_None)) {
+                selected_field_ = member.name;
+            }
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(
+                workspace_.types().type(member.semantic_type).cpp_spelling.c_str());
+            ImGui::TableNextColumn();
+            ImGui::Text("%llu", static_cast<unsigned long long>(member.element_count));
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(detail::format_number(member.offset_bytes).c_str());
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(detail::format_number(member.extent_bytes).c_str());
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(
+                detail::format_number(member.element_facts.transform([](TypeFacts const& facts) {
+                    return facts.alignment_bytes;
+                })).c_str());
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(detail::format_number(member.padding_before_bytes).c_str());
+        }
+        ImGui::EndTable();
+    }
+    draw_diagnostics(analysis.diagnostics);
+}
+
 void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline) {
     auto const& active{*active_soa_};
     auto const& identity{workspace_.types().type(baseline.type).identity};

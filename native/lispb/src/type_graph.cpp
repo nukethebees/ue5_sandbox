@@ -29,6 +29,7 @@ class TypeGraphBuilder {
         declare_types();
         bind_registered_types();
         resolve_definitions();
+        validate_record_cycles();
         build_edges();
         return std::move(graph_);
     }
@@ -309,6 +310,45 @@ class TypeGraphBuilder {
         if (dependency.valid() && dependency.value != own_id &&
             std::ranges::find(node.dependencies, dependency) == node.dependencies.end()) {
             node.dependencies.push_back(dependency);
+        }
+    }
+
+    void validate_record_cycle(TypeId const type,
+                               std::vector<std::uint8_t>& states,
+                               std::vector<TypeId>& path) const {
+        if (states[type.value] == 2) {
+            return;
+        }
+        if (states[type.value] == 1) {
+            auto message{std::string{"Illegal by-value record cycle: "}};
+            auto const start{std::ranges::find(path, type)};
+            for (auto current{start}; current != path.end(); ++current) {
+                message += graph_.type(*current).identity.name + " -> ";
+            }
+            message += graph_.type(type).identity.name;
+            throw std::invalid_argument{std::move(message)};
+        }
+
+        states[type.value] = 1;
+        path.push_back(type);
+        auto const& record{std::get<RecordType>(graph_.type(type).definition)};
+        for (auto const& member : record.members) {
+            if (std::holds_alternative<RecordType>(
+                    graph_.type(member.semantic_type.type).definition)) {
+                validate_record_cycle(member.semantic_type.type, states, path);
+            }
+        }
+        path.pop_back();
+        states[type.value] = 2;
+    }
+
+    void validate_record_cycles() const {
+        std::vector<std::uint8_t> states(graph_.types_.size());
+        std::vector<TypeId> path;
+        for (std::uint32_t index{}; index < graph_.types_.size(); ++index) {
+            if (std::holds_alternative<RecordType>(graph_.types_[index].definition)) {
+                validate_record_cycle(TypeId{index}, states, path);
+            }
         }
     }
 

@@ -63,5 +63,24 @@ TEST(RecordLowering, RejectsEmptyDuplicateAndZeroCountMembers) {
     EXPECT_THROW(static_cast<void>(lower_modules(manifest)), std::invalid_argument);
 }
 
+TEST(RecordLowering, EmitsByValueDependenciesBeforeTheirUsers) {
+    Manifest const manifest{
+        .schema_version = manifest_schema_version,
+        .modules = {RecordModuleSchema{
+            .settings = ModuleSettings{.name = "records", .header = "Records.h"},
+            .records =
+                {
+                    RecordSchema{.name = "Sample",
+                                 .members = {{.name = "position", .type = TypeRef{"Position"}}}},
+                    RecordSchema{.name = "Position",
+                                 .members = {{.name = "x", .type = TypeRef{"float"}}}},
+                }}},
+    };
+
+    auto const files{render_modules(lower_modules(manifest))};
+    auto const& output{files.front().content};
+    EXPECT_LT(output.find("struct Position"), output.find("struct Sample"));
+}
+
 } // namespace
 } // namespace codegen
