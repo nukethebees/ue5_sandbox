@@ -3,9 +3,16 @@
 #include <limits>
 
 namespace sandbox::image {
+namespace {
+
+[[nodiscard]] auto valid_dimensions(std::int32_t const width, std::int32_t const height) -> bool {
+    return width > 0 && height > 0 && width <= std::numeric_limits<std::int32_t>::max() / height;
+}
+
+}
 
 auto GeneratedImage::is_valid() const -> bool {
-    return width > 0 && height > 0 && width <= std::numeric_limits<std::int32_t>::max() / height &&
+    return valid_dimensions(width, height) &&
            pixels.size() == static_cast<std::size_t>(width * height);
 }
 
@@ -37,7 +44,7 @@ auto grayscale_mask(float const value) -> Pixel {
 auto make_image(std::int32_t const width, std::int32_t const height, Pixel const fill)
     -> GeneratedImage {
     GeneratedImage image{.width = width, .height = height, .pixels = {}, .error = {}};
-    if (width <= 0 || height <= 0 || width > std::numeric_limits<std::int32_t>::max() / height) {
+    if (!valid_dimensions(width, height)) {
         image.error = "Image dimensions must be positive and fit in an int32 pixel count.";
         return image;
     }
