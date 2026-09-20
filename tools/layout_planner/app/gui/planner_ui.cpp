@@ -45,7 +45,9 @@ auto parse_int_setting(std::string_view const line, std::string_view const prefi
 } // namespace
 
 PlannerUi::PlannerUi(SchemaLoadResult loaded)
-    : document_{std::move(loaded.document)}
+    : project_path_{std::move(loaded.project_path)}
+    , target_name_{std::move(loaded.target_name)}
+    , document_{std::move(loaded.document)}
     , workspace_{document_.has_value() ? document_->types() : TypeGraph{}}
     , load_diagnostics_{std::move(loaded.diagnostics)} {
     auto const types{workspace_.types().types()};
@@ -72,6 +74,21 @@ void PlannerUi::register_settings_handler() {
     handler.WriteAllFn = settings_write_all;
     handler.UserData = this;
     ImGui::AddSettingsHandler(&handler);
+}
+
+void PlannerUi::finish_startup(bool const reopen_recent_project) {
+    auto const fallback_path{project_path_};
+    if (reopen_recent_project) {
+        auto const candidates{recent_projects_};
+        for (auto const& path : candidates) {
+            if (load_project(path, true)) {
+                return;
+            }
+        }
+    }
+    if (!fallback_path.empty()) {
+        static_cast<void>(load_project(fallback_path, true));
+    }
 }
 
 auto PlannerUi::saved_window_size() const -> std::optional<WindowSize> {
@@ -105,7 +122,12 @@ void PlannerUi::validate_comparison_variants() {
 
 auto PlannerUi::settings_read_open(ImGuiContext*, ImGuiSettingsHandler* handler, char const* name)
     -> void* {
-    return std::strcmp(name, "Settings") == 0 ? handler->UserData : nullptr;
+    if (std::strcmp(name, "Settings") != 0) {
+        return nullptr;
+    }
+    auto* ui{static_cast<PlannerUi*>(handler->UserData)};
+    ui->recent_projects_.clear();
+    return ui;
 }
 
 void PlannerUi::settings_read_line(ImGuiContext*,
@@ -124,6 +146,12 @@ void PlannerUi::settings_read_line(ImGuiContext*,
     }
     if (auto const height{parse_int_setting(value, "WindowHeight=")}) {
         ui->window_height_ = *height;
+        return;
+    }
+    constexpr std::string_view recent_prefix{"RecentProject="};
+    if (value.starts_with(recent_prefix) && value.size() > recent_prefix.size() &&
+        ui->recent_projects_.size() < 20) {
+        ui->recent_projects_.emplace_back(value.substr(recent_prefix.size()));
     }
 }
 
@@ -136,6 +164,9 @@ void PlannerUi::settings_write_all(ImGuiContext*,
     if (auto const size{ui->saved_window_size()}) {
         output->appendf("WindowWidth=%d\n", size->width);
         output->appendf("WindowHeight=%d\n", size->height);
+    }
+    for (auto const& path : ui->recent_projects_) {
+        output->appendf("RecentProject=%s\n", path.string().c_str());
     }
     output->append("\n");
 }
@@ -158,7 +189,9 @@ auto PlannerUi::draw() -> bool {
     draw_comparison_panel();
     draw_new_enum_dialog();
     draw_source_preview();
-    return view_changed || revision_before != workspace_.revision();
+    draw_project_path_dialogs();
+    return view_changed || revision_before != workspace_.revision() ||
+           std::exchange(project_changed_, false);
 }
 
 auto PlannerUi::draw_view_menu() -> bool {
@@ -199,6 +232,23 @@ auto PlannerUi::draw_file_menu() -> bool {
         return false;
     }
     auto const has_document{document_.has_value()};
+    if (ImGui::MenuItem("Open Project...")) {
+        std::snprintf(open_project_path_.data(),
+                      open_project_path_.size(),
+                      "%s",
+                      project_path_.string().c_str());
+        open_project_dialog_ = true;
+    }
+    if (ImGui::BeginMenu("Open Recent", !recent_projects_.empty())) {
+        for (auto const& path : recent_projects_) {
+            auto const label{path.string()};
+            if (ImGui::MenuItem(label.c_str(), nullptr, path == project_path_)) {
+                changed |= load_project(path);
+            }
+        }
+        ImGui::EndMenu();
+    }
+    ImGui::Separator();
     ImGui::BeginDisabled(!has_document || !document_->can_undo());
     if (ImGui::MenuItem("Undo")) {
         auto const selection{selected_type_.transform(
@@ -230,7 +280,7 @@ auto PlannerUi::draw_file_menu() -> bool {
     if (ImGui::MenuItem("Preview LispB changes")) {
         open_source_preview_ = true;
     }
-    if (ImGui::MenuItem("Save LispB changes")) {
+    if (ImGui::MenuItem("Save")) {
         auto const selection{selected_type_.transform(
             [&](TypeId const type) { return workspace_.types().type(type).identity; })};
         auto result{document_->save()};
@@ -244,9 +294,83 @@ auto PlannerUi::draw_file_menu() -> bool {
         }
     }
     ImGui::EndDisabled();
+    ImGui::BeginDisabled(!has_document);
+    if (ImGui::MenuItem("Save As...")) {
+        auto destination{project_path_.parent_path() /
+                         (project_path_.stem().string() + "_copy.lispb")};
+        std::snprintf(save_as_project_path_.data(),
+                      save_as_project_path_.size(),
+                      "%s",
+                      destination.string().c_str());
+        open_save_as_dialog_ = true;
+    }
+    ImGui::EndDisabled();
     ImGui::EndMenu();
 
     return changed;
+}
+
+void PlannerUi::draw_project_path_dialogs() {
+    if (open_project_dialog_) {
+        ImGui::OpenPopup("Open LispB project");
+        open_project_dialog_ = false;
+    }
+    if (ImGui::BeginPopupModal("Open LispB project", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("Project manifest path");
+        ImGui::SetNextItemWidth(720.0F);
+        ImGui::InputText(
+            "##open-project-path", open_project_path_.data(), open_project_path_.size());
+        ImGui::BeginDisabled(open_project_path_.front() == '\0');
+        if (ImGui::Button("Open")) {
+            if (load_project(open_project_path_.data())) {
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+            ImGui::CloseCurrentPopup();
+        }
+        if (!schema_edit_message_.empty()) {
+            ImGui::TextWrapped("%s", schema_edit_message_.c_str());
+        }
+        ImGui::EndPopup();
+    }
+
+    if (open_save_as_dialog_) {
+        ImGui::OpenPopup("Save LispB project as");
+        open_save_as_dialog_ = false;
+    }
+    if (ImGui::BeginPopupModal(
+            "Save LispB project as", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("New project manifest path");
+        ImGui::SetNextItemWidth(720.0F);
+        ImGui::InputText(
+            "##save-as-project-path", save_as_project_path_.data(), save_as_project_path_.size());
+        ImGui::TextDisabled("A sibling <name>_schema directory will contain the cloned sources.");
+        ImGui::BeginDisabled(save_as_project_path_.front() == '\0' || !document_.has_value());
+        if (ImGui::Button("Save As")) {
+            auto cloned{clone_lispb_schema(*document_, save_as_project_path_.data(), target_name_)};
+            if (cloned.loaded) {
+                adopt_loaded_schema(std::move(cloned));
+                schema_edit_message_ = "Saved and opened the cloned LispB project.";
+                ImGui::CloseCurrentPopup();
+            } else {
+                schema_edit_message_ = cloned.diagnostics.empty()
+                                         ? "Could not clone the LispB project."
+                                         : cloned.diagnostics.front().message;
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+            ImGui::CloseCurrentPopup();
+        }
+        if (!schema_edit_message_.empty()) {
+            ImGui::TextWrapped("%s", schema_edit_message_.c_str());
+        }
+        ImGui::EndPopup();
+    }
 }
 
 void PlannerUi::draw_source_preview() {
@@ -318,6 +442,70 @@ void PlannerUi::sync_document_graph(std::optional<TypeIdentity> selection) {
     selected_field_.clear();
     packed_dragged_divider_.reset();
     packed_dragged_variant_id_.reset();
+}
+
+auto PlannerUi::load_project(std::filesystem::path const& path, bool const allow_dirty) -> bool {
+    if (!allow_dirty && document_.has_value() && document_->dirty()) {
+        schema_edit_message_ =
+            "Save or undo the current LispB changes before opening another project.";
+        return false;
+    }
+    auto loaded{load_lispb_schema(path, target_name_)};
+    if (!loaded.loaded) {
+        schema_edit_message_ = loaded.diagnostics.empty() ? "Could not load the LispB project."
+                                                          : loaded.diagnostics.front().message;
+        return false;
+    }
+    adopt_loaded_schema(std::move(loaded));
+    schema_edit_message_.clear();
+    return true;
+}
+
+void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
+    project_path_ = std::move(loaded.project_path);
+    target_name_ = std::move(loaded.target_name);
+    document_ = std::move(loaded.document);
+    load_diagnostics_ = std::move(loaded.diagnostics);
+    workspace_ = LayoutWorkspace{document_.has_value() ? document_->types() : TypeGraph{}};
+    selected_type_.reset();
+    auto const types{workspace_.types().types()};
+    for (std::size_t index{}; index < types.size(); ++index) {
+        auto const& definition{types[index].definition};
+        auto const* soa{std::get_if<SoaType>(&definition)};
+        if (std::holds_alternative<EnumType>(definition) ||
+            std::holds_alternative<PackedType>(definition) ||
+            (soa != nullptr && soa->backend == codegen::SoaBackend::standard_library)) {
+            selected_type_ = TypeId{static_cast<std::uint32_t>(index)};
+            break;
+        }
+    }
+    selected_field_.clear();
+    selected_enumerator_.clear();
+    packed_dragged_divider_.reset();
+    packed_dragged_variant_id_.reset();
+    cached_type_.reset();
+    cached_revision_ = std::numeric_limits<std::uint64_t>::max();
+    comparison_a_variant_id_ = LayoutWorkspace::baseline_variant_id;
+    comparison_b_variant_id_ = LayoutWorkspace::baseline_variant_id;
+    comparison_b_follows_active_ = true;
+    project_changed_ = true;
+    sync_variant_name();
+    remember_recent_project(project_path_);
+}
+
+void PlannerUi::remember_recent_project(std::filesystem::path const& path) {
+    if (path.empty()) {
+        return;
+    }
+    auto const normalized{std::filesystem::absolute(path).lexically_normal()};
+    recent_projects_.erase(
+        std::remove(recent_projects_.begin(), recent_projects_.end(), normalized),
+        recent_projects_.end());
+    recent_projects_.insert(recent_projects_.begin(), normalized);
+    if (recent_projects_.size() > 20) {
+        recent_projects_.resize(20);
+    }
+    ImGui::MarkIniSettingsDirty();
 }
 
 void PlannerUi::setup_default_dock_layout(unsigned int const dockspace_id) {

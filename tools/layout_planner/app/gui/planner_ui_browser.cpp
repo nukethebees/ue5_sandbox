@@ -7,16 +7,16 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdio>
+#include <span>
 #include <string>
 #include <string_view>
+#include <type_traits>
 
 namespace ioj::layout_planner {
 namespace {
 
 using namespace layout;
 using namespace lispb::schema;
-
-enum class BrowserGroup { enumeration, packed, soa };
 
 auto lowercase(std::string_view const text) -> std::string {
     std::string result{text};
@@ -26,18 +26,42 @@ auto lowercase(std::string_view const text) -> std::string {
     return result;
 }
 
-auto browser_group(TypeNode const& node) -> std::optional<BrowserGroup> {
+auto visible_type(TypeNode const& node) -> bool {
     if (std::holds_alternative<EnumType>(node.definition)) {
-        return BrowserGroup::enumeration;
+        return true;
     }
     if (std::holds_alternative<PackedType>(node.definition)) {
-        return BrowserGroup::packed;
+        return true;
     }
     if (auto const* soa{std::get_if<SoaType>(&node.definition)};
         soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
-        return BrowserGroup::soa;
+        return true;
     }
-    return std::nullopt;
+    return false;
+}
+
+auto type_kind(TypeNode const& node) -> char const* {
+    if (std::holds_alternative<EnumType>(node.definition)) {
+        return "enum";
+    }
+    if (std::holds_alternative<PackedType>(node.definition)) {
+        return "packed value";
+    }
+    return "SoA";
+}
+
+auto module_label(codegen::ModuleSchema const& module) -> std::string {
+    return std::visit(
+        [](auto const& value) {
+            using Module = std::decay_t<decltype(value)>;
+            auto const* kind{std::is_same_v<Module, codegen::EnumModuleSchema> ? "enums"
+                             : std::is_same_v<Module, codegen::PackedValueModuleSchema>
+                                 ? "packed values"
+                             : std::is_same_v<Module, codegen::SoaModuleSchema> ? "SoA"
+                                                                                : "vectors"};
+            return value.settings.name + "  [" + kind + "]";
+        },
+        module);
 }
 
 auto matches_filter(TypeNode const& node, std::string_view const filter) -> bool {
@@ -73,6 +97,9 @@ auto complete(TypeGraph const& types,
 
 void PlannerUi::draw_project_panel() {
     ImGui::Begin("Project / Schema");
+    if (!project_path_.empty()) {
+        ImGui::TextDisabled("%s", project_path_.string().c_str());
+    }
     ImGui::BeginDisabled(!document_.has_value());
     if (ImGui::Button("+ New enum")) {
         open_new_enum_dialog_ = true;
@@ -87,47 +114,69 @@ void PlannerUi::draw_project_panel() {
         "##schema-filter", "Filter semantic types", schema_filter_.data(), schema_filter_.size());
 
     auto const types{workspace_.types().types()};
-    if (types.empty()) {
+    if (types.empty() || !document_.has_value()) {
         ImGui::TextDisabled("No semantic types loaded.");
     }
 
     auto const filter{std::string_view{schema_filter_.data()}};
     auto const& baseline{*workspace_.variant(LayoutWorkspace::baseline_variant_id)};
-    for (auto const group : {BrowserGroup::enumeration, BrowserGroup::packed, BrowserGroup::soa}) {
-        auto const* label{group == BrowserGroup::enumeration ? "Enums"
-                          : group == BrowserGroup::packed    ? "Packed values"
-                                                             : "SoAs"};
-        if (!ImGui::CollapsingHeader(label, ImGuiTreeNodeFlags_DefaultOpen)) {
-            continue;
-        }
-
-        std::string_view current_module;
-        for (std::size_t index{}; index < types.size(); ++index) {
-            auto const& node{types[index]};
-            if (browser_group(node) != group || !matches_filter(node, filter)) {
+    auto const modules{document_.has_value() ? std::span{document_->manifest().modules}
+                                             : std::span<codegen::ModuleSchema const>{}};
+    for (std::size_t module_index{}; module_index < modules.size(); ++module_index) {
+        std::vector<DeclarationInfo const*> declarations;
+        for (auto const& declaration : document_->declarations()) {
+            if (declaration.module_index != module_index) {
                 continue;
             }
-            if (current_module != node.identity.module_name) {
-                current_module = node.identity.module_name;
-                ImGui::SeparatorText(current_module.data());
+            auto const type{workspace_.types().find(declaration.identity)};
+            if (!type.has_value()) {
+                continue;
             }
-            auto const type{TypeId{static_cast<std::uint32_t>(index)}};
-            auto const selected{selected_type_.has_value() && *selected_type_ == type};
-            ImGui::PushID(static_cast<int>(index));
-            if (ImGui::Selectable(node.identity.name.c_str(), selected)) {
-                selected_type_ = type;
-                selected_field_.clear();
-                packed_dragged_divider_.reset();
-                packed_dragged_variant_id_.reset();
+            auto const& node{workspace_.types().type(*type)};
+            if (visible_type(node) && matches_filter(node, filter)) {
+                declarations.push_back(&declaration);
             }
-            ImGui::SameLine();
-            auto const* status{
-                complete(workspace_.types(), type, baseline, abi_, workspace_.default_capacity())
-                    ? "facts available"
-                    : "contains unknowns"};
-            ImGui::TextDisabled("%s", status);
-            ImGui::PopID();
         }
+        if (declarations.empty()) {
+            continue;
+        }
+        std::ranges::sort(declarations, {}, &DeclarationInfo::declaration_index);
+
+        auto const label{module_label(modules[module_index])};
+        ImGui::PushID(static_cast<int>(module_index));
+        auto const open{ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_DefaultOpen)};
+        if (ImGui::IsItemHovered() && declarations.front()->source.has_value()) {
+            auto const source_index{declarations.front()->source->source_file_index};
+            if (source_index < document_->source_files().size()) {
+                ImGui::SetTooltip("%s",
+                                  document_->source_files()[source_index].path.string().c_str());
+            }
+        }
+        if (open) {
+            for (auto const* declaration : declarations) {
+                auto const type{*workspace_.types().find(declaration->identity)};
+                auto const& node{workspace_.types().type(type)};
+                auto const item_label{node.identity.name + "  [" + type_kind(node) + "]"};
+                auto const selected{selected_type_.has_value() && *selected_type_ == type};
+                ImGui::PushID(static_cast<int>(declaration->id.value));
+                if (ImGui::Selectable(item_label.c_str(), selected)) {
+                    selected_type_ = type;
+                    selected_field_.clear();
+                    packed_dragged_divider_.reset();
+                    packed_dragged_variant_id_.reset();
+                }
+                ImGui::SameLine();
+                auto const* status{
+                    complete(
+                        workspace_.types(), type, baseline, abi_, workspace_.default_capacity())
+                        ? "facts available"
+                        : "contains unknowns"};
+                ImGui::TextDisabled("%s", status);
+                ImGui::PopID();
+            }
+            ImGui::TreePop();
+        }
+        ImGui::PopID();
     }
 
     if (!load_diagnostics_.empty()) {

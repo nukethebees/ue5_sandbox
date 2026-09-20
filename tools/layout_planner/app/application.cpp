@@ -20,10 +20,21 @@ namespace {
 
 using namespace layout;
 
+auto unloaded_schema(std::filesystem::path project_path, std::string target_name)
+    -> SchemaLoadResult {
+    SchemaLoadResult result;
+    result.project_path = std::move(project_path);
+    result.target_name = std::move(target_name);
+    return result;
+}
+
 class Application {
   public:
-    explicit Application(SchemaLoadResult loaded)
-        : ui_{std::move(loaded)} {}
+    Application(std::filesystem::path project_path,
+                std::string target_name,
+                bool const reopen_recent_project)
+        : ui_{unloaded_schema(std::move(project_path), std::move(target_name))}
+        , reopen_recent_project_{reopen_recent_project} {}
     ~Application();
 
     auto initialize() -> bool;
@@ -36,6 +47,7 @@ class Application {
     static auto is_interaction_event(Uint32 type) -> bool;
 
     PlannerUi ui_;
+    bool reopen_recent_project_{};
     SDL_Window* window_{};
     SDL_GPUDevice* gpu_device_{};
     bool sdl_initialized_{};
@@ -111,6 +123,7 @@ auto Application::initialize() -> bool {
     if (io.IniFilename != nullptr) {
         ImGui::LoadIniSettingsFromDisk(io.IniFilename);
     }
+    ui_.finish_startup(reopen_recent_project_);
     ImGui::StyleColorsDark();
     auto& style{ImGui::GetStyle()};
     style.ScaleAllSizes(scale);
@@ -319,8 +332,10 @@ auto Application::is_interaction_event(Uint32 const type) -> bool {
 
 } // namespace
 
-auto run_application(SchemaLoadResult loaded) -> int {
-    Application application{std::move(loaded)};
+auto run_application(std::filesystem::path project_path,
+                     std::string target_name,
+                     bool const reopen_recent_project) -> int {
+    Application application{std::move(project_path), std::move(target_name), reopen_recent_project};
     if (!application.initialize()) {
         return 1;
     }

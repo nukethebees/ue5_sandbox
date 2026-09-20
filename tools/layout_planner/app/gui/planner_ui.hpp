@@ -8,6 +8,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <filesystem>
 #include <limits>
 #include <optional>
 #include <string>
@@ -29,6 +30,7 @@ class PlannerUi {
     explicit PlannerUi(layout::SchemaLoadResult loaded);
 
     void register_settings_handler();
+    void finish_startup(bool reopen_recent_project);
     auto saved_window_size() const -> std::optional<WindowSize>;
     void remember_window_size(WindowSize size);
     auto draw() -> bool;
@@ -48,6 +50,7 @@ class PlannerUi {
     auto draw_view_menu() -> bool;
     auto draw_file_menu() -> bool;
     void draw_source_preview();
+    void draw_project_path_dialogs();
     void draw_new_enum_dialog();
     void draw_enum_editor(lispb::schema::TypeNode const& node,
                           lispb::schema::EnumType const& enumeration);
@@ -55,6 +58,9 @@ class PlannerUi {
                              std::optional<lispb::schema::TypeIdentity> selection = std::nullopt)
         -> bool;
     void sync_document_graph(std::optional<lispb::schema::TypeIdentity> selection);
+    auto load_project(std::filesystem::path const& path, bool allow_dirty = false) -> bool;
+    void adopt_loaded_schema(layout::SchemaLoadResult loaded);
+    void remember_recent_project(std::filesystem::path const& path);
     void refresh_analysis();
     void draw_project_panel();
     void draw_layout_panel();
@@ -68,6 +74,9 @@ class PlannerUi {
     void sync_variant_name();
     void create_variant_for_selected_schema();
 
+    std::filesystem::path project_path_;
+    std::string target_name_;
+    std::vector<std::filesystem::path> recent_projects_;
     std::optional<lispb::schema::EditableSchemaDocument> document_;
     layout::LayoutWorkspace workspace_;
     layout::AbiProfile abi_{layout::AbiProfile::host_common()};
@@ -92,6 +101,8 @@ class PlannerUi {
 
     std::array<char, 128> variant_name_{};
     std::array<char, 128> schema_filter_{};
+    std::array<char, 1024> open_project_path_{};
+    std::array<char, 1024> save_as_project_path_{};
     std::array<char, 128> new_enum_name_{};
     std::array<char, 128> new_enum_underlying_type_{"std::uint8_t"};
     std::array<char, 128> enum_value_name_{};
@@ -116,6 +127,9 @@ class PlannerUi {
     bool open_new_enum_dialog_{};
     bool open_enum_value_dialog_{};
     bool open_source_preview_{};
+    bool open_project_dialog_{};
+    bool open_save_as_dialog_{};
+    bool project_changed_{};
     bool enum_value_hidden_{};
     bool enum_value_count_sentinel_{};
 };
