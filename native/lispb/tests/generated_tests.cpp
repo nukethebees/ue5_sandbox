@@ -522,6 +522,8 @@ TEST(GeneratedSettings, DescriptorsDispatchAndAccessors) {
     EXPECT_EQ(descriptors[2].id, EGameSetting::ResolutionScale);
     EXPECT_EQ(descriptors[0].tooltip.ToString(), "Synchronize presentation.");
     EXPECT_EQ(descriptors[1].apply_mode, ESettingApplyMode::Immediate);
+    EXPECT_EQ(descriptors[0].device, EGameSettingDevice::Shared);
+    EXPECT_EQ(descriptors[1].device, EGameSettingDevice::Controller);
     EXPECT_EQ(descriptors[1].control_kind, ESettingControlKind::Choice);
     EXPECT_EQ(descriptors[1].options_provider, EGameSettingOptionProvider::FrameLimits);
     EXPECT_EQ(descriptors[1].availability_provider, EGameSettingAvailabilityProvider::FrameLimit);

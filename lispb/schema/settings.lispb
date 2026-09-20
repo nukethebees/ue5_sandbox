@@ -204,6 +204,7 @@
     :value-type @player_ship_flight_control_preset
     :backend game_user_settings
     :apply immediate
+    :device shared
     (control choice
       :options-provider player_ship_flight_control_presets))
   (setting mouse_turn_sensitivity "Mouse Sensitivity"
@@ -212,6 +213,7 @@
     :value-type float
     :backend enhanced_input_user_settings
     :apply immediate
+    :device keyboard-mouse
     (control float-range
       :min 0.01
       :max 2.0
@@ -222,6 +224,7 @@
     :value-type float
     :backend enhanced_input_user_settings
     :apply immediate
+    :device controller
     (control float-range
       :min 0.25
       :max 2.0
@@ -232,6 +235,7 @@
     :value-type float
     :backend enhanced_input_user_settings
     :apply immediate
+    :device controller
     (control float-range
       :min 0.0
       :max 0.5
@@ -242,6 +246,7 @@
     :value-type float
     :backend enhanced_input_user_settings
     :apply immediate
+    :device controller
     (control float-range
       :min 0.0
       :max 0.5
@@ -252,6 +257,7 @@
     :value-type bool
     :backend enhanced_input_user_settings
     :apply immediate
+    :device keyboard-mouse
     (control toggle))
   (setting invert_gamepad_pitch "Invert Controller Pitch"
     :tooltip "Invert vertical controller turning."
@@ -259,4 +265,5 @@
     :value-type bool
     :backend enhanced_input_user_settings
     :apply immediate
+    :device controller
     (control toggle)))

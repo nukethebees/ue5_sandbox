@@ -6,6 +6,8 @@
 
 namespace ml::ioj {
 
+class UControlBindingMetadata;
+
 UCLASS()
 class SPACEGAME_API USpaceGameKeyProfile final : public UEnhancedPlayerMappableKeyProfile {
     GENERATED_BODY()
@@ -59,6 +61,9 @@ class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUse
     [[nodiscard]] auto chord_mapping_for_mapping(FString const& profile_id,
                                                  FPlayerKeyMapping const& mapping) const
         -> FPlayerKeyMapping const*;
+    [[nodiscard]] auto control_binding_metadata(FString const& profile_id,
+                                                FPlayerKeyMapping const& mapping) const
+        -> UControlBindingMetadata const*;
   protected:
     auto RegisterKeyMappingsToProfile(UEnhancedPlayerMappableKeyProfile& profile,
                                       UInputMappingContext const* mapping_context) -> bool override;

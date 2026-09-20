@@ -172,6 +172,9 @@ void UOptionsWidget::handle_reset() {
     auto const category{active_category()};
     if (IsValid(settings_) && category.IsSet()) {
         settings_->reset_category(category.GetValue());
+        if (category.GetValue() == EGameSettingCategory::Controls && options_view_.IsValid()) {
+            options_view_->refresh_controls();
+        }
     }
 }
 

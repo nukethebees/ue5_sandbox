@@ -646,6 +646,20 @@ auto parse_setting_apply_mode(Form const& form) -> SettingApplyMode {
     fail(form.token.span, "unknown settings apply mode '" + value + "'");
 }
 
+auto parse_setting_device(Form const& form) -> SettingDevice {
+    auto const value{text(form, "setting device")};
+    if (value == "shared") {
+        return SettingDevice::shared;
+    }
+    if (value == "keyboard-mouse") {
+        return SettingDevice::keyboard_mouse;
+    }
+    if (value == "controller") {
+        return SettingDevice::controller;
+    }
+    fail(form.token.span, "unknown setting device '" + value + "'");
+}
+
 auto parse_control(Form const& form) -> SettingControlSchema {
     Fields const fields{form, "control", 1};
     fields.validate(
@@ -682,7 +696,8 @@ auto parse_control(Form const& form) -> SettingControlSchema {
 
 auto parse_setting(Form const& form) -> SettingSchema {
     Fields const fields{form, "setting", 2};
-    fields.validate({"tooltip", "category", "value-type", "backend", "apply"}, {"control"});
+    fields.validate({"tooltip", "category", "value-type", "backend", "apply", "device"},
+                    {"control"});
     if (fields.declarations().size() != 1) {
         fail(form.token.span, "setting requires exactly one control declaration");
     }
@@ -694,6 +709,9 @@ auto parse_setting(Form const& form) -> SettingSchema {
         .value_type = parse_type_ref(fields.required("value-type")),
         .backend = text(fields.required("backend"), "setting backend"),
         .apply_mode = parse_setting_apply_mode(fields.required("apply")),
+        .device = fields.optional("device") != nullptr
+                    ? parse_setting_device(*fields.optional("device"))
+                    : SettingDevice::shared,
         .control = parse_control(*fields.declarations().front()),
     };
 }

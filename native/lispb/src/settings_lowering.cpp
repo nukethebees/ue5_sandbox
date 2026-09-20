@@ -90,6 +90,18 @@ auto enum_name(SettingControlKind const value) -> std::string_view {
     return "Custom";
 }
 
+auto enum_name(SettingDevice const value) -> std::string_view {
+    switch (value) {
+        case SettingDevice::shared:
+            return "Shared";
+        case SettingDevice::keyboard_mouse:
+            return "KeyboardMouse";
+        case SettingDevice::controller:
+            return "Controller";
+    }
+    return "Shared";
+}
+
 auto export_prefix(SettingsModuleSchema const& module) -> std::string {
     return module.export_specifier.has_value() ? *module.export_specifier + " " : std::string{};
 }
@@ -152,6 +164,7 @@ auto build_header(SettingsModuleSchema const& module,
     output << "enum class ESettingApplyMode : uint8 { Immediate, Deferred, Confirm };\n";
     output << "enum class ESettingControlKind : uint8 { Toggle, Choice, FloatRange, IntegerRange, "
               "Custom };\n";
+    output << "enum class EGameSettingDevice : uint8 { Shared, KeyboardMouse, Controller };\n";
     output << "enum class EGameSettingValueType : uint8 { " << join(type_names, ", ") << " };\n";
     output << "enum class EGameSettingBackend : uint8 { ";
     {
@@ -184,6 +197,7 @@ auto build_header(SettingsModuleSchema const& module,
            << "    EGameSettingValueType value_type;\n"
            << "    EGameSettingBackend backend;\n"
            << "    ESettingApplyMode apply_mode;\n"
+           << "    EGameSettingDevice device;\n"
            << "    ESettingControlKind control_kind;\n"
            << "    EGameSettingOptionProvider options_provider;\n"
            << "    EGameSettingAvailabilityProvider availability_provider;\n"
@@ -262,6 +276,7 @@ auto build_source(SettingsModuleSchema const& module, std::map<std::string, CppT
                << ", EGameSettingValueType::" << type_name
                << ", EGameSettingBackend::" << title_case(setting.backend)
                << ", ESettingApplyMode::" << enum_name(setting.apply_mode)
+               << ", EGameSettingDevice::" << enum_name(setting.device)
                << ", ESettingControlKind::" << enum_name(setting.control.kind)
                << ", EGameSettingOptionProvider::"
                << (setting.control.options_provider.has_value()
