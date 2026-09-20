@@ -509,12 +509,13 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
     std::optional<codegen::EnumSchema> pending;
     auto selected_after_edit{selected_enumerator_};
     if (ImGui::BeginTable("enumerators",
-                          7,
+                          8,
                           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                               ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Name");
-        ImGui::TableSetupColumn("Value");
+        ImGui::TableSetupColumn("Initializer");
+        ImGui::TableSetupColumn("Derived code");
         ImGui::TableSetupColumn("Display");
         ImGui::TableSetupColumn("Serialized");
         ImGui::TableSetupColumn("Hidden", ImGuiTableColumnFlags_WidthFixed);
@@ -588,6 +589,14 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
             };
             draw_optional_editor(
                 "##value", enum_value_initializer_, &codegen::EnumeratorSchema::initializer);
+            ImGui::TableNextColumn();
+            if (enum_domain_.has_value() && index < enum_domain_->enumerators.size() &&
+                enum_domain_->enumerators[index].code.has_value()) {
+                auto const code{format_enum_code(*enum_domain_->enumerators[index].code)};
+                ImGui::TextUnformatted(code.c_str());
+            } else {
+                ImGui::TextDisabled("Unknown");
+            }
             draw_optional_editor(
                 "##display", enum_value_display_name_, &codegen::EnumeratorSchema::display_name);
             draw_optional_editor("##serialized",
