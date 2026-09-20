@@ -124,7 +124,7 @@ public sealed class ModuleMigrationParserTests
     }
 
     [TestMethod]
-    public void Module_migration_cli_uses_defaults_or_an_explicit_plugin_set()
+    public void Module_migration_cli_appends_explicit_plugin_modules_to_defaults()
     {
         Assert.IsTrue(Program.TryParseModuleMigration(["module-migration", "--root", "repo"], out var defaults));
         CollectionAssert.AreEqual(new[] { "ShooterGame", "SandboxGameShared" }, defaults!.PluginModules.ToArray());
@@ -135,7 +135,7 @@ public sealed class ModuleMigrationParserTests
             Program.TryParseModuleMigration(
                 ["module-migration", "--root", "repo", "--baseline", "abc^", "--old-module", "Old", "--plugin-module", "One", "--plugin-module", "Two"],
                 out var explicit_modules));
-        CollectionAssert.AreEqual(new[] { "One", "Two" }, explicit_modules!.PluginModules.ToArray());
+        CollectionAssert.AreEqual(new[] { "ShooterGame", "SandboxGameShared", "One", "Two" }, explicit_modules!.PluginModules.ToArray());
         Assert.AreEqual("abc^", explicit_modules.Baseline);
         Assert.AreEqual("Old", explicit_modules.OldModule);
 
@@ -143,10 +143,17 @@ public sealed class ModuleMigrationParserTests
             Program.TryParseModuleMigration(
                 ["module-migration", "--root", "repo", "--plugin-module", "One", "--plugin-module", "One"],
                 out var duplicate_modules));
-        CollectionAssert.AreEqual(new[] { "One" }, duplicate_modules!.PluginModules.ToArray());
+        CollectionAssert.AreEqual(new[] { "ShooterGame", "SandboxGameShared", "One" }, duplicate_modules!.PluginModules.ToArray());
+
+        Assert.IsTrue(
+            Program.TryParseModuleMigration(
+                ["module-migration", "--root", "repo", "--plugin-module", "ShooterGame"],
+                out var duplicate_default));
+        CollectionAssert.AreEqual(new[] { "ShooterGame", "SandboxGameShared" }, duplicate_default!.PluginModules.ToArray());
 
         Assert.IsFalse(Program.TryParseModuleMigration(["module-migration", "--plugin-module", "One"], out _));
         Assert.IsFalse(Program.TryParseModuleMigration(["module-migration", "--root", "repo", "--old-module", "not/a/module"], out _));
+        Assert.IsFalse(Program.TryParseModuleMigration(["module-migration", "--root", "repo", "--plugin-module", "not/a/module"], out _));
     }
 
     [TestMethod]
@@ -177,7 +184,7 @@ public sealed class ModuleMigrationParserTests
         StringAssert.Contains(help.StandardOutput, "Usage: ArchitectureChecks module-migration");
         StringAssert.Contains(help.StandardOutput, "old module Sandbox");
         StringAssert.Contains(help.StandardOutput, "ShooterGame and SandboxGameShared");
-        StringAssert.Contains(help.StandardOutput, "replace the default plugin modules");
+        StringAssert.Contains(help.StandardOutput, "adds to the default plugin modules");
         StringAssert.Contains(help.StandardOutput, "advisory");
 
         var short_help = RunProgram(["module-migration", "-h"]);

@@ -38,9 +38,9 @@ and native validation does not run this suite.
   `tools/bin/ArchitectureChecks.exe --root <path>` after `ctools`. Its advisory module-migration
   audit is `tools/bin/ArchitectureChecks.exe module-migration --root <path> [--baseline <revision>]
   [--old-module <module>] [--plugin-module <module> ...]`. It defaults to auditing migrations from
-  `Sandbox` into `ShooterGame` and `SandboxGameShared`; specifying plugin modules replaces that
-  default set. The audit reports review findings but exits successfully unless its arguments,
-  repository access, or read-only Git queries fail. Run `ArchitectureChecks.exe module-migration
+  `Sandbox` into `ShooterGame` and `SandboxGameShared`; each specified plugin module is added to
+  that default set, with duplicates removed. The audit reports review findings but exits successfully
+  unless its arguments, repository access, or read-only Git queries fail. Run `ArchitectureChecks.exe module-migration
   --help` for its command summary.
 - `GamePackageTools/` verifies archived game packages through the `verify-package` CMake target.
   Its staged executable accepts `--project-root`, `--package-root`, `--unreal-pak`,
