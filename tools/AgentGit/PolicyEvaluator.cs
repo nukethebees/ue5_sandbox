@@ -137,7 +137,9 @@ internal sealed class PolicyEvaluator(RepositoryDiscovery discovery)
             var absolute = Path.GetFullPath(input, invocation_directory);
             if (!IsWithin(context.State.WorktreeRoot, absolute))
             {
-                return Denied(request, context, $"Path '{input}' resolves outside the current worktree.");
+                return Denied(request, context,
+                    $"Path '{input}' resolves outside the current worktree. " +
+                    $"Stage only paths beneath '{context.State.WorktreeRoot}'.");
             }
 
             if (IsWithin(context.State.GitDirectory, absolute) || IsWithin(context.State.CommonGitDirectory, absolute))
@@ -205,7 +207,8 @@ internal sealed class PolicyEvaluator(RepositoryDiscovery discovery)
         if (target.Worktree is not null && !PathsEqual(target.Worktree.Path, context.State.WorktreeRoot))
         {
             return Denied(request, context,
-                $"Branch '{target.Name}' is checked out in worktree '{target.Worktree.Path}'.", target);
+                $"Branch '{target.Name}' is checked out in worktree '{target.Worktree.Path}'. " +
+                "Use its owning worktree; do not switch a branch owned elsewhere.", target);
         }
 
         var unsafe_paths = await discovery.FindUnsafeCheckoutPathsAsync(
@@ -293,7 +296,8 @@ internal sealed class PolicyEvaluator(RepositoryDiscovery discovery)
         if (target.Worktree is not null)
         {
             return Denied(request, context,
-                $"Branch '{target.Name}' is checked out in worktree '{target.Worktree.Path}'.", target);
+                $"Branch '{target.Name}' is checked out in worktree '{target.Worktree.Path}'. " +
+                "Do not delete a branch owned by another worktree.", target);
         }
 
         var merged = await discovery.IsAncestorAsync(

@@ -299,6 +299,7 @@ public sealed class AgentGitOperationTests
 
         Assert.AreEqual(ExitCodes.PolicyDenied, result.ExitCode);
         StringAssert.Contains(result.Output.Replace('/', Path.DirectorySeparatorChar), other);
+        StringAssert.Contains(result.Output, "Use its owning worktree");
         Assert.AreEqual("feature/current\n", fixture.RunGit("branch", "--show-current"));
     }
 
@@ -460,6 +461,7 @@ public sealed class AgentGitOperationTests
 
         Assert.AreEqual(ExitCodes.PolicyDenied, outside_result.ExitCode);
         StringAssert.Contains(outside_result.Output, "outside the current worktree");
+        StringAssert.Contains(outside_result.Output, "Stage only paths beneath");
 
         const string magic_name = "[a].txt";
         fixture.WriteFile(magic_name, "literal\n");
