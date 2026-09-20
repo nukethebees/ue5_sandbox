@@ -41,7 +41,7 @@ void run_worldless_player_ship_vs_capital(tests::SimulationFixture const& config
     ml::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim&) {
         Sample sample{
-            .player_location = player->get_movement_state().transform.location,
+            .player_location = player->get_physical_state().transform.location,
             .accessor_location = [&] {
                 auto const location{
                     harness.get_simulation().get_agent_accessor().read(player_id)->location};

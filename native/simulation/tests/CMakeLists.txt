@@ -5,6 +5,7 @@ target_sources(native-simulation-tests PRIVATE
   entity_unique_id_tests.cpp
   enum_tests.cpp
   flight_model_config_tests.cpp
+  scalar_response_tests.cpp
   test_tick_phases.cpp
   test_level_simulation.cpp
   test_player_power_control.cpp

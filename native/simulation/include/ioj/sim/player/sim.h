@@ -14,10 +14,10 @@
 #include <ioj/sim/player/control_mode.h>
 #include <ioj/sim/player/fire_rate.h>
 #include <ioj/sim/player/flight_mode.h>
+#include <ioj/sim/player/flight_model_runtime.h>
 #include <ioj/sim/player/laser_firing_state.h>
 #include <ioj/sim/player/ship_laser_mode.h>
 #include <ioj/sim/player/space_ship_common.h>
-#include <ioj/sim/ship_flight_model.h>
 #include <ioj/sim/sim_clock.h>
 
 namespace ioj::sim {
@@ -54,23 +54,6 @@ struct PlayerSpawnData {
     ShipHealth health{1000};
 };
 
-struct MovementState {
-    Transform3d transform{};
-    Transform3d body_transform{};
-    ml::Vector3d velocity{};
-    ml::Vector3d planar_velocity{};
-    float planar_boost_speed{};
-    float thrust_energy{1.f};
-    float thrust_change_rate{};
-    float target_speed{};
-    ShipFlightModel<float> forward_flight_model{};
-    ShipFlightModel<ml::Vector3d> planar_flight_model{};
-    ShipFlightModel<float> planar_boost_flight_model{};
-    BoostBrakeState boost_brake_state{};
-    float time_since_rotation_input{100.f};
-    std::uint64_t boost_start_sequence{};
-};
-
 struct Sim {
     /* **************************************** */
     // Construction and configuration
@@ -87,15 +70,26 @@ struct Sim {
     auto operator=(Sim&&) -> Sim& = delete;
 
     auto get_read_view() const -> PlayerReadView {
-        return {movement_state_.transform,
-                movement_state_.body_transform,
+        return {state_.physical.transform,
+                state_.presentation.body_transform,
                 get_middle_socket(),
-                movement_state_.velocity,
-                movement_state_.boost_brake_state,
+                state_.physical.velocity,
+                state_.controller.effective_action,
                 laser_firing_mode,
-                movement_state_.boost_start_sequence};
+                state_.presentation.boost_start_sequence};
     }
-    auto get_movement_state() const noexcept -> MovementState const& { return movement_state_; }
+    auto get_physical_state() const noexcept -> PhysicalMovementState const& {
+        return state_.physical;
+    }
+    auto get_controller_state() const noexcept -> FlightModelControllerState const& {
+        return state_.controller;
+    }
+    auto get_resource_state() const noexcept -> PlayerResourceState const& {
+        return state_.resources;
+    }
+    auto get_presentation_state() const noexcept -> PlayerPresentationState const& {
+        return state_.presentation;
+    }
     void configure(PlayerSpawnData const& spawn) noexcept;
     void set_config(PlayerSimConfig const& new_config) noexcept;
     void set_team(Team new_team) noexcept;
@@ -189,8 +183,8 @@ struct Sim {
     std::int32_t speed_sample_tick_period{1};
     std::vector<ml::Vector2d> speed_samples;
   private:
-    MovementState movement_state_{};
-    MovementState planned_movement_{};
+    PlayerSimulationState state_{};
+    PlayerSimulationState planned_state_{};
     /* **************************************** */
     // Tick phases
     /* **************************************** */
@@ -208,16 +202,16 @@ struct Sim {
     /* **************************************** */
     // Movement
     /* **************************************** */
-    void integrate_velocity(float dt, MovementState& movement);
-    void update_rotation(float dt, MovementState& movement);
-    void update_body_orientation(float dt, MovementState& movement);
-    void integrate_power_velocity(float dt, MovementState& movement);
+    void integrate_velocity(float dt, PlayerSimulationState& state);
+    void update_rotation(float dt, PlayerSimulationState& state);
+    void update_body_orientation(float dt, PlayerSimulationState& state);
+    void integrate_power_velocity(float dt, PlayerSimulationState& state);
     void set_desired_planar_velocity(ml::Vector3d desired_velocity);
     [[nodiscard]] auto uses_power_controller() const noexcept -> bool;
     std::uint64_t boost_start_sequence_{};
     void set_boost_brake_state(BoostBrakeState state);
-    void set_boost_brake_state(BoostBrakeState state, MovementState& movement);
-    void update_boost_brake(float dt, MovementState& movement);
+    void set_boost_brake_state(BoostBrakeState new_state, PlayerSimulationState& state);
+    void update_boost_brake(float dt, PlayerSimulationState& state);
 
     /* **************************************** */
     // Weapons

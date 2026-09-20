@@ -240,7 +240,7 @@ void ATestSpaceShip::stop_brake() {
 }
 
 auto ATestSpaceShip::get_velocity() const -> FVector {
-    return bound_simulation ? ml::to_unreal(bound_simulation->get_movement_state().velocity)
+    return bound_simulation ? ml::to_unreal(bound_simulation->get_physical_state().velocity)
                             : FVector::ZeroVector;
 }
 
@@ -257,7 +257,7 @@ void ATestSpaceShip::roll(float const direction) {
 }
 
 auto ATestSpaceShip::get_target_speed() const -> float {
-    return simulation().get_movement_state().target_speed;
+    return simulation().get_controller_state().target_speed;
 }
 
 auto ATestSpaceShip::get_move_input() const -> FVector2D {
