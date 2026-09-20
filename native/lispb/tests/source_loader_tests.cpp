@@ -144,6 +144,7 @@ TEST(SourceLoader, ReadsPackedValueModule) {
   (packed-value FighterState
     :storage std::uint32_t
     :invalid-value 0x7fffffff
+    :mutable true
     (field entity_index std::uint32_t :bits 24 :range-helper true)
     (field state State :bits 8 :kind enum)))
 )");
@@ -155,6 +156,7 @@ TEST(SourceLoader, ReadsPackedValueModule) {
     EXPECT_EQ(value.name, "FighterState");
     EXPECT_EQ(value.storage_type.name, "std::uint32_t");
     EXPECT_EQ(value.invalid_value, std::uint64_t{0x7fffffff});
+    EXPECT_TRUE(value.mutable_value);
     ASSERT_EQ(value.fields.size(), 2);
     EXPECT_EQ(value.fields[0].bits, 24);
     EXPECT_EQ(value.fields[0].kind, PackedFieldKind::unsigned_integer);

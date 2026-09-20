@@ -55,22 +55,27 @@
   :namespace codegen_compile_fixture
   (packed-value FighterState
     :storage std::uint32_t
+    :mutable true
     (field entity_index std::uint32_t :bits 24)
     (field state @packed_state :bits 8 :kind enum))
   (packed-value PackedByte
     :storage std::uint8_t
+    :mutable true
     (field low std::uint8_t :bits 3)
     (field flag bool :bits 1)
     (field high std::uint8_t :bits 4))
   (packed-value PackedWide
     :storage std::uint64_t
+    :mutable true
     (field value std::uint64_t :bits 64))
   (packed-value PackedTinyState
     :storage std::uint8_t
+    :mutable true
     (field state @tiny_state :bits 2 :kind enum)
     (field payload std::uint8_t :bits 6))
   (packed-value PackedOpaqueState
     :storage std::uint8_t
+    :mutable true
     (field state @opaque_state :bits 8 :kind enum))
   (packed-value CheckedValue
     :storage std::uint32_t

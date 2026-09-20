@@ -61,14 +61,31 @@ TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
     EXPECT_NE(header.find("state_mask{storage_type{0xff000000}}"), std::string::npos);
     EXPECT_NE(header.find("operator<=>(FighterState const&) const noexcept = default"),
               std::string::npos);
-    EXPECT_NE(header.find("try_set_entity_index"), std::string::npos);
-    EXPECT_NE(header.find("try_make(std::uint32_t const entity_index_value"), std::string::npos);
+    EXPECT_NE(
+        header.find(
+            "assert(entity_index_value <= static_cast<std::uint32_t>(entity_index_value_mask));"),
+        std::string::npos);
+    EXPECT_NE(header.find("auto const raw{static_cast<storage_type>("), std::string::npos);
+    EXPECT_NE(header.find("assert(raw != invalid_value);"), std::string::npos);
+    EXPECT_EQ(header.find("try_set_entity_index"), std::string::npos);
+    EXPECT_EQ(header.find("set_entity_index"), std::string::npos);
+    EXPECT_EQ(header.find("try_make(std::uint32_t const entity_index_value"), std::string::npos);
     EXPECT_NE(header.find("invalid_value{storage_type{0x7fffffff}}"), std::string::npos);
     EXPECT_NE(header.find("entity_index_range_fits"), std::string::npos);
     EXPECT_NE(header.find("is_valid() const noexcept"), std::string::npos);
     EXPECT_NE(header.find("std::underlying_type_t<FighterStateKind>"), std::string::npos);
     EXPECT_NE(header.find("static_assert(std::is_enum_v<FighterStateKind>)"), std::string::npos);
     EXPECT_NE(header.find("std::is_standard_layout_v<FighterState>"), std::string::npos);
+}
+
+TEST(PackedValue, EmitsFallibleMutationOnlyWhenRequested) {
+    auto module{valid_module()};
+    module.values.front().mutable_value = true;
+    auto const header{lower(std::move(module))};
+
+    EXPECT_NE(header.find("try_make(std::uint32_t const entity_index_value"), std::string::npos);
+    EXPECT_NE(header.find("try_set_entity_index"), std::string::npos);
+    EXPECT_NE(header.find("set_entity_index"), std::string::npos);
 }
 
 TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
@@ -107,6 +124,7 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
 
 TEST(PackedValue, RejectsGeneratedApiCollisions) {
     auto module{valid_module()};
+    module.values.front().mutable_value = true;
     module.values.front().fields[1].name = "set_entity_index";
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 }
@@ -140,6 +158,7 @@ TEST(PackedValue, ValidatesKnownEnumUnderlyingType) {
 
 TEST(PackedValue, ValidatesKnownEnumEncodedWidthWithoutEmittingPerValueAssertions) {
     auto module{valid_module()};
+    module.values.front().invalid_value = 0xffffffffu;
     module.values.front().fields.back().bits = 3;
     auto schema{EnumSchema{
         .name = "FighterStateKind",
@@ -153,9 +172,28 @@ TEST(PackedValue, ValidatesKnownEnumEncodedWidthWithoutEmittingPerValueAssertion
     auto const header{lower_known_enum(module, schema)};
     EXPECT_EQ(header.find("static_assert(static_cast<state_underlying_type>"), std::string::npos);
     EXPECT_EQ(header.find("static_assert(state"), std::string::npos);
+    EXPECT_EQ(header.find("assert(static_cast<state_underlying_type>(state_value)"),
+              std::string::npos);
+    EXPECT_NE(header.find("assert(raw != invalid_value);"), std::string::npos);
 
     module.values.front().fields.back().bits = 2;
     EXPECT_THROW(lower_known_enum(std::move(module), std::move(schema)), std::invalid_argument);
+}
+
+TEST(PackedValue, OmitsSentinelAssertionWhenTheKnownEnumDomainExcludesIt) {
+    auto module{valid_module()};
+    module.values.front().invalid_value = 0xffffffffu;
+    auto const header{
+        lower_known_enum(std::move(module),
+                         EnumSchema{
+                             .name = "FighterStateKind",
+                             .underlying_type = TypeRef{"uint8"},
+                             .values = {EnumeratorSchema{"Zero", "0"},
+                                        EnumeratorSchema{"COUNT", "5", std::nullopt, true}},
+                             .count = "COUNT",
+                         })};
+
+    EXPECT_EQ(header.find("assert(raw != invalid_value);"), std::string::npos);
 }
 
 TEST(PackedValue, ResolvesImplicitValuesAfterExplicitHexadecimalValues) {

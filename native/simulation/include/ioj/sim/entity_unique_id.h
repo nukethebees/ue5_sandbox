@@ -38,30 +38,15 @@ struct EntityUniqueId {
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    [[nodiscard]] static constexpr auto try_make(std::uint32_t const index_value,
-                                                 ioj::sim::EntityType const entity_type_value,
-                                                 EntityUniqueId& out_result) noexcept -> bool {
-        EntityUniqueId result{storage_type{0}};
-        if (!result.try_set_index(index_value)) {
-            return false;
-        }
-        if (!result.try_set_entity_type(entity_type_value)) {
-            return false;
-        }
-        if (!result.is_valid()) {
-            return false;
-        }
-        out_result = result;
-        return true;
-    }
-
     [[nodiscard]] static constexpr auto make(std::uint32_t const index_value,
                                              ioj::sim::EntityType const entity_type_value) noexcept
         -> EntityUniqueId {
-        EntityUniqueId result;
-        [[maybe_unused]] auto const success{try_make(index_value, entity_type_value, result)};
-        assert(success && "Packed field value does not fit.");
-        return result;
+        assert(index_value <= static_cast<std::uint32_t>(index_value_mask));
+        assert(entity_type_value < ioj::sim::EntityType::COUNT);
+        return EntityUniqueId{static_cast<storage_type>(
+            static_cast<storage_type>(index_value) << index_offset |
+            static_cast<storage_type>(static_cast<entity_type_underlying_type>(entity_type_value))
+                << entity_type_offset)};
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
@@ -75,25 +60,6 @@ struct EntityUniqueId {
                                           index_value_mask);
     }
 
-    [[nodiscard]] constexpr auto try_set_index(std::uint32_t const value) noexcept -> bool {
-        if (value > static_cast<std::uint32_t>(index_value_mask)) {
-            return false;
-        }
-        auto const encoded{static_cast<storage_type>(value)};
-        auto const cleared{
-            static_cast<storage_type>(value_ & static_cast<storage_type>(~index_mask))};
-        auto const shifted{static_cast<storage_type>(
-            static_cast<storage_type>(encoded & index_value_mask) << index_offset)};
-        value_ = static_cast<storage_type>(cleared | shifted);
-        return true;
-    }
-
-    constexpr void set_index(std::uint32_t const value) noexcept {
-        if (!try_set_index(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
-    }
-
     [[nodiscard]] static constexpr auto index_range_fits(std::uint32_t const first,
                                                          std::uint32_t const count) noexcept
         -> bool {
@@ -104,30 +70,6 @@ struct EntityUniqueId {
         auto const encoded{static_cast<entity_type_underlying_type>(
             static_cast<storage_type>(value_ >> entity_type_offset) & entity_type_value_mask)};
         return static_cast<ioj::sim::EntityType>(encoded);
-    }
-
-    [[nodiscard]] constexpr auto try_set_entity_type(ioj::sim::EntityType const value) noexcept
-        -> bool {
-        auto const underlying{static_cast<entity_type_underlying_type>(value)};
-        if (underlying > static_cast<entity_type_underlying_type>(entity_type_value_mask)) {
-            return false;
-        }
-        if (value >= ioj::sim::EntityType::COUNT) {
-            return false;
-        }
-        auto const encoded{static_cast<storage_type>(underlying)};
-        auto const cleared{
-            static_cast<storage_type>(value_ & static_cast<storage_type>(~entity_type_mask))};
-        auto const shifted{static_cast<storage_type>(
-            static_cast<storage_type>(encoded & entity_type_value_mask) << entity_type_offset)};
-        value_ = static_cast<storage_type>(cleared | shifted);
-        return true;
-    }
-
-    constexpr void set_entity_type(ioj::sim::EntityType const value) noexcept {
-        if (!try_set_entity_type(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
     }
   private:
     storage_type value_{invalid_value};

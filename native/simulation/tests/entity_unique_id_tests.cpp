@@ -23,6 +23,21 @@ static_assert(sizeof(EntityUniqueId) == sizeof(std::uint32_t));
 static_assert(std::is_trivially_copyable_v<EntityUniqueId>);
 static_assert(std::is_standard_layout_v<EntityUniqueId>);
 
+template <typename T>
+concept HasTryMake = requires(T& result) { T::try_make(0, EntityType::PlayerShip, result); };
+
+template <typename T>
+concept HasTrySetIndex = requires(T id) { id.try_set_index(0); };
+
+template <typename T>
+concept HasSetIndex = requires(T id) { id.set_index(0); };
+
+template <typename T>
+concept HasTrySetEntityType = requires(T id) { id.try_set_entity_type(EntityType::PlayerShip); };
+
+template <typename T>
+concept HasSetEntityType = requires(T id) { id.set_entity_type(EntityType::PlayerShip); };
+
 constexpr auto zero_player_id{EntityUniqueId::make(0, EntityType::PlayerShip)};
 static_assert(zero_player_id.raw_value() == 0);
 static_assert(zero_player_id.index() == 0);
@@ -33,6 +48,11 @@ constexpr auto maximum_fighter_id{
     EntityUniqueId::make(EntityUniqueId::index_value_mask, EntityType::Fighter)};
 static_assert(maximum_fighter_id.index() == EntityUniqueId::index_value_mask);
 static_assert(maximum_fighter_id.entity_type() == EntityType::Fighter);
+static_assert(!HasTryMake<EntityUniqueId>);
+static_assert(!HasTrySetIndex<EntityUniqueId>);
+static_assert(!HasSetIndex<EntityUniqueId>);
+static_assert(!HasTrySetEntityType<EntityUniqueId>);
+static_assert(!HasSetEntityType<EntityUniqueId>);
 
 TEST(EntityUniqueId, RoundTripsRepresentativeIndicesAndEntityTypes) {
     constexpr std::array indices{
@@ -75,16 +95,11 @@ TEST(EntityUniqueId, IndexAndTypeBitsDoNotOverlap) {
     EXPECT_NE(first.raw_value(), second.raw_value());
 }
 
-TEST(EntityUniqueId, RejectsTypeValuesOutsideTheEnumDomain) {
-    EntityUniqueId packed{0};
-    EXPECT_TRUE(packed.try_set_index(0x00123456));
-    EXPECT_FALSE(packed.try_set_entity_type(static_cast<EntityType>(0xff)));
-    EXPECT_EQ(packed.index(), std::uint32_t{0x00123456});
-    EXPECT_EQ(packed.entity_type(), EntityType::PlayerShip);
-    EXPECT_EQ(packed.raw_value(), std::uint32_t{0x00123456});
-
-    EXPECT_FALSE(packed.try_set_index(0x01000000));
-    EXPECT_EQ(packed.raw_value(), std::uint32_t{0x00123456});
+TEST(EntityUniqueId, PacksFieldsDirectly) {
+    auto const id{EntityUniqueId::make(0x00123456, EntityType::CapitalShip)};
+    EXPECT_EQ(id.raw_value(), std::uint32_t{0x02123456});
+    EXPECT_EQ(id.index(), std::uint32_t{0x00123456});
+    EXPECT_EQ(id.entity_type(), EntityType::CapitalShip);
 }
 
 TEST(EntityUniqueId, InvalidRepresentationAndDomainArePreserved) {
@@ -92,11 +107,14 @@ TEST(EntityUniqueId, InvalidRepresentationAndDomainArePreserved) {
     EXPECT_FALSE(null_id.is_valid());
     EXPECT_EQ(null_id.raw_value(), std::uint32_t{0xffffffff});
 
-    EntityUniqueId result;
-    EXPECT_FALSE(EntityUniqueId::try_make(0, EntityType::COUNT, result));
-    EXPECT_FALSE(
-        EntityUniqueId::try_make(EntityUniqueId::index_value_mask + 1, EntityType::Turret, result));
     EXPECT_FALSE(EntityUniqueId{std::uint32_t{0xffffffff}}.is_valid());
+}
+
+TEST(EntityUniqueId, AssertsWhenConstructionViolatesThePackedDomain) {
+    EXPECT_DEATH(static_cast<void>(EntityUniqueId::make(EntityUniqueId::index_value_mask + 1,
+                                                        EntityType::Turret)),
+                 "");
+    EXPECT_DEATH(static_cast<void>(EntityUniqueId::make(0, EntityType::COUNT)), "");
 }
 
 TEST(EntityUniqueId, AllocationRangeDetectsExhaustionWithoutWrapping) {

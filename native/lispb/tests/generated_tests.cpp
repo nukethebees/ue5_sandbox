@@ -411,11 +411,10 @@ TEST(GeneratedPackedValue, GeneratesConstructionValidationAndRangeHelpers) {
     EXPECT_EQ(value.serial(), 42u);
     EXPECT_EQ(value.state(), DomainState::One);
 
-    CheckedValue result;
-    EXPECT_TRUE(CheckedValue::try_make(7, DomainState::Zero, result));
-    EXPECT_EQ(result, CheckedValue::make(7, DomainState::Zero));
-    EXPECT_FALSE(CheckedValue::try_make(0x01000000u, DomainState::Zero, result));
-    EXPECT_FALSE(CheckedValue::try_make(7, DomainState::COUNT, result));
+    auto const zero{CheckedValue::make(7, DomainState::Zero)};
+    EXPECT_EQ(zero.serial(), 7u);
+    EXPECT_EQ(zero.state(), DomainState::Zero);
+    EXPECT_EQ(zero.raw_value(), 7u);
     EXPECT_FALSE(CheckedValue{0xffffffffu}.is_valid());
 }
 

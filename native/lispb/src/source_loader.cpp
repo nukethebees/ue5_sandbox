@@ -464,7 +464,7 @@ auto parse_packed_field(Form const& form) -> PackedFieldSchema {
 
 auto parse_packed_value(Form const& form) -> PackedValueSchema {
     Fields const fields{form, "packed-value", 1};
-    fields.validate({"storage", "invalid-value", "export-specifier"}, {"field"});
+    fields.validate({"storage", "invalid-value", "export-specifier", "mutable"}, {"field"});
     auto const* invalid_value{fields.optional("invalid-value")};
 
     std::vector<PackedFieldSchema> packed_fields;
@@ -481,6 +481,7 @@ auto parse_packed_value(Form const& form) -> PackedValueSchema {
                                                   : std::optional<std::uint64_t>{unsigned_integer(
                                                         *invalid_value, "packed invalid value")},
         .export_specifier = optional_text(fields, "export-specifier"),
+        .mutable_value = boolean_or(fields, "mutable"),
     };
 }
 

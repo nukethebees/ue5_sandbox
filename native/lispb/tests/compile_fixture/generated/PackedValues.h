@@ -556,30 +556,14 @@ struct CheckedValue {
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
     [[nodiscard]] static constexpr auto
-        try_make(std::uint32_t const serial_value,
-                 codegen_compile_fixture::DomainState const state_value,
-                 CheckedValue& out_result) noexcept -> bool {
-        CheckedValue result{storage_type{0}};
-        if (!result.try_set_serial(serial_value)) {
-            return false;
-        }
-        if (!result.try_set_state(state_value)) {
-            return false;
-        }
-        if (!result.is_valid()) {
-            return false;
-        }
-        out_result = result;
-        return true;
-    }
-
-    [[nodiscard]] static constexpr auto
         make(std::uint32_t const serial_value,
              codegen_compile_fixture::DomainState const state_value) noexcept -> CheckedValue {
-        CheckedValue result;
-        [[maybe_unused]] auto const success{try_make(serial_value, state_value, result)};
-        assert(success && "Packed field value does not fit.");
-        return result;
+        assert(serial_value <= static_cast<std::uint32_t>(serial_value_mask));
+        assert(state_value < codegen_compile_fixture::DomainState::COUNT);
+        return CheckedValue{static_cast<storage_type>(
+            static_cast<storage_type>(serial_value) << serial_offset |
+            static_cast<storage_type>(static_cast<state_underlying_type>(state_value))
+                << state_offset)};
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
@@ -593,25 +577,6 @@ struct CheckedValue {
                                           serial_value_mask);
     }
 
-    [[nodiscard]] constexpr auto try_set_serial(std::uint32_t const value) noexcept -> bool {
-        if (value > static_cast<std::uint32_t>(serial_value_mask)) {
-            return false;
-        }
-        auto const encoded{static_cast<storage_type>(value)};
-        auto const cleared{
-            static_cast<storage_type>(value_ & static_cast<storage_type>(~serial_mask))};
-        auto const shifted{static_cast<storage_type>(
-            static_cast<storage_type>(encoded & serial_value_mask) << serial_offset)};
-        value_ = static_cast<storage_type>(cleared | shifted);
-        return true;
-    }
-
-    constexpr void set_serial(std::uint32_t const value) noexcept {
-        if (!try_set_serial(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
-    }
-
     [[nodiscard]] static constexpr auto serial_range_fits(std::uint32_t const first,
                                                           std::uint32_t const count) noexcept
         -> bool {
@@ -622,30 +587,6 @@ struct CheckedValue {
         auto const encoded{static_cast<state_underlying_type>(
             static_cast<storage_type>(value_ >> state_offset) & state_value_mask)};
         return static_cast<codegen_compile_fixture::DomainState>(encoded);
-    }
-
-    [[nodiscard]] constexpr auto
-        try_set_state(codegen_compile_fixture::DomainState const value) noexcept -> bool {
-        auto const underlying{static_cast<state_underlying_type>(value)};
-        if (underlying > static_cast<state_underlying_type>(state_value_mask)) {
-            return false;
-        }
-        if (value >= codegen_compile_fixture::DomainState::COUNT) {
-            return false;
-        }
-        auto const encoded{static_cast<storage_type>(underlying)};
-        auto const cleared{
-            static_cast<storage_type>(value_ & static_cast<storage_type>(~state_mask))};
-        auto const shifted{static_cast<storage_type>(
-            static_cast<storage_type>(encoded & state_value_mask) << state_offset)};
-        value_ = static_cast<storage_type>(cleared | shifted);
-        return true;
-    }
-
-    constexpr void set_state(codegen_compile_fixture::DomainState const value) noexcept {
-        if (!try_set_state(value)) {
-            assert(false && "Packed field value does not fit.");
-        }
     }
   private:
     storage_type value_{invalid_value};

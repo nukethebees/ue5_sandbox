@@ -31,6 +31,47 @@ auto dependency_for_integer(CppType const& type) -> std::optional<TypeDependency
     return std::nullopt;
 }
 
+auto invalid_value_may_be_constructed(PackedValueSchema const& schema,
+                                      std::map<std::string, CppType> const& types,
+                                      std::vector<ModuleSchema> const& modules) -> bool {
+    if (!schema.invalid_value.has_value()) {
+        return false;
+    }
+
+    int offset{};
+    for (auto const& field : schema.fields) {
+        if (field.kind == PackedFieldKind::enumeration) {
+            auto const* enum_schema{find_packed_enum(field.type, types, modules)};
+            if (enum_schema != nullptr && enum_schema->count.has_value()) {
+                auto const values{resolve_enum_values(*enum_schema)};
+                auto const count_index{std::ranges::find_if(
+                    enum_schema->values,
+                    [&count = *enum_schema->count](EnumeratorSchema const& value) {
+                        return value.name == count;
+                    })};
+                if (count_index != enum_schema->values.end()) {
+                    auto const value_index{
+                        static_cast<std::size_t>(count_index - enum_schema->values.begin())};
+                    if (values[value_index].has_value()) {
+                        auto const value_mask{field.bits == 64
+                                                  ? std::numeric_limits<std::uint64_t>::max()
+                                                  : (std::uint64_t{1} << field.bits) - 1};
+                        auto const invalid_field_value{(*schema.invalid_value >> offset) &
+                                                       value_mask};
+                        if (invalid_field_value >= values[value_index]->magnitude) {
+                            return false;
+                        }
+                    }
+                }
+            }
+        }
+
+        offset += field.bits;
+    }
+
+    return true;
+}
+
 auto packed_value_text(PackedValueSchema const& schema,
                        std::map<std::string, CppType> const& types,
                        std::vector<ModuleSchema> const& modules) -> Raw {
@@ -129,23 +170,27 @@ auto packed_value_text(PackedValueSchema const& schema,
               "(storage_type const raw) noexcept : value_{raw} {}\n\n";
     output += "    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type {\n";
     output += "        return value_;\n    }\n\n";
-    output += "    [[nodiscard]] static constexpr auto try_make(";
-    for (std::size_t index{}; index < schema.fields.size(); ++index) {
-        auto const& field{schema.fields[index]};
-        auto const field_type{resolve_type(field.type, types)};
-        if (index != 0) {
-            output += ", ";
+
+    if (schema.mutable_value) {
+        output += "    [[nodiscard]] static constexpr auto try_make(";
+        for (std::size_t index{}; index < schema.fields.size(); ++index) {
+            auto const& field{schema.fields[index]};
+            auto const field_type{resolve_type(field.type, types)};
+            if (index != 0) {
+                output += ", ";
+            }
+            output += field_type.spelling + " const " + field.name + "_value";
         }
-        output += field_type.spelling + " const " + field.name + "_value";
+        output += ", " + schema.name + "& out_result) noexcept -> bool {\n";
+        output += "        " + schema.name + " result{storage_type{0}};\n";
+        for (auto const& field : schema.fields) {
+            output +=
+                "        if (!result.try_set_" + field.name + "(" + field.name + "_value)) {\n";
+            output += "            return false;\n        }\n";
+        }
+        output += "        if (!result.is_valid()) {\n            return false;\n        }\n";
+        output += "        out_result = result;\n        return true;\n    }\n\n";
     }
-    output += ", " + schema.name + "& out_result) noexcept -> bool {\n";
-    output += "        " + schema.name + " result{storage_type{0}};\n";
-    for (auto const& field : schema.fields) {
-        output += "        if (!result.try_set_" + field.name + "(" + field.name + "_value)) {\n";
-        output += "            return false;\n        }\n";
-    }
-    output += "        if (!result.is_valid()) {\n            return false;\n        }\n";
-    output += "        out_result = result;\n        return true;\n    }\n\n";
 
     output += "    [[nodiscard]] static constexpr auto make(";
     for (std::size_t index{}; index < schema.fields.size(); ++index) {
@@ -157,17 +202,68 @@ auto packed_value_text(PackedValueSchema const& schema,
         output += field_type.spelling + " const " + field.name + "_value";
     }
     output += ") noexcept -> " + schema.name + " {\n";
-    output += "        " + schema.name + " result;\n";
-    output += "        [[maybe_unused]] auto const success{try_make(";
-    for (std::size_t index{}; index < schema.fields.size(); ++index) {
-        if (index != 0) {
-            output += ", ";
+    if (schema.mutable_value) {
+        output += "        " + schema.name + " result;\n";
+        output += "        [[maybe_unused]] auto const success{try_make(";
+        for (std::size_t index{}; index < schema.fields.size(); ++index) {
+            if (index != 0) {
+                output += ", ";
+            }
+            output += schema.fields[index].name + "_value";
         }
-        output += schema.fields[index].name + "_value";
+        output += ", result)};\n";
+        output += "        assert(success && \"Packed field value does not fit.\");\n";
+        output += "        return result;\n    }\n\n";
+    } else {
+        for (auto const& field : schema.fields) {
+            auto const field_type{resolve_type(field.type, types)};
+            if (field_type.spelling == "bool") {
+                continue;
+            }
+            if (field.kind == PackedFieldKind::enumeration) {
+                auto const* enum_schema{find_packed_enum(field.type, types, modules)};
+                if (enum_schema != nullptr && enum_schema->count.has_value()) {
+                    output += "        assert(" + field.name + "_value < " + field_type.spelling +
+                              "::" + *enum_schema->count + ");\n";
+                } else if (enum_schema == nullptr) {
+                    output += "        assert(static_cast<" + field.name + "_underlying_type>(" +
+                              field.name + "_value) <= static_cast<" + field.name +
+                              "_underlying_type>(" + field.name + "_value_mask));\n";
+                }
+            } else {
+                output += "        assert(" + field.name + "_value <= static_cast<" +
+                          field_type.spelling + ">(" + field.name + "_value_mask));\n";
+            }
+        }
+
+        auto const value_expression = [&]() {
+            std::string expression{"static_cast<storage_type>(\n"};
+            for (std::size_t index{}; index < schema.fields.size(); ++index) {
+                auto const& field{schema.fields[index]};
+                if (index != 0) {
+                    expression += "            |\n";
+                }
+                expression += "            ";
+                if (field.kind == PackedFieldKind::enumeration) {
+                    expression += "static_cast<storage_type>(static_cast<" + field.name +
+                                  "_underlying_type>(" + field.name + "_value))";
+                } else {
+                    expression += "static_cast<storage_type>(" + field.name + "_value)";
+                }
+                expression += " << " + field.name + "_offset";
+            }
+            expression += ")";
+            return expression;
+        }();
+
+        if (invalid_value_may_be_constructed(schema, types, modules)) {
+            output += "        auto const raw{" + value_expression + "};\n";
+            output += "        assert(raw != invalid_value);\n";
+            output += "        return " + schema.name + "{raw};\n    }\n\n";
+        } else {
+            output += "        return " + schema.name + "{" + value_expression + "};\n    }\n\n";
+        }
     }
-    output += ", result)};\n";
-    output += "        assert(success && \"Packed field value does not fit.\");\n";
-    output += "        return result;\n    }\n\n";
 
     output += "    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {\n";
     std::vector<std::string> validity_checks;
@@ -214,42 +310,45 @@ auto packed_value_text(PackedValueSchema const& schema,
         }
         output += "    }\n";
 
-        output += "\n    [[nodiscard]] constexpr auto try_set_" + field.name + "(" +
-                  field_type.spelling + " const value) noexcept -> bool {\n";
-        if (field_type.spelling == "bool") {
-            output += "        auto const encoded{static_cast<storage_type>(value)};\n";
-        } else if (field.kind == PackedFieldKind::enumeration) {
-            output += "        auto const underlying{static_cast<" + field.name +
-                      "_underlying_type>(value)};\n";
-            output += "        if (underlying > static_cast<" + field.name + "_underlying_type>(" +
-                      field.name + "_value_mask)) {\n";
-            output += "            return false;\n        }\n";
-            if (auto const* enum_schema{find_packed_enum(field.type, types, modules)};
-                enum_schema != nullptr && enum_schema->count.has_value()) {
-                output += "        if (value >= " + field_type.spelling +
-                          "::" + *enum_schema->count + ") {\n";
+        if (schema.mutable_value) {
+            output += "\n    [[nodiscard]] constexpr auto try_set_" + field.name + "(" +
+                      field_type.spelling + " const value) noexcept -> bool {\n";
+            if (field_type.spelling == "bool") {
+                output += "        auto const encoded{static_cast<storage_type>(value)};\n";
+            } else if (field.kind == PackedFieldKind::enumeration) {
+                output += "        auto const underlying{static_cast<" + field.name +
+                          "_underlying_type>(value)};\n";
+                output += "        if (underlying > static_cast<" + field.name +
+                          "_underlying_type>(" + field.name + "_value_mask)) {\n";
                 output += "            return false;\n        }\n";
+                if (auto const* enum_schema{find_packed_enum(field.type, types, modules)};
+                    enum_schema != nullptr && enum_schema->count.has_value()) {
+                    output += "        if (value >= " + field_type.spelling +
+                              "::" + *enum_schema->count + ") {\n";
+                    output += "            return false;\n        }\n";
+                }
+                output += "        auto const encoded{static_cast<storage_type>(underlying)};\n";
+            } else {
+                output += "        if (value > static_cast<" + field_type.spelling + ">(" +
+                          field.name + "_value_mask)) {\n";
+                output += "            return false;\n        }\n";
+                output += "        auto const encoded{static_cast<storage_type>(value)};\n";
             }
-            output += "        auto const encoded{static_cast<storage_type>(underlying)};\n";
-        } else {
-            output += "        if (value > static_cast<" + field_type.spelling + ">(" + field.name +
-                      "_value_mask)) {\n";
-            output += "            return false;\n        }\n";
-            output += "        auto const encoded{static_cast<storage_type>(value)};\n";
-        }
-        output += "        auto const cleared{static_cast<storage_type>(\n";
-        output += "            value_ & static_cast<storage_type>(~" + field.name + "_mask))};\n";
-        output += "        auto const shifted{static_cast<storage_type>(\n";
-        output += "            static_cast<storage_type>(encoded & " + field.name +
-                  "_value_mask) << " + field.name + "_offset)};\n";
-        output += "        value_ = static_cast<storage_type>(cleared | shifted);\n";
-        output += "        return true;\n    }\n";
+            output += "        auto const cleared{static_cast<storage_type>(\n";
+            output +=
+                "            value_ & static_cast<storage_type>(~" + field.name + "_mask))};\n";
+            output += "        auto const shifted{static_cast<storage_type>(\n";
+            output += "            static_cast<storage_type>(encoded & " + field.name +
+                      "_value_mask) << " + field.name + "_offset)};\n";
+            output += "        value_ = static_cast<storage_type>(cleared | shifted);\n";
+            output += "        return true;\n    }\n";
 
-        output += "\n    constexpr void set_" + field.name + "(" + field_type.spelling +
-                  " const value) noexcept {\n";
-        output += "        if (!try_set_" + field.name + "(value)) {\n";
-        output += "            assert(false && \"Packed field value does not fit.\");\n";
-        output += "        }\n    }\n";
+            output += "\n    constexpr void set_" + field.name + "(" + field_type.spelling +
+                      " const value) noexcept {\n";
+            output += "        if (!try_set_" + field.name + "(value)) {\n";
+            output += "            assert(false && \"Packed field value does not fit.\");\n";
+            output += "        }\n    }\n";
+        }
 
         if (field.range_helper) {
             output += "\n    [[nodiscard]] static constexpr auto " + field.name + "_range_fits(" +

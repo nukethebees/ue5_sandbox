@@ -540,7 +540,10 @@ void validate_packed_values(PackedValueModuleSchema const& module,
         }
 
         std::set<std::string> generated_names{
-            value.name, "raw_value", "storage_type", "try_make", "make", "is_valid"};
+            value.name, "raw_value", "storage_type", "make", "is_valid"};
+        if (value.mutable_value) {
+            generated_names.insert("try_make");
+        }
         if (value.invalid_value.has_value()) {
             generated_names.insert("invalid_value");
         }
@@ -605,13 +608,15 @@ void validate_packed_values(PackedValueModuleSchema const& module,
             std::vector<std::string> names{
                 field.name + "_type",
                 field.name,
-                "set_" + field.name,
-                "try_set_" + field.name,
                 field.name + "_offset",
                 field.name + "_bits",
                 field.name + "_value_mask",
                 field.name + "_mask",
             };
+            if (value.mutable_value) {
+                names.push_back("set_" + field.name);
+                names.push_back("try_set_" + field.name);
+            }
             if (field.kind == PackedFieldKind::enumeration) {
                 names.push_back(field.name + "_underlying_type");
             }

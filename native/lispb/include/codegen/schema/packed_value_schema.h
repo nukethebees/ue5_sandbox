@@ -16,6 +16,7 @@ struct PackedValueSchema {
     std::vector<PackedFieldSchema> fields;
     std::optional<std::uint64_t> invalid_value;
     std::optional<std::string> export_specifier;
+    bool mutable_value{false};
 };
 
 } // namespace codegen
