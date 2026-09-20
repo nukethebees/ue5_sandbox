@@ -11,7 +11,7 @@ Unreal Engine 5.8 project.
 
 # Feature Workflow
 
-* Use the canonical absolute `agent-git` executable for supported Git mutations
+* Use agent-git from PATH for supported Git mutations
 * Each agent owns its worktree. Safe ordinary Git operations in separate worktrees may run
   concurrently; `agent-git` enforces worktree/branch ownership and destructive-operation policy,
   while Git provides index/ref locking. Do not treat `agent-git` as a repository-global mutex or
