@@ -313,8 +313,9 @@ preserve stable segment blocks and their comments, including unchanged named-cod
 text, while rendering only new segments canonically. Structural child changes in other declaration
 kinds deliberately fall back to canonical declaration rendering. Record members and raw-union
 alternatives preserve stable named blocks and their comments through insertion, duplication,
-deletion, and reorder, rendering only new children canonically. Tagged-union alternatives preserve
-stable type, count, tag, discriminant, and export edits. Ordinary standard-library SoAs preserve stable
+deletion, and reorder, rendering only new children canonically. Tagged-union alternatives now use
+the same stable named-block behavior for structural edits while preserving declaration-level
+discriminant/export source independently. Ordinary standard-library SoAs preserve stable
 member and top-level edits as well, including untouched custom functions and advanced forms whose
 semantics can be proven unchanged. Structural or unsupported edits remain visible as canonical
 fallbacks in preview. Unrelated declarations and files are left unchanged.

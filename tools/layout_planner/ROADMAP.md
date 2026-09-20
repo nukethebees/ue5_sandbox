@@ -44,8 +44,9 @@ duplication, deletion, and reorder use the same bounded-block approach, keyed by
 name; stable nested named codes and relationships retain their source text while new segments are
 rendered canonically. Record members and raw-union alternatives also preserve stable named row
 blocks through insertion, duplication, deletion, and reorder, rendering only new children
-canonically. Structural child edits for other declaration kinds still use canonical rendering.
-Stable tagged-union alternatives preserve type/count/tag/discriminant/export edits. Stable ordinary SoA member/top-level
+canonically. Tagged-union alternatives now use the same stable named-block behavior while keeping
+discriminant/export properties outside the ordered alternative region. Structural child edits for
+other declaration kinds still use canonical rendering. Stable ordinary SoA member/top-level
 edits preserve source too, after advanced untouched forms are semantically verified; unsupported or
 ambiguous edits retain canonical fallback.
 

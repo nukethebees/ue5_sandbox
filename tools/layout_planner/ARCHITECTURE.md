@@ -57,9 +57,9 @@ insertion/deletion; only new segments use the canonical single-segment renderer.
 ambiguous source shapes, and changed nested packed structure still fall back to the canonical
 declaration renderer. Records and raw unions use bounded named member/alternative blocks so stable
 children retain comments and token-local type/count edits across insertion, duplication, deletion,
-and reorder; new children render canonically. Other structural edits retain canonical fallback.
-Tagged unions use ordered alternative identity checks before patching types, counts, tags,
-discriminants, and exports. Standard-library SoAs patch stable member/top-level properties only
+and reorder; new children render canonically. Tagged unions use the same bounded named alternative
+blocks for structural edits while patching tags and keeping discriminant/export properties outside
+the ordered region. Other structural edits retain canonical fallback. Standard-library SoAs patch stable member/top-level properties only
 after functions, fixed layouts, and single-allocation forms are proven semantically unchanged;
 unsupported derived allocator/mutable-view surfaces take canonical fallback.
 

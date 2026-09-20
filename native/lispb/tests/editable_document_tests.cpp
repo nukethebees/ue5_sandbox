@@ -129,7 +129,9 @@ class TemporarySchema {
   (tagged-union ExistingTagged
     ; Keep the tagged union note.
     :discriminant   authored::Existing
-    (alternative value   std::uint32_t :tag Zero)))
+    ; Keep the tagged value alternative note.
+    (alternative value   std::uint32_t :tag Zero) ; tagged value trailing note
+  ))
 
 (soa-module authored_soa
   :header "AuthoredSoa.h"
@@ -1098,6 +1100,111 @@ TEST(EditableSchemaDocument, PreservesRawUnionAlternativesForStructuralEdits) {
     EXPECT_EQ(schema->alternatives[1].count, 3U);
     EXPECT_EQ(schema->alternatives[2].type.name, "std::uint64_t");
     EXPECT_EQ(schema->alternatives[2].count, 2U);
+}
+
+TEST(EditableSchemaDocument, PreservesTaggedUnionAlternativesForStructuralEdits) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const tagged{declaration_id(document, "authored_unions", "ExistingTagged", "authored")};
+    auto replacement{*document.tagged_union_schema(tagged)};
+    replacement.export_specifier = "TAGGED_API";
+    auto value{replacement.alternatives[0]};
+    value.type.name = "std::uint64_t";
+    value.count = 2;
+    codegen::TaggedUnionAlternativeSchema small{};
+    small.name = "small";
+    small.type.name = "std::uint8_t";
+    small.tag = "One";
+    small.count = 3;
+    replacement.alternatives = {small, value};
+
+    auto applied{document.apply(
+        ReplaceTaggedUnion{.declaration = tagged, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& updated{preview->front().updated};
+    auto const tagged_position{updated.find("(tagged-union ExistingTagged")};
+    ASSERT_NE(tagged_position, std::string::npos);
+    auto const small_position{updated.find("(alternative small ", tagged_position)};
+    auto const declaration_comment{updated.find("; Keep the tagged union note.", tagged_position)};
+    auto const value_comment{
+        updated.find("; Keep the tagged value alternative note.", tagged_position)};
+    auto const value_position{updated.find("(alternative value ", tagged_position)};
+    ASSERT_NE(small_position, std::string::npos);
+    ASSERT_NE(declaration_comment, std::string::npos);
+    ASSERT_NE(value_comment, std::string::npos);
+    ASSERT_NE(value_position, std::string::npos);
+    EXPECT_LT(declaration_comment, small_position);
+    EXPECT_LT(small_position, value_comment);
+    EXPECT_LT(value_comment, value_position);
+    EXPECT_NE(updated.find("(alternative small std::uint8_t :tag One :count 3)"),
+              std::string::npos);
+    EXPECT_NE(updated.find("(alternative value   std::uint64_t :tag Zero", tagged_position),
+              std::string::npos);
+    EXPECT_NE(updated.find(":count 2", value_position), std::string::npos);
+    EXPECT_NE(updated.find("; tagged value trailing note"), std::string::npos);
+    EXPECT_NE(updated.find(":discriminant   authored::Existing"), std::string::npos);
+    EXPECT_NE(updated.find(":export-specifier TAGGED_API"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+
+    auto deletion{*document.tagged_union_schema(tagged)};
+    std::erase_if(deletion.alternatives,
+                  [](auto const& alternative) { return alternative.name == "value"; });
+    applied =
+        document.apply(ReplaceTaggedUnion{.declaration = tagged, .schema = std::move(deletion)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const deleted_tagged_position{
+        preview->front().updated.find("(tagged-union ExistingTagged")};
+    ASSERT_NE(deleted_tagged_position, std::string::npos);
+    EXPECT_EQ(preview->front().updated.find("(alternative value ", deleted_tagged_position),
+              std::string::npos);
+    EXPECT_NE(
+        preview->front().updated.find("; Keep the tagged union note.", deleted_tagged_position),
+        std::string::npos);
+    EXPECT_EQ(preview->front().updated.find("; Keep the tagged value alternative note.",
+                                            deleted_tagged_position),
+              std::string::npos);
+    EXPECT_EQ(
+        preview->front().updated.find("; tagged value trailing note", deleted_tagged_position),
+        std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(alternative small ", deleted_tagged_position),
+              std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    auto const restored_tagged_position{
+        preview->front().updated.find("(tagged-union ExistingTagged")};
+    EXPECT_NE(preview->front().updated.find("(alternative value ", restored_tagged_position),
+              std::string::npos);
+    ASSERT_TRUE(document.redo().value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_tagged{
+        declaration_id(reloaded, "authored_unions", "ExistingTagged", "authored")};
+    auto const* schema{reloaded.tagged_union_schema(reloaded_tagged)};
+    ASSERT_NE(schema, nullptr);
+    EXPECT_EQ(schema->export_specifier, "TAGGED_API");
+    ASSERT_EQ(schema->alternatives.size(), 1U);
+    EXPECT_EQ(schema->alternatives[0].name, "small");
+    EXPECT_EQ(schema->alternatives[0].tag, "One");
+    EXPECT_EQ(schema->alternatives[0].count, 3U);
 }
 
 TEST(EditableSchemaDocument, DeletesTaggedUnionThroughItsExactSourceRange) {

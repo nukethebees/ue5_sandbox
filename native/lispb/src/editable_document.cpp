@@ -1221,6 +1221,18 @@ auto render_union(codegen::UnionSchema const& schema) -> std::string {
     return output.str();
 }
 
+auto render_tagged_union_alternative(codegen::TaggedUnionAlternativeSchema const& alternative)
+    -> std::string {
+    std::ostringstream output;
+    output << "(alternative " << alternative.name << ' ' << render_type_ref(alternative.type)
+           << " :tag " << alternative.tag;
+    if (alternative.count.has_value()) {
+        output << " :count " << *alternative.count;
+    }
+    output << ')';
+    return output.str();
+}
+
 auto render_tagged_union(codegen::TaggedUnionSchema const& schema) -> std::string {
     std::ostringstream output;
     output << "(tagged-union " << schema.name << "\n    :discriminant "
@@ -1229,12 +1241,7 @@ auto render_tagged_union(codegen::TaggedUnionSchema const& schema) -> std::strin
         output << "\n    :export-specifier " << *schema.export_specifier;
     }
     for (auto const& alternative : schema.alternatives) {
-        output << "\n    (alternative " << alternative.name << ' '
-               << render_type_ref(alternative.type) << " :tag " << alternative.tag;
-        if (alternative.count.has_value()) {
-            output << " :count " << *alternative.count;
-        }
-        output << ')';
+        output << "\n    " << render_tagged_union_alternative(alternative);
     }
     output << ')';
     return output.str();
@@ -1393,16 +1400,10 @@ auto try_render_source_preserved_tagged_union(codegen::TaggedUnionSchema const& 
     std::vector<Form const*> alternatives;
     for (auto const& child : parsed->children) {
         if (child.head() == "alternative") {
+            if (child.children.size() < 3) {
+                return std::nullopt;
+            }
             alternatives.push_back(&child);
-        }
-    }
-    if (alternatives.size() != schema.alternatives.size()) {
-        return std::nullopt;
-    }
-    for (std::size_t index{}; index < alternatives.size(); ++index) {
-        if (alternatives[index]->children.size() < 3 ||
-            alternatives[index]->children[1].token.text != schema.alternatives[index].name) {
-            return std::nullopt;
         }
     }
 
@@ -1413,12 +1414,84 @@ auto try_render_source_preserved_tagged_union(codegen::TaggedUnionSchema const& 
     if (!patch_source_properties(*parsed, 1, properties, "    ", original, replacements)) {
         return std::nullopt;
     }
-    for (std::size_t index{}; index < alternatives.size(); ++index) {
-        auto const& alternative{schema.alternatives[index]};
-        if (!patch_source_form(alternatives[index]->children[2],
+
+    if (alternatives.empty()) {
+        return schema.alternatives.empty()
+                 ? apply_source_replacements(original, std::move(replacements))
+                 : std::nullopt;
+    }
+
+    auto const first_alternative_offset{alternatives.front()->token.span.offset};
+    for (auto const& child : parsed->children) {
+        if (child.token.span.offset > first_alternative_offset && child.head() != "alternative") {
+            return std::nullopt;
+        }
+    }
+
+    auto alternatives_begin{std::size_t{}};
+    for (auto const& child : parsed->children) {
+        if (child.token.span.offset >= first_alternative_offset) {
+            continue;
+        }
+        auto const child_end{source_form_line_end(child, original, first_alternative_offset)};
+        if (!child_end.has_value()) {
+            return std::nullopt;
+        }
+        alternatives_begin = (std::max)(alternatives_begin, *child_end);
+    }
+    if (alternatives_begin > first_alternative_offset) {
+        return std::nullopt;
+    }
+
+    struct SourceAlternative {
+        Form const* form{};
+        std::size_t begin{};
+        std::size_t end{};
+    };
+    std::map<std::string_view, SourceAlternative> source_by_name;
+    auto row_begin{alternatives_begin};
+    for (auto const* alternative : alternatives) {
+        auto const row_end{
+            source_form_line_end(*alternative, original, parsed->closing.span.offset)};
+        if (!row_end.has_value() || row_begin > alternative->token.span.offset ||
+            *row_end < alternative->closing.span.offset + 1) {
+            return std::nullopt;
+        }
+        if (!source_by_name
+                 .emplace(
+                     alternative->children[1].token.text,
+                     SourceAlternative{.form = alternative, .begin = row_begin, .end = *row_end})
+                 .second) {
+            return std::nullopt;
+        }
+        row_begin = *row_end;
+    }
+
+    auto const alternatives_end{row_begin};
+    auto rendered_alternatives{std::string{}};
+    auto append_row = [&](std::string row) {
+        auto const preceding_newline{rendered_alternatives.empty()
+                                         ? alternatives_begin > 0 &&
+                                               original[alternatives_begin - 1] == '\n'
+                                         : rendered_alternatives.back() == '\n'};
+        if (!preceding_newline && (row.empty() || row.front() != '\n')) {
+            rendered_alternatives += '\n';
+        }
+        rendered_alternatives += std::move(row);
+    };
+
+    for (auto const& alternative : schema.alternatives) {
+        auto const found{source_by_name.find(alternative.name)};
+        if (found == source_by_name.end()) {
+            append_row("    " + render_tagged_union_alternative(alternative));
+            continue;
+        }
+
+        std::vector<SourceReplacement> alternative_replacements;
+        if (!patch_source_form(found->second.form->children[2],
                                render_type_ref(alternative.type),
                                original,
-                               replacements)) {
+                               alternative_replacements)) {
             return std::nullopt;
         }
         auto const alternative_properties{std::array<SourceProperty, 2>{
@@ -1427,15 +1500,24 @@ auto try_render_source_preserved_tagged_union(codegen::TaggedUnionSchema const& 
                       alternative.count.has_value()
                           ? std::optional{std::to_string(*alternative.count)}
                           : std::nullopt}}};
-        if (!patch_source_properties(*alternatives[index],
+        if (!patch_source_properties(*found->second.form,
                                      2,
                                      alternative_properties,
                                      "      ",
                                      original,
-                                     replacements)) {
+                                     alternative_replacements)) {
             return std::nullopt;
         }
+        auto rendered{apply_source_replacements_to_range(
+            original, found->second.begin, found->second.end, std::move(alternative_replacements))};
+        if (!rendered.has_value()) {
+            return std::nullopt;
+        }
+        append_row(std::move(*rendered));
     }
+    replacements.push_back({.begin = alternatives_begin,
+                            .end = alternatives_end,
+                            .text = std::move(rendered_alternatives)});
     return apply_source_replacements(original, std::move(replacements));
 }
 
