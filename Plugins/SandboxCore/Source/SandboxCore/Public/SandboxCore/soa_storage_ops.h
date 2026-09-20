@@ -9,8 +9,6 @@
 #include <Containers/ArrayView.h>
 #include <Misc/AssertionMacros.h>
 
-#include <utility>
-
 namespace ml::soa_ops {
 
 template <typename View>

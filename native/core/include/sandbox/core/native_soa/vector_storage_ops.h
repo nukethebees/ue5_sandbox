@@ -19,6 +19,7 @@ struct ColumnVisitor {
 };
 }
 
+// This checks the outer SoA contract; each operation still requires its column API.
 template <typename Soa>
 concept VectorStorageSoa = requires(Soa& soa, Soa const& const_soa) {
     { const_soa.num() } -> std::convertible_to<std::int32_t>;

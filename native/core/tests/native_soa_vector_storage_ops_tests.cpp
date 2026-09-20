@@ -54,6 +54,9 @@ TEST(NativeSoaVectorStorageOps, MutationsKeepColumnsAligned) {
     EXPECT_GE(soa.ids.capacity(), 8);
     EXPECT_GE(soa.values.capacity(), 8);
 
+    vector_storage_ops::add_uninitialised(soa, 0);
+    EXPECT_EQ(soa.num(), 0);
+
     vector_storage_ops::add_uninitialised(soa, 3);
     EXPECT_EQ(soa.ids, (Vector<std::int32_t>{0, 0, 0}));
     EXPECT_EQ(soa.values, (Vector<float>{0.0f, 0.0f, 0.0f}));
@@ -82,6 +85,9 @@ TEST(NativeSoaVectorStorageOps, MutationsKeepColumnsAligned) {
         scratch_indices);
     EXPECT_EQ(soa.ids, (Vector<std::int32_t>{30, 20, 10}));
     expect_aligned(soa);
+
+    vector_storage_ops::remove_at_swap(soa, soa.num(), 0);
+    EXPECT_EQ(soa.ids, (Vector<std::int32_t>{30, 20, 10}));
 
     vector_storage_ops::remove_at_swap(soa, 1, 1);
     EXPECT_EQ(soa.ids, (Vector<std::int32_t>{30, 10}));
