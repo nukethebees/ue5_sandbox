@@ -43,6 +43,7 @@ TEST(CollisionGrid, ValidatesDimensionsCellSizeAndCellCount) {
     EXPECT_TRUE(collision::is_configured({{2, 3, 4}, Vector3f{{5000.0f, 5000.0f, 20000.0f}}}));
     EXPECT_FALSE(collision::is_configured({{0, 3, 4}, Vector3f{{5000.0f, 5000.0f, 20000.0f}}}));
     EXPECT_FALSE(collision::is_configured({{2, 3, 4}, Vector3f{{5000.0f, 0.0f, 20000.0f}}}));
+    EXPECT_FALSE(collision::is_configured({{2, 3, 4}, Vector3f{{5000.0f, -1.0f, 20000.0f}}}));
     EXPECT_FALSE(collision::is_configured(
         {{2, 3, 4}, Vector3f{{std::numeric_limits<float>::quiet_NaN(), 1.0f, 1.0f}}}));
     EXPECT_FALSE(collision::is_configured(

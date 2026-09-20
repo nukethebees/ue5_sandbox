@@ -14,6 +14,7 @@ target_sources(native-core PRIVATE
   include/sandbox/core/countdown_timers.h
   include/sandbox/core/math_types.h
   include/sandbox/core/native_soa/storage.h
+  include/sandbox/core/native_soa/vector_storage_ops.h
   include/sandbox/core/periodic_tick_countdown.h
   include/sandbox/core/tick_countdown.h
   include/sandbox/core/vector_normalization.h
@@ -69,6 +70,7 @@ target_sources(native-core-tests PRIVATE
   tests/lock_free_mpsc_queue_tests.cpp
   tests/loop_bounds_tests.cpp
   tests/monitored_lock_free_mpsc_queue_tests.cpp
+  tests/native_soa_vector_storage_ops_tests.cpp
   tests/projectile_intercept_tests.cpp
   tests/quantized_decimal_tests.cpp
   tests/rotation_tests.cpp

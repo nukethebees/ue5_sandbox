@@ -32,6 +32,25 @@ void render_arguments(std::ostringstream& out, std::span<RowParameter const> con
     }
 }
 
+void render_vector_storage_operations(std::ostringstream& out) {
+    out << "void reserve(size_type const count) { "
+           "ml::native_soa::vector_storage_ops::reserve(*this, count); }\n"
+        << "void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }\n"
+        << "void set_num(size_type const count) { "
+           "ml::native_soa::vector_storage_ops::set_num(*this, count); }\n"
+        << "void add_uninitialised(size_type const count) { "
+           "ml::native_soa::vector_storage_ops::add_uninitialised(*this, count); }\n"
+        << "void add_defaulted(size_type const count) { "
+           "ml::native_soa::vector_storage_ops::add_defaulted(*this, count); }\n"
+        << "void remove_at_swap(size_type const index, size_type const count) { "
+           "ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count); }\n"
+        << "void apply_permutation(std::span<size_type> const indices) { "
+           "ml::native_soa::vector_storage_ops::apply_permutation(*this, indices); }\n"
+        << "template <typename Compare> void sort(Compare&& compare, std::span<size_type> const "
+           "scratch_indices) { ml::native_soa::vector_storage_ops::sort("
+           "*this, std::forward<Compare>(compare), scratch_indices); }\n";
+}
+
 auto is_vector3f_schema(SoaSchema const& schema, std::map<std::string, CppType> const& types)
     -> bool {
     if (schema.members.size() != 3) {
@@ -83,7 +102,8 @@ auto lower_native_soa(SoaSchema const& schema,
     std::vector<TypeDependency> dependencies{
         {"address_cast", "sandbox/core/address_cast.h", {}},
         {"native_storage", "sandbox/core/native_soa/storage.h", {}},
-        {"soa_permutation", "sandbox/core/soa_permutation.h", {}},
+        {"native_vector_storage_ops", "sandbox/core/native_soa/vector_storage_ops.h", {}},
+        {"std::forward", "utility", {}},
     };
     if (vector3f_schema) {
         dependencies.push_back({"vector_soa_view", "sandbox/core/vector_soa_view.h", {}});
@@ -199,7 +219,7 @@ auto lower_native_soa(SoaSchema const& schema,
             }
             out << "}\n"
                 << "void validate_array_sizes() const { "
-                   "ml::native_soa::validate_vector_column_sizes(*this); }\n"
+                   "ml::native_soa::vector_storage_ops::validate_array_sizes(*this); }\n"
                 << "auto slice(size_type const offset, size_type const count) const -> "
                 << view_type
                 << " { ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() && "
@@ -292,19 +312,7 @@ auto lower_native_soa(SoaSchema const& schema,
     out << "}\n"
         << "void validate_array_sizes() const { get_const_view().validate_array_sizes(); }\n";
 
-    out << "void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }\n"
-        << "void reset() noexcept { ml::native_soa::ops::reset(*this); }\n"
-        << "void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }\n"
-        << "void add_uninitialised(size_type const count) { "
-           "ml::native_soa::ops::add_uninitialised(*this, count); }\n"
-        << "void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, "
-           "count); }\n"
-        << "void remove_at_swap(size_type const index, size_type const count) { "
-           "ml::native_soa::ops::remove_at_swap(*this, index, count); }\n"
-        << "void apply_permutation(std::span<size_type> const indices) { "
-           "ml::native_soa::ops::apply_permutation(*this, indices); }\n"
-        << "template <typename Compare> void sort(Compare&& compare, std::span<size_type> const "
-           "scratch_indices) { ml::native_soa::ops::sort(*this, compare, scratch_indices); }\n";
+    render_vector_storage_operations(out);
 
     {
         out << "void set(size_type const index";

@@ -11,7 +11,7 @@
 #include "ioj/sim/vectors3f.h"
 #include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/soa_permutation.h"
+#include "sandbox/core/native_soa/vector_storage_ops.h"
 
 #include <cstring>
 #include <memory>
@@ -35,7 +35,9 @@ struct LevelSpawnGroupsConstView {
         fn(offsets);
         fn(counts);
     }
-    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
+    void validate_array_sizes() const {
+        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    }
     auto slice(size_type const offset, size_type const count) const -> LevelSpawnGroupsConstView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -80,7 +82,9 @@ struct LevelSpawnGroupsView {
         fn(offsets);
         fn(counts);
     }
-    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
+    void validate_array_sizes() const {
+        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    }
     auto slice(size_type const offset, size_type const count) const -> LevelSpawnGroupsView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -140,22 +144,29 @@ struct LevelSpawnGroups {
         fn(counts);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
-    void reset() noexcept { ml::native_soa::ops::reset(*this); }
-    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::ops::add_uninitialised(*this, count);
+    void reserve(size_type const count) {
+        ml::native_soa::vector_storage_ops::reserve(*this, count);
     }
-    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
+    void set_num(size_type const count) {
+        ml::native_soa::vector_storage_ops::set_num(*this, count);
+    }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) {
+        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
+    }
     void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::ops::remove_at_swap(*this, index, count);
+        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
     }
     void apply_permutation(std::span<size_type> const indices) {
-        ml::native_soa::ops::apply_permutation(*this, indices);
+        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
     }
     template <typename Compare>
     void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
-        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+        ml::native_soa::vector_storage_ops::sort(
+            *this, std::forward<Compare>(compare), scratch_indices);
     }
     void set(size_type const index,
              ioj::sim::EntityType const new_types,
@@ -285,7 +296,9 @@ struct LevelCapitalSpawnEventsConstView {
         fn(initial_fighter_spawn_delays);
         fn(fighter_spawn_cooldowns);
     }
-    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
+    void validate_array_sizes() const {
+        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    }
     auto slice(size_type const offset, size_type const count) const
         -> LevelCapitalSpawnEventsConstView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
@@ -361,7 +374,9 @@ struct LevelCapitalSpawnEventsView {
         fn(initial_fighter_spawn_delays);
         fn(fighter_spawn_cooldowns);
     }
-    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
+    void validate_array_sizes() const {
+        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    }
     auto slice(size_type const offset, size_type const count) const -> LevelCapitalSpawnEventsView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -480,22 +495,29 @@ struct LevelCapitalSpawnEvents {
         fn(fighter_spawn_cooldowns);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
-    void reset() noexcept { ml::native_soa::ops::reset(*this); }
-    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::ops::add_uninitialised(*this, count);
+    void reserve(size_type const count) {
+        ml::native_soa::vector_storage_ops::reserve(*this, count);
     }
-    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
+    void set_num(size_type const count) {
+        ml::native_soa::vector_storage_ops::set_num(*this, count);
+    }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) {
+        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
+    }
     void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::ops::remove_at_swap(*this, index, count);
+        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
     }
     void apply_permutation(std::span<size_type> const indices) {
-        ml::native_soa::ops::apply_permutation(*this, indices);
+        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
     }
     template <typename Compare>
     void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
-        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+        ml::native_soa::vector_storage_ops::sort(
+            *this, std::forward<Compare>(compare), scratch_indices);
     }
     void set(size_type const index,
              std::int32_t const new_entity_indices,
@@ -1486,7 +1508,9 @@ struct LevelTurretSpawnEventsConstView {
         fn(healths);
         fn(laser_damages);
     }
-    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
+    void validate_array_sizes() const {
+        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    }
     auto slice(size_type const offset, size_type const count) const
         -> LevelTurretSpawnEventsConstView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
@@ -1552,7 +1576,9 @@ struct LevelTurretSpawnEventsView {
         fn(healths);
         fn(laser_damages);
     }
-    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
+    void validate_array_sizes() const {
+        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    }
     auto slice(size_type const offset, size_type const count) const -> LevelTurretSpawnEventsView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -1652,22 +1678,29 @@ struct LevelTurretSpawnEvents {
         fn(laser_damages);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
-    void reset() noexcept { ml::native_soa::ops::reset(*this); }
-    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::ops::add_uninitialised(*this, count);
+    void reserve(size_type const count) {
+        ml::native_soa::vector_storage_ops::reserve(*this, count);
     }
-    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
+    void set_num(size_type const count) {
+        ml::native_soa::vector_storage_ops::set_num(*this, count);
+    }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) {
+        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
+    }
     void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::ops::remove_at_swap(*this, index, count);
+        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
     }
     void apply_permutation(std::span<size_type> const indices) {
-        ml::native_soa::ops::apply_permutation(*this, indices);
+        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
     }
     template <typename Compare>
     void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
-        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+        ml::native_soa::vector_storage_ops::sort(
+            *this, std::forward<Compare>(compare), scratch_indices);
     }
     void set(size_type const index,
              std::int32_t const new_entity_indices,
@@ -2522,7 +2555,9 @@ struct LevelSpinnerSpawnEventsConstView {
         fn(yaws);
         fn(initial_fire_point_indices);
     }
-    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
+    void validate_array_sizes() const {
+        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    }
     auto slice(size_type const offset, size_type const count) const
         -> LevelSpinnerSpawnEventsConstView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
@@ -2578,7 +2613,9 @@ struct LevelSpinnerSpawnEventsView {
         fn(yaws);
         fn(initial_fire_point_indices);
     }
-    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
+    void validate_array_sizes() const {
+        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    }
     auto slice(size_type const offset, size_type const count) const -> LevelSpinnerSpawnEventsView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -2659,22 +2696,29 @@ struct LevelSpinnerSpawnEvents {
         fn(initial_fire_point_indices);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
-    void reset() noexcept { ml::native_soa::ops::reset(*this); }
-    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::ops::add_uninitialised(*this, count);
+    void reserve(size_type const count) {
+        ml::native_soa::vector_storage_ops::reserve(*this, count);
     }
-    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
+    void set_num(size_type const count) {
+        ml::native_soa::vector_storage_ops::set_num(*this, count);
+    }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) {
+        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
+    }
     void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::ops::remove_at_swap(*this, index, count);
+        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
     }
     void apply_permutation(std::span<size_type> const indices) {
-        ml::native_soa::ops::apply_permutation(*this, indices);
+        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
     }
     template <typename Compare>
     void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
-        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+        ml::native_soa::vector_storage_ops::sort(
+            *this, std::forward<Compare>(compare), scratch_indices);
     }
     void set(size_type const index,
              std::int32_t const new_entity_indices,
@@ -3327,7 +3371,9 @@ struct LevelMissionEventGroupsConstView {
         fn(offsets);
         fn(counts);
     }
-    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
+    void validate_array_sizes() const {
+        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    }
     auto slice(size_type const offset, size_type const count) const
         -> LevelMissionEventGroupsConstView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
@@ -3375,7 +3421,9 @@ struct LevelMissionEventGroupsView {
         fn(offsets);
         fn(counts);
     }
-    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
+    void validate_array_sizes() const {
+        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    }
     auto slice(size_type const offset, size_type const count) const -> LevelMissionEventGroupsView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -3438,22 +3486,29 @@ struct LevelMissionEventGroups {
         fn(counts);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
-    void reset() noexcept { ml::native_soa::ops::reset(*this); }
-    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::ops::add_uninitialised(*this, count);
+    void reserve(size_type const count) {
+        ml::native_soa::vector_storage_ops::reserve(*this, count);
     }
-    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
+    void set_num(size_type const count) {
+        ml::native_soa::vector_storage_ops::set_num(*this, count);
+    }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) {
+        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
+    }
     void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::ops::remove_at_swap(*this, index, count);
+        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
     }
     void apply_permutation(std::span<size_type> const indices) {
-        ml::native_soa::ops::apply_permutation(*this, indices);
+        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
     }
     template <typename Compare>
     void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
-        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+        ml::native_soa::vector_storage_ops::sort(
+            *this, std::forward<Compare>(compare), scratch_indices);
     }
     void set(size_type const index,
              LevelMissionEventType const new_types,

@@ -431,7 +431,7 @@ TEST(Lowering, AppliesEveryStorageOperationToEveryMember) {
     }
 }
 
-TEST(Lowering, UsesSharedNestedRemovalOperation) {
+TEST(Lowering, PreservesCustomNestedRemovalOperation) {
     CppType registered{"FRegistered", "Project/Registered.h"};
     registered.member_operations.emplace(TypeOperation::remove_at_swap, "erase_swap");
     auto schema{SoaSchema{
@@ -449,13 +449,22 @@ TEST(Lowering, UsesSharedNestedRemovalOperation) {
         render_soa(std::move(schema),
                    {{"registered", std::move(registered)}, {"generic", CppType{"FGeneric"}}})};
 
-    EXPECT_NE(
-        output.header.find("ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);"),
-        std::string::npos);
-    EXPECT_EQ(occurrences(output.header, "#include \"SandboxCore/soa_storage_ops.h\""), 1);
+    auto const removal{output.header.find("void remove_at_swap(")};
+    ASSERT_NE(removal, std::string::npos);
+    auto const validation{output.header.find("validate_array_sizes();", removal)};
+    auto const first_member{
+        output.header.find("values.RemoveAtSwap(index, count, allow_shrinking);", removal)};
+    ASSERT_NE(validation, std::string::npos);
+    ASSERT_NE(first_member, std::string::npos);
+    EXPECT_LT(validation, first_member);
+    EXPECT_NE(output.header.find("registered.erase_swap(index, count, allow_shrinking);"),
+              std::string::npos);
+    EXPECT_NE(output.header.find("ml::remove_at_swap(generic, index, count, allow_shrinking);"),
+              std::string::npos);
+    EXPECT_EQ(occurrences(output.header, "#include \"SandboxCore/container_ops.h\""), 1);
 }
 
-TEST(Lowering, SharedRemovalDoesNotRequireDirectContainerHelpers) {
+TEST(Lowering, CustomRemovalDoesNotRequireGenericContainerHelpers) {
     CppType registered{"FRegistered", "Project/Registered.h"};
     registered.member_operations.emplace(TypeOperation::remove_at_swap, "erase_swap");
     auto schema{SoaSchema{
@@ -465,8 +474,25 @@ TEST(Lowering, SharedRemovalDoesNotRequireDirectContainerHelpers) {
     }};
     auto const output{render_soa(std::move(schema), {{"registered", std::move(registered)}})};
     EXPECT_NE(output.header.find("#include \"Project/Registered.h\""), std::string::npos);
-    EXPECT_NE(output.header.find("SandboxCore/soa_storage_ops.h"), std::string::npos);
+    EXPECT_NE(output.header.find("registered.erase_swap(index, count, allow_shrinking);"),
+              std::string::npos);
     EXPECT_EQ(output.header.find("SandboxCore/container_ops.h"), std::string::npos);
+}
+
+TEST(Lowering, UsesSharedConventionalNestedRemovalOperation) {
+    CppType nested{"FNested", "Project/Nested.h"};
+    nested.member_operations.emplace(TypeOperation::remove_at_swap, "remove_at_swap");
+    auto schema{SoaSchema{
+        .name = "FData",
+        .members = {SoaMemberSchema{"nested", SoaMemberKind::nested, TypeRef{"@nested"}}},
+        .operations = {StorageOperation::remove_at_swap},
+    }};
+    auto const output{render_soa(std::move(schema), {{"nested", std::move(nested)}})};
+
+    EXPECT_NE(
+        output.header.find("ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);"),
+        std::string::npos);
+    EXPECT_EQ(occurrences(output.header, "#include \"SandboxCore/soa_storage_ops.h\""), 1);
 }
 
 TEST(Lowering, SourceOnlyStorageHelpersDoNotLeakIntoHeader) {

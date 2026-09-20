@@ -6,7 +6,9 @@
 #include "ioj/sim/entity_unique_id.h"
 #include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/soa_permutation.h"
+#include "sandbox/core/native_soa/vector_storage_ops.h"
+
+#include <utility>
 
 namespace ioj::sim::collision {
 struct EntityEntityOverlapsView;
@@ -24,7 +26,9 @@ struct EntityEntityOverlapsConstView {
         fn(first_entities);
         fn(second_entities);
     }
-    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
+    void validate_array_sizes() const {
+        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    }
     auto slice(size_type const offset, size_type const count) const
         -> EntityEntityOverlapsConstView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
@@ -70,7 +74,9 @@ struct EntityEntityOverlapsView {
         fn(first_entities);
         fn(second_entities);
     }
-    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
+    void validate_array_sizes() const {
+        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    }
     auto slice(size_type const offset, size_type const count) const -> EntityEntityOverlapsView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -125,22 +131,29 @@ struct EntityEntityOverlaps {
         fn(second_entities);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
-    void reset() noexcept { ml::native_soa::ops::reset(*this); }
-    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::ops::add_uninitialised(*this, count);
+    void reserve(size_type const count) {
+        ml::native_soa::vector_storage_ops::reserve(*this, count);
     }
-    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
+    void set_num(size_type const count) {
+        ml::native_soa::vector_storage_ops::set_num(*this, count);
+    }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) {
+        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
+    }
     void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::ops::remove_at_swap(*this, index, count);
+        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
     }
     void apply_permutation(std::span<size_type> const indices) {
-        ml::native_soa::ops::apply_permutation(*this, indices);
+        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
     }
     template <typename Compare>
     void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
-        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+        ml::native_soa::vector_storage_ops::sort(
+            *this, std::forward<Compare>(compare), scratch_indices);
     }
     void set(size_type const index,
              EntityUniqueId const new_first_entities,
@@ -247,7 +260,9 @@ struct EntityStaticOverlapsConstView {
         fn(entities);
         fn(static_geometry_indices);
     }
-    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
+    void validate_array_sizes() const {
+        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    }
     auto slice(size_type const offset, size_type const count) const
         -> EntityStaticOverlapsConstView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
@@ -292,7 +307,9 @@ struct EntityStaticOverlapsView {
         fn(entities);
         fn(static_geometry_indices);
     }
-    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
+    void validate_array_sizes() const {
+        ml::native_soa::vector_storage_ops::validate_array_sizes(*this);
+    }
     auto slice(size_type const offset, size_type const count) const -> EntityStaticOverlapsView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -346,22 +363,29 @@ struct EntityStaticOverlaps {
         fn(static_geometry_indices);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
-    void reset() noexcept { ml::native_soa::ops::reset(*this); }
-    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::ops::add_uninitialised(*this, count);
+    void reserve(size_type const count) {
+        ml::native_soa::vector_storage_ops::reserve(*this, count);
     }
-    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
+    void set_num(size_type const count) {
+        ml::native_soa::vector_storage_ops::set_num(*this, count);
+    }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) {
+        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
+    }
     void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::ops::remove_at_swap(*this, index, count);
+        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
     }
     void apply_permutation(std::span<size_type> const indices) {
-        ml::native_soa::ops::apply_permutation(*this, indices);
+        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
     }
     template <typename Compare>
     void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
-        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+        ml::native_soa::vector_storage_ops::sort(
+            *this, std::forward<Compare>(compare), scratch_indices);
     }
     void set(size_type const index,
              EntityUniqueId const new_entities,

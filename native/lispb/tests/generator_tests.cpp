@@ -128,6 +128,12 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
     EXPECT_NE(native_header.find("Last = static_cast<std::uint8_t>(Matrix) + (2) * (3)"),
               std::string::npos);
     EXPECT_NE(native_header.find("ml::native_soa::Vector<FFieldMask> masks;"), std::string::npos);
+    EXPECT_NE(native_header.find("sandbox/core/native_soa/vector_storage_ops.h"),
+              std::string::npos);
+    EXPECT_NE(native_header.find("#include <utility>"), std::string::npos);
+    EXPECT_NE(native_header.find("ml::native_soa::vector_storage_ops::reserve(*this, count);"),
+              std::string::npos);
+    EXPECT_NE(native_header.find("std::forward<Compare>(compare)"), std::string::npos);
     EXPECT_NE(native_header.find("std::int32_t const row_index"), std::string::npos);
     EXPECT_NE(native_header.find("std::int32_t const column_index"), std::string::npos);
     EXPECT_EQ(native_header.find("CoreMinimal.h"), std::string::npos);

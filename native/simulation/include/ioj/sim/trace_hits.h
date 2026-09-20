@@ -3,10 +3,11 @@
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/vector_types.h"
 #include "ioj/sim/vectors3f.h"
-#include "sandbox/core/native_soa/storage.h"
+#include "sandbox/core/native_soa/vector_storage_ops.h"
 
 #include <cstdint>
 #include <span>
+#include <utility>
 
 namespace ioj::sim {
 struct LineTraceResult {
@@ -128,22 +129,29 @@ struct TraceHits {
     [[nodiscard]] auto num() const noexcept -> size_type { return locations.num(); }
     [[nodiscard]] auto is_empty() const noexcept -> bool { return num() == 0; }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
-    void reset() noexcept { ml::native_soa::ops::reset(*this); }
-    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::ops::add_uninitialised(*this, count);
+    void reserve(size_type const count) {
+        ml::native_soa::vector_storage_ops::reserve(*this, count);
     }
-    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
+    void set_num(size_type const count) {
+        ml::native_soa::vector_storage_ops::set_num(*this, count);
+    }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) {
+        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
+    }
     void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::ops::remove_at_swap(*this, index, count);
+        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
     }
     void apply_permutation(std::span<size_type> const indices) {
-        ml::native_soa::ops::apply_permutation(*this, indices);
+        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
     }
     template <typename Compare>
     void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
-        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+        ml::native_soa::vector_storage_ops::sort(
+            *this, std::forward<Compare>(compare), scratch_indices);
     }
     template <typename Fn>
     void each_column(Fn&& fn) {

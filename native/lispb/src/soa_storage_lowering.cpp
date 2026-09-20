@@ -73,6 +73,32 @@ auto storage_operation_body(std::string const& operation, std::vector<std::strin
         raw("ml::soa_ops::" + operation + "(" + join(arguments, ", ") + ");", {soa_storage_ops})};
 }
 
+auto has_custom_remove_at_swap(std::vector<ResolvedMember> const& members) -> bool {
+    return std::ranges::any_of(members, [](ResolvedMember const& member) {
+        auto const operation{member.container_type.operation(TypeOperation::remove_at_swap)};
+        return operation.has_value() && *operation != "RemoveAtSwap" &&
+             *operation != "remove_at_swap";
+    });
+}
+
+auto explicit_remove_at_swap_body(std::vector<ResolvedMember> const& members) -> Nodes {
+    NodeListBuilder calls;
+    calls.add(ExpressionStmt{call(named("validate_array_sizes"))});
+    for (auto const& member : members) {
+        auto const operation{member.container_type.operation(TypeOperation::remove_at_swap)};
+        auto const invocation{operation.has_value()
+                                  ? call(member_access(named(member.name), *operation),
+                                         {named("index"), named("count"), named("allow_shrinking")})
+                                  : call(container_function("ml::remove_at_swap"),
+                                         {named(member.name),
+                                          named("index"),
+                                          named("count"),
+                                          named("allow_shrinking")})};
+        calls.add(ExpressionStmt{invocation});
+    }
+    return calls.build();
+}
+
 } // namespace
 
 auto soa_function_spec(FunctionSchema const& schema, std::map<std::string, CppType> const& types)
@@ -202,6 +228,10 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
         });
     }
     if (contains(StorageOperation::remove_at_swap)) {
+        auto body{
+            has_custom_remove_at_swap(members)
+                ? explicit_remove_at_swap_body(members)
+                : storage_operation_body("remove_at_swap", {"index", "count", "allow_shrinking"})};
         result.push_back(FunctionSpec{
             .name = "remove_at_swap",
             .return_type = "void",
@@ -209,7 +239,7 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
                            FunctionParameter{"int32 const", "count"},
                            FunctionParameter{CppType{"EAllowShrinking const", {allow_shrinking}},
                                              "allow_shrinking"}},
-            .body = storage_operation_body("remove_at_swap", {"index", "count", "allow_shrinking"}),
+            .body = std::move(body),
             .is_inline = true,
         });
     }

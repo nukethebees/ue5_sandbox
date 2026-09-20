@@ -41,6 +41,7 @@ void remove_at_swap(Soa& value,
                     int32 const index,
                     int32 const count,
                     EAllowShrinking const allow_shrinking) {
+    value.validate_array_sizes();
     value.apply_arrays([=](auto&... columns) {
         (ml::remove_at_swap(columns, index, count, allow_shrinking), ...);
     });

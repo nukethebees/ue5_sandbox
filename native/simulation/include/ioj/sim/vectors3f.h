@@ -6,8 +6,10 @@
 #include "ioj/sim/vector_types.h"
 #include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/soa_permutation.h"
+#include "sandbox/core/native_soa/vector_storage_ops.h"
 #include "sandbox/core/vector_soa_view.h"
+
+#include <utility>
 
 namespace ioj::sim {
 using Vectors3fView = ml::Vector3fSoAView;
@@ -38,22 +40,29 @@ struct Vectors3f {
         fn(zs);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
-    void reset() noexcept { ml::native_soa::ops::reset(*this); }
-    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
-    void add_uninitialised(size_type const count) {
-        ml::native_soa::ops::add_uninitialised(*this, count);
+    void reserve(size_type const count) {
+        ml::native_soa::vector_storage_ops::reserve(*this, count);
     }
-    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void reset() noexcept { ml::native_soa::vector_storage_ops::reset(*this); }
+    void set_num(size_type const count) {
+        ml::native_soa::vector_storage_ops::set_num(*this, count);
+    }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::vector_storage_ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) {
+        ml::native_soa::vector_storage_ops::add_defaulted(*this, count);
+    }
     void remove_at_swap(size_type const index, size_type const count) {
-        ml::native_soa::ops::remove_at_swap(*this, index, count);
+        ml::native_soa::vector_storage_ops::remove_at_swap(*this, index, count);
     }
     void apply_permutation(std::span<size_type> const indices) {
-        ml::native_soa::ops::apply_permutation(*this, indices);
+        ml::native_soa::vector_storage_ops::apply_permutation(*this, indices);
     }
     template <typename Compare>
     void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
-        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+        ml::native_soa::vector_storage_ops::sort(
+            *this, std::forward<Compare>(compare), scratch_indices);
     }
     void set(size_type const index, float const new_xs, float const new_ys, float const new_zs) {
         get_view().set(index, new_xs, new_ys, new_zs);
