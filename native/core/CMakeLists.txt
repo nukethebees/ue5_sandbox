@@ -6,6 +6,7 @@ endif()
 
 add_library(native-core STATIC)
 target_sources(native-core PRIVATE
+  include/sandbox/core/container_ops.h
   include/sandbox/core/monotonic_clock.h
   include/sandbox/core/speed_response.h
   include/sandbox/core/diagnostics.h

@@ -1,3 +1,4 @@
+#include <sandbox/core/container_ops.h>
 #include <sandbox/core/fixed_array.h>
 #include <sandbox/core/frame_array.h>
 #include <sandbox/core/frame_memory_resource.h>
@@ -98,5 +99,13 @@ TEST(NativeCorePermutation, AppliesCyclesAndRestoresIndices) {
 
     EXPECT_EQ(values, (std::vector<std::string>{"two", "zero", "three", "one"}));
     EXPECT_EQ(indices, original);
+}
+
+TEST(NativeCoreContainerOps, RemovesRangeByMovingTailIntoRemovedRange) {
+    std::vector<int> values{0, 1, 2, 3, 4, 5};
+
+    ml::remove_at_swap(values, 1, 2);
+
+    EXPECT_EQ(values, (std::vector<int>{0, 4, 5, 3}));
 }
 }

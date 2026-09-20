@@ -1,5 +1,6 @@
 #pragma once
 
+#include "sandbox/core/container_ops.h"
 #include "sandbox/core/countdown.h"
 #include "sandbox/core/soa_permutation.h"
 
@@ -137,21 +138,7 @@ class TickCountdown {
     void add_uninitialised(size_type const count) { add_zeroed(count); }
 
     void remove_at_swap(size_type const index, size_type const count) {
-        assert(index >= 0);
-        assert(count >= 0);
-        assert(static_cast<std::size_t>(index) <= counters_.size());
-        assert(static_cast<std::size_t>(count) <=
-               counters_.size() - static_cast<std::size_t>(index));
-
-        auto const old_size{counters_.size()};
-        auto const tail{old_size - static_cast<std::size_t>(index) -
-                        static_cast<std::size_t>(count)};
-        auto const moved{std::min(tail, static_cast<std::size_t>(count))};
-        auto const source{old_size - moved};
-        for (std::size_t offset{}; offset < moved; ++offset) {
-            counters_[static_cast<std::size_t>(index) + offset] = counters_[source + offset];
-        }
-        counters_.resize(old_size - static_cast<std::size_t>(count));
+        ml::remove_at_swap(counters_, index, count);
     }
 
     void set_num(size_type const count) {

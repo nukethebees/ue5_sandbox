@@ -1,5 +1,6 @@
 #pragma once
 
+#include "sandbox/core/container_ops.h"
 #include "sandbox/core/countdown.h"
 #include "sandbox/core/soa_permutation.h"
 
@@ -142,8 +143,8 @@ class PeriodicTickCountdown {
     }
 
     void remove_at_swap(size_type const index, size_type const count) {
-        remove_column_at_swap(remaining_ticks_, index, count);
-        remove_column_at_swap(periods_, index, count);
+        ml::remove_at_swap(remaining_ticks_, index, count);
+        ml::remove_at_swap(periods_, index, count);
     }
 
     void reserve(size_type const count) {
@@ -215,25 +216,6 @@ class PeriodicTickCountdown {
         return {remaining_ticks(), periods()};
     }
   private:
-    static void remove_column_at_swap(std::vector<counter_type>& values,
-                                      size_type const index,
-                                      size_type const count) {
-        assert(index >= 0);
-        assert(count >= 0);
-        assert(static_cast<std::size_t>(index) <= values.size());
-        assert(static_cast<std::size_t>(count) <= values.size() - static_cast<std::size_t>(index));
-
-        auto const old_size{values.size()};
-        auto const tail{old_size - static_cast<std::size_t>(index) -
-                        static_cast<std::size_t>(count)};
-        auto const moved{std::min(tail, static_cast<std::size_t>(count))};
-        auto const source{old_size - moved};
-        for (std::size_t offset{}; offset < moved; ++offset) {
-            values[static_cast<std::size_t>(index) + offset] = values[source + offset];
-        }
-        values.resize(old_size - static_cast<std::size_t>(count));
-    }
-
     [[nodiscard]] auto to_index(size_type const index) const noexcept -> std::size_t {
         assert(index >= 0);
         assert(static_cast<std::size_t>(index) < remaining_ticks_.size());

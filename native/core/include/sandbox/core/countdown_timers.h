@@ -1,5 +1,6 @@
 #pragma once
 
+#include "sandbox/core/container_ops.h"
 #include "sandbox/core/countdown.h"
 #include "sandbox/core/soa_permutation.h"
 
@@ -46,22 +47,7 @@ class CountdownTimers {
     }
 
     void remove_at_swap(size_type const index, size_type const count) {
-        assert(index >= 0);
-        assert(count >= 0);
-        assert(static_cast<std::size_t>(index) <= remaining_times_.size());
-        assert(static_cast<std::size_t>(count) <=
-               remaining_times_.size() - static_cast<std::size_t>(index));
-
-        auto const old_size{remaining_times_.size()};
-        auto const tail{old_size - static_cast<std::size_t>(index) -
-                        static_cast<std::size_t>(count)};
-        auto const moved{std::min(tail, static_cast<std::size_t>(count))};
-        auto const source{old_size - moved};
-        for (std::size_t offset{}; offset < moved; ++offset) {
-            remaining_times_[static_cast<std::size_t>(index) + offset] =
-                remaining_times_[source + offset];
-        }
-        remaining_times_.resize(old_size - static_cast<std::size_t>(count));
+        ml::remove_at_swap(remaining_times_, index, count);
     }
 
     void copy_element(size_type const destination,
@@ -224,8 +210,8 @@ class PeriodicCountdownTimers {
     }
 
     void remove_at_swap(size_type const index, size_type const count) {
-        remove_column_at_swap(remaining_times_, index, count);
-        remove_column_at_swap(periods_, index, count);
+        ml::remove_at_swap(remaining_times_, index, count);
+        ml::remove_at_swap(periods_, index, count);
     }
 
     void reserve(size_type const count) {
@@ -288,25 +274,6 @@ class PeriodicCountdownTimers {
         return {periods_.data(), periods_.size()};
     }
   private:
-    static void remove_column_at_swap(std::vector<float>& values,
-                                      size_type const index,
-                                      size_type const count) {
-        assert(index >= 0);
-        assert(count >= 0);
-        assert(static_cast<std::size_t>(index) <= values.size());
-        assert(static_cast<std::size_t>(count) <= values.size() - static_cast<std::size_t>(index));
-
-        auto const old_size{values.size()};
-        auto const tail{old_size - static_cast<std::size_t>(index) -
-                        static_cast<std::size_t>(count)};
-        auto const moved{std::min(tail, static_cast<std::size_t>(count))};
-        auto const source{old_size - moved};
-        for (std::size_t offset{}; offset < moved; ++offset) {
-            values[static_cast<std::size_t>(index) + offset] = values[source + offset];
-        }
-        values.resize(old_size - static_cast<std::size_t>(count));
-    }
-
     [[nodiscard]] auto to_index(size_type const index) const noexcept -> std::size_t {
         assert(index >= 0);
         assert(static_cast<std::size_t>(index) < remaining_times_.size());
