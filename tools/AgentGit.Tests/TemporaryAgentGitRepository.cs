@@ -122,6 +122,19 @@ internal sealed class TemporaryAgentGitRepository : IDisposable
 
     public async Task<ApplicationResult> RunAgentGitAsync(string working_directory, params string[] arguments)
     {
+        return await RunAgentGitAsync(
+            working_directory,
+            new ProcessRunner(),
+            CancellationToken.None,
+            arguments);
+    }
+
+    public async Task<ApplicationResult> RunAgentGitAsync(
+        string working_directory,
+        IProcessRunner process_runner,
+        CancellationToken cancellation_token,
+        params string[] arguments)
+    {
         if (!CommandLine.TryParse(arguments, out var request, out var parse_error))
         {
             throw new AssertFailedException($"Test command did not parse: {parse_error}");
@@ -129,7 +142,7 @@ internal sealed class TemporaryAgentGitRepository : IDisposable
 
         var output = new StringWriter();
         var error = new StringWriter();
-        var git = new GitClient(Trust, new ProcessRunner());
+        var git = new GitClient(Trust, process_runner);
         var discovery = new RepositoryDiscovery(git);
         var application = new AgentGitApplication(
             Trust,
@@ -138,7 +151,7 @@ internal sealed class TemporaryAgentGitRepository : IDisposable
             new OperationExecutor(git, discovery),
             output,
             error);
-        var exit_code = await application.RunAsync(request!, working_directory);
+        var exit_code = await application.RunAsync(request!, working_directory, cancellation_token);
         return new ApplicationResult(exit_code, output.ToString(), error.ToString());
     }
 
