@@ -186,10 +186,12 @@ struct FighterOrderQueue {
              FighterOrder const new_orders,
              FighterTask const new_tasks,
              EntityUniqueId const new_targets) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index, new_entity_ids, new_orders, new_tasks, new_targets);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            entity_ids.emplace_back(new_entity_ids);
+            orders.emplace_back(new_orders);
+            tasks.emplace_back(new_tasks);
+            targets.emplace_back(new_targets);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -222,11 +224,13 @@ struct FighterOrderQueue {
             ml::native_soa::require(address < begin ||
                                     address >= begin + targets.size() * sizeof(EntityUniqueId));
         }
-        entity_ids.insert(
-            entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
-        orders.insert(orders.end(), source.orders.data(), source.orders.data() + count);
-        tasks.insert(tasks.end(), source.tasks.data(), source.tasks.data() + count);
-        targets.insert(targets.end(), source.targets.data(), source.targets.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            entity_ids.insert(
+                entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
+            orders.insert(orders.end(), source.orders.data(), source.orders.data() + count);
+            tasks.insert(tasks.end(), source.tasks.data(), source.tasks.data() + count);
+            targets.insert(targets.end(), source.targets.data(), source.targets.data() + count);
+        });
     }
     auto get_view() -> View {
         return {

@@ -182,10 +182,11 @@ struct DirectDamageEvents {
     auto add(EntityUniqueId const new_damaged_entities,
              std::int32_t const new_damage_amounts,
              EntityUniqueId const new_instigators) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index, new_damaged_entities, new_damage_amounts, new_instigators);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            damaged_entities.emplace_back(new_damaged_entities);
+            damage_amounts.emplace_back(new_damage_amounts);
+            instigators.emplace_back(new_instigators);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -213,14 +214,16 @@ struct DirectDamageEvents {
             ml::native_soa::require(address < begin ||
                                     address >= begin + instigators.size() * sizeof(EntityUniqueId));
         }
-        damaged_entities.insert(damaged_entities.end(),
-                                source.damaged_entities.data(),
-                                source.damaged_entities.data() + count);
-        damage_amounts.insert(damage_amounts.end(),
-                              source.damage_amounts.data(),
-                              source.damage_amounts.data() + count);
-        instigators.insert(
-            instigators.end(), source.instigators.data(), source.instigators.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            damaged_entities.insert(damaged_entities.end(),
+                                    source.damaged_entities.data(),
+                                    source.damaged_entities.data() + count);
+            damage_amounts.insert(damage_amounts.end(),
+                                  source.damage_amounts.data(),
+                                  source.damage_amounts.data() + count);
+            instigators.insert(
+                instigators.end(), source.instigators.data(), source.instigators.data() + count);
+        });
     }
     auto get_view() -> View {
         return {

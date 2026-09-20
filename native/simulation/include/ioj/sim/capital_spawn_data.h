@@ -283,21 +283,19 @@ struct CapitalSpawnData {
              Health const new_healths,
              float const new_initial_spawn_delays,
              float const new_spawn_cooldowns) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index,
-            new_target_ids,
-            new_locations_xs,
-            new_locations_ys,
-            new_locations_zs,
-            new_rotations_pitches,
-            new_rotations_yaws,
-            new_rotations_rolls,
-            new_teams,
-            new_healths,
-            new_initial_spawn_delays,
-            new_spawn_cooldowns);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            target_ids.emplace_back(new_target_ids);
+            locations.xs.emplace_back(new_locations_xs);
+            locations.ys.emplace_back(new_locations_ys);
+            locations.zs.emplace_back(new_locations_zs);
+            rotations.pitches.emplace_back(new_rotations_pitches);
+            rotations.yaws.emplace_back(new_rotations_yaws);
+            rotations.rolls.emplace_back(new_rotations_rolls);
+            teams.emplace_back(new_teams);
+            healths.emplace_back(new_healths);
+            initial_spawn_delays.emplace_back(new_initial_spawn_delays);
+            spawn_cooldowns.emplace_back(new_spawn_cooldowns);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -372,28 +370,33 @@ struct CapitalSpawnData {
             ml::native_soa::require(address < begin ||
                                     address >= begin + spawn_cooldowns.size() * sizeof(float));
         }
-        target_ids.insert(
-            target_ids.end(), source.target_ids.data(), source.target_ids.data() + count);
-        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
-        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
-        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
-        rotations.pitches.insert(rotations.pitches.end(),
-                                 source.rotations.pitches.data(),
-                                 source.rotations.pitches.data() + count);
-        rotations.yaws.insert(rotations.yaws.end(),
-                              source.rotations.yaws.data(),
-                              source.rotations.yaws.data() + count);
-        rotations.rolls.insert(rotations.rolls.end(),
-                               source.rotations.rolls.data(),
-                               source.rotations.rolls.data() + count);
-        teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
-        healths.insert(healths.end(), source.healths.data(), source.healths.data() + count);
-        initial_spawn_delays.insert(initial_spawn_delays.end(),
-                                    source.initial_spawn_delays.data(),
-                                    source.initial_spawn_delays.data() + count);
-        spawn_cooldowns.insert(spawn_cooldowns.end(),
-                               source.spawn_cooldowns.data(),
-                               source.spawn_cooldowns.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            target_ids.insert(
+                target_ids.end(), source.target_ids.data(), source.target_ids.data() + count);
+            locations.xs.insert(
+                locations.xs.end(), source.locations.xs, source.locations.xs + count);
+            locations.ys.insert(
+                locations.ys.end(), source.locations.ys, source.locations.ys + count);
+            locations.zs.insert(
+                locations.zs.end(), source.locations.zs, source.locations.zs + count);
+            rotations.pitches.insert(rotations.pitches.end(),
+                                     source.rotations.pitches.data(),
+                                     source.rotations.pitches.data() + count);
+            rotations.yaws.insert(rotations.yaws.end(),
+                                  source.rotations.yaws.data(),
+                                  source.rotations.yaws.data() + count);
+            rotations.rolls.insert(rotations.rolls.end(),
+                                   source.rotations.rolls.data(),
+                                   source.rotations.rolls.data() + count);
+            teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
+            healths.insert(healths.end(), source.healths.data(), source.healths.data() + count);
+            initial_spawn_delays.insert(initial_spawn_delays.end(),
+                                        source.initial_spawn_delays.data(),
+                                        source.initial_spawn_delays.data() + count);
+            spawn_cooldowns.insert(spawn_cooldowns.end(),
+                                   source.spawn_cooldowns.data(),
+                                   source.spawn_cooldowns.data() + count);
+        });
     }
     auto get_view() -> View {
         return {

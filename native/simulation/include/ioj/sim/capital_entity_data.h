@@ -320,23 +320,21 @@ struct CapitalEntityData {
              HealthIndex const new_health_indices,
              IndexSpan const new_fighter_id_spans,
              EntityUniqueId const new_target_ids) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index,
-            new_entity_ids,
-            new_locations_xs,
-            new_locations_ys,
-            new_locations_zs,
-            new_rotations_pitches,
-            new_rotations_yaws,
-            new_rotations_rolls,
-            new_fighter_spawn_timers,
-            new_fighter_spawn_cooldowns,
-            new_teams,
-            new_health_indices,
-            new_fighter_id_spans,
-            new_target_ids);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            entity_ids.emplace_back(new_entity_ids);
+            locations.xs.emplace_back(new_locations_xs);
+            locations.ys.emplace_back(new_locations_ys);
+            locations.zs.emplace_back(new_locations_zs);
+            rotations.pitches.emplace_back(new_rotations_pitches);
+            rotations.yaws.emplace_back(new_rotations_yaws);
+            rotations.rolls.emplace_back(new_rotations_rolls);
+            fighter_spawn_timers.emplace_back(new_fighter_spawn_timers);
+            fighter_spawn_cooldowns.emplace_back(new_fighter_spawn_cooldowns);
+            teams.emplace_back(new_teams);
+            health_indices.emplace_back(new_health_indices);
+            fighter_id_spans.emplace_back(new_fighter_id_spans);
+            target_ids.emplace_back(new_target_ids);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -424,35 +422,40 @@ struct CapitalEntityData {
             ml::native_soa::require(address < begin ||
                                     address >= begin + target_ids.size() * sizeof(EntityUniqueId));
         }
-        entity_ids.insert(
-            entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
-        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
-        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
-        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
-        rotations.pitches.insert(rotations.pitches.end(),
-                                 source.rotations.pitches.data(),
-                                 source.rotations.pitches.data() + count);
-        rotations.yaws.insert(rotations.yaws.end(),
-                              source.rotations.yaws.data(),
-                              source.rotations.yaws.data() + count);
-        rotations.rolls.insert(rotations.rolls.end(),
-                               source.rotations.rolls.data(),
-                               source.rotations.rolls.data() + count);
-        fighter_spawn_timers.insert(fighter_spawn_timers.end(),
-                                    source.fighter_spawn_timers.data(),
-                                    source.fighter_spawn_timers.data() + count);
-        fighter_spawn_cooldowns.insert(fighter_spawn_cooldowns.end(),
-                                       source.fighter_spawn_cooldowns.data(),
-                                       source.fighter_spawn_cooldowns.data() + count);
-        teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
-        health_indices.insert(health_indices.end(),
-                              source.health_indices.data(),
-                              source.health_indices.data() + count);
-        fighter_id_spans.insert(fighter_id_spans.end(),
-                                source.fighter_id_spans.data(),
-                                source.fighter_id_spans.data() + count);
-        target_ids.insert(
-            target_ids.end(), source.target_ids.data(), source.target_ids.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            entity_ids.insert(
+                entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
+            locations.xs.insert(
+                locations.xs.end(), source.locations.xs, source.locations.xs + count);
+            locations.ys.insert(
+                locations.ys.end(), source.locations.ys, source.locations.ys + count);
+            locations.zs.insert(
+                locations.zs.end(), source.locations.zs, source.locations.zs + count);
+            rotations.pitches.insert(rotations.pitches.end(),
+                                     source.rotations.pitches.data(),
+                                     source.rotations.pitches.data() + count);
+            rotations.yaws.insert(rotations.yaws.end(),
+                                  source.rotations.yaws.data(),
+                                  source.rotations.yaws.data() + count);
+            rotations.rolls.insert(rotations.rolls.end(),
+                                   source.rotations.rolls.data(),
+                                   source.rotations.rolls.data() + count);
+            fighter_spawn_timers.insert(fighter_spawn_timers.end(),
+                                        source.fighter_spawn_timers.data(),
+                                        source.fighter_spawn_timers.data() + count);
+            fighter_spawn_cooldowns.insert(fighter_spawn_cooldowns.end(),
+                                           source.fighter_spawn_cooldowns.data(),
+                                           source.fighter_spawn_cooldowns.data() + count);
+            teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
+            health_indices.insert(health_indices.end(),
+                                  source.health_indices.data(),
+                                  source.health_indices.data() + count);
+            fighter_id_spans.insert(fighter_id_spans.end(),
+                                    source.fighter_id_spans.data(),
+                                    source.fighter_id_spans.data() + count);
+            target_ids.insert(
+                target_ids.end(), source.target_ids.data(), source.target_ids.data() + count);
+        });
     }
     auto get_view() -> View {
         return {

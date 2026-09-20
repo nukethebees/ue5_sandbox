@@ -68,18 +68,14 @@ struct Vectors3f {
         get_view().set(index, new_xs, new_ys, new_zs);
     }
     auto add(float const new_xs, float const new_ys, float const new_zs) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index, new_xs, new_ys, new_zs);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            xs.emplace_back(new_xs);
+            ys.emplace_back(new_ys);
+            zs.emplace_back(new_zs);
+        });
     }
     void set(size_type const index, equivalent_type const value) { get_view().set(index, value); }
-    auto add(equivalent_type const value) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index, value);
-        return index;
-    }
+    auto add(equivalent_type const value) -> size_type { return add(value.X, value.Y, value.Z); }
     void append_from(ConstView source) {
         auto const count{source.num()};
         ml::native_soa::require(count <= std::numeric_limits<size_type>::max() - num());
@@ -105,9 +101,11 @@ struct Vectors3f {
             ml::native_soa::require(address < begin ||
                                     address >= begin + zs.size() * sizeof(float));
         }
-        xs.insert(xs.end(), source.xs, source.xs + count);
-        ys.insert(ys.end(), source.ys, source.ys + count);
-        zs.insert(zs.end(), source.zs, source.zs + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            xs.insert(xs.end(), source.xs, source.xs + count);
+            ys.insert(ys.end(), source.ys, source.ys + count);
+            zs.insert(zs.end(), source.zs, source.zs + count);
+        });
     }
     auto get_view() -> View {
         return {

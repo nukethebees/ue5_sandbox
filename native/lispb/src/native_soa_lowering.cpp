@@ -322,14 +322,27 @@ auto lower_native_soa(SoaSchema const& schema,
         out << "); }\n"
             << "auto add(";
         render_parameters(out, row_parameters, false);
-        out << ") -> size_type { auto const index{num()}; add_defaulted(1); set(index";
-        render_arguments(out, row_parameters);
-        out << "); return index; }\n";
+        out << ") -> size_type { return ml::native_soa::vector_storage_ops::append_rows("
+               "*this, 1, [&] {\n";
+        for (auto const& parameter : row_parameters) {
+            if (parameter.nested) {
+                out << parameter.column << ".add(new_" << parameter.name << ");\n";
+            } else {
+                out << parameter.column << ".emplace_back(new_" << parameter.name << ");\n";
+            }
+        }
+        out << "}); }\n";
         if (equivalent_type.has_value()) {
             out << "void set(size_type const index, equivalent_type const value) { "
                    "get_view().set(index, value); }\n"
-                << "auto add(equivalent_type const value) -> size_type { auto const index{num()}; "
-                   "add_defaulted(1); set(index, value); return index; }\n";
+                << "auto add(equivalent_type const value) -> size_type { return add(";
+            for (std::size_t index{}; index < layout.members.size(); ++index) {
+                if (index > 0) {
+                    out << ", ";
+                }
+                out << "value." << equivalent_members[index];
+            }
+            out << "); }\n";
         }
     }
 
@@ -343,13 +356,14 @@ auto lower_native_soa(SoaSchema const& schema,
             << ".data())}; ml::native_soa::require(address < begin || address >= begin + " << column
             << ".size() * sizeof(" << native_spelling(leaf.type.spelling) << ")); }\n";
     }
+    out << "ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {\n";
     for (auto const& leaf : layout.leaves) {
         auto const column{join(leaf.path, ".")};
         auto const source_data{view_leaf_data(leaf, "source.")};
         out << column << ".insert(" << column << ".end(), " << source_data << ", " << source_data
             << " + count);\n";
     }
-    out << "}\n";
+    out << "});\n}\n";
 
     for (bool const immutable : {false, true}) {
         out << "auto get_view()" << (immutable ? " const" : "") << " -> "

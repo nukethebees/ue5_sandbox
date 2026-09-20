@@ -210,16 +210,14 @@ struct TurretSpawnData {
              Team const new_teams,
              Health const new_healths,
              std::int32_t const new_laser_damages) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index,
-            new_locations_xs,
-            new_locations_ys,
-            new_locations_zs,
-            new_teams,
-            new_healths,
-            new_laser_damages);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            locations.xs.emplace_back(new_locations_xs);
+            locations.ys.emplace_back(new_locations_ys);
+            locations.zs.emplace_back(new_locations_zs);
+            teams.emplace_back(new_teams);
+            healths.emplace_back(new_healths);
+            laser_damages.emplace_back(new_laser_damages);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -264,13 +262,19 @@ struct TurretSpawnData {
             ml::native_soa::require(address < begin ||
                                     address >= begin + laser_damages.size() * sizeof(std::int32_t));
         }
-        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
-        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
-        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
-        teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
-        healths.insert(healths.end(), source.healths.data(), source.healths.data() + count);
-        laser_damages.insert(
-            laser_damages.end(), source.laser_damages.data(), source.laser_damages.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            locations.xs.insert(
+                locations.xs.end(), source.locations.xs, source.locations.xs + count);
+            locations.ys.insert(
+                locations.ys.end(), source.locations.ys, source.locations.ys + count);
+            locations.zs.insert(
+                locations.zs.end(), source.locations.zs, source.locations.zs + count);
+            teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
+            healths.insert(healths.end(), source.healths.data(), source.healths.data() + count);
+            laser_damages.insert(laser_damages.end(),
+                                 source.laser_damages.data(),
+                                 source.laser_damages.data() + count);
+        });
     }
     auto get_view() -> View {
         return {

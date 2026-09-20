@@ -186,17 +186,15 @@ struct Rotators3f {
         get_view().set(index, new_pitches, new_yaws, new_rolls);
     }
     auto add(float const new_pitches, float const new_yaws, float const new_rolls) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index, new_pitches, new_yaws, new_rolls);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            pitches.emplace_back(new_pitches);
+            yaws.emplace_back(new_yaws);
+            rolls.emplace_back(new_rolls);
+        });
     }
     void set(size_type const index, equivalent_type const value) { get_view().set(index, value); }
     auto add(equivalent_type const value) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index, value);
-        return index;
+        return add(value.pitch, value.yaw, value.roll);
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -223,9 +221,11 @@ struct Rotators3f {
             ml::native_soa::require(address < begin ||
                                     address >= begin + rolls.size() * sizeof(float));
         }
-        pitches.insert(pitches.end(), source.pitches.data(), source.pitches.data() + count);
-        yaws.insert(yaws.end(), source.yaws.data(), source.yaws.data() + count);
-        rolls.insert(rolls.end(), source.rolls.data(), source.rolls.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            pitches.insert(pitches.end(), source.pitches.data(), source.pitches.data() + count);
+            yaws.insert(yaws.end(), source.yaws.data(), source.yaws.data() + count);
+            rolls.insert(rolls.end(), source.rolls.data(), source.rolls.data() + count);
+        });
     }
     auto get_view() -> View {
         return {

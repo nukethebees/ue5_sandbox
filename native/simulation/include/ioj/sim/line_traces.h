@@ -134,10 +134,10 @@ struct LineTraces {
         get_view().set(index, start, end);
     }
     auto add(Vector3f const start, Vector3f const end) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index, start, end);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            starts.add(start);
+            ends.add(end);
+        });
     }
     template <typename Other>
     void copy_element(size_type const dst_index, Other const& other, size_type const src_index) {

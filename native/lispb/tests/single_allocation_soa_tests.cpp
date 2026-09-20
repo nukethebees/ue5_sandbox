@@ -37,6 +37,11 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
     EXPECT_NE(
         output.find("auto add(std::int32_t const new_ids, float const new_nested_xs) -> size_type"),
         std::string::npos);
+    EXPECT_NE(output.find("ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&]"),
+              std::string::npos);
+    EXPECT_NE(output.find("ids.emplace_back(new_ids);"), std::string::npos);
+    EXPECT_NE(output.find("nested.xs.emplace_back(new_nested_xs);"), std::string::npos);
+    EXPECT_EQ(output.find("add_defaulted(1);"), std::string::npos);
     EXPECT_NE(output.find("ColLayout<float> NestedXs{Ids}"), std::string::npos);
     EXPECT_NE(output.find("std::memcpy(destination.nested_xs"), std::string::npos);
     EXPECT_EQ(output.find("TArray"), std::string::npos);
@@ -80,7 +85,9 @@ TEST(SingleAllocationSoa, StdlibRowOperationsUseNestedEquivalentValues) {
     EXPECT_NE(
         output.find("auto add(std::int32_t const new_ids, Point const new_points) -> size_type"),
         std::string::npos);
-    EXPECT_NE(output.find("set(index, new_ids, new_points); return index;"), std::string::npos);
+    EXPECT_NE(output.find("ids.emplace_back(new_ids);"), std::string::npos);
+    EXPECT_NE(output.find("points.add(new_points);"), std::string::npos);
+    EXPECT_EQ(output.find("add_defaulted(1);"), std::string::npos);
 }
 
 auto schemas() -> std::vector<SoaSchema> {

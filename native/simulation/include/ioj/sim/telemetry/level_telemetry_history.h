@@ -380,20 +380,18 @@ struct HistoryRows {
              std::int32_t const new_kills,
              std::int32_t const new_active_lasers,
              std::int32_t const new_lasers_fired) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index,
-            new_completed_ticks,
-            new_validity_masks,
-            new_active_entities,
-            new_active_entities_by_type,
-            new_active_entities_by_team_and_type,
-            new_spawned_entities,
-            new_destroyed_entities,
-            new_kills,
-            new_active_lasers,
-            new_lasers_fired);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            completed_ticks.emplace_back(new_completed_ticks);
+            validity_masks.emplace_back(new_validity_masks);
+            active_entities.emplace_back(new_active_entities);
+            active_entities_by_type.emplace_back(new_active_entities_by_type);
+            active_entities_by_team_and_type.emplace_back(new_active_entities_by_team_and_type);
+            spawned_entities.emplace_back(new_spawned_entities);
+            destroyed_entities.emplace_back(new_destroyed_entities);
+            kills.emplace_back(new_kills);
+            active_lasers.emplace_back(new_active_lasers);
+            lasers_fired.emplace_back(new_lasers_fired);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -466,33 +464,36 @@ struct HistoryRows {
             ml::native_soa::require(address < begin ||
                                     address >= begin + lasers_fired.size() * sizeof(std::int32_t));
         }
-        completed_ticks.insert(completed_ticks.end(),
-                               source.completed_ticks.data(),
-                               source.completed_ticks.data() + count);
-        validity_masks.insert(validity_masks.end(),
-                              source.validity_masks.data(),
-                              source.validity_masks.data() + count);
-        active_entities.insert(active_entities.end(),
-                               source.active_entities.data(),
-                               source.active_entities.data() + count);
-        active_entities_by_type.insert(active_entities_by_type.end(),
-                                       source.active_entities_by_type.data(),
-                                       source.active_entities_by_type.data() + count);
-        active_entities_by_team_and_type.insert(active_entities_by_team_and_type.end(),
-                                                source.active_entities_by_team_and_type.data(),
-                                                source.active_entities_by_team_and_type.data() +
-                                                    count);
-        spawned_entities.insert(spawned_entities.end(),
-                                source.spawned_entities.data(),
-                                source.spawned_entities.data() + count);
-        destroyed_entities.insert(destroyed_entities.end(),
-                                  source.destroyed_entities.data(),
-                                  source.destroyed_entities.data() + count);
-        kills.insert(kills.end(), source.kills.data(), source.kills.data() + count);
-        active_lasers.insert(
-            active_lasers.end(), source.active_lasers.data(), source.active_lasers.data() + count);
-        lasers_fired.insert(
-            lasers_fired.end(), source.lasers_fired.data(), source.lasers_fired.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            completed_ticks.insert(completed_ticks.end(),
+                                   source.completed_ticks.data(),
+                                   source.completed_ticks.data() + count);
+            validity_masks.insert(validity_masks.end(),
+                                  source.validity_masks.data(),
+                                  source.validity_masks.data() + count);
+            active_entities.insert(active_entities.end(),
+                                   source.active_entities.data(),
+                                   source.active_entities.data() + count);
+            active_entities_by_type.insert(active_entities_by_type.end(),
+                                           source.active_entities_by_type.data(),
+                                           source.active_entities_by_type.data() + count);
+            active_entities_by_team_and_type.insert(active_entities_by_team_and_type.end(),
+                                                    source.active_entities_by_team_and_type.data(),
+                                                    source.active_entities_by_team_and_type.data() +
+                                                        count);
+            spawned_entities.insert(spawned_entities.end(),
+                                    source.spawned_entities.data(),
+                                    source.spawned_entities.data() + count);
+            destroyed_entities.insert(destroyed_entities.end(),
+                                      source.destroyed_entities.data(),
+                                      source.destroyed_entities.data() + count);
+            kills.insert(kills.end(), source.kills.data(), source.kills.data() + count);
+            active_lasers.insert(active_lasers.end(),
+                                 source.active_lasers.data(),
+                                 source.active_lasers.data() + count);
+            lasers_fired.insert(
+                lasers_fired.end(), source.lasers_fired.data(), source.lasers_fired.data() + count);
+        });
     }
     auto get_view() -> View {
         return {

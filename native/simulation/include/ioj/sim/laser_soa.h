@@ -287,18 +287,16 @@ struct SpawnRequests {
              float const new_max_distances,
              EntityUniqueId const new_instigator_ids,
              LaserSource const new_sources) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index,
-            new_locations,
-            new_rotations,
-            new_base_velocities,
-            new_damages,
-            new_speeds,
-            new_max_distances,
-            new_instigator_ids,
-            new_sources);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            locations.add(new_locations);
+            rotations.add(new_rotations);
+            base_velocities.add(new_base_velocities);
+            damages.emplace_back(new_damages);
+            speeds.emplace_back(new_speeds);
+            max_distances.emplace_back(new_max_distances);
+            instigator_ids.emplace_back(new_instigator_ids);
+            sources.emplace_back(new_sources);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -392,32 +390,41 @@ struct SpawnRequests {
             ml::native_soa::require(address < begin ||
                                     address >= begin + sources.size() * sizeof(LaserSource));
         }
-        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
-        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
-        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
-        rotations.pitches.insert(rotations.pitches.end(),
-                                 source.rotations.pitches.data(),
-                                 source.rotations.pitches.data() + count);
-        rotations.yaws.insert(rotations.yaws.end(),
-                              source.rotations.yaws.data(),
-                              source.rotations.yaws.data() + count);
-        rotations.rolls.insert(rotations.rolls.end(),
-                               source.rotations.rolls.data(),
-                               source.rotations.rolls.data() + count);
-        base_velocities.xs.insert(
-            base_velocities.xs.end(), source.base_velocities.xs, source.base_velocities.xs + count);
-        base_velocities.ys.insert(
-            base_velocities.ys.end(), source.base_velocities.ys, source.base_velocities.ys + count);
-        base_velocities.zs.insert(
-            base_velocities.zs.end(), source.base_velocities.zs, source.base_velocities.zs + count);
-        damages.insert(damages.end(), source.damages.data(), source.damages.data() + count);
-        speeds.insert(speeds.end(), source.speeds.data(), source.speeds.data() + count);
-        max_distances.insert(
-            max_distances.end(), source.max_distances.data(), source.max_distances.data() + count);
-        instigator_ids.insert(instigator_ids.end(),
-                              source.instigator_ids.data(),
-                              source.instigator_ids.data() + count);
-        sources.insert(sources.end(), source.sources.data(), source.sources.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            locations.xs.insert(
+                locations.xs.end(), source.locations.xs, source.locations.xs + count);
+            locations.ys.insert(
+                locations.ys.end(), source.locations.ys, source.locations.ys + count);
+            locations.zs.insert(
+                locations.zs.end(), source.locations.zs, source.locations.zs + count);
+            rotations.pitches.insert(rotations.pitches.end(),
+                                     source.rotations.pitches.data(),
+                                     source.rotations.pitches.data() + count);
+            rotations.yaws.insert(rotations.yaws.end(),
+                                  source.rotations.yaws.data(),
+                                  source.rotations.yaws.data() + count);
+            rotations.rolls.insert(rotations.rolls.end(),
+                                   source.rotations.rolls.data(),
+                                   source.rotations.rolls.data() + count);
+            base_velocities.xs.insert(base_velocities.xs.end(),
+                                      source.base_velocities.xs,
+                                      source.base_velocities.xs + count);
+            base_velocities.ys.insert(base_velocities.ys.end(),
+                                      source.base_velocities.ys,
+                                      source.base_velocities.ys + count);
+            base_velocities.zs.insert(base_velocities.zs.end(),
+                                      source.base_velocities.zs,
+                                      source.base_velocities.zs + count);
+            damages.insert(damages.end(), source.damages.data(), source.damages.data() + count);
+            speeds.insert(speeds.end(), source.speeds.data(), source.speeds.data() + count);
+            max_distances.insert(max_distances.end(),
+                                 source.max_distances.data(),
+                                 source.max_distances.data() + count);
+            instigator_ids.insert(instigator_ids.end(),
+                                  source.instigator_ids.data(),
+                                  source.instigator_ids.data() + count);
+            sources.insert(sources.end(), source.sources.data(), source.sources.data() + count);
+        });
     }
     auto get_view() -> View {
         return {
@@ -1529,20 +1536,18 @@ struct Entities {
              EntityUniqueId const new_instigator_ids,
              float const new_initial_lifetimes,
              float const new_spawn_times) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index,
-            new_active,
-            new_sources,
-            new_locations,
-            new_rotations,
-            new_velocities,
-            new_damages,
-            new_lifetimes_remaining,
-            new_instigator_ids,
-            new_initial_lifetimes,
-            new_spawn_times);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            active.emplace_back(new_active);
+            sources.emplace_back(new_sources);
+            locations.add(new_locations);
+            rotations.add(new_rotations);
+            velocities.add(new_velocities);
+            damages.emplace_back(new_damages);
+            lifetimes_remaining.emplace_back(new_lifetimes_remaining);
+            instigator_ids.emplace_back(new_instigator_ids);
+            initial_lifetimes.emplace_back(new_initial_lifetimes);
+            spawn_times.emplace_back(new_spawn_times);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -1648,38 +1653,43 @@ struct Entities {
             ml::native_soa::require(address < begin ||
                                     address >= begin + spawn_times.size() * sizeof(float));
         }
-        active.insert(active.end(), source.active.data(), source.active.data() + count);
-        sources.insert(sources.end(), source.sources.data(), source.sources.data() + count);
-        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
-        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
-        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
-        rotations.pitches.insert(rotations.pitches.end(),
-                                 source.rotations.pitches.data(),
-                                 source.rotations.pitches.data() + count);
-        rotations.yaws.insert(rotations.yaws.end(),
-                              source.rotations.yaws.data(),
-                              source.rotations.yaws.data() + count);
-        rotations.rolls.insert(rotations.rolls.end(),
-                               source.rotations.rolls.data(),
-                               source.rotations.rolls.data() + count);
-        velocities.xs.insert(
-            velocities.xs.end(), source.velocities.xs, source.velocities.xs + count);
-        velocities.ys.insert(
-            velocities.ys.end(), source.velocities.ys, source.velocities.ys + count);
-        velocities.zs.insert(
-            velocities.zs.end(), source.velocities.zs, source.velocities.zs + count);
-        damages.insert(damages.end(), source.damages.data(), source.damages.data() + count);
-        lifetimes_remaining.insert(lifetimes_remaining.end(),
-                                   source.lifetimes_remaining.data(),
-                                   source.lifetimes_remaining.data() + count);
-        instigator_ids.insert(instigator_ids.end(),
-                              source.instigator_ids.data(),
-                              source.instigator_ids.data() + count);
-        initial_lifetimes.insert(initial_lifetimes.end(),
-                                 source.initial_lifetimes.data(),
-                                 source.initial_lifetimes.data() + count);
-        spawn_times.insert(
-            spawn_times.end(), source.spawn_times.data(), source.spawn_times.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            active.insert(active.end(), source.active.data(), source.active.data() + count);
+            sources.insert(sources.end(), source.sources.data(), source.sources.data() + count);
+            locations.xs.insert(
+                locations.xs.end(), source.locations.xs, source.locations.xs + count);
+            locations.ys.insert(
+                locations.ys.end(), source.locations.ys, source.locations.ys + count);
+            locations.zs.insert(
+                locations.zs.end(), source.locations.zs, source.locations.zs + count);
+            rotations.pitches.insert(rotations.pitches.end(),
+                                     source.rotations.pitches.data(),
+                                     source.rotations.pitches.data() + count);
+            rotations.yaws.insert(rotations.yaws.end(),
+                                  source.rotations.yaws.data(),
+                                  source.rotations.yaws.data() + count);
+            rotations.rolls.insert(rotations.rolls.end(),
+                                   source.rotations.rolls.data(),
+                                   source.rotations.rolls.data() + count);
+            velocities.xs.insert(
+                velocities.xs.end(), source.velocities.xs, source.velocities.xs + count);
+            velocities.ys.insert(
+                velocities.ys.end(), source.velocities.ys, source.velocities.ys + count);
+            velocities.zs.insert(
+                velocities.zs.end(), source.velocities.zs, source.velocities.zs + count);
+            damages.insert(damages.end(), source.damages.data(), source.damages.data() + count);
+            lifetimes_remaining.insert(lifetimes_remaining.end(),
+                                       source.lifetimes_remaining.data(),
+                                       source.lifetimes_remaining.data() + count);
+            instigator_ids.insert(instigator_ids.end(),
+                                  source.instigator_ids.data(),
+                                  source.instigator_ids.data() + count);
+            initial_lifetimes.insert(initial_lifetimes.end(),
+                                     source.initial_lifetimes.data(),
+                                     source.initial_lifetimes.data() + count);
+            spawn_times.insert(
+                spawn_times.end(), source.spawn_times.data(), source.spawn_times.data() + count);
+        });
     }
     auto get_view() -> View {
         return {

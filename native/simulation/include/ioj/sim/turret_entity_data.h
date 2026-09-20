@@ -459,34 +459,33 @@ struct TurretEntityData {
              float const new_target_velocities_ys,
              float const new_target_velocities_zs,
              HealthIndex const new_health_indices) -> size_type {
-        auto const index{num()};
-        add_defaulted(1);
-        set(index,
-            new_entity_ids,
-            new_integral_biases,
-            new_locations_xs,
-            new_locations_ys,
-            new_locations_zs,
-            new_fire_point_locations_xs,
-            new_fire_point_locations_ys,
-            new_fire_point_locations_zs,
-            new_rotations_pitches,
-            new_rotations_yaws,
-            new_rotations_rolls,
-            new_teams,
-            new_laser_cooldowns,
-            new_laser_damages,
-            new_target_refresh_countdowns_periods,
-            new_target_refresh_countdowns_remaining_ticks,
-            new_target_ids,
-            new_target_locations_xs,
-            new_target_locations_ys,
-            new_target_locations_zs,
-            new_target_velocities_xs,
-            new_target_velocities_ys,
-            new_target_velocities_zs,
-            new_health_indices);
-        return index;
+        return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
+            entity_ids.emplace_back(new_entity_ids);
+            integral_biases.emplace_back(new_integral_biases);
+            locations.xs.emplace_back(new_locations_xs);
+            locations.ys.emplace_back(new_locations_ys);
+            locations.zs.emplace_back(new_locations_zs);
+            fire_point_locations.xs.emplace_back(new_fire_point_locations_xs);
+            fire_point_locations.ys.emplace_back(new_fire_point_locations_ys);
+            fire_point_locations.zs.emplace_back(new_fire_point_locations_zs);
+            rotations.pitches.emplace_back(new_rotations_pitches);
+            rotations.yaws.emplace_back(new_rotations_yaws);
+            rotations.rolls.emplace_back(new_rotations_rolls);
+            teams.emplace_back(new_teams);
+            laser_cooldowns.emplace_back(new_laser_cooldowns);
+            laser_damages.emplace_back(new_laser_damages);
+            target_refresh_countdowns_periods.emplace_back(new_target_refresh_countdowns_periods);
+            target_refresh_countdowns_remaining_ticks.emplace_back(
+                new_target_refresh_countdowns_remaining_ticks);
+            target_ids.emplace_back(new_target_ids);
+            target_locations.xs.emplace_back(new_target_locations_xs);
+            target_locations.ys.emplace_back(new_target_locations_ys);
+            target_locations.zs.emplace_back(new_target_locations_zs);
+            target_velocities.xs.emplace_back(new_target_velocities_xs);
+            target_velocities.ys.emplace_back(new_target_velocities_ys);
+            target_velocities.zs.emplace_back(new_target_velocities_zs);
+            health_indices.emplace_back(new_health_indices);
+        });
     }
     void append_from(ConstView source) {
         auto const count{source.num()};
@@ -647,69 +646,75 @@ struct TurretEntityData {
             ml::native_soa::require(address < begin ||
                                     address >= begin + health_indices.size() * sizeof(HealthIndex));
         }
-        entity_ids.insert(
-            entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
-        integral_biases.insert(integral_biases.end(),
-                               source.integral_biases.data(),
-                               source.integral_biases.data() + count);
-        locations.xs.insert(locations.xs.end(), source.locations.xs, source.locations.xs + count);
-        locations.ys.insert(locations.ys.end(), source.locations.ys, source.locations.ys + count);
-        locations.zs.insert(locations.zs.end(), source.locations.zs, source.locations.zs + count);
-        fire_point_locations.xs.insert(fire_point_locations.xs.end(),
-                                       source.fire_point_locations.xs,
-                                       source.fire_point_locations.xs + count);
-        fire_point_locations.ys.insert(fire_point_locations.ys.end(),
-                                       source.fire_point_locations.ys,
-                                       source.fire_point_locations.ys + count);
-        fire_point_locations.zs.insert(fire_point_locations.zs.end(),
-                                       source.fire_point_locations.zs,
-                                       source.fire_point_locations.zs + count);
-        rotations.pitches.insert(rotations.pitches.end(),
-                                 source.rotations.pitches.data(),
-                                 source.rotations.pitches.data() + count);
-        rotations.yaws.insert(rotations.yaws.end(),
-                              source.rotations.yaws.data(),
-                              source.rotations.yaws.data() + count);
-        rotations.rolls.insert(rotations.rolls.end(),
-                               source.rotations.rolls.data(),
-                               source.rotations.rolls.data() + count);
-        teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
-        laser_cooldowns.insert(laser_cooldowns.end(),
-                               source.laser_cooldowns.data(),
-                               source.laser_cooldowns.data() + count);
-        laser_damages.insert(
-            laser_damages.end(), source.laser_damages.data(), source.laser_damages.data() + count);
-        target_refresh_countdowns_periods.insert(target_refresh_countdowns_periods.end(),
-                                                 source.target_refresh_countdowns_periods.data(),
-                                                 source.target_refresh_countdowns_periods.data() +
-                                                     count);
-        target_refresh_countdowns_remaining_ticks.insert(
-            target_refresh_countdowns_remaining_ticks.end(),
-            source.target_refresh_countdowns_remaining_ticks.data(),
-            source.target_refresh_countdowns_remaining_ticks.data() + count);
-        target_ids.insert(
-            target_ids.end(), source.target_ids.data(), source.target_ids.data() + count);
-        target_locations.xs.insert(target_locations.xs.end(),
-                                   source.target_locations.xs,
-                                   source.target_locations.xs + count);
-        target_locations.ys.insert(target_locations.ys.end(),
-                                   source.target_locations.ys,
-                                   source.target_locations.ys + count);
-        target_locations.zs.insert(target_locations.zs.end(),
-                                   source.target_locations.zs,
-                                   source.target_locations.zs + count);
-        target_velocities.xs.insert(target_velocities.xs.end(),
-                                    source.target_velocities.xs,
-                                    source.target_velocities.xs + count);
-        target_velocities.ys.insert(target_velocities.ys.end(),
-                                    source.target_velocities.ys,
-                                    source.target_velocities.ys + count);
-        target_velocities.zs.insert(target_velocities.zs.end(),
-                                    source.target_velocities.zs,
-                                    source.target_velocities.zs + count);
-        health_indices.insert(health_indices.end(),
-                              source.health_indices.data(),
-                              source.health_indices.data() + count);
+        ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
+            entity_ids.insert(
+                entity_ids.end(), source.entity_ids.data(), source.entity_ids.data() + count);
+            integral_biases.insert(integral_biases.end(),
+                                   source.integral_biases.data(),
+                                   source.integral_biases.data() + count);
+            locations.xs.insert(
+                locations.xs.end(), source.locations.xs, source.locations.xs + count);
+            locations.ys.insert(
+                locations.ys.end(), source.locations.ys, source.locations.ys + count);
+            locations.zs.insert(
+                locations.zs.end(), source.locations.zs, source.locations.zs + count);
+            fire_point_locations.xs.insert(fire_point_locations.xs.end(),
+                                           source.fire_point_locations.xs,
+                                           source.fire_point_locations.xs + count);
+            fire_point_locations.ys.insert(fire_point_locations.ys.end(),
+                                           source.fire_point_locations.ys,
+                                           source.fire_point_locations.ys + count);
+            fire_point_locations.zs.insert(fire_point_locations.zs.end(),
+                                           source.fire_point_locations.zs,
+                                           source.fire_point_locations.zs + count);
+            rotations.pitches.insert(rotations.pitches.end(),
+                                     source.rotations.pitches.data(),
+                                     source.rotations.pitches.data() + count);
+            rotations.yaws.insert(rotations.yaws.end(),
+                                  source.rotations.yaws.data(),
+                                  source.rotations.yaws.data() + count);
+            rotations.rolls.insert(rotations.rolls.end(),
+                                   source.rotations.rolls.data(),
+                                   source.rotations.rolls.data() + count);
+            teams.insert(teams.end(), source.teams.data(), source.teams.data() + count);
+            laser_cooldowns.insert(laser_cooldowns.end(),
+                                   source.laser_cooldowns.data(),
+                                   source.laser_cooldowns.data() + count);
+            laser_damages.insert(laser_damages.end(),
+                                 source.laser_damages.data(),
+                                 source.laser_damages.data() + count);
+            target_refresh_countdowns_periods.insert(
+                target_refresh_countdowns_periods.end(),
+                source.target_refresh_countdowns_periods.data(),
+                source.target_refresh_countdowns_periods.data() + count);
+            target_refresh_countdowns_remaining_ticks.insert(
+                target_refresh_countdowns_remaining_ticks.end(),
+                source.target_refresh_countdowns_remaining_ticks.data(),
+                source.target_refresh_countdowns_remaining_ticks.data() + count);
+            target_ids.insert(
+                target_ids.end(), source.target_ids.data(), source.target_ids.data() + count);
+            target_locations.xs.insert(target_locations.xs.end(),
+                                       source.target_locations.xs,
+                                       source.target_locations.xs + count);
+            target_locations.ys.insert(target_locations.ys.end(),
+                                       source.target_locations.ys,
+                                       source.target_locations.ys + count);
+            target_locations.zs.insert(target_locations.zs.end(),
+                                       source.target_locations.zs,
+                                       source.target_locations.zs + count);
+            target_velocities.xs.insert(target_velocities.xs.end(),
+                                        source.target_velocities.xs,
+                                        source.target_velocities.xs + count);
+            target_velocities.ys.insert(target_velocities.ys.end(),
+                                        source.target_velocities.ys,
+                                        source.target_velocities.ys + count);
+            target_velocities.zs.insert(target_velocities.zs.end(),
+                                        source.target_velocities.zs,
+                                        source.target_velocities.zs + count);
+            health_indices.insert(health_indices.end(),
+                                  source.health_indices.data(),
+                                  source.health_indices.data() + count);
+        });
     }
     auto get_view() -> View {
         return {

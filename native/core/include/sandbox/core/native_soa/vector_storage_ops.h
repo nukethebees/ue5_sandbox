@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <limits>
 #include <span>
+#include <utility>
 
 namespace ml::native_soa::vector_storage_ops {
 namespace detail {
@@ -63,6 +64,33 @@ void add_uninitialised(Soa& soa, std::int32_t const count) {
 template <VectorStorageSoa Soa>
 void add_defaulted(Soa& soa, std::int32_t const count) {
     add_uninitialised(soa, count);
+}
+
+template <VectorStorageSoa Soa, typename Append>
+auto append_rows(Soa& soa, std::int32_t const count, Append&& append) -> std::int32_t {
+    soa.validate_array_sizes();
+    auto const first{soa.num()};
+    require(count >= 0 && count <= std::numeric_limits<std::int32_t>::max() - first);
+    if (count == 0) {
+        return first;
+    }
+    auto const new_num{first + count};
+    auto const geometric_growth{static_cast<std::int64_t>(first) + std::max(first / 2, 1)};
+    auto const reserve_count{static_cast<std::int32_t>(
+        std::min<std::int64_t>(std::numeric_limits<std::int32_t>::max(),
+                               std::max<std::int64_t>(new_num, geometric_growth)))};
+
+    reserve(soa, reserve_count);
+    try {
+        std::forward<Append>(append)();
+    } catch (...) {
+        soa.each_column([first](auto& column) { column.resize(static_cast<std::size_t>(first)); });
+        throw;
+    }
+
+    soa.validate_array_sizes();
+    require(soa.num() == new_num);
+    return first;
 }
 
 template <VectorStorageSoa Soa>

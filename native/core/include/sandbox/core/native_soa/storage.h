@@ -174,6 +174,8 @@ struct StorageOperations {
     }
     template <typename Self>
     void add_uninitialised(this Self& self, std::int32_t const count) {
+        // Single-allocation leaves are restricted to implicit-lifetime types. Growth starts their
+        // lifetime without initialization; every new element must be written before it is read.
         require(count >= 0 && count <= Self::max_capacity - self.num_);
         auto const new_num{self.num_ + count};
         if (new_num > self.capacity_) {
