@@ -4,11 +4,8 @@
 #include "ioj/sim/vector_types.h"
 #include "ioj/sim/vectors3f.h"
 #include "sandbox/core/native_soa/storage.h"
-#include "sandbox/core/soa_permutation.h"
 
-#include <algorithm>
 #include <cstdint>
-#include <limits>
 #include <span>
 
 namespace ioj::sim {
@@ -118,7 +115,7 @@ struct TraceHitsView {
     }
 };
 
-struct TraceHits {
+struct TraceHits : ml::native_soa::VectorStorageOperations {
     using View = TraceHitsView;
     using ConstView = TraceHitsConstView;
     using size_type = std::int32_t;
@@ -131,52 +128,19 @@ struct TraceHits {
     [[nodiscard]] auto num() const noexcept -> size_type { return locations.num(); }
     [[nodiscard]] auto is_empty() const noexcept -> bool { return num() == 0; }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) {
-        ml::native_soa::require(count >= 0);
-        auto const size{static_cast<std::size_t>(count)};
-        locations.reserve(count);
-        entities.reserve(size);
-        static_geometry_indices.reserve(size);
-        hits.reserve(size);
+    template <typename Fn>
+    void each_column(Fn&& fn) {
+        locations.each_column(fn);
+        fn(entities);
+        fn(static_geometry_indices);
+        fn(hits);
     }
-    void reset() noexcept {
-        locations.reset();
-        entities.clear();
-        static_geometry_indices.clear();
-        hits.clear();
-    }
-    void set_num(size_type const count) {
-        ml::native_soa::require(count >= 0);
-        auto const size{static_cast<std::size_t>(count)};
-        locations.set_num(count);
-        entities.resize(size);
-        static_geometry_indices.resize(size);
-        hits.resize(size);
-    }
-    void add_uninitialised(size_type const count) {
-        auto const old_num{num()};
-        ml::native_soa::require(count >= 0 &&
-                                count <= std::numeric_limits<size_type>::max() - old_num);
-        set_num(old_num + count);
-    }
-    void add_defaulted(size_type const count) { add_uninitialised(count); }
-    void remove_at_swap(size_type const index, size_type const count) {
-        validate_array_sizes();
-        auto const old_num{num()};
-        ml::native_soa::require(index >= 0 && index <= old_num && count >= 0 &&
-                                count <= old_num - index);
-        auto const moved{std::min(count, old_num - index - count)};
-        auto const source{old_num - moved};
-        locations.remove_at_swap(index, count);
-        for (size_type i{}; i < moved; ++i) {
-            entities[index + i] = entities[source + i];
-            static_geometry_indices[index + i] = static_geometry_indices[source + i];
-            hits[index + i] = hits[source + i];
-        }
-        auto const new_size{static_cast<std::size_t>(old_num - count)};
-        entities.resize(new_size);
-        static_geometry_indices.resize(new_size);
-        hits.resize(new_size);
+    template <typename Fn>
+    void each_column(Fn&& fn) const {
+        locations.each_column(fn);
+        fn(entities);
+        fn(static_geometry_indices);
+        fn(hits);
     }
     void set(size_type const index,
              Vector3f const location,
@@ -211,13 +175,6 @@ struct TraceHits {
         for (size_type i{}; i < count; ++i) {
             copy_element(dst_index + i, other, src_index + i);
         }
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        validate_array_sizes();
-        locations.apply_permutation(indices);
-        ml::apply_permutation(std::span{entities}, indices);
-        ml::apply_permutation(std::span{static_geometry_indices}, indices);
-        ml::apply_permutation(std::span{hits}, indices);
     }
     [[nodiscard]] auto get_view() -> View {
         return {locations.get_view(), entities, static_geometry_indices, hits};

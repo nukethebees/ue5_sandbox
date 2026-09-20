@@ -83,7 +83,7 @@ struct LineTracesView {
     }
 };
 
-struct LineTraces {
+struct LineTraces : ml::native_soa::VectorStorageOperations {
     using View = LineTracesView;
     using ConstView = LineTracesConstView;
     using size_type = std::int32_t;
@@ -94,30 +94,15 @@ struct LineTraces {
     [[nodiscard]] auto num() const noexcept -> size_type { return starts.num(); }
     [[nodiscard]] auto is_empty() const noexcept -> bool { return num() == 0; }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) {
-        starts.reserve(count);
-        ends.reserve(count);
+    template <typename Fn>
+    void each_column(Fn&& fn) {
+        starts.each_column(fn);
+        ends.each_column(fn);
     }
-    void reset() noexcept {
-        starts.reset();
-        ends.reset();
-    }
-    void set_num(size_type const count) {
-        starts.set_num(count);
-        ends.set_num(count);
-    }
-    void add_uninitialised(size_type const count) {
-        starts.add_uninitialised(count);
-        ends.add_uninitialised(count);
-    }
-    void add_defaulted(size_type const count) {
-        starts.add_defaulted(count);
-        ends.add_defaulted(count);
-    }
-    void remove_at_swap(size_type const index, size_type const count) {
-        validate_array_sizes();
-        starts.remove_at_swap(index, count);
-        ends.remove_at_swap(index, count);
+    template <typename Fn>
+    void each_column(Fn&& fn) const {
+        starts.each_column(fn);
+        ends.each_column(fn);
     }
     void set(size_type const index, Vector3f const start, Vector3f const end) {
         get_view().set(index, start, end);
@@ -141,11 +126,6 @@ struct LineTraces {
         for (size_type i{}; i < count; ++i) {
             copy_element(dst_index + i, other, src_index + i);
         }
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        validate_array_sizes();
-        starts.apply_permutation(indices);
-        ends.apply_permutation(indices);
     }
     [[nodiscard]] auto get_view() -> View { return {starts.get_view(), ends.get_view()}; }
     [[nodiscard]] auto get_view() const -> ConstView {
