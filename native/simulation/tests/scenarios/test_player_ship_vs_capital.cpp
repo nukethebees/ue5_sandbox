@@ -28,8 +28,6 @@ void run_worldless_player_ship_vs_capital(tests::SimulationFixture const& config
     auto* const player{harness.get_simulation().get_player_ship_simulation()};
     auto const& fighters{harness.get_simulation().get_fighters()};
     assert(player);
-    harness.get_simulation().get_player_ship_commands()->set_flight_mode(
-        SpaceShipFlightMode::ForwardSpeed);
     harness.get_simulation().get_player_ship_commands()->start_boost();
     auto const player_id{player->unique_entity_id};
     struct Sample {

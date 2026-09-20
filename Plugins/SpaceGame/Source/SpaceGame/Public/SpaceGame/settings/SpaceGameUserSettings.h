@@ -64,7 +64,10 @@ class SPACEGAME_API USpaceGameUserSettings : public UGameUserSettings {
 
     UPROPERTY(Config)
     int32 player_ship_flight_control_preset_{
-        static_cast<int32>(EPlayerShipFlightControlPreset::PlanarVelocity)};
+        static_cast<int32>(EPlayerShipFlightControlPreset::Gunship)};
+
+    UPROPERTY(Config)
+    int32 flight_model_settings_version_{};
 };
 
 } // namespace ml::ioj

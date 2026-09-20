@@ -39,6 +39,11 @@ enum class ReferenceFrame : std::uint8_t {
     World,
 };
 
+enum class TranslationInputSource : std::uint8_t {
+    Axis,
+    Accelerator,
+};
+
 enum class ResponseMode : std::uint8_t {
     Direct,
     RateLimited,
@@ -76,6 +81,7 @@ struct ResponseConfig {
 struct TranslationChannelConfig {
     TranslationSemantic semantic{TranslationSemantic::Disabled};
     ReferenceFrame reference_frame{ReferenceFrame::Ship};
+    TranslationInputSource input_source{TranslationInputSource::Axis};
     float automatic_value{};
     ResponseConfig response{};
 
@@ -112,7 +118,6 @@ struct TranslationAxesConfig {
 
 struct RotationStabilizationConfig {
     bool enabled{};
-    ReferenceFrame reference_frame{ReferenceFrame::World};
     float target_angle{};
     float delay{};
     ResponseConfig response{};

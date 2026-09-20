@@ -217,8 +217,8 @@ void UShipHudWidget::apply_ui_style(ml::ioj::FGameUiStyle const& style) {
     selected_imc_widget->set_format_spec(TEXT("IMC // {0}"));
     ship_velocity_widget->set_format_spec(TEXT("VELOCITY // {0}"));
     target_velocity_widget->set_format_spec(TEXT("TARGET VELOCITY // {0} ({1})"));
-    control_mode_widget->set_format_spec(TEXT("CONTROL // {0}"));
-    flight_mode_widget->set_format_spec(TEXT("FLIGHT MODE // {0}"));
+    control_mode_widget->set_format_spec(TEXT("FLIGHT MODEL // {0}"));
+    flight_mode_widget->set_format_spec(TEXT("FLIGHT STATE // THROTTLE {0} // {1}"));
 
     for (auto* const widget : {turn_input_widget,
                                move_input_widget,
@@ -345,14 +345,14 @@ void UShipHudWidget::set_target_velocity(FVector value) {
     target_velocity_widget->update(value.ToCompactString(), value.Size());
 }
 
-void UShipHudWidget::set_control_mode(FStringView value) {
+void UShipHudWidget::set_flight_model(FStringView value) {
     check(IsValid(control_mode_widget));
     control_mode_widget->update(value);
 }
 
-void UShipHudWidget::set_flight_mode(FStringView value) {
+void UShipHudWidget::set_flight_action(float const throttle, FStringView const action) {
     check(IsValid(flight_mode_widget));
-    flight_mode_widget->update(value);
+    flight_mode_widget->update(throttle, action);
 }
 
 void UShipHudWidget::set_mission_state(::ioj::sim::MissionState const new_state) {

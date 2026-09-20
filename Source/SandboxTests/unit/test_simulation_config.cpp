@@ -40,53 +40,30 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             TEXT("Native initialisation clears the accumulator"), loop.accumulator, 0.0);
     }
 
-    TEST_METHOD(PlanarMovementDefaults)
+    TEST_METHOD(PlayerShipConfigKeepsPresentationAndCombatDataSeparate)
     {
         FPlayerShipConfig const presentation_defaults{};
         ::ioj::sim::PlayerSimConfig const simulation_defaults{};
-        TestRunner->TestEqual(TEXT("Presentation lateral trim defaults to 3000"),
-                              presentation_defaults.planar_lateral_trim_speed,
-                              3000.f);
-        TestRunner->TestEqual(TEXT("Presentation vertical trim defaults to 3000"),
-                              presentation_defaults.planar_vertical_trim_speed,
-                              3000.f);
-        TestRunner->TestEqual(TEXT("Simulation lateral trim defaults to 3000"),
-                              simulation_defaults.planar_lateral_trim_speed,
-                              3000.f);
-        TestRunner->TestEqual(TEXT("Simulation vertical trim defaults to 3000"),
-                              simulation_defaults.planar_vertical_trim_speed,
-                              3000.f);
-        TestRunner->TestEqual(TEXT("Presentation forward velocity trim defaults to five percent"),
-                              presentation_defaults.forward_velocity_trim_fraction,
-                              0.05f);
-        TestRunner->TestEqual(TEXT("Simulation forward velocity trim defaults to five percent"),
-                              simulation_defaults.forward_velocity_trim_fraction,
-                              0.05f);
         auto const converted_defaults{make_simulation_config(presentation_defaults)};
-        TestRunner->TestEqual(TEXT("Forward velocity trim is copied into simulation config"),
-                              converted_defaults.forward_velocity_trim_fraction,
-                              presentation_defaults.forward_velocity_trim_fraction);
+        TestRunner->TestEqual(TEXT("Energy capacity is copied into simulation config"),
+                              converted_defaults.thrust_energy_max,
+                              presentation_defaults.thrust_energy_max);
+        TestRunner->TestEqual(TEXT("Presentation pitch is copied into simulation config"),
+                              converted_defaults.pitch_angle_max,
+                              presentation_defaults.pitch_angle_max);
+        TestRunner->TestEqual(TEXT("Laser damage is copied into simulation config"),
+                              converted_defaults.laser.damage,
+                              presentation_defaults.laser.damage);
+        TestRunner->TestEqual(TEXT("Native energy capacity has a stable default"),
+                              simulation_defaults.thrust_energy_max,
+                              1.f);
 
         auto const* const source{ml::load_default_level_config()};
         if (!TestRunner->TestNotNull(TEXT("Default level config loads"), source)) {
             return;
         }
-        TestRunner->TestEqual(TEXT("Authored lateral trim uses the current default"),
-                              source->player_ship.planar_lateral_trim_speed,
-                              3000.f);
-        TestRunner->TestEqual(TEXT("Authored vertical trim uses the current default"),
-                              source->player_ship.planar_vertical_trim_speed,
-                              3000.f);
-        TestRunner->TestEqual(TEXT("Authored forward velocity trim uses the current default"),
-                              source->player_ship.forward_velocity_trim_fraction,
-                              0.05f);
-
-        TestRunner->TestEqual(TEXT("Power max speed is converted"),
-                              converted_defaults.power_max_speed,
-                              presentation_defaults.power_max_speed);
-        TestRunner->TestEqual(TEXT("Power acceleration is converted"),
-                              converted_defaults.power_acceleration,
-                              presentation_defaults.power_acceleration);
+        TestRunner->TestTrue(TEXT("Authored player energy capacity remains valid"),
+                             source->player_ship.thrust_energy_max > 0.f);
     }
 
     TEST_METHOD(RotatedWorldBoundsEncloseTransformedCorners)

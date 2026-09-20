@@ -42,6 +42,8 @@ TEST(FlightModelConfig, PresetsExpressDifferentVelocitySemantics) {
               ResponseMode::SecondOrder);
     EXPECT_EQ(fighter.config.translation.forward.manual.semantic,
               TranslationSemantic::Acceleration);
+    EXPECT_EQ(fighter.config.translation.forward.manual.input_source,
+              TranslationInputSource::Accelerator);
     EXPECT_GT(fighter.config.translation.forward.passive_drag, 0.f);
     EXPECT_EQ(fighter.config.facing_velocity.mode, FacingVelocityCoupling::LockedToFacing);
     EXPECT_EQ(skater.config.translation.forward.manual.semantic, TranslationSemantic::Acceleration);
@@ -49,6 +51,7 @@ TEST(FlightModelConfig, PresetsExpressDifferentVelocitySemantics) {
     EXPECT_EQ(skater.config.facing_velocity.mode, FacingVelocityCoupling::Independent);
     EXPECT_EQ(gunship.config.translation.right.manual.semantic,
               TranslationSemantic::TargetVelocity);
+    EXPECT_EQ(gunship.config.translation.forward.manual.input_source, TranslationInputSource::Axis);
     EXPECT_EQ(gunship.config.translation.up.manual.semantic, TranslationSemantic::TargetVelocity);
 }
 

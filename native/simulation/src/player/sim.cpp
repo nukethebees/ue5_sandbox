@@ -2,8 +2,8 @@
 #include <cassert>
 #include <cmath>
 #include <cstdint>
-#include <ioj/sim/profiling.h>
 #include <ioj/sim/player/flight_model_evaluator.h>
+#include <ioj/sim/profiling.h>
 #include <ioj/sim/ship_health.h>
 #include <ioj/sim/transform3d.h>
 #include <sandbox/core/diagnostics.h>
@@ -51,9 +51,6 @@ void Sim::configure(PlayerSpawnData const& spawn) noexcept {
     middle_socket = spawn.middle_socket;
     flight_models_ = spawn.flight_models;
     active_flight_model_slot_ = flight_models_.initial_slot;
-    control_mode = spawn.control_mode;
-    flight_mode = control_mode == SpaceShipControlMode::Power ? SpaceShipFlightMode::PlanarVelocity
-                                                              : spawn.flight_mode;
     laser_mode = spawn.laser_mode;
     laser_fire_rate = spawn.laser_fire_rate;
     max_health_ = spawn.health.max_health;
@@ -102,7 +99,7 @@ void Sim::prepare_tick(float const dt) {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::prepare_tick");
 
     laser_shot_cooldown -= dt;
-    state_.presentation.time_since_rotation_input += dt;
+    state_.controller.time_since_rotation_input += dt;
 
     if (speed_sampling_enabled) {
         --speed_sample_ticks_remaining;
@@ -183,202 +180,24 @@ void Sim::set_team(Team const new_team) noexcept {
 /* **************************************** */
 // Movement
 /* **************************************** */
-void Sim::integrate_velocity(float const dt, PlayerSimulationState& state) {
-    auto& physical{state.physical};
-    auto& controller{state.controller};
-    switch (flight_mode) {
-        case SpaceShipFlightMode::ForwardSpeed: {
-            auto const new_speed{controller.forward_flight_model.update(dt)};
-            physical.velocity = physical.transform.forward() * new_speed;
-            break;
-        }
-        case SpaceShipFlightMode::PlanarVelocity: {
-            if (uses_power_controller()) {
-                integrate_power_velocity(dt, state);
-                break;
-            }
-            controller.planar_velocity = controller.planar_flight_model.update(dt);
-            controller.planar_boost_speed = controller.planar_boost_flight_model.update(dt);
-            physical.velocity = controller.planar_velocity +
-                                physical.transform.forward() * controller.planar_boost_speed;
-            break;
-        }
-    }
-}
-
-void Sim::integrate_power_velocity(float const dt, PlayerSimulationState& state) {
-    auto& controller{state.controller};
-    auto const action{controller.effective_action};
-    if (action == BoostBrakeState::Brake || action == BoostBrakeState::EmergencyBrake) {
-        auto const deceleration{action == BoostBrakeState::EmergencyBrake
-                                    ? config.power_emergency_brake_deceleration
-                                    : config.power_brake_deceleration};
-        controller.planar_velocity =
-            ml::move_towards(controller.planar_velocity, {}, deceleration * dt);
-    } else if (throttle > 0.f) {
-        auto const boosting{action == BoostBrakeState::Boost};
-        auto const maximum_speed{boosting ? config.power_boost_max_speed : config.power_max_speed};
-        auto const acceleration{boosting ? config.power_boost_acceleration
-                                         : config.power_acceleration};
-        auto const desired_velocity{state.physical.transform.forward() * maximum_speed};
-        controller.planar_velocity = ml::move_towards(
-            controller.planar_velocity, desired_velocity, acceleration * throttle * dt);
-    }
-
-    controller.planar_boost_speed = 0.f;
-    state.physical.velocity = controller.planar_velocity;
-}
-
-void Sim::update_rotation(float const dt, PlayerSimulationState& state) {
-    auto& physical{state.physical};
-    auto& presentation{state.presentation};
-    auto const rotation_step{config.rotation_speed * dt};
-    if (rotation_input != ml::Vector2d{} || !(std::abs(roll_input) <= 1.e-8f)) {
-        auto const yaw_strength{std::abs(rotation_input.x)};
-        auto const yaw_step{config.rotation_speed * yaw_strength * dt};
-        auto const delta_rotation{Rotator3d{rotation_input.y * rotation_step,
-                                            rotation_input.x * yaw_step,
-                                            roll_input * rotation_step}};
-        physical.transform.rotation = physical.transform.rotation * to_quaternion(delta_rotation);
-        physical.transform.rotation.normalize();
-        presentation.time_since_rotation_input = 0.f;
-        return;
-    }
-
-    if (presentation.time_since_rotation_input >= config.auto_level_roll_delay) {
-        auto const rotation{physical.transform.rotator()};
-        auto const roll{
-            player_movement::interpolate_to(rotation.roll, 0.f, dt, config.auto_level_speed)};
-        physical.transform.rotation = to_quaternion(Rotator3d{rotation.pitch, rotation.yaw, roll});
-    }
-}
-
 void Sim::update_body_orientation(float const dt, PlayerSimulationState& state) {
     auto& presentation{state.presentation};
     auto const current_rotation{presentation.body_transform.rotator()};
-    auto const target_pitch{rotation_input.y * config.pitch_angle_max};
+    auto const target_pitch{flight_intent_.rotation.x * config.pitch_angle_max};
     auto const new_pitch{player_movement::interpolate_to(
         current_rotation.pitch, target_pitch, dt, config.pitch_speed)};
 
-    auto const target_yaw{rotation_input.x * config.yaw_angle_max};
+    auto const target_yaw{flight_intent_.rotation.y * config.yaw_angle_max};
     auto const new_yaw{
         player_movement::interpolate_to(current_rotation.yaw, target_yaw, dt, config.yaw_speed)};
 
-    auto const turn_target{rotation_input.x * config.turn_bank_angle_max};
-    auto const turn_speed{rotation_input.x * config.turn_bank_speed};
+    auto const turn_target{flight_intent_.rotation.y * config.turn_bank_angle_max};
+    auto const turn_speed{flight_intent_.rotation.y * config.turn_bank_speed};
     auto const roll_speed{
         std::max(static_cast<double>(config.turn_bank_speed), std::abs(turn_speed))};
     auto const new_roll{
         player_movement::interpolate_to(current_rotation.roll, turn_target, dt, roll_speed)};
     presentation.body_transform.rotation = to_quaternion(Rotator3d{new_pitch, new_yaw, new_roll});
-}
-
-void Sim::set_desired_planar_velocity(ml::Vector3d const desired_velocity) {
-    target_local_planar_velocity = desired_velocity;
-
-    auto const local_velocity{
-        state_.physical.transform.inverse_transform_vector_no_scale(desired_velocity)};
-    target_local_planar_velocity_scale = ml::Vector2d{local_velocity.y / config.cruise_speed,
-                                                      local_velocity.x / config.cruise_speed};
-    auto const response{config.speed_responses.accelerating_to_cruise};
-    state_.controller.planar_flight_model.set_new_impulse(response.settling_time,
-                                                          response.damping_ratio,
-                                                          state_.controller.planar_velocity,
-                                                          target_local_planar_velocity);
-}
-
-void Sim::set_boost_brake_state(BoostBrakeState const state) {
-    set_boost_brake_state(state, state_);
-}
-
-void Sim::set_boost_brake_state(BoostBrakeState const new_state, PlayerSimulationState& state) {
-    auto& controller{state.controller};
-    auto& resources{state.resources};
-    if (new_state == player::BoostBrakeState::Boost && controller.effective_action != new_state) {
-        ++state.presentation.boost_start_sequence;
-    }
-
-    if (uses_power_controller()) {
-        switch (new_state) {
-            case BoostBrakeState::None:
-                resources.thrust_change_rate = 1.f / config.thrust_recharge_time;
-                break;
-            case BoostBrakeState::Boost:
-                resources.thrust_change_rate = -(1.f / config.boost_depletion_time);
-                break;
-            case BoostBrakeState::Brake:
-                resources.thrust_change_rate = 0.f;
-                break;
-            case BoostBrakeState::EmergencyBrake:
-                resources.thrust_change_rate = -(1.f / config.brake_depletion_time);
-                break;
-        }
-        controller.target_speed = new_state == BoostBrakeState::Boost ? config.power_boost_max_speed
-                                                                      : config.power_max_speed;
-        controller.effective_action = new_state;
-        return;
-    }
-
-    auto const current_speed{static_cast<float>(state.physical.velocity.size())};
-    auto const& speed_responses{config.speed_responses};
-    if (new_state != player::BoostBrakeState::None && new_state != player::BoostBrakeState::Boost &&
-        new_state != player::BoostBrakeState::Brake &&
-        new_state != player::BoostBrakeState::EmergencyBrake) {
-        ml::log_error("Unhandled player boost/brake state.");
-    }
-
-    enum class SpeedResponseKind : std::uint8_t {
-        AcceleratingToCruise,
-        SlowingToCruise,
-        Boost,
-        Brake
-    };
-    struct ThrustTransition {
-        float target_speed;
-        float energy_change_rate;
-        float planar_boost_target;
-        SpeedResponseKind speed_response;
-    };
-
-    ThrustTransition transition{};
-    switch (new_state) {
-        case player::BoostBrakeState::Boost:
-            transition = {config.boost_speed,
-                          -(1.f / config.boost_depletion_time),
-                          config.cruise_speed * config.boost_forward_speed_addition_multiplier,
-                          SpeedResponseKind::Boost};
-            break;
-        case player::BoostBrakeState::Brake:
-        case player::BoostBrakeState::EmergencyBrake:
-            transition = {config.brake_speed,
-                          -(1.f / config.brake_depletion_time),
-                          0.f,
-                          SpeedResponseKind::Brake};
-            break;
-        default:
-            transition = {config.cruise_speed,
-                          1.f / config.thrust_recharge_time,
-                          0.f,
-                          config.cruise_speed < current_speed
-                              ? SpeedResponseKind::SlowingToCruise
-                              : SpeedResponseKind::AcceleratingToCruise};
-            break;
-    }
-    std::array const responses{&speed_responses.accelerating_to_cruise,
-                               &speed_responses.slowing_to_cruise,
-                               &speed_responses.boost,
-                               &speed_responses.brake};
-    auto const response{*responses[static_cast<std::size_t>(transition.speed_response)]};
-    controller.target_speed = transition.target_speed;
-    resources.thrust_change_rate = transition.energy_change_rate;
-
-    controller.forward_flight_model.set_new_impulse(
-        response.settling_time, response.damping_ratio, current_speed, controller.target_speed);
-    controller.planar_boost_flight_model.set_new_impulse(response.settling_time,
-                                                         response.damping_ratio,
-                                                         controller.planar_boost_speed,
-                                                         transition.planar_boost_target);
-    controller.effective_action = new_state;
 }
 
 void Sim::update_boost_brake(float const dt, PlayerSimulationState& state) {
@@ -392,7 +211,7 @@ void Sim::update_boost_brake(float const dt, PlayerSimulationState& state) {
         case BoostBrakeState::None:
             break;
         case BoostBrakeState::Brake:
-            energy_change = 0.f;
+            energy_change = -model.brake.energy_drain_per_second;
             break;
         case BoostBrakeState::Boost:
             energy_change = -model.boost.energy_drain_per_second;
@@ -414,7 +233,7 @@ void Sim::refresh_effective_action(PlayerSimulationState& state) noexcept {
     auto action{BoostBrakeState::None};
     if (flight_intent_.emergency_brake_held && model.emergency_brake.available) {
         action = state.resources.thrust_energy > 0.f ? BoostBrakeState::EmergencyBrake
-                                                    : BoostBrakeState::Brake;
+                                                     : BoostBrakeState::Brake;
     } else if (flight_intent_.brake_held && model.brake.available) {
         action = BoostBrakeState::Brake;
     } else if (flight_intent_.boost_held && model.boost.available &&
@@ -427,7 +246,7 @@ void Sim::refresh_effective_action(PlayerSimulationState& state) noexcept {
         ++state.presentation.boost_start_sequence;
     }
     if (action != state.controller.effective_action) {
-        seed_flight_model_responses(state);
+        prepare_flight_model_action_transition(state, model);
     }
     state.controller.effective_action = action;
 }
@@ -436,136 +255,82 @@ void Sim::refresh_effective_action(PlayerSimulationState& state) noexcept {
 // Flight controls
 /* **************************************** */
 void Sim::set_move_input(ml::Vector2d const input) noexcept {
-    planar_movement_direction = input;
-    flight_intent_.translation.y = input.x;
-    flight_intent_.translation.z = input.y;
+    flight_intent_.translation.y = std::clamp(input.x, -1.0, 1.0);
+    flight_intent_.translation.x = std::clamp(input.y, -1.0, 1.0);
+}
+
+void Sim::set_forward_move_input(float const input) noexcept {
+    flight_intent_.translation.x = std::clamp(input, -1.f, 1.f);
 }
 
 void Sim::set_lateral_move_input(float const input) noexcept {
-    planar_movement_direction.x = input;
-    flight_intent_.translation.y = input;
+    flight_intent_.translation.y = std::clamp(input, -1.f, 1.f);
 }
 
 void Sim::set_vertical_move_input(float const input) noexcept {
-    planar_movement_direction.y = input;
-    flight_intent_.translation.z = input;
+    flight_intent_.translation.z = std::clamp(input, -1.f, 1.f);
 }
 
 void Sim::set_ship_2d_control(ml::Vector2d const input) {
-    if (!sampling) {
+    if (!sampling_target_speed_) {
         return;
     }
-
-    if (control_mode == SpaceShipControlMode::Velocity) {
-        target_local_planar_velocity_scale = input;
-    }
+    sampled_target_speed_scale_ = input;
 }
 
 void Sim::set_throttle(float const input) noexcept {
-    throttle = std::clamp(input, 0.f, 1.f);
-    flight_intent_.translation.x = throttle;
+    flight_intent_.accelerator = std::clamp(input, 0.f, 1.f);
 }
 
 void Sim::set_ship_1d_control_x(float const input) {
-    auto control{target_local_planar_velocity_scale};
+    auto control{sampled_target_speed_scale_};
     control.x = input;
     set_ship_2d_control(control);
 }
 
 void Sim::set_ship_1d_control_y(float const input) {
-    auto control{target_local_planar_velocity_scale};
+    auto control{sampled_target_speed_scale_};
     control.y = input;
     set_ship_2d_control(control);
 }
 
-void Sim::select_next_control_mode() {
-    set_control_mode(
-        static_cast<SpaceShipControlMode>((static_cast<unsigned>(control_mode) + 1) %
-                                          static_cast<unsigned>(SpaceShipControlMode::COUNT)));
-}
-
-void Sim::select_previous_control_mode() {
-    set_control_mode(
-        static_cast<SpaceShipControlMode>((static_cast<unsigned>(control_mode) +
-                                           static_cast<unsigned>(SpaceShipControlMode::COUNT) - 1) %
-                                          static_cast<unsigned>(SpaceShipControlMode::COUNT)));
-}
-
-void Sim::set_control_mode(SpaceShipControlMode const new_control_mode) {
-    if (control_mode == new_control_mode) {
-        return;
-    }
-
-    if (new_control_mode == SpaceShipControlMode::Power) {
-        flight_mode = SpaceShipFlightMode::PlanarVelocity;
-    }
-
-    sampling = false;
-    target_local_planar_velocity_scale = {};
-    target_local_planar_velocity = {};
-    throttle = 0.f;
-    if (flight_mode == SpaceShipFlightMode::PlanarVelocity) {
-        state_.controller.planar_velocity = state_.physical.velocity;
-        state_.controller.planar_boost_speed = 0.f;
-    }
-
-    control_mode = new_control_mode;
-    if (flight_mode == SpaceShipFlightMode::PlanarVelocity &&
-        control_mode == SpaceShipControlMode::Velocity) {
-        set_desired_planar_velocity(state_.physical.velocity);
-    }
-    set_boost_brake_state(BoostBrakeState::None);
-    planned_state_ = state_;
-}
-
-auto Sim::uses_power_controller() const noexcept -> bool {
-    return flight_mode == SpaceShipFlightMode::PlanarVelocity &&
-           control_mode == SpaceShipControlMode::Power;
-}
-
 void Sim::start_sampling() noexcept {
-    if (sampling) {
+    if (sampling_target_speed_) {
         return;
     }
-    planar_movement_direction = ml::Vector2d{};
-    target_local_planar_velocity_scale = ml::Vector2d{};
-    sampling = true;
+    sampled_target_speed_scale_ = {};
+    sampling_target_speed_ = true;
 }
 
 void Sim::stop_sampling() {
-    sampling = false;
-    if (control_mode != SpaceShipControlMode::Velocity) {
+    if (!sampling_target_speed_) {
         return;
     }
-
-    auto const world_direction{
-        state_.physical.transform.forward() * target_local_planar_velocity_scale.y +
-        state_.physical.transform.right() * target_local_planar_velocity_scale.x};
-    set_desired_planar_velocity(world_direction * config.cruise_speed);
+    sampling_target_speed_ = false;
+    auto const& config{get_active_flight_model_config()};
+    state_.controller.persistent_forward_target_speed =
+        static_cast<float>(sampled_target_speed_scale_.y) *
+        config.translation.forward.normal.positive_speed_limit;
+    state_.controller.persistent_right_target_speed =
+        static_cast<float>(sampled_target_speed_scale_.x) *
+        config.translation.right.normal.positive_speed_limit;
+    planned_state_ = state_;
 }
 
 void Sim::adjust_desired_forward_velocity(float const direction) {
-    if (flight_mode != SpaceShipFlightMode::PlanarVelocity ||
-        control_mode != SpaceShipControlMode::Velocity || sampling ||
-        (std::abs(direction) <= 1.e-8f)) {
+    if (sampling_target_speed_ || std::abs(direction) <= 1.e-8f) {
         return;
     }
-
-    auto const forward{state_.physical.transform.forward()};
-    auto const current_forward_velocity{ml::dot(target_local_planar_velocity, forward)};
-    auto const adjustment_direction{direction > 0.f ? 1.f : -1.f};
-    auto const adjustment{adjustment_direction * config.cruise_speed *
-                          config.forward_velocity_trim_fraction};
-    auto const desired_forward_velocity{std::clamp(current_forward_velocity + adjustment,
-                                                   -static_cast<double>(config.cruise_speed),
-                                                   static_cast<double>(config.cruise_speed))};
-    auto const desired_velocity{target_local_planar_velocity +
-                                forward * (desired_forward_velocity - current_forward_velocity)};
-    set_desired_planar_velocity(desired_velocity);
+    auto const& drive{get_active_flight_model_config().translation.forward.normal};
+    auto const adjustment{std::copysign(drive.positive_speed_limit * 0.05f, direction)};
+    state_.controller.persistent_forward_target_speed =
+        std::clamp(state_.controller.persistent_forward_target_speed + adjustment,
+                   -drive.negative_speed_limit,
+                   drive.positive_speed_limit);
+    planned_state_ = state_;
 }
 
 void Sim::turn(ml::Vector2d const direction) noexcept {
-    rotation_input = direction;
     flight_intent_.rotation.x = direction.y;
     flight_intent_.rotation.y = direction.x;
 }
@@ -602,13 +367,7 @@ void Sim::stop_brake() {
 }
 
 void Sim::roll(float const direction) noexcept {
-    roll_input = std::clamp(direction, -1.f, 1.f);
-    flight_intent_.rotation.z = roll_input;
-}
-
-void Sim::set_flight_mode(SpaceShipFlightMode const new_flight_mode) noexcept {
-    flight_mode = control_mode == SpaceShipControlMode::Power ? SpaceShipFlightMode::PlanarVelocity
-                                                              : new_flight_mode;
+    flight_intent_.rotation.z = std::clamp(direction, -1.f, 1.f);
 }
 
 void Sim::select_flight_model_slot(FlightModelSlot const slot) noexcept {
@@ -617,6 +376,8 @@ void Sim::select_flight_model_slot(FlightModelSlot const slot) noexcept {
     }
 
     active_flight_model_slot_ = slot;
+    sampling_target_speed_ = false;
+    sampled_target_speed_scale_ = {};
     reset_flight_model_controller(state_, get_active_flight_model_config());
     refresh_effective_action(state_);
     planned_state_ = state_;

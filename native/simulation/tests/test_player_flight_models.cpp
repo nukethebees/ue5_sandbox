@@ -88,9 +88,11 @@ TEST(NativeSimulationFlightModels, StarfoxConvergesToCruiseAndSupportsBoostAndBr
     EXPECT_LT(player_sim(simulation).get_energy(), 1.f);
 
     simulation.get_player_ship_commands()->stop_boost();
+    auto const energy_before_brake{player_sim(simulation).get_energy()};
     simulation.get_player_ship_commands()->start_brake();
     advance_ticks(simulation, 180);
     EXPECT_LT(velocity(simulation).size(), cruise_speed);
+    EXPECT_LT(player_sim(simulation).get_energy(), energy_before_brake);
 }
 
 TEST(NativeSimulationFlightModels, FighterAcceleratesOnlyWithInputAndThenDrags) {
@@ -107,6 +109,26 @@ TEST(NativeSimulationFlightModels, FighterAcceleratesOnlyWithInputAndThenDrags) 
     simulation.get_player_ship_commands()->set_throttle(0.f);
     advance_ticks(simulation, 30);
     EXPECT_LT(velocity(simulation).size(), accelerated);
+}
+
+TEST(NativeSimulationFlightModels, FighterBoostAndBrakeRemainOrthogonal) {
+    LevelSim normal{make_data(player::FlightModelPreset::Fighter)};
+    LevelSim boosted{make_data(player::FlightModelPreset::Fighter)};
+    start(normal);
+    start(boosted);
+    normal.get_player_ship_commands()->set_throttle(1.f);
+    boosted.get_player_ship_commands()->set_throttle(1.f);
+    boosted.get_player_ship_commands()->start_boost();
+    advance_ticks(normal, 30);
+    advance_ticks(boosted, 30);
+    EXPECT_GT(velocity(boosted).size(), velocity(normal).size());
+
+    auto const before_brake{velocity(boosted).size()};
+    boosted.get_player_ship_commands()->start_brake();
+    advance_ticks(boosted, 10);
+    EXPECT_LT(velocity(boosted).size(), before_brake);
+    EXPECT_EQ(player_sim(boosted).get_controller_state().effective_action,
+              player::BoostBrakeState::Brake);
 }
 
 TEST(NativeSimulationFlightModels, SkaterCoastsAndRotationDoesNotRotateVelocity) {
@@ -144,6 +166,41 @@ TEST(NativeSimulationFlightModels, SkaterAddsThrustAlongCurrentFacing) {
     EXPECT_GT(after.y, 0.0);
 }
 
+TEST(NativeSimulationFlightModels, SkaterTurningUnderThrustProgressivelyBendsTrajectory) {
+    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    start(simulation);
+    auto* const commands{simulation.get_player_ship_commands()};
+    commands->set_throttle(1.f);
+    advance_ticks(simulation, 30);
+    auto const before_turn{velocity(simulation)};
+
+    commands->turn({1.0, 0.0});
+    advance_ticks(simulation, 30);
+
+    auto const after_turn{velocity(simulation)};
+    EXPECT_GT(after_turn.x, before_turn.x);
+    EXPECT_GT(after_turn.y, 0.0);
+    EXPECT_LT(after_turn.y, after_turn.x);
+}
+
+TEST(NativeSimulationFlightModels, SkaterCanFaceBackwardWhilePreservingForwardTravel) {
+    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    start(simulation);
+    auto* const commands{simulation.get_player_ship_commands()};
+    commands->set_throttle(1.f);
+    advance_ticks(simulation, 30);
+    commands->set_throttle(0.f);
+    auto const preserved{velocity(simulation)};
+
+    commands->turn({1.0, 0.0});
+    advance_ticks(simulation, 180);
+
+    expect_velocity_near(velocity(simulation), preserved, 1.e-5);
+    EXPECT_LT(ml::dot(velocity(simulation),
+                      player_sim(simulation).get_physical_state().transform.forward()),
+              0.0);
+}
+
 TEST(NativeSimulationFlightModels, SkaterBrakeAndEmergencyBrakeReduceWithoutReversing) {
     LevelSim brake{make_data(player::FlightModelPreset::Skater)};
     LevelSim emergency{make_data(player::FlightModelPreset::Skater)};
@@ -170,7 +227,7 @@ TEST(NativeSimulationFlightModels, GunshipControlsThreeAxesAndStabilizesNeutralI
     LevelSim simulation{make_data(player::FlightModelPreset::Gunship)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
-    commands->set_throttle(1.f);
+    commands->set_forward_move_input(1.f);
     commands->set_lateral_move_input(1.f);
     commands->set_vertical_move_input(-1.f);
     advance_ticks(simulation, 30);
@@ -179,23 +236,45 @@ TEST(NativeSimulationFlightModels, GunshipControlsThreeAxesAndStabilizesNeutralI
     EXPECT_GT(driven.y, 0.0);
     EXPECT_LT(driven.z, 0.0);
 
-    commands->set_throttle(0.f);
+    commands->set_forward_move_input(0.f);
     commands->set_lateral_move_input(0.f);
     commands->set_vertical_move_input(0.f);
     advance_ticks(simulation, 120);
     EXPECT_NEAR(velocity(simulation).size(), 0.0, 1.e-4);
 }
 
+TEST(NativeSimulationFlightModels, GunshipRotationRemainsIndependentOfTranslationControl) {
+    LevelSim simulation{make_data(player::FlightModelPreset::Gunship)};
+    start(simulation);
+    auto* const commands{simulation.get_player_ship_commands()};
+    commands->set_lateral_move_input(1.f);
+    commands->turn({1.0, 0.5});
+    advance_ticks(simulation, 30);
+
+    EXPECT_GT(velocity(simulation).y, 0.0);
+    auto const facing{player_sim(simulation).get_physical_state().transform.forward()};
+    EXPECT_GT(facing.y, 0.0);
+    EXPECT_GT(std::abs(facing.z), 0.0);
+}
+
 TEST(NativeSimulationFlightModels, DirectSlotSelectionPreservesPhysicalStateAtBoundary) {
     LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     simulation.get_player_ship_commands()->set_throttle(1.f);
+    simulation.get_player_ship_commands()->set_forward_move_input(-0.25f);
     advance_ticks(simulation, 30);
+    simulation.get_player_ship_commands()->turn({0.25, -0.5});
     auto const& sim_player{player_sim(simulation)};
     auto const transform{sim_player.get_physical_state().transform};
     auto const before{velocity(simulation)};
+    auto const energy{sim_player.get_energy()};
+    auto const health{sim_player.get_health()};
+    auto* const commands{simulation.get_player_ship_commands()};
+    commands->start_fire_laser();
+    auto const firing_mode{sim_player.laser_firing_mode};
+    auto const fire_rate{sim_player.laser_fire_rate};
 
-    simulation.get_player_ship_commands()->select_flight_model_slot(player::FlightModelSlot::Up);
+    commands->select_flight_model_slot(player::FlightModelSlot::Up);
 
     EXPECT_EQ(sim_player.get_active_flight_model_slot(), player::FlightModelSlot::Up);
     EXPECT_EQ(sim_player.get_physical_state().transform.location, transform.location);
@@ -204,7 +283,34 @@ TEST(NativeSimulationFlightModels, DirectSlotSelectionPreservesPhysicalStateAtBo
     EXPECT_DOUBLE_EQ(sim_player.get_physical_state().transform.rotation.z, transform.rotation.z);
     EXPECT_DOUBLE_EQ(sim_player.get_physical_state().transform.rotation.w, transform.rotation.w);
     expect_velocity_near(sim_player.get_physical_state().velocity, before, 1.e-8);
+    EXPECT_FLOAT_EQ(sim_player.get_energy(), energy);
+    EXPECT_EQ(sim_player.get_health(), health);
+    EXPECT_EQ(sim_player.laser_firing_mode, firing_mode);
+    EXPECT_EQ(sim_player.laser_fire_rate, fire_rate);
+    EXPECT_DOUBLE_EQ(sim_player.get_flight_intent().translation.x, -0.25);
+    EXPECT_FLOAT_EQ(sim_player.get_flight_intent().accelerator, 1.f);
+    EXPECT_DOUBLE_EQ(sim_player.get_flight_intent().rotation.x, -0.5);
+    EXPECT_DOUBLE_EQ(sim_player.get_flight_intent().rotation.y, 0.25);
     EXPECT_EQ(sim_player.get_controller_state().effective_action, player::BoostBrakeState::None);
+}
+
+TEST(NativeSimulationFlightModels, SwitchingClearsPersistentTargetsAndSamplingState) {
+    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    start(simulation);
+    auto* const commands{simulation.get_player_ship_commands()};
+    commands->start_sampling();
+    commands->set_ship_2d_control({0.5, 0.75});
+    commands->stop_sampling();
+    ASSERT_NE(player_sim(simulation).get_controller_state().persistent_forward_target_speed, 0.f);
+    commands->start_sampling();
+
+    commands->select_flight_model_slot(player::FlightModelSlot::Up);
+
+    EXPECT_FALSE(player_sim(simulation).is_sampling_target_speed());
+    EXPECT_EQ(player_sim(simulation).get_sampled_target_speed_scale(), ml::Vector2d{});
+    EXPECT_EQ(player_sim(simulation).get_controller_state().persistent_forward_target_speed, 0.f);
+    EXPECT_EQ(player_sim(simulation).get_controller_state().persistent_right_target_speed, 0.f);
+    EXPECT_EQ(player_sim(simulation).get_controller_state().persistent_up_target_speed, 0.f);
 }
 
 TEST(NativeSimulationFlightModels, EveryPairwiseSlotTransitionPreservesWorldVelocity) {
@@ -263,6 +369,103 @@ TEST(NativeSimulationFlightModels, SlotReplacementAppliesRuntimeConfigWithoutRec
     simulation.get_player_ship_commands()->set_throttle(1.f);
     advance_ticks(simulation, 60);
     EXPECT_NEAR(velocity(simulation).x, 1234.0, 0.1);
+}
+
+TEST(NativeSimulationFlightModels, ResponseSeedingUsesTheNewChannelsReferenceFrame) {
+    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    start(simulation);
+    auto* const commands{simulation.get_player_ship_commands()};
+    commands->set_throttle(1.f);
+    advance_ticks(simulation, 30);
+    commands->set_throttle(0.f);
+    commands->turn({1.0, 0.0});
+    advance_ticks(simulation, 90);
+    commands->turn({});
+    auto const world_forward_speed{static_cast<float>(velocity(simulation).x)};
+    ASSERT_GT(world_forward_speed, 0.f);
+    ASSERT_NEAR(player_sim(simulation).get_physical_state().transform.forward().x, 0.0, 1.e-3);
+
+    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    profile.config.translation.forward.manual.semantic =
+        player::TranslationSemantic::TargetVelocity;
+    profile.config.translation.forward.manual.reference_frame = player::ReferenceFrame::World;
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+
+    EXPECT_NEAR(player_sim(simulation).get_controller_state().forward_manual_response.value(),
+                world_forward_speed,
+                1.e-3f);
+}
+
+TEST(NativeSimulationFlightModels, PassiveDragAndNeutralStabilizationRemainDistinct) {
+    LevelSim passive{make_data(player::FlightModelPreset::Skater)};
+    LevelSim stabilized{make_data(player::FlightModelPreset::Skater)};
+    start(passive);
+    start(stabilized);
+
+    auto configure = [](LevelSim& simulation, bool const use_passive_drag) {
+        auto* const commands{simulation.get_player_ship_commands()};
+        auto profile{player_sim(simulation).get_active_flight_model_profile()};
+        auto& forward{profile.config.translation.forward};
+        forward.passive_drag = use_passive_drag ? 1000.f : 0.f;
+        forward.active_stabilization_rate = use_passive_drag ? 0.f : 1000.f;
+        EXPECT_TRUE(
+            commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+        commands->set_throttle(1.f);
+    };
+    configure(passive, true);
+    configure(stabilized, false);
+    advance_ticks(passive, 30);
+    advance_ticks(stabilized, 30);
+
+    EXPECT_LT(velocity(passive).x, velocity(stabilized).x);
+    auto const stabilized_driven_speed{velocity(stabilized).x};
+    stabilized.get_player_ship_commands()->set_throttle(0.f);
+    advance_ticks(stabilized, 30);
+    EXPECT_LT(velocity(stabilized).x, stabilized_driven_speed);
+}
+
+TEST(NativeSimulationFlightModels, BoostResponseChangesWithoutDiscardingAccelerationState) {
+    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    start(simulation);
+    auto* const commands{simulation.get_player_ship_commands()};
+    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    profile.config.boost.response.mode = player::ResponseMode::RateLimited;
+    profile.config.boost.response.rate_limited = {1000.f, 1000.f};
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+    commands->set_throttle(1.f);
+    advance_ticks(simulation, 1);
+    auto const before_boost{velocity(simulation).x};
+
+    commands->start_boost();
+    advance_ticks(simulation, 1);
+    auto const boost_velocity_change{velocity(simulation).x - before_boost};
+
+    EXPECT_GT(boost_velocity_change, 100.0);
+    EXPECT_LT(boost_velocity_change, 250.0);
+}
+
+TEST(NativeSimulationFlightModels, PartialFacingCouplingBendsVelocityWithoutLockingIt) {
+    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    start(simulation);
+    auto* const commands{simulation.get_player_ship_commands()};
+    commands->set_throttle(1.f);
+    advance_ticks(simulation, 30);
+    commands->set_throttle(0.f);
+    commands->turn({1.0, 0.0});
+    advance_ticks(simulation, 90);
+    commands->turn({});
+    ASSERT_GT(velocity(simulation).x, 0.0);
+
+    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    profile.config.facing_velocity.mode = player::FacingVelocityCoupling::AlignToFacing;
+    profile.config.facing_velocity.alignment_rate = 1000.f;
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+    advance_ticks(simulation, 30);
+
+    auto const bent{velocity(simulation)};
+    EXPECT_GT(bent.x, 0.0);
+    EXPECT_GT(bent.y, 0.0);
+    EXPECT_GT(std::abs(bent.x), std::abs(bent.y));
 }
 
 TEST(NativeSimulationFlightModels, ActionPriorityAndEnergyFallbackAreExplicit) {

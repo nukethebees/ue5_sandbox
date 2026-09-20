@@ -34,9 +34,10 @@ enum class EGameGraphicsPreset : uint8 {
 };
 
 enum class EPlayerShipFlightControlPreset : uint8 {
-    ForwardSpeed,
-    PlanarVelocity,
-    PlanarPower,
+    Starfox,
+    Fighter,
+    Skater,
+    Gunship,
 };
 
 } // namespace ml::ioj

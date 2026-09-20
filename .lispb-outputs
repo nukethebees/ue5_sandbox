@@ -25,10 +25,6 @@ Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/common/ShipLaserMode.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/common/ShipLaserModeConversion.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRate.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestShipFireRateConversion.h
-Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestSpaceShipControlMode.h
-Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestSpaceShipControlModeConversion.h
-Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestSpaceShipFlightMode.h
-Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestSpaceShipFlightModeConversion.h
 Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/simulation/StaticCollisionSources.h
 Plugins/SpaceGame/Source/SpaceGamePresentation/Private/ui/style/GameUiStyleTypes.cpp
 Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/entities/TestTeam.h
@@ -60,9 +56,7 @@ native/simulation/include/ioj/sim/missions/mission_fail_reason.h
 native/simulation/include/ioj/sim/missions/mission_mode.h
 native/simulation/include/ioj/sim/missions/mission_state.h
 native/simulation/include/ioj/sim/player/command_interface.h
-native/simulation/include/ioj/sim/player/control_mode.h
 native/simulation/include/ioj/sim/player/fire_rate.h
-native/simulation/include/ioj/sim/player/flight_mode.h
 native/simulation/include/ioj/sim/player/laser_firing_state.h
 native/simulation/include/ioj/sim/player/phase_interface.h
 native/simulation/include/ioj/sim/player/ship_laser_mode.h

@@ -2,9 +2,7 @@
 #include <ioj/sim/missions/mission_fail_reason.h>
 #include <ioj/sim/missions/mission_mode.h>
 #include <ioj/sim/missions/mission_state.h>
-#include <ioj/sim/player/control_mode.h>
 #include <ioj/sim/player/fire_rate.h>
-#include <ioj/sim/player/flight_mode.h>
 #include <ioj/sim/player/laser_firing_state.h>
 #include <ioj/sim/player/ship_laser_mode.h>
 #include <ioj/sim/player/space_ship_common.h>
@@ -141,8 +139,6 @@ TEST(NativeEnums, PlayerEnumsExposeExhaustiveNativeValues) {
     EXPECT_EQ(ml::EnumTraits<ShipLaserMode>::count, 3U);
     EXPECT_EQ(ml::EnumTraits<LaserFiringState>::count, 5U);
     EXPECT_EQ(ml::EnumTraits<ShipFireRate>::count, 3U);
-    EXPECT_EQ(ml::EnumTraits<SpaceShipFlightMode>::count, 2U);
-    EXPECT_EQ(ml::EnumTraits<SpaceShipControlMode>::count, 2U);
     EXPECT_EQ(ml::EnumTraits<player::BoostBrakeState>::count, 4U);
 
     for (auto const value : ml::EnumTraits<ShipLaserMode>::values) {
@@ -152,12 +148,6 @@ TEST(NativeEnums, PlayerEnumsExposeExhaustiveNativeValues) {
         EXPECT_FALSE(to_string(value).empty());
     }
     for (auto const value : ml::EnumTraits<ShipFireRate>::values) {
-        EXPECT_FALSE(to_string(value).empty());
-    }
-    for (auto const value : ml::EnumTraits<SpaceShipFlightMode>::values) {
-        EXPECT_FALSE(to_string(value).empty());
-    }
-    for (auto const value : ml::EnumTraits<SpaceShipControlMode>::values) {
         EXPECT_FALSE(to_string(value).empty());
     }
     for (auto const value : ml::EnumTraits<player::BoostBrakeState>::values) {
