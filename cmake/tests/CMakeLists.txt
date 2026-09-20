@@ -135,12 +135,3 @@ sandbox_assert_equal("Unreal editor command path" "${engine_EDITOR_CMD_EXE}"
   [=[C:/Engine Root/UE 5.8/Engine/Binaries/Win64/UnrealEditor-Win64-DebugGame-Cmd.exe]=])
 sandbox_assert_equal("UnrealPak path" "${engine_UNREAL_PAK_EXE}"
   [=[C:/Engine Root/UE 5.8/Engine/Binaries/Win64/UnrealPak.exe]=])
-
-sandbox_get_unreal_target_executable_path(development_test_executable
-  [=[C:\Sandbox Root]=] Win64 SandboxCoreTests Development)
-sandbox_assert_equal("Development test executable path" "${development_test_executable}"
-  [=[C:/Sandbox Root/Binaries/Win64/SandboxCoreTests/SandboxCoreTests.exe]=])
-sandbox_get_unreal_target_executable_path(debug_game_test_executable
-  [=[C:\Sandbox Root]=] Win64 SandboxCoreTests DebugGame)
-sandbox_assert_equal("DebugGame test executable path" "${debug_game_test_executable}"
-  [=[C:/Sandbox Root/Binaries/Win64/SandboxCoreTests/SandboxCoreTests-Win64-DebugGame.exe]=])

@@ -53,18 +53,6 @@ function(sandbox_configure_unreal_engine_paths prefix engine_root editor_name ed
   set(${prefix}_UNREAL_PAK_EXE "${unreal_pak_executable}" PARENT_SCOPE)
 endfunction()
 
-function(sandbox_get_unreal_target_executable_path output_variable project_root platform target configuration)
-  if(configuration STREQUAL "Development")
-    set(executable_name "${target}.exe")
-  else()
-    set(executable_name "${target}-${platform}-${configuration}.exe")
-  endif()
-
-  cmake_path(APPEND project_root Binaries "${platform}" "${target}" "${executable_name}"
-    OUTPUT_VARIABLE executable_path)
-  set(${output_variable} "${executable_path}" PARENT_SCOPE)
-endfunction()
-
 function(sandbox_configure_game_artifact_paths prefix artifact_root base_directory platform configuration)
   cmake_path(ABSOLUTE_PATH artifact_root BASE_DIRECTORY "${base_directory}" NORMALIZE
     OUTPUT_VARIABLE artifact_root_absolute)

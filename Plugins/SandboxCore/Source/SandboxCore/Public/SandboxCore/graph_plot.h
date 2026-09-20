@@ -68,7 +68,7 @@ struct SANDBOXCORE_API FGraphCacheStats {
     bool decimated{false};
 };
 
-/** Resolution-bounded data/range cache shared by Slate and low-level tests/benchmarks. */
+/** Resolution-bounded data/range cache shared by Slate consumers and benchmarks. */
 class SANDBOXCORE_API FGraphRenderCache {
   public:
     /** Copies series descriptors and metadata, but never copies source sample arrays. */

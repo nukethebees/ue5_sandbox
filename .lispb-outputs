@@ -10,9 +10,6 @@ Plugins/SandboxCore/Source/SbxCoreExperiments/Private/soa_spacing_shapes.cpp
 Plugins/SandboxCore/Source/SbxCoreExperiments/Private/soa_types.cpp
 Plugins/SandboxCore/Source/SbxCoreExperiments/Public/SbxCoreExperiments/soa_spacing_shapes.h
 Plugins/SandboxCore/Source/SbxCoreExperiments/Public/SbxCoreExperiments/soa_types.h
-Plugins/SandboxCore/Tests/SandboxCoreTests/Private/fixed_soa_test_types.cpp
-Plugins/SandboxCore/Tests/SandboxCoreTests/Private/fixed_soa_test_types.h
-Plugins/SandboxCore/Tests/SandboxCoreTests/Private/static_table_test_types.h
 Plugins/SandboxISMC/Source/SandboxISMC/Private/SandboxISMCInstanceData.cpp
 Plugins/SandboxISMC/Source/SandboxISMC/Public/SandboxISMCInstanceData.h
 Plugins/SpaceGame/Source/SpaceGame/Private/settings/GameSettings.generated.cpp

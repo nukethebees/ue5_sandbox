@@ -4,17 +4,6 @@ set(CACHE{UE_ROOT}
   VALUE "$ENV{UE_ROOT}"
 )
 
-set(CACHE{SANDBOX_TEST_SUITE}
-  TYPE STRING
-  HELP "Low-level test suite registered with CTest"
-  VALUE default
-)
-set_property(CACHE SANDBOX_TEST_SUITE PROPERTY STRINGS
-  default
-  benchmark
-  editor-only
-)
-
 set(CACHE{SANDBOX_ISMC_BENCHMARK_SECONDS}
   TYPE STRING
   HELP "Duration of the offscreen SandboxISMC paired benchmark"
@@ -209,7 +198,6 @@ file(MAKE_DIRECTORY "${SANDBOX_LOCAL_DDC_DIR}")
 
 include("${PROJECT_SOURCE_DIR}/cmake/unreal.cmake")
 include("${PROJECT_SOURCE_DIR}/cmake/unreal_packaging.cmake")
-include("${PROJECT_SOURCE_DIR}/cmake/catch2.cmake")
 
 add_subdirectory(maintenance)
 add_subdirectory(build)
@@ -418,77 +406,10 @@ set_property(TARGET unreal-unit-tests PROPERTY FOLDER "Sandbox/Unreal/Tests")
 add_custom_target(dev-core
   DEPENDS
     editor
-    core-tests
     native-tests
     jobserver-tests
     check-cmake-presets
 )
-
-if(SANDBOX_TEST_SUITE STREQUAL "benchmark")
-  set(SANDBOX_SOA_SPACING_CPU_GROUP "0" CACHE STRING "Processor group for the pinned SoA confirmation")
-  set(SANDBOX_SOA_SPACING_CPU "2" CACHE STRING "Logical CPU within the group for the pinned SoA confirmation")
-  add_low_level_test_suite(benchmarks SandboxCoreBenchmarks SandboxCore
-    ACTIVITY BENCHMARK
-    LABELS benchmark
-  )
-  add_dependencies(benchmarks check-generated-code)
-  sandbox_jobserver_command(soa_spacing_command BENCHMARK benchmark
-    "Single-allocation SoA spacing benchmark")
-  add_custom_target(single-allocation-soa-spacing
-    COMMAND ${soa_spacing_command} uv run
-      "${PROJECT_SOURCE_DIR}/Scripts/run-soa-spacing-experiment.py"
-    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-    USES_TERMINAL
-    VERBATIM
-  )
-  sandbox_jobserver_command(soa_spacing_confirmation_command BENCHMARK benchmark
-    "Single-allocation SoA spacing confirmation")
-  add_custom_target(single-allocation-soa-spacing-confirmation
-    COMMAND ${soa_spacing_confirmation_command} uv run
-      "${PROJECT_SOURCE_DIR}/Scripts/run-soa-spacing-experiment.py" --suite confirmation
-      --cpu-group "${SANDBOX_SOA_SPACING_CPU_GROUP}" --cpu "${SANDBOX_SOA_SPACING_CPU}"
-    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-    USES_TERMINAL
-    VERBATIM
-  )
-  add_test(NAME SandboxCore.SingleAllocation.Spacing.ConfirmationSmoke
-    COMMAND uv run "${PROJECT_SOURCE_DIR}/Scripts/run-soa-spacing-experiment.py"
-      --suite confirmation --smoke --output-dir "${CMAKE_BINARY_DIR}/spacing-confirmation-smoke"
-      --cpu-group "${SANDBOX_SOA_SPACING_CPU_GROUP}" --cpu "${SANDBOX_SOA_SPACING_CPU}"
-  )
-  set_tests_properties(SandboxCore.SingleAllocation.Spacing.ConfirmationSmoke PROPERTIES WORKING_DIRECTORY "${PROJECT_BINARY_DIR}" TIMEOUT 300 LABELS "soa-spacing-smoke")
-  add_test(NAME SandboxCore.SingleAllocation.Spacing.ConfirmationReportTests
-    COMMAND uv run --no-project python "${PROJECT_SOURCE_DIR}/Scripts/test_soa_spacing_confirmation.py"
-  )
-  set_tests_properties(SandboxCore.SingleAllocation.Spacing.ConfirmationReportTests PROPERTIES WORKING_DIRECTORY "${PROJECT_BINARY_DIR}" LABELS "soa-spacing-smoke")
-  add_test(NAME SandboxCore.SingleAllocation.Spacing.PipelineSmoke
-    COMMAND uv run "${PROJECT_SOURCE_DIR}/Scripts/run-soa-spacing-experiment.py"
-      --smoke --output-dir "${CMAKE_BINARY_DIR}/spacing-smoke"
-  )
-  set_tests_properties(SandboxCore.SingleAllocation.Spacing.PipelineSmoke PROPERTIES WORKING_DIRECTORY "${PROJECT_BINARY_DIR}" TIMEOUT 300 LABELS "soa-spacing-smoke")
-  add_custom_target(single-allocation-soa-plots
-    COMMAND uv run "${PROJECT_SOURCE_DIR}/Scripts/plot-single-allocation-soa-benchmarks.py"
-      --input "${CMAKE_BINARY_DIR}/Testing/Temporary/LastTest.log"
-      --output-dir "${CMAKE_BINARY_DIR}/single-allocation-soa-plots"
-    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-    COMMENT "Plotting the single-allocation SoA comparison"
-    VERBATIM
-    USES_TERMINAL
-  )
-elseif(SANDBOX_TEST_SUITE STREQUAL "default")
-  add_low_level_test_suite(core-tests SandboxCoreTests SandboxCore
-    AGGREGATE
-    LABELS low-level-core)
-
-  add_dependencies(core-tests check-generated-code)
-elseif(SANDBOX_TEST_SUITE STREQUAL "editor-only")
-  # Editor automation tests are registered above and need no low-level test executable.
-else()
-  message(FATAL_ERROR
-    "SANDBOX_TEST_SUITE must be one of: default, benchmark, editor-only. "
-    "Got '${SANDBOX_TEST_SUITE}'."
-  )
-endif()
 
 add_unreal_editor_target(resave-assets
   UNATTENDED

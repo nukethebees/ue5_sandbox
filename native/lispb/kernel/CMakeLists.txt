@@ -194,63 +194,6 @@ add_custom_target(check-generated-native-core-kernels
   VERBATIM
 )
 
-set(KERNEL_AVX2_LAB_ROOT
-  "${PROJECT_SOURCE_DIR}/Plugins/SandboxCore/Tests/SandboxCoreBenchmarks/Private"
-)
-set(KERNEL_AVX2_LAB_FILES
-  "${KERNEL_AVX2_LAB_ROOT}/generated/add_scaled_avx2_lab.h"
-  "${KERNEL_AVX2_LAB_ROOT}/generated/add_scaled_avx2_lab.cpp"
-)
-add_custom_target(generate-kernel-avx2-lab
-  COMMAND lispb generate
-    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
-    --build-root "${CMAKE_BINARY_DIR}"
-    --target kernel-avx2-lab
-  DEPENDS
-    lispb
-    "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
-    "${KERNEL_CANDIDATE_DOCUMENT}"
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-  COMMENT "Generating the private AVX2 kernel experiment"
-  USES_TERMINAL
-  VERBATIM
-)
-add_custom_target(check-generated-kernel-avx2-lab
-  COMMAND lispb check
-    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
-    --build-root "${CMAKE_BINARY_DIR}"
-    --target kernel-avx2-lab
-  DEPENDS
-    lispb
-    "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
-    "${KERNEL_CANDIDATE_DOCUMENT}"
-  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-  COMMENT "Checking the private AVX2 kernel experiment"
-  USES_TERMINAL
-  VERBATIM
-)
-
-add_executable(kernel-generated-avx2-lab-tests
-  tests/avx2_lab_tests.cpp
-  ${KERNEL_AVX2_LAB_FILES}
-)
-set_target_properties(kernel-generated-avx2-lab-tests PROPERTIES UNITY_BUILD OFF)
-target_compile_features(kernel-generated-avx2-lab-tests PRIVATE cxx_std_23)
-target_include_directories(kernel-generated-avx2-lab-tests PRIVATE
-  "${KERNEL_AVX2_LAB_ROOT}"
-  "${CMAKE_SOURCE_DIR}/native/lispb/tests/compile_fixture/stubs"
-)
-target_link_libraries(kernel-generated-avx2-lab-tests PRIVATE
-  GTest::gtest_main
-  sandbox::arch_avx2
-  sandbox::codegen_warnings
-  sandbox::fp_precise
-)
-add_dependencies(kernel-generated-avx2-lab-tests check-generated-kernel-avx2-lab)
-add_dependencies(kernel-codegen-tests kernel-generated-avx2-lab-tests)
-add_test(NAME kernel-generated-avx2-lab-tests COMMAND kernel-generated-avx2-lab-tests)
-set_tests_properties(kernel-generated-avx2-lab-tests PROPERTIES LABELS "unit;all;native;codegen")
-
 if(SANDBOX_KERNEL_BENCHMARKS)
   set(KERNEL_NATIVE_SIMD_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/native-simd-generated")
   set(KERNEL_NATIVE_SIMD_HEADER
@@ -527,7 +470,5 @@ endif()
 
 add_dependencies(generate-code generate-kernel-code)
 add_dependencies(generate-code generate-native-core-kernels)
-add_dependencies(generate-code generate-kernel-avx2-lab)
 add_dependencies(check-generated-code check-generated-kernel-code)
 add_dependencies(check-generated-code check-generated-native-core-kernels)
-add_dependencies(check-generated-code check-generated-kernel-avx2-lab)

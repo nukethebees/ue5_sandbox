@@ -6,7 +6,6 @@
     :types "lispb/schema/types.lispb"
     :sources (
       "lispb/schema/core_layouts.lispb"
-      "lispb/schema/test_fixtures.lispb"
       "lispb/schema/single_allocation_experiment.lispb"
       "lispb/schema/level_telemetry_history.lispb"
       "lispb/schema/soa_spacing_shapes.lispb"
@@ -88,9 +87,6 @@
     (emission kernel-standard
       :profile standard
       :output-root (build-path "native/lispb/kernel/standard-generated"))
-    (emission kernel-avx2-lab
-      :profile unreal-avx2-lab
-      :output-root (project-path "Plugins/SandboxCore/Tests/SandboxCoreBenchmarks/Private"))
     (emission kernel-native-simd
       :profile native-x86-simd-lab
       :output-root (build-path "native/lispb/kernel/native-simd-generated")))
@@ -158,7 +154,7 @@
       slate-game-options
       slate-level-select))
   (group committed-code
-    :targets (sandbox-code slate-production kernel-unreal kernel-native-core kernel-avx2-lab))
+    :targets (sandbox-code slate-production kernel-unreal kernel-native-core))
   (group materials
     :targets (
       ui-glow-material
