@@ -22,6 +22,7 @@ enum class EGameSettingCategory : uint8 {
 
 enum class ESettingApplyMode : uint8 { Immediate, Deferred, Confirm };
 enum class ESettingControlKind : uint8 { Toggle, Choice, FloatRange, IntegerRange, Custom };
+enum class EGameSettingDevice : uint8 { Shared, KeyboardMouse, Controller };
 enum class EGameSettingValueType : uint8 { Bool, Float };
 enum class EGameSettingBackend : uint8 { Engine };
 enum class EGameSettingOptionProvider : uint8 { None, FrameLimits };
@@ -38,6 +39,7 @@ struct COMPILE_FIXTURE_API FGameSettingDescriptor {
     EGameSettingValueType value_type;
     EGameSettingBackend backend;
     ESettingApplyMode apply_mode;
+    EGameSettingDevice device;
     ESettingControlKind control_kind;
     EGameSettingOptionProvider options_provider;
     EGameSettingAvailabilityProvider availability_provider;

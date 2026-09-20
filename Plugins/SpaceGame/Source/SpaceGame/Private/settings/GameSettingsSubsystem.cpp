@@ -94,7 +94,14 @@ void UGameSettingsSubsystem::reset_category(EGameSettingCategory const category)
     auto const before{edit_state_.pending()};
     edit_state_.reset_category(category);
     if (category == EGameSettingCategory::Controls) {
-        reset_active_control_profile();
+        auto const profiles{control_profiles()};
+        auto const* const active_profile{
+            profiles.FindByPredicate([](auto const& profile) { return profile.active; })};
+        auto const reset_scope{
+            control_reset_scope(active_profile != nullptr && active_profile->custom)};
+        if (reset_scope == EControlResetScope::AllControls) {
+            reset_active_control_profile();
+        }
     }
     for (auto const& descriptor : game_setting_descriptors()) {
         if (descriptor.category == category &&
@@ -383,6 +390,8 @@ auto UGameSettingsSubsystem::all_control_bindings() const -> TArray<FControlBind
         }
         for (auto const& row : profile->GetPlayerMappingRows()) {
             for (auto const& mapping : row.Value.Mappings) {
+                auto const* const presentation{
+                    settings->control_binding_metadata(profile_pair.Key, mapping)};
                 TOptional<FControlChordBindingView> chord;
                 if (auto const* const chord_mapping{
                         settings->chord_mapping_for_mapping(profile_pair.Key, mapping)}) {
@@ -411,6 +420,10 @@ auto UGameSettingsSubsystem::all_control_bindings() const -> TArray<FControlBind
                         },
                     .display_name = mapping.GetDisplayName(),
                     .display_category = mapping.GetDisplayCategory(),
+                    .display_group = presentation != nullptr ? presentation->group
+                                                             : EControlBindingGroup::Flight,
+                    .display_order =
+                        presentation != nullptr ? presentation->display_order : MAX_int32,
                     .device_type = mapping.GetPrimaryDeviceType(),
                     .current_key = mapping.GetCurrentKey(),
                     .default_key = mapping.GetDefaultKey(),
@@ -426,14 +439,17 @@ auto UGameSettingsSubsystem::all_control_bindings() const -> TArray<FControlBind
         if (left.address.profile_id != right.address.profile_id) {
             return left.address.profile_id < right.address.profile_id;
         }
-        if (!left.display_category.EqualTo(right.display_category)) {
-            return left.display_category.ToString() < right.display_category.ToString();
+        if (left.display_group != right.display_group) {
+            return static_cast<uint8>(left.display_group) < static_cast<uint8>(right.display_group);
         }
-        if (!left.display_name.EqualTo(right.display_name)) {
-            return left.display_name.ToString() < right.display_name.ToString();
+        if (left.display_order != right.display_order) {
+            return left.display_order < right.display_order;
         }
         if (left.device_type != right.device_type) {
             return static_cast<uint8>(left.device_type) < static_cast<uint8>(right.device_type);
+        }
+        if (left.address.mapping_name != right.address.mapping_name) {
+            return left.address.mapping_name.LexicalLess(right.address.mapping_name);
         }
         return static_cast<uint8>(left.address.slot) < static_cast<uint8>(right.address.slot);
     });
@@ -489,12 +505,9 @@ auto UGameSettingsSubsystem::control_bindings(EHardwareDevicePrimaryType const d
 
     bindings.Append(MoveTemp(missing_device_bindings));
 
-    if (device_type == EHardwareDevicePrimaryType::Unspecified) {
-        return bindings;
-    }
-
-    return bindings.FilterByPredicate(
-        [device_type](auto const& binding) { return binding.device_type == device_type; });
+    return bindings.FilterByPredicate([device_type](auto const& binding) {
+        return control_binding_matches_device(binding, device_type);
+    });
 }
 
 auto UGameSettingsSubsystem::binding_conflicts(FControlBindingAddress const& address,
