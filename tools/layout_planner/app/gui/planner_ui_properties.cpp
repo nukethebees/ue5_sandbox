@@ -4743,6 +4743,10 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                       soa_const_view_name_.size(),
                       "%s",
                       schema->const_view_name.value_or("").c_str());
+        std::snprintf(soa_single_allocation_name_.data(),
+                      soa_single_allocation_name_.size(),
+                      "%s",
+                      schema->single_allocation.value_or("").c_str());
         soa_fixed_container_names_.clear();
         if (schema->fixed.has_value()) {
             std::snprintf(soa_fixed_storage_name_.data(),
@@ -5493,6 +5497,63 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                 ImGui::PopID();
             }
             ImGui::EndTable();
+        }
+    }
+
+    ImGui::SeparatorText("Single allocation");
+    if (!schema->single_allocation.has_value()) {
+        if (ImGui::Button("Enable single allocation")) {
+            auto owner_name{
+                document_->unique_soa_storage_owner_name(*declaration, schema->name + "Single")};
+            if (!owner_name.has_value()) {
+                schema_edit_message_ = owner_name.error().message;
+                return false;
+            }
+            auto replacement{*schema};
+            replacement.single_allocation = std::move(*owner_name);
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+    } else {
+        ImGui::SetNextItemWidth(-1.0F);
+        auto const submitted{ImGui::InputText("Owner type",
+                                              soa_single_allocation_name_.data(),
+                                              soa_single_allocation_name_.size(),
+                                              ImGuiInputTextFlags_EnterReturnsTrue)};
+        if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+            if (soa_single_allocation_name_.front() == '\0') {
+                schema_edit_message_ = "Single-allocation owner type cannot be empty.";
+                return false;
+            }
+            auto replacement{*schema};
+            replacement.single_allocation = soa_single_allocation_name_.data();
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+        ImGui::Text("Generated storage: %sStorage", schema->single_allocation->c_str());
+        if (!schema->single_allocation_variants.empty()) {
+            ImGui::TextDisabled("%zu allocator variant(s) are retained by owner edits.",
+                                schema->single_allocation_variants.size());
+        }
+        ImGui::BeginDisabled(!schema->single_allocation_variants.empty());
+        if (ImGui::Button("Disable single allocation")) {
+            auto replacement{*schema};
+            replacement.single_allocation.reset();
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+        ImGui::EndDisabled();
+        if (!schema->single_allocation_variants.empty()) {
+            ImGui::TextDisabled("Remove allocator variants before disabling single allocation.");
         }
     }
 

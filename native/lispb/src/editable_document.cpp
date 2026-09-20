@@ -1704,8 +1704,7 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
             }
         }
     }
-    if (functions.size() != schema.functions.size() ||
-        (single_allocation != nullptr) != schema.single_allocation.has_value()) {
+    if (functions.size() != schema.functions.size()) {
         return std::nullopt;
     }
     for (std::size_t index{}; index < functions.size(); ++index) {
@@ -1715,6 +1714,7 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
             return std::nullopt;
         }
     }
+    std::string trailing_forms;
     auto render_fixed = [](codegen::FixedSoaSchema const& fixed_schema) {
         std::ostringstream rendered;
         rendered << "(fixed " << fixed_schema.storage_name;
@@ -1745,22 +1745,38 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                                     .end = single_allocation->token.span.offset,
                                     .text = std::move(rendered) + "\n    "});
         } else {
-            replacements.push_back({.begin = parsed->closing.span.offset,
-                                    .end = parsed->closing.span.offset,
-                                    .text = "\n    " + std::move(rendered)});
+            trailing_forms += "\n    " + std::move(rendered);
         }
     }
-    if (single_allocation != nullptr) {
+    auto render_single_allocation = [](codegen::SoaSchema const& source_schema) {
         std::ostringstream rendered;
-        rendered << "(single-allocation " << *schema.single_allocation;
-        for (auto const& variant : schema.single_allocation_variants) {
-            rendered << "\n  (variant " << variant.name << ' ' << render_type_ref(variant.allocator)
-                     << ')';
+        rendered << "(single-allocation " << *source_schema.single_allocation;
+        for (auto const& variant : source_schema.single_allocation_variants) {
+            rendered << "\n      (variant " << variant.name << ' '
+                     << render_type_ref(variant.allocator) << ')';
         }
         rendered << ')';
-        if (!source_form_matches_rendered(*single_allocation, rendered.str())) {
-            return std::nullopt;
+        return std::move(rendered).str();
+    };
+    if (single_allocation != nullptr && schema.single_allocation.has_value()) {
+        auto rendered{render_single_allocation(schema)};
+        if (!source_form_matches_rendered(*single_allocation, rendered)) {
+            replacements.push_back({.begin = single_allocation->token.span.offset,
+                                    .end = single_allocation->closing.span.offset + 1,
+                                    .text = std::move(rendered)});
         }
+    } else if (single_allocation != nullptr) {
+        replacements.push_back({.begin = single_allocation->token.span.offset,
+                                .end = single_allocation->closing.span.offset + 1,
+                                .text = {}});
+    } else if (schema.single_allocation.has_value()) {
+        auto rendered{render_single_allocation(schema)};
+        trailing_forms += "\n    " + std::move(rendered);
+    }
+    if (!trailing_forms.empty()) {
+        replacements.push_back({.begin = parsed->closing.span.offset,
+                                .end = parsed->closing.span.offset,
+                                .text = std::move(trailing_forms)});
     }
 
     std::string operations;
@@ -2316,6 +2332,29 @@ auto EditableSchemaDocument::unique_soa_generated_type_name(DeclarationId const 
     auto const occupied{soa_generated_type_names(*module)};
     auto candidate{base};
     for (auto suffix{std::size_t{2}}; occupied.contains(candidate); ++suffix) {
+        candidate = base + std::to_string(suffix);
+    }
+    return candidate;
+}
+
+auto EditableSchemaDocument::unique_soa_storage_owner_name(DeclarationId const declaration_id,
+                                                           std::string const& base) const
+    -> std::expected<std::string, SchemaEditError> {
+    auto const* info{declaration(declaration_id)};
+    if (info == nullptr || soa_schema(declaration_id) == nullptr) {
+        return std::unexpected{SchemaEditError{"Unknown SoA declaration"}};
+    }
+    auto const* module{
+        std::get_if<codegen::SoaModuleSchema>(&manifest_.modules[info->module_index])};
+    if (module == nullptr) {
+        return std::unexpected{SchemaEditError{"SoA declaration has an invalid source module"}};
+    }
+
+    auto const occupied{soa_generated_type_names(*module)};
+    auto candidate{base};
+    for (auto suffix{std::size_t{2}};
+         occupied.contains(candidate) || occupied.contains(candidate + "Storage");
+         ++suffix) {
         candidate = base + std::to_string(suffix);
     }
     return candidate;

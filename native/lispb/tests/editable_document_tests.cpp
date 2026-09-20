@@ -3399,6 +3399,110 @@ TEST(EditableSchemaDocument, SwitchesSoaViewTypesBetweenExplicitAndDerivedNames)
     EXPECT_EQ(final_document.soa_schema(final_declaration)->const_view_name, "ExistingSoaRows");
 }
 
+TEST(EditableSchemaDocument, AuthorsAndRemovesSingleAllocationOwners) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+    auto const module_index{document.declaration(declaration)->module_index};
+
+    auto const blocker{document.allocate_declaration_id()};
+    auto created{document.apply(
+        CreateSoa{.declaration = blocker,
+                  .module_index = module_index,
+                  .schema = codegen::SoaSchema{.name = "ExistingSoaSingleStorage",
+                                               .members = {codegen::SoaMemberSchema{
+                                                   .name = "value",
+                                                   .kind = codegen::SoaMemberKind::array,
+                                                   .type = codegen::TypeRef{"std::uint8_t"}}}},
+                  .insertion_index = std::nullopt})};
+    ASSERT_TRUE(created.has_value()) << created.error().message;
+    ASSERT_TRUE(*created);
+
+    auto owner_name{document.unique_soa_storage_owner_name(declaration, "ExistingSoaSingle")};
+    ASSERT_TRUE(owner_name.has_value()) << owner_name.error().message;
+    EXPECT_EQ(*owner_name, "ExistingSoaSingle2");
+    auto enabled{*document.soa_schema(declaration)};
+    enabled.fixed =
+        codegen::FixedSoaSchema{.storage_name = "ExistingSoaCombinedStorage", .containers = {}};
+    enabled.single_allocation = *owner_name;
+    enabled.single_allocation_variants = {codegen::SingleAllocationVariant{
+        .name = "ExistingSoaPool", .allocator = codegen::TypeRef{"@existing"}}};
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(enabled)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find("(single-allocation ExistingSoaSingle2"),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(variant ExistingSoaPool @existing)"),
+              std::string::npos);
+    auto const fixed_position{preview->front().updated.find("(fixed ExistingSoaCombinedStorage)")};
+    auto const single_position{
+        preview->front().updated.find("(single-allocation ExistingSoaSingle2")};
+    ASSERT_NE(fixed_position, std::string::npos);
+    ASSERT_NE(single_position, std::string::npos);
+    EXPECT_LT(fixed_position, single_position);
+    EXPECT_NE(preview->front().updated.find("; Keep the SoA declaration note"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the custom function note"), std::string::npos);
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_FALSE(document.soa_schema(declaration)->single_allocation.has_value());
+    ASSERT_TRUE(document.redo().value());
+    EXPECT_EQ(document.soa_schema(declaration)->single_allocation, "ExistingSoaSingle2");
+
+    auto renamed{*document.soa_schema(declaration)};
+    renamed.single_allocation = "ExistingSoaCompact";
+    applied = document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(renamed)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    ASSERT_EQ(document.soa_schema(declaration)->single_allocation_variants.size(), 1U);
+    EXPECT_EQ(document.soa_schema(declaration)->single_allocation_variants[0].name,
+              "ExistingSoaPool");
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_NE(preview->front().updated.find("(single-allocation ExistingSoaCompact"),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the custom function note"), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    auto const* reloaded_schema{reloaded.soa_schema(reloaded_declaration)};
+    ASSERT_NE(reloaded_schema, nullptr);
+    EXPECT_EQ(reloaded_schema->single_allocation, "ExistingSoaCompact");
+    ASSERT_EQ(reloaded_schema->single_allocation_variants.size(), 1U);
+    EXPECT_EQ(reloaded_schema->single_allocation_variants[0].allocator.name, "@existing");
+
+    auto disabled{*reloaded_schema};
+    disabled.single_allocation.reset();
+    disabled.single_allocation_variants.clear();
+    applied = reloaded.apply(
+        ReplaceSoa{.declaration = reloaded_declaration, .schema = std::move(disabled)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    ASSERT_TRUE(reloaded.undo().value());
+    EXPECT_TRUE(reloaded.soa_schema(reloaded_declaration)->single_allocation.has_value());
+    ASSERT_TRUE(reloaded.redo().value());
+    EXPECT_FALSE(reloaded.soa_schema(reloaded_declaration)->single_allocation.has_value());
+    preview = reloaded.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_EQ(preview->front().updated.find("(single-allocation "), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the custom function note"), std::string::npos);
+    saved = reloaded.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto final_document{files.load()};
+    auto const final_declaration{
+        declaration_id(final_document, "authored_soa", "ExistingSoa", "authored")};
+    EXPECT_FALSE(final_document.soa_schema(final_declaration)->single_allocation.has_value());
+    EXPECT_TRUE(final_document.soa_schema(final_declaration)->single_allocation_variants.empty());
+    EXPECT_TRUE(final_document.soa_schema(final_declaration)->fixed.has_value());
+}
+
 TEST(EditableSchemaDocument, SoaColumnEditPreservesOtherDeclarationMetadata) {
     TemporarySchema files;
     auto document{files.load()};

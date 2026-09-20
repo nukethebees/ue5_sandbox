@@ -289,7 +289,9 @@ an inline ordered dimension table with add, duplicate, delete, button reorder, a
 editing through normal semantic commands. Fixed layouts can be enabled or disabled inline with a
 collision-free storage type; storage and ordered container names support direct editing plus
 add/duplicate/delete/reorder through the same document commands. Mutable and const view type names
-independently switch between visible derived defaults and directly editable explicit names.
+independently switch between visible derived defaults and directly editable explicit names. Single-
+allocation output can be enabled with a collision-free owner/Storage pair, renamed inline, and
+disabled when it has no allocator variants; owner edits retain existing variants unchanged.
 
 - Create standard-library SoA declarations.
 - Add, remove, duplicate, and reorder columns.

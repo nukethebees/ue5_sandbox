@@ -96,6 +96,14 @@ can select a distinct generated name. Both transitions use `ReplaceSoa` and the 
 property patcher, so they participate in shared validation/history without rerendering unrelated
 members or custom functions.
 
+Single-allocation owner editing follows the same document-owned pattern. Name selection reserves
+the owner and its generated `Storage` identity as a pair; shared manifest validation remains
+responsible for the schema-derived layout/view names. Adding, renaming, or removing the durable
+single-allocation form patches only that owned form range, preserving surrounding comments and
+custom functions. Owner changes retain allocator variants. The inspector will not disable a form
+while variants remain, avoiding silent destructive loss before the inline variant editor handles
+their explicit removal.
+
 Deletion is likewise enforced by the shared editable document rather than only by the frontend.
 Every typed delete rejects a declaration with resolved reverse users before mutating the manifest,
 or one bound to a registered alias, then validates and re-resolves the remaining candidate graph.
