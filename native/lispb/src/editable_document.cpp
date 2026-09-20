@@ -10,6 +10,7 @@
 #include <cctype>
 #include <fstream>
 #include <functional>
+#include <initializer_list>
 #include <iterator>
 #include <map>
 #include <set>
@@ -2249,6 +2250,160 @@ auto EditableSchemaDocument::soa_schema(DeclarationId const declaration_id) cons
     return module == nullptr || info->declaration_index >= module->structs.size()
              ? nullptr
              : &module->structs[info->declaration_index];
+}
+
+auto EditableSchemaDocument::prepare_soa_duplicate(DeclarationId const declaration_id) const
+    -> std::expected<codegen::SoaSchema, SchemaEditError> {
+    auto const* info{declaration(declaration_id)};
+    auto const* source{soa_schema(declaration_id)};
+    if (info == nullptr || source == nullptr) {
+        return std::unexpected{SchemaEditError{"Unknown SoA declaration"}};
+    }
+    auto const* module{
+        std::get_if<codegen::SoaModuleSchema>(&manifest_.modules[info->module_index])};
+    if (module == nullptr) {
+        return std::unexpected{SchemaEditError{"SoA declaration has an invalid source module"}};
+    }
+
+    auto occupied{std::set<std::string>{}};
+    auto add_generated_names = [&](codegen::SoaSchema const& schema) {
+        occupied.insert(schema.name);
+        occupied.insert(schema.view_name.value_or(schema.name + "View"));
+        occupied.insert(schema.const_view_name.value_or(schema.name + "ConstView"));
+        if (schema.field_mask_name.has_value()) {
+            occupied.insert(*schema.field_mask_name);
+            occupied.insert(*schema.field_enum_name);
+        }
+        if (schema.single_allocation.has_value()) {
+            occupied.insert(*schema.single_allocation);
+            occupied.insert(*schema.single_allocation + "Storage");
+            occupied.insert(schema.name + "SingleLayout");
+            occupied.insert(schema.name + "SingleView");
+            occupied.insert(schema.name + "SingleConstView");
+            for (auto const& variant : schema.single_allocation_variants) {
+                occupied.insert(variant.name);
+                occupied.insert(variant.name + "Storage");
+            }
+        }
+        if (schema.fixed.has_value()) {
+            occupied.insert(schema.fixed->storage_name);
+            occupied.insert(schema.fixed->containers.begin(), schema.fixed->containers.end());
+        }
+    };
+    for (auto const& schema : module->structs) {
+        add_generated_names(schema);
+    }
+
+    auto const numbered_candidate = [](std::string const& base, std::size_t const suffix) {
+        return suffix == 1 ? base : base + std::to_string(suffix);
+    };
+    auto reserve_unique = [&](std::string const& base) {
+        for (auto suffix{std::size_t{1}};; ++suffix) {
+            auto candidate{numbered_candidate(base, suffix)};
+            if (occupied.insert(candidate).second) {
+                return candidate;
+            }
+        }
+    };
+    auto reserve_unique_group = [&](std::string const& base,
+                                    std::initializer_list<std::string_view> const endings) {
+        for (auto suffix{std::size_t{1}};; ++suffix) {
+            auto candidate{numbered_candidate(base, suffix)};
+            auto const available{std::ranges::all_of(endings, [&](std::string_view const ending) {
+                return !occupied.contains(candidate + std::string{ending});
+            })};
+            if (!available) {
+                continue;
+            }
+            for (auto const ending : endings) {
+                occupied.insert(candidate + std::string{ending});
+            }
+            return candidate;
+        }
+    };
+
+    auto copy{*source};
+    auto schema_name_available = [&](std::string const& candidate) {
+        if (occupied.contains(candidate)) {
+            return false;
+        }
+        if (!source->view_name.has_value() && occupied.contains(candidate + "View")) {
+            return false;
+        }
+        if (!source->const_view_name.has_value() && occupied.contains(candidate + "ConstView")) {
+            return false;
+        }
+        if (source->single_allocation.has_value() &&
+            (occupied.contains(candidate + "SingleLayout") ||
+             occupied.contains(candidate + "SingleView") ||
+             occupied.contains(candidate + "SingleConstView"))) {
+            return false;
+        }
+        return std::ranges::none_of(
+            source->functions,
+            [&](codegen::FunctionSchema const& function) { return function.name == candidate; });
+    };
+    auto const schema_name_base{source->name + "_copy"};
+    for (auto suffix{std::size_t{1}};; ++suffix) {
+        auto candidate{numbered_candidate(schema_name_base, suffix)};
+        if (!schema_name_available(candidate)) {
+            continue;
+        }
+        copy.name = std::move(candidate);
+        occupied.insert(copy.name);
+        if (!source->view_name.has_value()) {
+            occupied.insert(copy.name + "View");
+        }
+        if (!source->const_view_name.has_value()) {
+            occupied.insert(copy.name + "ConstView");
+        }
+        if (source->single_allocation.has_value()) {
+            occupied.insert(copy.name + "SingleLayout");
+            occupied.insert(copy.name + "SingleView");
+            occupied.insert(copy.name + "SingleConstView");
+        }
+        break;
+    }
+
+    auto duplicate_helper_base = [&](std::string const& original) {
+        if (original.starts_with(source->name)) {
+            return copy.name + original.substr(source->name.size());
+        }
+        return original + "_copy";
+    };
+    if (source->view_name.has_value()) {
+        copy.view_name = reserve_unique(duplicate_helper_base(*source->view_name));
+    }
+    if (source->const_view_name.has_value()) {
+        copy.const_view_name = reserve_unique(duplicate_helper_base(*source->const_view_name));
+    }
+    if (source->field_mask_name.has_value()) {
+        auto const old_mask_name{*source->field_mask_name};
+        copy.field_mask_name = reserve_unique(duplicate_helper_base(old_mask_name));
+        copy.field_enum_name = reserve_unique(duplicate_helper_base(*source->field_enum_name));
+        for (auto& member : copy.members) {
+            if (member.type.name == old_mask_name) {
+                member.type.name = *copy.field_mask_name;
+            }
+        }
+    }
+    if (source->fixed.has_value()) {
+        copy.fixed->storage_name =
+            reserve_unique(duplicate_helper_base(source->fixed->storage_name));
+        for (auto& container : copy.fixed->containers) {
+            container = reserve_unique(duplicate_helper_base(container));
+        }
+    }
+    if (source->single_allocation.has_value()) {
+        copy.single_allocation = reserve_unique_group(
+            duplicate_helper_base(*source->single_allocation), {"", "Storage"});
+        for (auto& variant : copy.single_allocation_variants) {
+            variant.name =
+                reserve_unique_group(duplicate_helper_base(variant.name), {"", "Storage"});
+        }
+    }
+
+    return copy;
 }
 
 auto EditableSchemaDocument::allocate_declaration_id() -> DeclarationId {

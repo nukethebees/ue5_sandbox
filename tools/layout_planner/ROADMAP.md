@@ -315,8 +315,11 @@ declaration move and capacity-derived consequences remain future work.
   leaves.
 
 Nonmodal sibling duplication is implemented for all currently editable declaration kinds through
-their typed create commands. Ordinary standard-library SoAs are supported; SoAs with explicit
-generated helper names remain blocked until duplication can repair those names and embedded uses.
+their typed create commands. Standard-library SoAs use shared document-level copy preparation that
+reserves a collision-free generated namespace for explicit views, field mask/enum types, fixed
+storage/containers, single-allocation owners, and allocator variants. The copied field-mask storage
+member is repaired to the new generated type before the normal `CreateSoa` command validates and
+records the edit.
 Typed rename is implemented for enums, integer scalars, quantizations, varints, packed values,
 records, unions, and ordinary SoA declarations with stable declaration ID, graph-derived reverse-
 user repair, undo/redo, multi-declaration preview, and save/reload. SoA rename additionally repairs

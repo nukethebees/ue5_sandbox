@@ -1484,20 +1484,16 @@ auto PlannerUi::duplicate_selected_declaration(TypeNode const& node) -> bool {
                                                      .insertion_index = std::nullopt},
                                    selection);
     }
-    if (auto const* schema{document_->soa_schema(*declaration)}) {
-        if (schema->view_name.has_value() || schema->const_view_name.has_value() ||
-            schema->fixed.has_value() || schema->single_allocation.has_value() ||
-            !schema->single_allocation_variants.empty() || schema->field_mask_name.has_value() ||
-            schema->field_enum_name.has_value()) {
-            schema_edit_message_ =
-                "SoAs with explicit generated helper names cannot yet be duplicated safely.";
+    if (document_->soa_schema(*declaration) != nullptr) {
+        auto copy{document_->prepare_soa_duplicate(*declaration)};
+        if (!copy.has_value()) {
+            schema_edit_message_ = copy.error().message;
             return false;
         }
-        auto copy{*schema};
-        copy.name = name;
+        selection.name = copy->name;
         return apply_document_edit(CreateSoa{.declaration = id,
                                              .module_index = info->module_index,
-                                             .schema = std::move(copy),
+                                             .schema = std::move(*copy),
                                              .insertion_index = std::nullopt},
                                    selection);
     }

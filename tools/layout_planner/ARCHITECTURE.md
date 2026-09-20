@@ -75,6 +75,16 @@ the transaction back. The owned SoA name token is patched locally so comments an
 text survive. Registered aliases remain rejected because the types registry does not yet
 participate in source-aware edits; vector-SoA modules are not ordinary editable declarations.
 
+SoA declaration duplication is also prepared by the shared editable document rather than by ImGui.
+Preparation is non-mutating: it copies the source schema, selects a declaration name whose implicit
+view and single-allocation helpers do not collide, derives unique explicit view, field-mask/enum,
+fixed-layout, single-allocation, and allocator-variant names, and repairs the copied mask-storage
+member's generated type reference. The UI then submits the ordinary typed `CreateSoa` command, so
+validation, history, preview, save, and reload remain on the same semantic path as simple SoAs.
+External member types, nested schemas, and allocators remain references to their original semantic
+dependencies; arbitrary custom function bodies remain opaque source text rather than a second
+planner-owned schema.
+
 Deletion is likewise enforced by the shared editable document rather than only by the frontend.
 Every typed delete rejects a declaration with resolved reverse users before mutating the manifest,
 or one bound to a registered alias, then validates and re-resolves the remaining candidate graph.

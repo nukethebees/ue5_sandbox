@@ -3133,6 +3133,112 @@ TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsSoas) {
               reloaded.types().dependencies_of(declared).end());
 }
 
+TEST(EditableSchemaDocument, PreparesAndReloadsAdvancedSoaDuplicates) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const source{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+    auto const module_index{document.declaration(source)->module_index};
+
+    auto const blocker{document.allocate_declaration_id()};
+    auto blocked_name{document.apply(
+        CreateSoa{.declaration = blocker,
+                  .module_index = module_index,
+                  .schema = codegen::SoaSchema{.name = "ExistingSoa_copyView",
+                                               .members = {codegen::SoaMemberSchema{
+                                                   .name = "value",
+                                                   .kind = codegen::SoaMemberKind::array,
+                                                   .type = codegen::TypeRef{"std::uint8_t"}}}},
+                  .insertion_index = std::nullopt})};
+    ASSERT_TRUE(blocked_name.has_value()) << blocked_name.error().message;
+    ASSERT_TRUE(*blocked_name);
+
+    auto advanced{*document.soa_schema(source)};
+    advanced.field_mask_name = "ExistingSoaFieldMask";
+    advanced.field_enum_name = "ExistingSoaField";
+    advanced.members[0].mask_field = true;
+    advanced.members.push_back(
+        codegen::SoaMemberSchema{.name = "field_mask",
+                                 .kind = codegen::SoaMemberKind::array,
+                                 .type = codegen::TypeRef{"ExistingSoaFieldMask"}});
+    advanced.fixed =
+        codegen::FixedSoaSchema{.storage_name = "ExistingSoaFixedStorage",
+                                .containers = {"ExistingSoaFixed", "CustomFixedContainer"}};
+    advanced.single_allocation = "ExistingSoaSingle";
+    advanced.single_allocation_variants = {codegen::SingleAllocationVariant{
+        .name = "ExistingSoaPool", .allocator = codegen::TypeRef{"@existing"}}};
+    auto applied{document.apply(ReplaceSoa{.declaration = source, .schema = std::move(advanced)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto const revision_before_prepare{document.revision()};
+    auto prepared{document.prepare_soa_duplicate(source)};
+    ASSERT_TRUE(prepared.has_value()) << prepared.error().message;
+    EXPECT_EQ(document.revision(), revision_before_prepare);
+    EXPECT_EQ(prepared->name, "ExistingSoa_copy");
+    EXPECT_EQ(prepared->view_name, "ExistingSoa_copyView2");
+    EXPECT_EQ(prepared->const_view_name, "ExistingSoa_copyConstView");
+    EXPECT_EQ(prepared->field_mask_name, "ExistingSoa_copyFieldMask");
+    EXPECT_EQ(prepared->field_enum_name, "ExistingSoa_copyField");
+    ASSERT_TRUE(prepared->fixed.has_value());
+    EXPECT_EQ(prepared->fixed->storage_name, "ExistingSoa_copyFixedStorage");
+    EXPECT_EQ(prepared->fixed->containers,
+              (std::vector<std::string>{"ExistingSoa_copyFixed", "CustomFixedContainer_copy"}));
+    EXPECT_EQ(prepared->single_allocation, "ExistingSoa_copySingle");
+    ASSERT_EQ(prepared->single_allocation_variants.size(), 1U);
+    EXPECT_EQ(prepared->single_allocation_variants[0].name, "ExistingSoa_copyPool");
+    ASSERT_EQ(prepared->members.size(), 3U);
+    EXPECT_EQ(prepared->members[2].type.name, "ExistingSoa_copyFieldMask");
+    ASSERT_EQ(prepared->functions.size(), 1U);
+    EXPECT_EQ(prepared->functions[0].body_lines, std::vector<std::string>{"values.clear();"});
+
+    auto const duplicate{document.allocate_declaration_id()};
+    auto created{document.apply(CreateSoa{.declaration = duplicate,
+                                          .module_index = module_index,
+                                          .schema = std::move(*prepared),
+                                          .insertion_index = std::nullopt})};
+    ASSERT_TRUE(created.has_value()) << created.error().message;
+    ASSERT_TRUE(*created);
+    EXPECT_EQ(document.soa_schema(duplicate)->field_mask_name, "ExistingSoa_copyFieldMask");
+
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.declaration(duplicate), nullptr);
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_NE(document.soa_schema(duplicate), nullptr);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& updated{preview->front().updated};
+    EXPECT_NE(updated.find("(struct ExistingSoa_copy"), std::string::npos);
+    EXPECT_NE(updated.find(":view-name ExistingSoa_copyView2"), std::string::npos);
+    EXPECT_NE(updated.find(":field-mask-name ExistingSoa_copyFieldMask"), std::string::npos);
+    EXPECT_NE(updated.find("(member field_mask array ExistingSoa_copyFieldMask)"),
+              std::string::npos);
+    EXPECT_NE(updated.find("(fixed ExistingSoa_copyFixedStorage"), std::string::npos);
+    EXPECT_NE(updated.find("(single-allocation ExistingSoa_copySingle"), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_duplicate{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa_copy", "authored")};
+    auto const* schema{reloaded.soa_schema(reloaded_duplicate)};
+    ASSERT_NE(schema, nullptr);
+    EXPECT_EQ(schema->view_name, "ExistingSoa_copyView2");
+    EXPECT_EQ(schema->const_view_name, "ExistingSoa_copyConstView");
+    EXPECT_EQ(schema->field_mask_name, "ExistingSoa_copyFieldMask");
+    EXPECT_EQ(schema->field_enum_name, "ExistingSoa_copyField");
+    ASSERT_TRUE(schema->fixed.has_value());
+    EXPECT_EQ(schema->fixed->storage_name, "ExistingSoa_copyFixedStorage");
+    EXPECT_EQ(schema->single_allocation, "ExistingSoa_copySingle");
+    ASSERT_EQ(schema->single_allocation_variants.size(), 1U);
+    EXPECT_EQ(schema->single_allocation_variants[0].name, "ExistingSoa_copyPool");
+    EXPECT_EQ(schema->members[2].type.name, "ExistingSoa_copyFieldMask");
+    EXPECT_TRUE(schema->members[0].mask_field);
+    ASSERT_EQ(schema->functions.size(), 1U);
+    EXPECT_EQ(schema->functions[0].body_lines, std::vector<std::string>{"values.clear();"});
+}
+
 TEST(EditableSchemaDocument, SoaColumnEditPreservesOtherDeclarationMetadata) {
     TemporarySchema files;
     auto document{files.load()};
