@@ -105,13 +105,6 @@ void ATestSpaceShip::bind_simulation(::ioj::sim::player::CommandInterface& new_c
 }
 
 void ATestSpaceShip::unbind_simulation() {
-    if (bound_simulation) {
-        auto const slot{bound_simulation->get_active_flight_model_slot()};
-        flight_models_.initial_slot = slot;
-        ::ioj::sim::player::flight_model_profile(flight_models_, slot) =
-            bound_simulation->get_active_flight_model_profile();
-    }
-
     bound_commands_ = nullptr;
     bound_simulation = nullptr;
 }
