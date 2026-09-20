@@ -286,6 +286,4 @@ add_dependencies(check-generated-code check-generated-codegen-compile-fixture)
 
 add_subdirectory(slate)
 add_subdirectory(kernel)
-if(SANDBOX_NATIVE_SOA_BENCHMARKS)
-  add_subdirectory(native_soa)
-endif()
+add_subdirectory(native_soa)

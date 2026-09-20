@@ -5,11 +5,46 @@
 
 #include <atomic>
 #include <cstdint>
+#include <span>
 #include <thread>
 #include <tuple>
 #include <vector>
 
 namespace {
+struct QueueView {
+    std::span<std::int32_t const> ids;
+    std::span<float const> weights;
+};
+
+struct TrackedValue {
+    explicit TrackedValue(std::int32_t const value)
+        : value{value} {
+        ++live_count;
+    }
+
+    TrackedValue(TrackedValue&& other) noexcept
+        : value{other.value} {
+        ++live_count;
+        other.value = -1;
+    }
+
+    ~TrackedValue() { --live_count; }
+
+    TrackedValue(TrackedValue const&) = delete;
+    auto operator=(TrackedValue const&) -> TrackedValue& = delete;
+    auto operator=(TrackedValue&&) -> TrackedValue& = delete;
+
+    std::int32_t value{};
+    inline static std::int32_t live_count{};
+};
+
+struct alignas(64) OverAlignedValue {
+    explicit OverAlignedValue(std::int32_t const value) noexcept
+        : value{value} {}
+
+    std::int32_t value{};
+};
+
 TEST(NativeCoreLockFreeMpscQueue, ReportsCapacityAndReusesBuffers) {
     ml::LockFreeMPSCQueue<std::int32_t> queue;
 
@@ -66,5 +101,50 @@ TEST(NativeCoreLockFreeMpscQueueSoa, StoresColumnsAndPreservesRowOrder) {
     EXPECT_FLOAT_EQ(weights[0], 1.5f);
     EXPECT_EQ(ids[1], 9);
     EXPECT_FLOAT_EQ(weights[1], 2.5f);
+}
+
+TEST(NativeCoreLockFreeMpscQueue, SupportsZeroCapacityAndDestroysRotatedBuffers) {
+    ml::LockFreeMPSCQueue<std::int32_t> empty;
+    EXPECT_EQ(empty.init(0), ml::ELockFreeMPSCQueueInitResult::Success);
+    EXPECT_FALSE(empty.is_initialised());
+
+    EXPECT_EQ(TrackedValue::live_count, 0);
+    {
+        ml::LockFreeMPSCQueue<TrackedValue> queue;
+        ASSERT_EQ(queue.init(2), ml::ELockFreeMPSCQueueInitResult::Success);
+        ASSERT_EQ(queue.enqueue(10), ml::ELockFreeMPSCQueueEnqueueResult::Success);
+        ASSERT_EQ(queue.enqueue(20), ml::ELockFreeMPSCQueueEnqueueResult::Success);
+        EXPECT_EQ(queue.enqueue(30), ml::ELockFreeMPSCQueueEnqueueResult::Full);
+
+        auto const first{queue.swap_and_consume()};
+        ASSERT_EQ(first.size(), 2u);
+        ASSERT_EQ(queue.enqueue(30), ml::ELockFreeMPSCQueueEnqueueResult::Success);
+        auto const second{queue.swap_and_consume()};
+        ASSERT_EQ(second.size(), 1u);
+        EXPECT_EQ(second[0].value, 30);
+    }
+    EXPECT_EQ(TrackedValue::live_count, 0);
+}
+
+TEST(NativeCoreLockFreeMpscQueueSoa, SupportsCustomViewsAndOverAlignedColumns) {
+    ml::LockFreeMPSCQueueSoA<QueueView, std::int32_t, float> queue;
+    ASSERT_EQ(queue.init(2), ml::ELockFreeMPSCQueueInitResult::Success);
+    ASSERT_EQ(queue.enqueue(10, 1.5f), ml::ELockFreeMPSCQueueEnqueueResult::Success);
+    ASSERT_EQ(queue.enqueue(20, 2.5f), ml::ELockFreeMPSCQueueEnqueueResult::Success);
+
+    EXPECT_FLOAT_EQ(queue.swap_and_visit([](QueueView const view) {
+        return static_cast<float>(view.ids[0]) + view.weights[1];
+    }),
+                    12.5f);
+
+    ml::LockFreeMPSCQueueSoA<void, std::uint8_t, OverAlignedValue> aligned_queue;
+    ASSERT_EQ(aligned_queue.init(1), ml::ELockFreeMPSCQueueInitResult::Success);
+    ASSERT_EQ(aligned_queue.enqueue(std::uint8_t{1}, 42),
+              ml::ELockFreeMPSCQueueEnqueueResult::Success);
+    auto const [bytes, values]{aligned_queue.swap_and_consume()};
+    ASSERT_EQ(bytes.size(), 1u);
+    ASSERT_EQ(values.size(), 1u);
+    EXPECT_EQ(reinterpret_cast<std::uintptr_t>(values.data()) % alignof(OverAlignedValue), 0u);
+    EXPECT_EQ(values[0].value, 42);
 }
 }

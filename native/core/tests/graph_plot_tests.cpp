@@ -4,6 +4,8 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
+#include <limits>
 #include <vector>
 
 TEST(GraphPlot, ResolvesRangesAndTransformsImplicitSeries) {
@@ -51,4 +53,45 @@ TEST(GraphPlot, DecimationPreservesNarrowSpike) {
     EXPECT_TRUE(decimated);
     EXPECT_LE(points.size(), 66);
     EXPECT_NE(std::ranges::find(points, ml::graph::Point2d{501.0, 100.0}), points.end());
+}
+
+TEST(GraphPlot, ResolvesYRangeInsideTheFixedXWindow) {
+    std::array const x{0.0f, 1.0f, 2.0f, 3.0f};
+    std::array const y{100.0f, 2.0f, 3.0f, 200.0f};
+    std::array const series{ml::graph::SeriesView{.x = x, .y = y}};
+    std::array const valid{std::uint8_t{1}};
+    auto const axis{ml::graph::AxisSettings{.range_mode = ml::graph::RangeMode::Fixed,
+                                            .fixed_range = {0.5, 2.5}}};
+
+    EXPECT_EQ(ml::graph::resolve_y_range(series, valid, {}, axis.fixed_range),
+              (ml::graph::Range{2.0, 3.0}));
+}
+
+TEST(GraphPlot, HandlesConstantIncludeZeroAndInvalidRanges) {
+    std::array const y{5.0f, 5.0f};
+    std::array const series{ml::graph::SeriesView{.x = {}, .y = y}};
+    std::array const valid{std::uint8_t{1}};
+    auto const include_zero{
+        ml::graph::AxisSettings{.range_mode = ml::graph::RangeMode::AutoIncludeZero}};
+
+    EXPECT_EQ(ml::graph::resolve_y_range(series, valid, include_zero, {0.0, 1.0}),
+              (ml::graph::Range{0.0, 5.0}));
+    EXPECT_EQ(ml::graph::resolve_y_range(series, valid, {}, {0.0, 1.0}),
+              (ml::graph::Range{4.75, 5.25}));
+    EXPECT_FALSE(ml::graph::is_valid_fixed_range(
+        {.range_mode = ml::graph::RangeMode::Fixed, .fixed_range = {2.0, 2.0}}));
+    EXPECT_FALSE(ml::graph::is_valid_fixed_range(
+        {.range_mode = ml::graph::RangeMode::Fixed,
+         .fixed_range = {0.0, std::numeric_limits<double>::infinity()}}));
+}
+
+TEST(GraphPlot, RetainsNeighboursAcrossFixedWindowEdges) {
+    std::array const x{0.0f, 1.0f, 2.0f, 3.0f};
+    std::array const y{0.0f, 1.0f, 2.0f, 3.0f};
+    bool decimated{false};
+
+    auto const points{ml::graph::build_data_points({x, y}, {1.25, 1.75}, 100.0f, decimated)};
+
+    EXPECT_EQ(points, (std::vector<ml::graph::Point2d>{{1.0, 1.0}, {2.0, 2.0}}));
+    EXPECT_FALSE(decimated);
 }

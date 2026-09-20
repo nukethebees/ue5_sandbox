@@ -1,5 +1,3 @@
-find_program(UV_EXECUTABLE NAMES uv REQUIRED)
-
 add_executable(native-soa-generate generate.cpp)
 target_link_libraries(native-soa-generate PRIVATE codegen-lib sandbox::warnings_as_errors)
 set(NATIVE_SOA_GENERATED "${CMAKE_CURRENT_BINARY_DIR}/generated")
@@ -20,7 +18,21 @@ target_link_libraries(native-soa INTERFACE sandbox::handmade_math sandbox::warni
 add_executable(native-soa-tests tests.cpp)
 target_link_libraries(native-soa-tests PRIVATE native-soa GTest::gtest_main)
 add_test(NAME native-soa-tests COMMAND native-soa-tests)
-set_tests_properties(native-soa-tests PROPERTIES LABELS "native-soa")
+set_tests_properties(native-soa-tests PROPERTIES LABELS "unit;all;native;native-soa")
+
+add_executable(native-soa-tests-mimalloc tests.cpp)
+target_compile_definitions(native-soa-tests-mimalloc PRIVATE NATIVE_SOA_MIMALLOC=1)
+target_link_libraries(native-soa-tests-mimalloc PRIVATE native-soa GTest::gtest_main sandbox::mimalloc)
+target_link_libraries(native-soa-tests-mimalloc PRIVATE
+  sandbox::arch_avx2
+  sandbox::debug_symbols
+  sandbox::fp_precise
+)
+add_test(NAME native-soa-tests-mimalloc COMMAND native-soa-tests-mimalloc)
+set_tests_properties(native-soa-tests-mimalloc PROPERTIES LABELS "unit;all;native;native-soa")
+
+if(SANDBOX_NATIVE_SOA_BENCHMARKS)
+find_program(UV_EXECUTABLE NAMES uv REQUIRED)
 
 add_executable(native-soa-benchmarks benchmarks.cpp bulk_benchmarks.cpp production_benchmarks.cpp)
 target_sources(native-soa-benchmarks PRIVATE
@@ -36,14 +48,7 @@ add_executable(native-soa-reserve-matrix-mimalloc reserve_matrix.cpp)
 target_compile_definitions(native-soa-reserve-matrix-mimalloc PRIVATE NATIVE_SOA_MIMALLOC=1)
 target_link_libraries(native-soa-reserve-matrix-mimalloc PRIVATE native-soa benchmark::benchmark_main
   sandbox::mimalloc)
-add_executable(native-soa-tests-mimalloc tests.cpp)
-target_compile_definitions(native-soa-tests-mimalloc PRIVATE NATIVE_SOA_MIMALLOC=1)
-target_link_libraries(native-soa-tests-mimalloc PRIVATE native-soa GTest::gtest_main
-  sandbox::mimalloc)
-add_test(NAME native-soa-tests-mimalloc COMMAND native-soa-tests-mimalloc)
-set_tests_properties(native-soa-tests-mimalloc PROPERTIES LABELS "native-soa")
-
-foreach(matrix_target IN ITEMS native-soa-reserve-matrix native-soa-reserve-matrix-mimalloc native-soa-tests-mimalloc)
+foreach(matrix_target IN ITEMS native-soa-reserve-matrix native-soa-reserve-matrix-mimalloc)
   target_link_libraries(${matrix_target} PRIVATE
     sandbox::arch_avx2
     sandbox::debug_symbols
@@ -121,3 +126,4 @@ add_test(NAME native-soa-reserve-matrix-smoke
     --rows 4096 --owners 1 4 --dry-run
     --output-dir "${CMAKE_BINARY_DIR}/native-soa-reserve-matrix-smoke")
 set_tests_properties(native-soa-reserve-matrix-smoke PROPERTIES LABELS "native-soa")
+endif()

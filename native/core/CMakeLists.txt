@@ -56,6 +56,7 @@ add_executable(native-core-tests)
 
 target_sources(native-core-tests PRIVATE
   tests/generated/array_math_kernels_tests.cpp
+  tests/array_math_tests.cpp
   tests/vector_lerp_tests.cpp
   tests/array_utils_tests.cpp
   tests/container_tests.cpp
@@ -89,10 +90,13 @@ add_test(NAME native-core-tests COMMAND native-core-tests)
 set_tests_properties(native-core-tests PROPERTIES LABELS "unit;all;native;native-core")
 
 if(SANDBOX_KERNEL_BENCHMARKS)
-  add_executable(native-core-vector-lerp-benchmarks)
-  target_sources(native-core-vector-lerp-benchmarks PRIVATE benchmarks/vector_lerp_benchmarks.cpp)
-  target_compile_features(native-core-vector-lerp-benchmarks PRIVATE cxx_std_23)
-  target_link_libraries(native-core-vector-lerp-benchmarks PRIVATE
+  add_executable(native-core-benchmarks)
+  target_sources(native-core-benchmarks PRIVATE
+    benchmarks/projectile_intercept_benchmarks.cpp
+    benchmarks/vector_lerp_benchmarks.cpp
+  )
+  target_compile_features(native-core-benchmarks PRIVATE cxx_std_23)
+  target_link_libraries(native-core-benchmarks PRIVATE
     native-core
     benchmark::benchmark
     benchmark::benchmark_main
@@ -103,14 +107,15 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     "Native core vector lerp benchmark")
   add_custom_target(native-core-vector-lerp-benchmark-report
     COMMAND "${CMAKE_COMMAND}" -E make_directory "${PROJECT_SOURCE_DIR}/out/benchmarks/native-core"
-    COMMAND ${native_core_vector_lerp_benchmark_command} native-core-vector-lerp-benchmarks
+    COMMAND ${native_core_vector_lerp_benchmark_command} native-core-benchmarks
+      --benchmark_filter=^vector_lerp/
       --benchmark_repetitions=7
       --benchmark_min_time=0.05s
       --benchmark_enable_random_interleaving=true
       --benchmark_display_aggregates_only=true
       "--benchmark_out=${PROJECT_SOURCE_DIR}/out/benchmarks/native-core/vector-lerp-results.json"
       --benchmark_out_format=json
-    DEPENDS native-core-vector-lerp-benchmarks
+    DEPENDS native-core-benchmarks
     COMMENT "Benchmarking fused native 3D lerp against three 1D lerps"
     USES_TERMINAL
     VERBATIM

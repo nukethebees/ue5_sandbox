@@ -82,6 +82,8 @@ add_custom_target(native-tests
     codegen-tests
     kernel-codegen-tests
     native-core-tests
+    native-soa-tests
+    native-soa-tests-mimalloc
     native-level-authoring-tests
     native-memory-tests
     native-simulation-tests
