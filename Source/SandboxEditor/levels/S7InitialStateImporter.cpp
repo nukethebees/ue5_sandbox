@@ -1,4 +1,5 @@
 #include "SandboxEditor/levels/S7InitialStateImporter.h"
+#include "SandboxEditor/levels/S7InitialStateText.h"
 
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
@@ -28,14 +29,6 @@ struct FDelayedSpawnGroup {
     double time_seconds{};
     EResolvedLevelArchetype archetype{};
 };
-
-auto count_text(int32 const count, FStringView const singular, FStringView const plural)
-    -> FString {
-    return FString::Printf(TEXT("%d %.*s"),
-                           count,
-                           count == 1 ? singular.Len() : plural.Len(),
-                           count == 1 ? singular.GetData() : plural.GetData());
-}
 
 auto format_read_error(s7::FLevelDefinitionReadResult const& result) -> FString {
     if (!result.script_error.IsEmpty()) {

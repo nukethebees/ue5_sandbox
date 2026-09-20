@@ -1,4 +1,5 @@
 #include "SandboxEditor/levels/S7InitialStateExporter.h"
+#include "SandboxEditor/levels/S7InitialStateText.h"
 
 #include <SandboxGameShared/core/levels/levels.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
@@ -31,12 +32,6 @@ struct FExportCandidate {
     FString id_base{};
     FLevelEntityId id{};
 };
-
-auto count_text(int32 const count, FStringView const singular, FStringView const plural)
-    -> FString {
-    auto const text{count == 1 ? singular : plural};
-    return FString::Printf(TEXT("%d %.*s"), count, text.Len(), text.GetData());
-}
 
 auto is_ascii_alpha(TCHAR const value) -> bool {
     return (value >= TEXT('a') && value <= TEXT('z')) || (value >= TEXT('A') && value <= TEXT('Z'));
