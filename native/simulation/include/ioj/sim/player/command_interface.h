@@ -23,6 +23,8 @@ class CommandInterface {
 
     void set_move_input(ml::Vector2d input) noexcept { simulation.set_move_input(input); }
 
+    void set_forward_move_input(float input) noexcept { simulation.set_forward_move_input(input); }
+
     void set_lateral_move_input(float input) noexcept { simulation.set_lateral_move_input(input); }
 
     void set_vertical_move_input(float input) noexcept {
@@ -34,12 +36,6 @@ class CommandInterface {
     void set_ship_1d_control_x(float input) { simulation.set_ship_1d_control_x(input); }
 
     void set_ship_1d_control_y(float input) { simulation.set_ship_1d_control_y(input); }
-
-    void select_next_control_mode() { simulation.select_next_control_mode(); }
-
-    void select_previous_control_mode() { simulation.select_previous_control_mode(); }
-
-    void set_control_mode(SpaceShipControlMode mode) { simulation.set_control_mode(mode); }
 
     void start_sampling() noexcept { simulation.start_sampling(); }
 
@@ -64,8 +60,6 @@ class CommandInterface {
     void stop_brake() { simulation.stop_brake(); }
 
     void roll(float direction) noexcept { simulation.roll(direction); }
-
-    void set_flight_mode(SpaceShipFlightMode mode) noexcept { simulation.set_flight_mode(mode); }
 
     void select_flight_model_slot(FlightModelSlot slot) noexcept {
         simulation.select_flight_model_slot(slot);

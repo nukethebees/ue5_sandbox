@@ -1,16 +1,12 @@
 #pragma once
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/laser_source.h>
-#include <ioj/sim/player/control_mode.h>
 #include <ioj/sim/player/fire_rate.h>
-#include <ioj/sim/player/flight_mode.h>
 #include <ioj/sim/player/laser_firing_state.h>
 #include <ioj/sim/player/ship_laser_mode.h>
 #include <ioj/sim/player/space_ship_common.h>
 #include <SpaceGame/ships/common/ShipLaserModeConversion.h>
 #include <SpaceGame/ships/player/TestShipFireRateConversion.h>
-#include <SpaceGame/ships/player/TestSpaceShipControlModeConversion.h>
-#include <SpaceGame/ships/player/TestSpaceShipFlightModeConversion.h>
 #include <SpaceGamePresentation/entities/ShipHealth.h>
 #include <SpaceGamePresentation/entities/TestTeamConversion.h>
 #include <SpaceGamePresentation/presentation/PlayerPresentation.h>
@@ -74,12 +70,15 @@ class SPACEGAME_API ATestSpaceShip
     /* **************************************** */
     void set_move_input(FVector2D input);
     void set_lateral_move_input(float input);
+    void set_forward_move_input(float input);
     void set_vertical_move_input(float input);
     void set_ship_2d_control(FVector2D input);
     void set_ship_1d_control_x(float input);
     void set_ship_1d_control_y(float input);
-    void select_next_control_mode();
-    void select_previous_control_mode();
+    void select_flight_model_slot(::ioj::sim::player::FlightModelSlot slot);
+    auto set_flight_model_slot_profile(::ioj::sim::player::FlightModelSlot slot,
+                                       ::ioj::sim::player::FlightModelProfile profile) -> bool;
+    auto get_active_flight_model_profile() const -> ::ioj::sim::player::FlightModelProfile;
     void start_sampling();
     void stop_sampling();
     void adjust_desired_forward_velocity(float direction);
@@ -93,15 +92,10 @@ class SPACEGAME_API ATestSpaceShip
     auto get_velocity() const -> FVector;
     auto get_speed() const -> float;
     void roll(float direction);
-    auto get_target_speed() const -> float;
+    auto get_persistent_forward_target_speed() const -> float;
     auto get_move_input() const -> FVector2D;
-    auto get_control_mode() const -> ETestSpaceShipControlMode;
-    auto get_flight_mode() const -> ETestSpaceShipFlightMode;
-    void set_control_mode(ETestSpaceShipControlMode new_control_mode) noexcept;
-    void set_flight_mode(ETestSpaceShipFlightMode new_flight_mode) noexcept;
-    auto get_target_local_planar_velocity_scale() const -> FVector2D;
-    auto is_sampling() const -> bool;
-    auto get_target_local_planar_velocity() const -> FVector;
+    auto get_sampled_target_speed_scale() const -> FVector2D;
+    auto is_sampling_target_speed() const -> bool;
     auto get_turn_input() const -> FVector2D;
     auto get_throttle() const -> float;
 
@@ -179,11 +173,6 @@ class SPACEGAME_API ATestSpaceShip
     UNiagaraComponent* boost_pulse{nullptr};
     UPROPERTY(EditAnywhere, Category = "Sandbox|Niagara", meta = (AllowPrivateAccess))
     UNiagaraComponent* boost_engine_effect{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Speed", meta = (AllowPrivateAccess))
-    ETestSpaceShipFlightMode flight_mode{ETestSpaceShipFlightMode::PlanarVelocity};
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Movement", meta = (AllowPrivateAccess))
-    ETestSpaceShipControlMode control_mode{ETestSpaceShipControlMode::Velocity};
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Laser", meta = (AllowPrivateAccess))
     EShipLaserMode laser_mode{EShipLaserMode::Single};

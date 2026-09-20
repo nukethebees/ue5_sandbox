@@ -172,6 +172,7 @@ void configure_common_actions(FlightModelConfig& config) {
     FlightModelConfig result;
     auto& forward{result.translation.forward};
     forward.manual.semantic = TranslationSemantic::Acceleration;
+    forward.manual.input_source = TranslationInputSource::Accelerator;
     forward.normal.positive_speed_limit = 8000.f;
     forward.normal.negative_speed_limit = 0.f;
     forward.normal.positive_acceleration = 10000.f;
@@ -212,6 +213,7 @@ void configure_common_actions(FlightModelConfig& config) {
     configure_axis(result.translation.forward, 8000.f);
     configure_axis(result.translation.right, 3000.f);
     configure_axis(result.translation.up, 3000.f);
+    result.boost.response = make_rate_limited_response(10000.f, 14000.f);
 
     result.facing_velocity.mode = FacingVelocityCoupling::Independent;
     result.brake.deceleration = 14000.f;

@@ -232,7 +232,7 @@ void FTestHUDManagerScenario::initial_caches_process_samples() {
                          TEXT("Player maximum health is cached"));
         checks.are_equal(
             player_ship->get_speed(), player_data.speed, TEXT("Player speed is cached"));
-        checks.are_equal(player_ship->get_target_speed(),
+        checks.are_equal(player_ship->get_persistent_forward_target_speed(),
                          player_data.target_speed,
                          TEXT("Player target speed is cached"));
     }

@@ -5,9 +5,8 @@
 #include <ioj/sim/fixed_tick_loop.h>
 #include <ioj/sim/missions/mission_mode.h>
 #include <ioj/sim/missions/mission_state.h>
-#include <ioj/sim/player/control_mode.h>
 #include <ioj/sim/player/fire_rate.h>
-#include <ioj/sim/player/flight_mode.h>
+#include <ioj/sim/player/flight_model_config.h>
 #include <ioj/sim/player/space_ship_common.h>
 #include <sandbox/core/multi_buffer.h>
 #include <sandbox/core/periodic_tick_countdown.h>
@@ -129,8 +128,8 @@ struct FPlayerFlightDataCache {
     ml::ship_hud::FFlightVectorDebugData flight_vector_debug{};
     FVector ship_velocity{};
     FVector target_velocity{};
-    ::ioj::sim::SpaceShipControlMode control_mode{};
-    ::ioj::sim::SpaceShipFlightMode flight_mode{};
+    ::ioj::sim::player::FlightModelPreset flight_model_preset{};
+    bool flight_model_customized{};
     float throttle{};
     ::ioj::sim::player::BoostBrakeState boost_brake_state{};
     FVector crosshair_origin{};

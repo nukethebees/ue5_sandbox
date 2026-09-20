@@ -398,8 +398,8 @@ static TArray<FGameSettingDescriptor> const descriptors{
      EGameSettingAvailabilityProvider::Always,
      TEXT("player_ship_flight_control_preset"),
      FText::FromString(TEXT("Flight Controls")),
-     FText::FromString(TEXT("Select the player ship flight model and input interpretation. Planar "
-                            "Power is the experimental inertial scheme.")),
+     FText::FromString(TEXT("Select the default runtime flight model. D-pad directions select the "
+                            "four model slots while flying.")),
      0,
      0,
      0,

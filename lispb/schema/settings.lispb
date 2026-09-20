@@ -199,7 +199,7 @@
       :max 5
       :step 1))
   (setting player_ship_flight_control_preset "Flight Controls"
-    :tooltip "Select the player ship flight model and input interpretation. Planar Power is the experimental inertial scheme."
+    :tooltip "Select the default runtime flight model. D-pad directions select the four model slots while flying."
     :category controls
     :value-type @player_ship_flight_control_preset
     :backend game_user_settings

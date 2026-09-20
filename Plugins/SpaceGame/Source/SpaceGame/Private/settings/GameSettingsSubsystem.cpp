@@ -11,12 +11,29 @@
 namespace ml::ioj {
 constexpr double display_confirmation_duration_seconds{15.0};
 
+auto to_flight_model_preset(EPlayerShipFlightControlPreset const preset)
+    -> ::ioj::sim::player::FlightModelPreset {
+    using NativePreset = ::ioj::sim::player::FlightModelPreset;
+    switch (preset) {
+        case EPlayerShipFlightControlPreset::Starfox:
+            return NativePreset::Starfox;
+        case EPlayerShipFlightControlPreset::Fighter:
+            return NativePreset::Fighter;
+        case EPlayerShipFlightControlPreset::Skater:
+            return NativePreset::Skater;
+        case EPlayerShipFlightControlPreset::Gunship:
+            return NativePreset::Gunship;
+    }
+    return NativePreset::Gunship;
+}
+
 /* **************************************** */
 // Lifecycle
 /* **************************************** */
 void UGameSettingsSubsystem::Initialize(FSubsystemCollectionBase& collection) {
     Super::Initialize(collection);
     edit_state_.begin(backend_.read(), backend_.defaults());
+    reset_flight_model_profile();
 }
 
 void UGameSettingsSubsystem::Deinitialize() {
@@ -46,10 +63,18 @@ void UGameSettingsSubsystem::cancel() {
     if (!editing_ || awaiting_display_confirmation_) {
         return;
     }
+    auto const before{edit_state_.pending()};
     restore_input_edit_state();
     preview_immediate_settings(edit_state_.applied());
     edit_state_.cancel();
+    reset_flight_model_profile();
     editing_ = false;
+    for (auto const& descriptor : game_setting_descriptors()) {
+        if (game_setting_value(before, descriptor.id) !=
+            game_setting_value(edit_state_.pending(), descriptor.id)) {
+            setting_changed.Broadcast(descriptor.id);
+        }
+    }
     settings_changed.Broadcast();
 }
 
@@ -94,6 +119,7 @@ void UGameSettingsSubsystem::reset_category(EGameSettingCategory const category)
     auto const before{edit_state_.pending()};
     edit_state_.reset_category(category);
     if (category == EGameSettingCategory::Controls) {
+        reset_flight_model_profile();
         auto const profiles{control_profiles()};
         auto const* const active_profile{
             profiles.FindByPredicate([](auto const& profile) { return profile.active; })};
@@ -108,6 +134,7 @@ void UGameSettingsSubsystem::reset_category(EGameSettingCategory const category)
             descriptor.apply_mode == ESettingApplyMode::Immediate &&
             game_setting_value(before, descriptor.id) != edit_state_.value(descriptor.id)) {
             backend_.preview_immediate(edit_state_.pending(), descriptor.id);
+            setting_changed.Broadcast(descriptor.id);
         }
     }
     settings_changed.Broadcast();
@@ -179,6 +206,10 @@ void UGameSettingsSubsystem::set_setting(EGameSetting const setting,
     if (descriptor.apply_mode == ESettingApplyMode::Immediate) {
         backend_.preview_immediate(edit_state_.pending(), setting);
     }
+    if (setting == EGameSetting::PlayerShipFlightControlPreset) {
+        reset_flight_model_profile();
+    }
+    setting_changed.Broadcast(setting);
     settings_changed.Broadcast();
 }
 
@@ -226,6 +257,34 @@ auto UGameSettingsSubsystem::is_at_defaults(EGameSettingCategory const category)
         return edit_state_.is_at_defaults(category) && !has_modified_binding;
     }
     return edit_state_.is_at_defaults(category);
+}
+
+auto UGameSettingsSubsystem::flight_model_profile() const
+    -> ::ioj::sim::player::FlightModelProfile const& {
+    return flight_model_profile_;
+}
+
+auto
+    UGameSettingsSubsystem::set_flight_model_profile(::ioj::sim::player::FlightModelProfile profile)
+        -> bool {
+    if (!::ioj::sim::player::validate_flight_model_config(profile.config)) {
+        return false;
+    }
+    profile.customized = true;
+    flight_model_profile_ = profile;
+    flight_model_config_changed.Broadcast();
+    settings_changed.Broadcast();
+    return true;
+}
+
+auto UGameSettingsSubsystem::observe_flight_model_profile(
+    ::ioj::sim::player::FlightModelProfile profile) -> bool {
+    if (!::ioj::sim::player::validate_flight_model_config(profile.config)) {
+        return false;
+    }
+    flight_model_profile_ = profile;
+    settings_changed.Broadcast();
+    return true;
 }
 
 auto UGameSettingsSubsystem::is_awaiting_display_confirmation() const -> bool {
@@ -306,6 +365,12 @@ auto UGameSettingsSubsystem::input_user_settings() const -> USpaceGameInputUserS
             : nullptr};
     return subsystem != nullptr ? Cast<USpaceGameInputUserSettings>(subsystem->GetUserSettings())
                                 : nullptr;
+}
+
+void UGameSettingsSubsystem::reset_flight_model_profile() {
+    flight_model_profile_ = ::ioj::sim::player::make_flight_model_profile(
+        to_flight_model_preset(player_ship_flight_control_preset()));
+    flight_model_config_changed.Broadcast();
 }
 
 /* **************************************** */
