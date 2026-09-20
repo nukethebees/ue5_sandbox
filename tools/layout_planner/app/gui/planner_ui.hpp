@@ -11,6 +11,7 @@
 #include <filesystem>
 #include <limits>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -104,6 +105,8 @@ class PlannerUi {
     std::uint64_t cached_revision_{};
     std::optional<lispb::schema::TypeId> cached_type_;
     std::string cached_selected_field_;
+    std::set<std::string, std::less<>> cached_record_access_members_;
+    bool cached_record_access_set_explicit_{};
     std::uint64_t cached_comparison_a_variant_id_{std::numeric_limits<std::uint64_t>::max()};
     std::uint64_t cached_comparison_b_variant_id_{std::numeric_limits<std::uint64_t>::max()};
     std::optional<layout::EnumDomainAnalysis> enum_domain_;
@@ -116,7 +119,7 @@ class PlannerUi {
     std::optional<layout::PackedAnalysis> comparison_a_packed_;
     std::optional<layout::PackedAnalysis> comparison_b_packed_;
     std::optional<layout::RecordAnalysis> record_analysis_;
-    std::optional<layout::RecordMemberAccessAnalysis> record_access_analysis_;
+    std::optional<layout::RecordAccessAnalysis> record_access_analysis_;
     std::optional<layout::SoaAnalysis> comparison_a_soa_;
     std::optional<layout::SoaAnalysis> comparison_b_soa_;
 
@@ -146,6 +149,8 @@ class PlannerUi {
     std::array<char, 128> soa_member_name_{};
     std::array<char, 128> soa_member_type_{};
     std::string selected_enumerator_;
+    std::set<std::string, std::less<>> record_access_members_;
+    bool record_access_set_explicit_{};
     std::optional<lispb::schema::DeclarationId> enum_editor_declaration_;
     std::string enum_editor_value_;
     std::string schema_edit_message_;

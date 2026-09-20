@@ -265,6 +265,8 @@ void PlannerUi::draw_graph_panel() {
             if (ImGui::InvisibleButton("node", subtract(maximum, minimum))) {
                 selected_type_ = id;
                 selected_field_.clear();
+                record_access_members_.clear();
+                record_access_set_explicit_ = false;
             }
             auto const selected{selected_type_ == id};
             draw_list->AddRectFilled(minimum,

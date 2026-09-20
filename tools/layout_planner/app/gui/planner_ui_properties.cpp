@@ -196,6 +196,8 @@ void PlannerUi::draw_properties_panel() {
         if (ImGui::SmallButton(underlying.cpp_spelling.c_str())) {
             selected_type_ = enumeration->underlying_type.type;
             selected_field_.clear();
+            record_access_members_.clear();
+            record_access_set_explicit_ = false;
         }
         if (enumeration->count.has_value()) {
             ImGui::Text("Count sentinel: %s", enumeration->count->c_str());
@@ -357,6 +359,8 @@ void PlannerUi::draw_properties_panel() {
                     if (ImGui::SmallButton(semantic_type.cpp_spelling.c_str())) {
                         selected_type_ = field.semantic_type;
                         selected_field_.clear();
+                        record_access_members_.clear();
+                        record_access_set_explicit_ = false;
                     }
                     ImGui::TableNextColumn();
                     ImGui::Text("%u bits", field.schema_bit_width);
@@ -447,6 +451,8 @@ void PlannerUi::draw_properties_panel() {
             if (ImGui::SmallButton(linked_node.cpp_spelling.c_str())) {
                 selected_type_ = linked;
                 selected_field_.clear();
+                record_access_members_.clear();
+                record_access_set_explicit_ = false;
             }
             ImGui::PopID();
         }
@@ -1037,6 +1043,8 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
     if (navigate_to.has_value()) {
         selected_type_ = *navigate_to;
         selected_field_.clear();
+        record_access_members_.clear();
+        record_access_set_explicit_ = false;
         return true;
     }
 
@@ -1158,27 +1166,44 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
     ImGui::BeginDisabled(!selected_index.has_value() || schema->members.size() == 1);
     if (ImGui::Button("Delete")) {
         auto replacement{*schema};
+        auto const deleted_name{replacement.members[*selected_index].name};
         replacement.members.erase(replacement.members.begin() +
                                   static_cast<std::ptrdiff_t>(*selected_index));
         auto const next_index{std::min(*selected_index, replacement.members.size() - 1)};
         auto const next_name{replacement.members[next_index].name};
         if (apply_document_edit(
                 ReplaceRecord{.declaration = *declaration, .schema = std::move(replacement)})) {
+            record_access_members_.erase(deleted_name);
             selected_field_ = next_name;
             return true;
         }
     }
     ImGui::EndDisabled();
     ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Selected only")) {
+        record_access_members_.clear();
+        record_access_set_explicit_ = false;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Access all")) {
+        record_access_members_.clear();
+        for (auto const& member : schema->members) {
+            record_access_members_.insert(member.name);
+        }
+        record_access_set_explicit_ = true;
+    }
 
     std::optional<codegen::RecordSchema> pending;
     std::optional<TypeId> navigate_to;
+    std::optional<std::pair<std::string, std::string>> renamed_member;
     auto selected_after_edit{selected_field_};
     if (ImGui::BeginTable("record-schema-members",
-                          5,
+                          6,
                           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                               ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Access", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Name");
         ImGui::TableSetupColumn("Semantic type");
         ImGui::TableSetupColumn("Fixed array", ImGuiTableColumnFlags_WidthFixed);
@@ -1212,6 +1237,24 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
             }
 
             ImGui::TableNextColumn();
+            auto accessed{record_access_set_explicit_ ? record_access_members_.contains(member.name)
+                                                      : selected_field_ == member.name};
+            if (ImGui::Checkbox("##access", &accessed)) {
+                if (!record_access_set_explicit_) {
+                    record_access_members_.clear();
+                    if (!selected_field_.empty()) {
+                        record_access_members_.insert(selected_field_);
+                    }
+                    record_access_set_explicit_ = true;
+                }
+                if (accessed) {
+                    record_access_members_.insert(member.name);
+                } else {
+                    record_access_members_.erase(member.name);
+                }
+            }
+
+            ImGui::TableNextColumn();
             if (row_selected) {
                 ImGui::SetNextItemWidth(-1.0F);
                 auto const submitted{ImGui::InputText("##name",
@@ -1222,6 +1265,7 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
                     pending = *schema;
                     pending->members[index].name = record_member_name_.data();
                     selected_after_edit = pending->members[index].name;
+                    renamed_member = std::pair{member.name, selected_after_edit};
                 }
             } else {
                 ImGui::TextUnformatted(member.name.c_str());
@@ -1290,6 +1334,8 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
     if (navigate_to.has_value()) {
         selected_type_ = *navigate_to;
         selected_field_.clear();
+        record_access_members_.clear();
+        record_access_set_explicit_ = false;
         return true;
     }
 
@@ -1309,6 +1355,10 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
         }
         if (apply_document_edit(
                 ReplaceRecord{.declaration = *declaration, .schema = std::move(*pending)})) {
+            if (record_access_set_explicit_ && renamed_member.has_value() &&
+                record_access_members_.erase(renamed_member->first) != 0) {
+                record_access_members_.insert(renamed_member->second);
+            }
             selected_field_ = std::move(selected_after_edit);
             return true;
         }
@@ -1532,6 +1582,8 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
     if (navigate_to.has_value()) {
         selected_type_ = *navigate_to;
         selected_field_.clear();
+        record_access_members_.clear();
+        record_access_set_explicit_ = false;
         return true;
     }
 

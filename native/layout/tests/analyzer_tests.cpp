@@ -407,17 +407,39 @@ TEST(RecordAnalyzer, ReportsExplicitSequentialMemberAccessTraffic) {
     auto access{Analyzer::analyze_record_member_access(record, "wide", AbiProfile::host_common())};
 
     EXPECT_EQ(access.element_count, 100);
-    EXPECT_EQ(access.useful_member_bytes, 400);
+    EXPECT_EQ(access.useful_bytes, 400);
     EXPECT_EQ(access.object_footprint_bytes, 1'200);
     EXPECT_EQ(access.cache_lines_touched, 19);
     EXPECT_EQ(access.cache_bytes_touched, 1'216);
-    EXPECT_EQ(access.non_member_cache_bytes, 816);
+    EXPECT_EQ(access.non_selected_cache_bytes, 816);
     EXPECT_EQ(access.pages_touched, 1);
     EXPECT_TRUE(access.diagnostics.empty());
 
     access = Analyzer::analyze_record_member_access(record, "missing", AbiProfile::host_common());
-    EXPECT_FALSE(access.useful_member_bytes.has_value());
+    EXPECT_FALSE(access.useful_bytes.has_value());
     EXPECT_FALSE(access.diagnostics.empty());
+}
+
+TEST(RecordAnalyzer, UnionsMultipleSelectedMembersWithoutDoubleCounting) {
+    auto const fixture{
+        record_type({codegen::RecordSchema{.name = "Record",
+                                           .members = {record_member("small", "std::uint8_t"),
+                                                       record_member("wide", "std::uint32_t"),
+                                                       record_member("medium", "std::uint16_t")},
+                                           .export_specifier = std::nullopt}})};
+    auto const record{
+        Analyzer::analyze_record(fixture.types, fixture.type, AbiProfile::host_common(), 100)};
+    std::vector<std::string> const members{"small", "medium", "small"};
+    auto const access{Analyzer::analyze_record_access(record, members, AbiProfile::host_common())};
+
+    EXPECT_EQ(access.member_names, (std::vector<std::string>{"small", "medium"}));
+    EXPECT_EQ(access.useful_bytes, 300);
+    EXPECT_EQ(access.object_footprint_bytes, 1'200);
+    EXPECT_EQ(access.cache_lines_touched, 19);
+    EXPECT_EQ(access.cache_bytes_touched, 1'216);
+    EXPECT_EQ(access.non_selected_cache_bytes, 916);
+    EXPECT_EQ(access.pages_touched, 1);
+    EXPECT_TRUE(access.diagnostics.empty());
 }
 
 TEST(RecordAnalyzer, MemberAccessHandlesSpanningMembersAndOverflow) {
@@ -430,17 +452,17 @@ TEST(RecordAnalyzer, MemberAccessHandlesSpanningMembersAndOverflow) {
         Analyzer::analyze_record(fixture.types, fixture.type, AbiProfile::host_common(), 2)};
     auto access{Analyzer::analyze_record_member_access(record, "bytes", AbiProfile::host_common())};
     EXPECT_EQ(record.size_bytes, 66);
-    EXPECT_EQ(access.useful_member_bytes, 130);
+    EXPECT_EQ(access.useful_bytes, 130);
     EXPECT_EQ(access.cache_lines_touched, 3);
     EXPECT_EQ(access.cache_bytes_touched, 192);
-    EXPECT_EQ(access.non_member_cache_bytes, 62);
+    EXPECT_EQ(access.non_selected_cache_bytes, 62);
 
     record = Analyzer::analyze_record(fixture.types,
                                       fixture.type,
                                       AbiProfile::host_common(),
                                       std::numeric_limits<std::uint64_t>::max());
     access = Analyzer::analyze_record_member_access(record, "bytes", AbiProfile::host_common());
-    EXPECT_FALSE(access.useful_member_bytes.has_value());
+    EXPECT_FALSE(access.useful_bytes.has_value());
     EXPECT_FALSE(access.cache_bytes_touched.has_value());
     EXPECT_FALSE(access.diagnostics.empty());
 }
@@ -481,6 +503,45 @@ TEST(RecordAnalyzer, PeriodicMemberAccessMatchesBruteForceRegionUnion) {
                         << " count=" << count;
                 }
             }
+        }
+    }
+}
+
+TEST(RecordAnalyzer, PeriodicMultiMemberAccessMatchesBruteForceRegionUnion) {
+    constexpr std::array counts{
+        std::uint64_t{1}, std::uint64_t{2}, std::uint64_t{7}, std::uint64_t{33}};
+    std::vector<std::string> const selected_members{"first", "last"};
+    for (std::uint64_t stride{2}; stride <= 32; ++stride) {
+        for (auto const count : counts) {
+            RecordAnalysis record{};
+            record.size_bytes = stride;
+            record.members.push_back(RecordMemberAnalysis{.name = "first",
+                                                          .semantic_type = {},
+                                                          .element_count = 1,
+                                                          .element_facts = std::nullopt,
+                                                          .offset_bytes = 0,
+                                                          .extent_bytes = 1,
+                                                          .padding_before_bytes = std::nullopt});
+            record.members.push_back(RecordMemberAnalysis{.name = "last",
+                                                          .semantic_type = {},
+                                                          .element_count = 1,
+                                                          .element_facts = std::nullopt,
+                                                          .offset_bytes = stride - 1,
+                                                          .extent_bytes = 1,
+                                                          .padding_before_bytes = std::nullopt});
+            record.aggregate.element_count = count;
+            record.aggregate.total_storage_bytes = stride * count;
+
+            std::set<std::uint64_t> expected_lines;
+            for (std::uint64_t index{}; index < count; ++index) {
+                expected_lines.insert(index * stride / 64);
+                expected_lines.insert((index * stride + stride - 1) / 64);
+            }
+            auto const access{Analyzer::analyze_record_access(
+                record, selected_members, AbiProfile::host_common())};
+            ASSERT_TRUE(access.cache_lines_touched.has_value());
+            EXPECT_EQ(*access.cache_lines_touched, expected_lines.size())
+                << "stride=" << stride << " count=" << count;
         }
     }
 }

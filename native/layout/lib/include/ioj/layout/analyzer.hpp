@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -138,15 +139,15 @@ struct RecordAnalysis {
     RecordAggregateAnalysis aggregate;
 };
 
-struct RecordMemberAccessAnalysis {
-    std::string member_name;
+struct RecordAccessAnalysis {
+    std::vector<std::string> member_names;
     std::uint64_t element_count{};
-    std::optional<std::uint64_t> useful_member_bytes;
+    std::optional<std::uint64_t> useful_bytes;
     std::optional<std::uint64_t> object_footprint_bytes;
     std::optional<std::uint64_t> cache_line_bytes;
     std::optional<std::uint64_t> cache_lines_touched;
     std::optional<std::uint64_t> cache_bytes_touched;
-    std::optional<std::uint64_t> non_member_cache_bytes;
+    std::optional<std::uint64_t> non_selected_cache_bytes;
     std::optional<std::uint64_t> page_bytes;
     std::optional<std::uint64_t> pages_touched;
     std::vector<Diagnostic> diagnostics;
@@ -202,9 +203,12 @@ class Analyzer {
                                lispb::schema::TypeId type,
                                AbiProfile const& abi,
                                std::uint64_t element_count = 1) -> RecordAnalysis;
+    static auto analyze_record_access(RecordAnalysis const& record,
+                                      std::span<std::string const> member_names,
+                                      AbiProfile const& abi) -> RecordAccessAnalysis;
     static auto analyze_record_member_access(RecordAnalysis const& record,
                                              std::string_view member_name,
-                                             AbiProfile const& abi) -> RecordMemberAccessAnalysis;
+                                             AbiProfile const& abi) -> RecordAccessAnalysis;
     static auto analyze_soa(lispb::schema::TypeGraph const& types,
                             lispb::schema::TypeId type,
                             Variant const& variant,

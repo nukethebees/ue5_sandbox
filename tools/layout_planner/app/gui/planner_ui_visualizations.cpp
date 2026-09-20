@@ -709,10 +709,17 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
     ImGui::TextDisabled(
         "Boundary crossing assumes a contiguous array whose base is cache-line/page aligned.");
 
-    ImGui::SeparatorText("Selected-member sequential access");
+    ImGui::SeparatorText("Sequential access set");
     if (record_access_analysis_.has_value()) {
         auto const& access{*record_access_analysis_};
-        ImGui::Text("Member: %s", access.member_name.c_str());
+        std::string member_names;
+        for (auto const& member_name : access.member_names) {
+            if (!member_names.empty()) {
+                member_names += ", ";
+            }
+            member_names += member_name;
+        }
+        ImGui::TextWrapped("Members: %s", member_names.c_str());
         if (ImGui::BeginTable("record-member-access",
                               2,
                               ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
@@ -724,23 +731,24 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted(value.c_str());
             }};
-            draw_stat("Useful member bytes", detail::format_bytes(access.useful_member_bytes));
+            draw_stat("Useful selected bytes", detail::format_bytes(access.useful_bytes));
             draw_stat("Enclosing AoS footprint",
                       detail::format_bytes(access.object_footprint_bytes));
             draw_stat("Distinct cache lines touched",
                       detail::format_number(access.cache_lines_touched));
             draw_stat("Bytes in touched cache lines",
                       detail::format_bytes(access.cache_bytes_touched));
-            draw_stat("Other bytes in touched cache lines",
-                      detail::format_bytes(access.non_member_cache_bytes));
+            draw_stat("Non-selected bytes in touched cache lines",
+                      detail::format_bytes(access.non_selected_cache_bytes));
             draw_stat("Distinct pages touched", detail::format_number(access.pages_touched));
             ImGui::EndTable();
         }
         ImGui::TextDisabled(
-            "One sequential read of this member per element; aligned contiguous AoS base assumed.");
+            "One sequential read of the selected members per element; aligned contiguous AoS base "
+            "assumed.");
         draw_diagnostics(access.diagnostics);
     } else {
-        ImGui::TextDisabled("Select a record member to inspect an explicit access set.");
+        ImGui::TextDisabled("Select record members in the Access column to define the access set.");
     }
 
     ImGui::SeparatorText("Object layout");

@@ -185,6 +185,8 @@ void PlannerUi::draw_project_panel() {
                 if (ImGui::Selectable(item_label.c_str(), selected)) {
                     selected_type_ = type;
                     selected_field_.clear();
+                    record_access_members_.clear();
+                    record_access_set_explicit_ = false;
                     packed_dragged_divider_.reset();
                     packed_dragged_variant_id_.reset();
                 }

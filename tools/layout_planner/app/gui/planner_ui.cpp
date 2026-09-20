@@ -557,6 +557,8 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     }
     selected_field_.clear();
     selected_enumerator_.clear();
+    record_access_members_.clear();
+    record_access_set_explicit_ = false;
     enum_editor_declaration_.reset();
     enum_editor_value_.clear();
     packed_editor_declaration_.reset();
@@ -634,6 +636,8 @@ void PlannerUi::refresh_analysis() {
     validate_comparison_variants();
     if (cached_revision_ == workspace_.revision() && cached_type_ == selected_type_ &&
         cached_selected_field_ == selected_field_ &&
+        cached_record_access_members_ == record_access_members_ &&
+        cached_record_access_set_explicit_ == record_access_set_explicit_ &&
         cached_comparison_a_variant_id_ == comparison_a_variant_id_ &&
         cached_comparison_b_variant_id_ == comparison_b_variant_id_) {
         return;
@@ -654,6 +658,8 @@ void PlannerUi::refresh_analysis() {
     cached_revision_ = workspace_.revision();
     cached_type_ = selected_type_;
     cached_selected_field_ = selected_field_;
+    cached_record_access_members_ = record_access_members_;
+    cached_record_access_set_explicit_ = record_access_set_explicit_;
     cached_comparison_a_variant_id_ = comparison_a_variant_id_;
     cached_comparison_b_variant_id_ = comparison_b_variant_id_;
     if (!selected_type_.has_value()) {
@@ -670,9 +676,15 @@ void PlannerUi::refresh_analysis() {
     } else if (std::holds_alternative<RecordType>(definition)) {
         record_analysis_ =
             Analyzer::analyze_record(workspace_.types(), *selected_type_, abi_, element_count);
-        if (!selected_field_.empty()) {
+        std::vector<std::string> access_members{record_access_members_.begin(),
+                                                record_access_members_.end()};
+        if (!record_access_set_explicit_ && !selected_field_.empty()) {
+            access_members.clear();
+            access_members.push_back(selected_field_);
+        }
+        if (!access_members.empty()) {
             record_access_analysis_ =
-                Analyzer::analyze_record_member_access(*record_analysis_, selected_field_, abi_);
+                Analyzer::analyze_record_access(*record_analysis_, access_members, abi_);
         }
     } else if (std::holds_alternative<PackedType>(definition)) {
         baseline_packed_ = Analyzer::analyze_packed(
