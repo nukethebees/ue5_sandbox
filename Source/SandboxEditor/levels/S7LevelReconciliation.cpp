@@ -160,11 +160,8 @@ auto viewpoint_changed(AS7LevelAuthoringDocument const& document,
     return !current_player.IsSet() || current_player.GetValue() != definition.player_entity_id;
 }
 
-auto optionals_equal(TOptional<float> const lhs, TOptional<float> const rhs) -> bool {
-    return lhs.IsSet() == rhs.IsSet() && (!lhs.IsSet() || lhs.GetValue() == rhs.GetValue());
-}
-
-auto optionals_equal(TOptional<int32> const lhs, TOptional<int32> const rhs) -> bool {
+template <typename T>
+auto optionals_equal(TOptional<T> const lhs, TOptional<T> const rhs) -> bool {
     return lhs.IsSet() == rhs.IsSet() && (!lhs.IsSet() || lhs.GetValue() == rhs.GetValue());
 }
 
