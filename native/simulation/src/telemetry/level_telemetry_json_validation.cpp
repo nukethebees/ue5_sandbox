@@ -53,11 +53,9 @@ auto validate_json_integer(Integer const value, std::string_view const path, boo
 
 auto validate_json_number(double const value, std::string_view const path, bool const nonnegative)
     -> std::expected<void, std::string> {
-    if (!std::isfinite(value)) {
-        return std::unexpected{error_at(path, "value must be finite")};
-    }
-    if (nonnegative && value < 0.0) {
-        return std::unexpected{error_at(path, "value must be nonnegative")};
+    if (!is_valid_json_number(value, nonnegative)) {
+        return std::unexpected{error_at(
+            path, !std::isfinite(value) ? "value must be finite" : "value must be nonnegative")};
     }
     return {};
 }

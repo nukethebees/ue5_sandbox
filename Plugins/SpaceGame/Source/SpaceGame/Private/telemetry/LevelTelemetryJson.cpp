@@ -198,7 +198,8 @@ auto required_bool(FJsonObject const& source, TCHAR const* const field, FString 
 auto required_number(FJsonObject const& source, TCHAR const* const field, FString const& path)
     -> std::expected<double, FString> {
     double result{};
-    if (!source.TryGetNumberField(field, result) || !FMath::IsFinite(result)) {
+    if (!source.TryGetNumberField(field, result) ||
+        !::ioj::sim::telemetry::is_valid_json_number(result, false)) {
         return std::unexpected{
             error_at(path, TEXT("required finite number is missing or invalid"))};
     }
@@ -208,7 +209,8 @@ auto required_number(FJsonObject const& source, TCHAR const* const field, FStrin
 auto required_number(TSharedPtr<FJsonValue> const& source, FString const& path)
     -> std::expected<double, FString> {
     double result{};
-    if (!source.IsValid() || !source->TryGetNumber(result) || !FMath::IsFinite(result)) {
+    if (!source.IsValid() || !source->TryGetNumber(result) ||
+        !::ioj::sim::telemetry::is_valid_json_number(result, false)) {
         return std::unexpected{
             error_at(path, TEXT("required finite number is missing or invalid"))};
     }
@@ -454,11 +456,11 @@ auto validate_serialized_integer(Integer const value, FString const& path, bool 
 
 auto validate_serialized_number(double const value, FString const& path, bool const nonnegative)
     -> std::expected<void, FString> {
-    if (!FMath::IsFinite(value)) {
-        return std::unexpected{error_at(path, TEXT("value must be finite"))};
-    }
-    if (nonnegative && value < 0.0) {
-        return std::unexpected{error_at(path, TEXT("value must be nonnegative"))};
+    if (!::ioj::sim::telemetry::is_valid_json_number(value, nonnegative)) {
+        return std::unexpected{error_at(path,
+                                        !FMath::IsFinite(value)
+                                            ? TEXT("value must be finite")
+                                            : TEXT("value must be nonnegative"))};
     }
     return {};
 }

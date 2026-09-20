@@ -2,12 +2,18 @@
 
 #include <ioj/sim/telemetry/level_telemetry_run_record.h>
 
+#include <cmath>
 #include <cstdint>
 #include <expected>
 #include <string>
 #include <string_view>
 
 namespace ioj::sim::telemetry {
+
+[[nodiscard]] inline auto is_valid_json_number(double const value, bool const nonnegative) noexcept
+    -> bool {
+    return std::isfinite(value) && (!nonnegative || value >= 0.0);
+}
 
 [[nodiscard]] auto parse_json_int32(double value, std::string_view path)
     -> std::expected<std::int32_t, std::string>;

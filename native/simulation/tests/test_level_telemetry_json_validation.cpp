@@ -6,6 +6,14 @@
 
 namespace ioj::sim::telemetry::tests {
 
+TEST(LevelTelemetryJsonValidation, ValidatesFiniteJsonNumbers) {
+    EXPECT_TRUE(is_valid_json_number(0.0, false));
+    EXPECT_TRUE(is_valid_json_number(0.0, true));
+    EXPECT_FALSE(is_valid_json_number(-1.0, true));
+    EXPECT_FALSE(is_valid_json_number(std::numeric_limits<double>::infinity(), false));
+    EXPECT_FALSE(is_valid_json_number(std::numeric_limits<double>::quiet_NaN(), false));
+}
+
 TEST(LevelTelemetryJsonValidation, ParsesOnlyExactInRangeIntegers) {
     EXPECT_EQ(*parse_json_int32(42.0, "value"), 42);
     EXPECT_FALSE(parse_json_int32(1.5, "value").has_value());

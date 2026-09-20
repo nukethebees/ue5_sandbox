@@ -1,33 +1,20 @@
 #include "SpaceGame/simulation/SpaceGameLevelConfig.h"
 
+#include <ioj/sim/collision_grid.h>
+
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SimulationActorClasses.h>
+#include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include <Engine/StaticMeshActor.h>
-
-#include <limits>
 
 #if WITH_EDITOR
 #include <Misc/DataValidation.h>
 #endif
 
 namespace {
-auto calculate_dimension(float const grid_size, float const cell_size) noexcept -> int32 {
-    if (!FMath::IsFinite(grid_size) || !FMath::IsFinite(cell_size) || grid_size <= 0.f ||
-        cell_size <= 0.f) {
-        return 0;
-    }
-
-    auto const dimension{FMath::CeilToDouble(static_cast<double>(grid_size) / cell_size)};
-    if (dimension > static_cast<double>(std::numeric_limits<int32>::max())) {
-        return 0;
-    }
-
-    return static_cast<int32>(dimension);
-}
-
 auto collision_class_lists_are_valid(FCollisionGridConfig const& config) -> bool {
     for (auto const actor_class : config.harvested_collision_actor_classes) {
         if (!actor_class) {
@@ -54,12 +41,8 @@ auto collision_class_lists_are_valid(FCollisionGridConfig const& config) -> bool
 
 auto collision_grid_dimensions_are_valid(FCollisionGridConfig const& config) -> bool {
     auto const dimensions{config.calculate_grid_dimensions()};
-    if (dimensions.X <= 0 || dimensions.Y <= 0 || dimensions.Z <= 0) {
-        return false;
-    }
-
-    auto const xy_cell_count{static_cast<int64>(dimensions.X) * dimensions.Y};
-    return xy_cell_count <= (std::numeric_limits<int32>::max() / dimensions.Z);
+    return ::ioj::sim::collision::is_configured(
+        {{dimensions.X, dimensions.Y, dimensions.Z}, ml::to_native(config.cell_size)});
 }
 }
 
@@ -71,11 +54,9 @@ FCollisionGridConfig::FCollisionGridConfig()
     , omitted_collision_actor_classes{ATestSpaceShip::StaticClass()} {}
 
 auto FCollisionGridConfig::calculate_grid_dimensions() const noexcept -> FIntVector3 {
-    return {
-        calculate_dimension(grid_size.X, cell_size.X),
-        calculate_dimension(grid_size.Y, cell_size.Y),
-        calculate_dimension(grid_size.Z, cell_size.Z),
-    };
+    auto const dimensions{::ioj::sim::collision::calculate_grid_dimensions(
+        ml::to_native(grid_size), ml::to_native(cell_size))};
+    return {dimensions.x, dimensions.y, dimensions.z};
 }
 
 auto FCollisionGridConfig::is_valid() const noexcept -> bool {

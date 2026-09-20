@@ -32,6 +32,8 @@ struct GridGeometry {
 };
 
 [[nodiscard]] auto is_configured(GridGeometry geometry) noexcept -> bool;
+[[nodiscard]] auto calculate_grid_dimensions(Vector3f grid_size, Vector3f cell_size) noexcept
+    -> CellCoord;
 [[nodiscard]] auto num_cells(GridGeometry geometry) noexcept -> int;
 [[nodiscard]] auto to_index(GridGeometry geometry, CellCoord coordinate) noexcept -> int;
 [[nodiscard]] auto to_cell_coord(float value, float cell_dimension, int grid_dimension) noexcept

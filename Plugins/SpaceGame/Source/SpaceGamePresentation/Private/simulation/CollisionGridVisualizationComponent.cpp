@@ -1,6 +1,7 @@
 #include "SpaceGamePresentation/simulation/CollisionGridVisualizationComponent.h"
 
 #include <ioj/sim/collision/collision_system.h>
+#include <ioj/sim/collision_grid.h>
 #include <ioj/sim/world_aabb_operations.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>
 
@@ -374,8 +375,8 @@ void UCollisionGridVisualizationComponent::clear() {
 }
 
 auto UCollisionGridVisualizationComponent::CreateSceneProxy() -> FPrimitiveSceneProxy* {
-    auto const has_valid_grid{grid_dimensions_.X > 0 && grid_dimensions_.Y > 0 &&
-                              grid_dimensions_.Z > 0};
+    auto const has_valid_grid{::ioj::sim::collision::is_configured(
+        {{grid_dimensions_.X, grid_dimensions_.Y, grid_dimensions_.Z}, ml::to_native(cell_size_)})};
     auto const has_collision_bounds{collision_bounds_visible_ &&
                                     (!entity_bounds_.IsEmpty() || !static_bounds_.IsEmpty())};
     if (!has_valid_grid || (!show_grid_ && !has_collision_bounds)) {
