@@ -144,9 +144,9 @@ TEST(PackedValue, ValidatesKnownEnumEncodedWidthWithoutEmittingPerValueAssertion
     auto schema{EnumSchema{
         .name = "FighterStateKind",
         .underlying_type = TypeRef{"uint8"},
-        .values = {EnumeratorSchema{"Zero", 0},
-                   EnumeratorSchema{"High", 7},
-                   EnumeratorSchema{"COUNT", 8, std::nullopt, true}},
+        .values = {EnumeratorSchema{"Zero", "0"},
+                   EnumeratorSchema{"High", "7"},
+                   EnumeratorSchema{"COUNT", "8", std::nullopt, true}},
         .count = "COUNT",
     }};
 
@@ -158,27 +158,72 @@ TEST(PackedValue, ValidatesKnownEnumEncodedWidthWithoutEmittingPerValueAssertion
     EXPECT_THROW(lower_known_enum(std::move(module), std::move(schema)), std::invalid_argument);
 }
 
-TEST(PackedValue, RejectsInvalidKnownEnumNumericDomains) {
+TEST(PackedValue, ResolvesImplicitValuesAfterExplicitHexadecimalValues) {
+    auto module{valid_module()};
+    module.values.front().fields.back().bits = 4;
+    auto schema{EnumSchema{
+        .name = "FighterStateKind",
+        .underlying_type = TypeRef{"uint8"},
+        .values = {EnumeratorSchema{"Zero", "0"},
+                   EnumeratorSchema{"High", "0x7"},
+                   EnumeratorSchema{"Next"},
+                   EnumeratorSchema{"COUNT", std::nullopt, std::nullopt, true}},
+        .count = "COUNT",
+    }};
+
+    EXPECT_NO_THROW(static_cast<void>(lower_known_enum(module, schema)));
+
+    module.values.front().fields.back().bits = 3;
+    EXPECT_THROW(lower_known_enum(std::move(module), std::move(schema)), std::invalid_argument);
+}
+
+TEST(PackedValue, RejectsKnownEnumValuesOutsideTheirUnderlyingType) {
     auto module{valid_module()};
     module.values.front().fields.back().bits = 8;
     auto schema{EnumSchema{
         .name = "FighterStateKind",
         .underlying_type = TypeRef{"uint8"},
-        .values = {EnumeratorSchema{"Zero", 0}, EnumeratorSchema{"Maximum", 255}},
+        .values = {EnumeratorSchema{"Zero", "0"}, EnumeratorSchema{"Maximum", "255"}},
     }};
     EXPECT_NO_THROW(static_cast<void>(lower_known_enum(module, schema)));
 
-    schema.values.back().initializer = 256;
+    schema.values.back().initializer = "256";
     EXPECT_THROW(lower_known_enum(module, schema), std::invalid_argument);
+}
 
-    schema.values.back().initializer = 0;
-    EXPECT_THROW(lower_known_enum(module, schema), std::invalid_argument);
+TEST(PackedValue, AllowsEnumAliasesAndUsesStructuralCountSemantics) {
+    auto module{valid_module()};
+    module.values.front().fields.back().bits = 8;
+    auto schema{EnumSchema{
+        .name = "FighterStateKind",
+        .underlying_type = TypeRef{"uint8"},
+        .values = {EnumeratorSchema{"Zero", "0"}, EnumeratorSchema{"Alias", "0"}},
+    }};
+    EXPECT_NO_THROW(static_cast<void>(lower_known_enum(module, schema)));
 
-    schema.values = {EnumeratorSchema{"Zero", 0},
-                     EnumeratorSchema{"High", 7},
-                     EnumeratorSchema{"COUNT", 6, std::nullopt, true}};
+    schema.values = {EnumeratorSchema{"Zero", "0"},
+                     EnumeratorSchema{"High", "7"},
+                     EnumeratorSchema{"COUNT", "6", std::nullopt, true}};
     schema.count = "COUNT";
-    EXPECT_THROW(lower_known_enum(std::move(module), std::move(schema)), std::invalid_argument);
+    EXPECT_NO_THROW(static_cast<void>(lower_known_enum(std::move(module), std::move(schema))));
+}
+
+TEST(PackedValue, EmitsCompactFallbackForOpaqueKnownEnumValues) {
+    auto module{valid_module()};
+    module.values.front().fields.back().bits = 3;
+    auto const header{
+        lower_known_enum(std::move(module),
+                         EnumSchema{
+                             .name = "FighterStateKind",
+                             .underlying_type = TypeRef{"uint8"},
+                             .values = {EnumeratorSchema{"Zero", "static_cast<uint8>(0)"},
+                                        EnumeratorSchema{"High", "static_cast<uint8>(7)"}},
+                         })};
+
+    EXPECT_NE(header.find("static_assert([]<auto... values>() consteval -> bool"),
+              std::string::npos);
+    EXPECT_NE(header.find("operator()<"), std::string::npos);
+    EXPECT_EQ(header.find("static_assert(static_cast<state_underlying_type>"), std::string::npos);
 }
 
 } // namespace

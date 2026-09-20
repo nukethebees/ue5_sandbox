@@ -13,8 +13,8 @@ enum class LifeState : std::uint8_t {
 };
 
 enum class DeathReason : std::uint8_t {
-    Unknown = 1,
-    Combat = 2,
+    Unknown = static_cast<std::uint8_t>(LifeState::Unknown),
+    Combat = static_cast<std::uint8_t>(LifeState::Combat),
 };
 
 } // namespace ioj::sim

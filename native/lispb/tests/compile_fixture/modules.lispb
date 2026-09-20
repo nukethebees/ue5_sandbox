@@ -35,6 +35,11 @@
     (value Zero :value "0x00")
     (value AB :value "0xAB")
     (value Max :value "0xFF"))
+  (enum OpaqueState @standard_uint8
+    (value Zero
+      :value "static_cast<std::uint8_t>(PackedState::Zero)")
+    (value Max
+      :value "static_cast<std::uint8_t>(PackedState::Max)"))
   (enum TinyState @standard_uint8
     (value Zero :value "0")
     (value One :value "1")
@@ -64,6 +69,9 @@
     :storage std::uint8_t
     (field state @tiny_state :bits 2 :kind enum)
     (field payload std::uint8_t :bits 6))
+  (packed-value PackedOpaqueState
+    :storage std::uint8_t
+    (field state @opaque_state :bits 8 :kind enum))
   (packed-value CheckedValue
     :storage std::uint32_t
     :invalid-value 0x7fffffff

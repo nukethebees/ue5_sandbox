@@ -115,8 +115,8 @@ auto valid_native_enum_module() -> EnumModuleSchema {
         .enums = {EnumSchema{
             .name = "NativeMode",
             .underlying_type = TypeRef{"std::uint8_t"},
-            .values = {EnumeratorSchema{"Idle", 0, std::nullopt, false, "idle"},
-                       EnumeratorSchema{"COUNT", 1, std::nullopt, true}},
+            .values = {EnumeratorSchema{"Idle", "0", std::nullopt, false, "idle"},
+                       EnumeratorSchema{"COUNT", "1", std::nullopt, true}},
             .count = "COUNT",
             .native_api = true,
         }},
@@ -245,7 +245,7 @@ TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
 TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
     auto module{valid_enum_module()};
     module.enums.front().enum_array = true;
-    module.enums.front().values.front().initializer = 0;
+    module.enums.front().values.front().initializer = "0";
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
@@ -281,6 +281,23 @@ TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
     module.enums.front().values = {EnumeratorSchema{"COUNT", std::nullopt, std::nullopt, true}};
     module.enums.front().count = "COUNT";
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
+TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
+    auto module{valid_native_enum_module()};
+    auto& schema{module.enums.front()};
+    schema.underlying_type = TypeRef{"@native_int8"};
+    schema.values = {EnumeratorSchema{"Minimum", "-128"}, EnumeratorSchema{"Maximum", "127"}};
+    schema.count.reset();
+    auto const types{std::map<std::string, CppType>{
+        {"native_int8", CppType{"std::int8_t", "cstdint"}},
+    }};
+
+    EXPECT_NO_THROW(static_cast<void>(lower_modules(manifest_with(module, types))));
+
+    schema.values.back().initializer = "128";
+    EXPECT_THROW(static_cast<void>(lower_modules(manifest_with(std::move(module), types))),
+                 std::invalid_argument);
 }
 
 TEST(Validation, RejectsInvalidStaticTableModuleConfiguration) {

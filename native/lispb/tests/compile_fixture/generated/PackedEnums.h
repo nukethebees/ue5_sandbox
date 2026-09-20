@@ -7,9 +7,14 @@
 
 namespace codegen_compile_fixture {
 enum class PackedState : std::uint8_t {
-    Zero = 0,
-    AB = 171,
-    Max = 255,
+    Zero = 0x00,
+    AB = 0xAB,
+    Max = 0xFF,
+};
+
+enum class OpaqueState : std::uint8_t {
+    Zero = static_cast<std::uint8_t>(PackedState::Zero),
+    Max = static_cast<std::uint8_t>(PackedState::Max),
 };
 
 enum class TinyState : std::uint8_t {

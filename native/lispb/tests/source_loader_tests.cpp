@@ -163,7 +163,7 @@ TEST(SourceLoader, ReadsPackedValueModule) {
     EXPECT_EQ(value.fields[1].kind, PackedFieldKind::enumeration);
 }
 
-TEST(SourceLoader, ParsesNumericEnumValuesAndRejectsOpaqueExpressions) {
+TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
     TemporaryManifest files;
     files.write_root(R"schema(
 (enum-module enums
@@ -176,8 +176,8 @@ TEST(SourceLoader, ParsesNumericEnumValuesAndRejectsOpaqueExpressions) {
     auto const manifest{files.load()};
     auto const& values{std::get<EnumModuleSchema>(manifest.modules.front()).enums.front().values};
     ASSERT_EQ(values.size(), 2);
-    EXPECT_EQ(values[0].initializer, std::uint64_t{0});
-    EXPECT_EQ(values[1].initializer, std::uint64_t{0x7f});
+    EXPECT_EQ(values[0].initializer, "0");
+    EXPECT_EQ(values[1].initializer, "0x7f");
 
     files.write_root(R"schema(
 (enum-module enums
@@ -185,7 +185,10 @@ TEST(SourceLoader, ParsesNumericEnumValuesAndRejectsOpaqueExpressions) {
   (enum State uint8
     (value Invalid :value -1)))
 )schema");
-    EXPECT_THROW(static_cast<void>(files.load()), ManifestError);
+    auto const negative_manifest{files.load()};
+    auto const& negative_values{
+        std::get<EnumModuleSchema>(negative_manifest.modules.front()).enums.front().values};
+    EXPECT_EQ(negative_values.front().initializer, "-1");
 
     files.write_root(R"schema(
 (enum-module enums
@@ -193,7 +196,10 @@ TEST(SourceLoader, ParsesNumericEnumValuesAndRejectsOpaqueExpressions) {
   (enum State uint8
     (value Invalid :value "static_cast<uint8>(1)")))
 )schema");
-    EXPECT_THROW(static_cast<void>(files.load()), ManifestError);
+    auto const opaque_manifest{files.load()};
+    auto const& opaque_values{
+        std::get<EnumModuleSchema>(opaque_manifest.modules.front()).enums.front().values};
+    EXPECT_EQ(opaque_values.front().initializer, "static_cast<uint8>(1)");
 }
 
 TEST(SourceLoader, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {

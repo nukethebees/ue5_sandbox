@@ -93,6 +93,29 @@ auto packed_value_text(PackedValueSchema const& schema,
         output += "    inline static constexpr storage_type " + field.name + "_mask{storage_type{" +
                   hex_value(mask) + "}};\n";
 
+        if (auto const* enum_schema{find_packed_enum(field.type, types, modules)};
+            field.kind == PackedFieldKind::enumeration && enum_schema != nullptr &&
+            !enum_required_packed_bits(*enum_schema).has_value()) {
+            output += "\n    static_assert([]<auto... values>() consteval -> bool {\n";
+            output +=
+                "        return ((static_cast<" + field.name + "_underlying_type>(values) <=\n";
+            output += "                 static_cast<" + field.name + "_underlying_type>(" +
+                      field.name + "_value_mask)) && ...);\n";
+            output += "    }.template operator()<\n";
+            bool first_value{true};
+            for (auto const& value : enum_schema->values) {
+                if (enum_schema->count.has_value() && value.name == *enum_schema->count) {
+                    continue;
+                }
+                if (!first_value) {
+                    output += ",\n";
+                }
+                output += "        " + field_type.spelling + "::" + value.name;
+                first_value = false;
+            }
+            output += "\n    >());\n";
+        }
+
         offset += field.bits;
     }
 

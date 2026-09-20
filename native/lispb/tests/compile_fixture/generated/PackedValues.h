@@ -445,6 +445,90 @@ static_assert(sizeof(PackedTinyState) == sizeof(PackedTinyState::storage_type));
 static_assert(std::is_trivially_copyable_v<PackedTinyState>);
 static_assert(std::is_standard_layout_v<PackedTinyState>);
 
+struct PackedOpaqueState {
+    using storage_type = std::uint8_t;
+    static_assert(std::is_unsigned_v<storage_type>);
+    static_assert(std::numeric_limits<storage_type>::digits == 8);
+    using state_type = codegen_compile_fixture::OpaqueState;
+    using state_underlying_type = std::underlying_type_t<codegen_compile_fixture::OpaqueState>;
+
+    inline static constexpr int state_offset{0};
+    inline static constexpr int state_bits{8};
+    inline static constexpr storage_type state_value_mask{storage_type{0xff}};
+    inline static constexpr storage_type state_mask{storage_type{0xff}};
+
+    static_assert([]<auto... values>() consteval -> bool {
+        return ((static_cast<state_underlying_type>(values) <=
+                 static_cast<state_underlying_type>(state_value_mask)) &&
+                ...);
+    }.template operator()<codegen_compile_fixture::OpaqueState::Zero,
+                                                    codegen_compile_fixture::OpaqueState::Max>());
+
+    constexpr PackedOpaqueState() noexcept = default;
+    explicit constexpr PackedOpaqueState(storage_type const raw) noexcept
+        : value_{raw} {}
+
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+
+    [[nodiscard]] static constexpr auto
+        try_make(codegen_compile_fixture::OpaqueState const state_value,
+                 PackedOpaqueState& out_result) noexcept -> bool {
+        PackedOpaqueState result{storage_type{0}};
+        if (!result.try_set_state(state_value)) {
+            return false;
+        }
+        if (!result.is_valid()) {
+            return false;
+        }
+        out_result = result;
+        return true;
+    }
+
+    [[nodiscard]] static constexpr auto
+        make(codegen_compile_fixture::OpaqueState const state_value) noexcept -> PackedOpaqueState {
+        PackedOpaqueState result;
+        [[maybe_unused]] auto const success{try_make(state_value, result)};
+        assert(success && "Packed field value does not fit.");
+        return result;
+    }
+
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+
+    [[nodiscard]] constexpr auto operator<=>(PackedOpaqueState const&) const noexcept = default;
+
+    [[nodiscard]] constexpr auto state() const noexcept -> codegen_compile_fixture::OpaqueState {
+        auto const encoded{static_cast<state_underlying_type>(
+            static_cast<storage_type>(value_ >> state_offset) & state_value_mask)};
+        return static_cast<codegen_compile_fixture::OpaqueState>(encoded);
+    }
+
+    [[nodiscard]] constexpr auto
+        try_set_state(codegen_compile_fixture::OpaqueState const value) noexcept -> bool {
+        auto const underlying{static_cast<state_underlying_type>(value)};
+        if (underlying > static_cast<state_underlying_type>(state_value_mask)) {
+            return false;
+        }
+        auto const encoded{static_cast<storage_type>(underlying)};
+        auto const cleared{
+            static_cast<storage_type>(value_ & static_cast<storage_type>(~state_mask))};
+        auto const shifted{static_cast<storage_type>(
+            static_cast<storage_type>(encoded & state_value_mask) << state_offset)};
+        value_ = static_cast<storage_type>(cleared | shifted);
+        return true;
+    }
+
+    constexpr void set_state(codegen_compile_fixture::OpaqueState const value) noexcept {
+        if (!try_set_state(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(sizeof(PackedOpaqueState) == sizeof(PackedOpaqueState::storage_type));
+static_assert(std::is_trivially_copyable_v<PackedOpaqueState>);
+static_assert(std::is_standard_layout_v<PackedOpaqueState>);
+
 struct CheckedValue {
     using storage_type = std::uint32_t;
     static_assert(std::is_unsigned_v<storage_type>);
