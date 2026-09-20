@@ -2,45 +2,42 @@ Unreal Engine 5.8 project.
 
 # Project Context
 
-* Simulation-heavy space combat game written primarily in C++.
-* Prefer simple, explicit systems over speculative abstraction.
-* Data is primarily stored in SoA containers
+* Simulation-heavy space combat game written primarily in C++
+* Prefer simple, explicit systems over speculative abstraction
+* Heavy SoA container usage
 * UI must not own gameplay logic
-* Determinism, debuggability, simple control flow, and performance are important.
-* Prefer implementing work under `native/` until Unreal Engine integration is needed, then add a
-  thin adapter after the native implementation is substantially settled. Local native validation is
-  the fast path and avoids contention on shared Unreal engine resources.
+* Prefer implementing work under `native/` until Unreal Engine integration is needed. Local code avoids shared Unreal engine resource contention.
 * External standalone developer tools may live under `tools/`.
 
 # Feature Workflow
 
-* Use the canonical absolute `agent-git` executable for supported Git mutations. Raw Git is
-  acceptable for read-only inspection. For mutations, fall back only when `agent-git` itself is
-  non-functional (for example, unavailable or internally failing), never because it denied a
-  policy-prohibited operation; report the helper failure once and use the minimal alternative.
+* Use the canonical absolute `agent-git` executable for supported Git mutations
 * Each agent owns its worktree. Safe ordinary Git operations in separate worktrees may run
   concurrently; `agent-git` enforces worktree/branch ownership and destructive-operation policy,
   while Git provides index/ref locking. Do not treat `agent-git` as a repository-global mutex or
   inspect or modify another agent's worktree.
-* `dev` is the integration branch. Perform feature work on dedicated feature branches 
-* Use the CMake workflows and repository jobserver described in [Builds](#builds) for expensive
-  jobs. Do not bypass that coordination or interfere with jobs owned by other worktrees or agents.
-* **Fast default:** understand the task; finish the coherent implementation and required cleanup;
-  format and review it; run the smallest useful native/focused validation; fix with focused checks;
-  then report ready. Do not routinely stop to build or test intermediate states. Do so only when a
-  result is needed to continue—for example, to resolve uncertain compiler/API or generated-code
-  behaviour, check a consequential assumption cheaply, or debug an observed failure.
-* Use the smallest non-overlapping validation that answers the question; do not run broader suites
-  merely for reassurance. For trivial non-functional changes such as documentation or comments, do
-  not run tests by default; state that tests were not run because the change was trivial.
-* Prefer multiple coherent commits for substantive work
+* `dev` is the integration branch
+* Perform feature work on dedicated feature branches
+* Use the CMake workflows and jobserver described in [Builds](#builds). Do not bypass them
+* Do not interfere with agents in other worktrees
+* **Fast default:** 
+  * Understand the task
+  * Finish the coherent implementation and required cleanup
+  * Format and review it
+  * Run the smallest useful native/focused validation
+  * Fix with focused checks then report ready
+  * Only build and run what is needed.
 * A feature is **ready for integration** when its implementation is formatted, reviewed, and given
   credible light/focused validation, and its commits are coherent. Do not repeatedly rebase merely
   because `dev` advanced; rebase during development only for a specific known dependency. Report
   readiness and wait for the user's explicit authorization without acquiring a reservation.
-* After the user explicitly authorizes integration, run `integrate-feature` from the feature
+* After the user authorizes integration, run `integrate-feature` from the feature
   worktree. This queues fairly for the exclusive `integration/dev` jobserver resource; ordinary
   feature work and unrelated jobserver resources remain concurrent.
+  * Use `get-jobserver-state` or the `jobserver-status` target to inspect running and queued jobs.
+  * When directly submitting a coordinated job, provide a descriptive operation name and an established jobserver kind; it should be identifiable from `jobserver status`, `show`, or `history`. 
+  * Use queue metadata to understand ownership and contention; never cancel or kill another agent's job simply because it blocks yours.
+  * Processes explicitly reported as owned by the current worktree by `jobserver process-owner` or `jobserver processes --owned` may be terminated with `jobserver kill-owned` without asking the user.
 * The final transaction pins `dev`, rebases once, reviews the effective patch rather than its
   incidental commit SHA, runs only gates selected from the changed dependency surface, and
   atomically merges the exact validated candidate. Do not repeatedly rebase and restart expensive
@@ -56,26 +53,21 @@ Unreal Engine 5.8 project.
   gates, use `integrate-feature -MaintainerOverride -OverrideReason '<reason>'`. The tool records
   the exact candidate and skipped gates while retaining cheap integrity checks. Agents must never
   infer, invent, or carry override authorization between interactions.
-* Automation may warn and record an override, but it must not tell the maintainer that repository
-  policy makes an explicitly authorized merge impossible.
-* If tooling like agent-git is broken, report it once and use the documented minimal fallback; do
-  not repeatedly retry the broken helper.
+* If tooling like agent-git is broken, report it once and obey an explicit maintainer instruction
+  to use the minimal alternative; do not repeatedly retry the broken helper.
+* You have permission to kill stale/hung processes that you spawned or were spawned in your worktree
 
 # Builds
 
 * CMake is used to drive all builds, including UBT
 * Load dev.ps1 when starting a task
-* `ctools` refreshes standalone C# executables under `tools/bin` for direct developer use. CMake
+* `ctools` refreshes standalone developer C# executables under `tools/bin`. CMake
   workflows build their configuration-local C# host-tool dependencies on demand; do not run
   `ctools` as a workflow preflight. Native mimalloc validation likewise builds its configuration-
   local `NativeBinaryTools` host dependency on demand.
-* A canonical per-user jobserver coordinates expensive work across worktrees. Ordinary work shares the machine resource; benchmarks wait for older work to drain and then run exclusively. Use `get-jobserver-state` or the `jobserver-status` target to inspect running and queued jobs. Continue to use repository CMake/PowerShell wrappers for coordinated work; do not bypass them merely to customize queue metadata.
-* Prefer to build native code for the development process; leave Unreal builds to the end of a task to avoid UBT mutex contention
-* Final integration gates are relevance-based. AgentGit, jobserver, standalone C# tools, scripts,
-  and native components use their focused gates. Unreal DebugGame/Development validation is for
-  Unreal-facing, cross-boundary, or genuinely global build changes, not every merge.
+* For final integration, only build and test what your work has affected
 * Run code/asset generators needed for the task
-* Keep benchmarks short; More than 3 minutes total is too long
+* Keep benchmarks short; Not more than 3 minutes total
 * Standalone developer-tool tests are not part of the default validation path. Run
   `cmake --workflow --preset tool-tests` only when the change can affect a tool or its tests, a
   directly consumed interface/protocol/file format/configuration, shared build or tool
@@ -88,13 +80,9 @@ Unreal Engine 5.8 project.
 
 * Do not guess. Ask questions when things are unclear.
 * Use targeted repository inspection to establish implementation facts.
-* Do not inspect Unreal Engine source unless needed to resolve an engine/API behaviour question.
 * Once enough context exists, implement rather than continuing exploration.
-* Prefer the smallest coherent change that fully implements the requested design.
 * Keep README.md files concise and user-oriented. Put detailed notes in an adjacent ARCHITECTURE.md.
-* When directly submitting a coordinated job, provide a descriptive operation name and an established jobserver kind; another human or agent must be able to identify its work from `jobserver status`, `show`, or `history`. Use `NUKETHEBEES_JOBSERVER_TASK` for a session label only when branch-derived task attribution is insufficient, and never invent worktree provenance. Use queue metadata to understand ownership and contention; never cancel or kill another agent's job simply because it blocks yours.
-* Processes explicitly reported as owned by the current worktree by `jobserver process-owner` or `jobserver processes --owned` may be terminated with `jobserver kill-owned` without asking the user. Do not terminate processes owned by another worktree, unowned processes, or processes whose ownership cannot be established; executable names, command lines, cwd guesses, and parent trees are diagnostic only.
-* Treat obvious temporary contention for shared resources, locks, job slots, or capacity as a wait condition: do not repeatedly retry across consecutive turns; sleep within the shell/tool invocation before retrying with 10s, then 30s, then 60s backoff (capped at 60s). Investigate or report the failure if it changes, appears non-transient, or persists unreasonably.
+* Treat obvious temporary contention for shared resources as a wait condition: do not repeatedly retry across consecutive turns; sleep within the shell/tool invocation before retrying with 10s, then 30s, then 60s backoff (capped at 60s). Investigate and report the failure if persists unreasonably.
 * Do not preserve architecture the user asked to replace through compatibility wrappers or indirection merely to reduce the diff. Avoid unrelated refactors.
 * When explicitly granted autonomy, use judgement to resolve reasonable ambiguities while keeping scope controlled.
 * Store local development roadmaps under `.local/plans/`; never commit them.
