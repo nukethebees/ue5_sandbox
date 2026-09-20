@@ -6,9 +6,8 @@
 #include "Layout/Margin.h"
 #include "Math/Color.h"
 #include "Math/Vector2D.h"
+#include "Templates/UniquePtr.h"
 #include "Widgets/SLeafWidget.h"
-
-#include <sandbox/core/ui/histogram.h>
 
 struct SANDBOXUI_API FHistogramStyle {
     FHistogramStyle();
@@ -40,6 +39,9 @@ class SANDBOXUI_API SHistogram : public SLeafWidget {
     SLATE_ARGUMENT(int32, BinCount)
     SLATE_END_ARGS()
 
+    SHistogram();
+    ~SHistogram() override;
+
     void Construct(FArguments const& args);
 
     void set_samples(TArray<float> samples);
@@ -49,9 +51,9 @@ class SANDBOXUI_API SHistogram : public SLeafWidget {
 
     auto get_samples() const noexcept -> TConstArrayView<float>;
     auto get_bins() const noexcept -> TConstArrayView<int32>;
-    auto get_domain_minimum() const noexcept -> float { return data_.domain_minimum(); }
-    auto get_domain_maximum() const noexcept -> float { return data_.domain_maximum(); }
-    auto get_bin_count() const noexcept -> int32 { return data_.bin_count(); }
+    auto get_domain_minimum() const noexcept -> float;
+    auto get_domain_maximum() const noexcept -> float;
+    auto get_bin_count() const noexcept -> int32;
     auto get_style() const noexcept -> FHistogramStyle const& { return style_; }
 
     FVector2D ComputeDesiredSize(float layout_scale_multiplier) const override;
@@ -66,8 +68,10 @@ class SANDBOXUI_API SHistogram : public SLeafWidget {
     void OnMouseLeave(FPointerEvent const& event) override;
     [[nodiscard]] auto get_hovered_bin() const noexcept -> int32 { return hovered_bin_; }
   private:
+    struct FData;
+
     static bool is_valid_style(FHistogramStyle const& style);
-    ml::ui::histogram::Data data_;
+    TUniquePtr<FData> data_;
     FHistogramStyle style_;
     int32 hovered_bin_{INDEX_NONE};
 };

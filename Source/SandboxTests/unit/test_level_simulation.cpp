@@ -72,9 +72,8 @@ auto make_battle() -> ::ioj::sim::LevelSimInitData {
     spawns.locations.xs[0] = -1000.f;
     spawns.locations.xs[1] = 1000.f;
     data.level_events.initialisation.entity_count = 2;
-    auto const count{::ioj::sim::collision::EntityAABBs::num()};
-    for (int32 index{}; index < count; ++index) {
-        data.entity_bounds.set_half_extents(index, {{10.f, 10.f, 10.f}});
+    for (auto const type : ml::EnumTraits<::ioj::sim::EntityType>::values) {
+        data.entity_bounds.set_half_extents(type, {{10.f, 10.f, 10.f}});
     }
     return data;
 }

@@ -333,14 +333,14 @@ auto make_smooth_heatmap(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
     FHeatmapDomain const domain{0.0f, 320.0f, 0.0f, 240.0f};
     auto heatmap{builder.BuildHeatmap(FHeatmapValueRange{0.0f, 1.0f}, domain)};
     FHeatmapGrid grid{.columns = 32, .rows = 24};
-    grid.values.reserve(static_cast<std::size_t>(grid.columns * grid.rows));
+    grid.values.Reserve(grid.columns * grid.rows);
     for (int32 row{0}; row < grid.rows; ++row) {
         auto const y{static_cast<float>(row) / static_cast<float>(grid.rows - 1)};
         for (int32 column{0}; column < grid.columns; ++column) {
             auto const x{static_cast<float>(column) / static_cast<float>(grid.columns - 1)};
             auto const value{0.08f + heat_peak(x, y, 0.28f, 0.35f, 28.0f) * 0.78f +
                              heat_peak(x, y, 0.72f, 0.68f, 45.0f) * 0.95f + x * 0.08f};
-            grid.values.push_back(FMath::Clamp(value, 0.0f, 1.0f));
+            grid.values.Add(FMath::Clamp(value, 0.0f, 1.0f));
         }
     }
     (void)heatmap->set_grid(MoveTemp(grid));
@@ -351,7 +351,7 @@ auto make_sparse_heatmap(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
     FHeatmapDomain const domain{-120.0f, 120.0f, -80.0f, 80.0f};
     auto heatmap{builder.BuildHeatmap(FHeatmapValueRange{0.18f, 1.0f}, domain)};
     FHeatmapGrid grid{.columns = 30, .rows = 20};
-    grid.values.reserve(static_cast<std::size_t>(grid.columns * grid.rows));
+    grid.values.Reserve(grid.columns * grid.rows);
     for (int32 row{0}; row < grid.rows; ++row) {
         auto const y{static_cast<float>(row) / static_cast<float>(grid.rows - 1)};
         for (int32 column{0}; column < grid.columns; ++column) {
@@ -359,7 +359,7 @@ auto make_sparse_heatmap(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
             auto const value{FMath::Max3(heat_peak(x, y, 0.18f, 0.72f, 180.0f),
                                          heat_peak(x, y, 0.55f, 0.35f, 260.0f),
                                          heat_peak(x, y, 0.82f, 0.62f, 220.0f))};
-            grid.values.push_back(value);
+            grid.values.Add(value);
         }
     }
     (void)heatmap->set_grid(MoveTemp(grid));

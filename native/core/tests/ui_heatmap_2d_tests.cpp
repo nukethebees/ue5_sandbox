@@ -54,7 +54,7 @@ TEST(Heatmap2D, BuildsBottomUpVisibleCellGeometry) {
     EXPECT_EQ(visible[0].color, (ml::ui::Color4f{1.0f, 1.0f, 1.0f, 1.0f}));
 }
 
-TEST(Heatmap2D, BatchesAFull128GridIntoOneMesh) {
+TEST(Heatmap2D, UsesTheFullUint16IndexRangeInOneMaximumSizeBatch) {
     using namespace ml::ui::heatmap_2d;
     Grid grid{.columns = 128, .rows = 128, .values = {}};
     grid.values.assign(128 * 128, 1.0f);
@@ -65,6 +65,22 @@ TEST(Heatmap2D, BatchesAFull128GridIntoOneMesh) {
     EXPECT_EQ(batches[0].vertices.size(), 128 * 128 * 4);
     EXPECT_EQ(batches[0].indices.size(), 128 * 128 * 6);
     EXPECT_FLOAT_EQ(batches[0].vertices[0].position.x, 10.0f);
+    EXPECT_EQ(batches[0].indices.back(), std::numeric_limits<std::uint16_t>::max());
+}
+
+TEST(Heatmap2D, RestartsIndicesForTheFirstCellAfterAMaximumSizeBatch) {
+    using namespace ml::ui::heatmap_2d;
+    std::vector<CellGeometry> cells(maximum_cells_per_batch + 1U);
+
+    auto const batches{build_mesh_batches(cells, {})};
+
+    ASSERT_EQ(batches.size(), 2);
+    EXPECT_EQ(batches[0].vertices.size(), maximum_cells_per_batch * 4U);
+    EXPECT_EQ(batches[0].indices.size(), maximum_cells_per_batch * 6U);
+    EXPECT_EQ(batches[0].indices.back(), std::numeric_limits<std::uint16_t>::max());
+    ASSERT_EQ(batches[1].vertices.size(), 4);
+    ASSERT_EQ(batches[1].indices.size(), 6);
+    EXPECT_EQ(batches[1].indices, (std::vector<std::uint16_t>{0U, 1U, 2U, 0U, 2U, 3U}));
 }
 
 TEST(Heatmap2D, ReservesAxisLabelsOrUsesBarePaddedArea) {

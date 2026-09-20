@@ -7,9 +7,8 @@
 #include "Layout/Margin.h"
 #include "Math/Color.h"
 #include "Math/Vector2D.h"
+#include "Templates/UniquePtr.h"
 #include "Widgets/SLeafWidget.h"
-
-#include <sandbox/core/ui/stacked_bar_chart.h>
 
 struct SANDBOXUI_API FStackedBarSegment {
     float value{0.0f};
@@ -40,12 +39,16 @@ class SANDBOXUI_API SStackedBarChart : public SLeafWidget {
     SLATE_ARGUMENT(FStackedBarChartStyle, Style)
     SLATE_END_ARGS()
 
+    SStackedBarChart();
+    ~SStackedBarChart() override;
+
     void Construct(FArguments const& args);
 
     void set_bars(TArray<FStackedBar> bars);
     void clear_bars();
     [[nodiscard]] bool set_style(FStackedBarChartStyle style);
 
+    auto get_bars() const -> TArray<FStackedBar>;
     auto get_style() const noexcept -> FStackedBarChartStyle const& { return style_; }
 
     FVector2D ComputeDesiredSize(float layout_scale_multiplier) const override;
@@ -57,9 +60,12 @@ class SANDBOXUI_API SStackedBarChart : public SLeafWidget {
                   FWidgetStyle const& widget_style,
                   bool parent_enabled) const override;
   private:
-    static bool is_valid_style(FStackedBarChartStyle const& style);
+    struct FData;
 
-    ml::ui::stacked_bar_chart::Data data_;
+    static bool is_valid_style(FStackedBarChartStyle const& style);
+    void check_invariants() const;
+
+    TUniquePtr<FData> data_;
     TArray<FText> labels_;
     TArray<TArray<FLinearColor>> segment_colors_;
     FStackedBarChartStyle style_;

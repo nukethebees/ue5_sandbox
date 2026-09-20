@@ -10,11 +10,23 @@
 #include "Templates/UniquePtr.h"
 #include "Widgets/SLeafWidget.h"
 
-#include <sandbox/core/ui/heatmap_2d.h>
+struct SANDBOXUI_API FHeatmapGrid {
+    int32 columns{0};
+    int32 rows{0};
+    TArray<float> values;
+};
 
-using FHeatmapGrid = ml::ui::heatmap_2d::Grid;
-using FHeatmapValueRange = ml::ui::heatmap_2d::ValueRange;
-using FHeatmapDomain = ml::ui::heatmap_2d::Domain;
+struct SANDBOXUI_API FHeatmapValueRange {
+    float minimum{0.0f};
+    float maximum{1.0f};
+};
+
+struct SANDBOXUI_API FHeatmapDomain {
+    float minimum_x{0.0f};
+    float maximum_x{1.0f};
+    float minimum_y{0.0f};
+    float maximum_y{1.0f};
+};
 
 struct SANDBOXUI_API FHeatmapColorStop {
     float position{0.0f};
@@ -56,9 +68,9 @@ class SANDBOXUI_API SHeatmap2D : public SLeafWidget {
     [[nodiscard]] bool set_domain(FHeatmapDomain domain);
     [[nodiscard]] bool set_style(FHeatmap2DStyle style);
 
-    auto get_grid() const noexcept -> FHeatmapGrid const& { return data_.grid(); }
-    auto get_value_range() const noexcept -> FHeatmapValueRange { return data_.value_range(); }
-    auto get_domain() const noexcept -> FHeatmapDomain { return data_.domain(); }
+    auto get_grid() const -> FHeatmapGrid;
+    auto get_value_range() const noexcept -> FHeatmapValueRange;
+    auto get_domain() const noexcept -> FHeatmapDomain;
     auto get_style() const noexcept -> FHeatmap2DStyle const& { return style_; }
 
     FVector2D ComputeDesiredSize(float layout_scale_multiplier) const override;
@@ -71,11 +83,12 @@ class SANDBOXUI_API SHeatmap2D : public SLeafWidget {
                   bool parent_enabled) const override;
   private:
     struct FRenderCache;
+    struct FData;
 
     static bool is_valid_style(FHeatmap2DStyle const& style);
     void invalidate_heatmap_cache(bool color_lut_changed);
 
-    ml::ui::heatmap_2d::Data data_;
+    TUniquePtr<FData> data_;
     FHeatmap2DStyle style_;
     TUniquePtr<FRenderCache> render_cache_;
 };
