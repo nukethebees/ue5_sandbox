@@ -12,11 +12,13 @@ Results are disposable local data unless a specific experiment says otherwise; w
 
 | Measurement | Entry point | Notes |
 | --- | --- | --- |
-| Fighter scheduling simulation | `Scripts/run-fighter-simulation-benchmark.ps1` | Default 2,000- and 4,000-fighter cases; writes JSON and summary CSV. |
+| Fighter scheduling simulation | `tools/bin/BenchmarkTools.exe fighter-simulation` | Default 2,000- and 4,000-fighter cases; writes JSON and summary CSV. The PowerShell name remains a façade. |
 | Generic native simulation | `tools/bin/BenchmarkTools.exe native-simulation` | Shared jobserver-aware C# runner around `native-simulation-benchmark` for an S7 level. |
-| Frame-memory level workload | `Scripts/run-frame-memory-level-benchmark.ps1` | Uses the batch benchmark scenario. |
-| Revision A/B frame-memory comparison | `Scripts/run-frame-memory-level-revision-ab.ps1` | Creates and evaluates a baseline worktree. |
-| Native SOA and kernel experiments | Scripts named `run-*-benchmark*` or `run-*-experiment*` | Pair their output with the matching `plot-*.py` utility. |
+| Frame-memory level workload | `tools/bin/BenchmarkTools.exe frame-memory-level` | Uses the batch benchmark scenario. The PowerShell name remains a façade. |
+| Revision A/B frame-memory comparison | `tools/bin/BenchmarkTools.exe frame-memory-revision-ab` | Safely creates and evaluates a detached baseline worktree. |
+| Level telemetry | `tools/bin/BenchmarkTools.exe level-telemetry` | Configures, builds, and runs the telemetry CTest preset. |
+| GPU starfield | `tools/bin/BenchmarkTools.exe gpu-starfield` | Runs, validates, and writes versioned JSON/CSV/Markdown artifacts. |
+| Native SOA reserve matrix | `tools/bin/BenchmarkTools.exe native-soa-reserve-matrix` | Writes structured matrix results; pair them with `plot-native-soa-reserve-matrix.py`. |
 | Unreal-backed measurements | Benchmark CMake presets and commandlet targets | Presets are in `cmake/presets/*benchmarks.json`. |
 
 Run the fighter benchmark with:
@@ -40,9 +42,9 @@ Run a specific S7 level through the generic level benchmark runner with:
     --seconds 20
 ```
 
-Pass `-FighterCaps`, `-Seconds`, `-WarmupSeconds`, `-SaturationTimeoutSeconds`, or
-`-OutputDirectory` to change the workload or destination. Use `-SkipBuild` only after confirming
-the release benchmark binary is current.
+Pass `--fighter-caps`, `--seconds`, `--warmup-seconds`, `--saturation-timeout-seconds`, or
+`--output-dir` to the C# command to change the workload or destination. The PowerShell façade maps
+its established parameter names. Use `--skip-build` only after confirming the benchmark binary is current.
 
 Fighter caps must be unique positive 32-bit integers. Results are emitted in the requested cap
 order; `results.json` and `summary.csv` retain that order. The generic runner accepts

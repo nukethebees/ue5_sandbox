@@ -791,6 +791,7 @@ def make_native_benchmark_document() -> dict[str, Any]:
                 "native-soa-benchmarks",
                 "native-soa-reserve-matrix",
                 "native-soa-reserve-matrix-mimalloc",
+                "benchmark-tools-host",
                 "codegen-tests",
             ],
         },
@@ -810,6 +811,7 @@ def make_native_benchmark_document() -> dict[str, Any]:
             "targets": [
                 "native-simulation-benchmark",
                 "native-simulation-benchmark-tests",
+                "benchmark-tools-host",
             ],
         },
         {
@@ -818,6 +820,7 @@ def make_native_benchmark_document() -> dict[str, Any]:
             "targets": [
                 "native-simulation-benchmark",
                 "native-simulation-benchmark-tests",
+                "benchmark-tools-host",
             ],
         },
     ]

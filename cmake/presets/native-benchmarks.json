@@ -113,6 +113,7 @@
         "native-soa-benchmarks",
         "native-soa-reserve-matrix",
         "native-soa-reserve-matrix-mimalloc",
+        "benchmark-tools-host",
         "codegen-tests"
       ]
     },
@@ -135,7 +136,8 @@
       "configurePreset": "native-simulation-benchmark",
       "targets": [
         "native-simulation-benchmark",
-        "native-simulation-benchmark-tests"
+        "native-simulation-benchmark-tests",
+        "benchmark-tools-host"
       ]
     },
     {
@@ -143,7 +145,8 @@
       "configurePreset": "frame-memory-level-benchmark",
       "targets": [
         "native-simulation-benchmark",
-        "native-simulation-benchmark-tests"
+        "native-simulation-benchmark-tests",
+        "benchmark-tools-host"
       ]
     }
   ],

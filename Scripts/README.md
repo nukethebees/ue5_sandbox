@@ -5,18 +5,19 @@
 
 ## Script groups
 
-- `run-*-benchmark*` and `run-*-experiment*`: benchmark runners. They acquire the jobserver before
-  collecting timings. `BenchmarkTools.exe native-simulation` is the shared runner for an S7 level;
-  the fighter and frame-memory scripts are focused PowerShell report wrappers around it. See
-  [Benchmarks](../docs/benchmarks.md) and [Profiling](../docs/profiling.md). Those two wrappers
-  build and stage BenchmarkTools on demand when it is not already available.
-- `plot-*.py`: convert benchmark JSON, CSV, or logs into plots and summaries.
+- The focused PowerShell benchmark names are interactive façades only: they stage
+  `BenchmarkTools.exe` if needed and forward their arguments. Benchmark execution, validation,
+  filesystem work, and jobserver claims live in BenchmarkTools.
+- `plot-*.py`: plotting and scientific presentation only. In particular,
+  `plot-native-soa-reserve-matrix.py` consumes the structured matrix JSON written by BenchmarkTools.
+- `audit_module_migration.sh`: read-only migration checks. See [AGENTS.md](AGENTS.md) for the
+  migration-audit contract.
 - `test_*.py` files: focused Python script validation support. Repository C++ and shader
   formatting is provided by the C# `CodeFormatTools` developer tool under `tools/`.
 - `soa_spacing_confirmation.py`: targeted native-analysis helper. Mimalloc object-symbol analysis
   is provided by the `NativeBinaryTools` C# tool under `tools/`.
 
 Run scripts from the repository root unless their own help says otherwise. C# owns benchmark
-orchestration, PowerShell owns shell-facing report workflows, and Python remains for plotting and
-scientific analysis. Python scripts use the repository's supported Python environment; run Pyright
-when changing one. Benchmark outputs belong under `.local/benchmarks/`.
+orchestration, PowerShell is shell glue, and Python remains for plotting and scientific analysis.
+Python scripts use the repository's supported Python environment; run Pyright when changing one.
+Benchmark outputs belong under `.local/benchmarks/`.

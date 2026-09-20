@@ -110,20 +110,20 @@ add_custom_target(native-soa-laser-hit-append-report
     --benchmark_out_format=json
   DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
 
-sandbox_jobserver_command(native_soa_reserve_matrix_command BENCHMARK benchmark
-  "Native SoA reserve matrix")
 add_custom_target(native-soa-reserve-matrix-report
-  COMMAND ${native_soa_reserve_matrix_command} "${UV_EXECUTABLE}" run
-    "${PROJECT_SOURCE_DIR}/Scripts/run-native-soa-reserve-matrix.py"
+  COMMAND "${SANDBOX_BENCHMARK_TOOLS}" native-soa-reserve-matrix
     --standard "$<TARGET_FILE:native-soa-reserve-matrix>"
     --mimalloc "$<TARGET_FILE:native-soa-reserve-matrix-mimalloc>"
     --output-dir "${CMAKE_BINARY_DIR}/native-soa-reserve-matrix"
-  DEPENDS native-soa-reserve-matrix native-soa-reserve-matrix-mimalloc USES_TERMINAL VERBATIM)
+  COMMAND "${UV_EXECUTABLE}" run "${PROJECT_SOURCE_DIR}/Scripts/plot-native-soa-reserve-matrix.py"
+    --input "${CMAKE_BINARY_DIR}/native-soa-reserve-matrix/native-reserve-matrix.json"
+    --output-dir "${CMAKE_BINARY_DIR}/native-soa-reserve-matrix"
+  DEPENDS native-soa-reserve-matrix native-soa-reserve-matrix-mimalloc benchmark-tools-host USES_TERMINAL VERBATIM)
 add_test(NAME native-soa-reserve-matrix-smoke
-  COMMAND "${UV_EXECUTABLE}" run "${PROJECT_SOURCE_DIR}/Scripts/run-native-soa-reserve-matrix.py"
+  COMMAND "${SANDBOX_BENCHMARK_TOOLS}" native-soa-reserve-matrix
     --standard "$<TARGET_FILE:native-soa-reserve-matrix>"
     --mimalloc "$<TARGET_FILE:native-soa-reserve-matrix-mimalloc>"
-    --rows 4096 --owners 1 4 --dry-run
+    --rows 4096 --owners 1,4 --dry-run
     --output-dir "${CMAKE_BINARY_DIR}/native-soa-reserve-matrix-smoke")
 set_tests_properties(native-soa-reserve-matrix-smoke PROPERTIES LABELS "native-soa")
 endif()

@@ -52,6 +52,12 @@ endif()
 
 add_subdirectory(cmake/clang_tidy)
 
+sandbox_add_dotnet_host_tool(
+  benchmark-tools-host
+  SANDBOX_BENCHMARK_TOOLS
+  "${PROJECT_SOURCE_DIR}/tools/BenchmarkTools/BenchmarkTools.csproj"
+)
+
 add_subdirectory(native)
 add_subdirectory(tools/jobserver)
 add_subdirectory(Scripts)

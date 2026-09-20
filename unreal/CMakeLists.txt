@@ -533,12 +533,9 @@ add_unreal_editor_test(SandboxUI.EntityOverlayBenchmark
   TIMEOUT 1200
 )
 
-sandbox_unreal_jobserver_command(gpu_starfield_benchmark_command BENCHMARK SHARED benchmark
-  "GPU starfield benchmark")
 add_test(
   NAME SandboxShaders.GpuStarfieldBenchmark
-  COMMAND ${gpu_starfield_benchmark_command} "${Python3_EXECUTABLE}"
-    "${PROJECT_SOURCE_DIR}/Scripts/run-gpu-starfield-benchmark.py"
+  COMMAND "${SANDBOX_BENCHMARK_TOOLS}" gpu-starfield
     "--editor=${UE_EDITOR_CMD_EXE}"
     "--project=${SANDBOX_UPROJECT}"
     "--output=${PROJECT_SOURCE_DIR}/Saved/Benchmarks/GpuStarfield"
@@ -549,12 +546,9 @@ set_tests_properties(SandboxShaders.GpuStarfieldBenchmark PROPERTIES
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 )
 
-sandbox_unreal_jobserver_command(gpu_starfield_matrix_command BENCHMARK SHARED benchmark
-  "GPU starfield benchmark matrix")
 add_test(
   NAME SandboxShaders.GpuStarfieldMatrix
-  COMMAND ${gpu_starfield_matrix_command} "${Python3_EXECUTABLE}"
-    "${PROJECT_SOURCE_DIR}/Scripts/run-gpu-starfield-benchmark.py"
+  COMMAND "${SANDBOX_BENCHMARK_TOOLS}" gpu-starfield
     "--editor=${UE_EDITOR_CMD_EXE}"
     "--project=${SANDBOX_UPROJECT}"
     "--output=${PROJECT_SOURCE_DIR}/Saved/Benchmarks/GpuStarfield"
