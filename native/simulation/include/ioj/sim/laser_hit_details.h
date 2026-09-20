@@ -35,12 +35,7 @@ struct LaserHitDetailsConstView {
         fn(emission_directions.zs_span());
         fn(sources);
     }
-    void validate_array_sizes() const {
-        auto const count{num()};
-        each_column([count](auto column) {
-            ml::native_soa::require(column.size() == static_cast<std::size_t>(count));
-        });
-    }
+    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
     auto slice(size_type const offset, size_type const count) const -> LaserHitDetailsConstView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -88,12 +83,7 @@ struct LaserHitDetailsView {
         fn(emission_directions.zs_span());
         fn(sources);
     }
-    void validate_array_sizes() const {
-        auto const count{num()};
-        each_column([count](auto column) {
-            ml::native_soa::require(column.size() == static_cast<std::size_t>(count));
-        });
-    }
+    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
     auto slice(size_type const offset, size_type const count) const -> LaserHitDetailsView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -139,7 +129,7 @@ struct LaserHitDetailsView {
         sources[static_cast<std::size_t>(index)] = new_sources;
     }
 };
-struct LaserHitDetails {
+struct LaserHitDetails : ml::native_soa::VectorStorageOperations {
     using View = LaserHitDetailsView;
     using ConstView = LaserHitDetailsConstView;
     using size_type = std::int32_t;
@@ -169,72 +159,6 @@ struct LaserHitDetails {
         fn(sources);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) {
-        ml::native_soa::require(count >= 0);
-        locations.xs.reserve(static_cast<std::size_t>(count));
-        locations.ys.reserve(static_cast<std::size_t>(count));
-        locations.zs.reserve(static_cast<std::size_t>(count));
-        emission_directions.xs.reserve(static_cast<std::size_t>(count));
-        emission_directions.ys.reserve(static_cast<std::size_t>(count));
-        emission_directions.zs.reserve(static_cast<std::size_t>(count));
-        sources.reserve(static_cast<std::size_t>(count));
-    }
-    void reset() noexcept {
-        locations.xs.clear();
-        locations.ys.clear();
-        locations.zs.clear();
-        emission_directions.xs.clear();
-        emission_directions.ys.clear();
-        emission_directions.zs.clear();
-        sources.clear();
-    }
-    void set_num(size_type const count) {
-        ml::native_soa::require(count >= 0);
-        auto const size{static_cast<std::size_t>(count)};
-        locations.xs.resize(size);
-        locations.ys.resize(size);
-        locations.zs.resize(size);
-        emission_directions.xs.resize(size);
-        emission_directions.ys.resize(size);
-        emission_directions.zs.resize(size);
-        sources.resize(size);
-    }
-    void add_uninitialised(size_type const count) {
-        auto const old_num{num()};
-        ml::native_soa::require(count >= 0 &&
-                                count <= std::numeric_limits<size_type>::max() - old_num);
-        set_num(old_num + count);
-    }
-    void add_defaulted(size_type const count) { add_uninitialised(count); }
-    void remove_at_swap(size_type const index, size_type const count) {
-        auto const old_num{num()};
-        ml::native_soa::require(index >= 0 && index <= old_num && count >= 0 &&
-                                count <= old_num - index);
-        auto const moved{std::min(count, old_num - index - count)};
-        auto const source{old_num - moved};
-        for (size_type i{}; i < moved; ++i) {
-            locations.xs[index + i] = locations.xs[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            locations.ys[index + i] = locations.ys[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            locations.zs[index + i] = locations.zs[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            emission_directions.xs[index + i] = emission_directions.xs[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            emission_directions.ys[index + i] = emission_directions.ys[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            emission_directions.zs[index + i] = emission_directions.zs[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            sources[index + i] = sources[source + i];
-        }
-        set_num(old_num - count);
-    }
     void set(size_type const index,
              float const new_locations_xs,
              float const new_locations_ys,
@@ -386,25 +310,6 @@ struct LaserHitDetails {
         for (size_type i{}; i < count; ++i) {
             copy_element(dst_index + i, other, src_index + i);
         }
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        validate_array_sizes();
-        ml::native_soa::require(indices.size() == static_cast<std::size_t>(num()));
-        each_column([indices](auto& column) { ml::apply_permutation(std::span{column}, indices); });
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        validate_array_sizes();
-        ml::native_soa::require(scratch_indices.size() == static_cast<std::size_t>(num()));
-        for (size_type i{}; i < num(); ++i) {
-            scratch_indices[static_cast<std::size_t>(i)] = i;
-        }
-        std::sort(scratch_indices.begin(),
-                  scratch_indices.end(),
-                  [this, &compare](size_type const lhs, size_type const rhs) {
-                      return compare(*this, lhs, rhs);
-                  });
-        apply_permutation(scratch_indices);
     }
 };
 

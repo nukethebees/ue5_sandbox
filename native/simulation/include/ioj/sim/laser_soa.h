@@ -51,12 +51,7 @@ struct SpawnRequestsConstView {
         fn(instigator_ids);
         fn(sources);
     }
-    void validate_array_sizes() const {
-        auto const count{num()};
-        each_column([count](auto column) {
-            ml::native_soa::require(column.size() == static_cast<std::size_t>(count));
-        });
-    }
+    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
     auto slice(size_type const offset, size_type const count) const -> SpawnRequestsConstView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -128,12 +123,7 @@ struct SpawnRequestsView {
         fn(instigator_ids);
         fn(sources);
     }
-    void validate_array_sizes() const {
-        auto const count{num()};
-        each_column([count](auto column) {
-            ml::native_soa::require(column.size() == static_cast<std::size_t>(count));
-        });
-    }
+    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
     auto slice(size_type const offset, size_type const count) const -> SpawnRequestsView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -193,7 +183,7 @@ struct SpawnRequestsView {
         sources[static_cast<std::size_t>(index)] = new_sources;
     }
 };
-struct SpawnRequests {
+struct SpawnRequests : ml::native_soa::VectorStorageOperations {
     using View = SpawnRequestsView;
     using ConstView = SpawnRequestsConstView;
     using size_type = std::int32_t;
@@ -242,114 +232,6 @@ struct SpawnRequests {
         fn(sources);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) {
-        ml::native_soa::require(count >= 0);
-        locations.xs.reserve(static_cast<std::size_t>(count));
-        locations.ys.reserve(static_cast<std::size_t>(count));
-        locations.zs.reserve(static_cast<std::size_t>(count));
-        rotations.pitches.reserve(static_cast<std::size_t>(count));
-        rotations.yaws.reserve(static_cast<std::size_t>(count));
-        rotations.rolls.reserve(static_cast<std::size_t>(count));
-        base_velocities.xs.reserve(static_cast<std::size_t>(count));
-        base_velocities.ys.reserve(static_cast<std::size_t>(count));
-        base_velocities.zs.reserve(static_cast<std::size_t>(count));
-        damages.reserve(static_cast<std::size_t>(count));
-        speeds.reserve(static_cast<std::size_t>(count));
-        max_distances.reserve(static_cast<std::size_t>(count));
-        instigator_ids.reserve(static_cast<std::size_t>(count));
-        sources.reserve(static_cast<std::size_t>(count));
-    }
-    void reset() noexcept {
-        locations.xs.clear();
-        locations.ys.clear();
-        locations.zs.clear();
-        rotations.pitches.clear();
-        rotations.yaws.clear();
-        rotations.rolls.clear();
-        base_velocities.xs.clear();
-        base_velocities.ys.clear();
-        base_velocities.zs.clear();
-        damages.clear();
-        speeds.clear();
-        max_distances.clear();
-        instigator_ids.clear();
-        sources.clear();
-    }
-    void set_num(size_type const count) {
-        ml::native_soa::require(count >= 0);
-        auto const size{static_cast<std::size_t>(count)};
-        locations.xs.resize(size);
-        locations.ys.resize(size);
-        locations.zs.resize(size);
-        rotations.pitches.resize(size);
-        rotations.yaws.resize(size);
-        rotations.rolls.resize(size);
-        base_velocities.xs.resize(size);
-        base_velocities.ys.resize(size);
-        base_velocities.zs.resize(size);
-        damages.resize(size);
-        speeds.resize(size);
-        max_distances.resize(size);
-        instigator_ids.resize(size);
-        sources.resize(size);
-    }
-    void add_uninitialised(size_type const count) {
-        auto const old_num{num()};
-        ml::native_soa::require(count >= 0 &&
-                                count <= std::numeric_limits<size_type>::max() - old_num);
-        set_num(old_num + count);
-    }
-    void add_defaulted(size_type const count) { add_uninitialised(count); }
-    void remove_at_swap(size_type const index, size_type const count) {
-        auto const old_num{num()};
-        ml::native_soa::require(index >= 0 && index <= old_num && count >= 0 &&
-                                count <= old_num - index);
-        auto const moved{std::min(count, old_num - index - count)};
-        auto const source{old_num - moved};
-        for (size_type i{}; i < moved; ++i) {
-            locations.xs[index + i] = locations.xs[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            locations.ys[index + i] = locations.ys[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            locations.zs[index + i] = locations.zs[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            rotations.pitches[index + i] = rotations.pitches[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            rotations.yaws[index + i] = rotations.yaws[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            rotations.rolls[index + i] = rotations.rolls[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            base_velocities.xs[index + i] = base_velocities.xs[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            base_velocities.ys[index + i] = base_velocities.ys[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            base_velocities.zs[index + i] = base_velocities.zs[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            damages[index + i] = damages[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            speeds[index + i] = speeds[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            max_distances[index + i] = max_distances[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            instigator_ids[index + i] = instigator_ids[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            sources[index + i] = sources[source + i];
-        }
-        set_num(old_num - count);
-    }
     void set(size_type const index,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
@@ -577,25 +459,6 @@ struct SpawnRequests {
         for (size_type i{}; i < count; ++i) {
             copy_element(dst_index + i, other, src_index + i);
         }
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        validate_array_sizes();
-        ml::native_soa::require(indices.size() == static_cast<std::size_t>(num()));
-        each_column([indices](auto& column) { ml::apply_permutation(std::span{column}, indices); });
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        validate_array_sizes();
-        ml::native_soa::require(scratch_indices.size() == static_cast<std::size_t>(num()));
-        for (size_type i{}; i < num(); ++i) {
-            scratch_indices[static_cast<std::size_t>(i)] = i;
-        }
-        std::sort(scratch_indices.begin(),
-                  scratch_indices.end(),
-                  [this, &compare](size_type const lhs, size_type const rhs) {
-                      return compare(*this, lhs, rhs);
-                  });
-        apply_permutation(scratch_indices);
     }
 };
 
@@ -1374,12 +1237,7 @@ struct EntitiesConstView {
         fn(initial_lifetimes);
         fn(spawn_times);
     }
-    void validate_array_sizes() const {
-        auto const count{num()};
-        each_column([count](auto column) {
-            ml::native_soa::require(column.size() == static_cast<std::size_t>(count));
-        });
-    }
+    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
     auto slice(size_type const offset, size_type const count) const -> EntitiesConstView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -1460,12 +1318,7 @@ struct EntitiesView {
         fn(initial_lifetimes);
         fn(spawn_times);
     }
-    void validate_array_sizes() const {
-        auto const count{num()};
-        each_column([count](auto column) {
-            ml::native_soa::require(column.size() == static_cast<std::size_t>(count));
-        });
-    }
+    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
     auto slice(size_type const offset, size_type const count) const -> EntitiesView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -1532,7 +1385,7 @@ struct EntitiesView {
         spawn_times[static_cast<std::size_t>(index)] = new_spawn_times;
     }
 };
-struct Entities {
+struct Entities : ml::native_soa::VectorStorageOperations {
     using View = EntitiesView;
     using ConstView = EntitiesConstView;
     using size_type = std::int32_t;
@@ -1587,126 +1440,6 @@ struct Entities {
         fn(spawn_times);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) {
-        ml::native_soa::require(count >= 0);
-        active.reserve(static_cast<std::size_t>(count));
-        sources.reserve(static_cast<std::size_t>(count));
-        locations.xs.reserve(static_cast<std::size_t>(count));
-        locations.ys.reserve(static_cast<std::size_t>(count));
-        locations.zs.reserve(static_cast<std::size_t>(count));
-        rotations.pitches.reserve(static_cast<std::size_t>(count));
-        rotations.yaws.reserve(static_cast<std::size_t>(count));
-        rotations.rolls.reserve(static_cast<std::size_t>(count));
-        velocities.xs.reserve(static_cast<std::size_t>(count));
-        velocities.ys.reserve(static_cast<std::size_t>(count));
-        velocities.zs.reserve(static_cast<std::size_t>(count));
-        damages.reserve(static_cast<std::size_t>(count));
-        lifetimes_remaining.reserve(static_cast<std::size_t>(count));
-        instigator_ids.reserve(static_cast<std::size_t>(count));
-        initial_lifetimes.reserve(static_cast<std::size_t>(count));
-        spawn_times.reserve(static_cast<std::size_t>(count));
-    }
-    void reset() noexcept {
-        active.clear();
-        sources.clear();
-        locations.xs.clear();
-        locations.ys.clear();
-        locations.zs.clear();
-        rotations.pitches.clear();
-        rotations.yaws.clear();
-        rotations.rolls.clear();
-        velocities.xs.clear();
-        velocities.ys.clear();
-        velocities.zs.clear();
-        damages.clear();
-        lifetimes_remaining.clear();
-        instigator_ids.clear();
-        initial_lifetimes.clear();
-        spawn_times.clear();
-    }
-    void set_num(size_type const count) {
-        ml::native_soa::require(count >= 0);
-        auto const size{static_cast<std::size_t>(count)};
-        active.resize(size);
-        sources.resize(size);
-        locations.xs.resize(size);
-        locations.ys.resize(size);
-        locations.zs.resize(size);
-        rotations.pitches.resize(size);
-        rotations.yaws.resize(size);
-        rotations.rolls.resize(size);
-        velocities.xs.resize(size);
-        velocities.ys.resize(size);
-        velocities.zs.resize(size);
-        damages.resize(size);
-        lifetimes_remaining.resize(size);
-        instigator_ids.resize(size);
-        initial_lifetimes.resize(size);
-        spawn_times.resize(size);
-    }
-    void add_uninitialised(size_type const count) {
-        auto const old_num{num()};
-        ml::native_soa::require(count >= 0 &&
-                                count <= std::numeric_limits<size_type>::max() - old_num);
-        set_num(old_num + count);
-    }
-    void add_defaulted(size_type const count) { add_uninitialised(count); }
-    void remove_at_swap(size_type const index, size_type const count) {
-        auto const old_num{num()};
-        ml::native_soa::require(index >= 0 && index <= old_num && count >= 0 &&
-                                count <= old_num - index);
-        auto const moved{std::min(count, old_num - index - count)};
-        auto const source{old_num - moved};
-        for (size_type i{}; i < moved; ++i) {
-            active[index + i] = active[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            sources[index + i] = sources[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            locations.xs[index + i] = locations.xs[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            locations.ys[index + i] = locations.ys[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            locations.zs[index + i] = locations.zs[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            rotations.pitches[index + i] = rotations.pitches[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            rotations.yaws[index + i] = rotations.yaws[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            rotations.rolls[index + i] = rotations.rolls[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            velocities.xs[index + i] = velocities.xs[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            velocities.ys[index + i] = velocities.ys[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            velocities.zs[index + i] = velocities.zs[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            damages[index + i] = damages[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            lifetimes_remaining[index + i] = lifetimes_remaining[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            instigator_ids[index + i] = instigator_ids[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            initial_lifetimes[index + i] = initial_lifetimes[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            spawn_times[index + i] = spawn_times[source + i];
-        }
-        set_num(old_num - count);
-    }
     void set(size_type const index,
              std::uint8_t const new_active,
              LaserSource const new_sources,
@@ -1968,25 +1701,6 @@ struct Entities {
         for (size_type i{}; i < count; ++i) {
             copy_element(dst_index + i, other, src_index + i);
         }
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        validate_array_sizes();
-        ml::native_soa::require(indices.size() == static_cast<std::size_t>(num()));
-        each_column([indices](auto& column) { ml::apply_permutation(std::span{column}, indices); });
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        validate_array_sizes();
-        ml::native_soa::require(scratch_indices.size() == static_cast<std::size_t>(num()));
-        for (size_type i{}; i < num(); ++i) {
-            scratch_indices[static_cast<std::size_t>(i)] = i;
-        }
-        std::sort(scratch_indices.begin(),
-                  scratch_indices.end(),
-                  [this, &compare](size_type const lhs, size_type const rhs) {
-                      return compare(*this, lhs, rhs);
-                  });
-        apply_permutation(scratch_indices);
     }
 };
 

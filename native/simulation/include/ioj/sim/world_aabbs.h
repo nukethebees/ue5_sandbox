@@ -35,12 +35,7 @@ struct WorldAABBsColumnsConstView {
         fn(max_ys);
         fn(max_zs);
     }
-    void validate_array_sizes() const {
-        auto const count{num()};
-        each_column([count](auto column) {
-            ml::native_soa::require(column.size() == static_cast<std::size_t>(count));
-        });
-    }
+    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
     auto slice(size_type const offset, size_type const count) const -> WorldAABBsColumnsConstView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -97,12 +92,7 @@ struct WorldAABBsColumnsView {
         fn(max_ys);
         fn(max_zs);
     }
-    void validate_array_sizes() const {
-        auto const count{num()};
-        each_column([count](auto column) {
-            ml::native_soa::require(column.size() == static_cast<std::size_t>(count));
-        });
-    }
+    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
     auto slice(size_type const offset, size_type const count) const -> WorldAABBsColumnsView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -152,7 +142,7 @@ struct WorldAABBsColumnsView {
         max_zs[static_cast<std::size_t>(index)] = new_max_zs;
     }
 };
-struct WorldAABBsColumns {
+struct WorldAABBsColumns : ml::native_soa::VectorStorageOperations {
     using View = WorldAABBsColumnsView;
     using ConstView = WorldAABBsColumnsConstView;
     using size_type = std::int32_t;
@@ -183,66 +173,6 @@ struct WorldAABBsColumns {
         fn(max_zs);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) {
-        ml::native_soa::require(count >= 0);
-        min_xs.reserve(static_cast<std::size_t>(count));
-        min_ys.reserve(static_cast<std::size_t>(count));
-        min_zs.reserve(static_cast<std::size_t>(count));
-        max_xs.reserve(static_cast<std::size_t>(count));
-        max_ys.reserve(static_cast<std::size_t>(count));
-        max_zs.reserve(static_cast<std::size_t>(count));
-    }
-    void reset() noexcept {
-        min_xs.clear();
-        min_ys.clear();
-        min_zs.clear();
-        max_xs.clear();
-        max_ys.clear();
-        max_zs.clear();
-    }
-    void set_num(size_type const count) {
-        ml::native_soa::require(count >= 0);
-        auto const size{static_cast<std::size_t>(count)};
-        min_xs.resize(size);
-        min_ys.resize(size);
-        min_zs.resize(size);
-        max_xs.resize(size);
-        max_ys.resize(size);
-        max_zs.resize(size);
-    }
-    void add_uninitialised(size_type const count) {
-        auto const old_num{num()};
-        ml::native_soa::require(count >= 0 &&
-                                count <= std::numeric_limits<size_type>::max() - old_num);
-        set_num(old_num + count);
-    }
-    void add_defaulted(size_type const count) { add_uninitialised(count); }
-    void remove_at_swap(size_type const index, size_type const count) {
-        auto const old_num{num()};
-        ml::native_soa::require(index >= 0 && index <= old_num && count >= 0 &&
-                                count <= old_num - index);
-        auto const moved{std::min(count, old_num - index - count)};
-        auto const source{old_num - moved};
-        for (size_type i{}; i < moved; ++i) {
-            min_xs[index + i] = min_xs[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            min_ys[index + i] = min_ys[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            min_zs[index + i] = min_zs[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            max_xs[index + i] = max_xs[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            max_ys[index + i] = max_ys[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            max_zs[index + i] = max_zs[source + i];
-        }
-        set_num(old_num - count);
-    }
     void set(size_type const index,
              float const new_min_xs,
              float const new_min_ys,
@@ -377,25 +307,6 @@ struct WorldAABBsColumns {
         for (size_type i{}; i < count; ++i) {
             copy_element(dst_index + i, other, src_index + i);
         }
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        validate_array_sizes();
-        ml::native_soa::require(indices.size() == static_cast<std::size_t>(num()));
-        each_column([indices](auto& column) { ml::apply_permutation(std::span{column}, indices); });
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        validate_array_sizes();
-        ml::native_soa::require(scratch_indices.size() == static_cast<std::size_t>(num()));
-        for (size_type i{}; i < num(); ++i) {
-            scratch_indices[static_cast<std::size_t>(i)] = i;
-        }
-        std::sort(scratch_indices.begin(),
-                  scratch_indices.end(),
-                  [this, &compare](size_type const lhs, size_type const rhs) {
-                      return compare(*this, lhs, rhs);
-                  });
-        apply_permutation(scratch_indices);
     }
 };
 

@@ -198,10 +198,8 @@ auto lower_native_soa(SoaSchema const& schema,
                 out << "fn(" << view_leaf(leaf) << ");\n";
             }
             out << "}\n"
-                << "void validate_array_sizes() const { auto const count{num()}; "
-                   "each_column([count](auto "
-                   "column) { ml::native_soa::require(column.size() == "
-                   "static_cast<std::size_t>(count)); }); }\n"
+                << "void validate_array_sizes() const { "
+                   "ml::native_soa::validate_vector_column_sizes(*this); }\n"
                 << "auto slice(size_type const offset, size_type const count) const -> "
                 << view_type
                 << " { ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() && "
@@ -261,7 +259,7 @@ auto lower_native_soa(SoaSchema const& schema,
         }
     }
 
-    out << "struct " << schema.name << " {\n"
+    out << "struct " << schema.name << " : ml::native_soa::VectorStorageOperations {\n"
         << "using View = " << view << ";\n"
         << "using ConstView = " << const_view << ";\n"
         << "using size_type = std::int32_t;\n";
@@ -292,36 +290,7 @@ auto lower_native_soa(SoaSchema const& schema,
         out << "fn(" << join(leaf.path, ".") << ");\n";
     }
     out << "}\n"
-        << "void validate_array_sizes() const { get_const_view().validate_array_sizes(); }\n"
-        << "void reserve(size_type const count) { ml::native_soa::require(count >= 0);\n";
-    for (auto const& leaf : layout.leaves) {
-        out << join(leaf.path, ".") << ".reserve(static_cast<std::size_t>(count));\n";
-    }
-    out << "}\nvoid reset() noexcept {\n";
-    for (auto const& leaf : layout.leaves) {
-        out << join(leaf.path, ".") << ".clear();\n";
-    }
-    out << "}\n"
-        << "void set_num(size_type const count) { ml::native_soa::require(count >= 0); auto const "
-           "size{static_cast<std::size_t>(count)};\n";
-    for (auto const& leaf : layout.leaves) {
-        out << join(leaf.path, ".") << ".resize(size);\n";
-    }
-    out << "}\n"
-        << "void add_uninitialised(size_type const count) { auto const old_num{num()}; "
-           "ml::native_soa::require(count >= 0 && count <= "
-           "std::numeric_limits<size_type>::max() - old_num); set_num(old_num + count); }\n"
-        << "void add_defaulted(size_type const count) { add_uninitialised(count); }\n"
-        << "void remove_at_swap(size_type const index, size_type const count) { auto const "
-           "old_num{num()}; ml::native_soa::require(index >= 0 && index <= old_num && count >= 0 "
-           "&& count <= old_num - index); auto const moved{std::min(count, old_num-index-count)}; "
-           "auto const source{old_num-moved};\n";
-    for (auto const& leaf : layout.leaves) {
-        auto const column{join(leaf.path, ".")};
-        out << "for (size_type i{}; i < moved; ++i) { " << column << "[index+i] = " << column
-            << "[source+i]; }\n";
-    }
-    out << "set_num(old_num-count); }\n";
+        << "void validate_array_sizes() const { get_const_view().validate_array_sizes(); }\n";
 
     {
         out << "void set(size_type const index";
@@ -412,20 +381,6 @@ auto lower_native_soa(SoaSchema const& schema,
         << "template <typename Other> void copy_elements(size_type const dst_index, Other const& "
            "other, size_type const src_index, size_type const count) { for (size_type i{}; i < "
            "count; ++i) { copy_element(dst_index + i, other, src_index + i); } }\n"
-        << "void apply_permutation(std::span<std::int32_t> const indices) { "
-           "validate_array_sizes(); "
-           "ml::native_soa::require(indices.size() == static_cast<std::size_t>(num())); "
-           "each_column([indices](auto& column) { ml::apply_permutation(std::span{column}, "
-           "indices); "
-           "}); }\n"
-        << "template <typename Compare> void sort(Compare&& compare, "
-           "std::span<std::int32_t> const scratch_indices) { validate_array_sizes(); "
-           "ml::native_soa::require(scratch_indices.size() == static_cast<std::size_t>(num())); "
-           "for "
-           "(size_type i{}; i < num(); ++i) { scratch_indices[static_cast<std::size_t>(i)] = i; } "
-           "std::sort(scratch_indices.begin(), scratch_indices.end(), [this, &compare](size_type "
-           "const lhs, size_type const rhs) { return compare(*this, lhs, rhs); }); "
-           "apply_permutation(scratch_indices); }\n"
         << "};\n";
 
     return LoweredSoa{{raw(out.str(), std::move(dependencies))}, {}};

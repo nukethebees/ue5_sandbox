@@ -27,12 +27,7 @@ struct EntityDeathInfoConstView {
         fn(victims);
         fn(killers);
     }
-    void validate_array_sizes() const {
-        auto const count{num()};
-        each_column([count](auto column) {
-            ml::native_soa::require(column.size() == static_cast<std::size_t>(count));
-        });
-    }
+    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
     auto slice(size_type const offset, size_type const count) const -> EntityDeathInfoConstView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -76,12 +71,7 @@ struct EntityDeathInfoView {
         fn(victims);
         fn(killers);
     }
-    void validate_array_sizes() const {
-        auto const count{num()};
-        each_column([count](auto column) {
-            ml::native_soa::require(column.size() == static_cast<std::size_t>(count));
-        });
-    }
+    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
     auto slice(size_type const offset, size_type const count) const -> EntityDeathInfoView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -119,7 +109,7 @@ struct EntityDeathInfoView {
         killers[static_cast<std::size_t>(index)] = new_killers;
     }
 };
-struct EntityDeathInfo {
+struct EntityDeathInfo : ml::native_soa::VectorStorageOperations {
     using View = EntityDeathInfoView;
     using ConstView = EntityDeathInfoConstView;
     using size_type = std::int32_t;
@@ -141,48 +131,6 @@ struct EntityDeathInfo {
         fn(killers);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) {
-        ml::native_soa::require(count >= 0);
-        reasons.reserve(static_cast<std::size_t>(count));
-        victims.reserve(static_cast<std::size_t>(count));
-        killers.reserve(static_cast<std::size_t>(count));
-    }
-    void reset() noexcept {
-        reasons.clear();
-        victims.clear();
-        killers.clear();
-    }
-    void set_num(size_type const count) {
-        ml::native_soa::require(count >= 0);
-        auto const size{static_cast<std::size_t>(count)};
-        reasons.resize(size);
-        victims.resize(size);
-        killers.resize(size);
-    }
-    void add_uninitialised(size_type const count) {
-        auto const old_num{num()};
-        ml::native_soa::require(count >= 0 &&
-                                count <= std::numeric_limits<size_type>::max() - old_num);
-        set_num(old_num + count);
-    }
-    void add_defaulted(size_type const count) { add_uninitialised(count); }
-    void remove_at_swap(size_type const index, size_type const count) {
-        auto const old_num{num()};
-        ml::native_soa::require(index >= 0 && index <= old_num && count >= 0 &&
-                                count <= old_num - index);
-        auto const moved{std::min(count, old_num - index - count)};
-        auto const source{old_num - moved};
-        for (size_type i{}; i < moved; ++i) {
-            reasons[index + i] = reasons[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            victims[index + i] = victims[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            killers[index + i] = killers[source + i];
-        }
-        set_num(old_num - count);
-    }
     void set(size_type const index,
              DeathReason const new_reasons,
              EntityUniqueId const new_victims,
@@ -277,25 +225,6 @@ struct EntityDeathInfo {
         for (size_type i{}; i < count; ++i) {
             copy_element(dst_index + i, other, src_index + i);
         }
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        validate_array_sizes();
-        ml::native_soa::require(indices.size() == static_cast<std::size_t>(num()));
-        each_column([indices](auto& column) { ml::apply_permutation(std::span{column}, indices); });
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        validate_array_sizes();
-        ml::native_soa::require(scratch_indices.size() == static_cast<std::size_t>(num()));
-        for (size_type i{}; i < num(); ++i) {
-            scratch_indices[static_cast<std::size_t>(i)] = i;
-        }
-        std::sort(scratch_indices.begin(),
-                  scratch_indices.end(),
-                  [this, &compare](size_type const lhs, size_type const rhs) {
-                      return compare(*this, lhs, rhs);
-                  });
-        apply_permutation(scratch_indices);
     }
 };
 

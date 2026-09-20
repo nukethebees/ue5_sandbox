@@ -117,12 +117,7 @@ struct HistoryRowsConstView {
         fn(active_lasers);
         fn(lasers_fired);
     }
-    void validate_array_sizes() const {
-        auto const count{num()};
-        each_column([count](auto column) {
-            ml::native_soa::require(column.size() == static_cast<std::size_t>(count));
-        });
-    }
+    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
     auto slice(size_type const offset, size_type const count) const -> HistoryRowsConstView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -204,12 +199,7 @@ struct HistoryRowsView {
         fn(active_lasers);
         fn(lasers_fired);
     }
-    void validate_array_sizes() const {
-        auto const count{num()};
-        each_column([count](auto column) {
-            ml::native_soa::require(column.size() == static_cast<std::size_t>(count));
-        });
-    }
+    void validate_array_sizes() const { ml::native_soa::validate_vector_column_sizes(*this); }
     auto slice(size_type const offset, size_type const count) const -> HistoryRowsView {
         ml::native_soa::require(offset >= 0 && count >= 0 && offset <= num() &&
                                 count <= num() - offset);
@@ -284,7 +274,7 @@ struct HistoryRowsView {
         lasers_fired[static_cast<std::size_t>(index)] = new_lasers_fired;
     }
 };
-struct HistoryRows {
+struct HistoryRows : ml::native_soa::VectorStorageOperations {
     using View = HistoryRowsView;
     using ConstView = HistoryRowsConstView;
     using size_type = std::int32_t;
@@ -329,91 +319,6 @@ struct HistoryRows {
         fn(lasers_fired);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
-    void reserve(size_type const count) {
-        ml::native_soa::require(count >= 0);
-        completed_ticks.reserve(static_cast<std::size_t>(count));
-        validity_masks.reserve(static_cast<std::size_t>(count));
-        active_entities.reserve(static_cast<std::size_t>(count));
-        active_entities_by_type.reserve(static_cast<std::size_t>(count));
-        active_entities_by_team_and_type.reserve(static_cast<std::size_t>(count));
-        spawned_entities.reserve(static_cast<std::size_t>(count));
-        destroyed_entities.reserve(static_cast<std::size_t>(count));
-        kills.reserve(static_cast<std::size_t>(count));
-        active_lasers.reserve(static_cast<std::size_t>(count));
-        lasers_fired.reserve(static_cast<std::size_t>(count));
-    }
-    void reset() noexcept {
-        completed_ticks.clear();
-        validity_masks.clear();
-        active_entities.clear();
-        active_entities_by_type.clear();
-        active_entities_by_team_and_type.clear();
-        spawned_entities.clear();
-        destroyed_entities.clear();
-        kills.clear();
-        active_lasers.clear();
-        lasers_fired.clear();
-    }
-    void set_num(size_type const count) {
-        ml::native_soa::require(count >= 0);
-        auto const size{static_cast<std::size_t>(count)};
-        completed_ticks.resize(size);
-        validity_masks.resize(size);
-        active_entities.resize(size);
-        active_entities_by_type.resize(size);
-        active_entities_by_team_and_type.resize(size);
-        spawned_entities.resize(size);
-        destroyed_entities.resize(size);
-        kills.resize(size);
-        active_lasers.resize(size);
-        lasers_fired.resize(size);
-    }
-    void add_uninitialised(size_type const count) {
-        auto const old_num{num()};
-        ml::native_soa::require(count >= 0 &&
-                                count <= std::numeric_limits<size_type>::max() - old_num);
-        set_num(old_num + count);
-    }
-    void add_defaulted(size_type const count) { add_uninitialised(count); }
-    void remove_at_swap(size_type const index, size_type const count) {
-        auto const old_num{num()};
-        ml::native_soa::require(index >= 0 && index <= old_num && count >= 0 &&
-                                count <= old_num - index);
-        auto const moved{std::min(count, old_num - index - count)};
-        auto const source{old_num - moved};
-        for (size_type i{}; i < moved; ++i) {
-            completed_ticks[index + i] = completed_ticks[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            validity_masks[index + i] = validity_masks[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            active_entities[index + i] = active_entities[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            active_entities_by_type[index + i] = active_entities_by_type[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            active_entities_by_team_and_type[index + i] =
-                active_entities_by_team_and_type[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            spawned_entities[index + i] = spawned_entities[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            destroyed_entities[index + i] = destroyed_entities[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            kills[index + i] = kills[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            active_lasers[index + i] = active_lasers[source + i];
-        }
-        for (size_type i{}; i < moved; ++i) {
-            lasers_fired[index + i] = lasers_fired[source + i];
-        }
-        set_num(old_num - count);
-    }
     void set(size_type const index,
              SimTick const new_completed_ticks,
              HistoryFieldMask const new_validity_masks,
@@ -640,25 +545,6 @@ struct HistoryRows {
         for (size_type i{}; i < count; ++i) {
             copy_element(dst_index + i, other, src_index + i);
         }
-    }
-    void apply_permutation(std::span<std::int32_t> const indices) {
-        validate_array_sizes();
-        ml::native_soa::require(indices.size() == static_cast<std::size_t>(num()));
-        each_column([indices](auto& column) { ml::apply_permutation(std::span{column}, indices); });
-    }
-    template <typename Compare>
-    void sort(Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        validate_array_sizes();
-        ml::native_soa::require(scratch_indices.size() == static_cast<std::size_t>(num()));
-        for (size_type i{}; i < num(); ++i) {
-            scratch_indices[static_cast<std::size_t>(i)] = i;
-        }
-        std::sort(scratch_indices.begin(),
-                  scratch_indices.end(),
-                  [this, &compare](size_type const lhs, size_type const rhs) {
-                      return compare(*this, lhs, rhs);
-                  });
-        apply_permutation(scratch_indices);
     }
 };
 
