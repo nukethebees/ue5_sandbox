@@ -581,6 +581,8 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
                        .columns = {},
                        .bytes_per_logical_element = std::nullopt,
                        .total_payload_bytes = std::nullopt,
+                       .page_bytes = abi.memory_facts().page_bytes,
+                       .minimum_pages = std::nullopt,
                        .diagnostics = {}};
     auto const cache_line_bytes{abi.memory_facts().cache_line_bytes};
     auto const has_cache_line_size{cache_line_bytes.has_value() && *cache_line_bytes != 0};
@@ -592,9 +594,21 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
         result.diagnostics.push_back(
             {DiagnosticSeverity::error, "ABI profile cache-line size must be non-zero."});
     }
+    auto const has_page_size{result.page_bytes.has_value() && *result.page_bytes != 0};
+    if (!result.page_bytes.has_value()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::warning,
+             "Page size is unknown for ABI profile '" + abi.name() + "'."});
+    } else if (*result.page_bytes == 0) {
+        result.page_bytes.reset();
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error, "ABI profile page size must be non-zero."});
+    }
     std::uint64_t row_bytes{};
     std::uint64_t total_bytes{};
+    std::uint64_t total_pages{};
     bool complete{true};
+    bool pages_complete{has_page_size};
     result.columns.reserve(soa.columns.size());
 
     for (auto const& column : soa.columns) {
@@ -609,10 +623,13 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
             .total_bytes = std::nullopt,
             .minimum_cache_lines = std::nullopt,
             .elements_per_cache_line = std::nullopt,
+            .minimum_pages = std::nullopt,
+            .complete_elements_per_page = std::nullopt,
             .cache_line_tiling = std::nullopt};
         column_result.type_facts = abi.find(column_result.physical_type);
         if (!column_result.type_facts.has_value()) {
             complete = false;
+            pages_complete = false;
             result.diagnostics.push_back({DiagnosticSeverity::error,
                                           "Unknown physical facts for SoA column '" + column.name +
                                               "' type '" + column_result.physical_type + "'."});
@@ -623,6 +640,7 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
         auto const size{column_result.type_facts->size_bytes};
         if (size == 0) {
             complete = false;
+            pages_complete = false;
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
                  "SoA column '" + column.name + "' has a zero-byte physical type."});
@@ -632,6 +650,7 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
         column_result.total_bytes = checked_multiply(size, capacity);
         if (!column_result.total_bytes.has_value()) {
             complete = false;
+            pages_complete = false;
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
                  "Byte count overflows uint64 for SoA column '" + column.name + "'."});
@@ -643,6 +662,22 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
             column_result.cache_line_tiling = cache_line_tiling(size, *cache_line_bytes);
             column_result.elements_per_cache_line =
                 column_result.cache_line_tiling->exact_elements_per_cache_line;
+        }
+        if (has_page_size) {
+            column_result.complete_elements_per_page = *result.page_bytes / size;
+            if (column_result.total_bytes.has_value()) {
+                column_result.minimum_pages =
+                    minimum_regions(*column_result.total_bytes, *result.page_bytes);
+                auto const next_pages{checked_add(total_pages, *column_result.minimum_pages)};
+                if (!next_pages.has_value()) {
+                    pages_complete = false;
+                    result.diagnostics.push_back(
+                        {DiagnosticSeverity::error,
+                         "SoA minimum page count across separate columns overflows uint64."});
+                } else {
+                    total_pages = *next_pages;
+                }
+            }
         }
 
         auto const next_row_bytes{checked_add(row_bytes, size)};
@@ -669,6 +704,9 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
     if (complete) {
         result.bytes_per_logical_element = row_bytes;
         result.total_payload_bytes = total_bytes;
+    }
+    if (pages_complete) {
+        result.minimum_pages = total_pages;
     }
     return result;
 }

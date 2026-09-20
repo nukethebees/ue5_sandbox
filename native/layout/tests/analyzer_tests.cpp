@@ -370,6 +370,11 @@ TEST(SoaAnalyzer, ReportsSixFloatPayloadAcrossCapacities) {
         EXPECT_EQ(analysis.columns[0].elements_per_cache_line, 16);
         EXPECT_EQ(analysis.columns[0].minimum_cache_lines,
                   (4 * capacity) / 64 + ((4 * capacity) % 64 == 0 ? 0 : 1));
+        EXPECT_EQ(analysis.columns[0].complete_elements_per_page, 1'024);
+        EXPECT_EQ(analysis.columns[0].minimum_pages,
+                  (4 * capacity) / 4'096 + ((4 * capacity) % 4'096 == 0 ? 0 : 1));
+        EXPECT_EQ(analysis.minimum_pages,
+                  6 * ((4 * capacity) / 4'096 + ((4 * capacity) % 4'096 == 0 ? 0 : 1)));
     }
 }
 
@@ -477,6 +482,8 @@ TEST(SoaAnalyzer, LeavesCacheStatisticsUnknownWithoutTargetFact) {
     EXPECT_EQ(analysis.columns[0].total_bytes, 400);
     EXPECT_FALSE(analysis.columns[0].minimum_cache_lines.has_value());
     EXPECT_FALSE(analysis.columns[0].cache_line_tiling.has_value());
+    EXPECT_FALSE(analysis.columns[0].minimum_pages.has_value());
+    EXPECT_FALSE(analysis.minimum_pages.has_value());
     EXPECT_FALSE(analysis.diagnostics.empty());
 }
 

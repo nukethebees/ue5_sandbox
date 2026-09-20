@@ -66,6 +66,10 @@ facts. SoA cache tiling now consumes the same profile fact rather than an analyz
 profile facts, unknown physical types, and nested SoAs produce diagnostics and Unknown results
 rather than guesses.
 
+For standard-library SoAs, page footprints are calculated per column because each vector is a
+separate allocation. The displayed aggregate is the sum of those minimum per-column page counts;
+it does not assume shared pages or include allocator overhead.
+
 AoS padding, arbitrary ABI probing, persistent plans, LispB write-back, chunking/AoSoA, arena
 planning, performance prediction, and live-process inspection are intentionally deferred. A later
 composite-layout milestone can compose named typed arrays and existing layout definitions for

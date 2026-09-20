@@ -37,6 +37,8 @@ Packed analysis also supports selectable element-count presets and custom counts
 overflow-safe aggregate bytes, unused bits, minimum cache lines, and minimum pages. Cache-line and
 page sizes now come from an explicit x86/x86-64 baseline profile with provenance; unknown profile
 facts remain unknown rather than falling back to analyzer literals.
+Standard-library SoA analysis also reports per-column and aggregate minimum pages using the target
+page size, treating each vector as a separate allocation and excluding unknown allocator overhead.
 
 Enum inspection now derives literal and implicit value domains, count-sentinel code use, minimum
 semantic bit width, target-backed signed/unsigned fit, and unused backing codes. General initializer

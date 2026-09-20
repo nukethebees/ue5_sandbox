@@ -663,7 +663,7 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
                             soa.related_storage_name->c_str());
     }
     if (ImGui::BeginTable("soa-columns",
-                          7,
+                          9,
                           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                               ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Column");
@@ -672,7 +672,9 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
         ImGui::TableSetupColumn("Element B");
         ImGui::TableSetupColumn("Payload");
         ImGui::TableSetupColumn("Min lines");
-        ImGui::TableSetupColumn("Exact / 64 B");
+        ImGui::TableSetupColumn("Exact / line");
+        ImGui::TableSetupColumn("Min pages");
+        ImGui::TableSetupColumn("Complete / page");
         ImGui::TableHeadersRow();
         for (auto const& column : active.columns) {
             ImGui::TableNextRow();
@@ -697,6 +699,11 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
             ImGui::TextUnformatted(detail::format_number(column.minimum_cache_lines).c_str());
             ImGui::TableNextColumn();
             ImGui::TextUnformatted(detail::format_number(column.elements_per_cache_line).c_str());
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(detail::format_number(column.minimum_pages).c_str());
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(
+                detail::format_number(column.complete_elements_per_page).c_str());
         }
         ImGui::EndTable();
     }
@@ -707,6 +714,8 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
         common_total = std::max(common_total, analysis.total_payload_bytes.value_or(0));
     }
     ImGui::SeparatorText("Aggregate column payload");
+    ImGui::Text("Minimum pages across separate columns: %s",
+                detail::format_number(active.minimum_pages).c_str());
     bool activated{};
     draw_payload_regions(baseline, nullptr, selected_field_, "Baseline", common_total, activated);
     for (auto const& [variant_id, analysis] : soa_variants_) {

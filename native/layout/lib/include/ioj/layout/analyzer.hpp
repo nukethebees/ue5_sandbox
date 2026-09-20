@@ -117,6 +117,8 @@ struct SoaColumnAnalysis {
     std::optional<std::uint64_t> total_bytes;
     std::optional<std::uint64_t> minimum_cache_lines;
     std::optional<std::uint64_t> elements_per_cache_line;
+    std::optional<std::uint64_t> minimum_pages;
+    std::optional<std::uint64_t> complete_elements_per_page;
     std::optional<CacheLineTiling> cache_line_tiling;
 };
 
@@ -127,6 +129,8 @@ struct SoaAnalysis {
     std::vector<SoaColumnAnalysis> columns;
     std::optional<std::uint64_t> bytes_per_logical_element;
     std::optional<std::uint64_t> total_payload_bytes;
+    std::optional<std::uint64_t> page_bytes;
+    std::optional<std::uint64_t> minimum_pages;
     std::vector<Diagnostic> diagnostics;
 };
 

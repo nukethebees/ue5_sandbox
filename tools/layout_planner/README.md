@@ -81,6 +81,8 @@ expressions that cannot be evaluated safely remain Unknown with an explanatory d
 
 Column diagrams show aggregate payload only. They do not imply that standard-library vectors share
 an allocation or model allocator overhead, capacity slack, or generated single-allocation gaps.
+Per-column and aggregate minimum page counts use the target profile's page size; the aggregate sums
+the separate standard-library vector allocations rather than pretending that they share pages.
 
 Layout variants exist only in memory and closing the application discards them. Semantic authoring
 changes remain in an editable draft until the user explicitly previews and saves them from the File
