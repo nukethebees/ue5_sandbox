@@ -1977,28 +1977,146 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                                   : std::nullopt)) {
             return false;
         }
+        return true;
+    };
 
-        std::vector<Form const*> parameters;
+    auto render_parameter_row = [](codegen::ParameterSchema const& parameter) {
+        std::ostringstream rendered;
+        rendered << "      (parameter " << parameter.name << ' ' << render_type_ref(parameter.type);
+        if (parameter.default_value.has_value()) {
+            rendered << " :default " << quote(*parameter.default_value);
+        }
+        rendered << ')';
+        return std::move(rendered).str();
+    };
+    auto patch_function_parameters = [&](Form const& source,
+                                         codegen::FunctionSchema const& function,
+                                         std::vector<SourceReplacement>& function_replacements) {
+        std::vector<Form const*> source_parameters;
         for (auto const& child : source.children) {
             if (child.head() == "parameter") {
-                parameters.push_back(&child);
+                if (child.children.size() < 3) {
+                    return false;
+                }
+                source_parameters.push_back(&child);
             }
         }
-        if (parameters.size() != function.parameters.size()) {
-            return false;
-        }
-        for (std::size_t index{}; index < parameters.size(); ++index) {
-            auto const& parameter{function.parameters[index]};
-            std::ostringstream rendered;
-            rendered << "(parameter " << parameter.name << ' ' << render_type_ref(parameter.type);
-            if (parameter.default_value.has_value()) {
-                rendered << " :default " << quote(*parameter.default_value);
+
+        if (source_parameters.empty()) {
+            if (function.parameters.empty()) {
+                return true;
             }
-            rendered << ')';
-            if (!source_form_matches_rendered(*parameters[index], rendered.str())) {
+            std::string additions;
+            for (auto const& parameter : function.parameters) {
+                additions += "\n" + render_parameter_row(parameter);
+            }
+            auto const existing_insertion{
+                std::ranges::find_if(function_replacements, [&](auto const& replacement) {
+                    return replacement.begin == source.closing.span.offset &&
+                           replacement.end == source.closing.span.offset;
+                })};
+            if (existing_insertion == function_replacements.end()) {
+                function_replacements.push_back({.begin = source.closing.span.offset,
+                                                 .end = source.closing.span.offset,
+                                                 .text = std::move(additions)});
+            } else {
+                existing_insertion->text += additions;
+            }
+            return true;
+        }
+
+        auto const first_parameter_offset{source_parameters.front()->token.span.offset};
+        auto parameters_begin{source.token.span.offset};
+        for (auto const& child : source.children) {
+            if (child.token.span.offset >= first_parameter_offset) {
+                continue;
+            }
+            auto const child_end{source_form_line_end(child, original, first_parameter_offset)};
+            if (!child_end.has_value()) {
                 return false;
             }
+            parameters_begin = (std::max)(parameters_begin, *child_end);
         }
+        if (parameters_begin > first_parameter_offset) {
+            return false;
+        }
+
+        struct SourceParameter {
+            Form const* form{};
+            std::size_t begin{};
+            std::size_t end{};
+        };
+        std::map<std::string_view, SourceParameter> source_by_name;
+        auto row_begin{parameters_begin};
+        for (auto const* parameter : source_parameters) {
+            auto const row_end{
+                source_form_line_end(*parameter, original, source.closing.span.offset)};
+            if (!row_end.has_value() || row_begin > parameter->token.span.offset ||
+                *row_end < parameter->closing.span.offset + 1 ||
+                !source_by_name
+                     .emplace(
+                         parameter->children[1].token.text,
+                         SourceParameter{.form = parameter, .begin = row_begin, .end = *row_end})
+                     .second) {
+                return false;
+            }
+            row_begin = *row_end;
+        }
+
+        auto const parameters_end{row_begin};
+        std::set<std::string> schema_names;
+        std::string rendered_parameters;
+        auto append_parameter = [&](std::string row) {
+            auto const preceding_newline{rendered_parameters.empty()
+                                             ? parameters_begin > 0 &&
+                                                   original[parameters_begin - 1] == '\n'
+                                             : rendered_parameters.back() == '\n'};
+            if (!preceding_newline && (row.empty() || row.front() != '\n')) {
+                rendered_parameters += '\n';
+            }
+            rendered_parameters += std::move(row);
+        };
+        for (auto const& parameter : function.parameters) {
+            if (!schema_names.insert(parameter.name).second) {
+                return false;
+            }
+            auto const found{source_by_name.find(parameter.name)};
+            if (found == source_by_name.end()) {
+                append_parameter(render_parameter_row(parameter));
+                continue;
+            }
+
+            std::vector<SourceReplacement> parameter_replacements;
+            if (!patch_source_form(found->second.form->children[2],
+                                   render_type_ref(parameter.type),
+                                   original,
+                                   parameter_replacements)) {
+                return false;
+            }
+            auto const parameter_properties{std::array<SourceProperty, 1>{std::pair{
+                "default",
+                parameter.default_value.has_value() ? std::optional{quote(*parameter.default_value)}
+                                                    : std::nullopt}}};
+            if (!patch_source_properties(*found->second.form,
+                                         2,
+                                         parameter_properties,
+                                         "        ",
+                                         original,
+                                         parameter_replacements)) {
+                return false;
+            }
+            auto rendered{apply_source_replacements_to_range(original,
+                                                             found->second.begin,
+                                                             found->second.end,
+                                                             std::move(parameter_replacements))};
+            if (!rendered.has_value()) {
+                return false;
+            }
+            append_parameter(std::move(*rendered));
+        }
+        function_replacements.push_back({.begin = parameters_begin,
+                                         .end = parameters_end,
+                                         .text = std::move(rendered_parameters)});
         return true;
     };
 
@@ -2094,6 +2212,9 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                                          "      ",
                                          original,
                                          function_replacements)) {
+                return std::nullopt;
+            }
+            if (!patch_function_parameters(*found->second.form, function, function_replacements)) {
                 return std::nullopt;
             }
             auto rendered{apply_source_replacements_to_range(original,

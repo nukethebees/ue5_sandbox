@@ -304,6 +304,8 @@ auto parameter_type_names(std::vector<ParameterSchema> const& parameters,
         validate_type(parameter.type, types, context + " parameter '" + parameter.name + "'");
         type_names.push_back(resolve_type(parameter.type, types).spelling);
         if (parameter.default_value.has_value()) {
+            require_non_blank_value(*parameter.default_value,
+                                    context + " parameter '" + parameter.name + "' default");
             has_default = true;
         } else if (has_default) {
             throw std::invalid_argument{context +

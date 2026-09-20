@@ -1094,6 +1094,15 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
     }};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_soa_module();
+    module.structs.front().functions = {FunctionSchema{
+        .name = "set",
+        .return_type = TypeRef{"void"},
+        .parameters = {ParameterSchema{TypeRef{"int32"}, "value", " \t"}},
+    }};
+
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsUnknownCustomSoaDependencies) {

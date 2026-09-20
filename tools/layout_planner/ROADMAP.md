@@ -307,11 +307,14 @@ delete, button reorder, and drag reorder. They remain source-backed escaped stri
 being misrepresented as semantic graph relationships.
 Custom storage functions now have an initial flat lifecycle/signature editor: add, duplicate,
 delete, button/drag reorder, name, return type, const/noexcept/static qualifiers, and inline/source
-placement all submit ordinary SoA document commands. Parameters, bodies, dependencies, trailing
-returns, templates, and constraints remain visibly inspectable and are preserved exactly by these
-edits pending their own focused editors. Stable uniquely named function rows preserve surrounding
-source comments and unchanged body text through structural edits; ambiguous overloads and raw-body
-forms retain safe canonical fallback.
+placement all submit ordinary SoA document commands. The selected function's parameters have a flat
+ordered table with add, metadata-preserving duplicate, delete, button/drag reorder, direct name/type
+editing, shared type picking, and optional default expressions. Shared validation enforces nonblank
+defaults and C++ trailing-default order before a document command is accepted. Bodies, dependencies,
+trailing returns, templates, and constraints remain visibly inspectable and are preserved exactly by
+these edits pending their own focused editors. Stable uniquely named function and parameter rows
+preserve surrounding source comments and unchanged body text through structural edits; ambiguous
+overloads and raw-body forms retain safe canonical fallback.
 
 - Create standard-library SoA declarations.
 - Add, remove, duplicate, and reorder columns.

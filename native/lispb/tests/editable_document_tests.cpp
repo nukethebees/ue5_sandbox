@@ -150,7 +150,9 @@ class TemporarySchema {
     (function clear void
       ; Keep the custom function note.
       :body ("values.clear();")
-      :noexcept true))
+      :noexcept true
+      ; Keep the count parameter note.
+      (parameter count std::uint32_t :default "0")))
   (struct NestedFlags
     (member bits array std::uint8_t)))
 )");
@@ -3933,6 +3935,105 @@ TEST(EditableSchemaDocument, AuthorsOrdersAndEditsSoaFunctionSignatures) {
         })};
     ASSERT_NE(module_source, final_document.source_files().end());
     EXPECT_NE(module_source->text.find("; Keep the custom function note."), std::string::npos);
+}
+
+TEST(EditableSchemaDocument, AuthorsOrdersAndEditsSoaFunctionParameters) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+    auto const original_revision{document.revision()};
+
+    auto replacement{*document.soa_schema(declaration)};
+    replacement.functions.front().parameters.front().default_value = "  ";
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
+    ASSERT_FALSE(applied.has_value());
+    EXPECT_EQ(document.revision(), original_revision);
+    EXPECT_EQ(document.soa_schema(declaration)->functions.front().parameters.front().default_value,
+              "0");
+
+    replacement = *document.soa_schema(declaration);
+    replacement.functions.front().parameters.push_back(codegen::ParameterSchema{
+        .type = codegen::TypeRef{"std::uint16_t"},
+        .name = "limit",
+        .default_value = std::nullopt,
+    });
+    applied =
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)});
+    ASSERT_FALSE(applied.has_value());
+    EXPECT_EQ(document.revision(), original_revision);
+
+    replacement = *document.soa_schema(declaration);
+    auto& parameters{replacement.functions.front().parameters};
+    parameters.front().type = codegen::TypeRef{"std::uint16_t"};
+    parameters.front().default_value = "7";
+    parameters.push_back(codegen::ParameterSchema{
+        .type = codegen::TypeRef{"std::uint32_t"},
+        .name = "limit",
+        .default_value = "32",
+    });
+    applied =
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.soa_schema(declaration)->functions.front().parameters.size(), 1U);
+    ASSERT_TRUE(document.redo().value());
+    EXPECT_EQ(document.soa_schema(declaration)->functions.front().parameters.size(), 2U);
+
+    replacement = *document.soa_schema(declaration);
+    auto copy{replacement.functions.front().parameters.back()};
+    copy.name = "limit_copy";
+    replacement.functions.front().parameters.push_back(std::move(copy));
+    applied =
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    replacement = *document.soa_schema(declaration);
+    auto& reordered_parameters{replacement.functions.front().parameters};
+    std::rotate(
+        reordered_parameters.begin(), reordered_parameters.begin() + 2, reordered_parameters.end());
+    reordered_parameters.erase(reordered_parameters.begin() + 2);
+    applied =
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto const* schema{document.soa_schema(declaration)};
+    ASSERT_EQ(schema->functions.front().parameters.size(), 2U);
+    EXPECT_EQ(schema->functions.front().parameters[0].name, "limit_copy");
+    EXPECT_EQ(schema->functions.front().parameters[1].name, "count");
+    EXPECT_EQ(schema->functions.front().parameters[1].type.name, "std::uint16_t");
+    EXPECT_EQ(schema->functions.front().parameters[1].default_value, "7");
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& source{preview->front().updated};
+    auto const copy_position{source.find("(parameter limit_copy std::uint32_t :default \"32\")")};
+    auto const comment_position{source.find("; Keep the count parameter note.")};
+    auto const count_position{source.find("(parameter count std::uint16_t :default \"7\")")};
+    ASSERT_NE(copy_position, std::string::npos);
+    ASSERT_NE(comment_position, std::string::npos);
+    ASSERT_NE(count_position, std::string::npos);
+    EXPECT_LT(copy_position, comment_position);
+    EXPECT_LT(comment_position, count_position);
+    EXPECT_NE(source.find("; Keep the custom function note."), std::string::npos);
+    EXPECT_NE(source.find(":body (\"values.clear();\")"), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    schema = reloaded.soa_schema(reloaded_declaration);
+    ASSERT_EQ(schema->functions.front().parameters.size(), 2U);
+    EXPECT_EQ(schema->functions.front().parameters[0].name, "limit_copy");
+    EXPECT_EQ(schema->functions.front().parameters[0].default_value, "32");
+    EXPECT_EQ(schema->functions.front().parameters[1].name, "count");
+    EXPECT_EQ(schema->functions.front().parameters[1].type.name, "std::uint16_t");
+    EXPECT_EQ(schema->functions.front().parameters[1].default_value, "7");
 }
 
 TEST(EditableSchemaDocument, PreservesSoaMembersAndAdvancedFormsForStructuralEdits) {
