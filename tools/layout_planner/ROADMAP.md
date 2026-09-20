@@ -286,7 +286,9 @@ partially complete: the UI atomically enables generated names, the required stor
 first selected mask field; it safely disables the whole configuration and toggles additional
 eligible array fields without allowing the final field to be removed. Selected mask fields expose
 an inline ordered dimension table with add, duplicate, delete, button reorder, and direct name/extent
-editing through normal semantic commands.
+editing through normal semantic commands. Fixed layouts can be enabled or disabled inline with a
+collision-free storage type; storage and ordered container names support direct editing plus
+add/duplicate/delete/reorder through the same document commands.
 
 - Create standard-library SoA declarations.
 - Add, remove, duplicate, and reorder columns.

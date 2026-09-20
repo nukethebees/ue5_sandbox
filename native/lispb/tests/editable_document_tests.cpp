@@ -3239,6 +3239,103 @@ TEST(EditableSchemaDocument, PreparesAndReloadsAdvancedSoaDuplicates) {
     EXPECT_EQ(schema->functions[0].body_lines, std::vector<std::string>{"values.clear();"});
 }
 
+TEST(EditableSchemaDocument, AuthorsAndRemovesFixedSoaLayouts) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+    auto const module_index{document.declaration(declaration)->module_index};
+
+    auto const blocker{document.allocate_declaration_id()};
+    auto created{document.apply(
+        CreateSoa{.declaration = blocker,
+                  .module_index = module_index,
+                  .schema = codegen::SoaSchema{.name = "ExistingSoaFixedStorage",
+                                               .members = {codegen::SoaMemberSchema{
+                                                   .name = "value",
+                                                   .kind = codegen::SoaMemberKind::array,
+                                                   .type = codegen::TypeRef{"std::uint8_t"}}}},
+                  .insertion_index = std::nullopt})};
+    ASSERT_TRUE(created.has_value()) << created.error().message;
+    ASSERT_TRUE(*created);
+
+    auto storage_name{
+        document.unique_soa_generated_type_name(declaration, "ExistingSoaFixedStorage")};
+    ASSERT_TRUE(storage_name.has_value()) << storage_name.error().message;
+    EXPECT_EQ(*storage_name, "ExistingSoaFixedStorage2");
+    auto first_container{document.unique_soa_generated_type_name(declaration, "ExistingSoaFixed")};
+    ASSERT_TRUE(first_container.has_value()) << first_container.error().message;
+
+    auto enabled{*document.soa_schema(declaration)};
+    enabled.fixed = codegen::FixedSoaSchema{.storage_name = *storage_name,
+                                            .containers = {*first_container, "CustomFixed"}};
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(enabled)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto duplicate_name{
+        document.unique_soa_generated_type_name(declaration, *first_container + "_copy")};
+    ASSERT_TRUE(duplicate_name.has_value()) << duplicate_name.error().message;
+    auto edited{*document.soa_schema(declaration)};
+    std::swap(edited.fixed->containers[0], edited.fixed->containers[1]);
+    edited.fixed->containers.insert(edited.fixed->containers.begin() + 1, *duplicate_name);
+    applied = document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(edited)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.soa_schema(declaration)->fixed->containers,
+              (std::vector<std::string>{"ExistingSoaFixed", "CustomFixed"}));
+    ASSERT_TRUE(document.redo().value());
+    EXPECT_EQ(
+        document.soa_schema(declaration)->fixed->containers,
+        (std::vector<std::string>{"CustomFixed", "ExistingSoaFixed_copy", "ExistingSoaFixed"}));
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(
+        preview->front().updated.find("(fixed ExistingSoaFixedStorage2 :containers (CustomFixed "
+                                      "ExistingSoaFixed_copy ExistingSoaFixed))"),
+        std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the custom function note"), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    auto const* reloaded_schema{reloaded.soa_schema(reloaded_declaration)};
+    ASSERT_NE(reloaded_schema, nullptr);
+    ASSERT_TRUE(reloaded_schema->fixed.has_value());
+    EXPECT_EQ(reloaded_schema->fixed->storage_name, "ExistingSoaFixedStorage2");
+    EXPECT_EQ(
+        reloaded_schema->fixed->containers,
+        (std::vector<std::string>{"CustomFixed", "ExistingSoaFixed_copy", "ExistingSoaFixed"}));
+
+    auto disabled{*reloaded_schema};
+    disabled.fixed.reset();
+    applied = reloaded.apply(
+        ReplaceSoa{.declaration = reloaded_declaration, .schema = std::move(disabled)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    ASSERT_TRUE(reloaded.undo().value());
+    EXPECT_TRUE(reloaded.soa_schema(reloaded_declaration)->fixed.has_value());
+    ASSERT_TRUE(reloaded.redo().value());
+    EXPECT_FALSE(reloaded.soa_schema(reloaded_declaration)->fixed.has_value());
+    preview = reloaded.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_EQ(preview->front().updated.find("(fixed "), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the custom function note"), std::string::npos);
+    saved = reloaded.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto final_document{files.load()};
+    auto const final_declaration{
+        declaration_id(final_document, "authored_soa", "ExistingSoa", "authored")};
+    EXPECT_FALSE(final_document.soa_schema(final_declaration)->fixed.has_value());
+}
+
 TEST(EditableSchemaDocument, SoaColumnEditPreservesOtherDeclarationMetadata) {
     TemporarySchema files;
     auto document{files.load()};

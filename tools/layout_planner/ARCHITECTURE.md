@@ -61,8 +61,12 @@ and reorder; new children render canonically. Tagged unions use the same bounded
 blocks for structural edits while patching tags and keeping discriminant/export properties outside
 the ordered region. Other structural edits retain canonical fallback. Standard-library SoAs use a
 bounded named-member region ending before functions, fixed layouts, and single-allocation forms.
-Stable members can be structurally edited only after those advanced forms are proven semantically unchanged;
-unsupported derived allocator/mutable-view surfaces take canonical fallback.
+Stable members can be structurally edited only after those advanced forms are proven semantically
+unchanged; unsupported derived allocator/mutable-view surfaces take canonical fallback. Fixed-
+layout changes are localized separately: an existing fixed form is replaced or removed at its
+owned form range, and a newly enabled fixed form is inserted after custom functions and before
+single-allocation output. This preserves unrelated declaration comments, member formatting, and
+opaque custom function text while still rendering the changed fixed form canonically.
 
 Declaration rename is a typed document transaction rather than text replacement. Supported enum,
 integer-scalar, representation, packed-value, record, union, and ordinary SoA declarations retain

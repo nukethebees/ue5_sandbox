@@ -4735,6 +4735,28 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
     if (soa_editor_declaration_ != declaration || soa_editor_member_ != selected_field_) {
         soa_editor_declaration_ = declaration;
         soa_editor_member_ = selected_field_;
+        soa_fixed_container_names_.clear();
+        if (schema->fixed.has_value()) {
+            std::snprintf(soa_fixed_storage_name_.data(),
+                          soa_fixed_storage_name_.size(),
+                          "%s",
+                          schema->fixed->storage_name.c_str());
+            soa_fixed_container_names_.reserve(schema->fixed->containers.size());
+            for (auto const& container : schema->fixed->containers) {
+                std::array<char, 128> name{};
+                std::snprintf(name.data(), name.size(), "%s", container.c_str());
+                soa_fixed_container_names_.push_back(name);
+            }
+            if (schema->fixed->containers.empty()) {
+                soa_fixed_container_index_.reset();
+            } else if (!soa_fixed_container_index_.has_value() ||
+                       *soa_fixed_container_index_ >= schema->fixed->containers.size()) {
+                soa_fixed_container_index_ = 0;
+            }
+        } else {
+            soa_fixed_storage_name_.front() = '\0';
+            soa_fixed_container_index_.reset();
+        }
         if (selected != schema->members.end()) {
             std::snprintf(
                 soa_member_name_.data(), soa_member_name_.size(), "%s", selected->name.c_str());
@@ -5223,6 +5245,178 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
         }
     }
 
+    ImGui::SeparatorText("Fixed layout");
+    if (!schema->fixed.has_value()) {
+        if (ImGui::Button("Enable fixed layout")) {
+            auto storage_name{document_->unique_soa_generated_type_name(
+                *declaration, schema->name + "FixedStorage")};
+            if (!storage_name.has_value()) {
+                schema_edit_message_ = storage_name.error().message;
+                return false;
+            }
+            auto replacement{*schema};
+            replacement.fixed =
+                codegen::FixedSoaSchema{.storage_name = std::move(*storage_name), .containers = {}};
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+    } else {
+        ImGui::SetNextItemWidth(-1.0F);
+        auto const storage_submitted{ImGui::InputText("Storage type",
+                                                      soa_fixed_storage_name_.data(),
+                                                      soa_fixed_storage_name_.size(),
+                                                      ImGuiInputTextFlags_EnterReturnsTrue)};
+        if (storage_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+            if (soa_fixed_storage_name_.front() == '\0') {
+                schema_edit_message_ = "Fixed-layout storage type cannot be empty.";
+                return false;
+            }
+            auto replacement{*schema};
+            replacement.fixed->storage_name = soa_fixed_storage_name_.data();
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+
+        if (ImGui::Button("+ Fixed container")) {
+            auto container_name{
+                document_->unique_soa_generated_type_name(*declaration, schema->name + "Fixed")};
+            if (!container_name.has_value()) {
+                schema_edit_message_ = container_name.error().message;
+                return false;
+            }
+            auto replacement{*schema};
+            replacement.fixed->containers.push_back(std::move(*container_name));
+            auto const new_index{replacement.fixed->containers.size() - 1};
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_fixed_container_index_ = new_index;
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+        ImGui::SameLine();
+        auto const container_index{soa_fixed_container_index_};
+        auto const has_container{container_index.has_value() &&
+                                 *container_index < schema->fixed->containers.size()};
+        ImGui::BeginDisabled(!has_container);
+        if (ImGui::Button("Duplicate fixed container")) {
+            auto container_name{document_->unique_soa_generated_type_name(
+                *declaration, schema->fixed->containers[*container_index] + "_copy")};
+            if (!container_name.has_value()) {
+                schema_edit_message_ = container_name.error().message;
+            } else {
+                auto replacement{*schema};
+                replacement.fixed->containers.insert(
+                    replacement.fixed->containers.begin() +
+                        static_cast<std::ptrdiff_t>(*container_index + 1),
+                    std::move(*container_name));
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_fixed_container_index_ = *container_index + 1;
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+        }
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!has_container || *container_index == 0);
+        if (ImGui::Button("Fixed container up")) {
+            auto replacement{*schema};
+            std::swap(replacement.fixed->containers[*container_index],
+                      replacement.fixed->containers[*container_index - 1]);
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_fixed_container_index_ = *container_index - 1;
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!has_container ||
+                             *container_index + 1 >= schema->fixed->containers.size());
+        if (ImGui::Button("Fixed container down")) {
+            auto replacement{*schema};
+            std::swap(replacement.fixed->containers[*container_index],
+                      replacement.fixed->containers[*container_index + 1]);
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_fixed_container_index_ = *container_index + 1;
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Button("Delete fixed container")) {
+            auto replacement{*schema};
+            replacement.fixed->containers.erase(replacement.fixed->containers.begin() +
+                                                static_cast<std::ptrdiff_t>(*container_index));
+            auto const next_index{
+                replacement.fixed->containers.empty()
+                    ? std::optional<std::size_t>{}
+                    : std::optional{
+                          std::min(*container_index, replacement.fixed->containers.size() - 1)}};
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_fixed_container_index_ = next_index;
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Button("Disable fixed layout")) {
+            auto replacement{*schema};
+            replacement.fixed.reset();
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_fixed_container_index_.reset();
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+
+        if (soa_fixed_container_names_.size() == schema->fixed->containers.size() &&
+            ImGui::BeginTable("soa-fixed-containers",
+                              2,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableSetupColumn("Container type");
+            ImGui::TableHeadersRow();
+            for (std::size_t index{}; index < schema->fixed->containers.size(); ++index) {
+                ImGui::PushID(static_cast<int>(index));
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                auto const row_selected{soa_fixed_container_index_ == index};
+                if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+                    soa_fixed_container_index_ = index;
+                }
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(-1.0F);
+                auto const name_submitted{ImGui::InputText("##name",
+                                                           soa_fixed_container_names_[index].data(),
+                                                           soa_fixed_container_names_[index].size(),
+                                                           ImGuiInputTextFlags_EnterReturnsTrue)};
+                if (name_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                    if (!pending.has_value()) {
+                        pending = *schema;
+                    }
+                    pending->fixed->containers[index] = soa_fixed_container_names_[index].data();
+                }
+                ImGui::PopID();
+            }
+            ImGui::EndTable();
+        }
+    }
+
     if (navigate_to.has_value()) {
         selected_type_ = *navigate_to;
         selected_field_.clear();
@@ -5239,6 +5433,12 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             schema_edit_message_ = invalid_member->name.empty()
                                      ? "SoA column name cannot be empty."
                                      : "SoA column type cannot be empty.";
+            return false;
+        }
+        if (pending->fixed.has_value() &&
+            std::ranges::any_of(pending->fixed->containers,
+                                [](std::string const& name) { return name.empty(); })) {
+            schema_edit_message_ = "Fixed-layout container type cannot be empty.";
             return false;
         }
         if (apply_document_edit(

@@ -357,6 +357,8 @@ class EditableSchemaDocument {
     auto union_schema(DeclarationId declaration) const -> codegen::UnionSchema const*;
     auto tagged_union_schema(DeclarationId declaration) const -> codegen::TaggedUnionSchema const*;
     auto soa_schema(DeclarationId declaration) const -> codegen::SoaSchema const*;
+    auto unique_soa_generated_type_name(DeclarationId declaration, std::string const& base) const
+        -> std::expected<std::string, SchemaEditError>;
     auto prepare_soa_duplicate(DeclarationId declaration) const
         -> std::expected<codegen::SoaSchema, SchemaEditError>;
     auto allocate_declaration_id() -> DeclarationId;

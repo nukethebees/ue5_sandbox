@@ -47,6 +47,35 @@ auto form_range(Form const& form, std::size_t const source_file_index) -> Source
             .column = form.token.span.column};
 }
 
+auto soa_generated_type_names(codegen::SoaModuleSchema const& module) -> std::set<std::string> {
+    auto names{std::set<std::string>{}};
+    for (auto const& schema : module.structs) {
+        names.insert(schema.name);
+        names.insert(schema.view_name.value_or(schema.name + "View"));
+        names.insert(schema.const_view_name.value_or(schema.name + "ConstView"));
+        if (schema.field_mask_name.has_value()) {
+            names.insert(*schema.field_mask_name);
+            names.insert(*schema.field_enum_name);
+        }
+        if (schema.single_allocation.has_value()) {
+            names.insert(*schema.single_allocation);
+            names.insert(*schema.single_allocation + "Storage");
+            names.insert(schema.name + "SingleLayout");
+            names.insert(schema.name + "SingleView");
+            names.insert(schema.name + "SingleConstView");
+            for (auto const& variant : schema.single_allocation_variants) {
+                names.insert(variant.name);
+                names.insert(variant.name + "Storage");
+            }
+        }
+        if (schema.fixed.has_value()) {
+            names.insert(schema.fixed->storage_name);
+            names.insert(schema.fixed->containers.begin(), schema.fixed->containers.end());
+        }
+    }
+    return names;
+}
+
 auto quote(std::string_view const value) -> std::string {
     std::string result{"\""};
     for (auto const character : value) {
@@ -1676,7 +1705,6 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
         }
     }
     if (functions.size() != schema.functions.size() ||
-        (fixed != nullptr) != schema.fixed.has_value() ||
         (single_allocation != nullptr) != schema.single_allocation.has_value()) {
         return std::nullopt;
     }
@@ -1687,19 +1715,39 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
             return std::nullopt;
         }
     }
-    if (fixed != nullptr) {
+    auto render_fixed = [](codegen::FixedSoaSchema const& fixed_schema) {
         std::ostringstream rendered;
-        rendered << "(fixed " << schema.fixed->storage_name;
-        if (!schema.fixed->containers.empty()) {
+        rendered << "(fixed " << fixed_schema.storage_name;
+        if (!fixed_schema.containers.empty()) {
             rendered << " :containers (";
-            for (std::size_t index{}; index < schema.fixed->containers.size(); ++index) {
-                rendered << (index == 0 ? "" : " ") << schema.fixed->containers[index];
+            for (std::size_t index{}; index < fixed_schema.containers.size(); ++index) {
+                rendered << (index == 0 ? "" : " ") << fixed_schema.containers[index];
             }
             rendered << ')';
         }
         rendered << ')';
-        if (!source_form_matches_rendered(*fixed, rendered.str())) {
-            return std::nullopt;
+        return std::move(rendered).str();
+    };
+    if (fixed != nullptr && schema.fixed.has_value()) {
+        auto rendered{render_fixed(*schema.fixed)};
+        if (!source_form_matches_rendered(*fixed, rendered)) {
+            replacements.push_back({.begin = fixed->token.span.offset,
+                                    .end = fixed->closing.span.offset + 1,
+                                    .text = std::move(rendered)});
+        }
+    } else if (fixed != nullptr) {
+        replacements.push_back(
+            {.begin = fixed->token.span.offset, .end = fixed->closing.span.offset + 1, .text = {}});
+    } else if (schema.fixed.has_value()) {
+        auto rendered{render_fixed(*schema.fixed)};
+        if (single_allocation != nullptr) {
+            replacements.push_back({.begin = single_allocation->token.span.offset,
+                                    .end = single_allocation->token.span.offset,
+                                    .text = std::move(rendered) + "\n    "});
+        } else {
+            replacements.push_back({.begin = parsed->closing.span.offset,
+                                    .end = parsed->closing.span.offset,
+                                    .text = "\n    " + std::move(rendered)});
         }
     }
     if (single_allocation != nullptr) {
@@ -2252,6 +2300,27 @@ auto EditableSchemaDocument::soa_schema(DeclarationId const declaration_id) cons
              : &module->structs[info->declaration_index];
 }
 
+auto EditableSchemaDocument::unique_soa_generated_type_name(DeclarationId const declaration_id,
+                                                            std::string const& base) const
+    -> std::expected<std::string, SchemaEditError> {
+    auto const* info{declaration(declaration_id)};
+    if (info == nullptr || soa_schema(declaration_id) == nullptr) {
+        return std::unexpected{SchemaEditError{"Unknown SoA declaration"}};
+    }
+    auto const* module{
+        std::get_if<codegen::SoaModuleSchema>(&manifest_.modules[info->module_index])};
+    if (module == nullptr) {
+        return std::unexpected{SchemaEditError{"SoA declaration has an invalid source module"}};
+    }
+
+    auto const occupied{soa_generated_type_names(*module)};
+    auto candidate{base};
+    for (auto suffix{std::size_t{2}}; occupied.contains(candidate); ++suffix) {
+        candidate = base + std::to_string(suffix);
+    }
+    return candidate;
+}
+
 auto EditableSchemaDocument::prepare_soa_duplicate(DeclarationId const declaration_id) const
     -> std::expected<codegen::SoaSchema, SchemaEditError> {
     auto const* info{declaration(declaration_id)};
@@ -2265,34 +2334,7 @@ auto EditableSchemaDocument::prepare_soa_duplicate(DeclarationId const declarati
         return std::unexpected{SchemaEditError{"SoA declaration has an invalid source module"}};
     }
 
-    auto occupied{std::set<std::string>{}};
-    auto add_generated_names = [&](codegen::SoaSchema const& schema) {
-        occupied.insert(schema.name);
-        occupied.insert(schema.view_name.value_or(schema.name + "View"));
-        occupied.insert(schema.const_view_name.value_or(schema.name + "ConstView"));
-        if (schema.field_mask_name.has_value()) {
-            occupied.insert(*schema.field_mask_name);
-            occupied.insert(*schema.field_enum_name);
-        }
-        if (schema.single_allocation.has_value()) {
-            occupied.insert(*schema.single_allocation);
-            occupied.insert(*schema.single_allocation + "Storage");
-            occupied.insert(schema.name + "SingleLayout");
-            occupied.insert(schema.name + "SingleView");
-            occupied.insert(schema.name + "SingleConstView");
-            for (auto const& variant : schema.single_allocation_variants) {
-                occupied.insert(variant.name);
-                occupied.insert(variant.name + "Storage");
-            }
-        }
-        if (schema.fixed.has_value()) {
-            occupied.insert(schema.fixed->storage_name);
-            occupied.insert(schema.fixed->containers.begin(), schema.fixed->containers.end());
-        }
-    };
-    for (auto const& schema : module->structs) {
-        add_generated_names(schema);
-    }
+    auto occupied{soa_generated_type_names(*module)};
 
     auto const numbered_candidate = [](std::string const& base, std::size_t const suffix) {
         return suffix == 1 ? base : base + std::to_string(suffix);

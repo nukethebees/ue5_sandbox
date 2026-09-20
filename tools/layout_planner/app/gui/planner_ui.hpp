@@ -257,6 +257,9 @@ class PlannerUi {
     std::array<char, 128> soa_member_type_{};
     std::array<char, 128> soa_member_fixed_schema_{};
     std::array<char, 128> soa_member_nested_schema_{};
+    std::array<char, 128> soa_fixed_storage_name_{};
+    std::vector<std::array<char, 128>> soa_fixed_container_names_;
+    std::optional<std::size_t> soa_fixed_container_index_;
     std::vector<std::array<char, 128>> soa_mask_dimension_names_;
     std::vector<std::array<char, 128>> soa_mask_dimension_extents_;
     std::optional<std::size_t> soa_mask_dimension_index_;
