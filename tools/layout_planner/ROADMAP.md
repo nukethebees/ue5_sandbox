@@ -38,6 +38,11 @@ overflow-safe aggregate bytes, unused bits, minimum cache lines, and minimum pag
 page sizes now come from an explicit x86/x86-64 baseline profile with provenance; unknown profile
 facts remain unknown rather than falling back to analyzer literals.
 
+Enum inspection now derives literal and implicit value domains, count-sentinel code use, minimum
+semantic bit width, target-backed signed/unsigned fit, and unused backing codes. General initializer
+expressions remain explicitly unknown. Durable explicit-width/value-domain enum authoring remains a
+future shared-schema change rather than planner-only metadata.
+
 ## 1. Editable document and command foundation
 
 - Own a mutable draft of the validated LispB declarations.

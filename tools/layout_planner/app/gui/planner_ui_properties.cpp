@@ -120,6 +120,52 @@ void PlannerUi::draw_properties_panel() {
         if (enumeration->count.has_value()) {
             ImGui::Text("Count sentinel: %s", enumeration->count->c_str());
         }
+        if (enum_domain_.has_value()) {
+            auto const& domain{*enum_domain_};
+            ImGui::SeparatorText("Value domain");
+            ImGui::Text("Live symbols: %llu",
+                        static_cast<unsigned long long>(domain.live_value_count));
+            ImGui::Text("Reserved/count symbols: %llu",
+                        static_cast<unsigned long long>(domain.reserved_value_count));
+            if (domain.minimum_value.has_value() && domain.maximum_value.has_value()) {
+                auto const minimum{format_enum_code(*domain.minimum_value)};
+                auto const maximum{format_enum_code(*domain.maximum_value)};
+                ImGui::Text("Known range: %s .. %s", minimum.c_str(), maximum.c_str());
+            } else {
+                ImGui::TextDisabled("Known range: Unknown");
+            }
+            if (domain.signed_domain.has_value()) {
+                ImGui::Text("Domain: %s", *domain.signed_domain ? "signed" : "unsigned");
+            } else {
+                ImGui::TextDisabled("Domain: Unknown");
+            }
+            if (domain.minimum_required_bits.has_value()) {
+                ImGui::Text("Minimum semantic width: %u bits", *domain.minimum_required_bits);
+            } else {
+                ImGui::TextDisabled("Minimum semantic width: Unknown");
+            }
+            if (domain.backing_bits.has_value()) {
+                ImGui::Text("Current physical backing: %s (%llu bits)",
+                            domain.backing_type.c_str(),
+                            static_cast<unsigned long long>(*domain.backing_bits));
+            } else {
+                ImGui::Text("Current physical backing: %s (Unknown size)",
+                            domain.backing_type.c_str());
+            }
+            if (domain.backing_can_represent_domain.has_value()) {
+                ImGui::Text("Backing fit: %s", *domain.backing_can_represent_domain ? "yes" : "NO");
+            } else {
+                ImGui::TextDisabled("Backing fit: Unknown");
+            }
+            if (domain.unused_backing_codes.has_value()) {
+                ImGui::Text("Unused backing codes: %llu",
+                            static_cast<unsigned long long>(*domain.unused_backing_codes));
+                ImGui::TextDisabled("Code-space inefficiency; not allocated byte waste.");
+            } else {
+                ImGui::TextDisabled("Unused backing codes: Unknown");
+            }
+            draw_diagnostics(domain.diagnostics);
+        }
         auto const revision_before_edit{workspace_.revision()};
         draw_enum_editor(node, *enumeration);
         if (workspace_.revision() != revision_before_edit) {

@@ -24,6 +24,38 @@ struct NumericDelta {
 auto numeric_delta(std::optional<std::uint64_t> baseline, std::optional<std::uint64_t> variant)
     -> std::optional<NumericDelta>;
 
+struct EnumCodeValue {
+    bool negative{};
+    std::uint64_t magnitude{};
+
+    auto operator==(EnumCodeValue const&) const -> bool = default;
+};
+
+auto format_enum_code(EnumCodeValue value) -> std::string;
+
+struct EnumeratorAnalysis {
+    std::string name;
+    bool count_sentinel{};
+    std::optional<EnumCodeValue> code;
+};
+
+struct EnumDomainAnalysis {
+    lispb::schema::TypeId type;
+    std::string backing_type;
+    std::optional<TypeFacts> backing_facts;
+    std::optional<std::uint64_t> backing_bits;
+    std::uint64_t live_value_count{};
+    std::uint64_t reserved_value_count{};
+    std::optional<EnumCodeValue> minimum_value;
+    std::optional<EnumCodeValue> maximum_value;
+    std::optional<bool> signed_domain;
+    std::optional<std::uint32_t> minimum_required_bits;
+    std::optional<bool> backing_can_represent_domain;
+    std::optional<std::uint64_t> unused_backing_codes;
+    std::vector<EnumeratorAnalysis> enumerators;
+    std::vector<Diagnostic> diagnostics;
+};
+
 struct PackedFieldAnalysis {
     std::string name;
     lispb::schema::TypeId semantic_type;
@@ -100,6 +132,9 @@ struct SoaAnalysis {
 
 class Analyzer {
   public:
+    static auto analyze_enum(lispb::schema::TypeGraph const& types,
+                             lispb::schema::TypeId type,
+                             AbiProfile const& abi) -> EnumDomainAnalysis;
     static auto analyze_packed(lispb::schema::TypeGraph const& types,
                                lispb::schema::TypeId type,
                                Variant const& variant,

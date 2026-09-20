@@ -630,6 +630,7 @@ void PlannerUi::refresh_analysis() {
         cached_comparison_b_variant_id_ == comparison_b_variant_id_) {
         return;
     }
+    enum_domain_.reset();
     baseline_packed_.reset();
     active_packed_.reset();
     packed_variants_.clear();
@@ -653,7 +654,9 @@ void PlannerUi::refresh_analysis() {
     auto const& comparison_a{*workspace_.variant(comparison_a_variant_id_)};
     auto const& comparison_b{*workspace_.variant(comparison_b_variant_id_)};
     auto const element_count{workspace_.element_count()};
-    if (std::holds_alternative<PackedType>(definition)) {
+    if (std::holds_alternative<EnumType>(definition)) {
+        enum_domain_ = Analyzer::analyze_enum(workspace_.types(), *selected_type_, abi_);
+    } else if (std::holds_alternative<PackedType>(definition)) {
         baseline_packed_ = Analyzer::analyze_packed(
             workspace_.types(), *selected_type_, baseline, abi_, element_count);
         active_packed_ = Analyzer::analyze_packed(

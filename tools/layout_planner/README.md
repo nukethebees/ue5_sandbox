@@ -74,6 +74,11 @@ standard-library vector SoAs. Enum-backed packed fields retain links to their en
 physical facts are derived separately from declared underlying or storage types. Unknown types and
 unsupported schemas are reported as diagnostics rather than guessed.
 
+Enum Properties derives the known numeric domain from literal and implicit values. It separates
+live symbols from the count sentinel, reports the minimum semantic bit width and unused backing
+codes, and validates the domain against explicit signed/unsigned target facts. Initializer
+expressions that cannot be evaluated safely remain Unknown with an explanatory diagnostic.
+
 Column diagrams show aggregate payload only. They do not imply that standard-library vectors share
 an allocation or model allocator overhead, capacity slack, or generated single-allocation gaps.
 

@@ -98,6 +98,7 @@ class PlannerUi {
     std::optional<lispb::schema::TypeId> cached_type_;
     std::uint64_t cached_comparison_a_variant_id_{std::numeric_limits<std::uint64_t>::max()};
     std::uint64_t cached_comparison_b_variant_id_{std::numeric_limits<std::uint64_t>::max()};
+    std::optional<layout::EnumDomainAnalysis> enum_domain_;
     std::optional<layout::PackedAnalysis> baseline_packed_;
     std::optional<layout::PackedAnalysis> active_packed_;
     std::vector<std::pair<std::uint64_t, layout::PackedAnalysis>> packed_variants_;

@@ -55,13 +55,16 @@ and declaration ownership rather than inventing type-kind folders.
 
 ## Supported analysis and limits
 
-The planner supports packed storage type/bit-range analysis plus flat standard-library SoA and
-vector-SoA payload analysis. Packed analysis reports overflow-safe aggregate storage, payload bits,
-unused packed bits, cache lines, and pages at a selected element count. The built-in x86/x86-64
-baseline ABI profile explicitly provides 64-byte cache-line and 4 KiB page facts with provenance,
-along with common fixed-width integer, floating-point, and Boolean type facts. SoA cache tiling now
-consumes the same profile fact rather than an analyzer constant. Missing profile facts, unknown
-physical types, and nested SoAs produce diagnostics and Unknown results rather than guesses.
+The planner supports enum value-domain analysis, packed storage type/bit-range analysis, and flat
+standard-library SoA/vector-SoA payload analysis. Enum analysis derives implicit literal values,
+count-sentinel code use, minimum semantic width, backing fit, and unused backing codes; arbitrary
+initializer expressions remain explicitly unknown. Packed analysis reports overflow-safe aggregate
+storage, payload bits, unused packed bits, cache lines, and pages at a selected element count. The
+built-in x86/x86-64 baseline ABI profile explicitly provides 64-byte cache-line and 4 KiB page facts
+with provenance, along with common fixed-width integer signedness, floating-point, and Boolean type
+facts. SoA cache tiling now consumes the same profile fact rather than an analyzer constant. Missing
+profile facts, unknown physical types, and nested SoAs produce diagnostics and Unknown results
+rather than guesses.
 
 AoS padding, arbitrary ABI probing, persistent plans, LispB write-back, chunking/AoSoA, arena
 planning, performance prediction, and live-process inspection are intentionally deferred. A later

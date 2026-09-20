@@ -97,6 +97,128 @@ auto soa_type(std::vector<std::pair<std::string, std::string>> columns = {{"min_
     return {std::move(types), type};
 }
 
+auto enum_domain_type(std::vector<codegen::EnumeratorSchema> values,
+                      std::optional<std::string> count = std::nullopt,
+                      std::string underlying = "std::uint8_t") -> TypeFixture {
+    codegen::EnumModuleSchema module{};
+    module.settings.name = "domains";
+    module.settings.header = "Domains.h";
+    codegen::EnumSchema enumeration{};
+    enumeration.name = "Domain";
+    enumeration.underlying_type.name = std::move(underlying);
+    enumeration.values = std::move(values);
+    enumeration.count = std::move(count);
+    module.enums.push_back(std::move(enumeration));
+    codegen::Manifest manifest{};
+    manifest.schema_version = codegen::manifest_schema_version;
+    manifest.modules = {std::move(module)};
+    auto types{lispb::schema::resolve_type_graph(manifest)};
+    auto const type{*types.find_declared("domains", "Domain")};
+    return {std::move(types), type};
+}
+
+auto enum_value(std::string name, std::optional<std::string> initializer)
+    -> codegen::EnumeratorSchema {
+    return {.name = std::move(name),
+            .initializer = std::move(initializer),
+            .display_name = std::nullopt,
+            .hidden = false,
+            .serialized_name = std::nullopt};
+}
+
+TEST(EnumAnalyzer, DerivesUnsignedImplicitValuesAndCountSentinelWidth) {
+    auto const fixture{enum_domain_type({enum_value("First", "0"),
+                                         enum_value("Second", std::nullopt),
+                                         enum_value("Seventh", "7"),
+                                         enum_value("Count", std::nullopt)},
+                                        "Count")};
+
+    auto const analysis{
+        Analyzer::analyze_enum(fixture.types, fixture.type, AbiProfile::host_common())};
+
+    EXPECT_EQ(analysis.live_value_count, 3);
+    EXPECT_EQ(analysis.reserved_value_count, 1);
+    ASSERT_EQ(analysis.enumerators.size(), 4U);
+    EXPECT_EQ(analysis.enumerators[1].code, (EnumCodeValue{.negative = false, .magnitude = 1}));
+    EXPECT_EQ(analysis.enumerators[3].code, (EnumCodeValue{.negative = false, .magnitude = 8}));
+    EXPECT_EQ(analysis.minimum_value, (EnumCodeValue{.negative = false, .magnitude = 0}));
+    EXPECT_EQ(analysis.maximum_value, (EnumCodeValue{.negative = false, .magnitude = 8}));
+    EXPECT_EQ(analysis.signed_domain, false);
+    EXPECT_EQ(analysis.minimum_required_bits, 4);
+    EXPECT_EQ(analysis.backing_bits, 8);
+    EXPECT_EQ(analysis.backing_can_represent_domain, true);
+    EXPECT_EQ(analysis.unused_backing_codes, 252);
+    EXPECT_TRUE(analysis.diagnostics.empty());
+}
+
+TEST(EnumAnalyzer, DerivesSignedTwosComplementWidth) {
+    auto const fixture{enum_domain_type(
+        {enum_value("Low", "-4"), enum_value("High", "+3")}, std::nullopt, "std::int8_t")};
+
+    auto const analysis{
+        Analyzer::analyze_enum(fixture.types, fixture.type, AbiProfile::host_common())};
+
+    EXPECT_EQ(analysis.minimum_value, (EnumCodeValue{.negative = true, .magnitude = 4}));
+    EXPECT_EQ(analysis.maximum_value, (EnumCodeValue{.negative = false, .magnitude = 3}));
+    EXPECT_EQ(analysis.signed_domain, true);
+    EXPECT_EQ(analysis.minimum_required_bits, 3);
+    EXPECT_EQ(analysis.backing_bits, 8);
+    EXPECT_EQ(analysis.backing_can_represent_domain, true);
+    EXPECT_EQ(analysis.unused_backing_codes, 254);
+    EXPECT_TRUE(analysis.diagnostics.empty());
+}
+
+TEST(EnumAnalyzer, KeepsExpressionAndDependentImplicitValuesUnknown) {
+    auto const fixture{
+        enum_domain_type({enum_value("Mask", "1 << 3"), enum_value("Next", std::nullopt)})};
+
+    auto const analysis{
+        Analyzer::analyze_enum(fixture.types, fixture.type, AbiProfile::host_common())};
+
+    EXPECT_FALSE(analysis.enumerators[0].code.has_value());
+    EXPECT_FALSE(analysis.enumerators[1].code.has_value());
+    EXPECT_FALSE(analysis.minimum_required_bits.has_value());
+    EXPECT_FALSE(analysis.unused_backing_codes.has_value());
+    EXPECT_EQ(analysis.diagnostics.size(), 2U);
+}
+
+TEST(EnumAnalyzer, AcceptsFullUnsignedWidthAndDiagnosesImplicitOverflow) {
+    auto const fixture{enum_domain_type(
+        {enum_value("Maximum", "0xffffffffffffffffULL"), enum_value("Overflow", std::nullopt)},
+        std::nullopt,
+        "std::uint64_t")};
+
+    auto const analysis{
+        Analyzer::analyze_enum(fixture.types, fixture.type, AbiProfile::host_common())};
+
+    EXPECT_EQ(
+        analysis.enumerators[0].code,
+        (EnumCodeValue{.negative = false, .magnitude = std::numeric_limits<std::uint64_t>::max()}));
+    EXPECT_FALSE(analysis.enumerators[1].code.has_value());
+    EXPECT_FALSE(analysis.minimum_required_bits.has_value());
+    EXPECT_FALSE(analysis.diagnostics.empty());
+}
+
+TEST(EnumAnalyzer, DiagnosesDomainsThatDoNotFitBackingSignedness) {
+    auto const signed_fixture{
+        enum_domain_type({enum_value("Value", "200")}, std::nullopt, "std::int8_t")};
+    auto const signed_analysis{Analyzer::analyze_enum(
+        signed_fixture.types, signed_fixture.type, AbiProfile::host_common())};
+
+    EXPECT_EQ(signed_analysis.minimum_required_bits, 8);
+    EXPECT_EQ(signed_analysis.backing_can_represent_domain, false);
+    EXPECT_FALSE(signed_analysis.diagnostics.empty());
+
+    auto const unsigned_fixture{
+        enum_domain_type({enum_value("Value", "-1")}, std::nullopt, "std::uint8_t")};
+    auto const unsigned_analysis{Analyzer::analyze_enum(
+        unsigned_fixture.types, unsigned_fixture.type, AbiProfile::host_common())};
+
+    EXPECT_EQ(unsigned_analysis.minimum_required_bits, 1);
+    EXPECT_EQ(unsigned_analysis.backing_can_represent_domain, false);
+    EXPECT_FALSE(unsigned_analysis.diagnostics.empty());
+}
+
 TEST(PackedAnalyzer, ReportsEntityUniqueIdLayout) {
     auto const fixture{entity_id_type()};
     auto const analysis{Analyzer::analyze_packed(
@@ -200,7 +322,11 @@ TEST(PackedAnalyzer, ReportsOverflowSafeAggregateMemoryAtSelectedScale) {
 TEST(PackedAnalyzer, KeepsUnknownTargetMemoryFactsUnknown) {
     auto const fixture{entity_id_type()};
     AbiProfile abi{"unknown memory"};
-    abi.set("std::uint32_t", {.size_bytes = 4, .alignment_bytes = 4, .unsigned_value_bits = 32});
+    abi.set("std::uint32_t",
+            {.size_bytes = 4,
+             .alignment_bytes = 4,
+             .integer_signed = false,
+             .unsigned_value_bits = 32});
 
     auto const analysis{Analyzer::analyze_packed(fixture.types, fixture.type, Variant{}, abi, 10)};
 
@@ -267,8 +393,16 @@ TEST(SoaAnalyzer, AppliesCapacityAndColumnTypeOverrides) {
 TEST(SoaAnalyzer, ReportsCacheLineTilingForNonDivisibleAndOversizedElements) {
     auto const fixture{soa_type({{"three", "three_bytes"}, {"wide_values", "wide"}})};
     AbiProfile abi{"test"};
-    abi.set("three_bytes", {.size_bytes = 3, .alignment_bytes = 1, .unsigned_value_bits = {}});
-    abi.set("wide", {.size_bytes = 80, .alignment_bytes = 16, .unsigned_value_bits = {}});
+    abi.set("three_bytes",
+            {.size_bytes = 3,
+             .alignment_bytes = 1,
+             .integer_signed = std::nullopt,
+             .unsigned_value_bits = {}});
+    abi.set("wide",
+            {.size_bytes = 80,
+             .alignment_bytes = 16,
+             .integer_signed = std::nullopt,
+             .unsigned_value_bits = {}});
     abi.set_memory_facts(
         {.cache_line_bytes = 64, .page_bytes = 4'096, .provenance = "test profile"});
 
@@ -324,12 +458,19 @@ TEST(AbiProfile, ExposesExplicitX86MemoryFactsWithProvenance) {
     EXPECT_EQ(abi.memory_facts().cache_line_bytes, 64);
     EXPECT_EQ(abi.memory_facts().page_bytes, 4'096);
     EXPECT_FALSE(abi.memory_facts().provenance.empty());
+    EXPECT_EQ(abi.find("std::uint8_t")->integer_signed, false);
+    EXPECT_EQ(abi.find("std::int8_t")->integer_signed, true);
+    EXPECT_FALSE(abi.find("float")->integer_signed.has_value());
 }
 
 TEST(SoaAnalyzer, LeavesCacheStatisticsUnknownWithoutTargetFact) {
     auto const fixture{soa_type({{"values", "four"}})};
     AbiProfile abi{"unknown memory"};
-    abi.set("four", {.size_bytes = 4, .alignment_bytes = 4, .unsigned_value_bits = {}});
+    abi.set("four",
+            {.size_bytes = 4,
+             .alignment_bytes = 4,
+             .integer_signed = std::nullopt,
+             .unsigned_value_bits = {}});
 
     auto const analysis{Analyzer::analyze_soa(fixture.types, fixture.type, Variant{}, abi, 100)};
 
@@ -355,6 +496,7 @@ TEST(SoaAnalyzer, ReportsIntegerOverflow) {
     abi.set("huge",
             {.size_bytes = std::numeric_limits<std::uint64_t>::max(),
              .alignment_bytes = 1,
+             .integer_signed = std::nullopt,
              .unsigned_value_bits = std::nullopt});
 
     auto const analysis{Analyzer::analyze_soa(fixture.types, fixture.type, Variant{}, abi, 2)};

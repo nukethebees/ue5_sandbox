@@ -2,7 +2,11 @@
 
 #include <codegen/schema.h>
 
+#include <cctype>
+#include <charconv>
 #include <limits>
+#include <set>
+#include <string_view>
 #include <utility>
 
 namespace ioj::layout {
@@ -32,6 +36,117 @@ auto maximum_unsigned_value(std::uint32_t const bits) -> std::optional<std::uint
         return std::numeric_limits<std::uint64_t>::max();
     }
     return (std::uint64_t{1} << bits) - 1;
+}
+
+auto parse_enum_code(std::string_view text) -> std::optional<EnumCodeValue> {
+    while (!text.empty() && std::isspace(static_cast<unsigned char>(text.front())) != 0) {
+        text.remove_prefix(1);
+    }
+    while (!text.empty() && std::isspace(static_cast<unsigned char>(text.back())) != 0) {
+        text.remove_suffix(1);
+    }
+    bool negative{};
+    if (text.starts_with('+') || text.starts_with('-')) {
+        negative = text.front() == '-';
+        text.remove_prefix(1);
+    }
+    auto base{10};
+    if (text.starts_with("0x") || text.starts_with("0X")) {
+        base = 16;
+        text.remove_prefix(2);
+    }
+    while (!text.empty() &&
+           (text.back() == 'u' || text.back() == 'U' || text.back() == 'l' || text.back() == 'L')) {
+        text.remove_suffix(1);
+    }
+    if (text.empty()) {
+        return std::nullopt;
+    }
+    std::string digits;
+    digits.reserve(text.size());
+    for (auto const character : text) {
+        if (character != '\'') {
+            digits += character;
+        }
+    }
+    std::uint64_t magnitude{};
+    auto const [end, error]{
+        std::from_chars(digits.data(), digits.data() + digits.size(), magnitude, base)};
+    if (error != std::errc{} || end != digits.data() + digits.size()) {
+        return std::nullopt;
+    }
+    return EnumCodeValue{.negative = negative && magnitude != 0, .magnitude = magnitude};
+}
+
+auto next_enum_code(EnumCodeValue const value) -> std::optional<EnumCodeValue> {
+    if (value.negative) {
+        return value.magnitude == 1
+                 ? std::optional{EnumCodeValue{.negative = false, .magnitude = 0}}
+                 : std::optional{EnumCodeValue{.negative = true, .magnitude = value.magnitude - 1}};
+    }
+    if (value.magnitude == std::numeric_limits<std::uint64_t>::max()) {
+        return std::nullopt;
+    }
+    return EnumCodeValue{.negative = false, .magnitude = value.magnitude + 1};
+}
+
+auto enum_code_less(EnumCodeValue const left, EnumCodeValue const right) -> bool {
+    if (left.negative != right.negative) {
+        return left.negative;
+    }
+    return left.negative ? left.magnitude > right.magnitude : left.magnitude < right.magnitude;
+}
+
+auto minimum_enum_bits(EnumCodeValue const minimum, EnumCodeValue const maximum)
+    -> std::optional<std::uint32_t> {
+    if (!minimum.negative) {
+        auto bits{std::uint32_t{1}};
+        auto remaining{maximum.magnitude};
+        while (remaining > 1) {
+            remaining >>= 1;
+            ++bits;
+        }
+        return bits;
+    }
+    for (auto bits{std::uint32_t{1}}; bits <= 64; ++bits) {
+        auto const magnitude_limit{bits == 64 ? (std::uint64_t{1} << 63)
+                                              : (std::uint64_t{1} << (bits - 1))};
+        auto const positive_limit{magnitude_limit - 1};
+        if (minimum.magnitude <= magnitude_limit && !maximum.negative &&
+            maximum.magnitude <= positive_limit) {
+            return bits;
+        }
+        if (minimum.magnitude <= magnitude_limit && maximum.negative) {
+            return bits;
+        }
+    }
+    return std::nullopt;
+}
+
+auto enum_domain_fits_backing(EnumCodeValue const minimum,
+                              EnumCodeValue const maximum,
+                              TypeFacts const& facts,
+                              std::uint64_t const backing_bits) -> std::optional<bool> {
+    if (!facts.integer_signed.has_value()) {
+        return std::nullopt;
+    }
+    if (!*facts.integer_signed) {
+        if (!facts.unsigned_value_bits.has_value()) {
+            return std::nullopt;
+        }
+        auto const maximum_value{maximum_unsigned_value(*facts.unsigned_value_bits)};
+        return maximum_value.has_value() && !minimum.negative && !maximum.negative &&
+               maximum.magnitude <= *maximum_value;
+    }
+    if (backing_bits == 0 || backing_bits > 64) {
+        return std::nullopt;
+    }
+    auto const negative_magnitude_limit{
+        backing_bits == 64 ? (std::uint64_t{1} << 63) : (std::uint64_t{1} << (backing_bits - 1))};
+    auto const positive_limit{negative_magnitude_limit - 1};
+    auto const minimum_fits{!minimum.negative || minimum.magnitude <= negative_magnitude_limit};
+    auto const maximum_fits{maximum.negative || maximum.magnitude <= positive_limit};
+    return minimum_fits && maximum_fits;
 }
 
 auto effective_field_width(lispb::schema::TypeId const type,
@@ -132,6 +247,137 @@ auto numeric_delta(std::optional<std::uint64_t> const baseline,
                                                      : std::optional<double>{
                                                            static_cast<double>(magnitude) * 100.0 /
                                                            static_cast<double>(*baseline)}};
+}
+
+auto format_enum_code(EnumCodeValue const value) -> std::string {
+    return (value.negative ? "-" : "") + std::to_string(value.magnitude);
+}
+
+auto Analyzer::analyze_enum(lispb::schema::TypeGraph const& types,
+                            lispb::schema::TypeId const type,
+                            AbiProfile const& abi) -> EnumDomainAnalysis {
+    auto const& enumeration{std::get<lispb::schema::EnumType>(types.type(type).definition)};
+    auto const backing_type{physical_type_spelling(types, enumeration.underlying_type.type)
+                                .value_or(enumeration.underlying_type.cpp_type.spelling)};
+    EnumDomainAnalysis result{.type = type,
+                              .backing_type = backing_type,
+                              .backing_facts = abi.find(backing_type),
+                              .backing_bits = std::nullopt,
+                              .live_value_count = 0,
+                              .reserved_value_count = 0,
+                              .minimum_value = std::nullopt,
+                              .maximum_value = std::nullopt,
+                              .signed_domain = std::nullopt,
+                              .minimum_required_bits = std::nullopt,
+                              .backing_can_represent_domain = std::nullopt,
+                              .unused_backing_codes = std::nullopt,
+                              .enumerators = {},
+                              .diagnostics = {}};
+    if (!result.backing_facts.has_value()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::warning,
+             "Unknown physical facts for enum backing type '" + backing_type + "'."});
+    } else {
+        result.backing_bits = checked_multiply(result.backing_facts->size_bytes, 8);
+        if (!result.backing_bits.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, "Enum backing bit count overflows uint64."});
+        } else if (*result.backing_bits == 0) {
+            result.backing_bits.reset();
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, "Enum backing type has a zero-byte physical size."});
+        }
+    }
+
+    std::optional<EnumCodeValue> previous;
+    bool has_prior_enumerator{};
+    bool all_codes_known{true};
+    std::set<std::pair<bool, std::uint64_t>> distinct_codes;
+    result.enumerators.reserve(enumeration.enumerators.size());
+    for (auto const& enumerator : enumeration.enumerators) {
+        std::optional<EnumCodeValue> code;
+        if (enumerator.explicit_value.has_value()) {
+            code = parse_enum_code(*enumerator.explicit_value);
+            if (!code.has_value()) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::warning,
+                     "Enumerator '" + enumerator.name + "' uses non-literal initializer '" +
+                         *enumerator.explicit_value + "'; value-domain width is unknown."});
+            }
+        } else if (!has_prior_enumerator) {
+            code = EnumCodeValue{.negative = false, .magnitude = 0};
+        } else if (previous.has_value()) {
+            code = next_enum_code(*previous);
+            if (!code.has_value()) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Implicit value for enumerator '" + enumerator.name +
+                         "' overflows the supported 64-bit analysis range."});
+            }
+        } else {
+            result.diagnostics.push_back({DiagnosticSeverity::warning,
+                                          "Implicit value for enumerator '" + enumerator.name +
+                                              "' cannot be derived after an unknown initializer."});
+        }
+        has_prior_enumerator = true;
+
+        if (enumerator.count_sentinel) {
+            ++result.reserved_value_count;
+        } else {
+            ++result.live_value_count;
+        }
+        if (code.has_value()) {
+            previous = code;
+            distinct_codes.emplace(code->negative, code->magnitude);
+            if (!result.minimum_value.has_value() || enum_code_less(*code, *result.minimum_value)) {
+                result.minimum_value = code;
+            }
+            if (!result.maximum_value.has_value() || enum_code_less(*result.maximum_value, *code)) {
+                result.maximum_value = code;
+            }
+        } else {
+            previous.reset();
+            all_codes_known = false;
+        }
+        result.enumerators.push_back(
+            {.name = enumerator.name, .count_sentinel = enumerator.count_sentinel, .code = code});
+    }
+
+    if (all_codes_known && result.minimum_value.has_value() && result.maximum_value.has_value()) {
+        result.signed_domain = result.minimum_value->negative;
+        result.minimum_required_bits =
+            minimum_enum_bits(*result.minimum_value, *result.maximum_value);
+        if (!result.minimum_required_bits.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Enum value domain exceeds the supported signed 64-bit analysis range."});
+        }
+        if (result.backing_facts.has_value() && result.backing_bits.has_value()) {
+            result.backing_can_represent_domain = enum_domain_fits_backing(*result.minimum_value,
+                                                                           *result.maximum_value,
+                                                                           *result.backing_facts,
+                                                                           *result.backing_bits);
+            if (!result.backing_can_represent_domain.has_value()) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::warning,
+                     "Integer range facts are unavailable for enum backing type '" + backing_type +
+                         "'; backing fit is unknown."});
+            } else if (!*result.backing_can_represent_domain) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Enum value domain " + format_enum_code(*result.minimum_value) + " .. " +
+                         format_enum_code(*result.maximum_value) + " does not fit backing type '" +
+                         backing_type + "'."});
+            }
+        }
+        if (result.backing_bits.has_value() && *result.backing_bits < 64) {
+            auto const backing_codes{std::uint64_t{1} << *result.backing_bits};
+            if (distinct_codes.size() <= backing_codes) {
+                result.unused_backing_codes = backing_codes - distinct_codes.size();
+            }
+        }
+    }
+    return result;
 }
 
 auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,

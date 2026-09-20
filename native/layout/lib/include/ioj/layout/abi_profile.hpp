@@ -10,6 +10,7 @@ namespace ioj::layout {
 struct TypeFacts {
     std::uint64_t size_bytes{};
     std::uint64_t alignment_bytes{};
+    std::optional<bool> integer_signed;
     std::optional<std::uint32_t> unsigned_value_bits;
 
     auto operator==(TypeFacts const&) const -> bool = default;

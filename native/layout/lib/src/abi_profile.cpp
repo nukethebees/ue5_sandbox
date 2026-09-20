@@ -13,6 +13,7 @@ template <typename T>
 auto integer_facts() -> TypeFacts {
     TypeFacts facts{.size_bytes = sizeof(T),
                     .alignment_bytes = alignof(T),
+                    .integer_signed = std::is_signed_v<T>,
                     .unsigned_value_bits = std::nullopt};
     if constexpr (std::is_unsigned_v<T>) {
         facts.unsigned_value_bits = std::numeric_limits<T>::digits;
@@ -24,6 +25,7 @@ template <typename T>
 auto value_facts() -> TypeFacts {
     return {.size_bytes = sizeof(T),
             .alignment_bytes = alignof(T),
+            .integer_signed = std::nullopt,
             .unsigned_value_bits = std::nullopt};
 }
 
@@ -56,6 +58,7 @@ auto AbiProfile::host_common() -> AbiProfile {
     result.set("bool",
                TypeFacts{.size_bytes = sizeof(bool),
                          .alignment_bytes = alignof(bool),
+                         .integer_signed = false,
                          .unsigned_value_bits = 1});
     return result;
 }
