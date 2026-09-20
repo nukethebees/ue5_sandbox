@@ -20,7 +20,12 @@ class TemporarySchema {
                      ("editable-lispb-schema-" + std::to_string(++sequence));
         std::filesystem::create_directories(directory_);
         write("types.lispb", R"((type existing
-  :spelling "authored::Existing")
+  :spelling "authored::Existing"
+  :header "AuthoredEnums.h")
+
+(type helper
+  :spelling "authored::Helper"
+  :header "AuthoredHelper.h")
 )");
         write("modules.lispb", R"((enum-module authored_enums
   :header "AuthoredEnums.h"
@@ -4034,6 +4039,93 @@ TEST(EditableSchemaDocument, AuthorsOrdersAndEditsSoaFunctionParameters) {
     EXPECT_EQ(schema->functions.front().parameters[1].name, "count");
     EXPECT_EQ(schema->functions.front().parameters[1].type.name, "std::uint16_t");
     EXPECT_EQ(schema->functions.front().parameters[1].default_value, "7");
+}
+
+TEST(EditableSchemaDocument, AuthorsOrdersAndEditsSoaFunctionBodiesAndDependencies) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+    auto const original_revision{document.revision()};
+
+    auto replacement{*document.soa_schema(declaration)};
+    replacement.functions.front().dependencies = {"missing"};
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
+    ASSERT_FALSE(applied.has_value());
+    EXPECT_EQ(document.revision(), original_revision);
+    EXPECT_TRUE(document.soa_schema(declaration)->functions.front().dependencies.empty());
+
+    replacement = *document.soa_schema(declaration);
+    auto& function{replacement.functions.front()};
+    function.body_lines.push_back("values.shrink_to_fit();");
+    function.dependencies = {"existing", "helper"};
+    applied =
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.soa_schema(declaration)->functions.front().body_lines,
+              std::vector<std::string>{"values.clear();"});
+    EXPECT_TRUE(document.soa_schema(declaration)->functions.front().dependencies.empty());
+    ASSERT_TRUE(document.redo().value());
+
+    replacement = *document.soa_schema(declaration);
+    replacement.functions.front().body_lines.push_back(
+        replacement.functions.front().body_lines.back());
+    replacement.functions.front().dependencies.push_back(
+        replacement.functions.front().dependencies.back());
+    applied =
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    replacement = *document.soa_schema(declaration);
+    auto& body_lines{replacement.functions.front().body_lines};
+    auto& dependencies{replacement.functions.front().dependencies};
+    std::rotate(body_lines.begin(), body_lines.begin() + 1, body_lines.end());
+    body_lines.erase(body_lines.begin() + 1);
+    std::rotate(dependencies.begin(), dependencies.begin() + 1, dependencies.end());
+    dependencies.erase(dependencies.begin() + 1);
+    applied =
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    replacement = *document.soa_schema(declaration);
+    replacement.functions.front().body_lines.erase(
+        replacement.functions.front().body_lines.begin() + 1);
+    replacement.functions.front().dependencies.erase(
+        replacement.functions.front().dependencies.begin() + 1);
+    applied =
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto const* schema{document.soa_schema(declaration)};
+    EXPECT_EQ(schema->functions.front().body_lines,
+              std::vector<std::string>{"values.shrink_to_fit();"});
+    EXPECT_EQ(schema->functions.front().dependencies, std::vector<std::string>{"helper"});
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& source{preview->front().updated};
+    EXPECT_NE(source.find(":body (\"values.shrink_to_fit();\")"), std::string::npos);
+    EXPECT_NE(source.find(":dependencies (\"helper\")"), std::string::npos);
+    EXPECT_NE(source.find("; Keep the custom function note."), std::string::npos);
+    EXPECT_NE(source.find("; Keep the count parameter note."), std::string::npos);
+    EXPECT_NE(source.find("(parameter count std::uint32_t :default \"0\")"), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    schema = reloaded.soa_schema(reloaded_declaration);
+    EXPECT_EQ(schema->functions.front().body_lines,
+              std::vector<std::string>{"values.shrink_to_fit();"});
+    EXPECT_EQ(schema->functions.front().dependencies, std::vector<std::string>{"helper"});
+    EXPECT_EQ(schema->functions.front().parameters.front().name, "count");
 }
 
 TEST(EditableSchemaDocument, PreservesSoaMembersAndAdvancedFormsForStructuralEdits) {

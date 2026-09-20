@@ -310,11 +310,13 @@ delete, button/drag reorder, name, return type, const/noexcept/static qualifiers
 placement all submit ordinary SoA document commands. The selected function's parameters have a flat
 ordered table with add, metadata-preserving duplicate, delete, button/drag reorder, direct name/type
 editing, shared type picking, and optional default expressions. Shared validation enforces nonblank
-defaults and C++ trailing-default order before a document command is accepted. Bodies, dependencies,
-trailing returns, templates, and constraints remain visibly inspectable and are preserved exactly by
-these edits pending their own focused editors. Stable uniquely named function and parameter rows
-preserve surrounding source comments and unchanged body text through structural edits; ambiguous
-overloads and raw-body forms retain safe canonical fallback.
+defaults and C++ trailing-default order before a document command is accepted. Body fragments and
+registered dependency keys are separate flat ordered editors with resizable direct text input,
+add/duplicate/delete, and button/drag reorder; unknown or blank dependency keys are rejected by the
+shared validator. Trailing returns, templates, and constraints remain visibly inspectable and are
+preserved exactly pending their focused editor. Stable uniquely named function and parameter rows
+preserve surrounding source comments; list-form body/dependency properties patch locally while raw
+`#cpp` bodies retain safe canonical fallback.
 
 - Create standard-library SoA declarations.
 - Add, remove, duplicate, and reorder columns.

@@ -285,7 +285,7 @@ void validate_export_specifier(std::optional<std::string> const& value,
 void validate_dependency(std::string const& key,
                          std::map<std::string, CppType> const& types,
                          std::string const& context) {
-    require_value(key, context + " dependency");
+    require_non_blank_value(key, context + " dependency");
     auto const found{types.find(key)};
     if (found == types.end() || found->second.dependencies.empty()) {
         throw std::invalid_argument{context + " has unknown dependency: " + key};

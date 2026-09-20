@@ -1114,6 +1114,15 @@ TEST(Validation, RejectsUnknownCustomSoaDependencies) {
     }};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_soa_module();
+    module.structs.front().functions = {FunctionSchema{
+        .name = "reset_values",
+        .return_type = TypeRef{"void"},
+        .dependencies = {" \t"},
+    }};
+
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {

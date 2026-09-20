@@ -268,6 +268,11 @@ class PlannerUi {
     std::vector<std::array<char, 128>> soa_parameter_types_;
     std::vector<std::array<char, 128>> soa_parameter_defaults_;
     std::optional<std::size_t> soa_parameter_index_;
+    std::vector<std::string> soa_function_body_lines_;
+    std::optional<std::size_t> soa_function_body_index_;
+    std::vector<std::string> soa_function_dependencies_;
+    std::optional<std::size_t> soa_function_dependency_index_;
+    std::string soa_new_function_dependency_;
     std::array<char, 128> soa_view_name_{};
     std::array<char, 128> soa_const_view_name_{};
     std::array<char, 128> soa_single_allocation_name_{};

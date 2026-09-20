@@ -1955,11 +1955,10 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
         auto const body{function.body_lines.empty()
                             ? std::nullopt
                             : std::optional{render_quoted_values(function.body_lines)}};
-        auto const dependencies{function.dependencies.empty()
-                                    ? std::nullopt
-                                    : std::optional{render_quoted_values(function.dependencies)}};
-        if (!property_matches(source, "body", body) ||
-            !property_matches(source, "dependencies", dependencies) ||
+        auto const* source_body{source_property(source, "body")};
+        if ((source_body != nullptr &&
+             source_body->token.kind == codegen::sexpr::TokenKind::raw_literal &&
+             !property_matches(source, "body", body)) ||
             !property_matches(source,
                               "trailing-return-type",
                               function.trailing_return_type.has_value()
@@ -2194,7 +2193,16 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                                    function_replacements)) {
                 return std::nullopt;
             }
-            auto const function_properties{std::array<SourceProperty, 5>{
+            auto const body{function.body_lines.empty()
+                                ? std::nullopt
+                                : std::optional{render_quoted_values(function.body_lines)}};
+            auto const dependencies{
+                function.dependencies.empty()
+                    ? std::nullopt
+                    : std::optional{render_quoted_values(function.dependencies)}};
+            auto const function_properties{std::array<SourceProperty, 7>{
+                std::pair{"body", body},
+                std::pair{"dependencies", dependencies},
                 std::pair{"const",
                           function.is_const ? std::optional<std::string>{"true"} : std::nullopt},
                 std::pair{"noexcept",
