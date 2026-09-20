@@ -5,6 +5,7 @@
 #include <SpaceGame/settings/GameSettingsSubsystem.h>
 
 #include <CQTest.h>
+#include <Engine/GameInstance.h>
 
 TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
 {
@@ -202,7 +203,8 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
 
     TEST_METHOD(RuntimeFlightModelEditsAreValidatedAndMarkedCustom)
     {
-        auto* const settings{NewObject<ml::ioj::UGameSettingsSubsystem>()};
+        auto* const game_instance{NewObject<UGameInstance>()};
+        auto* const settings{NewObject<ml::ioj::UGameSettingsSubsystem>(game_instance)};
         int32 change_count{};
         settings->flight_model_config_changed.AddLambda([&change_count] { ++change_count; });
 
@@ -273,7 +275,8 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
         using ::ioj::sim::player::TranslationSemantic;
         using ml::ioj::EFlightModelTranslationChannel;
 
-        auto* const settings{NewObject<ml::ioj::UGameSettingsSubsystem>()};
+        auto* const game_instance{NewObject<UGameInstance>()};
+        auto* const settings{NewObject<ml::ioj::UGameSettingsSubsystem>(game_instance)};
         int32 change_count{};
         settings->flight_model_config_changed.AddLambda([&change_count] { ++change_count; });
 
