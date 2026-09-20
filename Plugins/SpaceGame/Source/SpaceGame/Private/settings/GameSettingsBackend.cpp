@@ -395,10 +395,10 @@ auto FGameSettingsBackend::options(EGameSettingOptionProvider const provider) co
         }
         case EGameSettingOptionProvider::PlayerShipFlightControlPresets: {
             result = {
-                make_option(EPlayerShipFlightControlPreset::ForwardSpeed, TEXT("Forward Speed")),
-                make_option(EPlayerShipFlightControlPreset::PlanarVelocity,
-                            TEXT("Planar Velocity")),
-                make_option(EPlayerShipFlightControlPreset::PlanarPower, TEXT("Planar Power")),
+                make_option(EPlayerShipFlightControlPreset::Starfox, TEXT("Starfox")),
+                make_option(EPlayerShipFlightControlPreset::Fighter, TEXT("Fighter")),
+                make_option(EPlayerShipFlightControlPreset::Skater, TEXT("Skater")),
+                make_option(EPlayerShipFlightControlPreset::Gunship, TEXT("Gunship")),
             };
             break;
         }

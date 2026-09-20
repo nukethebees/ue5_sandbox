@@ -152,6 +152,8 @@ void FShipControlContext::bind_actions() {
     bind_no_value(input_->move, Completed, &FShipControlContext::move_completed);
     bind_value(input_->lateral_move, Triggered, &FShipControlContext::set_lateral_move_input);
     bind_no_value(input_->lateral_move, Completed, &FShipControlContext::lateral_move_completed);
+    bind_value(input_->forward_move, Triggered, &FShipControlContext::set_forward_move_input);
+    bind_no_value(input_->forward_move, Completed, &FShipControlContext::forward_move_completed);
     bind_value(input_->vertical_move, Triggered, &FShipControlContext::set_vertical_move_input);
     bind_no_value(input_->vertical_move, Completed, &FShipControlContext::vertical_move_completed);
 
@@ -172,10 +174,14 @@ void FShipControlContext::bind_actions() {
         input_->ship_1d_control_y, Completed, &FShipControlContext::ship_2d_control_completed);
 
     bind_no_value(
-        input_->cycle_next_control_mode, Started, &FShipControlContext::cycle_next_control_mode);
-    bind_no_value(input_->cycle_previous_control_mode,
+        input_->select_flight_model_up, Started, &FShipControlContext::select_flight_model_up);
+    bind_no_value(input_->select_flight_model_right,
                   Started,
-                  &FShipControlContext::cycle_previous_control_mode);
+                  &FShipControlContext::select_flight_model_right);
+    bind_no_value(
+        input_->select_flight_model_down, Started, &FShipControlContext::select_flight_model_down);
+    bind_no_value(
+        input_->select_flight_model_left, Started, &FShipControlContext::select_flight_model_left);
     bind_no_value(input_->sample_and_hold, Started, &FShipControlContext::start_sampling);
     bind_no_value(input_->sample_and_hold, Completed, &FShipControlContext::stop_sampling);
     bind_no_value(input_->increase_desired_forward_velocity,
@@ -252,7 +258,8 @@ void FShipControlContext::neutralise_ship_input() {
     pointer_turn_position_ = FVector2D::ZeroVector;
     pointer_turn_engaged_ = false;
 
-    reset_power_gesture_state();
+    boost_press_active_ = false;
+    reset_flight_gesture_state();
 
     auto* const ship{ship_.Get()};
     if (!IsValid(ship) || !ship->has_simulation()) {
@@ -261,6 +268,7 @@ void FShipControlContext::neutralise_ship_input() {
 
     ship->set_move_input(FVector2D::ZeroVector);
     ship->set_lateral_move_input(0.f);
+    ship->set_forward_move_input(0.f);
     ship->set_vertical_move_input(0.f);
     ship->set_ship_2d_control(FVector2D::ZeroVector);
     ship->set_ship_1d_control_x(0.f);
@@ -274,11 +282,12 @@ void FShipControlContext::neutralise_ship_input() {
     ship->stop_fire_laser();
 }
 
-void FShipControlContext::reset_power_gesture_state() {
+void FShipControlContext::reset_flight_gesture_state() {
     throttle_gesture_.reset();
     brake_gesture_.reset();
-    throttle_power_press_active_ = false;
-    brake_power_press_active_ = false;
+    throttle_press_active_ = false;
+    throttle_boost_active_ = false;
+    brake_press_active_ = false;
 }
 
 auto FShipControlContext::get_ship() const -> ATestSpaceShip* {
@@ -316,6 +325,16 @@ void FShipControlContext::lateral_move_completed() {
         ship->set_lateral_move_input(0.f);
     }
 }
+void FShipControlContext::set_forward_move_input(FInputActionValue const& value) {
+    if (auto* const ship{get_ship()}) {
+        ship->set_forward_move_input(value.Get<float>());
+    }
+}
+void FShipControlContext::forward_move_completed() {
+    if (auto* const ship{get_ship()}) {
+        ship->set_forward_move_input(0.f);
+    }
+}
 void FShipControlContext::set_vertical_move_input(FInputActionValue const& value) {
     if (auto* const ship{get_ship()}) {
         ship->set_vertical_move_input(value.Get<float>());
@@ -347,16 +366,33 @@ void FShipControlContext::set_ship_1d_control_y(FInputActionValue const& value) 
         ship->set_ship_1d_control_y(value.Get<float>());
     }
 }
-void FShipControlContext::cycle_next_control_mode() {
-    reset_power_gesture_state();
-    if (auto* const ship{get_ship()}) {
-        ship->select_next_control_mode();
-    }
+void FShipControlContext::select_flight_model_up() {
+    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Up);
 }
-void FShipControlContext::cycle_previous_control_mode() {
-    reset_power_gesture_state();
-    if (auto* const ship{get_ship()}) {
-        ship->select_previous_control_mode();
+void FShipControlContext::select_flight_model_right() {
+    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Right);
+}
+void FShipControlContext::select_flight_model_down() {
+    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Down);
+}
+void FShipControlContext::select_flight_model_left() {
+    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Left);
+}
+void FShipControlContext::select_flight_model_slot(::ioj::sim::player::FlightModelSlot const slot) {
+    auto* const ship{get_ship()};
+    auto const preserve_brake{brake_press_active_};
+    reset_flight_gesture_state();
+    if (ship == nullptr) {
+        return;
+    }
+    publish_boost_intent();
+    ship->stop_brake();
+    if (preserve_brake) {
+        ship->start_brake();
+    }
+    ship->select_flight_model_slot(slot);
+    if (auto* const owner{owner_.Get()}) {
+        owner->on_player_ship_flight_model_selected();
     }
 }
 void FShipControlContext::start_sampling() {
@@ -442,18 +478,12 @@ void FShipControlContext::start_throttle(FInputActionValue const& value) {
 }
 void FShipControlContext::start_throttle_at(float const input, double const time_seconds) {
     if (auto* const ship{get_ship()}) {
-        if (ship->get_control_mode() == ETestSpaceShipControlMode::Power) {
-            throttle_power_press_active_ = true;
-            if (throttle_gesture_.begin_press(time_seconds)) {
-                ship->start_boost();
-            }
-            ship->set_throttle(input);
-            return;
+        throttle_press_active_ = true;
+        if (throttle_gesture_.begin_press(time_seconds)) {
+            throttle_boost_active_ = true;
+            publish_boost_intent();
         }
-
-        throttle_power_press_active_ = false;
-        throttle_gesture_.reset();
-        ship->start_boost();
+        ship->set_throttle(input);
     }
 }
 void FShipControlContext::set_throttle(FInputActionValue const& value) {
@@ -461,14 +491,7 @@ void FShipControlContext::set_throttle(FInputActionValue const& value) {
 }
 void FShipControlContext::set_throttle_value(float const input) {
     if (auto* const ship{get_ship()}) {
-        if (ship->get_control_mode() == ETestSpaceShipControlMode::Power) {
-            ship->set_throttle(input);
-            return;
-        }
-
-        throttle_power_press_active_ = false;
-        throttle_gesture_.reset();
-        ship->start_boost();
+        ship->set_throttle(input);
     }
 }
 void FShipControlContext::stop_throttle() {
@@ -476,27 +499,37 @@ void FShipControlContext::stop_throttle() {
 }
 void FShipControlContext::stop_throttle_at(double const time_seconds) {
     auto* const ship{get_ship()};
-    if (throttle_power_press_active_ && ship != nullptr &&
-        ship->get_control_mode() == ETestSpaceShipControlMode::Power) {
+    if (throttle_press_active_) {
         throttle_gesture_.end_press(time_seconds);
     } else {
         throttle_gesture_.reset();
     }
-    throttle_power_press_active_ = false;
+    throttle_press_active_ = false;
 
     if (ship != nullptr) {
         ship->set_throttle(0.f);
-        ship->stop_boost();
+        if (throttle_boost_active_) {
+            throttle_boost_active_ = false;
+            publish_boost_intent();
+        }
     }
+    throttle_boost_active_ = false;
 }
 void FShipControlContext::start_boost() {
-    if (auto* const ship{get_ship()}) {
-        ship->start_boost();
-    }
+    boost_press_active_ = true;
+    publish_boost_intent();
 }
 void FShipControlContext::stop_boost() {
+    boost_press_active_ = false;
+    publish_boost_intent();
+}
+void FShipControlContext::publish_boost_intent() {
     if (auto* const ship{get_ship()}) {
-        ship->stop_boost();
+        if (boost_press_active_ || throttle_boost_active_) {
+            ship->start_boost();
+        } else {
+            ship->stop_boost();
+        }
     }
 }
 void FShipControlContext::start_brake() {
@@ -505,13 +538,7 @@ void FShipControlContext::start_brake() {
 void FShipControlContext::start_brake_at(double const time_seconds) {
     if (auto* const ship{get_ship()}) {
         ship->start_brake();
-        if (ship->get_control_mode() != ETestSpaceShipControlMode::Power) {
-            brake_power_press_active_ = false;
-            brake_gesture_.reset();
-            return;
-        }
-
-        brake_power_press_active_ = true;
+        brake_press_active_ = true;
         if (brake_gesture_.begin_press(time_seconds)) {
             ship->start_emergency_brake();
         }
@@ -522,13 +549,12 @@ void FShipControlContext::stop_brake() {
 }
 void FShipControlContext::stop_brake_at(double const time_seconds) {
     auto* const ship{get_ship()};
-    if (brake_power_press_active_ && ship != nullptr &&
-        ship->get_control_mode() == ETestSpaceShipControlMode::Power) {
+    if (brake_press_active_) {
         brake_gesture_.end_press(time_seconds);
     } else {
         brake_gesture_.reset();
     }
-    brake_power_press_active_ = false;
+    brake_press_active_ = false;
 
     if (ship != nullptr) {
         ship->stop_brake();

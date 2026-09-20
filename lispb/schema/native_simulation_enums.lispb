@@ -120,36 +120,6 @@
     (value FullAuto :value "2" :display-name "Full Auto" :serialized-name "full_auto")
     (value COUNT :value "3" :hidden true :display-name "Count" :serialized-name "count")))
 
-(enum-module native_space_ship_flight_mode
-  :header "native/simulation/include/ioj/sim/player/flight_mode.h"
-  :namespace ioj::sim
-  (enum SpaceShipFlightMode @native_uint8
-    :native-api true
-    (unreal-projection ETestSpaceShipFlightMode
-      :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestSpaceShipFlightMode.h"
-      :header-include "SpaceGame/ships/player/TestSpaceShipFlightMode.h"
-      :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestSpaceShipFlightModeConversion.h"
-      :native-header-include "ioj/sim/player/flight_mode.h"
-      :reflection uenum)
-    (value ForwardSpeed :value "0" :display-name "Forward Speed" :serialized-name "forward_speed")
-    (value PlanarVelocity :value "1" :display-name "Planar Velocity" :serialized-name "planar_velocity")))
-
-(enum-module native_space_ship_control_mode
-  :header "native/simulation/include/ioj/sim/player/control_mode.h"
-  :namespace ioj::sim
-  (enum SpaceShipControlMode @native_uint8
-    :native-api true
-    :count COUNT
-    (unreal-projection ETestSpaceShipControlMode
-      :header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestSpaceShipControlMode.h"
-      :header-include "SpaceGame/ships/player/TestSpaceShipControlMode.h"
-      :conversion-header "Plugins/SpaceGame/Source/SpaceGame/Public/SpaceGame/ships/player/TestSpaceShipControlModeConversion.h"
-      :native-header-include "ioj/sim/player/control_mode.h"
-      :reflection uenum)
-    (value Velocity :value "0" :display-name "Velocity" :serialized-name "velocity")
-    (value Power :value "1" :display-name "Power" :serialized-name "power")
-    (value COUNT :value "2" :hidden true :display-name "Count" :serialized-name "count")))
-
 (enum-module native_level_telemetry_run_end_reason
   :header "native/simulation/include/ioj/sim/telemetry/level_telemetry_run_end_reason.h"
   :namespace ioj::sim

@@ -89,10 +89,31 @@ void USpaceGameUserSettings::ValidateSettings() {
     sfx_volume_ = FMath::IsFinite(sfx_volume_) ? FMath::Clamp(sfx_volume_, 0.0f, 1.0f) : 1.0f;
     ui_volume_ = FMath::IsFinite(ui_volume_) ? FMath::Clamp(ui_volume_, 0.0f, 1.0f) : 1.0f;
     bees_ = FMath::Clamp(bees_, 0, 5);
+    if (flight_model_settings_version_ < 1) {
+        switch (player_ship_flight_control_preset_) {
+            case 0:
+                player_ship_flight_control_preset_ =
+                    static_cast<int32>(EPlayerShipFlightControlPreset::Starfox);
+                break;
+            case 1:
+                player_ship_flight_control_preset_ =
+                    static_cast<int32>(EPlayerShipFlightControlPreset::Gunship);
+                break;
+            case 2:
+                player_ship_flight_control_preset_ =
+                    static_cast<int32>(EPlayerShipFlightControlPreset::Skater);
+                break;
+            default:
+                player_ship_flight_control_preset_ =
+                    static_cast<int32>(EPlayerShipFlightControlPreset::Gunship);
+                break;
+        }
+        flight_model_settings_version_ = 1;
+    }
     player_ship_flight_control_preset_ =
         FMath::Clamp(player_ship_flight_control_preset_,
-                     static_cast<int32>(EPlayerShipFlightControlPreset::ForwardSpeed),
-                     static_cast<int32>(EPlayerShipFlightControlPreset::PlanarPower));
+                     static_cast<int32>(EPlayerShipFlightControlPreset::Starfox),
+                     static_cast<int32>(EPlayerShipFlightControlPreset::Gunship));
 }
 
 void USpaceGameUserSettings::SetToDefaults() {
@@ -107,7 +128,8 @@ void USpaceGameUserSettings::SetToDefaults() {
     ui_volume_ = 1.0f;
     bees_ = 0;
     player_ship_flight_control_preset_ =
-        static_cast<int32>(EPlayerShipFlightControlPreset::PlanarVelocity);
+        static_cast<int32>(EPlayerShipFlightControlPreset::Gunship);
+    flight_model_settings_version_ = 1;
 }
 
 auto USpaceGameUserSettings::anti_aliasing_method() const -> EGameAntiAliasingMethod {
@@ -181,8 +203,8 @@ auto USpaceGameUserSettings::player_ship_flight_control_preset() const
     -> EPlayerShipFlightControlPreset {
     return static_cast<EPlayerShipFlightControlPreset>(
         FMath::Clamp(player_ship_flight_control_preset_,
-                     static_cast<int32>(EPlayerShipFlightControlPreset::ForwardSpeed),
-                     static_cast<int32>(EPlayerShipFlightControlPreset::PlanarPower)));
+                     static_cast<int32>(EPlayerShipFlightControlPreset::Starfox),
+                     static_cast<int32>(EPlayerShipFlightControlPreset::Gunship)));
 }
 
 void USpaceGameUserSettings::set_player_ship_flight_control_preset(

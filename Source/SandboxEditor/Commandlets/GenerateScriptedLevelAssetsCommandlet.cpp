@@ -126,6 +126,8 @@ constexpr TCHAR ship_brake_action_object_path[]{
     TEXT("/SpaceGame/Input/SpaceShip/IA_ship_brake.IA_ship_brake")};
 constexpr TCHAR ship_fire_action_object_path[]{
     TEXT("/SpaceGame/Input/SpaceShip/IA_ship_fire.IA_ship_fire")};
+constexpr TCHAR ship_forward_move_action_object_path[]{
+    TEXT("/SpaceGame/Input/SpaceShip/IA_ship_vertical_move.IA_ship_vertical_move")};
 FName const scripted_level_generation_context{TEXT("GenerateScriptedLevelAssets")};
 constexpr TCHAR runtime_config_package_name[]{TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig")};
 constexpr TCHAR runtime_config_asset_name[]{TEXT("DA_GameRuntimeLevelConfig")};
@@ -783,7 +785,11 @@ TArray<FInputBindingPresentation> const input_binding_presentations{
      ml::ioj::EControlBindingGroup::Flight,
      20},
     {TEXT("IA_ship_lateral_move"), INVTEXT("Strafe"), ml::ioj::EControlBindingGroup::Flight, 30},
-    {TEXT("IA_ship_move"), INVTEXT("Move"), ml::ioj::EControlBindingGroup::Flight, 40},
+    {TEXT("IA_ship_vertical_translation"),
+     INVTEXT("Translate Up / Down"),
+     ml::ioj::EControlBindingGroup::Flight,
+     40},
+    {TEXT("IA_ship_move"), INVTEXT("Move"), ml::ioj::EControlBindingGroup::Flight, 50},
     {TEXT("IA_Turn"), INVTEXT("Turn"), ml::ioj::EControlBindingGroup::Flight, 50},
     {TEXT("IA_Ship_TurnPointerDelta"),
      INVTEXT("Mouse Steering"),
@@ -820,6 +826,22 @@ TArray<FInputBindingPresentation> const input_binding_presentations{
      INVTEXT("Increase Desired Speed"),
      ml::ioj::EControlBindingGroup::Flight,
      140},
+    {TEXT("IA_ship_select_flight_model_up"),
+     INVTEXT("Select Starfox Flight Model"),
+     ml::ioj::EControlBindingGroup::Flight,
+     150},
+    {TEXT("IA_ship_select_flight_model_right"),
+     INVTEXT("Select Fighter Flight Model"),
+     ml::ioj::EControlBindingGroup::Flight,
+     160},
+    {TEXT("IA_ship_select_flight_model_down"),
+     INVTEXT("Select Skater Flight Model"),
+     ml::ioj::EControlBindingGroup::Flight,
+     170},
+    {TEXT("IA_ship_select_flight_model_left"),
+     INVTEXT("Select Gunship Flight Model"),
+     ml::ioj::EControlBindingGroup::Flight,
+     180},
     {TEXT("IA_ship_fire"), INVTEXT("Fire"), ml::ioj::EControlBindingGroup::Combat, 10},
     {TEXT("IA_cycle_prev_fire_rate"),
      INVTEXT("Previous Fire Rate"),
@@ -833,18 +855,10 @@ TArray<FInputBindingPresentation> const input_binding_presentations{
      INVTEXT("Sample and Hold"),
      ml::ioj::EControlBindingGroup::Utility,
      10},
-    {TEXT("IA_ship_cycle_prev_control_mode"),
-     INVTEXT("Previous Control Mode"),
-     ml::ioj::EControlBindingGroup::Utility,
-     20},
-    {TEXT("IA_ship_cycle_next_control_mode"),
-     INVTEXT("Next Control Mode"),
-     ml::ioj::EControlBindingGroup::Utility,
-     30},
     {TEXT("IA_cycle_input_mapping_context"),
      INVTEXT("Next Control Profile"),
      ml::ioj::EControlBindingGroup::Utility,
-     40},
+     20},
 };
 
 auto directional_binding_label(FInputBindingPresentation const& presentation,
@@ -873,6 +887,14 @@ auto directional_binding_label(FInputBindingPresentation const& presentation,
             return action_name == TEXT("IA_ship_vertical_move")
                      ? INVTEXT("Backward")
                      : INVTEXT("Direct Backward Control");
+        }
+    }
+    if (action_name == TEXT("IA_ship_vertical_translation")) {
+        if (key == EKeys::SpaceBar) {
+            return INVTEXT("Translate Up");
+        }
+        if (key == EKeys::LeftControl) {
+            return INVTEXT("Translate Down");
         }
     }
     if (action_name == TEXT("IA_ship_roll")) {
@@ -1059,13 +1081,22 @@ struct FGeneratedShipInputActions {
     UInputAction* pointer_delta{nullptr};
     UInputAction* engage_pointer{nullptr};
     UInputAction* throttle{nullptr};
+    UInputAction* forward_move{nullptr};
+    UInputAction* vertical_move{nullptr};
     UInputAction* increase_desired_forward_velocity{nullptr};
     UInputAction* decrease_desired_forward_velocity{nullptr};
+    UInputAction* select_flight_model_up{nullptr};
+    UInputAction* select_flight_model_right{nullptr};
+    UInputAction* select_flight_model_down{nullptr};
+    UInputAction* select_flight_model_left{nullptr};
 
     auto is_valid() const -> bool {
         return IsValid(pointer_delta) && IsValid(engage_pointer) && IsValid(throttle) &&
+               IsValid(forward_move) && IsValid(vertical_move) &&
                IsValid(increase_desired_forward_velocity) &&
-               IsValid(decrease_desired_forward_velocity);
+               IsValid(decrease_desired_forward_velocity) && IsValid(select_flight_model_up) &&
+               IsValid(select_flight_model_right) && IsValid(select_flight_model_down) &&
+               IsValid(select_flight_model_left);
     }
 };
 
@@ -1079,6 +1110,10 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
                                               EInputActionValueType::Boolean),
         .throttle = create_input_action(
             ship_input_package_path, TEXT("IA_ship_throttle"), EInputActionValueType::Axis1D),
+        .forward_move = LoadObject<UInputAction>(nullptr, ship_forward_move_action_object_path),
+        .vertical_move = create_input_action(ship_input_package_path,
+                                             TEXT("IA_ship_vertical_translation"),
+                                             EInputActionValueType::Axis1D),
         .increase_desired_forward_velocity =
             create_input_action(ship_input_package_path,
                                 TEXT("IA_ship_increase_desired_forward_velocity"),
@@ -1087,6 +1122,18 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
             create_input_action(ship_input_package_path,
                                 TEXT("IA_ship_decrease_desired_forward_velocity"),
                                 EInputActionValueType::Boolean),
+        .select_flight_model_up = create_input_action(ship_input_package_path,
+                                                      TEXT("IA_ship_select_flight_model_up"),
+                                                      EInputActionValueType::Boolean),
+        .select_flight_model_right = create_input_action(ship_input_package_path,
+                                                         TEXT("IA_ship_select_flight_model_right"),
+                                                         EInputActionValueType::Boolean),
+        .select_flight_model_down = create_input_action(ship_input_package_path,
+                                                        TEXT("IA_ship_select_flight_model_down"),
+                                                        EInputActionValueType::Boolean),
+        .select_flight_model_left = create_input_action(ship_input_package_path,
+                                                        TEXT("IA_ship_select_flight_model_left"),
+                                                        EInputActionValueType::Boolean),
     };
     auto* const base{LoadObject<UInputMappingContext>(nullptr, ship_base_mapping_object_path)};
     auto* const aim_move{
@@ -1114,6 +1161,14 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
             mapping.MapKey(brake, EKeys::Gamepad_LeftShoulder);
             mapping.UnmapKey(fire, EKeys::Gamepad_RightTriggerAxis);
             mapping.MapKey(fire, EKeys::Gamepad_RightTriggerAxis);
+            mapping.UnmapKey(actions.select_flight_model_up, EKeys::Gamepad_DPad_Up);
+            mapping.MapKey(actions.select_flight_model_up, EKeys::Gamepad_DPad_Up);
+            mapping.UnmapKey(actions.select_flight_model_right, EKeys::Gamepad_DPad_Right);
+            mapping.MapKey(actions.select_flight_model_right, EKeys::Gamepad_DPad_Right);
+            mapping.UnmapKey(actions.select_flight_model_down, EKeys::Gamepad_DPad_Down);
+            mapping.MapKey(actions.select_flight_model_down, EKeys::Gamepad_DPad_Down);
+            mapping.UnmapKey(actions.select_flight_model_left, EKeys::Gamepad_DPad_Left);
+            mapping.MapKey(actions.select_flight_model_left, EKeys::Gamepad_DPad_Left);
         };
     configure_power_gamepad_mappings(*base);
     configure_power_gamepad_mappings(*aim_move);
@@ -1127,6 +1182,13 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
     base->MapKey(actions.increase_desired_forward_velocity, EKeys::MouseScrollUp);
     base->UnmapKey(actions.decrease_desired_forward_velocity, EKeys::MouseScrollDown);
     base->MapKey(actions.decrease_desired_forward_velocity, EKeys::MouseScrollDown);
+    base->UnmapKey(actions.throttle, EKeys::W);
+    base->MapKey(actions.throttle, EKeys::W);
+    base->UnmapKey(actions.vertical_move, EKeys::SpaceBar);
+    base->MapKey(actions.vertical_move, EKeys::SpaceBar);
+    base->UnmapKey(actions.vertical_move, EKeys::LeftControl);
+    auto& move_down{base->MapKey(actions.vertical_move, EKeys::LeftControl)};
+    move_down.Modifiers.Add(NewObject<UInputModifierNegate>(base));
     auto& default_mappings{const_cast<TArray<FEnhancedActionKeyMapping>&>(base->GetMappings())};
     auto const default_mappings_configured{
         configure_mappings(default_mappings, *base, *actions.pointer_delta)};
@@ -1141,8 +1203,13 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
             *base, profiles[3].id, *z_roll_aim, default_mappings, *actions.pointer_delta)};
     return default_mappings_configured && success && save_asset(*actions.pointer_delta) &&
                    save_asset(*actions.engage_pointer) && save_asset(*actions.throttle) &&
+                   save_asset(*actions.vertical_move) &&
                    save_asset(*actions.increase_desired_forward_velocity) &&
-                   save_asset(*actions.decrease_desired_forward_velocity) && save_asset(*base) &&
+                   save_asset(*actions.decrease_desired_forward_velocity) &&
+                   save_asset(*actions.select_flight_model_up) &&
+                   save_asset(*actions.select_flight_model_right) &&
+                   save_asset(*actions.select_flight_model_down) &&
+                   save_asset(*actions.select_flight_model_left) && save_asset(*base) &&
                    save_asset(*aim_move) && save_asset(*move_aim) && save_asset(*z_roll_aim)
              ? actions
              : FGeneratedShipInputActions{};
@@ -1264,8 +1331,14 @@ auto configure_gameplay_inputs(UBlueprint& blueprint,
     input->turn_pointer_delta = actions.pointer_delta;
     input->engage_pointer_turn = actions.engage_pointer;
     input->throttle = actions.throttle;
+    input->forward_move = actions.forward_move;
+    input->vertical_move = actions.vertical_move;
     input->increase_desired_forward_velocity = actions.increase_desired_forward_velocity;
     input->decrease_desired_forward_velocity = actions.decrease_desired_forward_velocity;
+    input->select_flight_model_up = actions.select_flight_model_up;
+    input->select_flight_model_right = actions.select_flight_model_right;
+    input->select_flight_model_down = actions.select_flight_model_down;
+    input->select_flight_model_left = actions.select_flight_model_left;
     FBlueprintEditorUtils::MarkBlueprintAsModified(&blueprint);
     return true;
 }

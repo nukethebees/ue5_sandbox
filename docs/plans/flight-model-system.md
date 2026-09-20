@@ -1,6 +1,6 @@
 # Runtime Flight Model System
 
-Status: implementation in progress; Milestones 1-5 are complete and Unreal integration is next.
+Status: implementation complete and validated; ready for integration.
 
 This file is both the implementation specification and the persistent progress record for the
 player flight-model redesign. Update the progress ledger and any decisions changed by repository
@@ -23,7 +23,7 @@ special cases for the initial four profiles.
 Weapons retain their current behavior. AI flight, networking, prediction, alternate weapons,
 combat balancing, optimization, and a general preset asset ecosystem are out of scope.
 
-## Current-state architecture
+## Audited pre-redesign architecture
 
 The current command path is:
 
@@ -131,6 +131,7 @@ enum class RotationSemantic : std::uint8_t {
 };
 
 enum class ReferenceFrame : std::uint8_t { Ship, World };
+enum class TranslationInputSource : std::uint8_t { Axis, Accelerator };
 enum class ResponseMode : std::uint8_t { Direct, RateLimited, SecondOrder };
 enum class FacingVelocityCoupling : std::uint8_t {
     Independent,
@@ -171,6 +172,7 @@ inline constexpr float effectively_unlimited_speed{std::numeric_limits<float>::m
 struct TranslationChannelConfig {
     TranslationSemantic semantic{TranslationSemantic::Disabled};
     ReferenceFrame reference_frame{ReferenceFrame::Ship};
+    TranslationInputSource input_source{TranslationInputSource::Axis};
     float automatic_value{};
     ResponseConfig response{};
 };
@@ -204,12 +206,17 @@ axis value; `Acceleration` adds thrust. Automatic channels supply their configur
 player input. Contributions are evaluated separately: target controllers establish controlled
 velocity, then acceleration contributions are added.
 
+Manual channels select either the signed per-axis value or the separate non-negative accelerator
+intent. This keeps forward/back translation independent from an accelerator pedal without adding
+model checks to the input adapter. Fighter and Skater use `Accelerator`; Gunship uses signed
+`Axis` input. Keyboard W intentionally maps to both intents, and each active model consumes only
+the source declared by its data.
+
 Rotation data:
 
 ```cpp
 struct RotationStabilizationConfig {
     bool enabled{};
-    ReferenceFrame reference_frame{ReferenceFrame::World};
     float target_angle{};
     float delay{};
     ResponseConfig response{};
@@ -245,10 +252,12 @@ struct FacingVelocityConfig {
 struct BoostConfig {
     bool available{};
     float energy_drain_per_second{};
+    ResponseConfig response{};
 };
 
 struct BrakeConfig {
     bool available{};
+    float target_speed{};
     float deceleration{};
     float energy_drain_per_second{};
     ResponseConfig response{};
@@ -288,10 +297,10 @@ struct PhysicalMovementState {
 struct PlayerFlightIntent {
     ml::Vector3d translation{}; // forward, right, up, each normalized
     ml::Vector3d rotation{};    // pitch, yaw, roll, each normalized
-    float target_speed_adjustment{};
-    bool boost{};
-    bool brake{};
-    bool emergency_brake{};
+    float accelerator{};        // non-negative accelerator intent
+    bool boost_held{};
+    bool brake_held{};
+    bool emergency_brake_held{};
 };
 ```
 
@@ -410,15 +419,17 @@ Keep one superset gameplay mapping context plus the existing global mapping. Nor
 commands around intent rather than algorithm-specific operations:
 
 - forward/right/up translation setters;
+- a separate non-negative accelerator setter;
 - pitch/yaw/roll rotation setters;
 - held boost, brake, and emergency-brake setters;
 - target-speed adjustment commands for models that use them;
 - direct `select_flight_model_slot`;
 - existing weapon commands unchanged.
 
-Throttle always publishes normalized forward intent. Model-independent double-tap recognition may
-publish boost or emergency-brake intent, but `FShipControlContext` must not query the current flight
-model. A model ignores unavailable inputs.
+Signed forward/back input and accelerator intent remain separate. Keyboard W publishes both so it
+works for all default models, while a controller trigger can publish only accelerator intent.
+Model-independent double-tap recognition may publish boost or emergency-brake intent, but
+`FShipControlContext` must not query the current flight model. A model ignores unavailable inputs.
 
 Add four Boolean Enhanced Input actions and `FSpaceShipControllerInputs` fields. Bind D-pad actions
 on `ETriggerEvent::Started`:
@@ -562,12 +573,13 @@ ctest --preset native-simulation-tests
 cmake --workflow --preset format-code
 cmake --workflow --preset debug-game-unit-tests
 cmake --workflow --preset debug-game-tests
+cmake --workflow --preset tool-tests
 ```
 
 Run `native-simulation-tests` during native milestones. Run Unreal unit tests after adapter,
 settings, or UI changes. Run the broader debug-game feature/smoke gate once against the completed
-Unreal-facing candidate. Code generation output changes do not by themselves require `tool-tests`
-unless generator/tool implementation is changed.
+Unreal-facing candidate. This implementation changes the scripted-asset generator and therefore
+also runs `tool-tests`; generated output changes alone would not require it.
 
 ## Cleanup/deletion criteria
 
@@ -687,7 +699,26 @@ Skater, Gunship, transitions, and Unreal command routing have their replacement 
 - [x] Milestone 5: Gunship and transitions (three-axis target velocity, neutral stabilization,
   direct slots, runtime profile replacement, action precedence, pairwise velocity preservation,
   and response reseeding pass the native simulation suite).
-- [ ] Milestone 6: canonical Unreal intent and D-pad.
-- [ ] Milestone 7: settings, HUD, and runtime editor.
-- [ ] Milestone 8: legacy removal and final cleanup.
-- [ ] Completion audit against every requirement in this plan.
+- [x] Milestone 6: canonical Unreal intent and D-pad (signed XYZ translation and accelerator intent
+  are independent; all profile IMCs carry the superset actions; four edge-triggered D-pad actions
+  select exact slots; gesture-derived state is cleared without discarding held explicit actions).
+- [x] Milestone 7: settings, HUD, and runtime editor (saved presets migrate explicitly, targeted
+  synchronization replaces the broad settings callback, the HUD reports one profile, and the
+  controls page edits real runtime fields with conditional rows and custom-profile labeling).
+- [x] Milestone 8: legacy removal and final cleanup (the old flight/control enums, commands,
+  evaluator branches, config fields, generated projections, and redirects are gone; generated
+  assets and manifests are current).
+- [x] Completion audit against every requirement in this plan (all in-scope behavior is represented
+  by runtime data; deferred work remains isolated; the two pre-existing workspace changes were
+  preserved).
+
+## Final validation record
+
+- `cmake --workflow --preset format-code`: passed.
+- `cmake --build --preset native --target native-simulation-tests`: passed.
+- `ctest --preset native-simulation-tests`: 213/213 passed.
+- `cmake --build --preset debug-game --target editor`: passed.
+- `cmake --workflow --preset debug-game-unit-tests`: 41/41 passed.
+- `cmake --workflow --preset debug-game-tests`: 40/40 passed.
+- `ctest --preset tool-tests -V`: passed; all reported C# tool projects passed (277 tests).
+- `generate-scripted-level-assets`: passed and produced the intended input/controller assets.

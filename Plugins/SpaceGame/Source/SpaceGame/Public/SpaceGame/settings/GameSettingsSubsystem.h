@@ -7,6 +7,8 @@
 #include "SpaceGame/settings/GameSettingsEditState.h"
 #include "Subsystems/GameInstanceSubsystem.h"
 
+#include <ioj/sim/player/flight_model_config.h>
+
 #include "GameSettingsSubsystem.generated.h"
 
 class ULocalPlayer;
@@ -16,6 +18,8 @@ namespace ml::ioj {
 class USpaceGameInputUserSettings;
 
 DECLARE_MULTICAST_DELEGATE(FGameSettingsChanged);
+DECLARE_MULTICAST_DELEGATE_OneParam(FGameSettingChanged, EGameSetting);
+DECLARE_MULTICAST_DELEGATE(FGameFlightModelConfigChanged);
 DECLARE_MULTICAST_DELEGATE_OneParam(FDisplayConfirmationChanged, bool);
 
 UCLASS()
@@ -51,6 +55,9 @@ class SPACEGAME_API UGameSettingsSubsystem final
     auto is_dirty() const -> bool;
     auto is_dirty(EGameSettingCategory category) const -> bool;
     auto is_at_defaults(EGameSettingCategory category) const -> bool;
+    auto flight_model_profile() const -> ::ioj::sim::player::FlightModelProfile const&;
+    auto set_flight_model_profile(::ioj::sim::player::FlightModelProfile profile) -> bool;
+    auto observe_flight_model_profile(::ioj::sim::player::FlightModelProfile profile) -> bool;
     auto is_awaiting_display_confirmation() const -> bool;
     auto display_confirmation_seconds_remaining() const -> int32;
 
@@ -81,6 +88,8 @@ class SPACEGAME_API UGameSettingsSubsystem final
     auto reset_active_control_profile() -> bool;
 
     FGameSettingsChanged settings_changed;
+    FGameSettingChanged setting_changed;
+    FGameFlightModelConfigChanged flight_model_config_changed;
     FDisplayConfirmationChanged display_confirmation_changed;
   private:
     /* **************************************** */
@@ -91,6 +100,7 @@ class SPACEGAME_API UGameSettingsSubsystem final
     auto normalize_value(FGameSettingDescriptor const& descriptor,
                          FGameSettingValue const& value) const -> TOptional<FGameSettingValue>;
     auto input_user_settings() const -> USpaceGameInputUserSettings*;
+    void reset_flight_model_profile();
 
     /* **************************************** */
     // Control binding helpers
@@ -110,6 +120,7 @@ class SPACEGAME_API UGameSettingsSubsystem final
     FGameSettingsBackend backend_;
     TWeakObjectPtr<ULocalPlayer> editing_local_player_{};
     FGameSettingsEditState edit_state_{};
+    ::ioj::sim::player::FlightModelProfile flight_model_profile_{};
     TArray<FControlProfileView> applied_control_profiles_{};
     TArray<FControlBindingView> applied_control_bindings_{};
     FString applied_control_profile_id_{};

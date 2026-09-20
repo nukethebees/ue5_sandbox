@@ -37,6 +37,8 @@
       (parameter enabled bool))
     (method set_move_input void :noexcept true
       (parameter input "ml::Vector2d"))
+    (method set_forward_move_input void :noexcept true
+      (parameter input float))
     (method set_lateral_move_input void :noexcept true
       (parameter input float))
     (method set_vertical_move_input void :noexcept true
@@ -44,10 +46,6 @@
     (method set_ship_2d_control void (parameter input "ml::Vector2d"))
     (method set_ship_1d_control_x void (parameter input float))
     (method set_ship_1d_control_y void (parameter input float))
-    (method select_next_control_mode void)
-    (method select_previous_control_mode void)
-    (method set_control_mode void
-      (parameter mode "SpaceShipControlMode"))
     (method start_sampling void :noexcept true)
     (method stop_sampling void)
     (method adjust_desired_forward_velocity void (parameter direction float))
@@ -59,8 +57,6 @@
     (method start_emergency_brake void)
     (method stop_brake void)
     (method roll void :noexcept true (parameter direction float))
-    (method set_flight_mode void :noexcept true
-      (parameter mode "SpaceShipFlightMode"))
     (method select_flight_model_slot void :noexcept true
       (parameter slot "FlightModelSlot"))
     (method set_flight_model_slot_profile bool :noexcept true

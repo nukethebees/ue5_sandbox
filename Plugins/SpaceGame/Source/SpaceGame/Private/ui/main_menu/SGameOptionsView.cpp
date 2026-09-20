@@ -767,6 +767,348 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
 
     add_setting_sections(EGameSettingDevice::Shared);
 
+    using FlightConfig = ::ioj::sim::player::FlightModelConfig;
+    auto flight_rows{SNew(SVerticalBox)};
+    auto const weak_settings{settings_};
+    auto const add_flight_slider = [this, &flight_rows, weak_settings](FText const& label,
+                                                                       FText const& tooltip,
+                                                                       float const minimum,
+                                                                       float const maximum,
+                                                                       float const step,
+                                                                       auto getter,
+                                                                       auto setter) {
+        auto value{TAttribute<float>::CreateLambda([weak_settings, getter] {
+            auto const* const current{weak_settings.Get()};
+            return current != nullptr ? getter(current->flight_model_profile().config) : 0.f;
+        })};
+        auto value_text{TAttribute<FText>::CreateLambda([weak_settings, getter] {
+            auto const* const current{weak_settings.Get()};
+            return current != nullptr
+                     ? FText::AsNumber(getter(current->flight_model_profile().config))
+                     : FText::GetEmpty();
+        })};
+        flight_rows->AddSlot().AutoHeight().Padding(
+            style_->settings()
+                .row_padding)[SNew(SSettingsSlider)
+                                  .Style(&style_->settings())
+                                  .Label(label)
+                                  .ToolTipText(tooltip)
+                                  .Value(value)
+                                  .ValueText(value_text)
+                                  .Minimum(minimum)
+                                  .Maximum(maximum)
+                                  .Step(step)
+                                  .OnValueChanged_Lambda([weak_settings, setter](float const next) {
+                                      if (auto* const current{weak_settings.Get()}) {
+                                          auto profile{current->flight_model_profile()};
+                                          setter(profile.config, next);
+                                          current->set_flight_model_profile(MoveTemp(profile));
+                                      }
+                                  })];
+    };
+
+    flight_rows->AddSlot().AutoHeight().Padding(style_->settings().row_padding)
+        [SNew(SSettingsReadOnlyRow)
+             .Style(&style_->settings())
+             .Label(NSLOCTEXT("OptionsMenu", "FlightModelStatus", "Runtime Model"))
+             .Value_Lambda([weak_settings] {
+                 auto const* const current{weak_settings.Get()};
+                 if (current == nullptr) {
+                     return FText::GetEmpty();
+                 }
+                 auto const& profile{current->flight_model_profile()};
+                 TCHAR const* name{TEXT("Starfox")};
+                 switch (profile.base_preset) {
+                     case ::ioj::sim::player::FlightModelPreset::Starfox:
+                         break;
+                     case ::ioj::sim::player::FlightModelPreset::Fighter:
+                         name = TEXT("Fighter");
+                         break;
+                     case ::ioj::sim::player::FlightModelPreset::Skater:
+                         name = TEXT("Skater");
+                         break;
+                     case ::ioj::sim::player::FlightModelPreset::Gunship:
+                         name = TEXT("Gunship");
+                         break;
+                 }
+                 return profile.customized ? FText::Format(NSLOCTEXT("OptionsMenu",
+                                                                     "CustomFlightModel",
+                                                                     "Custom (based on {0})"),
+                                                           FText::FromString(name))
+                                           : FText::FromString(name);
+             })
+             .ToolTipText(NSLOCTEXT("OptionsMenu",
+                                    "FlightModelStatusTip",
+                                    "Runtime edits apply immediately and last for this session."))];
+
+    auto const& flight_config{settings->flight_model_profile().config};
+    add_flight_slider(
+        NSLOCTEXT("OptionsMenu", "ForwardSpeedLimit", "Forward Speed Limit"),
+        NSLOCTEXT("OptionsMenu", "ForwardSpeedLimitTip", "Maximum normal forward speed."),
+        0.f,
+        50000.f,
+        100.f,
+        [](FlightConfig const& config) {
+            return config.translation.forward.normal.positive_speed_limit;
+        },
+        [](FlightConfig& config, float const value) {
+            config.translation.forward.normal.positive_speed_limit = value;
+        });
+    add_flight_slider(
+        NSLOCTEXT("OptionsMenu", "ForwardAcceleration", "Forward Acceleration"),
+        NSLOCTEXT("OptionsMenu", "ForwardAccelerationTip", "Normal forward thrust acceleration."),
+        0.f,
+        50000.f,
+        100.f,
+        [](FlightConfig const& config) {
+            return config.translation.forward.normal.positive_acceleration;
+        },
+        [](FlightConfig& config, float const value) {
+            config.translation.forward.normal.positive_acceleration = value;
+        });
+    add_flight_slider(
+        NSLOCTEXT("OptionsMenu", "ForwardPassiveDrag", "Forward Passive Drag"),
+        NSLOCTEXT(
+            "OptionsMenu", "ForwardPassiveDragTip", "Passive speed loss applied continuously."),
+        0.f,
+        20000.f,
+        100.f,
+        [](FlightConfig const& config) { return config.translation.forward.passive_drag; },
+        [](FlightConfig& config, float const value) {
+            config.translation.forward.passive_drag = value;
+        });
+    add_flight_slider(
+        NSLOCTEXT("OptionsMenu", "ForwardStabilization", "Forward Active Stabilization"),
+        NSLOCTEXT("OptionsMenu",
+                  "ForwardStabilizationTip",
+                  "Counter-thrust applied toward zero speed while forward input is neutral."),
+        0.f,
+        30000.f,
+        100.f,
+        [](FlightConfig const& config) {
+            return config.translation.forward.active_stabilization_rate;
+        },
+        [](FlightConfig& config, float const value) {
+            config.translation.forward.active_stabilization_rate = value;
+        });
+    if (flight_config.translation.forward.automatic.semantic !=
+        ::ioj::sim::player::TranslationSemantic::Disabled) {
+        add_flight_slider(
+            NSLOCTEXT("OptionsMenu", "ForwardAutomaticValue", "Automatic Forward Value"),
+            NSLOCTEXT("OptionsMenu",
+                      "ForwardAutomaticValueTip",
+                      "Automatic forward speed or acceleration requested by this model."),
+            -50000.f,
+            50000.f,
+            100.f,
+            [](FlightConfig const& config) {
+                return config.translation.forward.automatic.automatic_value;
+            },
+            [](FlightConfig& config, float const value) {
+                config.translation.forward.automatic.automatic_value = value;
+            });
+    }
+    if (flight_config.translation.forward.manual.semantic ==
+        ::ioj::sim::player::TranslationSemantic::Acceleration) {
+        add_flight_slider(
+            NSLOCTEXT("OptionsMenu", "BoostForwardAcceleration", "Boost Forward Acceleration"),
+            NSLOCTEXT("OptionsMenu",
+                      "BoostForwardAccelerationTip",
+                      "Forward thrust acceleration while boost is effective."),
+            0.f,
+            100000.f,
+            100.f,
+            [](FlightConfig const& config) {
+                return config.translation.forward.boosted.positive_acceleration;
+            },
+            [](FlightConfig& config, float const value) {
+                config.translation.forward.boosted.positive_acceleration = value;
+            });
+    }
+    if (flight_config.translation.forward.manual.response.mode ==
+        ::ioj::sim::player::ResponseMode::RateLimited) {
+        add_flight_slider(
+            NSLOCTEXT("OptionsMenu", "ForwardResponseIncrease", "Forward Response Acceleration"),
+            NSLOCTEXT("OptionsMenu",
+                      "ForwardResponseIncreaseTip",
+                      "Rate at which forward target velocity increases."),
+            0.f,
+            60000.f,
+            100.f,
+            [](FlightConfig const& config) {
+                return config.translation.forward.manual.response.rate_limited.increasing_rate;
+            },
+            [](FlightConfig& config, float const value) {
+                config.translation.forward.manual.response.rate_limited.increasing_rate = value;
+            });
+        add_flight_slider(
+            NSLOCTEXT("OptionsMenu", "ForwardResponseDecrease", "Forward Response Deceleration"),
+            NSLOCTEXT("OptionsMenu",
+                      "ForwardResponseDecreaseTip",
+                      "Active counter-thrust rate toward the requested forward velocity."),
+            0.f,
+            60000.f,
+            100.f,
+            [](FlightConfig const& config) {
+                return config.translation.forward.manual.response.rate_limited.decreasing_rate;
+            },
+            [](FlightConfig& config, float const value) {
+                config.translation.forward.manual.response.rate_limited.decreasing_rate = value;
+            });
+    }
+    if (flight_config.translation.right.manual.semantic !=
+            ::ioj::sim::player::TranslationSemantic::Disabled ||
+        flight_config.translation.right.automatic.semantic !=
+            ::ioj::sim::player::TranslationSemantic::Disabled) {
+        add_flight_slider(
+            NSLOCTEXT("OptionsMenu", "RightSpeedLimit", "Lateral Speed Limit"),
+            NSLOCTEXT("OptionsMenu", "RightSpeedLimitTip", "Maximum normal left/right speed."),
+            0.f,
+            30000.f,
+            100.f,
+            [](FlightConfig const& config) {
+                return config.translation.right.normal.positive_speed_limit;
+            },
+            [](FlightConfig& config, float const value) {
+                config.translation.right.normal.positive_speed_limit = value;
+                config.translation.right.normal.negative_speed_limit = value;
+            });
+    }
+    if (flight_config.translation.up.manual.semantic !=
+            ::ioj::sim::player::TranslationSemantic::Disabled ||
+        flight_config.translation.up.automatic.semantic !=
+            ::ioj::sim::player::TranslationSemantic::Disabled) {
+        add_flight_slider(
+            NSLOCTEXT("OptionsMenu", "UpSpeedLimit", "Vertical Speed Limit"),
+            NSLOCTEXT("OptionsMenu", "UpSpeedLimitTip", "Maximum normal up/down speed."),
+            0.f,
+            30000.f,
+            100.f,
+            [](FlightConfig const& config) {
+                return config.translation.up.normal.positive_speed_limit;
+            },
+            [](FlightConfig& config, float const value) {
+                config.translation.up.normal.positive_speed_limit = value;
+                config.translation.up.normal.negative_speed_limit = value;
+            });
+    }
+    add_flight_slider(
+        NSLOCTEXT("OptionsMenu", "PitchRate", "Pitch Rate"),
+        NSLOCTEXT(
+            "OptionsMenu", "PitchRateTip", "Maximum physical pitch rate in degrees per second."),
+        0.f,
+        180.f,
+        1.f,
+        [](FlightConfig const& config) { return config.rotation.pitch.maximum_rate; },
+        [](FlightConfig& config, float const value) {
+            config.rotation.pitch.maximum_rate = value;
+        });
+    add_flight_slider(
+        NSLOCTEXT("OptionsMenu", "YawRate", "Yaw Rate"),
+        NSLOCTEXT("OptionsMenu", "YawRateTip", "Maximum physical yaw rate in degrees per second."),
+        0.f,
+        180.f,
+        1.f,
+        [](FlightConfig const& config) { return config.rotation.yaw.maximum_rate; },
+        [](FlightConfig& config, float const value) { config.rotation.yaw.maximum_rate = value; });
+    add_flight_slider(
+        NSLOCTEXT("OptionsMenu", "BrakeDeceleration", "Brake Deceleration"),
+        NSLOCTEXT("OptionsMenu",
+                  "BrakeDecelerationTip",
+                  "Rate at which braking reduces world-space speed."),
+        0.f,
+        60000.f,
+        100.f,
+        [](FlightConfig const& config) { return config.brake.deceleration; },
+        [](FlightConfig& config, float const value) { config.brake.deceleration = value; });
+    add_flight_slider(
+        NSLOCTEXT("OptionsMenu", "EmergencyBrakeDeceleration", "Emergency Brake Deceleration"),
+        NSLOCTEXT("OptionsMenu",
+                  "EmergencyBrakeDecelerationTip",
+                  "Heavy brake rate applied to the complete velocity vector."),
+        0.f,
+        100000.f,
+        100.f,
+        [](FlightConfig const& config) { return config.emergency_brake.deceleration; },
+        [](FlightConfig& config, float const value) {
+            config.emergency_brake.deceleration = value;
+        });
+    add_flight_slider(
+        NSLOCTEXT("OptionsMenu", "BoostForwardSpeedLimit", "Boost Forward Speed Limit"),
+        NSLOCTEXT("OptionsMenu",
+                  "BoostForwardSpeedLimitTip",
+                  "Maximum forward-axis speed while boost is effective."),
+        0.f,
+        100000.f,
+        100.f,
+        [](FlightConfig const& config) {
+            return config.translation.forward.boosted.positive_speed_limit;
+        },
+        [](FlightConfig& config, float const value) {
+            config.translation.forward.boosted.positive_speed_limit = value;
+        });
+    add_flight_slider(
+        NSLOCTEXT("OptionsMenu", "BoostedSpeedLimit", "Boosted Resultant Speed Limit"),
+        NSLOCTEXT(
+            "OptionsMenu", "BoostedSpeedLimitTip", "Maximum total speed while boost is effective."),
+        0.f,
+        100000.f,
+        100.f,
+        [](FlightConfig const& config) { return config.boosted_maximum_resultant_speed; },
+        [](FlightConfig& config, float const value) {
+            config.boosted_maximum_resultant_speed = value;
+        });
+
+    auto const* second_order{flight_config.translation.forward.automatic.response.mode ==
+                                     ::ioj::sim::player::ResponseMode::SecondOrder
+                                 ? &flight_config.translation.forward.automatic.response
+                             : flight_config.translation.forward.manual.response.mode ==
+                                     ::ioj::sim::player::ResponseMode::SecondOrder
+                                 ? &flight_config.translation.forward.manual.response
+                                 : nullptr};
+    if (second_order != nullptr) {
+        auto const automatic{flight_config.translation.forward.automatic.response.mode ==
+                             ::ioj::sim::player::ResponseMode::SecondOrder};
+        add_flight_slider(
+            NSLOCTEXT("OptionsMenu", "SecondOrderSettlingTime", "Second-Order Settling Time"),
+            NSLOCTEXT("OptionsMenu",
+                      "SecondOrderSettlingTimeTip",
+                      "Settling time for the active forward response."),
+            0.05f,
+            10.f,
+            0.05f,
+            [automatic](FlightConfig const& config) {
+                auto const& response{automatic ? config.translation.forward.automatic.response
+                                               : config.translation.forward.manual.response};
+                return response.second_order.settling_time;
+            },
+            [automatic](FlightConfig& config, float const value) {
+                auto& response{automatic ? config.translation.forward.automatic.response
+                                         : config.translation.forward.manual.response};
+                response.second_order.settling_time = value;
+            });
+        add_flight_slider(
+            NSLOCTEXT("OptionsMenu", "SecondOrderDamping", "Second-Order Damping Ratio"),
+            NSLOCTEXT("OptionsMenu",
+                      "SecondOrderDampingTip",
+                      "Damping ratio for the active forward response."),
+            0.01f,
+            0.99f,
+            0.01f,
+            [automatic](FlightConfig const& config) {
+                auto const& response{automatic ? config.translation.forward.automatic.response
+                                               : config.translation.forward.manual.response};
+                return response.second_order.damping_ratio;
+            },
+            [automatic](FlightConfig& config, float const value) {
+                auto& response{automatic ? config.translation.forward.automatic.response
+                                         : config.translation.forward.manual.response};
+                response.second_order.damping_ratio = value;
+            });
+    }
+    add_section(NSLOCTEXT("OptionsMenu", "FlightModelTuningSection", "Flight Model Tuning"),
+                flight_rows);
+
     TSharedPtr<SGameButton> keyboard_mouse_button;
     TSharedPtr<SGameButton> controller_button;
     auto device_rows{SNew(SVerticalBox)};
@@ -1198,20 +1540,24 @@ auto SGameOptionsView::build_setting_row(FGameSettingDescriptor const& descripto
                     });
                 })};
 
-            auto row{SAssignNew(control, SSettingsChoice)
-                         .Style(&style_->settings())
-                         .Label(descriptor.label)
-                         .ToolTipText(descriptor.tooltip)
-                         .Options(MoveTemp(labels))
-                         .SelectedIndex(selected)
-                         .ControlEnabled(available)
-                         .OnSelectionChanged_Lambda(
-                             [weak_settings, setting = descriptor.id, options](int32 const index) {
-                                 if (auto* const settings{weak_settings.Get()};
-                                     options.IsValidIndex(index)) {
-                                     settings->set_setting(setting, options[index].value);
-                                 }
-                             })};
+            auto row{
+                SAssignNew(control, SSettingsChoice)
+                    .Style(&style_->settings())
+                    .Label(descriptor.label)
+                    .ToolTipText(descriptor.tooltip)
+                    .Options(MoveTemp(labels))
+                    .SelectedIndex(selected)
+                    .ControlEnabled(available)
+                    .OnSelectionChanged_Lambda(
+                        [this, weak_settings, setting = descriptor.id, options](int32 const index) {
+                            if (auto* const settings{weak_settings.Get()};
+                                options.IsValidIndex(index)) {
+                                settings->set_setting(setting, options[index].value);
+                                if (setting == EGameSetting::PlayerShipFlightControlPreset) {
+                                    request_controls_rebuild({}, false);
+                                }
+                            }
+                        })};
 
             focus_action = [control] { control->focus(); };
             return row;

@@ -197,33 +197,6 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
                                   data.spinners.yaw_rotation_speed_degrees);
         ml::fixture_export::write(
             out, "player.config.thrust_energy_max", player.config.thrust_energy_max);
-        ml::fixture_export::write(out, "player.config.cruise_speed", player.config.cruise_speed);
-        ml::fixture_export::write(
-            out, "player.config.thrust_recharge_time", player.config.thrust_recharge_time);
-        ml::fixture_export::write(
-            out, "player.config.boost_depletion_time", player.config.boost_depletion_time);
-        ml::fixture_export::write(out, "player.config.boost_speed", player.config.boost_speed);
-        ml::fixture_export::write(out,
-                                  "player.config.boost_forward_speed_addition_multiplier",
-                                  player.config.boost_forward_speed_addition_multiplier);
-        ml::fixture_export::write(
-            out, "player.config.brake_depletion_time", player.config.brake_depletion_time);
-        ml::fixture_export::write(out, "player.config.brake_speed", player.config.brake_speed);
-        ml::fixture_export::write(
-            out, "player.config.power_max_speed", player.config.power_max_speed);
-        ml::fixture_export::write(
-            out, "player.config.power_acceleration", player.config.power_acceleration);
-        ml::fixture_export::write(
-            out, "player.config.power_boost_max_speed", player.config.power_boost_max_speed);
-        ml::fixture_export::write(
-            out, "player.config.power_boost_acceleration", player.config.power_boost_acceleration);
-        ml::fixture_export::write(
-            out, "player.config.power_brake_deceleration", player.config.power_brake_deceleration);
-        ml::fixture_export::write(out,
-                                  "player.config.power_emergency_brake_deceleration",
-                                  player.config.power_emergency_brake_deceleration);
-        ml::fixture_export::write(
-            out, "player.config.rotation_speed", player.config.rotation_speed);
         ml::fixture_export::write(
             out, "player.config.pitch_angle_max", player.config.pitch_angle_max);
         ml::fixture_export::write(out, "player.config.pitch_speed", player.config.pitch_speed);
@@ -233,28 +206,6 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
             out, "player.config.turn_bank_angle_max", player.config.turn_bank_angle_max);
         ml::fixture_export::write(
             out, "player.config.turn_bank_speed", player.config.turn_bank_speed);
-        ml::fixture_export::write(
-            out, "player.config.manual_bank_angle_max", player.config.manual_bank_angle_max);
-        ml::fixture_export::write(
-            out, "player.config.manual_bank_speed", player.config.manual_bank_speed);
-        ml::fixture_export::write(
-            out, "player.config.auto_level_speed", player.config.auto_level_speed);
-        ml::fixture_export::write(
-            out, "player.config.auto_level_roll_delay", player.config.auto_level_roll_delay);
-        ml::fixture_export::write(
-            out, "player.config.lateral_adjustment_speed", player.config.lateral_adjustment_speed);
-        ml::fixture_export::write(out,
-                                  "player.config.vertical_adjustment_speed",
-                                  player.config.vertical_adjustment_speed);
-        ml::fixture_export::write(out,
-                                  "player.config.planar_lateral_trim_speed",
-                                  player.config.planar_lateral_trim_speed);
-        ml::fixture_export::write(out,
-                                  "player.config.planar_vertical_trim_speed",
-                                  player.config.planar_vertical_trim_speed);
-        ml::fixture_export::write(out,
-                                  "player.config.forward_velocity_trim_fraction",
-                                  player.config.forward_velocity_trim_fraction);
         ml::fixture_export::write(out,
                                   "player.config.laser_lock_on_transition_delay",
                                   player.config.laser_lock_on_transition_delay);
@@ -297,32 +248,6 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
         ml::fixture_export::write(out,
                                   "data.fighters.attack_distance_band.maximum_ratio",
                                   data.fighters.attack_distance_band.maximum_ratio);
-        ml::fixture_export::write(out,
-                                  "player.config.speed_responses.boost.settling_time",
-                                  player.config.speed_responses.boost.settling_time);
-        ml::fixture_export::write(out,
-                                  "player.config.speed_responses.boost.damping_ratio",
-                                  player.config.speed_responses.boost.damping_ratio);
-        ml::fixture_export::write(out,
-                                  "player.config.speed_responses.brake.settling_time",
-                                  player.config.speed_responses.brake.settling_time);
-        ml::fixture_export::write(out,
-                                  "player.config.speed_responses.brake.damping_ratio",
-                                  player.config.speed_responses.brake.damping_ratio);
-        ml::fixture_export::write(out,
-                                  "player.config.speed_responses.slowing_to_cruise.settling_time",
-                                  player.config.speed_responses.slowing_to_cruise.settling_time);
-        ml::fixture_export::write(out,
-                                  "player.config.speed_responses.slowing_to_cruise.damping_ratio",
-                                  player.config.speed_responses.slowing_to_cruise.damping_ratio);
-        ml::fixture_export::write(
-            out,
-            "player.config.speed_responses.accelerating_to_cruise.settling_time",
-            player.config.speed_responses.accelerating_to_cruise.settling_time);
-        ml::fixture_export::write(
-            out,
-            "player.config.speed_responses.accelerating_to_cruise.damping_ratio",
-            player.config.speed_responses.accelerating_to_cruise.damping_ratio);
         ml::fixture_export::write(
             out, "data.fighter_fire_point_distance", data.fighter_fire_point_distance);
         ml::fixture_export::write(
@@ -341,8 +266,6 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
         ml::fixture_export::vector3f(
             out, "data.turrets.fire_point_offset", data.turrets.fire_point_offset);
         ml::fixture_export::write(out, "player.team", player.team);
-        ml::fixture_export::write(out, "player.flight_mode", player.flight_mode);
-        ml::fixture_export::write(out, "player.control_mode", player.control_mode);
         ml::fixture_export::write(out, "player.laser_mode", player.laser_mode);
         ml::fixture_export::write(out, "player.laser_fire_rate", player.laser_fire_rate);
         auto const player_health{player.health};

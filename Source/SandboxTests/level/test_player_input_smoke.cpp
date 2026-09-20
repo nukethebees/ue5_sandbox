@@ -299,9 +299,8 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                     return;
                 }
                 auto const& ship_input{FPlayerControllerTestAccess::ship_input(*controller_)};
-                checks.is_true(
-                    has_ship_mapping(default_profile, ship_input.vertical_move, EKeys::W),
-                    TEXT("Default profile maps W to vertical movement"));
+                checks.is_true(has_ship_mapping(default_profile, ship_input.forward_move, EKeys::W),
+                               TEXT("Default profile maps W to forward movement"));
                 checks.is_true(ship_axes_are_clear(), TEXT("Ship input starts neutral"));
                 press_key(EKeys::W);
                 release_wait_ticks_ = 0;
@@ -447,7 +446,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
             auto const* const controller{controller_.Get()};
             auto const* const ship{IsValid(controller) ? Cast<ATestSpaceShip>(controller->GetPawn())
                                                        : nullptr};
-            return IsValid(ship) ? ship->get_target_local_planar_velocity_scale().Y : 0.f;
+            return IsValid(ship) ? ship->get_sampled_target_speed_scale().Y : 0.f;
         };
         TestCommandBuilder
             .Do([this, default_profile] {

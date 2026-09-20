@@ -55,6 +55,8 @@ struct SPACEGAME_API FSpaceShipControllerInputs {
     UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* lateral_move{nullptr};
     UPROPERTY(EditAnywhere, Category = "Input")
+    UInputAction* forward_move{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* vertical_move{nullptr};
     UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* sample_and_hold{nullptr};
@@ -68,10 +70,14 @@ struct SPACEGAME_API FSpaceShipControllerInputs {
     UInputAction* ship_1d_control_x{nullptr};
     UPROPERTY(EditAnywhere, Category = "Input")
     UInputAction* ship_1d_control_y{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* cycle_next_control_mode{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* cycle_previous_control_mode{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Input|Flight Model")
+    UInputAction* select_flight_model_up{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Input|Flight Model")
+    UInputAction* select_flight_model_right{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Input|Flight Model")
+    UInputAction* select_flight_model_down{nullptr};
+    UPROPERTY(EditAnywhere, Category = "Input|Flight Model")
+    UInputAction* select_flight_model_left{nullptr};
 
     UPROPERTY(EditAnywhere, Category = "Input|Gestures", meta = (ClampMin = "0.01"))
     float double_tap_window_seconds{0.25f};

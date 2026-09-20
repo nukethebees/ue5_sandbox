@@ -73,10 +73,8 @@ void ASpaceGamePlayerController::BeginPlay() {
     if (auto* const game_instance{GetGameInstance()}; IsValid(game_instance)) {
         if (auto* const settings{game_instance->GetSubsystem<ml::ioj::UGameSettingsSubsystem>()};
             IsValid(settings)) {
-            settings->settings_changed.AddUObject(
-                this,
-                static_cast<void (ThisClass::*)()>(
-                    &ThisClass::apply_player_ship_flight_control_preset));
+            settings->flight_model_config_changed.AddUObject(
+                this, &ThisClass::apply_player_ship_flight_model_config);
         }
     }
     begin_play_finished_ = true;
@@ -145,7 +143,7 @@ void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
     if (auto* const game_instance{GetGameInstance()}; IsValid(game_instance)) {
         if (auto* const settings{game_instance->GetSubsystem<ml::ioj::UGameSettingsSubsystem>()};
             IsValid(settings)) {
-            settings->settings_changed.RemoveAll(this);
+            settings->flight_model_config_changed.RemoveAll(this);
         }
     }
     Super::EndPlay(reason);
@@ -169,7 +167,7 @@ void ASpaceGamePlayerController::OnPossess(APawn* const in_pawn) {
     UE_LOG(LogSandbox, Display, TEXT("Possessed player ship"));
 }
 void ASpaceGamePlayerController::attach_ship(Pawn& ship) {
-    apply_player_ship_flight_control_preset(ship);
+    apply_player_ship_flight_model_config(ship);
     ship.on_player_ship_died.BindUObject(this, &ThisClass::on_player_ship_died);
     control_contexts_.set_ship(&ship);
     modal_ui_.on_ship_changed(true);
@@ -186,12 +184,13 @@ void ASpaceGamePlayerController::attach_ship(Pawn& ship) {
                     "player ship ambience will not play."));
     }
 }
-void ASpaceGamePlayerController::apply_player_ship_flight_control_preset() {
+void ASpaceGamePlayerController::apply_player_ship_flight_model_config() {
     if (auto* const ship{Cast<Pawn>(GetPawn())}; IsValid(ship)) {
-        apply_player_ship_flight_control_preset(*ship);
+        apply_player_ship_flight_model_config(*ship);
     }
 }
-void ASpaceGamePlayerController::apply_player_ship_flight_control_preset(Pawn& ship) const {
+
+void ASpaceGamePlayerController::apply_player_ship_flight_model_config(Pawn& ship) const {
     auto* const game_instance{GetGameInstance()};
     auto* const settings{IsValid(game_instance)
                              ? game_instance->GetSubsystem<ml::ioj::UGameSettingsSubsystem>()
@@ -200,22 +199,36 @@ void ASpaceGamePlayerController::apply_player_ship_flight_control_preset(Pawn& s
         return;
     }
 
-    switch (settings->player_ship_flight_control_preset()) {
-        case ml::ioj::EPlayerShipFlightControlPreset::ForwardSpeed: {
-            ship.set_control_mode(ETestSpaceShipControlMode::Velocity);
-            ship.set_flight_mode(ETestSpaceShipFlightMode::ForwardSpeed);
+    auto const& profile{settings->flight_model_profile()};
+    using Preset = ::ioj::sim::player::FlightModelPreset;
+    using Slot = ::ioj::sim::player::FlightModelSlot;
+    auto slot{Slot::Up};
+    switch (profile.base_preset) {
+        case Preset::Starfox:
+            slot = Slot::Up;
             break;
-        }
-        case ml::ioj::EPlayerShipFlightControlPreset::PlanarVelocity: {
-            ship.set_control_mode(ETestSpaceShipControlMode::Velocity);
-            ship.set_flight_mode(ETestSpaceShipFlightMode::PlanarVelocity);
+        case Preset::Fighter:
+            slot = Slot::Right;
             break;
-        }
-        case ml::ioj::EPlayerShipFlightControlPreset::PlanarPower: {
-            ship.set_flight_mode(ETestSpaceShipFlightMode::PlanarVelocity);
-            ship.set_control_mode(ETestSpaceShipControlMode::Power);
+        case Preset::Skater:
+            slot = Slot::Down;
             break;
-        }
+        case Preset::Gunship:
+            slot = Slot::Left;
+            break;
+    }
+    if (ship.set_flight_model_slot_profile(slot, profile)) {
+        ship.select_flight_model_slot(slot);
+    }
+}
+void ASpaceGamePlayerController::on_player_ship_flight_model_selected() {
+    auto* const ship{Cast<Pawn>(GetPawn())};
+    auto* const game_instance{GetGameInstance()};
+    auto* const settings{IsValid(game_instance)
+                             ? game_instance->GetSubsystem<ml::ioj::UGameSettingsSubsystem>()
+                             : nullptr};
+    if (IsValid(ship) && IsValid(settings)) {
+        settings->observe_flight_model_profile(ship->get_active_flight_model_profile());
     }
 }
 void ASpaceGamePlayerController::activate_ship_control() {
@@ -698,9 +711,9 @@ auto ASpaceGamePlayerController::get_input_snapshot() const -> FPlayerInputSnaps
     if (IsValid(ship) && ship->has_simulation()) {
         snapshot.movement = ship->get_move_input();
         snapshot.turn = ship->get_turn_input();
-        snapshot.sampled_movement = ship->get_target_local_planar_velocity_scale();
+        snapshot.sampled_movement = ship->get_sampled_target_speed_scale();
         snapshot.fire_active = ship->get_laser_firing_mode() != ::ioj::sim::LaserFiringState::idle;
-        snapshot.sampling_active = ship->is_sampling();
+        snapshot.sampling_active = ship->is_sampling_target_speed();
     }
     return snapshot;
 }

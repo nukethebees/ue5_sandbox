@@ -1,7 +1,6 @@
 #pragma once
 #include <CoreMinimal.h>
 #include <SandboxCoreEngine/collision_settings.h>
-#include <SandboxCoreEngine/SpeedResponse.h>
 #include <SandboxShaders/SpaceDust/SpaceDustComponent.h>
 #include <SpaceGamePresentation/config/AttackDistanceBand.h>
 #include <SpaceGamePresentation/config/BarrelRollConfig.h>
@@ -58,51 +57,6 @@ struct SPACEGAMEPRESENTATION_API FPlayerShipConfig {
     UPROPERTY(EditAnywhere, Category = "Energy")
     float thrust_energy_max{1.f};
 
-    UPROPERTY(EditAnywhere, Category = "Movement")
-    FSpeedResponses speed_responses{};
-
-    UPROPERTY(EditAnywhere, Category = "Movement")
-    float cruise_speed{12000.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement")
-    float thrust_recharge_time{7.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement")
-    float boost_depletion_time{4.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement")
-    float boost_speed{30000.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement")
-    float boost_forward_speed_addition_multiplier{2.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement")
-    float brake_depletion_time{6.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement")
-    float brake_speed{1000.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement|Power", meta = (ClampMin = "0.0"))
-    float power_max_speed{8000.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement|Power", meta = (ClampMin = "0.0"))
-    float power_acceleration{10000.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement|Power", meta = (ClampMin = "0.0"))
-    float power_boost_max_speed{16000.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement|Power", meta = (ClampMin = "0.0"))
-    float power_boost_acceleration{20000.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement|Power", meta = (ClampMin = "0.0"))
-    float power_brake_deceleration{14000.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement|Power", meta = (ClampMin = "0.0"))
-    float power_emergency_brake_deceleration{32000.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement|Steering")
-    float rotation_speed{60.f};
-
     UPROPERTY(EditAnywhere, Category = "Movement|Steering")
     float pitch_angle_max{30.f};
 
@@ -122,34 +76,7 @@ struct SPACEGAMEPRESENTATION_API FPlayerShipConfig {
     float turn_bank_speed{2.f};
 
     UPROPERTY(EditAnywhere, Category = "Movement|Steering")
-    float manual_bank_angle_max{90.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement|Steering")
-    float manual_bank_speed{5.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement|Steering")
     FBarrelRollConfig barrel_roll_config;
-
-    UPROPERTY(EditAnywhere, Category = "Movement")
-    float auto_level_speed{10.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement")
-    float auto_level_roll_delay{1.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement")
-    float lateral_adjustment_speed{5000.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement")
-    float vertical_adjustment_speed{5000.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement")
-    float planar_lateral_trim_speed{3000.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement")
-    float planar_vertical_trim_speed{3000.f};
-
-    UPROPERTY(EditAnywhere, Category = "Movement", meta = (ClampMin = "0.0", ClampMax = "1.0"))
-    float forward_velocity_trim_fraction{0.05f};
 
     UPROPERTY(EditAnywhere, Category = "Combat")
     FLaserWeaponConfig laser{};

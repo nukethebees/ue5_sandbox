@@ -60,7 +60,6 @@ auto make_overlap_response_battle() -> LevelSimInitData {
     std::ranges::fill(data.level_events.initial_spawns.capital_spawns.get_view().healths(), 5000);
     add_player_spawn(data, {});
     data.player->transform.location = {-1000.0, 0.0, 0.0};
-    data.player->config.lateral_adjustment_speed = 1.f;
     data.player->health = {150, 150};
     data.entity_bounds.set_half_extents(EntityType::CapitalShip,
                                         {{100.f, 100.f, 100.f}});
@@ -483,9 +482,10 @@ TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
     simulation.advance(dt);
     tests::expect_true((std::abs(local_velocity().y - 3000.0) <= 0.1),
                        "Held lateral input adds the configured local offset");
-    tests::expect_true((std::abs(player->target_local_planar_velocity_scale.x) <= 1.e-4 &&
-                        std::abs(player->target_local_planar_velocity_scale.y) <= 1.e-4),
-                       "Lateral input does not change desired planar velocity");
+    auto const initial_target_scale{player->get_sampled_target_speed_scale()};
+    tests::expect_true(
+        (std::abs(initial_target_scale.x) <= 1.e-4 && std::abs(initial_target_scale.y) <= 1.e-4),
+        "Lateral input does not change desired planar velocity");
 
     simulation.get_player_ship_commands()->set_lateral_move_input(0.f);
     simulation.get_player_ship_commands()->set_vertical_move_input(1.f);
@@ -500,9 +500,10 @@ TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
     auto const released_velocity{local_velocity()};
     tests::expect_true((std::abs(released_velocity.z) <= 0.1),
                        "Released vertical input removes its local offset");
-    tests::expect_true((std::abs(player->target_local_planar_velocity_scale.x) <= 1.e-4 &&
-                        std::abs(player->target_local_planar_velocity_scale.y) <= 1.e-4),
-                       "Movement offsets remain temporary");
+    auto const final_target_scale{player->get_sampled_target_speed_scale()};
+    tests::expect_true(
+        (std::abs(final_target_scale.x) <= 1.e-4 && std::abs(final_target_scale.y) <= 1.e-4),
+        "Movement offsets remain temporary");
 }
 
 TEST(NativeSimulation, LevelSimOverlapResponseTest) {

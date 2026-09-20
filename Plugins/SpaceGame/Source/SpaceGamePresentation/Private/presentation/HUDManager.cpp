@@ -26,6 +26,7 @@
 #include <Materials/MaterialInterface.h>
 #include <ProfilingDebugging/CountersTrace.h>
 
+#include <algorithm>
 #include <utility>
 
 TRACE_DECLARE_INT_COUNTER(SandboxEntityOverlayCandidateCount,
@@ -927,7 +928,8 @@ bool FHUDManager::collect_player_status_data() {
         auto const player_health{player_ship->get_health()};
         next_data.health = {player_health.health, player_health.max_health};
         next_data.speed = player_ship->get_speed();
-        next_data.target_speed = player_ship->get_controller_state().target_speed;
+        next_data.target_speed =
+            player_ship->get_controller_state().persistent_forward_target_speed;
         next_data.energy = player_ship->get_energy();
         next_data.points = player_ship->get_kills();
         next_data.fire_rate = player_ship->laser_fire_rate;
@@ -954,23 +956,33 @@ bool FHUDManager::collect_player_flight_data() {
         auto const& physical_state{player_ship->get_physical_state()};
         auto const local_velocity{
             physical_state.transform.inverse_transform_vector_no_scale(physical_state.velocity)};
+        auto const& intent{player_ship->get_flight_intent()};
+        auto const& controller{player_ship->get_controller_state()};
+        auto const& flight_model{player_ship->get_active_flight_model_profile()};
+        auto const forward_limit{
+            std::max(flight_model.config.translation.forward.normal.positive_speed_limit, 1.f)};
+        auto const right_limit{
+            std::max(flight_model.config.translation.right.normal.positive_speed_limit, 1.f)};
+        auto const target_velocity{
+            physical_state.transform.forward() * controller.persistent_forward_target_speed +
+            physical_state.transform.right() * controller.persistent_right_target_speed};
 
         next_data.has_player_ship = true;
         next_data.flight_vector_debug = {
-            .turn_input = ml::to_unreal(player_ship->rotation_input),
-            .move_input = ml::to_unreal(player_ship->planar_movement_direction),
-            .target_velocity = ml::to_unreal(player_ship->target_local_planar_velocity_scale),
+            .turn_input = {intent.rotation.y, intent.rotation.x},
+            .move_input = {intent.translation.y, intent.translation.x},
+            .target_velocity = ml::to_unreal(player_ship->get_sampled_target_speed_scale()),
             .local_velocity =
                 {
-                    static_cast<float>(local_velocity.y / player_ship->get_cruise_speed()),
-                    static_cast<float>(local_velocity.x / player_ship->get_cruise_speed()),
+                    static_cast<float>(local_velocity.y / right_limit),
+                    static_cast<float>(local_velocity.x / forward_limit),
                 },
         };
         next_data.ship_velocity = ml::to_unreal(physical_state.velocity);
-        next_data.target_velocity = ml::to_unreal(player_ship->target_local_planar_velocity);
-        next_data.control_mode = player_ship->control_mode;
-        next_data.flight_mode = player_ship->flight_mode;
-        next_data.throttle = player_ship->throttle;
+        next_data.target_velocity = ml::to_unreal(target_velocity);
+        next_data.flight_model_preset = flight_model.base_preset;
+        next_data.flight_model_customized = flight_model.customized;
+        next_data.throttle = intent.accelerator;
         next_data.boost_brake_state = player_ship->get_controller_state().effective_action;
         next_data.crosshair_origin = ml::to_unreal(ship_socket.location);
         next_data.crosshair_direction = ml::to_unreal(ship_socket.forward());
@@ -1098,15 +1110,27 @@ void FHUDManager::update_player_flight_hud(UShipHudWidget& hud) const {
     hud.set_flight_vector_debug(data.flight_vector_debug);
     hud.set_ship_velocity(data.ship_velocity);
     hud.set_target_velocity(data.target_velocity);
-    auto control_mode{ml::to_fstring(::ioj::sim::to_string(data.control_mode))};
-    if (data.control_mode == ::ioj::sim::SpaceShipControlMode::Power) {
-        control_mode +=
-            FString::Printf(TEXT(" // THROTTLE %.2f // %s"),
-                            data.throttle,
-                            *ml::to_fstring(::ioj::sim::player::to_string(data.boost_brake_state)));
+    FString flight_model;
+    switch (data.flight_model_preset) {
+        case ::ioj::sim::player::FlightModelPreset::Starfox:
+            flight_model = TEXT("Starfox");
+            break;
+        case ::ioj::sim::player::FlightModelPreset::Fighter:
+            flight_model = TEXT("Fighter");
+            break;
+        case ::ioj::sim::player::FlightModelPreset::Skater:
+            flight_model = TEXT("Skater");
+            break;
+        case ::ioj::sim::player::FlightModelPreset::Gunship:
+            flight_model = TEXT("Gunship");
+            break;
     }
-    hud.set_control_mode(control_mode);
-    hud.set_flight_mode(ml::to_fstring(::ioj::sim::to_string(data.flight_mode)));
+    if (data.flight_model_customized) {
+        flight_model = FString::Printf(TEXT("Custom (based on %s)"), *flight_model);
+    }
+    hud.set_flight_model(flight_model);
+    hud.set_flight_action(data.throttle,
+                          ml::to_fstring(::ioj::sim::player::to_string(data.boost_brake_state)));
 
     auto* const controller{hud.GetOwningPlayer()};
     check(IsValid(controller));

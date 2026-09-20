@@ -132,7 +132,6 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
     data.capital_ships.fighter_spawn_slots = 0;
     data.capital_ships.fighter_spawn_slots_relative_transforms.clear();
     tests::add_player_spawn(data, tests::make_player_spawn(config));
-    data.player->config.lateral_adjustment_speed = 1.f;
     data.player->health = {collision_damage_test::player_health,
                            collision_damage_test::player_health};
     data.entity_bounds.set_half_extents(EntityType::PlayerShip, {{1.f, 1.f, 1.f}});
