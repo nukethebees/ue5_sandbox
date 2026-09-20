@@ -79,6 +79,7 @@ auto ATestSpaceShip::make_spawn_data() const -> ::ioj::sim::player::PlayerSpawnD
     result.laser_mode = ml::to_native(laser_mode);
     result.laser_fire_rate = ml::to_native(laser_fire_rate);
     result.health = {health.health, health.max_health};
+    result.flight_models = flight_models_;
 
     if (actor_config) {
         result.config = make_simulation_config(*actor_config);
@@ -104,6 +105,13 @@ void ATestSpaceShip::bind_simulation(::ioj::sim::player::CommandInterface& new_c
 }
 
 void ATestSpaceShip::unbind_simulation() {
+    if (bound_simulation) {
+        auto const slot{bound_simulation->get_active_flight_model_slot()};
+        flight_models_.initial_slot = slot;
+        ::ioj::sim::player::flight_model_profile(flight_models_, slot) =
+            bound_simulation->get_active_flight_model_profile();
+    }
+
     bound_commands_ = nullptr;
     bound_simulation = nullptr;
 }
@@ -191,22 +199,30 @@ void ATestSpaceShip::set_ship_1d_control_y(float const input) {
 }
 
 void ATestSpaceShip::select_flight_model_slot(::ioj::sim::player::FlightModelSlot const slot) {
-    commands().select_flight_model_slot(slot);
+    flight_models_.initial_slot = slot;
+    if (bound_commands_) {
+        commands().select_flight_model_slot(slot);
+    }
 }
 
 auto ATestSpaceShip::set_flight_model_slot_profile(::ioj::sim::player::FlightModelSlot const slot,
                                                    ::ioj::sim::player::FlightModelProfile profile)
     -> bool {
-    return commands().set_flight_model_slot_profile(slot, std::move(profile));
+    if (!::ioj::sim::player::validate_flight_model_config(profile.config)) {
+        return false;
+    }
+    if (bound_commands_ && !commands().set_flight_model_slot_profile(slot, profile)) {
+        return false;
+    }
+
+    ::ioj::sim::player::flight_model_profile(flight_models_, slot) = std::move(profile);
+    return true;
 }
 auto ATestSpaceShip::get_active_flight_model_profile() const
     -> ::ioj::sim::player::FlightModelProfile {
     if (!bound_simulation) {
-        UE_LOG(LogSandbox,
-               Warning,
-               TEXT("ATestSpaceShip::get_active_flight_model_profile: Simulation is unavailable."));
-        return ::ioj::sim::player::make_flight_model_profile(
-            ::ioj::sim::player::FlightModelPreset::Gunship);
+        return ::ioj::sim::player::flight_model_profile(flight_models_,
+                                                        flight_models_.initial_slot);
     }
     return bound_simulation->get_active_flight_model_profile();
 }

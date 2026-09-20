@@ -185,6 +185,9 @@ class SPACEGAME_API ATestSpaceShip
     UPROPERTY(EditAnywhere, Category = "Sandbox|Logging", meta = (AllowPrivateAccess))
     FActorLoggingConfig log_config{1.f};
 
+    ::ioj::sim::player::FlightModelLoadout flight_models_{
+        ::ioj::sim::player::make_default_flight_model_loadout()};
+
 #if WITH_EDITORONLY_DATA
     UPROPERTY(EditAnywhere, Category = "Debug", meta = (AllowPrivateAccess))
     bool debug_forward_socket_direction{false};
