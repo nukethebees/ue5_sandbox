@@ -2927,4 +2927,67 @@ auto Analyzer::compare_record_soa_access(RecordAccessAnalysis const& record,
     return result;
 }
 
+auto Analyzer::compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnalysis const& second)
+    -> SoaAccessComparison {
+    auto summary = [](SoaAccessAnalysis const& analysis) {
+        return AccessFootprintSummary{.useful_bytes = analysis.useful_bytes,
+                                      .cache_lines = analysis.minimum_cache_lines_touched,
+                                      .cache_bytes = analysis.minimum_cache_bytes_touched,
+                                      .pages = analysis.minimum_pages_touched,
+                                      .page_bytes = analysis.minimum_page_bytes_touched};
+    };
+    SoaAccessComparison result{
+        .column_names = first.column_names,
+        .element_count = first.element_count,
+        .first = summary(first),
+        .second = summary(second),
+        .first_allocated_capacity_payload_bytes = first.allocated_capacity_payload_bytes,
+        .second_allocated_capacity_payload_bytes = second.allocated_capacity_payload_bytes,
+        .first_capacity_slack_payload_bytes = first.capacity_slack_payload_bytes,
+        .second_capacity_slack_payload_bytes = second.capacity_slack_payload_bytes,
+        .useful_byte_delta = std::nullopt,
+        .cache_line_delta = std::nullopt,
+        .cache_byte_delta = std::nullopt,
+        .page_delta = std::nullopt,
+        .page_byte_delta = std::nullopt,
+        .allocated_capacity_payload_delta = std::nullopt,
+        .capacity_slack_payload_delta = std::nullopt,
+        .diagnostics = {}};
+    for (auto const& diagnostic : first.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "First SoA access: " + diagnostic.message});
+    }
+    for (auto const& diagnostic : second.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "Second SoA access: " + diagnostic.message});
+    }
+    if (first.element_count != second.element_count) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared SoA access analyses use different element counts."});
+        return result;
+    }
+    auto const first_names{
+        std::set<std::string, std::less<>>{first.column_names.begin(), first.column_names.end()}};
+    auto const second_names{
+        std::set<std::string, std::less<>>{second.column_names.begin(), second.column_names.end()}};
+    if (first_names != second_names) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared SoA access analyses do not select the same named columns."});
+        return result;
+    }
+    result.useful_byte_delta = numeric_delta(result.first.useful_bytes, result.second.useful_bytes);
+    result.cache_line_delta = numeric_delta(result.first.cache_lines, result.second.cache_lines);
+    result.cache_byte_delta = numeric_delta(result.first.cache_bytes, result.second.cache_bytes);
+    result.page_delta = numeric_delta(result.first.pages, result.second.pages);
+    result.page_byte_delta = numeric_delta(result.first.page_bytes, result.second.page_bytes);
+    result.allocated_capacity_payload_delta =
+        numeric_delta(result.first_allocated_capacity_payload_bytes,
+                      result.second_allocated_capacity_payload_bytes);
+    result.capacity_slack_payload_delta = numeric_delta(result.first_capacity_slack_payload_bytes,
+                                                        result.second_capacity_slack_payload_bytes);
+    return result;
+}
+
 } // namespace ioj::layout

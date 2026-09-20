@@ -935,6 +935,7 @@ void PlannerUi::refresh_analysis() {
     active_soa_.reset();
     soa_access_analysis_.reset();
     record_soa_access_comparison_.reset();
+    soa_access_comparison_.reset();
     soa_variants_.clear();
     comparison_a_packed_.reset();
     comparison_b_packed_.reset();
@@ -1114,6 +1115,13 @@ void PlannerUi::refresh_analysis() {
             workspace_.types(), *selected_type_, comparison_a, abi_, workspace_.default_capacity());
         comparison_b_soa_ = Analyzer::analyze_soa(
             workspace_.types(), *selected_type_, comparison_b, abi_, workspace_.default_capacity());
+        if (!access_columns.empty()) {
+            auto const first_access{Analyzer::analyze_soa_access(
+                *comparison_a_soa_, access_columns, abi_, workspace_.element_count())};
+            auto const second_access{Analyzer::analyze_soa_access(
+                *comparison_b_soa_, access_columns, abi_, workspace_.element_count())};
+            soa_access_comparison_ = Analyzer::compare_soa_access(first_access, second_access);
+        }
     }
 }
 

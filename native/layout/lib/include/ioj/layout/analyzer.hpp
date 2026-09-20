@@ -611,6 +611,25 @@ struct RecordSoaAccessComparison {
     std::vector<Diagnostic> diagnostics;
 };
 
+struct SoaAccessComparison {
+    std::vector<std::string> column_names;
+    std::uint64_t element_count{};
+    AccessFootprintSummary first;
+    AccessFootprintSummary second;
+    std::optional<std::uint64_t> first_allocated_capacity_payload_bytes;
+    std::optional<std::uint64_t> second_allocated_capacity_payload_bytes;
+    std::optional<std::uint64_t> first_capacity_slack_payload_bytes;
+    std::optional<std::uint64_t> second_capacity_slack_payload_bytes;
+    std::optional<NumericDelta> useful_byte_delta;
+    std::optional<NumericDelta> cache_line_delta;
+    std::optional<NumericDelta> cache_byte_delta;
+    std::optional<NumericDelta> page_delta;
+    std::optional<NumericDelta> page_byte_delta;
+    std::optional<NumericDelta> allocated_capacity_payload_delta;
+    std::optional<NumericDelta> capacity_slack_payload_delta;
+    std::vector<Diagnostic> diagnostics;
+};
+
 class Analyzer {
   public:
     static auto analyze_enum(lispb::schema::TypeGraph const& types,
@@ -704,6 +723,8 @@ class Analyzer {
     static auto compare_record_soa_access(RecordAccessAnalysis const& record,
                                           SoaAccessAnalysis const& soa)
         -> RecordSoaAccessComparison;
+    static auto compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnalysis const& second)
+        -> SoaAccessComparison;
 };
 
 auto physical_type_spelling(lispb::schema::TypeGraph const& types, lispb::schema::TypeId type)

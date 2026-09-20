@@ -170,6 +170,7 @@ class PlannerUi {
     std::optional<layout::SoaAnalysis> active_soa_;
     std::optional<layout::SoaAccessAnalysis> soa_access_analysis_;
     std::optional<layout::RecordSoaAccessComparison> record_soa_access_comparison_;
+    std::optional<layout::SoaAccessComparison> soa_access_comparison_;
     std::vector<std::pair<std::uint64_t, layout::SoaAnalysis>> soa_variants_;
     std::optional<layout::PackedAnalysis> comparison_a_packed_;
     std::optional<layout::PackedAnalysis> comparison_b_packed_;

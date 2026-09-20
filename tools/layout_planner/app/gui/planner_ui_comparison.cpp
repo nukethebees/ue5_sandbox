@@ -779,6 +779,63 @@ void PlannerUi::draw_comparison_panel() {
             }
             ImGui::EndTable();
         }
+        if (soa_access_comparison_.has_value()) {
+            auto const& access{*soa_access_comparison_};
+            std::string column_names;
+            for (auto const& column_name : access.column_names) {
+                if (!column_names.empty()) {
+                    column_names += ", ";
+                }
+                column_names += column_name;
+            }
+            ImGui::SeparatorText("Selected-column workload");
+            ImGui::Text("Elements: %llu", static_cast<unsigned long long>(access.element_count));
+            ImGui::TextWrapped("Columns: %s", column_names.c_str());
+            if (ImGui::BeginTable("soa-access-comparison",
+                                  4,
+                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                      ImGuiTableFlags_Resizable)) {
+                ImGui::TableSetupColumn("Fact");
+                ImGui::TableSetupColumn(comparison_a.name.c_str());
+                ImGui::TableSetupColumn(comparison_b.name.c_str());
+                ImGui::TableSetupColumn("Difference");
+                ImGui::TableHeadersRow();
+                comparison_row("Useful selected payload",
+                               detail::format_bytes(access.first.useful_bytes),
+                               detail::format_bytes(access.second.useful_bytes),
+                               detail::format_delta_bytes(access.useful_byte_delta));
+                comparison_row("Minimum cache lines",
+                               detail::format_number(access.first.cache_lines),
+                               detail::format_number(access.second.cache_lines),
+                               detail::format_delta_number(access.cache_line_delta));
+                comparison_row("Minimum cache-line footprint",
+                               detail::format_bytes(access.first.cache_bytes),
+                               detail::format_bytes(access.second.cache_bytes),
+                               detail::format_delta_bytes(access.cache_byte_delta));
+                comparison_row("Minimum pages",
+                               detail::format_number(access.first.pages),
+                               detail::format_number(access.second.pages),
+                               detail::format_delta_number(access.page_delta));
+                comparison_row("Minimum page footprint",
+                               detail::format_bytes(access.first.page_bytes),
+                               detail::format_bytes(access.second.page_bytes),
+                               detail::format_delta_bytes(access.page_byte_delta));
+                comparison_row("Allocated payload at capacity",
+                               detail::format_bytes(access.first_allocated_capacity_payload_bytes),
+                               detail::format_bytes(access.second_allocated_capacity_payload_bytes),
+                               detail::format_delta_bytes(access.allocated_capacity_payload_delta));
+                comparison_row("Unused allocated capacity payload",
+                               detail::format_bytes(access.first_capacity_slack_payload_bytes),
+                               detail::format_bytes(access.second_capacity_slack_payload_bytes),
+                               detail::format_delta_bytes(access.capacity_slack_payload_delta));
+                ImGui::EndTable();
+            }
+            ImGui::TextDisabled(
+                "Both variants use the same explicit session workload. Cache-line/page figures "
+                "are minimum footprints across separate column allocations, not measured traffic "
+                "or performance.");
+            draw_diagnostics(access.diagnostics);
+        }
         ImGui::TextDisabled("Cache-line counts are minimum payload coverage, not allocator traffic "
                             "or a performance estimate.");
         draw_diagnostics(comparison_b_soa_->diagnostics);

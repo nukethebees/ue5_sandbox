@@ -97,6 +97,10 @@ payload separately from unselected-column payload at the workload count. Flat Ac
 selected-only/all actions drive the analysis; unknown target facts and arithmetic overflow remain
 Unknown, and the UI labels region bytes as minimum physical footprints rather than measured traffic
 or performance.
+The Comparison view now applies that same selected-column workload to both selected physical
+variants. Each side retains its own capacity and column type overrides while headless comparison
+reports useful payload, minimum cache-line/page footprints, allocated payload at capacity, capacity
+slack, and checked deltas. Mismatched workloads are rejected, and the UI makes no speed claim.
 
 Enum declarations now support an optional durable semantic `:bit-width`; absence means auto width
 derived from literal and implicit values. Individual values may be marked `:sentinel true`, including
@@ -385,7 +389,9 @@ format.
 
 An initial declared-representation comparison is implemented for same-source linear quantizations;
 it compares durable sibling declarations directly rather than forcing them into the session-only
-physical override map. General typed semantic change sets remain future work.
+physical override map. Session physical variants can also be compared under one explicit selected-
+column SoA workload, including independent capacity/type overrides and factual footprint/slack
+deltas. General typed semantic change sets remain future work.
 
 ## 7. Struct and AoS synthesis
 
@@ -411,6 +417,10 @@ also applies the same selected names and count to both models and shows useful b
 cache footprint, pages, page footprint, and signed deltas side by side. The UI explicitly labels the
 AoS aligned-array results as exact and the independent SoA allocation results as lower bounds; it
 does not turn those physical facts into a speed claim.
+The Comparison view also applies one selected-column workload to any two session SoA physical
+variants. Independent variant capacities and physical column overrides remain intact while useful
+payload, minimum cache/page footprints, allocated payload, capacity slack, and checked deltas are
+shown side by side.
 
 ## 9. Physical-fact accuracy
 
