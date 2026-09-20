@@ -2690,6 +2690,7 @@ auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
                                   AbiProfile const& abi,
                                   std::uint64_t const element_count) -> SoaAccessAnalysis {
     SoaAccessAnalysis result{.column_names = {},
+                             .columns = {},
                              .element_count = element_count,
                              .useful_bytes = std::uint64_t{},
                              .full_logical_payload_bytes = std::nullopt,
@@ -2773,6 +2774,50 @@ auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
                                                   "' payload byte count overflows uint64."});
             }
         }
+        SoaColumnAccessAnalysis column_access{
+            .name = column_name,
+            .physical_type = column->physical_type,
+            .element_bytes = column->type_facts.transform(
+                [](TypeFacts const& facts) { return facts.size_bytes; }),
+            .useful_bytes = flat_accessed_bytes,
+            .minimum_cache_lines = std::nullopt,
+            .minimum_cache_bytes = std::nullopt,
+            .minimum_pages = std::nullopt,
+            .minimum_page_bytes = std::nullopt,
+            .allocated_capacity_payload_bytes = column->total_bytes,
+            .capacity_slack_payload_bytes = std::nullopt};
+        if (column_access.allocated_capacity_payload_bytes.has_value() &&
+            column_access.useful_bytes.has_value() &&
+            *column_access.allocated_capacity_payload_bytes >= *column_access.useful_bytes) {
+            column_access.capacity_slack_payload_bytes =
+                *column_access.allocated_capacity_payload_bytes - *column_access.useful_bytes;
+        }
+        auto derive_column_regions = [&](std::optional<std::uint64_t> const region_size,
+                                         std::optional<std::uint64_t>& regions,
+                                         std::optional<std::uint64_t>& bytes,
+                                         std::string_view const region_name) {
+            if (!region_size.has_value() || *region_size == 0 ||
+                !column_access.useful_bytes.has_value()) {
+                return;
+            }
+            regions = minimum_regions(*column_access.useful_bytes, *region_size);
+            bytes = checked_multiply(*regions, *region_size);
+            if (!bytes.has_value()) {
+                result.diagnostics.push_back({DiagnosticSeverity::error,
+                                              "Selected SoA column '" + column_name + "' minimum " +
+                                                  std::string{region_name} +
+                                                  " footprint overflows uint64."});
+            }
+        };
+        derive_column_regions(result.cache_line_bytes,
+                              column_access.minimum_cache_lines,
+                              column_access.minimum_cache_bytes,
+                              "cache-line");
+        derive_column_regions(result.page_bytes,
+                              column_access.minimum_pages,
+                              column_access.minimum_page_bytes,
+                              "page");
+        result.columns.push_back(std::move(column_access));
         if (flat_accessed_bytes.has_value()) {
             accumulate(flat_accessed_bytes, result.useful_bytes, "payload bytes");
         } else {
@@ -2938,6 +2983,7 @@ auto Analyzer::compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnaly
     };
     SoaAccessComparison result{
         .column_names = first.column_names,
+        .columns = {},
         .element_count = first.element_count,
         .first = summary(first),
         .second = summary(second),
@@ -2976,6 +3022,40 @@ auto Analyzer::compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnaly
             {DiagnosticSeverity::error,
              "Compared SoA access analyses do not select the same named columns."});
         return result;
+    }
+    for (auto const& column_name : result.column_names) {
+        auto const first_column{
+            std::ranges::find(first.columns, column_name, &SoaColumnAccessAnalysis::name)};
+        auto const second_column{
+            std::ranges::find(second.columns, column_name, &SoaColumnAccessAnalysis::name)};
+        if (first_column == first.columns.end() || second_column == second.columns.end()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Compared SoA access analysis is missing details for selected column '" +
+                     column_name + "'."});
+            return result;
+        }
+        result.columns.push_back(
+            {.name = column_name,
+             .first = *first_column,
+             .second = *second_column,
+             .element_byte_delta =
+                 numeric_delta(first_column->element_bytes, second_column->element_bytes),
+             .useful_byte_delta =
+                 numeric_delta(first_column->useful_bytes, second_column->useful_bytes),
+             .cache_line_delta = numeric_delta(first_column->minimum_cache_lines,
+                                               second_column->minimum_cache_lines),
+             .cache_byte_delta = numeric_delta(first_column->minimum_cache_bytes,
+                                               second_column->minimum_cache_bytes),
+             .page_delta = numeric_delta(first_column->minimum_pages, second_column->minimum_pages),
+             .page_byte_delta =
+                 numeric_delta(first_column->minimum_page_bytes, second_column->minimum_page_bytes),
+             .allocated_capacity_payload_delta =
+                 numeric_delta(first_column->allocated_capacity_payload_bytes,
+                               second_column->allocated_capacity_payload_bytes),
+             .capacity_slack_payload_delta =
+                 numeric_delta(first_column->capacity_slack_payload_bytes,
+                               second_column->capacity_slack_payload_bytes)});
     }
     result.useful_byte_delta = numeric_delta(result.first.useful_bytes, result.second.useful_bytes);
     result.cache_line_delta = numeric_delta(result.first.cache_lines, result.second.cache_lines);

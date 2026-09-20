@@ -100,7 +100,9 @@ or performance.
 The Comparison view now applies that same selected-column workload to both selected physical
 variants. Each side retains its own capacity and column type overrides while headless comparison
 reports useful payload, minimum cache-line/page footprints, allocated payload at capacity, capacity
-slack, and checked deltas. Mismatched workloads are rejected, and the UI makes no speed claim.
+slack, and checked deltas. An expandable per-column breakdown identifies the exact physical type,
+element size, footprint, capacity, and slack contribution behind each aggregate delta. Mismatched
+workloads are rejected, and the UI makes no speed claim.
 
 Enum declarations now support an optional durable semantic `:bit-width`; absence means auto width
 derived from literal and implicit values. Individual values may be marked `:sentinel true`, including

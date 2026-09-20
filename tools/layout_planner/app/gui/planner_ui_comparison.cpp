@@ -773,7 +773,7 @@ void PlannerUi::draw_comparison_panel() {
                 comparison_row((baseline.name + " cache lines").c_str(),
                                detail::format_number(baseline.minimum_cache_lines),
                                detail::format_number(active->minimum_cache_lines));
-                comparison_row((baseline.name + " elements / 64 B").c_str(),
+                comparison_row((baseline.name + " complete elements / cache line").c_str(),
                                detail::format_number(baseline.elements_per_cache_line),
                                detail::format_number(active->elements_per_cache_line));
             }
@@ -829,6 +829,62 @@ void PlannerUi::draw_comparison_panel() {
                                detail::format_bytes(access.second_capacity_slack_payload_bytes),
                                detail::format_delta_bytes(access.capacity_slack_payload_delta));
                 ImGui::EndTable();
+            }
+            if (!access.columns.empty() && ImGui::TreeNode("Per-column contributions")) {
+                for (auto const& column : access.columns) {
+                    ImGui::PushID(column.name.c_str());
+                    ImGui::SeparatorText(column.name.c_str());
+                    if (ImGui::BeginTable("soa-access-column-comparison",
+                                          4,
+                                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                              ImGuiTableFlags_Resizable)) {
+                        ImGui::TableSetupColumn("Fact");
+                        ImGui::TableSetupColumn(comparison_a.name.c_str());
+                        ImGui::TableSetupColumn(comparison_b.name.c_str());
+                        ImGui::TableSetupColumn("Difference");
+                        ImGui::TableHeadersRow();
+                        comparison_row("Physical type",
+                                       column.first.physical_type,
+                                       column.second.physical_type);
+                        comparison_row("Element bytes",
+                                       detail::format_bytes(column.first.element_bytes),
+                                       detail::format_bytes(column.second.element_bytes),
+                                       detail::format_delta_bytes(column.element_byte_delta));
+                        comparison_row("Useful workload payload",
+                                       detail::format_bytes(column.first.useful_bytes),
+                                       detail::format_bytes(column.second.useful_bytes),
+                                       detail::format_delta_bytes(column.useful_byte_delta));
+                        comparison_row("Minimum cache lines",
+                                       detail::format_number(column.first.minimum_cache_lines),
+                                       detail::format_number(column.second.minimum_cache_lines),
+                                       detail::format_delta_number(column.cache_line_delta));
+                        comparison_row("Minimum cache-line footprint",
+                                       detail::format_bytes(column.first.minimum_cache_bytes),
+                                       detail::format_bytes(column.second.minimum_cache_bytes),
+                                       detail::format_delta_bytes(column.cache_byte_delta));
+                        comparison_row("Minimum pages",
+                                       detail::format_number(column.first.minimum_pages),
+                                       detail::format_number(column.second.minimum_pages),
+                                       detail::format_delta_number(column.page_delta));
+                        comparison_row("Minimum page footprint",
+                                       detail::format_bytes(column.first.minimum_page_bytes),
+                                       detail::format_bytes(column.second.minimum_page_bytes),
+                                       detail::format_delta_bytes(column.page_byte_delta));
+                        comparison_row(
+                            "Allocated payload at capacity",
+                            detail::format_bytes(column.first.allocated_capacity_payload_bytes),
+                            detail::format_bytes(column.second.allocated_capacity_payload_bytes),
+                            detail::format_delta_bytes(column.allocated_capacity_payload_delta));
+                        comparison_row(
+                            "Unused allocated capacity payload",
+                            detail::format_bytes(column.first.capacity_slack_payload_bytes),
+                            detail::format_bytes(column.second.capacity_slack_payload_bytes),
+                            detail::format_delta_bytes(column.capacity_slack_payload_delta));
+                        ImGui::EndTable();
+                    }
+                    ImGui::PopID();
+                }
+                ImGui::TreePop();
             }
             ImGui::TextDisabled(
                 "Both variants use the same explicit session workload. Cache-line/page figures "

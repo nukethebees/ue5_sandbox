@@ -2941,6 +2941,26 @@ TEST(SoaAnalyzer, ReportsSelectedColumnAccessFootprints) {
     auto const access{Analyzer::analyze_soa_access(soa, columns, abi, 100)};
 
     EXPECT_EQ(access.column_names, (std::vector<std::string>{"wide", "small"}));
+    ASSERT_EQ(access.columns.size(), 2);
+    EXPECT_EQ(access.columns[0].name, "wide");
+    EXPECT_EQ(access.columns[0].physical_type, "std::uint64_t");
+    EXPECT_EQ(access.columns[0].element_bytes, 8);
+    EXPECT_EQ(access.columns[0].useful_bytes, 800);
+    EXPECT_EQ(access.columns[0].minimum_cache_lines, 13);
+    EXPECT_EQ(access.columns[0].minimum_cache_bytes, 832);
+    EXPECT_EQ(access.columns[0].minimum_pages, 1);
+    EXPECT_EQ(access.columns[0].minimum_page_bytes, 4'096);
+    EXPECT_EQ(access.columns[0].allocated_capacity_payload_bytes, 8'000);
+    EXPECT_EQ(access.columns[0].capacity_slack_payload_bytes, 7'200);
+    EXPECT_EQ(access.columns[1].name, "small");
+    EXPECT_EQ(access.columns[1].element_bytes, 1);
+    EXPECT_EQ(access.columns[1].useful_bytes, 100);
+    EXPECT_EQ(access.columns[1].minimum_cache_lines, 2);
+    EXPECT_EQ(access.columns[1].minimum_cache_bytes, 128);
+    EXPECT_EQ(access.columns[1].minimum_pages, 1);
+    EXPECT_EQ(access.columns[1].minimum_page_bytes, 4'096);
+    EXPECT_EQ(access.columns[1].allocated_capacity_payload_bytes, 1'000);
+    EXPECT_EQ(access.columns[1].capacity_slack_payload_bytes, 900);
     EXPECT_EQ(access.element_count, 100);
     EXPECT_EQ(access.useful_bytes, 900);
     EXPECT_EQ(access.full_logical_payload_bytes, 1'300);
@@ -3090,6 +3110,19 @@ TEST(SoaAnalyzer, ComparesSelectedAccessAcrossPhysicalVariants) {
     auto const comparison{Analyzer::compare_soa_access(first_access, second_access)};
 
     EXPECT_EQ(comparison.column_names, columns);
+    ASSERT_EQ(comparison.columns.size(), 1);
+    EXPECT_EQ(comparison.columns[0].name, "wide");
+    EXPECT_EQ(comparison.columns[0].first.physical_type, "std::uint64_t");
+    EXPECT_EQ(comparison.columns[0].second.physical_type, "std::uint32_t");
+    EXPECT_EQ(comparison.columns[0].first.element_bytes, 8);
+    EXPECT_EQ(comparison.columns[0].second.element_bytes, 4);
+    EXPECT_EQ(comparison.columns[0].element_byte_delta->magnitude, 4);
+    EXPECT_EQ(comparison.columns[0].useful_byte_delta->magnitude, 400);
+    EXPECT_EQ(comparison.columns[0].cache_line_delta->magnitude, 6);
+    EXPECT_EQ(comparison.columns[0].cache_byte_delta->magnitude, 384);
+    EXPECT_EQ(comparison.columns[0].page_delta->direction, NumericDeltaDirection::unchanged);
+    EXPECT_EQ(comparison.columns[0].allocated_capacity_payload_delta->magnitude, 6'000);
+    EXPECT_EQ(comparison.columns[0].capacity_slack_payload_delta->magnitude, 5'600);
     EXPECT_EQ(comparison.element_count, 100);
     EXPECT_EQ(comparison.first.useful_bytes, 800);
     EXPECT_EQ(comparison.second.useful_bytes, 400);
@@ -3128,6 +3161,12 @@ TEST(SoaAnalyzer, RejectsIncompatibleSelectedAccessComparisons) {
     second.element_count = 11;
     comparison = Analyzer::compare_soa_access(first, second);
     EXPECT_FALSE(comparison.diagnostics.empty());
+    EXPECT_FALSE(comparison.useful_byte_delta.has_value());
+
+    second.element_count = first.element_count;
+    comparison = Analyzer::compare_soa_access(first, second);
+    EXPECT_FALSE(comparison.diagnostics.empty());
+    EXPECT_TRUE(comparison.columns.empty());
     EXPECT_FALSE(comparison.useful_byte_delta.has_value());
 }
 

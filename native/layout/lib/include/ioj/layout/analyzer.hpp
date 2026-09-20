@@ -571,8 +571,22 @@ struct SoaAnalysis {
     std::vector<Diagnostic> diagnostics;
 };
 
+struct SoaColumnAccessAnalysis {
+    std::string name;
+    std::string physical_type;
+    std::optional<std::uint64_t> element_bytes;
+    std::optional<std::uint64_t> useful_bytes;
+    std::optional<std::uint64_t> minimum_cache_lines;
+    std::optional<std::uint64_t> minimum_cache_bytes;
+    std::optional<std::uint64_t> minimum_pages;
+    std::optional<std::uint64_t> minimum_page_bytes;
+    std::optional<std::uint64_t> allocated_capacity_payload_bytes;
+    std::optional<std::uint64_t> capacity_slack_payload_bytes;
+};
+
 struct SoaAccessAnalysis {
     std::vector<std::string> column_names;
+    std::vector<SoaColumnAccessAnalysis> columns;
     std::uint64_t element_count{};
     std::optional<std::uint64_t> useful_bytes;
     std::optional<std::uint64_t> full_logical_payload_bytes;
@@ -611,8 +625,23 @@ struct RecordSoaAccessComparison {
     std::vector<Diagnostic> diagnostics;
 };
 
+struct SoaColumnAccessComparison {
+    std::string name;
+    SoaColumnAccessAnalysis first;
+    SoaColumnAccessAnalysis second;
+    std::optional<NumericDelta> element_byte_delta;
+    std::optional<NumericDelta> useful_byte_delta;
+    std::optional<NumericDelta> cache_line_delta;
+    std::optional<NumericDelta> cache_byte_delta;
+    std::optional<NumericDelta> page_delta;
+    std::optional<NumericDelta> page_byte_delta;
+    std::optional<NumericDelta> allocated_capacity_payload_delta;
+    std::optional<NumericDelta> capacity_slack_payload_delta;
+};
+
 struct SoaAccessComparison {
     std::vector<std::string> column_names;
+    std::vector<SoaColumnAccessComparison> columns;
     std::uint64_t element_count{};
     AccessFootprintSummary first;
     AccessFootprintSummary second;
