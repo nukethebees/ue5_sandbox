@@ -86,24 +86,25 @@ void seed_translation_responses(PlayerSimulationState& state,
     return input >= 0.f ? drive.positive_speed_limit : drive.negative_speed_limit;
 }
 
+[[nodiscard]] auto target_speed_for(float const input, TranslationDriveConfig const& drive) noexcept
+    -> float {
+    auto const requested{input >= 0.f ? drive.positive_target_speed : drive.negative_target_speed};
+    return std::min(requested, limit_for(input, drive));
+}
+
+[[nodiscard]] auto clamp_target_speed(float const target,
+                                      TranslationDriveConfig const& drive) noexcept -> float {
+    return std::clamp(target, -target_speed_for(-1.f, drive), target_speed_for(1.f, drive));
+}
+
 [[nodiscard]] auto acceleration_for(float const input, TranslationDriveConfig const& drive) noexcept
     -> float {
     return input >= 0.f ? drive.positive_acceleration : drive.negative_acceleration;
 }
 
-[[nodiscard]] auto automatic_target(TranslationChannelConfig const& channel,
-                                    TranslationDriveConfig const& drive,
-                                    bool const boosting) noexcept -> float {
-    if (channel.automatic_value == 0.f) {
-        return 0.f;
-    }
-    auto const limit{limit_for(channel.automatic_value, drive)};
-    auto const magnitude{boosting ? limit : std::min(std::abs(channel.automatic_value), limit)};
-    return std::copysign(magnitude, channel.automatic_value);
-}
-
 void apply_target_channel(float const dt,
                           TranslationSemantic const semantic,
+                          bool const automatic,
                           ResponseConfig const& response_config,
                           TranslationDriveConfig const& drive,
                           float const input,
@@ -116,15 +117,14 @@ void apply_target_channel(float const dt,
         return;
     }
 
-    auto target{input * limit_for(input, drive)};
-    if (semantic == TranslationSemantic::TargetSpeed) {
-        target = persistent_target;
+    auto target{input * target_speed_for(input, drive)};
+    if (semantic == TranslationSemantic::TargetSpeed && !automatic) {
+        target = clamp_target_speed(persistent_target, drive);
     }
     auto const current{static_cast<float>(ml::dot(velocity, axis))};
-    if (!std::isfinite(target)) {
-        target = current;
-    }
-    auto const controlled{response.update(dt, target, response_config)};
+    auto const controlled{std::clamp(response.update(dt, target, response_config),
+                                     -drive.negative_speed_limit,
+                                     drive.positive_speed_limit)};
     velocity += axis * (controlled - current);
 }
 
@@ -173,9 +173,11 @@ void integrate_axis(float const dt,
     auto const& manual_response_config{boosting ? boost.response : axis.config.manual.response};
     auto const& automatic_response_config{boosting ? boost.response
                                                    : axis.config.automatic.response};
+    axis.persistent_target_speed = clamp_target_speed(axis.persistent_target_speed, drive);
 
     apply_target_channel(dt,
                          axis.config.manual.semantic,
+                         false,
                          manual_response_config,
                          drive,
                          manual_input,
@@ -185,10 +187,10 @@ void integrate_axis(float const dt,
                          velocity);
     apply_target_channel(dt,
                          axis.config.automatic.semantic,
+                         true,
                          automatic_response_config,
                          drive,
-                         automatic_target(axis.config.automatic, drive, boosting) /
-                             std::max(limit_for(automatic_input, drive), 1.f),
+                         automatic_input,
                          axis.persistent_target_speed,
                          axis.automatic_response,
                          automatic_axis,
@@ -221,7 +223,14 @@ void integrate_axis(float const dt,
     if (axis.config.passive_drag > 0.f) {
         move_component_toward_zero(manual_axis, axis.config.passive_drag);
     }
-    if (manual_input == 0.f && axis.config.active_stabilization_rate > 0.f) {
+    auto const manual_command_active{
+        axis.config.manual.semantic == TranslationSemantic::TargetSpeed
+            ? axis.persistent_target_speed != 0.f
+            : axis.config.manual.semantic != TranslationSemantic::Disabled && manual_input != 0.f};
+    auto const automatic_command_active{
+        axis.config.automatic.semantic != TranslationSemantic::Disabled && automatic_input != 0.f};
+    if (!manual_command_active && !automatic_command_active &&
+        axis.config.active_stabilization_rate > 0.f) {
         move_component_toward_zero(manual_axis, axis.config.active_stabilization_rate);
     }
 }
@@ -233,19 +242,10 @@ void apply_brake(float const dt, BrakeConfig const& brake, PlayerSimulationState
         return;
     }
 
-    auto target_speed{brake.target_speed};
-    if (brake.response.mode == ResponseMode::Direct) {
-        target_speed = std::max(brake.target_speed, speed - brake.deceleration * dt);
-    } else if (brake.response.mode == ResponseMode::RateLimited) {
-        auto response{brake.response};
-        response.rate_limited.decreasing_rate = brake.deceleration;
-        target_speed =
-            state.controller.action_speed_response.update(dt, brake.target_speed, response);
-    } else {
-        target_speed =
-            state.controller.action_speed_response.update(dt, brake.target_speed, brake.response);
-    }
-    target_speed = std::clamp(target_speed, brake.target_speed, speed);
+    auto const engagement{std::clamp(
+        state.controller.brake_engagement_response.update(dt, 1.f, brake.response), 0.f, 1.f)};
+    auto const target_speed{
+        std::max(brake.target_speed, speed - brake.deceleration * engagement * dt)};
     velocity = velocity * (target_speed / speed);
 }
 
@@ -328,27 +328,45 @@ void seed_flight_model_responses(PlayerSimulationState& state,
     controller.yaw_stabilization_response.reset(static_cast<float>(rotation.yaw));
     controller.roll_stabilization_response.reset(static_cast<float>(rotation.roll));
     controller.facing_alignment_response.reset(0.f);
-    controller.action_speed_response.reset(static_cast<float>(physical.velocity.size()));
+    controller.brake_engagement_response.reset(0.f);
 }
 
 void prepare_flight_model_action_transition(PlayerSimulationState& state,
                                             FlightModelConfig const& config) noexcept {
     flight_model_evaluator_detail::seed_translation_responses(state, config, false);
-    state.controller.action_speed_response.reset(
-        static_cast<float>(state.physical.velocity.size()));
+    state.controller.brake_engagement_response.reset(0.f);
+}
+
+void clamp_flight_model_persistent_targets(PlayerSimulationState& state,
+                                           FlightModelConfig const& config) noexcept {
+    using namespace flight_model_evaluator_detail;
+
+    auto const boosting{state.controller.effective_action == BoostBrakeState::Boost};
+    auto clamp_axis = [boosting](float& target, TranslationAxisConfig const& axis) {
+        auto const& drive{boosting ? axis.boosted : axis.normal};
+        target = clamp_target_speed(target, drive);
+    };
+    clamp_axis(state.controller.persistent_forward_target_speed, config.translation.forward);
+    clamp_axis(state.controller.persistent_right_target_speed, config.translation.right);
+    clamp_axis(state.controller.persistent_up_target_speed, config.translation.up);
 }
 
 void reset_flight_model_controller(PlayerSimulationState& state,
-                                   FlightModelConfig const& config) noexcept {
+                                   FlightModelConfig const& config,
+                                   bool const clear_persistent_targets) noexcept {
     seed_flight_model_responses(state, config);
 
     auto& controller{state.controller};
     controller.angular_velocity = {};
-    controller.persistent_forward_target_speed = 0.f;
-    controller.persistent_right_target_speed = 0.f;
-    controller.persistent_up_target_speed = 0.f;
-    controller.time_since_rotation_input = 0.f;
-    controller.effective_action = BoostBrakeState::None;
+    controller.time_since_rotation_input = {};
+    if (clear_persistent_targets) {
+        controller.persistent_forward_target_speed = 0.f;
+        controller.persistent_right_target_speed = 0.f;
+        controller.persistent_up_target_speed = 0.f;
+        controller.effective_action = BoostBrakeState::None;
+    } else {
+        clamp_flight_model_persistent_targets(state, config);
+    }
 }
 
 void integrate_flight_model(float const dt,
@@ -378,28 +396,37 @@ void integrate_flight_model(float const dt,
         physical.transform.rotation * to_quaternion(Rotator3d{pitch, yaw, roll});
     physical.transform.rotation.normalize();
 
-    if (intent.rotation.size_squared() > 1.e-8) {
-        controller.time_since_rotation_input = 0.f;
+    if (std::abs(intent.rotation.x) > 1.e-8) {
+        controller.time_since_rotation_input.x = 0.0;
+    }
+    if (std::abs(intent.rotation.y) > 1.e-8) {
+        controller.time_since_rotation_input.y = 0.0;
+    }
+    if (std::abs(intent.rotation.z) > 1.e-8) {
+        controller.time_since_rotation_input.z = 0.0;
     }
     auto const current_rotation{physical.transform.rotator()};
-    auto const stabilized_pitch{stabilized_angle(dt,
-                                                 static_cast<float>(intent.rotation.x),
-                                                 controller.time_since_rotation_input,
-                                                 current_rotation.pitch,
-                                                 config.rotation.pitch,
-                                                 controller.pitch_stabilization_response)};
-    auto const stabilized_yaw{stabilized_angle(dt,
-                                               static_cast<float>(intent.rotation.y),
-                                               controller.time_since_rotation_input,
-                                               current_rotation.yaw,
-                                               config.rotation.yaw,
-                                               controller.yaw_stabilization_response)};
-    auto const stabilized_roll{stabilized_angle(dt,
-                                                static_cast<float>(intent.rotation.z),
-                                                controller.time_since_rotation_input,
-                                                current_rotation.roll,
-                                                config.rotation.roll,
-                                                controller.roll_stabilization_response)};
+    auto const stabilized_pitch{
+        stabilized_angle(dt,
+                         static_cast<float>(intent.rotation.x),
+                         static_cast<float>(controller.time_since_rotation_input.x),
+                         current_rotation.pitch,
+                         config.rotation.pitch,
+                         controller.pitch_stabilization_response)};
+    auto const stabilized_yaw{
+        stabilized_angle(dt,
+                         static_cast<float>(intent.rotation.y),
+                         static_cast<float>(controller.time_since_rotation_input.y),
+                         current_rotation.yaw,
+                         config.rotation.yaw,
+                         controller.yaw_stabilization_response)};
+    auto const stabilized_roll{
+        stabilized_angle(dt,
+                         static_cast<float>(intent.rotation.z),
+                         static_cast<float>(controller.time_since_rotation_input.z),
+                         current_rotation.roll,
+                         config.rotation.roll,
+                         controller.roll_stabilization_response)};
     physical.transform.rotation =
         to_quaternion(Rotator3d{stabilized_pitch, stabilized_yaw, stabilized_roll});
 
@@ -418,7 +445,7 @@ void integrate_flight_model(float const dt,
                     controller.right_automatic_response,
                     controller.persistent_right_target_speed,
                     static_cast<float>(intent.translation.y),
-                    0.f,
+                    intent.accelerator,
                     physical.transform.right(),
                     ml::Vector3d{0.0, 1.0, 0.0}},
         AxisRuntime{config.translation.up,
@@ -426,7 +453,7 @@ void integrate_flight_model(float const dt,
                     controller.up_automatic_response,
                     controller.persistent_up_target_speed,
                     static_cast<float>(intent.translation.z),
-                    0.f,
+                    intent.accelerator,
                     physical.transform.transform_vector_no_scale({0.0, 0.0, 1.0}),
                     ml::Vector3d{0.0, 0.0, 1.0}},
     };

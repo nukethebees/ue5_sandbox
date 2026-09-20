@@ -8,8 +8,11 @@ void seed_flight_model_responses(PlayerSimulationState& state,
                                  FlightModelConfig const& config) noexcept;
 void prepare_flight_model_action_transition(PlayerSimulationState& state,
                                             FlightModelConfig const& config) noexcept;
+void clamp_flight_model_persistent_targets(PlayerSimulationState& state,
+                                           FlightModelConfig const& config) noexcept;
 void reset_flight_model_controller(PlayerSimulationState& state,
-                                   FlightModelConfig const& config) noexcept;
+                                   FlightModelConfig const& config,
+                                   bool clear_persistent_targets = true) noexcept;
 void integrate_flight_model(float dt,
                             FlightModelConfig const& config,
                             PlayerFlightIntent const& intent,
