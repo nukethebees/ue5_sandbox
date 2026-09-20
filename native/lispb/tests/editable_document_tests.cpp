@@ -4128,6 +4128,95 @@ TEST(EditableSchemaDocument, AuthorsOrdersAndEditsSoaFunctionBodiesAndDependenci
     EXPECT_EQ(schema->functions.front().parameters.front().name, "count");
 }
 
+TEST(EditableSchemaDocument, AuthorsSoaFunctionAdvancedSignatureProperties) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+    auto const original_revision{document.revision()};
+
+    auto replacement{*document.soa_schema(declaration)};
+    replacement.functions.front().template_parameters = " \t";
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
+    ASSERT_FALSE(applied.has_value());
+    EXPECT_EQ(document.revision(), original_revision);
+
+    replacement = *document.soa_schema(declaration);
+    replacement.functions.front().requires_clause = "  ";
+    applied =
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)});
+    ASSERT_FALSE(applied.has_value());
+    EXPECT_EQ(document.revision(), original_revision);
+
+    replacement = *document.soa_schema(declaration);
+    replacement.functions.front().trailing_return_type = codegen::TypeRef{"std::uint16_t"};
+    applied =
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)});
+    ASSERT_FALSE(applied.has_value());
+    EXPECT_EQ(document.revision(), original_revision);
+
+    replacement = *document.soa_schema(declaration);
+    auto& function{replacement.functions.front()};
+    function.return_type = codegen::TypeRef{"auto"};
+    function.trailing_return_type = codegen::TypeRef{"std::uint16_t"};
+    function.template_parameters = "typename T";
+    function.requires_clause = "sizeof(T) > 0";
+    applied =
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.soa_schema(declaration)->functions.front().return_type.name, "void");
+    EXPECT_FALSE(
+        document.soa_schema(declaration)->functions.front().trailing_return_type.has_value());
+    ASSERT_TRUE(document.redo().value());
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& source{preview->front().updated};
+    EXPECT_NE(source.find("(function clear auto"), std::string::npos);
+    EXPECT_NE(source.find(":trailing-return-type std::uint16_t"), std::string::npos);
+    EXPECT_NE(source.find(":template-parameters \"typename T\""), std::string::npos);
+    EXPECT_NE(source.find(":requires \"sizeof(T) > 0\""), std::string::npos);
+    EXPECT_NE(source.find("; Keep the custom function note."), std::string::npos);
+    EXPECT_NE(source.find("; Keep the count parameter note."), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    auto const* schema{reloaded.soa_schema(reloaded_declaration)};
+    ASSERT_TRUE(schema->functions.front().trailing_return_type.has_value());
+    EXPECT_EQ(schema->functions.front().return_type.name, "auto");
+    EXPECT_EQ(schema->functions.front().trailing_return_type->name, "std::uint16_t");
+    EXPECT_EQ(schema->functions.front().template_parameters, "typename T");
+    EXPECT_EQ(schema->functions.front().requires_clause, "sizeof(T) > 0");
+
+    replacement = *schema;
+    auto& reloaded_function{replacement.functions.front()};
+    reloaded_function.return_type = *reloaded_function.trailing_return_type;
+    reloaded_function.trailing_return_type.reset();
+    reloaded_function.template_parameters.reset();
+    reloaded_function.requires_clause.reset();
+    applied = reloaded.apply(
+        ReplaceSoa{.declaration = reloaded_declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    saved = reloaded.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto final_document{files.load()};
+    auto const final_declaration{
+        declaration_id(final_document, "authored_soa", "ExistingSoa", "authored")};
+    schema = final_document.soa_schema(final_declaration);
+    EXPECT_EQ(schema->functions.front().return_type.name, "std::uint16_t");
+    EXPECT_FALSE(schema->functions.front().trailing_return_type.has_value());
+    EXPECT_FALSE(schema->functions.front().template_parameters.has_value());
+    EXPECT_FALSE(schema->functions.front().requires_clause.has_value());
+}
+
 TEST(EditableSchemaDocument, PreservesSoaMembersAndAdvancedFormsForStructuralEdits) {
     TemporarySchema files;
     auto document{files.load()};

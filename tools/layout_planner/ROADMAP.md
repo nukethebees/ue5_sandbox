@@ -313,10 +313,11 @@ editing, shared type picking, and optional default expressions. Shared validatio
 defaults and C++ trailing-default order before a document command is accepted. Body fragments and
 registered dependency keys are separate flat ordered editors with resizable direct text input,
 add/duplicate/delete, and button/drag reorder; unknown or blank dependency keys are rejected by the
-shared validator. Trailing returns, templates, and constraints remain visibly inspectable and are
-preserved exactly pending their focused editor. Stable uniquely named function and parameter rows
-preserve surrounding source comments; list-form body/dependency properties patch locally while raw
-`#cpp` bodies retain safe canonical fallback.
+shared validator. Optional trailing returns atomically switch the declared return to/from `auto`,
+support shared type picking, and remain valid across enable/disable; opaque template-parameter and
+requires-clause text is authorable with resizable inline inputs and shared nonblank validation.
+Stable uniquely named function and parameter rows preserve surrounding source comments; list-form
+function properties patch locally while raw `#cpp` bodies retain safe canonical fallback.
 
 - Create standard-library SoA declarations.
 - Add, remove, duplicate, and reorder columns.

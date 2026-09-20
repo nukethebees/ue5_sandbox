@@ -1371,13 +1371,19 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
                 throw std::invalid_argument{context + " must not be both static and const"};
             }
             if (function.template_parameters.has_value()) {
-                require_value(*function.template_parameters, context + " template parameters");
+                require_non_blank_value(*function.template_parameters,
+                                        context + " template parameters");
             }
             if (function.requires_clause.has_value()) {
-                require_value(*function.requires_clause, context + " requires clause");
+                require_non_blank_value(*function.requires_clause, context + " requires clause");
             }
             validate_type(function.return_type, types, context + " return");
             if (function.trailing_return_type.has_value()) {
+                if (function.return_type.name != "auto" || !function.return_type.suffix.empty() ||
+                    function.return_type.nested.has_value()) {
+                    throw std::invalid_argument{context +
+                                                " trailing return type requires an auto return"};
+                }
                 validate_type(*function.trailing_return_type, types, context + " trailing return");
             }
             auto const parameter_types{parameter_type_names(function.parameters, types, context)};

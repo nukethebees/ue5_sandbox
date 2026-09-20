@@ -1151,6 +1151,30 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
         .is_static = true,
     }};
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_soa_module();
+    module.structs.front().functions = {FunctionSchema{
+        .name = "invalid_trailing_return",
+        .return_type = TypeRef{"void"},
+        .trailing_return_type = TypeRef{"int32"},
+    }};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_soa_module();
+    module.structs.front().functions = {FunctionSchema{
+        .name = "invalid_template",
+        .return_type = TypeRef{"void"},
+        .template_parameters = " \t",
+    }};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_soa_module();
+    module.structs.front().functions = {FunctionSchema{
+        .name = "invalid_requires",
+        .return_type = TypeRef{"void"},
+        .requires_clause = " \t",
+    }};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsCustomSoaFunctionsCollidingWithGeneratedApisAndTypeNames) {

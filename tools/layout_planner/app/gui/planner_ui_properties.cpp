@@ -4963,12 +4963,20 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                        *soa_function_dependency_index_ >= function.dependencies.size()) {
                 soa_function_dependency_index_ = 0;
             }
+            soa_function_trailing_return_type_ = function.trailing_return_type.has_value()
+                                                   ? function.trailing_return_type->name
+                                                   : "";
+            soa_function_template_parameters_ = function.template_parameters.value_or("");
+            soa_function_requires_clause_ = function.requires_clause.value_or("");
         } else {
             soa_parameter_index_.reset();
             soa_function_body_lines_.clear();
             soa_function_body_index_.reset();
             soa_function_dependencies_.clear();
             soa_function_dependency_index_.reset();
+            soa_function_trailing_return_type_.clear();
+            soa_function_template_parameters_.clear();
+            soa_function_requires_clause_.clear();
         }
         std::snprintf(soa_single_allocation_name_.data(),
                       soa_single_allocation_name_.size(),
@@ -6514,15 +6522,112 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
         }
         ImGui::EndDisabled();
 
-        ImGui::TextDisabled("Remaining advanced fields are preserved by every edit.");
+        ImGui::SeparatorText("Advanced signature");
+        auto has_trailing_return{function.trailing_return_type.has_value()};
+        ImGui::BeginDisabled(pending.has_value());
+        auto const trailing_toggled{
+            ImGui::Checkbox("Use trailing return type", &has_trailing_return)};
+        ImGui::EndDisabled();
+        if (trailing_toggled) {
+            auto replacement{*schema};
+            auto& edited{replacement.functions[*function_index]};
+            if (has_trailing_return) {
+                edited.trailing_return_type =
+                    edited.return_type.name == "auto"
+                        ? codegen::TypeRef{.name = "void", .suffix = {}, .nested = std::nullopt}
+                        : edited.return_type;
+                edited.return_type =
+                    codegen::TypeRef{.name = "auto", .suffix = {}, .nested = std::nullopt};
+            } else {
+                edited.return_type = *edited.trailing_return_type;
+                edited.trailing_return_type.reset();
+            }
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_editor_declaration_.reset();
+                ImGui::PopID();
+                return true;
+            }
+        }
         if (function.trailing_return_type.has_value()) {
-            ImGui::Text("Trailing return: %s", function.trailing_return_type->name.c_str());
+            ImGui::SetNextItemWidth(220.0F);
+            auto const submitted{input_text("Trailing return type",
+                                            soa_function_trailing_return_type_,
+                                            ImGuiInputTextFlags_EnterReturnsTrue)};
+            if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                if (!pending.has_value()) {
+                    pending = *schema;
+                }
+                pending->functions[*function_index].trailing_return_type->name =
+                    soa_function_trailing_return_type_;
+            }
+            ImGui::SameLine();
+            ImGui::PushID("trailing-return-picker");
+            if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
+                if (!pending.has_value()) {
+                    pending = *schema;
+                }
+                pending->functions[*function_index].trailing_return_type->name = *picked;
+            }
+            ImGui::PopID();
+        }
+
+        auto has_template_parameters{function.template_parameters.has_value()};
+        ImGui::BeginDisabled(pending.has_value());
+        auto const template_toggled{
+            ImGui::Checkbox("Template parameters", &has_template_parameters)};
+        ImGui::EndDisabled();
+        if (template_toggled) {
+            auto replacement{*schema};
+            replacement.functions[*function_index].template_parameters =
+                has_template_parameters ? std::optional<std::string>{"typename T"} : std::nullopt;
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_editor_declaration_.reset();
+                ImGui::PopID();
+                return true;
+            }
         }
         if (function.template_parameters.has_value()) {
-            ImGui::Text("Template: %s", function.template_parameters->c_str());
+            ImGui::SetNextItemWidth(-1.0F);
+            auto const submitted{input_text("Template parameter text",
+                                            soa_function_template_parameters_,
+                                            ImGuiInputTextFlags_EnterReturnsTrue)};
+            if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                if (!pending.has_value()) {
+                    pending = *schema;
+                }
+                pending->functions[*function_index].template_parameters =
+                    soa_function_template_parameters_;
+            }
+        }
+
+        auto has_requires_clause{function.requires_clause.has_value()};
+        ImGui::BeginDisabled(pending.has_value());
+        auto const requires_toggled{ImGui::Checkbox("Requires clause", &has_requires_clause)};
+        ImGui::EndDisabled();
+        if (requires_toggled) {
+            auto replacement{*schema};
+            replacement.functions[*function_index].requires_clause =
+                has_requires_clause ? std::optional<std::string>{"true"} : std::nullopt;
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_editor_declaration_.reset();
+                ImGui::PopID();
+                return true;
+            }
         }
         if (function.requires_clause.has_value()) {
-            ImGui::Text("Requires: %s", function.requires_clause->c_str());
+            ImGui::SetNextItemWidth(-1.0F);
+            auto const submitted{input_text("Requires expression",
+                                            soa_function_requires_clause_,
+                                            ImGuiInputTextFlags_EnterReturnsTrue)};
+            if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                if (!pending.has_value()) {
+                    pending = *schema;
+                }
+                pending->functions[*function_index].requires_clause = soa_function_requires_clause_;
+            }
         }
         ImGui::PopID();
     }
@@ -7075,6 +7180,21 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             return false;
         }
         for (auto const& function : pending->functions) {
+            if (function.trailing_return_type.has_value() &&
+                function.trailing_return_type->name.empty()) {
+                schema_edit_message_ = "SoA function trailing return type cannot be empty.";
+                return false;
+            }
+            if (function.template_parameters.has_value() &&
+                function.template_parameters->find_first_not_of(" \t\r\n") == std::string::npos) {
+                schema_edit_message_ = "SoA function template parameters cannot be empty.";
+                return false;
+            }
+            if (function.requires_clause.has_value() &&
+                function.requires_clause->find_first_not_of(" \t\r\n") == std::string::npos) {
+                schema_edit_message_ = "SoA function requires clause cannot be empty.";
+                return false;
+            }
             auto const invalid_dependency{
                 std::ranges::find_if(function.dependencies, [](auto const& dependency) {
                     return dependency.find_first_not_of(" \t\r\n") == std::string::npos;

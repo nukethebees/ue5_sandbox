@@ -1958,22 +1958,7 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
         auto const* source_body{source_property(source, "body")};
         if ((source_body != nullptr &&
              source_body->token.kind == codegen::sexpr::TokenKind::raw_literal &&
-             !property_matches(source, "body", body)) ||
-            !property_matches(source,
-                              "trailing-return-type",
-                              function.trailing_return_type.has_value()
-                                  ? std::optional{render_type_ref(*function.trailing_return_type)}
-                                  : std::nullopt) ||
-            !property_matches(source,
-                              "template-parameters",
-                              function.template_parameters.has_value()
-                                  ? std::optional{quote(*function.template_parameters)}
-                                  : std::nullopt) ||
-            !property_matches(source,
-                              "requires",
-                              function.requires_clause.has_value()
-                                  ? std::optional{quote(*function.requires_clause)}
-                                  : std::nullopt)) {
+             !property_matches(source, "body", body))) {
             return false;
         }
         return true;
@@ -2200,9 +2185,13 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                 function.dependencies.empty()
                     ? std::nullopt
                     : std::optional{render_quoted_values(function.dependencies)}};
-            auto const function_properties{std::array<SourceProperty, 7>{
+            auto const function_properties{std::array<SourceProperty, 10>{
                 std::pair{"body", body},
                 std::pair{"dependencies", dependencies},
+                std::pair{"trailing-return-type",
+                          function.trailing_return_type.has_value()
+                              ? std::optional{render_type_ref(*function.trailing_return_type)}
+                              : std::nullopt},
                 std::pair{"const",
                           function.is_const ? std::optional<std::string>{"true"} : std::nullopt},
                 std::pair{"noexcept",
@@ -2213,7 +2202,15 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                           function.is_inline ? std::optional<std::string>{"true"} : std::nullopt},
                 std::pair{"definition-in-source",
                           function.definition_in_source ? std::optional<std::string>{"true"}
-                                                        : std::nullopt}}};
+                                                        : std::nullopt},
+                std::pair{"template-parameters",
+                          function.template_parameters.has_value()
+                              ? std::optional{quote(*function.template_parameters)}
+                              : std::nullopt},
+                std::pair{"requires",
+                          function.requires_clause.has_value()
+                              ? std::optional{quote(*function.requires_clause)}
+                              : std::nullopt}}};
             if (!patch_source_properties(*found->second.form,
                                          2,
                                          function_properties,
