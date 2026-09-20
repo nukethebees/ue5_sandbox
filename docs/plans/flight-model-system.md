@@ -1,6 +1,6 @@
 # Runtime Flight Model System
 
-Status: implementation in progress; Milestones 1-2 are complete and the generic evaluator is next.
+Status: implementation in progress; Milestones 1-5 are complete and Unreal integration is next.
 
 This file is both the implementation specification and the persistent progress record for the
 player flight-model redesign. Update the progress ledger and any decisions changed by repository
@@ -679,9 +679,14 @@ Skater, Gunship, transitions, and Unreal command routing have their replacement 
 - [x] Milestone 2: response and state separation (runtime Direct/RateLimited/SecondOrder scalar
   response added; physical, controller, resource, and presentation state split with legacy
   behavior retained and focused native tests passing).
-- [ ] Milestone 3: generic evaluator and Starfox.
-- [ ] Milestone 4: Fighter and Skater.
-- [ ] Milestone 5: Gunship and transitions.
+- [x] Milestone 3: generic evaluator and Starfox (the generic runtime pipeline now drives cruise,
+  boost, brake, facing coupling, rotation, limiting, and position integration; focused native tests
+  cover Starfox convergence and actions).
+- [x] Milestone 4: Fighter and Skater (Fighter acceleration/drag and genuinely additive inertial
+  Skater movement are expressed entirely through runtime data and pass behavioral tests).
+- [x] Milestone 5: Gunship and transitions (three-axis target velocity, neutral stabilization,
+  direct slots, runtime profile replacement, action precedence, pairwise velocity preservation,
+  and response reseeding pass the native simulation suite).
 - [ ] Milestone 6: canonical Unreal intent and D-pad.
 - [ ] Milestone 7: settings, HUD, and runtime editor.
 - [ ] Milestone 8: legacy removal and final cleanup.

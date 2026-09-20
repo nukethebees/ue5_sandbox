@@ -8,7 +8,7 @@ target_sources(native-simulation-tests PRIVATE
   scalar_response_tests.cpp
   test_tick_phases.cpp
   test_level_simulation.cpp
-  test_player_power_control.cpp
+  test_player_flight_models.cpp
   test_overlap_handler.cpp
   test_attack_distance_band.cpp
   test_entity_aabb_overlaps.cpp

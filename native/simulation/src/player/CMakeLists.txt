@@ -3,6 +3,7 @@ target_sources(native-simulation PRIVATE
   ../../include/ioj/sim/player/command_interface.h
   ../../include/ioj/sim/player/fire_rate.h
   ../../include/ioj/sim/player/flight_model_config.h
+  ../../include/ioj/sim/player/flight_model_evaluator.h
   ../../include/ioj/sim/player/flight_model_runtime.h
   ../../include/ioj/sim/player/flight_mode.h
   ../../include/ioj/sim/player/laser_firing_state.h
@@ -13,6 +14,7 @@ target_sources(native-simulation PRIVATE
   ../../include/ioj/sim/player/sim.h
   ../../include/ioj/sim/player/space_ship_common.h
   flight_model_config.cpp
+  flight_model_evaluator.cpp
   phase_interface.cpp
   scalar_response.cpp
   sim.cpp

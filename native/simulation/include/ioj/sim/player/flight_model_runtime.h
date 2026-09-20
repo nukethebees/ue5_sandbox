@@ -32,6 +32,8 @@ struct FlightModelControllerState {
     ScalarResponse pitch_response{};
     ScalarResponse yaw_response{};
     ScalarResponse roll_response{};
+    ScalarResponse action_speed_response{};
+    ml::Vector3d angular_velocity{};
     float persistent_forward_target_speed{};
     float persistent_right_target_speed{};
     float persistent_up_target_speed{};
