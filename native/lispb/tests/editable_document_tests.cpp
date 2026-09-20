@@ -3173,5 +3173,105 @@ TEST(EditableSchemaDocument, PreservesSoaMembersAndAdvancedFormsForStructuralEdi
     EXPECT_EQ(schema->functions[0].body_lines, std::vector<std::string>{"values.clear();"});
 }
 
+TEST(EditableSchemaDocument, EnablesAndDisablesSoaFieldMaskAsCoordinatedEdits) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+    auto enabled{*document.soa_schema(declaration)};
+    enabled.field_mask_name = "ExistingSoaFieldMask";
+    enabled.field_enum_name = "ExistingSoaField";
+    enabled.members[0].mask_field = true;
+    enabled.members[0].mask_dimensions.push_back(
+        codegen::SoaMaskDimensionSchema{.index_name = "lane", .extent = "4"});
+    enabled.members.push_back(codegen::SoaMemberSchema{
+        .name = "field_mask",
+        .kind = codegen::SoaMemberKind::array,
+        .type =
+            codegen::TypeRef{.name = "ExistingSoaFieldMask", .suffix = {}, .nested = std::nullopt},
+        .fixed_schema = std::nullopt,
+        .nested_schema = std::nullopt,
+        .mask_field = false,
+        .mask_dimensions = {}});
+
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(enabled)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find(":field-mask-name ExistingSoaFieldMask"),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":field-enum-name ExistingSoaField"),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":mask-field true"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":mask-dimensions ((lane \"4\"))"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(member field_mask array ExistingSoaFieldMask)"),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the custom function note"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_FALSE(document.soa_schema(declaration)->field_mask_name.has_value());
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.soa_schema(declaration)->field_mask_name.has_value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    auto const* reloaded_schema{reloaded.soa_schema(reloaded_declaration)};
+    ASSERT_NE(reloaded_schema, nullptr);
+    EXPECT_EQ(reloaded_schema->field_mask_name, "ExistingSoaFieldMask");
+    EXPECT_EQ(reloaded_schema->field_enum_name, "ExistingSoaField");
+    ASSERT_EQ(reloaded_schema->members.size(), 3U);
+    EXPECT_TRUE(reloaded_schema->members[0].mask_field);
+    ASSERT_EQ(reloaded_schema->members[0].mask_dimensions.size(), 1U);
+    EXPECT_EQ(reloaded_schema->members[0].mask_dimensions[0].index_name, "lane");
+
+    auto disabled{*reloaded_schema};
+    std::erase_if(disabled.members,
+                  [](auto const& member) { return member.type.name == "ExistingSoaFieldMask"; });
+    for (auto& member : disabled.members) {
+        member.mask_field = false;
+        member.mask_dimensions.clear();
+    }
+    disabled.field_mask_name.reset();
+    disabled.field_enum_name.reset();
+    applied = reloaded.apply(
+        ReplaceSoa{.declaration = reloaded_declaration, .schema = std::move(disabled)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = reloaded.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated.find(":field-mask-name"), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find(":field-enum-name"), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find(":mask-field"), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find(":mask-dimensions"), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find("(member field_mask "), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the custom function note"), std::string::npos);
+
+    ASSERT_TRUE(reloaded.undo().value());
+    EXPECT_TRUE(reloaded.soa_schema(reloaded_declaration)->field_mask_name.has_value());
+    ASSERT_TRUE(reloaded.redo().value());
+    EXPECT_FALSE(reloaded.soa_schema(reloaded_declaration)->field_mask_name.has_value());
+    saved = reloaded.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto final_document{files.load()};
+    auto const final_declaration{
+        declaration_id(final_document, "authored_soa", "ExistingSoa", "authored")};
+    auto const* final_schema{final_document.soa_schema(final_declaration)};
+    ASSERT_NE(final_schema, nullptr);
+    EXPECT_FALSE(final_schema->field_mask_name.has_value());
+    EXPECT_FALSE(final_schema->field_enum_name.has_value());
+    EXPECT_EQ(final_schema->members.size(), 2U);
+    EXPECT_TRUE(std::ranges::none_of(final_schema->members,
+                                     [](auto const& member) { return member.mask_field; }));
+}
+
 } // namespace
 } // namespace lispb::schema

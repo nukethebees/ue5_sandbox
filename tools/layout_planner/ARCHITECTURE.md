@@ -92,8 +92,9 @@ packed dividers issue ordinary undoable schema commands. Planner capacity remain
 rather than becoming a SoA source property, and there is no persistent variant format.
 Nested SoA columns edit optional fixed-schema and nested-schema references through the same
 whole-schema command path, and array selection clears those nested-only properties before
-validation. Mask editing is withheld until the generated mask type, storage column, mask fields,
-and dimensions can change together as a valid semantic transaction.
+validation. The coordinated mask workflow enables or disables the generated mask type, field enum,
+storage column, and field membership atomically so intermediate invalid configurations never enter
+history. Dimension metadata remains source-preserved and read-only.
 
 The application treats a C++ schema target as the open authoring document. Open/recent operations
 load its project manifest and target, while Save As materializes the current draft as a validated,

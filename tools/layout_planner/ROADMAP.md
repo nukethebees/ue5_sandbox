@@ -282,8 +282,10 @@ value with a 24-bit integer field and an 8-bit field that semantically reference
 The initial standard-library SoA vertical slice is implemented. Selected nested columns expose
 optional fixed-schema and nested-schema references inline, and switching back to array clears those
 nested-only properties. Coordinated generated field-mask/storage/dimension authoring remains
-follow-up; current mask metadata is displayed read-only rather than exposed as an invalid isolated
-toggle.
+partially complete: the UI atomically enables generated names, the required storage column, and the
+first selected mask field; it safely disables the whole configuration and toggles additional
+eligible array fields without allowing the final field to be removed. Existing dimensions are
+displayed and source-preserved; direct dimension editing remains follow-up.
 
 - Create standard-library SoA declarations.
 - Add, remove, duplicate, and reorder columns.

@@ -4955,15 +4955,95 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             ImGui::TextDisabled("Fixed and nested schema references apply only to nested columns.");
         }
 
-        ImGui::Text("Mask field: %s", member.mask_field ? "yes" : "no");
+        auto const mask_configured{schema->field_mask_name.has_value() &&
+                                   schema->field_enum_name.has_value()};
+        if (!mask_configured) {
+            auto const eligible{member.kind == codegen::SoaMemberKind::array};
+            ImGui::BeginDisabled(!eligible);
+            if (ImGui::Button("Enable generated field mask for this column")) {
+                auto replacement{*schema};
+                replacement.field_mask_name = schema->name + "FieldMask";
+                replacement.field_enum_name = schema->name + "Field";
+                replacement.members[*selected_index].mask_field = true;
+                auto const storage_name{unique_member_name(replacement.members, "field_mask")};
+                replacement.members.push_back(codegen::SoaMemberSchema{
+                    .name = storage_name,
+                    .kind = codegen::SoaMemberKind::array,
+                    .type = codegen::TypeRef{.name = *replacement.field_mask_name,
+                                             .suffix = {},
+                                             .nested = std::nullopt},
+                    .fixed_schema = std::nullopt,
+                    .nested_schema = std::nullopt,
+                    .mask_field = false,
+                    .mask_dimensions = {}});
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    selected_field_ = member.name;
+                    return true;
+                }
+            }
+            ImGui::EndDisabled();
+            if (!eligible) {
+                ImGui::TextDisabled("Generated mask fields must be array columns.");
+            }
+        } else {
+            ImGui::Text("Generated mask: %s", schema->field_mask_name->c_str());
+            ImGui::Text("Generated field enum: %s", schema->field_enum_name->c_str());
+            auto const storage_member{member.type.name == *schema->field_mask_name};
+            auto const mask_field_count{std::ranges::count_if(
+                schema->members, [](auto const& candidate) { return candidate.mask_field; })};
+            auto included{member.mask_field};
+            auto const can_toggle{member.kind == codegen::SoaMemberKind::array && !storage_member &&
+                                  (!included || mask_field_count > 1)};
+            ImGui::BeginDisabled(!can_toggle);
+            if (ImGui::Checkbox("Included in generated field mask", &included)) {
+                pending = *schema;
+                pending->members[*selected_index].mask_field = included;
+                if (!included) {
+                    pending->members[*selected_index].mask_dimensions.clear();
+                }
+            }
+            ImGui::EndDisabled();
+            if (storage_member) {
+                ImGui::TextDisabled("This is the generated mask storage column.");
+            } else if (member.kind != codegen::SoaMemberKind::array) {
+                ImGui::TextDisabled("Generated mask fields must be array columns.");
+            } else if (member.mask_field && mask_field_count == 1) {
+                ImGui::TextDisabled("At least one generated mask field is required.");
+            }
+
+            if (ImGui::Button("Disable generated field mask")) {
+                auto replacement{*schema};
+                auto const mask_type{*replacement.field_mask_name};
+                auto selected_after_disable{selected_field_};
+                auto const selected_is_storage{member.type.name == mask_type};
+                std::erase_if(replacement.members, [&](auto const& candidate) {
+                    return candidate.type.name == mask_type;
+                });
+                for (auto& candidate : replacement.members) {
+                    candidate.mask_field = false;
+                    candidate.mask_dimensions.clear();
+                }
+                replacement.field_mask_name.reset();
+                replacement.field_enum_name.reset();
+                if (selected_is_storage && !replacement.members.empty()) {
+                    selected_after_disable = replacement.members.front().name;
+                }
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    selected_field_ = std::move(selected_after_disable);
+                    return true;
+                }
+            }
+        }
+
         if (!member.mask_dimensions.empty()) {
             ImGui::TextDisabled("Mask dimensions");
             for (auto const& dimension : member.mask_dimensions) {
                 ImGui::BulletText("%s: %s", dimension.index_name.c_str(), dimension.extent.c_str());
             }
         }
-        ImGui::TextDisabled(
-            "Mask editing requires coordinated field-mask and storage-column configuration.");
+        ImGui::TextDisabled("Mask dimensions remain source-preserved and read only.");
     }
 
     if (navigate_to.has_value()) {

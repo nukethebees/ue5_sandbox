@@ -255,8 +255,11 @@ Standard-library SoAs can likewise be created with **+ New SoA**. Columns suppor
 semantic type, and array/nested kind editing plus add, duplicate, delete, button reorder, and drag
 reorder. Selected nested columns also expose optional fixed-schema and nested-schema references;
 switching back to array removes those invalid nested-only properties. Existing mask metadata is
-shown read-only until its generated field-mask/storage configuration can be edited as one valid
-operation. Capacity remains a planner experiment setting and is not written into LispB.
+edited through coordinated actions: enable creates both generated type names, the required storage
+column, and the first mask field in one undoable command; disable removes the whole configuration;
+eligible array columns can be included or excluded while retaining at least one field. Existing mask
+dimensions remain source-preserved and read-only. Capacity remains a planner experiment setting and
+is not written into LispB.
 
 Raw unions use **+ New union** and an existing `union-module`. Alternatives are edited inline with
 the shared semantic type picker and may be scalars or positive fixed arrays. Add, duplicate,
