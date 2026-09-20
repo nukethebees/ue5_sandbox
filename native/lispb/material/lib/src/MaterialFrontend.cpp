@@ -22,16 +22,6 @@ auto material_span(ParserSourceSpan const& span) -> SourceSpan {
     return {span.line, span.column, span.path, span.expansion};
 }
 
-auto is_identifier(std::string_view const value) -> bool {
-    if (value.empty() ||
-        !(std::isalpha(static_cast<unsigned char>(value.front())) != 0 || value.front() == '_')) {
-        return false;
-    }
-    return std::ranges::all_of(value.substr(1), [](unsigned char const character) {
-        return std::isalnum(character) != 0 || character == '_';
-    });
-}
-
 auto parse_number(Form const& form) -> std::optional<double> {
     if (form.is_list() || form.token.kind != TokenKind::atom) {
         return std::nullopt;
@@ -141,7 +131,7 @@ class Analyzer {
             return;
         }
         auto const name{atom(form.children[1], "material name")};
-        if (!name || !is_identifier(*name)) {
+        if (!name || !valid_identifier(*name)) {
             if (name) {
                 fail(form.children[1].token.span, "invalid material identifier");
             }
@@ -337,8 +327,8 @@ class Analyzer {
         }
         auto const type_name{atom(form.children[1], "parameter type")};
         auto const name{atom(form.children[2], "parameter name")};
-        if (!type_name || !name || !is_identifier(*name)) {
-            if (name && !is_identifier(*name)) {
+        if (!type_name || !name || !valid_identifier(*name)) {
+            if (name && !valid_identifier(*name)) {
                 fail(form.children[2].token.span, "invalid parameter identifier");
             }
             return;
@@ -436,7 +426,7 @@ class Analyzer {
             return;
         }
         auto const name{atom(form.children[1], "binding name")};
-        if (!name || !is_identifier(*name)) {
+        if (!name || !valid_identifier(*name)) {
             if (name) {
                 fail(form.children[1].token.span, "invalid binding identifier");
             }
@@ -953,7 +943,7 @@ class Analyzer {
                  "shader-call requires an absolute virtual .ush or .usf path");
             return std::nullopt;
         }
-        if (!function || !is_identifier(*function)) {
+        if (!function || !valid_identifier(*function)) {
             fail(form.children[3].token.span, "invalid shader function name");
             return std::nullopt;
         }
@@ -976,7 +966,7 @@ class Analyzer {
             auto const name{atom(declaration.children[0], "shader-call input name")};
             auto const type_name{atom(declaration.children[1], "shader-call input type")};
             auto const type{type_name ? parse_type(*type_name) : ValueType::invalid};
-            if (!name || !is_identifier(*name) || type == ValueType::invalid ||
+            if (!name || !valid_identifier(*name) || type == ValueType::invalid ||
                 !input_names.insert(std::string{*name}).second) {
                 fail(declaration.token.span, "invalid or duplicate shader-call input declaration");
                 continue;
@@ -1046,7 +1036,7 @@ class Analyzer {
             auto const name{atom(declaration.children[0], "custom input name")};
             auto const type_name{atom(declaration.children[1], "custom input type")};
             auto const type{type_name ? parse_type(*type_name) : ValueType::invalid};
-            if (!name || !is_identifier(*name) || !type_name || type == ValueType::invalid) {
+            if (!name || !valid_identifier(*name) || !type_name || type == ValueType::invalid) {
                 fail(declaration.token.span, "invalid custom input declaration");
                 continue;
             }

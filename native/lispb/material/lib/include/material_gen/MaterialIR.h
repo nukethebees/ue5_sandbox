@@ -135,6 +135,7 @@ struct MaterialIR {
     std::vector<std::string> texture_dependencies;
 };
 
+auto valid_identifier(std::string_view value) -> bool;
 auto is_numeric(ValueType type) -> bool;
 auto component_count(ValueType type) -> std::size_t;
 auto validate(MaterialIR const& material) -> std::vector<Diagnostic>;

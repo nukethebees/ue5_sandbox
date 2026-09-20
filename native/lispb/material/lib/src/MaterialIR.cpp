@@ -16,16 +16,6 @@ auto valid_handle(MaterialIR const& material, NodeHandle const handle) -> bool {
     return handle.index < material.nodes.size();
 }
 
-auto valid_identifier(std::string_view const value) -> bool {
-    if (value.empty() ||
-        !(std::isalpha(static_cast<unsigned char>(value.front())) != 0 || value.front() == '_')) {
-        return false;
-    }
-    return std::ranges::all_of(value.substr(1), [](unsigned char const character) {
-        return std::isalnum(character) != 0 || character == '_';
-    });
-}
-
 auto valid_asset_path(MaterialSettings const& settings) -> bool {
     auto const& path{settings.package_path};
     auto const generated{path.find("/Generated/Materials/")};
@@ -55,6 +45,16 @@ auto promoted(ValueType const left, ValueType const right) -> ValueType {
     return ValueType::invalid;
 }
 
+}
+
+auto valid_identifier(std::string_view const value) -> bool {
+    if (value.empty() ||
+        !(std::isalpha(static_cast<unsigned char>(value.front())) != 0 || value.front() == '_')) {
+        return false;
+    }
+    return std::ranges::all_of(value.substr(1), [](unsigned char const character) {
+        return std::isalnum(character) != 0 || character == '_';
+    });
 }
 
 auto is_numeric(ValueType const type) -> bool {
