@@ -29,7 +29,19 @@ auto valid_asset_path(MaterialSettings const& settings) -> bool {
     return structurally_valid && (generated_path || settings.adopt_existing);
 }
 
-auto promoted(ValueType const left, ValueType const right) -> ValueType {
+}
+
+auto valid_identifier(std::string_view const value) -> bool {
+    if (value.empty() ||
+        !(std::isalpha(static_cast<unsigned char>(value.front())) != 0 || value.front() == '_')) {
+        return false;
+    }
+    return std::ranges::all_of(value.substr(1), [](unsigned char const character) {
+        return std::isalnum(character) != 0 || character == '_';
+    });
+}
+
+auto promote_value_types(ValueType const left, ValueType const right) -> ValueType {
     if (!is_numeric(left) || !is_numeric(right)) {
         return ValueType::invalid;
     }
@@ -43,18 +55,6 @@ auto promoted(ValueType const left, ValueType const right) -> ValueType {
         return left;
     }
     return ValueType::invalid;
-}
-
-}
-
-auto valid_identifier(std::string_view const value) -> bool {
-    if (value.empty() ||
-        !(std::isalpha(static_cast<unsigned char>(value.front())) != 0 || value.front() == '_')) {
-        return false;
-    }
-    return std::ranges::all_of(value.substr(1), [](unsigned char const character) {
-        return std::isalnum(character) != 0 || character == '_';
-    });
 }
 
 auto is_numeric(ValueType const type) -> bool {
@@ -196,7 +196,8 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
                         type = ValueType::invalid;
                         break;
                     }
-                    type = promoted(type, material.nodes[node.inputs[input_index].index].type);
+                    type = promote_value_types(type,
+                                               material.nodes[node.inputs[input_index].index].type);
                 }
             }
             if (type != node.type) {
@@ -205,8 +206,8 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
         } else if (node.kind == NodeKind::subtract || node.kind == NodeKind::divide) {
             if (node.inputs.size() != 2 || !valid_handle(material, node.inputs[0]) ||
                 !valid_handle(material, node.inputs[1]) ||
-                promoted(material.nodes[node.inputs[0].index].type,
-                         material.nodes[node.inputs[1].index].type) != node.type) {
+                promote_value_types(material.nodes[node.inputs[0].index].type,
+                                    material.nodes[node.inputs[1].index].type) != node.type) {
                 report(diagnostics, node.span, "malformed arithmetic node");
             }
         } else if (node.kind == NodeKind::lerp) {
@@ -214,8 +215,8 @@ auto validate(MaterialIR const& material) -> std::vector<Diagnostic> {
                 !valid_handle(material, node.inputs[1]) ||
                 !valid_handle(material, node.inputs[2]) ||
                 (valid_handle(material, node.inputs[0]) && valid_handle(material, node.inputs[1]) &&
-                 promoted(material.nodes[node.inputs[0].index].type,
-                          material.nodes[node.inputs[1].index].type) != node.type) ||
+                 promote_value_types(material.nodes[node.inputs[0].index].type,
+                                     material.nodes[node.inputs[1].index].type) != node.type) ||
                 (valid_handle(material, node.inputs[2]) &&
                  material.nodes[node.inputs[2].index].type != ValueType::float1 &&
                  material.nodes[node.inputs[2].index].type != node.type)) {

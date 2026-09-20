@@ -55,22 +55,6 @@ auto parse_type(std::string_view const name) -> ValueType {
     return ValueType::invalid;
 }
 
-auto promote(ValueType const left, ValueType const right) -> ValueType {
-    if (!is_numeric(left) || !is_numeric(right)) {
-        return ValueType::invalid;
-    }
-    if (left == right) {
-        return left;
-    }
-    if (left == ValueType::float1) {
-        return right;
-    }
-    if (right == ValueType::float1) {
-        return left;
-    }
-    return ValueType::invalid;
-}
-
 class Analyzer {
   public:
     Analyzer(std::string_view const path, TextureResolver const resolver)
@@ -626,7 +610,7 @@ class Analyzer {
 
         auto type{material_.nodes[inputs.front().index].type};
         for (std::size_t index{1}; index < inputs.size(); ++index) {
-            type = promote(type, material_.nodes[inputs[index].index].type);
+            type = promote_value_types(type, material_.nodes[inputs[index].index].type);
         }
         if (type == ValueType::invalid) {
             fail(form.token.span, "arithmetic operands must be compatible scalar/vector values");
@@ -683,8 +667,8 @@ class Analyzer {
         if (!first || !second || !alpha) {
             return std::nullopt;
         }
-        auto const type{
-            promote(material_.nodes[first->index].type, material_.nodes[second->index].type)};
+        auto const type{promote_value_types(material_.nodes[first->index].type,
+                                            material_.nodes[second->index].type)};
         auto const alpha_type{material_.nodes[alpha->index].type};
         if (type == ValueType::invalid || (alpha_type != ValueType::float1 && alpha_type != type)) {
             fail(form.token.span, "lerp operands are not compatible");
