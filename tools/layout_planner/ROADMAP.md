@@ -285,10 +285,11 @@ nested-only properties. Coordinated generated field-mask/storage/dimension autho
 partially complete: the UI atomically enables generated names, the required storage column, and the
 first selected mask field; it safely disables the whole configuration and toggles additional
 eligible array fields without allowing the final field to be removed. Selected mask fields expose
-an inline ordered dimension table with add, duplicate, delete, button reorder, and direct name/extent
-editing through normal semantic commands. Fixed layouts can be enabled or disabled inline with a
-collision-free storage type; storage and ordered container names support direct editing plus
-add/duplicate/delete/reorder through the same document commands. Mutable and const view type names
+an inline ordered dimension table with add, duplicate, delete, button-and-drag reorder, and direct
+name/extent editing through normal semantic commands. Fixed layouts can be enabled or disabled
+inline with a collision-free storage type; storage and ordered container names support direct
+editing plus add/duplicate/delete/button-and-drag reorder through the same document commands.
+Mutable and const view type names
 independently switch between visible derived defaults and directly editable explicit names. Single-
 allocation output can be enabled with a collision-free owner/Storage pair, renamed inline, and
 disabled when it has no allocator variants; owner edits retain existing variants unchanged. A flat

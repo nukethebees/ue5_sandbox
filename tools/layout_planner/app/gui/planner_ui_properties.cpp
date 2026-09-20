@@ -5240,6 +5240,27 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                             "::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
                         soa_mask_dimension_index_ = index;
                     }
+                    if (ImGui::BeginDragDropSource()) {
+                        ImGui::SetDragDropPayload("SOA_MASK_DIMENSION_ROW", &index, sizeof(index));
+                        ImGui::Text("Move %s", member.mask_dimensions[index].index_name.c_str());
+                        ImGui::EndDragDropSource();
+                    }
+                    if (ImGui::BeginDragDropTarget()) {
+                        if (auto const* payload{
+                                ImGui::AcceptDragDropPayload("SOA_MASK_DIMENSION_ROW")}) {
+                            auto const source_index{
+                                *static_cast<std::size_t const*>(payload->Data)};
+                            if (source_index < member.mask_dimensions.size() &&
+                                source_index != index) {
+                                pending = *schema;
+                                move_element(pending->members[*selected_index].mask_dimensions,
+                                             source_index,
+                                             index);
+                                soa_mask_dimension_index_ = index;
+                            }
+                        }
+                        ImGui::EndDragDropTarget();
+                    }
 
                     ImGui::TableNextColumn();
                     ImGui::SetNextItemWidth(-1.0F);
@@ -5501,6 +5522,24 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                 auto const row_selected{soa_fixed_container_index_ == index};
                 if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
                     soa_fixed_container_index_ = index;
+                }
+                if (ImGui::BeginDragDropSource()) {
+                    ImGui::SetDragDropPayload("SOA_FIXED_CONTAINER_ROW", &index, sizeof(index));
+                    ImGui::Text("Move %s", schema->fixed->containers[index].c_str());
+                    ImGui::EndDragDropSource();
+                }
+                if (ImGui::BeginDragDropTarget()) {
+                    if (auto const* payload{
+                            ImGui::AcceptDragDropPayload("SOA_FIXED_CONTAINER_ROW")}) {
+                        auto const source_index{*static_cast<std::size_t const*>(payload->Data)};
+                        if (source_index < schema->fixed->containers.size() &&
+                            source_index != index) {
+                            pending = *schema;
+                            move_element(pending->fixed->containers, source_index, index);
+                            soa_fixed_container_index_ = index;
+                        }
+                    }
+                    ImGui::EndDragDropTarget();
                 }
                 ImGui::TableNextColumn();
                 ImGui::SetNextItemWidth(-1.0F);
