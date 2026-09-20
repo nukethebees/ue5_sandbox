@@ -382,6 +382,14 @@ TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHe
     EXPECT_TRUE(lowered[1].header->nodes.empty());
 
     manifest = valid_linear_quantized_manifest();
+    auto& signed_source{std::get<ScalarModuleSchema>(manifest.modules[0]).scalars.front()};
+    signed_source.signedness = true;
+    signed_source.minimum_value = -100;
+    signed_source.maximum_value = 100;
+    signed_source.named_codes.clear();
+    EXPECT_NO_THROW(lower_modules(manifest));
+
+    manifest = valid_linear_quantized_manifest();
     std::get<RepresentationModuleSchema>(manifest.modules[1]).linear_quantized.front().bit_width =
         1;
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);

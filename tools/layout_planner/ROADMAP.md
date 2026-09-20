@@ -108,7 +108,9 @@ semantic range, owns an encoded width, reserved-code count, and reject/clamp cli
 deliberately has no standalone ABI `sizeof`. Exact capacity validation retains at least two usable
 codes. Headless analysis reports source span, total/usable/reserved code space, linear resolution,
 maximum rounding error, and exact endpoint mapping, including honest `2^64` handling. Creation and
-inline editing use normal commands, undo/redo, preview, save, and reload.
+inline editing use normal commands, undo/redo, preview, save, and reload. Signed source domains are
+first-class: cross-zero, wholly negative, and full signed 64-bit ranges use the same checked span,
+analysis, comparison, and source-backed authoring paths as unsigned domains.
 The Comparison view can select any sibling linear quantization of the same semantic source and uses
 headless comparison analysis for code-space, precision/error, clipping, and overflow-safe
 selected-count payload-bit deltas. Allocated bytes/cache/page consequences remain Unknown until a

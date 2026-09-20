@@ -57,7 +57,12 @@ class TemporarySchemaProject {
     :minimum 0
     :maximum 1000
     :bit-width auto
-    (code Invalid :value 1023 :sentinel true)))
+    (code Invalid :value 1023 :sentinel true))
+  (integer-scalar Temperature
+    :signed true
+    :minimum -100
+    :maximum 100
+    :bit-width auto))
 
 (representation-module representations
   :header "Representations.h"
@@ -316,25 +321,29 @@ TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesLinearQuantizedRepresentation) 
     auto applied{loaded.document->apply(lispb::schema::CreateLinearQuantized{
         .declaration = created,
         .module_index = loaded.document->declaration(*existing)->module_index,
-        .schema = codegen::LinearQuantizedSchema{.name = "HealthQ10",
-                                                 .source = codegen::TypeRef{.name = "test::Health",
-                                                                            .suffix = {},
-                                                                            .nested = std::nullopt},
-                                                 .bit_width = 10,
-                                                 .reserved_codes = 1,
-                                                 .clipping = codegen::QuantizationClipping::clamp},
+        .schema =
+            codegen::LinearQuantizedSchema{.name = "TemperatureQ10",
+                                           .source = codegen::TypeRef{.name = "test::Temperature",
+                                                                      .suffix = {},
+                                                                      .nested = std::nullopt},
+                                           .bit_width = 10,
+                                           .reserved_codes = 1,
+                                           .clipping = codegen::QuantizationClipping::clamp},
         .insertion_index = std::nullopt})};
     ASSERT_TRUE(applied.has_value()) << applied.error().message;
     ASSERT_TRUE(*applied);
 
-    auto const designed{loaded.document->types().find_declared("representations", "HealthQ10")};
+    auto const designed{
+        loaded.document->types().find_declared("representations", "TemperatureQ10")};
     ASSERT_TRUE(designed.has_value());
     auto analysis{Analyzer::analyze_linear_quantized(loaded.document->types(), *designed)};
     EXPECT_EQ(analysis.encoded_storage_bits, 10U);
     EXPECT_EQ(analysis.total_code_count, (ExactCodeCount{.value = 1024, .two_to_64 = false}));
     EXPECT_EQ(analysis.usable_code_count, (ExactCodeCount{.value = 1023, .two_to_64 = false}));
-    EXPECT_EQ(analysis.source_span, 1000U);
-    EXPECT_NEAR(static_cast<double>(analysis.resolution), 1000.0 / 1022.0, 1e-12);
+    EXPECT_EQ(analysis.source_minimum, codegen::PackedIntegerValue{-100});
+    EXPECT_EQ(analysis.source_maximum, codegen::PackedIntegerValue{100});
+    EXPECT_EQ(analysis.source_span, 200U);
+    EXPECT_NEAR(static_cast<double>(analysis.resolution), 200.0 / 1022.0, 1e-12);
 
     auto saved{loaded.document->save()};
     ASSERT_TRUE(saved.has_value()) << saved.error().message;
@@ -344,18 +353,20 @@ TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesLinearQuantizedRepresentation) 
     ASSERT_TRUE(reloaded.loaded) << diagnostic_text(reloaded);
     ASSERT_TRUE(reloaded.document.has_value());
     auto const reloaded_designed{
-        reloaded.document->types().find_declared("representations", "HealthQ10")};
+        reloaded.document->types().find_declared("representations", "TemperatureQ10")};
     ASSERT_TRUE(reloaded_designed.has_value());
     auto const& quantized{std::get<lispb::schema::LinearQuantizedType>(
         reloaded.document->types().type(*reloaded_designed).definition)};
     EXPECT_EQ(quantized.bit_width, 10U);
     EXPECT_EQ(quantized.reserved_codes, 1U);
     EXPECT_EQ(quantized.clipping, codegen::QuantizationClipping::clamp);
-    EXPECT_EQ(reloaded.document->types().type(quantized.source.type).identity.name, "Health");
+    EXPECT_EQ(reloaded.document->types().type(quantized.source.type).identity.name, "Temperature");
 
     analysis = Analyzer::analyze_linear_quantized(reloaded.document->types(), *reloaded_designed);
     EXPECT_EQ(analysis.usable_code_count, (ExactCodeCount{.value = 1023, .two_to_64 = false}));
-    EXPECT_NEAR(static_cast<double>(analysis.maximum_rounding_error), 500.0 / 1022.0, 1e-12);
+    EXPECT_EQ(analysis.source_minimum, codegen::PackedIntegerValue{-100});
+    EXPECT_EQ(analysis.source_maximum, codegen::PackedIntegerValue{100});
+    EXPECT_NEAR(static_cast<double>(analysis.maximum_rounding_error), 100.0 / 1022.0, 1e-12);
 }
 
 TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesIntegerVarintRepresentation) {

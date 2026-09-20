@@ -1260,18 +1260,21 @@ auto Analyzer::analyze_linear_quantized(lispb::schema::TypeGraph const& types,
                                         : total_code_count.value - quantized.reserved_codes,
                              .two_to_64 = false}};
 
+    auto const source_span{packed_range_span(source.minimum_value, source.maximum_value)};
     auto const numerical_code_count{std::ldexp(1.0L, static_cast<int>(quantized.bit_width))};
     auto const numerical_usable_count{numerical_code_count -
                                       static_cast<long double>(quantized.reserved_codes)};
-    auto const numerical_span{packed_integer_as_long_double(source.maximum_value) -
-                              packed_integer_as_long_double(source.minimum_value)};
+    auto const numerical_span{source_span.has_value()
+                                  ? static_cast<long double>(*source_span)
+                                  : packed_integer_as_long_double(source.maximum_value) -
+                                        packed_integer_as_long_double(source.minimum_value)};
     auto const resolution{numerical_span / (numerical_usable_count - 1.0L)};
 
     return {.type = type,
             .source_type = quantized.source.type,
             .source_minimum = source.minimum_value,
             .source_maximum = source.maximum_value,
-            .source_span = packed_range_span(source.minimum_value, source.maximum_value),
+            .source_span = source_span,
             .encoded_storage_bits = quantized.bit_width,
             .total_code_count = total_code_count,
             .reserved_code_count = quantized.reserved_codes,

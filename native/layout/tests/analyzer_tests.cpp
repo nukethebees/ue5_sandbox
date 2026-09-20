@@ -411,7 +411,10 @@ auto optional_comparison_types(bool const wide = false) -> OptionalComparisonFix
 }
 
 auto linear_quantized_type(std::uint32_t const bit_width = 8,
-                           std::uint64_t const reserved_codes = 1) -> TypeFixture {
+                           std::uint64_t const reserved_codes = 1,
+                           bool const signedness = false,
+                           codegen::PackedIntegerValue const minimum_value = 0,
+                           codegen::PackedIntegerValue const maximum_value = 1000) -> TypeFixture {
     codegen::Manifest manifest{
         .schema_version = codegen::manifest_schema_version,
         .types = {},
@@ -424,9 +427,9 @@ auto linear_quantized_type(std::uint32_t const bit_width = 8,
                                                             .include_order = {},
                                                             .prelude_lines = {}},
                         .scalars = {codegen::IntegerScalarSchema{.name = "Health",
-                                                                 .signedness = false,
-                                                                 .minimum_value = 0,
-                                                                 .maximum_value = 1000,
+                                                                 .signedness = signedness,
+                                                                 .minimum_value = minimum_value,
+                                                                 .maximum_value = maximum_value,
                                                                  .bit_width = std::nullopt,
                                                                  .named_codes = {}}}},
                     codegen::RepresentationModuleSchema{
@@ -456,7 +459,11 @@ auto linear_quantized_type(std::uint32_t const bit_width = 8,
 
 auto linear_quantized_pair(bool const same_source = true,
                            std::uint32_t const first_bits = 8,
-                           std::uint32_t const second_bits = 10) -> QuantizedComparisonFixture {
+                           std::uint32_t const second_bits = 10,
+                           bool const signedness = false,
+                           codegen::PackedIntegerValue const minimum_value = 0,
+                           codegen::PackedIntegerValue const maximum_value = 1000)
+    -> QuantizedComparisonFixture {
     codegen::Manifest manifest{
         .schema_version = codegen::manifest_schema_version,
         .types = {},
@@ -470,9 +477,9 @@ auto linear_quantized_pair(bool const same_source = true,
                                                     .include_order = {},
                                                     .prelude_lines = {}},
                 .scalars = {codegen::IntegerScalarSchema{.name = "Health",
-                                                         .signedness = false,
-                                                         .minimum_value = 0,
-                                                         .maximum_value = 1000,
+                                                         .signedness = signedness,
+                                                         .minimum_value = minimum_value,
+                                                         .maximum_value = maximum_value,
                                                          .bit_width = std::nullopt,
                                                          .named_codes = {}},
                             codegen::IntegerScalarSchema{.name = "Shield",
@@ -1803,6 +1810,47 @@ TEST(LinearQuantizedAnalyzer, PreservesHonestExactCapacityAt64Bits) {
     EXPECT_GT(reserved.resolution, 0.0L);
 }
 
+TEST(LinearQuantizedAnalyzer, HandlesCrossZeroAndWhollyNegativeSignedDomains) {
+    auto const crossing_fixture{linear_quantized_type(8, 1, true, -100, 100)};
+    auto const crossing{
+        Analyzer::analyze_linear_quantized(crossing_fixture.types, crossing_fixture.type)};
+    EXPECT_EQ(crossing.source_minimum, codegen::PackedIntegerValue{-100});
+    EXPECT_EQ(crossing.source_maximum, codegen::PackedIntegerValue{100});
+    EXPECT_EQ(crossing.source_span, 200U);
+    EXPECT_EQ(crossing.usable_code_count, (ExactCodeCount{.value = 255, .two_to_64 = false}));
+    EXPECT_NEAR(static_cast<double>(crossing.resolution), 200.0 / 254.0, 1e-12);
+    EXPECT_NEAR(static_cast<double>(crossing.maximum_rounding_error), 100.0 / 254.0, 1e-12);
+    EXPECT_TRUE(crossing.minimum_endpoint_exact);
+    EXPECT_TRUE(crossing.maximum_endpoint_exact);
+
+    auto const negative_fixture{linear_quantized_type(10, 2, true, -1000, -1)};
+    auto const negative{
+        Analyzer::analyze_linear_quantized(negative_fixture.types, negative_fixture.type)};
+    EXPECT_EQ(negative.source_minimum, codegen::PackedIntegerValue{-1000});
+    EXPECT_EQ(negative.source_maximum, codegen::PackedIntegerValue{-1});
+    EXPECT_EQ(negative.source_span, 999U);
+    EXPECT_EQ(negative.usable_code_count, (ExactCodeCount{.value = 1022, .two_to_64 = false}));
+    EXPECT_NEAR(static_cast<double>(negative.resolution), 999.0 / 1021.0, 1e-12);
+    EXPECT_NEAR(static_cast<double>(negative.maximum_rounding_error), 999.0 / 2042.0, 1e-12);
+}
+
+TEST(LinearQuantizedAnalyzer, PreservesFullSigned64BitSpanWithoutOverflow) {
+    auto const fixture{linear_quantized_type(
+        64,
+        0,
+        true,
+        codegen::PackedIntegerValue::from_parts(true, std::uint64_t{1} << 63),
+        codegen::PackedIntegerValue{(std::numeric_limits<std::int64_t>::max)()})};
+
+    auto const analysis{Analyzer::analyze_linear_quantized(fixture.types, fixture.type)};
+
+    EXPECT_EQ(analysis.source_span, (std::numeric_limits<std::uint64_t>::max)());
+    EXPECT_EQ(analysis.total_code_count, (ExactCodeCount{.value = 0, .two_to_64 = true}));
+    EXPECT_EQ(analysis.usable_code_count, (ExactCodeCount{.value = 0, .two_to_64 = true}));
+    EXPECT_EQ(analysis.resolution, 1.0L);
+    EXPECT_EQ(analysis.maximum_rounding_error, 0.5L);
+}
+
 TEST(LinearQuantizedComparison, ReportsPrecisionAndScaledPayloadConsequences) {
     auto const fixture{linear_quantized_pair()};
 
@@ -1842,6 +1890,26 @@ TEST(LinearQuantizedComparison, PreservesExactTwoTo64CapacityDelta) {
     EXPECT_EQ(comparison.total_code_count_delta->direction, NumericDeltaDirection::increased);
     EXPECT_EQ(comparison.total_code_count_delta->magnitude,
               (std::numeric_limits<std::uint64_t>::max)() - 255U);
+}
+
+TEST(LinearQuantizedComparison, ComparesRepresentationsOfOneSignedDomain) {
+    auto const fixture{linear_quantized_pair(true, 8, 10, true, -100, 100)};
+
+    auto const comparison{
+        Analyzer::compare_linear_quantized(fixture.types, fixture.first, fixture.second, 10'000)};
+
+    EXPECT_TRUE(comparison.compatible_source);
+    EXPECT_EQ(comparison.first.source_minimum, codegen::PackedIntegerValue{-100});
+    EXPECT_EQ(comparison.second.source_maximum, codegen::PackedIntegerValue{100});
+    EXPECT_EQ(comparison.first.source_span, 200U);
+    EXPECT_EQ(comparison.second.source_span, 200U);
+    ASSERT_TRUE(comparison.resolution_delta.has_value());
+    EXPECT_LT(*comparison.resolution_delta, 0.0L);
+    ASSERT_TRUE(comparison.maximum_rounding_error_delta.has_value());
+    EXPECT_LT(*comparison.maximum_rounding_error_delta, 0.0L);
+    EXPECT_EQ(comparison.first_total_encoded_bits, 80'000U);
+    EXPECT_EQ(comparison.second_total_encoded_bits, 100'000U);
+    EXPECT_TRUE(comparison.diagnostics.empty());
 }
 
 TEST(LinearQuantizedComparison, RejectsDifferentSemanticSources) {

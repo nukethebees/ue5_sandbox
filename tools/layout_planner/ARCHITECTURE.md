@@ -200,6 +200,9 @@ only representation facts: encoded width, reserved-code count, and reject/clamp 
 The initial mapping assigns the source endpoints to the first and last usable codes; reserved codes
 are excluded from the upper end of code space. Analysis uses exact integer capacity checks and
 long-double numerical consequences to report resolution and half-step maximum rounding error.
+The source may be signed or unsigned. Exact sign-and-magnitude span calculation happens before the
+numerical conversion, so negative-only, cross-zero, and full signed 64-bit domains do not pass
+through an unsigned cast or overflowing signed subtraction.
 Because `2^64` cannot be stored in `uint64`, the analysis has an explicit exact `2^64` code-count
 case rather than reporting a known capacity as Unknown; resolution is calculated from the same
 mathematical power of two.

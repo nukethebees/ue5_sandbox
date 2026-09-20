@@ -64,6 +64,11 @@ class TemporarySchema {
     :signed false
     :minimum 0
     :maximum 3
+    :bit-width auto)
+  (integer-scalar SignedScalar
+    :signed true
+    :minimum -100
+    :maximum 100
     :bit-width auto))
 
 (representation-module authored_representations
@@ -1706,7 +1711,7 @@ TEST(EditableSchemaDocument, CreatesEditsAndReloadsLinearQuantizedRepresentation
     auto const source{document.find_declaration(TypeIdentity{.origin = TypeOrigin::declaration,
                                                              .module_name = "authored_scalars",
                                                              .namespace_name = "authored",
-                                                             .name = "ExistingScalar"})};
+                                                             .name = "SignedScalar"})};
     ASSERT_TRUE(source.has_value());
     auto const created{document.allocate_declaration_id()};
 
@@ -1715,7 +1720,7 @@ TEST(EditableSchemaDocument, CreatesEditsAndReloadsLinearQuantizedRepresentation
         .module_index = module_index,
         .schema =
             codegen::LinearQuantizedSchema{.name = "ExistingQ2",
-                                           .source = codegen::TypeRef{"authored::ExistingScalar"},
+                                           .source = codegen::TypeRef{"authored::SignedScalar"},
                                            .bit_width = 2,
                                            .reserved_codes = 1,
                                            .clipping = codegen::QuantizationClipping::clamp},
@@ -1725,6 +1730,11 @@ TEST(EditableSchemaDocument, CreatesEditsAndReloadsLinearQuantizedRepresentation
     auto const source_type{document.types().find(document.declaration(*source)->identity)};
     ASSERT_TRUE(source_type.has_value());
     EXPECT_EQ(linear_quantized_type(document, created).source.type, *source_type);
+    auto const& signed_source{
+        std::get<IntegerScalarType>(document.types().type(*source_type).definition)};
+    EXPECT_TRUE(signed_source.signedness);
+    EXPECT_EQ(signed_source.minimum_value, codegen::PackedIntegerValue{-100});
+    EXPECT_EQ(signed_source.maximum_value, codegen::PackedIntegerValue{100});
     ASSERT_TRUE(document.undo().value());
     EXPECT_EQ(document.declaration(created), nullptr);
     ASSERT_TRUE(document.redo().value());
@@ -1754,7 +1764,7 @@ TEST(EditableSchemaDocument, CreatesEditsAndReloadsLinearQuantizedRepresentation
     ASSERT_TRUE(preview.has_value()) << preview.error().message;
     ASSERT_EQ(preview->size(), 1U);
     EXPECT_NE(preview->front().updated.find("(linear-quantized ExistingQ2"), std::string::npos);
-    EXPECT_NE(preview->front().updated.find(":source authored::ExistingScalar"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":source authored::SignedScalar"), std::string::npos);
     EXPECT_NE(preview->front().updated.find(":bits 8"), std::string::npos);
     EXPECT_NE(preview->front().updated.find(":reserved-codes 2"), std::string::npos);
     EXPECT_NE(preview->front().updated.find(":clipping reject"), std::string::npos);
@@ -1776,7 +1786,7 @@ TEST(EditableSchemaDocument, CreatesEditsAndReloadsLinearQuantizedRepresentation
     EXPECT_EQ(schema->reserved_codes, 2U);
     EXPECT_EQ(schema->clipping, codegen::QuantizationClipping::reject);
     EXPECT_EQ(linear_quantized_type(reloaded, *reloaded_declaration).source.type,
-              *reloaded.types().find_declared("authored_scalars", "ExistingScalar"));
+              *reloaded.types().find_declared("authored_scalars", "SignedScalar"));
 }
 
 TEST(EditableSchemaDocument, CreatesEditsAndReloadsIntegerVarintRepresentations) {
