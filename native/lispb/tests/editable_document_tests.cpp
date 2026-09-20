@@ -3587,6 +3587,60 @@ TEST(EditableSchemaDocument, SoaColumnEditPreservesOtherDeclarationMetadata) {
     EXPECT_EQ(schema->members.front().type.name, "std::uint16_t");
 }
 
+TEST(EditableSchemaDocument, AuthorsSoaStorageOperationsWithoutDisturbingAdvancedMetadata) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+    auto const original_operations{document.soa_schema(declaration)->operations};
+    ASSERT_EQ(
+        original_operations,
+        (std::vector{codegen::StorageOperation::reserve, codegen::StorageOperation::set_num}));
+
+    auto replacement{*document.soa_schema(declaration)};
+    replacement.operations = {
+        codegen::StorageOperation::reset,
+        codegen::StorageOperation::add_defaulted,
+        codegen::StorageOperation::copy_element,
+    };
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    EXPECT_EQ(document.soa_schema(declaration)->operations,
+              (std::vector{codegen::StorageOperation::reset,
+                           codegen::StorageOperation::add_defaulted,
+                           codegen::StorageOperation::copy_element}));
+
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.soa_schema(declaration)->operations, original_operations);
+    ASSERT_TRUE(document.redo().value());
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& source{preview->front().updated};
+    EXPECT_NE(source.find(":operations (reset add-defaulted copy-element)"), std::string::npos);
+    EXPECT_NE(source.find(":using-declarations (\"Base::reset\")"), std::string::npos);
+    EXPECT_NE(source.find("; Keep the custom function note"), std::string::npos);
+    EXPECT_NE(source.find(":body (\"values.clear();\")"), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    auto const* schema{reloaded.soa_schema(reloaded_declaration)};
+    ASSERT_NE(schema, nullptr);
+    EXPECT_EQ(schema->operations,
+              (std::vector{codegen::StorageOperation::reset,
+                           codegen::StorageOperation::add_defaulted,
+                           codegen::StorageOperation::copy_element}));
+    EXPECT_EQ(schema->using_declarations, std::vector<std::string>{"Base::reset"});
+    ASSERT_EQ(schema->functions.size(), 1U);
+    EXPECT_EQ(schema->functions.front().body_lines, std::vector<std::string>{"values.clear();"});
+    EXPECT_TRUE(schema->functions.front().is_noexcept);
+}
+
 TEST(EditableSchemaDocument, PreservesSoaMembersAndAdvancedFormsForStructuralEdits) {
     TemporarySchema files;
     auto document{files.load()};

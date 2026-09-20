@@ -295,6 +295,9 @@ allocation output can be enabled with a collision-free owner/Storage pair, renam
 disabled when it has no allocator variants; owner edits retain existing variants unchanged. A flat
 allocator-variant table supports staged add, direct owner/allocator edits, shared type picking,
 duplicate/delete, button reorder, and drag reorder with paired generated-name collision avoidance.
+The complete storage-operation capability set is exposed as inline source-named toggles with
+enable-all/disable-all actions; changes are normalized to shared canonical order and use the same
+undoable document commands.
 
 - Create standard-library SoA declarations.
 - Add, remove, duplicate, and reorder columns.

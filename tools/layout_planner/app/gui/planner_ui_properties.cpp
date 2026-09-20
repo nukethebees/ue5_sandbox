@@ -32,6 +32,56 @@ inline constexpr std::array packed_relationship_kinds{
     codegen::PackedFieldRelationKind::references,
 };
 
+struct StorageOperationDescriptor {
+    char const* source_name;
+    char const* description;
+};
+
+auto storage_operation_descriptor(codegen::StorageOperation const operation)
+    -> StorageOperationDescriptor {
+    switch (operation) {
+        case codegen::StorageOperation::reset:
+            return {"reset", "Reset every column to an empty state."};
+        case codegen::StorageOperation::reserve:
+            return {"reserve", "Reserve capacity in every column."};
+        case codegen::StorageOperation::add_uninitialised:
+            return {"add-uninitialised", "Append rows without value-initialising their elements."};
+        case codegen::StorageOperation::add_defaulted:
+            return {"add-defaulted", "Append value-initialised rows."};
+        case codegen::StorageOperation::remove_at_swap:
+            return {"remove-at-swap", "Remove rows by replacing them with rows from the end."};
+        case codegen::StorageOperation::set_num:
+            return {"set-num", "Resize every column to the requested row count."};
+        case codegen::StorageOperation::copy_element:
+            return {"copy-element", "Copy one logical row between indices."};
+        case codegen::StorageOperation::append_from:
+            return {"append-from", "Append logical rows from another compatible view."};
+    }
+    return {"unknown", "Unknown storage operation."};
+}
+
+auto has_storage_operation(std::vector<codegen::StorageOperation> const& operations,
+                           codegen::StorageOperation const operation) -> bool {
+    return std::ranges::find(operations, operation) != operations.end();
+}
+
+auto with_storage_operation(std::vector<codegen::StorageOperation> const& operations,
+                            codegen::StorageOperation const changed_operation,
+                            bool const enabled) -> std::vector<codegen::StorageOperation> {
+    auto const canonical_operations{codegen::all_storage_operations()};
+    std::vector<codegen::StorageOperation> result;
+    result.reserve(canonical_operations.size());
+    for (auto const operation : canonical_operations) {
+        auto const include{operation == changed_operation
+                               ? enabled
+                               : has_storage_operation(operations, operation)};
+        if (include) {
+            result.push_back(operation);
+        }
+    }
+    return result;
+}
+
 void draw_override_note(bool const overridden) {
     if (overridden) {
         ImGui::SameLine();
@@ -5297,6 +5347,57 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             }
         }
     }
+
+    ImGui::SeparatorText("Storage operations");
+    ImGui::BeginDisabled(pending.has_value());
+    auto const all_storage_operations{codegen::all_storage_operations()};
+    auto const all_operations_enabled{
+        std::ranges::all_of(all_storage_operations, [&](auto const operation) {
+            return has_storage_operation(schema->operations, operation);
+        })};
+    ImGui::BeginDisabled(all_operations_enabled);
+    if (ImGui::Button("Enable all operations")) {
+        auto replacement{*schema};
+        replacement.operations = all_storage_operations;
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            return true;
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(schema->operations.empty());
+    if (ImGui::Button("Disable all operations")) {
+        auto replacement{*schema};
+        replacement.operations.clear();
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            return true;
+        }
+    }
+    ImGui::EndDisabled();
+    if (ImGui::BeginTable("soa-storage-operations", 2, ImGuiTableFlags_SizingStretchSame)) {
+        for (auto const operation : all_storage_operations) {
+            auto const descriptor{storage_operation_descriptor(operation)};
+            ImGui::TableNextColumn();
+            auto enabled{has_storage_operation(schema->operations, operation)};
+            if (ImGui::Checkbox(descriptor.source_name, &enabled)) {
+                auto replacement{*schema};
+                replacement.operations =
+                    with_storage_operation(schema->operations, operation, enabled);
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    ImGui::EndTable();
+                    return true;
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("%s", descriptor.description);
+            }
+        }
+        ImGui::EndTable();
+    }
+    ImGui::EndDisabled();
 
     ImGui::SeparatorText("View types");
     auto explicit_view_name{schema->view_name.has_value()};
