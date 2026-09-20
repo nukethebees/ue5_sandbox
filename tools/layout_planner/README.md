@@ -56,9 +56,8 @@ default panel arrangement.
    values, and supported standard-library SoAs from the shared semantic graph.
 2. Select `EntityUniqueId` to inspect its proportional packed-bit layout, or `WorldAABBsColumns`
    to inspect its six SoA columns.
-3. Enum and packed-value baselines are editable LispB declarations. Their Properties editors issue
-   validated semantic commands and participate in File > Undo/Redo. SoA declarations remain
-   read-only.
+3. Enum, packed-value, and standard-library SoA baselines are editable LispB declarations. Their
+   inline Properties editors issue validated semantic commands and participate in File > Undo/Redo.
 4. Use **Create editable variant** for an in-memory physical experiment. In a variant, change a
    packed field width/storage type or a SoA capacity/column type without modifying LispB. Schema
    values, planning values, and active overrides are shown separately.
@@ -112,9 +111,13 @@ fields inline. Field name, semantic type, bit width, kind, and range-helper meta
 The baseline bit map permits divider dragging; releasing a divider commits both adjacent widths as
 one undoable semantic command.
 
+Standard-library SoAs can likewise be created with **+ New SoA**. Columns support inline name,
+semantic type, and array/nested kind editing plus add, duplicate, delete, button reorder, and drag
+reorder. Capacity remains a planner experiment setting and is not written into LispB.
+
 Creation currently targets an existing module of the matching kind; creating modules, renaming
-types, and deleting existing source declarations are not yet exposed. Saving an edited existing enum
-or packed value renders that declaration canonically, so review the preview for comments or hand
-formatting inside the edited declaration. Unrelated declarations and files are left unchanged.
+types, and deleting existing source declarations are not yet exposed. Saving an edited existing enum,
+packed value, or SoA renders that declaration canonically, so review the preview for comments or
+hand formatting inside the edited declaration. Unrelated declarations and files are left unchanged.
 
 Closing the application with dirty semantic edits offers Save, Discard, and Cancel choices.

@@ -202,6 +202,7 @@ auto PlannerUi::draw() -> bool {
     draw_comparison_panel();
     draw_new_enum_dialog();
     draw_new_packed_value_dialog();
+    draw_new_soa_dialog();
     draw_source_preview();
     draw_close_confirmation();
     draw_project_path_dialogs();
@@ -494,6 +495,8 @@ void PlannerUi::sync_document_graph(std::optional<TypeIdentity> selection) {
     enum_editor_value_.clear();
     packed_editor_declaration_.reset();
     packed_editor_field_.clear();
+    soa_editor_declaration_.reset();
+    soa_editor_member_.clear();
     packed_dragged_divider_.reset();
     packed_dragged_variant_id_.reset();
     packed_dragged_left_width_.reset();
@@ -541,6 +544,8 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     enum_editor_value_.clear();
     packed_editor_declaration_.reset();
     packed_editor_field_.clear();
+    soa_editor_declaration_.reset();
+    soa_editor_member_.clear();
     packed_dragged_divider_.reset();
     packed_dragged_variant_id_.reset();
     packed_dragged_left_width_.reset();

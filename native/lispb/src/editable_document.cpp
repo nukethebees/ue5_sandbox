@@ -187,6 +187,98 @@ auto packed_field_kind_name(codegen::PackedFieldKind const kind) -> std::string_
     return "unsigned";
 }
 
+auto soa_member_kind_name(codegen::SoaMemberKind const kind) -> std::string_view {
+    switch (kind) {
+        case codegen::SoaMemberKind::array:
+            return "array";
+        case codegen::SoaMemberKind::nested:
+            return "nested";
+    }
+    return "array";
+}
+
+auto storage_operation_name(codegen::StorageOperation const operation) -> std::string_view {
+    switch (operation) {
+        case codegen::StorageOperation::reset:
+            return "reset";
+        case codegen::StorageOperation::reserve:
+            return "reserve";
+        case codegen::StorageOperation::add_uninitialised:
+            return "add-uninitialised";
+        case codegen::StorageOperation::add_defaulted:
+            return "add-defaulted";
+        case codegen::StorageOperation::remove_at_swap:
+            return "remove-at-swap";
+        case codegen::StorageOperation::set_num:
+            return "set-num";
+        case codegen::StorageOperation::copy_element:
+            return "copy-element";
+        case codegen::StorageOperation::append_from:
+            return "append-from";
+    }
+    return "reset";
+}
+
+void render_quoted_list(std::ostringstream& output, std::vector<std::string> const& values) {
+    output << '(';
+    for (std::size_t index{}; index < values.size(); ++index) {
+        output << (index == 0 ? "" : " ") << quote(values[index]);
+    }
+    output << ')';
+}
+
+void render_function(std::ostringstream& output,
+                     codegen::FunctionSchema const& function,
+                     std::string_view const indent) {
+    output << indent << "(function " << function.name << ' '
+           << render_type_ref(function.return_type);
+    if (!function.body_lines.empty()) {
+        output << "\n" << indent << "  :body ";
+        render_quoted_list(output, function.body_lines);
+    }
+    if (!function.dependencies.empty()) {
+        output << "\n" << indent << "  :dependencies ";
+        render_quoted_list(output, function.dependencies);
+    }
+    if (function.trailing_return_type.has_value()) {
+        output << "\n"
+               << indent << "  :trailing-return-type "
+               << render_type_ref(*function.trailing_return_type);
+    }
+    if (function.is_const) {
+        output << "\n" << indent << "  :const true";
+    }
+    if (function.is_noexcept) {
+        output << "\n" << indent << "  :noexcept true";
+    }
+    if (function.is_static) {
+        output << "\n" << indent << "  :static true";
+    }
+    if (function.is_inline) {
+        output << "\n" << indent << "  :inline true";
+    }
+    if (function.definition_in_source) {
+        output << "\n" << indent << "  :definition-in-source true";
+    }
+    if (function.template_parameters.has_value()) {
+        output << "\n"
+               << indent << "  :template-parameters " << quote(*function.template_parameters);
+    }
+    if (function.requires_clause.has_value()) {
+        output << "\n" << indent << "  :requires " << quote(*function.requires_clause);
+    }
+    for (auto const& parameter : function.parameters) {
+        output << "\n"
+               << indent << "  (parameter " << parameter.name << ' '
+               << render_type_ref(parameter.type);
+        if (parameter.default_value.has_value()) {
+            output << " :default " << quote(*parameter.default_value);
+        }
+        output << ')';
+    }
+    output << ')';
+}
+
 auto render_packed_value(codegen::PackedValueSchema const& schema) -> std::string {
     std::ostringstream output;
     output << "(packed-value " << schema.name << "\n    :storage "
@@ -205,6 +297,94 @@ auto render_packed_value(codegen::PackedValueSchema const& schema) -> std::strin
         }
         if (field.range_helper) {
             output << " :range-helper true";
+        }
+        output << ')';
+    }
+    output << ')';
+    return output.str();
+}
+
+auto render_soa(codegen::SoaSchema const& schema) -> std::string {
+    std::ostringstream output;
+    output << "(struct " << schema.name;
+    if (schema.view_name.has_value()) {
+        output << "\n    :view-name " << *schema.view_name;
+    }
+    if (schema.const_view_name.has_value()) {
+        output << "\n    :const-view-name " << *schema.const_view_name;
+    }
+    if (!schema.operations.empty()) {
+        output << "\n    :operations (";
+        for (std::size_t index{}; index < schema.operations.size(); ++index) {
+            output << (index == 0 ? "" : " ") << storage_operation_name(schema.operations[index]);
+        }
+        output << ')';
+    }
+    if (schema.export_specifier.has_value()) {
+        output << "\n    :export-specifier " << *schema.export_specifier;
+    }
+    if (!schema.using_declarations.empty()) {
+        output << "\n    :using-declarations ";
+        render_quoted_list(output, schema.using_declarations);
+    }
+    if (schema.equivalent_type.has_value()) {
+        output << "\n    :equivalent-type " << render_type_ref(*schema.equivalent_type);
+    }
+    if (schema.copy_element_memberwise) {
+        output << "\n    :copy-element-memberwise true";
+    }
+    if (schema.layout_only) {
+        output << "\n    :layout-only true";
+    }
+    if (schema.field_mask_name.has_value()) {
+        output << "\n    :field-mask-name " << *schema.field_mask_name;
+    }
+    if (schema.field_enum_name.has_value()) {
+        output << "\n    :field-enum-name " << *schema.field_enum_name;
+    }
+    for (auto const& member : schema.members) {
+        output << "\n    (member " << member.name << ' ' << soa_member_kind_name(member.kind) << ' '
+               << render_type_ref(member.type);
+        if (member.fixed_schema.has_value()) {
+            output << "\n      :fixed-schema " << *member.fixed_schema;
+        }
+        if (member.nested_schema.has_value()) {
+            output << "\n      :nested-schema " << *member.nested_schema;
+        }
+        if (member.mask_field) {
+            output << "\n      :mask-field true";
+        }
+        if (!member.mask_dimensions.empty()) {
+            output << "\n      :mask-dimensions (";
+            for (std::size_t index{}; index < member.mask_dimensions.size(); ++index) {
+                auto const& dimension{member.mask_dimensions[index]};
+                output << (index == 0 ? "" : " ") << '(' << dimension.index_name << ' '
+                       << quote(dimension.extent) << ')';
+            }
+            output << ')';
+        }
+        output << ')';
+    }
+    for (auto const& function : schema.functions) {
+        output << '\n';
+        render_function(output, function, "    ");
+    }
+    if (schema.fixed.has_value()) {
+        output << "\n    (fixed " << schema.fixed->storage_name;
+        if (!schema.fixed->containers.empty()) {
+            output << " :containers (";
+            for (std::size_t index{}; index < schema.fixed->containers.size(); ++index) {
+                output << (index == 0 ? "" : " ") << schema.fixed->containers[index];
+            }
+            output << ')';
+        }
+        output << ')';
+    }
+    if (schema.single_allocation.has_value()) {
+        output << "\n    (single-allocation " << *schema.single_allocation;
+        for (auto const& variant : schema.single_allocation_variants) {
+            output << "\n      (variant " << variant.name << ' '
+                   << render_type_ref(variant.allocator) << ')';
         }
         output << ')';
     }
@@ -363,6 +543,19 @@ auto EditableSchemaDocument::packed_value_schema(DeclarationId const declaration
              : &module->values[info->declaration_index];
 }
 
+auto EditableSchemaDocument::soa_schema(DeclarationId const declaration_id) const
+    -> codegen::SoaSchema const* {
+    auto const* info{declaration(declaration_id)};
+    if (info == nullptr) {
+        return nullptr;
+    }
+    auto const* module{
+        std::get_if<codegen::SoaModuleSchema>(&manifest_.modules[info->module_index])};
+    return module == nullptr || info->declaration_index >= module->structs.size()
+             ? nullptr
+             : &module->structs[info->declaration_index];
+}
+
 auto EditableSchemaDocument::allocate_declaration_id() -> DeclarationId {
     return DeclarationId{next_declaration_id_++};
 }
@@ -478,6 +671,9 @@ auto EditableSchemaDocument::preview_source_updates() const
         }
         if (auto const* schema{packed_value_schema(id)}) {
             return render_packed_value(*schema);
+        }
+        if (auto const* schema{soa_schema(id)}) {
+            return render_soa(*schema);
         }
         return std::nullopt;
     };
@@ -956,6 +1152,124 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                                       .module_index = info.module_index,
                                       .schema = std::move(schema),
                                       .insertion_index = info.declaration_index}};
+            } else if constexpr (std::is_same_v<Edit, CreateSoa>) {
+                if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
+                    return std::unexpected{
+                        SchemaEditError{"New SoA requires a unique declaration id"}};
+                }
+                if (edit.module_index >= manifest_.modules.size()) {
+                    return std::unexpected{SchemaEditError{"Unknown SoA module index"}};
+                }
+                auto* module{
+                    std::get_if<codegen::SoaModuleSchema>(&manifest_.modules[edit.module_index])};
+                if (module == nullptr) {
+                    return std::unexpected{
+                        SchemaEditError{"New SoAs can only be added to SoA modules"}};
+                }
+                auto const insertion_index{edit.insertion_index.value_or(module->structs.size())};
+                if (insertion_index > module->structs.size()) {
+                    return std::unexpected{SchemaEditError{"Invalid SoA insertion index"}};
+                }
+
+                module->structs.insert(module->structs.begin() +
+                                           static_cast<std::ptrdiff_t>(insertion_index),
+                                       edit.schema);
+                for (auto& existing : declarations_) {
+                    if (existing.module_index == edit.module_index &&
+                        existing.declaration_index >= insertion_index) {
+                        ++existing.declaration_index;
+                    }
+                }
+                auto const namespace_name{module->settings.namespace_name.value_or("")};
+                declarations_.push_back(
+                    {.id = edit.declaration,
+                     .identity = TypeIdentity{.origin = TypeOrigin::declaration,
+                                              .module_name = module->settings.name,
+                                              .namespace_name = namespace_name,
+                                              .name = edit.schema.name},
+                     .module_index = edit.module_index,
+                     .declaration_index = insertion_index,
+                     .source = std::nullopt});
+                try {
+                    types_ = resolve_type_graph(manifest_);
+                } catch (std::exception const& error) {
+                    declarations_.pop_back();
+                    for (auto& existing : declarations_) {
+                        if (existing.module_index == edit.module_index &&
+                            existing.declaration_index > insertion_index) {
+                            --existing.declaration_index;
+                        }
+                    }
+                    module->structs.erase(module->structs.begin() +
+                                          static_cast<std::ptrdiff_t>(insertion_index));
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+                return SchemaEditCommand{DeleteSoa{.declaration = edit.declaration}};
+            } else if constexpr (std::is_same_v<Edit, ReplaceSoa>) {
+                auto const* info{declaration(edit.declaration)};
+                auto const* current{soa_schema(edit.declaration)};
+                if (info == nullptr || current == nullptr) {
+                    return std::unexpected{SchemaEditError{"Unknown SoA declaration"}};
+                }
+                if (edit.schema.name != current->name) {
+                    return std::unexpected{SchemaEditError{
+                        "ReplaceSoa cannot rename a declaration; use a rename command"}};
+                }
+                auto* module{
+                    std::get_if<codegen::SoaModuleSchema>(&manifest_.modules[info->module_index])};
+                auto previous{module->structs[info->declaration_index]};
+                module->structs[info->declaration_index] = edit.schema;
+                try {
+                    types_ = resolve_type_graph(manifest_);
+                } catch (std::exception const& error) {
+                    module->structs[info->declaration_index] = std::move(previous);
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+                return SchemaEditCommand{
+                    ReplaceSoa{.declaration = edit.declaration, .schema = std::move(previous)}};
+            } else if constexpr (std::is_same_v<Edit, DeleteSoa>) {
+                auto const* found{declaration(edit.declaration)};
+                auto const* current{soa_schema(edit.declaration)};
+                if (found == nullptr || current == nullptr) {
+                    return std::unexpected{SchemaEditError{"Unknown SoA declaration"}};
+                }
+                if (found->source.has_value()) {
+                    return std::unexpected{SchemaEditError{
+                        "Deleting source declarations is not enabled in this authoring slice"}};
+                }
+                auto const info{*found};
+                auto schema{*current};
+                auto* module{
+                    std::get_if<codegen::SoaModuleSchema>(&manifest_.modules[info.module_index])};
+                module->structs.erase(module->structs.begin() +
+                                      static_cast<std::ptrdiff_t>(info.declaration_index));
+                declarations_.erase(
+                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id));
+                for (auto& existing : declarations_) {
+                    if (existing.module_index == info.module_index &&
+                        existing.declaration_index > info.declaration_index) {
+                        --existing.declaration_index;
+                    }
+                }
+                try {
+                    types_ = resolve_type_graph(manifest_);
+                } catch (std::exception const& error) {
+                    module->structs.insert(module->structs.begin() +
+                                               static_cast<std::ptrdiff_t>(info.declaration_index),
+                                           schema);
+                    for (auto& existing : declarations_) {
+                        if (existing.module_index == info.module_index &&
+                            existing.declaration_index >= info.declaration_index) {
+                            ++existing.declaration_index;
+                        }
+                    }
+                    declarations_.push_back(info);
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+                return SchemaEditCommand{CreateSoa{.declaration = edit.declaration,
+                                                   .module_index = info.module_index,
+                                                   .schema = std::move(schema),
+                                                   .insertion_index = info.declaration_index}};
             }
         },
         command);

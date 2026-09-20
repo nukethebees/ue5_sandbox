@@ -56,10 +56,13 @@ class PlannerUi {
     void draw_project_path_dialogs();
     void draw_new_enum_dialog();
     void draw_new_packed_value_dialog();
+    void draw_new_soa_dialog();
     void draw_enum_editor(lispb::schema::TypeNode const& node,
                           lispb::schema::EnumType const& enumeration);
     auto draw_packed_editor(lispb::schema::TypeNode const& node,
                             lispb::schema::PackedType const& packed) -> bool;
+    auto draw_soa_editor(lispb::schema::TypeNode const& node, lispb::schema::SoaType const& soa)
+        -> bool;
     auto apply_document_edit(lispb::schema::SchemaEditCommand command,
                              std::optional<lispb::schema::TypeIdentity> selection = std::nullopt)
         -> bool;
@@ -113,6 +116,8 @@ class PlannerUi {
     std::array<char, 128> new_enum_underlying_type_{"std::uint8_t"};
     std::array<char, 128> new_packed_value_name_{};
     std::array<char, 128> new_packed_storage_type_{"std::uint32_t"};
+    std::array<char, 128> new_soa_name_{};
+    std::array<char, 128> new_soa_member_type_{"std::uint32_t"};
     std::array<char, 128> enum_value_name_{};
     std::array<char, 128> enum_value_initializer_{};
     std::array<char, 128> enum_value_display_name_{};
@@ -121,14 +126,19 @@ class PlannerUi {
     std::array<char, 64> packed_invalid_value_{};
     std::array<char, 128> packed_field_name_{};
     std::array<char, 128> packed_field_type_{};
+    std::array<char, 128> soa_member_name_{};
+    std::array<char, 128> soa_member_type_{};
     std::string selected_enumerator_;
     std::optional<lispb::schema::DeclarationId> enum_editor_declaration_;
     std::string enum_editor_value_;
     std::string schema_edit_message_;
     std::size_t new_enum_module_index_{};
     std::size_t new_packed_module_index_{};
+    std::size_t new_soa_module_index_{};
     std::optional<lispb::schema::DeclarationId> packed_editor_declaration_;
     std::string packed_editor_field_;
+    std::optional<lispb::schema::DeclarationId> soa_editor_declaration_;
+    std::string soa_editor_member_;
     int packed_field_bits_{1};
     std::optional<std::size_t> packed_dragged_divider_;
     std::optional<std::uint64_t> packed_dragged_variant_id_;
@@ -146,6 +156,7 @@ class PlannerUi {
     bool comparison_b_follows_active_{true};
     bool open_new_enum_dialog_{};
     bool open_new_packed_value_dialog_{};
+    bool open_new_soa_dialog_{};
     bool open_source_preview_{};
     bool open_project_dialog_{};
     bool open_save_as_dialog_{};

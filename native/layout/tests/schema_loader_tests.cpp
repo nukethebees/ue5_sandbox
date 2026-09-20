@@ -47,6 +47,13 @@ class TemporarySchemaProject {
   (packed-value ExistingPacked
     :storage std::uint8_t
     (field value std::uint8_t :bits 8)))
+
+(soa-module soa
+  :header "Soa.h"
+  :namespace test
+  :backend standard-library
+  (struct ExistingColumns
+    (member values array std::uint32_t)))
 )");
     }
     ~TemporarySchemaProject() {
@@ -236,6 +243,78 @@ TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesPackedValue) {
         reloaded.document->types(), *reloaded_designed, Variant{}, AbiProfile::host_common());
     EXPECT_EQ(analysis.storage_bits, 32U);
     EXPECT_EQ(analysis.bits_used, 32U);
+    EXPECT_TRUE(analysis.diagnostics.empty());
+}
+
+TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesSoa) {
+    TemporarySchemaProject files;
+    auto loaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
+    ASSERT_TRUE(loaded.document.has_value());
+    auto const existing{
+        loaded.document->find_declaration({.origin = lispb::schema::TypeOrigin::declaration,
+                                           .module_name = "soa",
+                                           .namespace_name = "test",
+                                           .name = "ExistingColumns"})};
+    ASSERT_TRUE(existing.has_value());
+
+    codegen::SoaSchema schema{};
+    schema.name = "DesignedColumns";
+    schema.members = {
+        codegen::SoaMemberSchema{
+            .name = "states",
+            .kind = codegen::SoaMemberKind::array,
+            .type = codegen::TypeRef{.name = "@state", .suffix = {}, .nested = std::nullopt},
+            .fixed_schema = std::nullopt,
+            .nested_schema = std::nullopt,
+            .mask_field = false,
+            .mask_dimensions = {}},
+        codegen::SoaMemberSchema{
+            .name = "values",
+            .kind = codegen::SoaMemberKind::array,
+            .type = codegen::TypeRef{.name = "std::uint32_t", .suffix = {}, .nested = std::nullopt},
+            .fixed_schema = std::nullopt,
+            .nested_schema = std::nullopt,
+            .mask_field = false,
+            .mask_dimensions = {}}};
+    auto const created{loaded.document->allocate_declaration_id()};
+    auto applied{loaded.document->apply(lispb::schema::CreateSoa{
+        .declaration = created,
+        .module_index = loaded.document->declaration(*existing)->module_index,
+        .schema = std::move(schema),
+        .insertion_index = std::nullopt})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto const designed{loaded.document->types().find_declared("soa", "DesignedColumns")};
+    ASSERT_TRUE(designed.has_value());
+    auto analysis{Analyzer::analyze_soa(
+        loaded.document->types(), *designed, Variant{}, AbiProfile::host_common(), 100)};
+    EXPECT_EQ(analysis.bytes_per_logical_element, 5U);
+    EXPECT_EQ(analysis.total_payload_bytes, 500U);
+    EXPECT_TRUE(analysis.diagnostics.empty());
+
+    auto saved{loaded.document->save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    ASSERT_EQ(saved->size(), 1U);
+
+    auto reloaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(reloaded.loaded) << diagnostic_text(reloaded);
+    auto const reloaded_designed{
+        reloaded.document->types().find_declared("soa", "DesignedColumns")};
+    ASSERT_TRUE(reloaded_designed.has_value());
+    auto const& soa{std::get<lispb::schema::SoaType>(
+        reloaded.document->types().type(*reloaded_designed).definition)};
+    ASSERT_EQ(soa.columns.size(), 2U);
+    EXPECT_EQ(soa.columns[0].name, "states");
+    EXPECT_EQ(soa.columns[1].name, "values");
+    EXPECT_EQ(reloaded.document->types().type(soa.columns[0].semantic_type.type).identity.name,
+              "State");
+
+    analysis = Analyzer::analyze_soa(
+        reloaded.document->types(), *reloaded_designed, Variant{}, AbiProfile::host_common(), 100);
+    EXPECT_EQ(analysis.bytes_per_logical_element, 5U);
+    EXPECT_EQ(analysis.total_payload_bytes, 500U);
     EXPECT_TRUE(analysis.diagnostics.empty());
 }
 

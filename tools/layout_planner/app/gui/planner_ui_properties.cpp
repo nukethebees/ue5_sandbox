@@ -66,6 +66,17 @@ auto unique_field_name(std::vector<codegen::PackedFieldSchema> const& fields,
     return candidate;
 }
 
+auto unique_member_name(std::vector<codegen::SoaMemberSchema> const& members,
+                        std::string const& stem) -> std::string {
+    auto suffix{std::size_t{1}};
+    auto candidate{stem};
+    while (std::ranges::find(members, candidate, &codegen::SoaMemberSchema::name) !=
+           members.end()) {
+        candidate = stem + std::to_string(suffix++);
+    }
+    return candidate;
+}
+
 template <typename Value>
 void move_element(std::vector<Value>& values,
                   std::size_t const source_index,
@@ -132,12 +143,19 @@ void PlannerUi::draw_properties_panel() {
                 ImGui::End();
                 return;
             }
+        } else if (auto const* soa{std::get_if<SoaType>(&node.definition)}) {
+            ImGui::SeparatorText("LispB SoA declaration");
+            if (draw_soa_editor(node, *soa)) {
+                ImGui::End();
+                return;
+            }
         }
 
         auto const editable{workspace_.active_variant_id() != LayoutWorkspace::baseline_variant_id};
         if (!editable) {
             ImGui::SeparatorText("Baseline");
-            if (std::holds_alternative<PackedType>(node.definition)) {
+            if (std::holds_alternative<PackedType>(node.definition) ||
+                std::holds_alternative<SoaType>(node.definition)) {
                 ImGui::TextDisabled("Planning overrides are read only on the baseline.");
                 ImGui::TextWrapped("Edit the LispB declaration above, or create an experiment for "
                                    "session-only physical overrides.");
@@ -876,6 +894,228 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         }
         if (apply_document_edit(
                 ReplacePackedValue{.declaration = *declaration, .schema = std::move(*pending)})) {
+            selected_field_ = std::move(selected_after_edit);
+            return true;
+        }
+    }
+    return false;
+}
+
+auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const&) -> bool {
+    if (!document_.has_value()) {
+        return false;
+    }
+    auto const declaration{document_->find_declaration(node.identity)};
+    if (!declaration.has_value()) {
+        return false;
+    }
+    auto const* schema{document_->soa_schema(*declaration)};
+    if (schema == nullptr) {
+        return false;
+    }
+
+    if (selected_field_.empty() && !schema->members.empty()) {
+        selected_field_ = schema->members.front().name;
+    }
+    auto selected{
+        std::ranges::find(schema->members, selected_field_, &codegen::SoaMemberSchema::name)};
+    if (selected == schema->members.end() && !schema->members.empty()) {
+        selected = schema->members.begin();
+        selected_field_ = selected->name;
+    }
+    auto const selected_index{selected == schema->members.end()
+                                  ? std::optional<std::size_t>{}
+                                  : std::optional<std::size_t>{static_cast<std::size_t>(
+                                        selected - schema->members.begin())}};
+
+    if (soa_editor_declaration_ != declaration || soa_editor_member_ != selected_field_) {
+        soa_editor_declaration_ = declaration;
+        soa_editor_member_ = selected_field_;
+        if (selected != schema->members.end()) {
+            std::snprintf(
+                soa_member_name_.data(), soa_member_name_.size(), "%s", selected->name.c_str());
+            std::snprintf(soa_member_type_.data(),
+                          soa_member_type_.size(),
+                          "%s",
+                          selected->type.name.c_str());
+        }
+    }
+
+    if (ImGui::Button("+ Column")) {
+        auto replacement{*schema};
+        auto name{unique_member_name(replacement.members, "column")};
+        replacement.members.push_back(codegen::SoaMemberSchema{
+            .name = name,
+            .kind = codegen::SoaMemberKind::array,
+            .type = codegen::TypeRef{.name = "std::uint32_t", .suffix = {}, .nested = std::nullopt},
+            .fixed_schema = std::nullopt,
+            .nested_schema = std::nullopt,
+            .mask_field = false,
+            .mask_dimensions = {}});
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            selected_field_ = std::move(name);
+            return true;
+        }
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!selected_index.has_value());
+    if (ImGui::Button("Duplicate")) {
+        auto replacement{*schema};
+        auto copy{replacement.members[*selected_index]};
+        copy.name = unique_member_name(replacement.members, copy.name + "_copy");
+        replacement.members.insert(
+            replacement.members.begin() + static_cast<std::ptrdiff_t>(*selected_index + 1), copy);
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            selected_field_ = std::move(copy.name);
+            return true;
+        }
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!selected_index.has_value() || *selected_index == 0);
+    if (ImGui::Button("Move up")) {
+        auto replacement{*schema};
+        std::swap(replacement.members[*selected_index], replacement.members[*selected_index - 1]);
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            selected_field_ = soa_editor_member_;
+            return true;
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!selected_index.has_value() ||
+                         *selected_index + 1 >= schema->members.size());
+    if (ImGui::Button("Move down")) {
+        auto replacement{*schema};
+        std::swap(replacement.members[*selected_index], replacement.members[*selected_index + 1]);
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            selected_field_ = soa_editor_member_;
+            return true;
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(!selected_index.has_value() || schema->members.size() == 1);
+    if (ImGui::Button("Delete")) {
+        auto replacement{*schema};
+        replacement.members.erase(replacement.members.begin() +
+                                  static_cast<std::ptrdiff_t>(*selected_index));
+        auto const next_index{std::min(*selected_index, replacement.members.size() - 1)};
+        auto const next_name{replacement.members[next_index].name};
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            selected_field_ = next_name;
+            return true;
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::EndDisabled();
+
+    std::optional<codegen::SoaSchema> pending;
+    auto selected_after_edit{selected_field_};
+    if (ImGui::BeginTable("soa-schema-members",
+                          4,
+                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                              ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Name");
+        ImGui::TableSetupColumn("Semantic type");
+        ImGui::TableSetupColumn("Kind");
+        ImGui::TableHeadersRow();
+        for (std::size_t index{}; index < schema->members.size(); ++index) {
+            auto const& member{schema->members[index]};
+            auto const row_selected{selected_field_ == member.name};
+            ImGui::PushID(static_cast<int>(index));
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+                selected_field_ = member.name;
+                soa_editor_declaration_.reset();
+            }
+            if (ImGui::BeginDragDropSource()) {
+                ImGui::SetDragDropPayload("SOA_MEMBER_ROW", &index, sizeof(index));
+                ImGui::Text("Move %s", member.name.c_str());
+                ImGui::EndDragDropSource();
+            }
+            if (ImGui::BeginDragDropTarget()) {
+                if (auto const* payload{ImGui::AcceptDragDropPayload("SOA_MEMBER_ROW")}) {
+                    auto const source_index{*static_cast<std::size_t const*>(payload->Data)};
+                    if (source_index < schema->members.size() && source_index != index) {
+                        pending = *schema;
+                        selected_after_edit = pending->members[source_index].name;
+                        move_element(pending->members, source_index, index);
+                    }
+                }
+                ImGui::EndDragDropTarget();
+            }
+
+            ImGui::TableNextColumn();
+            if (row_selected) {
+                ImGui::SetNextItemWidth(-1.0F);
+                auto const submitted{ImGui::InputText("##name",
+                                                      soa_member_name_.data(),
+                                                      soa_member_name_.size(),
+                                                      ImGuiInputTextFlags_EnterReturnsTrue)};
+                if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                    pending = *schema;
+                    pending->members[index].name = soa_member_name_.data();
+                    selected_after_edit = pending->members[index].name;
+                }
+            } else {
+                ImGui::TextUnformatted(member.name.c_str());
+            }
+
+            ImGui::TableNextColumn();
+            if (row_selected) {
+                ImGui::SetNextItemWidth(-1.0F);
+                auto const submitted{ImGui::InputText("##type",
+                                                      soa_member_type_.data(),
+                                                      soa_member_type_.size(),
+                                                      ImGuiInputTextFlags_EnterReturnsTrue)};
+                if (!pending.has_value() && (submitted || ImGui::IsItemDeactivatedAfterEdit())) {
+                    pending = *schema;
+                    pending->members[index].type.name = soa_member_type_.data();
+                }
+            } else {
+                ImGui::TextUnformatted(member.type.name.c_str());
+            }
+
+            ImGui::TableNextColumn();
+            auto const kind_label{member.kind == codegen::SoaMemberKind::nested ? "nested"
+                                                                                : "array"};
+            if (row_selected && ImGui::BeginCombo("##kind", kind_label)) {
+                if (ImGui::Selectable("array", member.kind == codegen::SoaMemberKind::array)) {
+                    pending = *schema;
+                    pending->members[index].kind = codegen::SoaMemberKind::array;
+                }
+                if (ImGui::Selectable("nested", member.kind == codegen::SoaMemberKind::nested)) {
+                    pending = *schema;
+                    pending->members[index].kind = codegen::SoaMemberKind::nested;
+                }
+                ImGui::EndCombo();
+            } else if (!row_selected) {
+                ImGui::TextUnformatted(kind_label);
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+
+    if (pending.has_value()) {
+        auto const invalid_member{std::ranges::find_if(pending->members, [](auto const& member) {
+            return member.name.empty() || member.type.name.empty();
+        })};
+        if (invalid_member != pending->members.end()) {
+            schema_edit_message_ = invalid_member->name.empty()
+                                     ? "SoA column name cannot be empty."
+                                     : "SoA column type cannot be empty.";
+            return false;
+        }
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(*pending)})) {
             selected_field_ = std::move(selected_after_edit);
             return true;
         }

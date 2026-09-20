@@ -81,6 +81,9 @@ value with a 24-bit integer field and an 8-bit field that semantically reference
 
 ## 4. SoA authoring
 
+The initial standard-library SoA vertical slice is implemented. Rich fixed/nested/mask metadata is
+preserved by whole-declaration editing; direct UI for those advanced properties remains follow-up.
+
 - Create standard-library SoA declarations.
 - Add, remove, duplicate, and reorder columns.
 - Select semantic column types and supported column kinds.

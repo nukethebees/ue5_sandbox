@@ -41,11 +41,12 @@ physical facts, preserving the logical nodes and their dependency edges. The GUI
 dock layout, cached presentation results, and drawing; it does not own schema semantics or calculate
 layouts.
 
-Enum and packed-value authoring are write-enabled vertical slices. They can add declarations to
-existing matching modules, edit ordered child rows through semantic commands, preview affected
-sources, and explicitly save and reload LispB. Packed fields preserve semantic type links while the
-layout view derives physical facts and supports undoable schema divider drags. SoA declarations
-remain read-only, and there is no persistent variant format.
+Enum, packed-value, and standard-library SoA authoring are write-enabled vertical slices. They can
+add declarations to existing matching modules, edit ordered child rows through semantic commands,
+preview affected sources, and explicitly save and reload LispB. Packed fields and SoA columns
+preserve semantic type links while the layout view derives physical facts. Packed dividers and
+enum/packed/SoA drag reorder issue ordinary undoable schema commands. Planner capacity remains
+session state rather than becoming a SoA source property, and there is no persistent variant format.
 
 The application treats a C++ schema target as the open authoring document. Open/recent operations
 load its project manifest and target, while Save As materializes the current draft as a validated,

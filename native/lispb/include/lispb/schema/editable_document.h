@@ -94,6 +94,22 @@ struct DeletePackedValue {
     DeclarationId declaration;
 };
 
+struct CreateSoa {
+    DeclarationId declaration;
+    std::size_t module_index{};
+    codegen::SoaSchema schema;
+    std::optional<std::size_t> insertion_index;
+};
+
+struct ReplaceSoa {
+    DeclarationId declaration;
+    codegen::SoaSchema schema;
+};
+
+struct DeleteSoa {
+    DeclarationId declaration;
+};
+
 using SchemaEditCommand = std::variant<SetEnumeratorDisplayName,
                                        SetEnumeratorName,
                                        CreateEnum,
@@ -101,7 +117,10 @@ using SchemaEditCommand = std::variant<SetEnumeratorDisplayName,
                                        DeleteEnum,
                                        CreatePackedValue,
                                        ReplacePackedValue,
-                                       DeletePackedValue>;
+                                       DeletePackedValue,
+                                       CreateSoa,
+                                       ReplaceSoa,
+                                       DeleteSoa>;
 
 struct SchemaEditError {
     std::string message;
@@ -125,6 +144,7 @@ class EditableSchemaDocument {
     auto find_declaration(TypeIdentity const& identity) const -> std::optional<DeclarationId>;
     auto enum_schema(DeclarationId declaration) const -> codegen::EnumSchema const*;
     auto packed_value_schema(DeclarationId declaration) const -> codegen::PackedValueSchema const*;
+    auto soa_schema(DeclarationId declaration) const -> codegen::SoaSchema const*;
     auto allocate_declaration_id() -> DeclarationId;
 
     auto apply(SchemaEditCommand command) -> std::expected<bool, SchemaEditError>;

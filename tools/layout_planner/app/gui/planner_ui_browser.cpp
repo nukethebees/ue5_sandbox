@@ -108,6 +108,10 @@ void PlannerUi::draw_project_panel() {
     if (ImGui::Button("+ New packed value")) {
         open_new_packed_value_dialog_ = true;
     }
+    ImGui::SameLine();
+    if (ImGui::Button("+ New SoA")) {
+        open_new_soa_dialog_ = true;
+    }
     ImGui::EndDisabled();
     if (!schema_edit_message_.empty()) {
         ImGui::SameLine();
@@ -394,6 +398,115 @@ void PlannerUi::draw_new_packed_value_dialog() {
                               "%s",
                               "std::uint32_t");
                 selected_field_ = "value";
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+    }
+    if (ImGui::Button("Cancel")) {
+        ImGui::CloseCurrentPopup();
+    }
+    if (!schema_edit_message_.empty()) {
+        ImGui::TextWrapped("%s", schema_edit_message_.c_str());
+    }
+    ImGui::EndPopup();
+}
+
+void PlannerUi::draw_new_soa_dialog() {
+    if (open_new_soa_dialog_) {
+        ImGui::OpenPopup("New SoA");
+        open_new_soa_dialog_ = false;
+    }
+    if (!ImGui::BeginPopupModal("New SoA", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        return;
+    }
+    if (!document_.has_value()) {
+        ImGui::TextDisabled("No editable LispB document is loaded.");
+        if (ImGui::Button("Close")) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+        return;
+    }
+
+    auto const& modules{document_->manifest().modules};
+    auto first_soa_module{std::optional<std::size_t>{}};
+    for (std::size_t index{}; index < modules.size(); ++index) {
+        auto const* module{std::get_if<codegen::SoaModuleSchema>(&modules[index])};
+        if (module != nullptr && module->backend == codegen::SoaBackend::standard_library) {
+            first_soa_module = index;
+            break;
+        }
+    }
+    if (!first_soa_module.has_value()) {
+        ImGui::TextDisabled("The target has no standard-library SoA module for a new declaration.");
+    } else {
+        auto const selected_valid{[&] {
+            if (new_soa_module_index_ >= modules.size()) {
+                return false;
+            }
+            auto const* module{
+                std::get_if<codegen::SoaModuleSchema>(&modules[new_soa_module_index_])};
+            return module != nullptr && module->backend == codegen::SoaBackend::standard_library;
+        }()};
+        if (!selected_valid) {
+            new_soa_module_index_ = *first_soa_module;
+        }
+        auto const& selected_module{
+            std::get<codegen::SoaModuleSchema>(modules[new_soa_module_index_])};
+        if (ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
+            for (std::size_t index{}; index < modules.size(); ++index) {
+                auto const* module{std::get_if<codegen::SoaModuleSchema>(&modules[index])};
+                if (module == nullptr || module->backend != codegen::SoaBackend::standard_library) {
+                    continue;
+                }
+                if (ImGui::Selectable(module->settings.name.c_str(),
+                                      index == new_soa_module_index_)) {
+                    new_soa_module_index_ = index;
+                }
+            }
+            ImGui::EndCombo();
+        }
+        ImGui::InputText("Name", new_soa_name_.data(), new_soa_name_.size());
+        ImGui::InputText(
+            "First column type", new_soa_member_type_.data(), new_soa_member_type_.size());
+        ImGui::TextDisabled("The declaration starts with one editable array column.");
+
+        auto const ready{new_soa_name_.front() != '\0' && new_soa_member_type_.front() != '\0'};
+        ImGui::BeginDisabled(!ready);
+        if (ImGui::Button("Create")) {
+            auto const& module{std::get<codegen::SoaModuleSchema>(modules[new_soa_module_index_])};
+            auto const name{std::string{new_soa_name_.data()}};
+            auto const identity{
+                TypeIdentity{.origin = TypeOrigin::declaration,
+                             .module_name = module.settings.name,
+                             .namespace_name = module.settings.namespace_name.value_or(""),
+                             .name = name}};
+            auto const id{document_->allocate_declaration_id()};
+            codegen::SoaSchema schema{};
+            schema.name = name;
+            schema.members = {codegen::SoaMemberSchema{
+                .name = "values",
+                .kind = codegen::SoaMemberKind::array,
+                .type = codegen::TypeRef{.name = new_soa_member_type_.data(),
+                                         .suffix = {},
+                                         .nested = std::nullopt},
+                .fixed_schema = std::nullopt,
+                .nested_schema = std::nullopt,
+                .mask_field = false,
+                .mask_dimensions = {}}};
+            if (apply_document_edit(CreateSoa{.declaration = id,
+                                              .module_index = new_soa_module_index_,
+                                              .schema = std::move(schema),
+                                              .insertion_index = std::nullopt},
+                                    identity)) {
+                new_soa_name_.fill('\0');
+                std::snprintf(new_soa_member_type_.data(),
+                              new_soa_member_type_.size(),
+                              "%s",
+                              "std::uint32_t");
+                selected_field_ = "values";
                 ImGui::CloseCurrentPopup();
             }
         }
