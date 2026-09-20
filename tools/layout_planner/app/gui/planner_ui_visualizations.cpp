@@ -434,14 +434,7 @@ void draw_cache_line(CacheLineTiling const& tiling) {
         "This shows byte tiling only; allocation alignment and CPU behavior are not predicted.");
 }
 
-} // namespace
-
-void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis const& baseline) {
-    auto const& identity{workspace_.types().type(baseline.type).identity};
-    ImGui::Text("%s", identity.name.c_str());
-    ImGui::TextDisabled("%s", identity.module_name.c_str());
-
-    ImGui::SeparatorText("Analysis scale");
+auto draw_element_count(LayoutWorkspace& workspace) -> bool {
     struct CountPreset {
         char const* label;
         std::uint64_t count;
@@ -452,21 +445,32 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
                                        CountPreset{"10K", 10'000},
                                        CountPreset{"100K", 100'000},
                                        CountPreset{"1M", 1'000'000}};
-    bool count_changed{};
+    bool changed{};
     for (auto const& preset : count_presets) {
         ImGui::PushID(preset.label);
         if (ImGui::SmallButton(preset.label)) {
-            count_changed = workspace_.set_element_count(preset.count) || count_changed;
+            changed = workspace.set_element_count(preset.count) || changed;
         }
         ImGui::PopID();
         ImGui::SameLine();
     }
-    auto custom_count{workspace_.element_count()};
+    auto custom_count{workspace.element_count()};
     ImGui::SetNextItemWidth(150.0F);
     if (ImGui::InputScalar("Elements", ImGuiDataType_U64, &custom_count) && custom_count != 0) {
-        count_changed = workspace_.set_element_count(custom_count) || count_changed;
+        changed = workspace.set_element_count(custom_count) || changed;
     }
-    if (count_changed) {
+    return changed;
+}
+
+} // namespace
+
+void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis const& baseline) {
+    auto const& identity{workspace_.types().type(baseline.type).identity};
+    ImGui::Text("%s", identity.name.c_str());
+    ImGui::TextDisabled("%s", identity.module_name.c_str());
+
+    ImGui::SeparatorText("Analysis scale");
+    if (draw_element_count(workspace_)) {
         return;
     }
 
@@ -657,10 +661,53 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
     auto const& node{workspace_.types().type(analysis.type)};
     ImGui::Text("%s", node.identity.name.c_str());
     ImGui::TextDisabled("%s", node.identity.module_name.c_str());
+
+    ImGui::SeparatorText("Analysis scale");
+    if (draw_element_count(workspace_)) {
+        return;
+    }
+    auto const& aggregate{analysis.aggregate};
+    if (ImGui::BeginTable("record-aggregate",
+                          2,
+                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                              ImGuiTableFlags_SizingStretchProp)) {
+        auto draw_stat{[](char const* const label, std::string const& value) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(label);
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(value.c_str());
+        }};
+        draw_stat("Physical storage", detail::format_bytes(aggregate.total_storage_bytes));
+        draw_stat("Member extents", detail::format_bytes(aggregate.total_payload_bytes));
+        draw_stat("Internal padding", detail::format_bytes(aggregate.total_internal_padding_bytes));
+        draw_stat("Tail padding", detail::format_bytes(aggregate.total_tail_padding_bytes));
+        draw_stat("Total padding", detail::format_bytes(aggregate.total_padding_bytes));
+        draw_stat("Minimum cache lines", detail::format_number(aggregate.minimum_cache_lines));
+        draw_stat("Complete elements / cache line",
+                  detail::format_number(aggregate.complete_elements_per_cache_line));
+        draw_stat("Minimum pages", detail::format_number(aggregate.minimum_pages));
+        draw_stat("Complete elements / page",
+                  detail::format_number(aggregate.complete_elements_per_page));
+        ImGui::EndTable();
+    }
+    if (analysis.size_bytes.has_value() && analysis.internal_padding_bytes.has_value() &&
+        analysis.tail_padding_bytes.has_value() && *analysis.size_bytes != 0) {
+        auto const padding{*analysis.internal_padding_bytes + *analysis.tail_padding_bytes};
+        auto const waste{static_cast<double>(padding) * 100.0 /
+                         static_cast<double>(*analysis.size_bytes)};
+        ImGui::TextDisabled("Per-element ABI padding: %.3f%% (%llu of %llu bytes).",
+                            waste,
+                            static_cast<unsigned long long>(padding),
+                            static_cast<unsigned long long>(*analysis.size_bytes));
+    }
+    ImGui::TextDisabled("Target memory facts: %s", abi_.memory_facts().provenance.c_str());
+
+    ImGui::SeparatorText("Object layout");
     ImGui::Text("Size: %s B    Alignment: %s B",
                 detail::format_number(analysis.size_bytes).c_str(),
                 detail::format_number(analysis.alignment_bytes).c_str());
-    ImGui::Text("Payload: %s B    Internal padding: %s B    Tail padding: %s B",
+    ImGui::Text("Member extents: %s B    Internal padding: %s B    Tail padding: %s B",
                 detail::format_number(analysis.payload_bytes).c_str(),
                 detail::format_number(analysis.internal_padding_bytes).c_str(),
                 detail::format_number(analysis.tail_padding_bytes).c_str());

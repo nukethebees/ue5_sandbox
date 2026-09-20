@@ -52,7 +52,9 @@ by-value record cycles are rejected. Target-derived record analysis reports recu
 offsets, fixed-array extents, alignment, internal/tail padding, and total size in a byte map while
 keeping unknown facts explicit. Record declarations are now source-backed and editable through a
 flat member grid with add/duplicate/delete/reorder, scalar/fixed-array cardinality, preview,
-undo/redo, and save/reload. Cache/page scaling and richer member type selection remain follow-up.
+undo/redo, and save/reload. Configurable-count record totals now cover storage, member extents,
+internal/tail padding, minimum cache lines, and minimum pages with overflow-safe arithmetic. Richer
+member type selection and explicit access-set traffic remain follow-up.
 
 ## 1. Editable document and command foundation
 

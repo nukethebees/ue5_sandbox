@@ -294,7 +294,8 @@ class RecordLayoutAnalyzer {
                               .tail_padding_bytes = std::nullopt,
                               .size_bytes = std::nullopt,
                               .alignment_bytes = std::nullopt,
-                              .diagnostics = {}};
+                              .diagnostics = {},
+                              .aggregate = {}};
         auto const& node{types_.type(type)};
         auto const* record{std::get_if<lispb::schema::RecordType>(&node.definition)};
         if (record == nullptr) {
@@ -559,8 +560,79 @@ auto Analyzer::analyze_enum(lispb::schema::TypeGraph const& types,
 
 auto Analyzer::analyze_record(lispb::schema::TypeGraph const& types,
                               lispb::schema::TypeId const type,
-                              AbiProfile const& abi) -> RecordAnalysis {
-    return RecordLayoutAnalyzer{types, abi}.analyze(type);
+                              AbiProfile const& abi,
+                              std::uint64_t const element_count) -> RecordAnalysis {
+    auto result{RecordLayoutAnalyzer{types, abi}.analyze(type)};
+    result.aggregate.element_count = element_count;
+
+    auto scale = [&](std::optional<std::uint64_t> const value,
+                     std::string const& description) -> std::optional<std::uint64_t> {
+        if (!value.has_value()) {
+            return std::nullopt;
+        }
+        auto const scaled{checked_multiply(*value, element_count)};
+        if (!scaled.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Record aggregate " + description + " overflows uint64."});
+        }
+        return scaled;
+    };
+    result.aggregate.total_storage_bytes = scale(result.size_bytes, "storage byte count");
+    result.aggregate.total_payload_bytes = scale(result.payload_bytes, "payload byte count");
+    result.aggregate.total_internal_padding_bytes =
+        scale(result.internal_padding_bytes, "internal-padding byte count");
+    result.aggregate.total_tail_padding_bytes =
+        scale(result.tail_padding_bytes, "tail-padding byte count");
+    if (result.aggregate.total_internal_padding_bytes.has_value() &&
+        result.aggregate.total_tail_padding_bytes.has_value()) {
+        result.aggregate.total_padding_bytes =
+            checked_add(*result.aggregate.total_internal_padding_bytes,
+                        *result.aggregate.total_tail_padding_bytes);
+        if (!result.aggregate.total_padding_bytes.has_value()) {
+            result.diagnostics.push_back({DiagnosticSeverity::error,
+                                          "Record aggregate padding byte count overflows uint64."});
+        }
+    }
+
+    if (result.size_bytes.has_value() && *result.size_bytes != 0) {
+        auto const& memory{abi.memory_facts()};
+        result.aggregate.cache_line_bytes = memory.cache_line_bytes;
+        if (!memory.cache_line_bytes.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::warning,
+                 "Cache-line size is unknown for ABI profile '" + abi.name() + "'."});
+        } else if (*memory.cache_line_bytes == 0) {
+            result.aggregate.cache_line_bytes.reset();
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, "ABI profile cache-line size must be non-zero."});
+        } else {
+            if (result.aggregate.total_storage_bytes.has_value()) {
+                result.aggregate.minimum_cache_lines = minimum_regions(
+                    *result.aggregate.total_storage_bytes, *memory.cache_line_bytes);
+            }
+            result.aggregate.complete_elements_per_cache_line =
+                *memory.cache_line_bytes / *result.size_bytes;
+        }
+
+        result.aggregate.page_bytes = memory.page_bytes;
+        if (!memory.page_bytes.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::warning,
+                 "Page size is unknown for ABI profile '" + abi.name() + "'."});
+        } else if (*memory.page_bytes == 0) {
+            result.aggregate.page_bytes.reset();
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, "ABI profile page size must be non-zero."});
+        } else {
+            if (result.aggregate.total_storage_bytes.has_value()) {
+                result.aggregate.minimum_pages =
+                    minimum_regions(*result.aggregate.total_storage_bytes, *memory.page_bytes);
+            }
+            result.aggregate.complete_elements_per_page = *memory.page_bytes / *result.size_bytes;
+        }
+    }
+    return result;
 }
 
 auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,

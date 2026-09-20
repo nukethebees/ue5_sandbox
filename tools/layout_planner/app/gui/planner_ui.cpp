@@ -665,7 +665,8 @@ void PlannerUi::refresh_analysis() {
     if (std::holds_alternative<EnumType>(definition)) {
         enum_domain_ = Analyzer::analyze_enum(workspace_.types(), *selected_type_, abi_);
     } else if (std::holds_alternative<RecordType>(definition)) {
-        record_analysis_ = Analyzer::analyze_record(workspace_.types(), *selected_type_, abi_);
+        record_analysis_ =
+            Analyzer::analyze_record(workspace_.types(), *selected_type_, abi_, element_count);
     } else if (std::holds_alternative<PackedType>(definition)) {
         baseline_packed_ = Analyzer::analyze_packed(
             workspace_.types(), *selected_type_, baseline, abi_, element_count);

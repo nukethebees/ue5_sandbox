@@ -108,6 +108,21 @@ struct RecordMemberAnalysis {
     std::optional<std::uint64_t> padding_before_bytes;
 };
 
+struct RecordAggregateAnalysis {
+    std::uint64_t element_count{1};
+    std::optional<std::uint64_t> total_storage_bytes;
+    std::optional<std::uint64_t> total_payload_bytes;
+    std::optional<std::uint64_t> total_internal_padding_bytes;
+    std::optional<std::uint64_t> total_tail_padding_bytes;
+    std::optional<std::uint64_t> total_padding_bytes;
+    std::optional<std::uint64_t> cache_line_bytes;
+    std::optional<std::uint64_t> minimum_cache_lines;
+    std::optional<std::uint64_t> complete_elements_per_cache_line;
+    std::optional<std::uint64_t> page_bytes;
+    std::optional<std::uint64_t> minimum_pages;
+    std::optional<std::uint64_t> complete_elements_per_page;
+};
+
 struct RecordAnalysis {
     lispb::schema::TypeId type;
     std::vector<RecordMemberAnalysis> members;
@@ -117,6 +132,7 @@ struct RecordAnalysis {
     std::optional<std::uint64_t> size_bytes;
     std::optional<std::uint64_t> alignment_bytes;
     std::vector<Diagnostic> diagnostics;
+    RecordAggregateAnalysis aggregate;
 };
 
 struct CacheLineTiling {
@@ -167,7 +183,8 @@ class Analyzer {
                                std::uint64_t element_count = 1) -> PackedAnalysis;
     static auto analyze_record(lispb::schema::TypeGraph const& types,
                                lispb::schema::TypeId type,
-                               AbiProfile const& abi) -> RecordAnalysis;
+                               AbiProfile const& abi,
+                               std::uint64_t element_count = 1) -> RecordAnalysis;
     static auto analyze_soa(lispb::schema::TypeGraph const& types,
                             lispb::schema::TypeId type,
                             Variant const& variant,

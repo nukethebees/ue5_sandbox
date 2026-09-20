@@ -64,6 +64,9 @@ alignment, and internal/tail padding from the selected ABI profile. Unknown targ
 Unknown, while illegal by-value record cycles are rejected during semantic resolution.
 Record create/replace/delete commands share the same stable declaration identity, validation
 rollback, undo/redo, preview, and atomic save/reload path as enum, packed, and SoA declarations.
+Record aggregate analysis uses the planner's selected element count and target profile to report
+total storage, member extents, ABI padding, minimum cache lines, and minimum pages. Arithmetic
+overflow and absent target facts remain explicit diagnostics/Unknown values.
 
 The planner supports enum value-domain analysis, packed storage type/bit-range analysis, and flat
 standard-library SoA/vector-SoA payload analysis. Enum analysis derives implicit literal values,

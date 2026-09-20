@@ -263,6 +263,13 @@ TEST(RecordAnalyzer, ReportsOffsetsInternalAndTailPadding) {
     EXPECT_EQ(analysis.tail_padding_bytes, 2);
     EXPECT_EQ(analysis.size_bytes, 12);
     EXPECT_EQ(analysis.alignment_bytes, 4);
+    EXPECT_EQ(analysis.aggregate.element_count, 1);
+    EXPECT_EQ(analysis.aggregate.total_storage_bytes, 12);
+    EXPECT_EQ(analysis.aggregate.total_payload_bytes, 7);
+    EXPECT_EQ(analysis.aggregate.total_padding_bytes, 5);
+    EXPECT_EQ(analysis.aggregate.minimum_cache_lines, 1);
+    EXPECT_EQ(analysis.aggregate.complete_elements_per_cache_line, 5);
+    EXPECT_EQ(analysis.aggregate.minimum_pages, 1);
     EXPECT_TRUE(analysis.diagnostics.empty());
 }
 
@@ -316,6 +323,48 @@ TEST(RecordAnalyzer, KeepsUnknownAndOverflowedLayoutsUnknown) {
     EXPECT_FALSE(overflow_analysis.size_bytes.has_value());
     EXPECT_FALSE(overflow_analysis.members[0].extent_bytes.has_value());
     EXPECT_FALSE(overflow_analysis.diagnostics.empty());
+}
+
+TEST(RecordAnalyzer, ScalesAggregateWasteAndDiagnosesUnknownOrOverflowedTargetFacts) {
+    auto const fixture{record_type({codegen::RecordSchema{
+        .name = "Record",
+        .members = {record_member("small", "std::uint8_t"), record_member("wide", "std::uint32_t")},
+        .export_specifier = std::nullopt}})};
+
+    auto analysis{
+        Analyzer::analyze_record(fixture.types, fixture.type, AbiProfile::host_common(), 100)};
+    EXPECT_EQ(analysis.aggregate.element_count, 100);
+    EXPECT_EQ(analysis.aggregate.total_storage_bytes, 800);
+    EXPECT_EQ(analysis.aggregate.total_payload_bytes, 500);
+    EXPECT_EQ(analysis.aggregate.total_internal_padding_bytes, 300);
+    EXPECT_EQ(analysis.aggregate.total_tail_padding_bytes, 0);
+    EXPECT_EQ(analysis.aggregate.total_padding_bytes, 300);
+    EXPECT_EQ(analysis.aggregate.minimum_cache_lines, 13);
+    EXPECT_EQ(analysis.aggregate.minimum_pages, 1);
+    EXPECT_TRUE(analysis.diagnostics.empty());
+
+    AbiProfile unknown_memory{"unknown-memory"};
+    unknown_memory.set(
+        "std::uint8_t",
+        {.size_bytes = 1, .alignment_bytes = 1, .integer_signed = false, .unsigned_value_bits = 8});
+    unknown_memory.set("std::uint32_t",
+                       {.size_bytes = 4,
+                        .alignment_bytes = 4,
+                        .integer_signed = false,
+                        .unsigned_value_bits = 32});
+    analysis = Analyzer::analyze_record(fixture.types, fixture.type, unknown_memory, 100);
+    EXPECT_EQ(analysis.aggregate.total_storage_bytes, 800);
+    EXPECT_FALSE(analysis.aggregate.minimum_cache_lines.has_value());
+    EXPECT_FALSE(analysis.aggregate.minimum_pages.has_value());
+    EXPECT_FALSE(analysis.diagnostics.empty());
+
+    analysis = Analyzer::analyze_record(fixture.types,
+                                        fixture.type,
+                                        AbiProfile::host_common(),
+                                        std::numeric_limits<std::uint64_t>::max());
+    EXPECT_FALSE(analysis.aggregate.total_storage_bytes.has_value());
+    EXPECT_FALSE(analysis.aggregate.total_padding_bytes.has_value());
+    EXPECT_FALSE(analysis.diagnostics.empty());
 }
 
 TEST(PackedAnalyzer, ReportsEntityUniqueIdLayout) {

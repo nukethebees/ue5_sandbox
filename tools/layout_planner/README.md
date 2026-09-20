@@ -64,7 +64,9 @@ default panel arrangement.
    values, planning values, and active overrides are shown separately.
 5. Layout shows linked packed-bit, record byte maps, aggregate column-payload, and cache-line views.
    Record maps derive member offsets, fixed-array extents, alignment, internal padding, and tail
-   padding from the active target profile. For packed values,
+   padding from the active target profile. The shared element-count control scales record storage,
+   member extents, padding, minimum cache lines, and minimum pages with overflow-safe arithmetic.
+   For packed values,
    choose an element-count preset or custom count to see overflow-safe storage, unused-bit,
    cache-line, and page totals from the explicit target profile. Comparison lets you select any two
    variants as A and B and shows factual deltas without ranking either representation. B follows the
