@@ -24,6 +24,9 @@ struct EntityUniqueId {
     inline static constexpr storage_type index_mask{storage_type{0xffffff}};
     using entity_type_type = ioj::sim::EntityType;
     using entity_type_underlying_type = std::underlying_type_t<ioj::sim::EntityType>;
+    static_assert(std::is_enum_v<ioj::sim::EntityType>);
+    static_assert(std::is_unsigned_v<entity_type_underlying_type>);
+    static_assert(std::numeric_limits<entity_type_underlying_type>::digits >= 8);
 
     inline static constexpr int entity_type_offset{24};
     inline static constexpr int entity_type_bits{8};

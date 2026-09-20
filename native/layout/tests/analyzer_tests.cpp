@@ -931,19 +931,33 @@ TEST(EnumAnalyzer, AcceptsFullUnsignedWidthAndDiagnosesImplicitOverflow) {
 }
 
 TEST(EnumAnalyzer, DiagnosesDomainsThatDoNotFitBackingSignedness) {
+    auto target{AbiProfile{"Narrow enum target"}};
+    target.set("NarrowSigned",
+               TypeFacts{.size_bytes = 1,
+                         .alignment_bytes = 1,
+                         .integer_signed = true,
+                         .unsigned_value_bits = std::nullopt,
+                         .provenance = "Test target"});
+    target.set("NarrowUnsigned",
+               TypeFacts{.size_bytes = 1,
+                         .alignment_bytes = 1,
+                         .integer_signed = false,
+                         .unsigned_value_bits = 8,
+                         .provenance = "Test target"});
+
     auto const signed_fixture{
-        enum_domain_type({enum_value("Value", "200")}, std::nullopt, "std::int8_t")};
-    auto const signed_analysis{Analyzer::analyze_enum(
-        signed_fixture.types, signed_fixture.type, AbiProfile::host_common())};
+        enum_domain_type({enum_value("Value", "200")}, std::nullopt, "NarrowSigned")};
+    auto const signed_analysis{
+        Analyzer::analyze_enum(signed_fixture.types, signed_fixture.type, target)};
 
     EXPECT_EQ(signed_analysis.minimum_required_bits, 8);
     EXPECT_EQ(signed_analysis.backing_can_represent_domain, false);
     EXPECT_FALSE(signed_analysis.diagnostics.empty());
 
     auto const unsigned_fixture{
-        enum_domain_type({enum_value("Value", "-1")}, std::nullopt, "std::uint8_t")};
-    auto const unsigned_analysis{Analyzer::analyze_enum(
-        unsigned_fixture.types, unsigned_fixture.type, AbiProfile::host_common())};
+        enum_domain_type({enum_value("Value", "-1")}, std::nullopt, "NarrowUnsigned")};
+    auto const unsigned_analysis{
+        Analyzer::analyze_enum(unsigned_fixture.types, unsigned_fixture.type, target)};
 
     EXPECT_EQ(unsigned_analysis.minimum_required_bits, 1);
     EXPECT_EQ(unsigned_analysis.backing_can_represent_domain, false);

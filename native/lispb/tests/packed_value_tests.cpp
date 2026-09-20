@@ -406,8 +406,8 @@ TEST(PackedValue, ValidatesKnownEnumUnderlyingType) {
 
 TEST(PackedValue, ValidatesKnownEnumEncodedWidthWithoutEmittingPerValueAssertions) {
     auto module{valid_module()};
-    module.values.front().invalid_value = 0xffffffffu;
-    field(module.values.front(), 1).bits = 3;
+    module.values.front().invalid_value = 0x07ffffffu;
+    field(module.values.front(), 1).bits = 4;
     auto schema{EnumSchema{
         .name = "FighterStateKind",
         .underlying_type = TypeRef{"uint8"},
@@ -424,7 +424,7 @@ TEST(PackedValue, ValidatesKnownEnumEncodedWidthWithoutEmittingPerValueAssertion
               std::string::npos);
     EXPECT_NE(header.find("assert(raw != invalid_value);"), std::string::npos);
 
-    field(module.values.front(), 1).bits = 2;
+    field(module.values.front(), 1).bits = 3;
     EXPECT_THROW(lower_known_enum(std::move(module), std::move(schema)), std::invalid_argument);
 }
 
