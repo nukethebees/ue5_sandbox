@@ -44,9 +44,9 @@ struct EntityUniqueId {
         assert(index_value <= static_cast<std::uint32_t>(index_value_mask));
         assert(entity_type_value < ioj::sim::EntityType::COUNT);
         return EntityUniqueId{static_cast<storage_type>(
-            static_cast<storage_type>(index_value) << index_offset |
-            static_cast<storage_type>(static_cast<entity_type_underlying_type>(entity_type_value))
-                << entity_type_offset)};
+            (static_cast<storage_type>(index_value) << index_offset) |
+            (static_cast<storage_type>(static_cast<entity_type_underlying_type>(entity_type_value))
+             << entity_type_offset))};
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
