@@ -24,8 +24,12 @@ internal sealed class CommandArguments
                 }
                 continue;
             }
-            if (!values.Contains(argument) || index + 1 >= arguments.Count || string.IsNullOrWhiteSpace(arguments[index + 1]) ||
-                !result.values_.TryAdd(argument, arguments[++index]))
+            var equals_index = argument.IndexOf('=');
+            var name = equals_index < 0 ? argument : argument[..equals_index];
+            var value = equals_index < 0
+                ? index + 1 < arguments.Count ? arguments[++index] : null
+                : argument[(equals_index + 1)..];
+            if (!values.Contains(name) || string.IsNullOrWhiteSpace(value) || !result.values_.TryAdd(name, value))
             {
                 throw new BenchmarkToolException($"Unknown, missing, or duplicate argument '{argument}'.");
             }
@@ -126,6 +130,7 @@ internal static class BenchmarkCommandSupport
 
     public static IEnumerable<JsonElement> JsonLines(string output)
     {
+        var results = new List<JsonElement>();
         foreach (var line in output.Split(["\r\n", "\n", "\r"], StringSplitOptions.RemoveEmptyEntries))
         {
             var trimmed = line.TrimStart();
@@ -133,9 +138,17 @@ internal static class BenchmarkCommandSupport
             {
                 continue;
             }
-            using var document = JsonDocument.Parse(trimmed);
-            yield return document.RootElement.Clone();
+            try
+            {
+                using var document = JsonDocument.Parse(trimmed);
+                results.Add(document.RootElement.Clone());
+            }
+            catch (JsonException exception)
+            {
+                throw new BenchmarkToolException($"Benchmark output contained malformed JSON: {exception.Message}");
+            }
         }
+        return results;
     }
 
     public static string EngineResource(string editor_path)

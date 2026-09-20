@@ -115,9 +115,21 @@ internal static class FrameMemoryRevisionAbBenchmarkCommand
         }
         var results = BenchmarkCommandSupport.JsonLines(process.StandardOutput).ToArray();
         if (results.Length != 1) throw new BenchmarkToolException($"NativeFrameMemoryLevel produced {results.Length} JSON results.");
-        var timing = results[0].GetProperty("timing");
-        var memory = results[0].GetProperty("memory");
-        return new Record(pair, sequence, state, commit, timing.GetProperty("mean_tick_microseconds").GetDouble(), memory.GetProperty("frame_peak_claimed_bytes").GetUInt64(), memory.GetProperty("frame_peak_payload_bytes").GetUInt64(), memory.GetProperty("frame_total_padding_bytes").GetUInt64(), memory.GetProperty("frame_total_root_claims").GetUInt64());
+        try
+        {
+            var timing = results[0].GetProperty("timing");
+            var memory = results[0].GetProperty("memory");
+            var mean_tick = timing.GetProperty("mean_tick_microseconds").GetDouble();
+            if (!double.IsFinite(mean_tick) || mean_tick <= 0)
+            {
+                throw new BenchmarkToolException("NativeFrameMemoryLevel result contained an invalid mean tick time.");
+            }
+            return new Record(pair, sequence, state, commit, mean_tick, memory.GetProperty("frame_peak_claimed_bytes").GetUInt64(), memory.GetProperty("frame_peak_payload_bytes").GetUInt64(), memory.GetProperty("frame_total_padding_bytes").GetUInt64(), memory.GetProperty("frame_total_root_claims").GetUInt64());
+        }
+        catch (Exception exception) when (exception is KeyNotFoundException or InvalidOperationException or FormatException)
+        {
+            throw new BenchmarkToolException($"NativeFrameMemoryLevel result was malformed: {exception.Message}");
+        }
     }
 
     private static async Task<string> GitTextAsync(BenchmarkToolsApplication application, string root, IReadOnlyList<string> arguments, CancellationToken token, string failure)

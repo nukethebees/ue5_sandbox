@@ -80,6 +80,7 @@ internal static class FighterSimulationBenchmarkCommand
     {
         try
         {
+            var timing = result.GetProperty("timing");
             if (result.GetProperty("level").GetProperty("id").GetString() != "fighter-scheduling-benchmark" ||
                 !result.GetProperty("fighter_stress").GetProperty("enabled").GetBoolean() ||
                 result.GetProperty("fighter_stress").GetProperty("configured_cap").GetUInt32() != cap ||
@@ -90,12 +91,19 @@ internal static class FighterSimulationBenchmarkCommand
                 result.GetProperty("fighter_stress").GetProperty("fighter_spawns_during_measurement").GetUInt32() != 0 ||
                 result.GetProperty("fighter_stress").GetProperty("task_counts").GetProperty("attack").GetUInt32() != cap ||
                 result.GetProperty("fighter_stress").GetProperty("lasers_spawned_during_measurement").GetUInt32() <= 0 ||
-                result.GetProperty("memory").GetProperty("frame_overflow_count").GetUInt32() != 0)
+                result.GetProperty("memory").GetProperty("frame_overflow_count").GetUInt32() != 0 ||
+                !double.IsFinite(timing.GetProperty("elapsed_seconds").GetDouble()) ||
+                !double.IsFinite(timing.GetProperty("mean_tick_microseconds").GetDouble()) ||
+                !double.IsFinite(timing.GetProperty("median_tick_microseconds").GetDouble()) ||
+                !double.IsFinite(timing.GetProperty("p95_tick_microseconds").GetDouble()) ||
+                !double.IsFinite(timing.GetProperty("p99_tick_microseconds").GetDouble()) ||
+                !double.IsFinite(timing.GetProperty("ticks_per_second").GetDouble()) ||
+                !double.IsFinite(timing.GetProperty("realtime_factor").GetDouble()))
             {
                 throw new BenchmarkToolException($"Fighter benchmark validation failed for cap {cap}.");
             }
         }
-        catch (KeyNotFoundException exception)
+        catch (Exception exception) when (exception is KeyNotFoundException or InvalidOperationException or FormatException)
         {
             throw new BenchmarkToolException($"Fighter benchmark result for cap {cap} was malformed: {exception.Message}");
         }
@@ -162,17 +170,24 @@ internal static class FrameMemoryLevelBenchmarkCommand
 
     private static void Validate(JsonElement result)
     {
-        var workload = result.GetProperty("workload");
-        var memory = result.GetProperty("memory");
-        if (result.GetProperty("level").GetProperty("id").GetString() != "batch-benchmark" ||
-            workload.GetProperty("completed_ticks").GetInt32() != workload.GetProperty("requested_ticks").GetInt32() ||
-            workload.GetProperty("game_speed").GetInt32() != 100 ||
-            workload.GetProperty("advance_calls").GetInt32() != workload.GetProperty("requested_ticks").GetInt32() ||
-            memory.GetProperty("frame_overflow_count").GetUInt32() != 0 ||
-            memory.GetProperty("frame_peak_claimed_bytes").GetUInt64() == 0 ||
-            result.GetProperty("final_state").GetProperty("peak_fighters").GetUInt32() == 0)
+        try
         {
-            throw new BenchmarkToolException("Frame-memory benchmark validation failed.");
+            var workload = result.GetProperty("workload");
+            var memory = result.GetProperty("memory");
+            if (result.GetProperty("level").GetProperty("id").GetString() != "batch-benchmark" ||
+                workload.GetProperty("completed_ticks").GetInt32() != workload.GetProperty("requested_ticks").GetInt32() ||
+                workload.GetProperty("game_speed").GetInt32() != 100 ||
+                workload.GetProperty("advance_calls").GetInt32() != workload.GetProperty("requested_ticks").GetInt32() ||
+                memory.GetProperty("frame_overflow_count").GetUInt32() != 0 ||
+                memory.GetProperty("frame_peak_claimed_bytes").GetUInt64() == 0 ||
+                result.GetProperty("final_state").GetProperty("peak_fighters").GetUInt32() == 0)
+            {
+                throw new BenchmarkToolException("Frame-memory benchmark validation failed.");
+            }
+        }
+        catch (Exception exception) when (exception is KeyNotFoundException or InvalidOperationException or FormatException)
+        {
+            throw new BenchmarkToolException($"Frame-memory benchmark result was malformed: {exception.Message}");
         }
     }
 }

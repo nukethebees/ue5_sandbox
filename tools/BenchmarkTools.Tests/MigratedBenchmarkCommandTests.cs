@@ -73,6 +73,40 @@ public sealed class MigratedBenchmarkCommandTests
     }
 
     [TestMethod]
+    public async Task MigratedCommands_report_malformed_structured_results_cleanly()
+    {
+        using var repository = new TemporaryRepository();
+        var errors = new StringWriter();
+        var runner = new RecordingRunner(request =>
+        {
+            if (request.FileName == "git")
+            {
+                return new ProcessResult(0, "commit\n");
+            }
+            if (request.Arguments.Any(argument => argument.StartsWith("--benchmark_out=", StringComparison.Ordinal)))
+            {
+                var destination = request.Arguments.Single(argument => argument.StartsWith("--benchmark_out=", StringComparison.Ordinal))["--benchmark_out=".Length..];
+                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                File.WriteAllText(destination, "{}");
+                return new ProcessResult(0);
+            }
+            return new ProcessResult(0, "{}\n");
+        });
+        var application = new BenchmarkToolsApplication(runner, new FakeJobserverLocator(), new FakeEnvironment(), TextWriter.Null, errors, @"C:\tools\BenchmarkTools.exe");
+        var standard = repository.CreateFile("standard.exe");
+        var mimalloc = repository.CreateFile("mimalloc.exe");
+        var prepared = Path.Combine(repository.Root, "prepared");
+        Directory.CreateDirectory(prepared);
+
+        Assert.AreEqual(1, await application.RunAsync(["frame-memory-level", "--skip-build"], repository.Root));
+        Assert.AreEqual(1, await application.RunAsync(["fighter-simulation", "--fighter-caps", "1", "--skip-build"], repository.Root));
+        Assert.AreEqual(1, await application.RunAsync(["frame-memory-revision-ab", "--skip-build", "--baseline-worktree", prepared], repository.Root));
+        Assert.AreEqual(1, await application.RunAsync(["native-soa-reserve-matrix", "--standard", standard, "--mimalloc", mimalloc, "--output-dir", "results", "--rows", "4096", "--owners", "1", "--repetitions", "1", "--dry-run"], repository.Root));
+        StringAssert.Contains(errors.ToString(), "malformed");
+        StringAssert.Contains(errors.ToString(), "benchmarks array");
+    }
+
+    [TestMethod]
     public async Task FrameMemoryRevisionAb_prepare_only_removes_its_managed_worktree()
     {
         using var repository = new TemporaryRepository();
