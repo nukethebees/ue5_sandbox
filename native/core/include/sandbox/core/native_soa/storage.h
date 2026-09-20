@@ -44,71 +44,68 @@ void validate_vector_column_sizes(View const& view) {
         [count](auto const& column) { require(column.size() == static_cast<std::size_t>(count)); });
 }
 
-struct VectorStorageOperations {
-    template <typename Self>
-    void reserve(this Self& self, std::int32_t const count) {
-        require(count >= 0);
-        self.each_column(
-            [count](auto& column) { column.reserve(static_cast<std::size_t>(count)); });
-    }
+namespace ops {
 
-    template <typename Self>
-    void reset(this Self& self) noexcept {
-        self.each_column([](auto& column) { column.clear(); });
-    }
+template <typename Soa>
+void reserve(Soa& soa, std::int32_t const count) {
+    require(count >= 0);
+    soa.each_column([count](auto& column) { column.reserve(static_cast<std::size_t>(count)); });
+}
 
-    template <typename Self>
-    void set_num(this Self& self, std::int32_t const count) {
-        require(count >= 0);
-        auto const size{static_cast<std::size_t>(count)};
-        self.each_column([size](auto& column) { column.resize(size); });
-    }
+template <typename Soa>
+void reset(Soa& soa) noexcept {
+    soa.each_column([](auto& column) { column.clear(); });
+}
 
-    template <typename Self>
-    void add_uninitialised(this Self& self, std::int32_t const count) {
-        auto const old_num{self.num()};
-        require(count >= 0 && count <= std::numeric_limits<std::int32_t>::max() - old_num);
-        self.set_num(old_num + count);
-    }
+template <typename Soa>
+void set_num(Soa& soa, std::int32_t const count) {
+    require(count >= 0);
+    auto const size{static_cast<std::size_t>(count)};
+    soa.each_column([size](auto& column) { column.resize(size); });
+}
 
-    template <typename Self>
-    void add_defaulted(this Self& self, std::int32_t const count) {
-        self.add_uninitialised(count);
-    }
+template <typename Soa>
+void add_uninitialised(Soa& soa, std::int32_t const count) {
+    auto const old_num{soa.num()};
+    require(count >= 0 && count <= std::numeric_limits<std::int32_t>::max() - old_num);
+    set_num(soa, old_num + count);
+}
 
-    template <typename Self>
-    void remove_at_swap(this Self& self, std::int32_t const index, std::int32_t const count) {
-        auto const old_num{self.num()};
-        require(index >= 0 && index <= old_num && count >= 0 && count <= old_num - index);
-        auto const moved{std::min(count, old_num - index - count)};
-        self.each_column(
-            [index, moved](auto& column) { ml::remove_at_swap(column, index, moved); });
-        self.set_num(old_num - count);
-    }
+template <typename Soa>
+void add_defaulted(Soa& soa, std::int32_t const count) {
+    add_uninitialised(soa, count);
+}
 
-    template <typename Self>
-    void apply_permutation(this Self& self, std::span<std::int32_t> const indices) {
-        self.validate_array_sizes();
-        require(indices.size() == static_cast<std::size_t>(self.num()));
-        self.each_column(
-            [indices](auto& column) { ml::apply_permutation(std::span{column}, indices); });
-    }
+template <typename Soa>
+void remove_at_swap(Soa& soa, std::int32_t const index, std::int32_t const count) {
+    auto const old_num{soa.num()};
+    require(index >= 0 && index <= old_num && count >= 0 && count <= old_num - index);
+    soa.each_column([index, count](auto& column) { ml::remove_at_swap(column, index, count); });
+}
 
-    template <typename Self, typename Compare>
-    void sort(this Self& self, Compare&& compare, std::span<std::int32_t> const scratch_indices) {
-        self.validate_array_sizes();
-        require(scratch_indices.size() == static_cast<std::size_t>(self.num()));
-        for (std::int32_t i{}; i < self.num(); ++i) {
-            scratch_indices[static_cast<std::size_t>(i)] = i;
-        }
-        std::sort(scratch_indices.begin(),
-                  scratch_indices.end(),
-                  [&self, &compare](std::int32_t const lhs, std::int32_t const rhs) {
-                      return compare(self, lhs, rhs);
-                  });
-        self.apply_permutation(scratch_indices);
+template <typename Soa>
+void apply_permutation(Soa& soa, std::span<std::int32_t> const indices) {
+    soa.validate_array_sizes();
+    require(indices.size() == static_cast<std::size_t>(soa.num()));
+    soa.each_column([indices](auto& column) { ml::apply_permutation(std::span{column}, indices); });
+}
+
+template <typename Soa, typename Compare>
+void sort(Soa& soa, Compare&& compare, std::span<std::int32_t> const scratch_indices) {
+    soa.validate_array_sizes();
+    require(scratch_indices.size() == static_cast<std::size_t>(soa.num()));
+    for (std::int32_t i{}; i < soa.num(); ++i) {
+        scratch_indices[static_cast<std::size_t>(i)] = i;
     }
-};
+    std::sort(scratch_indices.begin(),
+              scratch_indices.end(),
+              [&soa, &compare](std::int32_t const lhs, std::int32_t const rhs) {
+                  return compare(soa, lhs, rhs);
+              });
+    apply_permutation(soa, scratch_indices);
+}
+
+} // namespace ops
 
 #if NATIVE_SOA_MIMALLOC
 template <typename T>

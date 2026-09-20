@@ -183,7 +183,7 @@ struct SpawnRequestsView {
         sources[static_cast<std::size_t>(index)] = new_sources;
     }
 };
-struct SpawnRequests : ml::native_soa::VectorStorageOperations {
+struct SpawnRequests {
     using View = SpawnRequestsView;
     using ConstView = SpawnRequestsConstView;
     using size_type = std::int32_t;
@@ -232,6 +232,23 @@ struct SpawnRequests : ml::native_soa::VectorStorageOperations {
         fn(sources);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
+    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
+    void reset() noexcept { ml::native_soa::ops::reset(*this); }
+    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void remove_at_swap(size_type const index, size_type const count) {
+        ml::native_soa::ops::remove_at_swap(*this, index, count);
+    }
+    void apply_permutation(std::span<size_type> const indices) {
+        ml::native_soa::ops::apply_permutation(*this, indices);
+    }
+    template <typename Compare>
+    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
+        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+    }
     void set(size_type const index,
              Vector3f const new_locations,
              Rotator3f const new_rotations,
@@ -1385,7 +1402,7 @@ struct EntitiesView {
         spawn_times[static_cast<std::size_t>(index)] = new_spawn_times;
     }
 };
-struct Entities : ml::native_soa::VectorStorageOperations {
+struct Entities {
     using View = EntitiesView;
     using ConstView = EntitiesConstView;
     using size_type = std::int32_t;
@@ -1440,6 +1457,23 @@ struct Entities : ml::native_soa::VectorStorageOperations {
         fn(spawn_times);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
+    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
+    void reset() noexcept { ml::native_soa::ops::reset(*this); }
+    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void remove_at_swap(size_type const index, size_type const count) {
+        ml::native_soa::ops::remove_at_swap(*this, index, count);
+    }
+    void apply_permutation(std::span<size_type> const indices) {
+        ml::native_soa::ops::apply_permutation(*this, indices);
+    }
+    template <typename Compare>
+    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
+        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+    }
     void set(size_type const index,
              std::uint8_t const new_active,
              LaserSource const new_sources,

@@ -259,7 +259,7 @@ auto lower_native_soa(SoaSchema const& schema,
         }
     }
 
-    out << "struct " << schema.name << " : ml::native_soa::VectorStorageOperations {\n"
+    out << "struct " << schema.name << " {\n"
         << "using View = " << view << ";\n"
         << "using ConstView = " << const_view << ";\n"
         << "using size_type = std::int32_t;\n";
@@ -291,6 +291,20 @@ auto lower_native_soa(SoaSchema const& schema,
     }
     out << "}\n"
         << "void validate_array_sizes() const { get_const_view().validate_array_sizes(); }\n";
+
+    out << "void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }\n"
+        << "void reset() noexcept { ml::native_soa::ops::reset(*this); }\n"
+        << "void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }\n"
+        << "void add_uninitialised(size_type const count) { "
+           "ml::native_soa::ops::add_uninitialised(*this, count); }\n"
+        << "void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, "
+           "count); }\n"
+        << "void remove_at_swap(size_type const index, size_type const count) { "
+           "ml::native_soa::ops::remove_at_swap(*this, index, count); }\n"
+        << "void apply_permutation(std::span<size_type> const indices) { "
+           "ml::native_soa::ops::apply_permutation(*this, indices); }\n"
+        << "template <typename Compare> void sort(Compare&& compare, std::span<size_type> const "
+           "scratch_indices) { ml::native_soa::ops::sort(*this, compare, scratch_indices); }\n";
 
     {
         out << "void set(size_type const index";

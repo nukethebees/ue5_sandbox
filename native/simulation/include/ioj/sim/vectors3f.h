@@ -12,7 +12,7 @@
 namespace ioj::sim {
 using Vectors3fView = ml::Vector3fSoAView;
 using Vectors3fConstView = ml::Vector3fSoAConstView;
-struct Vectors3f : ml::native_soa::VectorStorageOperations {
+struct Vectors3f {
     using View = Vectors3fView;
     using ConstView = Vectors3fConstView;
     using size_type = std::int32_t;
@@ -38,6 +38,23 @@ struct Vectors3f : ml::native_soa::VectorStorageOperations {
         fn(zs);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
+    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
+    void reset() noexcept { ml::native_soa::ops::reset(*this); }
+    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void remove_at_swap(size_type const index, size_type const count) {
+        ml::native_soa::ops::remove_at_swap(*this, index, count);
+    }
+    void apply_permutation(std::span<size_type> const indices) {
+        ml::native_soa::ops::apply_permutation(*this, indices);
+    }
+    template <typename Compare>
+    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
+        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+    }
     void set(size_type const index, float const new_xs, float const new_ys, float const new_zs) {
         get_view().set(index, new_xs, new_ys, new_zs);
     }

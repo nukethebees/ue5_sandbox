@@ -106,7 +106,7 @@ struct EntityEntityOverlapsView {
         second_entities[static_cast<std::size_t>(index)] = new_second_entities;
     }
 };
-struct EntityEntityOverlaps : ml::native_soa::VectorStorageOperations {
+struct EntityEntityOverlaps {
     using View = EntityEntityOverlapsView;
     using ConstView = EntityEntityOverlapsConstView;
     using size_type = std::int32_t;
@@ -125,6 +125,23 @@ struct EntityEntityOverlaps : ml::native_soa::VectorStorageOperations {
         fn(second_entities);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
+    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
+    void reset() noexcept { ml::native_soa::ops::reset(*this); }
+    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void remove_at_swap(size_type const index, size_type const count) {
+        ml::native_soa::ops::remove_at_swap(*this, index, count);
+    }
+    void apply_permutation(std::span<size_type> const indices) {
+        ml::native_soa::ops::apply_permutation(*this, indices);
+    }
+    template <typename Compare>
+    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
+        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+    }
     void set(size_type const index,
              EntityUniqueId const new_first_entities,
              EntityUniqueId const new_second_entities) {
@@ -310,7 +327,7 @@ struct EntityStaticOverlapsView {
         static_geometry_indices[static_cast<std::size_t>(index)] = new_static_geometry_indices;
     }
 };
-struct EntityStaticOverlaps : ml::native_soa::VectorStorageOperations {
+struct EntityStaticOverlaps {
     using View = EntityStaticOverlapsView;
     using ConstView = EntityStaticOverlapsConstView;
     using size_type = std::int32_t;
@@ -329,6 +346,23 @@ struct EntityStaticOverlaps : ml::native_soa::VectorStorageOperations {
         fn(static_geometry_indices);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
+    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
+    void reset() noexcept { ml::native_soa::ops::reset(*this); }
+    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void remove_at_swap(size_type const index, size_type const count) {
+        ml::native_soa::ops::remove_at_swap(*this, index, count);
+    }
+    void apply_permutation(std::span<size_type> const indices) {
+        ml::native_soa::ops::apply_permutation(*this, indices);
+    }
+    template <typename Compare>
+    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
+        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+    }
     void set(size_type const index,
              EntityUniqueId const new_entities,
              std::int32_t const new_static_geometry_indices) {

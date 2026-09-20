@@ -115,7 +115,7 @@ struct TraceHitsView {
     }
 };
 
-struct TraceHits : ml::native_soa::VectorStorageOperations {
+struct TraceHits {
     using View = TraceHitsView;
     using ConstView = TraceHitsConstView;
     using size_type = std::int32_t;
@@ -128,6 +128,23 @@ struct TraceHits : ml::native_soa::VectorStorageOperations {
     [[nodiscard]] auto num() const noexcept -> size_type { return locations.num(); }
     [[nodiscard]] auto is_empty() const noexcept -> bool { return num() == 0; }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
+    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
+    void reset() noexcept { ml::native_soa::ops::reset(*this); }
+    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void remove_at_swap(size_type const index, size_type const count) {
+        ml::native_soa::ops::remove_at_swap(*this, index, count);
+    }
+    void apply_permutation(std::span<size_type> const indices) {
+        ml::native_soa::ops::apply_permutation(*this, indices);
+    }
+    template <typename Compare>
+    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
+        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+    }
     template <typename Fn>
     void each_column(Fn&& fn) {
         locations.each_column(fn);

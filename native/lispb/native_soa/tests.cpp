@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 #include <native_soa_types.h>
 
+#include <array>
+#include <span>
+
 namespace ml::native_soa_tests {
 using namespace native_experiment;
 
@@ -137,6 +140,44 @@ TEST(NativeSoa, MatchingSchemaAndMutations) {
     EXPECT_TRUE(std::ranges::equal(array_columns(baseline.get_view()).healths,
                                    array_columns(single.get_view()).healths));
     EXPECT_EQ(array_columns(single.get_view()).entity_ids[0].value, 0xffffffffu);
+}
+
+TEST(NativeSoa, VectorSwapRemovalHandlesEveryBoundaryCase) {
+    auto const check = [](std::int32_t const index,
+                          std::int32_t const count,
+                          std::span<std::int32_t const> const expected) {
+        EntityData owner;
+        owner.set_num(6);
+        auto columns{array_columns(owner.get_view())};
+        for (std::int32_t row{}; row < owner.num(); ++row) {
+            columns.healths[row] = row;
+            columns.locations.xs[row] = static_cast<float>(row);
+        }
+
+        owner.remove_at_swap(index, count);
+
+        ASSERT_EQ(owner.num(), static_cast<std::int32_t>(expected.size()));
+        columns = array_columns(owner.get_view());
+        std::int32_t expected_index{};
+        for (auto const expected_value : expected) {
+            EXPECT_EQ(columns.healths[expected_index], expected_value);
+            EXPECT_EQ(columns.locations.xs[expected_index], static_cast<float>(expected_value));
+            ++expected_index;
+        }
+    };
+    std::array const unchanged{0, 1, 2, 3, 4, 5};
+    std::array const one_removed{0, 1, 5, 3, 4};
+    std::array const beginning_removed{4, 5, 2, 3};
+    std::array const end_removed{0, 1, 2, 3, 4};
+    std::array const trailing_removed{0, 1, 5};
+    std::array<std::int32_t, 0> const all_removed;
+
+    check(0, 0, unchanged);
+    check(2, 1, one_removed);
+    check(0, 2, beginning_removed);
+    check(5, 1, end_removed);
+    check(2, 3, trailing_removed);
+    check(0, 6, all_removed);
 }
 
 TEST(NativeSoa, CheckedCapacityArithmetic) {

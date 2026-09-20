@@ -118,7 +118,7 @@ struct LevelSpawnGroupsView {
         counts[static_cast<std::size_t>(index)] = new_counts;
     }
 };
-struct LevelSpawnGroups : ml::native_soa::VectorStorageOperations {
+struct LevelSpawnGroups {
     using View = LevelSpawnGroupsView;
     using ConstView = LevelSpawnGroupsConstView;
     using size_type = std::int32_t;
@@ -140,6 +140,23 @@ struct LevelSpawnGroups : ml::native_soa::VectorStorageOperations {
         fn(counts);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
+    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
+    void reset() noexcept { ml::native_soa::ops::reset(*this); }
+    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void remove_at_swap(size_type const index, size_type const count) {
+        ml::native_soa::ops::remove_at_swap(*this, index, count);
+    }
+    void apply_permutation(std::span<size_type> const indices) {
+        ml::native_soa::ops::apply_permutation(*this, indices);
+    }
+    template <typename Compare>
+    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
+        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+    }
     void set(size_type const index,
              ioj::sim::EntityType const new_types,
              std::int32_t const new_offsets,
@@ -418,7 +435,7 @@ struct LevelCapitalSpawnEventsView {
         fighter_spawn_cooldowns[static_cast<std::size_t>(index)] = new_fighter_spawn_cooldowns;
     }
 };
-struct LevelCapitalSpawnEvents : ml::native_soa::VectorStorageOperations {
+struct LevelCapitalSpawnEvents {
     using View = LevelCapitalSpawnEventsView;
     using ConstView = LevelCapitalSpawnEventsConstView;
     using size_type = std::int32_t;
@@ -463,6 +480,23 @@ struct LevelCapitalSpawnEvents : ml::native_soa::VectorStorageOperations {
         fn(fighter_spawn_cooldowns);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
+    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
+    void reset() noexcept { ml::native_soa::ops::reset(*this); }
+    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void remove_at_swap(size_type const index, size_type const count) {
+        ml::native_soa::ops::remove_at_swap(*this, index, count);
+    }
+    void apply_permutation(std::span<size_type> const indices) {
+        ml::native_soa::ops::apply_permutation(*this, indices);
+    }
+    template <typename Compare>
+    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
+        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+    }
     void set(size_type const index,
              std::int32_t const new_entity_indices,
              std::int32_t const new_target_entity_indices,
@@ -1579,7 +1613,7 @@ struct LevelTurretSpawnEventsView {
         laser_damages[static_cast<std::size_t>(index)] = new_laser_damages;
     }
 };
-struct LevelTurretSpawnEvents : ml::native_soa::VectorStorageOperations {
+struct LevelTurretSpawnEvents {
     using View = LevelTurretSpawnEventsView;
     using ConstView = LevelTurretSpawnEventsConstView;
     using size_type = std::int32_t;
@@ -1618,6 +1652,23 @@ struct LevelTurretSpawnEvents : ml::native_soa::VectorStorageOperations {
         fn(laser_damages);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
+    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
+    void reset() noexcept { ml::native_soa::ops::reset(*this); }
+    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void remove_at_swap(size_type const index, size_type const count) {
+        ml::native_soa::ops::remove_at_swap(*this, index, count);
+    }
+    void apply_permutation(std::span<size_type> const indices) {
+        ml::native_soa::ops::apply_permutation(*this, indices);
+    }
+    template <typename Compare>
+    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
+        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+    }
     void set(size_type const index,
              std::int32_t const new_entity_indices,
              float const new_locations_xs,
@@ -2579,7 +2630,7 @@ struct LevelSpinnerSpawnEventsView {
             new_initial_fire_point_indices;
     }
 };
-struct LevelSpinnerSpawnEvents : ml::native_soa::VectorStorageOperations {
+struct LevelSpinnerSpawnEvents {
     using View = LevelSpinnerSpawnEventsView;
     using ConstView = LevelSpinnerSpawnEventsConstView;
     using size_type = std::int32_t;
@@ -2608,6 +2659,23 @@ struct LevelSpinnerSpawnEvents : ml::native_soa::VectorStorageOperations {
         fn(initial_fire_point_indices);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
+    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
+    void reset() noexcept { ml::native_soa::ops::reset(*this); }
+    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void remove_at_swap(size_type const index, size_type const count) {
+        ml::native_soa::ops::remove_at_swap(*this, index, count);
+    }
+    void apply_permutation(std::span<size_type> const indices) {
+        ml::native_soa::ops::apply_permutation(*this, indices);
+    }
+    template <typename Compare>
+    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
+        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+    }
     void set(size_type const index,
              std::int32_t const new_entity_indices,
              float const new_locations_xs,
@@ -3348,7 +3416,7 @@ struct LevelMissionEventGroupsView {
         counts[static_cast<std::size_t>(index)] = new_counts;
     }
 };
-struct LevelMissionEventGroups : ml::native_soa::VectorStorageOperations {
+struct LevelMissionEventGroups {
     using View = LevelMissionEventGroupsView;
     using ConstView = LevelMissionEventGroupsConstView;
     using size_type = std::int32_t;
@@ -3370,6 +3438,23 @@ struct LevelMissionEventGroups : ml::native_soa::VectorStorageOperations {
         fn(counts);
     }
     void validate_array_sizes() const { get_const_view().validate_array_sizes(); }
+    void reserve(size_type const count) { ml::native_soa::ops::reserve(*this, count); }
+    void reset() noexcept { ml::native_soa::ops::reset(*this); }
+    void set_num(size_type const count) { ml::native_soa::ops::set_num(*this, count); }
+    void add_uninitialised(size_type const count) {
+        ml::native_soa::ops::add_uninitialised(*this, count);
+    }
+    void add_defaulted(size_type const count) { ml::native_soa::ops::add_defaulted(*this, count); }
+    void remove_at_swap(size_type const index, size_type const count) {
+        ml::native_soa::ops::remove_at_swap(*this, index, count);
+    }
+    void apply_permutation(std::span<size_type> const indices) {
+        ml::native_soa::ops::apply_permutation(*this, indices);
+    }
+    template <typename Compare>
+    void sort(Compare&& compare, std::span<size_type> const scratch_indices) {
+        ml::native_soa::ops::sort(*this, compare, scratch_indices);
+    }
     void set(size_type const index,
              LevelMissionEventType const new_types,
              std::int32_t const new_offsets,
