@@ -298,6 +298,10 @@ duplicate/delete, button reorder, and drag reorder with paired generated-name co
 The complete storage-operation capability set is exposed as inline source-named toggles with
 enable-all/disable-all actions; changes are normalized to shared canonical order and use the same
 undoable document commands.
+Generation policy is authorable inline: optional export and equivalent-row types, layout-only
+emission, and memberwise copy behavior all remain source-backed. Equivalent-row types are resolved
+semantic graph dependencies, appear as labeled graph edges, participate in rename/deletion safety,
+and support type picking plus direct navigation.
 
 - Create standard-library SoA declarations.
 - Add, remove, duplicate, and reorder columns.

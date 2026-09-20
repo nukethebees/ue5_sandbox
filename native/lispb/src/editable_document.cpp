@@ -3464,6 +3464,11 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                                     source_member.fixed_schema = edit.new_name;
                                 }
                             }
+                            if (schema.equivalent_type.has_value() &&
+                                resolved->equivalent_type.has_value()) {
+                                repair_ref(*schema.equivalent_type,
+                                           resolved->equivalent_type->type);
+                            }
                         }
                     }
 

@@ -294,6 +294,12 @@ TEST(SemanticTypeGraph, ResolvesStandardLibrarySoaColumns) {
 
     auto const& vector_type{std::get<SoaType>(graph.type(*vectors).definition)};
     EXPECT_EQ(vector_type.source_kind, SoaSourceKind::vector);
+    auto const vector_equivalent{graph.find_registered("native_vector_3f")};
+    ASSERT_TRUE(vector_equivalent.has_value());
+    ASSERT_TRUE(vector_type.equivalent_type.has_value());
+    EXPECT_EQ(vector_type.equivalent_type->type, *vector_equivalent);
+    EXPECT_NE(std::ranges::find(graph.dependencies_of(*vectors), *vector_equivalent),
+              graph.dependencies_of(*vectors).end());
     ASSERT_EQ(vector_type.columns.size(), 3U);
     for (auto const& column : vector_type.columns) {
         EXPECT_EQ(graph.type(column.semantic_type.type).cpp_spelling, "float");

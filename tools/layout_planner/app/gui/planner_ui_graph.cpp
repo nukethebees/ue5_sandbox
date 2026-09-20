@@ -183,6 +183,9 @@ auto edge_label(TypeGraph const& types, TypeId const user, TypeId const dependen
             }
         }
     } else if (auto const* soa{std::get_if<SoaType>(&definition)}) {
+        if (soa->equivalent_type.has_value() && soa->equivalent_type->type == dependency) {
+            append_edge_label(result, "equivalent row");
+        }
         for (auto const& column : soa->columns) {
             if (column.semantic_type.type == dependency) {
                 append_edge_label(result, column.name);

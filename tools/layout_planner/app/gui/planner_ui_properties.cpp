@@ -4793,6 +4793,15 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                       soa_const_view_name_.size(),
                       "%s",
                       schema->const_view_name.value_or("").c_str());
+        std::snprintf(soa_equivalent_type_.data(),
+                      soa_equivalent_type_.size(),
+                      "%s",
+                      schema->equivalent_type.has_value() ? schema->equivalent_type->name.c_str()
+                                                          : "");
+        std::snprintf(soa_export_specifier_.data(),
+                      soa_export_specifier_.size(),
+                      "%s",
+                      schema->export_specifier.value_or("").c_str());
         std::snprintf(soa_single_allocation_name_.data(),
                       soa_single_allocation_name_.size(),
                       "%s",
@@ -5396,6 +5405,88 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             }
         }
         ImGui::EndTable();
+    }
+    ImGui::EndDisabled();
+
+    ImGui::SeparatorText("Generation policy");
+    ImGui::SetNextItemWidth(-1.0F);
+    auto const export_submitted{ImGui::InputText("Export specifier (optional)",
+                                                 soa_export_specifier_.data(),
+                                                 soa_export_specifier_.size(),
+                                                 ImGuiInputTextFlags_EnterReturnsTrue)};
+    if (export_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+        if (!pending.has_value()) {
+            pending = *schema;
+        }
+        pending->export_specifier = optional_text(soa_export_specifier_);
+    }
+
+    ImGui::TextUnformatted("Equivalent row type (optional)");
+    ImGui::SetNextItemWidth(std::max(60.0F, ImGui::GetContentRegionAvail().x - 58.0F));
+    auto const equivalent_submitted{ImGui::InputText("##soa-equivalent-type",
+                                                     soa_equivalent_type_.data(),
+                                                     soa_equivalent_type_.size(),
+                                                     ImGuiInputTextFlags_EnterReturnsTrue)};
+    if (equivalent_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+        if (!pending.has_value()) {
+            pending = *schema;
+        }
+        if (soa_equivalent_type_.front() == '\0') {
+            pending->equivalent_type.reset();
+        } else if (pending->equivalent_type.has_value()) {
+            pending->equivalent_type->name = soa_equivalent_type_.data();
+        } else {
+            pending->equivalent_type = codegen::TypeRef{
+                .name = soa_equivalent_type_.data(), .suffix = {}, .nested = std::nullopt};
+        }
+    }
+    ImGui::SameLine();
+    ImGui::PushID("soa-equivalent-type");
+    if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
+        if (!pending.has_value()) {
+            pending = *schema;
+        }
+        if (pending->equivalent_type.has_value()) {
+            pending->equivalent_type->name = *picked;
+        } else {
+            pending->equivalent_type =
+                codegen::TypeRef{.name = *picked, .suffix = {}, .nested = std::nullopt};
+        }
+    }
+    ImGui::PopID();
+    ImGui::SameLine();
+    ImGui::BeginDisabled(pending.has_value() || !soa.equivalent_type.has_value());
+    if (ImGui::SmallButton(">##equivalent-type")) {
+        navigate_to = soa.equivalent_type->type;
+    }
+    ImGui::EndDisabled();
+
+    ImGui::BeginDisabled(pending.has_value());
+    auto layout_only{schema->layout_only};
+    if (ImGui::Checkbox("Layout only", &layout_only)) {
+        auto replacement{*schema};
+        replacement.layout_only = layout_only;
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            return true;
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Keep this declaration available as a nested layout without emitting its "
+                          "standalone storage/view API.");
+    }
+    auto copy_element_memberwise{schema->copy_element_memberwise};
+    if (ImGui::Checkbox("Copy elements memberwise", &copy_element_memberwise)) {
+        auto replacement{*schema};
+        replacement.copy_element_memberwise = copy_element_memberwise;
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            return true;
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Generate direct member assignment for copy-element; this has no effect "
+                          "unless the copy-element storage operation is enabled.");
     }
     ImGui::EndDisabled();
 

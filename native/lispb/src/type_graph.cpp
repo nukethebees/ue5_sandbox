@@ -584,6 +584,11 @@ class TypeGraphBuilder {
                         SoaType type{.backend = module.backend,
                                      .source_kind = SoaSourceKind::structure,
                                      .columns = {},
+                                     .equivalent_type =
+                                         source.equivalent_type.has_value()
+                                             ? std::optional{resolve_ref(*source.equivalent_type,
+                                                                         module.settings.name)}
+                                             : std::nullopt,
                                      .related_storage_name = source.single_allocation};
                         type.columns.reserve(source.members.size());
                         for (auto const& member : source.members) {
@@ -608,6 +613,8 @@ class TypeGraphBuilder {
                         SoaType type{.backend = module.backend,
                                      .source_kind = SoaSourceKind::vector,
                                      .columns = {},
+                                     .equivalent_type =
+                                         resolve_ref(module.equivalent_type, module.settings.name),
                                      .related_storage_name = std::nullopt};
                         auto const value_type{resolve_ref(module.value_type, module.settings.name)};
                         type.columns.reserve(module.components.size());
@@ -739,6 +746,9 @@ class TypeGraphBuilder {
                             add_dependency(node, alternative.semantic_type.type);
                         }
                     } else if constexpr (std::is_same_v<Definition, SoaType>) {
+                        if (definition.equivalent_type.has_value()) {
+                            add_dependency(node, definition.equivalent_type->type);
+                        }
                         for (auto const& column : definition.columns) {
                             add_dependency(node, column.semantic_type.type);
                             if (column.nested_type.has_value()) {

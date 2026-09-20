@@ -2046,6 +2046,7 @@ TEST(EditableSchemaDocument, RenamesSoaAndRepairsDirectAndNestedUsers) {
     nested_user.members[0].type.name = "authored::ExistingSoa";
     nested_user.members[0].fixed_schema = "ExistingSoa";
     nested_user.members[0].nested_schema = "ExistingSoa";
+    nested_user.equivalent_type = codegen::TypeRef{"authored::ExistingSoa"};
     ASSERT_TRUE(document.apply(ReplaceSoa{.declaration = nested, .schema = std::move(nested_user)})
                     .has_value());
 
@@ -2066,6 +2067,7 @@ TEST(EditableSchemaDocument, RenamesSoaAndRepairsDirectAndNestedUsers) {
     EXPECT_EQ(document.soa_schema(nested)->members[0].type.name, "authored::ExistingSoa");
     EXPECT_EQ(document.soa_schema(nested)->members[0].fixed_schema, "ExistingSoa");
     EXPECT_EQ(document.soa_schema(nested)->members[0].nested_schema, "ExistingSoa");
+    EXPECT_EQ(document.soa_schema(nested)->equivalent_type->name, "authored::ExistingSoa");
     EXPECT_EQ(document.record_schema(record)->members[1].type.name, "authored::ExistingSoa");
 
     auto renamed{
@@ -2080,6 +2082,7 @@ TEST(EditableSchemaDocument, RenamesSoaAndRepairsDirectAndNestedUsers) {
     EXPECT_EQ(document.soa_schema(nested)->members[0].type.name, "authored::RenamedSoa");
     EXPECT_EQ(document.soa_schema(nested)->members[0].fixed_schema, "RenamedSoa");
     EXPECT_EQ(document.soa_schema(nested)->members[0].nested_schema, "RenamedSoa");
+    EXPECT_EQ(document.soa_schema(nested)->equivalent_type->name, "authored::RenamedSoa");
     EXPECT_EQ(document.record_schema(record)->members[1].type.name, "authored::RenamedSoa");
 
     auto const renamed_type{document.types().find(document.declaration(declaration)->identity)};
@@ -2087,6 +2090,7 @@ TEST(EditableSchemaDocument, RenamesSoaAndRepairsDirectAndNestedUsers) {
     auto const& nested_column{soa_type(document, nested).columns[0]};
     EXPECT_EQ(nested_column.semantic_type.type, *renamed_type);
     EXPECT_EQ(nested_column.nested_type, *renamed_type);
+    EXPECT_EQ(soa_type(document, nested).equivalent_type->type, *renamed_type);
     EXPECT_EQ(record_type(document, record).members[1].semantic_type.type, *renamed_type);
 
     auto preview{document.preview_source_updates()};
@@ -2112,6 +2116,7 @@ TEST(EditableSchemaDocument, RenamesSoaAndRepairsDirectAndNestedUsers) {
     EXPECT_EQ(document.soa_schema(nested)->members[0].type.name, "authored::ExistingSoa");
     EXPECT_EQ(document.soa_schema(nested)->members[0].fixed_schema, "ExistingSoa");
     EXPECT_EQ(document.soa_schema(nested)->members[0].nested_schema, "ExistingSoa");
+    EXPECT_EQ(document.soa_schema(nested)->equivalent_type->name, "authored::ExistingSoa");
     EXPECT_EQ(document.record_schema(record)->members[1].type.name, "authored::ExistingSoa");
     ASSERT_TRUE(document.redo().value());
     EXPECT_EQ(document.declaration(declaration)->identity.name, "RenamedSoa");
@@ -2133,6 +2138,8 @@ TEST(EditableSchemaDocument, RenamesSoaAndRepairsDirectAndNestedUsers) {
     EXPECT_EQ(reloaded.soa_schema(reloaded_nested)->members[0].fixed_schema, "RenamedSoa");
     EXPECT_EQ(reloaded.soa_schema(reloaded_nested)->members[0].nested_schema, "RenamedSoa");
     EXPECT_EQ(soa_type(reloaded, reloaded_nested).columns[0].nested_type, *reloaded_type);
+    EXPECT_EQ(reloaded.soa_schema(reloaded_nested)->equivalent_type->name, "authored::RenamedSoa");
+    EXPECT_EQ(soa_type(reloaded, reloaded_nested).equivalent_type->type, *reloaded_type);
     EXPECT_EQ(reloaded.record_schema(reloaded_record)->members[1].type.name,
               "authored::RenamedSoa");
     auto const module_source{std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
@@ -3639,6 +3646,99 @@ TEST(EditableSchemaDocument, AuthorsSoaStorageOperationsWithoutDisturbingAdvance
     ASSERT_EQ(schema->functions.size(), 1U);
     EXPECT_EQ(schema->functions.front().body_lines, std::vector<std::string>{"values.clear();"});
     EXPECT_TRUE(schema->functions.front().is_noexcept);
+}
+
+TEST(EditableSchemaDocument, AuthorsAndRemovesSoaGenerationPolicy) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+    auto const equivalent{document.types().find_registered("existing")};
+    ASSERT_TRUE(equivalent.has_value());
+
+    auto replacement{*document.soa_schema(declaration)};
+    replacement.export_specifier = "SOA_API";
+    replacement.equivalent_type = codegen::TypeRef{"@existing"};
+    replacement.copy_element_memberwise = true;
+    replacement.layout_only = true;
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto const* schema{document.soa_schema(declaration)};
+    ASSERT_NE(schema, nullptr);
+    EXPECT_EQ(schema->export_specifier, "SOA_API");
+    ASSERT_TRUE(schema->equivalent_type.has_value());
+    EXPECT_EQ(schema->equivalent_type->name, "@existing");
+    EXPECT_TRUE(schema->copy_element_memberwise);
+    EXPECT_TRUE(schema->layout_only);
+    ASSERT_TRUE(soa_type(document, declaration).equivalent_type.has_value());
+    EXPECT_EQ(soa_type(document, declaration).equivalent_type->type, *equivalent);
+    auto const type{document.types().find(document.declaration(declaration)->identity)};
+    ASSERT_TRUE(type.has_value());
+    EXPECT_NE(std::ranges::find(document.types().dependencies_of(*type), *equivalent),
+              document.types().dependencies_of(*type).end());
+
+    ASSERT_TRUE(document.undo().value());
+    schema = document.soa_schema(declaration);
+    EXPECT_FALSE(schema->export_specifier.has_value());
+    EXPECT_FALSE(schema->equivalent_type.has_value());
+    EXPECT_FALSE(schema->copy_element_memberwise);
+    EXPECT_FALSE(schema->layout_only);
+    ASSERT_TRUE(document.redo().value());
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& source{preview->front().updated};
+    EXPECT_NE(source.find(":export-specifier SOA_API"), std::string::npos);
+    EXPECT_NE(source.find(":equivalent-type @existing"), std::string::npos);
+    EXPECT_NE(source.find(":copy-element-memberwise true"), std::string::npos);
+    EXPECT_NE(source.find(":layout-only true"), std::string::npos);
+    EXPECT_NE(source.find("; Keep the SoA declaration note"), std::string::npos);
+    EXPECT_NE(source.find("; Keep the custom function note"), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    schema = reloaded.soa_schema(reloaded_declaration);
+    ASSERT_NE(schema, nullptr);
+    EXPECT_EQ(schema->export_specifier, "SOA_API");
+    EXPECT_EQ(schema->equivalent_type->name, "@existing");
+    EXPECT_TRUE(schema->copy_element_memberwise);
+    EXPECT_TRUE(schema->layout_only);
+
+    replacement = *schema;
+    replacement.export_specifier.reset();
+    replacement.equivalent_type.reset();
+    replacement.copy_element_memberwise = false;
+    replacement.layout_only = false;
+    applied = reloaded.apply(
+        ReplaceSoa{.declaration = reloaded_declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    preview = reloaded.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated.find(":export-specifier"), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find(":equivalent-type"), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find(":copy-element-memberwise"), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find(":layout-only"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the custom function note"), std::string::npos);
+    saved = reloaded.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto final_document{files.load()};
+    auto const final_declaration{
+        declaration_id(final_document, "authored_soa", "ExistingSoa", "authored")};
+    schema = final_document.soa_schema(final_declaration);
+    ASSERT_NE(schema, nullptr);
+    EXPECT_FALSE(schema->export_specifier.has_value());
+    EXPECT_FALSE(schema->equivalent_type.has_value());
+    EXPECT_FALSE(schema->copy_element_memberwise);
+    EXPECT_FALSE(schema->layout_only);
 }
 
 TEST(EditableSchemaDocument, PreservesSoaMembersAndAdvancedFormsForStructuralEdits) {

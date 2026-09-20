@@ -194,6 +194,7 @@ struct SoaType {
     codegen::SoaBackend backend{codegen::SoaBackend::unreal};
     SoaSourceKind source_kind{SoaSourceKind::structure};
     std::vector<SoaColumn> columns;
+    std::optional<ResolvedTypeRef> equivalent_type;
     std::optional<std::string> related_storage_name;
 };
 
