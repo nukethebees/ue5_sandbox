@@ -1,10 +1,7 @@
 #include "Commandlets/GenerateSandboxMeshBoxCommandlet.h"
 
-#include "Generation/MeshAssetWriter.h"
+#include "Commandlets/MeshGenerationCommandletUtils.h"
 #include "SbxMeshGenLab/BoxGenerator.h"
-
-#include "Engine/StaticMesh.h"
-#include "HAL/FileManager.h"
 
 UGenerateSandboxMeshBoxCommandlet::UGenerateSandboxMeshBoxCommandlet() {
     IsClient = false;
@@ -15,26 +12,8 @@ UGenerateSandboxMeshBoxCommandlet::UGenerateSandboxMeshBoxCommandlet() {
 
 int32 UGenerateSandboxMeshBoxCommandlet::Main(FString const&) {
     FName const asset_name{TEXT("SM_GeneratedBox")};
-    auto const mesh_data{SandboxMesh::generate_box()};
-    auto* const static_mesh{SandboxMesh::write_generated_static_mesh_asset(mesh_data, asset_name)};
-    if (static_mesh == nullptr) {
-        return 1;
-    }
-
-    auto const bounds{static_mesh->GetBounds()};
-    if (!bounds.BoxExtent.Equals(FVector{50.0, 50.0, 50.0})) {
-        UE_LOG(LogTemp,
-               Error,
-               TEXT("Generated box has unexpected bounds: %s"),
-               *bounds.BoxExtent.ToString());
-        return 1;
-    }
-
-    auto const output_filename{SandboxMesh::get_generated_asset_filename(asset_name)};
-    if (!IFileManager::Get().FileExists(*output_filename)) {
-        UE_LOG(LogTemp, Error, TEXT("Generated box package does not exist: %s"), *output_filename);
-        return 1;
-    }
-
-    return 0;
+    return SandboxMesh::commandlet_detail::generate_and_validate_mesh(
+        asset_name, TEXT("box"), FVector{50.0, 50.0, 50.0}, 0.0f, [] {
+            return SandboxMesh::generate_box(FSbxBoxParameters{});
+        });
 }
