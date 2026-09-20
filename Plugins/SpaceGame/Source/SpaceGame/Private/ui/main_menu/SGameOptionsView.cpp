@@ -1123,12 +1123,10 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                   .Text(NSLOCTEXT("OptionsMenu", "KeyboardMouseDevice", "Keyboard & Mouse"))
                   .OnClicked_Lambda([this] {
                       controls_device_ = EGameSettingDevice::KeyboardMouse;
-                      request_controls_rebuild(
-                          FControlsFocusIdentity{
-                              .kind = EControlsFocusKind::Device,
-                              .device = EGameSettingDevice::KeyboardMouse,
-                          },
-                          true);
+                      request_controls_rebuild(FControlsFocusIdentity{
+                          .kind = EControlsFocusKind::Device,
+                          .device = EGameSettingDevice::KeyboardMouse,
+                      });
                       return FReply::Handled();
                   })] +
          SHorizontalBox::Slot().FillWidth(
@@ -1139,12 +1137,10 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                        .Text(NSLOCTEXT("OptionsMenu", "ControllerDevice", "Controller"))
                        .OnClicked_Lambda([this] {
                            controls_device_ = EGameSettingDevice::Controller;
-                           request_controls_rebuild(
-                               FControlsFocusIdentity{
-                                   .kind = EControlsFocusKind::Device,
-                                   .device = EGameSettingDevice::Controller,
-                               },
-                               true);
+                           request_controls_rebuild(FControlsFocusIdentity{
+                               .kind = EControlsFocusKind::Device,
+                               .device = EGameSettingDevice::Controller,
+                           });
                            return FReply::Handled();
                        })]];
     add_section(NSLOCTEXT("OptionsMenu", "InputDeviceSection", "Input Device"), device_rows);
