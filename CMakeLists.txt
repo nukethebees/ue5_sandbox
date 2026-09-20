@@ -68,3 +68,8 @@ add_subdirectory(Plugins/SpaceGame)
 if(SANDBOX_WITH_UNREAL)
   add_subdirectory(unreal)
 endif()
+
+if(WIN32 AND CMAKE_GENERATOR STREQUAL "Ninja")
+  # Workflows configure before building, so build-time regeneration is redundant.
+  set(CMAKE_SUPPRESS_REGENERATION ON)
+endif()
