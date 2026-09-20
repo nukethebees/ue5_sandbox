@@ -4,6 +4,9 @@
 #include "Styling/CoreStyle.h"
 
 #include <Framework/Application/SlateApplication.h>
+#include <sandbox/core/graph_plot.h>
+
+#include <vector>
 
 namespace {
 void draw_graph_plot_box(FSlateWindowElementList& out_draw_elements,
@@ -25,31 +28,18 @@ void draw_graph_plot_box(FSlateWindowElementList& out_draw_elements,
                                draw_effect,
                                color);
 }
-} // namespace
 
-auto nearest_graph_x(TConstArrayView<FGraphSeries> const series, double const x)
-    -> TOptional<double> {
-    TOptional<double> result;
-    double best_distance{TNumericLimits<double>::Max()};
-    for (auto const& item : series) {
-        auto const count{item.y.Num()};
-        if (!item.x.IsEmpty() && item.x.Num() != count) {
-            continue;
-        }
-        for (int32 index{}; index < count; ++index) {
-            auto const candidate{item.x.IsEmpty() ? static_cast<double>(index) : item.x[index]};
-            if (!FMath::IsFinite(candidate)) {
-                continue;
-            }
-            auto const distance{FMath::Abs(candidate - x)};
-            if (distance < best_distance) {
-                best_distance = distance;
-                result = candidate;
-            }
-        }
-    }
-    return result;
+auto native_layout_settings(FGraphPlotStyle const& style) -> ml::graph::LayoutSettings {
+    return {.desired_width = style.desired_size.X,
+            .desired_height = style.desired_size.Y,
+            .left_margin = style.left_margin,
+            .right_margin = style.right_margin,
+            .top_margin = style.top_margin,
+            .bottom_margin = style.bottom_margin,
+            .target_x_ticks = style.target_x_ticks,
+            .target_y_ticks = style.target_y_ticks};
 }
+} // namespace
 
 FGraphPlotStyle::FGraphPlotStyle()
     : label_font{FCoreStyle::GetDefaultFontStyle("Regular", 8)}
@@ -107,9 +97,10 @@ FVector2D SGraphPlot::ComputeDesiredSize(float) const {
 }
 
 void SGraphPlot::update_layout(FVector2f const local_size) const {
-    plot_origin_ = {style_.left_margin, style_.top_margin};
-    plot_size_ = {FMath::Max(0.0f, local_size.X - style_.left_margin - style_.right_margin),
-                  FMath::Max(0.0f, local_size.Y - style_.top_margin - style_.bottom_margin)};
+    auto const layout{
+        ml::graph::make_plot_layout({local_size.X, local_size.Y}, native_layout_settings(style_))};
+    plot_origin_ = {layout.origin.x, layout.origin.y};
+    plot_size_ = {layout.size.x, layout.size.y};
 
     auto const cache_rebuilt{cache_.update(plot_size_)};
     if (cache_rebuilt || ticks_dirty_) {
@@ -366,36 +357,37 @@ auto SGraphPlot::OnMouseMove(FGeometry const& geometry, FPointerEvent const& eve
     auto const range{cache_.get_x_range()};
     auto const cursor_x{range.min +
                         (local.X - plot_origin_.X) / plot_size_.X * (range.max - range.min)};
-    auto const nearest_x{nearest_graph_x(series_, cursor_x)};
-    if (!nearest_x.IsSet()) {
+    std::vector<ml::graph::SeriesView> native_series;
+    native_series.reserve(static_cast<std::size_t>(series_.Num()));
+    for (auto const& series : series_) {
+        native_series.push_back(
+            {.x = {series.x.GetData(), static_cast<std::size_t>(series.x.Num())},
+             .y = {series.y.GetData(), static_cast<std::size_t>(series.y.Num())}});
+    }
+    auto const nearest_x{ml::graph::nearest_x(native_series, cursor_x)};
+    if (!nearest_x) {
         if (clear_hover()) {
             Invalidate(EInvalidateWidgetReason::Paint);
         }
         return FReply::Handled();
     }
-    if (hovered_x_.IsSet() && hovered_x_.GetValue() == nearest_x.GetValue()) {
+    if (hovered_x_.IsSet() && hovered_x_.GetValue() == *nearest_x) {
         return FReply::Handled();
     }
-    hovered_x_ = nearest_x;
+    hovered_x_ = *nearest_x;
     auto tooltip{FString::Printf(TEXT("x: %.5g"), hovered_x_.GetValue())};
     for (auto const& series : series_) {
-        auto const count{series.y.Num()};
-        if (count == 0 || (!series.x.IsEmpty() && series.x.Num() != count)) {
+        auto const view{ml::graph::SeriesView{
+            .x = {series.x.GetData(), static_cast<std::size_t>(series.x.Num())},
+            .y = {series.y.GetData(), static_cast<std::size_t>(series.y.Num())}}};
+        auto const nearest{ml::graph::nearest_sample_index(view, hovered_x_.GetValue())};
+        if (!nearest) {
             continue;
         }
-        int32 nearest{};
-        double distance{TNumericLimits<double>::Max()};
-        for (int32 index{}; index < count; ++index) {
-            auto const value_x{series.x.IsEmpty() ? static_cast<double>(index) : series.x[index]};
-            auto const candidate{FMath::Abs(value_x - hovered_x_.GetValue())};
-            if (candidate < distance) {
-                distance = candidate;
-                nearest = index;
-            }
-        }
-        if (FMath::IsFinite(series.y[nearest])) {
-            tooltip +=
-                FString::Printf(TEXT("\n%s: %.5g"), *series.name.ToString(), series.y[nearest]);
+        if (FMath::IsFinite(series.y[static_cast<int32>(*nearest)])) {
+            tooltip += FString::Printf(TEXT("\n%s: %.5g"),
+                                       *series.name.ToString(),
+                                       series.y[static_cast<int32>(*nearest)]);
         }
     }
     SetToolTipText(FText::FromString(MoveTemp(tooltip)));
@@ -411,18 +403,25 @@ void SGraphPlot::OnMouseLeave(FPointerEvent const& event) {
 }
 
 void SGraphPlot::rebuild_ticks() const {
-    build_ticks(cache_.get_x_range(), plot_size_.X, style_.target_x_ticks, false, x_ticks_);
-    build_ticks(cache_.get_y_range(), plot_size_.Y, style_.target_y_ticks, true, y_ticks_);
+    auto rebuild{[](FGraphRange const range,
+                    float const extent,
+                    int32 const target_count,
+                    bool const invert,
+                    TArray<FTick>& output) {
+        auto const ticks{
+            ml::graph::build_ticks({range.min, range.max}, extent, target_count, invert)};
+        output.Reset(static_cast<int32>(ticks.size()));
+        for (auto const& tick : ticks) {
+            output.Add(
+                {FText::FromString(FString::Printf(TEXT("%.5g"), tick.value)), tick.position});
+        }
+    }};
+    rebuild(cache_.get_x_range(), plot_size_.X, style_.target_x_ticks, false, x_ticks_);
+    rebuild(cache_.get_y_range(), plot_size_.Y, style_.target_y_ticks, true, y_ticks_);
 }
 
 bool SGraphPlot::is_valid_style(FGraphPlotStyle const& style) {
-    return FMath::IsFinite(style.desired_size.X) && FMath::IsFinite(style.desired_size.Y) &&
-           style.desired_size.X >= 0.0f && style.desired_size.Y >= 0.0f &&
-           FMath::IsFinite(style.left_margin) && style.left_margin >= 0.0f &&
-           FMath::IsFinite(style.right_margin) && style.right_margin >= 0.0f &&
-           FMath::IsFinite(style.top_margin) && style.top_margin >= 0.0f &&
-           FMath::IsFinite(style.bottom_margin) && style.bottom_margin >= 0.0f &&
-           style.target_x_ticks >= 0 && style.target_y_ticks >= 0;
+    return ml::graph::is_valid_layout(native_layout_settings(style));
 }
 
 void SGraphPlot::refresh_cache_series() {
@@ -435,44 +434,4 @@ void SGraphPlot::refresh_cache_series() {
 
     ++data_revision_;
     (void)cache_.set_series(series_views, data_revision_);
-}
-
-void SGraphPlot::build_ticks(FGraphRange const range,
-                             float const extent,
-                             int32 const target_count,
-                             bool const invert,
-                             TArray<FTick>& out_ticks) {
-    out_ticks.Reset();
-    if (extent <= 0.0f || target_count <= 0 || range.max <= range.min) {
-        return;
-    }
-
-    auto const raw_step{(range.max - range.min) / FMath::Max(1, target_count)};
-    auto const exponent{FMath::FloorToDouble(FMath::LogX(10.0, raw_step))};
-    auto const magnitude{FMath::Pow(10.0, exponent)};
-    auto const normalised{raw_step / magnitude};
-    auto const step_multiplier{normalised <= 1.0   ? 1.0
-                               : normalised <= 2.0 ? 2.0
-                               : normalised <= 5.0 ? 5.0
-                                                   : 10.0};
-    auto const step{step_multiplier * magnitude};
-    auto const first{FMath::CeilToDouble(range.min / step) * step};
-    auto const span{range.max - range.min};
-
-    out_ticks.Reserve(target_count + 2);
-    for (int32 i = 0; i < 64; ++i) {
-        auto value{first + static_cast<double>(i) * step};
-        if (value > range.max + step * 1e-6) {
-            break;
-        }
-        if (FMath::Abs(value) < step * 1e-9) {
-            value = 0.0;
-        }
-
-        auto alpha{static_cast<float>((value - range.min) / span)};
-        if (invert) {
-            alpha = 1.0f - alpha;
-        }
-        out_ticks.Add({FText::FromString(FString::Printf(TEXT("%.5g"), value)), alpha * extent});
-    }
 }

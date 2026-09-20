@@ -286,7 +286,6 @@ set(SANDBOX_UNIT_AUTOMATION_FILTERS
   SandboxImages.UnitTests
   SandboxISMC.UnitTests
   SandboxMesh.UnitTests
-  SandboxUI.UnitTests
 )
 set(SANDBOX_LEVEL_AUTOMATION_FILTERS
   Sandbox.LevelTests

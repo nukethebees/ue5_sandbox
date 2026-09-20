@@ -147,7 +147,7 @@ auto make_multi_style_radar(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
                                      FVector2f{-12.0f, 68.0f},
                                      FVector2f{18.0f, 24.0f},
                                      FVector2f{63.0f, -52.0f}}) {
-        cyan_bucket.positions.add(position);
+        cyan_bucket.positions.add(position.X, position.Y);
     }
     buckets.Add(MoveTemp(cyan_bucket));
 
@@ -155,7 +155,7 @@ auto make_multi_style_radar(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
     amber_bucket.style = make_radar_style({1.0f, 0.62f, 0.08f, 1.0f}, {10.0f, 10.0f});
     for (FVector2f const position :
          {FVector2f{-34.0f, 8.0f}, FVector2f{6.0f, -12.0f}, FVector2f{47.0f, 44.0f}}) {
-        amber_bucket.positions.add(position);
+        amber_bucket.positions.add(position.X, position.Y);
     }
     buckets.Add(MoveTemp(amber_bucket));
 
@@ -333,14 +333,14 @@ auto make_smooth_heatmap(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
     FHeatmapDomain const domain{0.0f, 320.0f, 0.0f, 240.0f};
     auto heatmap{builder.BuildHeatmap(FHeatmapValueRange{0.0f, 1.0f}, domain)};
     FHeatmapGrid grid{.columns = 32, .rows = 24};
-    grid.values.Reserve(grid.columns * grid.rows);
+    grid.values.reserve(static_cast<std::size_t>(grid.columns * grid.rows));
     for (int32 row{0}; row < grid.rows; ++row) {
         auto const y{static_cast<float>(row) / static_cast<float>(grid.rows - 1)};
         for (int32 column{0}; column < grid.columns; ++column) {
             auto const x{static_cast<float>(column) / static_cast<float>(grid.columns - 1)};
             auto const value{0.08f + heat_peak(x, y, 0.28f, 0.35f, 28.0f) * 0.78f +
                              heat_peak(x, y, 0.72f, 0.68f, 45.0f) * 0.95f + x * 0.08f};
-            grid.values.Add(FMath::Clamp(value, 0.0f, 1.0f));
+            grid.values.push_back(FMath::Clamp(value, 0.0f, 1.0f));
         }
     }
     (void)heatmap->set_grid(MoveTemp(grid));
@@ -351,7 +351,7 @@ auto make_sparse_heatmap(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
     FHeatmapDomain const domain{-120.0f, 120.0f, -80.0f, 80.0f};
     auto heatmap{builder.BuildHeatmap(FHeatmapValueRange{0.18f, 1.0f}, domain)};
     FHeatmapGrid grid{.columns = 30, .rows = 20};
-    grid.values.Reserve(grid.columns * grid.rows);
+    grid.values.reserve(static_cast<std::size_t>(grid.columns * grid.rows));
     for (int32 row{0}; row < grid.rows; ++row) {
         auto const y{static_cast<float>(row) / static_cast<float>(grid.rows - 1)};
         for (int32 column{0}; column < grid.columns; ++column) {
@@ -359,7 +359,7 @@ auto make_sparse_heatmap(ShowcaseBuilder& builder) -> TSharedRef<SWidget> {
             auto const value{FMath::Max3(heat_peak(x, y, 0.18f, 0.72f, 180.0f),
                                          heat_peak(x, y, 0.55f, 0.35f, 260.0f),
                                          heat_peak(x, y, 0.82f, 0.62f, 220.0f))};
-            grid.values.Add(value);
+            grid.values.push_back(value);
         }
     }
     (void)heatmap->set_grid(MoveTemp(grid));

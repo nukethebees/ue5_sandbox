@@ -4,21 +4,9 @@
 #include <Input/Events.h>
 #include <Widgets/DeclarativeSyntaxSupport.h>
 
-TEST_CLASS(GraphPlotWidget, "SandboxUI.UnitTests")
+TEST_CLASS(GraphPlotSlateIntegration, "Sandbox.UnitTests")
 {
-    TEST_METHOD(FindsNearestVisibleX)
-    {
-        FGraphSeries series;
-        series.x = {0.0f, 2.0f, 5.0f};
-        series.y = {1.0f, 2.0f, 3.0f};
-        TArray<FGraphSeries> values{series};
-        auto const nearest{nearest_graph_x(values, 3.1)};
-        TestRunner->TestTrue(TEXT("A nearest coordinate is found"), nearest.IsSet());
-        TestRunner->TestEqual(
-            TEXT("Nearest lookup uses X rather than sample index"), nearest.GetValue(), 2.0);
-    }
-
-    TEST_METHOD(StyleValidationAndOwnedSeries)
+    TEST_METHOD(AppliesSlateStyleAndOwnsSeriesMetadata)
     {
         auto widget{SNew(SGraphPlot)};
 
@@ -41,16 +29,14 @@ TEST_CLASS(GraphPlotWidget, "SandboxUI.UnitTests")
                               widget->ComputeDesiredSize(1.0f).X,
                               480.0);
 
-        {
-            FGraphSeries series;
-            series.name = FText::FromString(TEXT("Counter"));
-            series.x = {0.0f, 1.0f};
-            series.y = {2.0f, 3.0f};
-            series.style.interpolation = EGraphSeriesInterpolation::StepAfter;
-            TArray<FGraphSeries> series_snapshot;
-            series_snapshot.Add(MoveTemp(series));
-            widget->set_series(MoveTemp(series_snapshot));
-        }
+        FGraphSeries series;
+        series.name = FText::FromString(TEXT("Counter"));
+        series.x = {0.0f, 1.0f};
+        series.y = {2.0f, 3.0f};
+        series.style.interpolation = EGraphSeriesInterpolation::StepAfter;
+        TArray<FGraphSeries> snapshot;
+        snapshot.Add(MoveTemp(series));
+        widget->set_series(MoveTemp(snapshot));
 
         auto const stored_series{widget->get_series()};
         TestRunner->TestEqual(TEXT("Graph owns the supplied series"), stored_series.Num(), 1);
@@ -77,7 +63,7 @@ TEST_CLASS(GraphPlotWidget, "SandboxUI.UnitTests")
                              widget->get_series().IsEmpty());
     }
 
-    TEST_METHOD(StableHoverDoesNotReplaceTooltipOrRebuildCache)
+    TEST_METHOD(StableHoverKeepsTooltipAndCache)
     {
         auto widget{SNew(SGraphPlot)};
         FGraphSeries series;

@@ -3,11 +3,9 @@
 #include "Rendering/DrawElementTypes.h"
 #include "Styling/CoreStyle.h"
 
-namespace {
-auto positive_value(float const value) -> float {
-    return FMath::IsFinite(value) && value > 0.0f ? value : 0.0f;
-}
+#include <sandbox/core/ui/chart_layout.h>
 
+namespace {
 void draw_stacked_bar_box(FSlateWindowElementList& out_draw_elements,
                           int32 const layer_id,
                           FGeometry const& geometry,
@@ -32,69 +30,6 @@ void draw_stacked_bar_box(FSlateWindowElementList& out_draw_elements,
 FStackedBarChartStyle::FStackedBarChartStyle()
     : label_font{FCoreStyle::GetDefaultFontStyle("Regular", 8)} {}
 
-auto stacked_bar_total(FStackedBar const& bar) -> float {
-    float total{0.0f};
-    for (auto const& segment : bar.segments) {
-        total += positive_value(segment.value);
-    }
-    return total;
-}
-
-auto maximum_stacked_bar_total(TConstArrayView<FStackedBar> const bars) -> float {
-    float maximum_total{0.0f};
-    for (auto const& bar : bars) {
-        maximum_total = FMath::Max(maximum_total, stacked_bar_total(bar));
-    }
-    return maximum_total;
-}
-
-auto build_stacked_bar_chart_geometry(TConstArrayView<FStackedBar> const bars,
-                                      FVector2f const plot_size,
-                                      float const bar_gap) -> FStackedBarChartGeometry {
-    FStackedBarChartGeometry geometry;
-    geometry.maximum_total = maximum_stacked_bar_total(bars);
-
-    auto const bar_count{bars.Num()};
-    auto const width{FMath::Max(plot_size.X, 0.0f)};
-    auto const height{FMath::Max(plot_size.Y, 0.0f)};
-    if (bar_count == 0 || width <= 0.0f || height <= 0.0f) {
-        return geometry;
-    }
-
-    geometry.slot_width = width / static_cast<float>(bar_count);
-    geometry.bar_width = FMath::Max(geometry.slot_width - FMath::Max(bar_gap, 0.0f), 0.0f);
-    if (geometry.maximum_total <= 0.0f || geometry.bar_width <= 0.0f) {
-        return geometry;
-    }
-
-    auto const pixels_per_value{height / geometry.maximum_total};
-    for (int32 bar_index{0}; bar_index < bar_count; ++bar_index) {
-        auto const& bar{bars[bar_index]};
-        auto const x{static_cast<float>(bar_index) * geometry.slot_width +
-                     (geometry.slot_width - geometry.bar_width) * 0.5f};
-        float segment_bottom{height};
-        auto const segment_count{bar.segments.Num()};
-        for (int32 segment_index{0}; segment_index < segment_count; ++segment_index) {
-            auto const& segment{bar.segments[segment_index]};
-            auto const value{positive_value(segment.value)};
-            if (value <= 0.0f) {
-                continue;
-            }
-
-            auto const unclamped_top{segment_bottom - value * pixels_per_value};
-            auto const segment_top{FMath::Max(unclamped_top, 0.0f)};
-            auto const segment_height{segment_bottom - segment_top};
-            geometry.segments.Add({.bar_index = bar_index,
-                                   .segment_index = segment_index,
-                                   .position = {x, segment_top},
-                                   .size = {geometry.bar_width, segment_height},
-                                   .color = segment.color});
-            segment_bottom = segment_top;
-        }
-    }
-    return geometry;
-}
-
 void SStackedBarChart::Construct(FArguments const& args) {
     style_ = args._Style;
     if (!is_valid_style(style_)) {
@@ -103,16 +38,33 @@ void SStackedBarChart::Construct(FArguments const& args) {
 }
 
 void SStackedBarChart::set_bars(TArray<FStackedBar> bars) {
-    bars_ = MoveTemp(bars);
+    std::vector<ml::ui::stacked_bar_chart::Bar> native_bars;
+    native_bars.reserve(static_cast<std::size_t>(bars.Num()));
+    labels_.Reset(bars.Num());
+    segment_colors_.Reset(bars.Num());
+    for (auto& bar : bars) {
+        auto& values{native_bars.emplace_back()};
+        values.reserve(static_cast<std::size_t>(bar.segments.Num()));
+        auto& colors{segment_colors_.AddDefaulted_GetRef()};
+        colors.Reserve(bar.segments.Num());
+        for (auto const& segment : bar.segments) {
+            values.push_back(segment.value);
+            colors.Add(segment.color);
+        }
+        labels_.Add(MoveTemp(bar.label));
+    }
+    data_.set_bars(MoveTemp(native_bars));
     Invalidate(EInvalidateWidgetReason::Paint);
 }
 
 void SStackedBarChart::clear_bars() {
-    if (bars_.IsEmpty()) {
+    if (data_.bars().empty()) {
         return;
     }
 
-    bars_.Reset();
+    data_.clear_bars();
+    labels_.Reset();
+    segment_colors_.Reset();
     Invalidate(EInvalidateWidgetReason::Paint);
 }
 
@@ -138,21 +90,23 @@ int32 SStackedBarChart::OnPaint(FPaintArgs const&,
                                 FWidgetStyle const& widget_style,
                                 bool const parent_enabled) const {
     auto const widget_size{FVector2f{allotted_geometry.GetLocalSize()}};
-    auto const available_width{
-        FMath::Max(widget_size.X - style_.chart_padding.Left - style_.chart_padding.Right, 0.0f)};
-    auto const available_height{
-        FMath::Max(widget_size.Y - style_.chart_padding.Top - style_.chart_padding.Bottom, 0.0f)};
-    auto const label_height{FMath::Min(style_.label_area_height, available_height)};
-    auto const plot_size{
-        FVector2f{FMath::Max(available_width - style_.axis_thickness, 0.0f),
-                  FMath::Max(available_height - label_height - style_.axis_thickness, 0.0f)}};
-    auto const plot_origin{
-        FVector2f{style_.chart_padding.Left + style_.axis_thickness, style_.chart_padding.Top}};
+    auto const native_layout{
+        ml::ui::chart_layout::make_layout({widget_size.X, widget_size.Y},
+                                          {.padding = {style_.chart_padding.Left,
+                                                       style_.chart_padding.Top,
+                                                       style_.chart_padding.Right,
+                                                       style_.chart_padding.Bottom},
+                                           .axis_thickness = style_.axis_thickness,
+                                           .label_area_height = style_.label_area_height})};
+    auto const plot_size{FVector2f{native_layout.plot_size.x, native_layout.plot_size.y}};
+    auto const plot_origin{FVector2f{native_layout.plot_origin.x, native_layout.plot_origin.y}};
+    auto const label_height{native_layout.label_area_height};
 
     auto const enabled{ShouldBeEnabled(parent_enabled)};
     auto const draw_effect{enabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect};
     auto const inherited_tint{widget_style.GetColorAndOpacityTint()};
-    auto const chart_geometry{build_stacked_bar_chart_geometry(bars_, plot_size, style_.bar_gap)};
+    auto const chart_geometry{ml::ui::stacked_bar_chart::build_geometry(
+        data_.bars(), {plot_size.X, plot_size.Y}, style_.bar_gap)};
     auto const segment_layer{layer_id};
     if (plot_size.X > 0.0f && plot_size.Y > 0.0f) {
         auto const clip_geometry{
@@ -162,10 +116,11 @@ int32 SStackedBarChart::OnPaint(FPaintArgs const&,
             draw_stacked_bar_box(out_draw_elements,
                                  segment_layer,
                                  allotted_geometry,
-                                 plot_origin + segment.position,
-                                 segment.size,
+                                 plot_origin + FVector2f{segment.position.x, segment.position.y},
+                                 FVector2f{segment.size.x, segment.size.y},
                                  draw_effect,
-                                 segment.color * inherited_tint);
+                                 segment_colors_[segment.bar_index][segment.segment_index] *
+                                     inherited_tint);
         }
         out_draw_elements.PopClip();
     }
@@ -194,9 +149,9 @@ int32 SStackedBarChart::OnPaint(FPaintArgs const&,
 
     auto const label_y{plot_origin.Y + plot_size.Y + style_.axis_thickness};
     auto const label_tint{style_.label_color * inherited_tint};
-    auto const bar_count{bars_.Num()};
+    auto const bar_count{labels_.Num()};
     for (int32 bar_index{0}; bar_index < bar_count; ++bar_index) {
-        auto const& label{bars_[bar_index].label};
+        auto const& label{labels_[bar_index]};
         if (label.IsEmpty()) {
             continue;
         }

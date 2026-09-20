@@ -10,23 +10,11 @@
 #include "Templates/UniquePtr.h"
 #include "Widgets/SLeafWidget.h"
 
-struct SANDBOXUI_API FHeatmapGrid {
-    int32 columns{0};
-    int32 rows{0};
-    TArray<float> values;
-};
+#include <sandbox/core/ui/heatmap_2d.h>
 
-struct SANDBOXUI_API FHeatmapValueRange {
-    float minimum{0.0f};
-    float maximum{1.0f};
-};
-
-struct SANDBOXUI_API FHeatmapDomain {
-    float minimum_x{0.0f};
-    float maximum_x{1.0f};
-    float minimum_y{0.0f};
-    float maximum_y{1.0f};
-};
+using FHeatmapGrid = ml::ui::heatmap_2d::Grid;
+using FHeatmapValueRange = ml::ui::heatmap_2d::ValueRange;
+using FHeatmapDomain = ml::ui::heatmap_2d::Domain;
 
 struct SANDBOXUI_API FHeatmapColorStop {
     float position{0.0f};
@@ -49,48 +37,6 @@ struct SANDBOXUI_API FHeatmap2DStyle {
     bool show_axes{true};
 };
 
-struct SANDBOXUI_API FHeatmapPlotLayout {
-    FVector2f plot_origin{FVector2f::ZeroVector};
-    FVector2f plot_size{FVector2f::ZeroVector};
-    float x_label_area_height{0.0f};
-    float y_label_area_width{0.0f};
-};
-
-struct SANDBOXUI_API FHeatmapCellGeometry {
-    int32 cell_index{INDEX_NONE};
-    int32 column{INDEX_NONE};
-    int32 row{INDEX_NONE};
-    FVector2f position{FVector2f::ZeroVector};
-    FVector2f size{FVector2f::ZeroVector};
-    FLinearColor color{FLinearColor::Transparent};
-};
-
-struct SANDBOXUI_API FHeatmapMeshVertex {
-    FVector2f position{FVector2f::ZeroVector};
-    FVector2f texture_coordinate{FVector2f::ZeroVector};
-    FLinearColor color{FLinearColor::Transparent};
-};
-
-struct SANDBOXUI_API FHeatmapMeshBatch {
-    TArray<FHeatmapMeshVertex> vertices;
-    TArray<SlateIndex> indices;
-};
-
-SANDBOXUI_API auto is_valid_heatmap_grid(FHeatmapGrid const& grid) -> bool;
-SANDBOXUI_API auto is_valid_heatmap_value_range(FHeatmapValueRange const& range) -> bool;
-SANDBOXUI_API auto is_valid_heatmap_domain(FHeatmapDomain const& domain) -> bool;
-SANDBOXUI_API auto is_valid_heatmap_color_stops(TConstArrayView<FHeatmapColorStop> stops) -> bool;
-SANDBOXUI_API auto make_heatmap_plot_layout(FVector2f widget_size, FHeatmap2DStyle const& style)
-    -> FHeatmapPlotLayout;
-SANDBOXUI_API auto build_heatmap_color_lut(TConstArrayView<FHeatmapColorStop> stops,
-                                           int32 entry_count = 256) -> TArray<FLinearColor>;
-SANDBOXUI_API auto build_heatmap_cell_geometry(FHeatmapGrid const& grid,
-                                               FHeatmapValueRange const& range,
-                                               TConstArrayView<FLinearColor> color_lut,
-                                               FVector2f plot_size) -> TArray<FHeatmapCellGeometry>;
-SANDBOXUI_API auto build_heatmap_mesh_batches(TConstArrayView<FHeatmapCellGeometry> cells,
-                                              FVector2f plot_origin) -> TArray<FHeatmapMeshBatch>;
-
 class SANDBOXUI_API SHeatmap2D : public SLeafWidget {
   public:
     SLATE_BEGIN_ARGS(SHeatmap2D) {}
@@ -110,9 +56,9 @@ class SANDBOXUI_API SHeatmap2D : public SLeafWidget {
     [[nodiscard]] bool set_domain(FHeatmapDomain domain);
     [[nodiscard]] bool set_style(FHeatmap2DStyle style);
 
-    auto get_grid() const noexcept -> FHeatmapGrid const& { return grid_; }
-    auto get_value_range() const noexcept -> FHeatmapValueRange const& { return value_range_; }
-    auto get_domain() const noexcept -> FHeatmapDomain const& { return domain_; }
+    auto get_grid() const noexcept -> FHeatmapGrid const& { return data_.grid(); }
+    auto get_value_range() const noexcept -> FHeatmapValueRange { return data_.value_range(); }
+    auto get_domain() const noexcept -> FHeatmapDomain { return data_.domain(); }
     auto get_style() const noexcept -> FHeatmap2DStyle const& { return style_; }
 
     FVector2D ComputeDesiredSize(float layout_scale_multiplier) const override;
@@ -129,9 +75,7 @@ class SANDBOXUI_API SHeatmap2D : public SLeafWidget {
     static bool is_valid_style(FHeatmap2DStyle const& style);
     void invalidate_heatmap_cache(bool color_lut_changed);
 
-    FHeatmapGrid grid_;
-    FHeatmapValueRange value_range_;
-    FHeatmapDomain domain_;
+    ml::ui::heatmap_2d::Data data_;
     FHeatmap2DStyle style_;
     TUniquePtr<FRenderCache> render_cache_;
 };

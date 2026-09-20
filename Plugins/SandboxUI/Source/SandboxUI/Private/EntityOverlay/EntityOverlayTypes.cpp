@@ -1,30 +1,8 @@
 #include "SandboxUI/EntityOverlay/EntityOverlayTypes.h"
 
-#include "Math/UnrealMathUtility.h"
-
-namespace ml::ui::entity_overlay {
-inline constexpr uint32 objective_role_mask{0x3};
-inline constexpr uint32 has_fill_color_mask{1 << 2};
-inline constexpr uint32 fill_color_red_shift{8};
-inline constexpr uint32 fill_color_green_shift{16};
-inline constexpr uint32 fill_color_blue_shift{24};
-
-auto pack_unorm8(float const value) -> uint32 {
-    return static_cast<uint32>(FMath::RoundToInt(FMath::Clamp(value, 0.0f, 1.0f) * 255.0f));
-}
-
-auto pack_display_data(EEntityOverlayObjectiveRole const objective_role) -> uint32 {
-    auto const role{static_cast<uint32>(objective_role)};
-    check((role & ~objective_role_mask) == 0);
-    return role;
-}
-
-auto pack_display_data(EEntityOverlayObjectiveRole const objective_role,
-                       FLinearColor const fill_color) -> uint32 {
-    return pack_display_data(objective_role) | has_fill_color_mask |
-           (pack_unorm8(fill_color.R) << fill_color_red_shift) |
-           (pack_unorm8(fill_color.G) << fill_color_green_shift) |
-           (pack_unorm8(fill_color.B) << fill_color_blue_shift);
+namespace {
+auto native_role(EEntityOverlayObjectiveRole const role) -> ml::ui::entity_overlay::ObjectiveRole {
+    return static_cast<ml::ui::entity_overlay::ObjectiveRole>(role);
 }
 }
 
@@ -33,12 +11,9 @@ void FEntityOverlayCollector::begin(FVector3f const origin,
                                     TArray<FEntityOverlayInstance>& output_instances) {
     check(maximum_range >= 0.0f);
 
-    origin_ = origin;
-    maximum_range_squared_ = maximum_range * maximum_range;
+    collector_.begin({origin.X, origin.Y, origin.Z}, maximum_range);
     output_instances_ = &output_instances;
     output_instances_->Reset();
-    first_objective_index_ = INDEX_NONE;
-    invalid_health_count_ = 0;
 }
 
 auto FEntityOverlayCollector::try_add(FVector3f const position,
@@ -46,7 +21,7 @@ auto FEntityOverlayCollector::try_add(FVector3f const position,
                                       float world_radius,
                                       EEntityOverlayObjectiveRole const objective_role,
                                       bool const bypass_range) -> bool {
-    auto display_data{ml::ui::entity_overlay::pack_display_data(objective_role)};
+    auto display_data{ml::ui::entity_overlay::pack_display_data(native_role(objective_role))};
     return try_add_impl(position, normalized_health, world_radius, display_data, bypass_range);
 }
 
@@ -56,11 +31,13 @@ auto FEntityOverlayCollector::try_add_colored(FVector3f const position,
                                               FLinearColor const fill_color,
                                               EEntityOverlayObjectiveRole const objective_role,
                                               bool const bypass_range) -> bool {
-    return try_add_impl(position,
-                        normalized_health,
-                        world_radius,
-                        ml::ui::entity_overlay::pack_display_data(objective_role, fill_color),
-                        bypass_range);
+    return try_add_impl(
+        position,
+        normalized_health,
+        world_radius,
+        ml::ui::entity_overlay::pack_display_data(
+            native_role(objective_role), {fill_color.R, fill_color.G, fill_color.B, fill_color.A}),
+        bypass_range);
 }
 
 auto FEntityOverlayCollector::try_add_impl(FVector3f const position,
@@ -70,31 +47,23 @@ auto FEntityOverlayCollector::try_add_impl(FVector3f const position,
                                            bool const bypass_range) -> bool {
     check(output_instances_);
 
-    if (!bypass_range && FVector3f::DistSquared(origin_, position) > maximum_range_squared_) {
+    auto const addition{collector_.try_add({position.X, position.Y, position.Z},
+                                           normalized_health,
+                                           world_radius,
+                                           display_data,
+                                           bypass_range)};
+    if (!addition) {
         return false;
     }
-
-    if (!FMath::IsFinite(normalized_health)) {
-        normalized_health = 0.0f;
-        ++invalid_health_count_;
-    }
-    if (!FMath::IsFinite(world_radius)) {
-        world_radius = 0.0f;
-    }
-
-    auto const added_index{
-        output_instances_->Add({.world_position = position,
-                                .health = FMath::Clamp(normalized_health, 0.0f, 1.0f),
-                                .world_radius = FMath::Max(world_radius, 0.0f),
-                                .display_data = display_data})};
-    auto const is_objective{(display_data & ml::ui::entity_overlay::objective_role_mask) != 0};
-    if (is_objective) {
-        if (first_objective_index_ == INDEX_NONE) {
-            first_objective_index_ = added_index;
-        }
-    } else if (first_objective_index_ != INDEX_NONE) {
-        output_instances_->Swap(first_objective_index_, added_index);
-        ++first_objective_index_;
+    auto const& instance{addition->instance};
+    auto const added_index{output_instances_->Add({.world_position = {instance.world_position.x,
+                                                                      instance.world_position.y,
+                                                                      instance.world_position.z},
+                                                   .health = instance.health,
+                                                   .world_radius = instance.world_radius,
+                                                   .display_data = instance.display_data})};
+    if (addition->swap_index >= 0) {
+        output_instances_->Swap(addition->swap_index, added_index);
     }
     return true;
 }

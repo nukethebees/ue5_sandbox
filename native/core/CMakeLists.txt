@@ -29,6 +29,13 @@ target_sources(native-core PRIVATE
   src/projectile_intercept.cpp
   src/rotation.cpp
   src/test_timeline.cpp
+  src/ui/chart_layout.cpp
+  src/ui/entity_overlay.cpp
+  src/ui/heatmap_2d.cpp
+  src/ui/histogram.cpp
+  src/ui/radar_2d.cpp
+  src/ui/settings_slider.cpp
+  src/ui/stacked_bar_chart.cpp
 )
 target_compile_features(native-core PUBLIC cxx_std_23)
 target_include_directories(native-core PUBLIC include)
@@ -78,6 +85,10 @@ target_sources(native-core-tests PRIVATE
   tests/static_string_view_tests.cpp
   tests/time_series_data_tests.cpp
   tests/timing_tests.cpp
+  tests/ui_entity_overlay_tests.cpp
+  tests/ui_heatmap_2d_tests.cpp
+  tests/ui_radar_stacked_bar_tests.cpp
+  tests/ui_settings_histogram_tests.cpp
   tests/test_timeline_tests.cpp
   tests/vector_math_tests.cpp
 )

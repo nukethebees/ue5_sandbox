@@ -2,6 +2,8 @@
 
 #include "SandboxUI/slate/SlateSlots.h"
 
+#include <sandbox/core/ui/settings_slider.h>
+
 #include "Framework/Application/SlateApplication.h"
 #include "Styling/CoreStyle.h"
 #include "Widgets/Input/SCheckBox.h"
@@ -94,9 +96,7 @@ void SSettingsSlider::Construct(FArguments const& args) {
     value_ = args._Value;
     on_value_changed_ = args._OnValueChanged;
 
-    auto const range{maximum_ - minimum_};
-    auto const normalized_step{range > UE_SMALL_NUMBER ? FMath::Clamp(step_ / range, 0.0f, 1.0f)
-                                                       : 1.0f};
+    auto const normalized_step{ml::ui::settings_slider::normalized_step(step_, minimum_, maximum_)};
     SAssignNew(slider_, SSlider)
         .Style(&style.slider)
         .Value(this, &SSettingsSlider::normalized_value)
@@ -128,32 +128,13 @@ void SSettingsSlider::focus() {
     }
 }
 
-auto SSettingsSlider::normalize(float const value, float const minimum, float const maximum)
-    -> float {
-    auto const range{maximum - minimum};
-    return range > UE_SMALL_NUMBER ? FMath::Clamp((value - minimum) / range, 0.0f, 1.0f) : 0.0f;
-}
-
-auto SSettingsSlider::denormalize(float const value,
-                                  float const minimum,
-                                  float const maximum,
-                                  float const step) -> float {
-    if (maximum <= minimum) {
-        return minimum;
-    }
-    auto const unclamped{minimum + FMath::Clamp(value, 0.0f, 1.0f) * (maximum - minimum)};
-    auto const valid_step{FMath::Max(step, UE_SMALL_NUMBER)};
-    auto const stepped{minimum +
-                       FMath::RoundToFloat((unclamped - minimum) / valid_step) * valid_step};
-    return FMath::Clamp(stepped, minimum, maximum);
-}
-
 auto SSettingsSlider::normalized_value() const -> float {
-    return normalize(value_.Get(), minimum_, maximum_);
+    return ml::ui::settings_slider::normalize(value_.Get(), minimum_, maximum_);
 }
 
 void SSettingsSlider::handle_value_changed(float const value) {
-    on_value_changed_.ExecuteIfBound(denormalize(value, minimum_, maximum_, step_));
+    on_value_changed_.ExecuteIfBound(
+        ml::ui::settings_slider::denormalize(value, minimum_, maximum_, step_));
 }
 
 void SSettingsChoice::Construct(FArguments const& args) {

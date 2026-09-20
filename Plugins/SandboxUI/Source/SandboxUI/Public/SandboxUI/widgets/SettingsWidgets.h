@@ -180,9 +180,6 @@ class SANDBOXUI_API SSettingsSlider : public SCompoundWidget {
 
     void Construct(FArguments const& args);
     void focus();
-
-    static auto normalize(float value, float minimum, float maximum) -> float;
-    static auto denormalize(float value, float minimum, float maximum, float step) -> float;
   private:
     auto normalized_value() const -> float;
     void handle_value_changed(float value);

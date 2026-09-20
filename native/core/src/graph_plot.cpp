@@ -87,6 +87,103 @@ auto is_valid_series(SeriesView const series) noexcept -> bool {
     return true;
 }
 
+auto is_valid_layout(LayoutSettings const settings) noexcept -> bool {
+    return std::isfinite(settings.desired_width) && std::isfinite(settings.desired_height) &&
+           settings.desired_width >= 0.0f && settings.desired_height >= 0.0f &&
+           std::isfinite(settings.left_margin) && settings.left_margin >= 0.0f &&
+           std::isfinite(settings.right_margin) && settings.right_margin >= 0.0f &&
+           std::isfinite(settings.top_margin) && settings.top_margin >= 0.0f &&
+           std::isfinite(settings.bottom_margin) && settings.bottom_margin >= 0.0f &&
+           settings.target_x_ticks >= 0 && settings.target_y_ticks >= 0;
+}
+
+auto make_plot_layout(Point2f const extent, LayoutSettings const settings) noexcept -> PlotLayout {
+    return {.origin = {settings.left_margin, settings.top_margin},
+            .size = {std::max(0.0f, extent.x - settings.left_margin - settings.right_margin),
+                     std::max(0.0f, extent.y - settings.top_margin - settings.bottom_margin)}};
+}
+
+auto nearest_sample_index(SeriesView const series, double const x) noexcept
+    -> std::optional<std::size_t> {
+    if (!series.x.empty() && series.x.size() != series.y.size()) {
+        return std::nullopt;
+    }
+
+    std::optional<std::size_t> result;
+    auto best_distance{std::numeric_limits<double>::max()};
+    for (std::size_t index{}; index < series.y.size(); ++index) {
+        auto const candidate{sample_x(series, index)};
+        if (!std::isfinite(candidate)) {
+            continue;
+        }
+        auto const distance{std::abs(candidate - x)};
+        if (distance < best_distance) {
+            best_distance = distance;
+            result = index;
+        }
+    }
+    return result;
+}
+
+auto nearest_x(std::span<SeriesView const> const series, double const x) noexcept
+    -> std::optional<double> {
+    std::optional<double> result;
+    auto best_distance{std::numeric_limits<double>::max()};
+    for (auto const& item : series) {
+        auto const nearest{nearest_sample_index(item, x)};
+        if (!nearest) {
+            continue;
+        }
+        auto const candidate{sample_x(item, *nearest)};
+        auto const distance{std::abs(candidate - x)};
+        if (distance < best_distance) {
+            best_distance = distance;
+            result = candidate;
+        }
+    }
+    return result;
+}
+
+auto build_ticks(Range const range,
+                 float const extent,
+                 std::int32_t const target_count,
+                 bool const invert) -> std::vector<Tick> {
+    if (extent <= 0.0f || target_count <= 0 || range.max <= range.min) {
+        return {};
+    }
+
+    auto const raw_step{(range.max - range.min) / std::max(1, target_count)};
+    auto const exponent{std::floor(std::log10(raw_step))};
+    auto const magnitude{std::pow(10.0, exponent)};
+    auto const normalized{raw_step / magnitude};
+    auto const step_multiplier{normalized <= 1.0   ? 1.0
+                               : normalized <= 2.0 ? 2.0
+                               : normalized <= 5.0 ? 5.0
+                                                   : 10.0};
+    auto const step{step_multiplier * magnitude};
+    auto const first{std::ceil(range.min / step) * step};
+    auto const span{range.max - range.min};
+
+    std::vector<Tick> result;
+    result.reserve(static_cast<std::size_t>(target_count + 2));
+    for (std::int32_t index{}; index < 64; ++index) {
+        auto value{first + static_cast<double>(index) * step};
+        if (value > range.max + step * 1e-6) {
+            break;
+        }
+        if (std::abs(value) < step * 1e-9) {
+            value = 0.0;
+        }
+
+        auto alpha{static_cast<float>((value - range.min) / span)};
+        if (invert) {
+            alpha = 1.0f - alpha;
+        }
+        result.push_back({value, alpha * extent});
+    }
+    return result;
+}
+
 auto resolve_x_range(std::span<SeriesView const> const series,
                      std::span<std::uint8_t const> const valid_series,
                      AxisSettings const axis) noexcept -> Range {
