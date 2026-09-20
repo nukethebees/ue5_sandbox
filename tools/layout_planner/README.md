@@ -66,6 +66,8 @@ default panel arrangement.
    Record maps derive member offsets, fixed-array extents, alignment, internal padding, and tail
    padding from the active target profile. The shared element-count control scales record storage,
    member extents, padding, minimum cache lines, and minimum pages with overflow-safe arithmetic.
+   It also counts elements crossing cache-line and page boundaries for a contiguous array with an
+   explicitly stated region-aligned base assumption.
    For packed values,
    choose an element-count preset or custom count to see overflow-safe storage, unused-bit,
    cache-line, and page totals from the explicit target profile. Comparison lets you select any two

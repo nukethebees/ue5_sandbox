@@ -6,6 +6,7 @@
 #include <cctype>
 #include <charconv>
 #include <limits>
+#include <numeric>
 #include <set>
 #include <string_view>
 #include <utility>
@@ -185,6 +186,27 @@ auto effective_column_type(lispb::schema::TypeGraph const& types,
 
 auto minimum_regions(std::uint64_t const bytes, std::uint64_t const region_bytes) -> std::uint64_t {
     return bytes / region_bytes + (bytes % region_bytes == 0 ? 0 : 1);
+}
+
+auto straddling_elements(std::uint64_t const element_bytes,
+                         std::uint64_t const element_count,
+                         std::uint64_t const region_bytes,
+                         std::optional<std::uint64_t> const total_bytes)
+    -> std::optional<std::uint64_t> {
+    if (element_count == 0) {
+        return 0;
+    }
+    if (element_bytes > region_bytes) {
+        return element_count;
+    }
+    if (!total_bytes.has_value()) {
+        return std::nullopt;
+    }
+
+    auto const boundaries_before_end{(*total_bytes - 1) / region_bytes};
+    auto const coincident_boundary_period{region_bytes / std::gcd(element_bytes, region_bytes)};
+    auto const coincident_boundaries{(element_count - 1) / coincident_boundary_period};
+    return boundaries_before_end - coincident_boundaries;
 }
 
 auto cache_line_tiling(std::uint64_t const element_bytes, std::uint64_t const cache_line_bytes)
@@ -613,6 +635,11 @@ auto Analyzer::analyze_record(lispb::schema::TypeGraph const& types,
             }
             result.aggregate.complete_elements_per_cache_line =
                 *memory.cache_line_bytes / *result.size_bytes;
+            result.aggregate.cache_line_straddling_elements =
+                straddling_elements(*result.size_bytes,
+                                    element_count,
+                                    *memory.cache_line_bytes,
+                                    result.aggregate.total_storage_bytes);
         }
 
         result.aggregate.page_bytes = memory.page_bytes;
@@ -630,6 +657,11 @@ auto Analyzer::analyze_record(lispb::schema::TypeGraph const& types,
                     minimum_regions(*result.aggregate.total_storage_bytes, *memory.page_bytes);
             }
             result.aggregate.complete_elements_per_page = *memory.page_bytes / *result.size_bytes;
+            result.aggregate.page_straddling_elements =
+                straddling_elements(*result.size_bytes,
+                                    element_count,
+                                    *memory.page_bytes,
+                                    result.aggregate.total_storage_bytes);
         }
     }
     return result;

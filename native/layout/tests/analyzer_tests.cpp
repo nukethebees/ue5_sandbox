@@ -269,7 +269,9 @@ TEST(RecordAnalyzer, ReportsOffsetsInternalAndTailPadding) {
     EXPECT_EQ(analysis.aggregate.total_padding_bytes, 5);
     EXPECT_EQ(analysis.aggregate.minimum_cache_lines, 1);
     EXPECT_EQ(analysis.aggregate.complete_elements_per_cache_line, 5);
+    EXPECT_EQ(analysis.aggregate.cache_line_straddling_elements, 0);
     EXPECT_EQ(analysis.aggregate.minimum_pages, 1);
+    EXPECT_EQ(analysis.aggregate.page_straddling_elements, 0);
     EXPECT_TRUE(analysis.diagnostics.empty());
 }
 
@@ -365,6 +367,30 @@ TEST(RecordAnalyzer, ScalesAggregateWasteAndDiagnosesUnknownOrOverflowedTargetFa
     EXPECT_FALSE(analysis.aggregate.total_storage_bytes.has_value());
     EXPECT_FALSE(analysis.aggregate.total_padding_bytes.has_value());
     EXPECT_FALSE(analysis.diagnostics.empty());
+}
+
+TEST(RecordAnalyzer, CountsCacheLineAndPageStraddlingForAlignedContiguousArrays) {
+    auto const periodic{
+        record_type({codegen::RecordSchema{.name = "Record",
+                                           .members = {record_member("small", "std::uint8_t"),
+                                                       record_member("wide", "std::uint32_t"),
+                                                       record_member("medium", "std::uint16_t")},
+                                           .export_specifier = std::nullopt}})};
+    auto analysis{
+        Analyzer::analyze_record(periodic.types, periodic.type, AbiProfile::host_common(), 100)};
+    EXPECT_EQ(analysis.size_bytes, 12);
+    EXPECT_EQ(analysis.aggregate.cache_line_straddling_elements, 12);
+    EXPECT_EQ(analysis.aggregate.page_straddling_elements, 0);
+
+    auto const larger_than_line{
+        record_type({codegen::RecordSchema{.name = "Record",
+                                           .members = {record_member("bytes", "std::uint8_t", 65)},
+                                           .export_specifier = std::nullopt}})};
+    analysis = Analyzer::analyze_record(
+        larger_than_line.types, larger_than_line.type, AbiProfile::host_common(), 100);
+    EXPECT_EQ(analysis.size_bytes, 65);
+    EXPECT_EQ(analysis.aggregate.cache_line_straddling_elements, 100);
+    EXPECT_EQ(analysis.aggregate.page_straddling_elements, 1);
 }
 
 TEST(PackedAnalyzer, ReportsEntityUniqueIdLayout) {

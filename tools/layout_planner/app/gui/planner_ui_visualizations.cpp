@@ -686,9 +686,13 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
         draw_stat("Minimum cache lines", detail::format_number(aggregate.minimum_cache_lines));
         draw_stat("Complete elements / cache line",
                   detail::format_number(aggregate.complete_elements_per_cache_line));
+        draw_stat("Elements crossing cache-line boundaries",
+                  detail::format_number(aggregate.cache_line_straddling_elements));
         draw_stat("Minimum pages", detail::format_number(aggregate.minimum_pages));
         draw_stat("Complete elements / page",
                   detail::format_number(aggregate.complete_elements_per_page));
+        draw_stat("Elements crossing page boundaries",
+                  detail::format_number(aggregate.page_straddling_elements));
         ImGui::EndTable();
     }
     if (analysis.size_bytes.has_value() && analysis.internal_padding_bytes.has_value() &&
@@ -702,6 +706,8 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
                             static_cast<unsigned long long>(*analysis.size_bytes));
     }
     ImGui::TextDisabled("Target memory facts: %s", abi_.memory_facts().provenance.c_str());
+    ImGui::TextDisabled(
+        "Boundary crossing assumes a contiguous array whose base is cache-line/page aligned.");
 
     ImGui::SeparatorText("Object layout");
     ImGui::Text("Size: %s B    Alignment: %s B",

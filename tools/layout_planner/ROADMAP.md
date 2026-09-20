@@ -54,7 +54,8 @@ keeping unknown facts explicit. Record declarations are now source-backed and ed
 flat member grid with add/duplicate/delete/reorder, scalar/fixed-array cardinality, preview,
 undo/redo, and save/reload. Configurable-count record totals now cover storage, member extents,
 internal/tail padding, minimum cache lines, and minimum pages with overflow-safe arithmetic. Richer
-member type selection and explicit access-set traffic remain follow-up.
+member type selection and explicit access-set traffic remain follow-up. Cache-line/page boundary
+crossing counts use an explicit contiguous, region-aligned array model and avoid performance claims.
 
 ## 1. Editable document and command foundation
 

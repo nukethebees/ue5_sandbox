@@ -67,6 +67,8 @@ rollback, undo/redo, preview, and atomic save/reload path as enum, packed, and S
 Record aggregate analysis uses the planner's selected element count and target profile to report
 total storage, member extents, ABI padding, minimum cache lines, and minimum pages. Arithmetic
 overflow and absent target facts remain explicit diagnostics/Unknown values.
+Element straddling counts are exact for the stated model of a contiguous, region-aligned array;
+they use stride/region periodicity and are physical facts rather than performance predictions.
 
 The planner supports enum value-domain analysis, packed storage type/bit-range analysis, and flat
 standard-library SoA/vector-SoA payload analysis. Enum analysis derives implicit literal values,
