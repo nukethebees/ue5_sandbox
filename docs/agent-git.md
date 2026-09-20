@@ -152,6 +152,31 @@ branch. Rebase-base uses only the configured local base branch and stops on conf
 deletion remains available while on a protected branch, but requires a clean worktree, an unowned
 feature branch, proven ancestry into the base, and Git's safe `branch -d` check.
 
+## Concurrency and worktree ownership
+
+Each agent owns its current worktree. `agent-git` validates that worktree and never accepts a path
+outside it. It reads Git's shared worktree registration only to reject a branch that is checked out
+elsewhere; it does not use another agent's worktree as an ordinary command target. The controlled
+integration path and safe branch-deletion check are the only exceptions, and both revalidate the
+base worktree immediately before their fixed Git operations.
+
+Safe ordinary operations in independent worktrees run concurrently. Git keeps each linked
+worktree's index, `HEAD`, and operation state separately, while Git's own index and ref locks
+protect shared resources. `agent-git` does not add a repository-global lock around `add`, `commit`,
+`status`, inspection, switching, or rebase operations. It also disables optional locks for
+inspection, so `status` does not opportunistically rewrite an index.
+
+The helper owns policy, not general Git serialization: it validates the semantic request, checks
+worktree and branch ownership, and revalidates the evaluated state immediately before execution.
+Git remains authoritative for the final per-index and per-ref atomicity checks. A concurrent change
+to a relevant ref therefore fails safely instead of blocking unrelated feature work.
+
+The only cross-worktree coordination retained by the helper is the jobserver's exclusive
+`integration/<baseBranch>` lease for integration. Final promotion also uses `update-ref` with the
+pinned base SHA, so unexpected base movement is rejected atomically. Worktree creation/removal,
+repository configuration, maintenance, packing, push/fetch, and destructive history operations are
+not exposed by the helper and require the normal human-controlled route.
+
 ### Rebase conflict recovery
 
 If `rebase-base` stops at a conflict, resolve the files normally and use the existing staging
@@ -220,19 +245,14 @@ On Git for Windows, Git starts the fixed `git-lfs filter-process` command throug
 controlled `PATH`, the filter command names the trusted absolute executable, legacy fallback filter
 commands are disabled, repository LFS filter commands are overridden, and all non-LFS filters are denied.
 
-Mutations take a lock in the common Git directory and rediscover repository state under that lock
-immediately before policy evaluation. Immediately before Git execution, the tool re-audits
-executable configuration and hidden index flags, compares the exact index/worktree fingerprint,
-revalidates HEAD, current branch, policy, base, and target refs, and confirms those branch refs are
-still direct. Branch deletion also re-identifies its base worktree and verifies its repository,
-branch, and HEAD before using it for Git's safe deletion check. The lock coordinates `agent-git`
-processes; raw Git or other programs can still race the small interval after final validation, with
-Git's own ref and index locks providing the final integrity checks.
-The integration transaction takes this repository lock only around its rebase, atomic merge, and
-cleanup mutations; it does not hold the lock during review or expensive validation, so other
-feature work remains concurrent. The separate jobserver integration lease is held for the complete
-transaction. Raw Git can still bypass that protocol, so the final compare-and-swap is authoritative
-and exposes unexpected `dev` movement rather than retrying.
+Immediately before Git execution, the tool re-audits executable configuration and hidden index
+flags, compares the exact index/worktree fingerprint, revalidates HEAD, current branch, policy,
+base, and target refs, and confirms those branch refs are still direct. Branch deletion also
+re-identifies its base worktree and verifies its repository, branch, and HEAD before using Git's
+safe deletion check. Raw Git or another program can still race after that validation, so Git's own
+index/ref locks and the integration compare-and-swap are the final integrity checks. The integration
+jobserver lease is held for the complete transaction; unexpected `dev` movement aborts promotion
+without retrying.
 Worktree roots, mutation paths, and critical Git administrative paths containing filesystem
 reparse points are rejected, as are assume-unchanged and skip-worktree index entries; these states
 can hide changes or redirect I/O outside the registered worktree or common Git directory. Sparse
