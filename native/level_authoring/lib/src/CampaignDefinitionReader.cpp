@@ -1,5 +1,7 @@
 #include <sandbox/level_authoring/CampaignDefinitionReader.h>
 
+#include "reader_utilities.h"
+
 #include <native/s7/interpreter.h>
 #include <native/s7/value.h>
 
@@ -20,19 +22,6 @@ inline constexpr std::string_view campaign_prelude{R"(
 } // namespace campaign_definition_reader_detail
 
 namespace {
-auto campaign_indexed_path(std::string const& path, std::int64_t const index) -> std::string {
-    return path + "[" + std::to_string(index) + "]";
-}
-
-void lowercase_campaign_ascii(std::string& value) {
-    std::ranges::transform(value, value.begin(), [](unsigned char const character) {
-        if (character >= 'A' && character <= 'Z') {
-            return static_cast<char>(character - 'A' + 'a');
-        }
-        return static_cast<char>(character);
-    });
-}
-
 auto blank(std::string const& value) -> bool {
     return std::ranges::all_of(
         value, [](unsigned char const character) { return std::isspace(character) != 0; });
@@ -55,7 +44,7 @@ class CampaignDecoder final {
         auto const clause_count{list_length(root_) - 1};
         for (std::int64_t index{}; index < clause_count; ++index) {
             auto const clause{list_value(root_, index + 1)};
-            auto const path{campaign_indexed_path("campaign", index)};
+            auto const path{reader_detail::indexed_path("campaign", index)};
             if (!is_non_empty_list(clause)) {
                 add_error(path, "Expected a campaign clause");
                 continue;
@@ -166,7 +155,7 @@ class CampaignDecoder final {
             return false;
         }
         output = s7::symbol_name(value);
-        lowercase_campaign_ascii(output);
+        reader_detail::lowercase_ascii(output);
         return true;
     }
 
@@ -185,7 +174,7 @@ class CampaignDecoder final {
         definition_.level_ids.reserve(static_cast<std::size_t>(count));
         for (std::int64_t index{}; index < count; ++index) {
             std::string id;
-            auto const level_path{campaign_indexed_path(path, index)};
+            auto const level_path{reader_detail::indexed_path(path, index)};
             if (!read_symbol(list_value(clause, index + 1), level_path, id)) {
                 continue;
             }

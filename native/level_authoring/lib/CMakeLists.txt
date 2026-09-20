@@ -1,5 +1,6 @@
 add_library(native-level-authoring STATIC)
 target_sources(native-level-authoring PRIVATE
+  src/reader_utilities.h
   include/sandbox/level_authoring/LevelDefinitionReader.h
   src/LevelDefinitionReader.cpp
   include/sandbox/level_authoring/CampaignDefinition.h

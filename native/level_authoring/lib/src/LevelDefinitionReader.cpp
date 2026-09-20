@@ -1,9 +1,10 @@
 #include <sandbox/level_authoring/LevelDefinitionReader.h>
 
+#include "reader_utilities.h"
+
 #include <native/s7/interpreter.h>
 #include <native/s7/value.h>
 
-#include <algorithm>
 #include <cmath>
 #include <cstdint>
 #include <fstream>
@@ -52,19 +53,6 @@ inline constexpr std::string_view level_prelude{R"(
 } // namespace level_definition_reader_detail
 
 namespace {
-auto indexed_path(std::string const& path, std::int64_t const index) -> std::string {
-    return path + "[" + std::to_string(index) + "]";
-}
-
-void lowercase_ascii(std::string& value) {
-    std::ranges::transform(value, value.begin(), [](unsigned char const character) {
-        if (character >= 'A' && character <= 'Z') {
-            return static_cast<char>(character - 'A' + 'a');
-        }
-        return static_cast<char>(character);
-    });
-}
-
 class DefinitionDecoder final {
   public:
     DefinitionDecoder(s7::Scheme& scheme, s7::Value const root)
@@ -90,7 +78,7 @@ class DefinitionDecoder final {
         bool has_entities{};
         for (std::int64_t index{}; index < clause_count; ++index) {
             auto const clause{list_value(root_, index + 1)};
-            auto const path{indexed_path("level", index)};
+            auto const path{reader_detail::indexed_path("level", index)};
             if (!is_non_empty_list(clause)) {
                 add_error(path, "Expected a level clause");
                 continue;
@@ -259,7 +247,7 @@ class DefinitionDecoder final {
             return false;
         }
         output = s7::symbol_name(value);
-        lowercase_ascii(output);
+        reader_detail::lowercase_ascii(output);
         return true;
     }
 
@@ -311,7 +299,7 @@ class DefinitionDecoder final {
 
         for (std::int64_t index{}; index < count; ++index) {
             auto const value{list_value(clause, index + 1)};
-            auto const criterion_path{indexed_path(path, index)};
+            auto const criterion_path{reader_detail::indexed_path(path, index)};
             if (!is_non_empty_list(value)) {
                 add_error(criterion_path, "Expected an unlock criterion");
                 continue;
@@ -342,7 +330,7 @@ class DefinitionDecoder final {
         auto const count{list_length(clause) - 1};
         for (std::int64_t index{}; index < count; ++index) {
             auto const value{list_value(clause, index + 1)};
-            auto const team_path{indexed_path(path, index)};
+            auto const team_path{reader_detail::indexed_path(path, index)};
             if (!expect_tagged_list(value, "team", team_path) ||
                 !expect_length(value, 2, team_path)) {
                 continue;
@@ -372,8 +360,9 @@ class DefinitionDecoder final {
         bool valid{true};
         for (std::int64_t index{}; index < target_count; ++index) {
             std::string id;
-            auto const target_valid{
-                read_symbol(list_value(targets, index + 1), indexed_path(targets_path, index), id)};
+            auto const target_valid{read_symbol(list_value(targets, index + 1),
+                                                reader_detail::indexed_path(targets_path, index),
+                                                id)};
             valid = target_valid && valid;
             if (target_valid) {
                 camera.target_entity_ids.push_back(std::move(id));
@@ -433,7 +422,8 @@ class DefinitionDecoder final {
         output.reserve(static_cast<std::size_t>(count));
         for (std::int64_t index{}; index < count; ++index) {
             std::string id;
-            if (read_symbol(list_value(value, index + 1), indexed_path(path, index), id)) {
+            if (read_symbol(
+                    list_value(value, index + 1), reader_detail::indexed_path(path, index), id)) {
                 output.push_back(std::move(id));
             }
         }
@@ -450,7 +440,7 @@ class DefinitionDecoder final {
         auto const clause_count{list_length(clause) - 1};
         for (std::int64_t index{}; index < clause_count; ++index) {
             auto const value{list_value(clause, index + 1)};
-            auto const clause_path{indexed_path(path, index)};
+            auto const clause_path{reader_detail::indexed_path(path, index)};
             if (!is_non_empty_list(value)) {
                 add_error(clause_path, "Expected a mission clause");
                 continue;
@@ -527,7 +517,7 @@ class DefinitionDecoder final {
         auto const event_count{list_length(clause) - 1};
         for (std::int64_t event_index{}; event_index < event_count; ++event_index) {
             auto const value{list_value(clause, event_index + 1)};
-            auto const event_path{indexed_path(path, event_index)};
+            auto const event_path{reader_detail::indexed_path(path, event_index)};
             if (!expect_tagged_list(value, "mission-event", event_path) || list_length(value) < 2) {
                 continue;
             }
@@ -544,7 +534,7 @@ class DefinitionDecoder final {
             auto const clause_count{list_length(value) - 2};
             for (std::int64_t index{}; index < clause_count; ++index) {
                 auto const event_clause{list_value(value, index + 2)};
-                auto const clause_path{indexed_path(event_path, index)};
+                auto const clause_path{reader_detail::indexed_path(event_path, index)};
                 if (!is_non_empty_list(event_clause)) {
                     add_error(clause_path, "Expected a mission event clause");
                     valid = false;
@@ -597,7 +587,7 @@ class DefinitionDecoder final {
         bool valid{true};
         for (std::int64_t index{}; index < 3; ++index) {
             valid = read_number(list_value(value, index + 1),
-                                indexed_path(path, index),
+                                reader_detail::indexed_path(path, index),
                                 components[index]) &&
                     valid;
         }
@@ -608,7 +598,7 @@ class DefinitionDecoder final {
         auto const count{list_length(clause) - 1};
         for (std::int64_t index{}; index < count; ++index) {
             auto const value{list_value(clause, index + 1)};
-            auto const entity_path{indexed_path(path, index)};
+            auto const entity_path{reader_detail::indexed_path(path, index)};
             if (!expect_tagged_list(value, "entity", entity_path)) {
                 continue;
             }
