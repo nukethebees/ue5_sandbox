@@ -77,6 +77,18 @@ changes remain in an editable draft until the user explicitly previews and saves
 menu. See [architecture](ARCHITECTURE.md) for supported constructs, technical limits, and
 implementation details.
 
+The File menu can open a LispB project manifest by path, switch among the 20 most recently opened
+projects, save the current draft, or save it as an independent clone. The most recent successful
+project is reopened on the next normal launch; an explicit `--project` command-line argument takes
+precedence. Until a native file picker is added, Open and Save As use path text boxes. Save As writes
+a new project manifest plus a sibling `<name>_schema` directory containing the current schema
+target's types and module sources, validates the clone, and then switches the planner to it. Existing
+destinations are not overwritten.
+
+The Project / Schema browser is organized by LispB module. Each module contains its declared enums,
+packed values, or supported SoA types, matching source ownership and the destination used when new
+types are authored.
+
 ## Enum authoring preview
 
 The first synthesis workflow is available for enums:

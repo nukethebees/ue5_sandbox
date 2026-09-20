@@ -28,6 +28,10 @@ an enum to an existing enum module, edit its enumerators, undo/redo the draft, p
 LispB source, and explicitly save and reload it. Module creation, enum-type rename/deletion, and
 source-token-preserving edits within an existing enum declaration remain follow-up work.
 
+Project Open, Save, validated Save As cloning, persisted recent-project history, and module-first
+schema browsing are implemented. A native file picker and richer multi-target project selection are
+later usability work; the current path dialogs deliberately keep the file workflow simple.
+
 ## 1. Editable document and command foundation
 
 - Own a mutable draft of the validated LispB declarations.

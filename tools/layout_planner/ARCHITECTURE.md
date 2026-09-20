@@ -45,6 +45,11 @@ Enum authoring is the first write-enabled vertical slice. It can add enums to ex
 edit their enumerators, preview affected sources, and explicitly save and reload LispB. Other type
 kinds remain read-only, and there is no persistent variant format.
 
+The application treats a C++ schema target as the open authoring document. Open/recent operations
+load its project manifest and target, while Save As materializes the current draft as a validated,
+self-contained one-target project clone. The browser follows the semantic manifest's module order
+and declaration ownership rather than inventing type-kind folders.
+
 ## Supported analysis and limits
 
 The planner supports packed storage type/bit-range analysis plus flat standard-library SoA and
