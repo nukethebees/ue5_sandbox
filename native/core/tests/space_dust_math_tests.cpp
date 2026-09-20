@@ -39,6 +39,8 @@ TEST(NativeCoreSpaceDustMath, UsesSparseMotionDrivenDefaults) {
     ml::space_dust::Tuning const tuning;
 
     EXPECT_EQ(tuning.particle_count, 96);
+    EXPECT_FLOAT_EQ(tuning.minimum_visible_speed, 100.0f);
+    EXPECT_FLOAT_EQ(tuning.full_visible_speed, 2000.0f);
     EXPECT_FLOAT_EQ(tuning.minimum_motion_pixels, 0.75f);
     EXPECT_FLOAT_EQ(tuning.full_motion_pixels, 4.0f);
 }
@@ -84,4 +86,22 @@ TEST(NativeCoreSpaceDustMath, ProducesStableSeededPositionsInsideTheUnitCube) {
     EXPECT_LT(first.Y, 1.0f);
     EXPECT_GE(first.Z, 0.0f);
     EXPECT_LT(first.Z, 1.0f);
+}
+
+TEST(NativeCoreSpaceDustMath, ProducesStableBoundedParticleVariation) {
+    auto const first{ml::space_dust::make_particle_variation(42u, 1337u)};
+    auto const repeated{ml::space_dust::make_particle_variation(42u, 1337u)};
+    auto const different_particle{ml::space_dust::make_particle_variation(43u, 1337u)};
+
+    EXPECT_EQ(first.size_scale, repeated.size_scale);
+    EXPECT_EQ(first.intensity_scale, repeated.intensity_scale);
+    EXPECT_NE(first.size_scale, different_particle.size_scale);
+
+    for (std::uint32_t instance_id{}; instance_id < 256u; ++instance_id) {
+        auto const variation{ml::space_dust::make_particle_variation(instance_id, 1337u)};
+        EXPECT_GE(variation.size_scale, 0.8f);
+        EXPECT_LE(variation.size_scale, 1.2f);
+        EXPECT_GE(variation.intensity_scale, 0.65f);
+        EXPECT_LE(variation.intensity_scale, 1.0f);
+    }
 }

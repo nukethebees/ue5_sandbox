@@ -7,11 +7,20 @@
   (usage particle-sprites)
 
   (let uv (texcoord 0))
+  (let shape_data (texcoord 1))
   (let vertex_colour (vertex-color))
-  (let radial_falloff
+  (let capsule_falloff
     (custom float
-      ((UV float2 uv))
-      :description "Soft radial dust-sprite falloff"
-      "float2 const centred = UV * 2.0 - 1.0; return pow(saturate(1.0 - dot(centred, centred)), 2.0);"))
+      ((UV float2 uv)
+       (AspectRatio float (swizzle shape_data r)))
+      :description "Soft directional capsule dust-sprite falloff"
+      "float const aspect = max(AspectRatio, 1.0);\n"
+      "float2 const capsule_point = float2((UV.x * 2.0 - 1.0) * aspect, UV.y * 2.0 - 1.0);\n"
+      "float const half_segment = max(aspect - 1.0, 0.0);\n"
+      "float2 const nearest = float2(clamp(capsule_point.x, -half_segment, half_segment), 0.0);\n"
+      "float const distance_to_spine = length(capsule_point - nearest);\n"
+      "float const soft_shape = pow(saturate(1.0 - distance_to_spine), 2.0);\n"
+      "float const head_weight = lerp(0.4, 1.0, smoothstep(0.0, 1.0, UV.x));\n"
+      "return soft_shape * head_weight;"))
 
-  (emissive (* (swizzle vertex_colour rgb) radial_falloff)))
+  (emissive (* (swizzle vertex_colour rgb) capsule_falloff)))

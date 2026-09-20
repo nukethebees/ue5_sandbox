@@ -36,10 +36,10 @@ struct SANDBOXSHADERS_API FSpaceDustSettings {
     FLinearColor colour{0.82f, 0.9f, 1.0f, 1.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Space Dust", meta = (ClampMin = "0.0"))
-    float minimum_visible_speed{1000.0f};
+    float minimum_visible_speed{100.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Space Dust", meta = (ClampMin = "0.0"))
-    float full_visible_speed{8000.0f};
+    float full_visible_speed{2000.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Space Dust", meta = (ClampMin = "0.0"))
     float streak_seconds{0.0125f};

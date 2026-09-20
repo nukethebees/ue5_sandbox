@@ -411,8 +411,8 @@ void ATestSpaceShip::apply_space_dust_debug_preset(FStringView const preset) {
         settings.enabled = true;
         settings.particle_count = 192;
         settings.brightness = 0.55f;
-        settings.minimum_visible_speed = 500.0f;
-        settings.full_visible_speed = 4000.0f;
+        settings.minimum_visible_speed = 0.0f;
+        settings.full_visible_speed = 1500.0f;
         settings.streak_seconds = 0.02f;
         settings.minimum_motion_pixels = 0.5f;
         settings.full_motion_pixels = 3.0f;
