@@ -3336,6 +3336,69 @@ TEST(EditableSchemaDocument, AuthorsAndRemovesFixedSoaLayouts) {
     EXPECT_FALSE(final_document.soa_schema(final_declaration)->fixed.has_value());
 }
 
+TEST(EditableSchemaDocument, SwitchesSoaViewTypesBetweenExplicitAndDerivedNames) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+
+    auto derived{*document.soa_schema(declaration)};
+    derived.view_name.reset();
+    derived.const_view_name.reset();
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(derived)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated.find(":view-name"), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find(":const-view-name"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the SoA declaration note"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the custom function note"), std::string::npos);
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.soa_schema(declaration)->view_name, "ExistingSoaView");
+    EXPECT_EQ(document.soa_schema(declaration)->const_view_name, "ExistingSoaConstView");
+    ASSERT_TRUE(document.redo().value());
+    EXPECT_FALSE(document.soa_schema(declaration)->view_name.has_value());
+    EXPECT_FALSE(document.soa_schema(declaration)->const_view_name.has_value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    EXPECT_FALSE(reloaded.soa_schema(reloaded_declaration)->view_name.has_value());
+    EXPECT_FALSE(reloaded.soa_schema(reloaded_declaration)->const_view_name.has_value());
+
+    auto explicit_names{*reloaded.soa_schema(reloaded_declaration)};
+    explicit_names.view_name = "ExistingSoaMutableRows";
+    explicit_names.const_view_name = "ExistingSoaRows";
+    applied = reloaded.apply(
+        ReplaceSoa{.declaration = reloaded_declaration, .schema = std::move(explicit_names)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    preview = reloaded.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_NE(preview->front().updated.find(":view-name ExistingSoaMutableRows"),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":const-view-name ExistingSoaRows"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the SoA declaration note"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the custom function note"), std::string::npos);
+    ASSERT_TRUE(reloaded.undo().value());
+    EXPECT_FALSE(reloaded.soa_schema(reloaded_declaration)->view_name.has_value());
+    ASSERT_TRUE(reloaded.redo().value());
+    EXPECT_EQ(reloaded.soa_schema(reloaded_declaration)->view_name, "ExistingSoaMutableRows");
+    saved = reloaded.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto final_document{files.load()};
+    auto const final_declaration{
+        declaration_id(final_document, "authored_soa", "ExistingSoa", "authored")};
+    EXPECT_EQ(final_document.soa_schema(final_declaration)->view_name, "ExistingSoaMutableRows");
+    EXPECT_EQ(final_document.soa_schema(final_declaration)->const_view_name, "ExistingSoaRows");
+}
+
 TEST(EditableSchemaDocument, SoaColumnEditPreservesOtherDeclarationMetadata) {
     TemporarySchema files;
     auto document{files.load()};

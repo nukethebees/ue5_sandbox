@@ -4735,6 +4735,14 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
     if (soa_editor_declaration_ != declaration || soa_editor_member_ != selected_field_) {
         soa_editor_declaration_ = declaration;
         soa_editor_member_ = selected_field_;
+        std::snprintf(soa_view_name_.data(),
+                      soa_view_name_.size(),
+                      "%s",
+                      schema->view_name.value_or("").c_str());
+        std::snprintf(soa_const_view_name_.data(),
+                      soa_const_view_name_.size(),
+                      "%s",
+                      schema->const_view_name.value_or("").c_str());
         soa_fixed_container_names_.clear();
         if (schema->fixed.has_value()) {
             std::snprintf(soa_fixed_storage_name_.data(),
@@ -5243,6 +5251,77 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                 ImGui::EndTable();
             }
         }
+    }
+
+    ImGui::SeparatorText("View types");
+    auto explicit_view_name{schema->view_name.has_value()};
+    if (ImGui::Checkbox("Explicit mutable view type", &explicit_view_name)) {
+        auto replacement{*schema};
+        replacement.view_name =
+            explicit_view_name ? std::optional{schema->name + "View"} : std::nullopt;
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            soa_editor_declaration_.reset();
+            return true;
+        }
+    }
+    if (schema->view_name.has_value()) {
+        ImGui::SetNextItemWidth(-1.0F);
+        auto const submitted{ImGui::InputText("Mutable view type",
+                                              soa_view_name_.data(),
+                                              soa_view_name_.size(),
+                                              ImGuiInputTextFlags_EnterReturnsTrue)};
+        if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+            if (soa_view_name_.front() == '\0') {
+                schema_edit_message_ = "Explicit mutable view type cannot be empty; disable it to "
+                                       "use the derived name.";
+                return false;
+            }
+            auto replacement{*schema};
+            replacement.view_name = soa_view_name_.data();
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+    } else {
+        ImGui::TextDisabled("Derived mutable view: %sView", schema->name.c_str());
+    }
+
+    auto explicit_const_view_name{schema->const_view_name.has_value()};
+    if (ImGui::Checkbox("Explicit const view type", &explicit_const_view_name)) {
+        auto replacement{*schema};
+        replacement.const_view_name =
+            explicit_const_view_name ? std::optional{schema->name + "ConstView"} : std::nullopt;
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            soa_editor_declaration_.reset();
+            return true;
+        }
+    }
+    if (schema->const_view_name.has_value()) {
+        ImGui::SetNextItemWidth(-1.0F);
+        auto const submitted{ImGui::InputText("Const view type",
+                                              soa_const_view_name_.data(),
+                                              soa_const_view_name_.size(),
+                                              ImGuiInputTextFlags_EnterReturnsTrue)};
+        if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+            if (soa_const_view_name_.front() == '\0') {
+                schema_edit_message_ =
+                    "Explicit const view type cannot be empty; disable it to use the derived name.";
+                return false;
+            }
+            auto replacement{*schema};
+            replacement.const_view_name = soa_const_view_name_.data();
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+    } else {
+        ImGui::TextDisabled("Derived const view: %sConstView", schema->name.c_str());
     }
 
     ImGui::SeparatorText("Fixed layout");

@@ -288,7 +288,8 @@ eligible array fields without allowing the final field to be removed. Selected m
 an inline ordered dimension table with add, duplicate, delete, button reorder, and direct name/extent
 editing through normal semantic commands. Fixed layouts can be enabled or disabled inline with a
 collision-free storage type; storage and ordered container names support direct editing plus
-add/duplicate/delete/reorder through the same document commands.
+add/duplicate/delete/reorder through the same document commands. Mutable and const view type names
+independently switch between visible derived defaults and directly editable explicit names.
 
 - Create standard-library SoA declarations.
 - Add, remove, duplicate, and reorder columns.

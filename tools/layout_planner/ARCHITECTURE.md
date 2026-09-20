@@ -89,6 +89,13 @@ External member types, nested schemas, and allocators remain references to their
 dependencies; arbitrary custom function bodies remain opaque source text rather than a second
 planner-owned schema.
 
+The SoA inspector treats view names as optional source policy rather than mandatory C++ facts.
+Clearing an explicit mutable or const view name restores the schema-derived name; enabling the
+explicit form initially records that same effective identity, after which ordinary inline editing
+can select a distinct generated name. Both transitions use `ReplaceSoa` and the declaration-local
+property patcher, so they participate in shared validation/history without rerendering unrelated
+members or custom functions.
+
 Deletion is likewise enforced by the shared editable document rather than only by the frontend.
 Every typed delete rejects a declaration with resolved reverse users before mutating the manifest,
 or one bound to a registered alias, then validates and re-resolves the remaining candidate graph.
