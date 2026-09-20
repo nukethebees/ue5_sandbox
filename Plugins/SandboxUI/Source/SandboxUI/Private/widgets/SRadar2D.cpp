@@ -9,41 +9,20 @@ FRadar2DContactStyle::FRadar2DContactStyle()
 FRadar2DPresentation::FRadar2DPresentation()
     : background_brush{FSlateColorBrush{FLinearColor::White}} {}
 
-auto make_radar_2d_layout(FVector2f const widget_size, float const range) -> FRadar2DLayout {
-    auto const width{FMath::Max(widget_size.X, 0.0f)};
-    auto const height{FMath::Max(widget_size.Y, 0.0f)};
-    auto const side{FMath::Min(width, height)};
-    auto const origin{FVector2f{(width - side) * 0.5f, (height - side) * 0.5f}};
-    auto const size{FVector2f{side, side}};
-    auto const centre{origin + size * 0.5f};
-    auto const valid_range{FMath::IsFinite(range) && range > 0.0f};
-    auto const pixels_per_unit{valid_range ? side / (range * 2.0f) : 0.0f};
-    return {.origin = origin, .size = size, .centre = centre, .pixels_per_unit = pixels_per_unit};
-}
-
-auto radar_to_local(FVector2f const radar_position, FRadar2DLayout const& layout) -> FVector2f {
-    return layout.centre + FVector2f{radar_position.X, -radar_position.Y} * layout.pixels_per_unit;
-}
-
 void SRadar2D::Construct(FArguments const& args) {
     presentation_ = args._Presentation;
     if (!is_valid_presentation(presentation_)) {
         presentation_ = FRadar2DPresentation{};
     }
-    if (!set_range(args._Range)) {
-        range_ = 1.0f;
+    if (FMath::IsFinite(args._Range) && args._Range > 0.0f && args._Range != data_.range()) {
+        static_cast<void>(data_.set_range(args._Range));
     }
 }
 
 bool SRadar2D::set_range(float const range) {
-    if (!FMath::IsFinite(range) || range <= 0.0f) {
+    if (!data_.set_range(range)) {
         return false;
     }
-    if (range_ == range) {
-        return false;
-    }
-
-    range_ = range;
     Invalidate(EInvalidateWidgetReason::Paint);
     return true;
 }
@@ -59,16 +38,28 @@ bool SRadar2D::set_presentation(FRadar2DPresentation presentation) {
 }
 
 bool SRadar2D::set_buckets(TArray<FRadar2DStyleBucket> buckets) {
+    std::vector<ml::ui::radar_2d::Positions> positions;
+    positions.reserve(static_cast<std::size_t>(buckets.Num()));
     for (auto const& bucket : buckets) {
         if (!is_valid_style(bucket.style)) {
             return false;
         }
-        if (!has_valid_array_sizes(bucket.positions)) {
+        if (!bucket.positions.is_valid()) {
             return false;
         }
     }
 
-    buckets_ = MoveTemp(buckets);
+    for (auto& bucket : buckets) {
+        positions.push_back(std::move(bucket.positions));
+    }
+
+    if (!data_.set_buckets(std::move(positions))) {
+        return false;
+    }
+    styles_.Reset(buckets.Num());
+    for (auto& bucket : buckets) {
+        styles_.Add(MoveTemp(bucket.style));
+    }
     Invalidate(EInvalidateWidgetReason::Paint);
     return true;
 }
@@ -78,67 +69,59 @@ auto SRadar2D::add_style(FRadar2DContactStyle style) -> int32 {
         return INDEX_NONE;
     }
 
-    auto const style_index{buckets_.Add({.style = MoveTemp(style)})};
+    auto const style_index{data_.add_bucket()};
+    styles_.Add(MoveTemp(style));
     Invalidate(EInvalidateWidgetReason::Paint);
     return style_index;
 }
 
 bool SRadar2D::set_style(int32 const style_index, FRadar2DContactStyle style) {
-    if (!buckets_.IsValidIndex(style_index)) {
+    if (!styles_.IsValidIndex(style_index)) {
         return false;
     }
     if (!is_valid_style(style)) {
         return false;
     }
 
-    buckets_[style_index].style = MoveTemp(style);
+    styles_[style_index] = MoveTemp(style);
     Invalidate(EInvalidateWidgetReason::Paint);
     return true;
 }
 
-bool SRadar2D::set_positions(int32 const style_index, FVectors2f positions) {
-    if (!buckets_.IsValidIndex(style_index)) {
+bool SRadar2D::set_positions(int32 const style_index, ml::ui::radar_2d::Positions positions) {
+    if (!data_.set_positions(style_index, MoveTemp(positions))) {
         return false;
     }
-    if (!has_valid_array_sizes(positions)) {
-        return false;
-    }
-
-    buckets_[style_index].positions = MoveTemp(positions);
     Invalidate(EInvalidateWidgetReason::Paint);
     return true;
 }
 
 bool SRadar2D::clear_positions(int32 const style_index) {
-    if (!buckets_.IsValidIndex(style_index)) {
+    if (!data_.clear_positions(style_index)) {
         return false;
     }
-    if (buckets_[style_index].positions.is_empty()) {
-        return false;
-    }
-
-    buckets_[style_index].positions.reset();
     Invalidate(EInvalidateWidgetReason::Paint);
     return true;
 }
 
 void SRadar2D::clear_positions() {
     bool changed{false};
-    for (auto& bucket : buckets_) {
-        changed |= !bucket.positions.is_empty();
-        bucket.positions.reset();
+    for (auto const& positions : data_.buckets()) {
+        changed |= !positions.empty();
     }
     if (changed) {
+        data_.clear_positions();
         Invalidate(EInvalidateWidgetReason::Paint);
     }
 }
 
 void SRadar2D::clear_styles() {
-    if (buckets_.IsEmpty()) {
+    if (styles_.IsEmpty()) {
         return;
     }
 
-    buckets_.Reset();
+    styles_.Reset();
+    data_.clear_buckets();
     Invalidate(EInvalidateWidgetReason::Paint);
 }
 
@@ -154,16 +137,18 @@ int32 SRadar2D::OnPaint(FPaintArgs const&,
                         FWidgetStyle const& widget_style,
                         bool const parent_enabled) const {
     auto const widget_size{FVector2f{allotted_geometry.GetLocalSize()}};
-    auto const layout{make_radar_2d_layout(widget_size, range_)};
-    if (layout.size.X <= 0.0f) {
+    auto const layout{ml::ui::radar_2d::make_layout({widget_size.X, widget_size.Y}, data_.range())};
+    if (layout.size.x <= 0.0f) {
         return layer_id;
     }
+    auto const layout_origin{FVector2f{layout.origin.x, layout.origin.y}};
+    auto const layout_size{FVector2f{layout.size.x, layout.size.y}};
 
     auto const enabled{ShouldBeEnabled(parent_enabled)};
     auto const draw_effect{enabled ? ESlateDrawEffect::None : ESlateDrawEffect::DisabledEffect};
     auto const inherited_tint{widget_style.GetColorAndOpacityTint()};
     auto const radar_geometry{
-        allotted_geometry.ToPaintGeometry(layout.size, FSlateLayoutTransform{layout.origin})};
+        allotted_geometry.ToPaintGeometry(layout_size, FSlateLayoutTransform{layout_origin})};
     FSlateDrawElement::MakeBox(out_draw_elements,
                                layer_id,
                                radar_geometry,
@@ -172,25 +157,29 @@ int32 SRadar2D::OnPaint(FPaintArgs const&,
                                presentation_.background_tint * inherited_tint);
 
     auto const contact_layer{layer_id + 1};
-    auto const radar_max{layout.origin + layout.size};
+    auto const radar_max{layout_origin + layout_size};
     out_draw_elements.PushClip(FSlateClippingZone{radar_geometry});
-    for (auto const& bucket : buckets_) {
-        auto const contact_count{bucket.positions.num()};
+    auto const positions_buckets{data_.buckets()};
+    auto const bucket_count{static_cast<int32>(positions_buckets.size())};
+    for (int32 bucket_index{}; bucket_index < bucket_count; ++bucket_index) {
+        auto const& positions{positions_buckets[bucket_index]};
+        auto const contact_count{static_cast<int32>(positions.size())};
         if (contact_count == 0) {
             continue;
         }
 
-        auto const& style{bucket.style};
+        auto const& style{styles_[bucket_index]};
         auto const half_size{style.rendered_size * 0.5f};
         auto const tint{style.tint * inherited_tint};
-        auto const* const xs{bucket.positions.xs.GetData()};
-        auto const* const ys{bucket.positions.ys.GetData()};
+        auto const* const xs{positions.xs.data()};
+        auto const* const ys{positions.ys.data()};
         for (int32 contact_index{0}; contact_index < contact_count; ++contact_index) {
-            auto const local_centre{
-                radar_to_local(FVector2f{xs[contact_index], ys[contact_index]}, layout)};
+            auto const native_centre{
+                ml::ui::radar_2d::to_local({xs[contact_index], ys[contact_index]}, layout)};
+            auto const local_centre{FVector2f{native_centre.x, native_centre.y}};
             auto const top_left{local_centre - half_size};
             auto const bottom_right{local_centre + half_size};
-            if (bottom_right.X <= layout.origin.X || bottom_right.Y <= layout.origin.Y ||
+            if (bottom_right.X <= layout_origin.X || bottom_right.Y <= layout_origin.Y ||
                 top_left.X >= radar_max.X || top_left.Y >= radar_max.Y) {
                 continue;
             }
@@ -211,8 +200,8 @@ int32 SRadar2D::OnPaint(FPaintArgs const&,
 
 void SRadar2D::AddReferencedObjects(FReferenceCollector& collector) {
     presentation_.background_brush.AddReferencedObjects(collector);
-    for (auto& bucket : buckets_) {
-        bucket.style.brush.AddReferencedObjects(collector);
+    for (auto& style : styles_) {
+        style.brush.AddReferencedObjects(collector);
     }
 }
 
@@ -221,16 +210,11 @@ FString SRadar2D::GetReferencerName() const {
 }
 
 bool SRadar2D::is_valid_style(FRadar2DContactStyle const& style) {
-    return FMath::IsFinite(style.rendered_size.X) && FMath::IsFinite(style.rendered_size.Y) &&
-           style.rendered_size.X > 0.0f && style.rendered_size.Y > 0.0f;
+    return ml::ui::radar_2d::is_valid_extent({style.rendered_size.X, style.rendered_size.Y});
 }
 
 bool SRadar2D::is_valid_presentation(FRadar2DPresentation const& presentation) {
     return FMath::IsFinite(presentation.desired_size.X) &&
            FMath::IsFinite(presentation.desired_size.Y) && presentation.desired_size.X >= 0.0f &&
            presentation.desired_size.Y >= 0.0f;
-}
-
-bool SRadar2D::has_valid_array_sizes(FVectors2f const& positions) {
-    return positions.xs.Num() == positions.ys.Num();
 }

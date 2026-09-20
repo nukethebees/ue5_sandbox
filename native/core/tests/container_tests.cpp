@@ -80,14 +80,25 @@ TEST(NativeCoreFrameMemoryResource, RecordsOverflowWithoutClaimingMemory) {
 TEST(NativeCoreMultiBuffer, CyclesPreviousCurrentAndNextRoles) {
     ml::MultiBuffer<int, 3> buffers{{10, 20, 30}};
 
+    auto* const first{&buffers.current()};
+    auto* const second{&buffers.next()};
     EXPECT_EQ(buffers.previous(), 10);
     EXPECT_EQ(buffers.current(), 10);
     EXPECT_EQ(buffers.next(), 20);
 
     buffers.cycle();
+    auto* const third{&buffers.next()};
     EXPECT_EQ(buffers.previous(), 10);
     EXPECT_EQ(buffers.current(), 20);
     EXPECT_EQ(buffers.next(), 30);
+
+    buffers.cycle();
+    EXPECT_EQ(buffers.current(), 30);
+    EXPECT_EQ(buffers.next(), 10);
+    EXPECT_EQ(&buffers.next(), first);
+    EXPECT_NE(first, second);
+    EXPECT_NE(first, third);
+    EXPECT_NE(second, third);
 }
 
 TEST(NativeCorePermutation, AppliesCyclesAndRestoresIndices) {

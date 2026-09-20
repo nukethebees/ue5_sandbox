@@ -10,6 +10,7 @@
 #include "Templates/SharedPointer.h"
 
 #include <cstddef>
+#include <sandbox/core/ui/entity_overlay.h>
 #include <type_traits>
 
 enum class EEntityOverlayObjectiveRole : uint32 {
@@ -39,7 +40,8 @@ struct SANDBOXUI_API FEntityOverlaySourceView {
     TConstArrayView<float> world_radii;
 
     [[nodiscard]] auto is_valid() const noexcept -> bool {
-        return positions.Num() == health_values.Num() && positions.Num() == world_radii.Num();
+        return ml::ui::entity_overlay::source_sizes_match(
+            positions.Num(), health_values.Num(), world_radii.Num());
     }
 };
 
@@ -100,7 +102,7 @@ class FEntityOverlayCollector {
     [[nodiscard]] SANDBOXUI_API auto append(FEntityOverlaySourceView source) -> int32;
 
     [[nodiscard]] auto invalid_health_count() const noexcept -> int32 {
-        return invalid_health_count_;
+        return collector_.invalid_health_count();
     }
   private:
     [[nodiscard]] auto try_add_impl(FVector3f position,
@@ -109,9 +111,6 @@ class FEntityOverlayCollector {
                                     uint32 display_data,
                                     bool bypass_range) -> bool;
 
-    FVector3f origin_{FVector3f::ZeroVector};
-    float maximum_range_squared_{0.0f};
+    ml::ui::entity_overlay::Collector collector_;
     TArray<FEntityOverlayInstance>* output_instances_{nullptr};
-    int32 first_objective_index_{INDEX_NONE};
-    int32 invalid_health_count_{0};
 };

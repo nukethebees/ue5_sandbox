@@ -8,15 +8,18 @@
 namespace {
 auto make_slate_grid(TConstArrayView<float> const values, int32 const resolution) -> FHeatmapGrid {
     FHeatmapGrid grid{.columns = resolution, .rows = resolution};
-    grid.values.Append(values.GetData(), values.Num());
+    grid.values.reserve(static_cast<std::size_t>(values.Num()));
+    for (auto const value : values) {
+        grid.values.push_back(value);
+    }
     return grid;
 }
 
 void prepare_slate_heatmap(SHeatmap2D const& widget,
-                           TConstArrayView<FLinearColor> const color_lut) {
-    auto const cells{build_heatmap_cell_geometry(
-        widget.get_grid(), widget.get_value_range(), color_lut, FVector2f{512.0f, 512.0f})};
-    [[maybe_unused]] auto const batches{build_heatmap_mesh_batches(cells, FVector2f::ZeroVector)};
+                           std::span<ml::ui::Color4f const> const color_lut) {
+    auto const cells{ml::ui::heatmap_2d::build_cell_geometry(
+        widget.get_grid(), widget.get_value_range(), color_lut, {512.0f, 512.0f})};
+    [[maybe_unused]] auto const batches{ml::ui::heatmap_2d::build_mesh_batches(cells, {})};
 }
 }
 
@@ -31,7 +34,13 @@ void benchmark_slate_heatmap(TConstArrayView<float> const values,
     style.chart_padding = FMargin{0.0f};
     style.show_axes = false;
     auto widget{SlateGenerated::HeatmapBenchmark::BuildHeatmap(style)};
-    auto const color_lut{build_heatmap_color_lut(style.color_stops)};
+    std::vector<ml::ui::heatmap_2d::ColorStop> color_stops;
+    color_stops.reserve(static_cast<std::size_t>(style.color_stops.Num()));
+    for (auto const& stop : style.color_stops) {
+        color_stops.push_back(
+            {stop.position, {stop.color.R, stop.color.G, stop.color.B, stop.color.A}});
+    }
+    auto const color_lut{ml::ui::heatmap_2d::build_color_lut(color_stops)};
 
     for (int32 iteration{0}; iteration < warmup_iterations; ++iteration) {
         check(widget->set_grid(make_slate_grid(values, resolution)));

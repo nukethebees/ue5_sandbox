@@ -36,9 +36,6 @@ struct SANDBOXUI_API FGraphPlotStyle {
     FLinearColor crosshair_color{0.85f, 0.85f, 0.9f, 0.7f};
 };
 
-SANDBOXUI_API auto nearest_graph_x(TConstArrayView<FGraphSeries> series, double x)
-    -> TOptional<double>;
-
 class SANDBOXUI_API SGraphPlot : public SLeafWidget {
   public:
     SLATE_BEGIN_ARGS(SGraphPlot) {}
@@ -79,8 +76,6 @@ class SANDBOXUI_API SGraphPlot : public SLeafWidget {
     void rebuild_ticks() const;
     void refresh_cache_series();
     static bool is_valid_style(FGraphPlotStyle const& style);
-    static void build_ticks(
-        FGraphRange range, float extent, int32 target_count, bool invert, TArray<FTick>& out_ticks);
 
     TArray<FGraphSeries> series_;
     mutable FGraphRenderCache cache_;

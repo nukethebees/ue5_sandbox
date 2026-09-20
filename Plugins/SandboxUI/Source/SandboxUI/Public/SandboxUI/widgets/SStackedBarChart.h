@@ -9,6 +9,8 @@
 #include "Math/Vector2D.h"
 #include "Widgets/SLeafWidget.h"
 
+#include <sandbox/core/ui/stacked_bar_chart.h>
+
 struct SANDBOXUI_API FStackedBarSegment {
     float value{0.0f};
     FLinearColor color{FLinearColor::White};
@@ -32,27 +34,6 @@ struct SANDBOXUI_API FStackedBarChartStyle {
     float label_area_height{20.0f};
 };
 
-struct SANDBOXUI_API FStackedBarSegmentGeometry {
-    int32 bar_index{INDEX_NONE};
-    int32 segment_index{INDEX_NONE};
-    FVector2f position{FVector2f::ZeroVector};
-    FVector2f size{FVector2f::ZeroVector};
-    FLinearColor color{FLinearColor::White};
-};
-
-struct SANDBOXUI_API FStackedBarChartGeometry {
-    TArray<FStackedBarSegmentGeometry> segments;
-    float maximum_total{0.0f};
-    float slot_width{0.0f};
-    float bar_width{0.0f};
-};
-
-SANDBOXUI_API auto stacked_bar_total(FStackedBar const& bar) -> float;
-SANDBOXUI_API auto maximum_stacked_bar_total(TConstArrayView<FStackedBar> bars) -> float;
-SANDBOXUI_API auto build_stacked_bar_chart_geometry(TConstArrayView<FStackedBar> bars,
-                                                    FVector2f plot_size,
-                                                    float bar_gap) -> FStackedBarChartGeometry;
-
 class SANDBOXUI_API SStackedBarChart : public SLeafWidget {
   public:
     SLATE_BEGIN_ARGS(SStackedBarChart) {}
@@ -65,7 +46,6 @@ class SANDBOXUI_API SStackedBarChart : public SLeafWidget {
     void clear_bars();
     [[nodiscard]] bool set_style(FStackedBarChartStyle style);
 
-    auto get_bars() const noexcept -> TConstArrayView<FStackedBar> { return bars_; }
     auto get_style() const noexcept -> FStackedBarChartStyle const& { return style_; }
 
     FVector2D ComputeDesiredSize(float layout_scale_multiplier) const override;
@@ -79,6 +59,8 @@ class SANDBOXUI_API SStackedBarChart : public SLeafWidget {
   private:
     static bool is_valid_style(FStackedBarChartStyle const& style);
 
-    TArray<FStackedBar> bars_;
+    ml::ui::stacked_bar_chart::Data data_;
+    TArray<FText> labels_;
+    TArray<TArray<FLinearColor>> segment_colors_;
     FStackedBarChartStyle style_;
 };
