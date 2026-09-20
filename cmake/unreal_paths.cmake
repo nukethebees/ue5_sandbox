@@ -30,7 +30,9 @@ endfunction()
 
 function(sandbox_configure_unreal_engine_paths prefix engine_root editor_name editor_cmd_name)
   cmake_path(APPEND engine_root Engine Build BatchFiles RunUBT.bat
-    OUTPUT_VARIABLE build_script)
+    OUTPUT_VARIABLE run_ubt_script)
+  cmake_path(APPEND engine_root Engine Build BatchFiles Build.bat
+    OUTPUT_VARIABLE build_bat_script)
   cmake_path(APPEND engine_root Engine Build BatchFiles RunUAT.bat
     OUTPUT_VARIABLE run_uat_script)
   cmake_path(APPEND engine_root Engine Build BatchFiles GenerateProjectFiles.bat
@@ -44,9 +46,29 @@ function(sandbox_configure_unreal_engine_paths prefix engine_root editor_name ed
   cmake_path(APPEND engine_root Engine Binaries Win64 UnrealPak.exe
     OUTPUT_VARIABLE unreal_pak_executable)
 
+  if(EXISTS "${run_ubt_script}")
+    set(build_script "${run_ubt_script}")
+  elseif(EXISTS "${build_bat_script}")
+    set(build_script "${build_bat_script}")
+  else()
+    set(build_script "${run_ubt_script}")
+  endif()
+
+  if(EXISTS "${generate_project_files_script}")
+    set(project_files_script "${generate_project_files_script}")
+    set(project_files_arguments)
+  elseif(EXISTS "${build_bat_script}")
+    set(project_files_script "${build_bat_script}")
+    set(project_files_arguments -ProjectFiles)
+  else()
+    set(project_files_script "${generate_project_files_script}")
+    set(project_files_arguments)
+  endif()
+
   set(${prefix}_BUILD_SCRIPT "${build_script}" PARENT_SCOPE)
   set(${prefix}_RUN_UAT_SCRIPT "${run_uat_script}" PARENT_SCOPE)
-  set(${prefix}_GENERATE_PROJECT_FILES_SCRIPT "${generate_project_files_script}" PARENT_SCOPE)
+  set(${prefix}_GENERATE_PROJECT_FILES_SCRIPT "${project_files_script}" PARENT_SCOPE)
+  set(${prefix}_GENERATE_PROJECT_FILES_ARGUMENTS "${project_files_arguments}" PARENT_SCOPE)
   set(${prefix}_EDITOR_EXE "${editor_executable}" PARENT_SCOPE)
   set(${prefix}_EDITOR_CMD_EXE "${editor_cmd_executable}" PARENT_SCOPE)
   set(${prefix}_DEVELOPMENT_EDITOR_CMD_EXE "${development_editor_cmd_executable}" PARENT_SCOPE)

@@ -101,7 +101,7 @@ set(CACHE{SANDBOX_SPACE_GAME_TEST_TIME_SCALE}
 if(NOT CMAKE_HOST_WIN32)
   message(FATAL_ERROR
     "This initial CMake build layer supports Windows hosts only. "
-    "It invokes Unreal's Engine/Build/BatchFiles/RunUBT.bat script.")
+    "It invokes Unreal's Engine/Build/BatchFiles build scripts.")
 endif()
 
 find_program(POWERSHELL_EXECUTABLE NAMES pwsh powershell REQUIRED)
@@ -126,7 +126,7 @@ sandbox_configure_unreal_engine_paths(UE "${UE_ROOT_ABSOLUTE}"
 if(NOT EXISTS "${UE_BUILD_SCRIPT}")
   message(FATAL_ERROR
     "UE_ROOT='${UE_ROOT_ABSOLUTE}' is not a usable Unreal Engine installation. "
-    "Expected to find '${UE_BUILD_SCRIPT}'.")
+    "Expected to find Engine/Build/BatchFiles/RunUBT.bat or Build.bat.")
 endif()
 
 if(NOT EXISTS "${UE_RUN_UAT_SCRIPT}")
@@ -138,7 +138,7 @@ endif()
 if(NOT EXISTS "${UE_GENERATE_PROJECT_FILES_SCRIPT}")
   message(FATAL_ERROR
     "UE_ROOT='${UE_ROOT_ABSOLUTE}' is not a usable Unreal Engine installation. "
-    "Expected to find '${UE_GENERATE_PROJECT_FILES_SCRIPT}'.")
+    "Expected to find Engine/Build/BatchFiles/GenerateProjectFiles.bat or Build.bat.")
 endif()
 
 if(NOT EXISTS "${UE_EDITOR_EXE}")

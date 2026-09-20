@@ -9,6 +9,7 @@ add_custom_target(generate-project-files
     "${CMAKE_COMMAND}" -E env
     "SANDBOX_NATIVE_TOOLCHAIN=${SANDBOX_NATIVE_TOOLCHAIN}"
     "${UE_GENERATE_PROJECT_FILES_SCRIPT}"
+    ${UE_GENERATE_PROJECT_FILES_ARGUMENTS}
     "-Project=${SANDBOX_UPROJECT}"
     -Game
     -WaitMutex
