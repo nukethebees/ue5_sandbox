@@ -1,5 +1,7 @@
 #include <material_gen/MaterialFrontend.h>
 
+#include "material_type_rules.h"
+
 #include <codegen/sexpr/reader.h>
 
 #include <algorithm>

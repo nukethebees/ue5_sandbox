@@ -1,5 +1,6 @@
 #include "ioj/sim/collision_grid.h"
 #include "ioj/sim/spatial.h"
+#include "ioj/sim/trace_hits.h"
 
 #include <gtest/gtest.h>
 
@@ -43,7 +44,36 @@ TEST(CollisionGrid, ValidatesDimensionsCellSizeAndCellCount) {
     EXPECT_FALSE(collision::is_configured({{0, 3, 4}, Vector3f{{5000.0f, 5000.0f, 20000.0f}}}));
     EXPECT_FALSE(collision::is_configured({{2, 3, 4}, Vector3f{{5000.0f, 0.0f, 20000.0f}}}));
     EXPECT_FALSE(collision::is_configured(
+        {{2, 3, 4}, Vector3f{{std::numeric_limits<float>::quiet_NaN(), 1.0f, 1.0f}}}));
+    EXPECT_FALSE(collision::is_configured(
+        {{2, 3, 4}, Vector3f{{std::numeric_limits<float>::infinity(), 1.0f, 1.0f}}}));
+    EXPECT_FALSE(collision::is_configured(
+        {{2, 3, 4}, Vector3f{{-std::numeric_limits<float>::infinity(), 1.0f, 1.0f}}}));
+    EXPECT_FALSE(collision::is_configured(
         {{std::numeric_limits<int>::max(), 2, 1}, Vector3f{{1.0f, 1.0f, 1.0f}}}));
+}
+
+TEST(NativeSoa, SwapRemovalKeepsTraceHitColumnsAligned) {
+    TraceHits hits;
+    for (std::int32_t index{}; index < 6; ++index) {
+        hits.add(Vector3f{{static_cast<float>(index),
+                           static_cast<float>(index + 10),
+                           static_cast<float>(index + 20)}},
+                 EntityUniqueId{static_cast<std::uint32_t>(index + 100)},
+                 index + 200,
+                 static_cast<std::uint8_t>(index + 1));
+    }
+
+    hits.remove_at_swap(2, 3);
+
+    ASSERT_EQ(hits.num(), 3);
+    auto const columns{hits.get_const_view()};
+    EXPECT_EQ(columns.locations.xs[0], 0.0f);
+    EXPECT_EQ(columns.locations.xs[1], 1.0f);
+    EXPECT_EQ(columns.locations.xs[2], 5.0f);
+    EXPECT_EQ(columns.entities[2], EntityUniqueId{105});
+    EXPECT_EQ(columns.static_geometry_indices[2], 205);
+    EXPECT_EQ(columns.hits[2], 6);
 }
 
 TEST(CollisionGrid, CalculatesDimensionsFromWorldAndCellSizes) {

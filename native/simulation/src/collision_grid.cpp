@@ -102,8 +102,9 @@ auto CellCoord::operator[](std::size_t const index) const noexcept -> int {
 
 auto is_configured(GridGeometry const geometry) noexcept -> bool {
     if (geometry.dimensions.x <= 0 || geometry.dimensions.y <= 0 || geometry.dimensions.z <= 0 ||
-        geometry.cell_dimensions.X <= 0.0f || geometry.cell_dimensions.Y <= 0.0f ||
-        geometry.cell_dimensions.Z <= 0.0f) {
+        !std::isfinite(geometry.cell_dimensions.X) || !std::isfinite(geometry.cell_dimensions.Y) ||
+        !std::isfinite(geometry.cell_dimensions.Z) || geometry.cell_dimensions.X <= 0.0f ||
+        geometry.cell_dimensions.Y <= 0.0f || geometry.cell_dimensions.Z <= 0.0f) {
         return false;
     }
 

@@ -1,5 +1,7 @@
 #include <material_gen/MaterialIR.h>
 
+#include "material_type_rules.h"
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>

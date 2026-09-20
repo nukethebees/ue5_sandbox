@@ -2,6 +2,8 @@
 
 #include <gtest/gtest.h>
 
+#include <codegen/cpp_string.h>
+
 #include <type_traits>
 
 namespace codegen {
@@ -201,6 +203,11 @@ TEST(Expr, EscapesStringContentsWithoutConsumingFollowingDigits) {
                                                      5})),
               "\"\\0007\\001f\\177\"");
     EXPECT_EQ(render(string_literal("caf\xc3\xa9")), "\"caf\xc3\xa9\"");
+    EXPECT_EQ(escape_cpp_string(std::string_view{"\0"
+                                                 "7\001"
+                                                 "f\177",
+                                                 5}),
+              "\\0007\\001f\\177");
 }
 
 TEST(Expr, CollectsDependenciesFromEveryOperandAndType) {

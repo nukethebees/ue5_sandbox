@@ -139,25 +139,7 @@ auto literal(std::string spelling) -> Expr {
     return LiteralExpr{std::move(spelling)};
 }
 auto string_literal(std::string_view const value) -> Expr {
-    std::string result{"\""};
-    for (auto const character : value) {
-        if (append_cpp_escaped_character(result, character)) {
-            continue;
-        }
-
-        auto const byte{static_cast<unsigned char>(character)};
-        if (byte < 32 || byte == 127) {
-            // Three octal digits cannot consume a following digit in the string.
-            result += '\\';
-            result += static_cast<char>('0' + ((byte >> 6) & 7));
-            result += static_cast<char>('0' + ((byte >> 3) & 7));
-            result += static_cast<char>('0' + (byte & 7));
-        } else {
-            result += character;
-        }
-    }
-    result += '"';
-    return literal(std::move(result));
+    return literal('"' + escape_cpp_string(value) + '"');
 }
 auto call(Expr callee, std::vector<Expr> arguments) -> Expr {
     return CallExpr{std::move(callee), std::move(arguments)};
