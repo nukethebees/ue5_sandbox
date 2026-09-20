@@ -410,9 +410,9 @@ void LevelSim::advance(time_type const dt) {
 
             // Track player movement
             if (player_active) {
-                auto const before{player_ship_simulation_->get_movement_state().transform};
+                auto const before{player_ship_simulation_->get_physical_state().transform};
                 player_ship_phase_->apply_movement();
-                auto const after{player_ship_simulation_->get_movement_state().transform};
+                auto const after{player_ship_simulation_->get_physical_state().transform};
                 auto const before_location{to_float(before.location)};
                 auto const after_location{to_float(after.location)};
                 auto const before_rotation{to_float(before.rotator())};
@@ -562,8 +562,8 @@ void LevelSim::rebuild_agent_indexes() {
         auto const& player{*player_ship_simulation_};
         agent_indexes_.bind(EntityType::PlayerShip, {&player.unique_entity_id, 1});
         if (player.is_alive()) {
-            player_view = {&player.get_movement_state().transform,
-                           &player.get_movement_state().velocity,
+            player_view = {&player.get_physical_state().transform,
+                           &player.get_physical_state().velocity,
                            player.get_health_index(),
                            &player.team,
                            player.unique_entity_id};

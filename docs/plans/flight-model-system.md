@@ -1,7 +1,6 @@
 # Runtime Flight Model System
 
-Status: implementation in progress; Milestone 1 native configuration scaffold is complete and
-Milestone 2 response/state work is next.
+Status: implementation in progress; Milestones 1-2 are complete and the generic evaluator is next.
 
 This file is both the implementation specification and the persistent progress record for the
 player flight-model redesign. Update the progress ledger and any decisions changed by repository
@@ -677,7 +676,9 @@ Skater, Gunship, transitions, and Unreal command routing have their replacement 
 - [x] Target architecture and migration decisions recorded in this file.
 - [x] Milestone 1: characterize and scaffold (runtime config, four preset factories, loadout,
   validation, and focused tests pass; existing response/power tests retain behavioral coverage).
-- [ ] Milestone 2: response and state separation.
+- [x] Milestone 2: response and state separation (runtime Direct/RateLimited/SecondOrder scalar
+  response added; physical, controller, resource, and presentation state split with legacy
+  behavior retained and focused native tests passing).
 - [ ] Milestone 3: generic evaluator and Starfox.
 - [ ] Milestone 4: Fighter and Skater.
 - [ ] Milestone 5: Gunship and transitions.

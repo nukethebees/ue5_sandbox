@@ -138,13 +138,13 @@ TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
 
     auto const& player{*simulation.get_player_ship_simulation()};
 
-    EXPECT_DOUBLE_EQ(player.get_movement_state().transform.location.y, 0.0);
+    EXPECT_DOUBLE_EQ(player.get_physical_state().transform.location.y, 0.0);
     EXPECT_EQ(simulation.get_lasers().get_num_instances(), 0);
 
     simulation.start();
     simulation.advance(simulation.get_clock().get_tick_period());
 
-    EXPECT_NEAR(player.get_movement_state().transform.location.y, 100.0, 0.001);
+    EXPECT_NEAR(player.get_physical_state().transform.location.y, 100.0, 0.001);
 
     EXPECT_EQ(simulation.get_read_view().lasers.entities.num(), 0);
     simulation.advance(simulation.get_clock().get_tick_period());
@@ -282,7 +282,7 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndQueriesAdvanceAfterw
 
     EXPECT_EQ(player->get_health().health, 75);
     EXPECT_EQ(laser_sim.get_num_instances(), 0);
-    EXPECT_NEAR(player->get_movement_state().transform.location.y, 200.0, 0.001);
+    EXPECT_NEAR(player->get_physical_state().transform.location.y, 200.0, 0.001);
 
     auto const& queries{simulation.get_spatial_query_manager()};
 

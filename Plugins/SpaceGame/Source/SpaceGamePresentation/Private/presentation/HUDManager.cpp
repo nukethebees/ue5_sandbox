@@ -784,7 +784,7 @@ void FHUDManager::update_radar(FRegisteredHud& registration) {
         collect_radar_instances(agents_->display_batches(),
                                 entity_overlay_objective_roles_,
                                 radar_contact_colours_,
-                                ml::to_unreal(player_ship->get_movement_state().transform),
+                                ml::to_unreal(player_ship->get_physical_state().transform),
                                 player_ship->unique_entity_id,
                                 player_ship->lock_on_target,
                                 ml::to_unreal(player_ship->team),
@@ -927,7 +927,7 @@ bool FHUDManager::collect_player_status_data() {
         auto const player_health{player_ship->get_health()};
         next_data.health = {player_health.health, player_health.max_health};
         next_data.speed = player_ship->get_speed();
-        next_data.target_speed = player_ship->get_movement_state().target_speed;
+        next_data.target_speed = player_ship->get_controller_state().target_speed;
         next_data.energy = player_ship->get_energy();
         next_data.points = player_ship->get_kills();
         next_data.fire_rate = player_ship->laser_fire_rate;
@@ -951,9 +951,9 @@ bool FHUDManager::collect_player_flight_data() {
     if (validate_player_ship_for_collection()) {
         auto const ship_socket{player_ship->get_middle_socket()};
         auto const lock_on_target{player_ship->lock_on_target};
-        auto const& movement_state{player_ship->get_movement_state()};
+        auto const& physical_state{player_ship->get_physical_state()};
         auto const local_velocity{
-            movement_state.transform.inverse_transform_vector_no_scale(movement_state.velocity)};
+            physical_state.transform.inverse_transform_vector_no_scale(physical_state.velocity)};
 
         next_data.has_player_ship = true;
         next_data.flight_vector_debug = {
@@ -966,12 +966,12 @@ bool FHUDManager::collect_player_flight_data() {
                     static_cast<float>(local_velocity.x / player_ship->get_cruise_speed()),
                 },
         };
-        next_data.ship_velocity = ml::to_unreal(movement_state.velocity);
+        next_data.ship_velocity = ml::to_unreal(physical_state.velocity);
         next_data.target_velocity = ml::to_unreal(player_ship->target_local_planar_velocity);
         next_data.control_mode = player_ship->control_mode;
         next_data.flight_mode = player_ship->flight_mode;
         next_data.throttle = player_ship->throttle;
-        next_data.boost_brake_state = movement_state.boost_brake_state;
+        next_data.boost_brake_state = player_ship->get_controller_state().effective_action;
         next_data.crosshair_origin = ml::to_unreal(ship_socket.location);
         next_data.crosshair_direction = ml::to_unreal(ship_socket.forward());
         auto const target{agents_->read_spatial(lock_on_target)};
