@@ -34,6 +34,12 @@ internal sealed class FormatApplication(
             return 1;
         }
 
+        if (selection.Files.Count == 0)
+        {
+            standard_output.WriteLine($"No files to format in {selection.Description}.");
+            return 0;
+        }
+
         if (request.Mode == FormatMode.Staged)
         {
             try
@@ -83,7 +89,16 @@ internal sealed class FormatApplication(
             },
             async (file_index, worker_token) =>
             {
-                results[file_index] = await formatter.FormatAsync(selection.Files[file_index], worker_token);
+                try
+                {
+                    results[file_index] = await formatter.FormatAsync(selection.Files[file_index], worker_token);
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    results[file_index] = new FormatFileResult(
+                        false,
+                        $"Unexpected formatter failure: {exception.Message}");
+                }
             });
 
         var errors = new List<string>();
