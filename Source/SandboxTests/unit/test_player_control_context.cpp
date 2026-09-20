@@ -985,7 +985,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         for (int32 adjustment{}; adjustment < 20; ++adjustment) {
             simulation.adjust_desired_forward_velocity(-1.f);
         }
-        auto const forward{ml::to_unreal(simulation.get_movement_state().transform.forward())};
+        auto const forward{ml::to_unreal(simulation.get_physical_state().transform.forward())};
         TestRunner->TestTrue(
             TEXT("Reverse trim clamps to the configured velocity limit"),
             FMath::IsNearlyEqual(
@@ -1259,13 +1259,13 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         FShipControlContextTestAccess::stop_throttle(context, 2.1);
         FShipControlContextTestAccess::start_throttle(context, 1.f, 2.2);
         TestRunner->TestTrue(TEXT("Power throttle double-tap starts boost"),
-                             simulation.get_movement_state().boost_brake_state ==
+                             simulation.get_controller_state().effective_action ==
                                  ::ioj::sim::player::BoostBrakeState::Boost);
         FShipControlContextTestAccess::stop_throttle(context, 2.3);
 
         FShipControlContextTestAccess::start_brake(context, 3.0);
         TestRunner->TestTrue(TEXT("Power brake starts normal braking"),
-                             simulation.get_movement_state().boost_brake_state ==
+                             simulation.get_controller_state().effective_action ==
                                  ::ioj::sim::player::BoostBrakeState::Brake);
         FShipControlContextTestAccess::stop_brake(context, 3.1);
 
@@ -1273,20 +1273,20 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         FShipControlContextTestAccess::stop_brake(context, 4.1);
         FShipControlContextTestAccess::start_brake(context, 4.2);
         TestRunner->TestTrue(TEXT("Power brake double-tap starts emergency braking"),
-                             simulation.get_movement_state().boost_brake_state ==
+                             simulation.get_controller_state().effective_action ==
                                  ::ioj::sim::player::BoostBrakeState::EmergencyBrake);
         FShipControlContextTestAccess::stop_brake(context, 4.3);
 
         commands.select_previous_control_mode();
         FShipControlContextTestAccess::start_throttle(context, 0.5f, 5.0);
         TestRunner->TestTrue(TEXT("Velocity throttle press preserves ordinary boost"),
-                             simulation.get_movement_state().boost_brake_state ==
+                             simulation.get_controller_state().effective_action ==
                                  ::ioj::sim::player::BoostBrakeState::Boost);
         TestRunner->TestTrue(TEXT("Velocity throttle does not set Power throttle"),
                              FMath::IsNearlyZero(ship->get_throttle()));
         FShipControlContextTestAccess::stop_throttle(context, 5.1);
         TestRunner->TestTrue(TEXT("Velocity throttle release stops boost"),
-                             simulation.get_movement_state().boost_brake_state ==
+                             simulation.get_controller_state().effective_action ==
                                  ::ioj::sim::player::BoostBrakeState::None);
 
         FShipControlContextTestAccess::start_throttle(context, 0.5f, 5.2);
@@ -1298,18 +1298,18 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Mode-switch release clears throttle"),
                              FMath::IsNearlyZero(ship->get_throttle()));
         TestRunner->TestTrue(TEXT("Mode-switch release leaves boost clear"),
-                             simulation.get_movement_state().boost_brake_state ==
+                             simulation.get_controller_state().effective_action ==
                                  ::ioj::sim::player::BoostBrakeState::None);
 
         FShipControlContextTestAccess::start_throttle(context, 0.5f, 5.4);
         commands.select_previous_control_mode();
         FShipControlContextTestAccess::set_throttle(context, 0.5f);
         TestRunner->TestTrue(TEXT("Power-to-Velocity held throttle starts ordinary boost"),
-                             simulation.get_movement_state().boost_brake_state ==
+                             simulation.get_controller_state().effective_action ==
                                  ::ioj::sim::player::BoostBrakeState::Boost);
         FShipControlContextTestAccess::stop_throttle(context, 5.5);
         TestRunner->TestTrue(TEXT("Power-to-Velocity release stops boost"),
-                             simulation.get_movement_state().boost_brake_state ==
+                             simulation.get_controller_state().effective_action ==
                                  ::ioj::sim::player::BoostBrakeState::None);
 
         commands.select_next_control_mode();
@@ -1319,7 +1319,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         commands.select_next_control_mode();
         FShipControlContextTestAccess::start_throttle(context, 1.f, 6.2);
         TestRunner->TestTrue(TEXT("Power throttle tap cannot survive previous-mode cycle"),
-                             simulation.get_movement_state().boost_brake_state ==
+                             simulation.get_controller_state().effective_action ==
                                  ::ioj::sim::player::BoostBrakeState::None);
         FShipControlContextTestAccess::stop_throttle(context, 6.3);
 
@@ -1329,7 +1329,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         commands.select_previous_control_mode();
         FShipControlContextTestAccess::start_brake(context, 7.2);
         TestRunner->TestTrue(TEXT("Power brake tap cannot survive next-mode cycle"),
-                             simulation.get_movement_state().boost_brake_state ==
+                             simulation.get_controller_state().effective_action ==
                                  ::ioj::sim::player::BoostBrakeState::Brake);
         FShipControlContextTestAccess::stop_brake(context, 7.3);
 

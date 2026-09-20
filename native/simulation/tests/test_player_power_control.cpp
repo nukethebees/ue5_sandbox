@@ -48,7 +48,7 @@ void start_power_simulation(LevelSim& simulation) {
 auto velocity(LevelSim const& simulation) -> ml::Vector3d {
     auto const* const player{simulation.get_player_ship_simulation()};
     EXPECT_NE(player, nullptr);
-    return player != nullptr ? player->get_movement_state().velocity : ml::Vector3d{};
+    return player != nullptr ? player->get_physical_state().velocity : ml::Vector3d{};
 }
 
 void expect_velocity_near(ml::Vector3d const& actual,
@@ -93,7 +93,7 @@ TEST(NativeSimulationPowerControl, RotationDoesNotRotateCoastingVelocity) {
 
     auto const after{velocity(simulation)};
     auto const forward{
-        simulation.get_player_ship_simulation()->get_movement_state().transform.forward()};
+        simulation.get_player_ship_simulation()->get_physical_state().transform.forward()};
     EXPECT_NEAR(after.x, before.x, 1.e-6);
     EXPECT_NEAR(after.y, before.y, 1.e-6);
     EXPECT_GT(forward.y, 0.99);
@@ -110,7 +110,7 @@ TEST(NativeSimulationPowerControl, ThrustRedirectsVelocityTowardsFacing) {
     simulation.get_player_ship_commands()->turn({});
 
     auto const forward{
-        simulation.get_player_ship_simulation()->get_movement_state().transform.forward()};
+        simulation.get_player_ship_simulation()->get_physical_state().transform.forward()};
     auto const before{velocity(simulation)};
     auto const before_alignment{ml::dot(before, forward) / before.size()};
     accelerate(simulation, 1.f, 30);
@@ -168,12 +168,12 @@ TEST(NativeSimulationPowerControl, EmergencyBrakeAndBoostUsePowerRates) {
     accelerate(boost, 1.f, 45);
     EXPECT_GT(velocity(boost).size(), 1000.0);
     EXPECT_LT(boost.get_player_ship_simulation()->get_energy(), 1.0f);
-    EXPECT_EQ(boost.get_player_ship_simulation()->get_movement_state().boost_brake_state,
+    EXPECT_EQ(boost.get_player_ship_simulation()->get_controller_state().effective_action,
               player::BoostBrakeState::Boost);
     boost.get_player_ship_commands()->stop_boost();
     advance_ticks(boost, 180);
     EXPECT_LE(velocity(boost).size(), 1000.0001);
-    EXPECT_EQ(boost.get_player_ship_simulation()->get_movement_state().boost_brake_state,
+    EXPECT_EQ(boost.get_player_ship_simulation()->get_controller_state().effective_action,
               player::BoostBrakeState::None);
 }
 
@@ -204,7 +204,7 @@ TEST(NativeSimulationPowerControl, SwitchingNeutralModesPreservesPhysicalVelocit
     simulation.get_player_ship_commands()->select_previous_control_mode();
     advance_ticks(simulation, 1);
     expect_velocity_near(velocity(simulation), power_velocity, 1.e-4);
-    EXPECT_EQ(simulation.get_player_ship_simulation()->get_movement_state().boost_brake_state,
+    EXPECT_EQ(simulation.get_player_ship_simulation()->get_controller_state().effective_action,
               player::BoostBrakeState::None);
 
     simulation.get_player_ship_commands()->start_sampling();
@@ -219,7 +219,7 @@ TEST(NativeSimulationPowerControl, SwitchingNeutralModesPreservesPhysicalVelocit
     advance_ticks(simulation, 1);
     EXPECT_EQ(simulation.get_player_ship_simulation()->control_mode, SpaceShipControlMode::Power);
     EXPECT_NEAR(velocity(simulation).size(), velocity_mode_velocity.size(), 1.e-4);
-    EXPECT_EQ(simulation.get_player_ship_simulation()->get_movement_state().boost_brake_state,
+    EXPECT_EQ(simulation.get_player_ship_simulation()->get_controller_state().effective_action,
               player::BoostBrakeState::None);
 }
 
@@ -232,11 +232,12 @@ TEST(NativeSimulationPowerControl, PowerToVelocitySwitchClearsBoostWithoutAdding
     auto const before{velocity(simulation)};
 
     commands->select_previous_control_mode();
-    auto const& movement{simulation.get_player_ship_simulation()->get_movement_state()};
-    EXPECT_EQ(movement.boost_brake_state, player::BoostBrakeState::None);
-    EXPECT_NEAR(movement.planar_boost_speed, 0.f, 1.e-6f);
+    auto const& controller{simulation.get_player_ship_simulation()->get_controller_state()};
+    EXPECT_EQ(controller.effective_action, player::BoostBrakeState::None);
+    EXPECT_NEAR(controller.planar_boost_speed, 0.f, 1.e-6f);
     EXPECT_NEAR(simulation.get_player_ship_simulation()->throttle, 0.f, 1.e-6f);
-    expect_velocity_near(movement.velocity, before, 1.e-6);
+    expect_velocity_near(
+        simulation.get_player_ship_simulation()->get_physical_state().velocity, before, 1.e-6);
 
     advance_ticks(simulation, 1);
     expect_velocity_near(velocity(simulation), before, 1.e-4);
@@ -252,11 +253,12 @@ TEST(NativeSimulationPowerControl, VelocityToPowerSwitchClearsBoostWithoutInheri
     auto const before{velocity(simulation)};
 
     commands->select_next_control_mode();
-    auto const& movement{simulation.get_player_ship_simulation()->get_movement_state()};
-    EXPECT_EQ(movement.boost_brake_state, player::BoostBrakeState::None);
-    EXPECT_NEAR(movement.planar_boost_speed, 0.f, 1.e-6f);
+    auto const& controller{simulation.get_player_ship_simulation()->get_controller_state()};
+    EXPECT_EQ(controller.effective_action, player::BoostBrakeState::None);
+    EXPECT_NEAR(controller.planar_boost_speed, 0.f, 1.e-6f);
     EXPECT_NEAR(simulation.get_player_ship_simulation()->throttle, 0.f, 1.e-6f);
-    expect_velocity_near(movement.velocity, before, 1.e-6);
+    expect_velocity_near(
+        simulation.get_player_ship_simulation()->get_physical_state().velocity, before, 1.e-6);
 
     advance_ticks(simulation, 1);
     expect_velocity_near(velocity(simulation), before, 1.e-4);
@@ -277,9 +279,10 @@ TEST(NativeSimulationPowerControl, ModeSwitchClearsPowerBrakeStatesWithoutChangi
         auto const before{velocity(simulation)};
 
         commands->select_previous_control_mode();
-        auto const& movement{simulation.get_player_ship_simulation()->get_movement_state()};
-        EXPECT_EQ(movement.boost_brake_state, player::BoostBrakeState::None);
-        expect_velocity_near(movement.velocity, before, 1.e-6);
+        auto const& controller{simulation.get_player_ship_simulation()->get_controller_state()};
+        EXPECT_EQ(controller.effective_action, player::BoostBrakeState::None);
+        expect_velocity_near(
+            simulation.get_player_ship_simulation()->get_physical_state().velocity, before, 1.e-6);
         advance_ticks(simulation, 1);
         expect_velocity_near(velocity(simulation), before, 1.e-4);
     }
@@ -292,9 +295,10 @@ TEST(NativeSimulationPowerControl, ModeSwitchClearsPowerBrakeStatesWithoutChangi
     auto const before{velocity(simulation)};
 
     commands->select_next_control_mode();
-    auto const& movement{simulation.get_player_ship_simulation()->get_movement_state()};
-    EXPECT_EQ(movement.boost_brake_state, player::BoostBrakeState::None);
-    expect_velocity_near(movement.velocity, before, 1.e-6);
+    auto const& controller{simulation.get_player_ship_simulation()->get_controller_state()};
+    EXPECT_EQ(controller.effective_action, player::BoostBrakeState::None);
+    expect_velocity_near(
+        simulation.get_player_ship_simulation()->get_physical_state().velocity, before, 1.e-6);
     advance_ticks(simulation, 1);
     expect_velocity_near(velocity(simulation), before, 1.e-4);
 }
@@ -347,7 +351,7 @@ TEST(NativeSimulationPowerControl, EmergencyBrakeFallsBackToBrakeWhenEnergyDeple
     auto const* const player{simulation.get_player_ship_simulation()};
     ASSERT_NE(player, nullptr);
     EXPECT_NEAR(player->get_energy(), 0.f, 1.e-6f);
-    EXPECT_EQ(player->get_movement_state().boost_brake_state, player::BoostBrakeState::Brake);
+    EXPECT_EQ(player->get_controller_state().effective_action, player::BoostBrakeState::Brake);
     auto const before_brake_speed{velocity(simulation).size()};
     EXPECT_GT(before_brake_speed, 0.0);
 
@@ -358,7 +362,7 @@ TEST(NativeSimulationPowerControl, EmergencyBrakeFallsBackToBrakeWhenEnergyDeple
     EXPECT_NEAR(player->get_energy(), 0.f, 1.e-6f);
 
     commands->stop_brake();
-    EXPECT_EQ(player->get_movement_state().boost_brake_state, player::BoostBrakeState::None);
+    EXPECT_EQ(player->get_controller_state().effective_action, player::BoostBrakeState::None);
     advance_ticks(simulation, 30);
     EXPECT_GT(player->get_energy(), 0.f);
 }
@@ -379,7 +383,7 @@ TEST(NativeSimulationPowerControl, EmergencyBrakeWithEmptyEnergyUsesNormalBrake)
     EXPECT_NEAR(player->get_energy(), 0.f, 1.e-6f);
 
     commands->start_emergency_brake();
-    EXPECT_EQ(player->get_movement_state().boost_brake_state, player::BoostBrakeState::Brake);
+    EXPECT_EQ(player->get_controller_state().effective_action, player::BoostBrakeState::Brake);
     auto const before_brake_speed{velocity(simulation).size()};
     advance_ticks(simulation, 30);
     EXPECT_LT(velocity(simulation).size(), before_brake_speed);
