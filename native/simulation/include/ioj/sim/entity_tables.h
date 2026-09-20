@@ -2,8 +2,8 @@
 
 #include <ioj/sim/agent_indexes.h>
 #include <ioj/sim/health_table.h>
+#include <sandbox/core/enum_array.h>
 
-#include <array>
 #include <cassert>
 #include <cstddef>
 #include <functional>
@@ -26,12 +26,12 @@ class EntityComponentIndexBindings {
             assert(owner.is_valid() && owner.entity_type() == type);
         }
 #endif
-        bindings_[static_cast<std::size_t>(type)] = {owners, indices};
+        bindings_[type] = {owners, indices};
     }
 
     void update(EntityUniqueId const owner, Index const old_index, Index const new_index) const {
         assert(owner.is_valid() && owner.entity_type() < EntityType::COUNT);
-        auto const& binding{bindings_[static_cast<std::size_t>(owner.entity_type())]};
+        auto const& binding{bindings_[owner.entity_type()]};
         assert(binding.owners.size() == binding.indices.size());
 
         auto const row{indexes_.find(owner)};
@@ -53,7 +53,8 @@ class EntityComponentIndexBindings {
     template <typename Validate>
     void validate(Validate&& validate_mapping) const {
 #ifndef NDEBUG
-        for (auto const& binding : bindings_) {
+        for (auto const type : ml::EnumTraits<EntityType>::values) {
+            auto const& binding{bindings_[type]};
             assert(binding.owners.size() == binding.indices.size());
             auto const count{binding.owners.size()};
             for (std::size_t row{}; row < count; ++row) {
@@ -71,7 +72,7 @@ class EntityComponentIndexBindings {
     };
 
     AgentIndexes const& indexes_;
-    std::array<Binding, static_cast<std::size_t>(EntityType::COUNT)> bindings_{};
+    ml::EnumArray<EntityType, Binding, static_cast<std::size_t>(EntityType::COUNT)> bindings_{};
 };
 
 struct EntityTables {
