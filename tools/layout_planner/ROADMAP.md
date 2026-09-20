@@ -58,6 +58,9 @@ member type selection and explicit access-set traffic remain follow-up. Cache-li
 crossing counts use an explicit contiguous, region-aligned array model and avoid performance claims.
 Packed, record, and SoA inline type cells now share a searchable chooser for valid local,
 registered, and target-physical references plus navigation to the resolved semantic type.
+Selecting a record member now creates an explicit one-member sequential access set, reporting
+useful bytes, enclosing AoS footprint, distinct cache lines/pages, and non-member bytes in touched
+cache lines under the documented aligned-array model.
 
 ## 1. Editable document and command foundation
 

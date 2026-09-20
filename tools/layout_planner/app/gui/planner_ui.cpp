@@ -633,6 +633,7 @@ void PlannerUi::setup_default_dock_layout(unsigned int const dockspace_id) {
 void PlannerUi::refresh_analysis() {
     validate_comparison_variants();
     if (cached_revision_ == workspace_.revision() && cached_type_ == selected_type_ &&
+        cached_selected_field_ == selected_field_ &&
         cached_comparison_a_variant_id_ == comparison_a_variant_id_ &&
         cached_comparison_b_variant_id_ == comparison_b_variant_id_) {
         return;
@@ -649,8 +650,10 @@ void PlannerUi::refresh_analysis() {
     comparison_a_soa_.reset();
     comparison_b_soa_.reset();
     record_analysis_.reset();
+    record_access_analysis_.reset();
     cached_revision_ = workspace_.revision();
     cached_type_ = selected_type_;
+    cached_selected_field_ = selected_field_;
     cached_comparison_a_variant_id_ = comparison_a_variant_id_;
     cached_comparison_b_variant_id_ = comparison_b_variant_id_;
     if (!selected_type_.has_value()) {
@@ -667,6 +670,10 @@ void PlannerUi::refresh_analysis() {
     } else if (std::holds_alternative<RecordType>(definition)) {
         record_analysis_ =
             Analyzer::analyze_record(workspace_.types(), *selected_type_, abi_, element_count);
+        if (!selected_field_.empty()) {
+            record_access_analysis_ =
+                Analyzer::analyze_record_member_access(*record_analysis_, selected_field_, abi_);
+        }
     } else if (std::holds_alternative<PackedType>(definition)) {
         baseline_packed_ = Analyzer::analyze_packed(
             workspace_.types(), *selected_type_, baseline, abi_, element_count);

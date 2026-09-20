@@ -72,6 +72,10 @@ total storage, member extents, ABI padding, minimum cache lines, and minimum pag
 overflow and absent target facts remain explicit diagnostics/Unknown values.
 Element straddling counts are exact for the stated model of a contiguous, region-aligned array;
 they use stride/region periodicity and are physical facts rather than performance predictions.
+The initial workload slice treats the selected record member as an explicit sequential read set.
+It computes the union of target cache-line/page intervals with a bounded periodic algorithm and
+reports useful versus non-member bytes; it does not turn those physical facts into a performance
+score.
 
 The planner supports enum value-domain analysis, packed storage type/bit-range analysis, and flat
 standard-library SoA/vector-SoA payload analysis. Enum analysis derives implicit literal values,

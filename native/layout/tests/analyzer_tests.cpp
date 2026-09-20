@@ -2,8 +2,10 @@
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <cstdint>
 #include <limits>
+#include <set>
 #include <string>
 #include <utility>
 #include <vector>
@@ -391,6 +393,96 @@ TEST(RecordAnalyzer, CountsCacheLineAndPageStraddlingForAlignedContiguousArrays)
     EXPECT_EQ(analysis.size_bytes, 65);
     EXPECT_EQ(analysis.aggregate.cache_line_straddling_elements, 100);
     EXPECT_EQ(analysis.aggregate.page_straddling_elements, 1);
+}
+
+TEST(RecordAnalyzer, ReportsExplicitSequentialMemberAccessTraffic) {
+    auto const fixture{
+        record_type({codegen::RecordSchema{.name = "Record",
+                                           .members = {record_member("small", "std::uint8_t"),
+                                                       record_member("wide", "std::uint32_t"),
+                                                       record_member("medium", "std::uint16_t")},
+                                           .export_specifier = std::nullopt}})};
+    auto const record{
+        Analyzer::analyze_record(fixture.types, fixture.type, AbiProfile::host_common(), 100)};
+    auto access{Analyzer::analyze_record_member_access(record, "wide", AbiProfile::host_common())};
+
+    EXPECT_EQ(access.element_count, 100);
+    EXPECT_EQ(access.useful_member_bytes, 400);
+    EXPECT_EQ(access.object_footprint_bytes, 1'200);
+    EXPECT_EQ(access.cache_lines_touched, 19);
+    EXPECT_EQ(access.cache_bytes_touched, 1'216);
+    EXPECT_EQ(access.non_member_cache_bytes, 816);
+    EXPECT_EQ(access.pages_touched, 1);
+    EXPECT_TRUE(access.diagnostics.empty());
+
+    access = Analyzer::analyze_record_member_access(record, "missing", AbiProfile::host_common());
+    EXPECT_FALSE(access.useful_member_bytes.has_value());
+    EXPECT_FALSE(access.diagnostics.empty());
+}
+
+TEST(RecordAnalyzer, MemberAccessHandlesSpanningMembersAndOverflow) {
+    auto const fixture{
+        record_type({codegen::RecordSchema{.name = "Record",
+                                           .members = {record_member("prefix", "std::uint8_t"),
+                                                       record_member("bytes", "std::uint8_t", 65)},
+                                           .export_specifier = std::nullopt}})};
+    auto record{
+        Analyzer::analyze_record(fixture.types, fixture.type, AbiProfile::host_common(), 2)};
+    auto access{Analyzer::analyze_record_member_access(record, "bytes", AbiProfile::host_common())};
+    EXPECT_EQ(record.size_bytes, 66);
+    EXPECT_EQ(access.useful_member_bytes, 130);
+    EXPECT_EQ(access.cache_lines_touched, 3);
+    EXPECT_EQ(access.cache_bytes_touched, 192);
+    EXPECT_EQ(access.non_member_cache_bytes, 62);
+
+    record = Analyzer::analyze_record(fixture.types,
+                                      fixture.type,
+                                      AbiProfile::host_common(),
+                                      std::numeric_limits<std::uint64_t>::max());
+    access = Analyzer::analyze_record_member_access(record, "bytes", AbiProfile::host_common());
+    EXPECT_FALSE(access.useful_member_bytes.has_value());
+    EXPECT_FALSE(access.cache_bytes_touched.has_value());
+    EXPECT_FALSE(access.diagnostics.empty());
+}
+
+TEST(RecordAnalyzer, PeriodicMemberAccessMatchesBruteForceRegionUnion) {
+    constexpr std::array counts{
+        std::uint64_t{1}, std::uint64_t{2}, std::uint64_t{7}, std::uint64_t{33}};
+    for (std::uint64_t stride{1}; stride <= 32; ++stride) {
+        for (std::uint64_t offset{}; offset < stride; ++offset) {
+            for (std::uint64_t extent{1}; extent <= stride - offset; ++extent) {
+                for (auto const count : counts) {
+                    RecordAnalysis record{};
+                    record.size_bytes = stride;
+                    record.members.push_back(
+                        RecordMemberAnalysis{.name = "selected",
+                                             .semantic_type = {},
+                                             .element_count = 1,
+                                             .element_facts = std::nullopt,
+                                             .offset_bytes = offset,
+                                             .extent_bytes = extent,
+                                             .padding_before_bytes = std::nullopt});
+                    record.aggregate.element_count = count;
+                    record.aggregate.total_storage_bytes = stride * count;
+
+                    std::set<std::uint64_t> expected_lines;
+                    for (std::uint64_t index{}; index < count; ++index) {
+                        auto const begin{index * stride + offset};
+                        auto const end{begin + extent - 1};
+                        for (auto line{begin / 64}; line <= end / 64; ++line) {
+                            expected_lines.insert(line);
+                        }
+                    }
+                    auto const access{Analyzer::analyze_record_member_access(
+                        record, "selected", AbiProfile::host_common())};
+                    ASSERT_TRUE(access.cache_lines_touched.has_value());
+                    EXPECT_EQ(*access.cache_lines_touched, expected_lines.size())
+                        << "stride=" << stride << " offset=" << offset << " extent=" << extent
+                        << " count=" << count;
+                }
+            }
+        }
+    }
 }
 
 TEST(PackedAnalyzer, ReportsEntityUniqueIdLayout) {

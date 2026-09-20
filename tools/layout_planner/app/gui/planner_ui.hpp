@@ -103,6 +103,7 @@ class PlannerUi {
 
     std::uint64_t cached_revision_{};
     std::optional<lispb::schema::TypeId> cached_type_;
+    std::string cached_selected_field_;
     std::uint64_t cached_comparison_a_variant_id_{std::numeric_limits<std::uint64_t>::max()};
     std::uint64_t cached_comparison_b_variant_id_{std::numeric_limits<std::uint64_t>::max()};
     std::optional<layout::EnumDomainAnalysis> enum_domain_;
@@ -115,6 +116,7 @@ class PlannerUi {
     std::optional<layout::PackedAnalysis> comparison_a_packed_;
     std::optional<layout::PackedAnalysis> comparison_b_packed_;
     std::optional<layout::RecordAnalysis> record_analysis_;
+    std::optional<layout::RecordMemberAccessAnalysis> record_access_analysis_;
     std::optional<layout::SoaAnalysis> comparison_a_soa_;
     std::optional<layout::SoaAnalysis> comparison_b_soa_;
 

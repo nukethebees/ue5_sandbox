@@ -209,6 +209,90 @@ auto straddling_elements(std::uint64_t const element_bytes,
     return boundaries_before_end - coincident_boundaries;
 }
 
+auto touched_regions(std::uint64_t const stride_bytes,
+                     std::uint64_t const member_offset_bytes,
+                     std::uint64_t const member_extent_bytes,
+                     std::uint64_t const element_count,
+                     std::uint64_t const region_bytes,
+                     std::string& error) -> std::optional<std::uint64_t> {
+    if (element_count == 0) {
+        return 0;
+    }
+    auto interval =
+        [&](std::uint64_t const index) -> std::optional<std::pair<std::uint64_t, std::uint64_t>> {
+        auto const base{checked_multiply(index, stride_bytes)};
+        auto const begin{base.has_value() ? checked_add(*base, member_offset_bytes) : std::nullopt};
+        auto const end{begin.has_value() ? checked_add(*begin, member_extent_bytes) : std::nullopt};
+        if (!end.has_value() || *end == 0) {
+            return std::nullopt;
+        }
+        return std::pair{*begin / region_bytes, (*end - 1) / region_bytes};
+    };
+    auto const first{interval(0)};
+    if (!first.has_value()) {
+        error = "Member access address arithmetic overflows uint64.";
+        return std::nullopt;
+    }
+    auto total{checked_add(first->second - first->first, 1)};
+    if (!total.has_value() || element_count == 1) {
+        return total;
+    }
+
+    auto const period{region_bytes / std::gcd(stride_bytes, region_bytes)};
+    constexpr std::uint64_t maximum_period{1'000'000};
+    if (period > maximum_period) {
+        error = "Target region/stride period is too large for exact access analysis.";
+        return std::nullopt;
+    }
+    auto const transition_count{element_count - 1};
+    auto const complete_periods{transition_count / period};
+    auto const remaining_transitions{transition_count % period};
+    auto const transitions_to_analyze{complete_periods == 0 ? remaining_transitions : period};
+    std::uint64_t period_contribution{};
+    std::uint64_t remainder_contribution{};
+    auto previous_end{first->second};
+    for (std::uint64_t index{1}; index <= transitions_to_analyze; ++index) {
+        auto const current{interval(index)};
+        if (!current.has_value()) {
+            error = "Member access address arithmetic overflows uint64.";
+            return std::nullopt;
+        }
+        auto contribution{std::uint64_t{}};
+        if (current->first > previous_end) {
+            contribution = current->second - current->first + 1;
+        } else if (current->second > previous_end) {
+            contribution = current->second - previous_end;
+        }
+        auto const next_period{checked_add(period_contribution, contribution)};
+        if (!next_period.has_value()) {
+            error = "Member access region count overflows uint64.";
+            return std::nullopt;
+        }
+        period_contribution = *next_period;
+        if (index <= remaining_transitions) {
+            auto const next_remainder{checked_add(remainder_contribution, contribution)};
+            if (!next_remainder.has_value()) {
+                error = "Member access region count overflows uint64.";
+                return std::nullopt;
+            }
+            remainder_contribution = *next_remainder;
+        }
+        previous_end = current->second;
+    }
+
+    auto const periods_contribution{checked_multiply(complete_periods, period_contribution)};
+    if (!periods_contribution.has_value()) {
+        error = "Member access region count overflows uint64.";
+        return std::nullopt;
+    }
+    total = checked_add(*total, *periods_contribution);
+    total = total.has_value() ? checked_add(*total, remainder_contribution) : std::nullopt;
+    if (!total.has_value()) {
+        error = "Member access region count overflows uint64.";
+    }
+    return total;
+}
+
 auto cache_line_tiling(std::uint64_t const element_bytes, std::uint64_t const cache_line_bytes)
     -> CacheLineTiling {
     auto const complete_elements{
@@ -662,6 +746,95 @@ auto Analyzer::analyze_record(lispb::schema::TypeGraph const& types,
                                     element_count,
                                     *memory.page_bytes,
                                     result.aggregate.total_storage_bytes);
+        }
+    }
+    return result;
+}
+
+auto Analyzer::analyze_record_member_access(RecordAnalysis const& record,
+                                            std::string_view const member_name,
+                                            AbiProfile const& abi) -> RecordMemberAccessAnalysis {
+    RecordMemberAccessAnalysis result{.member_name = std::string{member_name},
+                                      .element_count = record.aggregate.element_count,
+                                      .useful_member_bytes = std::nullopt,
+                                      .object_footprint_bytes =
+                                          record.aggregate.total_storage_bytes,
+                                      .cache_line_bytes = std::nullopt,
+                                      .cache_lines_touched = std::nullopt,
+                                      .cache_bytes_touched = std::nullopt,
+                                      .non_member_cache_bytes = std::nullopt,
+                                      .page_bytes = std::nullopt,
+                                      .pages_touched = std::nullopt,
+                                      .diagnostics = {}};
+    auto const member{std::ranges::find(record.members, member_name, &RecordMemberAnalysis::name)};
+    if (member == record.members.end()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error, "Selected record member no longer exists."});
+        return result;
+    }
+    if (!record.size_bytes.has_value() || !member->offset_bytes.has_value() ||
+        !member->extent_bytes.has_value()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Selected record member has incomplete target layout facts."});
+        return result;
+    }
+    result.useful_member_bytes = checked_multiply(*member->extent_bytes, result.element_count);
+    if (!result.useful_member_bytes.has_value()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error, "Selected member useful byte count overflows uint64."});
+    }
+
+    auto analyze_regions = [&](std::optional<std::uint64_t> const region_bytes,
+                               char const* const region_name,
+                               std::optional<std::uint64_t>& output_regions,
+                               std::optional<std::uint64_t>& output_region_bytes) {
+        output_region_bytes = region_bytes;
+        if (!region_bytes.has_value()) {
+            result.diagnostics.push_back({DiagnosticSeverity::warning,
+                                          std::string{region_name} +
+                                              " size is unknown for ABI profile '" + abi.name() +
+                                              "'."});
+            return;
+        }
+        if (*region_bytes == 0) {
+            output_region_bytes.reset();
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, std::string{region_name} + " size must be non-zero."});
+            return;
+        }
+        std::string error;
+        output_regions = touched_regions(*record.size_bytes,
+                                         *member->offset_bytes,
+                                         *member->extent_bytes,
+                                         result.element_count,
+                                         *region_bytes,
+                                         error);
+        if (!output_regions.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, std::string{region_name} + ": " + error});
+        }
+    };
+    auto const& memory{abi.memory_facts()};
+    analyze_regions(
+        memory.cache_line_bytes, "Cache-line", result.cache_lines_touched, result.cache_line_bytes);
+    analyze_regions(memory.page_bytes, "Page", result.pages_touched, result.page_bytes);
+
+    if (result.cache_lines_touched.has_value() && result.cache_line_bytes.has_value()) {
+        result.cache_bytes_touched =
+            checked_multiply(*result.cache_lines_touched, *result.cache_line_bytes);
+        if (!result.cache_bytes_touched.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, "Touched cache-line byte count overflows uint64."});
+        } else if (result.useful_member_bytes.has_value()) {
+            if (*result.cache_bytes_touched >= *result.useful_member_bytes) {
+                result.non_member_cache_bytes =
+                    *result.cache_bytes_touched - *result.useful_member_bytes;
+            } else {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Touched cache-line bytes are smaller than useful member bytes."});
+            }
         }
     }
     return result;
