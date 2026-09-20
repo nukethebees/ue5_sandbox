@@ -96,7 +96,9 @@ void draw_packed_bar(PackedAnalysis const& analysis,
         auto const selected{selected_field == field.name};
         auto const color{selected  ? selected_color
                          : changed ? changed_color
-                                   : ImVec4{0.18F + 0.06F * (index % 2), 0.36F, 0.52F, 1.0F}};
+                         : field.reserved
+                             ? ImVec4{0.34F, 0.30F, 0.24F, 1.0F}
+                             : ImVec4{0.18F + 0.06F * (index % 2), 0.36F, 0.52F, 1.0F}};
         draw_list->AddRectFilled(
             {left, origin.y}, {left + width, origin.y + height}, ImGui::GetColorU32(color), 2.0F);
         draw_list->AddRect({left, origin.y},
@@ -232,14 +234,57 @@ void draw_packed_bar(PackedAnalysis const& analysis,
             ImGui::BeginTooltip();
             ImGui::TextUnformatted(field.name.c_str());
             ImGui::Text("Logical type: %s", field.logical_type.c_str());
-            ImGui::Text("Planning width: %u bits", field.bit_width);
+            ImGui::Text(
+                "%s width: %u bits", field.reserved ? "Reserved" : "Planning", field.bit_width);
+            if (field.schema_bit_width_auto) {
+                ImGui::Text("Source width: auto => %u bits", field.schema_bit_width);
+            }
             if (field.most_significant_bit.has_value()) {
                 ImGui::Text("Bit range: [%llu:%llu]",
                             static_cast<unsigned long long>(*field.most_significant_bit),
                             static_cast<unsigned long long>(field.least_significant_bit));
             }
-            ImGui::Text("Maximum unsigned value: %s",
-                        detail::format_number(field.maximum_unsigned_value).c_str());
+            if (!field.reserved) {
+                if (field.minimum_signed_value.has_value() &&
+                    field.maximum_signed_value.has_value()) {
+                    ImGui::Text("Signed range: %lld..%lld",
+                                static_cast<long long>(*field.minimum_signed_value),
+                                static_cast<long long>(*field.maximum_signed_value));
+                } else {
+                    ImGui::Text("Maximum unsigned value: %s",
+                                detail::format_number(field.maximum_unsigned_value).c_str());
+                }
+                if (field.minimum_semantic_value.has_value()) {
+                    auto const minimum{
+                        codegen::format_packed_integer(*field.minimum_semantic_value)};
+                    auto const maximum{
+                        codegen::format_packed_integer(*field.maximum_semantic_value)};
+                    ImGui::Text("Semantic range: %s..%s", minimum.c_str(), maximum.c_str());
+                    ImGui::Text("Semantic values: %s",
+                                detail::format_number(field.semantic_value_count).c_str());
+                    ImGui::Text("Sentinel codes: %llu",
+                                static_cast<unsigned long long>(field.sentinel_code_count));
+                    ImGui::Text("Required codes: %s",
+                                detail::format_number(field.required_code_count).c_str());
+                    ImGui::Text("Minimum direct width: %u bits", *field.minimum_required_bits);
+                    ImGui::Text("Unused field codes: %s",
+                                detail::format_number(field.unused_codes).c_str());
+                }
+                for (auto const& code : field.named_codes) {
+                    auto const value{codegen::format_packed_integer(code.value)};
+                    ImGui::Text("%s = %s%s",
+                                code.name.c_str(),
+                                value.c_str(),
+                                code.sentinel ? " (sentinel)" : "");
+                }
+                if (field.relationship_kind.has_value() && field.relationship_target.has_value()) {
+                    ImGui::Text("Relationship: %s -> %s",
+                                std::string{codegen::packed_field_relation_kind_name(
+                                                *field.relationship_kind)}
+                                    .c_str(),
+                                field.relationship_target->c_str());
+                }
+            }
             ImGui::EndTooltip();
             break;
         }
@@ -251,13 +296,15 @@ void draw_packed_bar(PackedAnalysis const& analysis,
             auto const index{*dragged_divider};
             auto const& left_field{analysis.fields[index]};
             auto const& right_field{analysis.fields[index + 1]};
-            auto const pair_width{static_cast<std::uint64_t>(left_field.bit_width) +
-                                  static_cast<std::uint64_t>(right_field.bit_width)};
-            if (pair_width >= 2) {
+            if (left_field.reserved || right_field.reserved) {
+                dragged_divider.reset();
+            } else {
+                auto const pair_width{static_cast<std::uint64_t>(left_field.bit_width) +
+                                      static_cast<std::uint64_t>(right_field.bit_width)};
                 auto const minimum_left{std::max(
                     std::uint64_t{1}, pair_width > 64 ? pair_width - 64 : std::uint64_t{1})};
                 auto const maximum_left{std::min(std::uint64_t{64}, pair_width - 1)};
-                if (minimum_left <= maximum_left) {
+                if (pair_width >= 2 && minimum_left <= maximum_left) {
                     auto const left_edge{origin.x +
                                          available *
                                              static_cast<float>(left_field.least_significant_bit) /
@@ -434,7 +481,9 @@ void draw_cache_line(CacheLineTiling const& tiling) {
         "This shows byte tiling only; allocation alignment and CPU behavior are not predicted.");
 }
 
-auto draw_element_count(LayoutWorkspace& workspace) -> bool {
+} // namespace
+
+auto PlannerUi::draw_element_count() -> bool {
     struct CountPreset {
         char const* label;
         std::uint64_t count;
@@ -449,20 +498,18 @@ auto draw_element_count(LayoutWorkspace& workspace) -> bool {
     for (auto const& preset : count_presets) {
         ImGui::PushID(preset.label);
         if (ImGui::SmallButton(preset.label)) {
-            changed = workspace.set_element_count(preset.count) || changed;
+            changed = workspace_.set_element_count(preset.count) || changed;
         }
         ImGui::PopID();
         ImGui::SameLine();
     }
-    auto custom_count{workspace.element_count()};
+    auto custom_count{workspace_.element_count()};
     ImGui::SetNextItemWidth(150.0F);
     if (ImGui::InputScalar("Elements", ImGuiDataType_U64, &custom_count) && custom_count != 0) {
-        changed = workspace.set_element_count(custom_count) || changed;
+        changed = workspace_.set_element_count(custom_count) || changed;
     }
     return changed;
 }
-
-} // namespace
 
 void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis const& baseline) {
     auto const& identity{workspace_.types().type(baseline.type).identity};
@@ -470,7 +517,7 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
     ImGui::TextDisabled("%s", identity.module_name.c_str());
 
     ImGui::SeparatorText("Analysis scale");
-    if (draw_element_count(workspace_)) {
+    if (draw_element_count()) {
         return;
     }
 
@@ -489,6 +536,7 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
         }};
         draw_stat("Physical storage", detail::format_bytes(aggregate.total_storage_bytes));
         draw_stat("Payload bits", detail::format_number(aggregate.total_payload_bits));
+        draw_stat("Reserved bits", detail::format_number(aggregate.total_reserved_bits));
         draw_stat("Unused packed bits", detail::format_number(aggregate.total_unused_bits));
         draw_stat("Minimum cache lines", detail::format_number(aggregate.minimum_cache_lines));
         draw_stat("Complete elements / cache line",
@@ -496,6 +544,9 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
         draw_stat("Minimum pages", detail::format_number(aggregate.minimum_pages));
         draw_stat("Complete elements / page",
                   detail::format_number(aggregate.complete_elements_per_page));
+        draw_stat("Fits L1 data cache", detail::format_fit(aggregate.cache_capacity.fits_l1_data));
+        draw_stat("Fits L2 cache", detail::format_fit(aggregate.cache_capacity.fits_l2));
+        draw_stat("Fits L3 cache", detail::format_fit(aggregate.cache_capacity.fits_l3));
         ImGui::EndTable();
     }
     if (scale_analysis.storage_bits.has_value() && scale_analysis.unused_bits.has_value() &&
@@ -507,7 +558,10 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
                             static_cast<unsigned long long>(*scale_analysis.unused_bits),
                             static_cast<unsigned long long>(*scale_analysis.storage_bits));
     }
-    ImGui::TextDisabled("Target memory facts: %s", abi_.memory_facts().provenance.c_str());
+    ImGui::TextDisabled("Target memory facts: %s",
+                        abi_.memory_facts().provenance.empty()
+                            ? "Unknown"
+                            : abi_.memory_facts().provenance.c_str());
 
     ImGui::SeparatorText("Bit layout");
     auto common_bits{std::max(
@@ -553,10 +607,17 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
             packed_schema != nullptr && baseline_dragged_index.has_value()) {
             auto replacement{*packed_schema};
             auto const divider{*baseline_dragged_index};
-            if (divider + 1 < replacement.fields.size()) {
-                replacement.fields[divider].bits = static_cast<int>(*packed_dragged_left_width_);
-                replacement.fields[divider + 1].bits =
-                    static_cast<int>(*packed_dragged_right_width_);
+            if (divider + 1 < replacement.segments.size()) {
+                std::visit(
+                    [&](auto& segment) {
+                        segment.bits = static_cast<int>(*packed_dragged_left_width_);
+                    },
+                    replacement.segments[divider]);
+                std::visit(
+                    [&](auto& segment) {
+                        segment.bits = static_cast<int>(*packed_dragged_right_width_);
+                    },
+                    replacement.segments[divider + 1]);
                 auto const selected_field{selected_field_};
                 if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
                                                            .schema = std::move(replacement)})) {
@@ -620,23 +681,28 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
             workspace_.select_variant(variant_id);
             sync_variant_name();
         }
-        if (adjustment.has_value() && adjustment->left_field_index + 1 < packed.fields.size()) {
+        if (adjustment.has_value() && adjustment->left_field_index + 1 < packed.segments.size()) {
             if (workspace_.active_variant_id() != variant_id) {
                 workspace_.select_variant(variant_id);
                 sync_variant_name();
             }
-            auto const& left_field{packed.fields[adjustment->left_field_index]};
-            auto const& right_field{packed.fields[adjustment->left_field_index + 1]};
+            auto const* left_field{
+                std::get_if<PackedField>(&packed.segments[adjustment->left_field_index])};
+            auto const* right_field{
+                std::get_if<PackedField>(&packed.segments[adjustment->left_field_index + 1])};
+            if (left_field == nullptr || right_field == nullptr) {
+                continue;
+            }
             workspace_.set_packed_field_width(
                 analysis.type,
-                left_field.name,
-                adjustment->left_width == left_field.bit_width
+                left_field->name,
+                adjustment->left_width == left_field->bit_width
                     ? std::optional<std::uint32_t>{}
                     : std::optional<std::uint32_t>{adjustment->left_width});
             workspace_.set_packed_field_width(
                 analysis.type,
-                right_field.name,
-                adjustment->right_width == right_field.bit_width
+                right_field->name,
+                adjustment->right_width == right_field->bit_width
                     ? std::optional<std::uint32_t>{}
                     : std::optional<std::uint32_t>{adjustment->right_width});
         }
@@ -663,7 +729,7 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
     ImGui::TextDisabled("%s", node.identity.module_name.c_str());
 
     ImGui::SeparatorText("Analysis scale");
-    if (draw_element_count(workspace_)) {
+    if (draw_element_count()) {
         return;
     }
     auto const& aggregate{analysis.aggregate};
@@ -693,6 +759,9 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
                   detail::format_number(aggregate.complete_elements_per_page));
         draw_stat("Elements crossing page boundaries",
                   detail::format_number(aggregate.page_straddling_elements));
+        draw_stat("Fits L1 data cache", detail::format_fit(aggregate.cache_capacity.fits_l1_data));
+        draw_stat("Fits L2 cache", detail::format_fit(aggregate.cache_capacity.fits_l2));
+        draw_stat("Fits L3 cache", detail::format_fit(aggregate.cache_capacity.fits_l3));
         ImGui::EndTable();
     }
     if (analysis.size_bytes.has_value() && analysis.internal_padding_bytes.has_value() &&
@@ -705,7 +774,10 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
                             static_cast<unsigned long long>(padding),
                             static_cast<unsigned long long>(*analysis.size_bytes));
     }
-    ImGui::TextDisabled("Target memory facts: %s", abi_.memory_facts().provenance.c_str());
+    ImGui::TextDisabled("Target memory facts: %s",
+                        abi_.memory_facts().provenance.empty()
+                            ? "Unknown"
+                            : abi_.memory_facts().provenance.c_str());
     ImGui::TextDisabled(
         "Boundary crossing assumes a contiguous array whose base is cache-line/page aligned.");
 
@@ -913,6 +985,10 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
     ImGui::SeparatorText("Aggregate column payload");
     ImGui::Text("Minimum pages across separate columns: %s",
                 detail::format_number(active.minimum_pages).c_str());
+    ImGui::Text("Fits L1 data cache: %s",
+                detail::format_fit(active.cache_capacity.fits_l1_data).c_str());
+    ImGui::Text("Fits L2 cache: %s", detail::format_fit(active.cache_capacity.fits_l2).c_str());
+    ImGui::Text("Fits L3 cache: %s", detail::format_fit(active.cache_capacity.fits_l3).c_str());
     bool activated{};
     draw_payload_regions(baseline, nullptr, selected_field_, "Baseline", common_total, activated);
     for (auto const& [variant_id, analysis] : soa_variants_) {

@@ -21,13 +21,22 @@ auto graph_column(TypeDefinition const& definition) -> std::size_t {
     if (std::holds_alternative<ExternalType>(definition)) {
         return 0;
     }
-    if (std::holds_alternative<EnumType>(definition)) {
+    if (std::holds_alternative<EnumType>(definition) ||
+        std::holds_alternative<IntegerScalarType>(definition)) {
         return 1;
     }
-    if (std::holds_alternative<PackedType>(definition)) {
+    if (std::holds_alternative<LinearQuantizedType>(definition) ||
+        std::holds_alternative<IntegerVarintType>(definition) ||
+        std::holds_alternative<FixedPointType>(definition) ||
+        std::holds_alternative<MiniFloatType>(definition) ||
+        std::holds_alternative<OptionalSentinelType>(definition) ||
+        std::holds_alternative<OptionalPresenceBitType>(definition) ||
+        std::holds_alternative<PackedType>(definition)) {
         return 2;
     }
-    if (std::holds_alternative<RecordType>(definition)) {
+    if (std::holds_alternative<RecordType>(definition) ||
+        std::holds_alternative<UnionType>(definition) ||
+        std::holds_alternative<TaggedUnionType>(definition)) {
         return 3;
     }
     return 4;
@@ -40,11 +49,38 @@ auto graph_kind(TypeDefinition const& definition) -> char const* {
     if (std::holds_alternative<EnumType>(definition)) {
         return "enum";
     }
+    if (std::holds_alternative<IntegerScalarType>(definition)) {
+        return "integer scalar";
+    }
+    if (std::holds_alternative<LinearQuantizedType>(definition)) {
+        return "linear quantized";
+    }
+    if (std::holds_alternative<IntegerVarintType>(definition)) {
+        return "integer varint";
+    }
+    if (std::holds_alternative<FixedPointType>(definition)) {
+        return "fixed point";
+    }
+    if (std::holds_alternative<MiniFloatType>(definition)) {
+        return "mini float";
+    }
+    if (std::holds_alternative<OptionalSentinelType>(definition)) {
+        return "optional sentinel";
+    }
+    if (std::holds_alternative<OptionalPresenceBitType>(definition)) {
+        return "optional presence bit";
+    }
     if (std::holds_alternative<PackedType>(definition)) {
         return "packed";
     }
     if (std::holds_alternative<RecordType>(definition)) {
         return "record";
+    }
+    if (std::holds_alternative<UnionType>(definition)) {
+        return "union";
+    }
+    if (std::holds_alternative<TaggedUnionType>(definition)) {
+        return "tagged union";
     }
     return "SoA";
 }
@@ -56,6 +92,27 @@ auto node_color(TypeDefinition const& definition, bool const selected) -> ImU32 
     if (std::holds_alternative<EnumType>(definition)) {
         return IM_COL32(80, 105, 155, 255);
     }
+    if (std::holds_alternative<IntegerScalarType>(definition)) {
+        return IM_COL32(68, 118, 148, 255);
+    }
+    if (std::holds_alternative<LinearQuantizedType>(definition)) {
+        return IM_COL32(116, 94, 164, 255);
+    }
+    if (std::holds_alternative<IntegerVarintType>(definition)) {
+        return IM_COL32(98, 102, 172, 255);
+    }
+    if (std::holds_alternative<FixedPointType>(definition)) {
+        return IM_COL32(108, 88, 176, 255);
+    }
+    if (std::holds_alternative<MiniFloatType>(definition)) {
+        return IM_COL32(118, 84, 174, 255);
+    }
+    if (std::holds_alternative<OptionalSentinelType>(definition)) {
+        return IM_COL32(128, 82, 168, 255);
+    }
+    if (std::holds_alternative<OptionalPresenceBitType>(definition)) {
+        return IM_COL32(142, 78, 158, 255);
+    }
     if (std::holds_alternative<PackedType>(definition)) {
         return IM_COL32(126, 88, 148, 255);
     }
@@ -64,6 +121,12 @@ auto node_color(TypeDefinition const& definition, bool const selected) -> ImU32 
     }
     if (std::holds_alternative<RecordType>(definition)) {
         return IM_COL32(148, 104, 64, 255);
+    }
+    if (std::holds_alternative<UnionType>(definition)) {
+        return IM_COL32(156, 84, 72, 255);
+    }
+    if (std::holds_alternative<TaggedUnionType>(definition)) {
+        return IM_COL32(174, 76, 96, 255);
     }
     return IM_COL32(80, 86, 96, 255);
 }
@@ -85,13 +148,38 @@ auto edge_label(TypeGraph const& types, TypeId const user, TypeId const dependen
         if (enumeration->underlying_type.type == dependency) {
             result = "underlying";
         }
+    } else if (auto const* quantized{std::get_if<LinearQuantizedType>(&definition)}) {
+        if (quantized->source.type == dependency) {
+            result = "quantises";
+        }
+    } else if (auto const* varint{std::get_if<IntegerVarintType>(&definition)}) {
+        if (varint->source.type == dependency) {
+            result = "encodes";
+        }
+    } else if (auto const* optional{std::get_if<OptionalSentinelType>(&definition)}) {
+        if (optional->source.type == dependency) {
+            result = "optional via " + optional->sentinel_name;
+        }
+    } else if (auto const* optional{std::get_if<OptionalPresenceBitType>(&definition)}) {
+        if (optional->source.type == dependency) {
+            result = "optional via presence bit";
+        }
     } else if (auto const* packed{std::get_if<PackedType>(&definition)}) {
         if (packed->storage_type.type == dependency) {
             append_edge_label(result, "storage");
         }
-        for (auto const& field : packed->fields) {
-            if (field.semantic_type.type == dependency) {
-                append_edge_label(result, field.name);
+        for (auto const& segment : packed->segments) {
+            if (auto const* field{std::get_if<PackedField>(&segment)}; field != nullptr) {
+                if (field->semantic_type.type == dependency) {
+                    append_edge_label(result, field->name);
+                }
+                if (field->relationship.has_value() &&
+                    field->relationship->target.type == dependency) {
+                    append_edge_label(result,
+                                      field->name + " " +
+                                          std::string{codegen::packed_field_relation_kind_name(
+                                              field->relationship->kind)});
+                }
             }
         }
     } else if (auto const* soa{std::get_if<SoaType>(&definition)}) {
@@ -107,6 +195,21 @@ auto edge_label(TypeGraph const& types, TypeId const user, TypeId const dependen
         for (auto const& member : record->members) {
             if (member.semantic_type.type == dependency) {
                 append_edge_label(result, member.name);
+            }
+        }
+    } else if (auto const* union_type{std::get_if<UnionType>(&definition)}) {
+        for (auto const& alternative : union_type->alternatives) {
+            if (alternative.semantic_type.type == dependency) {
+                append_edge_label(result, alternative.name);
+            }
+        }
+    } else if (auto const* tagged{std::get_if<TaggedUnionType>(&definition)}) {
+        if (tagged->discriminant.type == dependency) {
+            append_edge_label(result, "discriminates");
+        }
+        for (auto const& alternative : tagged->alternatives) {
+            if (alternative.semantic_type.type == dependency) {
+                append_edge_label(result, alternative.name + " [" + alternative.tag + "]");
             }
         }
     }

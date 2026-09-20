@@ -41,12 +41,45 @@ physical facts, preserving the logical nodes and their dependency edges. The GUI
 dock layout, cached presentation results, and drawing; it does not own schema semantics or calculate
 layouts.
 
-Enum, packed-value, and standard-library SoA authoring are write-enabled vertical slices. They can
-add declarations to existing matching modules, edit ordered child rows through semantic commands,
-preview affected sources, and explicitly save and reload LispB. Packed fields and SoA columns
-preserve semantic type links while the layout view derives physical facts. Packed dividers and
-enum/packed/SoA drag reorder issue ordinary undoable schema commands. Planner capacity remains
-session state rather than becoming a SoA source property, and there is no persistent variant format.
+For existing enums and integer scalars, preview/save reparses the declaration's owned source slice
+and performs token-local property replacement when the declaration name and ordered child identities
+are unchanged. The same property patcher covers linear quantization, integer varint, fixed-point,
+sentinel optional, presence-bit optional, and packed-value declarations. Packed preservation checks
+ordered field/reserved kinds and names plus field named-code identities, and patches existing
+relationships only when their source shape is stable. This preserves comments, whitespace, and
+unchanged token spelling without creating a second syntax or semantic model. Structural edits,
+Unreal projections, and ambiguous forms fall back to the canonical renderer. Records and raw/tagged
+unions use ordered member/alternative identity checks before patching types, counts, tags,
+discriminants, and exports. Standard-library SoAs patch stable member/top-level properties only
+after functions, fixed layouts, and single-allocation forms are proven semantically unchanged;
+unsupported derived allocator/mutable-view surfaces take canonical fallback.
+
+Declaration rename is a typed document transaction rather than text replacement. Supported enum,
+integer-scalar, representation, packed-value, and record declarations retain their `DeclarationId`, discover users from the resolved graph, repair
+the corresponding shared-schema `TypeRef` fields to an unambiguous qualified spelling, resolves the
+whole candidate graph, and rerenders every affected top-level declaration. Registered aliases are
+rejected because the types registry does not yet participate in source-aware edits. SoA rename is
+also rejected until nested schema names and raw generated-code surfaces can be repaired safely.
+
+Deletion is likewise enforced by the shared editable document rather than only by the frontend.
+Every typed delete rejects a declaration with resolved reverse users before mutating the manifest,
+or one bound to a registered alias, then validates and re-resolves the remaining candidate graph.
+For source-backed declarations the document retains the exact top-level source range as history
+metadata: preview removes that range, undo restores its ownership and stable declaration identity,
+redo removes it again, and successful save/reload clears the tombstone. The UI uses the same
+destructive confirmation for source-backed and newly created declarations.
+
+Enum, standalone integer-scalar, linear-quantized, integer-varint, fixed-point,
+optional-sentinel, optional-presence-bit representation,
+packed-value, record, raw-union, and
+standard-library SoA authoring are write-enabled vertical slices. They can add declarations to
+existing matching modules, edit ordered
+child rows through semantic commands, preview affected sources, and explicitly save and reload
+LispB. Packed values store an ordered shared-schema variant of semantic fields and named reserved
+regions; reserved regions have no type dependency and emit no value API. Packed fields and SoA
+columns preserve semantic type links while the layout view derives physical facts. Drag reorder and
+packed dividers issue ordinary undoable schema commands. Planner capacity remains session state
+rather than becoming a SoA source property, and there is no persistent variant format.
 
 The application treats a C++ schema target as the open authoring document. Open/recent operations
 load its project manifest and target, while Save As materializes the current draft as a validated,
@@ -78,16 +111,188 @@ intervals and target cache-line/page intervals with a bounded periodic algorithm
 counting overlapping regions. It reports useful versus non-selected bytes and does not turn those
 physical facts into a performance score.
 
+Raw unions are separate shared `union-module` declarations with ordered semantic alternatives and
+optional fixed counts. They lower to ordinary C++ unions, while one aggregate-cycle validator
+rejects direct and mixed record/union by-value recursion. Target analysis chooses the maximum
+alternative extent and alignment, rounds the object size, and reports tail padding plus each
+alternative's union slack. Selected-count analysis assumes a contiguous, cache-line/page-aligned
+array and scales total storage, tail padding, and each alternative's conditional slack with checked
+arithmetic. Conditional slack does not imply a runtime tag distribution.
+
+Tagged unions are a distinct shared declaration and semantic node rather than a planner annotation
+or mode bit on a raw union. A tagged declaration references an enum discriminant and maps each
+ordered payload alternative to one declared non-sentinel enumerator. Validation rejects missing,
+duplicate, unknown, and sentinel tags plus non-enum discriminants. The graph exposes a
+`discriminates` dependency and tag-labeled payload edges. Initial C++ lowering is an explicit
+discriminant member followed by a nested raw payload union. Target analysis follows exactly that
+lowering: it derives tag facts from the enum's backing representation, aligns the payload union,
+then reports the inter-member gap, shared payload size, per-alternative conditional slack, tail
+padding, total size, and alignment. Nested records/raw unions/tagged unions reuse those derived
+facts, and mixed by-value cycles are rejected before lowering or analysis.
+Typed create/replace/delete commands retain stable declaration identity and use the same graph-wide
+validation rollback, history, source preview, atomic save, and reload path as other declarations.
+The frontend's creation flow and flat alternative editor are command clients only: discriminator,
+symbolic tags, types, counts, and ordering remain exclusively in the shared tagged-union schema.
+Changing an enum declaration name repairs tagged discriminant references atomically.
+Selected-count analysis uses the same documented contiguous, cache-line/page-aligned array model as
+records and raw unions. It separately scales object storage, discriminant bytes, payload-union
+storage, inter-member padding, tail padding, and each alternative's conditional payload slack.
+Region crossings and cache fit derive from the target profile. A conditional slack total means all
+objects carry that tag; it is not an inferred runtime tag distribution.
+The analyzer also classifies declared discriminator symbols without changing layout: payload-mapped
+live tags, unmapped live tags, named sentinels, and the count sentinel. Payload mappings continue to
+reject either sentinel role. Unmapped live tags mean the tagged declaration has no payload case for
+that declared state; they are not assumed to be errors or byte waste. Numeric codes with no enum
+symbol remain the enum-domain analyzer's separate unused-code-space fact.
+An optional frontend workload maps stable tagged-union declaration IDs to explicit per-tag weights.
+Headless analysis validates those tags, retains checked weighted row/sample extent and slack totals,
+and computes numerical expected values only when positive valid weights and complete target facts
+exist. Overflow makes exact totals Unknown without discarding inspectable row facts. This workload
+cannot alter fixed ABI size or semantic schema and is cleared when a project document is replaced.
+
 The planner supports enum value-domain analysis, packed storage type/bit-range analysis, and flat
-standard-library SoA/vector-SoA payload analysis. Enum analysis derives implicit literal values,
-count-sentinel code use, minimum semantic width, backing fit, and unused backing codes; arbitrary
-initializer expressions remain explicitly unknown. Packed analysis reports overflow-safe aggregate
-storage, payload bits, unused packed bits, cache lines, and pages at a selected element count. The
-built-in x86/x86-64 baseline ABI profile explicitly provides 64-byte cache-line and 4 KiB page facts
-with provenance, along with common fixed-width integer signedness, floating-point, and Boolean type
-facts. SoA cache tiling now consumes the same profile fact rather than an analyzer constant. Missing
+standard-library SoA/vector-SoA payload analysis. A shared schema-layer domain engine derives enum
+literal/implicit values, named- and count-sentinel code use, signedness, and minimum width. LispB's
+optional `:bit-width` is a durable semantic constraint (`auto` when absent), while the existing
+underlying type remains a separate C++ lowering choice. Per-value `:sentinel true` metadata is
+durable and may represent multiple reserved semantic states without conflating them with allocated
+storage waste.
+Optional `:signed` is another semantic-domain constraint; when absent, signedness is inferred from
+known values. Width derivation consumes the semantic signedness rather than the backing primitive.
+Known width mismatches are rejected during semantic
+edits; arbitrary initializer expressions remain explicitly unknown. Packed analysis reports overflow-safe aggregate
+storage, semantic payload bits, explicit reserved bits, implicit unused bits, cache lines, and pages
+at a selected element count. The built-in profile records CMake-supplied platform, architecture,
+compiler, and build configuration identity independently from its physical-fact provenance. ABI
+identity remains Unknown until a factual identifier is supplied. Compiler-derived size/alignment
+facts identify their source, while the x86/x86-64 baseline memory facts separately identify the
+source of the explicit 64-byte cache-line and 4 KiB page assumptions. SoA cache tiling consumes the
+same profile fact rather than an analyzer constant. Missing
 profile facts, unknown physical types, and nested SoAs produce diagnostics and Unknown results
 rather than guesses.
+
+`MemoryFacts` may also provide L1 data, L2, and L3 capacities. Aggregate packed storage, record
+storage, and standard-library SoA column payload compare their selected-count working set directly
+with each supplied capacity. Fit remains Unknown when either the aggregate size or capacity is
+unknown. These are capacity comparisons, not performance predictions, and the built-in baseline
+does not guess capacities for the machine running the planner.
+
+`scalar-module` / `integer-scalar` is the first schema declaration that describes an integer value
+domain without selecting a C++ underlying type. Its shared schema and resolved `IntegerScalarType`
+store signedness, inclusive live bounds, optional explicit width (`auto` when absent), and ordered
+named live/sentinel codes. Validation derives fit across the range and code extremes; headless
+analysis reports live, sentinel, required, and unused code space, including exact zero waste for
+full 64-bit domains whose mathematical value count cannot fit `uint64`. The resolved node has no
+target size or alignment. Its configured generated header is intentionally empty except for an
+optional prelude: no physical C++ type is fabricated.
+
+`representation-module` / `linear-quantized` is the first explicit semantic-to-physical link. A
+`LinearQuantizedType` resolves its `integer-scalar` source as a real graph dependency while owning
+only representation facts: encoded width, reserved-code count, and reject/clamp clipping policy.
+The initial mapping assigns the source endpoints to the first and last usable codes; reserved codes
+are excluded from the upper end of code space. Analysis uses exact integer capacity checks and
+long-double numerical consequences to report resolution and half-step maximum rounding error.
+Because `2^64` cannot be stored in `uint64`, the analysis has an explicit exact `2^64` code-count
+case rather than reporting a known capacity as Unknown; resolution is calculated from the same
+mathematical power of two.
+The configured generated header remains empty: this declaration does not yet choose a standalone
+ABI wrapper, packed placement, or C++ lowering policy.
+`Analyzer::compare_linear_quantized` compares two declarations only when their resolved source
+`TypeId` matches. It carries both analyses and derives exact width/code-space deltas, numerical
+resolution/error deltas, clipping-policy changes, and overflow-safe encoded payload bits for the
+selected element count. It deliberately does not turn those payload bits into allocated bytes or
+cache/page facts: doing so requires a future container placement and packing policy. The frontend
+stores the selected sibling by stable `TypeIdentity`, not a planner-owned copy of either schema.
+
+`representation-module` also supports source-backed `integer-varint` declarations with unsigned,
+signed (SLEB128-style), and ZigZag encodings. Validation binds each declaration to an
+`IntegerScalarType` and enforces encoding/source signedness. Analysis derives the exact minimum and
+maximum encoded byte counts over the live range and all named source codes, then scales both bounds
+with checked arithmetic. It never exposes a fixed ABI size. Optional explicit value/weight
+distributions are session workload state keyed by stable semantic identity; headless analysis
+validates each value against the live range or named codes and computes checked exact sample totals
+plus a distribution-based expectation. Each valid input also retains analyzer-owned bytes/value and
+checked weighted-byte facts so the frontend never reimplements an encoding algorithm. Those weights are not schema semantics and are not written
+to LispB. Representation
+modules may mix quantized and varint forms; editable-document source ownership matches forms by
+kind and declaration name while the resolved graph retains one stable declaration identity per
+form.
+`fixed-point` is a standalone physical numerical representation with explicit signedness, total and
+fractional widths, and nearest-even or toward-zero rounding. Its semantic node has no invented C++
+primitive or ABI facts. Headless analysis derives the exact integer raw range, power-of-two scale
+and resolution, numerical endpoints, rounding-error bound, and checked selected-count encoded bits;
+allocated bytes, alignment, cache, and page consequences remain Unknown until placement/lowering is
+declared.
+
+`mini-float` is an explicit binary floating-like representation with 0-or-1 sign bits, bounded
+exponent and significand widths, and a signed exponent bias. The initial policy reserves the
+all-zero exponent for zero/subnormals and the all-one exponent for infinity/NaN. Its shared semantic
+node contains encoding facts only: no C++ primitive, ABI size/alignment, byte order, or arithmetic
+conformance is inferred. Headless analysis retains exact exponent/code-role facts and treats host
+`long double` overflow or underflow as Unknown numerical endpoints with diagnostics.
+Typed create/replace/delete commands, exact source tombstones, duplication, rename, flat inline
+editing, preview, save, and reload use the shared editable document. Stable property-only edits use
+the same token-local renderer as other simple representations, preserving declaration comments,
+whitespace, and unchanged spelling; new declarations and unsupported structural changes use the
+canonical renderer.
+`optional-sentinel` is a distinct source-backed encoding policy over an `integer-scalar`. It names
+one existing source code whose shared metadata marks it as a sentinel, resolves the exact code value
+and source-derived bit width, and adds a semantic dependency edge. The source scalar remains the
+sole owner of its live domain and named codes; selecting an absence sentinel neither copies nor
+mutates that domain. Headless analysis separates present values, the single absence code, other
+named sentinel codes, and remaining unused codes, then scales encoded payload bits with checked
+arithmetic. It does not fabricate a standalone C++ type, ABI size, alignment, or allocation.
+Typed create/replace/delete commands, scalar-rename repair, exact source tombstones, duplication,
+flat constrained editing, preview, save, and reload use the same shared document path as other
+representations.
+`optional-presence-bit` is a sibling physical policy over the same `integer-scalar` source. Its
+semantic node retains the source payload width and derives one additional presence bit, including
+an honest 65-bit encoding for a 64-bit source. Analysis exposes one canonical semantic absence
+state, source sentinels and unused payload codes, redundant noncanonical absent payload patterns,
+and checked aggregate bits. Those redundant patterns are encoding multiplicity, not extra semantic
+states or allocated padding. Bit order, byte packing, ABI size/alignment, and cache/page facts stay
+Unknown until a placement policy supplies them. It has its own source syntax and typed commands;
+neither optional representation is a mode flag that changes the other declaration's meaning.
+`Analyzer::compare_optional_encodings` projects either policy into a policy-neutral factual summary
+only for analysis. Same-source comparison retains which sentinel is consumed, remaining source
+sentinels, unused payload codes, redundant absent patterns, encoded width, and checked scaled bits;
+the durable declarations remain distinct graph nodes and no ABI storage is inferred.
+Future tagged optional encodings should likewise remain separate comparable representations.
+`Analyzer::compare_integer_varint` requires matching resolved sources and compares the two exact
+per-value and scaled lower/upper byte bounds. Signed and ZigZag encodings may have identical bounds
+while differing in code mapping; the comparison reports that fact without inventing a compression
+ranking. `compare_integer_varint_distribution` applies one source-keyed explicit workload to both
+encodings and reports checked sample-byte plus numerical expectation deltas. The frontend never
+compares independent per-representation workloads as though they were equivalent.
+
+Packed signed and unsigned field ranges are shared source semantics (`:minimum` / `:maximum`), not planner
+annotations. Validation and generated setters enforce them. Layout analysis derives code-space facts
+but reports unused representable codes separately from physical unused or reserved bits. Ordered
+field-local `(code Name :value N)` children provide named ordinary-integer constants; optional
+`:sentinel true` codes must be outside the live range and remain accepted by setters and raw-value
+validation. Analysis counts live and sentinel codes separately and derives direct-encoding width
+from the actual highest required code. This is intentionally field metadata rather than a fake enum;
+standalone named-value semantics use `integer-scalar` instead.
+Packed signed fields are likewise shared semantics (`:kind signed`) and may use any explicit or
+range-derived width
+from 1 through the referenced signed integer type's native width. The resolved graph retains the
+physical width, analysis derives the exact two's-complement range, and lowering emits range-checked
+setters plus magnitude-based sign extension that handles the minimum value without signed overflow.
+This is an arbitrary-width packed representation, not a fabricated standalone C++ primitive type.
+Packed field source widths are optional: an explicit integer is durable physical intent, while
+`:bits auto` asks shared schema resolution to derive a concrete width. Integer fields derive from
+the signed or unsigned extremes across their range and named codes; enum fields consume the shared enum
+domain width. The resolved `PackedField` retains an auto-provenance flag alongside its concrete
+width, so validation, layout, variants, visualization, and C++ lowering never need a magic numeric
+sentinel for "auto".
+Packed semantic fields may own one source-backed relationship with a declared target. Relationship
+kinds use shared schema enums (`index_into`, `count_of`, `offset_into`, `discriminates`, `contains`,
+`member_of`, `quantises`, `encoded_as`, and `references`), and the target resolves through the same
+`TypeRef`/`TypeGraph` machinery as field types. Targets that resolve only to external C++ leaves are
+rejected: a semantic edge must terminate at a declaration. The relationship adds a dependency and
+field-aware graph label, while C++ lowering remains unchanged because the relationship is semantic
+metadata rather than a second physical field. Capacity-derived width is intentionally deferred
+until target declarations provide factual capacity.
 
 For standard-library SoAs, page footprints are calculated per column because each vector is a
 separate allocation. The displayed aggregate is the sum of those minimum per-column page counts;

@@ -8,6 +8,7 @@
 #include <charconv>
 #include <cstdio>
 #include <cstring>
+#include <set>
 #include <string_view>
 #include <utility>
 #include <variant>
@@ -42,6 +43,77 @@ auto parse_int_setting(std::string_view const line, std::string_view const prefi
                                                                       : std::nullopt;
 }
 
+auto known_or_unknown(std::optional<std::string> const& value) -> char const* {
+    return value.has_value() && !value->empty() ? value->c_str() : "Unknown";
+}
+
+auto known_or_unknown(std::string const& value) -> char const* {
+    return value.empty() ? "Unknown" : value.c_str();
+}
+
+auto type_fact_sources(AbiProfile const& abi) -> std::string {
+    std::set<std::string, std::less<>> sources;
+    bool has_unknown{};
+    for (auto const& [spelling, facts] : abi.types()) {
+        static_cast<void>(spelling);
+        if (facts.provenance.empty()) {
+            has_unknown = true;
+        } else {
+            sources.insert(facts.provenance);
+        }
+    }
+    std::string result;
+    for (auto const& source : sources) {
+        if (!result.empty()) {
+            result += "; ";
+        }
+        result += source;
+    }
+    if (has_unknown) {
+        if (!result.empty()) {
+            result += "; ";
+        }
+        result += "Unknown";
+    }
+    return result.empty() ? "Unknown" : result;
+}
+
+void draw_target_profile(AbiProfile const& abi) {
+    if (!ImGui::CollapsingHeader("Target profile", ImGuiTreeNodeFlags_DefaultOpen)) {
+        return;
+    }
+    auto const& identity{abi.identity()};
+    auto const& memory{abi.memory_facts()};
+    auto const primitive_sources{type_fact_sources(abi)};
+    auto const l1_capacity{detail::format_bytes(memory.l1_data_cache_bytes)};
+    auto const l2_capacity{detail::format_bytes(memory.l2_cache_bytes)};
+    auto const l3_capacity{detail::format_bytes(memory.l3_cache_bytes)};
+    if (ImGui::BeginTable("target-profile",
+                          2,
+                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                              ImGuiTableFlags_SizingStretchProp)) {
+        auto draw_row{[](char const* const label, char const* const value) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(label);
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(value);
+        }};
+        draw_row("Profile", known_or_unknown(abi.name()));
+        draw_row("Platform", known_or_unknown(identity.platform));
+        draw_row("Architecture", known_or_unknown(identity.architecture));
+        draw_row("ABI", known_or_unknown(identity.abi));
+        draw_row("Compiler", known_or_unknown(identity.compiler));
+        draw_row("Build configuration", known_or_unknown(identity.build_configuration));
+        draw_row("L1 data cache capacity", l1_capacity.c_str());
+        draw_row("L2 cache capacity", l2_capacity.c_str());
+        draw_row("L3 cache capacity", l3_capacity.c_str());
+        draw_row("Primitive fact source", primitive_sources.c_str());
+        draw_row("Memory fact source", known_or_unknown(memory.provenance));
+        ImGui::EndTable();
+    }
+}
+
 } // namespace
 
 PlannerUi::PlannerUi(SchemaLoadResult loaded)
@@ -53,8 +125,17 @@ PlannerUi::PlannerUi(SchemaLoadResult loaded)
     auto const types{workspace_.types().types()};
     auto const found{std::ranges::find_if(types, [](auto const& type) {
         if (std::holds_alternative<EnumType>(type.definition) ||
+            std::holds_alternative<IntegerScalarType>(type.definition) ||
+            std::holds_alternative<LinearQuantizedType>(type.definition) ||
+            std::holds_alternative<IntegerVarintType>(type.definition) ||
+            std::holds_alternative<FixedPointType>(type.definition) ||
+            std::holds_alternative<MiniFloatType>(type.definition) ||
+            std::holds_alternative<OptionalSentinelType>(type.definition) ||
+            std::holds_alternative<OptionalPresenceBitType>(type.definition) ||
             std::holds_alternative<PackedType>(type.definition) ||
-            std::holds_alternative<RecordType>(type.definition)) {
+            std::holds_alternative<RecordType>(type.definition) ||
+            std::holds_alternative<UnionType>(type.definition) ||
+            std::holds_alternative<TaggedUnionType>(type.definition)) {
             return true;
         }
         auto const* soa{std::get_if<SoaType>(&type.definition)};
@@ -210,7 +291,16 @@ auto PlannerUi::draw() -> bool {
     draw_graph_panel();
     draw_new_enum_dialog();
     draw_new_packed_value_dialog();
+    draw_new_integer_scalar_dialog();
+    draw_new_linear_quantized_dialog();
+    draw_new_integer_varint_dialog();
+    draw_new_fixed_point_dialog();
+    draw_new_mini_float_dialog();
+    draw_new_optional_sentinel_dialog();
+    draw_new_optional_presence_bit_dialog();
     draw_new_record_dialog();
+    draw_new_union_dialog();
+    draw_new_tagged_union_dialog();
     draw_new_soa_dialog();
     draw_source_preview();
     draw_close_confirmation();
@@ -509,8 +599,18 @@ void PlannerUi::sync_document_graph(std::optional<TypeIdentity> selection) {
     enum_editor_value_.clear();
     packed_editor_declaration_.reset();
     packed_editor_field_.clear();
+    packed_code_editor_declaration_.reset();
+    packed_code_editor_field_.clear();
+    packed_code_editor_name_.clear();
+    selected_packed_code_.clear();
     record_editor_declaration_.reset();
     record_editor_member_.clear();
+    union_editor_declaration_.reset();
+    union_editor_alternative_.clear();
+    tagged_union_editor_declaration_.reset();
+    tagged_union_editor_alternative_.clear();
+    optional_sentinel_editor_declaration_.reset();
+    optional_presence_bit_editor_declaration_.reset();
     soa_editor_declaration_.reset();
     soa_editor_member_.clear();
     packed_dragged_divider_.reset();
@@ -548,8 +648,17 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
         auto const& definition{types[index].definition};
         auto const* soa{std::get_if<SoaType>(&definition)};
         if (std::holds_alternative<EnumType>(definition) ||
+            std::holds_alternative<IntegerScalarType>(definition) ||
+            std::holds_alternative<LinearQuantizedType>(definition) ||
+            std::holds_alternative<IntegerVarintType>(definition) ||
+            std::holds_alternative<FixedPointType>(definition) ||
+            std::holds_alternative<MiniFloatType>(definition) ||
+            std::holds_alternative<OptionalSentinelType>(definition) ||
+            std::holds_alternative<OptionalPresenceBitType>(definition) ||
             std::holds_alternative<PackedType>(definition) ||
             std::holds_alternative<RecordType>(definition) ||
+            std::holds_alternative<UnionType>(definition) ||
+            std::holds_alternative<TaggedUnionType>(definition) ||
             (soa != nullptr && soa->backend == codegen::SoaBackend::standard_library)) {
             selected_type_ = TypeId{static_cast<std::uint32_t>(index)};
             break;
@@ -558,13 +667,39 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     selected_field_.clear();
     selected_enumerator_.clear();
     record_access_members_.clear();
+    varint_distributions_.clear();
+    tagged_union_distributions_.clear();
+    ++tagged_distribution_revision_;
+    new_varint_distribution_value_.fill('\0');
+    new_varint_distribution_value_[0] = '0';
+    new_varint_distribution_weight_ = 1;
     record_access_set_explicit_ = false;
+    rename_editor_declaration_.reset();
+    declaration_name_.fill('\0');
+    delete_declaration_.reset();
+    delete_declaration_name_.clear();
     enum_editor_declaration_.reset();
     enum_editor_value_.clear();
     packed_editor_declaration_.reset();
     packed_editor_field_.clear();
+    packed_code_editor_declaration_.reset();
+    packed_code_editor_field_.clear();
+    packed_code_editor_name_.clear();
+    selected_packed_code_.clear();
+    integer_scalar_editor_declaration_.reset();
+    integer_scalar_editor_code_.clear();
+    selected_integer_scalar_code_.clear();
+    linear_quantized_editor_declaration_.reset();
+    integer_varint_editor_declaration_.reset();
+    fixed_point_editor_declaration_.reset();
+    optional_sentinel_editor_declaration_.reset();
+    optional_presence_bit_editor_declaration_.reset();
     record_editor_declaration_.reset();
     record_editor_member_.clear();
+    union_editor_declaration_.reset();
+    union_editor_alternative_.clear();
+    tagged_union_editor_declaration_.reset();
+    tagged_union_editor_alternative_.clear();
     soa_editor_declaration_.reset();
     soa_editor_member_.clear();
     packed_dragged_divider_.reset();
@@ -577,6 +712,9 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     graph_focus_selected_ = false;
     cached_type_.reset();
     cached_revision_ = std::numeric_limits<std::uint64_t>::max();
+    quantized_comparison_type_.reset();
+    varint_comparison_type_.reset();
+    optional_comparison_type_.reset();
     comparison_a_variant_id_ = LayoutWorkspace::baseline_variant_id;
     comparison_b_variant_id_ = LayoutWorkspace::baseline_variant_id;
     comparison_b_follows_active_ = true;
@@ -634,15 +772,142 @@ void PlannerUi::setup_default_dock_layout(unsigned int const dockspace_id) {
 
 void PlannerUi::refresh_analysis() {
     validate_comparison_variants();
+
+    if (selected_type_.has_value()) {
+        auto const* selected_quantized{
+            std::get_if<LinearQuantizedType>(&workspace_.types().type(*selected_type_).definition)};
+        if (selected_quantized != nullptr) {
+            auto valid_comparison_type = [&](TypeId const candidate) {
+                if (candidate == *selected_type_) {
+                    return false;
+                }
+                auto const* candidate_quantized{std::get_if<LinearQuantizedType>(
+                    &workspace_.types().type(candidate).definition)};
+                return candidate_quantized != nullptr &&
+                       candidate_quantized->source.type == selected_quantized->source.type;
+            };
+
+            std::optional<TypeId> comparison_id;
+            if (quantized_comparison_type_.has_value()) {
+                comparison_id = workspace_.types().find(*quantized_comparison_type_);
+            }
+            if (!comparison_id.has_value() || !valid_comparison_type(*comparison_id)) {
+                quantized_comparison_type_.reset();
+                auto const types{workspace_.types().types()};
+                for (std::size_t index{}; index < types.size(); ++index) {
+                    auto const candidate{TypeId{static_cast<std::uint32_t>(index)}};
+                    if (valid_comparison_type(candidate)) {
+                        quantized_comparison_type_ = types[index].identity;
+                        break;
+                    }
+                }
+            }
+        } else {
+            quantized_comparison_type_.reset();
+        }
+    } else {
+        quantized_comparison_type_.reset();
+    }
+
+    if (selected_type_.has_value()) {
+        auto const* selected_varint{
+            std::get_if<IntegerVarintType>(&workspace_.types().type(*selected_type_).definition)};
+        if (selected_varint != nullptr) {
+            auto valid_comparison_type = [&](TypeId const candidate) {
+                if (candidate == *selected_type_) {
+                    return false;
+                }
+                auto const* candidate_varint{
+                    std::get_if<IntegerVarintType>(&workspace_.types().type(candidate).definition)};
+                return candidate_varint != nullptr &&
+                       candidate_varint->source.type == selected_varint->source.type;
+            };
+
+            std::optional<TypeId> comparison_id;
+            if (varint_comparison_type_.has_value()) {
+                comparison_id = workspace_.types().find(*varint_comparison_type_);
+            }
+            if (!comparison_id.has_value() || !valid_comparison_type(*comparison_id)) {
+                varint_comparison_type_.reset();
+                auto const types{workspace_.types().types()};
+                for (std::size_t index{}; index < types.size(); ++index) {
+                    auto const candidate{TypeId{static_cast<std::uint32_t>(index)}};
+                    if (valid_comparison_type(candidate)) {
+                        varint_comparison_type_ = types[index].identity;
+                        break;
+                    }
+                }
+            }
+        } else {
+            varint_comparison_type_.reset();
+        }
+    } else {
+        varint_comparison_type_.reset();
+    }
+
+    auto optional_source = [&](TypeId const type) -> std::optional<TypeId> {
+        auto const& definition{workspace_.types().type(type).definition};
+        if (auto const* sentinel{std::get_if<OptionalSentinelType>(&definition)}) {
+            return sentinel->source.type;
+        }
+        if (auto const* presence{std::get_if<OptionalPresenceBitType>(&definition)}) {
+            return presence->source.type;
+        }
+        return std::nullopt;
+    };
+    if (selected_type_.has_value()) {
+        auto const selected_source{optional_source(*selected_type_)};
+        if (selected_source.has_value()) {
+            auto valid_comparison_type = [&](TypeId const candidate) {
+                return candidate != *selected_type_ &&
+                       optional_source(candidate) == selected_source;
+            };
+
+            std::optional<TypeId> comparison_id;
+            if (optional_comparison_type_.has_value()) {
+                comparison_id = workspace_.types().find(*optional_comparison_type_);
+            }
+            if (!comparison_id.has_value() || !valid_comparison_type(*comparison_id)) {
+                optional_comparison_type_.reset();
+                auto const types{workspace_.types().types()};
+                for (std::size_t index{}; index < types.size(); ++index) {
+                    auto const candidate{TypeId{static_cast<std::uint32_t>(index)}};
+                    if (valid_comparison_type(candidate)) {
+                        optional_comparison_type_ = types[index].identity;
+                        break;
+                    }
+                }
+            }
+        } else {
+            optional_comparison_type_.reset();
+        }
+    } else {
+        optional_comparison_type_.reset();
+    }
+
     if (cached_revision_ == workspace_.revision() && cached_type_ == selected_type_ &&
         cached_selected_field_ == selected_field_ &&
         cached_record_access_members_ == record_access_members_ &&
         cached_record_access_set_explicit_ == record_access_set_explicit_ &&
         cached_comparison_a_variant_id_ == comparison_a_variant_id_ &&
-        cached_comparison_b_variant_id_ == comparison_b_variant_id_) {
+        cached_comparison_b_variant_id_ == comparison_b_variant_id_ &&
+        cached_quantized_comparison_type_ == quantized_comparison_type_ &&
+        cached_varint_comparison_type_ == varint_comparison_type_ &&
+        cached_optional_comparison_type_ == optional_comparison_type_ &&
+        cached_tagged_distribution_revision_ == tagged_distribution_revision_) {
         return;
     }
     enum_domain_.reset();
+    integer_scalar_analysis_.reset();
+    linear_quantized_analysis_.reset();
+    linear_quantized_comparison_.reset();
+    integer_varint_analysis_.reset();
+    integer_varint_comparison_.reset();
+    fixed_point_analysis_.reset();
+    mini_float_analysis_.reset();
+    optional_sentinel_analysis_.reset();
+    optional_presence_bit_analysis_.reset();
+    optional_encoding_comparison_.reset();
     baseline_packed_.reset();
     active_packed_.reset();
     packed_variants_.clear();
@@ -655,6 +920,9 @@ void PlannerUi::refresh_analysis() {
     comparison_b_soa_.reset();
     record_analysis_.reset();
     record_access_analysis_.reset();
+    union_analysis_.reset();
+    tagged_union_analysis_.reset();
+    tagged_union_distribution_analysis_.reset();
     cached_revision_ = workspace_.revision();
     cached_type_ = selected_type_;
     cached_selected_field_ = selected_field_;
@@ -662,6 +930,10 @@ void PlannerUi::refresh_analysis() {
     cached_record_access_set_explicit_ = record_access_set_explicit_;
     cached_comparison_a_variant_id_ = comparison_a_variant_id_;
     cached_comparison_b_variant_id_ = comparison_b_variant_id_;
+    cached_quantized_comparison_type_ = quantized_comparison_type_;
+    cached_varint_comparison_type_ = varint_comparison_type_;
+    cached_optional_comparison_type_ = optional_comparison_type_;
+    cached_tagged_distribution_revision_ = tagged_distribution_revision_;
     if (!selected_type_.has_value()) {
         return;
     }
@@ -673,6 +945,55 @@ void PlannerUi::refresh_analysis() {
     auto const element_count{workspace_.element_count()};
     if (std::holds_alternative<EnumType>(definition)) {
         enum_domain_ = Analyzer::analyze_enum(workspace_.types(), *selected_type_, abi_);
+    } else if (std::holds_alternative<IntegerScalarType>(definition)) {
+        integer_scalar_analysis_ =
+            Analyzer::analyze_integer_scalar(workspace_.types(), *selected_type_);
+    } else if (std::holds_alternative<LinearQuantizedType>(definition)) {
+        linear_quantized_analysis_ =
+            Analyzer::analyze_linear_quantized(workspace_.types(), *selected_type_);
+        if (quantized_comparison_type_.has_value()) {
+            auto const comparison_type{workspace_.types().find(*quantized_comparison_type_)};
+            if (comparison_type.has_value()) {
+                linear_quantized_comparison_ = Analyzer::compare_linear_quantized(
+                    workspace_.types(), *selected_type_, *comparison_type, element_count);
+            }
+        }
+    } else if (std::holds_alternative<IntegerVarintType>(definition)) {
+        integer_varint_analysis_ =
+            Analyzer::analyze_integer_varint(workspace_.types(), *selected_type_, element_count);
+        if (varint_comparison_type_.has_value()) {
+            auto const comparison_type{workspace_.types().find(*varint_comparison_type_)};
+            if (comparison_type.has_value()) {
+                integer_varint_comparison_ = Analyzer::compare_integer_varint(
+                    workspace_.types(), *selected_type_, *comparison_type, element_count);
+            }
+        }
+    } else if (std::holds_alternative<FixedPointType>(definition)) {
+        fixed_point_analysis_ =
+            Analyzer::analyze_fixed_point(workspace_.types(), *selected_type_, element_count);
+    } else if (std::holds_alternative<MiniFloatType>(definition)) {
+        mini_float_analysis_ =
+            Analyzer::analyze_mini_float(workspace_.types(), *selected_type_, element_count);
+    } else if (std::holds_alternative<OptionalSentinelType>(definition)) {
+        optional_sentinel_analysis_ =
+            Analyzer::analyze_optional_sentinel(workspace_.types(), *selected_type_, element_count);
+        if (optional_comparison_type_.has_value()) {
+            auto const comparison_type{workspace_.types().find(*optional_comparison_type_)};
+            if (comparison_type.has_value()) {
+                optional_encoding_comparison_ = Analyzer::compare_optional_encodings(
+                    workspace_.types(), *selected_type_, *comparison_type, element_count);
+            }
+        }
+    } else if (std::holds_alternative<OptionalPresenceBitType>(definition)) {
+        optional_presence_bit_analysis_ = Analyzer::analyze_optional_presence_bit(
+            workspace_.types(), *selected_type_, element_count);
+        if (optional_comparison_type_.has_value()) {
+            auto const comparison_type{workspace_.types().find(*optional_comparison_type_)};
+            if (comparison_type.has_value()) {
+                optional_encoding_comparison_ = Analyzer::compare_optional_encodings(
+                    workspace_.types(), *selected_type_, *comparison_type, element_count);
+            }
+        }
     } else if (std::holds_alternative<RecordType>(definition)) {
         record_analysis_ =
             Analyzer::analyze_record(workspace_.types(), *selected_type_, abi_, element_count);
@@ -685,6 +1006,30 @@ void PlannerUi::refresh_analysis() {
         if (!access_members.empty()) {
             record_access_analysis_ =
                 Analyzer::analyze_record_access(*record_analysis_, access_members, abi_);
+        }
+    } else if (std::holds_alternative<UnionType>(definition)) {
+        union_analysis_ =
+            Analyzer::analyze_union(workspace_.types(), *selected_type_, abi_, element_count);
+    } else if (std::holds_alternative<TaggedUnionType>(definition)) {
+        tagged_union_analysis_ = Analyzer::analyze_tagged_union(
+            workspace_.types(), *selected_type_, abi_, element_count);
+        auto const declaration{
+            document_.has_value()
+                ? document_->find_declaration(workspace_.types().type(*selected_type_).identity)
+                : std::optional<DeclarationId>{}};
+        auto const found{declaration.has_value() ? tagged_union_distributions_.find(*declaration)
+                                                 : tagged_union_distributions_.end()};
+        if (found != tagged_union_distributions_.end()) {
+            std::vector<TaggedUnionDistributionEntry> entries;
+            for (auto const& [tag, weight] : found->second) {
+                if (weight != 0) {
+                    entries.push_back({.tag = tag, .weight = weight});
+                }
+            }
+            if (!entries.empty()) {
+                tagged_union_distribution_analysis_ = Analyzer::analyze_tagged_union_distribution(
+                    *tagged_union_analysis_, entries, element_count);
+            }
         }
     } else if (std::holds_alternative<PackedType>(definition)) {
         baseline_packed_ = Analyzer::analyze_packed(
@@ -728,6 +1073,8 @@ void PlannerUi::refresh_analysis() {
 
 void PlannerUi::draw_layout_panel() {
     ImGui::Begin("Layout");
+    draw_target_profile(abi_);
+    ImGui::Separator();
     if (ImGui::Button("+ Add variant")) {
         create_variant_for_selected_schema();
     }
@@ -742,8 +1089,437 @@ void PlannerUi::draw_layout_panel() {
         draw_soa_layout(*soa, *baseline_soa_);
     } else if (std::holds_alternative<RecordType>(definition)) {
         draw_record_layout(*record_analysis_);
+    } else if (std::holds_alternative<UnionType>(definition)) {
+        auto const& analysis{*union_analysis_};
+        ImGui::SeparatorText("Analysis scale");
+        if (draw_element_count()) {
+            ImGui::End();
+            return;
+        }
+        auto const& aggregate{analysis.aggregate};
+        if (ImGui::BeginTable("union-aggregate",
+                              2,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_SizingStretchProp)) {
+            auto draw_stat{[](char const* const label, std::string const& value) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(label);
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(value.c_str());
+            }};
+            draw_stat("Physical storage", detail::format_bytes(aggregate.total_storage_bytes));
+            draw_stat("Tail padding", detail::format_bytes(aggregate.total_tail_padding_bytes));
+            draw_stat("Minimum cache lines", detail::format_number(aggregate.minimum_cache_lines));
+            draw_stat("Complete elements / cache line",
+                      detail::format_number(aggregate.complete_elements_per_cache_line));
+            draw_stat("Elements crossing cache-line boundaries",
+                      detail::format_number(aggregate.cache_line_straddling_elements));
+            draw_stat("Minimum pages", detail::format_number(aggregate.minimum_pages));
+            draw_stat("Complete elements / page",
+                      detail::format_number(aggregate.complete_elements_per_page));
+            draw_stat("Elements crossing page boundaries",
+                      detail::format_number(aggregate.page_straddling_elements));
+            draw_stat("Fits L1 data cache",
+                      detail::format_fit(aggregate.cache_capacity.fits_l1_data));
+            draw_stat("Fits L2 cache", detail::format_fit(aggregate.cache_capacity.fits_l2));
+            draw_stat("Fits L3 cache", detail::format_fit(aggregate.cache_capacity.fits_l3));
+            ImGui::EndTable();
+        }
+        ImGui::TextDisabled(
+            "Boundary crossing assumes a contiguous array whose base is cache-line/page aligned.");
+        ImGui::Text("Size: %s", detail::format_bytes(analysis.size_bytes).c_str());
+        ImGui::Text("Alignment: %s", detail::format_bytes(analysis.alignment_bytes).c_str());
+        ImGui::Text("Largest alternative: %s",
+                    detail::format_bytes(analysis.largest_alternative_bytes).c_str());
+        ImGui::Text("Tail padding: %s", detail::format_bytes(analysis.tail_padding_bytes).c_str());
+        if (analysis.size_bytes.has_value() && *analysis.size_bytes != 0) {
+            ImGui::SeparatorText("Object map");
+            auto const width{std::max(1.0F, ImGui::GetContentRegionAvail().x)};
+            constexpr auto bar_height{34.0F};
+            for (std::size_t index{}; index < analysis.alternatives.size(); ++index) {
+                auto const& alternative{analysis.alternatives[index]};
+                if (!alternative.extent_bytes.has_value()) {
+                    continue;
+                }
+                ImGui::PushID(static_cast<int>(index));
+                ImGui::TextUnformatted(alternative.name.c_str());
+                auto const origin{ImGui::GetCursorScreenPos()};
+                auto* const draw_list{ImGui::GetWindowDrawList()};
+                draw_list->AddRectFilled(origin,
+                                         {origin.x + width, origin.y + bar_height},
+                                         ImGui::GetColorU32(ImVec4{0.20F, 0.22F, 0.25F, 1.0F}),
+                                         3.0F);
+                auto const extent_width{width * static_cast<float>(*alternative.extent_bytes) /
+                                        static_cast<float>(*analysis.size_bytes)};
+                auto const selected{selected_field_ == alternative.name};
+                auto const extent_color{selected ? ImVec4{0.24F, 0.65F, 0.90F, 1.0F}
+                                                 : ImVec4{0.62F, 0.39F, 0.20F, 1.0F}};
+                draw_list->AddRectFilled(origin,
+                                         {origin.x + extent_width, origin.y + bar_height},
+                                         ImGui::GetColorU32(extent_color),
+                                         3.0F);
+                draw_list->AddRect(origin,
+                                   {origin.x + width, origin.y + bar_height},
+                                   ImGui::GetColorU32(ImGuiCol_Border),
+                                   3.0F);
+                auto const extent_label{std::to_string(*alternative.extent_bytes) + " B extent"};
+                draw_list->AddText({origin.x + 5.0F, origin.y + 8.0F},
+                                   ImGui::GetColorU32(ImGuiCol_Text),
+                                   extent_label.c_str());
+                ImGui::InvisibleButton("##union-alternative-map", {width, bar_height});
+                if (ImGui::IsItemClicked()) {
+                    selected_field_ = alternative.name;
+                }
+                if (ImGui::IsItemHovered()) {
+                    ImGui::SetTooltip("%s: %s extent, %s slack in each %s object",
+                                      alternative.name.c_str(),
+                                      detail::format_bytes(alternative.extent_bytes).c_str(),
+                                      detail::format_bytes(alternative.slack_bytes).c_str(),
+                                      detail::format_bytes(analysis.size_bytes).c_str());
+                }
+                ImGui::PopID();
+            }
+            ImGui::TextDisabled("Colored bytes belong to the alternative; dark bytes are union "
+                                "slack, including any tail alignment.");
+        }
+        if (ImGui::BeginTable("union-layout",
+                              5,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("Alternative");
+            ImGui::TableSetupColumn("Count");
+            ImGui::TableSetupColumn("Extent");
+            ImGui::TableSetupColumn("Slack / object");
+            ImGui::TableSetupColumn("Slack at count");
+            ImGui::TableHeadersRow();
+            for (auto const& alternative : analysis.alternatives) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(alternative.name.c_str());
+                ImGui::TableNextColumn();
+                ImGui::Text("%llu", static_cast<unsigned long long>(alternative.element_count));
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(detail::format_bytes(alternative.extent_bytes).c_str());
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(detail::format_bytes(alternative.slack_bytes).c_str());
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(detail::format_bytes(alternative.total_slack_bytes).c_str());
+            }
+            ImGui::EndTable();
+        }
+        ImGui::TextDisabled(
+            "Each scaled slack value assumes every object uses that alternative; no tag "
+            "distribution is implied.");
+        draw_diagnostics(analysis.diagnostics);
+    } else if (auto const* tagged{std::get_if<TaggedUnionType>(&definition)}) {
+        auto const& analysis{*tagged_union_analysis_};
+        ImGui::SeparatorText("Analysis scale");
+        if (draw_element_count()) {
+            ImGui::End();
+            return;
+        }
+        ImGui::Text("Tagged union: %s",
+                    workspace_.types().type(*selected_type_).identity.name.c_str());
+        ImGui::Text("Discriminant: %s",
+                    workspace_.types().type(tagged->discriminant.type).identity.name.c_str());
+        ImGui::SeparatorText("Discriminant coverage");
+        ImGui::Text("Mapped live tags: %llu",
+                    static_cast<unsigned long long>(analysis.mapped_live_tags.size()));
+        for (auto const& tag : analysis.mapped_live_tags) {
+            ImGui::BulletText("%s -> payload", tag.c_str());
+        }
+        ImGui::Text("Unmapped live tags: %llu",
+                    static_cast<unsigned long long>(analysis.unmapped_live_tags.size()));
+        for (auto const& tag : analysis.unmapped_live_tags) {
+            ImGui::BulletText("%s -> no payload alternative", tag.c_str());
+        }
+        ImGui::Text("Named sentinel tags: %llu",
+                    static_cast<unsigned long long>(analysis.sentinel_tags.size()));
+        for (auto const& tag : analysis.sentinel_tags) {
+            ImGui::BulletText("%s -> reserved sentinel", tag.c_str());
+        }
+        if (analysis.count_sentinel_tag.has_value()) {
+            ImGui::Text("Count sentinel: %s", analysis.count_sentinel_tag->c_str());
+        } else {
+            ImGui::TextDisabled("Count sentinel: None");
+        }
+        ImGui::TextDisabled("Tag roles are semantic code-space facts, not allocated byte waste.");
+        auto const& aggregate{analysis.aggregate};
+        if (ImGui::BeginTable("tagged-union-aggregate",
+                              2,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_SizingStretchProp)) {
+            auto draw_stat{[](char const* const label, std::string const& value) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(label);
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(value.c_str());
+            }};
+            draw_stat("Physical storage", detail::format_bytes(aggregate.total_storage_bytes));
+            draw_stat("Discriminant storage",
+                      detail::format_bytes(aggregate.total_discriminant_bytes));
+            draw_stat("Payload-union storage", detail::format_bytes(aggregate.total_payload_bytes));
+            draw_stat("Internal padding",
+                      detail::format_bytes(aggregate.total_internal_padding_bytes));
+            draw_stat("Tail padding", detail::format_bytes(aggregate.total_tail_padding_bytes));
+            draw_stat("Total padding", detail::format_bytes(aggregate.total_padding_bytes));
+            draw_stat("Minimum cache lines", detail::format_number(aggregate.minimum_cache_lines));
+            draw_stat("Complete elements / cache line",
+                      detail::format_number(aggregate.complete_elements_per_cache_line));
+            draw_stat("Elements crossing cache-line boundaries",
+                      detail::format_number(aggregate.cache_line_straddling_elements));
+            draw_stat("Minimum pages", detail::format_number(aggregate.minimum_pages));
+            draw_stat("Complete elements / page",
+                      detail::format_number(aggregate.complete_elements_per_page));
+            draw_stat("Elements crossing page boundaries",
+                      detail::format_number(aggregate.page_straddling_elements));
+            draw_stat("Fits L1 data cache",
+                      detail::format_fit(aggregate.cache_capacity.fits_l1_data));
+            draw_stat("Fits L2 cache", detail::format_fit(aggregate.cache_capacity.fits_l2));
+            draw_stat("Fits L3 cache", detail::format_fit(aggregate.cache_capacity.fits_l3));
+            ImGui::EndTable();
+        }
+        ImGui::TextDisabled(
+            "Boundary crossing assumes a contiguous array whose base is cache-line/page aligned.");
+        if (ImGui::BeginTable("tagged-union-target-layout",
+                              2,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_SizingStretchProp)) {
+            auto draw_stat{[](char const* const label, std::string const& value) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(label);
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(value.c_str());
+            }};
+            draw_stat("Discriminant storage",
+                      analysis.discriminant_facts.has_value()
+                          ? detail::format_bytes(analysis.discriminant_facts->size_bytes)
+                          : "Unknown");
+            draw_stat("Payload offset", detail::format_bytes(analysis.payload_offset_bytes));
+            draw_stat("Payload storage", detail::format_bytes(analysis.payload_size_bytes));
+            draw_stat("Internal padding", detail::format_bytes(analysis.internal_padding_bytes));
+            draw_stat("Tail padding", detail::format_bytes(analysis.tail_padding_bytes));
+            draw_stat("Object size", detail::format_bytes(analysis.size_bytes));
+            draw_stat("Object alignment", detail::format_bytes(analysis.alignment_bytes));
+            ImGui::EndTable();
+        }
+        if (analysis.size_bytes.has_value() && *analysis.size_bytes != 0 &&
+            analysis.discriminant_facts.has_value() && analysis.payload_offset_bytes.has_value() &&
+            analysis.payload_size_bytes.has_value()) {
+            ImGui::SeparatorText("Object map");
+            auto const width{std::max(1.0F, ImGui::GetContentRegionAvail().x)};
+            constexpr auto bar_height{38.0F};
+            auto const origin{ImGui::GetCursorScreenPos()};
+            auto* const draw_list{ImGui::GetWindowDrawList()};
+            auto const total{static_cast<float>(*analysis.size_bytes)};
+            auto const tag_end{width * static_cast<float>(analysis.discriminant_facts->size_bytes) /
+                               total};
+            auto const payload_begin{width * static_cast<float>(*analysis.payload_offset_bytes) /
+                                     total};
+            auto const payload_end{
+                width *
+                static_cast<float>(*analysis.payload_offset_bytes + *analysis.payload_size_bytes) /
+                total};
+            draw_list->AddRectFilled(origin,
+                                     {origin.x + width, origin.y + bar_height},
+                                     ImGui::GetColorU32(ImVec4{0.20F, 0.22F, 0.25F, 1.0F}),
+                                     3.0F);
+            draw_list->AddRectFilled(origin,
+                                     {origin.x + tag_end, origin.y + bar_height},
+                                     ImGui::GetColorU32(ImVec4{0.25F, 0.58F, 0.86F, 1.0F}),
+                                     3.0F);
+            draw_list->AddRectFilled({origin.x + payload_begin, origin.y},
+                                     {origin.x + payload_end, origin.y + bar_height},
+                                     ImGui::GetColorU32(ImVec4{0.62F, 0.39F, 0.20F, 1.0F}),
+                                     3.0F);
+            draw_list->AddRect(origin,
+                               {origin.x + width, origin.y + bar_height},
+                               ImGui::GetColorU32(ImGuiCol_Border),
+                               3.0F);
+            draw_list->AddText(
+                {origin.x + 5.0F, origin.y + 10.0F}, ImGui::GetColorU32(ImGuiCol_Text), "tag");
+            draw_list->AddText({origin.x + payload_begin + 5.0F, origin.y + 10.0F},
+                               ImGui::GetColorU32(ImGuiCol_Text),
+                               "payload union");
+            ImGui::InvisibleButton("##tagged-union-object-map", {width, bar_height});
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip(
+                    "Tag: %s; alignment gap: %s; payload: %s; tail padding: %s",
+                    detail::format_bytes(analysis.discriminant_facts->size_bytes).c_str(),
+                    detail::format_bytes(analysis.internal_padding_bytes).c_str(),
+                    detail::format_bytes(analysis.payload_size_bytes).c_str(),
+                    detail::format_bytes(analysis.tail_padding_bytes).c_str());
+            }
+        }
+        if (ImGui::BeginTable("tagged-union-semantic-layout",
+                              7,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("Tag");
+            ImGui::TableSetupColumn("Alternative");
+            ImGui::TableSetupColumn("Semantic type");
+            ImGui::TableSetupColumn("Count");
+            ImGui::TableSetupColumn("Extent");
+            ImGui::TableSetupColumn("Payload slack");
+            ImGui::TableSetupColumn("Slack at count");
+            ImGui::TableHeadersRow();
+            for (auto const& alternative : analysis.alternatives) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(alternative.tag.c_str());
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(alternative.name.c_str());
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(
+                    workspace_.types().type(alternative.semantic_type).cpp_spelling.c_str());
+                ImGui::TableNextColumn();
+                ImGui::Text("%llu", static_cast<unsigned long long>(alternative.element_count));
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(detail::format_bytes(alternative.extent_bytes).c_str());
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(
+                    detail::format_bytes(alternative.payload_slack_bytes).c_str());
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(
+                    detail::format_bytes(alternative.total_payload_slack_bytes).c_str());
+            }
+            ImGui::EndTable();
+        }
+        ImGui::TextDisabled("Payload slack is conditional on the active tag; it is not allocated "
+                            "outside the shared payload union.");
+        draw_diagnostics(analysis.diagnostics);
     } else if (std::holds_alternative<EnumType>(definition)) {
         ImGui::TextDisabled("Enums have semantic metadata but no standalone aggregate layout.");
+    } else if (std::holds_alternative<IntegerScalarType>(definition)) {
+        ImGui::TextDisabled(
+            "Semantic integer scalars have no standalone physical layout. Reference one from a "
+            "physical representation to analyze storage.");
+    } else if (std::holds_alternative<LinearQuantizedType>(definition)) {
+        auto const& analysis{*linear_quantized_analysis_};
+        ImGui::Text("Encoded width: %u bits", analysis.encoded_storage_bits);
+        ImGui::Text("Usable codes: %s",
+                    detail::format_code_count(analysis.usable_code_count).c_str());
+        ImGui::Text("Resolution: %.12g", static_cast<double>(analysis.resolution));
+        ImGui::Text("Maximum rounding error: %.12g",
+                    static_cast<double>(analysis.maximum_rounding_error));
+        ImGui::TextDisabled(
+            "Encoded bits are representation facts, not a standalone ABI sizeof/alignment.");
+    } else if (std::holds_alternative<IntegerVarintType>(definition)) {
+        ImGui::SeparatorText("Analysis scale");
+        if (draw_element_count()) {
+            ImGui::End();
+            return;
+        }
+        auto const& analysis{*integer_varint_analysis_};
+        ImGui::Text("Encoded size: %u .. %u bytes/value",
+                    analysis.minimum_encoded_bytes,
+                    analysis.maximum_encoded_bytes);
+        ImGui::Text("At %llu values: %s .. %s",
+                    static_cast<unsigned long long>(analysis.element_count),
+                    detail::format_bytes(analysis.minimum_total_bytes).c_str(),
+                    detail::format_bytes(analysis.maximum_total_bytes).c_str());
+        ImGui::TextDisabled(
+            "Variable-length size is a range; expected size requires a value distribution.");
+    } else if (std::holds_alternative<FixedPointType>(definition)) {
+        ImGui::SeparatorText("Analysis scale");
+        if (draw_element_count()) {
+            ImGui::End();
+            return;
+        }
+        auto const& analysis{*fixed_point_analysis_};
+        ImGui::Text("Encoded width: %u bits/value", analysis.total_bits);
+        ImGui::Text("At %llu values: %s bits",
+                    static_cast<unsigned long long>(analysis.element_count),
+                    detail::format_number(analysis.total_encoded_bits).c_str());
+        ImGui::Text("Resolution: %.12g", static_cast<double>(analysis.resolution));
+        ImGui::Text("Representable range: %.12g .. %.12g",
+                    static_cast<double>(analysis.minimum_value),
+                    static_cast<double>(analysis.maximum_value));
+        ImGui::TextDisabled(
+            "Encoded payload bits are not a standalone ABI sizeof/alignment or allocation size.");
+        draw_diagnostics(analysis.diagnostics);
+    } else if (std::holds_alternative<MiniFloatType>(definition)) {
+        ImGui::SeparatorText("Analysis scale");
+        if (draw_element_count()) {
+            ImGui::End();
+            return;
+        }
+        auto const& analysis{*mini_float_analysis_};
+        ImGui::Text("Encoded width: %u bits/value", analysis.total_bits);
+        ImGui::Text("At %llu values: %s bits",
+                    static_cast<unsigned long long>(analysis.element_count),
+                    detail::format_number(analysis.total_encoded_bits).c_str());
+        ImGui::Text("Normal exponent range: %d .. %d",
+                    analysis.minimum_normal_exponent,
+                    analysis.maximum_normal_exponent);
+        if (analysis.minimum_positive_normal.has_value()) {
+            ImGui::Text("Minimum positive normal: %.12g",
+                        static_cast<double>(*analysis.minimum_positive_normal));
+        } else {
+            ImGui::TextDisabled("Minimum positive normal: Unknown");
+        }
+        if (analysis.maximum_finite.has_value()) {
+            ImGui::Text("Maximum finite: %.12g", static_cast<double>(*analysis.maximum_finite));
+        } else {
+            ImGui::TextDisabled("Maximum finite: Unknown");
+        }
+        ImGui::TextDisabled(
+            "Encoded payload bits are not a standalone ABI sizeof/alignment or allocation size.");
+        draw_diagnostics(analysis.diagnostics);
+    } else if (std::holds_alternative<OptionalSentinelType>(definition)) {
+        ImGui::SeparatorText("Analysis scale");
+        if (draw_element_count()) {
+            ImGui::End();
+            return;
+        }
+        auto const& analysis{*optional_sentinel_analysis_};
+        ImGui::Text("Encoded width: %u bits/value", analysis.encoded_storage_bits);
+        ImGui::Text("Present values: %s",
+                    detail::format_number(analysis.present_value_count).c_str());
+        ImGui::Text("Absence codes: %llu",
+                    static_cast<unsigned long long>(analysis.absence_code_count));
+        ImGui::Text("Other sentinel codes: %llu",
+                    static_cast<unsigned long long>(analysis.other_sentinel_code_count));
+        ImGui::Text("Unused codes: %s", detail::format_number(analysis.unused_code_count).c_str());
+        ImGui::Text("At %llu values: %s encoded bits",
+                    static_cast<unsigned long long>(analysis.element_count),
+                    detail::format_number(analysis.total_encoded_bits).c_str());
+        ImGui::TextDisabled(
+            "Encoded payload bits are not a standalone ABI sizeof or allocation size.");
+        draw_diagnostics(analysis.diagnostics);
+    } else if (std::holds_alternative<OptionalPresenceBitType>(definition)) {
+        ImGui::SeparatorText("Analysis scale");
+        if (draw_element_count()) {
+            ImGui::End();
+            return;
+        }
+        auto const& analysis{*optional_presence_bit_analysis_};
+        ImGui::Text("Encoded width: %u bits/value (%u presence + %u payload)",
+                    analysis.encoded_storage_bits,
+                    analysis.presence_bits,
+                    analysis.payload_bits);
+        ImGui::Text("Present values: %s",
+                    detail::format_number(analysis.present_value_count).c_str());
+        ImGui::Text("Canonical absence states: %llu",
+                    static_cast<unsigned long long>(analysis.canonical_absence_state_count));
+        ImGui::Text("Source sentinel codes: %llu",
+                    static_cast<unsigned long long>(analysis.source_sentinel_code_count));
+        ImGui::Text("Source unused payload codes: %s",
+                    detail::format_number(analysis.source_unused_payload_codes).c_str());
+        ImGui::Text("Noncanonical absence bit patterns: %s",
+                    detail::format_number(analysis.noncanonical_absence_patterns).c_str());
+        ImGui::Text("At %llu values: %s encoded bits",
+                    static_cast<unsigned long long>(analysis.element_count),
+                    detail::format_number(analysis.total_encoded_bits).c_str());
+        ImGui::TextDisabled(
+            "Ignored payload patterns when absent are redundant encodings, not additional "
+            "semantic absence states or allocated byte waste.");
+        ImGui::TextDisabled(
+            "Encoded payload bits are not a standalone ABI sizeof or allocation size.");
+        draw_diagnostics(analysis.diagnostics);
     } else {
         ImGui::TextDisabled("This type is not supported by the layout analyzer.");
     }

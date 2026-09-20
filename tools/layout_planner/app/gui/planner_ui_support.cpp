@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <cstdio>
 #include <ranges>
 
@@ -33,6 +34,14 @@ auto format_number(std::optional<std::uint64_t> const value) -> std::string {
     return value.has_value() ? std::to_string(*value) : "Unknown";
 }
 
+auto format_code_count(layout::ExactCodeCount const value) -> std::string {
+    return value.two_to_64 ? "18446744073709551616 (2^64)" : std::to_string(value.value);
+}
+
+auto format_fit(std::optional<bool> const fits) -> std::string {
+    return fits.has_value() ? (*fits ? "Yes" : "No") : "Unknown";
+}
+
 auto format_delta(std::optional<layout::NumericDelta> const delta, auto const& format_magnitude)
     -> std::string {
     if (!delta.has_value()) {
@@ -61,6 +70,33 @@ auto format_delta_number(std::optional<layout::NumericDelta> const delta) -> std
                         [](std::uint64_t const magnitude) { return std::to_string(magnitude); });
 }
 
+auto parse_unsigned(std::string_view text) -> std::optional<std::uint64_t> {
+    auto base{10};
+    if (text.starts_with("0x") || text.starts_with("0X")) {
+        base = 16;
+        text.remove_prefix(2);
+    }
+    if (text.empty()) {
+        return std::nullopt;
+    }
+    std::uint64_t value{};
+    auto const [end, error]{std::from_chars(text.data(), text.data() + text.size(), value, base)};
+    return error == std::errc{} && end == text.data() + text.size() ? std::optional{value}
+                                                                    : std::nullopt;
+}
+
+auto parse_packed_integer(std::string_view text) -> std::optional<codegen::PackedIntegerValue> {
+    auto negative{false};
+    if (!text.empty() && (text.front() == '-' || text.front() == '+')) {
+        negative = text.front() == '-';
+        text.remove_prefix(1);
+    }
+    auto const magnitude{parse_unsigned(text)};
+    return magnitude.has_value()
+             ? std::optional{codegen::PackedIntegerValue::from_parts(negative, *magnitude)}
+             : std::nullopt;
+}
+
 auto diagnostic_color(layout::DiagnosticSeverity const severity) -> ImVec4 {
     switch (severity) {
         case layout::DiagnosticSeverity::info:
@@ -75,8 +111,13 @@ auto diagnostic_color(layout::DiagnosticSeverity const severity) -> ImVec4 {
 
 auto packed_field(lispb::schema::PackedType const& packed, std::string const& name)
     -> lispb::schema::PackedField const* {
-    auto const found{std::ranges::find(packed.fields, name, &lispb::schema::PackedField::name)};
-    return found == packed.fields.end() ? nullptr : &*found;
+    for (auto const& segment : packed.segments) {
+        if (auto const* field{std::get_if<lispb::schema::PackedField>(&segment)};
+            field != nullptr && field->name == name) {
+            return field;
+        }
+    }
+    return nullptr;
 }
 
 auto soa_column(lispb::schema::SoaType const& soa, std::string const& name)
