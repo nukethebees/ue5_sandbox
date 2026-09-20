@@ -2,6 +2,8 @@
 
 #include "HeatmapRDGRenderer.h"
 
+#include <SandboxCore/grid_utils.h>
+
 #include "Engine/TextureRenderTarget2D.h"
 #include "Internationalization/Text.h"
 #include "RenderingThread.h"
@@ -25,12 +27,7 @@ auto are_supported_heatmap_dimensions(int32 const width, int32 const height) -> 
 }
 
 auto FHeatmapRDGGrid::is_valid() const noexcept -> bool {
-    if (width <= 0 || height <= 0) {
-        return false;
-    }
-
-    auto const expected_value_count{static_cast<int64>(width) * static_cast<int64>(height)};
-    return expected_value_count == static_cast<int64>(values.Num());
+    return ml::is_valid_grid_value_count(width, height, values.Num());
 }
 
 UHeatmapRDGWidget::UHeatmapRDGWidget() {

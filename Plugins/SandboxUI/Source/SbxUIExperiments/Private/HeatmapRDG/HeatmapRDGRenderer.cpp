@@ -1,5 +1,7 @@
 #include "HeatmapRDGRenderer.h"
 
+#include <SandboxCore/grid_utils.h>
+
 #include "DynamicRHI.h"
 #include "GlobalShader.h"
 #include "Logging/LogMacros.h"
@@ -77,7 +79,7 @@ void render_heatmap_rdg(FRHICommandListImmediate& rhi_command_list,
                         FTextureRenderTargetResource* const output_resource) {
     check(IsInRenderingThread());
     check(dimensions.X > 0 && dimensions.Y > 0);
-    check(static_cast<int64>(dimensions.X) * static_cast<int64>(dimensions.Y) == values.Num());
+    check(ml::is_valid_grid_value_count(dimensions.X, dimensions.Y, values.Num()));
 
     if (output_resource == nullptr) {
         UE_LOG(LogHeatmapRDG, Error, TEXT("Cannot render the heatmap without an output resource."));
@@ -100,7 +102,7 @@ auto measure_heatmap_rdg_gpu(FRHICommandListImmediate& rhi_command_list,
     -> TOptional<double> {
     check(IsInRenderingThread());
     check(dimensions.X > 0 && dimensions.Y > 0);
-    check(static_cast<int64>(dimensions.X) * static_cast<int64>(dimensions.Y) == values.Num());
+    check(ml::is_valid_grid_value_count(dimensions.X, dimensions.Y, values.Num()));
 
     if (!GSupportsTimestampRenderQueries || output_resource == nullptr) {
         return {};

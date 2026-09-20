@@ -1,5 +1,7 @@
 #include "SandboxUI/widgets/SHeatmap2D.h"
 
+#include <SandboxCore/grid_utils.h>
+
 #include "Application/SlateApplicationBase.h"
 #include "Internationalization/Text.h"
 #include "Rendering/DrawElementTypes.h"
@@ -93,12 +95,7 @@ auto is_valid_heatmap_grid(FHeatmapGrid const& grid) -> bool {
     if (grid.columns == 0 && grid.rows == 0) {
         return grid.values.IsEmpty();
     }
-    if (grid.columns <= 0 || grid.rows <= 0) {
-        return false;
-    }
-
-    auto const cell_count{static_cast<int64>(grid.columns) * static_cast<int64>(grid.rows)};
-    return cell_count <= MAX_int32 && cell_count == grid.values.Num();
+    return ml::is_valid_grid_value_count(grid.columns, grid.rows, grid.values.Num());
 }
 
 auto is_valid_heatmap_value_range(FHeatmapValueRange const& range) -> bool {

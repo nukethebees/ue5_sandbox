@@ -14,6 +14,7 @@ public class SbxUIExperiments : ModuleRules
             "CoreUObject",
             "Blutility",
             "SlateCore",
+            "SandboxCore",
             "UMG",
         });
 
