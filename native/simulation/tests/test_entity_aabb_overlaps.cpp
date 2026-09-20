@@ -1,10 +1,17 @@
 #include <ioj/sim/spatial_query_manager.h>
+#include <sandbox/core/frame_memory_resource.h>
+
+#include <array>
+#include <cstddef>
+
 #include "support/collision_agent_storage.h"
 #include "support/simulation_test_support.h"
 
 namespace ioj::sim::tests {
 
 namespace {
+constexpr std::size_t overlap_frame_memory_capacity{64 * 1024};
+
 struct OverlapFixture {
     explicit OverlapFixture(Vector3f const capital_half_extents = {{10.f, 10.f, 10.f}},
                             Vector3f const capital_centre = Vector3f{},
@@ -17,6 +24,17 @@ struct OverlapFixture {
         set_bounds(EntityType::Turret, Vector3f{}, turret_half_extents);
 
         query_manager.initialise({40, 40, 40}, {{50.f, 50.f, 50.f}}, entity_bounds);
+    }
+
+    void update_collision(std::span<EntityUniqueId const> const dirty_entities) {
+        {
+            ml::FrameScratchScope scratch_scope{frame_memory};
+            query_manager.update(dirty_entities, scratch_scope.scratch());
+        }
+
+        auto const stats{frame_memory.get_stats()};
+        EXPECT_EQ(stats.outstanding_allocation_count, 0u);
+        EXPECT_EQ(stats.current_claimed_bytes, 0u);
     }
 
     auto spawn(Vector3f const location,
@@ -32,7 +50,7 @@ struct OverlapFixture {
 
     void finish_spawning() {
         owners.publish();
-        query_manager.update({});
+        update_collision({});
         query_manager.get_collision_system().reset_frame_events();
     }
 
@@ -58,13 +76,13 @@ struct OverlapFixture {
                        alive.empty() || alive[index] != 0 ? 100 : 0);
         }
         owners.publish();
-        query_manager.update(entity_ids);
+        update_collision(entity_ids);
     }
 
     void run_quiet_tick() {
         query_manager.get_collision_system().reset_frame_events();
         owners.publish();
-        query_manager.update({});
+        update_collision({});
     }
 
     void end_tick() {}
@@ -89,6 +107,9 @@ struct OverlapFixture {
     }
 
     CollisionAgentStorage owners;
+    alignas(ml::FrameMemoryResource::backing_alignment)
+        std::array<std::byte, overlap_frame_memory_capacity> frame_memory_backing{};
+    ml::FrameMemoryResource frame_memory{frame_memory_backing};
     SpatialQueryManager query_manager;
     collision::EntityAABBs entity_bounds;
 };
@@ -141,7 +162,7 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
     owner.locations.set(1, {{315.f, 0.f, 0.f}});
     auto& collision{fixture.query_manager.get_collision_system()};
     collision.reset_frame_events();
-    collision.update(fixture.ids(handles));
+    fixture.update_collision(fixture.ids(handles));
     check_single_pair(fixture.get_entity_overlaps(), moved, stationary);
     owner.teams[0] = Team::Green;
     auto const& queries{fixture.query_manager};
@@ -170,7 +191,7 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
     EXPECT_GT(radii[1], 0.f);
     EXPECT_EQ(radii[2], 0.f);
     collision.reset_frame_events();
-    collision.update(fixture.ids(handles));
+    fixture.update_collision(fixture.ids(handles));
     tests::expect_equal(fixture.get_entity_overlaps().num(),
                         0,
                         "Overlap generation reads owner health without intermediary publication");
@@ -591,7 +612,7 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
     tests::expect_true(reset_events.entity_static_overlaps.entities.data() == static_storage,
                        "Static event storage is retained across reset");
 
-    collision_system.update(fixture.ids(handles));
+    fixture.update_collision(fixture.ids(handles));
     auto const recaptured_events{collision_system.get_aabb_overlap_events()};
     check_single_pair(recaptured_events.entity_entity_overlaps, moved, stationary);
     check_single_static_overlap(recaptured_events.entity_static_overlaps, moved, static_index);
@@ -601,7 +622,7 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
     tests::expect_true(recaptured_events.entity_static_overlaps.entities.data() == static_storage,
                        "Static event storage is reused after recapture");
 
-    collision_system.update(fixture.ids(handles));
+    fixture.update_collision(fixture.ids(handles));
     auto const appended_events{collision_system.get_aabb_overlap_events()};
     tests::expect_equal(appended_events.entity_entity_overlaps.num(),
                         2,
@@ -656,7 +677,7 @@ TEST(EntityAABBOverlaps, InvalidDeadAndRetiredDirtyIdsAreIgnored) {
 
     std::array const dirty_entities{
         EntityUniqueId{}, EntityUniqueId::make(999, EntityType::PlayerShip), removed_id, live};
-    fixture.query_manager.get_collision_system().update(std::span<EntityUniqueId const>{
+    fixture.update_collision(std::span<EntityUniqueId const>{
         dirty_entities.data(),
         static_cast<std::size_t>(static_cast<std::int32_t>(dirty_entities.size()))});
 

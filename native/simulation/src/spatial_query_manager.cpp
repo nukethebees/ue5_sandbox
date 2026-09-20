@@ -516,11 +516,11 @@ void SpatialQueryManager::copy_entity_radii(std::span<EntityUniqueId const> cons
 /* **************************************** */
 // Collision state and telemetry
 /* **************************************** */
-auto SpatialQueryManager::update(std::span<EntityUniqueId const> const dirty_entities)
-    -> collision::DetectedOverlapsView {
+auto SpatialQueryManager::update(std::span<EntityUniqueId const> const dirty_entities,
+                                 ml::FrameScratch& scratch) -> collision::DetectedOverlapsView {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::update");
 
-    return collision.update(dirty_entities);
+    return collision.update(dirty_entities, scratch);
 }
 
 }

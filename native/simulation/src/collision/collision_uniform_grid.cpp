@@ -348,8 +348,8 @@ void append_grid_overlaps(GridGeometry const geometry,
                           AgentAccessor const& agents,
                           WorldAABB const query_bounds,
                           EntityUniqueId const ignored_entity,
-                          std::vector<EntityUniqueId>& out_entities,
-                          std::vector<std::int32_t>& out_static_geometry_indices) {
+                          ml::FrameArray<EntityUniqueId>& out_entities,
+                          ml::FrameArray<std::int32_t>& out_static_geometry_indices) {
     auto const [min_coord,
                 max_coord]{to_cell_coord_bounds(geometry, query_bounds.min, query_bounds.max)};
     auto const overlaps_query{
@@ -382,7 +382,7 @@ void append_grid_overlaps(GridGeometry const geometry,
 
                         if (overlaps_query(min_at(aabbs, entity_index),
                                            max_at(aabbs, entity_index))) {
-                            out_entities.push_back(id);
+                            out_entities.add(id);
                         }
                     }
                 }
@@ -392,7 +392,7 @@ void append_grid_overlaps(GridGeometry const geometry,
                     auto const static_aabb_index{static_cast<std::int32_t>(static_index)};
                     if (overlaps_query(min_at(static_aabbs, static_aabb_index),
                                        max_at(static_aabbs, static_aabb_index))) {
-                        out_static_geometry_indices.push_back(static_aabb_index);
+                        out_static_geometry_indices.add(static_aabb_index);
                     }
                 }
             }
@@ -531,8 +531,8 @@ void CollisionUniformGrid::rebuild_grid(collision::EntityAABBs const& entity_aab
 void CollisionUniformGrid::append_overlaps(
     collision::WorldAABB const& query_bounds,
     EntityUniqueId const ignored_entity,
-    std::vector<EntityUniqueId>& out_entities,
-    std::vector<std::int32_t>& out_static_geometry_indices) const {
+    ml::FrameArray<EntityUniqueId>& out_entities,
+    ml::FrameArray<std::int32_t>& out_static_geometry_indices) const {
 
     auto const geometry{geometry_};
     [[maybe_unused]] auto const [min_coord, max_coord]{

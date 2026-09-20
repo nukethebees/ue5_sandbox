@@ -11,6 +11,11 @@
 #include <ioj/sim/fighters/sim.h>
 #include <ioj/sim/spatial_query_manager.h>
 #include <ioj/sim/trace_hits.h>
+#include <sandbox/core/frame_array.h>
+#include <sandbox/core/frame_memory_resource.h>
+
+#include <array>
+#include <cstddef>
 
 namespace ioj::sim {
 namespace {
@@ -1286,14 +1291,19 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
              0},
         };
         check_traces(authoritative, dead_owner_cases);
-        std::vector<EntityUniqueId> overlaps;
-        std::vector<std::int32_t> static_overlaps;
-        authoritative.grid.append_overlaps(
-            {moved_location - aabb_half_extents, moved_location + aabb_half_extents},
-            {},
-            overlaps,
-            static_overlaps);
-        tests::expect_true(overlaps.empty(), "Dead owner is excluded from cached overlaps");
+        alignas(ml::FrameMemoryResource::backing_alignment) std::array<std::byte, 1024> backing{};
+        ml::FrameMemoryResource frame_memory{backing};
+        {
+            ml::FrameScratchScope scratch_scope{frame_memory};
+            ml::FrameArray<EntityUniqueId> overlaps{&scratch_scope.scratch()};
+            ml::FrameArray<std::int32_t> static_overlaps{&scratch_scope.scratch()};
+            authoritative.grid.append_overlaps(
+                {moved_location - aabb_half_extents, moved_location + aabb_half_extents},
+                {},
+                overlaps,
+                static_overlaps);
+            tests::expect_true(overlaps.is_empty(), "Dead owner is excluded from cached overlaps");
+        }
     }
 
     std::vector<Vector3f> const moved_locations{moved_location};

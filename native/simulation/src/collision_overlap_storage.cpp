@@ -1,11 +1,12 @@
 #include "ioj/sim/collision_overlap_storage.h"
 
-#include <span>
+#include <algorithm>
+#include <sandbox/core/frame_array.h>
+#include <sandbox/core/frame_memory_resource.h>
 
 namespace ioj::sim::collision {
 void CollisionOverlapStorage::reset() noexcept {
     clear();
-    sort_indices_scratch_.clear();
 }
 
 void CollisionOverlapStorage::clear() noexcept {
@@ -27,10 +28,15 @@ void CollisionOverlapStorage::add_static_overlap(EntityUniqueId const entity,
     entity_static_overlaps_.add(entity, static_geometry_index);
 }
 
-void CollisionOverlapStorage::finalize() {
+void CollisionOverlapStorage::finalize(ml::FrameScratch& scratch) {
     auto const entity_overlap_count{entity_entity_overlaps_.num()};
+    auto const static_overlap_count{entity_static_overlaps_.num()};
+    auto const sort_index_count{std::max(entity_overlap_count, static_overlap_count)};
+    ml::FrameArray<std::int32_t> sort_indices{&scratch};
+    sort_indices.reserve(sort_index_count);
+
     if (entity_overlap_count > 1) {
-        sort_indices_scratch_.resize(static_cast<std::size_t>(entity_overlap_count));
+        sort_indices.set_num(entity_overlap_count);
         entity_entity_overlaps_.sort(
             [](EntityEntityOverlaps const& values, std::int32_t const lhs, std::int32_t const rhs) {
                 auto const lhs_first{values.first_entities[lhs]};
@@ -39,7 +45,7 @@ void CollisionOverlapStorage::finalize() {
                        (lhs_first == rhs_first &&
                         values.second_entities[lhs] < values.second_entities[rhs]);
             },
-            std::span{sort_indices_scratch_});
+            sort_indices.view());
 
         std::int32_t write_index{1};
         for (std::int32_t read_index{1}; read_index < entity_overlap_count; ++read_index) {
@@ -57,9 +63,8 @@ void CollisionOverlapStorage::finalize() {
         entity_entity_overlaps_.set_num(write_index);
     }
 
-    auto const static_overlap_count{entity_static_overlaps_.num()};
     if (static_overlap_count > 1) {
-        sort_indices_scratch_.resize(static_cast<std::size_t>(static_overlap_count));
+        sort_indices.set_num(static_overlap_count);
         entity_static_overlaps_.sort(
             [](EntityStaticOverlaps const& values, std::int32_t const lhs, std::int32_t const rhs) {
                 auto const lhs_entity{values.entities[lhs]};
@@ -68,7 +73,7 @@ void CollisionOverlapStorage::finalize() {
                        (lhs_entity == rhs_entity &&
                         values.static_geometry_indices[lhs] < values.static_geometry_indices[rhs]);
             },
-            std::span{sort_indices_scratch_});
+            sort_indices.view());
 
         std::int32_t write_index{1};
         for (std::int32_t read_index{1}; read_index < static_overlap_count; ++read_index) {

@@ -19,6 +19,10 @@ class AgentAccessor;
 struct SpatialQueryManager;
 }
 
+namespace ml {
+class FrameScratch;
+}
+
 namespace ioj::sim::query_manager {
 using ThreadBuffers = QueryThreadBuffers;
 
@@ -122,7 +126,8 @@ struct SpatialQueryManager {
         return collision;
     }
 
-    auto update(std::span<EntityUniqueId const> dirty_entities) -> collision::DetectedOverlapsView;
+    auto update(std::span<EntityUniqueId const> dirty_entities, ml::FrameScratch& scratch)
+        -> collision::DetectedOverlapsView;
   private:
     /* **************************************** */
     // Thread buffer leasing

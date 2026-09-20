@@ -11,7 +11,9 @@
 #include <ioj/sim/collision/collision_uniform_grid.h>
 #include <ioj/sim/entity_overlaps.h>
 
-#include <vector>
+namespace ml {
+class FrameScratch;
+}
 
 namespace ioj::sim {
 class AgentAccessor;
@@ -28,7 +30,8 @@ struct CollisionSystem {
     auto operator=(CollisionSystem&&) -> CollisionSystem& = delete;
 
     void initialise(EntityAABBs const& bounds);
-    auto update(std::span<EntityUniqueId const> collision_dirty_entities) -> DetectedOverlapsView;
+    auto update(std::span<EntityUniqueId const> collision_dirty_entities, ml::FrameScratch& scratch)
+        -> DetectedOverlapsView;
 
     void reset_frame_events();
     void refresh_queries();
@@ -48,7 +51,7 @@ struct CollisionSystem {
   private:
     void rebuild_grid();
     void collect_overlaps_for_moved_entities(
-        std::span<EntityUniqueId const> collision_dirty_entities);
+        std::span<EntityUniqueId const> collision_dirty_entities, ml::FrameScratch& scratch);
 
     AgentAccessor const& agents_;
     CollisionUniformGrid uniform_grid_;
@@ -57,8 +60,5 @@ struct CollisionSystem {
     CollisionOverlapStorage overlap_storage_;
 
     AABBOverlapEventStorage overlap_event_storage_;
-
-    std::vector<EntityUniqueId> overlapping_entities_scratch_;
-    std::vector<std::int32_t> overlapping_static_geometry_indices_scratch_;
 };
 }

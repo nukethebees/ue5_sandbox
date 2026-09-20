@@ -8,10 +8,10 @@
 #include <ioj/sim/collision_grid_static_storage.h>
 #include <ioj/sim/entity_world_bounds.h>
 #include <ioj/sim/trace_hits.h>
+#include <sandbox/core/frame_array.h>
 
 #include <cstdint>
 #include <span>
-#include <vector>
 
 namespace ioj::sim {
 class AgentAccessor;
@@ -87,8 +87,8 @@ struct CollisionUniformGrid {
     // Appends exact overlaps. Multi-cell participants may be appended more than once.
     void append_overlaps(WorldAABB const& query_bounds,
                          EntityUniqueId ignored_entity,
-                         std::vector<EntityUniqueId>& out_entities,
-                         std::vector<std::int32_t>& out_static_geometry_indices) const;
+                         ml::FrameArray<EntityUniqueId>& out_entities,
+                         ml::FrameArray<std::int32_t>& out_static_geometry_indices) const;
     void trace_aabbs(LineTracesConstView const& traces, TraceHitsView const& hits) const;
     void trace_aabbs(LineTracesConstView const& traces,
                      TraceHitsView const& hits,
