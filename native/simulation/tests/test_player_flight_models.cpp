@@ -1,4 +1,5 @@
 #include <ioj/sim/level_sim.h>
+#include <ioj/sim/player/flight_model_evaluator.h>
 
 #include <gtest/gtest.h>
 
@@ -71,6 +72,21 @@ void expect_velocity_near(ml::Vector3d const& actual,
     EXPECT_NEAR(actual.y, expected.y, tolerance);
     EXPECT_NEAR(actual.z, expected.z, tolerance);
 }
+
+auto brake_speed_after_tick(player::ResponseConfig const& response, float const deceleration)
+    -> double {
+    player::FlightModelConfig config;
+    config.brake.target_speed = 0.f;
+    config.brake.deceleration = deceleration;
+    config.brake.response = response;
+
+    player::PlayerSimulationState state;
+    state.physical.velocity = {1000.0, 0.0, 0.0};
+    player::seed_flight_model_responses(state, config);
+    state.controller.effective_action = player::BoostBrakeState::Brake;
+    player::integrate_flight_model(0.25f, config, {}, state);
+    return state.physical.velocity.size();
+}
 }
 
 using namespace player_flight_model_tests;
@@ -93,6 +109,22 @@ TEST(NativeSimulationFlightModels, StarfoxConvergesToCruiseAndSupportsBoostAndBr
     advance_ticks(simulation, 180);
     EXPECT_LT(velocity(simulation).size(), cruise_speed);
     EXPECT_LT(player_sim(simulation).get_energy(), energy_before_brake);
+}
+
+TEST(NativeSimulationFlightModels, StarfoxEmergencyBrakeIsStrongerThanNormalBrake) {
+    LevelSim normal{make_data(player::FlightModelPreset::Starfox)};
+    LevelSim emergency{make_data(player::FlightModelPreset::Starfox)};
+    start(normal);
+    start(emergency);
+    advance_ticks(normal, 600);
+    advance_ticks(emergency, 600);
+
+    normal.get_player_ship_commands()->start_brake();
+    emergency.get_player_ship_commands()->start_emergency_brake();
+    advance_ticks(normal, 30);
+    advance_ticks(emergency, 30);
+
+    EXPECT_LT(velocity(emergency).size(), velocity(normal).size());
 }
 
 TEST(NativeSimulationFlightModels, FighterAcceleratesOnlyWithInputAndThenDrags) {
@@ -298,6 +330,12 @@ TEST(NativeSimulationFlightModels, SwitchingClearsPersistentTargetsAndSamplingSt
     LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
     start(simulation);
     auto* const commands{simulation.get_player_ship_commands()};
+    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    profile.config.translation.forward.manual.semantic = player::TranslationSemantic::TargetSpeed;
+    profile.config.translation.forward.manual.input_source = player::TranslationInputSource::Axis;
+    profile.config.translation.forward.normal.positive_target_speed = 1000.f;
+    profile.config.translation.forward.normal.negative_target_speed = 500.f;
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
     commands->start_sampling();
     commands->set_ship_2d_control({0.5, 0.75});
     commands->stop_sampling();
@@ -502,5 +540,312 @@ TEST(NativeSimulationFlightModels, EffectivelyUnlimitedLimitRemainsFinite) {
     EXPECT_TRUE(std::isfinite(current.x));
     EXPECT_TRUE(std::isfinite(current.y));
     EXPECT_TRUE(std::isfinite(current.z));
+}
+
+TEST(NativeSimulationFlightModels, DirectBrakeStrengthUsesConfiguredDeceleration) {
+    player::ResponseConfig response;
+    response.mode = player::ResponseMode::Direct;
+
+    EXPECT_GT(brake_speed_after_tick(response, 400.f), brake_speed_after_tick(response, 800.f));
+    EXPECT_NEAR(brake_speed_after_tick(response, 400.f), 900.0, 1.e-4);
+}
+
+TEST(NativeSimulationFlightModels, RateLimitedBrakeStrengthUsesConfiguredDeceleration) {
+    player::ResponseConfig response;
+    response.mode = player::ResponseMode::RateLimited;
+    response.rate_limited = {2.f, 2.f};
+
+    EXPECT_GT(brake_speed_after_tick(response, 400.f), brake_speed_after_tick(response, 800.f));
+    EXPECT_NEAR(brake_speed_after_tick(response, 400.f), 950.0, 1.e-4);
+}
+
+TEST(NativeSimulationFlightModels, SecondOrderBrakeStrengthUsesConfiguredDeceleration) {
+    player::ResponseConfig response;
+    response.mode = player::ResponseMode::SecondOrder;
+    response.second_order = {.settling_time = 1.f, .damping_ratio = 0.5f};
+
+    auto const normal{brake_speed_after_tick(response, 400.f)};
+    auto const heavy{brake_speed_after_tick(response, 800.f)};
+    EXPECT_GT(normal, heavy);
+    EXPECT_LT(normal, 1000.0);
+}
+
+TEST(NativeSimulationFlightModels, EnergyFallbackRespectsHeldIntentAndAvailability) {
+    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    start(simulation);
+    auto* const commands{simulation.get_player_ship_commands()};
+    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    profile.config.emergency_brake.energy_drain_per_second = 60.f;
+    profile.config.brake.available = false;
+    profile.config.boost.available = false;
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+
+    commands->start_emergency_brake();
+    advance_ticks(simulation, 1);
+
+    EXPECT_FLOAT_EQ(player_sim(simulation).get_energy(), 0.f);
+    EXPECT_EQ(player_sim(simulation).get_controller_state().effective_action,
+              player::BoostBrakeState::None);
+}
+
+TEST(NativeSimulationFlightModels, EnergyFallbackUsesOnlyAvailableIndependentlyHeldActions) {
+    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    start(simulation);
+    auto* const commands{simulation.get_player_ship_commands()};
+    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    profile.config.emergency_brake.energy_drain_per_second = 60.f;
+    profile.config.brake.energy_drain_per_second = 0.f;
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+
+    commands->start_boost();
+    commands->start_brake();
+    commands->start_emergency_brake();
+    ASSERT_EQ(player_sim(simulation).get_controller_state().effective_action,
+              player::BoostBrakeState::EmergencyBrake);
+    advance_ticks(simulation, 1);
+
+    EXPECT_FLOAT_EQ(player_sim(simulation).get_energy(), 0.f);
+    EXPECT_EQ(player_sim(simulation).get_controller_state().effective_action,
+              player::BoostBrakeState::Brake);
+
+    commands->stop_brake();
+    EXPECT_EQ(player_sim(simulation).get_controller_state().effective_action,
+              player::BoostBrakeState::None);
+}
+
+TEST(NativeSimulationFlightModels, UnavailableBoostNeverBecomesEffective) {
+    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    start(simulation);
+    auto* const commands{simulation.get_player_ship_commands()};
+    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    profile.config.boost.available = false;
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+
+    commands->start_boost();
+
+    EXPECT_EQ(player_sim(simulation).get_controller_state().effective_action,
+              player::BoostBrakeState::None);
+}
+
+TEST(NativeSimulationFlightModels, AcceleratorCanDriveEveryTranslationAxis) {
+    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    start(simulation);
+    auto* const commands{simulation.get_player_ship_commands()};
+    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    profile.config.translation.forward.manual.semantic = player::TranslationSemantic::Disabled;
+    for (auto* const axis :
+         std::array{&profile.config.translation.right, &profile.config.translation.up}) {
+        axis->manual.semantic = player::TranslationSemantic::Acceleration;
+        axis->manual.input_source = player::TranslationInputSource::Accelerator;
+        axis->normal.positive_acceleration = 120.f;
+    }
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+
+    commands->set_throttle(1.f);
+    advance_ticks(simulation, 60);
+
+    EXPECT_NEAR(velocity(simulation).x, 0.0, 1.e-6);
+    EXPECT_NEAR(velocity(simulation).y, 120.0, 1.e-3);
+    EXPECT_NEAR(velocity(simulation).z, 120.0, 1.e-3);
+}
+
+TEST(NativeSimulationFlightModels, TargetVelocityUsesInputScaleNotUnlimitedCap) {
+    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    start(simulation);
+    auto* const commands{simulation.get_player_ship_commands()};
+    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    auto& forward{profile.config.translation.forward};
+    forward.manual.semantic = player::TranslationSemantic::TargetVelocity;
+    forward.manual.input_source = player::TranslationInputSource::Axis;
+    forward.normal.positive_target_speed = 2000.f;
+    forward.normal.negative_target_speed = 500.f;
+    forward.normal.positive_speed_limit = player::effectively_unlimited_speed;
+    forward.normal.negative_speed_limit = player::effectively_unlimited_speed;
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+
+    commands->set_forward_move_input(0.5f);
+    advance_ticks(simulation, 1);
+
+    EXPECT_NEAR(velocity(simulation).x, 1000.0, 1.e-5);
+    EXPECT_TRUE(std::isfinite(velocity(simulation).x));
+}
+
+TEST(NativeSimulationFlightModels, TargetSpeedUsesAsymmetricScalesAndTrimBounds) {
+    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    start(simulation);
+    auto* const commands{simulation.get_player_ship_commands()};
+    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    auto& forward{profile.config.translation.forward};
+    forward.manual.semantic = player::TranslationSemantic::TargetSpeed;
+    forward.manual.input_source = player::TranslationInputSource::Axis;
+    forward.normal.positive_target_speed = 1000.f;
+    forward.normal.negative_target_speed = 400.f;
+    forward.normal.positive_speed_limit = player::effectively_unlimited_speed;
+    forward.normal.negative_speed_limit = player::effectively_unlimited_speed;
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+
+    commands->start_sampling();
+    commands->set_ship_2d_control({0.0, -0.5});
+    commands->stop_sampling();
+    EXPECT_FLOAT_EQ(player_sim(simulation).get_controller_state().persistent_forward_target_speed,
+                    -200.f);
+    advance_ticks(simulation, 1);
+    EXPECT_NEAR(velocity(simulation).x, -200.0, 1.e-5);
+
+    for (std::int32_t index{}; index < 100; ++index) {
+        commands->adjust_desired_forward_velocity(-1.f);
+    }
+    EXPECT_FLOAT_EQ(player_sim(simulation).get_controller_state().persistent_forward_target_speed,
+                    -400.f);
+    for (std::int32_t index{}; index < 100; ++index) {
+        commands->adjust_desired_forward_velocity(1.f);
+    }
+    EXPECT_FLOAT_EQ(player_sim(simulation).get_controller_state().persistent_forward_target_speed,
+                    1000.f);
+}
+
+TEST(NativeSimulationFlightModels, ProfileReplacementClampsTargetsAndReseedsResponses) {
+    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    start(simulation);
+    auto* const commands{simulation.get_player_ship_commands()};
+    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    auto& forward{profile.config.translation.forward};
+    forward.manual.semantic = player::TranslationSemantic::TargetSpeed;
+    forward.manual.input_source = player::TranslationInputSource::Axis;
+    forward.normal.positive_target_speed = 1000.f;
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+    commands->start_sampling();
+    commands->set_ship_2d_control({0.0, 0.8});
+    commands->stop_sampling();
+    advance_ticks(simulation, 1);
+    ASSERT_NEAR(velocity(simulation).x, 800.0, 1.e-5);
+
+    profile.config.translation.forward.normal.positive_target_speed = 300.f;
+    profile.config.translation.forward.normal.positive_speed_limit = 250.f;
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+
+    EXPECT_FLOAT_EQ(player_sim(simulation).get_controller_state().persistent_forward_target_speed,
+                    250.f);
+    EXPECT_NEAR(player_sim(simulation).get_controller_state().forward_manual_response.value(),
+                800.f,
+                1.e-5f);
+    EXPECT_NEAR(velocity(simulation).x, 800.0, 1.e-5);
+}
+
+TEST(NativeSimulationFlightModels, LeavingBoostImmediatelyClampsPersistentTarget) {
+    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    start(simulation);
+    auto* const commands{simulation.get_player_ship_commands()};
+    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    auto& forward{profile.config.translation.forward};
+    forward.manual.semantic = player::TranslationSemantic::TargetSpeed;
+    forward.manual.input_source = player::TranslationInputSource::Axis;
+    forward.normal.positive_target_speed = 100.f;
+    forward.boosted.positive_target_speed = 500.f;
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+
+    commands->start_boost();
+    commands->start_sampling();
+    commands->set_ship_2d_control({0.0, 1.0});
+    commands->stop_sampling();
+    ASSERT_FLOAT_EQ(player_sim(simulation).get_controller_state().persistent_forward_target_speed,
+                    500.f);
+
+    commands->stop_boost();
+
+    EXPECT_FLOAT_EQ(player_sim(simulation).get_controller_state().persistent_forward_target_speed,
+                    100.f);
+}
+
+TEST(NativeSimulationFlightModels, BrakeResponseStateDoesNotSurviveActionTransition) {
+    LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
+    start(simulation);
+    auto* const commands{simulation.get_player_ship_commands()};
+    auto profile{player_sim(simulation).get_active_flight_model_profile()};
+    profile.config.brake.response.mode = player::ResponseMode::RateLimited;
+    profile.config.brake.response.rate_limited = {1.f, 1.f};
+    ASSERT_TRUE(commands->set_flight_model_slot_profile(player::FlightModelSlot::Down, profile));
+    commands->set_throttle(1.f);
+    advance_ticks(simulation, 30);
+    commands->set_throttle(0.f);
+    commands->start_brake();
+    advance_ticks(simulation, 1);
+    ASSERT_GT(player_sim(simulation).get_controller_state().brake_engagement_response.value(), 0.f);
+
+    commands->stop_brake();
+
+    EXPECT_FLOAT_EQ(player_sim(simulation).get_controller_state().brake_engagement_response.value(),
+                    0.f);
+}
+
+TEST(NativeSimulationFlightModels, ValidTargetAndAccelerationChannelsComposeAdditively) {
+    player::FlightModelConfig config;
+    auto& forward{config.translation.forward};
+    forward.manual.semantic = player::TranslationSemantic::TargetVelocity;
+    forward.normal.positive_target_speed = 1000.f;
+    forward.automatic.semantic = player::TranslationSemantic::Acceleration;
+    forward.automatic.automatic_value = 0.5f;
+    forward.normal.positive_acceleration = 120.f;
+
+    player::PlayerSimulationState state;
+    player::seed_flight_model_responses(state, config);
+    player::PlayerFlightIntent intent;
+    intent.translation.x = 0.5;
+    player::integrate_flight_model(1.f, config, intent, state);
+
+    EXPECT_NEAR(state.physical.velocity.x, 560.0, 1.e-5);
+}
+
+TEST(NativeSimulationFlightModels, ActiveStabilizationDoesNotFightAutomaticIntent) {
+    player::FlightModelConfig config;
+    auto& forward{config.translation.forward};
+    forward.automatic.semantic = player::TranslationSemantic::Acceleration;
+    forward.automatic.automatic_value = 0.5f;
+    forward.normal.positive_acceleration = 120.f;
+    forward.active_stabilization_rate = 1000.f;
+
+    player::PlayerSimulationState state;
+    player::seed_flight_model_responses(state, config);
+    player::integrate_flight_model(1.f, config, {}, state);
+
+    EXPECT_NEAR(state.physical.velocity.x, 60.0, 1.e-5);
+}
+
+TEST(NativeSimulationFlightModels, SkaterUnlimitedResultantCapPreservesExistingComponents) {
+    auto const profile{player::make_flight_model_profile(player::FlightModelPreset::Skater)};
+    player::PlayerSimulationState state;
+    state.physical.velocity = {8000.0, 0.0, 0.0};
+    state.physical.transform.rotation = to_quaternion(Rotator3d{0.0, 90.0, 0.0});
+    player::seed_flight_model_responses(state, profile.config);
+    player::PlayerFlightIntent intent;
+    intent.accelerator = 1.f;
+
+    player::integrate_flight_model(1.f, profile.config, intent, state);
+
+    EXPECT_NEAR(state.physical.velocity.x, 8000.0, 1.e-5);
+    EXPECT_GT(state.physical.velocity.y, 0.0);
+    EXPECT_GT(state.physical.velocity.size(), 8000.0);
+}
+
+TEST(NativeSimulationFlightModels, RotationStabilizationDelayIsIndependentPerAxis) {
+    player::FlightModelConfig config;
+    config.rotation.yaw.manual_semantic = player::RotationSemantic::TargetAngularVelocity;
+    config.rotation.yaw.maximum_rate = 30.f;
+    config.rotation.roll.stabilization.enabled = true;
+    config.rotation.roll.stabilization.target_angle = 0.f;
+    config.rotation.roll.stabilization.delay = 0.5f;
+
+    player::PlayerSimulationState state;
+    state.physical.transform.rotation = to_quaternion(Rotator3d{0.0, 0.0, 30.0});
+    state.controller.time_since_rotation_input = {1.0, 1.0, 1.0};
+    player::seed_flight_model_responses(state, config);
+    player::PlayerFlightIntent intent;
+    intent.rotation.y = 1.0;
+
+    player::integrate_flight_model(0.1f, config, intent, state);
+
+    EXPECT_DOUBLE_EQ(state.controller.time_since_rotation_input.y, 0.0);
+    EXPECT_DOUBLE_EQ(state.controller.time_since_rotation_input.z, 1.0);
+    EXPECT_NEAR(state.physical.transform.rotator().roll, 0.0, 1.e-5);
 }
 } // namespace ioj::sim::tests

@@ -89,6 +89,8 @@ struct TranslationChannelConfig {
 };
 
 struct TranslationDriveConfig {
+    float positive_target_speed{};
+    float negative_target_speed{};
     float positive_speed_limit{effectively_unlimited_speed};
     float negative_speed_limit{effectively_unlimited_speed};
     float positive_acceleration{};
@@ -202,8 +204,13 @@ struct FlightModelLoadout {
 };
 
 enum class FlightModelConfigError : std::uint8_t {
+    InvalidEnumValue,
     NonFiniteValue,
     NegativeValue,
+    InputValueOutOfRange,
+    InvalidManualChannel,
+    InvalidAutomaticChannel,
+    AmbiguousTargetChannels,
     InvalidSecondOrderSettlingTime,
     InvalidSecondOrderDampingRatio,
 };
