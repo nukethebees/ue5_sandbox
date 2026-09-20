@@ -61,6 +61,11 @@
     (method roll void :noexcept true (parameter direction float))
     (method set_flight_mode void :noexcept true
       (parameter mode "SpaceShipFlightMode"))
+    (method select_flight_model_slot void :noexcept true
+      (parameter slot "FlightModelSlot"))
+    (method set_flight_model_slot_profile bool :noexcept true
+      (parameter slot "FlightModelSlot")
+      (parameter profile "FlightModelProfile"))
     (method start_fire_laser void)
     (method stop_fire_laser void)
     (method upgrade_laser void :noexcept true)

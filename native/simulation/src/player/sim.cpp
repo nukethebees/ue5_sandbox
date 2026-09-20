@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cstdint>
 #include <ioj/sim/profiling.h>
+#include <ioj/sim/player/flight_model_evaluator.h>
 #include <ioj/sim/ship_health.h>
 #include <ioj/sim/transform3d.h>
 #include <sandbox/core/diagnostics.h>
@@ -48,6 +49,8 @@ void Sim::configure(PlayerSpawnData const& spawn) noexcept {
     left_socket = spawn.left_socket;
     right_socket = spawn.right_socket;
     middle_socket = spawn.middle_socket;
+    flight_models_ = spawn.flight_models;
+    active_flight_model_slot_ = flight_models_.initial_slot;
     control_mode = spawn.control_mode;
     flight_mode = control_mode == SpaceShipControlMode::Power ? SpaceShipFlightMode::PlanarVelocity
                                                               : spawn.flight_mode;
@@ -85,12 +88,14 @@ void Sim::begin_play() {
 
     state_.physical.velocity = ml::Vector3d{};
     state_.resources.thrust_energy = config.thrust_energy_max;
+    reset_flight_model_controller(state_, get_active_flight_model_config());
 
     set_laser_mode(LaserFiringState::idle);
     set_laser_fire_rate(laser_fire_rate);
 
     configure_speed_sampling();
-    set_boost_brake_state(player::BoostBrakeState::None);
+    refresh_effective_action(state_);
+    planned_state_ = state_;
 }
 
 void Sim::prepare_tick(float const dt) {
@@ -114,24 +119,8 @@ void Sim::think(float const dt) {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::think");
 
     update_boost_brake(dt, state);
-    update_rotation(dt, state);
     update_body_orientation(dt, state);
-    integrate_velocity(dt, state);
-
-    auto adjustment_input{planar_movement_direction};
-    auto lateral_adjustment_speed{config.lateral_adjustment_speed};
-    auto vertical_adjustment_speed{config.vertical_adjustment_speed};
-    if (flight_mode == SpaceShipFlightMode::PlanarVelocity) {
-        adjustment_input = sampling ? ml::Vector2d{} : adjustment_input.clamped_to_max_size(1.f);
-        lateral_adjustment_speed = config.planar_lateral_trim_speed;
-        vertical_adjustment_speed = config.planar_vertical_trim_speed;
-    }
-
-    auto const lateral_speed{adjustment_input.x * lateral_adjustment_speed};
-    auto const vertical_speed{adjustment_input.y * vertical_adjustment_speed};
-    auto const local_adjustment{ml::Vector3d{0.f, lateral_speed, vertical_speed}};
-    state.physical.velocity += state.physical.transform.transform_vector_no_scale(local_adjustment);
-    state.physical.transform.location += state.physical.velocity * dt;
+    integrate_flight_model(dt, get_active_flight_model_config(), flight_intent_, state);
 }
 
 void Sim::apply_movement() {
@@ -395,19 +384,52 @@ void Sim::set_boost_brake_state(BoostBrakeState const new_state, PlayerSimulatio
 void Sim::update_boost_brake(float const dt, PlayerSimulationState& state) {
     auto& controller{state.controller};
     auto& resources{state.resources};
-    auto const starting_energy{resources.thrust_energy};
-    if (starting_energy <= 0.f) {
-        if (uses_power_controller() &&
-            controller.effective_action == player::BoostBrakeState::EmergencyBrake) {
-            set_boost_brake_state(player::BoostBrakeState::Brake, state);
-        } else if (!uses_power_controller() ||
-                   controller.effective_action == player::BoostBrakeState::Boost) {
-            set_boost_brake_state(player::BoostBrakeState::None, state);
-        }
-    }
+    auto const& model{get_active_flight_model_config()};
+    refresh_effective_action(state);
 
+    auto energy_change{model.energy_recharge_per_second};
+    switch (controller.effective_action) {
+        case BoostBrakeState::None:
+            break;
+        case BoostBrakeState::Brake:
+            energy_change = 0.f;
+            break;
+        case BoostBrakeState::Boost:
+            energy_change = -model.boost.energy_drain_per_second;
+            break;
+        case BoostBrakeState::EmergencyBrake:
+            energy_change = -model.emergency_brake.energy_drain_per_second;
+            break;
+    }
+    resources.thrust_change_rate = energy_change * config.thrust_energy_max;
     resources.thrust_energy += dt * resources.thrust_change_rate;
     resources.thrust_energy = std::clamp(resources.thrust_energy, 0.f, config.thrust_energy_max);
+    if (resources.thrust_energy <= 0.f) {
+        refresh_effective_action(state);
+    }
+}
+
+void Sim::refresh_effective_action(PlayerSimulationState& state) noexcept {
+    auto const& model{get_active_flight_model_config()};
+    auto action{BoostBrakeState::None};
+    if (flight_intent_.emergency_brake_held && model.emergency_brake.available) {
+        action = state.resources.thrust_energy > 0.f ? BoostBrakeState::EmergencyBrake
+                                                    : BoostBrakeState::Brake;
+    } else if (flight_intent_.brake_held && model.brake.available) {
+        action = BoostBrakeState::Brake;
+    } else if (flight_intent_.boost_held && model.boost.available &&
+               state.resources.thrust_energy > 0.f) {
+        action = BoostBrakeState::Boost;
+    }
+
+    if (action == BoostBrakeState::Boost &&
+        state.controller.effective_action != BoostBrakeState::Boost) {
+        ++state.presentation.boost_start_sequence;
+    }
+    if (action != state.controller.effective_action) {
+        seed_flight_model_responses(state);
+    }
+    state.controller.effective_action = action;
 }
 
 /* **************************************** */
@@ -415,14 +437,18 @@ void Sim::update_boost_brake(float const dt, PlayerSimulationState& state) {
 /* **************************************** */
 void Sim::set_move_input(ml::Vector2d const input) noexcept {
     planar_movement_direction = input;
+    flight_intent_.translation.y = input.x;
+    flight_intent_.translation.z = input.y;
 }
 
 void Sim::set_lateral_move_input(float const input) noexcept {
     planar_movement_direction.x = input;
+    flight_intent_.translation.y = input;
 }
 
 void Sim::set_vertical_move_input(float const input) noexcept {
     planar_movement_direction.y = input;
+    flight_intent_.translation.z = input;
 }
 
 void Sim::set_ship_2d_control(ml::Vector2d const input) {
@@ -437,6 +463,7 @@ void Sim::set_ship_2d_control(ml::Vector2d const input) {
 
 void Sim::set_throttle(float const input) noexcept {
     throttle = std::clamp(input, 0.f, 1.f);
+    flight_intent_.translation.x = throttle;
 }
 
 void Sim::set_ship_1d_control_x(float const input) {
@@ -539,57 +566,75 @@ void Sim::adjust_desired_forward_velocity(float const direction) {
 
 void Sim::turn(ml::Vector2d const direction) noexcept {
     rotation_input = direction;
+    flight_intent_.rotation.x = direction.y;
+    flight_intent_.rotation.y = direction.x;
 }
 
 void Sim::start_boost() {
-    if (energy_is_full() && state_.controller.effective_action == player::BoostBrakeState::None) {
-        set_boost_brake_state(player::BoostBrakeState::Boost);
-    }
+    flight_intent_.boost_held = true;
+    refresh_effective_action(state_);
+    planned_state_ = state_;
 }
 
 void Sim::stop_boost() {
-    if (state_.controller.effective_action == player::BoostBrakeState::Boost) {
-        set_boost_brake_state(player::BoostBrakeState::None);
-    }
+    flight_intent_.boost_held = false;
+    refresh_effective_action(state_);
+    planned_state_ = state_;
 }
 
 void Sim::start_brake() {
-    if (uses_power_controller() &&
-        state_.controller.effective_action != player::BoostBrakeState::Brake &&
-        state_.controller.effective_action != player::BoostBrakeState::EmergencyBrake) {
-        set_boost_brake_state(player::BoostBrakeState::Brake);
-        return;
-    }
-
-    if (energy_is_full() && state_.controller.effective_action == player::BoostBrakeState::None) {
-        set_boost_brake_state(player::BoostBrakeState::Brake);
-    }
+    flight_intent_.brake_held = true;
+    refresh_effective_action(state_);
+    planned_state_ = state_;
 }
 
 void Sim::start_emergency_brake() {
-    if (uses_power_controller()) {
-        set_boost_brake_state(state_.resources.thrust_energy > 0.f
-                                  ? player::BoostBrakeState::EmergencyBrake
-                                  : player::BoostBrakeState::Brake);
-        return;
-    }
-    start_brake();
+    flight_intent_.emergency_brake_held = true;
+    refresh_effective_action(state_);
+    planned_state_ = state_;
 }
 
 void Sim::stop_brake() {
-    if (state_.controller.effective_action == player::BoostBrakeState::Brake ||
-        state_.controller.effective_action == player::BoostBrakeState::EmergencyBrake) {
-        set_boost_brake_state(player::BoostBrakeState::None);
-    }
+    flight_intent_.brake_held = false;
+    flight_intent_.emergency_brake_held = false;
+    refresh_effective_action(state_);
+    planned_state_ = state_;
 }
 
 void Sim::roll(float const direction) noexcept {
     roll_input = std::clamp(direction, -1.f, 1.f);
+    flight_intent_.rotation.z = roll_input;
 }
 
 void Sim::set_flight_mode(SpaceShipFlightMode const new_flight_mode) noexcept {
     flight_mode = control_mode == SpaceShipControlMode::Power ? SpaceShipFlightMode::PlanarVelocity
                                                               : new_flight_mode;
+}
+
+void Sim::select_flight_model_slot(FlightModelSlot const slot) noexcept {
+    if (active_flight_model_slot_ == slot) {
+        return;
+    }
+
+    active_flight_model_slot_ = slot;
+    reset_flight_model_controller(state_, get_active_flight_model_config());
+    refresh_effective_action(state_);
+    planned_state_ = state_;
+}
+
+auto Sim::set_flight_model_slot_profile(FlightModelSlot const slot,
+                                        FlightModelProfile profile) noexcept -> bool {
+    if (!validate_flight_model_config(profile.config)) {
+        return false;
+    }
+
+    flight_model_profile(flight_models_, slot) = std::move(profile);
+    if (active_flight_model_slot_ == slot) {
+        reset_flight_model_controller(state_, get_active_flight_model_config());
+        refresh_effective_action(state_);
+        planned_state_ = state_;
+    }
+    return true;
 }
 
 /* **************************************** */

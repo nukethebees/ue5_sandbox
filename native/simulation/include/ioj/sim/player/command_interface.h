@@ -67,6 +67,14 @@ class CommandInterface {
 
     void set_flight_mode(SpaceShipFlightMode mode) noexcept { simulation.set_flight_mode(mode); }
 
+    void select_flight_model_slot(FlightModelSlot slot) noexcept {
+        simulation.select_flight_model_slot(slot);
+    }
+
+    bool set_flight_model_slot_profile(FlightModelSlot slot, FlightModelProfile profile) noexcept {
+        return simulation.set_flight_model_slot_profile(slot, profile);
+    }
+
     void start_fire_laser() { simulation.start_fire_laser(); }
 
     void stop_fire_laser() { simulation.stop_fire_laser(); }
