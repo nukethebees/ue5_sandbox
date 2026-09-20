@@ -694,6 +694,53 @@ void render_function(std::ostringstream& output,
     output << ')';
 }
 
+auto render_packed_segment(codegen::PackedSegmentSchema const& segment) -> std::string {
+    std::ostringstream output;
+    std::visit(
+        [&](auto const& value) {
+            using Segment = std::decay_t<decltype(value)>;
+            if constexpr (std::is_same_v<Segment, codegen::PackedFieldSchema>) {
+                output << "(field " << value.name << ' ' << render_type_ref(value.type)
+                       << " :bits ";
+                if (value.bits.has_value()) {
+                    output << *value.bits;
+                } else {
+                    output << "auto";
+                }
+                if (value.kind != codegen::PackedFieldKind::unsigned_integer) {
+                    output << " :kind " << packed_field_kind_name(value.kind);
+                }
+                if (value.range_helper) {
+                    output << " :range-helper true";
+                }
+                if (value.minimum_value.has_value()) {
+                    output << " :minimum " << format_packed_integer(*value.minimum_value);
+                }
+                if (value.maximum_value.has_value()) {
+                    output << " :maximum " << format_packed_integer(*value.maximum_value);
+                }
+                for (auto const& code : value.named_codes) {
+                    output << "\n      (code " << code.name << " :value "
+                           << format_packed_integer(code.value);
+                    if (code.sentinel) {
+                        output << " :sentinel true";
+                    }
+                    output << ')';
+                }
+                if (value.relationship.has_value()) {
+                    output << "\n      (relation "
+                           << packed_field_relation_kind_name(value.relationship->kind) << ' '
+                           << render_type_ref(value.relationship->target) << ')';
+                }
+            } else {
+                output << "(reserved " << value.name << " :bits " << value.bits;
+            }
+            output << ')';
+        },
+        segment);
+    return output.str();
+}
+
 auto render_packed_value(codegen::PackedValueSchema const& schema) -> std::string {
     std::ostringstream output;
     output << "(packed-value " << schema.name << "\n    :storage "
@@ -714,48 +761,7 @@ auto render_packed_value(codegen::PackedValueSchema const& schema) -> std::strin
         output << "\n    :mutable true";
     }
     for (auto const& segment : schema.segments) {
-        std::visit(
-            [&](auto const& value) {
-                using Segment = std::decay_t<decltype(value)>;
-                if constexpr (std::is_same_v<Segment, codegen::PackedFieldSchema>) {
-                    output << "\n    (field " << value.name << ' ' << render_type_ref(value.type)
-                           << " :bits ";
-                    if (value.bits.has_value()) {
-                        output << *value.bits;
-                    } else {
-                        output << "auto";
-                    }
-                    if (value.kind != codegen::PackedFieldKind::unsigned_integer) {
-                        output << " :kind " << packed_field_kind_name(value.kind);
-                    }
-                    if (value.range_helper) {
-                        output << " :range-helper true";
-                    }
-                    if (value.minimum_value.has_value()) {
-                        output << " :minimum " << format_packed_integer(*value.minimum_value);
-                    }
-                    if (value.maximum_value.has_value()) {
-                        output << " :maximum " << format_packed_integer(*value.maximum_value);
-                    }
-                    for (auto const& code : value.named_codes) {
-                        output << "\n      (code " << code.name << " :value "
-                               << format_packed_integer(code.value);
-                        if (code.sentinel) {
-                            output << " :sentinel true";
-                        }
-                        output << ')';
-                    }
-                    if (value.relationship.has_value()) {
-                        output << "\n      (relation "
-                               << packed_field_relation_kind_name(value.relationship->kind) << ' '
-                               << render_type_ref(value.relationship->target) << ')';
-                    }
-                } else {
-                    output << "\n    (reserved " << value.name << " :bits " << value.bits;
-                }
-                output << ')';
-            },
-            segment);
+        output << "\n    " << render_packed_segment(segment);
     }
     output << ')';
     return output.str();
@@ -831,6 +837,90 @@ auto render_optional_presence_bit(codegen::OptionalPresenceBitSchema const& sche
     return output.str();
 }
 
+auto patch_source_packed_segment(codegen::PackedSegmentSchema const& segment,
+                                 Form const& source_segment,
+                                 std::string_view const original,
+                                 std::vector<SourceReplacement>& replacements) -> bool {
+    if (auto const field{std::get_if<codegen::PackedFieldSchema>(&segment)}) {
+        if (source_segment.children.size() < 3 ||
+            !patch_source_form(
+                source_segment.children[2], render_type_ref(field->type), original, replacements)) {
+            return false;
+        }
+        auto const field_properties{std::array<SourceProperty, 5>{
+            std::pair{"bits",
+                      std::optional{field->bits.has_value() ? std::to_string(*field->bits)
+                                                            : std::string{"auto"}}},
+            std::pair{"kind",
+                      field->kind != codegen::PackedFieldKind::unsigned_integer
+                          ? std::optional{std::string{packed_field_kind_name(field->kind)}}
+                          : std::nullopt},
+            std::pair{"range-helper",
+                      field->range_helper ? std::optional<std::string>{"true"} : std::nullopt},
+            std::pair{"minimum",
+                      field->minimum_value.has_value()
+                          ? std::optional{format_packed_integer(*field->minimum_value)}
+                          : std::nullopt},
+            std::pair{"maximum",
+                      field->maximum_value.has_value()
+                          ? std::optional{format_packed_integer(*field->maximum_value)}
+                          : std::nullopt}}};
+        if (!patch_source_properties(
+                source_segment, 2, field_properties, "      ", original, replacements)) {
+            return false;
+        }
+
+        std::vector<Form const*> codes;
+        Form const* relation{};
+        for (auto const& child : source_segment.children) {
+            if (child.head() == "code") {
+                codes.push_back(&child);
+            } else if (child.head() == "relation") {
+                relation = &child;
+            }
+        }
+        if (codes.size() != field->named_codes.size() ||
+            (relation != nullptr) != field->relationship.has_value()) {
+            return false;
+        }
+        for (std::size_t code_index{}; code_index < codes.size(); ++code_index) {
+            auto const& code{field->named_codes[code_index]};
+            if (codes[code_index]->children.size() < 2 ||
+                codes[code_index]->children[1].token.text != code.name) {
+                return false;
+            }
+            auto const code_properties{std::array<SourceProperty, 2>{
+                std::pair{"value", std::optional{format_packed_integer(code.value)}},
+                std::pair{"sentinel",
+                          code.sentinel ? std::optional<std::string>{"true"} : std::nullopt}}};
+            if (!patch_source_properties(
+                    *codes[code_index], 1, code_properties, "        ", original, replacements)) {
+                return false;
+            }
+        }
+        if (relation != nullptr &&
+            (relation->children.size() < 3 ||
+             !patch_source_form(
+                 relation->children[1],
+                 std::string{codegen::packed_field_relation_kind_name(field->relationship->kind)},
+                 original,
+                 replacements) ||
+             !patch_source_form(relation->children[2],
+                                render_type_ref(field->relationship->target),
+                                original,
+                                replacements))) {
+            return false;
+        }
+        return true;
+    }
+
+    auto const& reserved{std::get<codegen::PackedReservedBitsSchema>(segment)};
+    auto const reserved_properties{std::array<SourceProperty, 1>{
+        std::pair{"bits", std::optional{std::to_string(reserved.bits)}}}};
+    return patch_source_properties(
+        source_segment, 1, reserved_properties, "      ", original, replacements);
+}
+
 auto try_render_source_preserved_packed_value(codegen::PackedValueSchema const& schema,
                                               std::string_view const original)
     -> std::optional<std::string> {
@@ -842,19 +932,10 @@ auto try_render_source_preserved_packed_value(codegen::PackedValueSchema const& 
     std::vector<Form const*> segments;
     for (auto const& child : parsed->children) {
         if (child.head() == "field" || child.head() == "reserved") {
+            if (child.children.size() < 2) {
+                return std::nullopt;
+            }
             segments.push_back(&child);
-        }
-    }
-    if (segments.size() != schema.segments.size()) {
-        return std::nullopt;
-    }
-    for (std::size_t index{}; index < segments.size(); ++index) {
-        auto const field{std::get_if<codegen::PackedFieldSchema>(&schema.segments[index])};
-        auto const expected_head{field == nullptr ? "reserved" : "field"};
-        if (segments[index]->head() != expected_head || segments[index]->children.size() < 2 ||
-            segments[index]->children[1].token.text !=
-                codegen::packed_segment_name(schema.segments[index])) {
-            return std::nullopt;
         }
     }
 
@@ -880,96 +961,95 @@ auto try_render_source_preserved_packed_value(codegen::PackedValueSchema const& 
         return std::nullopt;
     }
 
-    for (std::size_t index{}; index < segments.size(); ++index) {
-        auto const& segment{schema.segments[index]};
-        auto const* source_segment{segments[index]};
-        if (auto const field{std::get_if<codegen::PackedFieldSchema>(&segment)}) {
-            if (source_segment->children.size() < 3 ||
-                !patch_source_form(source_segment->children[2],
-                                   render_type_ref(field->type),
-                                   original,
-                                   replacements)) {
-                return std::nullopt;
-            }
-            auto const field_properties{std::array<SourceProperty, 5>{
-                std::pair{"bits",
-                          std::optional{field->bits.has_value() ? std::to_string(*field->bits)
-                                                                : std::string{"auto"}}},
-                std::pair{"kind",
-                          field->kind != codegen::PackedFieldKind::unsigned_integer
-                              ? std::optional{std::string{packed_field_kind_name(field->kind)}}
-                              : std::nullopt},
-                std::pair{"range-helper",
-                          field->range_helper ? std::optional<std::string>{"true"} : std::nullopt},
-                std::pair{"minimum",
-                          field->minimum_value.has_value()
-                              ? std::optional{format_packed_integer(*field->minimum_value)}
-                              : std::nullopt},
-                std::pair{"maximum",
-                          field->maximum_value.has_value()
-                              ? std::optional{format_packed_integer(*field->maximum_value)}
-                              : std::nullopt}}};
-            if (!patch_source_properties(
-                    *source_segment, 2, field_properties, "      ", original, replacements)) {
-                return std::nullopt;
-            }
+    if (segments.empty()) {
+        return schema.segments.empty()
+                 ? apply_source_replacements(original, std::move(replacements))
+                 : std::nullopt;
+    }
 
-            std::vector<Form const*> codes;
-            Form const* relation{};
-            for (auto const& child : source_segment->children) {
-                if (child.head() == "code") {
-                    codes.push_back(&child);
-                } else if (child.head() == "relation") {
-                    relation = &child;
-                }
-            }
-            if (codes.size() != field->named_codes.size() ||
-                (relation != nullptr) != field->relationship.has_value()) {
-                return std::nullopt;
-            }
-            for (std::size_t code_index{}; code_index < codes.size(); ++code_index) {
-                auto const& code{field->named_codes[code_index]};
-                if (codes[code_index]->children.size() < 2 ||
-                    codes[code_index]->children[1].token.text != code.name) {
-                    return std::nullopt;
-                }
-                auto const code_properties{std::array<SourceProperty, 2>{
-                    std::pair{"value", std::optional{format_packed_integer(code.value)}},
-                    std::pair{"sentinel",
-                              code.sentinel ? std::optional<std::string>{"true"} : std::nullopt}}};
-                if (!patch_source_properties(*codes[code_index],
-                                             1,
-                                             code_properties,
-                                             "        ",
-                                             original,
-                                             replacements)) {
-                    return std::nullopt;
-                }
-            }
-            if (relation != nullptr) {
-                if (relation->children.size() < 3 ||
-                    !patch_source_form(relation->children[1],
-                                       std::string{codegen::packed_field_relation_kind_name(
-                                           field->relationship->kind)},
-                                       original,
-                                       replacements) ||
-                    !patch_source_form(relation->children[2],
-                                       render_type_ref(field->relationship->target),
-                                       original,
-                                       replacements)) {
-                    return std::nullopt;
-                }
-            }
-        } else {
-            auto const& reserved{std::get<codegen::PackedReservedBitsSchema>(segment)};
-            auto const reserved_properties{std::array<SourceProperty, 1>{
-                std::pair{"bits", std::optional{std::to_string(reserved.bits)}}}};
-            if (!patch_source_properties(
-                    *source_segment, 1, reserved_properties, "      ", original, replacements)) {
-                return std::nullopt;
-            }
+    auto const first_segment_offset{segments.front()->token.span.offset};
+    for (auto const& child : parsed->children) {
+        if (child.token.span.offset > first_segment_offset && child.head() != "field" &&
+            child.head() != "reserved") {
+            return std::nullopt;
         }
     }
+
+    auto segments_begin{std::size_t{}};
+    for (auto const& child : parsed->children) {
+        if (child.token.span.offset >= first_segment_offset) {
+            continue;
+        }
+        auto const child_end{source_form_line_end(child, original, first_segment_offset)};
+        if (!child_end.has_value()) {
+            return std::nullopt;
+        }
+        segments_begin = (std::max)(segments_begin, *child_end);
+    }
+    if (segments_begin > first_segment_offset) {
+        return std::nullopt;
+    }
+
+    struct SourceSegment {
+        Form const* form{};
+        std::size_t begin{};
+        std::size_t end{};
+    };
+    using SegmentKey = std::pair<std::string_view, std::string_view>;
+    std::map<SegmentKey, SourceSegment> source_segments;
+    auto row_begin{segments_begin};
+    for (auto const* segment : segments) {
+        auto const row_end{source_form_line_end(*segment, original, parsed->closing.span.offset)};
+        if (!row_end.has_value() || row_begin > segment->token.span.offset ||
+            *row_end < segment->closing.span.offset + 1) {
+            return std::nullopt;
+        }
+        auto const key{SegmentKey{segment->head(), segment->children[1].token.text}};
+        if (!source_segments
+                 .emplace(key, SourceSegment{.form = segment, .begin = row_begin, .end = *row_end})
+                 .second) {
+            return std::nullopt;
+        }
+        row_begin = *row_end;
+    }
+
+    auto const segments_end{row_begin};
+    auto rendered_segments{std::string{}};
+    auto append_row = [&](std::string row) {
+        auto const preceding_newline{
+            rendered_segments.empty() ? segments_begin > 0 && original[segments_begin - 1] == '\n'
+                                      : rendered_segments.back() == '\n'};
+        if (!preceding_newline && (row.empty() || row.front() != '\n')) {
+            rendered_segments += '\n';
+        }
+        rendered_segments += std::move(row);
+    };
+
+    for (auto const& segment : schema.segments) {
+        auto const head{std::holds_alternative<codegen::PackedFieldSchema>(segment)
+                            ? std::string_view{"field"}
+                            : std::string_view{"reserved"}};
+        auto const key{SegmentKey{head, codegen::packed_segment_name(segment)}};
+        auto const found{source_segments.find(key)};
+        if (found == source_segments.end()) {
+            append_row("    " + render_packed_segment(segment));
+            continue;
+        }
+
+        std::vector<SourceReplacement> segment_replacements;
+        if (!patch_source_packed_segment(
+                segment, *found->second.form, original, segment_replacements)) {
+            return std::nullopt;
+        }
+        auto rendered{apply_source_replacements_to_range(
+            original, found->second.begin, found->second.end, std::move(segment_replacements))};
+        if (!rendered.has_value()) {
+            return std::nullopt;
+        }
+        append_row(std::move(*rendered));
+    }
+    replacements.push_back(
+        {.begin = segments_begin, .end = segments_end, .text = std::move(rendered_segments)});
     return apply_source_replacements(original, std::move(replacements));
 }
 

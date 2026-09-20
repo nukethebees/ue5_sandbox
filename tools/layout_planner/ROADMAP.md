@@ -39,8 +39,11 @@ representation and packed-value declarations now preserve declaration-local comm
 and unchanged token spelling for ordinary nonstructural property/value edits. Stable packed
 field/reserved segments, named codes, and existing relationships are covered. Enum value insertion,
 duplication, deletion, and reorder now preserve stable existing row blocks with their leading and
-trailing comments while rendering only new rows canonically. Structural child edits for other
-declaration kinds still use canonical rendering. Stable record members and raw/tagged union
+trailing comments while rendering only new rows canonically. Packed field/reserved insertion,
+duplication, deletion, and reorder use the same bounded-block approach, keyed by segment kind and
+name; stable nested named codes and relationships retain their source text while new segments are
+rendered canonically. Structural child edits for other declaration kinds still use canonical
+rendering. Stable record members and raw/tagged union
 alternatives preserve type/count/tag/discriminant/export edits. Stable ordinary SoA member/top-level
 edits preserve source too, after advanced untouched forms are semantically verified; unsupported or
 ambiguous edits retain canonical fallback.

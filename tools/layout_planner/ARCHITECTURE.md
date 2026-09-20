@@ -50,7 +50,11 @@ relationships only when their source shape is stable. This preserves comments, w
 unchanged token spelling without creating a second syntax or semantic model. Enum values additionally
 derive row-owned source ranges from the reparsed declaration: stable named rows can be reordered or
 removed with their leading/trailing comments, while inserted or duplicated rows use the canonical
-single-row renderer. Unreal projections and ambiguous source shapes still fall back to the canonical
+single-row renderer. Packed fields and reserved regions use the same bounded-block mechanism keyed
+by segment kind and name. Stable segments retain leading/trailing comments and token-local edits to
+their types, widths, kinds, named codes, and relationships through reorder or neighboring
+insertion/deletion; only new segments use the canonical single-segment renderer. Unreal projections,
+ambiguous source shapes, and changed nested packed structure still fall back to the canonical
 declaration renderer. Other structural edits retain canonical fallback. Records and raw/tagged unions
 use ordered member/alternative identity checks before patching types, counts, tags, discriminants,
 and exports. Standard-library SoAs patch stable member/top-level properties only

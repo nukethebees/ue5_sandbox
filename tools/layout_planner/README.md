@@ -308,8 +308,10 @@ fixed-point values, and both optional policies preserve declaration-local commen
 unchanged token spelling while patching only affected properties. Packed fields include stable
 named codes, explicit reserved regions, and existing relationship forms. Enum row insertion,
 duplication, deletion, and reorder preserve unchanged existing rows and their comments; new rows are
-rendered canonically. Structural child changes in other declaration kinds deliberately fall back to
-canonical declaration rendering. Stable record members and raw/tagged union alternatives receive the same preservation for
+rendered canonically. Packed field/reserved insertion, duplication, deletion, and reorder likewise
+preserve stable segment blocks and their comments, including unchanged named-code and relationship
+text, while rendering only new segments canonically. Structural child changes in other declaration
+kinds deliberately fall back to canonical declaration rendering. Stable record members and raw/tagged union alternatives receive the same preservation for
 type, count, tag, discriminant, and export edits. Ordinary standard-library SoAs preserve stable
 member and top-level edits as well, including untouched custom functions and advanced forms whose
 semantics can be proven unchanged. Structural or unsupported edits remain visible as canonical

@@ -39,7 +39,9 @@ class TemporarySchema {
     :storage   std::uint32_t
     :byte-order   little ; packed byte-order note
     :invalid-value 4294967295
-    (field value std::uint8_t :bits 8)
+    ; Keep the value segment note.
+    (field value std::uint8_t :bits 8) ; value segment trailing note
+    ; Keep the counter segment note.
     (field counter std::uint16_t
       ; Keep the packed field note.
       :bits   8
@@ -47,6 +49,7 @@ class TemporarySchema {
       :maximum 100
       (code Invalid :value   255 :sentinel true) ; field code note
       (relation index_into authored::ExistingScalar))
+    ; Keep the future segment note.
     (reserved future :bits   16)))
 
 (scalar-module authored_scalars
@@ -746,12 +749,20 @@ TEST(EditableSchemaDocument, PreservesPackedFormattingForNonStructuralEdits) {
     EXPECT_EQ(std::get<codegen::PackedReservedBitsSchema>(schema->segments[2]).bits, 17);
 }
 
-TEST(EditableSchemaDocument, FallsBackToCanonicalPackedRenderingForStructuralEdits) {
+TEST(EditableSchemaDocument, PreservesPackedSegmentsAndCommentsForStructuralEdits) {
     TemporarySchema files;
     auto document{files.load()};
     auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
     auto replacement{*document.packed_value_schema(packed)};
-    std::ranges::swap(replacement.segments[0], replacement.segments[2]);
+    replacement.bit_order = codegen::PackedBitOrder::most_significant_first;
+    auto value{replacement.segments[0]};
+    auto counter{replacement.segments[1]};
+    auto future{replacement.segments[2]};
+    std::get<codegen::PackedFieldSchema>(counter).named_codes[0].value = 254;
+    std::get<codegen::PackedReservedBitsSchema>(future).bits = 8;
+    auto duplicate{future};
+    std::get<codegen::PackedReservedBitsSchema>(duplicate).name = "future_copy";
+    replacement.segments = {future, counter, duplicate, value};
 
     auto applied{document.apply(
         ReplacePackedValue{.declaration = packed, .schema = std::move(replacement)})};
@@ -762,14 +773,86 @@ TEST(EditableSchemaDocument, FallsBackToCanonicalPackedRenderingForStructuralEdi
     ASSERT_TRUE(preview.has_value()) << preview.error().message;
     ASSERT_EQ(preview->size(), 1U);
     auto const& updated{preview->front().updated};
-    auto const reserved{updated.find("(reserved future")};
-    auto const field{updated.find("(field value")};
-    ASSERT_NE(reserved, std::string::npos);
-    ASSERT_NE(field, std::string::npos);
-    EXPECT_LT(reserved, field);
-    EXPECT_EQ(updated.find("; Keep the packed declaration note"), std::string::npos);
-    EXPECT_EQ(updated.find("; Keep the packed field note"), std::string::npos);
-    EXPECT_EQ(updated.find("; field code note"), std::string::npos);
+    auto const future_comment{updated.find("; Keep the future segment note.")};
+    auto const future_position{updated.find("(reserved future")};
+    auto const counter_comment{updated.find("; Keep the counter segment note.")};
+    auto const counter_position{updated.find("(field counter")};
+    auto const copy_position{updated.find("(reserved future_copy")};
+    auto const value_comment{updated.find("; Keep the value segment note.")};
+    auto const value_position{updated.find("(field value")};
+    ASSERT_NE(future_comment, std::string::npos);
+    ASSERT_NE(future_position, std::string::npos);
+    ASSERT_NE(counter_comment, std::string::npos);
+    ASSERT_NE(counter_position, std::string::npos);
+    ASSERT_NE(copy_position, std::string::npos);
+    ASSERT_NE(value_comment, std::string::npos);
+    ASSERT_NE(value_position, std::string::npos);
+    EXPECT_LT(future_comment, future_position);
+    EXPECT_LT(future_position, counter_comment);
+    EXPECT_LT(counter_comment, counter_position);
+    EXPECT_LT(counter_position, copy_position);
+    EXPECT_LT(copy_position, value_comment);
+    EXPECT_LT(value_comment, value_position);
+    EXPECT_NE(updated.find("; Keep the packed declaration note"), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the packed field note"), std::string::npos);
+    EXPECT_NE(updated.find("(code Invalid :value   254 :sentinel true"), std::string::npos);
+    EXPECT_NE(updated.find("; field code note"), std::string::npos);
+    EXPECT_NE(updated.find("; value segment trailing note"), std::string::npos);
+    EXPECT_NE(updated.find(":bit-order msb-first"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+
+    auto deletion{*document.packed_value_schema(packed)};
+    std::erase_if(deletion.segments, [](auto const& segment) {
+        return codegen::packed_segment_name(segment) == "value";
+    });
+    applied =
+        document.apply(ReplacePackedValue{.declaration = packed, .schema = std::move(deletion)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated.find("(field value"), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find("; Keep the value segment note."), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find("; value segment trailing note"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the counter segment note."), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the future segment note."), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_NE(preview->front().updated.find("(field value"), std::string::npos);
+    ASSERT_TRUE(document.redo().value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_packed{
+        declaration_id(reloaded, "authored_packed", "ExistingPacked", "authored")};
+    auto const* schema{reloaded.packed_value_schema(reloaded_packed)};
+    ASSERT_NE(schema, nullptr);
+    EXPECT_EQ(schema->bit_order, codegen::PackedBitOrder::most_significant_first);
+    ASSERT_EQ(schema->segments.size(), 3U);
+    EXPECT_EQ(codegen::packed_segment_name(schema->segments[0]), "future");
+    EXPECT_EQ(codegen::packed_segment_name(schema->segments[1]), "counter");
+    EXPECT_EQ(codegen::packed_segment_name(schema->segments[2]), "future_copy");
+    EXPECT_EQ(std::get<codegen::PackedReservedBitsSchema>(schema->segments[0]).bits, 8);
+    EXPECT_EQ(std::get<codegen::PackedFieldSchema>(schema->segments[1]).named_codes[0].value,
+              codegen::PackedIntegerValue{254});
+
+    auto const module_source{std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
+        return source.path.filename() == "modules.lispb";
+    })};
+    ASSERT_NE(module_source, reloaded.source_files().end());
+    EXPECT_EQ(module_source->text.find("; Keep the value segment note."), std::string::npos);
+    EXPECT_NE(module_source->text.find("; Keep the counter segment note."), std::string::npos);
+    EXPECT_NE(module_source->text.find("; Keep the future segment note."), std::string::npos);
 }
 
 TEST(EditableSchemaDocument, PreservesAggregateFormattingForNonStructuralEdits) {
