@@ -187,13 +187,10 @@ internal sealed class AgentGitApplication(
             return ExitCodes.PolicyDenied;
         }
 
-        await using var repository_lock = await RepositoryLock.AcquireAsync(
-            initial_context.State.CommonGitDirectory,
-            cancellation_token);
         var context = await discovery.DiscoverAsync(trust, working_directory, cancellation_token);
         if (!PathsEqual(context.State.CommonGitDirectory, initial_context.State.CommonGitDirectory))
         {
-            throw new RepositoryStateException("Repository identity changed while acquiring the agent-git mutation lock.");
+            throw new RepositoryStateException("Repository identity changed during pre-execution validation.");
         }
 
         var evaluated = await evaluator.EvaluateAsync(
@@ -303,4 +300,5 @@ internal sealed class AgentGitApplication(
             Path.GetFullPath(right).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
             OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal);
     }
+
 }

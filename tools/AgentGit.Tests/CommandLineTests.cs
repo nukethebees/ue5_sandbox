@@ -8,11 +8,25 @@ public sealed class CommandLineTests
     [TestMethod]
     public void TryParse_rejects_unknown_commands_without_passthrough()
     {
-        var parsed = CommandLine.TryParse(["exec", "status"], out var request, out var error);
+        foreach (var command in new[]
+                 {
+                     new[] { "exec", "status" },
+                     new[] { "reset", "--hard" },
+                     new[] { "clean", "-fdx" },
+                     new[] { "restore", "--source=HEAD", "." },
+                     new[] { "checkout", "--force", "dev" },
+                     new[] { "branch", "-D", "feature" },
+                     new[] { "push", "--force" },
+                     new[] { "worktree", "remove", "other-worktree" },
+                 })
+        {
+            var parsed = CommandLine.TryParse(command, out var request, out var error);
 
-        Assert.IsFalse(parsed);
-        Assert.IsNull(request);
-        StringAssert.Contains(error, "Unknown");
+            Assert.IsFalse(parsed, string.Join(' ', command));
+            Assert.IsNull(request, string.Join(' ', command));
+            StringAssert.Contains(error, "unsupported");
+            StringAssert.Contains(error, "human-approval");
+        }
     }
 
     [TestMethod]

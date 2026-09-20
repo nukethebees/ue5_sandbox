@@ -15,7 +15,13 @@ Unreal Engine 5.8 project.
 # Feature Workflow
 
 * Use the canonical absolute `agent-git` executable for supported Git mutations. Raw Git is
-  acceptable for read-only inspection; or if agent-git is non-functional
+  acceptable for read-only inspection. For mutations, fall back only when `agent-git` itself is
+  non-functional (for example, unavailable or internally failing), never because it denied a
+  policy-prohibited operation; report the helper failure once and use the minimal alternative.
+* Each agent owns its worktree. Safe ordinary Git operations in separate worktrees may run
+  concurrently; `agent-git` enforces worktree/branch ownership and destructive-operation policy,
+  while Git provides index/ref locking. Do not treat `agent-git` as a repository-global mutex or
+  inspect or modify another agent's worktree.
 * `dev` is the integration branch. Perform feature work on dedicated feature branches 
 * Use the CMake workflows and repository jobserver described in [Builds](#builds) for expensive
   jobs. Do not bypass that coordination or interfere with jobs owned by other worktrees or agents.
@@ -52,8 +58,8 @@ Unreal Engine 5.8 project.
   infer, invent, or carry override authorization between interactions.
 * Automation may warn and record an override, but it must not tell the maintainer that repository
   policy makes an explicitly authorized merge impossible.
-* If tooling like agent-git is broken, report it once and obey an explicit maintainer instruction
-  to use the minimal alternative; do not repeatedly retry the broken helper.
+* If tooling like agent-git is broken, report it once and use the documented minimal fallback; do
+  not repeatedly retry the broken helper.
 
 # Builds
 

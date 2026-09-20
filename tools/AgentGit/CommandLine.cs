@@ -117,7 +117,8 @@ internal static class CommandLine
                 request = new BranchDeleteRequest(dry_run, branch);
                 return true;
             default:
-                error = $"Unknown or invalid operation '{command}'.";
+                error = $"Operation '{command}' is unsupported by agent-git. " +
+                    "Do not use raw Git to bypass this policy; use the documented human-approval route.";
                 return false;
         }
     }
