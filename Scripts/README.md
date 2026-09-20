@@ -11,8 +11,6 @@
   [Benchmarks](../docs/benchmarks.md) and [Profiling](../docs/profiling.md). Those two wrappers
   build and stage BenchmarkTools on demand when it is not already available.
 - `plot-*.py`: convert benchmark JSON, CSV, or logs into plots and summaries.
-- `audit_module_migration.sh`: read-only migration checks. See [AGENTS.md](AGENTS.md) for the
-  migration-audit contract.
 - `test_*.py` files: focused Python script validation support. Repository C++ and shader
   formatting is provided by the C# `CodeFormatTools` developer tool under `tools/`.
 - `soa_spacing_confirmation.py`: targeted native-analysis helper. Mimalloc object-symbol analysis

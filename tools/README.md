@@ -33,9 +33,14 @@ and native validation does not run this suite.
   `tools/bin/CodeFormatTools.exe [--all|--changed|--staged] [--jobs N|-j N] [--verbose]` after
   `ctools`. Formatting runs concurrently by default with half the logical processor count, capped
   at 16 jobs; use `--jobs 1` for sequential execution.
-- `ArchitectureChecks/` validates repository architecture invariants. CMake builds it on demand
-  for `check-space-game-layers`; its staged executable can be run directly as
-  `tools/bin/ArchitectureChecks.exe --root <path>` after `ctools`.
+- `ArchitectureChecks/` validates repository architecture invariants. CMake builds its SpaceGame
+  layer check on demand for `check-space-game-layers`; its staged executable can be run directly as
+  `tools/bin/ArchitectureChecks.exe --root <path>` after `ctools`. Its advisory module-migration
+  audit is `tools/bin/ArchitectureChecks.exe module-migration --root <path> [--baseline <revision>]
+  [--old-module <module>] [--plugin-module <module> ...]`. It defaults to auditing migrations from
+  `Sandbox` into `ShooterGame` and `SandboxGameShared`; specifying plugin modules replaces that
+  default set. The audit reports review findings but exits successfully unless its arguments,
+  repository access, or read-only Git queries fail.
 - `GamePackageTools/` verifies archived game packages through the `verify-package` CMake target.
   Its staged executable accepts `--project-root`, `--package-root`, `--unreal-pak`,
   `--verification-directory`, and `--configuration`.
