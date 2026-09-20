@@ -63,22 +63,18 @@ TEST(Generator, LowersDynamicSoaIntoTypedHeaderAndSource) {
     EXPECT_NE(header.find("struct EXAMPLE_API FDataConstView"), std::string::npos);
     EXPECT_NE(header.find("TConstArrayView<FHandle> handles;"), std::string::npos);
     EXPECT_NE(header.find("TArray<float> weights;"), std::string::npos);
-    EXPECT_NE(header.find("handles.RemoveAtSwap(index, count, allow_shrinking);"),
-              std::string::npos);
-    EXPECT_NE(header.find("weights.RemoveAtSwap(index, count, allow_shrinking);"),
-              std::string::npos);
-    EXPECT_NE(header.find("nested_handles.remove_at_swap(index, count, allow_shrinking);"),
+    EXPECT_NE(header.find("ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);"),
               std::string::npos);
     EXPECT_NE(header.find("template <typename Other>"), std::string::npos);
     EXPECT_NE(header.find("ml::SupportsApplyArrayPairsWith<FData, Other>"), std::string::npos);
     EXPECT_NE(header.find("#include \"Project/Handle.h\""), std::string::npos);
-    EXPECT_EQ(header.find("SandboxCore/soa_permutation.h"), std::string::npos);
+    EXPECT_NE(header.find("SandboxCore/soa_storage_ops.h"), std::string::npos);
 
     EXPECT_NE(source.find("#include \"Project/Generated.h\""), std::string::npos);
-    EXPECT_NE(source.find("SandboxCore/soa_permutation.h"), std::string::npos);
+    EXPECT_NE(source.find("SandboxCore/soa_storage_ops.h"), std::string::npos);
     EXPECT_NE(source.find("namespace example {"), std::string::npos);
     EXPECT_NE(source.find("void FData::reset()"), std::string::npos);
-    EXPECT_NE(source.find("ml::apply_permutation(handles, indices);"), std::string::npos);
+    EXPECT_NE(source.find("ml::soa_ops::apply_permutation(*this, indices);"), std::string::npos);
     EXPECT_NE(source.find("auto FData::get_view() -> View"), std::string::npos);
 }
 

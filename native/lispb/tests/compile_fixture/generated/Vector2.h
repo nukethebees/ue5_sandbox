@@ -9,8 +9,8 @@
 #include "Containers/ArrayView.h"
 #include "Project/Vector2f.h"
 #include "sandbox/core/soa_concepts.h"
-#include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
+#include "SandboxCore/soa_storage_ops.h"
 
 #include <utility>
 
@@ -179,8 +179,7 @@ struct FVectors2f {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        xs.RemoveAtSwap(index, count, allow_shrinking);
-        ys.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -217,27 +216,12 @@ struct FVectors2f {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>

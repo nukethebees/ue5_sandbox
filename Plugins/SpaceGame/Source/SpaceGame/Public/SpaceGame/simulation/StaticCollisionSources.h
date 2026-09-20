@@ -3,9 +3,8 @@
 
 #pragma once
 
-#include "SandboxCore/array_utils.h"
+#include "SandboxCore/soa_storage_ops.h"
 
-#include "CoreMinimal.h"
 #include "Components/PrimitiveComponent.h"
 #include "Containers/Array.h"
 #include "Containers/ArrayView.h"
@@ -96,27 +95,12 @@ struct SPACEGAME_API FStaticCollisionSources {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>

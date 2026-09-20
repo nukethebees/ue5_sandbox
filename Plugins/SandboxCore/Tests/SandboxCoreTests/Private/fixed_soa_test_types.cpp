@@ -3,11 +3,9 @@
 
 #include "fixed_soa_test_types.h"
 
-#include "SandboxCore/array_checks.h"
 #include "SandboxCore/container_ops.h"
-#include "SandboxCore/soa_permutation.h"
+#include "SandboxCore/soa_storage_ops.h"
 
-#include "CoreMinimal.h"
 #include "Containers/ArrayView.h"
 
 namespace ml::fixed_soa_tests {
@@ -42,10 +40,7 @@ auto FTestFixedChildConstView::is_empty() const noexcept -> bool {
 }
 
 void FTestFixedChildConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(names),
-        ml::num(references),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto FTestFixedChildConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -102,10 +97,7 @@ auto FTestFixedChildView::is_empty() const noexcept -> bool {
 }
 
 void FTestFixedChildView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(names),
-        ml::num(references),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto FTestFixedChildView::slice(int32 const offset, int32 const count) -> View {
@@ -133,10 +125,7 @@ auto FTestFixedChildView::right(int32 const count) const -> ConstView {
 }
 
 void FTestFixedChild::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(names, indices);
-    ml::apply_permutation(references, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FTestFixedChild::get_view() -> View {
@@ -181,10 +170,7 @@ auto FTestFixedChild::is_empty() const noexcept -> bool {
 }
 
 void FTestFixedChild::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(names),
-        ml::num(references),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto FTestFixedChild::slice(int32 const offset, int32 const count) -> View {
@@ -242,10 +228,7 @@ auto FTestFixedRowsConstView::is_empty() const noexcept -> bool {
 }
 
 void FTestFixedRowsConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(children),
-        ml::num(ids),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto FTestFixedRowsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -302,10 +285,7 @@ auto FTestFixedRowsView::is_empty() const noexcept -> bool {
 }
 
 void FTestFixedRowsView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(children),
-        ml::num(ids),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto FTestFixedRowsView::slice(int32 const offset, int32 const count) -> View {
@@ -333,10 +313,7 @@ auto FTestFixedRowsView::right(int32 const count) const -> ConstView {
 }
 
 void FTestFixedRows::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(children, indices);
-    ml::apply_permutation(ids, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FTestFixedRows::get_view() -> View {
@@ -381,10 +358,7 @@ auto FTestFixedRows::is_empty() const noexcept -> bool {
 }
 
 void FTestFixedRows::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(children),
-        ml::num(ids),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto FTestFixedRows::slice(int32 const offset, int32 const count) -> View {

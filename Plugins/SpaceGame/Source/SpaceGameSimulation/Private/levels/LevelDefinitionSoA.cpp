@@ -3,11 +3,9 @@
 
 #include "SpaceGameSimulation/levels/LevelDefinitionSoA.h"
 
-#include "SandboxCore/array_checks.h"
 #include "SandboxCore/container_ops.h"
-#include "SandboxCore/soa_permutation.h"
+#include "SandboxCore/soa_storage_ops.h"
 
-#include "CoreMinimal.h"
 #include "Containers/AllowShrinking.h"
 #include "Containers/ArrayView.h"
 
@@ -53,14 +51,7 @@ auto FLevelEntityTableConstView::is_empty() const noexcept -> bool {
 }
 
 void FLevelEntityTableConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(ids),
-        ml::num(archetypes),
-        ml::num(teams),
-        ml::num(positions),
-        ml::num(rotations),
-        ml::num(spawn_times_seconds),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto FLevelEntityTableConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -130,14 +121,7 @@ auto FLevelEntityTableView::is_empty() const noexcept -> bool {
 }
 
 void FLevelEntityTableView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(ids),
-        ml::num(archetypes),
-        ml::num(teams),
-        ml::num(positions),
-        ml::num(rotations),
-        ml::num(spawn_times_seconds),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto FLevelEntityTableView::slice(int32 const offset, int32 const count) -> View {
@@ -165,59 +149,27 @@ auto FLevelEntityTableView::right(int32 const count) const -> ConstView {
 }
 
 void FLevelEntityTable::reset() {
-    ml::reset(ids);
-    ml::reset(archetypes);
-    ml::reset(teams);
-    ml::reset(positions);
-    ml::reset(rotations);
-    ml::reset(spawn_times_seconds);
+    ml::soa_ops::reset(*this);
 }
 
 void FLevelEntityTable::reserve(int32 const count) {
-    ml::reserve(ids, count);
-    ml::reserve(archetypes, count);
-    ml::reserve(teams, count);
-    ml::reserve(positions, count);
-    ml::reserve(rotations, count);
-    ml::reserve(spawn_times_seconds, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void FLevelEntityTable::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(ids, count);
-    ml::add_uninitialised(archetypes, count);
-    ml::add_uninitialised(teams, count);
-    ml::add_uninitialised(positions, count);
-    ml::add_uninitialised(rotations, count);
-    ml::add_uninitialised(spawn_times_seconds, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void FLevelEntityTable::add_defaulted(int32 const count) {
-    ml::add_defaulted(ids, count);
-    ml::add_defaulted(archetypes, count);
-    ml::add_defaulted(teams, count);
-    ml::add_defaulted(positions, count);
-    ml::add_defaulted(rotations, count);
-    ml::add_defaulted(spawn_times_seconds, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void FLevelEntityTable::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(ids, count, allow_shrinking);
-    ml::set_num(archetypes, count, allow_shrinking);
-    ml::set_num(teams, count, allow_shrinking);
-    ml::set_num(positions, count, allow_shrinking);
-    ml::set_num(rotations, count, allow_shrinking);
-    ml::set_num(spawn_times_seconds, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void FLevelEntityTable::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(ids, indices);
-    ml::apply_permutation(archetypes, indices);
-    ml::apply_permutation(teams, indices);
-    ml::apply_permutation(positions, indices);
-    ml::apply_permutation(rotations, indices);
-    ml::apply_permutation(spawn_times_seconds, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FLevelEntityTable::get_view() -> View {
@@ -274,14 +226,7 @@ auto FLevelEntityTable::is_empty() const noexcept -> bool {
 }
 
 void FLevelEntityTable::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(ids),
-        ml::num(archetypes),
-        ml::num(teams),
-        ml::num(positions),
-        ml::num(rotations),
-        ml::num(spawn_times_seconds),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto FLevelEntityTable::slice(int32 const offset, int32 const count) -> View {

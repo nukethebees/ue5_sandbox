@@ -10,10 +10,9 @@ namespace {
 
 TypeDependency const tarray_view{"TArrayView", "Containers/ArrayView.h", {}};
 TypeDependency const allow_shrinking{"EAllowShrinking", "Containers/AllowShrinking.h", {}};
+TypeDependency const soa_storage_ops{"ml::soa_ops", "SandboxCore/soa_storage_ops.h", {}};
 TypeDependency const soa_concepts{
     "ml::SupportsApplyArrayPairsWith", "sandbox/core/soa_concepts.h", {}};
-TypeDependency const soa_permutation{"ml::apply_permutation", "SandboxCore/soa_permutation.h", {}};
-TypeDependency const fill_indices{"ml::fill_indices", "SandboxCore/array_utils.h", {}};
 TypeDependency const check_dependency{"check", "CoreMinimal.h", {}};
 
 auto container_function(std::string spelling) -> Expr {
@@ -65,6 +64,13 @@ auto has_custom_function(std::vector<FunctionSchema> const& functions, std::stri
 
 auto parameter_type(CppType type, ParameterPassing const passing) -> CppType {
     return qualify(std::move(type), passing == ParameterPassing::value ? " const" : " const&");
+}
+
+auto storage_operation_body(std::string const& operation, std::vector<std::string> arguments = {})
+    -> Nodes {
+    arguments.insert(arguments.begin(), "*this");
+    return {
+        raw("ml::soa_ops::" + operation + "(" + join(arguments, ", ") + ");", {soa_storage_ops})};
 }
 
 } // namespace
@@ -164,29 +170,19 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
                                  std::vector<ResolvedMember> const& members)
     -> std::vector<FunctionSpec> {
     std::vector<FunctionSpec> result;
-    auto member_calls = [&](Expr const& function, std::vector<Expr> const& arguments) {
-        NodeListBuilder calls;
-        for (auto const& member : members) {
-            auto values{std::vector<Expr>{named(member.name)}};
-            values.insert(values.end(), arguments.begin(), arguments.end());
-            calls.add(ExpressionStmt{call(function, std::move(values))});
-        }
-        return calls.build();
-    };
     auto contains = [&](StorageOperation operation) {
         return std::ranges::find(schema.operations, operation) != schema.operations.end();
     };
     if (contains(StorageOperation::reset)) {
-        result.push_back(FunctionSpec{.name = "reset",
-                                      .return_type = "void",
-                                      .body = member_calls(container_function("ml::reset"), {})});
+        result.push_back(FunctionSpec{
+            .name = "reset", .return_type = "void", .body = storage_operation_body("reset")});
     }
     if (contains(StorageOperation::reserve)) {
         result.push_back(FunctionSpec{
             .name = "reserve",
             .return_type = "void",
             .parameters = {FunctionParameter{"int32 const", "count"}},
-            .body = member_calls(container_function("ml::reserve"), {named("count")}),
+            .body = storage_operation_body("reserve", {"count"}),
         });
     }
     if (contains(StorageOperation::add_uninitialised)) {
@@ -194,7 +190,7 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
             .name = "add_uninitialised",
             .return_type = "void",
             .parameters = {FunctionParameter{"int32 const", "count"}},
-            .body = member_calls(container_function("ml::add_uninitialised"), {named("count")}),
+            .body = storage_operation_body("add_uninitialised", {"count"}),
         });
     }
     if (contains(StorageOperation::add_defaulted)) {
@@ -202,24 +198,10 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
             .name = "add_defaulted",
             .return_type = "void",
             .parameters = {FunctionParameter{"int32 const", "count"}},
-            .body = member_calls(container_function("ml::add_defaulted"), {named("count")}),
+            .body = storage_operation_body("add_defaulted", {"count"}),
         });
     }
     if (contains(StorageOperation::remove_at_swap)) {
-        NodeListBuilder calls;
-        for (auto const& member : members) {
-            auto const operation{member.container_type.operation(TypeOperation::remove_at_swap)};
-            auto const invocation{
-                operation.has_value()
-                    ? call(member_access(named(member.name), *operation),
-                           {named("index"), named("count"), named("allow_shrinking")})
-                    : call(container_function("ml::remove_at_swap"),
-                           {named(member.name),
-                            named("index"),
-                            named("count"),
-                            named("allow_shrinking")})};
-            calls.add(ExpressionStmt{invocation});
-        }
         result.push_back(FunctionSpec{
             .name = "remove_at_swap",
             .return_type = "void",
@@ -227,7 +209,7 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
                            FunctionParameter{"int32 const", "count"},
                            FunctionParameter{CppType{"EAllowShrinking const", {allow_shrinking}},
                                              "allow_shrinking"}},
-            .body = calls.build(),
+            .body = storage_operation_body("remove_at_swap", {"index", "count", "allow_shrinking"}),
             .is_inline = true,
         });
     }
@@ -238,8 +220,7 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
             .parameters = {FunctionParameter{"int32 const", "count"},
                            FunctionParameter{CppType{"EAllowShrinking const", {allow_shrinking}},
                                              "allow_shrinking"}},
-            .body = member_calls(container_function("ml::set_num"),
-                                 {named("count"), named("allow_shrinking")}),
+            .body = storage_operation_body("set_num", {"count", "allow_shrinking"}),
         });
     }
     if (contains(StorageOperation::copy_element)) {
@@ -331,33 +312,15 @@ auto soa_storage_operation_specs(SoaSchema const& schema,
     return result;
 }
 
-auto soa_permutation_specs(std::vector<ResolvedMember> const& members)
-    -> std::vector<FunctionSpec> {
-    NodeListBuilder apply;
-    apply.add(ExpressionStmt{RawExpr{"validate_array_sizes()"}})
-        .add(ExpressionStmt{RawExpr{"check(indices.Num() == num())"}, {check_dependency}});
-    for (auto const& member : members) {
-        apply.add(ExpressionStmt{RawExpr{"ml::apply_permutation(" + member.name + ", indices)"},
-                                 {soa_permutation}});
-    }
-    auto sort_body = [](std::string sort_expression) {
-        NodeListBuilder result;
-        return result.add(ExpressionStmt{RawExpr{"validate_array_sizes()"}})
-            .add(VariableDeclarationStmt{"auto const", "n", RawExpr{"num()"}})
-            .add(ExpressionStmt{RawExpr{"check(scratch_indices.Num() == n)"}, {check_dependency}})
-            .add(ExpressionStmt{RawExpr{"ml::fill_indices(scratch_indices)"}, {fill_indices}})
-            .add(raw("// indices[new_index] is the old row index that belongs at new_index.\n" +
-                     std::move(sort_expression)))
-            .add(ExpressionStmt{RawExpr{"apply_permutation(scratch_indices)"}})
-            .build();
-    };
+auto soa_permutation_specs(std::vector<ResolvedMember> const&) -> std::vector<FunctionSpec> {
+    auto const apply_body{storage_operation_body("apply_permutation", {"indices"})};
     return {
         FunctionSpec{
             .name = "apply_permutation",
             .return_type = "void",
             .parameters = {FunctionParameter{CppType{"TArrayView<int32>", {tarray_view}},
                                              "indices"}},
-            .body = apply.build(),
+            .body = apply_body,
         },
         FunctionSpec{
             .name = "sort",
@@ -365,10 +328,9 @@ auto soa_permutation_specs(std::vector<ResolvedMember> const& members)
             .parameters = {FunctionParameter{"Compare&&", "compare"},
                            FunctionParameter{CppType{"TArrayView<int32>", {tarray_view}},
                                              "scratch_indices"}},
-            .body = sort_body(
-                "scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {\n"
-                "    return compare(*this, lhs, rhs);\n"
-                "});"),
+            .body = {raw("ml::soa_ops::sort(*this, std::forward<Compare>(compare), "
+                         "scratch_indices);",
+                         {soa_storage_ops, TypeDependency{"std::forward", "utility", {}}})},
             .is_inline = true,
             .template_parameters = "typename Compare",
         },
@@ -377,9 +339,7 @@ auto soa_permutation_specs(std::vector<ResolvedMember> const& members)
             .return_type = "void",
             .parameters = {FunctionParameter{CppType{"TArrayView<int32>", {tarray_view}},
                                              "scratch_indices"}},
-            .body = sort_body("scratch_indices.Sort([this](int32 const lhs, int32 const rhs) {\n"
-                              "    return Compare(*this, lhs, rhs);\n"
-                              "});"),
+            .body = {raw("ml::soa_ops::sort<Compare>(*this, scratch_indices);", {soa_storage_ops})},
             .is_inline = true,
             .template_parameters = "auto Compare",
         },

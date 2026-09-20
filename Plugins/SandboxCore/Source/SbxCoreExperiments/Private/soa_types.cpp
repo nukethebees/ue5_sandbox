@@ -3,12 +3,10 @@
 
 #include "SbxCoreExperiments/soa_types.h"
 
-#include "CoreMinimal.h"
 #include "Containers/AllowShrinking.h"
 #include "Containers/ArrayView.h"
-#include "SandboxCore/array_checks.h"
 #include "SandboxCore/container_ops.h"
-#include "SandboxCore/soa_permutation.h"
+#include "SandboxCore/soa_storage_ops.h"
 
 namespace ml::single_allocation_experiment {
 auto VectorsConstView::get_view() const -> ConstView {
@@ -44,11 +42,7 @@ auto VectorsConstView::is_empty() const noexcept -> bool {
 }
 
 void VectorsConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-        ml::num(ys),
-        ml::num(zs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto VectorsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -108,11 +102,7 @@ auto VectorsView::is_empty() const noexcept -> bool {
 }
 
 void VectorsView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-        ml::num(ys),
-        ml::num(zs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto VectorsView::slice(int32 const offset, int32 const count) -> View {
@@ -140,41 +130,27 @@ auto VectorsView::right(int32 const count) const -> ConstView {
 }
 
 void Vectors::reset() {
-    ml::reset(xs);
-    ml::reset(ys);
-    ml::reset(zs);
+    ml::soa_ops::reset(*this);
 }
 
 void Vectors::reserve(int32 const count) {
-    ml::reserve(xs, count);
-    ml::reserve(ys, count);
-    ml::reserve(zs, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void Vectors::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(xs, count);
-    ml::add_uninitialised(ys, count);
-    ml::add_uninitialised(zs, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void Vectors::add_defaulted(int32 const count) {
-    ml::add_defaulted(xs, count);
-    ml::add_defaulted(ys, count);
-    ml::add_defaulted(zs, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void Vectors::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(xs, count, allow_shrinking);
-    ml::set_num(ys, count, allow_shrinking);
-    ml::set_num(zs, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void Vectors::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(xs, indices);
-    ml::apply_permutation(ys, indices);
-    ml::apply_permutation(zs, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto Vectors::get_view() -> View {
@@ -222,11 +198,7 @@ auto Vectors::is_empty() const noexcept -> bool {
 }
 
 void Vectors::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-        ml::num(ys),
-        ml::num(zs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto Vectors::slice(int32 const offset, int32 const count) -> View {
@@ -282,9 +254,7 @@ auto Countdown8ConstView::is_empty() const noexcept -> bool {
 }
 
 void Countdown8ConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto Countdown8ConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -338,9 +308,7 @@ auto Countdown8View::is_empty() const noexcept -> bool {
 }
 
 void Countdown8View::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto Countdown8View::slice(int32 const offset, int32 const count) -> View {
@@ -368,29 +336,27 @@ auto Countdown8View::right(int32 const count) const -> ConstView {
 }
 
 void Countdown8::reset() {
-    ml::reset(counters);
+    ml::soa_ops::reset(*this);
 }
 
 void Countdown8::reserve(int32 const count) {
-    ml::reserve(counters, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void Countdown8::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(counters, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void Countdown8::add_defaulted(int32 const count) {
-    ml::add_defaulted(counters, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void Countdown8::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(counters, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void Countdown8::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(counters, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto Countdown8::get_view() -> View {
@@ -432,9 +398,7 @@ auto Countdown8::is_empty() const noexcept -> bool {
 }
 
 void Countdown8::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto Countdown8::slice(int32 const offset, int32 const count) -> View {
@@ -491,9 +455,7 @@ auto Countdown16ConstView::is_empty() const noexcept -> bool {
 }
 
 void Countdown16ConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto Countdown16ConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -547,9 +509,7 @@ auto Countdown16View::is_empty() const noexcept -> bool {
 }
 
 void Countdown16View::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto Countdown16View::slice(int32 const offset, int32 const count) -> View {
@@ -577,29 +537,27 @@ auto Countdown16View::right(int32 const count) const -> ConstView {
 }
 
 void Countdown16::reset() {
-    ml::reset(counters);
+    ml::soa_ops::reset(*this);
 }
 
 void Countdown16::reserve(int32 const count) {
-    ml::reserve(counters, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void Countdown16::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(counters, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void Countdown16::add_defaulted(int32 const count) {
-    ml::add_defaulted(counters, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void Countdown16::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(counters, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void Countdown16::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(counters, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto Countdown16::get_view() -> View {
@@ -641,9 +599,7 @@ auto Countdown16::is_empty() const noexcept -> bool {
 }
 
 void Countdown16::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto Countdown16::slice(int32 const offset, int32 const count) -> View {
@@ -703,10 +659,7 @@ auto PeriodicCountdown16ConstView::is_empty() const noexcept -> bool {
 }
 
 void PeriodicCountdown16ConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(remaining_ticks),
-        ml::num(periods),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto PeriodicCountdown16ConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -764,10 +717,7 @@ auto PeriodicCountdown16View::is_empty() const noexcept -> bool {
 }
 
 void PeriodicCountdown16View::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(remaining_ticks),
-        ml::num(periods),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto PeriodicCountdown16View::slice(int32 const offset, int32 const count) -> View {
@@ -795,35 +745,27 @@ auto PeriodicCountdown16View::right(int32 const count) const -> ConstView {
 }
 
 void PeriodicCountdown16::reset() {
-    ml::reset(remaining_ticks);
-    ml::reset(periods);
+    ml::soa_ops::reset(*this);
 }
 
 void PeriodicCountdown16::reserve(int32 const count) {
-    ml::reserve(remaining_ticks, count);
-    ml::reserve(periods, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void PeriodicCountdown16::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(remaining_ticks, count);
-    ml::add_uninitialised(periods, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void PeriodicCountdown16::add_defaulted(int32 const count) {
-    ml::add_defaulted(remaining_ticks, count);
-    ml::add_defaulted(periods, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void PeriodicCountdown16::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(remaining_ticks, count, allow_shrinking);
-    ml::set_num(periods, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void PeriodicCountdown16::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(remaining_ticks, indices);
-    ml::apply_permutation(periods, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto PeriodicCountdown16::get_view() -> View {
@@ -868,10 +810,7 @@ auto PeriodicCountdown16::is_empty() const noexcept -> bool {
 }
 
 void PeriodicCountdown16::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(remaining_ticks),
-        ml::num(periods),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto PeriodicCountdown16::slice(int32 const offset, int32 const count) -> View {
@@ -991,41 +930,7 @@ auto EntityDataConstView::is_empty() const noexcept -> bool {
 }
 
 void EntityDataConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(entity_ids),
-        ml::num(integral_biases),
-        ml::num(float_biases),
-        ml::num(tasks),
-        ml::num(locations),
-        ml::num(desired_move_locations),
-        ml::num(aim_directions),
-        ml::num(planned_aim_directions),
-        ml::num(desired_aiming_directions),
-        ml::num(movement_directions),
-        ml::num(velocities),
-        ml::num(move_distances),
-        ml::num(speeds),
-        ml::num(teams),
-        ml::num(healths),
-        ml::num(parent_ids),
-        ml::num(awareness_scan_countdowns),
-        ml::num(navigation_update_countdowns),
-        ml::num(separation_steering),
-        ml::num(navigation_risk_tiers),
-        ml::num(navigation_lower_risk_scan_counts),
-        ml::num(avoidance_choice_indices),
-        ml::num(avoidance_clear_scan_counts),
-        ml::num(attack_reposition_countdowns),
-        ml::num(attack_cooldowns),
-        ml::num(target_ids),
-        ml::num(target_locations),
-        ml::num(target_velocities),
-        ml::num(target_directions),
-        ml::num(intercept_times),
-        ml::num(target_distance_sq),
-        ml::num(target_distances),
-        ml::num(target_radii),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto EntityDataConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -1175,41 +1080,7 @@ auto EntityDataView::is_empty() const noexcept -> bool {
 }
 
 void EntityDataView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(entity_ids),
-        ml::num(integral_biases),
-        ml::num(float_biases),
-        ml::num(tasks),
-        ml::num(locations),
-        ml::num(desired_move_locations),
-        ml::num(aim_directions),
-        ml::num(planned_aim_directions),
-        ml::num(desired_aiming_directions),
-        ml::num(movement_directions),
-        ml::num(velocities),
-        ml::num(move_distances),
-        ml::num(speeds),
-        ml::num(teams),
-        ml::num(healths),
-        ml::num(parent_ids),
-        ml::num(awareness_scan_countdowns),
-        ml::num(navigation_update_countdowns),
-        ml::num(separation_steering),
-        ml::num(navigation_risk_tiers),
-        ml::num(navigation_lower_risk_scan_counts),
-        ml::num(avoidance_choice_indices),
-        ml::num(avoidance_clear_scan_counts),
-        ml::num(attack_reposition_countdowns),
-        ml::num(attack_cooldowns),
-        ml::num(target_ids),
-        ml::num(target_locations),
-        ml::num(target_velocities),
-        ml::num(target_directions),
-        ml::num(intercept_times),
-        ml::num(target_distance_sq),
-        ml::num(target_distances),
-        ml::num(target_radii),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto EntityDataView::slice(int32 const offset, int32 const count) -> View {
@@ -1237,221 +1108,27 @@ auto EntityDataView::right(int32 const count) const -> ConstView {
 }
 
 void EntityData::reset() {
-    ml::reset(entity_ids);
-    ml::reset(integral_biases);
-    ml::reset(float_biases);
-    ml::reset(tasks);
-    ml::reset(locations);
-    ml::reset(desired_move_locations);
-    ml::reset(aim_directions);
-    ml::reset(planned_aim_directions);
-    ml::reset(desired_aiming_directions);
-    ml::reset(movement_directions);
-    ml::reset(velocities);
-    ml::reset(move_distances);
-    ml::reset(speeds);
-    ml::reset(teams);
-    ml::reset(healths);
-    ml::reset(parent_ids);
-    ml::reset(awareness_scan_countdowns);
-    ml::reset(navigation_update_countdowns);
-    ml::reset(separation_steering);
-    ml::reset(navigation_risk_tiers);
-    ml::reset(navigation_lower_risk_scan_counts);
-    ml::reset(avoidance_choice_indices);
-    ml::reset(avoidance_clear_scan_counts);
-    ml::reset(attack_reposition_countdowns);
-    ml::reset(attack_cooldowns);
-    ml::reset(target_ids);
-    ml::reset(target_locations);
-    ml::reset(target_velocities);
-    ml::reset(target_directions);
-    ml::reset(intercept_times);
-    ml::reset(target_distance_sq);
-    ml::reset(target_distances);
-    ml::reset(target_radii);
+    ml::soa_ops::reset(*this);
 }
 
 void EntityData::reserve(int32 const count) {
-    ml::reserve(entity_ids, count);
-    ml::reserve(integral_biases, count);
-    ml::reserve(float_biases, count);
-    ml::reserve(tasks, count);
-    ml::reserve(locations, count);
-    ml::reserve(desired_move_locations, count);
-    ml::reserve(aim_directions, count);
-    ml::reserve(planned_aim_directions, count);
-    ml::reserve(desired_aiming_directions, count);
-    ml::reserve(movement_directions, count);
-    ml::reserve(velocities, count);
-    ml::reserve(move_distances, count);
-    ml::reserve(speeds, count);
-    ml::reserve(teams, count);
-    ml::reserve(healths, count);
-    ml::reserve(parent_ids, count);
-    ml::reserve(awareness_scan_countdowns, count);
-    ml::reserve(navigation_update_countdowns, count);
-    ml::reserve(separation_steering, count);
-    ml::reserve(navigation_risk_tiers, count);
-    ml::reserve(navigation_lower_risk_scan_counts, count);
-    ml::reserve(avoidance_choice_indices, count);
-    ml::reserve(avoidance_clear_scan_counts, count);
-    ml::reserve(attack_reposition_countdowns, count);
-    ml::reserve(attack_cooldowns, count);
-    ml::reserve(target_ids, count);
-    ml::reserve(target_locations, count);
-    ml::reserve(target_velocities, count);
-    ml::reserve(target_directions, count);
-    ml::reserve(intercept_times, count);
-    ml::reserve(target_distance_sq, count);
-    ml::reserve(target_distances, count);
-    ml::reserve(target_radii, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void EntityData::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(entity_ids, count);
-    ml::add_uninitialised(integral_biases, count);
-    ml::add_uninitialised(float_biases, count);
-    ml::add_uninitialised(tasks, count);
-    ml::add_uninitialised(locations, count);
-    ml::add_uninitialised(desired_move_locations, count);
-    ml::add_uninitialised(aim_directions, count);
-    ml::add_uninitialised(planned_aim_directions, count);
-    ml::add_uninitialised(desired_aiming_directions, count);
-    ml::add_uninitialised(movement_directions, count);
-    ml::add_uninitialised(velocities, count);
-    ml::add_uninitialised(move_distances, count);
-    ml::add_uninitialised(speeds, count);
-    ml::add_uninitialised(teams, count);
-    ml::add_uninitialised(healths, count);
-    ml::add_uninitialised(parent_ids, count);
-    ml::add_uninitialised(awareness_scan_countdowns, count);
-    ml::add_uninitialised(navigation_update_countdowns, count);
-    ml::add_uninitialised(separation_steering, count);
-    ml::add_uninitialised(navigation_risk_tiers, count);
-    ml::add_uninitialised(navigation_lower_risk_scan_counts, count);
-    ml::add_uninitialised(avoidance_choice_indices, count);
-    ml::add_uninitialised(avoidance_clear_scan_counts, count);
-    ml::add_uninitialised(attack_reposition_countdowns, count);
-    ml::add_uninitialised(attack_cooldowns, count);
-    ml::add_uninitialised(target_ids, count);
-    ml::add_uninitialised(target_locations, count);
-    ml::add_uninitialised(target_velocities, count);
-    ml::add_uninitialised(target_directions, count);
-    ml::add_uninitialised(intercept_times, count);
-    ml::add_uninitialised(target_distance_sq, count);
-    ml::add_uninitialised(target_distances, count);
-    ml::add_uninitialised(target_radii, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void EntityData::add_defaulted(int32 const count) {
-    ml::add_defaulted(entity_ids, count);
-    ml::add_defaulted(integral_biases, count);
-    ml::add_defaulted(float_biases, count);
-    ml::add_defaulted(tasks, count);
-    ml::add_defaulted(locations, count);
-    ml::add_defaulted(desired_move_locations, count);
-    ml::add_defaulted(aim_directions, count);
-    ml::add_defaulted(planned_aim_directions, count);
-    ml::add_defaulted(desired_aiming_directions, count);
-    ml::add_defaulted(movement_directions, count);
-    ml::add_defaulted(velocities, count);
-    ml::add_defaulted(move_distances, count);
-    ml::add_defaulted(speeds, count);
-    ml::add_defaulted(teams, count);
-    ml::add_defaulted(healths, count);
-    ml::add_defaulted(parent_ids, count);
-    ml::add_defaulted(awareness_scan_countdowns, count);
-    ml::add_defaulted(navigation_update_countdowns, count);
-    ml::add_defaulted(separation_steering, count);
-    ml::add_defaulted(navigation_risk_tiers, count);
-    ml::add_defaulted(navigation_lower_risk_scan_counts, count);
-    ml::add_defaulted(avoidance_choice_indices, count);
-    ml::add_defaulted(avoidance_clear_scan_counts, count);
-    ml::add_defaulted(attack_reposition_countdowns, count);
-    ml::add_defaulted(attack_cooldowns, count);
-    ml::add_defaulted(target_ids, count);
-    ml::add_defaulted(target_locations, count);
-    ml::add_defaulted(target_velocities, count);
-    ml::add_defaulted(target_directions, count);
-    ml::add_defaulted(intercept_times, count);
-    ml::add_defaulted(target_distance_sq, count);
-    ml::add_defaulted(target_distances, count);
-    ml::add_defaulted(target_radii, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void EntityData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(entity_ids, count, allow_shrinking);
-    ml::set_num(integral_biases, count, allow_shrinking);
-    ml::set_num(float_biases, count, allow_shrinking);
-    ml::set_num(tasks, count, allow_shrinking);
-    ml::set_num(locations, count, allow_shrinking);
-    ml::set_num(desired_move_locations, count, allow_shrinking);
-    ml::set_num(aim_directions, count, allow_shrinking);
-    ml::set_num(planned_aim_directions, count, allow_shrinking);
-    ml::set_num(desired_aiming_directions, count, allow_shrinking);
-    ml::set_num(movement_directions, count, allow_shrinking);
-    ml::set_num(velocities, count, allow_shrinking);
-    ml::set_num(move_distances, count, allow_shrinking);
-    ml::set_num(speeds, count, allow_shrinking);
-    ml::set_num(teams, count, allow_shrinking);
-    ml::set_num(healths, count, allow_shrinking);
-    ml::set_num(parent_ids, count, allow_shrinking);
-    ml::set_num(awareness_scan_countdowns, count, allow_shrinking);
-    ml::set_num(navigation_update_countdowns, count, allow_shrinking);
-    ml::set_num(separation_steering, count, allow_shrinking);
-    ml::set_num(navigation_risk_tiers, count, allow_shrinking);
-    ml::set_num(navigation_lower_risk_scan_counts, count, allow_shrinking);
-    ml::set_num(avoidance_choice_indices, count, allow_shrinking);
-    ml::set_num(avoidance_clear_scan_counts, count, allow_shrinking);
-    ml::set_num(attack_reposition_countdowns, count, allow_shrinking);
-    ml::set_num(attack_cooldowns, count, allow_shrinking);
-    ml::set_num(target_ids, count, allow_shrinking);
-    ml::set_num(target_locations, count, allow_shrinking);
-    ml::set_num(target_velocities, count, allow_shrinking);
-    ml::set_num(target_directions, count, allow_shrinking);
-    ml::set_num(intercept_times, count, allow_shrinking);
-    ml::set_num(target_distance_sq, count, allow_shrinking);
-    ml::set_num(target_distances, count, allow_shrinking);
-    ml::set_num(target_radii, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void EntityData::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(entity_ids, indices);
-    ml::apply_permutation(integral_biases, indices);
-    ml::apply_permutation(float_biases, indices);
-    ml::apply_permutation(tasks, indices);
-    ml::apply_permutation(locations, indices);
-    ml::apply_permutation(desired_move_locations, indices);
-    ml::apply_permutation(aim_directions, indices);
-    ml::apply_permutation(planned_aim_directions, indices);
-    ml::apply_permutation(desired_aiming_directions, indices);
-    ml::apply_permutation(movement_directions, indices);
-    ml::apply_permutation(velocities, indices);
-    ml::apply_permutation(move_distances, indices);
-    ml::apply_permutation(speeds, indices);
-    ml::apply_permutation(teams, indices);
-    ml::apply_permutation(healths, indices);
-    ml::apply_permutation(parent_ids, indices);
-    ml::apply_permutation(awareness_scan_countdowns, indices);
-    ml::apply_permutation(navigation_update_countdowns, indices);
-    ml::apply_permutation(separation_steering, indices);
-    ml::apply_permutation(navigation_risk_tiers, indices);
-    ml::apply_permutation(navigation_lower_risk_scan_counts, indices);
-    ml::apply_permutation(avoidance_choice_indices, indices);
-    ml::apply_permutation(avoidance_clear_scan_counts, indices);
-    ml::apply_permutation(attack_reposition_countdowns, indices);
-    ml::apply_permutation(attack_cooldowns, indices);
-    ml::apply_permutation(target_ids, indices);
-    ml::apply_permutation(target_locations, indices);
-    ml::apply_permutation(target_velocities, indices);
-    ml::apply_permutation(target_directions, indices);
-    ml::apply_permutation(intercept_times, indices);
-    ml::apply_permutation(target_distance_sq, indices);
-    ml::apply_permutation(target_distances, indices);
-    ml::apply_permutation(target_radii, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto EntityData::get_view() -> View {
@@ -1589,41 +1266,7 @@ auto EntityData::is_empty() const noexcept -> bool {
 }
 
 void EntityData::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(entity_ids),
-        ml::num(integral_biases),
-        ml::num(float_biases),
-        ml::num(tasks),
-        ml::num(locations),
-        ml::num(desired_move_locations),
-        ml::num(aim_directions),
-        ml::num(planned_aim_directions),
-        ml::num(desired_aiming_directions),
-        ml::num(movement_directions),
-        ml::num(velocities),
-        ml::num(move_distances),
-        ml::num(speeds),
-        ml::num(teams),
-        ml::num(healths),
-        ml::num(parent_ids),
-        ml::num(awareness_scan_countdowns),
-        ml::num(navigation_update_countdowns),
-        ml::num(separation_steering),
-        ml::num(navigation_risk_tiers),
-        ml::num(navigation_lower_risk_scan_counts),
-        ml::num(avoidance_choice_indices),
-        ml::num(avoidance_clear_scan_counts),
-        ml::num(attack_reposition_countdowns),
-        ml::num(attack_cooldowns),
-        ml::num(target_ids),
-        ml::num(target_locations),
-        ml::num(target_velocities),
-        ml::num(target_directions),
-        ml::num(intercept_times),
-        ml::num(target_distance_sq),
-        ml::num(target_distances),
-        ml::num(target_radii),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto EntityData::slice(int32 const offset, int32 const count) -> View {
@@ -1694,16 +1337,7 @@ auto AlignmentDataConstView::is_empty() const noexcept -> bool {
 }
 
 void AlignmentDataConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(bytes),
-        ml::num(odd),
-        ml::num(aligned32),
-        ml::num(nested),
-        ml::num(aligned64),
-        ml::num(small),
-        ml::num(aligned256),
-        ml::num(handles),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto AlignmentDataConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -1778,16 +1412,7 @@ auto AlignmentDataView::is_empty() const noexcept -> bool {
 }
 
 void AlignmentDataView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(bytes),
-        ml::num(odd),
-        ml::num(aligned32),
-        ml::num(nested),
-        ml::num(aligned64),
-        ml::num(small),
-        ml::num(aligned256),
-        ml::num(handles),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto AlignmentDataView::slice(int32 const offset, int32 const count) -> View {
@@ -1815,71 +1440,27 @@ auto AlignmentDataView::right(int32 const count) const -> ConstView {
 }
 
 void AlignmentData::reset() {
-    ml::reset(bytes);
-    ml::reset(odd);
-    ml::reset(aligned32);
-    ml::reset(nested);
-    ml::reset(aligned64);
-    ml::reset(small);
-    ml::reset(aligned256);
-    ml::reset(handles);
+    ml::soa_ops::reset(*this);
 }
 
 void AlignmentData::reserve(int32 const count) {
-    ml::reserve(bytes, count);
-    ml::reserve(odd, count);
-    ml::reserve(aligned32, count);
-    ml::reserve(nested, count);
-    ml::reserve(aligned64, count);
-    ml::reserve(small, count);
-    ml::reserve(aligned256, count);
-    ml::reserve(handles, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void AlignmentData::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(bytes, count);
-    ml::add_uninitialised(odd, count);
-    ml::add_uninitialised(aligned32, count);
-    ml::add_uninitialised(nested, count);
-    ml::add_uninitialised(aligned64, count);
-    ml::add_uninitialised(small, count);
-    ml::add_uninitialised(aligned256, count);
-    ml::add_uninitialised(handles, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void AlignmentData::add_defaulted(int32 const count) {
-    ml::add_defaulted(bytes, count);
-    ml::add_defaulted(odd, count);
-    ml::add_defaulted(aligned32, count);
-    ml::add_defaulted(nested, count);
-    ml::add_defaulted(aligned64, count);
-    ml::add_defaulted(small, count);
-    ml::add_defaulted(aligned256, count);
-    ml::add_defaulted(handles, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void AlignmentData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(bytes, count, allow_shrinking);
-    ml::set_num(odd, count, allow_shrinking);
-    ml::set_num(aligned32, count, allow_shrinking);
-    ml::set_num(nested, count, allow_shrinking);
-    ml::set_num(aligned64, count, allow_shrinking);
-    ml::set_num(small, count, allow_shrinking);
-    ml::set_num(aligned256, count, allow_shrinking);
-    ml::set_num(handles, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void AlignmentData::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(bytes, indices);
-    ml::apply_permutation(odd, indices);
-    ml::apply_permutation(aligned32, indices);
-    ml::apply_permutation(nested, indices);
-    ml::apply_permutation(aligned64, indices);
-    ml::apply_permutation(small, indices);
-    ml::apply_permutation(aligned256, indices);
-    ml::apply_permutation(handles, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto AlignmentData::get_view() -> View {
@@ -1942,16 +1523,7 @@ auto AlignmentData::is_empty() const noexcept -> bool {
 }
 
 void AlignmentData::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(bytes),
-        ml::num(odd),
-        ml::num(aligned32),
-        ml::num(nested),
-        ml::num(aligned64),
-        ml::num(small),
-        ml::num(aligned256),
-        ml::num(handles),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto AlignmentData::slice(int32 const offset, int32 const count) -> View {
@@ -2012,11 +1584,7 @@ auto MimallocVectorsConstView::is_empty() const noexcept -> bool {
 }
 
 void MimallocVectorsConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-        ml::num(ys),
-        ml::num(zs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MimallocVectorsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -2076,11 +1644,7 @@ auto MimallocVectorsView::is_empty() const noexcept -> bool {
 }
 
 void MimallocVectorsView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-        ml::num(ys),
-        ml::num(zs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MimallocVectorsView::slice(int32 const offset, int32 const count) -> View {
@@ -2108,41 +1672,27 @@ auto MimallocVectorsView::right(int32 const count) const -> ConstView {
 }
 
 void MimallocVectors::reset() {
-    ml::reset(xs);
-    ml::reset(ys);
-    ml::reset(zs);
+    ml::soa_ops::reset(*this);
 }
 
 void MimallocVectors::reserve(int32 const count) {
-    ml::reserve(xs, count);
-    ml::reserve(ys, count);
-    ml::reserve(zs, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void MimallocVectors::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(xs, count);
-    ml::add_uninitialised(ys, count);
-    ml::add_uninitialised(zs, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void MimallocVectors::add_defaulted(int32 const count) {
-    ml::add_defaulted(xs, count);
-    ml::add_defaulted(ys, count);
-    ml::add_defaulted(zs, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void MimallocVectors::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(xs, count, allow_shrinking);
-    ml::set_num(ys, count, allow_shrinking);
-    ml::set_num(zs, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void MimallocVectors::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(xs, indices);
-    ml::apply_permutation(ys, indices);
-    ml::apply_permutation(zs, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto MimallocVectors::get_view() -> View {
@@ -2190,11 +1740,7 @@ auto MimallocVectors::is_empty() const noexcept -> bool {
 }
 
 void MimallocVectors::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-        ml::num(ys),
-        ml::num(zs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MimallocVectors::slice(int32 const offset, int32 const count) -> View {
@@ -2252,9 +1798,7 @@ auto MimallocCountdown8ConstView::is_empty() const noexcept -> bool {
 }
 
 void MimallocCountdown8ConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MimallocCountdown8ConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -2309,9 +1853,7 @@ auto MimallocCountdown8View::is_empty() const noexcept -> bool {
 }
 
 void MimallocCountdown8View::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MimallocCountdown8View::slice(int32 const offset, int32 const count) -> View {
@@ -2339,29 +1881,27 @@ auto MimallocCountdown8View::right(int32 const count) const -> ConstView {
 }
 
 void MimallocCountdown8::reset() {
-    ml::reset(counters);
+    ml::soa_ops::reset(*this);
 }
 
 void MimallocCountdown8::reserve(int32 const count) {
-    ml::reserve(counters, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void MimallocCountdown8::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(counters, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void MimallocCountdown8::add_defaulted(int32 const count) {
-    ml::add_defaulted(counters, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void MimallocCountdown8::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(counters, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void MimallocCountdown8::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(counters, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto MimallocCountdown8::get_view() -> View {
@@ -2403,9 +1943,7 @@ auto MimallocCountdown8::is_empty() const noexcept -> bool {
 }
 
 void MimallocCountdown8::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MimallocCountdown8::slice(int32 const offset, int32 const count) -> View {
@@ -2463,9 +2001,7 @@ auto MimallocCountdown16ConstView::is_empty() const noexcept -> bool {
 }
 
 void MimallocCountdown16ConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MimallocCountdown16ConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -2520,9 +2056,7 @@ auto MimallocCountdown16View::is_empty() const noexcept -> bool {
 }
 
 void MimallocCountdown16View::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MimallocCountdown16View::slice(int32 const offset, int32 const count) -> View {
@@ -2550,29 +2084,27 @@ auto MimallocCountdown16View::right(int32 const count) const -> ConstView {
 }
 
 void MimallocCountdown16::reset() {
-    ml::reset(counters);
+    ml::soa_ops::reset(*this);
 }
 
 void MimallocCountdown16::reserve(int32 const count) {
-    ml::reserve(counters, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void MimallocCountdown16::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(counters, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void MimallocCountdown16::add_defaulted(int32 const count) {
-    ml::add_defaulted(counters, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void MimallocCountdown16::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(counters, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void MimallocCountdown16::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(counters, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto MimallocCountdown16::get_view() -> View {
@@ -2614,9 +2146,7 @@ auto MimallocCountdown16::is_empty() const noexcept -> bool {
 }
 
 void MimallocCountdown16::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MimallocCountdown16::slice(int32 const offset, int32 const count) -> View {
@@ -2676,10 +2206,7 @@ auto MimallocPeriodicCountdown16ConstView::is_empty() const noexcept -> bool {
 }
 
 void MimallocPeriodicCountdown16ConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(remaining_ticks),
-        ml::num(periods),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MimallocPeriodicCountdown16ConstView::slice(int32 const offset, int32 const count) const
@@ -2739,10 +2266,7 @@ auto MimallocPeriodicCountdown16View::is_empty() const noexcept -> bool {
 }
 
 void MimallocPeriodicCountdown16View::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(remaining_ticks),
-        ml::num(periods),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MimallocPeriodicCountdown16View::slice(int32 const offset, int32 const count) -> View {
@@ -2771,36 +2295,28 @@ auto MimallocPeriodicCountdown16View::right(int32 const count) const -> ConstVie
 }
 
 void MimallocPeriodicCountdown16::reset() {
-    ml::reset(remaining_ticks);
-    ml::reset(periods);
+    ml::soa_ops::reset(*this);
 }
 
 void MimallocPeriodicCountdown16::reserve(int32 const count) {
-    ml::reserve(remaining_ticks, count);
-    ml::reserve(periods, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void MimallocPeriodicCountdown16::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(remaining_ticks, count);
-    ml::add_uninitialised(periods, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void MimallocPeriodicCountdown16::add_defaulted(int32 const count) {
-    ml::add_defaulted(remaining_ticks, count);
-    ml::add_defaulted(periods, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void MimallocPeriodicCountdown16::set_num(int32 const count,
                                           EAllowShrinking const allow_shrinking) {
-    ml::set_num(remaining_ticks, count, allow_shrinking);
-    ml::set_num(periods, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void MimallocPeriodicCountdown16::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(remaining_ticks, indices);
-    ml::apply_permutation(periods, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto MimallocPeriodicCountdown16::get_view() -> View {
@@ -2847,10 +2363,7 @@ auto MimallocPeriodicCountdown16::is_empty() const noexcept -> bool {
 }
 
 void MimallocPeriodicCountdown16::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(remaining_ticks),
-        ml::num(periods),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MimallocPeriodicCountdown16::slice(int32 const offset, int32 const count) -> View {
@@ -2972,41 +2485,7 @@ auto MimallocEntityDataConstView::is_empty() const noexcept -> bool {
 }
 
 void MimallocEntityDataConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(entity_ids),
-        ml::num(integral_biases),
-        ml::num(float_biases),
-        ml::num(tasks),
-        ml::num(locations),
-        ml::num(desired_move_locations),
-        ml::num(aim_directions),
-        ml::num(planned_aim_directions),
-        ml::num(desired_aiming_directions),
-        ml::num(movement_directions),
-        ml::num(velocities),
-        ml::num(move_distances),
-        ml::num(speeds),
-        ml::num(teams),
-        ml::num(healths),
-        ml::num(parent_ids),
-        ml::num(awareness_scan_countdowns),
-        ml::num(navigation_update_countdowns),
-        ml::num(separation_steering),
-        ml::num(navigation_risk_tiers),
-        ml::num(navigation_lower_risk_scan_counts),
-        ml::num(avoidance_choice_indices),
-        ml::num(avoidance_clear_scan_counts),
-        ml::num(attack_reposition_countdowns),
-        ml::num(attack_cooldowns),
-        ml::num(target_ids),
-        ml::num(target_locations),
-        ml::num(target_velocities),
-        ml::num(target_directions),
-        ml::num(intercept_times),
-        ml::num(target_distance_sq),
-        ml::num(target_distances),
-        ml::num(target_radii),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MimallocEntityDataConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -3157,41 +2636,7 @@ auto MimallocEntityDataView::is_empty() const noexcept -> bool {
 }
 
 void MimallocEntityDataView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(entity_ids),
-        ml::num(integral_biases),
-        ml::num(float_biases),
-        ml::num(tasks),
-        ml::num(locations),
-        ml::num(desired_move_locations),
-        ml::num(aim_directions),
-        ml::num(planned_aim_directions),
-        ml::num(desired_aiming_directions),
-        ml::num(movement_directions),
-        ml::num(velocities),
-        ml::num(move_distances),
-        ml::num(speeds),
-        ml::num(teams),
-        ml::num(healths),
-        ml::num(parent_ids),
-        ml::num(awareness_scan_countdowns),
-        ml::num(navigation_update_countdowns),
-        ml::num(separation_steering),
-        ml::num(navigation_risk_tiers),
-        ml::num(navigation_lower_risk_scan_counts),
-        ml::num(avoidance_choice_indices),
-        ml::num(avoidance_clear_scan_counts),
-        ml::num(attack_reposition_countdowns),
-        ml::num(attack_cooldowns),
-        ml::num(target_ids),
-        ml::num(target_locations),
-        ml::num(target_velocities),
-        ml::num(target_directions),
-        ml::num(intercept_times),
-        ml::num(target_distance_sq),
-        ml::num(target_distances),
-        ml::num(target_radii),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MimallocEntityDataView::slice(int32 const offset, int32 const count) -> View {
@@ -3219,221 +2664,27 @@ auto MimallocEntityDataView::right(int32 const count) const -> ConstView {
 }
 
 void MimallocEntityData::reset() {
-    ml::reset(entity_ids);
-    ml::reset(integral_biases);
-    ml::reset(float_biases);
-    ml::reset(tasks);
-    ml::reset(locations);
-    ml::reset(desired_move_locations);
-    ml::reset(aim_directions);
-    ml::reset(planned_aim_directions);
-    ml::reset(desired_aiming_directions);
-    ml::reset(movement_directions);
-    ml::reset(velocities);
-    ml::reset(move_distances);
-    ml::reset(speeds);
-    ml::reset(teams);
-    ml::reset(healths);
-    ml::reset(parent_ids);
-    ml::reset(awareness_scan_countdowns);
-    ml::reset(navigation_update_countdowns);
-    ml::reset(separation_steering);
-    ml::reset(navigation_risk_tiers);
-    ml::reset(navigation_lower_risk_scan_counts);
-    ml::reset(avoidance_choice_indices);
-    ml::reset(avoidance_clear_scan_counts);
-    ml::reset(attack_reposition_countdowns);
-    ml::reset(attack_cooldowns);
-    ml::reset(target_ids);
-    ml::reset(target_locations);
-    ml::reset(target_velocities);
-    ml::reset(target_directions);
-    ml::reset(intercept_times);
-    ml::reset(target_distance_sq);
-    ml::reset(target_distances);
-    ml::reset(target_radii);
+    ml::soa_ops::reset(*this);
 }
 
 void MimallocEntityData::reserve(int32 const count) {
-    ml::reserve(entity_ids, count);
-    ml::reserve(integral_biases, count);
-    ml::reserve(float_biases, count);
-    ml::reserve(tasks, count);
-    ml::reserve(locations, count);
-    ml::reserve(desired_move_locations, count);
-    ml::reserve(aim_directions, count);
-    ml::reserve(planned_aim_directions, count);
-    ml::reserve(desired_aiming_directions, count);
-    ml::reserve(movement_directions, count);
-    ml::reserve(velocities, count);
-    ml::reserve(move_distances, count);
-    ml::reserve(speeds, count);
-    ml::reserve(teams, count);
-    ml::reserve(healths, count);
-    ml::reserve(parent_ids, count);
-    ml::reserve(awareness_scan_countdowns, count);
-    ml::reserve(navigation_update_countdowns, count);
-    ml::reserve(separation_steering, count);
-    ml::reserve(navigation_risk_tiers, count);
-    ml::reserve(navigation_lower_risk_scan_counts, count);
-    ml::reserve(avoidance_choice_indices, count);
-    ml::reserve(avoidance_clear_scan_counts, count);
-    ml::reserve(attack_reposition_countdowns, count);
-    ml::reserve(attack_cooldowns, count);
-    ml::reserve(target_ids, count);
-    ml::reserve(target_locations, count);
-    ml::reserve(target_velocities, count);
-    ml::reserve(target_directions, count);
-    ml::reserve(intercept_times, count);
-    ml::reserve(target_distance_sq, count);
-    ml::reserve(target_distances, count);
-    ml::reserve(target_radii, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void MimallocEntityData::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(entity_ids, count);
-    ml::add_uninitialised(integral_biases, count);
-    ml::add_uninitialised(float_biases, count);
-    ml::add_uninitialised(tasks, count);
-    ml::add_uninitialised(locations, count);
-    ml::add_uninitialised(desired_move_locations, count);
-    ml::add_uninitialised(aim_directions, count);
-    ml::add_uninitialised(planned_aim_directions, count);
-    ml::add_uninitialised(desired_aiming_directions, count);
-    ml::add_uninitialised(movement_directions, count);
-    ml::add_uninitialised(velocities, count);
-    ml::add_uninitialised(move_distances, count);
-    ml::add_uninitialised(speeds, count);
-    ml::add_uninitialised(teams, count);
-    ml::add_uninitialised(healths, count);
-    ml::add_uninitialised(parent_ids, count);
-    ml::add_uninitialised(awareness_scan_countdowns, count);
-    ml::add_uninitialised(navigation_update_countdowns, count);
-    ml::add_uninitialised(separation_steering, count);
-    ml::add_uninitialised(navigation_risk_tiers, count);
-    ml::add_uninitialised(navigation_lower_risk_scan_counts, count);
-    ml::add_uninitialised(avoidance_choice_indices, count);
-    ml::add_uninitialised(avoidance_clear_scan_counts, count);
-    ml::add_uninitialised(attack_reposition_countdowns, count);
-    ml::add_uninitialised(attack_cooldowns, count);
-    ml::add_uninitialised(target_ids, count);
-    ml::add_uninitialised(target_locations, count);
-    ml::add_uninitialised(target_velocities, count);
-    ml::add_uninitialised(target_directions, count);
-    ml::add_uninitialised(intercept_times, count);
-    ml::add_uninitialised(target_distance_sq, count);
-    ml::add_uninitialised(target_distances, count);
-    ml::add_uninitialised(target_radii, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void MimallocEntityData::add_defaulted(int32 const count) {
-    ml::add_defaulted(entity_ids, count);
-    ml::add_defaulted(integral_biases, count);
-    ml::add_defaulted(float_biases, count);
-    ml::add_defaulted(tasks, count);
-    ml::add_defaulted(locations, count);
-    ml::add_defaulted(desired_move_locations, count);
-    ml::add_defaulted(aim_directions, count);
-    ml::add_defaulted(planned_aim_directions, count);
-    ml::add_defaulted(desired_aiming_directions, count);
-    ml::add_defaulted(movement_directions, count);
-    ml::add_defaulted(velocities, count);
-    ml::add_defaulted(move_distances, count);
-    ml::add_defaulted(speeds, count);
-    ml::add_defaulted(teams, count);
-    ml::add_defaulted(healths, count);
-    ml::add_defaulted(parent_ids, count);
-    ml::add_defaulted(awareness_scan_countdowns, count);
-    ml::add_defaulted(navigation_update_countdowns, count);
-    ml::add_defaulted(separation_steering, count);
-    ml::add_defaulted(navigation_risk_tiers, count);
-    ml::add_defaulted(navigation_lower_risk_scan_counts, count);
-    ml::add_defaulted(avoidance_choice_indices, count);
-    ml::add_defaulted(avoidance_clear_scan_counts, count);
-    ml::add_defaulted(attack_reposition_countdowns, count);
-    ml::add_defaulted(attack_cooldowns, count);
-    ml::add_defaulted(target_ids, count);
-    ml::add_defaulted(target_locations, count);
-    ml::add_defaulted(target_velocities, count);
-    ml::add_defaulted(target_directions, count);
-    ml::add_defaulted(intercept_times, count);
-    ml::add_defaulted(target_distance_sq, count);
-    ml::add_defaulted(target_distances, count);
-    ml::add_defaulted(target_radii, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void MimallocEntityData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(entity_ids, count, allow_shrinking);
-    ml::set_num(integral_biases, count, allow_shrinking);
-    ml::set_num(float_biases, count, allow_shrinking);
-    ml::set_num(tasks, count, allow_shrinking);
-    ml::set_num(locations, count, allow_shrinking);
-    ml::set_num(desired_move_locations, count, allow_shrinking);
-    ml::set_num(aim_directions, count, allow_shrinking);
-    ml::set_num(planned_aim_directions, count, allow_shrinking);
-    ml::set_num(desired_aiming_directions, count, allow_shrinking);
-    ml::set_num(movement_directions, count, allow_shrinking);
-    ml::set_num(velocities, count, allow_shrinking);
-    ml::set_num(move_distances, count, allow_shrinking);
-    ml::set_num(speeds, count, allow_shrinking);
-    ml::set_num(teams, count, allow_shrinking);
-    ml::set_num(healths, count, allow_shrinking);
-    ml::set_num(parent_ids, count, allow_shrinking);
-    ml::set_num(awareness_scan_countdowns, count, allow_shrinking);
-    ml::set_num(navigation_update_countdowns, count, allow_shrinking);
-    ml::set_num(separation_steering, count, allow_shrinking);
-    ml::set_num(navigation_risk_tiers, count, allow_shrinking);
-    ml::set_num(navigation_lower_risk_scan_counts, count, allow_shrinking);
-    ml::set_num(avoidance_choice_indices, count, allow_shrinking);
-    ml::set_num(avoidance_clear_scan_counts, count, allow_shrinking);
-    ml::set_num(attack_reposition_countdowns, count, allow_shrinking);
-    ml::set_num(attack_cooldowns, count, allow_shrinking);
-    ml::set_num(target_ids, count, allow_shrinking);
-    ml::set_num(target_locations, count, allow_shrinking);
-    ml::set_num(target_velocities, count, allow_shrinking);
-    ml::set_num(target_directions, count, allow_shrinking);
-    ml::set_num(intercept_times, count, allow_shrinking);
-    ml::set_num(target_distance_sq, count, allow_shrinking);
-    ml::set_num(target_distances, count, allow_shrinking);
-    ml::set_num(target_radii, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void MimallocEntityData::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(entity_ids, indices);
-    ml::apply_permutation(integral_biases, indices);
-    ml::apply_permutation(float_biases, indices);
-    ml::apply_permutation(tasks, indices);
-    ml::apply_permutation(locations, indices);
-    ml::apply_permutation(desired_move_locations, indices);
-    ml::apply_permutation(aim_directions, indices);
-    ml::apply_permutation(planned_aim_directions, indices);
-    ml::apply_permutation(desired_aiming_directions, indices);
-    ml::apply_permutation(movement_directions, indices);
-    ml::apply_permutation(velocities, indices);
-    ml::apply_permutation(move_distances, indices);
-    ml::apply_permutation(speeds, indices);
-    ml::apply_permutation(teams, indices);
-    ml::apply_permutation(healths, indices);
-    ml::apply_permutation(parent_ids, indices);
-    ml::apply_permutation(awareness_scan_countdowns, indices);
-    ml::apply_permutation(navigation_update_countdowns, indices);
-    ml::apply_permutation(separation_steering, indices);
-    ml::apply_permutation(navigation_risk_tiers, indices);
-    ml::apply_permutation(navigation_lower_risk_scan_counts, indices);
-    ml::apply_permutation(avoidance_choice_indices, indices);
-    ml::apply_permutation(avoidance_clear_scan_counts, indices);
-    ml::apply_permutation(attack_reposition_countdowns, indices);
-    ml::apply_permutation(attack_cooldowns, indices);
-    ml::apply_permutation(target_ids, indices);
-    ml::apply_permutation(target_locations, indices);
-    ml::apply_permutation(target_velocities, indices);
-    ml::apply_permutation(target_directions, indices);
-    ml::apply_permutation(intercept_times, indices);
-    ml::apply_permutation(target_distance_sq, indices);
-    ml::apply_permutation(target_distances, indices);
-    ml::apply_permutation(target_radii, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto MimallocEntityData::get_view() -> View {
@@ -3571,41 +2822,7 @@ auto MimallocEntityData::is_empty() const noexcept -> bool {
 }
 
 void MimallocEntityData::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(entity_ids),
-        ml::num(integral_biases),
-        ml::num(float_biases),
-        ml::num(tasks),
-        ml::num(locations),
-        ml::num(desired_move_locations),
-        ml::num(aim_directions),
-        ml::num(planned_aim_directions),
-        ml::num(desired_aiming_directions),
-        ml::num(movement_directions),
-        ml::num(velocities),
-        ml::num(move_distances),
-        ml::num(speeds),
-        ml::num(teams),
-        ml::num(healths),
-        ml::num(parent_ids),
-        ml::num(awareness_scan_countdowns),
-        ml::num(navigation_update_countdowns),
-        ml::num(separation_steering),
-        ml::num(navigation_risk_tiers),
-        ml::num(navigation_lower_risk_scan_counts),
-        ml::num(avoidance_choice_indices),
-        ml::num(avoidance_clear_scan_counts),
-        ml::num(attack_reposition_countdowns),
-        ml::num(attack_cooldowns),
-        ml::num(target_ids),
-        ml::num(target_locations),
-        ml::num(target_velocities),
-        ml::num(target_directions),
-        ml::num(intercept_times),
-        ml::num(target_distance_sq),
-        ml::num(target_distances),
-        ml::num(target_radii),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MimallocEntityData::slice(int32 const offset, int32 const count) -> View {
@@ -3677,16 +2894,7 @@ auto MimallocAlignmentDataConstView::is_empty() const noexcept -> bool {
 }
 
 void MimallocAlignmentDataConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(bytes),
-        ml::num(odd),
-        ml::num(aligned32),
-        ml::num(nested),
-        ml::num(aligned64),
-        ml::num(small),
-        ml::num(aligned256),
-        ml::num(handles),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MimallocAlignmentDataConstView::slice(int32 const offset, int32 const count) const
@@ -3763,16 +2971,7 @@ auto MimallocAlignmentDataView::is_empty() const noexcept -> bool {
 }
 
 void MimallocAlignmentDataView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(bytes),
-        ml::num(odd),
-        ml::num(aligned32),
-        ml::num(nested),
-        ml::num(aligned64),
-        ml::num(small),
-        ml::num(aligned256),
-        ml::num(handles),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MimallocAlignmentDataView::slice(int32 const offset, int32 const count) -> View {
@@ -3800,71 +2999,27 @@ auto MimallocAlignmentDataView::right(int32 const count) const -> ConstView {
 }
 
 void MimallocAlignmentData::reset() {
-    ml::reset(bytes);
-    ml::reset(odd);
-    ml::reset(aligned32);
-    ml::reset(nested);
-    ml::reset(aligned64);
-    ml::reset(small);
-    ml::reset(aligned256);
-    ml::reset(handles);
+    ml::soa_ops::reset(*this);
 }
 
 void MimallocAlignmentData::reserve(int32 const count) {
-    ml::reserve(bytes, count);
-    ml::reserve(odd, count);
-    ml::reserve(aligned32, count);
-    ml::reserve(nested, count);
-    ml::reserve(aligned64, count);
-    ml::reserve(small, count);
-    ml::reserve(aligned256, count);
-    ml::reserve(handles, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void MimallocAlignmentData::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(bytes, count);
-    ml::add_uninitialised(odd, count);
-    ml::add_uninitialised(aligned32, count);
-    ml::add_uninitialised(nested, count);
-    ml::add_uninitialised(aligned64, count);
-    ml::add_uninitialised(small, count);
-    ml::add_uninitialised(aligned256, count);
-    ml::add_uninitialised(handles, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void MimallocAlignmentData::add_defaulted(int32 const count) {
-    ml::add_defaulted(bytes, count);
-    ml::add_defaulted(odd, count);
-    ml::add_defaulted(aligned32, count);
-    ml::add_defaulted(nested, count);
-    ml::add_defaulted(aligned64, count);
-    ml::add_defaulted(small, count);
-    ml::add_defaulted(aligned256, count);
-    ml::add_defaulted(handles, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void MimallocAlignmentData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(bytes, count, allow_shrinking);
-    ml::set_num(odd, count, allow_shrinking);
-    ml::set_num(aligned32, count, allow_shrinking);
-    ml::set_num(nested, count, allow_shrinking);
-    ml::set_num(aligned64, count, allow_shrinking);
-    ml::set_num(small, count, allow_shrinking);
-    ml::set_num(aligned256, count, allow_shrinking);
-    ml::set_num(handles, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void MimallocAlignmentData::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(bytes, indices);
-    ml::apply_permutation(odd, indices);
-    ml::apply_permutation(aligned32, indices);
-    ml::apply_permutation(nested, indices);
-    ml::apply_permutation(aligned64, indices);
-    ml::apply_permutation(small, indices);
-    ml::apply_permutation(aligned256, indices);
-    ml::apply_permutation(handles, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto MimallocAlignmentData::get_view() -> View {
@@ -3928,16 +3083,7 @@ auto MimallocAlignmentData::is_empty() const noexcept -> bool {
 }
 
 void MimallocAlignmentData::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(bytes),
-        ml::num(odd),
-        ml::num(aligned32),
-        ml::num(nested),
-        ml::num(aligned64),
-        ml::num(small),
-        ml::num(aligned256),
-        ml::num(handles),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MimallocAlignmentData::slice(int32 const offset, int32 const count) -> View {
@@ -3998,11 +3144,7 @@ auto MallocVectorsConstView::is_empty() const noexcept -> bool {
 }
 
 void MallocVectorsConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-        ml::num(ys),
-        ml::num(zs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MallocVectorsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -4062,11 +3204,7 @@ auto MallocVectorsView::is_empty() const noexcept -> bool {
 }
 
 void MallocVectorsView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-        ml::num(ys),
-        ml::num(zs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MallocVectorsView::slice(int32 const offset, int32 const count) -> View {
@@ -4094,41 +3232,27 @@ auto MallocVectorsView::right(int32 const count) const -> ConstView {
 }
 
 void MallocVectors::reset() {
-    ml::reset(xs);
-    ml::reset(ys);
-    ml::reset(zs);
+    ml::soa_ops::reset(*this);
 }
 
 void MallocVectors::reserve(int32 const count) {
-    ml::reserve(xs, count);
-    ml::reserve(ys, count);
-    ml::reserve(zs, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void MallocVectors::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(xs, count);
-    ml::add_uninitialised(ys, count);
-    ml::add_uninitialised(zs, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void MallocVectors::add_defaulted(int32 const count) {
-    ml::add_defaulted(xs, count);
-    ml::add_defaulted(ys, count);
-    ml::add_defaulted(zs, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void MallocVectors::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(xs, count, allow_shrinking);
-    ml::set_num(ys, count, allow_shrinking);
-    ml::set_num(zs, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void MallocVectors::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(xs, indices);
-    ml::apply_permutation(ys, indices);
-    ml::apply_permutation(zs, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto MallocVectors::get_view() -> View {
@@ -4176,11 +3300,7 @@ auto MallocVectors::is_empty() const noexcept -> bool {
 }
 
 void MallocVectors::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-        ml::num(ys),
-        ml::num(zs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MallocVectors::slice(int32 const offset, int32 const count) -> View {
@@ -4237,9 +3357,7 @@ auto MallocCountdown8ConstView::is_empty() const noexcept -> bool {
 }
 
 void MallocCountdown8ConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MallocCountdown8ConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -4294,9 +3412,7 @@ auto MallocCountdown8View::is_empty() const noexcept -> bool {
 }
 
 void MallocCountdown8View::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MallocCountdown8View::slice(int32 const offset, int32 const count) -> View {
@@ -4324,29 +3440,27 @@ auto MallocCountdown8View::right(int32 const count) const -> ConstView {
 }
 
 void MallocCountdown8::reset() {
-    ml::reset(counters);
+    ml::soa_ops::reset(*this);
 }
 
 void MallocCountdown8::reserve(int32 const count) {
-    ml::reserve(counters, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void MallocCountdown8::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(counters, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void MallocCountdown8::add_defaulted(int32 const count) {
-    ml::add_defaulted(counters, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void MallocCountdown8::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(counters, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void MallocCountdown8::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(counters, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto MallocCountdown8::get_view() -> View {
@@ -4388,9 +3502,7 @@ auto MallocCountdown8::is_empty() const noexcept -> bool {
 }
 
 void MallocCountdown8::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MallocCountdown8::slice(int32 const offset, int32 const count) -> View {
@@ -4448,9 +3560,7 @@ auto MallocCountdown16ConstView::is_empty() const noexcept -> bool {
 }
 
 void MallocCountdown16ConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MallocCountdown16ConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -4505,9 +3615,7 @@ auto MallocCountdown16View::is_empty() const noexcept -> bool {
 }
 
 void MallocCountdown16View::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MallocCountdown16View::slice(int32 const offset, int32 const count) -> View {
@@ -4535,29 +3643,27 @@ auto MallocCountdown16View::right(int32 const count) const -> ConstView {
 }
 
 void MallocCountdown16::reset() {
-    ml::reset(counters);
+    ml::soa_ops::reset(*this);
 }
 
 void MallocCountdown16::reserve(int32 const count) {
-    ml::reserve(counters, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void MallocCountdown16::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(counters, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void MallocCountdown16::add_defaulted(int32 const count) {
-    ml::add_defaulted(counters, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void MallocCountdown16::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(counters, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void MallocCountdown16::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(counters, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto MallocCountdown16::get_view() -> View {
@@ -4599,9 +3705,7 @@ auto MallocCountdown16::is_empty() const noexcept -> bool {
 }
 
 void MallocCountdown16::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MallocCountdown16::slice(int32 const offset, int32 const count) -> View {
@@ -4661,10 +3765,7 @@ auto MallocPeriodicCountdown16ConstView::is_empty() const noexcept -> bool {
 }
 
 void MallocPeriodicCountdown16ConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(remaining_ticks),
-        ml::num(periods),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MallocPeriodicCountdown16ConstView::slice(int32 const offset, int32 const count) const
@@ -4724,10 +3825,7 @@ auto MallocPeriodicCountdown16View::is_empty() const noexcept -> bool {
 }
 
 void MallocPeriodicCountdown16View::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(remaining_ticks),
-        ml::num(periods),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MallocPeriodicCountdown16View::slice(int32 const offset, int32 const count) -> View {
@@ -4756,35 +3854,27 @@ auto MallocPeriodicCountdown16View::right(int32 const count) const -> ConstView 
 }
 
 void MallocPeriodicCountdown16::reset() {
-    ml::reset(remaining_ticks);
-    ml::reset(periods);
+    ml::soa_ops::reset(*this);
 }
 
 void MallocPeriodicCountdown16::reserve(int32 const count) {
-    ml::reserve(remaining_ticks, count);
-    ml::reserve(periods, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void MallocPeriodicCountdown16::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(remaining_ticks, count);
-    ml::add_uninitialised(periods, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void MallocPeriodicCountdown16::add_defaulted(int32 const count) {
-    ml::add_defaulted(remaining_ticks, count);
-    ml::add_defaulted(periods, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void MallocPeriodicCountdown16::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(remaining_ticks, count, allow_shrinking);
-    ml::set_num(periods, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void MallocPeriodicCountdown16::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(remaining_ticks, indices);
-    ml::apply_permutation(periods, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto MallocPeriodicCountdown16::get_view() -> View {
@@ -4830,10 +3920,7 @@ auto MallocPeriodicCountdown16::is_empty() const noexcept -> bool {
 }
 
 void MallocPeriodicCountdown16::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(remaining_ticks),
-        ml::num(periods),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MallocPeriodicCountdown16::slice(int32 const offset, int32 const count) -> View {
@@ -4954,41 +4041,7 @@ auto MallocEntityDataConstView::is_empty() const noexcept -> bool {
 }
 
 void MallocEntityDataConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(entity_ids),
-        ml::num(integral_biases),
-        ml::num(float_biases),
-        ml::num(tasks),
-        ml::num(locations),
-        ml::num(desired_move_locations),
-        ml::num(aim_directions),
-        ml::num(planned_aim_directions),
-        ml::num(desired_aiming_directions),
-        ml::num(movement_directions),
-        ml::num(velocities),
-        ml::num(move_distances),
-        ml::num(speeds),
-        ml::num(teams),
-        ml::num(healths),
-        ml::num(parent_ids),
-        ml::num(awareness_scan_countdowns),
-        ml::num(navigation_update_countdowns),
-        ml::num(separation_steering),
-        ml::num(navigation_risk_tiers),
-        ml::num(navigation_lower_risk_scan_counts),
-        ml::num(avoidance_choice_indices),
-        ml::num(avoidance_clear_scan_counts),
-        ml::num(attack_reposition_countdowns),
-        ml::num(attack_cooldowns),
-        ml::num(target_ids),
-        ml::num(target_locations),
-        ml::num(target_velocities),
-        ml::num(target_directions),
-        ml::num(intercept_times),
-        ml::num(target_distance_sq),
-        ml::num(target_distances),
-        ml::num(target_radii),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MallocEntityDataConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -5139,41 +4192,7 @@ auto MallocEntityDataView::is_empty() const noexcept -> bool {
 }
 
 void MallocEntityDataView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(entity_ids),
-        ml::num(integral_biases),
-        ml::num(float_biases),
-        ml::num(tasks),
-        ml::num(locations),
-        ml::num(desired_move_locations),
-        ml::num(aim_directions),
-        ml::num(planned_aim_directions),
-        ml::num(desired_aiming_directions),
-        ml::num(movement_directions),
-        ml::num(velocities),
-        ml::num(move_distances),
-        ml::num(speeds),
-        ml::num(teams),
-        ml::num(healths),
-        ml::num(parent_ids),
-        ml::num(awareness_scan_countdowns),
-        ml::num(navigation_update_countdowns),
-        ml::num(separation_steering),
-        ml::num(navigation_risk_tiers),
-        ml::num(navigation_lower_risk_scan_counts),
-        ml::num(avoidance_choice_indices),
-        ml::num(avoidance_clear_scan_counts),
-        ml::num(attack_reposition_countdowns),
-        ml::num(attack_cooldowns),
-        ml::num(target_ids),
-        ml::num(target_locations),
-        ml::num(target_velocities),
-        ml::num(target_directions),
-        ml::num(intercept_times),
-        ml::num(target_distance_sq),
-        ml::num(target_distances),
-        ml::num(target_radii),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MallocEntityDataView::slice(int32 const offset, int32 const count) -> View {
@@ -5201,221 +4220,27 @@ auto MallocEntityDataView::right(int32 const count) const -> ConstView {
 }
 
 void MallocEntityData::reset() {
-    ml::reset(entity_ids);
-    ml::reset(integral_biases);
-    ml::reset(float_biases);
-    ml::reset(tasks);
-    ml::reset(locations);
-    ml::reset(desired_move_locations);
-    ml::reset(aim_directions);
-    ml::reset(planned_aim_directions);
-    ml::reset(desired_aiming_directions);
-    ml::reset(movement_directions);
-    ml::reset(velocities);
-    ml::reset(move_distances);
-    ml::reset(speeds);
-    ml::reset(teams);
-    ml::reset(healths);
-    ml::reset(parent_ids);
-    ml::reset(awareness_scan_countdowns);
-    ml::reset(navigation_update_countdowns);
-    ml::reset(separation_steering);
-    ml::reset(navigation_risk_tiers);
-    ml::reset(navigation_lower_risk_scan_counts);
-    ml::reset(avoidance_choice_indices);
-    ml::reset(avoidance_clear_scan_counts);
-    ml::reset(attack_reposition_countdowns);
-    ml::reset(attack_cooldowns);
-    ml::reset(target_ids);
-    ml::reset(target_locations);
-    ml::reset(target_velocities);
-    ml::reset(target_directions);
-    ml::reset(intercept_times);
-    ml::reset(target_distance_sq);
-    ml::reset(target_distances);
-    ml::reset(target_radii);
+    ml::soa_ops::reset(*this);
 }
 
 void MallocEntityData::reserve(int32 const count) {
-    ml::reserve(entity_ids, count);
-    ml::reserve(integral_biases, count);
-    ml::reserve(float_biases, count);
-    ml::reserve(tasks, count);
-    ml::reserve(locations, count);
-    ml::reserve(desired_move_locations, count);
-    ml::reserve(aim_directions, count);
-    ml::reserve(planned_aim_directions, count);
-    ml::reserve(desired_aiming_directions, count);
-    ml::reserve(movement_directions, count);
-    ml::reserve(velocities, count);
-    ml::reserve(move_distances, count);
-    ml::reserve(speeds, count);
-    ml::reserve(teams, count);
-    ml::reserve(healths, count);
-    ml::reserve(parent_ids, count);
-    ml::reserve(awareness_scan_countdowns, count);
-    ml::reserve(navigation_update_countdowns, count);
-    ml::reserve(separation_steering, count);
-    ml::reserve(navigation_risk_tiers, count);
-    ml::reserve(navigation_lower_risk_scan_counts, count);
-    ml::reserve(avoidance_choice_indices, count);
-    ml::reserve(avoidance_clear_scan_counts, count);
-    ml::reserve(attack_reposition_countdowns, count);
-    ml::reserve(attack_cooldowns, count);
-    ml::reserve(target_ids, count);
-    ml::reserve(target_locations, count);
-    ml::reserve(target_velocities, count);
-    ml::reserve(target_directions, count);
-    ml::reserve(intercept_times, count);
-    ml::reserve(target_distance_sq, count);
-    ml::reserve(target_distances, count);
-    ml::reserve(target_radii, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void MallocEntityData::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(entity_ids, count);
-    ml::add_uninitialised(integral_biases, count);
-    ml::add_uninitialised(float_biases, count);
-    ml::add_uninitialised(tasks, count);
-    ml::add_uninitialised(locations, count);
-    ml::add_uninitialised(desired_move_locations, count);
-    ml::add_uninitialised(aim_directions, count);
-    ml::add_uninitialised(planned_aim_directions, count);
-    ml::add_uninitialised(desired_aiming_directions, count);
-    ml::add_uninitialised(movement_directions, count);
-    ml::add_uninitialised(velocities, count);
-    ml::add_uninitialised(move_distances, count);
-    ml::add_uninitialised(speeds, count);
-    ml::add_uninitialised(teams, count);
-    ml::add_uninitialised(healths, count);
-    ml::add_uninitialised(parent_ids, count);
-    ml::add_uninitialised(awareness_scan_countdowns, count);
-    ml::add_uninitialised(navigation_update_countdowns, count);
-    ml::add_uninitialised(separation_steering, count);
-    ml::add_uninitialised(navigation_risk_tiers, count);
-    ml::add_uninitialised(navigation_lower_risk_scan_counts, count);
-    ml::add_uninitialised(avoidance_choice_indices, count);
-    ml::add_uninitialised(avoidance_clear_scan_counts, count);
-    ml::add_uninitialised(attack_reposition_countdowns, count);
-    ml::add_uninitialised(attack_cooldowns, count);
-    ml::add_uninitialised(target_ids, count);
-    ml::add_uninitialised(target_locations, count);
-    ml::add_uninitialised(target_velocities, count);
-    ml::add_uninitialised(target_directions, count);
-    ml::add_uninitialised(intercept_times, count);
-    ml::add_uninitialised(target_distance_sq, count);
-    ml::add_uninitialised(target_distances, count);
-    ml::add_uninitialised(target_radii, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void MallocEntityData::add_defaulted(int32 const count) {
-    ml::add_defaulted(entity_ids, count);
-    ml::add_defaulted(integral_biases, count);
-    ml::add_defaulted(float_biases, count);
-    ml::add_defaulted(tasks, count);
-    ml::add_defaulted(locations, count);
-    ml::add_defaulted(desired_move_locations, count);
-    ml::add_defaulted(aim_directions, count);
-    ml::add_defaulted(planned_aim_directions, count);
-    ml::add_defaulted(desired_aiming_directions, count);
-    ml::add_defaulted(movement_directions, count);
-    ml::add_defaulted(velocities, count);
-    ml::add_defaulted(move_distances, count);
-    ml::add_defaulted(speeds, count);
-    ml::add_defaulted(teams, count);
-    ml::add_defaulted(healths, count);
-    ml::add_defaulted(parent_ids, count);
-    ml::add_defaulted(awareness_scan_countdowns, count);
-    ml::add_defaulted(navigation_update_countdowns, count);
-    ml::add_defaulted(separation_steering, count);
-    ml::add_defaulted(navigation_risk_tiers, count);
-    ml::add_defaulted(navigation_lower_risk_scan_counts, count);
-    ml::add_defaulted(avoidance_choice_indices, count);
-    ml::add_defaulted(avoidance_clear_scan_counts, count);
-    ml::add_defaulted(attack_reposition_countdowns, count);
-    ml::add_defaulted(attack_cooldowns, count);
-    ml::add_defaulted(target_ids, count);
-    ml::add_defaulted(target_locations, count);
-    ml::add_defaulted(target_velocities, count);
-    ml::add_defaulted(target_directions, count);
-    ml::add_defaulted(intercept_times, count);
-    ml::add_defaulted(target_distance_sq, count);
-    ml::add_defaulted(target_distances, count);
-    ml::add_defaulted(target_radii, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void MallocEntityData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(entity_ids, count, allow_shrinking);
-    ml::set_num(integral_biases, count, allow_shrinking);
-    ml::set_num(float_biases, count, allow_shrinking);
-    ml::set_num(tasks, count, allow_shrinking);
-    ml::set_num(locations, count, allow_shrinking);
-    ml::set_num(desired_move_locations, count, allow_shrinking);
-    ml::set_num(aim_directions, count, allow_shrinking);
-    ml::set_num(planned_aim_directions, count, allow_shrinking);
-    ml::set_num(desired_aiming_directions, count, allow_shrinking);
-    ml::set_num(movement_directions, count, allow_shrinking);
-    ml::set_num(velocities, count, allow_shrinking);
-    ml::set_num(move_distances, count, allow_shrinking);
-    ml::set_num(speeds, count, allow_shrinking);
-    ml::set_num(teams, count, allow_shrinking);
-    ml::set_num(healths, count, allow_shrinking);
-    ml::set_num(parent_ids, count, allow_shrinking);
-    ml::set_num(awareness_scan_countdowns, count, allow_shrinking);
-    ml::set_num(navigation_update_countdowns, count, allow_shrinking);
-    ml::set_num(separation_steering, count, allow_shrinking);
-    ml::set_num(navigation_risk_tiers, count, allow_shrinking);
-    ml::set_num(navigation_lower_risk_scan_counts, count, allow_shrinking);
-    ml::set_num(avoidance_choice_indices, count, allow_shrinking);
-    ml::set_num(avoidance_clear_scan_counts, count, allow_shrinking);
-    ml::set_num(attack_reposition_countdowns, count, allow_shrinking);
-    ml::set_num(attack_cooldowns, count, allow_shrinking);
-    ml::set_num(target_ids, count, allow_shrinking);
-    ml::set_num(target_locations, count, allow_shrinking);
-    ml::set_num(target_velocities, count, allow_shrinking);
-    ml::set_num(target_directions, count, allow_shrinking);
-    ml::set_num(intercept_times, count, allow_shrinking);
-    ml::set_num(target_distance_sq, count, allow_shrinking);
-    ml::set_num(target_distances, count, allow_shrinking);
-    ml::set_num(target_radii, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void MallocEntityData::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(entity_ids, indices);
-    ml::apply_permutation(integral_biases, indices);
-    ml::apply_permutation(float_biases, indices);
-    ml::apply_permutation(tasks, indices);
-    ml::apply_permutation(locations, indices);
-    ml::apply_permutation(desired_move_locations, indices);
-    ml::apply_permutation(aim_directions, indices);
-    ml::apply_permutation(planned_aim_directions, indices);
-    ml::apply_permutation(desired_aiming_directions, indices);
-    ml::apply_permutation(movement_directions, indices);
-    ml::apply_permutation(velocities, indices);
-    ml::apply_permutation(move_distances, indices);
-    ml::apply_permutation(speeds, indices);
-    ml::apply_permutation(teams, indices);
-    ml::apply_permutation(healths, indices);
-    ml::apply_permutation(parent_ids, indices);
-    ml::apply_permutation(awareness_scan_countdowns, indices);
-    ml::apply_permutation(navigation_update_countdowns, indices);
-    ml::apply_permutation(separation_steering, indices);
-    ml::apply_permutation(navigation_risk_tiers, indices);
-    ml::apply_permutation(navigation_lower_risk_scan_counts, indices);
-    ml::apply_permutation(avoidance_choice_indices, indices);
-    ml::apply_permutation(avoidance_clear_scan_counts, indices);
-    ml::apply_permutation(attack_reposition_countdowns, indices);
-    ml::apply_permutation(attack_cooldowns, indices);
-    ml::apply_permutation(target_ids, indices);
-    ml::apply_permutation(target_locations, indices);
-    ml::apply_permutation(target_velocities, indices);
-    ml::apply_permutation(target_directions, indices);
-    ml::apply_permutation(intercept_times, indices);
-    ml::apply_permutation(target_distance_sq, indices);
-    ml::apply_permutation(target_distances, indices);
-    ml::apply_permutation(target_radii, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto MallocEntityData::get_view() -> View {
@@ -5553,41 +4378,7 @@ auto MallocEntityData::is_empty() const noexcept -> bool {
 }
 
 void MallocEntityData::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(entity_ids),
-        ml::num(integral_biases),
-        ml::num(float_biases),
-        ml::num(tasks),
-        ml::num(locations),
-        ml::num(desired_move_locations),
-        ml::num(aim_directions),
-        ml::num(planned_aim_directions),
-        ml::num(desired_aiming_directions),
-        ml::num(movement_directions),
-        ml::num(velocities),
-        ml::num(move_distances),
-        ml::num(speeds),
-        ml::num(teams),
-        ml::num(healths),
-        ml::num(parent_ids),
-        ml::num(awareness_scan_countdowns),
-        ml::num(navigation_update_countdowns),
-        ml::num(separation_steering),
-        ml::num(navigation_risk_tiers),
-        ml::num(navigation_lower_risk_scan_counts),
-        ml::num(avoidance_choice_indices),
-        ml::num(avoidance_clear_scan_counts),
-        ml::num(attack_reposition_countdowns),
-        ml::num(attack_cooldowns),
-        ml::num(target_ids),
-        ml::num(target_locations),
-        ml::num(target_velocities),
-        ml::num(target_directions),
-        ml::num(intercept_times),
-        ml::num(target_distance_sq),
-        ml::num(target_distances),
-        ml::num(target_radii),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MallocEntityData::slice(int32 const offset, int32 const count) -> View {
@@ -5659,16 +4450,7 @@ auto MallocAlignmentDataConstView::is_empty() const noexcept -> bool {
 }
 
 void MallocAlignmentDataConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(bytes),
-        ml::num(odd),
-        ml::num(aligned32),
-        ml::num(nested),
-        ml::num(aligned64),
-        ml::num(small),
-        ml::num(aligned256),
-        ml::num(handles),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MallocAlignmentDataConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -5744,16 +4526,7 @@ auto MallocAlignmentDataView::is_empty() const noexcept -> bool {
 }
 
 void MallocAlignmentDataView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(bytes),
-        ml::num(odd),
-        ml::num(aligned32),
-        ml::num(nested),
-        ml::num(aligned64),
-        ml::num(small),
-        ml::num(aligned256),
-        ml::num(handles),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MallocAlignmentDataView::slice(int32 const offset, int32 const count) -> View {
@@ -5781,71 +4554,27 @@ auto MallocAlignmentDataView::right(int32 const count) const -> ConstView {
 }
 
 void MallocAlignmentData::reset() {
-    ml::reset(bytes);
-    ml::reset(odd);
-    ml::reset(aligned32);
-    ml::reset(nested);
-    ml::reset(aligned64);
-    ml::reset(small);
-    ml::reset(aligned256);
-    ml::reset(handles);
+    ml::soa_ops::reset(*this);
 }
 
 void MallocAlignmentData::reserve(int32 const count) {
-    ml::reserve(bytes, count);
-    ml::reserve(odd, count);
-    ml::reserve(aligned32, count);
-    ml::reserve(nested, count);
-    ml::reserve(aligned64, count);
-    ml::reserve(small, count);
-    ml::reserve(aligned256, count);
-    ml::reserve(handles, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void MallocAlignmentData::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(bytes, count);
-    ml::add_uninitialised(odd, count);
-    ml::add_uninitialised(aligned32, count);
-    ml::add_uninitialised(nested, count);
-    ml::add_uninitialised(aligned64, count);
-    ml::add_uninitialised(small, count);
-    ml::add_uninitialised(aligned256, count);
-    ml::add_uninitialised(handles, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void MallocAlignmentData::add_defaulted(int32 const count) {
-    ml::add_defaulted(bytes, count);
-    ml::add_defaulted(odd, count);
-    ml::add_defaulted(aligned32, count);
-    ml::add_defaulted(nested, count);
-    ml::add_defaulted(aligned64, count);
-    ml::add_defaulted(small, count);
-    ml::add_defaulted(aligned256, count);
-    ml::add_defaulted(handles, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void MallocAlignmentData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(bytes, count, allow_shrinking);
-    ml::set_num(odd, count, allow_shrinking);
-    ml::set_num(aligned32, count, allow_shrinking);
-    ml::set_num(nested, count, allow_shrinking);
-    ml::set_num(aligned64, count, allow_shrinking);
-    ml::set_num(small, count, allow_shrinking);
-    ml::set_num(aligned256, count, allow_shrinking);
-    ml::set_num(handles, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void MallocAlignmentData::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(bytes, indices);
-    ml::apply_permutation(odd, indices);
-    ml::apply_permutation(aligned32, indices);
-    ml::apply_permutation(nested, indices);
-    ml::apply_permutation(aligned64, indices);
-    ml::apply_permutation(small, indices);
-    ml::apply_permutation(aligned256, indices);
-    ml::apply_permutation(handles, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto MallocAlignmentData::get_view() -> View {
@@ -5908,16 +4637,7 @@ auto MallocAlignmentData::is_empty() const noexcept -> bool {
 }
 
 void MallocAlignmentData::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(bytes),
-        ml::num(odd),
-        ml::num(aligned32),
-        ml::num(nested),
-        ml::num(aligned64),
-        ml::num(small),
-        ml::num(aligned256),
-        ml::num(handles),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto MallocAlignmentData::slice(int32 const offset, int32 const count) -> View {
@@ -5978,11 +4698,7 @@ auto ReallocVectorsConstView::is_empty() const noexcept -> bool {
 }
 
 void ReallocVectorsConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-        ml::num(ys),
-        ml::num(zs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto ReallocVectorsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -6042,11 +4758,7 @@ auto ReallocVectorsView::is_empty() const noexcept -> bool {
 }
 
 void ReallocVectorsView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-        ml::num(ys),
-        ml::num(zs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto ReallocVectorsView::slice(int32 const offset, int32 const count) -> View {
@@ -6074,41 +4786,27 @@ auto ReallocVectorsView::right(int32 const count) const -> ConstView {
 }
 
 void ReallocVectors::reset() {
-    ml::reset(xs);
-    ml::reset(ys);
-    ml::reset(zs);
+    ml::soa_ops::reset(*this);
 }
 
 void ReallocVectors::reserve(int32 const count) {
-    ml::reserve(xs, count);
-    ml::reserve(ys, count);
-    ml::reserve(zs, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void ReallocVectors::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(xs, count);
-    ml::add_uninitialised(ys, count);
-    ml::add_uninitialised(zs, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void ReallocVectors::add_defaulted(int32 const count) {
-    ml::add_defaulted(xs, count);
-    ml::add_defaulted(ys, count);
-    ml::add_defaulted(zs, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void ReallocVectors::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(xs, count, allow_shrinking);
-    ml::set_num(ys, count, allow_shrinking);
-    ml::set_num(zs, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void ReallocVectors::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(xs, indices);
-    ml::apply_permutation(ys, indices);
-    ml::apply_permutation(zs, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto ReallocVectors::get_view() -> View {
@@ -6156,11 +4854,7 @@ auto ReallocVectors::is_empty() const noexcept -> bool {
 }
 
 void ReallocVectors::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-        ml::num(ys),
-        ml::num(zs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto ReallocVectors::slice(int32 const offset, int32 const count) -> View {
@@ -6218,9 +4912,7 @@ auto ReallocCountdown8ConstView::is_empty() const noexcept -> bool {
 }
 
 void ReallocCountdown8ConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto ReallocCountdown8ConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -6275,9 +4967,7 @@ auto ReallocCountdown8View::is_empty() const noexcept -> bool {
 }
 
 void ReallocCountdown8View::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto ReallocCountdown8View::slice(int32 const offset, int32 const count) -> View {
@@ -6305,29 +4995,27 @@ auto ReallocCountdown8View::right(int32 const count) const -> ConstView {
 }
 
 void ReallocCountdown8::reset() {
-    ml::reset(counters);
+    ml::soa_ops::reset(*this);
 }
 
 void ReallocCountdown8::reserve(int32 const count) {
-    ml::reserve(counters, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void ReallocCountdown8::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(counters, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void ReallocCountdown8::add_defaulted(int32 const count) {
-    ml::add_defaulted(counters, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void ReallocCountdown8::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(counters, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void ReallocCountdown8::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(counters, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto ReallocCountdown8::get_view() -> View {
@@ -6369,9 +5057,7 @@ auto ReallocCountdown8::is_empty() const noexcept -> bool {
 }
 
 void ReallocCountdown8::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto ReallocCountdown8::slice(int32 const offset, int32 const count) -> View {
@@ -6429,9 +5115,7 @@ auto ReallocCountdown16ConstView::is_empty() const noexcept -> bool {
 }
 
 void ReallocCountdown16ConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto ReallocCountdown16ConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -6486,9 +5170,7 @@ auto ReallocCountdown16View::is_empty() const noexcept -> bool {
 }
 
 void ReallocCountdown16View::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto ReallocCountdown16View::slice(int32 const offset, int32 const count) -> View {
@@ -6516,29 +5198,27 @@ auto ReallocCountdown16View::right(int32 const count) const -> ConstView {
 }
 
 void ReallocCountdown16::reset() {
-    ml::reset(counters);
+    ml::soa_ops::reset(*this);
 }
 
 void ReallocCountdown16::reserve(int32 const count) {
-    ml::reserve(counters, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void ReallocCountdown16::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(counters, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void ReallocCountdown16::add_defaulted(int32 const count) {
-    ml::add_defaulted(counters, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void ReallocCountdown16::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(counters, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void ReallocCountdown16::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(counters, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto ReallocCountdown16::get_view() -> View {
@@ -6580,9 +5260,7 @@ auto ReallocCountdown16::is_empty() const noexcept -> bool {
 }
 
 void ReallocCountdown16::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(counters),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto ReallocCountdown16::slice(int32 const offset, int32 const count) -> View {
@@ -6642,10 +5320,7 @@ auto ReallocPeriodicCountdown16ConstView::is_empty() const noexcept -> bool {
 }
 
 void ReallocPeriodicCountdown16ConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(remaining_ticks),
-        ml::num(periods),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto ReallocPeriodicCountdown16ConstView::slice(int32 const offset, int32 const count) const
@@ -6705,10 +5380,7 @@ auto ReallocPeriodicCountdown16View::is_empty() const noexcept -> bool {
 }
 
 void ReallocPeriodicCountdown16View::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(remaining_ticks),
-        ml::num(periods),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto ReallocPeriodicCountdown16View::slice(int32 const offset, int32 const count) -> View {
@@ -6737,35 +5409,27 @@ auto ReallocPeriodicCountdown16View::right(int32 const count) const -> ConstView
 }
 
 void ReallocPeriodicCountdown16::reset() {
-    ml::reset(remaining_ticks);
-    ml::reset(periods);
+    ml::soa_ops::reset(*this);
 }
 
 void ReallocPeriodicCountdown16::reserve(int32 const count) {
-    ml::reserve(remaining_ticks, count);
-    ml::reserve(periods, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void ReallocPeriodicCountdown16::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(remaining_ticks, count);
-    ml::add_uninitialised(periods, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void ReallocPeriodicCountdown16::add_defaulted(int32 const count) {
-    ml::add_defaulted(remaining_ticks, count);
-    ml::add_defaulted(periods, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void ReallocPeriodicCountdown16::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(remaining_ticks, count, allow_shrinking);
-    ml::set_num(periods, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void ReallocPeriodicCountdown16::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(remaining_ticks, indices);
-    ml::apply_permutation(periods, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto ReallocPeriodicCountdown16::get_view() -> View {
@@ -6812,10 +5476,7 @@ auto ReallocPeriodicCountdown16::is_empty() const noexcept -> bool {
 }
 
 void ReallocPeriodicCountdown16::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(remaining_ticks),
-        ml::num(periods),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto ReallocPeriodicCountdown16::slice(int32 const offset, int32 const count) -> View {
@@ -6937,41 +5598,7 @@ auto ReallocEntityDataConstView::is_empty() const noexcept -> bool {
 }
 
 void ReallocEntityDataConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(entity_ids),
-        ml::num(integral_biases),
-        ml::num(float_biases),
-        ml::num(tasks),
-        ml::num(locations),
-        ml::num(desired_move_locations),
-        ml::num(aim_directions),
-        ml::num(planned_aim_directions),
-        ml::num(desired_aiming_directions),
-        ml::num(movement_directions),
-        ml::num(velocities),
-        ml::num(move_distances),
-        ml::num(speeds),
-        ml::num(teams),
-        ml::num(healths),
-        ml::num(parent_ids),
-        ml::num(awareness_scan_countdowns),
-        ml::num(navigation_update_countdowns),
-        ml::num(separation_steering),
-        ml::num(navigation_risk_tiers),
-        ml::num(navigation_lower_risk_scan_counts),
-        ml::num(avoidance_choice_indices),
-        ml::num(avoidance_clear_scan_counts),
-        ml::num(attack_reposition_countdowns),
-        ml::num(attack_cooldowns),
-        ml::num(target_ids),
-        ml::num(target_locations),
-        ml::num(target_velocities),
-        ml::num(target_directions),
-        ml::num(intercept_times),
-        ml::num(target_distance_sq),
-        ml::num(target_distances),
-        ml::num(target_radii),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto ReallocEntityDataConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -7122,41 +5749,7 @@ auto ReallocEntityDataView::is_empty() const noexcept -> bool {
 }
 
 void ReallocEntityDataView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(entity_ids),
-        ml::num(integral_biases),
-        ml::num(float_biases),
-        ml::num(tasks),
-        ml::num(locations),
-        ml::num(desired_move_locations),
-        ml::num(aim_directions),
-        ml::num(planned_aim_directions),
-        ml::num(desired_aiming_directions),
-        ml::num(movement_directions),
-        ml::num(velocities),
-        ml::num(move_distances),
-        ml::num(speeds),
-        ml::num(teams),
-        ml::num(healths),
-        ml::num(parent_ids),
-        ml::num(awareness_scan_countdowns),
-        ml::num(navigation_update_countdowns),
-        ml::num(separation_steering),
-        ml::num(navigation_risk_tiers),
-        ml::num(navigation_lower_risk_scan_counts),
-        ml::num(avoidance_choice_indices),
-        ml::num(avoidance_clear_scan_counts),
-        ml::num(attack_reposition_countdowns),
-        ml::num(attack_cooldowns),
-        ml::num(target_ids),
-        ml::num(target_locations),
-        ml::num(target_velocities),
-        ml::num(target_directions),
-        ml::num(intercept_times),
-        ml::num(target_distance_sq),
-        ml::num(target_distances),
-        ml::num(target_radii),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto ReallocEntityDataView::slice(int32 const offset, int32 const count) -> View {
@@ -7184,221 +5777,27 @@ auto ReallocEntityDataView::right(int32 const count) const -> ConstView {
 }
 
 void ReallocEntityData::reset() {
-    ml::reset(entity_ids);
-    ml::reset(integral_biases);
-    ml::reset(float_biases);
-    ml::reset(tasks);
-    ml::reset(locations);
-    ml::reset(desired_move_locations);
-    ml::reset(aim_directions);
-    ml::reset(planned_aim_directions);
-    ml::reset(desired_aiming_directions);
-    ml::reset(movement_directions);
-    ml::reset(velocities);
-    ml::reset(move_distances);
-    ml::reset(speeds);
-    ml::reset(teams);
-    ml::reset(healths);
-    ml::reset(parent_ids);
-    ml::reset(awareness_scan_countdowns);
-    ml::reset(navigation_update_countdowns);
-    ml::reset(separation_steering);
-    ml::reset(navigation_risk_tiers);
-    ml::reset(navigation_lower_risk_scan_counts);
-    ml::reset(avoidance_choice_indices);
-    ml::reset(avoidance_clear_scan_counts);
-    ml::reset(attack_reposition_countdowns);
-    ml::reset(attack_cooldowns);
-    ml::reset(target_ids);
-    ml::reset(target_locations);
-    ml::reset(target_velocities);
-    ml::reset(target_directions);
-    ml::reset(intercept_times);
-    ml::reset(target_distance_sq);
-    ml::reset(target_distances);
-    ml::reset(target_radii);
+    ml::soa_ops::reset(*this);
 }
 
 void ReallocEntityData::reserve(int32 const count) {
-    ml::reserve(entity_ids, count);
-    ml::reserve(integral_biases, count);
-    ml::reserve(float_biases, count);
-    ml::reserve(tasks, count);
-    ml::reserve(locations, count);
-    ml::reserve(desired_move_locations, count);
-    ml::reserve(aim_directions, count);
-    ml::reserve(planned_aim_directions, count);
-    ml::reserve(desired_aiming_directions, count);
-    ml::reserve(movement_directions, count);
-    ml::reserve(velocities, count);
-    ml::reserve(move_distances, count);
-    ml::reserve(speeds, count);
-    ml::reserve(teams, count);
-    ml::reserve(healths, count);
-    ml::reserve(parent_ids, count);
-    ml::reserve(awareness_scan_countdowns, count);
-    ml::reserve(navigation_update_countdowns, count);
-    ml::reserve(separation_steering, count);
-    ml::reserve(navigation_risk_tiers, count);
-    ml::reserve(navigation_lower_risk_scan_counts, count);
-    ml::reserve(avoidance_choice_indices, count);
-    ml::reserve(avoidance_clear_scan_counts, count);
-    ml::reserve(attack_reposition_countdowns, count);
-    ml::reserve(attack_cooldowns, count);
-    ml::reserve(target_ids, count);
-    ml::reserve(target_locations, count);
-    ml::reserve(target_velocities, count);
-    ml::reserve(target_directions, count);
-    ml::reserve(intercept_times, count);
-    ml::reserve(target_distance_sq, count);
-    ml::reserve(target_distances, count);
-    ml::reserve(target_radii, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void ReallocEntityData::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(entity_ids, count);
-    ml::add_uninitialised(integral_biases, count);
-    ml::add_uninitialised(float_biases, count);
-    ml::add_uninitialised(tasks, count);
-    ml::add_uninitialised(locations, count);
-    ml::add_uninitialised(desired_move_locations, count);
-    ml::add_uninitialised(aim_directions, count);
-    ml::add_uninitialised(planned_aim_directions, count);
-    ml::add_uninitialised(desired_aiming_directions, count);
-    ml::add_uninitialised(movement_directions, count);
-    ml::add_uninitialised(velocities, count);
-    ml::add_uninitialised(move_distances, count);
-    ml::add_uninitialised(speeds, count);
-    ml::add_uninitialised(teams, count);
-    ml::add_uninitialised(healths, count);
-    ml::add_uninitialised(parent_ids, count);
-    ml::add_uninitialised(awareness_scan_countdowns, count);
-    ml::add_uninitialised(navigation_update_countdowns, count);
-    ml::add_uninitialised(separation_steering, count);
-    ml::add_uninitialised(navigation_risk_tiers, count);
-    ml::add_uninitialised(navigation_lower_risk_scan_counts, count);
-    ml::add_uninitialised(avoidance_choice_indices, count);
-    ml::add_uninitialised(avoidance_clear_scan_counts, count);
-    ml::add_uninitialised(attack_reposition_countdowns, count);
-    ml::add_uninitialised(attack_cooldowns, count);
-    ml::add_uninitialised(target_ids, count);
-    ml::add_uninitialised(target_locations, count);
-    ml::add_uninitialised(target_velocities, count);
-    ml::add_uninitialised(target_directions, count);
-    ml::add_uninitialised(intercept_times, count);
-    ml::add_uninitialised(target_distance_sq, count);
-    ml::add_uninitialised(target_distances, count);
-    ml::add_uninitialised(target_radii, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void ReallocEntityData::add_defaulted(int32 const count) {
-    ml::add_defaulted(entity_ids, count);
-    ml::add_defaulted(integral_biases, count);
-    ml::add_defaulted(float_biases, count);
-    ml::add_defaulted(tasks, count);
-    ml::add_defaulted(locations, count);
-    ml::add_defaulted(desired_move_locations, count);
-    ml::add_defaulted(aim_directions, count);
-    ml::add_defaulted(planned_aim_directions, count);
-    ml::add_defaulted(desired_aiming_directions, count);
-    ml::add_defaulted(movement_directions, count);
-    ml::add_defaulted(velocities, count);
-    ml::add_defaulted(move_distances, count);
-    ml::add_defaulted(speeds, count);
-    ml::add_defaulted(teams, count);
-    ml::add_defaulted(healths, count);
-    ml::add_defaulted(parent_ids, count);
-    ml::add_defaulted(awareness_scan_countdowns, count);
-    ml::add_defaulted(navigation_update_countdowns, count);
-    ml::add_defaulted(separation_steering, count);
-    ml::add_defaulted(navigation_risk_tiers, count);
-    ml::add_defaulted(navigation_lower_risk_scan_counts, count);
-    ml::add_defaulted(avoidance_choice_indices, count);
-    ml::add_defaulted(avoidance_clear_scan_counts, count);
-    ml::add_defaulted(attack_reposition_countdowns, count);
-    ml::add_defaulted(attack_cooldowns, count);
-    ml::add_defaulted(target_ids, count);
-    ml::add_defaulted(target_locations, count);
-    ml::add_defaulted(target_velocities, count);
-    ml::add_defaulted(target_directions, count);
-    ml::add_defaulted(intercept_times, count);
-    ml::add_defaulted(target_distance_sq, count);
-    ml::add_defaulted(target_distances, count);
-    ml::add_defaulted(target_radii, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void ReallocEntityData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(entity_ids, count, allow_shrinking);
-    ml::set_num(integral_biases, count, allow_shrinking);
-    ml::set_num(float_biases, count, allow_shrinking);
-    ml::set_num(tasks, count, allow_shrinking);
-    ml::set_num(locations, count, allow_shrinking);
-    ml::set_num(desired_move_locations, count, allow_shrinking);
-    ml::set_num(aim_directions, count, allow_shrinking);
-    ml::set_num(planned_aim_directions, count, allow_shrinking);
-    ml::set_num(desired_aiming_directions, count, allow_shrinking);
-    ml::set_num(movement_directions, count, allow_shrinking);
-    ml::set_num(velocities, count, allow_shrinking);
-    ml::set_num(move_distances, count, allow_shrinking);
-    ml::set_num(speeds, count, allow_shrinking);
-    ml::set_num(teams, count, allow_shrinking);
-    ml::set_num(healths, count, allow_shrinking);
-    ml::set_num(parent_ids, count, allow_shrinking);
-    ml::set_num(awareness_scan_countdowns, count, allow_shrinking);
-    ml::set_num(navigation_update_countdowns, count, allow_shrinking);
-    ml::set_num(separation_steering, count, allow_shrinking);
-    ml::set_num(navigation_risk_tiers, count, allow_shrinking);
-    ml::set_num(navigation_lower_risk_scan_counts, count, allow_shrinking);
-    ml::set_num(avoidance_choice_indices, count, allow_shrinking);
-    ml::set_num(avoidance_clear_scan_counts, count, allow_shrinking);
-    ml::set_num(attack_reposition_countdowns, count, allow_shrinking);
-    ml::set_num(attack_cooldowns, count, allow_shrinking);
-    ml::set_num(target_ids, count, allow_shrinking);
-    ml::set_num(target_locations, count, allow_shrinking);
-    ml::set_num(target_velocities, count, allow_shrinking);
-    ml::set_num(target_directions, count, allow_shrinking);
-    ml::set_num(intercept_times, count, allow_shrinking);
-    ml::set_num(target_distance_sq, count, allow_shrinking);
-    ml::set_num(target_distances, count, allow_shrinking);
-    ml::set_num(target_radii, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void ReallocEntityData::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(entity_ids, indices);
-    ml::apply_permutation(integral_biases, indices);
-    ml::apply_permutation(float_biases, indices);
-    ml::apply_permutation(tasks, indices);
-    ml::apply_permutation(locations, indices);
-    ml::apply_permutation(desired_move_locations, indices);
-    ml::apply_permutation(aim_directions, indices);
-    ml::apply_permutation(planned_aim_directions, indices);
-    ml::apply_permutation(desired_aiming_directions, indices);
-    ml::apply_permutation(movement_directions, indices);
-    ml::apply_permutation(velocities, indices);
-    ml::apply_permutation(move_distances, indices);
-    ml::apply_permutation(speeds, indices);
-    ml::apply_permutation(teams, indices);
-    ml::apply_permutation(healths, indices);
-    ml::apply_permutation(parent_ids, indices);
-    ml::apply_permutation(awareness_scan_countdowns, indices);
-    ml::apply_permutation(navigation_update_countdowns, indices);
-    ml::apply_permutation(separation_steering, indices);
-    ml::apply_permutation(navigation_risk_tiers, indices);
-    ml::apply_permutation(navigation_lower_risk_scan_counts, indices);
-    ml::apply_permutation(avoidance_choice_indices, indices);
-    ml::apply_permutation(avoidance_clear_scan_counts, indices);
-    ml::apply_permutation(attack_reposition_countdowns, indices);
-    ml::apply_permutation(attack_cooldowns, indices);
-    ml::apply_permutation(target_ids, indices);
-    ml::apply_permutation(target_locations, indices);
-    ml::apply_permutation(target_velocities, indices);
-    ml::apply_permutation(target_directions, indices);
-    ml::apply_permutation(intercept_times, indices);
-    ml::apply_permutation(target_distance_sq, indices);
-    ml::apply_permutation(target_distances, indices);
-    ml::apply_permutation(target_radii, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto ReallocEntityData::get_view() -> View {
@@ -7536,41 +5935,7 @@ auto ReallocEntityData::is_empty() const noexcept -> bool {
 }
 
 void ReallocEntityData::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(entity_ids),
-        ml::num(integral_biases),
-        ml::num(float_biases),
-        ml::num(tasks),
-        ml::num(locations),
-        ml::num(desired_move_locations),
-        ml::num(aim_directions),
-        ml::num(planned_aim_directions),
-        ml::num(desired_aiming_directions),
-        ml::num(movement_directions),
-        ml::num(velocities),
-        ml::num(move_distances),
-        ml::num(speeds),
-        ml::num(teams),
-        ml::num(healths),
-        ml::num(parent_ids),
-        ml::num(awareness_scan_countdowns),
-        ml::num(navigation_update_countdowns),
-        ml::num(separation_steering),
-        ml::num(navigation_risk_tiers),
-        ml::num(navigation_lower_risk_scan_counts),
-        ml::num(avoidance_choice_indices),
-        ml::num(avoidance_clear_scan_counts),
-        ml::num(attack_reposition_countdowns),
-        ml::num(attack_cooldowns),
-        ml::num(target_ids),
-        ml::num(target_locations),
-        ml::num(target_velocities),
-        ml::num(target_directions),
-        ml::num(intercept_times),
-        ml::num(target_distance_sq),
-        ml::num(target_distances),
-        ml::num(target_radii),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto ReallocEntityData::slice(int32 const offset, int32 const count) -> View {
@@ -7642,16 +6007,7 @@ auto ReallocAlignmentDataConstView::is_empty() const noexcept -> bool {
 }
 
 void ReallocAlignmentDataConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(bytes),
-        ml::num(odd),
-        ml::num(aligned32),
-        ml::num(nested),
-        ml::num(aligned64),
-        ml::num(small),
-        ml::num(aligned256),
-        ml::num(handles),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto ReallocAlignmentDataConstView::slice(int32 const offset, int32 const count) const
@@ -7728,16 +6084,7 @@ auto ReallocAlignmentDataView::is_empty() const noexcept -> bool {
 }
 
 void ReallocAlignmentDataView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(bytes),
-        ml::num(odd),
-        ml::num(aligned32),
-        ml::num(nested),
-        ml::num(aligned64),
-        ml::num(small),
-        ml::num(aligned256),
-        ml::num(handles),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto ReallocAlignmentDataView::slice(int32 const offset, int32 const count) -> View {
@@ -7765,71 +6112,27 @@ auto ReallocAlignmentDataView::right(int32 const count) const -> ConstView {
 }
 
 void ReallocAlignmentData::reset() {
-    ml::reset(bytes);
-    ml::reset(odd);
-    ml::reset(aligned32);
-    ml::reset(nested);
-    ml::reset(aligned64);
-    ml::reset(small);
-    ml::reset(aligned256);
-    ml::reset(handles);
+    ml::soa_ops::reset(*this);
 }
 
 void ReallocAlignmentData::reserve(int32 const count) {
-    ml::reserve(bytes, count);
-    ml::reserve(odd, count);
-    ml::reserve(aligned32, count);
-    ml::reserve(nested, count);
-    ml::reserve(aligned64, count);
-    ml::reserve(small, count);
-    ml::reserve(aligned256, count);
-    ml::reserve(handles, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void ReallocAlignmentData::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(bytes, count);
-    ml::add_uninitialised(odd, count);
-    ml::add_uninitialised(aligned32, count);
-    ml::add_uninitialised(nested, count);
-    ml::add_uninitialised(aligned64, count);
-    ml::add_uninitialised(small, count);
-    ml::add_uninitialised(aligned256, count);
-    ml::add_uninitialised(handles, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void ReallocAlignmentData::add_defaulted(int32 const count) {
-    ml::add_defaulted(bytes, count);
-    ml::add_defaulted(odd, count);
-    ml::add_defaulted(aligned32, count);
-    ml::add_defaulted(nested, count);
-    ml::add_defaulted(aligned64, count);
-    ml::add_defaulted(small, count);
-    ml::add_defaulted(aligned256, count);
-    ml::add_defaulted(handles, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void ReallocAlignmentData::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(bytes, count, allow_shrinking);
-    ml::set_num(odd, count, allow_shrinking);
-    ml::set_num(aligned32, count, allow_shrinking);
-    ml::set_num(nested, count, allow_shrinking);
-    ml::set_num(aligned64, count, allow_shrinking);
-    ml::set_num(small, count, allow_shrinking);
-    ml::set_num(aligned256, count, allow_shrinking);
-    ml::set_num(handles, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void ReallocAlignmentData::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(bytes, indices);
-    ml::apply_permutation(odd, indices);
-    ml::apply_permutation(aligned32, indices);
-    ml::apply_permutation(nested, indices);
-    ml::apply_permutation(aligned64, indices);
-    ml::apply_permutation(small, indices);
-    ml::apply_permutation(aligned256, indices);
-    ml::apply_permutation(handles, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto ReallocAlignmentData::get_view() -> View {
@@ -7893,16 +6196,7 @@ auto ReallocAlignmentData::is_empty() const noexcept -> bool {
 }
 
 void ReallocAlignmentData::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(bytes),
-        ml::num(odd),
-        ml::num(aligned32),
-        ml::num(nested),
-        ml::num(aligned64),
-        ml::num(small),
-        ml::num(aligned256),
-        ml::num(handles),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto ReallocAlignmentData::slice(int32 const offset, int32 const count) -> View {

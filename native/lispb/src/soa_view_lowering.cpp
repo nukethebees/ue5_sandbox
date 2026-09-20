@@ -6,8 +6,8 @@
 namespace codegen::detail {
 namespace {
 
-TypeDependency const array_checks{"ml::fatal_if_nums_not_equal", "SandboxCore/array_checks.h", {}};
 TypeDependency const container_ops{"ml::num", "SandboxCore/container_ops.h", {}};
+TypeDependency const soa_storage_ops{"ml::soa_ops", "SandboxCore/soa_storage_ops.h", {}};
 TypeDependency const check_dependency{"check", "CoreMinimal.h", {}};
 
 auto view_expression(ResolvedMember const& member, bool const_view) -> std::string {
@@ -191,18 +191,14 @@ auto soa_view_specs(std::vector<ResolvedMember> const& members, bool const_only)
         true,
         {container_ops});
     add("is_empty", "auto", {}, "return num() == 0;", "bool", true, true);
-    std::vector<std::string> nums;
-    for (auto const& member : members) {
-        nums.push_back("    ml::num(" + member.name + "),");
-    }
     add("validate_array_sizes",
         "void",
         {},
-        "ml::fatal_if_nums_not_equal({\n" + join_lines(nums) + "\n});",
+        "ml::soa_ops::validate_array_sizes(*this);",
         {},
         true,
         false,
-        {array_checks, container_ops});
+        {soa_storage_ops});
     if (!const_only) {
         add("slice",
             "auto",

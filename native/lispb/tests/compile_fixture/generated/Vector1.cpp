@@ -3,12 +3,10 @@
 
 #include "Vector1.h"
 
-#include "CoreMinimal.h"
 #include "Containers/AllowShrinking.h"
 #include "Containers/ArrayView.h"
-#include "SandboxCore/array_checks.h"
 #include "SandboxCore/container_ops.h"
-#include "SandboxCore/soa_permutation.h"
+#include "SandboxCore/soa_storage_ops.h"
 
 namespace codegen_compile_fixture {
 auto FVectors1fConstView::get_view() const -> ConstView {
@@ -40,9 +38,7 @@ auto FVectors1fConstView::is_empty() const noexcept -> bool {
 }
 
 void FVectors1fConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto FVectors1fConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -96,9 +92,7 @@ auto FVectors1fView::is_empty() const noexcept -> bool {
 }
 
 void FVectors1fView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto FVectors1fView::slice(int32 const offset, int32 const count) -> View {
@@ -126,29 +120,27 @@ auto FVectors1fView::right(int32 const count) const -> ConstView {
 }
 
 void FVectors1f::reset() {
-    ml::reset(xs);
+    ml::soa_ops::reset(*this);
 }
 
 void FVectors1f::reserve(int32 const count) {
-    ml::reserve(xs, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void FVectors1f::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(xs, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void FVectors1f::add_defaulted(int32 const count) {
-    ml::add_defaulted(xs, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void FVectors1f::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(xs, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void FVectors1f::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(xs, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FVectors1f::get_view() -> View {
@@ -190,9 +182,7 @@ auto FVectors1f::is_empty() const noexcept -> bool {
 }
 
 void FVectors1f::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto FVectors1f::slice(int32 const offset, int32 const count) -> View {

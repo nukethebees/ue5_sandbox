@@ -3,12 +3,10 @@
 
 #include "SbxCoreExperiments/soa_spacing_shapes.h"
 
-#include "CoreMinimal.h"
 #include "Containers/AllowShrinking.h"
 #include "Containers/ArrayView.h"
-#include "SandboxCore/array_checks.h"
 #include "SandboxCore/container_ops.h"
-#include "SandboxCore/soa_permutation.h"
+#include "SandboxCore/soa_storage_ops.h"
 
 namespace ml::single_allocation_experiment {
 auto SpacingDoubleVectorConstView::get_view() const -> ConstView {
@@ -46,11 +44,7 @@ auto SpacingDoubleVectorConstView::is_empty() const noexcept -> bool {
 }
 
 void SpacingDoubleVectorConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-        ml::num(ys),
-        ml::num(zs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto SpacingDoubleVectorConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -111,11 +105,7 @@ auto SpacingDoubleVectorView::is_empty() const noexcept -> bool {
 }
 
 void SpacingDoubleVectorView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-        ml::num(ys),
-        ml::num(zs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto SpacingDoubleVectorView::slice(int32 const offset, int32 const count) -> View {
@@ -143,41 +133,27 @@ auto SpacingDoubleVectorView::right(int32 const count) const -> ConstView {
 }
 
 void SpacingDoubleVector::reset() {
-    ml::reset(xs);
-    ml::reset(ys);
-    ml::reset(zs);
+    ml::soa_ops::reset(*this);
 }
 
 void SpacingDoubleVector::reserve(int32 const count) {
-    ml::reserve(xs, count);
-    ml::reserve(ys, count);
-    ml::reserve(zs, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void SpacingDoubleVector::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(xs, count);
-    ml::add_uninitialised(ys, count);
-    ml::add_uninitialised(zs, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void SpacingDoubleVector::add_defaulted(int32 const count) {
-    ml::add_defaulted(xs, count);
-    ml::add_defaulted(ys, count);
-    ml::add_defaulted(zs, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void SpacingDoubleVector::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(xs, count, allow_shrinking);
-    ml::set_num(ys, count, allow_shrinking);
-    ml::set_num(zs, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void SpacingDoubleVector::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(xs, indices);
-    ml::apply_permutation(ys, indices);
-    ml::apply_permutation(zs, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto SpacingDoubleVector::get_view() -> View {
@@ -225,11 +201,7 @@ auto SpacingDoubleVector::is_empty() const noexcept -> bool {
 }
 
 void SpacingDoubleVector::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-        ml::num(ys),
-        ml::num(zs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto SpacingDoubleVector::slice(int32 const offset, int32 const count) -> View {
@@ -300,16 +272,7 @@ auto SpacingDoublesConstView::is_empty() const noexcept -> bool {
 }
 
 void SpacingDoublesConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(positions0),
-        ml::num(velocities0),
-        ml::num(positions1),
-        ml::num(velocities1),
-        ml::num(positions2),
-        ml::num(velocities2),
-        ml::num(positions3),
-        ml::num(velocities3),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto SpacingDoublesConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -384,16 +347,7 @@ auto SpacingDoublesView::is_empty() const noexcept -> bool {
 }
 
 void SpacingDoublesView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(positions0),
-        ml::num(velocities0),
-        ml::num(positions1),
-        ml::num(velocities1),
-        ml::num(positions2),
-        ml::num(velocities2),
-        ml::num(positions3),
-        ml::num(velocities3),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto SpacingDoublesView::slice(int32 const offset, int32 const count) -> View {
@@ -421,71 +375,27 @@ auto SpacingDoublesView::right(int32 const count) const -> ConstView {
 }
 
 void SpacingDoubles::reset() {
-    ml::reset(positions0);
-    ml::reset(velocities0);
-    ml::reset(positions1);
-    ml::reset(velocities1);
-    ml::reset(positions2);
-    ml::reset(velocities2);
-    ml::reset(positions3);
-    ml::reset(velocities3);
+    ml::soa_ops::reset(*this);
 }
 
 void SpacingDoubles::reserve(int32 const count) {
-    ml::reserve(positions0, count);
-    ml::reserve(velocities0, count);
-    ml::reserve(positions1, count);
-    ml::reserve(velocities1, count);
-    ml::reserve(positions2, count);
-    ml::reserve(velocities2, count);
-    ml::reserve(positions3, count);
-    ml::reserve(velocities3, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void SpacingDoubles::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(positions0, count);
-    ml::add_uninitialised(velocities0, count);
-    ml::add_uninitialised(positions1, count);
-    ml::add_uninitialised(velocities1, count);
-    ml::add_uninitialised(positions2, count);
-    ml::add_uninitialised(velocities2, count);
-    ml::add_uninitialised(positions3, count);
-    ml::add_uninitialised(velocities3, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void SpacingDoubles::add_defaulted(int32 const count) {
-    ml::add_defaulted(positions0, count);
-    ml::add_defaulted(velocities0, count);
-    ml::add_defaulted(positions1, count);
-    ml::add_defaulted(velocities1, count);
-    ml::add_defaulted(positions2, count);
-    ml::add_defaulted(velocities2, count);
-    ml::add_defaulted(positions3, count);
-    ml::add_defaulted(velocities3, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void SpacingDoubles::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(positions0, count, allow_shrinking);
-    ml::set_num(velocities0, count, allow_shrinking);
-    ml::set_num(positions1, count, allow_shrinking);
-    ml::set_num(velocities1, count, allow_shrinking);
-    ml::set_num(positions2, count, allow_shrinking);
-    ml::set_num(velocities2, count, allow_shrinking);
-    ml::set_num(positions3, count, allow_shrinking);
-    ml::set_num(velocities3, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void SpacingDoubles::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(positions0, indices);
-    ml::apply_permutation(velocities0, indices);
-    ml::apply_permutation(positions1, indices);
-    ml::apply_permutation(velocities1, indices);
-    ml::apply_permutation(positions2, indices);
-    ml::apply_permutation(velocities2, indices);
-    ml::apply_permutation(positions3, indices);
-    ml::apply_permutation(velocities3, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto SpacingDoubles::get_view() -> View {
@@ -548,16 +458,7 @@ auto SpacingDoubles::is_empty() const noexcept -> bool {
 }
 
 void SpacingDoubles::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(positions0),
-        ml::num(velocities0),
-        ml::num(positions1),
-        ml::num(velocities1),
-        ml::num(positions2),
-        ml::num(velocities2),
-        ml::num(positions3),
-        ml::num(velocities3),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto SpacingDoubles::slice(int32 const offset, int32 const count) -> View {
@@ -627,15 +528,7 @@ auto SpacingMixedBundleConstView::is_empty() const noexcept -> bool {
 }
 
 void SpacingMixedBundleConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(flags),
-        ml::num(counters),
-        ml::num(counts),
-        ml::num(totals),
-        ml::num(payloads),
-        ml::num(values),
-        ml::num(rates),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto SpacingMixedBundleConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -708,15 +601,7 @@ auto SpacingMixedBundleView::is_empty() const noexcept -> bool {
 }
 
 void SpacingMixedBundleView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(flags),
-        ml::num(counters),
-        ml::num(counts),
-        ml::num(totals),
-        ml::num(payloads),
-        ml::num(values),
-        ml::num(rates),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto SpacingMixedBundleView::slice(int32 const offset, int32 const count) -> View {
@@ -744,65 +629,27 @@ auto SpacingMixedBundleView::right(int32 const count) const -> ConstView {
 }
 
 void SpacingMixedBundle::reset() {
-    ml::reset(flags);
-    ml::reset(counters);
-    ml::reset(counts);
-    ml::reset(totals);
-    ml::reset(payloads);
-    ml::reset(values);
-    ml::reset(rates);
+    ml::soa_ops::reset(*this);
 }
 
 void SpacingMixedBundle::reserve(int32 const count) {
-    ml::reserve(flags, count);
-    ml::reserve(counters, count);
-    ml::reserve(counts, count);
-    ml::reserve(totals, count);
-    ml::reserve(payloads, count);
-    ml::reserve(values, count);
-    ml::reserve(rates, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void SpacingMixedBundle::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(flags, count);
-    ml::add_uninitialised(counters, count);
-    ml::add_uninitialised(counts, count);
-    ml::add_uninitialised(totals, count);
-    ml::add_uninitialised(payloads, count);
-    ml::add_uninitialised(values, count);
-    ml::add_uninitialised(rates, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void SpacingMixedBundle::add_defaulted(int32 const count) {
-    ml::add_defaulted(flags, count);
-    ml::add_defaulted(counters, count);
-    ml::add_defaulted(counts, count);
-    ml::add_defaulted(totals, count);
-    ml::add_defaulted(payloads, count);
-    ml::add_defaulted(values, count);
-    ml::add_defaulted(rates, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void SpacingMixedBundle::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(flags, count, allow_shrinking);
-    ml::set_num(counters, count, allow_shrinking);
-    ml::set_num(counts, count, allow_shrinking);
-    ml::set_num(totals, count, allow_shrinking);
-    ml::set_num(payloads, count, allow_shrinking);
-    ml::set_num(values, count, allow_shrinking);
-    ml::set_num(rates, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void SpacingMixedBundle::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(flags, indices);
-    ml::apply_permutation(counters, indices);
-    ml::apply_permutation(counts, indices);
-    ml::apply_permutation(totals, indices);
-    ml::apply_permutation(payloads, indices);
-    ml::apply_permutation(values, indices);
-    ml::apply_permutation(rates, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto SpacingMixedBundle::get_view() -> View {
@@ -862,15 +709,7 @@ auto SpacingMixedBundle::is_empty() const noexcept -> bool {
 }
 
 void SpacingMixedBundle::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(flags),
-        ml::num(counters),
-        ml::num(counts),
-        ml::num(totals),
-        ml::num(payloads),
-        ml::num(values),
-        ml::num(rates),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto SpacingMixedBundle::slice(int32 const offset, int32 const count) -> View {
@@ -938,14 +777,7 @@ auto SpacingMixedWidthsConstView::is_empty() const noexcept -> bool {
 }
 
 void SpacingMixedWidthsConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(bundle0),
-        ml::num(bundle1),
-        ml::num(bundle2),
-        ml::num(bundle3),
-        ml::num(bundle4),
-        ml::num(bundle5),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto SpacingMixedWidthsConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -1015,14 +847,7 @@ auto SpacingMixedWidthsView::is_empty() const noexcept -> bool {
 }
 
 void SpacingMixedWidthsView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(bundle0),
-        ml::num(bundle1),
-        ml::num(bundle2),
-        ml::num(bundle3),
-        ml::num(bundle4),
-        ml::num(bundle5),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto SpacingMixedWidthsView::slice(int32 const offset, int32 const count) -> View {
@@ -1050,59 +875,27 @@ auto SpacingMixedWidthsView::right(int32 const count) const -> ConstView {
 }
 
 void SpacingMixedWidths::reset() {
-    ml::reset(bundle0);
-    ml::reset(bundle1);
-    ml::reset(bundle2);
-    ml::reset(bundle3);
-    ml::reset(bundle4);
-    ml::reset(bundle5);
+    ml::soa_ops::reset(*this);
 }
 
 void SpacingMixedWidths::reserve(int32 const count) {
-    ml::reserve(bundle0, count);
-    ml::reserve(bundle1, count);
-    ml::reserve(bundle2, count);
-    ml::reserve(bundle3, count);
-    ml::reserve(bundle4, count);
-    ml::reserve(bundle5, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void SpacingMixedWidths::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(bundle0, count);
-    ml::add_uninitialised(bundle1, count);
-    ml::add_uninitialised(bundle2, count);
-    ml::add_uninitialised(bundle3, count);
-    ml::add_uninitialised(bundle4, count);
-    ml::add_uninitialised(bundle5, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void SpacingMixedWidths::add_defaulted(int32 const count) {
-    ml::add_defaulted(bundle0, count);
-    ml::add_defaulted(bundle1, count);
-    ml::add_defaulted(bundle2, count);
-    ml::add_defaulted(bundle3, count);
-    ml::add_defaulted(bundle4, count);
-    ml::add_defaulted(bundle5, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void SpacingMixedWidths::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(bundle0, count, allow_shrinking);
-    ml::set_num(bundle1, count, allow_shrinking);
-    ml::set_num(bundle2, count, allow_shrinking);
-    ml::set_num(bundle3, count, allow_shrinking);
-    ml::set_num(bundle4, count, allow_shrinking);
-    ml::set_num(bundle5, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void SpacingMixedWidths::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(bundle0, indices);
-    ml::apply_permutation(bundle1, indices);
-    ml::apply_permutation(bundle2, indices);
-    ml::apply_permutation(bundle3, indices);
-    ml::apply_permutation(bundle4, indices);
-    ml::apply_permutation(bundle5, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto SpacingMixedWidths::get_view() -> View {
@@ -1159,14 +952,7 @@ auto SpacingMixedWidths::is_empty() const noexcept -> bool {
 }
 
 void SpacingMixedWidths::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(bundle0),
-        ml::num(bundle1),
-        ml::num(bundle2),
-        ml::num(bundle3),
-        ml::num(bundle4),
-        ml::num(bundle5),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto SpacingMixedWidths::slice(int32 const offset, int32 const count) -> View {
@@ -1232,13 +1018,7 @@ auto SpacingAlignedBundleConstView::is_empty() const noexcept -> bool {
 }
 
 void SpacingAlignedBundleConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(positions),
-        ml::num(velocities),
-        ml::num(aligned32),
-        ml::num(aligned64),
-        ml::num(aligned256),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto SpacingAlignedBundleConstView::slice(int32 const offset, int32 const count) const
@@ -1306,13 +1086,7 @@ auto SpacingAlignedBundleView::is_empty() const noexcept -> bool {
 }
 
 void SpacingAlignedBundleView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(positions),
-        ml::num(velocities),
-        ml::num(aligned32),
-        ml::num(aligned64),
-        ml::num(aligned256),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto SpacingAlignedBundleView::slice(int32 const offset, int32 const count) -> View {
@@ -1340,53 +1114,27 @@ auto SpacingAlignedBundleView::right(int32 const count) const -> ConstView {
 }
 
 void SpacingAlignedBundle::reset() {
-    ml::reset(positions);
-    ml::reset(velocities);
-    ml::reset(aligned32);
-    ml::reset(aligned64);
-    ml::reset(aligned256);
+    ml::soa_ops::reset(*this);
 }
 
 void SpacingAlignedBundle::reserve(int32 const count) {
-    ml::reserve(positions, count);
-    ml::reserve(velocities, count);
-    ml::reserve(aligned32, count);
-    ml::reserve(aligned64, count);
-    ml::reserve(aligned256, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void SpacingAlignedBundle::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(positions, count);
-    ml::add_uninitialised(velocities, count);
-    ml::add_uninitialised(aligned32, count);
-    ml::add_uninitialised(aligned64, count);
-    ml::add_uninitialised(aligned256, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void SpacingAlignedBundle::add_defaulted(int32 const count) {
-    ml::add_defaulted(positions, count);
-    ml::add_defaulted(velocities, count);
-    ml::add_defaulted(aligned32, count);
-    ml::add_defaulted(aligned64, count);
-    ml::add_defaulted(aligned256, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void SpacingAlignedBundle::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(positions, count, allow_shrinking);
-    ml::set_num(velocities, count, allow_shrinking);
-    ml::set_num(aligned32, count, allow_shrinking);
-    ml::set_num(aligned64, count, allow_shrinking);
-    ml::set_num(aligned256, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void SpacingAlignedBundle::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(positions, indices);
-    ml::apply_permutation(velocities, indices);
-    ml::apply_permutation(aligned32, indices);
-    ml::apply_permutation(aligned64, indices);
-    ml::apply_permutation(aligned256, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto SpacingAlignedBundle::get_view() -> View {
@@ -1441,13 +1189,7 @@ auto SpacingAlignedBundle::is_empty() const noexcept -> bool {
 }
 
 void SpacingAlignedBundle::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(positions),
-        ml::num(velocities),
-        ml::num(aligned32),
-        ml::num(aligned64),
-        ml::num(aligned256),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto SpacingAlignedBundle::slice(int32 const offset, int32 const count) -> View {
@@ -1508,11 +1250,7 @@ auto SpacingAlignedConstView::is_empty() const noexcept -> bool {
 }
 
 void SpacingAlignedConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(bundle0),
-        ml::num(bundle1),
-        ml::num(bundle2),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto SpacingAlignedConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -1572,11 +1310,7 @@ auto SpacingAlignedView::is_empty() const noexcept -> bool {
 }
 
 void SpacingAlignedView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(bundle0),
-        ml::num(bundle1),
-        ml::num(bundle2),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto SpacingAlignedView::slice(int32 const offset, int32 const count) -> View {
@@ -1604,41 +1338,27 @@ auto SpacingAlignedView::right(int32 const count) const -> ConstView {
 }
 
 void SpacingAligned::reset() {
-    ml::reset(bundle0);
-    ml::reset(bundle1);
-    ml::reset(bundle2);
+    ml::soa_ops::reset(*this);
 }
 
 void SpacingAligned::reserve(int32 const count) {
-    ml::reserve(bundle0, count);
-    ml::reserve(bundle1, count);
-    ml::reserve(bundle2, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void SpacingAligned::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(bundle0, count);
-    ml::add_uninitialised(bundle1, count);
-    ml::add_uninitialised(bundle2, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void SpacingAligned::add_defaulted(int32 const count) {
-    ml::add_defaulted(bundle0, count);
-    ml::add_defaulted(bundle1, count);
-    ml::add_defaulted(bundle2, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void SpacingAligned::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(bundle0, count, allow_shrinking);
-    ml::set_num(bundle1, count, allow_shrinking);
-    ml::set_num(bundle2, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void SpacingAligned::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(bundle0, indices);
-    ml::apply_permutation(bundle1, indices);
-    ml::apply_permutation(bundle2, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto SpacingAligned::get_view() -> View {
@@ -1686,11 +1406,7 @@ auto SpacingAligned::is_empty() const noexcept -> bool {
 }
 
 void SpacingAligned::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(bundle0),
-        ml::num(bundle1),
-        ml::num(bundle2),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto SpacingAligned::slice(int32 const offset, int32 const count) -> View {

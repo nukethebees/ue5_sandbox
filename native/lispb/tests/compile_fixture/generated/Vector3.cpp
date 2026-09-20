@@ -3,12 +3,10 @@
 
 #include "Vector3.h"
 
-#include "CoreMinimal.h"
 #include "Containers/AllowShrinking.h"
 #include "Containers/ArrayView.h"
-#include "SandboxCore/array_checks.h"
 #include "SandboxCore/container_ops.h"
-#include "SandboxCore/soa_permutation.h"
+#include "SandboxCore/soa_storage_ops.h"
 
 namespace codegen_compile_fixture {
 auto FVectors3fConstView::get_view() const -> ConstView {
@@ -44,11 +42,7 @@ auto FVectors3fConstView::is_empty() const noexcept -> bool {
 }
 
 void FVectors3fConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-        ml::num(ys),
-        ml::num(zs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto FVectors3fConstView::slice(int32 const offset, int32 const count) const -> ConstView {
@@ -108,11 +102,7 @@ auto FVectors3fView::is_empty() const noexcept -> bool {
 }
 
 void FVectors3fView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-        ml::num(ys),
-        ml::num(zs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto FVectors3fView::slice(int32 const offset, int32 const count) -> View {
@@ -140,41 +130,27 @@ auto FVectors3fView::right(int32 const count) const -> ConstView {
 }
 
 void FVectors3f::reset() {
-    ml::reset(xs);
-    ml::reset(ys);
-    ml::reset(zs);
+    ml::soa_ops::reset(*this);
 }
 
 void FVectors3f::reserve(int32 const count) {
-    ml::reserve(xs, count);
-    ml::reserve(ys, count);
-    ml::reserve(zs, count);
+    ml::soa_ops::reserve(*this, count);
 }
 
 void FVectors3f::add_uninitialised(int32 const count) {
-    ml::add_uninitialised(xs, count);
-    ml::add_uninitialised(ys, count);
-    ml::add_uninitialised(zs, count);
+    ml::soa_ops::add_uninitialised(*this, count);
 }
 
 void FVectors3f::add_defaulted(int32 const count) {
-    ml::add_defaulted(xs, count);
-    ml::add_defaulted(ys, count);
-    ml::add_defaulted(zs, count);
+    ml::soa_ops::add_defaulted(*this, count);
 }
 
 void FVectors3f::set_num(int32 const count, EAllowShrinking const allow_shrinking) {
-    ml::set_num(xs, count, allow_shrinking);
-    ml::set_num(ys, count, allow_shrinking);
-    ml::set_num(zs, count, allow_shrinking);
+    ml::soa_ops::set_num(*this, count, allow_shrinking);
 }
 
 void FVectors3f::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(xs, indices);
-    ml::apply_permutation(ys, indices);
-    ml::apply_permutation(zs, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FVectors3f::get_view() -> View {
@@ -222,11 +198,7 @@ auto FVectors3f::is_empty() const noexcept -> bool {
 }
 
 void FVectors3f::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(xs),
-        ml::num(ys),
-        ml::num(zs),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto FVectors3f::slice(int32 const offset, int32 const count) -> View {

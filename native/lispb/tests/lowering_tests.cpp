@@ -412,24 +412,17 @@ TEST(Lowering, AppliesEveryStorageOperationToEveryMember) {
     auto const output{render_soa(std::move(schema))};
 
     std::vector<std::pair<std::string const*, std::string>> const expectations{
-        {&output.source, "ml::reset(ids);"},
-        {&output.source, "ml::reset(weights);"},
-        {&output.source, "ml::reserve(ids, count);"},
-        {&output.source, "ml::reserve(weights, count);"},
-        {&output.source, "ml::add_uninitialised(ids, count);"},
-        {&output.source, "ml::add_uninitialised(weights, count);"},
-        {&output.source, "ml::add_defaulted(ids, count);"},
-        {&output.source, "ml::add_defaulted(weights, count);"},
-        {&output.header, "ids.RemoveAtSwap(index, count, allow_shrinking);"},
-        {&output.header, "weights.RemoveAtSwap(index, count, allow_shrinking);"},
-        {&output.source, "ml::set_num(ids, count, allow_shrinking);"},
-        {&output.source, "ml::set_num(weights, count, allow_shrinking);"},
+        {&output.source, "ml::soa_ops::reset(*this);"},
+        {&output.source, "ml::soa_ops::reserve(*this, count);"},
+        {&output.source, "ml::soa_ops::add_uninitialised(*this, count);"},
+        {&output.source, "ml::soa_ops::add_defaulted(*this, count);"},
+        {&output.header, "ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);"},
+        {&output.source, "ml::soa_ops::set_num(*this, count, allow_shrinking);"},
         {&output.header, "ml::copy_element(ids, dst_i, other.ids, src_i);"},
         {&output.header, "ml::copy_element(weights, dst_i, other.weights, src_i);"},
         {&output.header, "ml::append_from(ids, other.ids);"},
         {&output.header, "ml::append_from(weights, other.weights);"},
-        {&output.source, "ml::apply_permutation(ids, indices);"},
-        {&output.source, "ml::apply_permutation(weights, indices);"},
+        {&output.source, "ml::soa_ops::apply_permutation(*this, indices);"},
     };
 
     for (auto const& [text, expected] : expectations) {
@@ -438,7 +431,7 @@ TEST(Lowering, AppliesEveryStorageOperationToEveryMember) {
     }
 }
 
-TEST(Lowering, UsesRegisteredAndGenericNestedRemovalOperations) {
+TEST(Lowering, UsesSharedNestedRemovalOperation) {
     CppType registered{"FRegistered", "Project/Registered.h"};
     registered.member_operations.emplace(TypeOperation::remove_at_swap, "erase_swap");
     auto schema{SoaSchema{
@@ -456,16 +449,13 @@ TEST(Lowering, UsesRegisteredAndGenericNestedRemovalOperations) {
         render_soa(std::move(schema),
                    {{"registered", std::move(registered)}, {"generic", CppType{"FGeneric"}}})};
 
-    EXPECT_NE(output.header.find("values.RemoveAtSwap(index, count, allow_shrinking);"),
-              std::string::npos);
-    EXPECT_NE(output.header.find("registered.erase_swap(index, count, allow_shrinking);"),
-              std::string::npos);
-    EXPECT_NE(output.header.find("ml::remove_at_swap(generic, index, count, allow_shrinking);"),
-              std::string::npos);
-    EXPECT_EQ(occurrences(output.header, "#include \"SandboxCore/container_ops.h\""), 1);
+    EXPECT_NE(
+        output.header.find("ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);"),
+        std::string::npos);
+    EXPECT_EQ(occurrences(output.header, "#include \"SandboxCore/soa_storage_ops.h\""), 1);
 }
 
-TEST(Lowering, RegisteredRemovalDoesNotRequireGenericContainerHelpers) {
+TEST(Lowering, SharedRemovalDoesNotRequireDirectContainerHelpers) {
     CppType registered{"FRegistered", "Project/Registered.h"};
     registered.member_operations.emplace(TypeOperation::remove_at_swap, "erase_swap");
     auto schema{SoaSchema{
@@ -474,9 +464,8 @@ TEST(Lowering, RegisteredRemovalDoesNotRequireGenericContainerHelpers) {
         .operations = {StorageOperation::remove_at_swap},
     }};
     auto const output{render_soa(std::move(schema), {{"registered", std::move(registered)}})};
-    EXPECT_NE(output.header.find("registered.erase_swap(index, count, allow_shrinking);"),
-              std::string::npos);
     EXPECT_NE(output.header.find("#include \"Project/Registered.h\""), std::string::npos);
+    EXPECT_NE(output.header.find("SandboxCore/soa_storage_ops.h"), std::string::npos);
     EXPECT_EQ(output.header.find("SandboxCore/container_ops.h"), std::string::npos);
 }
 
@@ -486,8 +475,7 @@ TEST(Lowering, SourceOnlyStorageHelpersDoNotLeakIntoHeader) {
     auto const output{render_soa(std::move(schema))};
     EXPECT_EQ(output.header.find("SandboxCore/container_ops.h"), std::string::npos);
     EXPECT_EQ(occurrences(output.source, "#include \"SandboxCore/container_ops.h\""), 1);
-    EXPECT_NE(output.source.find("ml::reserve(ids, count);\n    ml::reserve(weights, count);"),
-              std::string::npos);
+    EXPECT_NE(output.source.find("ml::soa_ops::reserve(*this, count);"), std::string::npos);
 }
 
 TEST(Lowering, CustomSetAndAddStillSuppressGeneratedBodies) {
@@ -618,11 +606,13 @@ TEST(Lowering, ValidatesSizesBeforePermutationAndSorting) {
     auto const output{render_soa(basic_schema())};
 
     EXPECT_NE(output.source.find("void FData::apply_permutation("), std::string::npos);
-    EXPECT_NE(output.source.find("validate_array_sizes();"), std::string::npos);
+    EXPECT_NE(output.source.find("ml::soa_ops::apply_permutation(*this, indices);"),
+              std::string::npos);
     EXPECT_NE(output.header.find("template <typename Compare>"), std::string::npos);
     EXPECT_NE(output.header.find("template <auto Compare>"), std::string::npos);
-    EXPECT_GE(occurrences(output.header, "validate_array_sizes();"), 2);
-    EXPECT_NE(output.header.find("ml::fill_indices(scratch_indices);"), std::string::npos);
+    EXPECT_EQ(occurrences(output.header, "ml::soa_ops::validate_array_sizes(*this);"), 0);
+    EXPECT_NE(output.header.find("ml::soa_ops::sort(*this, std::forward<Compare>(compare),"),
+              std::string::npos);
 }
 
 TEST(Lowering, FixedContainersOwnOneSizeAndImplementValueSemantics) {

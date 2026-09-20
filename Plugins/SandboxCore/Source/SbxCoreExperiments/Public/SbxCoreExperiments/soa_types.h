@@ -10,12 +10,12 @@
 #include "HAL/UnrealMemory.h"
 #include "sandbox/core/single_allocation/removal.h"
 #include "sandbox/core/soa_concepts.h"
-#include "SandboxCore/array_utils.h"
 #include "SandboxCore/container_ops.h"
 #include "SandboxCore/mimalloc_storage_allocator.h"
 #include "SandboxCore/single_allocation/allocators.h"
 #include "SandboxCore/single_allocation/operations.h"
 #include "SandboxCore/single_allocation/vector_views.h"
+#include "SandboxCore/soa_storage_ops.h"
 #include "SbxCoreExperiments/soa_leaf_types.h"
 #include "SbxCoreExperiments/soa_reference_allocators.h"
 #include "Templates/MemoryOps.h"
@@ -116,9 +116,7 @@ struct SBXCOREEXPERIMENTS_API Vectors {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        xs.RemoveAtSwap(index, count, allow_shrinking);
-        ys.RemoveAtSwap(index, count, allow_shrinking);
-        zs.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -158,27 +156,12 @@ struct SBXCOREEXPERIMENTS_API Vectors {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -291,7 +274,7 @@ struct SBXCOREEXPERIMENTS_API Countdown8 {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        counters.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -325,27 +308,12 @@ struct SBXCOREEXPERIMENTS_API Countdown8 {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -456,7 +424,7 @@ struct SBXCOREEXPERIMENTS_API Countdown16 {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        counters.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -490,27 +458,12 @@ struct SBXCOREEXPERIMENTS_API Countdown16 {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -630,8 +583,7 @@ struct SBXCOREEXPERIMENTS_API PeriodicCountdown16 {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        remaining_ticks.RemoveAtSwap(index, count, allow_shrinking);
-        periods.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -668,27 +620,12 @@ struct SBXCOREEXPERIMENTS_API PeriodicCountdown16 {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -919,39 +856,7 @@ struct SBXCOREEXPERIMENTS_API EntityData {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        entity_ids.RemoveAtSwap(index, count, allow_shrinking);
-        integral_biases.RemoveAtSwap(index, count, allow_shrinking);
-        float_biases.RemoveAtSwap(index, count, allow_shrinking);
-        tasks.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(locations, index, count, allow_shrinking);
-        ml::remove_at_swap(desired_move_locations, index, count, allow_shrinking);
-        ml::remove_at_swap(aim_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(planned_aim_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(desired_aiming_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(movement_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(velocities, index, count, allow_shrinking);
-        move_distances.RemoveAtSwap(index, count, allow_shrinking);
-        speeds.RemoveAtSwap(index, count, allow_shrinking);
-        teams.RemoveAtSwap(index, count, allow_shrinking);
-        healths.RemoveAtSwap(index, count, allow_shrinking);
-        parent_ids.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(awareness_scan_countdowns, index, count, allow_shrinking);
-        ml::remove_at_swap(navigation_update_countdowns, index, count, allow_shrinking);
-        ml::remove_at_swap(separation_steering, index, count, allow_shrinking);
-        navigation_risk_tiers.RemoveAtSwap(index, count, allow_shrinking);
-        navigation_lower_risk_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
-        avoidance_choice_indices.RemoveAtSwap(index, count, allow_shrinking);
-        avoidance_clear_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(attack_reposition_countdowns, index, count, allow_shrinking);
-        ml::remove_at_swap(attack_cooldowns, index, count, allow_shrinking);
-        target_ids.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(target_locations, index, count, allow_shrinking);
-        ml::remove_at_swap(target_velocities, index, count, allow_shrinking);
-        ml::remove_at_swap(target_directions, index, count, allow_shrinking);
-        intercept_times.RemoveAtSwap(index, count, allow_shrinking);
-        target_distance_sq.RemoveAtSwap(index, count, allow_shrinking);
-        target_distances.RemoveAtSwap(index, count, allow_shrinking);
-        target_radii.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -1099,27 +1004,12 @@ struct SBXCOREEXPERIMENTS_API EntityData {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -4714,14 +4604,7 @@ struct SBXCOREEXPERIMENTS_API AlignmentData {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        bytes.RemoveAtSwap(index, count, allow_shrinking);
-        odd.RemoveAtSwap(index, count, allow_shrinking);
-        aligned32.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(nested, index, count, allow_shrinking);
-        aligned64.RemoveAtSwap(index, count, allow_shrinking);
-        small.RemoveAtSwap(index, count, allow_shrinking);
-        aligned256.RemoveAtSwap(index, count, allow_shrinking);
-        handles.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -4776,27 +4659,12 @@ struct SBXCOREEXPERIMENTS_API AlignmentData {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -5885,9 +5753,7 @@ struct SBXCOREEXPERIMENTS_API MimallocVectors {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        xs.RemoveAtSwap(index, count, allow_shrinking);
-        ys.RemoveAtSwap(index, count, allow_shrinking);
-        zs.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -5927,27 +5793,12 @@ struct SBXCOREEXPERIMENTS_API MimallocVectors {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -6060,7 +5911,7 @@ struct SBXCOREEXPERIMENTS_API MimallocCountdown8 {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        counters.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -6094,27 +5945,12 @@ struct SBXCOREEXPERIMENTS_API MimallocCountdown8 {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -6225,7 +6061,7 @@ struct SBXCOREEXPERIMENTS_API MimallocCountdown16 {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        counters.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -6259,27 +6095,12 @@ struct SBXCOREEXPERIMENTS_API MimallocCountdown16 {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -6399,8 +6220,7 @@ struct SBXCOREEXPERIMENTS_API MimallocPeriodicCountdown16 {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        remaining_ticks.RemoveAtSwap(index, count, allow_shrinking);
-        periods.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -6437,27 +6257,12 @@ struct SBXCOREEXPERIMENTS_API MimallocPeriodicCountdown16 {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -6688,39 +6493,7 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        entity_ids.RemoveAtSwap(index, count, allow_shrinking);
-        integral_biases.RemoveAtSwap(index, count, allow_shrinking);
-        float_biases.RemoveAtSwap(index, count, allow_shrinking);
-        tasks.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(locations, index, count, allow_shrinking);
-        ml::remove_at_swap(desired_move_locations, index, count, allow_shrinking);
-        ml::remove_at_swap(aim_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(planned_aim_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(desired_aiming_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(movement_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(velocities, index, count, allow_shrinking);
-        move_distances.RemoveAtSwap(index, count, allow_shrinking);
-        speeds.RemoveAtSwap(index, count, allow_shrinking);
-        teams.RemoveAtSwap(index, count, allow_shrinking);
-        healths.RemoveAtSwap(index, count, allow_shrinking);
-        parent_ids.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(awareness_scan_countdowns, index, count, allow_shrinking);
-        ml::remove_at_swap(navigation_update_countdowns, index, count, allow_shrinking);
-        ml::remove_at_swap(separation_steering, index, count, allow_shrinking);
-        navigation_risk_tiers.RemoveAtSwap(index, count, allow_shrinking);
-        navigation_lower_risk_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
-        avoidance_choice_indices.RemoveAtSwap(index, count, allow_shrinking);
-        avoidance_clear_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(attack_reposition_countdowns, index, count, allow_shrinking);
-        ml::remove_at_swap(attack_cooldowns, index, count, allow_shrinking);
-        target_ids.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(target_locations, index, count, allow_shrinking);
-        ml::remove_at_swap(target_velocities, index, count, allow_shrinking);
-        ml::remove_at_swap(target_directions, index, count, allow_shrinking);
-        intercept_times.RemoveAtSwap(index, count, allow_shrinking);
-        target_distance_sq.RemoveAtSwap(index, count, allow_shrinking);
-        target_distances.RemoveAtSwap(index, count, allow_shrinking);
-        target_radii.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -6868,27 +6641,12 @@ struct SBXCOREEXPERIMENTS_API MimallocEntityData {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -7146,14 +6904,7 @@ struct SBXCOREEXPERIMENTS_API MimallocAlignmentData {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        bytes.RemoveAtSwap(index, count, allow_shrinking);
-        odd.RemoveAtSwap(index, count, allow_shrinking);
-        aligned32.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(nested, index, count, allow_shrinking);
-        aligned64.RemoveAtSwap(index, count, allow_shrinking);
-        small.RemoveAtSwap(index, count, allow_shrinking);
-        aligned256.RemoveAtSwap(index, count, allow_shrinking);
-        handles.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -7208,27 +6959,12 @@ struct SBXCOREEXPERIMENTS_API MimallocAlignmentData {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -7382,9 +7118,7 @@ struct SBXCOREEXPERIMENTS_API MallocVectors {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        xs.RemoveAtSwap(index, count, allow_shrinking);
-        ys.RemoveAtSwap(index, count, allow_shrinking);
-        zs.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -7424,27 +7158,12 @@ struct SBXCOREEXPERIMENTS_API MallocVectors {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -7557,7 +7276,7 @@ struct SBXCOREEXPERIMENTS_API MallocCountdown8 {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        counters.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -7591,27 +7310,12 @@ struct SBXCOREEXPERIMENTS_API MallocCountdown8 {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -7722,7 +7426,7 @@ struct SBXCOREEXPERIMENTS_API MallocCountdown16 {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        counters.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -7756,27 +7460,12 @@ struct SBXCOREEXPERIMENTS_API MallocCountdown16 {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -7896,8 +7585,7 @@ struct SBXCOREEXPERIMENTS_API MallocPeriodicCountdown16 {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        remaining_ticks.RemoveAtSwap(index, count, allow_shrinking);
-        periods.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -7934,27 +7622,12 @@ struct SBXCOREEXPERIMENTS_API MallocPeriodicCountdown16 {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -8185,39 +7858,7 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        entity_ids.RemoveAtSwap(index, count, allow_shrinking);
-        integral_biases.RemoveAtSwap(index, count, allow_shrinking);
-        float_biases.RemoveAtSwap(index, count, allow_shrinking);
-        tasks.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(locations, index, count, allow_shrinking);
-        ml::remove_at_swap(desired_move_locations, index, count, allow_shrinking);
-        ml::remove_at_swap(aim_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(planned_aim_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(desired_aiming_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(movement_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(velocities, index, count, allow_shrinking);
-        move_distances.RemoveAtSwap(index, count, allow_shrinking);
-        speeds.RemoveAtSwap(index, count, allow_shrinking);
-        teams.RemoveAtSwap(index, count, allow_shrinking);
-        healths.RemoveAtSwap(index, count, allow_shrinking);
-        parent_ids.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(awareness_scan_countdowns, index, count, allow_shrinking);
-        ml::remove_at_swap(navigation_update_countdowns, index, count, allow_shrinking);
-        ml::remove_at_swap(separation_steering, index, count, allow_shrinking);
-        navigation_risk_tiers.RemoveAtSwap(index, count, allow_shrinking);
-        navigation_lower_risk_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
-        avoidance_choice_indices.RemoveAtSwap(index, count, allow_shrinking);
-        avoidance_clear_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(attack_reposition_countdowns, index, count, allow_shrinking);
-        ml::remove_at_swap(attack_cooldowns, index, count, allow_shrinking);
-        target_ids.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(target_locations, index, count, allow_shrinking);
-        ml::remove_at_swap(target_velocities, index, count, allow_shrinking);
-        ml::remove_at_swap(target_directions, index, count, allow_shrinking);
-        intercept_times.RemoveAtSwap(index, count, allow_shrinking);
-        target_distance_sq.RemoveAtSwap(index, count, allow_shrinking);
-        target_distances.RemoveAtSwap(index, count, allow_shrinking);
-        target_radii.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -8365,27 +8006,12 @@ struct SBXCOREEXPERIMENTS_API MallocEntityData {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -8643,14 +8269,7 @@ struct SBXCOREEXPERIMENTS_API MallocAlignmentData {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        bytes.RemoveAtSwap(index, count, allow_shrinking);
-        odd.RemoveAtSwap(index, count, allow_shrinking);
-        aligned32.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(nested, index, count, allow_shrinking);
-        aligned64.RemoveAtSwap(index, count, allow_shrinking);
-        small.RemoveAtSwap(index, count, allow_shrinking);
-        aligned256.RemoveAtSwap(index, count, allow_shrinking);
-        handles.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -8705,27 +8324,12 @@ struct SBXCOREEXPERIMENTS_API MallocAlignmentData {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -8879,9 +8483,7 @@ struct SBXCOREEXPERIMENTS_API ReallocVectors {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        xs.RemoveAtSwap(index, count, allow_shrinking);
-        ys.RemoveAtSwap(index, count, allow_shrinking);
-        zs.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -8921,27 +8523,12 @@ struct SBXCOREEXPERIMENTS_API ReallocVectors {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -9054,7 +8641,7 @@ struct SBXCOREEXPERIMENTS_API ReallocCountdown8 {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        counters.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -9088,27 +8675,12 @@ struct SBXCOREEXPERIMENTS_API ReallocCountdown8 {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -9219,7 +8791,7 @@ struct SBXCOREEXPERIMENTS_API ReallocCountdown16 {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        counters.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -9253,27 +8825,12 @@ struct SBXCOREEXPERIMENTS_API ReallocCountdown16 {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -9393,8 +8950,7 @@ struct SBXCOREEXPERIMENTS_API ReallocPeriodicCountdown16 {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        remaining_ticks.RemoveAtSwap(index, count, allow_shrinking);
-        periods.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -9431,27 +8987,12 @@ struct SBXCOREEXPERIMENTS_API ReallocPeriodicCountdown16 {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -9682,39 +9223,7 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        entity_ids.RemoveAtSwap(index, count, allow_shrinking);
-        integral_biases.RemoveAtSwap(index, count, allow_shrinking);
-        float_biases.RemoveAtSwap(index, count, allow_shrinking);
-        tasks.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(locations, index, count, allow_shrinking);
-        ml::remove_at_swap(desired_move_locations, index, count, allow_shrinking);
-        ml::remove_at_swap(aim_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(planned_aim_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(desired_aiming_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(movement_directions, index, count, allow_shrinking);
-        ml::remove_at_swap(velocities, index, count, allow_shrinking);
-        move_distances.RemoveAtSwap(index, count, allow_shrinking);
-        speeds.RemoveAtSwap(index, count, allow_shrinking);
-        teams.RemoveAtSwap(index, count, allow_shrinking);
-        healths.RemoveAtSwap(index, count, allow_shrinking);
-        parent_ids.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(awareness_scan_countdowns, index, count, allow_shrinking);
-        ml::remove_at_swap(navigation_update_countdowns, index, count, allow_shrinking);
-        ml::remove_at_swap(separation_steering, index, count, allow_shrinking);
-        navigation_risk_tiers.RemoveAtSwap(index, count, allow_shrinking);
-        navigation_lower_risk_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
-        avoidance_choice_indices.RemoveAtSwap(index, count, allow_shrinking);
-        avoidance_clear_scan_counts.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(attack_reposition_countdowns, index, count, allow_shrinking);
-        ml::remove_at_swap(attack_cooldowns, index, count, allow_shrinking);
-        target_ids.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(target_locations, index, count, allow_shrinking);
-        ml::remove_at_swap(target_velocities, index, count, allow_shrinking);
-        ml::remove_at_swap(target_directions, index, count, allow_shrinking);
-        intercept_times.RemoveAtSwap(index, count, allow_shrinking);
-        target_distance_sq.RemoveAtSwap(index, count, allow_shrinking);
-        target_distances.RemoveAtSwap(index, count, allow_shrinking);
-        target_radii.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -9862,27 +9371,12 @@ struct SBXCOREEXPERIMENTS_API ReallocEntityData {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>
@@ -10140,14 +9634,7 @@ struct SBXCOREEXPERIMENTS_API ReallocAlignmentData {
     void remove_at_swap(int32 const index,
                         int32 const count,
                         EAllowShrinking const allow_shrinking) {
-        bytes.RemoveAtSwap(index, count, allow_shrinking);
-        odd.RemoveAtSwap(index, count, allow_shrinking);
-        aligned32.RemoveAtSwap(index, count, allow_shrinking);
-        ml::remove_at_swap(nested, index, count, allow_shrinking);
-        aligned64.RemoveAtSwap(index, count, allow_shrinking);
-        small.RemoveAtSwap(index, count, allow_shrinking);
-        aligned256.RemoveAtSwap(index, count, allow_shrinking);
-        handles.RemoveAtSwap(index, count, allow_shrinking);
+        ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);
     }
 
     void set_num(int32 const count, EAllowShrinking const allow_shrinking);
@@ -10202,27 +9689,12 @@ struct SBXCOREEXPERIMENTS_API ReallocAlignmentData {
 
     template <typename Compare>
     void sort(Compare&& compare, TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort([this, &compare](int32 const lhs, int32 const rhs) {
-            return compare(*this, lhs, rhs);
-        });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort(*this, std::forward<Compare>(compare), scratch_indices);
     }
 
     template <auto Compare>
     void sort(TArrayView<int32> scratch_indices) {
-        validate_array_sizes();
-        auto const n{num()};
-        check(scratch_indices.Num() == n);
-        ml::fill_indices(scratch_indices);
-        // indices[new_index] is the old row index that belongs at new_index.
-        scratch_indices.Sort(
-            [this](int32 const lhs, int32 const rhs) { return Compare(*this, lhs, rhs); });
-        apply_permutation(scratch_indices);
+        ml::soa_ops::sort<Compare>(*this, scratch_indices);
     }
 
     template <typename TFunc>

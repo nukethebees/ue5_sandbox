@@ -3,11 +3,9 @@
 
 #include "SpaceGame/simulation/StaticCollisionSources.h"
 
-#include "SandboxCore/array_checks.h"
 #include "SandboxCore/container_ops.h"
-#include "SandboxCore/soa_permutation.h"
+#include "SandboxCore/soa_storage_ops.h"
 
-#include "CoreMinimal.h"
 #include "Components/PrimitiveComponent.h"
 #include "Containers/ArrayView.h"
 #include "Engine/EngineTypes.h"
@@ -52,10 +50,7 @@ auto FStaticCollisionSourcesConstView::is_empty() const noexcept -> bool {
 }
 
 void FStaticCollisionSourcesConstView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(components),
-        ml::num(original_collision_modes),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto FStaticCollisionSourcesConstView::slice(int32 const offset, int32 const count) const
@@ -115,10 +110,7 @@ auto FStaticCollisionSourcesView::is_empty() const noexcept -> bool {
 }
 
 void FStaticCollisionSourcesView::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(components),
-        ml::num(original_collision_modes),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto FStaticCollisionSourcesView::slice(int32 const offset, int32 const count) -> View {
@@ -146,15 +138,11 @@ auto FStaticCollisionSourcesView::right(int32 const count) const -> ConstView {
 }
 
 void FStaticCollisionSources::reset() {
-    ml::reset(components);
-    ml::reset(original_collision_modes);
+    ml::soa_ops::reset(*this);
 }
 
 void FStaticCollisionSources::apply_permutation(TArrayView<int32> indices) {
-    validate_array_sizes();
-    check(indices.Num() == num());
-    ml::apply_permutation(components, indices);
-    ml::apply_permutation(original_collision_modes, indices);
+    ml::soa_ops::apply_permutation(*this, indices);
 }
 
 auto FStaticCollisionSources::get_view() -> View {
@@ -200,10 +188,7 @@ auto FStaticCollisionSources::is_empty() const noexcept -> bool {
 }
 
 void FStaticCollisionSources::validate_array_sizes() const {
-    ml::fatal_if_nums_not_equal({
-        ml::num(components),
-        ml::num(original_collision_modes),
-    });
+    ml::soa_ops::validate_array_sizes(*this);
 }
 
 auto FStaticCollisionSources::slice(int32 const offset, int32 const count) -> View {
