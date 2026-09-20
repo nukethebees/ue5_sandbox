@@ -2,10 +2,12 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <filesystem>
 #include <fstream>
 #include <string_view>
+#include <utility>
 
 namespace lispb::schema {
 namespace {
@@ -17,12 +19,21 @@ class TemporarySchema {
         directory_ = std::filesystem::temp_directory_path() /
                      ("editable-lispb-schema-" + std::to_string(++sequence));
         std::filesystem::create_directories(directory_);
-        write("types.lispb", "");
+        write("types.lispb", R"((type existing
+  :spelling "authored::Existing")
+)");
         write("modules.lispb", R"((enum-module authored_enums
   :header "AuthoredEnums.h"
   :namespace authored
   (enum Existing std::uint8_t
     (value Zero :value "0")))
+
+(packed-value-module authored_packed
+  :header "AuthoredPacked.h"
+  :namespace authored
+  (packed-value ExistingPacked
+    :storage std::uint8_t
+    (field value std::uint8_t :bits 8)))
 )");
     }
     ~TemporarySchema() {
@@ -71,6 +82,15 @@ auto enum_type(EditableSchemaDocument const& document, DeclarationId const decla
     auto const type{document.types().find(info->identity)};
     EXPECT_TRUE(type.has_value());
     return std::get<EnumType>(document.types().type(*type).definition);
+}
+
+auto packed_type(EditableSchemaDocument const& document, DeclarationId const declaration)
+    -> PackedType const& {
+    auto const* info{document.declaration(declaration)};
+    EXPECT_NE(info, nullptr);
+    auto const type{document.types().find(info->identity)};
+    EXPECT_TRUE(type.has_value());
+    return std::get<PackedType>(document.types().type(*type).definition);
 }
 
 TEST(EditableSchemaDocument, RetainsDeclarationSourceOwnershipAndRanges) {
@@ -245,6 +265,116 @@ TEST(EditableSchemaDocument, CreatesPreviewsSavesAndReloadsEnumDeclarations) {
                                                .name = "DesignedState"})};
     ASSERT_TRUE(saved_declaration.has_value());
     EXPECT_TRUE(document.declaration(*saved_declaration)->source.has_value());
+}
+
+TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsPackedValues) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const existing{document.find_declaration(TypeIdentity{.origin = TypeOrigin::declaration,
+                                                               .module_name = "authored_packed",
+                                                               .namespace_name = "authored",
+                                                               .name = "ExistingPacked"})};
+    ASSERT_TRUE(existing.has_value());
+    auto const module_index{document.declaration(*existing)->module_index};
+    auto const created{document.allocate_declaration_id()};
+
+    auto create{document.apply(CreatePackedValue{
+        .declaration = created,
+        .module_index = module_index,
+        .schema = codegen::PackedValueSchema{
+            .name = "DesignedId",
+            .storage_type = codegen::TypeRef{"std::uint32_t"},
+            .fields = {codegen::PackedFieldSchema{
+                           "entity_index", codegen::TypeRef{"std::uint32_t"}, 24},
+                       codegen::PackedFieldSchema{"state",
+                                                  codegen::TypeRef{"@existing"},
+                                                  8,
+                                                  codegen::PackedFieldKind::enumeration}},
+            .invalid_value = 0xffffffffU}})};
+    ASSERT_TRUE(create.has_value()) << create.error().message;
+    ASSERT_TRUE(*create);
+
+    auto undo_create{document.undo()};
+    ASSERT_TRUE(undo_create.has_value());
+    ASSERT_TRUE(*undo_create);
+    EXPECT_EQ(document.declaration(created), nullptr);
+    EXPECT_FALSE(document.types().find_declared("authored_packed", "DesignedId").has_value());
+    auto redo_create{document.redo()};
+    ASSERT_TRUE(redo_create.has_value());
+    ASSERT_TRUE(*redo_create);
+    ASSERT_NE(document.declaration(created), nullptr);
+
+    auto const& created_type{packed_type(document, created)};
+    ASSERT_EQ(created_type.fields.size(), 2U);
+    EXPECT_EQ(created_type.fields[0].name, "entity_index");
+    EXPECT_EQ(created_type.fields[0].bit_width, 24U);
+    EXPECT_EQ(created_type.fields[1].name, "state");
+    EXPECT_EQ(created_type.fields[1].bit_width, 8U);
+    EXPECT_EQ(document.types().type(created_type.fields[1].semantic_type.type).identity.name,
+              "Existing");
+
+    auto invalid{*document.packed_value_schema(created)};
+    invalid.fields.front().bits = 25;
+    auto rejected{
+        document.apply(ReplacePackedValue{.declaration = created, .schema = std::move(invalid)})};
+    ASSERT_FALSE(rejected.has_value());
+    EXPECT_NE(rejected.error().message.find("does not fit"), std::string::npos);
+    EXPECT_EQ(packed_type(document, created).fields[0].bit_width, 24U);
+
+    auto reordered{*document.packed_value_schema(created)};
+    std::swap(reordered.fields[0], reordered.fields[1]);
+    auto replace{
+        document.apply(ReplacePackedValue{.declaration = created, .schema = std::move(reordered)})};
+    ASSERT_TRUE(replace.has_value()) << replace.error().message;
+    ASSERT_TRUE(*replace);
+    EXPECT_EQ(packed_type(document, created).fields[0].name, "state");
+
+    auto undo{document.undo()};
+    ASSERT_TRUE(undo.has_value());
+    ASSERT_TRUE(*undo);
+    EXPECT_EQ(packed_type(document, created).fields[0].name, "entity_index");
+    auto redo{document.redo()};
+    ASSERT_TRUE(redo.has_value());
+    ASSERT_TRUE(*redo);
+    EXPECT_EQ(packed_type(document, created).fields[0].name, "state");
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find("(packed-value DesignedId"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":storage std::uint32_t"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(field state @existing :bits 8 :kind enum)"),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(field entity_index std::uint32_t :bits 24)"),
+              std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    ASSERT_EQ(saved->size(), 1U);
+    EXPECT_FALSE(document.dirty());
+
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        reloaded.find_declaration(TypeIdentity{.origin = TypeOrigin::declaration,
+                                               .module_name = "authored_packed",
+                                               .namespace_name = "authored",
+                                               .name = "DesignedId"})};
+    ASSERT_TRUE(reloaded_declaration.has_value());
+    auto const& reloaded_type{packed_type(reloaded, *reloaded_declaration)};
+    ASSERT_EQ(reloaded_type.fields.size(), 2U);
+    EXPECT_EQ(reloaded_type.fields[0].name, "state");
+    EXPECT_EQ(reloaded_type.fields[0].bit_width, 8U);
+    EXPECT_EQ(reloaded_type.fields[1].name, "entity_index");
+    EXPECT_EQ(reloaded_type.fields[1].bit_width, 24U);
+    EXPECT_EQ(reloaded_type.invalid_raw_value, 0xffffffffU);
+    EXPECT_EQ(reloaded.types().type(reloaded_type.fields[0].semantic_type.type).identity.name,
+              "Existing");
+    EXPECT_NE(std::ranges::find(reloaded.types().dependencies_of(*reloaded.types().find_declared(
+                                    "authored_packed", "DesignedId")),
+                                reloaded_type.fields[0].semantic_type.type),
+              reloaded.types()
+                  .dependencies_of(*reloaded.types().find_declared("authored_packed", "DesignedId"))
+                  .end());
 }
 
 } // namespace

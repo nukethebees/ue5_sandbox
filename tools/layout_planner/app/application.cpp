@@ -211,7 +211,7 @@ void Application::process_event(SDL_Event const& event) {
     ImGui_ImplSDL3_ProcessEvent(&event);
     if (event.type == SDL_EVENT_QUIT || (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
                                          event.window.windowID == SDL_GetWindowID(window_))) {
-        done_ = true;
+        ui_.request_close();
     }
     if (is_interaction_event(event.type)) {
         pacing_state_.last_interaction = std::chrono::steady_clock::now();
@@ -262,6 +262,9 @@ auto Application::render_frame() -> bool {
     ImGui::NewFrame();
 
     auto const changed{ui_.draw()};
+    if (ui_.take_close_confirmation()) {
+        done_ = true;
+    }
     pacing_state_.dragging = ImGui::IsMouseDragging(ImGuiMouseButton_Left) ||
                              ImGui::IsMouseDragging(ImGuiMouseButton_Right) ||
                              ImGui::IsMouseDragging(ImGuiMouseButton_Middle);

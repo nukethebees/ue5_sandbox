@@ -78,8 +78,30 @@ struct DeleteEnum {
     DeclarationId declaration;
 };
 
-using SchemaEditCommand =
-    std::variant<SetEnumeratorDisplayName, SetEnumeratorName, CreateEnum, ReplaceEnum, DeleteEnum>;
+struct CreatePackedValue {
+    DeclarationId declaration;
+    std::size_t module_index{};
+    codegen::PackedValueSchema schema;
+    std::optional<std::size_t> insertion_index;
+};
+
+struct ReplacePackedValue {
+    DeclarationId declaration;
+    codegen::PackedValueSchema schema;
+};
+
+struct DeletePackedValue {
+    DeclarationId declaration;
+};
+
+using SchemaEditCommand = std::variant<SetEnumeratorDisplayName,
+                                       SetEnumeratorName,
+                                       CreateEnum,
+                                       ReplaceEnum,
+                                       DeleteEnum,
+                                       CreatePackedValue,
+                                       ReplacePackedValue,
+                                       DeletePackedValue>;
 
 struct SchemaEditError {
     std::string message;
@@ -102,6 +124,7 @@ class EditableSchemaDocument {
     auto declaration(DeclarationId id) const -> DeclarationInfo const*;
     auto find_declaration(TypeIdentity const& identity) const -> std::optional<DeclarationId>;
     auto enum_schema(DeclarationId declaration) const -> codegen::EnumSchema const*;
+    auto packed_value_schema(DeclarationId declaration) const -> codegen::PackedValueSchema const*;
     auto allocate_declaration_id() -> DeclarationId;
 
     auto apply(SchemaEditCommand command) -> std::expected<bool, SchemaEditError>;

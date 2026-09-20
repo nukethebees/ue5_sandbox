@@ -109,6 +109,18 @@ void PlannerUi::remember_window_size(WindowSize const size) {
     ImGui::MarkIniSettingsDirty();
 }
 
+void PlannerUi::request_close() {
+    if (!document_.has_value() || !document_->dirty()) {
+        close_confirmed_ = true;
+        return;
+    }
+    open_close_confirmation_ = true;
+}
+
+auto PlannerUi::take_close_confirmation() -> bool {
+    return std::exchange(close_confirmed_, false);
+}
+
 void PlannerUi::validate_comparison_variants() {
     if (workspace_.variant(comparison_a_variant_id_) == nullptr) {
         comparison_a_variant_id_ = LayoutWorkspace::baseline_variant_id;
@@ -183,12 +195,15 @@ auto PlannerUi::draw() -> bool {
     draw_project_panel();
     refresh_analysis();
     draw_layout_panel();
+    refresh_analysis();
     draw_properties_panel();
     draw_variants_panel();
     refresh_analysis();
     draw_comparison_panel();
     draw_new_enum_dialog();
+    draw_new_packed_value_dialog();
     draw_source_preview();
+    draw_close_confirmation();
     draw_project_path_dialogs();
     return view_changed || revision_before != workspace_.revision() ||
            std::exchange(project_changed_, false);
@@ -411,6 +426,41 @@ void PlannerUi::draw_source_preview() {
     ImGui::EndPopup();
 }
 
+void PlannerUi::draw_close_confirmation() {
+    if (open_close_confirmation_) {
+        ImGui::OpenPopup("Unsaved LispB changes");
+        open_close_confirmation_ = false;
+    }
+    if (!ImGui::BeginPopupModal(
+            "Unsaved LispB changes", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        return;
+    }
+    ImGui::TextWrapped("The editable schema contains unsaved LispB changes.");
+    ImGui::TextUnformatted("Save them before closing?");
+    if (ImGui::Button("Save and close")) {
+        auto result{document_->save()};
+        if (result.has_value()) {
+            close_confirmed_ = true;
+            ImGui::CloseCurrentPopup();
+        } else {
+            schema_edit_message_ = result.error().message;
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Discard and close")) {
+        close_confirmed_ = true;
+        ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel")) {
+        ImGui::CloseCurrentPopup();
+    }
+    if (!schema_edit_message_.empty()) {
+        ImGui::TextWrapped("%s", schema_edit_message_.c_str());
+    }
+    ImGui::EndPopup();
+}
+
 auto PlannerUi::apply_document_edit(SchemaEditCommand command,
                                     std::optional<TypeIdentity> selection) -> bool {
     if (!document_.has_value()) {
@@ -440,8 +490,14 @@ void PlannerUi::sync_document_graph(std::optional<TypeIdentity> selection) {
         selected_type_ = workspace_.types().find(*selection);
     }
     selected_field_.clear();
+    enum_editor_declaration_.reset();
+    enum_editor_value_.clear();
+    packed_editor_declaration_.reset();
+    packed_editor_field_.clear();
     packed_dragged_divider_.reset();
     packed_dragged_variant_id_.reset();
+    packed_dragged_left_width_.reset();
+    packed_dragged_right_width_.reset();
 }
 
 auto PlannerUi::load_project(std::filesystem::path const& path, bool const allow_dirty) -> bool {
@@ -481,8 +537,14 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     }
     selected_field_.clear();
     selected_enumerator_.clear();
+    enum_editor_declaration_.reset();
+    enum_editor_value_.clear();
+    packed_editor_declaration_.reset();
+    packed_editor_field_.clear();
     packed_dragged_divider_.reset();
     packed_dragged_variant_id_.reset();
+    packed_dragged_left_width_.reset();
+    packed_dragged_right_width_.reset();
     cached_type_.reset();
     cached_revision_ = std::numeric_limits<std::uint64_t>::max();
     comparison_a_variant_id_ = LayoutWorkspace::baseline_variant_id;

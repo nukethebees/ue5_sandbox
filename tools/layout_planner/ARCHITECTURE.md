@@ -41,9 +41,11 @@ physical facts, preserving the logical nodes and their dependency edges. The GUI
 dock layout, cached presentation results, and drawing; it does not own schema semantics or calculate
 layouts.
 
-Enum authoring is the first write-enabled vertical slice. It can add enums to existing enum modules,
-edit their enumerators, preview affected sources, and explicitly save and reload LispB. Other type
-kinds remain read-only, and there is no persistent variant format.
+Enum and packed-value authoring are write-enabled vertical slices. They can add declarations to
+existing matching modules, edit ordered child rows through semantic commands, preview affected
+sources, and explicitly save and reload LispB. Packed fields preserve semantic type links while the
+layout view derives physical facts and supports undoable schema divider drags. SoA declarations
+remain read-only, and there is no persistent variant format.
 
 The application treats a C++ schema target as the open authoring document. Open/recent operations
 load its project manifest and target, while Save As materializes the current draft as a validated,
@@ -56,7 +58,7 @@ The planner supports packed storage type/bit-range analysis plus flat standard-l
 vector-SoA payload analysis. It reports 64-byte cache-line tiling and factual baseline/variant
 deltas. The built-in ABI profile provides facts for common fixed-width integer, floating-point,
 and Boolean types. Unknown physical types and nested SoAs produce diagnostics rather than guessed
-results.
+results. The fixed cache-line fact remains planned target-profile work rather than semantic data.
 
 AoS padding, arbitrary ABI probing, persistent plans, LispB write-back, chunking/AoSoA, arena
 planning, performance prediction, and live-process inspection are intentionally deferred. A later

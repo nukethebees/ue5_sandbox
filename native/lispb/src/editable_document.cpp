@@ -177,6 +177,41 @@ auto render_enum(codegen::EnumSchema const& schema) -> std::string {
     return output.str();
 }
 
+auto packed_field_kind_name(codegen::PackedFieldKind const kind) -> std::string_view {
+    switch (kind) {
+        case codegen::PackedFieldKind::unsigned_integer:
+            return "unsigned";
+        case codegen::PackedFieldKind::enumeration:
+            return "enum";
+    }
+    return "unsigned";
+}
+
+auto render_packed_value(codegen::PackedValueSchema const& schema) -> std::string {
+    std::ostringstream output;
+    output << "(packed-value " << schema.name << "\n    :storage "
+           << render_type_ref(schema.storage_type);
+    if (schema.invalid_value.has_value()) {
+        output << "\n    :invalid-value " << *schema.invalid_value;
+    }
+    if (schema.export_specifier.has_value()) {
+        output << "\n    :export-specifier " << *schema.export_specifier;
+    }
+    for (auto const& field : schema.fields) {
+        output << "\n    (field " << field.name << ' ' << render_type_ref(field.type) << " :bits "
+               << field.bits;
+        if (field.kind != codegen::PackedFieldKind::unsigned_integer) {
+            output << " :kind " << packed_field_kind_name(field.kind);
+        }
+        if (field.range_helper) {
+            output << " :range-helper true";
+        }
+        output << ')';
+    }
+    output << ')';
+    return output.str();
+}
+
 void replace_file(std::filesystem::path const& source, std::filesystem::path const& destination) {
 #if defined(_WIN32)
     if (!MoveFileExW(source.c_str(),
@@ -315,6 +350,19 @@ auto EditableSchemaDocument::enum_schema(DeclarationId const declaration_id) con
              : &module->enums[info->declaration_index];
 }
 
+auto EditableSchemaDocument::packed_value_schema(DeclarationId const declaration_id) const
+    -> codegen::PackedValueSchema const* {
+    auto const* info{declaration(declaration_id)};
+    if (info == nullptr) {
+        return nullptr;
+    }
+    auto const* module{
+        std::get_if<codegen::PackedValueModuleSchema>(&manifest_.modules[info->module_index])};
+    return module == nullptr || info->declaration_index >= module->values.size()
+             ? nullptr
+             : &module->values[info->declaration_index];
+}
+
 auto EditableSchemaDocument::allocate_declaration_id() -> DeclarationId {
     return DeclarationId{next_declaration_id_++};
 }
@@ -424,17 +472,26 @@ auto EditableSchemaDocument::preview_source_updates() const
     };
     std::vector<std::vector<Replacement>> replacements(source_files_.size());
     std::map<std::size_t, std::set<DeclarationId>> insertions;
+    auto render_declaration = [&](DeclarationId const id) -> std::optional<std::string> {
+        if (auto const* schema{enum_schema(id)}) {
+            return render_enum(*schema);
+        }
+        if (auto const* schema{packed_value_schema(id)}) {
+            return render_packed_value(*schema);
+        }
+        return std::nullopt;
+    };
     for (auto const id : touched) {
         auto const* info{declaration(id)};
-        auto const* schema{enum_schema(id)};
-        if (info == nullptr || schema == nullptr) {
+        auto const rendered{render_declaration(id)};
+        if (info == nullptr || !rendered.has_value()) {
             continue;
         }
         if (info->source.has_value()) {
             replacements[info->source->source_file_index].push_back(
                 {.begin = info->source->begin_offset,
                  .end = info->source->end_offset,
-                 .text = render_enum(*schema)});
+                 .text = *rendered});
         } else {
             insertions[info->module_index].insert(id);
         }
@@ -442,20 +499,25 @@ auto EditableSchemaDocument::preview_source_updates() const
     for (auto const& [module_index, ids] : insertions) {
         if (module_index >= module_source_ranges_.size() ||
             !module_source_ranges_[module_index].has_value()) {
-            return std::unexpected{SchemaEditError{"New enum's module has no source range"}};
+            return std::unexpected{SchemaEditError{"New declaration's module has no source range"}};
         }
         auto const& module_range{*module_source_ranges_[module_index]};
         std::string insertion;
-        auto const* module{
-            std::get_if<codegen::EnumModuleSchema>(&manifest_.modules[module_index])};
-        for (std::size_t enum_index{}; enum_index < module->enums.size(); ++enum_index) {
-            auto const found{std::ranges::find_if(declarations_, [&](DeclarationInfo const& info) {
-                return info.module_index == module_index && info.declaration_index == enum_index &&
-                       ids.contains(info.id);
-            })};
-            if (found != declarations_.end()) {
-                insertion += "\n  " + render_enum(module->enums[enum_index]);
+        std::vector<DeclarationInfo const*> ordered;
+        for (auto const& declaration_info : declarations_) {
+            if (declaration_info.module_index == module_index &&
+                ids.contains(declaration_info.id)) {
+                ordered.push_back(&declaration_info);
             }
+        }
+        std::ranges::sort(ordered, {}, &DeclarationInfo::declaration_index);
+        for (auto const* declaration_info : ordered) {
+            auto const rendered{render_declaration(declaration_info->id)};
+            if (!rendered.has_value()) {
+                return std::unexpected{
+                    SchemaEditError{"New declaration kind cannot be serialized"}};
+            }
+            insertion += "\n  " + *rendered;
         }
         replacements[module_range.source_file_index].push_back(
             {.begin = module_range.end_offset - 1,
@@ -775,6 +837,125 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                                                     .module_index = info.module_index,
                                                     .schema = std::move(schema),
                                                     .insertion_index = info.declaration_index}};
+            } else if constexpr (std::is_same_v<Edit, CreatePackedValue>) {
+                if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
+                    return std::unexpected{
+                        SchemaEditError{"New packed value requires a unique declaration id"}};
+                }
+                if (edit.module_index >= manifest_.modules.size()) {
+                    return std::unexpected{SchemaEditError{"Unknown packed-value module index"}};
+                }
+                auto* module{std::get_if<codegen::PackedValueModuleSchema>(
+                    &manifest_.modules[edit.module_index])};
+                if (module == nullptr) {
+                    return std::unexpected{SchemaEditError{
+                        "New packed values can only be added to packed-value modules"}};
+                }
+                auto const insertion_index{edit.insertion_index.value_or(module->values.size())};
+                if (insertion_index > module->values.size()) {
+                    return std::unexpected{SchemaEditError{"Invalid packed-value insertion index"}};
+                }
+
+                module->values.insert(module->values.begin() +
+                                          static_cast<std::ptrdiff_t>(insertion_index),
+                                      edit.schema);
+                for (auto& existing : declarations_) {
+                    if (existing.module_index == edit.module_index &&
+                        existing.declaration_index >= insertion_index) {
+                        ++existing.declaration_index;
+                    }
+                }
+                auto const namespace_name{module->settings.namespace_name.value_or("")};
+                declarations_.push_back(
+                    {.id = edit.declaration,
+                     .identity = TypeIdentity{.origin = TypeOrigin::declaration,
+                                              .module_name = module->settings.name,
+                                              .namespace_name = namespace_name,
+                                              .name = edit.schema.name},
+                     .module_index = edit.module_index,
+                     .declaration_index = insertion_index,
+                     .source = std::nullopt});
+                try {
+                    types_ = resolve_type_graph(manifest_);
+                } catch (std::exception const& error) {
+                    declarations_.pop_back();
+                    for (auto& existing : declarations_) {
+                        if (existing.module_index == edit.module_index &&
+                            existing.declaration_index > insertion_index) {
+                            --existing.declaration_index;
+                        }
+                    }
+                    module->values.erase(module->values.begin() +
+                                         static_cast<std::ptrdiff_t>(insertion_index));
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+                return SchemaEditCommand{DeletePackedValue{.declaration = edit.declaration}};
+            } else if constexpr (std::is_same_v<Edit, ReplacePackedValue>) {
+                auto const* info{declaration(edit.declaration)};
+                auto const* current{packed_value_schema(edit.declaration)};
+                if (info == nullptr || current == nullptr) {
+                    return std::unexpected{SchemaEditError{"Unknown packed-value declaration"}};
+                }
+                if (edit.schema.name != current->name) {
+                    return std::unexpected{SchemaEditError{
+                        "ReplacePackedValue cannot rename a declaration; use a rename command"}};
+                }
+                auto* module{std::get_if<codegen::PackedValueModuleSchema>(
+                    &manifest_.modules[info->module_index])};
+                auto previous{module->values[info->declaration_index]};
+                module->values[info->declaration_index] = edit.schema;
+                try {
+                    types_ = resolve_type_graph(manifest_);
+                } catch (std::exception const& error) {
+                    module->values[info->declaration_index] = std::move(previous);
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+                return SchemaEditCommand{ReplacePackedValue{.declaration = edit.declaration,
+                                                            .schema = std::move(previous)}};
+            } else if constexpr (std::is_same_v<Edit, DeletePackedValue>) {
+                auto const* found{declaration(edit.declaration)};
+                auto const* current{packed_value_schema(edit.declaration)};
+                if (found == nullptr || current == nullptr) {
+                    return std::unexpected{SchemaEditError{"Unknown packed-value declaration"}};
+                }
+                if (found->source.has_value()) {
+                    return std::unexpected{SchemaEditError{
+                        "Deleting source declarations is not enabled in this authoring slice"}};
+                }
+                auto const info{*found};
+                auto schema{*current};
+                auto* module{std::get_if<codegen::PackedValueModuleSchema>(
+                    &manifest_.modules[info.module_index])};
+                module->values.erase(module->values.begin() +
+                                     static_cast<std::ptrdiff_t>(info.declaration_index));
+                declarations_.erase(
+                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id));
+                for (auto& existing : declarations_) {
+                    if (existing.module_index == info.module_index &&
+                        existing.declaration_index > info.declaration_index) {
+                        --existing.declaration_index;
+                    }
+                }
+                try {
+                    types_ = resolve_type_graph(manifest_);
+                } catch (std::exception const& error) {
+                    module->values.insert(module->values.begin() +
+                                              static_cast<std::ptrdiff_t>(info.declaration_index),
+                                          schema);
+                    for (auto& existing : declarations_) {
+                        if (existing.module_index == info.module_index &&
+                            existing.declaration_index >= info.declaration_index) {
+                            ++existing.declaration_index;
+                        }
+                    }
+                    declarations_.push_back(info);
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+                return SchemaEditCommand{
+                    CreatePackedValue{.declaration = edit.declaration,
+                                      .module_index = info.module_index,
+                                      .schema = std::move(schema),
+                                      .insertion_index = info.declaration_index}};
             }
         },
         command);

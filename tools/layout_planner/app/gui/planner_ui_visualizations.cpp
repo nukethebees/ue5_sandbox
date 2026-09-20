@@ -447,7 +447,18 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
         common_bits = std::max(
             {common_bits, analysis.storage_bits.value_or(0), analysis.bits_used.value_or(0)});
     }
-    std::optional<std::size_t> baseline_divider;
+    auto const declaration{document_.has_value() ? document_->find_declaration(identity)
+                                                 : std::optional<DeclarationId>{}};
+    auto const* packed_schema{declaration.has_value() ? document_->packed_value_schema(*declaration)
+                                                      : nullptr};
+    std::optional<std::size_t> inactive_baseline_divider;
+    auto& baseline_divider{!packed_dragged_variant_id_.has_value() ||
+                                   *packed_dragged_variant_id_ ==
+                                       LayoutWorkspace::baseline_variant_id
+                               ? packed_dragged_divider_
+                               : inactive_baseline_divider};
+    auto const baseline_was_dragging{baseline_divider.has_value()};
+    auto const baseline_dragged_index{baseline_divider};
     std::optional<PackedDividerAdjustment> adjustment;
     bool activated{};
     draw_packed_bar(baseline,
@@ -455,10 +466,54 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
                     selected_field_,
                     "Baseline",
                     common_bits,
-                    false,
+                    packed_schema != nullptr,
                     baseline_divider,
                     adjustment,
                     activated);
+    if (activated && baseline_divider.has_value()) {
+        packed_dragged_variant_id_ = LayoutWorkspace::baseline_variant_id;
+    }
+    if (adjustment.has_value()) {
+        packed_dragged_left_width_ = adjustment->left_width;
+        packed_dragged_right_width_ = adjustment->right_width;
+    }
+    if (baseline_was_dragging && !baseline_divider.has_value() &&
+        packed_dragged_variant_id_ == LayoutWorkspace::baseline_variant_id) {
+        if (packed_dragged_left_width_.has_value() && packed_dragged_right_width_.has_value() &&
+            packed_schema != nullptr && baseline_dragged_index.has_value()) {
+            auto replacement{*packed_schema};
+            auto const divider{*baseline_dragged_index};
+            if (divider + 1 < replacement.fields.size()) {
+                replacement.fields[divider].bits = static_cast<int>(*packed_dragged_left_width_);
+                replacement.fields[divider + 1].bits =
+                    static_cast<int>(*packed_dragged_right_width_);
+                auto const selected_field{selected_field_};
+                if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
+                                                           .schema = std::move(replacement)})) {
+                    selected_field_ = selected_field;
+                }
+            }
+        }
+        packed_dragged_variant_id_.reset();
+        packed_dragged_left_width_.reset();
+        packed_dragged_right_width_.reset();
+        return;
+    }
+    if (packed_schema != nullptr && baseline.fields.size() > 1) {
+        ImGui::TextDisabled(
+            "Drag a baseline divider to change both adjacent LispB field widths as one undo step.");
+    }
+    if (baseline.unused_bits.value_or(0) != 0) {
+        ImGui::TextDisabled("Baseline has %llu unused storage bit%s.",
+                            static_cast<unsigned long long>(*baseline.unused_bits),
+                            *baseline.unused_bits == 1 ? "" : "s");
+    }
+    if (baseline.overflow_bits.value_or(0) != 0) {
+        ImGui::TextColored(overflow_color,
+                           "Baseline exceeds storage by %llu bit%s.",
+                           static_cast<unsigned long long>(*baseline.overflow_bits),
+                           *baseline.overflow_bits == 1 ? "" : "s");
+    }
     for (auto const& [variant_id, analysis] : packed_variants_) {
         auto const* variant{workspace_.variant(variant_id)};
         if (variant == nullptr) {

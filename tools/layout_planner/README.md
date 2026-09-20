@@ -56,10 +56,12 @@ default panel arrangement.
    values, and supported standard-library SoAs from the shared semantic graph.
 2. Select `EntityUniqueId` to inspect its proportional packed-bit layout, or `WorldAABBsColumns`
    to inspect its six SoA columns.
-3. The baseline is read-only. Use **Create editable variant** directly in Properties to begin an
-   in-memory experiment; Variants remains available for naming, duplication, reset, and deletion.
-4. In Properties, change a packed field width or storage type, or change an SoA capacity or column
-   type. Schema values, planning values, and active overrides are shown separately.
+3. Enum and packed-value baselines are editable LispB declarations. Their Properties editors issue
+   validated semantic commands and participate in File > Undo/Redo. SoA declarations remain
+   read-only.
+4. Use **Create editable variant** for an in-memory physical experiment. In a variant, change a
+   packed field width/storage type or a SoA capacity/column type without modifying LispB. Schema
+   values, planning values, and active overrides are shown separately.
 5. Layout shows linked packed-bit, aggregate column-payload, and cache-line views. Comparison
    lets you select any two variants as A and B and shows factual deltas without ranking either
    representation. B follows the actively edited variant until you choose or swap it explicitly.
@@ -89,20 +91,28 @@ The Project / Schema browser is organized by LispB module. Each module contains 
 packed values, or supported SoA types, matching source ownership and the destination used when new
 types are authored.
 
-## Enum authoring preview
+## Semantic authoring
 
-The first synthesis workflow is available for enums:
+Enum authoring is available as an inline table:
 
 1. Select **+ New enum** in Project / Schema.
 2. Choose an existing enum module, enter the declared name and underlying type, and create it.
-3. In Properties, add values, select a value, and edit its symbolic name, explicit value, display
-   name, serialized name, hidden marker, or count-sentinel role.
+3. In Properties, add, duplicate, delete, reorder, or drag values. Select a row to edit its symbolic
+   name, explicit value, display name, serialized name, hidden marker, or count-sentinel role inline.
 4. Use **File > Undo** and **File > Redo** while designing.
 5. Use **File > Preview LispB changes** to compare the original and complete updated source.
 6. Use **File > Save LispB changes** to validate the rendered sources, replace the affected source
    file, and reload the semantic document.
 
-Enum creation currently targets an existing enum module; creating modules, renaming enum types,
-and deleting source declarations are not yet exposed. Saving an edited existing enum renders that
-enum declaration canonically, so review the preview for comments or hand formatting inside the
-edited declaration. Unrelated declarations and files are left unchanged.
+Packed-value authoring follows the same path. Use **+ New packed value**, choose an existing packed
+module and storage type, then edit storage/invalid value and add, duplicate, delete, reorder, or drag
+fields inline. Field name, semantic type, bit width, kind, and range-helper metadata are editable.
+The baseline bit map permits divider dragging; releasing a divider commits both adjacent widths as
+one undoable semantic command.
+
+Creation currently targets an existing module of the matching kind; creating modules, renaming
+types, and deleting existing source declarations are not yet exposed. Saving an edited existing enum
+or packed value renders that declaration canonically, so review the preview for comments or hand
+formatting inside the edited declaration. Unrelated declarations and files are left unchanged.
+
+Closing the application with dirty semantic edits offers Save, Discard, and Cancel choices.

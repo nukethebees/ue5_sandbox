@@ -23,10 +23,11 @@ copies of enums, packed fields, columns, or future type declarations.
 
 ## Current milestone
 
-The editable document/command foundation is implemented. The first manual authoring slice can add
-an enum to an existing enum module, edit its enumerators, undo/redo the draft, preview the affected
-LispB source, and explicitly save and reload it. Module creation, enum-type rename/deletion, and
-source-token-preserving edits within an existing enum declaration remain follow-up work.
+The editable document/command foundation supports enum and packed-value authoring. Declarations can
+be added to existing matching modules; ordered values/fields can be added, duplicated, deleted,
+reordered, and edited inline; packed widths can also be changed through the bit diagram. Semantic
+edits support undo/redo, affected-source preview, and validated save/reload. Module creation, type
+rename/deletion, and source-token-preserving edits within touched declarations remain follow-up work.
 
 Project Open, Save, validated Save As cloning, persisted recent-project history, and module-first
 schema browsing are implemented. A native file picker and richer multi-target project selection are
@@ -57,6 +58,9 @@ later usability work; the current path dialogs deliberately keep the file workfl
   expected C++.
 
 ## 3. Packed-value and bit-field authoring
+
+The initial end-to-end slice is implemented; reserved-bit and richer sentinel semantics remain
+future schema work.
 
 - Create packed values with a backing storage type and optional invalid raw value.
 - Add, remove, duplicate, and reorder fields.

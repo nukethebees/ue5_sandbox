@@ -33,6 +33,8 @@ class PlannerUi {
     void finish_startup(bool reopen_recent_project);
     auto saved_window_size() const -> std::optional<WindowSize>;
     void remember_window_size(WindowSize size);
+    void request_close();
+    auto take_close_confirmation() -> bool;
     auto draw() -> bool;
   private:
     static auto settings_read_open(ImGuiContext* context,
@@ -50,10 +52,14 @@ class PlannerUi {
     auto draw_view_menu() -> bool;
     auto draw_file_menu() -> bool;
     void draw_source_preview();
+    void draw_close_confirmation();
     void draw_project_path_dialogs();
     void draw_new_enum_dialog();
+    void draw_new_packed_value_dialog();
     void draw_enum_editor(lispb::schema::TypeNode const& node,
                           lispb::schema::EnumType const& enumeration);
+    auto draw_packed_editor(lispb::schema::TypeNode const& node,
+                            lispb::schema::PackedType const& packed) -> bool;
     auto apply_document_edit(lispb::schema::SchemaEditCommand command,
                              std::optional<lispb::schema::TypeIdentity> selection = std::nullopt)
         -> bool;
@@ -105,15 +111,29 @@ class PlannerUi {
     std::array<char, 1024> save_as_project_path_{};
     std::array<char, 128> new_enum_name_{};
     std::array<char, 128> new_enum_underlying_type_{"std::uint8_t"};
+    std::array<char, 128> new_packed_value_name_{};
+    std::array<char, 128> new_packed_storage_type_{"std::uint32_t"};
     std::array<char, 128> enum_value_name_{};
     std::array<char, 128> enum_value_initializer_{};
     std::array<char, 128> enum_value_display_name_{};
     std::array<char, 128> enum_value_serialized_name_{};
+    std::array<char, 128> packed_storage_type_{};
+    std::array<char, 64> packed_invalid_value_{};
+    std::array<char, 128> packed_field_name_{};
+    std::array<char, 128> packed_field_type_{};
     std::string selected_enumerator_;
+    std::optional<lispb::schema::DeclarationId> enum_editor_declaration_;
+    std::string enum_editor_value_;
     std::string schema_edit_message_;
     std::size_t new_enum_module_index_{};
+    std::size_t new_packed_module_index_{};
+    std::optional<lispb::schema::DeclarationId> packed_editor_declaration_;
+    std::string packed_editor_field_;
+    int packed_field_bits_{1};
     std::optional<std::size_t> packed_dragged_divider_;
     std::optional<std::uint64_t> packed_dragged_variant_id_;
+    std::optional<std::uint32_t> packed_dragged_left_width_;
+    std::optional<std::uint32_t> packed_dragged_right_width_;
     std::uint64_t variant_name_id_{std::numeric_limits<std::uint64_t>::max()};
     std::uint64_t next_variant_number_{1};
     std::uint64_t comparison_a_variant_id_{layout::LayoutWorkspace::baseline_variant_id};
@@ -125,13 +145,13 @@ class PlannerUi {
     bool reset_dock_layout_requested_{};
     bool comparison_b_follows_active_{true};
     bool open_new_enum_dialog_{};
-    bool open_enum_value_dialog_{};
+    bool open_new_packed_value_dialog_{};
     bool open_source_preview_{};
     bool open_project_dialog_{};
     bool open_save_as_dialog_{};
     bool project_changed_{};
-    bool enum_value_hidden_{};
-    bool enum_value_count_sentinel_{};
+    bool open_close_confirmation_{};
+    bool close_confirmed_{};
 };
 
 } // namespace ioj::layout_planner

@@ -32,12 +32,21 @@ class TemporarySchemaProject {
     :sources ("schema/modules.lispb")
     :output-root (project-path "generated")))
 )");
-        write("schema/types.lispb", "");
+        write("schema/types.lispb", R"((type state
+  :spelling "test::State")
+)");
         write("schema/modules.lispb", R"((enum-module states
   :header "States.h"
   :namespace test
   (enum State std::uint8_t
     (value Idle :value "0")))
+
+(packed-value-module packed
+  :header "Packed.h"
+  :namespace test
+  (packed-value ExistingPacked
+    :storage std::uint8_t
+    (field value std::uint8_t :bits 8)))
 )");
     }
     ~TemporarySchemaProject() {
@@ -151,6 +160,83 @@ TEST(SchemaLoader, ClonesCurrentDraftAndLoadsIndependentProject) {
     EXPECT_FALSE(duplicate.loaded);
     EXPECT_FALSE(duplicate.diagnostics.empty());
     EXPECT_TRUE(std::filesystem::exists(files.path("copy_schema/types.lispb")));
+}
+
+TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesPackedValue) {
+    TemporarySchemaProject files;
+    auto loaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
+    ASSERT_TRUE(loaded.document.has_value());
+    auto const existing{
+        loaded.document->find_declaration({.origin = lispb::schema::TypeOrigin::declaration,
+                                           .module_name = "packed",
+                                           .namespace_name = "test",
+                                           .name = "ExistingPacked"})};
+    ASSERT_TRUE(existing.has_value());
+
+    auto const created{loaded.document->allocate_declaration_id()};
+    auto applied{
+        loaded.document->apply(
+            lispb::schema::CreatePackedValue{
+                .declaration = created,
+                .module_index = loaded.document->declaration(*existing)->module_index,
+                .schema =
+                    codegen::PackedValueSchema{
+                        .name = "DesignedId",
+                        .storage_type = codegen::TypeRef{.name = "std::uint32_t",
+                                                         .suffix = {},
+                                                         .nested = std::nullopt},
+                        .fields = {codegen::PackedFieldSchema{"entity_index",
+                                                              codegen::TypeRef{
+                                                                  .name = "std::uint32_t",
+                                                                  .suffix = {},
+                                                                  .nested = std::nullopt},
+                                                              24},
+                                   codegen::
+                                       PackedFieldSchema{"state",
+                                                         codegen::TypeRef{.name = "@state",
+                                                                          .suffix = {},
+                                                                          .nested = std::nullopt},
+                                                         8,
+                                                         codegen::PackedFieldKind::enumeration}},
+                        .invalid_value = 0xffffffffU,
+                        .export_specifier = std::nullopt},
+                .insertion_index = std::nullopt})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto const designed{loaded.document->types().find_declared("packed", "DesignedId")};
+    ASSERT_TRUE(designed.has_value());
+    auto analysis{Analyzer::analyze_packed(
+        loaded.document->types(), *designed, Variant{}, AbiProfile::host_common())};
+    EXPECT_EQ(analysis.storage_bits, 32U);
+    EXPECT_EQ(analysis.bits_used, 32U);
+    EXPECT_EQ(analysis.unused_bits, 0U);
+    EXPECT_TRUE(analysis.diagnostics.empty());
+
+    auto saved{loaded.document->save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    ASSERT_EQ(saved->size(), 1U);
+
+    auto reloaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(reloaded.loaded) << diagnostic_text(reloaded);
+    auto const reloaded_designed{reloaded.document->types().find_declared("packed", "DesignedId")};
+    ASSERT_TRUE(reloaded_designed.has_value());
+    auto const& packed{std::get<lispb::schema::PackedType>(
+        reloaded.document->types().type(*reloaded_designed).definition)};
+    ASSERT_EQ(packed.fields.size(), 2U);
+    EXPECT_EQ(packed.fields[0].name, "entity_index");
+    EXPECT_EQ(packed.fields[0].bit_width, 24U);
+    EXPECT_EQ(packed.fields[1].name, "state");
+    EXPECT_EQ(packed.fields[1].bit_width, 8U);
+    EXPECT_EQ(reloaded.document->types().type(packed.fields[1].semantic_type.type).identity.name,
+              "State");
+
+    analysis = Analyzer::analyze_packed(
+        reloaded.document->types(), *reloaded_designed, Variant{}, AbiProfile::host_common());
+    EXPECT_EQ(analysis.storage_bits, 32U);
+    EXPECT_EQ(analysis.bits_used, 32U);
+    EXPECT_TRUE(analysis.diagnostics.empty());
 }
 
 } // namespace
