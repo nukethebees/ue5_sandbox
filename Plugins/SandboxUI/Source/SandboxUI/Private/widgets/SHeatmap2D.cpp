@@ -8,14 +8,11 @@
 #include "Rendering/SlateRenderer.h"
 #include "Styling/CoreStyle.h"
 #include "Textures/SlateShaderResource.h"
+#include "WidgetMath.h"
 
 namespace {
 int32 constexpr color_lut_entry_count{256};
 int32 constexpr maximum_cells_per_batch{16384};
-
-auto is_finite_heatmap_vector(FVector2f const value) -> bool {
-    return FMath::IsFinite(value.X) && FMath::IsFinite(value.Y);
-}
 
 auto is_finite_heatmap_color(FLinearColor const& color) -> bool {
     return FMath::IsFinite(color.R) && FMath::IsFinite(color.G) && FMath::IsFinite(color.B) &&
@@ -185,7 +182,8 @@ auto build_heatmap_cell_geometry(FHeatmapGrid const& grid,
     TArray<FHeatmapCellGeometry> cells;
     if (!is_valid_heatmap_grid(grid) || grid.values.IsEmpty() ||
         !is_valid_heatmap_value_range(range) || color_lut.IsEmpty() ||
-        !is_finite_heatmap_vector(plot_size) || plot_size.X <= 0.0f || plot_size.Y <= 0.0f) {
+        !SandboxUI::Widgets::is_finite_vector(plot_size) || plot_size.X <= 0.0f ||
+        plot_size.Y <= 0.0f) {
         return cells;
     }
 
@@ -221,7 +219,7 @@ auto build_heatmap_mesh_batches(TConstArrayView<FHeatmapCellGeometry> const cell
                                 FVector2f const plot_origin) -> TArray<FHeatmapMeshBatch> {
     TArray<FHeatmapMeshBatch> batches;
     auto const cell_count{cells.Num()};
-    if (cell_count == 0 || !is_finite_heatmap_vector(plot_origin)) {
+    if (cell_count == 0 || !SandboxUI::Widgets::is_finite_vector(plot_origin)) {
         return batches;
     }
 
@@ -504,12 +502,13 @@ int32 SHeatmap2D::OnPaint(FPaintArgs const&,
 }
 
 bool SHeatmap2D::is_valid_style(FHeatmap2DStyle const& style) {
-    return is_finite_heatmap_vector(style.desired_size) && style.desired_size.X >= 0.0f &&
-           style.desired_size.Y >= 0.0f && FMath::IsFinite(style.chart_padding.Left) &&
-           style.chart_padding.Left >= 0.0f && FMath::IsFinite(style.chart_padding.Right) &&
-           style.chart_padding.Right >= 0.0f && FMath::IsFinite(style.chart_padding.Top) &&
-           style.chart_padding.Top >= 0.0f && FMath::IsFinite(style.chart_padding.Bottom) &&
-           style.chart_padding.Bottom >= 0.0f && is_finite_heatmap_color(style.background_color) &&
+    return SandboxUI::Widgets::is_finite_vector(style.desired_size) &&
+           style.desired_size.X >= 0.0f && style.desired_size.Y >= 0.0f &&
+           FMath::IsFinite(style.chart_padding.Left) && style.chart_padding.Left >= 0.0f &&
+           FMath::IsFinite(style.chart_padding.Right) && style.chart_padding.Right >= 0.0f &&
+           FMath::IsFinite(style.chart_padding.Top) && style.chart_padding.Top >= 0.0f &&
+           FMath::IsFinite(style.chart_padding.Bottom) && style.chart_padding.Bottom >= 0.0f &&
+           is_finite_heatmap_color(style.background_color) &&
            is_valid_heatmap_color_stops(style.color_stops) &&
            is_finite_heatmap_color(style.axis_color) && FMath::IsFinite(style.axis_thickness) &&
            style.axis_thickness > 0.0f && is_finite_heatmap_color(style.label_color) &&

@@ -3,6 +3,7 @@
 #include "Internationalization/Text.h"
 #include "Rendering/DrawElementTypes.h"
 #include "Styling/CoreStyle.h"
+#include "WidgetMath.h"
 
 namespace {
 void draw_scatter_plot_box(FSlateWindowElementList& out_draw_elements,
@@ -45,9 +46,6 @@ void draw_scatter_plot_label(FSlateWindowElementList& out_draw_elements,
     out_draw_elements.PopClip();
 }
 
-auto is_finite_scatter_plot_vector(FVector2f const value) -> bool {
-    return FMath::IsFinite(value.X) && FMath::IsFinite(value.Y);
-}
 }
 
 FScatterPlotStyle::FScatterPlotStyle()
@@ -62,8 +60,9 @@ auto is_valid_scatter_plot_domain(FScatterPlotDomain const& domain) -> bool {
 auto scatter_plot_to_local(FVector2f const point,
                            FScatterPlotDomain const& domain,
                            FVector2f const plot_size) -> FVector2f {
-    if (!is_valid_scatter_plot_domain(domain) || !is_finite_scatter_plot_vector(point) ||
-        !is_finite_scatter_plot_vector(plot_size) || plot_size.X <= 0.0f || plot_size.Y <= 0.0f) {
+    if (!is_valid_scatter_plot_domain(domain) || !SandboxUI::Widgets::is_finite_vector(point) ||
+        !SandboxUI::Widgets::is_finite_vector(plot_size) || plot_size.X <= 0.0f ||
+        plot_size.Y <= 0.0f) {
         return FVector2f::ZeroVector;
     }
 
@@ -77,9 +76,10 @@ auto build_scatter_plot_geometry(TConstArrayView<FScatterPlotPoint> const points
                                  FVector2f const plot_size,
                                  FVector2f const point_size) -> TArray<FScatterPlotPointGeometry> {
     TArray<FScatterPlotPointGeometry> geometry;
-    if (!is_valid_scatter_plot_domain(domain) || !is_finite_scatter_plot_vector(plot_size) ||
-        plot_size.X <= 0.0f || plot_size.Y <= 0.0f || !is_finite_scatter_plot_vector(point_size) ||
-        point_size.X <= 0.0f || point_size.Y <= 0.0f) {
+    if (!is_valid_scatter_plot_domain(domain) || !SandboxUI::Widgets::is_finite_vector(plot_size) ||
+        plot_size.X <= 0.0f || plot_size.Y <= 0.0f ||
+        !SandboxUI::Widgets::is_finite_vector(point_size) || point_size.X <= 0.0f ||
+        point_size.Y <= 0.0f) {
         return geometry;
     }
 
@@ -88,9 +88,9 @@ auto build_scatter_plot_geometry(TConstArrayView<FScatterPlotPoint> const points
     auto const point_count{points.Num()};
     for (int32 point_index{0}; point_index < point_count; ++point_index) {
         auto const& point{points[point_index]};
-        if (!is_finite_scatter_plot_vector(point.position) || point.position.X < domain.minimum_x ||
-            point.position.X > domain.maximum_x || point.position.Y < domain.minimum_y ||
-            point.position.Y > domain.maximum_y) {
+        if (!SandboxUI::Widgets::is_finite_vector(point.position) ||
+            point.position.X < domain.minimum_x || point.position.X > domain.maximum_x ||
+            point.position.Y < domain.minimum_y || point.position.Y > domain.maximum_y) {
             continue;
         }
 
@@ -264,14 +264,15 @@ int32 SScatterPlot::OnPaint(FPaintArgs const&,
 }
 
 bool SScatterPlot::is_valid_style(FScatterPlotStyle const& style) {
-    return is_finite_scatter_plot_vector(style.desired_size) && style.desired_size.X >= 0.0f &&
-           style.desired_size.Y >= 0.0f && FMath::IsFinite(style.chart_padding.Left) &&
-           style.chart_padding.Left >= 0.0f && FMath::IsFinite(style.chart_padding.Right) &&
-           style.chart_padding.Right >= 0.0f && FMath::IsFinite(style.chart_padding.Top) &&
-           style.chart_padding.Top >= 0.0f && FMath::IsFinite(style.chart_padding.Bottom) &&
-           style.chart_padding.Bottom >= 0.0f && is_finite_scatter_plot_vector(style.point_size) &&
-           style.point_size.X > 0.0f && style.point_size.Y > 0.0f &&
-           FMath::IsFinite(style.axis_thickness) && style.axis_thickness > 0.0f &&
-           FMath::IsFinite(style.x_label_area_height) && style.x_label_area_height >= 0.0f &&
-           FMath::IsFinite(style.y_label_area_width) && style.y_label_area_width >= 0.0f;
+    return SandboxUI::Widgets::is_finite_vector(style.desired_size) &&
+           style.desired_size.X >= 0.0f && style.desired_size.Y >= 0.0f &&
+           FMath::IsFinite(style.chart_padding.Left) && style.chart_padding.Left >= 0.0f &&
+           FMath::IsFinite(style.chart_padding.Right) && style.chart_padding.Right >= 0.0f &&
+           FMath::IsFinite(style.chart_padding.Top) && style.chart_padding.Top >= 0.0f &&
+           FMath::IsFinite(style.chart_padding.Bottom) && style.chart_padding.Bottom >= 0.0f &&
+           SandboxUI::Widgets::is_finite_vector(style.point_size) && style.point_size.X > 0.0f &&
+           style.point_size.Y > 0.0f && FMath::IsFinite(style.axis_thickness) &&
+           style.axis_thickness > 0.0f && FMath::IsFinite(style.x_label_area_height) &&
+           style.x_label_area_height >= 0.0f && FMath::IsFinite(style.y_label_area_width) &&
+           style.y_label_area_width >= 0.0f;
 }
