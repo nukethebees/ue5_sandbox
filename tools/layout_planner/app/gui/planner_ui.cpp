@@ -160,6 +160,11 @@ void PlannerUi::settings_read_line(ImGuiContext*,
         ui->window_height_ = *height;
         return;
     }
+    constexpr std::string_view graph_open_prefix{"GraphOpen="};
+    if (value.starts_with(graph_open_prefix)) {
+        ui->graph_view_open_ = value.substr(graph_open_prefix.size()) != "0";
+        return;
+    }
     constexpr std::string_view recent_prefix{"RecentProject="};
     if (value.starts_with(recent_prefix) && value.size() > recent_prefix.size() &&
         ui->recent_projects_.size() < 20) {
@@ -177,6 +182,7 @@ void PlannerUi::settings_write_all(ImGuiContext*,
         output->appendf("WindowWidth=%d\n", size->width);
         output->appendf("WindowHeight=%d\n", size->height);
     }
+    output->appendf("GraphOpen=%d\n", ui->graph_view_open_ ? 1 : 0);
     for (auto const& path : ui->recent_projects_) {
         output->appendf("RecentProject=%s\n", path.string().c_str());
     }
@@ -200,6 +206,7 @@ auto PlannerUi::draw() -> bool {
     draw_variants_panel();
     refresh_analysis();
     draw_comparison_panel();
+    draw_graph_panel();
     draw_new_enum_dialog();
     draw_new_packed_value_dialog();
     draw_new_soa_dialog();
@@ -230,6 +237,11 @@ auto PlannerUi::draw_view_menu() -> bool {
         }
         if (ImGui::MenuItem("Reset panel layout")) {
             reset_dock_layout_requested_ = true;
+            changed = true;
+        }
+        if (ImGui::MenuItem("Graph", nullptr, graph_view_open_)) {
+            graph_view_open_ = !graph_view_open_;
+            ImGui::MarkIniSettingsDirty();
             changed = true;
         }
         ImGui::EndMenu();
@@ -550,6 +562,10 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     packed_dragged_variant_id_.reset();
     packed_dragged_left_width_.reset();
     packed_dragged_right_width_.reset();
+    graph_pan_x_ = 32.0F;
+    graph_pan_y_ = 32.0F;
+    graph_zoom_ = 1.0F;
+    graph_focus_selected_ = false;
     cached_type_.reset();
     cached_revision_ = std::numeric_limits<std::uint64_t>::max();
     comparison_a_variant_id_ = LayoutWorkspace::baseline_variant_id;
@@ -598,6 +614,7 @@ void PlannerUi::setup_default_dock_layout(unsigned int const dockspace_id) {
         ImGui::DockBuilderSplitNode(left_top_id, ImGuiDir_Down, 0.34F, nullptr, &left_top_id)};
     ImGui::DockBuilderDockWindow("Project / Schema", left_top_id);
     ImGui::DockBuilderDockWindow("Variants", variants_id);
+    ImGui::DockBuilderDockWindow("Graph", center_id);
     ImGui::DockBuilderDockWindow("Layout", center_id);
     ImGui::DockBuilderDockWindow("Properties", right_id);
     ImGui::DockBuilderDockWindow("Comparison", comparison_id);

@@ -71,6 +71,8 @@ nor planner persistence.
 
 ## Frontend behavior
 
-The SDL window provides dockable Project / Schema, Layout, Properties, Variants, and Comparison
-panels. The renderer follows recent activity: it runs smoothly during interaction, reduces its
-rate while idle or unfocused, and waits for events while minimized.
+The SDL window provides dockable Project / Schema, Layout, Graph, Properties, Variants, and
+Comparison panels. Graph is a navigation-only pan/zoom view over the resolved `TypeGraph`; its
+deterministic columns and field-aware edge labels do not duplicate semantic state or assume the
+graph is acyclic. The renderer follows recent activity: it runs smoothly during interaction,
+reduces its rate while idle or unfocused, and waits for events while minimized.

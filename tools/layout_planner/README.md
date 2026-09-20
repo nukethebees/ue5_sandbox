@@ -66,6 +66,8 @@ default panel arrangement.
    cache-line, and page totals from the explicit target profile. Comparison lets you select any two
    variants as A and B and shows factual deltas without ranking either representation. B follows the
    actively edited variant until you choose or swap it explicitly.
+6. Graph shows the resolved semantic types and their labeled underlying/storage/field/column
+   dependencies. Middle-drag to pan, use the wheel to zoom, and click a node to navigate to it.
 
 The planner supports enum inspection, packed values, flat standard-library SoAs, and
 standard-library vector SoAs. Enum-backed packed fields retain links to their enum definitions;
@@ -120,4 +122,5 @@ types, and deleting existing source declarations are not yet exposed. Saving an 
 packed value, or SoA renders that declaration canonically, so review the preview for comments or
 hand formatting inside the edited declaration. Unrelated declarations and files are left unchanged.
 
-Closing the application with dirty semantic edits offers Save, Discard, and Cancel choices.
+Closing the application with dirty semantic edits offers Save, Discard, and Cancel choices. The
+Graph view can be shown or hidden from View; docking and visibility are persisted.

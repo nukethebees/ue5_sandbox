@@ -94,6 +94,10 @@ preserved by whole-declaration editing; direct UI for those advanced properties 
 
 ## 5. Relationship and declaration lifecycle operations
 
+An initial dockable pan/zoom relationship graph is implemented over the resolved semantic graph,
+with selectable nodes and field-aware dependency labels. Relationship editing and richer semantic
+relationship kinds remain future work.
+
 - Provide a searchable semantic type picker.
 - Navigate from a field or column to its referenced definition.
 - Rename declarations while updating semantic references deliberately.

@@ -4,6 +4,7 @@ target_sources(layout-planner PRIVATE
   gui/planner_ui.cpp
   gui/planner_ui_browser.cpp
   gui/planner_ui_comparison.cpp
+  gui/planner_ui_graph.cpp
   gui/planner_ui_properties.cpp
   gui/planner_ui_support.cpp
   gui/planner_ui_visualizations.cpp

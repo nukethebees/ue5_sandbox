@@ -76,6 +76,7 @@ class PlannerUi {
     void draw_properties_panel();
     void draw_variants_panel();
     void draw_comparison_panel();
+    void draw_graph_panel();
     void draw_packed_layout(lispb::schema::PackedType const& packed,
                             layout::PackedAnalysis const& baseline);
     void draw_soa_layout(lispb::schema::SoaType const& soa, layout::SoaAnalysis const& baseline);
@@ -149,6 +150,9 @@ class PlannerUi {
     std::uint64_t comparison_a_variant_id_{layout::LayoutWorkspace::baseline_variant_id};
     std::uint64_t comparison_b_variant_id_{layout::LayoutWorkspace::baseline_variant_id};
     float text_scale_{1.0F};
+    float graph_pan_x_{32.0F};
+    float graph_pan_y_{32.0F};
+    float graph_zoom_{1.0F};
     std::optional<int> window_width_;
     std::optional<int> window_height_;
     bool dock_layout_initialized_{};
@@ -163,6 +167,8 @@ class PlannerUi {
     bool project_changed_{};
     bool open_close_confirmation_{};
     bool close_confirmed_{};
+    bool graph_view_open_{true};
+    bool graph_focus_selected_{};
 };
 
 } // namespace ioj::layout_planner
