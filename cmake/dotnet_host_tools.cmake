@@ -17,7 +17,7 @@ function(sandbox_add_dotnet_host_tool target_name output_variable project_file)
 
   find_program(SANDBOX_DOTNET_EXECUTABLE NAMES dotnet REQUIRED)
 
-  file(GLOB project_sources CONFIGURE_DEPENDS
+  file(GLOB project_sources
     "${project_directory}/*.cs"
   )
 
@@ -39,6 +39,7 @@ function(sandbox_add_dotnet_host_tool target_name output_variable project_file)
       "-p:MSBuildProjectExtensionsPath=${intermediate_directory}"
     DEPENDS
       "${project_file}"
+      "${project_directory}"
       ${project_sources}
       "${PROJECT_SOURCE_DIR}/tools/Directory.Build.props"
       "${PROJECT_SOURCE_DIR}/tools/Directory.Build.targets"

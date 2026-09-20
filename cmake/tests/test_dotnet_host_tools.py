@@ -94,6 +94,12 @@ class DotnetHostToolTests(unittest.TestCase):
                 [legacy_source.relative_to(source_obj_directory)],
             )
 
+            source_added_timestamp = executable.stat().st_mtime_ns
+            added_source = tool_directory / "AddedSource.cs"
+            added_source.write_text("internal sealed class AddedSource {}\n", encoding="utf-8")
+            self.run_cmake("--build", str(build_directory), "--target", "architecture-checks-host")
+            self.assertGreater(executable.stat().st_mtime_ns, source_added_timestamp)
+
     def test_workflows_do_not_prebuild_all_host_tools(self) -> None:
         presets = json.loads(
             (self.source_dir / "cmake" / "presets" / "unreal.json").read_text(encoding="utf-8")

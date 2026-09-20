@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -123,6 +124,7 @@ class NativeWorkflowTests(unittest.TestCase):
             self.assertNotIn("tools/bin/NativeBinaryTools.exe", dry_run)
 
             build_ninja = (build_directory / "build.ninja").read_text(encoding="utf-8")
+            self.assertNotIn("VERIFY_GLOBS", build_ninja)
             normalized_build_ninja = build_ninja.replace("\\", "/").replace("$:", ":")
             native_binary_tools_directory = self.source_dir / "tools" / "NativeBinaryTools"
             self.assertIn(
@@ -143,6 +145,50 @@ class NativeWorkflowTests(unittest.TestCase):
             )
             for generated_source in generated_sources:
                 self.assertNotIn(generated_source.as_posix(), normalized_build_ninja)
+
+    @unittest.skipUnless(sys.platform == "win32", "requires Windows Ninja semantics")
+    def test_ninja_direct_build_regenerates_after_configure_input_changes(self) -> None:
+        top_level_cmake = (self.source_dir / "CMakeLists.txt").read_text(encoding="utf-8")
+        self.assertNotIn("CMAKE_SUPPRESS_REGENERATION", top_level_cmake)
+
+        with tempfile.TemporaryDirectory(prefix="sandbox ninja regeneration ") as temporary_root:
+            fixture_directory = Path(temporary_root) / "fixture"
+            fixture_directory.mkdir()
+            cmake_lists = fixture_directory / "CMakeLists.txt"
+            template = fixture_directory / "configured.txt.in"
+            build_directory = fixture_directory / "build"
+            template.write_text("@configured_value@\n", encoding="utf-8")
+            cmake_lists.write_text(
+                "\n".join(
+                    (
+                        "cmake_minimum_required(VERSION 3.25)",
+                        "project(NinjaRegenerationFixture LANGUAGES NONE)",
+                        "set(configured_value before)",
+                        "configure_file(configured.txt.in configured.txt @ONLY)",
+                        "add_custom_target(verify_configuration ALL DEPENDS configured.txt)",
+                        "",
+                    )
+                ),
+                encoding="utf-8",
+            )
+
+            self.run_cmake("-S", str(fixture_directory), "-B", str(build_directory), "-G", "Ninja")
+            self.run_cmake("--build", str(build_directory), "--target", "verify_configuration")
+            configured_file = build_directory / "configured.txt"
+            self.assertEqual(configured_file.read_text(encoding="utf-8"), "before\n")
+
+            updated_cmake_lists = cmake_lists.read_text(encoding="utf-8").replace(
+                "configured_value before", "configured_value after"
+            )
+            cmake_lists.write_text(updated_cmake_lists, encoding="utf-8")
+            timestamp = cmake_lists.stat()
+            os.utime(
+                cmake_lists,
+                ns=(timestamp.st_atime_ns, timestamp.st_mtime_ns + 1_000_000_000),
+            )
+
+            self.run_cmake("--build", str(build_directory), "--target", "verify_configuration")
+            self.assertEqual(configured_file.read_text(encoding="utf-8"), "after\n")
 
     def create_generated_source_sentinels(self) -> tuple[Path, ...]:
         native_binary_tools_directory = self.source_dir / "tools" / "NativeBinaryTools"

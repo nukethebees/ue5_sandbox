@@ -19,9 +19,9 @@ foreach(google_test_target IN ITEMS gtest gtest_main)
   target_compile_definitions(${google_test_target} PRIVATE _ITERATOR_DEBUG_LEVEL=0)
 endforeach()
 
-set(BUILD_EXECUTABLE OFF CACHE BOOL "" FORCE)
-set(ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
-add_subdirectory(cpu_features)
+set(SANDBOX_CPU_FEATURES_SOURCE_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/cpu_features")
+add_subdirectory(cpu_features_integration)
+unset(SANDBOX_CPU_FEATURES_SOURCE_DIRECTORY)
 set_property(TARGET cpu_features PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
 
 if(SANDBOX_WITH_UNREAL)
