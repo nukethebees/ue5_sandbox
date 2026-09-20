@@ -421,7 +421,10 @@ void PlannerUi::draw_properties_panel() {
             return;
         }
     }
-    if (selected_declaration.has_value() && !std::holds_alternative<SoaType>(node.definition)) {
+    auto const rename_supported{selected_declaration.has_value() &&
+                                (!std::holds_alternative<SoaType>(node.definition) ||
+                                 document_->soa_schema(*selected_declaration) != nullptr)};
+    if (rename_supported) {
         if (rename_editor_declaration_ != selected_declaration) {
             rename_editor_declaration_ = selected_declaration;
             std::snprintf(declaration_name_.data(),

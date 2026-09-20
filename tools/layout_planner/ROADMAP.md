@@ -34,7 +34,7 @@ affected-source preview, and validated save/reload. Supported declarations can b
 graph-derived reference repair, and source-less declarations created in the active draft can be
 deleted after reverse-user checks. Source-backed deletion now removes the exact owned top-level
 source range through undoable document tombstones and rejects registered-alias users. Module
-creation and SoA rename remain follow-up work. Existing enums, integer scalars, and simple
+creation remains follow-up work. Existing enums, integer scalars, and simple
 representation and packed-value declarations now preserve declaration-local comments, whitespace,
 and unchanged token spelling for ordinary nonstructural property/value edits. Stable packed
 field/reserved segments, named codes, and existing relationships are covered. Enum value insertion,
@@ -302,7 +302,7 @@ An initial dockable pan/zoom relationship graph is implemented over the resolved
 with selectable nodes and field-aware dependency labels. Packed-field relationship editing and the
 initial shared relationship-kind set are implemented. Duplication, supported-kind rename, and
 reverse-user/registered-alias-safe deletion of draft or source-backed declarations are implemented;
-SoA rename, declaration move, and capacity-derived consequences remain future work.
+declaration move and capacity-derived consequences remain future work.
 
 - Provide a searchable semantic type picker.
 - Navigate from a field or column to its referenced definition.
@@ -317,10 +317,12 @@ SoA rename, declaration move, and capacity-derived consequences remain future wo
 Nonmodal sibling duplication is implemented for all currently editable declaration kinds through
 their typed create commands. Ordinary standard-library SoAs are supported; SoAs with explicit
 generated helper names remain blocked until duplication can repair those names and embedded uses.
-Typed rename is implemented for enums, integer scalars, quantizations, varints, packed values, and
-records with stable declaration ID, graph-derived reverse-user repair, undo/redo,
-multi-declaration preview, and save/reload. Registered-alias repair and SoA nested/generated-name
-repair remain lifecycle extensions.
+Typed rename is implemented for enums, integer scalars, quantizations, varints, packed values,
+records, unions, and ordinary SoA declarations with stable declaration ID, graph-derived reverse-
+user repair, undo/redo, multi-declaration preview, and save/reload. SoA rename additionally repairs
+module-local nested/fixed schema identities, retains explicit helper names while implicit names
+follow the declaration, and validates generated-name collisions transactionally. Registered-alias
+repair and vector-SoA module rename remain lifecycle extensions.
 Draft and source-backed declarations can be deleted through their existing typed commands only when
 they have no resolved reverse users or registered alias. The document performs those checks before
 mutation, validates the remaining manifest, and preserves undo/redo and stable identity on

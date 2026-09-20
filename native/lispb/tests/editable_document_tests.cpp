@@ -2033,6 +2033,131 @@ TEST(EditableSchemaDocument, RenamesEnumAndRepairsPackedSemanticReference) {
     EXPECT_EQ(document.declaration(enumeration), nullptr);
 }
 
+TEST(EditableSchemaDocument, RenamesSoaAndRepairsDirectAndNestedUsers) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+    auto const nested{declaration_id(document, "authored_soa", "NestedFlags", "authored")};
+    auto const record{declaration_id(document, "authored_records", "ExistingRecord", "authored")};
+    auto const original_id{document.declaration(declaration)->id};
+
+    auto nested_user{*document.soa_schema(nested)};
+    nested_user.members[0].kind = codegen::SoaMemberKind::nested;
+    nested_user.members[0].type.name = "authored::ExistingSoa";
+    nested_user.members[0].fixed_schema = "ExistingSoa";
+    nested_user.members[0].nested_schema = "ExistingSoa";
+    ASSERT_TRUE(document.apply(ReplaceSoa{.declaration = nested, .schema = std::move(nested_user)})
+                    .has_value());
+
+    auto record_user{*document.record_schema(record)};
+    record_user.members[1].type.name = "authored::ExistingSoa";
+    ASSERT_TRUE(
+        document.apply(ReplaceRecord{.declaration = record, .schema = std::move(record_user)})
+            .has_value());
+
+    auto const revision_before_collision{document.revision()};
+    auto collision{document.apply(
+        RenameDeclaration{.declaration = declaration, .new_name = "NestedFlagsView"})};
+    ASSERT_FALSE(collision.has_value());
+    EXPECT_NE(collision.error().message.find("Duplicate generated SOA type name"),
+              std::string::npos);
+    EXPECT_EQ(document.revision(), revision_before_collision);
+    EXPECT_EQ(document.declaration(declaration)->identity.name, "ExistingSoa");
+    EXPECT_EQ(document.soa_schema(nested)->members[0].type.name, "authored::ExistingSoa");
+    EXPECT_EQ(document.soa_schema(nested)->members[0].fixed_schema, "ExistingSoa");
+    EXPECT_EQ(document.soa_schema(nested)->members[0].nested_schema, "ExistingSoa");
+    EXPECT_EQ(document.record_schema(record)->members[1].type.name, "authored::ExistingSoa");
+
+    auto renamed{
+        document.apply(RenameDeclaration{.declaration = declaration, .new_name = "RenamedSoa"})};
+    ASSERT_TRUE(renamed.has_value()) << renamed.error().message;
+    ASSERT_TRUE(*renamed);
+    ASSERT_NE(document.declaration(declaration), nullptr);
+    EXPECT_EQ(document.declaration(declaration)->id, original_id);
+    EXPECT_EQ(document.declaration(declaration)->identity.name, "RenamedSoa");
+    EXPECT_EQ(document.soa_schema(declaration)->view_name, "ExistingSoaView");
+    EXPECT_EQ(document.soa_schema(declaration)->const_view_name, "ExistingSoaConstView");
+    EXPECT_EQ(document.soa_schema(nested)->members[0].type.name, "authored::RenamedSoa");
+    EXPECT_EQ(document.soa_schema(nested)->members[0].fixed_schema, "RenamedSoa");
+    EXPECT_EQ(document.soa_schema(nested)->members[0].nested_schema, "RenamedSoa");
+    EXPECT_EQ(document.record_schema(record)->members[1].type.name, "authored::RenamedSoa");
+
+    auto const renamed_type{document.types().find(document.declaration(declaration)->identity)};
+    ASSERT_TRUE(renamed_type.has_value());
+    auto const& nested_column{soa_type(document, nested).columns[0]};
+    EXPECT_EQ(nested_column.semantic_type.type, *renamed_type);
+    EXPECT_EQ(nested_column.nested_type, *renamed_type);
+    EXPECT_EQ(record_type(document, record).members[1].semantic_type.type, *renamed_type);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& updated{preview->front().updated};
+    EXPECT_NE(updated.find("(struct RenamedSoa"), std::string::npos);
+    EXPECT_EQ(updated.find("(struct ExistingSoa"), std::string::npos);
+    EXPECT_NE(updated.find(":view-name   ExistingSoaView"), std::string::npos);
+    EXPECT_NE(updated.find(":const-view-name ExistingSoaConstView"), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the SoA declaration note."), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the custom function note."), std::string::npos);
+    EXPECT_NE(updated.find(":body (\"values.clear();\")"), std::string::npos);
+    EXPECT_NE(updated.find("authored::RenamedSoa"), std::string::npos);
+    EXPECT_NE(updated.find(":fixed-schema RenamedSoa"), std::string::npos);
+    EXPECT_NE(updated.find(":nested-schema RenamedSoa"), std::string::npos);
+    EXPECT_EQ(updated.find("authored::ExistingSoa"), std::string::npos);
+    EXPECT_EQ(updated.find(":fixed-schema ExistingSoa"), std::string::npos);
+    EXPECT_EQ(updated.find(":nested-schema ExistingSoa"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.declaration(declaration)->identity.name, "ExistingSoa");
+    EXPECT_EQ(document.soa_schema(nested)->members[0].type.name, "authored::ExistingSoa");
+    EXPECT_EQ(document.soa_schema(nested)->members[0].fixed_schema, "ExistingSoa");
+    EXPECT_EQ(document.soa_schema(nested)->members[0].nested_schema, "ExistingSoa");
+    EXPECT_EQ(document.record_schema(record)->members[1].type.name, "authored::ExistingSoa");
+    ASSERT_TRUE(document.redo().value());
+    EXPECT_EQ(document.declaration(declaration)->identity.name, "RenamedSoa");
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "RenamedSoa", "authored")};
+    auto const reloaded_nested{declaration_id(reloaded, "authored_soa", "NestedFlags", "authored")};
+    auto const reloaded_record{
+        declaration_id(reloaded, "authored_records", "ExistingRecord", "authored")};
+    auto const reloaded_type{
+        reloaded.types().find(reloaded.declaration(reloaded_declaration)->identity)};
+    ASSERT_TRUE(reloaded_type.has_value());
+    EXPECT_EQ(reloaded.soa_schema(reloaded_declaration)->view_name, "ExistingSoaView");
+    EXPECT_EQ(reloaded.soa_schema(reloaded_declaration)->const_view_name, "ExistingSoaConstView");
+    EXPECT_EQ(reloaded.soa_schema(reloaded_nested)->members[0].type.name, "authored::RenamedSoa");
+    EXPECT_EQ(reloaded.soa_schema(reloaded_nested)->members[0].fixed_schema, "RenamedSoa");
+    EXPECT_EQ(reloaded.soa_schema(reloaded_nested)->members[0].nested_schema, "RenamedSoa");
+    EXPECT_EQ(soa_type(reloaded, reloaded_nested).columns[0].nested_type, *reloaded_type);
+    EXPECT_EQ(reloaded.record_schema(reloaded_record)->members[1].type.name,
+              "authored::RenamedSoa");
+    auto const module_source{std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
+        return source.path.filename() == "modules.lispb";
+    })};
+    ASSERT_NE(module_source, reloaded.source_files().end());
+    EXPECT_NE(module_source->text.find("; Keep the SoA declaration note."), std::string::npos);
+    EXPECT_NE(module_source->text.find("; Keep the custom function note."), std::string::npos);
+}
+
+TEST(EditableSchemaDocument, RejectsRenamingRegisteredSoaAlias) {
+    auto document{fixture_document()};
+    auto const declaration{declaration_id(document, "soa_fixture", "FChild")};
+    auto const revision{document.revision()};
+
+    auto renamed{
+        document.apply(RenameDeclaration{.declaration = declaration, .new_name = "FRenamedChild"})};
+
+    ASSERT_FALSE(renamed.has_value());
+    EXPECT_NE(renamed.error().message.find("registered as '@child'"), std::string::npos);
+    EXPECT_EQ(document.revision(), revision);
+    EXPECT_FALSE(document.dirty());
+    EXPECT_EQ(document.declaration(declaration)->identity.name, "FChild");
+}
+
 TEST(EditableSchemaDocument, DeletesSourceDeclarationThroughExactUndoableTombstone) {
     TemporarySchema files;
     auto document{files.load()};

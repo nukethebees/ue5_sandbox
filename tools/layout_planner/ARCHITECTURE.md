@@ -65,11 +65,15 @@ Stable members can be structurally edited only after those advanced forms are pr
 unsupported derived allocator/mutable-view surfaces take canonical fallback.
 
 Declaration rename is a typed document transaction rather than text replacement. Supported enum,
-integer-scalar, representation, packed-value, and record declarations retain their `DeclarationId`, discover users from the resolved graph, repair
-the corresponding shared-schema `TypeRef` fields to an unambiguous qualified spelling, resolves the
-whole candidate graph, and rerenders every affected top-level declaration. Registered aliases are
-rejected because the types registry does not yet participate in source-aware edits. SoA rename is
-also rejected until nested schema names and raw generated-code surfaces can be repaired safely.
+integer-scalar, representation, packed-value, record, union, and ordinary SoA declarations retain
+their `DeclarationId`, discover users from the resolved graph, repair the corresponding shared-
+schema `TypeRef` fields to an unambiguous qualified spelling, resolve the whole candidate graph, and
+rerender every affected top-level declaration. SoA rename also repairs module-local
+`nested-schema`/`fixed-schema` identities. Explicit view, mask, fixed-storage, and allocation helper
+names remain stable; implicit generated names follow the renamed declaration, and collisions roll
+the transaction back. The owned SoA name token is patched locally so comments and custom function
+text survive. Registered aliases remain rejected because the types registry does not yet
+participate in source-aware edits; vector-SoA modules are not ordinary editable declarations.
 
 Deletion is likewise enforced by the shared editable document rather than only by the frontend.
 Every typed delete rejects a declaration with resolved reverse users before mutating the manifest,

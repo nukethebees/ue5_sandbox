@@ -423,6 +423,20 @@ auto parse_owned_source_declaration(std::string_view const original,
     }
 }
 
+auto parse_owned_source_declaration(std::string_view const original, std::string_view const head)
+    -> std::optional<Form> {
+    try {
+        auto forms{codegen::sexpr::read_forms("editable declaration", original)};
+        if (forms.size() != 1 || forms.front().head() != head ||
+            forms.front().children.size() < 2) {
+            return std::nullopt;
+        }
+        return std::move(forms.front());
+    } catch (std::exception const&) {
+        return std::nullopt;
+    }
+}
+
 auto try_render_source_preserved_enum(codegen::EnumSchema const& schema,
                                       std::string_view const original)
     -> std::optional<std::string> {
@@ -1622,8 +1636,13 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
         schema.single_allocation_allocator.has_value()) {
         return std::nullopt;
     }
-    auto parsed{parse_owned_source_declaration(original, "struct", schema.name)};
+    auto parsed{parse_owned_source_declaration(original, "struct")};
     if (!parsed.has_value()) {
+        return std::nullopt;
+    }
+
+    std::vector<SourceReplacement> replacements;
+    if (!patch_source_form(parsed->children[1], schema.name, original, replacements)) {
         return std::nullopt;
     }
 
@@ -1728,7 +1747,6 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                   schema.layout_only ? std::optional<std::string>{"true"} : std::nullopt},
         std::pair{"field-mask-name", schema.field_mask_name},
         std::pair{"field-enum-name", schema.field_enum_name}}};
-    std::vector<SourceReplacement> replacements;
     if (!patch_source_properties(*parsed, 1, properties, "    ", original, replacements)) {
         return std::nullopt;
     }
@@ -2340,6 +2358,29 @@ auto EditableSchemaDocument::preview_source_updates() const
                                         find_declaration(types_.type(user).identity)};
                                     if (user_declaration.has_value()) {
                                         touched.insert(*user_declaration);
+                                    }
+                                }
+                                if (std::holds_alternative<SoaType>(
+                                        types_.type(*type).definition) &&
+                                    soa_schema(edit.declaration) != nullptr) {
+                                    for (auto const& candidate : declarations_) {
+                                        if (candidate.module_index != renamed->module_index) {
+                                            continue;
+                                        }
+                                        auto const* candidate_schema{soa_schema(candidate.id)};
+                                        if (candidate_schema == nullptr) {
+                                            continue;
+                                        }
+                                        auto const references_renamed{std::ranges::any_of(
+                                            candidate_schema->members, [&](auto const& member) {
+                                                return member.nested_schema ==
+                                                           renamed->identity.name ||
+                                                       member.fixed_schema ==
+                                                           renamed->identity.name;
+                                            })};
+                                        if (references_renamed) {
+                                            touched.insert(candidate.id);
+                                        }
                                     }
                                 }
                             }
@@ -3045,10 +3086,10 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                         SchemaEditError{"Declaration is missing from the type graph"}};
                 }
                 auto const& target_definition{types_.type(*target).definition};
-                if (std::holds_alternative<SoaType>(target_definition)) {
-                    return std::unexpected{SchemaEditError{
-                        "Renaming SoA declarations requires nested/generated-name repair and is "
-                        "not enabled yet"}};
+                if (std::holds_alternative<SoaType>(target_definition) &&
+                    soa_schema(edit.declaration) == nullptr) {
+                    return std::unexpected{
+                        SchemaEditError{"Only struct SoA declarations can be renamed"}};
                 }
                 for (auto const& [registered_name, cpp_type] : manifest_.types) {
                     static_cast<void>(cpp_type);
@@ -3175,8 +3216,17 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                             }
                             auto& schema{soa_module->structs[user_info.declaration_index]};
                             for (std::size_t index{}; index < schema.members.size(); ++index) {
-                                repair_ref(schema.members[index].type,
+                                auto& source_member{schema.members[index]};
+                                repair_ref(source_member.type,
                                            resolved->columns[index].semantic_type.type);
+                                if (resolved->columns[index].nested_type == target &&
+                                    source_member.nested_schema.has_value()) {
+                                    source_member.nested_schema = edit.new_name;
+                                }
+                                if (user_info.module_index == declaration_it->module_index &&
+                                    source_member.fixed_schema == old_name) {
+                                    source_member.fixed_schema = edit.new_name;
+                                }
                             }
                         }
                     }
@@ -3250,6 +3300,10 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                         auto& unions{std::get<codegen::UnionModuleSchema>(target_module)};
                         auto const index{declaration_it->declaration_index - unions.unions.size()};
                         unions.tagged_unions[index].name = edit.new_name;
+                    } else if (std::holds_alternative<SoaType>(target_definition)) {
+                        std::get<codegen::SoaModuleSchema>(target_module)
+                            .structs[declaration_it->declaration_index]
+                            .name = edit.new_name;
                     } else {
                         throw std::invalid_argument{"Declaration kind cannot be renamed"};
                     }
