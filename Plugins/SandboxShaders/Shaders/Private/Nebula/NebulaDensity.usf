@@ -1,4 +1,6 @@
+#ifndef SANDBOX_STANDALONE_DXC
 #include "/Engine/Public/Platform.ush"
+#endif
 
 RWTexture3D<float> OutputTexture;
 int3 OutputSize;

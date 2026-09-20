@@ -1,5 +1,9 @@
+#ifndef SANDBOX_STANDALONE_DXC
 #include "/Engine/Public/Platform.ush"
 #include "/Plugin/SandboxShaders/Common/ProceduralNoise.ush"
+#else
+#include "../../Common/ProceduralNoise.ush"
+#endif
 
 RWTexture2D<float4> OutputTexture;
 int2 OutputSize;

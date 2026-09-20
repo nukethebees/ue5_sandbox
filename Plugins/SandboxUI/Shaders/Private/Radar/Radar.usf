@@ -1,4 +1,6 @@
+#ifndef SANDBOX_STANDALONE_DXC
 #include "/Engine/Public/Platform.ush"
+#endif
 
 struct FRadarInstance {
     float3 radar_position;

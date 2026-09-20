@@ -1,7 +1,11 @@
 #ifndef SANDBOX_SHADERS_NEBULA_VOLUME
 #define SANDBOX_SHADERS_NEBULA_VOLUME
 
+#ifdef SANDBOX_STANDALONE_DXC
+#include "NebulaCommon.ush"
+#else
 #include "/Plugin/SandboxShaders/Private/Nebula/NebulaCommon.ush"
+#endif
 
 float2 sbx_nebula_ray_box(float3 const ray_origin, float3 const ray_direction) {
     float3 const safe_direction = float3(

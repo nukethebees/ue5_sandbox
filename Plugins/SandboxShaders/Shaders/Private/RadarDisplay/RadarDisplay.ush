@@ -1,4 +1,8 @@
+#ifdef SANDBOX_STANDALONE_DXC
+#include "../../Common/ProceduralNoise.ush"
+#else
 #include "/Plugin/SandboxShaders/Common/ProceduralNoise.ush"
+#endif
 
 float sbx_radar_contact(float2 position, float4 contact, float time_seconds) {
     float const distance_to_contact = length(position - contact.xy);

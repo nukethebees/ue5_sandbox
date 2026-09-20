@@ -1,4 +1,6 @@
+#ifndef SANDBOX_STANDALONE_DXC
 #include "/Engine/Public/Platform.ush"
+#endif
 
 struct FGpuSparkBurst {
     float4 LocationSpawnTime;

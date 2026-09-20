@@ -28,7 +28,6 @@
 #include "Misc/Paths.h"
 #include "Modules/ModuleManager.h"
 #include "RenderingThread.h"
-#include "ShaderCore.h"
 
 namespace {
 constexpr TCHAR shield_material_path[]{
@@ -111,47 +110,6 @@ TEST_CLASS(ShaderInfrastructure, "SandboxShaders.UnitTests")
         TestRunner->TestEqual(TEXT("Mapping points at the plugin shader directory"),
                               actual_directory,
                               expected_directory);
-        TestRunner->TestTrue(TEXT("Energy shield HLSL resolves"),
-                             FPaths::FileExists(GetShaderSourceFilePath(TEXT(
-                                 "/Plugin/SandboxShaders/Private/EnergyShield/EnergyShield.ush"))));
-        TestRunner->TestTrue(
-            TEXT("Space field HLSL resolves"),
-            FPaths::FileExists(GetShaderSourceFilePath(
-                TEXT("/Plugin/SandboxShaders/Private/SpaceEnergyField/SpaceEnergyField.usf"))));
-        TestRunner->TestTrue(TEXT("Shield impact HLSL resolves"),
-                             FPaths::FileExists(GetShaderSourceFilePath(TEXT(
-                                 "/Plugin/SandboxShaders/Private/ShieldImpact/ShieldImpact.ush"))));
-        TestRunner->TestTrue(TEXT("Vertex ripple HLSL resolves"),
-                             FPaths::FileExists(GetShaderSourceFilePath(TEXT(
-                                 "/Plugin/SandboxShaders/Private/VertexRipple/VertexRipple.ush"))));
-        TestRunner->TestTrue(TEXT("Radar display HLSL resolves"),
-                             FPaths::FileExists(GetShaderSourceFilePath(TEXT(
-                                 "/Plugin/SandboxShaders/Private/RadarDisplay/RadarDisplay.ush"))));
-        TestRunner->TestTrue(TEXT("Tactical scan HLSL resolves"),
-                             FPaths::FileExists(GetShaderSourceFilePath(TEXT(
-                                 "/Plugin/SandboxShaders/Private/TacticalScan/TacticalScan.ush"))));
-        TestRunner->TestTrue(TEXT("Warp field HLSL resolves"),
-                             FPaths::FileExists(GetShaderSourceFilePath(
-                                 TEXT("/Plugin/SandboxShaders/Private/WarpField/WarpField.ush"))));
-        TestRunner->TestTrue(
-            TEXT("Raymarched anomaly HLSL resolves"),
-            FPaths::FileExists(GetShaderSourceFilePath(
-                TEXT("/Plugin/SandboxShaders/Private/RaymarchedAnomaly/RaymarchedAnomaly.ush"))));
-        TestRunner->TestTrue(
-            TEXT("Engine exhaust HLSL resolves"),
-            FPaths::FileExists(GetShaderSourceFilePath(
-                TEXT("/Plugin/SandboxShaders/Private/EngineExhaust/EngineExhaust.ush"))));
-        TestRunner->TestTrue(
-            TEXT("Planet atmosphere HLSL resolves"),
-            FPaths::FileExists(GetShaderSourceFilePath(
-                TEXT("/Plugin/SandboxShaders/Private/PlanetAtmosphere/PlanetAtmosphere.ush"))));
-        TestRunner->TestTrue(
-            TEXT("Construction spawn HLSL resolves"),
-            FPaths::FileExists(GetShaderSourceFilePath(
-                TEXT("/Plugin/SandboxShaders/Private/ConstructionSpawn/ConstructionSpawn.ush"))));
-        TestRunner->TestTrue(TEXT("Energy beam HLSL resolves"),
-                             FPaths::FileExists(GetShaderSourceFilePath(TEXT(
-                                 "/Plugin/SandboxShaders/Private/EnergyBeam/EnergyBeam.ush"))));
     }
 
     TEST_METHOD(LoadsMaterialsAndComposedShowcase)

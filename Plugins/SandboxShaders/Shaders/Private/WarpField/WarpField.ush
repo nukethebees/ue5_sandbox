@@ -1,7 +1,11 @@
 #ifndef SANDBOX_SHADERS_WARP_FIELD
 #define SANDBOX_SHADERS_WARP_FIELD
 
+#ifdef SANDBOX_STANDALONE_DXC
+#include "../../Common/ProceduralNoise.ush"
+#else
 #include "/Plugin/SandboxShaders/Common/ProceduralNoise.ush"
+#endif
 
 float4 sbx_warp_field(float3 local_position,
                       float3 normal_ws,

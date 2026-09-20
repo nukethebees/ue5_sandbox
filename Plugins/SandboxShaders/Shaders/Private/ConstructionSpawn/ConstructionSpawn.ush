@@ -1,7 +1,11 @@
 #ifndef SANDBOX_SHADERS_CONSTRUCTION_SPAWN
 #define SANDBOX_SHADERS_CONSTRUCTION_SPAWN
 
+#ifdef SANDBOX_STANDALONE_DXC
+#include "../../Common/ProceduralNoise.ush"
+#else
 #include "/Plugin/SandboxShaders/Common/ProceduralNoise.ush"
+#endif
 
 float4 sbx_construction_spawn(float3 local_position,
                               float progress,
@@ -16,7 +20,7 @@ float4 sbx_construction_spawn(float3 local_position,
     // reveal attached to the mesh if the showcase actor is translated or rotated.
     float3 const position = local_position / 50.0;
     float const height = position.z * 0.5 + 0.5;
-    float const assembly_noise = sbx_fbm(position * noise_scale + animation_time * 0.08);
+    float const assembly_noise = sbx_fbm(position.xy * noise_scale + animation_time * 0.08);
     float const noisy_threshold = progress + (assembly_noise - 0.5) * 0.16;
     float const signed_reveal = noisy_threshold - height;
     float const visible = step(0.0, signed_reveal);

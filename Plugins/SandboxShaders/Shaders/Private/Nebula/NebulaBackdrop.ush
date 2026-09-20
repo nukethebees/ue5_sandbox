@@ -1,7 +1,11 @@
 #ifndef SANDBOX_SHADERS_NEBULA_BACKDROP
 #define SANDBOX_SHADERS_NEBULA_BACKDROP
 
+#ifdef SANDBOX_STANDALONE_DXC
+#include "NebulaCommon.ush"
+#else
 #include "/Plugin/SandboxShaders/Private/Nebula/NebulaCommon.ush"
+#endif
 
 float4 sbx_nebula_backdrop(float2 uv,
                            float3 camera_position_local,

@@ -1,7 +1,11 @@
 #ifndef SANDBOX_SHADERS_SHIELD_IMPACT
 #define SANDBOX_SHADERS_SHIELD_IMPACT
 
+#ifdef SANDBOX_STANDALONE_DXC
+#include "../../Common/ProceduralNoise.ush"
+#else
 #include "/Plugin/SandboxShaders/Common/ProceduralNoise.ush"
+#endif
 
 float sbx_hex_edges(float2 value) {
     float2 const skewed = float2(value.x * 1.1547, value.y + value.x * 0.57735);

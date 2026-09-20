@@ -1,4 +1,8 @@
+#ifdef SANDBOX_STANDALONE_DXC
+#include "../../Common/ProceduralNoise.ush"
+#else
 #include "/Plugin/SandboxShaders/Common/ProceduralNoise.ush"
+#endif
 
 float sbx_hex_line(float2 coordinates) {
     float2 const repeated = frac(coordinates) - 0.5;

@@ -1,7 +1,11 @@
 #ifndef SANDBOX_SHADERS_ENGINE_EXHAUST
 #define SANDBOX_SHADERS_ENGINE_EXHAUST
 
+#ifdef SANDBOX_STANDALONE_DXC
+#include "../../Common/ProceduralNoise.ush"
+#else
 #include "/Plugin/SandboxShaders/Common/ProceduralNoise.ush"
+#endif
 
 float4 sbx_engine_exhaust(float2 uv,
                           float3 local_position,
