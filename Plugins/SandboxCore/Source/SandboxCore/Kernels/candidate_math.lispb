@@ -5,16 +5,6 @@
     (tests "standard/candidate_math_kernels_tests.cpp")
     (header-include "standard/candidate_math_kernels.h")
     (namespace ml::kernel_lab))
-  (emit unreal-avx2-lab
-    (header "generated/add_scaled_avx2_lab.h")
-    (source "generated/add_scaled_avx2_lab.cpp")
-    (header-include "generated/add_scaled_avx2_lab.h")
-    (namespace ml::kernel_benchmark)
-    (select
-      (operation add_scaled)
-      (type float)
-      (storage array array scalar)
-      (variant out-of-place)))
   (emit native-x86-simd-lab
     (header "native/generated/add_scaled_x86_simd_lab.h")
     (source "native/generated/add_scaled_x86_simd_lab_avx2.cpp")
