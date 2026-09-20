@@ -1,0 +1,74 @@
+#include <ioj/sim/player/flight_model_config.h>
+
+#include <gtest/gtest.h>
+
+#include <array>
+#include <limits>
+
+namespace ioj::sim::player::tests {
+TEST(FlightModelConfig, DefaultLoadoutContainsFourValidDistinctPresets) {
+    auto const loadout{make_default_flight_model_loadout()};
+    EXPECT_EQ(loadout.initial_slot, FlightModelSlot::Up);
+
+    std::array const expected{
+        FlightModelPreset::Starfox,
+        FlightModelPreset::Fighter,
+        FlightModelPreset::Skater,
+        FlightModelPreset::Gunship,
+    };
+    std::array const slots{
+        FlightModelSlot::Up,
+        FlightModelSlot::Right,
+        FlightModelSlot::Down,
+        FlightModelSlot::Left,
+    };
+    for (std::size_t index{}; index < slots.size(); ++index) {
+        auto const& profile{flight_model_profile(loadout, slots[index])};
+        EXPECT_EQ(profile.base_preset, expected[index]);
+        EXPECT_FALSE(profile.customized);
+        EXPECT_TRUE(validate_flight_model_config(profile.config).has_value());
+    }
+}
+
+TEST(FlightModelConfig, PresetsExpressDifferentVelocitySemantics) {
+    auto const starfox{make_flight_model_profile(FlightModelPreset::Starfox)};
+    auto const fighter{make_flight_model_profile(FlightModelPreset::Fighter)};
+    auto const skater{make_flight_model_profile(FlightModelPreset::Skater)};
+    auto const gunship{make_flight_model_profile(FlightModelPreset::Gunship)};
+
+    EXPECT_EQ(starfox.config.translation.forward.automatic.semantic,
+              TranslationSemantic::TargetVelocity);
+    EXPECT_EQ(starfox.config.translation.forward.automatic.response.mode,
+              ResponseMode::SecondOrder);
+    EXPECT_EQ(fighter.config.translation.forward.manual.semantic,
+              TranslationSemantic::Acceleration);
+    EXPECT_GT(fighter.config.translation.forward.passive_drag, 0.f);
+    EXPECT_EQ(fighter.config.facing_velocity.mode, FacingVelocityCoupling::LockedToFacing);
+    EXPECT_EQ(skater.config.translation.forward.manual.semantic, TranslationSemantic::Acceleration);
+    EXPECT_EQ(skater.config.translation.forward.passive_drag, 0.f);
+    EXPECT_EQ(skater.config.facing_velocity.mode, FacingVelocityCoupling::Independent);
+    EXPECT_EQ(gunship.config.translation.right.manual.semantic,
+              TranslationSemantic::TargetVelocity);
+    EXPECT_EQ(gunship.config.translation.up.manual.semantic, TranslationSemantic::TargetVelocity);
+}
+
+TEST(FlightModelConfig, ValidationRejectsUnsafeSecondOrderAndNumericValues) {
+    auto config{make_flight_model_profile(FlightModelPreset::Starfox).config};
+    config.translation.forward.automatic.response.second_order.settling_time = 0.f;
+    EXPECT_EQ(validate_flight_model_config(config).error(),
+              FlightModelConfigError::InvalidSecondOrderSettlingTime);
+
+    config = make_flight_model_profile(FlightModelPreset::Starfox).config;
+    config.translation.forward.automatic.response.second_order.damping_ratio = 1.f;
+    EXPECT_EQ(validate_flight_model_config(config).error(),
+              FlightModelConfigError::InvalidSecondOrderDampingRatio);
+
+    config = make_flight_model_profile(FlightModelPreset::Skater).config;
+    config.translation.forward.normal.positive_acceleration = -1.f;
+    EXPECT_EQ(validate_flight_model_config(config).error(), FlightModelConfigError::NegativeValue);
+
+    config = make_flight_model_profile(FlightModelPreset::Gunship).config;
+    config.maximum_resultant_speed = std::numeric_limits<float>::infinity();
+    EXPECT_EQ(validate_flight_model_config(config).error(), FlightModelConfigError::NonFiniteValue);
+}
+}
