@@ -32,26 +32,9 @@ auto collect_cpp_identifiers(std::string_view const spelling) -> std::set<std::s
     return result;
 }
 
-auto column_name(std::string_view const identifier) -> std::string {
-    std::string result;
-    result.reserve(identifier.size());
-    bool capitalize{true};
-    for (auto const character : identifier) {
-        if (character == '_') {
-            capitalize = true;
-            continue;
-        }
-        result.push_back(
-            capitalize ? static_cast<char>(std::toupper(static_cast<unsigned char>(character)))
-                       : character);
-        capitalize = false;
-    }
-    return result;
-}
-
 auto layout_column_name(std::string_view const identifier,
                         std::set<std::string> const& type_identifiers) -> std::string {
-    auto result{column_name(identifier)};
+    auto result{title_case_identifier(identifier)};
     if (type_identifiers.contains(result)) {
         result += "Column";
     }

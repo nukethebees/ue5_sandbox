@@ -78,6 +78,23 @@ auto native_spelling(std::string const& spelling) -> std::string {
     return spelling;
 }
 
+auto title_case_identifier(std::string_view const identifier) -> std::string {
+    std::string result;
+    result.reserve(identifier.size());
+    bool capitalize{true};
+    for (auto const character : identifier) {
+        if (character == '_') {
+            capitalize = true;
+            continue;
+        }
+        result.push_back(
+            capitalize ? static_cast<char>(std::toupper(static_cast<unsigned char>(character)))
+                       : character);
+        capitalize = false;
+    }
+    return result;
+}
+
 auto column_apply_arrays_function(std::vector<std::string> const& columns) -> Node {
     std::vector<std::string> body{"return std::forward<TFunc>(func)("};
     auto const count{columns.size()};

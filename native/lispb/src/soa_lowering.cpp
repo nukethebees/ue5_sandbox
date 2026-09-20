@@ -11,23 +11,6 @@
 namespace codegen::detail {
 namespace {
 
-auto title_case_identifier(std::string_view const identifier) -> std::string {
-    std::string result;
-    result.reserve(identifier.size());
-    bool capitalize{true};
-    for (auto const character : identifier) {
-        if (character == '_') {
-            capitalize = true;
-            continue;
-        }
-        result.push_back(
-            capitalize ? static_cast<char>(std::toupper(static_cast<unsigned char>(character)))
-                       : character);
-        capitalize = false;
-    }
-    return result;
-}
-
 auto mask_field_width(SoaMemberSchema const& member) -> std::string {
     if (member.mask_dimensions.empty()) {
         return "1";
