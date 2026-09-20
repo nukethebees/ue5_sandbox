@@ -996,8 +996,9 @@ struct CheckedValue {
         assert(serial_value <= static_cast<std::uint32_t>(serial_value_mask));
         assert(state_value < codegen_compile_fixture::DomainState::COUNT);
         return CheckedValue{static_cast<storage_type>(
-            (static_cast<storage_type>(serial_value) << serial_offset) |
-            (static_cast<storage_type>(static_cast<state_underlying_type>(state_value))
+            ((static_cast<storage_type>(serial_value) & serial_value_mask) << serial_offset) |
+            ((static_cast<storage_type>(static_cast<state_underlying_type>(state_value)) &
+              state_value_mask)
              << state_offset))};
     }
 
