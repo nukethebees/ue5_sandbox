@@ -3460,6 +3460,27 @@ TEST(EditableSchemaDocument, AuthorsAndRemovesSingleAllocationOwners) {
     ASSERT_EQ(document.soa_schema(declaration)->single_allocation_variants.size(), 1U);
     EXPECT_EQ(document.soa_schema(declaration)->single_allocation_variants[0].name,
               "ExistingSoaPool");
+
+    auto duplicate_name{
+        document.unique_soa_storage_owner_name(declaration, "ExistingSoaPool_copy")};
+    ASSERT_TRUE(duplicate_name.has_value()) << duplicate_name.error().message;
+    auto variants{*document.soa_schema(declaration)};
+    auto variant_copy{variants.single_allocation_variants.front()};
+    variant_copy.name = *duplicate_name;
+    variant_copy.allocator.name = "std::uint32_t";
+    variants.single_allocation_variants.push_back(std::move(variant_copy));
+    std::swap(variants.single_allocation_variants[0], variants.single_allocation_variants[1]);
+    applied = document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(variants)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    EXPECT_EQ(document.soa_schema(declaration)->single_allocation_variants[0].name,
+              "ExistingSoaPool_copy");
+    EXPECT_EQ(document.soa_schema(declaration)->single_allocation_variants[0].allocator.name,
+              "std::uint32_t");
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_EQ(document.soa_schema(declaration)->single_allocation_variants.size(), 1U);
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_EQ(document.soa_schema(declaration)->single_allocation_variants.size(), 2U);
     preview = document.preview_source_updates();
     ASSERT_TRUE(preview.has_value()) << preview.error().message;
     EXPECT_NE(preview->front().updated.find("(single-allocation ExistingSoaCompact"),
@@ -3474,8 +3495,11 @@ TEST(EditableSchemaDocument, AuthorsAndRemovesSingleAllocationOwners) {
     auto const* reloaded_schema{reloaded.soa_schema(reloaded_declaration)};
     ASSERT_NE(reloaded_schema, nullptr);
     EXPECT_EQ(reloaded_schema->single_allocation, "ExistingSoaCompact");
-    ASSERT_EQ(reloaded_schema->single_allocation_variants.size(), 1U);
-    EXPECT_EQ(reloaded_schema->single_allocation_variants[0].allocator.name, "@existing");
+    ASSERT_EQ(reloaded_schema->single_allocation_variants.size(), 2U);
+    EXPECT_EQ(reloaded_schema->single_allocation_variants[0].name, "ExistingSoaPool_copy");
+    EXPECT_EQ(reloaded_schema->single_allocation_variants[0].allocator.name, "std::uint32_t");
+    EXPECT_EQ(reloaded_schema->single_allocation_variants[1].name, "ExistingSoaPool");
+    EXPECT_EQ(reloaded_schema->single_allocation_variants[1].allocator.name, "@existing");
 
     auto disabled{*reloaded_schema};
     disabled.single_allocation.reset();

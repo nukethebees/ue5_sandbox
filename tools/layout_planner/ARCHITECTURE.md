@@ -102,7 +102,10 @@ responsible for the schema-derived layout/view names. Adding, renaming, or remov
 single-allocation form patches only that owned form range, preserving surrounding comments and
 custom functions. Owner changes retain allocator variants. The inspector will not disable a form
 while variants remain, avoiding silent destructive loss before the inline variant editor handles
-their explicit removal.
+their explicit removal. The variant editor stages a valid allocator reference before insertion, so
+it never needs an unresolved placeholder declaration. Variant owner names reserve their generated
+`Storage` partner, and all direct edits, duplication, deletion, and reorder operations replace the
+shared SoA schema through normal document history rather than maintaining UI-owned semantic rows.
 
 Deletion is likewise enforced by the shared editable document rather than only by the frontend.
 Every typed delete rejects a declaration with resolved reverse users before mutating the manifest,

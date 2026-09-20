@@ -4747,6 +4747,26 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                       soa_single_allocation_name_.size(),
                       "%s",
                       schema->single_allocation.value_or("").c_str());
+        soa_single_allocation_variant_names_.clear();
+        soa_single_allocation_variant_allocators_.clear();
+        soa_single_allocation_variant_names_.reserve(schema->single_allocation_variants.size());
+        soa_single_allocation_variant_allocators_.reserve(
+            schema->single_allocation_variants.size());
+        for (auto const& variant : schema->single_allocation_variants) {
+            std::array<char, 128> name{};
+            std::array<char, 128> allocator{};
+            std::snprintf(name.data(), name.size(), "%s", variant.name.c_str());
+            std::snprintf(allocator.data(), allocator.size(), "%s", variant.allocator.name.c_str());
+            soa_single_allocation_variant_names_.push_back(name);
+            soa_single_allocation_variant_allocators_.push_back(allocator);
+        }
+        if (schema->single_allocation_variants.empty()) {
+            soa_single_allocation_variant_index_.reset();
+        } else if (!soa_single_allocation_variant_index_.has_value() ||
+                   *soa_single_allocation_variant_index_ >=
+                       schema->single_allocation_variants.size()) {
+            soa_single_allocation_variant_index_ = 0;
+        }
         soa_fixed_container_names_.clear();
         if (schema->fixed.has_value()) {
             std::snprintf(soa_fixed_storage_name_.data(),
@@ -5537,10 +5557,199 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             }
         }
         ImGui::Text("Generated storage: %sStorage", schema->single_allocation->c_str());
-        if (!schema->single_allocation_variants.empty()) {
-            ImGui::TextDisabled("%zu allocator variant(s) are retained by owner edits.",
-                                schema->single_allocation_variants.size());
+        ImGui::TextUnformatted("New variant allocator");
+        ImGui::SetNextItemWidth(std::max(120.0F, ImGui::GetContentRegionAvail().x - 120.0F));
+        ImGui::InputText("##new-variant-allocator",
+                         soa_new_single_allocation_allocator_.data(),
+                         soa_new_single_allocation_allocator_.size());
+        ImGui::SameLine();
+        if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
+            std::snprintf(soa_new_single_allocation_allocator_.data(),
+                          soa_new_single_allocation_allocator_.size(),
+                          "%s",
+                          picked->c_str());
         }
+        ImGui::SameLine();
+        ImGui::BeginDisabled(soa_new_single_allocation_allocator_.front() == '\0');
+        if (ImGui::Button("+ Variant")) {
+            auto variant_name{document_->unique_soa_storage_owner_name(
+                *declaration, schema->name + "SingleVariant")};
+            if (!variant_name.has_value()) {
+                schema_edit_message_ = variant_name.error().message;
+            } else {
+                auto replacement{*schema};
+                replacement.single_allocation_variants.push_back(codegen::SingleAllocationVariant{
+                    .name = std::move(*variant_name),
+                    .allocator =
+                        codegen::TypeRef{.name = soa_new_single_allocation_allocator_.data(),
+                                         .suffix = {},
+                                         .nested = std::nullopt}});
+                auto const new_index{replacement.single_allocation_variants.size() - 1};
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_single_allocation_variant_index_ = new_index;
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+        }
+        ImGui::EndDisabled();
+
+        auto const variant_index{soa_single_allocation_variant_index_};
+        auto const has_variant{variant_index.has_value() &&
+                               *variant_index < schema->single_allocation_variants.size()};
+        ImGui::BeginDisabled(!has_variant);
+        if (ImGui::Button("Duplicate variant")) {
+            auto variant_name{document_->unique_soa_storage_owner_name(
+                *declaration, schema->single_allocation_variants[*variant_index].name + "_copy")};
+            if (!variant_name.has_value()) {
+                schema_edit_message_ = variant_name.error().message;
+            } else {
+                auto replacement{*schema};
+                auto copy{replacement.single_allocation_variants[*variant_index]};
+                copy.name = std::move(*variant_name);
+                replacement.single_allocation_variants.insert(
+                    replacement.single_allocation_variants.begin() +
+                        static_cast<std::ptrdiff_t>(*variant_index + 1),
+                    std::move(copy));
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_single_allocation_variant_index_ = *variant_index + 1;
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+        }
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!has_variant || *variant_index == 0);
+        if (ImGui::Button("Variant up")) {
+            auto replacement{*schema};
+            std::swap(replacement.single_allocation_variants[*variant_index],
+                      replacement.single_allocation_variants[*variant_index - 1]);
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_single_allocation_variant_index_ = *variant_index - 1;
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        ImGui::BeginDisabled(!has_variant ||
+                             *variant_index + 1 >= schema->single_allocation_variants.size());
+        if (ImGui::Button("Variant down")) {
+            auto replacement{*schema};
+            std::swap(replacement.single_allocation_variants[*variant_index],
+                      replacement.single_allocation_variants[*variant_index + 1]);
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_single_allocation_variant_index_ = *variant_index + 1;
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Button("Delete variant")) {
+            auto replacement{*schema};
+            replacement.single_allocation_variants.erase(
+                replacement.single_allocation_variants.begin() +
+                static_cast<std::ptrdiff_t>(*variant_index));
+            auto const next_index{
+                replacement.single_allocation_variants.empty()
+                    ? std::optional<std::size_t>{}
+                    : std::optional{std::min(*variant_index,
+                                             replacement.single_allocation_variants.size() - 1)}};
+            if (apply_document_edit(
+                    ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+                soa_single_allocation_variant_index_ = next_index;
+                soa_editor_declaration_.reset();
+                return true;
+            }
+        }
+        ImGui::EndDisabled();
+
+        if (soa_single_allocation_variant_names_.size() ==
+                schema->single_allocation_variants.size() &&
+            soa_single_allocation_variant_allocators_.size() ==
+                schema->single_allocation_variants.size() &&
+            ImGui::BeginTable("soa-single-allocation-variants",
+                              3,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
+            ImGui::TableSetupColumn("Owner type");
+            ImGui::TableSetupColumn("Allocator type");
+            ImGui::TableHeadersRow();
+            for (std::size_t index{}; index < schema->single_allocation_variants.size(); ++index) {
+                ImGui::PushID(static_cast<int>(index));
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                auto const row_selected{soa_single_allocation_variant_index_ == index};
+                if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+                    soa_single_allocation_variant_index_ = index;
+                }
+                if (ImGui::BeginDragDropSource()) {
+                    ImGui::SetDragDropPayload(
+                        "SOA_SINGLE_ALLOCATION_VARIANT_ROW", &index, sizeof(index));
+                    ImGui::Text("Move %s", schema->single_allocation_variants[index].name.c_str());
+                    ImGui::EndDragDropSource();
+                }
+                if (ImGui::BeginDragDropTarget()) {
+                    if (auto const* payload{
+                            ImGui::AcceptDragDropPayload("SOA_SINGLE_ALLOCATION_VARIANT_ROW")}) {
+                        auto const source_index{*static_cast<std::size_t const*>(payload->Data)};
+                        if (source_index < schema->single_allocation_variants.size() &&
+                            source_index != index) {
+                            pending = *schema;
+                            move_element(pending->single_allocation_variants, source_index, index);
+                            soa_single_allocation_variant_index_ = index;
+                        }
+                    }
+                    ImGui::EndDragDropTarget();
+                }
+
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(-1.0F);
+                auto const name_submitted{
+                    ImGui::InputText("##name",
+                                     soa_single_allocation_variant_names_[index].data(),
+                                     soa_single_allocation_variant_names_[index].size(),
+                                     ImGuiInputTextFlags_EnterReturnsTrue)};
+                if (name_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                    if (!pending.has_value()) {
+                        pending = *schema;
+                    }
+                    pending->single_allocation_variants[index].name =
+                        soa_single_allocation_variant_names_[index].data();
+                }
+
+                ImGui::TableNextColumn();
+                ImGui::SetNextItemWidth(std::max(60.0F, ImGui::GetContentRegionAvail().x - 28.0F));
+                auto const allocator_submitted{
+                    ImGui::InputText("##allocator",
+                                     soa_single_allocation_variant_allocators_[index].data(),
+                                     soa_single_allocation_variant_allocators_[index].size(),
+                                     ImGuiInputTextFlags_EnterReturnsTrue)};
+                if (allocator_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                    if (!pending.has_value()) {
+                        pending = *schema;
+                    }
+                    pending->single_allocation_variants[index].allocator.name =
+                        soa_single_allocation_variant_allocators_[index].data();
+                }
+                ImGui::SameLine();
+                if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
+                    if (!pending.has_value()) {
+                        pending = *schema;
+                    }
+                    pending->single_allocation_variants[index].allocator.name = std::move(*picked);
+                }
+                ImGui::PopID();
+            }
+            ImGui::EndTable();
+        }
+
         ImGui::BeginDisabled(!schema->single_allocation_variants.empty());
         if (ImGui::Button("Disable single allocation")) {
             auto replacement{*schema};
@@ -5579,6 +5788,16 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             std::ranges::any_of(pending->fixed->containers,
                                 [](std::string const& name) { return name.empty(); })) {
             schema_edit_message_ = "Fixed-layout container type cannot be empty.";
+            return false;
+        }
+        auto const invalid_variant{
+            std::ranges::find_if(pending->single_allocation_variants, [](auto const& variant) {
+                return variant.name.empty() || variant.allocator.name.empty();
+            })};
+        if (invalid_variant != pending->single_allocation_variants.end()) {
+            schema_edit_message_ = invalid_variant->name.empty()
+                                     ? "Single-allocation variant owner type cannot be empty."
+                                     : "Single-allocation variant allocator type cannot be empty.";
             return false;
         }
         if (apply_document_edit(
