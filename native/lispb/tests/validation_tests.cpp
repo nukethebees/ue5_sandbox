@@ -1124,6 +1124,15 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
         .definition_in_source = true,
     }};
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_soa_module();
+    module.structs.front().functions = {FunctionSchema{
+        .name = "invalid_static_const",
+        .return_type = TypeRef{"void"},
+        .is_const = true,
+        .is_static = true,
+    }};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsCustomSoaFunctionsCollidingWithGeneratedApisAndTypeNames) {

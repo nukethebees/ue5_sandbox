@@ -3820,6 +3820,121 @@ TEST(EditableSchemaDocument, AuthorsReordersAndRemovesSoaUsingDeclarations) {
     EXPECT_TRUE(final_document.soa_schema(final_declaration)->using_declarations.empty());
 }
 
+TEST(EditableSchemaDocument, AuthorsOrdersAndEditsSoaFunctionSignatures) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+
+    auto const original_revision{document.revision()};
+    auto replacement{*document.soa_schema(declaration)};
+    replacement.functions.front().name = "ExistingSoa";
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
+    ASSERT_FALSE(applied.has_value());
+    EXPECT_EQ(document.revision(), original_revision);
+    EXPECT_EQ(document.soa_schema(declaration)->functions.front().name, "clear");
+
+    replacement = *document.soa_schema(declaration);
+    replacement.functions.front().is_inline = true;
+    replacement.functions.insert(replacement.functions.begin(),
+                                 codegen::FunctionSchema{
+                                     .name = "inspect",
+                                     .return_type = codegen::TypeRef{"std::uint32_t"},
+                                     .parameters = {codegen::ParameterSchema{
+                                         .type = codegen::TypeRef{"std::uint32_t"},
+                                         .name = "index",
+                                         .default_value = "0",
+                                     }},
+                                     .body_lines = {"return values[index];"},
+                                     .is_const = true,
+                                     .is_noexcept = true,
+                                     .definition_in_source = true,
+                                 });
+    applied =
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto const* schema{document.soa_schema(declaration)};
+    ASSERT_EQ(schema->functions.size(), 2U);
+    EXPECT_EQ(schema->functions[0].name, "inspect");
+    EXPECT_EQ(schema->functions[1].name, "clear");
+    EXPECT_EQ(schema->functions[1].body_lines, std::vector<std::string>{"values.clear();"});
+    EXPECT_TRUE(schema->functions[1].is_noexcept);
+    EXPECT_TRUE(schema->functions[1].is_inline);
+
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_EQ(document.soa_schema(declaration)->functions.size(), 1U);
+    EXPECT_EQ(document.soa_schema(declaration)->functions.front().name, "clear");
+    ASSERT_TRUE(document.redo().value());
+    EXPECT_EQ(document.soa_schema(declaration)->functions.front().name, "inspect");
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& source{preview->front().updated};
+    auto const inspect_position{source.find("(function inspect std::uint32_t")};
+    auto const clear_position{source.find("(function clear void")};
+    EXPECT_NE(inspect_position, std::string::npos);
+    EXPECT_NE(clear_position, std::string::npos);
+    EXPECT_LT(inspect_position, clear_position);
+    EXPECT_NE(source.find(":definition-in-source true"), std::string::npos);
+    EXPECT_NE(source.find("(parameter index std::uint32_t :default \"0\")"), std::string::npos);
+    EXPECT_NE(source.find("; Keep the SoA declaration note."), std::string::npos);
+    EXPECT_NE(source.find("; Keep the values SoA member note."), std::string::npos);
+    EXPECT_NE(source.find("; Keep the custom function note."), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    schema = reloaded.soa_schema(reloaded_declaration);
+    ASSERT_EQ(schema->functions.size(), 2U);
+    EXPECT_EQ(schema->functions[0].name, "inspect");
+    ASSERT_EQ(schema->functions[0].parameters.size(), 1U);
+    EXPECT_EQ(schema->functions[0].parameters[0].default_value, "0");
+    EXPECT_TRUE(schema->functions[0].is_const);
+    EXPECT_TRUE(schema->functions[0].definition_in_source);
+    EXPECT_EQ(schema->functions[1].body_lines, std::vector<std::string>{"values.clear();"});
+    EXPECT_TRUE(schema->functions[1].is_inline);
+
+    replacement = *schema;
+    std::swap(replacement.functions[0], replacement.functions[1]);
+    applied = reloaded.apply(
+        ReplaceSoa{.declaration = reloaded_declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    EXPECT_EQ(reloaded.soa_schema(reloaded_declaration)->functions[0].name, "clear");
+    ASSERT_TRUE(reloaded.undo().value());
+    EXPECT_EQ(reloaded.soa_schema(reloaded_declaration)->functions[0].name, "inspect");
+    ASSERT_TRUE(reloaded.redo().value());
+    EXPECT_EQ(reloaded.soa_schema(reloaded_declaration)->functions[0].name, "clear");
+
+    replacement = *reloaded.soa_schema(reloaded_declaration);
+    replacement.functions.erase(replacement.functions.begin() + 1);
+    applied = reloaded.apply(
+        ReplaceSoa{.declaration = reloaded_declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    saved = reloaded.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto final_document{files.load()};
+    auto const final_declaration{
+        declaration_id(final_document, "authored_soa", "ExistingSoa", "authored")};
+    schema = final_document.soa_schema(final_declaration);
+    ASSERT_EQ(schema->functions.size(), 1U);
+    EXPECT_EQ(schema->functions.front().name, "clear");
+    EXPECT_EQ(schema->functions.front().body_lines, std::vector<std::string>{"values.clear();"});
+    auto const module_source{
+        std::ranges::find_if(final_document.source_files(), [](auto const& file) {
+            return file.path.filename() == "modules.lispb";
+        })};
+    ASSERT_NE(module_source, final_document.source_files().end());
+    EXPECT_NE(module_source->text.find("; Keep the custom function note."), std::string::npos);
+}
+
 TEST(EditableSchemaDocument, PreservesSoaMembersAndAdvancedFormsForStructuralEdits) {
     TemporarySchema files;
     auto document{files.load()};

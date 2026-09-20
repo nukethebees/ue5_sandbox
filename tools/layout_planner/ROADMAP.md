@@ -305,6 +305,13 @@ and support type picking plus direct navigation.
 Opaque generated `using` declaration fragments have a flat ordered editor with add, direct edit,
 delete, button reorder, and drag reorder. They remain source-backed escaped strings rather than
 being misrepresented as semantic graph relationships.
+Custom storage functions now have an initial flat lifecycle/signature editor: add, duplicate,
+delete, button/drag reorder, name, return type, const/noexcept/static qualifiers, and inline/source
+placement all submit ordinary SoA document commands. Parameters, bodies, dependencies, trailing
+returns, templates, and constraints remain visibly inspectable and are preserved exactly by these
+edits pending their own focused editors. Stable uniquely named function rows preserve surrounding
+source comments and unchanged body text through structural edits; ambiguous overloads and raw-body
+forms retain safe canonical fallback.
 
 - Create standard-library SoA declarations.
 - Add, remove, duplicate, and reorder columns.

@@ -1681,8 +1681,11 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
     Form const* fixed{};
     Form const* single_allocation{};
     auto members_limit{parsed->closing.span.offset};
+    auto functions_limit{parsed->closing.span.offset};
     auto found_member{false};
     auto member_region_ended{false};
+    auto found_function{false};
+    auto function_region_ended{false};
     for (auto const& child : parsed->children) {
         if (child.head() == "member") {
             if (member_region_ended || child.children.size() < 4) {
@@ -1696,22 +1699,22 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                 members_limit = child.token.span.offset;
             }
             if (child.head() == "function") {
+                if (function_region_ended || child.children.size() < 3) {
+                    return std::nullopt;
+                }
+                found_function = true;
                 functions.push_back(&child);
-            } else if (child.head() == "fixed") {
-                fixed = &child;
-            } else if (child.head() == "single-allocation") {
-                single_allocation = &child;
+            } else {
+                if (found_function && !function_region_ended) {
+                    function_region_ended = true;
+                    functions_limit = child.token.span.offset;
+                }
+                if (child.head() == "fixed") {
+                    fixed = &child;
+                } else if (child.head() == "single-allocation") {
+                    single_allocation = &child;
+                }
             }
-        }
-    }
-    if (functions.size() != schema.functions.size()) {
-        return std::nullopt;
-    }
-    for (std::size_t index{}; index < functions.size(); ++index) {
-        std::ostringstream rendered;
-        render_function(rendered, schema.functions[index], {});
-        if (!source_form_matches_rendered(*functions[index], rendered.str())) {
-            return std::nullopt;
         }
     }
     std::string trailing_forms;
@@ -1924,6 +1927,188 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
     }
     replacements.push_back(
         {.begin = members_begin, .end = members_end, .text = std::move(rendered_members)});
+
+    auto render_quoted_values = [](std::vector<std::string> const& values) {
+        std::ostringstream rendered;
+        render_quoted_list(rendered, values);
+        return std::move(rendered).str();
+    };
+    auto source_property = [](Form const& form, std::string_view const name) -> Form const* {
+        for (std::size_t index{3}; index + 1 < form.children.size(); ++index) {
+            if (form.children[index].token.kind == codegen::sexpr::TokenKind::keyword &&
+                form.children[index].token.text == name) {
+                return &form.children[index + 1];
+            }
+        }
+        return nullptr;
+    };
+    auto property_matches = [&](Form const& form,
+                                std::string_view const name,
+                                std::optional<std::string> const& expected) {
+        auto const* value{source_property(form, name)};
+        return expected.has_value()
+                 ? value != nullptr && source_form_matches_rendered(*value, *expected)
+                 : value == nullptr;
+    };
+    auto advanced_function_fields_match = [&](Form const& source,
+                                              codegen::FunctionSchema const& function) {
+        auto const body{function.body_lines.empty()
+                            ? std::nullopt
+                            : std::optional{render_quoted_values(function.body_lines)}};
+        auto const dependencies{function.dependencies.empty()
+                                    ? std::nullopt
+                                    : std::optional{render_quoted_values(function.dependencies)}};
+        if (!property_matches(source, "body", body) ||
+            !property_matches(source, "dependencies", dependencies) ||
+            !property_matches(source,
+                              "trailing-return-type",
+                              function.trailing_return_type.has_value()
+                                  ? std::optional{render_type_ref(*function.trailing_return_type)}
+                                  : std::nullopt) ||
+            !property_matches(source,
+                              "template-parameters",
+                              function.template_parameters.has_value()
+                                  ? std::optional{quote(*function.template_parameters)}
+                                  : std::nullopt) ||
+            !property_matches(source,
+                              "requires",
+                              function.requires_clause.has_value()
+                                  ? std::optional{quote(*function.requires_clause)}
+                                  : std::nullopt)) {
+            return false;
+        }
+
+        std::vector<Form const*> parameters;
+        for (auto const& child : source.children) {
+            if (child.head() == "parameter") {
+                parameters.push_back(&child);
+            }
+        }
+        if (parameters.size() != function.parameters.size()) {
+            return false;
+        }
+        for (std::size_t index{}; index < parameters.size(); ++index) {
+            auto const& parameter{function.parameters[index]};
+            std::ostringstream rendered;
+            rendered << "(parameter " << parameter.name << ' ' << render_type_ref(parameter.type);
+            if (parameter.default_value.has_value()) {
+                rendered << " :default " << quote(*parameter.default_value);
+            }
+            rendered << ')';
+            if (!source_form_matches_rendered(*parameters[index], rendered.str())) {
+                return false;
+            }
+        }
+        return true;
+    };
+
+    auto render_function_row = [](codegen::FunctionSchema const& function) {
+        std::ostringstream rendered;
+        render_function(rendered, function, "    ");
+        return std::move(rendered).str();
+    };
+    if (functions.empty()) {
+        if (!schema.functions.empty()) {
+            std::string rendered_functions;
+            for (auto const& function : schema.functions) {
+                rendered_functions += "\n" + render_function_row(function);
+            }
+            replacements.push_back(
+                {.begin = members_end, .end = members_end, .text = std::move(rendered_functions)});
+        }
+    } else {
+        auto const functions_begin{members_end};
+        if (functions_begin > functions.front()->token.span.offset ||
+            functions_limit < functions.front()->token.span.offset) {
+            return std::nullopt;
+        }
+
+        struct SourceFunction {
+            Form const* form{};
+            std::size_t begin{};
+            std::size_t end{};
+        };
+        std::map<std::string_view, SourceFunction> source_by_name;
+        auto row_begin{functions_begin};
+        for (auto const* function : functions) {
+            auto const row_end{source_form_line_end(*function, original, functions_limit)};
+            if (!row_end.has_value() || row_begin > function->token.span.offset ||
+                *row_end < function->closing.span.offset + 1 ||
+                !source_by_name
+                     .emplace(function->children[1].token.text,
+                              SourceFunction{.form = function, .begin = row_begin, .end = *row_end})
+                     .second) {
+                return std::nullopt;
+            }
+            row_begin = *row_end;
+        }
+
+        auto const functions_end{row_begin};
+        std::set<std::string> schema_names;
+        std::string rendered_functions;
+        auto append_function = [&](std::string row) {
+            auto const preceding_newline{rendered_functions.empty()
+                                             ? functions_begin > 0 &&
+                                                   original[functions_begin - 1] == '\n'
+                                             : rendered_functions.back() == '\n'};
+            if (!preceding_newline && (row.empty() || row.front() != '\n')) {
+                rendered_functions += '\n';
+            }
+            rendered_functions += std::move(row);
+        };
+        for (auto const& function : schema.functions) {
+            if (!schema_names.insert(function.name).second) {
+                return std::nullopt;
+            }
+            auto const found{source_by_name.find(function.name)};
+            if (found == source_by_name.end()) {
+                append_function(render_function_row(function));
+                continue;
+            }
+            if (!advanced_function_fields_match(*found->second.form, function)) {
+                return std::nullopt;
+            }
+
+            std::vector<SourceReplacement> function_replacements;
+            if (!patch_source_form(found->second.form->children[2],
+                                   render_type_ref(function.return_type),
+                                   original,
+                                   function_replacements)) {
+                return std::nullopt;
+            }
+            auto const function_properties{std::array<SourceProperty, 5>{
+                std::pair{"const",
+                          function.is_const ? std::optional<std::string>{"true"} : std::nullopt},
+                std::pair{"noexcept",
+                          function.is_noexcept ? std::optional<std::string>{"true"} : std::nullopt},
+                std::pair{"static",
+                          function.is_static ? std::optional<std::string>{"true"} : std::nullopt},
+                std::pair{"inline",
+                          function.is_inline ? std::optional<std::string>{"true"} : std::nullopt},
+                std::pair{"definition-in-source",
+                          function.definition_in_source ? std::optional<std::string>{"true"}
+                                                        : std::nullopt}}};
+            if (!patch_source_properties(*found->second.form,
+                                         2,
+                                         function_properties,
+                                         "      ",
+                                         original,
+                                         function_replacements)) {
+                return std::nullopt;
+            }
+            auto rendered{apply_source_replacements_to_range(original,
+                                                             found->second.begin,
+                                                             found->second.end,
+                                                             std::move(function_replacements))};
+            if (!rendered.has_value()) {
+                return std::nullopt;
+            }
+            append_function(std::move(*rendered));
+        }
+        replacements.push_back({.begin = functions_begin,
+                                .end = functions_end,
+                                .text = std::move(rendered_functions)});
+    }
     return apply_source_replacements(original, std::move(replacements));
 }
 

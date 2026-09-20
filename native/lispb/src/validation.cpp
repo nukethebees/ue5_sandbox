@@ -1365,6 +1365,9 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
                 throw std::invalid_argument{context +
                                             " must not be both inline and defined in the source"};
             }
+            if (function.is_static && function.is_const) {
+                throw std::invalid_argument{context + " must not be both static and const"};
+            }
             if (function.template_parameters.has_value()) {
                 require_value(*function.template_parameters, context + " template parameters");
             }

@@ -106,6 +106,17 @@ auto unique_soa_using_declaration(std::vector<std::string> const& declarations) 
     }
 }
 
+auto unique_soa_function_name(std::vector<codegen::FunctionSchema> const& functions,
+                              std::string const& stem) -> std::string {
+    auto suffix{std::size_t{1}};
+    auto candidate{stem};
+    while (std::ranges::find(functions, candidate, &codegen::FunctionSchema::name) !=
+           functions.end()) {
+        candidate = stem + std::to_string(suffix++);
+    }
+    return candidate;
+}
+
 void draw_override_note(bool const overridden) {
     if (overridden) {
         ImGui::SameLine();
@@ -4840,6 +4851,25 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                    *soa_using_declaration_index_ >= schema->using_declarations.size()) {
             soa_using_declaration_index_ = 0;
         }
+        soa_function_names_.clear();
+        soa_function_return_types_.clear();
+        soa_function_names_.reserve(schema->functions.size());
+        soa_function_return_types_.reserve(schema->functions.size());
+        for (auto const& function : schema->functions) {
+            std::array<char, 128> name{};
+            std::array<char, 128> return_type{};
+            std::snprintf(name.data(), name.size(), "%s", function.name.c_str());
+            std::snprintf(
+                return_type.data(), return_type.size(), "%s", function.return_type.name.c_str());
+            soa_function_names_.push_back(name);
+            soa_function_return_types_.push_back(return_type);
+        }
+        if (schema->functions.empty()) {
+            soa_function_index_.reset();
+        } else if (!soa_function_index_.has_value() ||
+                   *soa_function_index_ >= schema->functions.size()) {
+            soa_function_index_ = 0;
+        }
         std::snprintf(soa_single_allocation_name_.data(),
                       soa_single_allocation_name_.size(),
                       "%s",
@@ -5663,6 +5693,251 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
     }
     ImGui::EndDisabled();
 
+    ImGui::SeparatorText("Custom functions");
+    ImGui::BeginDisabled(pending.has_value());
+    auto const add_function{ImGui::Button("+ Function")};
+    ImGui::EndDisabled();
+    if (add_function) {
+        auto replacement{*schema};
+        auto function{codegen::FunctionSchema{}};
+        function.name = unique_soa_function_name(replacement.functions, "custom_function");
+        function.return_type =
+            codegen::TypeRef{.name = "void", .suffix = {}, .nested = std::nullopt};
+        function.is_inline = true;
+        replacement.functions.push_back(std::move(function));
+        auto const new_index{replacement.functions.size() - 1};
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            soa_function_index_ = new_index;
+            soa_editor_declaration_.reset();
+            return true;
+        }
+    }
+    ImGui::SameLine();
+    auto const function_index{soa_function_index_};
+    auto const has_function{function_index.has_value() &&
+                            *function_index < schema->functions.size()};
+    ImGui::BeginDisabled(pending.has_value() || !has_function);
+    auto const duplicate_function{ImGui::Button("Duplicate function")};
+    ImGui::EndDisabled();
+    if (duplicate_function) {
+        auto replacement{*schema};
+        auto copy{replacement.functions[*function_index]};
+        copy.name = unique_soa_function_name(replacement.functions, copy.name + "_copy");
+        replacement.functions.insert(replacement.functions.begin() +
+                                         static_cast<std::ptrdiff_t>(*function_index + 1),
+                                     std::move(copy));
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            soa_function_index_ = *function_index + 1;
+            soa_editor_declaration_.reset();
+            return true;
+        }
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(pending.has_value() || !has_function || *function_index == 0);
+    auto const move_function_up{ImGui::Button("Function up")};
+    ImGui::EndDisabled();
+    if (move_function_up) {
+        auto replacement{*schema};
+        std::swap(replacement.functions[*function_index],
+                  replacement.functions[*function_index - 1]);
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            soa_function_index_ = *function_index - 1;
+            soa_editor_declaration_.reset();
+            return true;
+        }
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(pending.has_value() || !has_function ||
+                         *function_index + 1 >= schema->functions.size());
+    auto const move_function_down{ImGui::Button("Function down")};
+    ImGui::EndDisabled();
+    if (move_function_down) {
+        auto replacement{*schema};
+        std::swap(replacement.functions[*function_index],
+                  replacement.functions[*function_index + 1]);
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            soa_function_index_ = *function_index + 1;
+            soa_editor_declaration_.reset();
+            return true;
+        }
+    }
+    ImGui::SameLine();
+    ImGui::BeginDisabled(pending.has_value() || !has_function);
+    auto const delete_function{ImGui::Button("Delete function")};
+    ImGui::EndDisabled();
+    if (delete_function) {
+        auto replacement{*schema};
+        replacement.functions.erase(replacement.functions.begin() +
+                                    static_cast<std::ptrdiff_t>(*function_index));
+        auto const next_index{
+            replacement.functions.empty()
+                ? std::optional<std::size_t>{}
+                : std::optional{std::min(*function_index, replacement.functions.size() - 1)}};
+        if (apply_document_edit(
+                ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
+            soa_function_index_ = next_index;
+            soa_editor_declaration_.reset();
+            return true;
+        }
+    }
+
+    ImGui::BeginDisabled(pending.has_value());
+    if (soa_function_names_.size() == schema->functions.size() &&
+        soa_function_return_types_.size() == schema->functions.size() &&
+        ImGui::BeginTable("soa-functions",
+                          8,
+                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                              ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
+        ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Name");
+        ImGui::TableSetupColumn("Return");
+        ImGui::TableSetupColumn("const", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("noexcept", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("static", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("inline", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("source", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableHeadersRow();
+        for (std::size_t index{}; index < schema->functions.size(); ++index) {
+            auto const& function{schema->functions[index]};
+            ImGui::PushID(static_cast<int>(index));
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            auto const row_selected{soa_function_index_ == index};
+            if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+                soa_function_index_ = index;
+            }
+            if (ImGui::BeginDragDropSource()) {
+                ImGui::SetDragDropPayload("SOA_FUNCTION_ROW", &index, sizeof(index));
+                ImGui::Text("Move %s", function.name.c_str());
+                ImGui::EndDragDropSource();
+            }
+            if (ImGui::BeginDragDropTarget()) {
+                if (auto const* payload{ImGui::AcceptDragDropPayload("SOA_FUNCTION_ROW")}) {
+                    auto const source_index{*static_cast<std::size_t const*>(payload->Data)};
+                    if (source_index < schema->functions.size() && source_index != index) {
+                        pending = *schema;
+                        move_element(pending->functions, source_index, index);
+                        soa_function_index_ = index;
+                    }
+                }
+                ImGui::EndDragDropTarget();
+            }
+
+            ImGui::TableNextColumn();
+            ImGui::SetNextItemWidth(-1.0F);
+            auto const name_submitted{ImGui::InputText("##name",
+                                                       soa_function_names_[index].data(),
+                                                       soa_function_names_[index].size(),
+                                                       ImGuiInputTextFlags_EnterReturnsTrue)};
+            if (name_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                if (!pending.has_value()) {
+                    pending = *schema;
+                }
+                pending->functions[index].name = soa_function_names_[index].data();
+            }
+
+            ImGui::TableNextColumn();
+            ImGui::SetNextItemWidth(-1.0F);
+            auto const return_submitted{ImGui::InputText("##return",
+                                                         soa_function_return_types_[index].data(),
+                                                         soa_function_return_types_[index].size(),
+                                                         ImGuiInputTextFlags_EnterReturnsTrue)};
+            if (return_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                if (!pending.has_value()) {
+                    pending = *schema;
+                }
+                pending->functions[index].return_type.name =
+                    soa_function_return_types_[index].data();
+            }
+
+            auto edit_flag = [&](char const* label, bool const current, auto&& apply) {
+                ImGui::TableNextColumn();
+                auto value{current};
+                if (ImGui::Checkbox(label, &value)) {
+                    if (!pending.has_value()) {
+                        pending = *schema;
+                    }
+                    apply(pending->functions[index], value);
+                }
+            };
+            edit_flag("##const", function.is_const, [](auto& edited, bool const value) {
+                edited.is_const = value;
+                if (value) {
+                    edited.is_static = false;
+                }
+            });
+            edit_flag("##noexcept", function.is_noexcept, [](auto& edited, bool const value) {
+                edited.is_noexcept = value;
+            });
+            edit_flag("##static", function.is_static, [](auto& edited, bool const value) {
+                edited.is_static = value;
+                if (value) {
+                    edited.is_const = false;
+                }
+            });
+            edit_flag("##inline", function.is_inline, [](auto& edited, bool const value) {
+                edited.is_inline = value;
+                if (value) {
+                    edited.definition_in_source = false;
+                }
+            });
+            edit_flag(
+                "##source", function.definition_in_source, [](auto& edited, bool const value) {
+                    edited.definition_in_source = value;
+                    if (value) {
+                        edited.is_inline = false;
+                    }
+                });
+            ImGui::PopID();
+        }
+        ImGui::EndTable();
+    }
+    ImGui::EndDisabled();
+
+    if (has_function) {
+        auto const& function{schema->functions[*function_index]};
+        ImGui::PushID(static_cast<int>(*function_index));
+        ImGui::TextDisabled("Advanced fields are preserved by every edit in this slice.");
+        ImGui::Text("Parameters: %zu", function.parameters.size());
+        for (auto const& parameter : function.parameters) {
+            if (parameter.default_value.has_value()) {
+                ImGui::BulletText("%s %s = %s",
+                                  parameter.type.name.c_str(),
+                                  parameter.name.c_str(),
+                                  parameter.default_value->c_str());
+            } else {
+                ImGui::BulletText("%s %s", parameter.type.name.c_str(), parameter.name.c_str());
+            }
+        }
+        if (ImGui::TreeNode("body-fragments", "Body fragments (%zu)", function.body_lines.size())) {
+            for (auto const& body : function.body_lines) {
+                ImGui::Bullet();
+                ImGui::TextWrapped("%s", body.c_str());
+            }
+            ImGui::TreePop();
+        }
+        if (ImGui::TreeNode("dependencies", "Dependencies (%zu)", function.dependencies.size())) {
+            for (auto const& dependency : function.dependencies) {
+                ImGui::BulletText("%s", dependency.c_str());
+            }
+            ImGui::TreePop();
+        }
+        if (function.trailing_return_type.has_value()) {
+            ImGui::Text("Trailing return: %s", function.trailing_return_type->name.c_str());
+        }
+        if (function.template_parameters.has_value()) {
+            ImGui::Text("Template: %s", function.template_parameters->c_str());
+        }
+        if (function.requires_clause.has_value()) {
+            ImGui::Text("Requires: %s", function.requires_clause->c_str());
+        }
+        ImGui::PopID();
+    }
+
     ImGui::SeparatorText("View types");
     auto explicit_view_name{schema->view_name.has_value()};
     if (ImGui::Checkbox("Explicit mutable view type", &explicit_view_name)) {
@@ -6198,6 +6473,16 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                 return declaration.find_first_not_of(" \t\r\n") == std::string::npos;
             })) {
             schema_edit_message_ = "SoA using declaration cannot be empty.";
+            return false;
+        }
+        auto const invalid_function{
+            std::ranges::find_if(pending->functions, [](auto const& function) {
+                return function.name.empty() || function.return_type.name.empty();
+            })};
+        if (invalid_function != pending->functions.end()) {
+            schema_edit_message_ = invalid_function->name.empty()
+                                     ? "SoA function name cannot be empty."
+                                     : "SoA function return type cannot be empty.";
             return false;
         }
         auto const invalid_variant{
