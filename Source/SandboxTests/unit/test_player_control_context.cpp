@@ -12,6 +12,7 @@
 #include <ioj/sim/player/laser_firing_state.h>
 #include <ioj/sim/sim_clock.h>
 #include <ioj/sim/spatial_query_manager.h>
+#include <SpaceGame/input/ControlBindingMetadata.h>
 #include <SpaceGame/input/ControlProfiles.h>
 #include <SpaceGame/input/SpaceGameInputUserSettings.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
@@ -33,6 +34,7 @@
 #include <InputMappingContext.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/Guid.h>
+#include <PlayerMappableKeySettings.h>
 #include <UObject/UnrealType.h>
 
 struct FShipControlContextTestAccess {
@@ -420,6 +422,57 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                              has_mapping(input->brake, EKeys::Gamepad_LeftShoulder));
         TestRunner->TestTrue(TEXT("Right trigger fires lasers"),
                              has_mapping(input->fire_laser, EKeys::Gamepad_RightTriggerAxis));
+
+        TSet<ml::ioj::EControlBindingGroup> groups;
+        for (auto const& mapping : mapping_context->GetMappings()) {
+            if (!mapping.IsPlayerMappable()) {
+                continue;
+            }
+            auto const* const mapping_settings{mapping.GetPlayerMappableKeySettings()};
+            auto const* const metadata{
+                IsValid(mapping_settings)
+                    ? Cast<ml::ioj::UControlBindingMetadata>(mapping_settings->Metadata)
+                    : nullptr};
+            if (!TestRunner->TestNotNull(
+                    *FString::Printf(TEXT("Mapping '%s' has presentation metadata"),
+                                     *mapping.GetMappingName().ToString()),
+                    metadata)) {
+                continue;
+            }
+            groups.Add(metadata->group);
+            TestRunner->TestTrue(TEXT("Binding display order is authored"),
+                                 metadata->display_order > 0);
+            TestRunner->TestTrue(TEXT("Binding category follows the authored group"),
+                                 mapping.GetDisplayCategory().EqualTo(
+                                     ml::ioj::control_binding_group_label(metadata->group)));
+        }
+        TestRunner->TestTrue(TEXT("Bindings cover the authored Flight group"),
+                             groups.Contains(ml::ioj::EControlBindingGroup::Flight));
+        TestRunner->TestTrue(TEXT("Bindings cover the authored Combat group"),
+                             groups.Contains(ml::ioj::EControlBindingGroup::Combat));
+        TestRunner->TestTrue(TEXT("Bindings cover the authored Utility group"),
+                             groups.Contains(ml::ioj::EControlBindingGroup::Utility));
+
+        auto const* const forward_mapping{
+            mapping_context->GetMappings().FindByPredicate([input](auto const& mapping) {
+                return mapping.Action == input->vertical_move && mapping.Key == EKeys::W;
+            })};
+        auto const* const backward_mapping{
+            mapping_context->GetMappings().FindByPredicate([input](auto const& mapping) {
+                return mapping.Action == input->vertical_move && mapping.Key == EKeys::S;
+            })};
+        if (TestRunner->TestNotNull(TEXT("Forward mapping has presentation"), forward_mapping) &&
+            TestRunner->TestNotNull(TEXT("Backward mapping has presentation"), backward_mapping)) {
+            TestRunner->TestEqual(TEXT("Forward mapping has a semantic label"),
+                                  forward_mapping->GetDisplayName().ToString(),
+                                  FString{TEXT("Forward")});
+            TestRunner->TestEqual(TEXT("Backward mapping has a semantic label"),
+                                  backward_mapping->GetDisplayName().ToString(),
+                                  FString{TEXT("Backward")});
+            TestRunner->TestTrue(TEXT("Multiple mappings retain distinct names"),
+                                 forward_mapping->GetMappingName() !=
+                                     backward_mapping->GetMappingName());
+        }
     }
 
     TEST_METHOD(DoubleTapHoldGestureRecognitionIsConfigurable)

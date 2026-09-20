@@ -11,6 +11,7 @@ namespace codegen {
 
 enum class SettingApplyMode { immediate, deferred, confirm };
 enum class SettingControlKind { toggle, choice, float_range, integer_range, custom };
+enum class SettingDevice { shared, keyboard_mouse, controller };
 
 struct SettingCategorySchema {
     std::string name;
@@ -35,6 +36,7 @@ struct SettingSchema {
     TypeRef value_type;
     std::string backend;
     SettingApplyMode apply_mode;
+    SettingDevice device{SettingDevice::shared};
     SettingControlSchema control;
 };
 

@@ -3,6 +3,8 @@
 #include "EnhancedActionKeyMapping.h"
 #include "InputMappingContext.h"
 #include "InputTriggers.h"
+#include "PlayerMappableKeySettings.h"
+#include "SpaceGame/input/ControlBindingMetadata.h"
 #include "SpaceGame/input/ControlProfiles.h"
 
 namespace ml::ioj {
@@ -172,6 +174,37 @@ auto USpaceGameInputUserSettings::chord_mapping_for_mapping(FString const& profi
         }
     }
     return {};
+}
+
+auto USpaceGameInputUserSettings::control_binding_metadata(FString const& profile_id,
+                                                           FPlayerKeyMapping const& mapping) const
+    -> UControlBindingMetadata const* {
+    auto source_profile_id{custom_key_profile_source_id(profile_id)};
+    if (source_profile_id.IsEmpty()) {
+        auto const* const profile{GetKeyProfileWithId(profile_id)};
+        if (!IsValid(profile)) {
+            return nullptr;
+        }
+        source_profile_id = profile->GetProfileIdString();
+    }
+
+    auto const mapping_is_gamepad{mapping.GetPrimaryDeviceType() ==
+                                  EHardwareDevicePrimaryType::Gamepad};
+    for (auto const& mapping_context : RegisteredMappingContexts) {
+        auto const* const context{mapping_context.Get()};
+        if (!IsValid(context)) {
+            continue;
+        }
+        for (auto const& source_mapping : context->GetMappingsForProfile(source_profile_id)) {
+            if (source_mapping.GetMappingName() != mapping.GetMappingName() ||
+                source_mapping.Key.IsGamepadKey() != mapping_is_gamepad) {
+                continue;
+            }
+            auto const* const settings{source_mapping.GetPlayerMappableKeySettings()};
+            return IsValid(settings) ? Cast<UControlBindingMetadata>(settings->Metadata) : nullptr;
+        }
+    }
+    return nullptr;
 }
 
 auto USpaceGameInputUserSettings::RegisterKeyMappingsToProfile(

@@ -1,6 +1,7 @@
 #include "SandboxEditor/Commandlets/GenerateScriptedLevelAssetsCommandlet.h"
 
 #include <SandboxShaders/GpuStarfield/GpuStarfieldActor.h>
+#include <SpaceGame/input/ControlBindingMetadata.h>
 #include <SpaceGame/input/ControlProfiles.h>
 #include <SpaceGame/input/SpaceGameInputModifier.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
@@ -768,31 +769,122 @@ auto generate_benchmark_widget(UClass& button_class) -> UClass* {
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
 
-auto input_category(UInputAction const& action) -> FText {
-    auto const name{action.GetName().ToLower()};
-    if (name.Contains(TEXT("fire"))) {
-        return NSLOCTEXT("Controls", "CombatCategory", "Combat");
-    }
-    if (name.Contains(TEXT("cycle")) || name.Contains(TEXT("sample"))) {
-        return NSLOCTEXT("Controls", "UtilityCategory", "Utility");
-    }
-    return NSLOCTEXT("Controls", "FlightCategory", "Flight");
-}
+struct FInputBindingPresentation {
+    FName action_name;
+    FText label;
+    ml::ioj::EControlBindingGroup group{};
+    int32 order{};
+};
 
-auto action_display_name(UInputAction const& action) -> FString {
-    if (action.GetFName() == TEXT("IA_Ship_EngagePointerTurn")) {
-        return TEXT("Hold to Steer with Mouse");
+TArray<FInputBindingPresentation> const input_binding_presentations{
+    {TEXT("IA_ship_throttle"), INVTEXT("Accelerate"), ml::ioj::EControlBindingGroup::Flight, 10},
+    {TEXT("IA_ship_vertical_move"),
+     INVTEXT("Forward / Backward"),
+     ml::ioj::EControlBindingGroup::Flight,
+     20},
+    {TEXT("IA_ship_lateral_move"), INVTEXT("Strafe"), ml::ioj::EControlBindingGroup::Flight, 30},
+    {TEXT("IA_ship_move"), INVTEXT("Move"), ml::ioj::EControlBindingGroup::Flight, 40},
+    {TEXT("IA_Turn"), INVTEXT("Turn"), ml::ioj::EControlBindingGroup::Flight, 50},
+    {TEXT("IA_Ship_TurnPointerDelta"),
+     INVTEXT("Mouse Steering"),
+     ml::ioj::EControlBindingGroup::Flight,
+     51},
+    {TEXT("IA_Ship_EngagePointerTurn"),
+     INVTEXT("Hold to Steer with Mouse"),
+     ml::ioj::EControlBindingGroup::Flight,
+     52},
+    {TEXT("IA_ship_roll"), INVTEXT("Roll"), ml::ioj::EControlBindingGroup::Flight, 60},
+    {TEXT("IA_ship_boost"), INVTEXT("Boost"), ml::ioj::EControlBindingGroup::Flight, 70},
+    {TEXT("IA_ship_brake"), INVTEXT("Brake"), ml::ioj::EControlBindingGroup::Flight, 80},
+    {TEXT("IA_ship_barrel_roll"),
+     INVTEXT("Barrel Roll"),
+     ml::ioj::EControlBindingGroup::Flight,
+     90},
+    {TEXT("IA_ship_control"),
+     INVTEXT("Direct Flight Control"),
+     ml::ioj::EControlBindingGroup::Flight,
+     100},
+    {TEXT("IA_ship_control_x"),
+     INVTEXT("Direct Lateral Control"),
+     ml::ioj::EControlBindingGroup::Flight,
+     110},
+    {TEXT("IA_ship_control_y"),
+     INVTEXT("Direct Forward Control"),
+     ml::ioj::EControlBindingGroup::Flight,
+     120},
+    {TEXT("IA_ship_decrease_desired_forward_velocity"),
+     INVTEXT("Decrease Desired Speed"),
+     ml::ioj::EControlBindingGroup::Flight,
+     130},
+    {TEXT("IA_ship_increase_desired_forward_velocity"),
+     INVTEXT("Increase Desired Speed"),
+     ml::ioj::EControlBindingGroup::Flight,
+     140},
+    {TEXT("IA_ship_fire"), INVTEXT("Fire"), ml::ioj::EControlBindingGroup::Combat, 10},
+    {TEXT("IA_cycle_prev_fire_rate"),
+     INVTEXT("Previous Fire Rate"),
+     ml::ioj::EControlBindingGroup::Combat,
+     20},
+    {TEXT("IA_cycle_next_fire_rate"),
+     INVTEXT("Next Fire Rate"),
+     ml::ioj::EControlBindingGroup::Combat,
+     30},
+    {TEXT("IA_ship_sample_and_hold"),
+     INVTEXT("Sample and Hold"),
+     ml::ioj::EControlBindingGroup::Utility,
+     10},
+    {TEXT("IA_ship_cycle_prev_control_mode"),
+     INVTEXT("Previous Control Mode"),
+     ml::ioj::EControlBindingGroup::Utility,
+     20},
+    {TEXT("IA_ship_cycle_next_control_mode"),
+     INVTEXT("Next Control Mode"),
+     ml::ioj::EControlBindingGroup::Utility,
+     30},
+    {TEXT("IA_cycle_input_mapping_context"),
+     INVTEXT("Next Control Profile"),
+     ml::ioj::EControlBindingGroup::Utility,
+     40},
+};
+
+auto directional_binding_label(FInputBindingPresentation const& presentation,
+                               FKey const key,
+                               int32 const count,
+                               int32 const index) -> FText {
+    if (count <= 1) {
+        return presentation.label;
     }
 
-    auto result{action.GetName()};
-    result.RemoveFromStart(TEXT("IA_"));
-    result.RemoveFromStart(TEXT("ship_"));
-    result.ReplaceInline(TEXT("_"), TEXT(" "));
-    result = result.ToLower();
-    if (!result.IsEmpty()) {
-        result[0] = FChar::ToUpper(result[0]);
+    auto const action_name{presentation.action_name};
+    if (action_name == TEXT("IA_ship_lateral_move") || action_name == TEXT("IA_ship_control_x")) {
+        if (key == EKeys::A) {
+            return FText::Format(INVTEXT("{0} Left"), presentation.label);
+        }
+        if (key == EKeys::D) {
+            return FText::Format(INVTEXT("{0} Right"), presentation.label);
+        }
     }
-    return result;
+    if (action_name == TEXT("IA_ship_vertical_move") || action_name == TEXT("IA_ship_control_y")) {
+        if (key == EKeys::W) {
+            return action_name == TEXT("IA_ship_vertical_move") ? INVTEXT("Forward")
+                                                                : INVTEXT("Direct Forward Control");
+        }
+        if (key == EKeys::S) {
+            return action_name == TEXT("IA_ship_vertical_move")
+                     ? INVTEXT("Backward")
+                     : INVTEXT("Direct Backward Control");
+        }
+    }
+    if (action_name == TEXT("IA_ship_roll")) {
+        if (key == EKeys::Q) {
+            return INVTEXT("Roll Left");
+        }
+        if (key == EKeys::E) {
+            return INVTEXT("Roll Right");
+        }
+    }
+    return FText::Format(
+        INVTEXT("{0} — Alternate {1}"), presentation.label, FText::AsNumber(index + 1));
 }
 
 auto mapping_device_is_gamepad(FEnhancedActionKeyMapping const& mapping) -> bool {
@@ -815,12 +907,24 @@ void duplicate_instanced_mapping_data(FEnhancedActionKeyMapping& mapping,
     }
 }
 
-void configure_mapping(FEnhancedActionKeyMapping& mapping,
+auto configure_mapping(FEnhancedActionKeyMapping& mapping,
                        UInputMappingContext& owner,
                        int32 const same_device_action_count,
-                       int32 const same_device_action_index) {
+                       int32 const same_device_action_index) -> bool {
     if (!IsValid(mapping.Action)) {
-        return;
+        return false;
+    }
+
+    auto const* const presentation{
+        input_binding_presentations.FindByPredicate([&mapping](auto const& candidate) {
+            return candidate.action_name == mapping.Action->GetFName();
+        })};
+    if (presentation == nullptr) {
+        UE_LOG(LogTemp,
+               Error,
+               TEXT("No controls presentation metadata is authored for '%s'"),
+               *mapping.Action->GetName());
+        return false;
     }
 
     auto* const behavior_property{FindFProperty<FEnumProperty>(
@@ -838,17 +942,18 @@ void configure_mapping(FEnhancedActionKeyMapping& mapping,
     }
     settings->Name = FName{mapping_name};
 
-    auto display_name{action_display_name(*mapping.Action)};
-    if (same_device_action_count > 1) {
-        display_name += FString::Printf(TEXT(" — %s"), *mapping.Key.GetDisplayName().ToString());
-    }
-    settings->DisplayName = FText::FromString(display_name);
-    settings->DisplayCategory = input_category(*mapping.Action);
+    settings->DisplayName = directional_binding_label(
+        *presentation, mapping.Key, same_device_action_count, same_device_action_index);
+    settings->DisplayCategory = ml::ioj::control_binding_group_label(presentation->group);
+    auto* const metadata{NewObject<ml::ioj::UControlBindingMetadata>(settings)};
+    metadata->group = presentation->group;
+    metadata->display_order = presentation->order * 10 + same_device_action_index;
+    settings->Metadata = metadata;
     settings_property->SetObjectPropertyValue_InContainer(&mapping, settings);
 
     auto const analog{mapping.Key.IsAxis1D() || mapping.Key.IsAxis2D() || mapping.Key.IsAxis3D()};
     if (!analog) {
-        return;
+        return true;
     }
     mapping.Modifiers.RemoveAll([](TObjectPtr<UInputModifier> const& modifier) {
         return IsValid(modifier) && (modifier->IsA<UInputModifierDeadZone>() ||
@@ -857,28 +962,29 @@ void configure_mapping(FEnhancedActionKeyMapping& mapping,
 
     auto const action_name{mapping.Action->GetName()};
     if (action_name.Contains(TEXT("Throttle"), ESearchCase::IgnoreCase)) {
-        return;
+        return true;
     }
 
     auto* const response_modifier{NewObject<ml::ioj::USpaceGameInputModifier>(&owner)};
     if (mapping_device_is_mouse(mapping)) {
         if (!action_name.Contains(TEXT("Turn"), ESearchCase::IgnoreCase)) {
-            return;
+            return true;
         }
         response_modifier->response = ml::ioj::ESpaceGameInputResponse::TurnPointerDelta;
     } else if (!mapping_device_is_gamepad(mapping)) {
-        return;
+        return true;
     } else if (action_name.Contains(TEXT("Turn"), ESearchCase::IgnoreCase)) {
         response_modifier->response = ml::ioj::ESpaceGameInputResponse::GamepadTurn;
     } else {
         response_modifier->response = ml::ioj::ESpaceGameInputResponse::GamepadMove;
     }
     mapping.Modifiers.Add(response_modifier);
+    return true;
 }
 
-void configure_mappings(TArray<FEnhancedActionKeyMapping>& mappings,
+auto configure_mappings(TArray<FEnhancedActionKeyMapping>& mappings,
                         UInputMappingContext& owner,
-                        UInputAction& turn_pointer_delta_action) {
+                        UInputAction& turn_pointer_delta_action) -> bool {
     for (auto& mapping : mappings) {
         if (mapping.Key.IsAxis2D() && mapping_device_is_mouse(mapping) && IsValid(mapping.Action) &&
             mapping.Action->GetName().Contains(TEXT("Turn"), ESearchCase::IgnoreCase)) {
@@ -901,12 +1007,14 @@ void configure_mappings(TArray<FEnhancedActionKeyMapping>& mappings,
     }
 
     TMap<FString, int32> indices;
+    auto success{true};
     for (auto& mapping : mappings) {
         auto const key{mapping_group(mapping)};
         auto& index{indices.FindOrAdd(key)};
-        configure_mapping(mapping, owner, counts.FindRef(key), index);
+        success = configure_mapping(mapping, owner, counts.FindRef(key), index) && success;
         ++index;
     }
+    return success;
 }
 
 auto set_profile_override(UInputMappingContext& destination,
@@ -944,8 +1052,7 @@ auto set_profile_override(UInputMappingContext& destination,
     for (auto& mapping : data->Mappings) {
         duplicate_instanced_mapping_data(mapping, destination);
     }
-    configure_mappings(data->Mappings, destination, turn_pointer_delta_action);
-    return true;
+    return configure_mappings(data->Mappings, destination, turn_pointer_delta_action);
 }
 
 struct FGeneratedShipInputActions {
@@ -1021,7 +1128,8 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
     base->UnmapKey(actions.decrease_desired_forward_velocity, EKeys::MouseScrollDown);
     base->MapKey(actions.decrease_desired_forward_velocity, EKeys::MouseScrollDown);
     auto& default_mappings{const_cast<TArray<FEnhancedActionKeyMapping>&>(base->GetMappings())};
-    configure_mappings(default_mappings, *base, *actions.pointer_delta);
+    auto const default_mappings_configured{
+        configure_mappings(default_mappings, *base, *actions.pointer_delta)};
 
     auto const profiles{ml::ioj::control_profile_definitions()};
     auto const success{
@@ -1031,8 +1139,8 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
             *base, profiles[2].id, *move_aim, default_mappings, *actions.pointer_delta) &&
         set_profile_override(
             *base, profiles[3].id, *z_roll_aim, default_mappings, *actions.pointer_delta)};
-    return success && save_asset(*actions.pointer_delta) && save_asset(*actions.engage_pointer) &&
-                   save_asset(*actions.throttle) &&
+    return default_mappings_configured && success && save_asset(*actions.pointer_delta) &&
+                   save_asset(*actions.engage_pointer) && save_asset(*actions.throttle) &&
                    save_asset(*actions.increase_desired_forward_velocity) &&
                    save_asset(*actions.decrease_desired_forward_velocity) && save_asset(*base) &&
                    save_asset(*aim_move) && save_asset(*move_aim) && save_asset(*z_roll_aim)

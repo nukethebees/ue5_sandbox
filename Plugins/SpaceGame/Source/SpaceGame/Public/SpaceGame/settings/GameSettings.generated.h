@@ -54,6 +54,7 @@ enum class EGameSettingCategory : uint8 {
 
 enum class ESettingApplyMode : uint8 { Immediate, Deferred, Confirm };
 enum class ESettingControlKind : uint8 { Toggle, Choice, FloatRange, IntegerRange, Custom };
+enum class EGameSettingDevice : uint8 { Shared, KeyboardMouse, Controller };
 enum class EGameSettingValueType : uint8 {
     IntPoint,
     GameWindowMode,
@@ -94,6 +95,7 @@ struct SPACEGAME_API FGameSettingDescriptor {
     EGameSettingValueType value_type;
     EGameSettingBackend backend;
     ESettingApplyMode apply_mode;
+    EGameSettingDevice device;
     ESettingControlKind control_kind;
     EGameSettingOptionProvider options_provider;
     EGameSettingAvailabilityProvider availability_provider;

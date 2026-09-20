@@ -1,3 +1,4 @@
+#include <SpaceGame/settings/ControlSettingsTypes.h>
 #include <SpaceGame/settings/GameSettingsBackend.h>
 #include <SpaceGame/settings/GameSettingsEditState.h>
 
@@ -115,5 +116,85 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
                           ml::ioj::FGameSettingValue{ml::ioj::EGameGraphicsPreset::Custom});
         TestRunner->TestTrue(TEXT("Selecting Custom preserves the individual quality values"),
                              state.pending().shadow_quality == ml::ioj::EGameQualityLevel::Medium);
+    }
+
+    TEST_METHOD(ControlSettingsDeclareDeviceOwnership)
+    {
+        auto const device_for = [](ml::ioj::EGameSetting const setting) {
+            return ml::ioj::game_setting_descriptor(setting).device;
+        };
+        TestRunner->TestTrue(TEXT("Flight controls are shared"),
+                             device_for(ml::ioj::EGameSetting::PlayerShipFlightControlPreset) ==
+                                 ml::ioj::EGameSettingDevice::Shared);
+        TestRunner->TestTrue(TEXT("Mouse sensitivity belongs to keyboard and mouse"),
+                             device_for(ml::ioj::EGameSetting::MouseTurnSensitivity) ==
+                                 ml::ioj::EGameSettingDevice::KeyboardMouse);
+        TestRunner->TestTrue(TEXT("Mouse inversion belongs to keyboard and mouse"),
+                             device_for(ml::ioj::EGameSetting::InvertMousePitch) ==
+                                 ml::ioj::EGameSettingDevice::KeyboardMouse);
+        TestRunner->TestTrue(TEXT("Controller sensitivity belongs to controller"),
+                             device_for(ml::ioj::EGameSetting::GamepadTurnSensitivity) ==
+                                 ml::ioj::EGameSettingDevice::Controller);
+        TestRunner->TestTrue(TEXT("Controller dead zones belong to controller"),
+                             device_for(ml::ioj::EGameSetting::GamepadTurnDeadZone) ==
+                                     ml::ioj::EGameSettingDevice::Controller &&
+                                 device_for(ml::ioj::EGameSetting::GamepadMoveDeadZone) ==
+                                     ml::ioj::EGameSettingDevice::Controller);
+        TestRunner->TestTrue(TEXT("Controller inversion belongs to controller"),
+                             device_for(ml::ioj::EGameSetting::InvertGamepadPitch) ==
+                                 ml::ioj::EGameSettingDevice::Controller);
+    }
+
+    TEST_METHOD(ControlBindingPresentationIdentityIsStable)
+    {
+        ml::ioj::FControlBindingAddress first{
+            .profile_id = TEXT("Profile.One"),
+            .mapping_name = TEXT("Fire"),
+            .hardware_device_id = TEXT("KeyboardMouse"),
+            .slot = EPlayerMappableKeySlot::First,
+        };
+        auto second{first};
+        second.profile_id = TEXT("Profile.Two");
+        auto alternate{second};
+        alternate.slot = EPlayerMappableKeySlot::Second;
+
+        auto const first_identity{
+            ml::ioj::control_binding_identity(first, EHardwareDevicePrimaryType::KeyboardAndMouse)};
+        auto const second_identity{ml::ioj::control_binding_identity(
+            second, EHardwareDevicePrimaryType::KeyboardAndMouse)};
+        auto const alternate_identity{ml::ioj::control_binding_identity(
+            alternate, EHardwareDevicePrimaryType::KeyboardAndMouse)};
+        TestRunner->TestTrue(TEXT("Binding focus survives profile address replacement"),
+                             first_identity == second_identity);
+        TestRunner->TestFalse(TEXT("Multiple binding slots remain distinct"),
+                              first_identity == alternate_identity);
+    }
+
+    TEST_METHOD(ControlBindingDeviceFilteringAndResetScopeAreExplicit)
+    {
+        ml::ioj::FControlBindingView keyboard_binding{
+            .device_type = EHardwareDevicePrimaryType::KeyboardAndMouse,
+        };
+        ml::ioj::FControlBindingView controller_binding{
+            .device_type = EHardwareDevicePrimaryType::Gamepad,
+        };
+        TestRunner->TestTrue(TEXT("Keyboard binding passes keyboard filtering"),
+                             ml::ioj::control_binding_matches_device(
+                                 keyboard_binding, EHardwareDevicePrimaryType::KeyboardAndMouse));
+        TestRunner->TestFalse(
+            TEXT("Controller binding does not pass keyboard filtering"),
+            ml::ioj::control_binding_matches_device(controller_binding,
+                                                    EHardwareDevicePrimaryType::KeyboardAndMouse));
+        TestRunner->TestTrue(TEXT("Unspecified filtering includes both devices"),
+                             ml::ioj::control_binding_matches_device(
+                                 keyboard_binding, EHardwareDevicePrimaryType::Unspecified) &&
+                                 ml::ioj::control_binding_matches_device(
+                                     controller_binding, EHardwareDevicePrimaryType::Unspecified));
+        TestRunner->TestTrue(TEXT("Built-in profiles reset all controls"),
+                             ml::ioj::control_reset_scope(false) ==
+                                 ml::ioj::EControlResetScope::AllControls);
+        TestRunner->TestTrue(TEXT("Custom profiles reset response settings only"),
+                             ml::ioj::control_reset_scope(true) ==
+                                 ml::ioj::EControlResetScope::SettingsOnly);
     }
 };

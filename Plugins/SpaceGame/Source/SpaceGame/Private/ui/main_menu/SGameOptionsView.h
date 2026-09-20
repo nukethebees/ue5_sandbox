@@ -11,6 +11,7 @@
 
 class SWidgetSwitcher;
 class SVerticalBox;
+class SScrollBox;
 
 namespace SlateGenerated::ml::ioj {
 struct SGameOptionsViewBuilder;
@@ -20,6 +21,24 @@ namespace ml::ioj {
 class SGameButton;
 class UGameSettingsSubsystem;
 struct FGameCapabilities;
+
+enum class EControlsFocusKind : uint8 { Profile, Device, Binding };
+
+struct FControlsFocusIdentity {
+    EControlsFocusKind kind{EControlsFocusKind::Profile};
+    EGameSettingDevice device{EGameSettingDevice::Shared};
+    FControlBindingIdentity binding{};
+
+    auto operator==(FControlsFocusIdentity const& other) const -> bool {
+        return kind == other.kind && device == other.device && binding == other.binding;
+    }
+};
+
+struct FControlsFocusTarget {
+    FControlsFocusIdentity identity{};
+    TFunction<void()> focus{};
+    TFunction<bool()> has_focus{};
+};
 
 DECLARE_DELEGATE_OneParam(FOnOptionsTabChanged, EOptionsTab);
 DECLARE_DELEGATE_OneParam(FOnOptionsInteractionModalChanged, bool);
@@ -91,18 +110,26 @@ class SGameOptionsView final : public SCompoundWidget {
     /* **************************************** */
     // Control bindings
     /* **************************************** */
-    void rebuild_controls_page();
+    void rebuild_controls_page(TOptional<FControlsFocusIdentity> requested_focus = {},
+                               bool reset_scroll = false);
+    void request_controls_rebuild(TOptional<FControlsFocusIdentity> requested_focus,
+                                  bool reset_scroll = false);
     auto handle_deferred_controls_rebuild(double current_time, float delta_time)
         -> EActiveTimerReturnType;
-    auto build_binding_cell(TConstArrayView<FControlBindingView> bindings) -> TSharedRef<SWidget>;
-    void begin_binding_capture(FControlBindingAddress const& address);
+    auto handle_deferred_controls_restore(double current_time, float delta_time)
+        -> EActiveTimerReturnType;
+    auto build_binding_button(FControlBindingView const& binding) -> TSharedRef<SWidget>;
+    void open_binding_management(FControlBindingView const& binding);
+    void close_binding_management(bool restore_focus);
+    void begin_binding_capture(FControlBindingView const& binding);
     void begin_chord_capture(FControlBindingView const& binding);
     auto accept_binding_key(FKey key) -> FReply;
     auto accept_chord_key(FKey key, bool can_be_held) -> FReply;
     auto release_chord_key(FKey key) -> FReply;
     void clear_chord_capture();
     auto confirm_chord_capture() -> FReply;
-    void close_binding_prompt();
+    void close_binding_prompt(bool restore_focus);
+    void complete_binding_change();
 
     /* **************************************** */
     // Settings and prompts
@@ -112,6 +139,7 @@ class SGameOptionsView final : public SCompoundWidget {
     auto build_system_page() -> TSharedRef<SWidget>;
     auto build_dirty_prompt() -> TSharedRef<SWidget>;
     auto build_display_prompt() -> TSharedRef<SWidget>;
+    auto build_binding_management_prompt() -> TSharedRef<SWidget>;
     auto build_capture_prompt() -> TSharedRef<SWidget>;
     auto build_conflict_prompt() -> TSharedRef<SWidget>;
     auto build_modal(TAttribute<FText> title, TArray<TSharedRef<SGameButton>> const& buttons)
@@ -124,6 +152,12 @@ class SGameOptionsView final : public SCompoundWidget {
     auto setting_float(EGameSetting setting) const -> float;
     auto format_range_value(FGameSettingDescriptor const& descriptor) const -> FText;
     auto active_category() const -> TOptional<EGameSettingCategory>;
+    auto controls_device_type() const -> EHardwareDevicePrimaryType;
+    auto controls_focus_identity() const -> TOptional<FControlsFocusIdentity>;
+    auto binding_focus_identity(FControlBindingView const& binding) const -> FControlsFocusIdentity;
+    void register_controls_focus(FControlsFocusIdentity identity,
+                                 TSharedRef<SGameButton> const& button);
+    void restore_controls_focus(FControlsFocusIdentity const& identity);
     void remember_focus();
     void restore_focus();
 
@@ -158,12 +192,19 @@ class SGameOptionsView final : public SCompoundWidget {
     TSharedPtr<SGameButton> chord_confirm_button_{};
     TSharedPtr<SGameButton> chord_clear_button_{};
     TSharedPtr<SGameButton> chord_cancel_button_{};
+    TSharedPtr<SGameButton> binding_change_button_{};
+    TSharedPtr<SGameButton> binding_clear_button_{};
+    TSharedPtr<SGameButton> binding_reset_button_{};
+    TSharedPtr<SGameButton> binding_cancel_button_{};
     TSharedPtr<SWidgetSwitcher> page_switcher_{};
     TSharedPtr<SWidget> dirty_prompt_{};
     TSharedPtr<SWidget> display_prompt_{};
+    TSharedPtr<SWidget> binding_management_prompt_{};
     TSharedPtr<SWidget> capture_prompt_{};
     TSharedPtr<SWidget> conflict_prompt_{};
     TSharedPtr<SVerticalBox> controls_content_{};
+    TSharedPtr<SScrollBox> controls_scroll_box_{};
+    TOptional<FControlBindingView> managed_binding_{};
     TOptional<FControlBindingAddress> captured_binding_{};
     TOptional<FControlChordBindingView> captured_chord_{};
     FControlChordCapture chord_capture_{};
@@ -171,10 +212,19 @@ class SGameOptionsView final : public SCompoundWidget {
     FText capture_error_{};
     int32 captured_chord_dependent_count_{};
     FText control_profile_error_{};
+    TArray<FControlsFocusTarget> controls_focus_targets_{};
+    TOptional<FControlsFocusIdentity> pending_controls_focus_{};
+    TOptional<FControlsFocusIdentity> pending_controls_rebuild_focus_{};
+    float pending_controls_scroll_offset_{};
+    bool pending_controls_reset_scroll_{};
+    bool controls_rebuild_pending_{};
     TWeakPtr<SWidget> previous_focus_{};
     TArray<TFunction<void()>> page_focus_actions_{};
     bool dirty_prompt_visible_{};
     bool display_prompt_visible_{};
+    bool binding_management_visible_{};
+    bool active_control_profile_custom_{};
+    EGameSettingDevice controls_device_{EGameSettingDevice::KeyboardMouse};
 };
 
 } // namespace ml::ioj
