@@ -8,7 +8,6 @@
 #include <span>
 
 #include <ioj/sim/query_thread_buffer_pool.h>
-#include <ioj/sim/sim_tick.h>
 
 #include <ioj/sim/collision/collision_system.h>
 #include <ioj/sim/trace_hits.h>
@@ -123,8 +122,7 @@ struct SpatialQueryManager {
         return collision;
     }
 
-    auto update(std::span<EntityUniqueId const> dirty_entities, SimTick tick)
-        -> collision::DetectedOverlapsView;
+    auto update(std::span<EntityUniqueId const> dirty_entities) -> collision::DetectedOverlapsView;
   private:
     /* **************************************** */
     // Thread buffer leasing

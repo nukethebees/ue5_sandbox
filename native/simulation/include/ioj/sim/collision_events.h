@@ -2,7 +2,6 @@
 
 #include "ioj/sim/entity_overlaps.h"
 #include "ioj/sim/index_span.h"
-#include "ioj/sim/sim_tick.h"
 
 #include <cstdint>
 #include <span>
@@ -15,13 +14,11 @@ struct DetectedOverlapsView {
 };
 
 struct AABBOverlapEventBatch {
-    SimTick tick{};
     IndexSpan entity_entity_overlaps;
     IndexSpan entity_static_overlaps;
 };
 
 struct AABBOverlapEventBatchView {
-    SimTick tick{};
     DetectedOverlapsView overlaps;
 };
 
@@ -36,8 +33,7 @@ struct AABBOverlapEventsView {
 class AABBOverlapEventStorage {
   public:
     void reset() noexcept;
-    void append_batch(SimTick tick,
-                      EntityEntityOverlapsConstView entity_entity_overlaps,
+    void append_batch(EntityEntityOverlapsConstView entity_entity_overlaps,
                       EntityStaticOverlapsConstView entity_static_overlaps);
     [[nodiscard]] auto get_view() const noexcept -> AABBOverlapEventsView;
   private:

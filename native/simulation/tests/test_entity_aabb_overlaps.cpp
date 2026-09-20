@@ -34,7 +34,7 @@ struct OverlapFixture {
 
     void finish_spawning() {
         owners.publish();
-        query_manager.update({}, current_tick);
+        query_manager.update({});
         query_manager.get_collision_system().reset_frame_events();
     }
 
@@ -60,13 +60,13 @@ struct OverlapFixture {
                        alive.empty() || alive[index] != 0 ? 100 : 0);
         }
         owners.publish();
-        query_manager.update(entity_ids, ++current_tick);
+        query_manager.update(entity_ids);
     }
 
     void run_quiet_tick() {
         query_manager.get_collision_system().reset_frame_events();
         owners.publish();
-        query_manager.update({}, ++current_tick);
+        query_manager.update({});
     }
 
     void end_tick() {}
@@ -93,7 +93,6 @@ struct OverlapFixture {
     CollisionAgentStorage owners;
     SpatialQueryManager query_manager;
     collision::EntityAABBs entity_bounds;
-    SimTick current_tick{};
 };
 
 void check_single_pair(collision::EntityEntityOverlaps::ConstView const overlaps,
@@ -144,7 +143,7 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
     owner.locations.set(1, {{315.f, 0.f, 0.f}});
     auto& collision{fixture.query_manager.get_collision_system()};
     collision.reset_frame_events();
-    collision.update(fixture.ids(handles), ++fixture.current_tick);
+    collision.update(fixture.ids(handles));
     check_single_pair(fixture.get_entity_overlaps(), moved, stationary);
     owner.teams[0] = Team::Green;
     auto const& queries{fixture.query_manager};
@@ -173,7 +172,7 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
     EXPECT_GT(radii[1], 0.f);
     EXPECT_EQ(radii[2], 0.f);
     collision.reset_frame_events();
-    collision.update(fixture.ids(handles), ++fixture.current_tick);
+    collision.update(fixture.ids(handles));
     tests::expect_equal(fixture.get_entity_overlaps().num(),
                         0,
                         "Overlap generation reads owner health without intermediary publication");
@@ -554,8 +553,6 @@ TEST(EntityAABBOverlaps, EventsMirrorAuthoritativeResults) {
                         "The collision pass records one event batch");
     if (events.batches.size() == 1) {
         auto const batch{events.get_batch(0)};
-        tests::expect_equal(
-            batch.tick, fixture.current_tick, "The event batch records its fixed tick");
         check_single_pair(batch.overlaps.entity_entity_overlaps, moved, stationary);
         check_single_static_overlap(batch.overlaps.entity_static_overlaps, moved, static_index);
     }
@@ -596,7 +593,7 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
     tests::expect_true(reset_events.entity_static_overlaps.entities.data() == static_storage,
                        "Static event storage is retained across reset");
 
-    collision_system.update(fixture.ids(handles), ++fixture.current_tick);
+    collision_system.update(fixture.ids(handles));
     auto const recaptured_events{collision_system.get_aabb_overlap_events()};
     check_single_pair(recaptured_events.entity_entity_overlaps, moved, stationary);
     check_single_static_overlap(recaptured_events.entity_static_overlaps, moved, static_index);
@@ -606,7 +603,7 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
     tests::expect_true(recaptured_events.entity_static_overlaps.entities.data() == static_storage,
                        "Static event storage is reused after recapture");
 
-    collision_system.update(fixture.ids(handles), ++fixture.current_tick);
+    collision_system.update(fixture.ids(handles));
     auto const appended_events{collision_system.get_aabb_overlap_events()};
     tests::expect_equal(appended_events.entity_entity_overlaps.num(),
                         2,
@@ -617,11 +614,6 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
     tests::expect_equal(static_cast<std::int32_t>(appended_events.batches.size()),
                         2,
                         "Collision passes retain separate batch metadata");
-    if (appended_events.batches.size() == 2) {
-        tests::expect_true(appended_events.batches[0].tick < appended_events.batches[1].tick,
-                           "Later passes retain their own fixed tick");
-    }
-
     collision_system.reset_frame_events();
     auto const next_frame_events{collision_system.get_aabb_overlap_events()};
     tests::expect_equal(next_frame_events.entity_entity_overlaps.num(),
@@ -666,11 +658,9 @@ TEST(EntityAABBOverlaps, InvalidDeadAndRetiredDirtyIdsAreIgnored) {
 
     std::array const dirty_entities{
         EntityUniqueId{}, EntityUniqueId::make(999, EntityType::PlayerShip), removed_id, live};
-    fixture.query_manager.get_collision_system().update(
-        std::span<EntityUniqueId const>{
-            dirty_entities.data(),
-            static_cast<std::size_t>(static_cast<std::int32_t>(dirty_entities.size()))},
-        ++fixture.current_tick);
+    fixture.query_manager.get_collision_system().update(std::span<EntityUniqueId const>{
+        dirty_entities.data(),
+        static_cast<std::size_t>(static_cast<std::int32_t>(dirty_entities.size()))});
 
     check_single_pair(fixture.get_entity_overlaps(), live, replacement);
     check_single_static_overlap(fixture.get_static_overlaps(), live, static_index);

@@ -18,14 +18,14 @@ void CollisionSystem::initialise(collision::EntityAABBs const& bounds) {
     overlapping_entities_scratch_.clear();
     overlapping_static_geometry_indices_scratch_.clear();
 }
-auto CollisionSystem::update(std::span<EntityUniqueId const> const collision_dirty_entities,
-                             SimTick const tick) -> DetectedOverlapsView {
+auto CollisionSystem::update(std::span<EntityUniqueId const> const collision_dirty_entities)
+    -> DetectedOverlapsView {
     SANDBOX_PROFILE_SCOPE("CollisionSystem::update");
     rebuild_grid();
     collect_overlaps_for_moved_entities(collision_dirty_entities);
 
-    overlap_event_storage_.append_batch(
-        tick, overlap_storage_.entity_entity_overlaps(), overlap_storage_.entity_static_overlaps());
+    overlap_event_storage_.append_batch(overlap_storage_.entity_entity_overlaps(),
+                                        overlap_storage_.entity_static_overlaps());
 
     return overlap_storage_.get_view();
 }

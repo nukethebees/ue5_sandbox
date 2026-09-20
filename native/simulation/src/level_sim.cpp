@@ -144,7 +144,7 @@ void LevelSim::finish_initialisation() {
 
     // Build indexes and query state
     rebuild_agent_indexes();
-    query_manager_.update({}, clock_.get_completed_ticks());
+    query_manager_.update({});
 
     // Start telemetry and mission
     initialise_telemetry();
@@ -441,8 +441,8 @@ void LevelSim::advance(time_type const dt) {
                 std::ranges::sort(collision_dirty_entities_);
                 auto const duplicates{std::ranges::unique(collision_dirty_entities_)};
                 collision_dirty_entities_.erase(duplicates.begin(), duplicates.end());
-                auto const overlaps{query_manager_.get_collision_system().update(
-                    collision_dirty_entities_, clock_.completed_ticks + 1)};
+                auto const overlaps{
+                    query_manager_.get_collision_system().update(collision_dirty_entities_)};
                 overlap_handler_.handle(overlaps);
             }
         }

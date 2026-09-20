@@ -6,7 +6,6 @@ namespace ioj::sim::collision {
 auto AABBOverlapEventsView::get_batch(std::int32_t const index) const -> AABBOverlapEventBatchView {
     auto const batch{batches[static_cast<std::size_t>(index)]};
     return {
-        .tick = batch.tick,
         .overlaps =
             {
                 .entity_entity_overlaps = entity_entity_overlaps.slice(
@@ -24,7 +23,6 @@ void AABBOverlapEventStorage::reset() noexcept {
 }
 
 void AABBOverlapEventStorage::append_batch(
-    SimTick const tick,
     collision::EntityEntityOverlapsConstView const entity_entity_overlaps,
     collision::EntityStaticOverlapsConstView const entity_static_overlaps) {
     auto const entity_entity_offset{entity_entity_overlaps_.num()};
@@ -32,7 +30,6 @@ void AABBOverlapEventStorage::append_batch(
     entity_entity_overlaps_.append_from(entity_entity_overlaps);
     entity_static_overlaps_.append_from(entity_static_overlaps);
     batches_.push_back({
-        .tick = tick,
         .entity_entity_overlaps =
             {
                 .offset = entity_entity_offset,

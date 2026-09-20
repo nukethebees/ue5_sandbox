@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <ioj/sim/entity_types.h>
 #include <ioj/sim/line_traces.h>
-#include <ioj/sim/sim_tick.h>
 #include <span>
 
 #include <ioj/sim/collision_events.h>
@@ -29,8 +28,7 @@ struct CollisionSystem {
     auto operator=(CollisionSystem&&) -> CollisionSystem& = delete;
 
     void initialise(EntityAABBs const& bounds);
-    auto update(std::span<EntityUniqueId const> collision_dirty_entities, SimTick tick)
-        -> DetectedOverlapsView;
+    auto update(std::span<EntityUniqueId const> collision_dirty_entities) -> DetectedOverlapsView;
 
     void reset_frame_events();
     void refresh_queries();
