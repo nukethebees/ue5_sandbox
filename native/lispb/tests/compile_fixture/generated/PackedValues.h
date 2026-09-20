@@ -24,20 +24,11 @@ struct FighterState {
     inline static constexpr storage_type entity_index_mask{storage_type{0xffffff}};
     using state_type = codegen_compile_fixture::PackedState;
     using state_underlying_type = std::underlying_type_t<codegen_compile_fixture::PackedState>;
-    static_assert(std::is_enum_v<codegen_compile_fixture::PackedState>);
-    static_assert(std::is_unsigned_v<state_underlying_type>);
-    static_assert(std::numeric_limits<state_underlying_type>::digits >= 8);
 
     inline static constexpr int state_offset{24};
     inline static constexpr int state_bits{8};
     inline static constexpr storage_type state_value_mask{storage_type{0xff}};
     inline static constexpr storage_type state_mask{storage_type{0xff000000}};
-    static_assert(static_cast<state_underlying_type>(codegen_compile_fixture::PackedState::Zero) <=
-                  static_cast<state_underlying_type>(state_value_mask));
-    static_assert(static_cast<state_underlying_type>(codegen_compile_fixture::PackedState::AB) <=
-                  static_cast<state_underlying_type>(state_value_mask));
-    static_assert(static_cast<state_underlying_type>(codegen_compile_fixture::PackedState::Max) <=
-                  static_cast<state_underlying_type>(state_value_mask));
 
     constexpr FighterState() noexcept = default;
     explicit constexpr FighterState(storage_type const raw) noexcept
@@ -348,20 +339,11 @@ struct PackedTinyState {
     static_assert(std::numeric_limits<storage_type>::digits == 8);
     using state_type = codegen_compile_fixture::TinyState;
     using state_underlying_type = std::underlying_type_t<codegen_compile_fixture::TinyState>;
-    static_assert(std::is_enum_v<codegen_compile_fixture::TinyState>);
-    static_assert(std::is_unsigned_v<state_underlying_type>);
-    static_assert(std::numeric_limits<state_underlying_type>::digits >= 2);
 
     inline static constexpr int state_offset{0};
     inline static constexpr int state_bits{2};
     inline static constexpr storage_type state_value_mask{storage_type{0x3}};
     inline static constexpr storage_type state_mask{storage_type{0x3}};
-    static_assert(static_cast<state_underlying_type>(codegen_compile_fixture::TinyState::Zero) <=
-                  static_cast<state_underlying_type>(state_value_mask));
-    static_assert(static_cast<state_underlying_type>(codegen_compile_fixture::TinyState::One) <=
-                  static_cast<state_underlying_type>(state_value_mask));
-    static_assert(static_cast<state_underlying_type>(codegen_compile_fixture::TinyState::Max) <=
-                  static_cast<state_underlying_type>(state_value_mask));
     using payload_type = std::uint8_t;
 
     inline static constexpr int payload_offset{2};
@@ -469,18 +451,18 @@ struct PackedOpaqueState {
     static_assert(std::numeric_limits<storage_type>::digits == 8);
     using state_type = codegen_compile_fixture::OpaqueState;
     using state_underlying_type = std::underlying_type_t<codegen_compile_fixture::OpaqueState>;
-    static_assert(std::is_enum_v<codegen_compile_fixture::OpaqueState>);
-    static_assert(std::is_unsigned_v<state_underlying_type>);
-    static_assert(std::numeric_limits<state_underlying_type>::digits >= 8);
 
     inline static constexpr int state_offset{0};
     inline static constexpr int state_bits{8};
     inline static constexpr storage_type state_value_mask{storage_type{0xff}};
     inline static constexpr storage_type state_mask{storage_type{0xff}};
-    static_assert(static_cast<state_underlying_type>(codegen_compile_fixture::OpaqueState::Zero) <=
-                  static_cast<state_underlying_type>(state_value_mask));
-    static_assert(static_cast<state_underlying_type>(codegen_compile_fixture::OpaqueState::Max) <=
-                  static_cast<state_underlying_type>(state_value_mask));
+
+    static_assert([]<auto... values>() consteval -> bool {
+        return ((static_cast<state_underlying_type>(values) <=
+                 static_cast<state_underlying_type>(state_value_mask)) &&
+                ...);
+    }.template operator()<codegen_compile_fixture::OpaqueState::Zero,
+                                                    codegen_compile_fixture::OpaqueState::Max>());
 
     constexpr PackedOpaqueState() noexcept = default;
     explicit constexpr PackedOpaqueState(storage_type const raw) noexcept
@@ -559,24 +541,11 @@ struct CheckedValue {
     inline static constexpr storage_type serial_mask{storage_type{0xffffff}};
     using state_type = codegen_compile_fixture::DomainState;
     using state_underlying_type = std::underlying_type_t<codegen_compile_fixture::DomainState>;
-    static_assert(std::is_enum_v<codegen_compile_fixture::DomainState>);
-    static_assert(std::is_unsigned_v<state_underlying_type>);
-    static_assert(std::numeric_limits<state_underlying_type>::digits >= 8);
 
     inline static constexpr int state_offset{24};
     inline static constexpr int state_bits{8};
     inline static constexpr storage_type state_value_mask{storage_type{0xff}};
     inline static constexpr storage_type state_mask{storage_type{0xff000000}};
-    static_assert(static_cast<state_underlying_type>(codegen_compile_fixture::DomainState::Zero) <=
-                  static_cast<state_underlying_type>(state_value_mask));
-    static_assert(codegen_compile_fixture::DomainState::Zero <
-                  codegen_compile_fixture::DomainState::COUNT);
-    static_assert(static_cast<state_underlying_type>(codegen_compile_fixture::DomainState::One) <=
-                  static_cast<state_underlying_type>(state_value_mask));
-    static_assert(codegen_compile_fixture::DomainState::One <
-                  codegen_compile_fixture::DomainState::COUNT);
-    static_assert(static_cast<state_underlying_type>(codegen_compile_fixture::DomainState::COUNT) <=
-                  static_cast<state_underlying_type>(state_value_mask));
 
     inline static constexpr storage_type invalid_value{storage_type{0x7fffffff}};
 

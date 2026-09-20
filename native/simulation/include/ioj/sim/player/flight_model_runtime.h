@@ -36,12 +36,12 @@ struct FlightModelControllerState {
     ScalarResponse yaw_stabilization_response{};
     ScalarResponse roll_stabilization_response{};
     ScalarResponse facing_alignment_response{};
-    ScalarResponse action_speed_response{};
+    ScalarResponse brake_engagement_response{};
     ml::Vector3d angular_velocity{};
     float persistent_forward_target_speed{};
     float persistent_right_target_speed{};
     float persistent_up_target_speed{};
-    float time_since_rotation_input{100.f};
+    ml::Vector3d time_since_rotation_input{100.0, 100.0, 100.0};
     BoostBrakeState effective_action{};
 };
 

@@ -35,6 +35,17 @@ auto interpolate_to(double const current, double const target, float const dt, d
     }
     return current + distance * std::clamp(static_cast<double>(dt) * speed, 0.0, 1.0);
 }
+
+auto target_speed_bound(TranslationDriveConfig const& drive, float const direction) -> float {
+    auto const requested{direction >= 0.f ? drive.positive_target_speed
+                                          : drive.negative_target_speed};
+    auto const limit{direction >= 0.f ? drive.positive_speed_limit : drive.negative_speed_limit};
+    return std::min(requested, limit);
+}
+
+auto target_speed_from_input(TranslationDriveConfig const& drive, float const input) -> float {
+    return input * target_speed_bound(drive, input);
+}
 }
 namespace ioj::sim::player {
 /* **************************************** */
@@ -99,7 +110,9 @@ void Sim::prepare_tick(float const dt) {
     SANDBOX_PROFILE_SCOPE("PlayerShipSim::prepare_tick");
 
     laser_shot_cooldown -= dt;
-    state_.controller.time_since_rotation_input += dt;
+    state_.controller.time_since_rotation_input.x += dt;
+    state_.controller.time_since_rotation_input.y += dt;
+    state_.controller.time_since_rotation_input.z += dt;
 
     if (speed_sampling_enabled) {
         --speed_sample_ticks_remaining;
@@ -230,14 +243,18 @@ void Sim::update_boost_brake(float const dt, PlayerSimulationState& state) {
 
 void Sim::refresh_effective_action(PlayerSimulationState& state) noexcept {
     auto const& model{get_active_flight_model_config()};
+    auto const has_energy = [&state](float const drain) {
+        return drain == 0.f || state.resources.thrust_energy > 0.f;
+    };
     auto action{BoostBrakeState::None};
-    if (flight_intent_.emergency_brake_held && model.emergency_brake.available) {
-        action = state.resources.thrust_energy > 0.f ? BoostBrakeState::EmergencyBrake
-                                                     : BoostBrakeState::Brake;
-    } else if (flight_intent_.brake_held && model.brake.available) {
+    if (flight_intent_.emergency_brake_held && model.emergency_brake.available &&
+        has_energy(model.emergency_brake.energy_drain_per_second)) {
+        action = BoostBrakeState::EmergencyBrake;
+    } else if (flight_intent_.brake_held && model.brake.available &&
+               has_energy(model.brake.energy_drain_per_second)) {
         action = BoostBrakeState::Brake;
     } else if (flight_intent_.boost_held && model.boost.available &&
-               state.resources.thrust_energy > 0.f) {
+               has_energy(model.boost.energy_drain_per_second)) {
         action = BoostBrakeState::Boost;
     }
 
@@ -249,6 +266,7 @@ void Sim::refresh_effective_action(PlayerSimulationState& state) noexcept {
         prepare_flight_model_action_transition(state, model);
     }
     state.controller.effective_action = action;
+    clamp_flight_model_persistent_targets(state, model);
 }
 
 /* **************************************** */
@@ -275,7 +293,10 @@ void Sim::set_ship_2d_control(ml::Vector2d const input) {
     if (!sampling_target_speed_) {
         return;
     }
-    sampled_target_speed_scale_ = input;
+    sampled_target_speed_scale_ = {
+        std::clamp(input.x, -1.0, 1.0),
+        std::clamp(input.y, -1.0, 1.0),
+    };
 }
 
 void Sim::set_throttle(float const input) noexcept {
@@ -308,12 +329,15 @@ void Sim::stop_sampling() {
     }
     sampling_target_speed_ = false;
     auto const& config{get_active_flight_model_config()};
-    state_.controller.persistent_forward_target_speed =
-        static_cast<float>(sampled_target_speed_scale_.y) *
-        config.translation.forward.normal.positive_speed_limit;
-    state_.controller.persistent_right_target_speed =
-        static_cast<float>(sampled_target_speed_scale_.x) *
-        config.translation.right.normal.positive_speed_limit;
+    auto const boosting{state_.controller.effective_action == BoostBrakeState::Boost};
+    auto const& forward{boosting ? config.translation.forward.boosted
+                                 : config.translation.forward.normal};
+    auto const& right{boosting ? config.translation.right.boosted
+                               : config.translation.right.normal};
+    state_.controller.persistent_forward_target_speed = player_movement::target_speed_from_input(
+        forward, static_cast<float>(sampled_target_speed_scale_.y));
+    state_.controller.persistent_right_target_speed = player_movement::target_speed_from_input(
+        right, static_cast<float>(sampled_target_speed_scale_.x));
     planned_state_ = state_;
 }
 
@@ -321,12 +345,15 @@ void Sim::adjust_desired_forward_velocity(float const direction) {
     if (sampling_target_speed_ || std::abs(direction) <= 1.e-8f) {
         return;
     }
-    auto const& drive{get_active_flight_model_config().translation.forward.normal};
-    auto const adjustment{std::copysign(drive.positive_speed_limit * 0.05f, direction)};
+    auto const& axis{get_active_flight_model_config().translation.forward};
+    auto const& drive{state_.controller.effective_action == BoostBrakeState::Boost ? axis.boosted
+                                                                                   : axis.normal};
+    auto const adjustment{
+        std::copysign(player_movement::target_speed_bound(drive, direction) * 0.05f, direction)};
     state_.controller.persistent_forward_target_speed =
         std::clamp(state_.controller.persistent_forward_target_speed + adjustment,
-                   -drive.negative_speed_limit,
-                   drive.positive_speed_limit);
+                   -player_movement::target_speed_bound(drive, -1.f),
+                   player_movement::target_speed_bound(drive, 1.f));
     planned_state_ = state_;
 }
 
@@ -391,7 +418,7 @@ auto Sim::set_flight_model_slot_profile(FlightModelSlot const slot,
 
     flight_model_profile(flight_models_, slot) = std::move(profile);
     if (active_flight_model_slot_ == slot) {
-        reset_flight_model_controller(state_, get_active_flight_model_config());
+        reset_flight_model_controller(state_, get_active_flight_model_config(), false);
         refresh_effective_action(state_);
         planned_state_ = state_;
     }

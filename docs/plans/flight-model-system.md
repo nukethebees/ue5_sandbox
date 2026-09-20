@@ -1,6 +1,6 @@
 # Runtime Flight Model System
 
-Status: implementation complete and validated; ready for integration.
+Status: final correctness and editor-polish pass complete and validated; ready for integration.
 
 This file is both the implementation specification and the persistent progress record for the
 player flight-model redesign. Update the progress ledger and any decisions changed by repository
@@ -63,10 +63,6 @@ Important current behavior and debt:
 - The runtime level config uses `FPlayerShipConfig`, converted to `PlayerSimConfig`. A separate
   legacy `UTestSpaceShipData`/`USimulationConfig` bundle exists but does not feed the current native
   player path and should not drive this redesign.
-- The current workspace has pre-existing changes to
-  `Content/Levels/FeatureTests/FT_soa_turrets/BP_TestSpaceShip.uasset` and `Sandbox.uproject`.
-  Preserve them and do not overwrite asset state blindly.
-
 ## Target data model
 
 ### Identifiers and loadout
@@ -178,6 +174,8 @@ struct TranslationChannelConfig {
 };
 
 struct TranslationDriveConfig {
+    float positive_target_speed{};
+    float negative_target_speed{};
     float positive_speed_limit{effectively_unlimited_speed};
     float negative_speed_limit{effectively_unlimited_speed};
     float positive_acceleration{};
@@ -200,17 +198,31 @@ struct TranslationAxesConfig {
 };
 ```
 
-Separate manual and automatic channels allow either or both on each axis. `TargetSpeed` consumes a
-persistent target adjusted by explicit target-speed commands; `TargetVelocity` consumes the live
-axis value; `Acceleration` adds thrust. Automatic channels supply their configured value without
-player input. Contributions are evaluated separately: target controllers establish controlled
-velocity, then acceleration contributions are added.
+Separate manual and automatic channels allow either or both on each axis. Manual `TargetSpeed`
+consumes a persistent target adjusted by explicit target-speed commands; `TargetVelocity` consumes
+the live axis value; `Acceleration` adds thrust. Automatic values are normalized intent in
+`[-1, 1]`, interpreted through the same target-speed or acceleration scales as manual input.
+Target controllers establish controlled velocity before acceleration contributions are added.
+
+`positive_target_speed` and `negative_target_speed` are the requested component speeds at full
+input. The corresponding speed limits are independent hard caps. A largest-finite-float cap never
+becomes a target magnitude. Requested target speed is clamped by its directional cap before it
+enters Direct, RateLimited, or SecondOrder response state.
 
 Manual channels select either the signed per-axis value or the separate non-negative accelerator
-intent. This keeps forward/back translation independent from an accelerator pedal without adding
-model checks to the input adapter. Fighter and Skater use `Accelerator`; Gunship uses signed
-`Axis` input. Keyboard W intentionally maps to both intents, and each active model consumes only
-the source declared by its data.
+intent. Accelerator is supported on forward, right, and up rather than being implicitly restricted
+to forward. Automatic channels do not have an input source; validation requires their inherited
+field to remain `Axis`. Manual `TargetSpeed` also requires `Axis` because it is controlled by the
+persistent target commands rather than live Accelerator intent. Manual `automatic_value` must
+remain zero because it has no meaning.
+
+Manual plus automatic composition is explicit. At most one enabled channel on an axis may use
+`TargetSpeed` or `TargetVelocity`; two target controllers are rejected as ambiguous. A target
+controller may compose with an acceleration channel, and two acceleration channels add their
+contributions. Disabled-channel tuning data may remain populated so semantics can be toggled
+without destructive edits. Active stabilization engages only when neither the manual nor automatic
+channel currently commands movement, so it does not silently counter a configured automatic
+channel or a non-zero persistent target.
 
 Rotation data:
 
@@ -275,6 +287,24 @@ struct FlightModelConfig {
     float boosted_maximum_resultant_speed{effectively_unlimited_speed};
 };
 ```
+
+Brake response shapes engagement, not speed. Direct immediately produces engagement 1;
+RateLimited and SecondOrder approach engagement 1 through their configured response. Engagement is
+clamped to `[0, 1]`, and physical world-speed reduction is
+`deceleration * engagement * dt` down to `target_speed`. Consequently `deceleration` has the same
+meaning for all response modes and emergency brake can be generically stronger than normal brake.
+
+Action selection is deterministic: powered and available emergency brake, then independently held
+powered and available brake, then independently held powered and available boost, then none. An
+action with zero configured drain does not require stored energy. Energy exhaustion never turns an
+unavailable or unheld action into a fallback, and every effective-action transition clears brake
+engagement and reseeds affected translation responses.
+
+Validation rejects invalid enum representations, non-finite and negative rates/scales, normalized
+automatic values outside `[-1, 1]`, manual automatic values, automatic Accelerator sources,
+ambiguous dual-target channels, and unsafe SecondOrder parameters. It deliberately permits target
+scales above caps because the cap has defined saturation semantics, zero rates/limits for
+experimentation, and target-plus-acceleration or acceleration-plus-acceleration composition.
 
 Normal and boosted axis limits/rates are explicit values. Never derive a boosted limit by
 multiplying `effectively_unlimited_speed`. World velocity remains double precision, so magnitude
@@ -346,10 +376,10 @@ The generic movement tick order is:
 4. Convert ship/world contributions into world space.
 5. Apply target-speed/target-velocity response controllers.
 6. Integrate acceleration contributions.
-7. Apply configured facing/velocity coupling.
-8. Apply passive drag or explicit active stabilization.
-9. Resolve emergency brake, brake, boost, then normal drive.
-10. Enforce per-axis and resultant speed limits.
+7. Apply passive drag or explicit active stabilization when neither channel commands movement.
+8. Apply configured facing/velocity coupling.
+9. Apply the already-resolved emergency-brake or brake action to world velocity.
+10. Enforce the selected normal/boosted resultant speed limit.
 11. Integrate position.
 12. Update separately stored presentation state.
 
@@ -384,7 +414,10 @@ Skater:
 - Direct acceleration response by default;
 - turning never rotates existing velocity;
 - brake/emergency brake move the current world vector toward zero without reversal;
-- boost selects stronger local-forward acceleration and an explicit higher resultant limit.
+- boost selects stronger local-forward acceleration;
+- normal and boosted resultant limits use the effective-unlimited cap, so adding perpendicular
+  thrust never rescales previously conserved components. Directional component caps still bound
+  acceleration along the commanded local axis.
 
 Gunship:
 
@@ -410,6 +443,12 @@ Gunship:
 - Do not alter velocity inside the selection command. Locked/strong facing coupling starts on the
   following simulation tick as ordinary behavior of the selected model.
 - Reset Unreal gesture history on every slot selection so taps cannot span models.
+
+Replacing the active profile is a different transition from selecting a slot: it preserves
+persistent target-speed values, clamps them immediately to the currently effective normal or
+boosted directional target/cap bounds, and reseeds response state from physical velocity. Leaving
+boost also clamps persistent targets immediately to normal bounds. Physical state remains
+unchanged at each command boundary.
 
 Tests must distinguish preserved raw intent from discarded derived controller state.
 
@@ -470,7 +509,9 @@ First implementation UI/settings behavior:
 - Keep initial D-pad assignments hard-coded.
 - Add a dedicated flight-model section to the normal controls page using existing settings row
   widgets.
-- Expose the actual active configuration fields with mode-appropriate visibility/labels.
+- Expose translation, rotation, stabilization, coupling, action, energy, response, target-scale,
+  cap, and resultant-limit fields with mode-appropriate visibility/labels. Unlimited caps use an
+  explicit editor toggle backed by the same largest-finite-float runtime value.
 - Apply valid edits immediately to the active native slot and display `Custom (based on X)`.
 - Keep custom numeric edits session-scoped for the first implementation.
 - Replace the broad settings callback with targeted flight-setting synchronization so changing an
@@ -716,11 +757,12 @@ Skater, Gunship, transitions, and Unreal command routing have their replacement 
 
 - `cmake --workflow --preset format-code`: passed.
 - `cmake --build --preset native --target native-simulation-tests`: passed.
-- `ctest --preset native-simulation-tests`: 213/213 passed.
+- `ctest --preset native-simulation-tests`: 233/233 passed.
 - `cmake --build --preset debug-game --target editor`: passed.
 - `cmake --workflow --preset debug-game-unit-tests`: 41/41 passed.
 - `cmake --workflow --preset debug-game-tests`: 40/40 passed.
-- `ctest --preset tool-tests -V`: passed; all reported C# tool projects passed (277 tests).
+- `cmake --workflow --preset tool-tests`: passed; all reported C# tool projects passed (280
+  tests).
 - `generate-scripted-level-assets`: passed and produced the intended input/controller assets.
 
 ## Post-launch corrections
@@ -732,3 +774,26 @@ Skater, Gunship, transitions, and Unreal command routing have their replacement 
   offset while rebuilding the device-specific rows.
 - The focused DebugGame unit workflow passes all 41 tests after these corrections, including a
   regression test for pre-bind profile selection.
+
+## Final correctness pass
+
+- [x] Separated full-input target speed from component speed caps and made asymmetric target-speed
+  sampling/trimming explicit.
+- [x] Made Accelerator input generic across translation axes and validated channel fields and
+  manual/automatic composition.
+- [x] Unified Direct, RateLimited, and SecondOrder brake strength around response-shaped engagement
+  and physical deceleration.
+- [x] Corrected availability/energy fallback and action-transition response resets.
+- [x] Preserved and clamped persistent targets during runtime profile replacement while retaining
+  slot-switch clearing semantics.
+- [x] Chose effective-unlimited resultant caps for Skater and added preservation coverage.
+- [x] Expanded the controls page into a conditional editor for the complete meaningful runtime
+  model.
+- [x] Made rotation stabilization delay state per-axis so one rotation input cannot suppress
+  stabilization on unrelated axes.
+- [x] Complete final format, native, DebugGame, game, tool/codegen, and generated-artifact gates.
+
+Final-pass validation repeated formatting, all 233 native simulation tests, the 41-test DebugGame
+unit workflow, the 40-test DebugGame/game automation workflow, the editor target build, and the
+280-test C# tool workflow. Codegen checks report all committed outputs current after refreshing the
+post-rebase `PackedValues.h` fixture.

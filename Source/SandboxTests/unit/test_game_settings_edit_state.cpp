@@ -208,6 +208,12 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
         auto profile{::ioj::sim::player::make_flight_model_profile(
             ::ioj::sim::player::FlightModelPreset::Fighter)};
         profile.config.translation.forward.passive_drag = 321.f;
+        profile.config.translation.right.manual.semantic =
+            ::ioj::sim::player::TranslationSemantic::Acceleration;
+        profile.config.translation.right.manual.reference_frame =
+            ::ioj::sim::player::ReferenceFrame::World;
+        profile.config.translation.right.manual.response.mode =
+            ::ioj::sim::player::ResponseMode::RateLimited;
         TestRunner->TestTrue(TEXT("Valid runtime flight-model edits are accepted"),
                              settings->set_flight_model_profile(profile));
         TestRunner->TestTrue(TEXT("A runtime edit marks the profile custom"),
@@ -216,6 +222,14 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
             TEXT("The edited underlying value remains inspectable"),
             FMath::IsNearlyEqual(
                 settings->flight_model_profile().config.translation.forward.passive_drag, 321.f));
+        TestRunner->TestTrue(
+            TEXT("Runtime enum edits remain inspectable"),
+            settings->flight_model_profile().config.translation.right.manual.semantic ==
+                    ::ioj::sim::player::TranslationSemantic::Acceleration &&
+                settings->flight_model_profile().config.translation.right.manual.reference_frame ==
+                    ::ioj::sim::player::ReferenceFrame::World &&
+                settings->flight_model_profile().config.translation.right.manual.response.mode ==
+                    ::ioj::sim::player::ResponseMode::RateLimited);
         TestRunner->TestEqual(
             TEXT("Accepted edits emit the targeted change signal"), change_count, 1);
 
@@ -228,6 +242,16 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
             FMath::IsNearlyEqual(
                 settings->flight_model_profile().config.translation.forward.passive_drag, 321.f));
         TestRunner->TestEqual(TEXT("Rejected edits do not emit a change signal"), change_count, 1);
+
+        invalid = settings->flight_model_profile();
+        invalid.config.translation.forward.manual.semantic =
+            ::ioj::sim::player::TranslationSemantic::TargetSpeed;
+        invalid.config.translation.forward.automatic.semantic =
+            ::ioj::sim::player::TranslationSemantic::TargetVelocity;
+        TestRunner->TestFalse(TEXT("Ambiguous target-channel edits are rejected"),
+                              settings->set_flight_model_profile(invalid));
+        TestRunner->TestEqual(
+            TEXT("Rejected channel edits do not emit a change signal"), change_count, 1);
 
         auto observed{::ioj::sim::player::make_flight_model_profile(
             ::ioj::sim::player::FlightModelPreset::Skater)};
