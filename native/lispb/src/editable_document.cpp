@@ -122,6 +122,28 @@ auto conversion_name(codegen::EnumConversion const conversion) -> std::string_vi
     return "lex-to-string";
 }
 
+auto render_enum_value(codegen::EnumeratorSchema const& value) -> std::string {
+    std::ostringstream output;
+    output << "(value " << value.name;
+    if (value.initializer.has_value()) {
+        output << "\n      :value " << quote(*value.initializer);
+    }
+    if (value.display_name.has_value()) {
+        output << "\n      :display-name " << quote(*value.display_name);
+    }
+    if (value.hidden) {
+        output << "\n      :hidden true";
+    }
+    if (value.serialized_name.has_value()) {
+        output << "\n      :serialized-name " << quote(*value.serialized_name);
+    }
+    if (value.sentinel) {
+        output << "\n      :sentinel true";
+    }
+    output << ')';
+    return output.str();
+}
+
 auto render_enum(codegen::EnumSchema const& schema) -> std::string {
     std::ostringstream output;
     output << "(enum " << schema.name << ' ' << render_type_ref(schema.underlying_type);
@@ -154,23 +176,7 @@ auto render_enum(codegen::EnumSchema const& schema) -> std::string {
         output << "\n    :native-api true";
     }
     for (auto const& value : schema.values) {
-        output << "\n    (value " << value.name;
-        if (value.initializer.has_value()) {
-            output << "\n      :value " << quote(*value.initializer);
-        }
-        if (value.display_name.has_value()) {
-            output << "\n      :display-name " << quote(*value.display_name);
-        }
-        if (value.hidden) {
-            output << "\n      :hidden true";
-        }
-        if (value.serialized_name.has_value()) {
-            output << "\n      :serialized-name " << quote(*value.serialized_name);
-        }
-        if (value.sentinel) {
-            output << "\n      :sentinel true";
-        }
-        output << ')';
+        output << "\n    " << render_enum_value(value);
     }
     if (schema.unreal_projection.has_value()) {
         auto const& projection{*schema.unreal_projection};
@@ -361,6 +367,47 @@ auto apply_source_replacements(std::string_view const original,
     return result;
 }
 
+auto apply_source_replacements_to_range(std::string_view const original,
+                                        std::size_t const begin,
+                                        std::size_t const end,
+                                        std::vector<SourceReplacement> replacements)
+    -> std::optional<std::string> {
+    if (begin > end || end > original.size()) {
+        return std::nullopt;
+    }
+    for (auto& replacement : replacements) {
+        if (replacement.begin < begin || replacement.end > end) {
+            return std::nullopt;
+        }
+        replacement.begin -= begin;
+        replacement.end -= begin;
+    }
+    return apply_source_replacements(original.substr(begin, end - begin), std::move(replacements));
+}
+
+auto source_form_line_end(Form const& form, std::string_view const source, std::size_t const limit)
+    -> std::optional<std::size_t> {
+    auto const form_end{source_form_end(form, source)};
+    if (!form_end.has_value() || *form_end > limit || limit > source.size()) {
+        return std::nullopt;
+    }
+
+    auto cursor{*form_end};
+    while (cursor < limit && source[cursor] != '\n' &&
+           std::isspace(static_cast<unsigned char>(source[cursor])) != 0) {
+        ++cursor;
+    }
+    if (cursor < limit && source[cursor] == ';') {
+        while (cursor < limit && source[cursor] != '\n') {
+            ++cursor;
+        }
+    }
+    if (cursor < limit && source[cursor] == '\n') {
+        return cursor + 1;
+    }
+    return *form_end;
+}
+
 auto parse_owned_source_declaration(std::string_view const original,
                                     std::string_view const head,
                                     std::string_view const name) -> std::optional<Form> {
@@ -402,12 +449,11 @@ auto try_render_source_preserved_enum(codegen::EnumSchema const& schema,
             values.push_back(&child);
         }
     }
-    if (schema.unreal_projection.has_value() || values.size() != schema.values.size()) {
+    if (schema.unreal_projection.has_value()) {
         return std::nullopt;
     }
-    for (std::size_t index{}; index < values.size(); ++index) {
-        if (values[index]->children.size() < 2 ||
-            values[index]->children[1].token.text != schema.values[index].name) {
+    for (auto const* value : values) {
+        if (value->children.size() < 2) {
             return std::nullopt;
         }
     }
@@ -451,8 +497,74 @@ auto try_render_source_preserved_enum(codegen::EnumSchema const& schema,
         return std::nullopt;
     }
 
-    for (std::size_t index{}; index < values.size(); ++index) {
-        auto const& value{schema.values[index]};
+    if (values.empty()) {
+        return schema.values.empty() ? apply_source_replacements(original, std::move(replacements))
+                                     : std::nullopt;
+    }
+
+    auto const first_value_offset{values.front()->token.span.offset};
+    for (auto const& child : form.children) {
+        if (child.token.span.offset > first_value_offset && child.head() != "value") {
+            return std::nullopt;
+        }
+    }
+
+    auto values_begin{std::size_t{}};
+    for (auto const& child : form.children) {
+        if (child.token.span.offset >= first_value_offset) {
+            continue;
+        }
+        auto const child_end{source_form_line_end(child, original, first_value_offset)};
+        if (!child_end.has_value()) {
+            return std::nullopt;
+        }
+        values_begin = (std::max)(values_begin, *child_end);
+    }
+    if (values_begin > first_value_offset) {
+        return std::nullopt;
+    }
+
+    struct SourceValue {
+        Form const* form{};
+        std::size_t begin{};
+        std::size_t end{};
+    };
+    std::map<std::string_view, SourceValue> source_values;
+    auto row_begin{values_begin};
+    for (auto const* value : values) {
+        auto const row_end{source_form_line_end(*value, original, form.closing.span.offset)};
+        if (!row_end.has_value() || row_begin > value->token.span.offset ||
+            *row_end < value->closing.span.offset + 1) {
+            return std::nullopt;
+        }
+        if (!source_values
+                 .emplace(value->children[1].token.text,
+                          SourceValue{.form = value, .begin = row_begin, .end = *row_end})
+                 .second) {
+            return std::nullopt;
+        }
+        row_begin = *row_end;
+    }
+
+    auto const values_end{row_begin};
+    auto rendered_values{std::string{}};
+    auto append_row = [&](std::string row) {
+        auto const preceding_newline{rendered_values.empty()
+                                         ? values_begin > 0 && original[values_begin - 1] == '\n'
+                                         : rendered_values.back() == '\n'};
+        if (!preceding_newline && (row.empty() || row.front() != '\n')) {
+            rendered_values += '\n';
+        }
+        rendered_values += std::move(row);
+    };
+
+    for (auto const& value : schema.values) {
+        auto const found{source_values.find(value.name)};
+        if (found == source_values.end()) {
+            append_row("    " + render_enum_value(value));
+            continue;
+        }
+
         auto const value_properties{std::array<SourceProperty, 5>{
             std::pair{"value", value.initializer.transform(quote)},
             std::pair{"display-name", value.display_name.transform(quote)},
@@ -460,11 +572,21 @@ auto try_render_source_preserved_enum(codegen::EnumSchema const& schema,
             std::pair{"serialized-name", value.serialized_name.transform(quote)},
             std::pair{"sentinel",
                       value.sentinel ? std::optional<std::string>{"true"} : std::nullopt}}};
+        std::vector<SourceReplacement> value_replacements;
         if (!patch_source_properties(
-                *values[index], 1, value_properties, "      ", original, replacements)) {
+                *found->second.form, 1, value_properties, "      ", original, value_replacements)) {
             return std::nullopt;
         }
+        auto rendered{apply_source_replacements_to_range(
+            original, found->second.begin, found->second.end, std::move(value_replacements))};
+        if (!rendered.has_value()) {
+            return std::nullopt;
+        }
+        append_row(std::move(*rendered));
     }
+    replacements.push_back(
+        {.begin = values_begin, .end = values_end, .text = std::move(rendered_values)});
+
     return apply_source_replacements(original, std::move(replacements));
 }
 

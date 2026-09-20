@@ -306,9 +306,10 @@ SoAs are not yet exposed. Supported existing declarations can be deleted after r
 Ordinary nonstructural edits to enums, integer scalars, packed values, quantizations, varints,
 fixed-point values, and both optional policies preserve declaration-local comments, whitespace, and
 unchanged token spelling while patching only affected properties. Packed fields include stable
-named codes, explicit reserved regions, and existing relationship forms. Structural child changes
-such as insertion, deletion, rename, or reorder deliberately fall back to canonical declaration
-rendering. Stable record members and raw/tagged union alternatives receive the same preservation for
+named codes, explicit reserved regions, and existing relationship forms. Enum row insertion,
+duplication, deletion, and reorder preserve unchanged existing rows and their comments; new rows are
+rendered canonically. Structural child changes in other declaration kinds deliberately fall back to
+canonical declaration rendering. Stable record members and raw/tagged union alternatives receive the same preservation for
 type, count, tag, discriminant, and export edits. Ordinary standard-library SoAs preserve stable
 member and top-level edits as well, including untouched custom functions and advanced forms whose
 semantics can be proven unchanged. Structural or unsupported edits remain visible as canonical

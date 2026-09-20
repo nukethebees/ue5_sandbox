@@ -37,11 +37,13 @@ source range through undoable document tombstones and rejects registered-alias u
 creation and SoA rename remain follow-up work. Existing enums, integer scalars, and simple
 representation and packed-value declarations now preserve declaration-local comments, whitespace,
 and unchanged token spelling for ordinary nonstructural property/value edits. Stable packed
-field/reserved segments, named codes, and existing relationships are covered. Structural child
-edits still use canonical rendering. Stable record members and raw/tagged union alternatives now
-preserve type/count/tag/discriminant/export edits. Stable ordinary SoA member/top-level edits now
-preserve source too, after advanced untouched forms are semantically verified; structural or
-unsupported edits retain canonical fallback.
+field/reserved segments, named codes, and existing relationships are covered. Enum value insertion,
+duplication, deletion, and reorder now preserve stable existing row blocks with their leading and
+trailing comments while rendering only new rows canonically. Structural child edits for other
+declaration kinds still use canonical rendering. Stable record members and raw/tagged union
+alternatives preserve type/count/tag/discriminant/export edits. Stable ordinary SoA member/top-level
+edits preserve source too, after advanced untouched forms are semantically verified; unsupported or
+ambiguous edits retain canonical fallback.
 
 Project Open, Save, validated Save As cloning, persisted recent-project history, and module-first
 schema browsing are implemented. A native file picker and richer multi-target project selection are

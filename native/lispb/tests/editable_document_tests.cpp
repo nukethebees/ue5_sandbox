@@ -433,12 +433,20 @@ TEST(EditableSchemaDocument, PreservesEnumCommentsAndFormattingForNonStructuralE
     EXPECT_NE(module_source->text.find("; zero trailing note"), std::string::npos);
 }
 
-TEST(EditableSchemaDocument, FallsBackToCanonicalEnumRenderingForStructuralEdits) {
+TEST(EditableSchemaDocument, PreservesEnumRowsAndCommentsForStructuralEdits) {
     TemporarySchema files;
     auto document{files.load()};
     auto const enumeration{declaration_id(document, "authored_enums", "Existing", "authored")};
     auto replacement{*document.enum_schema(enumeration)};
-    std::ranges::swap(replacement.values[0], replacement.values[1]);
+    auto zero{replacement.values[0]};
+    auto one{replacement.values[1]};
+    replacement.bit_width = 2;
+    one.sentinel = true;
+    auto duplicate{one};
+    duplicate.name = "OneCopy";
+    duplicate.initializer = "2";
+    duplicate.sentinel = false;
+    replacement.values = {one, duplicate, zero};
 
     auto applied{
         document.apply(ReplaceEnum{.declaration = enumeration, .schema = std::move(replacement)})};
@@ -449,13 +457,73 @@ TEST(EditableSchemaDocument, FallsBackToCanonicalEnumRenderingForStructuralEdits
     ASSERT_TRUE(preview.has_value()) << preview.error().message;
     ASSERT_EQ(preview->size(), 1U);
     auto const& updated{preview->front().updated};
-    auto const one{updated.find("(value One")};
-    auto const zero{updated.find("(value Zero")};
-    ASSERT_NE(one, std::string::npos);
-    ASSERT_NE(zero, std::string::npos);
-    EXPECT_LT(one, zero);
-    EXPECT_EQ(updated.find("; Preserve the zero documentation"), std::string::npos);
-    EXPECT_EQ(updated.find("; Preserve the one documentation"), std::string::npos);
+    auto const one_comment{updated.find("; Preserve the one documentation too.")};
+    auto const one_position{updated.find("(value One")};
+    auto const copy{updated.find("(value OneCopy")};
+    auto const zero_comment{
+        updated.find("; Preserve the zero documentation during ordinary cell edits.")};
+    auto const zero_position{updated.find("(value Zero")};
+    ASSERT_NE(one_comment, std::string::npos);
+    ASSERT_NE(one_position, std::string::npos);
+    ASSERT_NE(copy, std::string::npos);
+    ASSERT_NE(zero_comment, std::string::npos);
+    ASSERT_NE(zero_position, std::string::npos);
+    EXPECT_LT(one_comment, one_position);
+    EXPECT_LT(one_position, copy);
+    EXPECT_LT(copy, zero_comment);
+    EXPECT_LT(zero_comment, zero_position);
+    EXPECT_NE(updated.find("(value One :value   \"1\""), std::string::npos);
+    EXPECT_NE(updated.find("; zero trailing note"), std::string::npos);
+    EXPECT_NE(updated.find(":sentinel true"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+
+    auto deletion{*document.enum_schema(enumeration)};
+    std::erase_if(deletion.values, [](auto const& value) { return value.name == "One"; });
+    applied =
+        document.apply(ReplaceEnum{.declaration = enumeration, .schema = std::move(deletion)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated.find("(value One :"), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find("; Preserve the one documentation too."),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(value Zero"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Preserve the zero documentation"),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; zero trailing note"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_NE(preview->front().updated.find("(value One :"), std::string::npos);
+    ASSERT_TRUE(document.redo().value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_enum{declaration_id(reloaded, "authored_enums", "Existing", "authored")};
+    auto const* schema{reloaded.enum_schema(reloaded_enum)};
+    ASSERT_NE(schema, nullptr);
+    EXPECT_EQ(schema->bit_width, 2U);
+    ASSERT_EQ(schema->values.size(), 2U);
+    EXPECT_EQ(schema->values[0].name, "OneCopy");
+    EXPECT_EQ(schema->values[0].initializer, "2");
+    EXPECT_EQ(schema->values[1].name, "Zero");
+
+    auto const module_source{std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
+        return source.path.filename() == "modules.lispb";
+    })};
+    ASSERT_NE(module_source, reloaded.source_files().end());
+    EXPECT_EQ(module_source->text.find("; Preserve the one documentation too."), std::string::npos);
+    EXPECT_NE(module_source->text.find("; Preserve the zero documentation"), std::string::npos);
 }
 
 TEST(EditableSchemaDocument, PreservesScalarAndRepresentationFormattingForNonStructuralEdits) {

@@ -47,10 +47,13 @@ are unchanged. The same property patcher covers linear quantization, integer var
 sentinel optional, presence-bit optional, and packed-value declarations. Packed preservation checks
 ordered field/reserved kinds and names plus field named-code identities, and patches existing
 relationships only when their source shape is stable. This preserves comments, whitespace, and
-unchanged token spelling without creating a second syntax or semantic model. Structural edits,
-Unreal projections, and ambiguous forms fall back to the canonical renderer. Records and raw/tagged
-unions use ordered member/alternative identity checks before patching types, counts, tags,
-discriminants, and exports. Standard-library SoAs patch stable member/top-level properties only
+unchanged token spelling without creating a second syntax or semantic model. Enum values additionally
+derive row-owned source ranges from the reparsed declaration: stable named rows can be reordered or
+removed with their leading/trailing comments, while inserted or duplicated rows use the canonical
+single-row renderer. Unreal projections and ambiguous source shapes still fall back to the canonical
+declaration renderer. Other structural edits retain canonical fallback. Records and raw/tagged unions
+use ordered member/alternative identity checks before patching types, counts, tags, discriminants,
+and exports. Standard-library SoAs patch stable member/top-level properties only
 after functions, fixed layouts, and single-allocation forms are proven semantically unchanged;
 unsupported derived allocator/mutable-view surfaces take canonical fallback.
 
