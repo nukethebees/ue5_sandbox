@@ -560,7 +560,9 @@ auto lower_enum_module(EnumModuleSchema const& module, std::map<std::string, Cpp
         for (auto const& value : schema.values) {
             values.push_back(Enumerator{
                 .name = value.name,
-                .initializer = value.initializer,
+                .initializer = value.initializer.has_value()
+                                 ? std::optional<std::string>{std::to_string(*value.initializer)}
+                                 : std::nullopt,
                 .annotation = annotation(value, reflected),
             });
         }

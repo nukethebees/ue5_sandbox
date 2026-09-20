@@ -24,31 +24,11 @@ struct EntityUniqueId {
     inline static constexpr storage_type index_mask{storage_type{0xffffff}};
     using entity_type_type = ioj::sim::EntityType;
     using entity_type_underlying_type = std::underlying_type_t<ioj::sim::EntityType>;
-    static_assert(std::is_enum_v<ioj::sim::EntityType>);
-    static_assert(std::is_unsigned_v<entity_type_underlying_type>);
-    static_assert(std::numeric_limits<entity_type_underlying_type>::digits >= 8);
 
     inline static constexpr int entity_type_offset{24};
     inline static constexpr int entity_type_bits{8};
     inline static constexpr storage_type entity_type_value_mask{storage_type{0xff}};
     inline static constexpr storage_type entity_type_mask{storage_type{0xff000000}};
-    static_assert(static_cast<entity_type_underlying_type>(ioj::sim::EntityType::PlayerShip) <=
-                  static_cast<entity_type_underlying_type>(entity_type_value_mask));
-    static_assert(ioj::sim::EntityType::PlayerShip < ioj::sim::EntityType::COUNT);
-    static_assert(static_cast<entity_type_underlying_type>(ioj::sim::EntityType::Turret) <=
-                  static_cast<entity_type_underlying_type>(entity_type_value_mask));
-    static_assert(ioj::sim::EntityType::Turret < ioj::sim::EntityType::COUNT);
-    static_assert(static_cast<entity_type_underlying_type>(ioj::sim::EntityType::CapitalShip) <=
-                  static_cast<entity_type_underlying_type>(entity_type_value_mask));
-    static_assert(ioj::sim::EntityType::CapitalShip < ioj::sim::EntityType::COUNT);
-    static_assert(static_cast<entity_type_underlying_type>(ioj::sim::EntityType::Fighter) <=
-                  static_cast<entity_type_underlying_type>(entity_type_value_mask));
-    static_assert(ioj::sim::EntityType::Fighter < ioj::sim::EntityType::COUNT);
-    static_assert(static_cast<entity_type_underlying_type>(ioj::sim::EntityType::TubeSpinner) <=
-                  static_cast<entity_type_underlying_type>(entity_type_value_mask));
-    static_assert(ioj::sim::EntityType::TubeSpinner < ioj::sim::EntityType::COUNT);
-    static_assert(static_cast<entity_type_underlying_type>(ioj::sim::EntityType::COUNT) <=
-                  static_cast<entity_type_underlying_type>(entity_type_value_mask));
 
     inline static constexpr storage_type invalid_value{storage_type{0xffffffff}};
 

@@ -33,6 +33,21 @@ auto lower(PackedValueModuleSchema module) -> std::string {
     return files.front().content;
 }
 
+auto lower_known_enum(PackedValueModuleSchema module, EnumSchema schema) -> std::string {
+    module.values.front().fields.back().type = TypeRef{"@state"};
+    auto const files{render_modules(lower_modules(Manifest{
+        .schema_version = manifest_schema_version,
+        .types = {{"state", CppType{"FighterStateKind"}}},
+        .modules = {EnumModuleSchema{
+                        .settings = ModuleSettings{.name = "enums", .header = "Enums.h"},
+                        .enums = {std::move(schema)},
+                    },
+                    std::move(module)},
+    }))};
+    EXPECT_EQ(files.size(), 2);
+    return files.back().content;
+}
+
 TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
     auto module{valid_module()};
     module.values.front().invalid_value = 0x7fffffffu;
@@ -52,6 +67,7 @@ TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
     EXPECT_NE(header.find("entity_index_range_fits"), std::string::npos);
     EXPECT_NE(header.find("is_valid() const noexcept"), std::string::npos);
     EXPECT_NE(header.find("std::underlying_type_t<FighterStateKind>"), std::string::npos);
+    EXPECT_NE(header.find("static_assert(std::is_enum_v<FighterStateKind>)"), std::string::npos);
     EXPECT_NE(header.find("std::is_standard_layout_v<FighterState>"), std::string::npos);
 }
 
@@ -120,6 +136,49 @@ TEST(PackedValue, ValidatesKnownEnumUnderlyingType) {
                       "enum must have an unsigned fixed-width underlying type"),
                   std::string::npos);
     }
+}
+
+TEST(PackedValue, ValidatesKnownEnumEncodedWidthWithoutEmittingPerValueAssertions) {
+    auto module{valid_module()};
+    module.values.front().fields.back().bits = 3;
+    auto schema{EnumSchema{
+        .name = "FighterStateKind",
+        .underlying_type = TypeRef{"uint8"},
+        .values = {EnumeratorSchema{"Zero", 0},
+                   EnumeratorSchema{"High", 7},
+                   EnumeratorSchema{"COUNT", 8, std::nullopt, true}},
+        .count = "COUNT",
+    }};
+
+    auto const header{lower_known_enum(module, schema)};
+    EXPECT_EQ(header.find("static_assert(static_cast<state_underlying_type>"), std::string::npos);
+    EXPECT_EQ(header.find("static_assert(state"), std::string::npos);
+
+    module.values.front().fields.back().bits = 2;
+    EXPECT_THROW(lower_known_enum(std::move(module), std::move(schema)), std::invalid_argument);
+}
+
+TEST(PackedValue, RejectsInvalidKnownEnumNumericDomains) {
+    auto module{valid_module()};
+    module.values.front().fields.back().bits = 8;
+    auto schema{EnumSchema{
+        .name = "FighterStateKind",
+        .underlying_type = TypeRef{"uint8"},
+        .values = {EnumeratorSchema{"Zero", 0}, EnumeratorSchema{"Maximum", 255}},
+    }};
+    EXPECT_NO_THROW(static_cast<void>(lower_known_enum(module, schema)));
+
+    schema.values.back().initializer = 256;
+    EXPECT_THROW(lower_known_enum(module, schema), std::invalid_argument);
+
+    schema.values.back().initializer = 0;
+    EXPECT_THROW(lower_known_enum(module, schema), std::invalid_argument);
+
+    schema.values = {EnumeratorSchema{"Zero", 0},
+                     EnumeratorSchema{"High", 7},
+                     EnumeratorSchema{"COUNT", 6, std::nullopt, true}};
+    schema.count = "COUNT";
+    EXPECT_THROW(lower_known_enum(std::move(module), std::move(schema)), std::invalid_argument);
 }
 
 } // namespace

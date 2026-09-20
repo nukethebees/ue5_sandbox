@@ -103,11 +103,11 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
             .enums = {EnumSchema{.name = "NativeState",
                                  .underlying_type = TypeRef{"@native_uint8"},
                                  .values = {EnumeratorSchema{.name = "Idle",
-                                                             .initializer = "0",
+                                                             .initializer = 0,
                                                              .display_name = "Idle",
                                                              .serialized_name = "idle"},
                                             EnumeratorSchema{.name = "Active",
-                                                             .initializer = "1",
+                                                             .initializer = 1,
                                                              .display_name = "Active",
                                                              .serialized_name = "active"}},
                                  .native_api = true}},
@@ -124,34 +124,35 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
 }
 
 TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) {
-    auto const files{render_modules(lower_modules(Manifest{
-        .schema_version = manifest_schema_version,
-        .types = {{"native_uint8", CppType{"std::uint8_t", "cstdint"}}},
-        .modules = {EnumModuleSchema{
-            .settings = ModuleSettings{.name = "native_enum",
-                                       .header = "NativeEnum.h",
-                                       .namespace_name = "fixture"},
-            .enums = {EnumSchema{
-                .name = "NativeState",
-                .underlying_type = TypeRef{"@native_uint8"},
-                .values = {EnumeratorSchema{
-                               .name = "Idle", .initializer = "0", .serialized_name = "idle"},
-                           EnumeratorSchema{
-                               .name = "Active", .initializer = "1", .serialized_name = "active"},
-                           EnumeratorSchema{.name = "COUNT", .initializer = "2", .hidden = true}},
-                .count = "COUNT",
-                .native_api = true,
-                .unreal_projection =
-                    EnumUnrealProjection{
-                        .name = "ENativeState",
-                        .header = "Project/NativeState.h",
-                        .header_include = "Project/NativeState.h",
-                        .conversion_header = "Project/NativeStateConversion.h",
-                        .native_header_include = "fixture/NativeEnum.h",
-                    },
+    auto const files{
+        render_modules(lower_modules(Manifest{
+            .schema_version = manifest_schema_version,
+            .types = {{"native_uint8", CppType{"std::uint8_t", "cstdint"}}},
+            .modules = {EnumModuleSchema{
+                .settings = ModuleSettings{.name = "native_enum",
+                                           .header = "NativeEnum.h",
+                                           .namespace_name = "fixture"},
+                .enums = {EnumSchema{
+                    .name = "NativeState",
+                    .underlying_type = TypeRef{"@native_uint8"},
+                    .values = {EnumeratorSchema{
+                                   .name = "Idle", .initializer = 0, .serialized_name = "idle"},
+                               EnumeratorSchema{
+                                   .name = "Active", .initializer = 1, .serialized_name = "active"},
+                               EnumeratorSchema{.name = "COUNT", .initializer = 2, .hidden = true}},
+                    .count = "COUNT",
+                    .native_api = true,
+                    .unreal_projection =
+                        EnumUnrealProjection{
+                            .name = "ENativeState",
+                            .header = "Project/NativeState.h",
+                            .header_include = "Project/NativeState.h",
+                            .conversion_header = "Project/NativeStateConversion.h",
+                            .native_header_include = "fixture/NativeEnum.h",
+                        },
+                }},
             }},
-        }},
-    }))};
+        }))};
 
     ASSERT_EQ(files.size(), 3);
     auto const& native_header{files[0].content};
@@ -197,7 +198,7 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
             .values =
                 {
                     EnumeratorSchema{"First", std::nullopt, std::nullopt, false, "first"},
-                    EnumeratorSchema{"Readable", "7", "Readable Value", false, "readable"},
+                    EnumeratorSchema{"Readable", 7, "Readable Value", false, "readable"},
                     EnumeratorSchema{"COUNT", std::nullopt, std::nullopt, true, "count"},
                 },
             .conversions =

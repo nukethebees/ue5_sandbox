@@ -7,9 +7,9 @@
 
 namespace codegen_compile_fixture {
 enum class PackedState : std::uint8_t {
-    Zero = 0x00,
-    AB = 0xAB,
-    Max = 0xFF,
+    Zero = 0,
+    AB = 171,
+    Max = 255,
 };
 
 enum class TinyState : std::uint8_t {

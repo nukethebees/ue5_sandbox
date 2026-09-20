@@ -115,8 +115,8 @@ auto valid_native_enum_module() -> EnumModuleSchema {
         .enums = {EnumSchema{
             .name = "NativeMode",
             .underlying_type = TypeRef{"std::uint8_t"},
-            .values = {EnumeratorSchema{"Idle", "0", std::nullopt, false, "idle"},
-                       EnumeratorSchema{"COUNT", "1", std::nullopt, true}},
+            .values = {EnumeratorSchema{"Idle", 0, std::nullopt, false, "idle"},
+                       EnumeratorSchema{"COUNT", 1, std::nullopt, true}},
             .count = "COUNT",
             .native_api = true,
         }},
@@ -245,7 +245,7 @@ TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
 TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
     auto module{valid_enum_module()};
     module.enums.front().enum_array = true;
-    module.enums.front().values.front().initializer = "0";
+    module.enums.front().values.front().initializer = 0;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();

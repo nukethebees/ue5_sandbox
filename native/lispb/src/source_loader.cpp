@@ -495,9 +495,13 @@ auto parse_enum(Form const& form) -> EnumSchema {
         if (declaration->head() == "value") {
             Fields const value{*declaration, "value", 1};
             value.validate({"value", "display-name", "hidden", "serialized-name"});
+            auto const* initializer{value.optional("value")};
             values.push_back(EnumeratorSchema{
                 .name = text(value.positional(0), "enumerator name"),
-                .initializer = optional_text(value, "value"),
+                .initializer = initializer == nullptr
+                                 ? std::nullopt
+                                 : std::optional<std::uint64_t>{unsigned_integer(*initializer,
+                                                                                 "enum value")},
                 .display_name = optional_text(value, "display-name"),
                 .hidden = boolean_or(value, "hidden"),
                 .serialized_name = optional_text(value, "serialized-name"),

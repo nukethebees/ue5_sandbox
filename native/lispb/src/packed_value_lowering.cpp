@@ -73,11 +73,13 @@ auto packed_value_text(PackedValueSchema const& schema,
         if (field.kind == PackedFieldKind::enumeration) {
             output += "    using " + field.name + "_underlying_type = std::underlying_type_t<" +
                       field_type.spelling + ">;\n";
-            output += "    static_assert(std::is_enum_v<" + field_type.spelling + ">);\n";
-            output +=
-                "    static_assert(std::is_unsigned_v<" + field.name + "_underlying_type>);\n";
-            output += "    static_assert(std::numeric_limits<" + field.name +
-                      "_underlying_type>::digits >= " + std::to_string(field.bits) + ");\n";
+            if (find_packed_enum(field.type, types, modules) == nullptr) {
+                output += "    static_assert(std::is_enum_v<" + field_type.spelling + ">);\n";
+                output +=
+                    "    static_assert(std::is_unsigned_v<" + field.name + "_underlying_type>);\n";
+                output += "    static_assert(std::numeric_limits<" + field.name +
+                          "_underlying_type>::digits >= " + std::to_string(field.bits) + ");\n";
+            }
         }
 
         auto const value_mask{field.bits == 64 ? all_bits : (std::uint64_t{1} << field.bits) - 1};
@@ -91,20 +93,6 @@ auto packed_value_text(PackedValueSchema const& schema,
         output += "    inline static constexpr storage_type " + field.name + "_mask{storage_type{" +
                   hex_value(mask) + "}};\n";
 
-        if (field.kind == PackedFieldKind::enumeration) {
-            if (auto const* enum_schema{find_packed_enum(field.type, types, modules)}) {
-                for (auto const& enumerator : enum_schema->values) {
-                    output += "    static_assert(static_cast<" + field.name + "_underlying_type>(" +
-                              field_type.spelling + "::" + enumerator.name + ") <= static_cast<" +
-                              field.name + "_underlying_type>(" + field.name + "_value_mask));\n";
-                    if (enum_schema->count.has_value() && enumerator.name != *enum_schema->count) {
-                        output += "    static_assert(" + field_type.spelling +
-                                  "::" + enumerator.name + " < " + field_type.spelling +
-                                  "::" + *enum_schema->count + ");\n";
-                    }
-                }
-            }
-        }
         offset += field.bits;
     }
 

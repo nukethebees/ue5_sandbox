@@ -8,6 +8,7 @@
 #include <cctype>
 #include <cstdint>
 #include <iterator>
+#include <limits>
 #include <set>
 #include <stdexcept>
 #include <string_view>
@@ -353,6 +354,15 @@ void validate_enum(EnumModuleSchema const& module, std::map<std::string, CppType
             throw std::invalid_argument{"Duplicate enum name: " + schema.name};
         }
         validate_type(schema.underlying_type, types, "Enum '" + schema.name + "' underlying");
+        auto const underlying{resolve_type(schema.underlying_type, types)};
+        auto const underlying_type{enum_integer_type(underlying.spelling)};
+        if (!underlying_type.has_value()) {
+            throw std::invalid_argument{"Enum '" + schema.name +
+                                        "' must have a supported integral underlying type"};
+        }
+        auto const underlying_max{underlying_type->is_unsigned && underlying_type->value_bits == 64
+                                      ? std::numeric_limits<std::uint64_t>::max()
+                                      : (std::uint64_t{1} << underlying_type->value_bits) - 1};
         validate_export_specifier(schema.export_specifier,
                                   "Enum '" + schema.name + "' export specifier");
         if (schema.unreal_projection.has_value()) {
@@ -402,12 +412,37 @@ void validate_enum(EnumModuleSchema const& module, std::map<std::string, CppType
             std::find(schema.conversions.begin(),
                       schema.conversions.end(),
                       EnumConversion::try_parse_serialized) != schema.conversions.end()};
+        std::set<std::uint64_t> encoded_values;
+        std::optional<std::uint64_t> next_value{0};
+        std::optional<std::uint64_t> count_encoded_value;
+        std::uint64_t maximum_encoded_value{};
         for (auto const& value : schema.values) {
             require_identifier(value.name, "Enum '" + schema.name + "' value name");
             value_names.push_back(value.name);
-            if (value.initializer.has_value()) {
-                require_value(*value.initializer,
-                              "Enum '" + schema.name + "' value '" + value.name + "' initializer");
+            if (!value.initializer.has_value() && !next_value.has_value()) {
+                throw std::invalid_argument{"Enum '" + schema.name + "' value '" + value.name +
+                                            "' implicit value overflows uint64"};
+            }
+            auto const encoded_value{value.initializer.has_value() ? *value.initializer
+                                                                   : *next_value};
+            if (encoded_value > underlying_max) {
+                throw std::invalid_argument{"Enum '" + schema.name + "' value '" + value.name +
+                                            "' does not fit its underlying type"};
+            }
+            if (!encoded_values.insert(encoded_value).second) {
+                throw std::invalid_argument{
+                    "Enum '" + schema.name +
+                    "' contains duplicate encoded value: " + std::to_string(encoded_value)};
+            }
+            if (schema.count.has_value() && value.name == *schema.count) {
+                count_encoded_value = encoded_value;
+            } else {
+                maximum_encoded_value = std::max(maximum_encoded_value, encoded_value);
+            }
+            if (encoded_value == std::numeric_limits<std::uint64_t>::max()) {
+                next_value.reset();
+            } else {
+                next_value = encoded_value + 1;
             }
             if (value.display_name.has_value()) {
                 require_value(*value.display_name,
@@ -451,6 +486,11 @@ void validate_enum(EnumModuleSchema const& module, std::map<std::string, CppType
             if (count_value == schema.values.begin()) {
                 throw std::invalid_argument{"Enum '" + schema.name +
                                             "' count must follow at least one value"};
+            }
+            if (maximum_encoded_value == std::numeric_limits<std::uint64_t>::max() ||
+                *count_encoded_value != maximum_encoded_value + 1) {
+                throw std::invalid_argument{"Enum '" + schema.name +
+                                            "' count must be one past its maximum encoded value"};
             }
         }
         if (schema.enum_array) {
@@ -579,6 +619,10 @@ void validate_packed_values(PackedValueModuleSchema const& module,
                 if (field.bits > *underlying_width) {
                     throw std::invalid_argument{field_context +
                                                 " width exceeds its enum underlying type"};
+                }
+                if (field.bits < enum_required_packed_bits(*enum_schema)) {
+                    throw std::invalid_argument{
+                        field_context + " width does not fit its maximum encoded enum value"};
                 }
             }
             if (field.range_helper && (field.kind != PackedFieldKind::unsigned_integer ||

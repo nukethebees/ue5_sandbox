@@ -163,6 +163,39 @@ TEST(SourceLoader, ReadsPackedValueModule) {
     EXPECT_EQ(value.fields[1].kind, PackedFieldKind::enumeration);
 }
 
+TEST(SourceLoader, ParsesNumericEnumValuesAndRejectsOpaqueExpressions) {
+    TemporaryManifest files;
+    files.write_root(R"schema(
+(enum-module enums
+  :header "Enums.h"
+  (enum State uint8
+    (value Zero :value 0)
+    (value High :value "0x7f")))
+)schema");
+
+    auto const manifest{files.load()};
+    auto const& values{std::get<EnumModuleSchema>(manifest.modules.front()).enums.front().values};
+    ASSERT_EQ(values.size(), 2);
+    EXPECT_EQ(values[0].initializer, std::uint64_t{0});
+    EXPECT_EQ(values[1].initializer, std::uint64_t{0x7f});
+
+    files.write_root(R"schema(
+(enum-module enums
+  :header "Enums.h"
+  (enum State uint8
+    (value Invalid :value -1)))
+)schema");
+    EXPECT_THROW(static_cast<void>(files.load()), ManifestError);
+
+    files.write_root(R"schema(
+(enum-module enums
+  :header "Enums.h"
+  (enum State uint8
+    (value Invalid :value "static_cast<uint8>(1)")))
+)schema");
+    EXPECT_THROW(static_cast<void>(files.load()), ManifestError);
+}
+
 TEST(SourceLoader, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {
     TemporaryManifest files;
     files.write_root(R"(
