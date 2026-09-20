@@ -76,6 +76,7 @@ add_subdirectory(level_authoring)
 add_subdirectory(simulation_benchmark)
 add_subdirectory(image)
 add_subdirectory(mesh_gen)
+add_subdirectory(shaders)
 
 add_custom_target(native-tests
   DEPENDS

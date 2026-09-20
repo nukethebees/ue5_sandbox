@@ -70,8 +70,68 @@ benchmark report appeared about six seconds after the final startup scripts in a
 
 ## Standalone DXC path
 
-To be completed after the standalone test is implemented and measured.
+Unreal 5.8 enforces that global shader sources include `Platform.ush`, even though this shader uses
+none of its definitions. The include is therefore guarded by `SANDBOX_STANDALONE_DXC`, the only
+compatibility shim. Both paths still compile the same algorithm and real entry point from the same
+authoritative file.
+
+`native/shaders` registers one CTest. Its test-specific CMake runner invokes DXC with:
+
+```text
+dxc.exe -T cs_6_0 -E render_heatmap_cs -DSANDBOX_STANDALONE_DXC=1 -WX \
+  -Fo <build>/HeatmapRDG.dxil \
+  Plugins/SandboxUI/Shaders/Private/HeatmapRDG/HeatmapRDG.usf
+```
+
+Run it independently of Unreal with:
+
+```powershell
+cmake --preset native
+ctest --test-dir out/build/native -R '^heatmap-rdg-dxc-test$' --output-on-failure
+```
+
+The test fails with a specific `DXC missing` message if the executable found during configuration
+is unavailable. DXC's diagnostics are included verbatim when include resolution or HLSL
+compilation fails. The test uses DXC 1.9.0.5402 installed at
+`C:\tools\dxc\dxc_2026_07_29\bin\x64\dxc.exe` on this machine.
+
+Three post-implementation runs used the exact CTest command above. Wall-clock time includes CTest,
+the CMake test runner, DXC process startup, shader compilation, and writing the DXIL output.
+
+| Run | Result | CTest test time | Process wall clock |
+| --- | --- | ---: | ---: |
+| 1 | Pass | 0.04 s | 0.079 s |
+| 2 | Pass | 0.04 s | 0.069 s |
+| 3 | Pass | 0.04 s | 0.071 s |
+
+The representative median is **0.071 s**. DXC does not use a persistent compiler cache in this
+test; all three runs launch a new process and produce a new DXIL file. The source and executable
+were warm in the operating-system file cache after the earlier implementation check.
 
 ## Comparison and recommendation
 
-To be completed after the standalone test is implemented and measured.
+| Path | Representative median | Absolute time saved | Relative speedup |
+| --- | ---: | ---: | ---: |
+| Unreal `HeatmapBenchmark` | 25.337 s | - | 1x |
+| Standalone DXC CTest | 0.071 s | 25.266 s | 357x |
+
+The timings are intentionally end-to-end but are not perfectly apples-to-apples. The Unreal path
+starts the editor and D3D12 RHI, checks/compiles engine and project shaders, creates RDG resources,
+dispatches the shader 550 times including warmups, takes serialized GPU timestamps for 500
+measured dispatches, benchmarks the Slate alternative, and shuts down. The DXC path compiles the
+single authoritative entry point once and exits. The comparison answers the practical question of
+how long a developer waits for source/entry-point validation, not which compiler is faster.
+
+No Unreal test or benchmark was removed. The existing commandlet retains coverage of global-shader
+registration, Unreal virtual shader mapping, parameter layout and binding, RDG upload/UAV setup,
+real D3D12 dispatch, and GPU execution. The standalone test adds cheap validation that the shader
+is valid direct-DXC HLSL, the production entry point exists, `cs_6_0` compilation succeeds without
+warnings, and the shader does not accidentally acquire an Unreal-only source dependency.
+
+Neither path checks output pixels against expected heatmap colours. A D3D12 execution harness would
+be required for deterministic algorithm-output coverage, but that is not justified for this first
+proof: it would duplicate substantial resource and dispatch setup already covered by Unreal. The
+compile-only test is worth keeping and the pattern is worth extending selectively to other small,
+self-contained shaders. Further candidates should get one test per authoritative entry point and
+should not trigger a general shader framework; shaders whose value is primarily Unreal integration
+should remain in Unreal.

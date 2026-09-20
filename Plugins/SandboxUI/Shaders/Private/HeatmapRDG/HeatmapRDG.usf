@@ -1,4 +1,6 @@
+#ifndef SANDBOX_STANDALONE_DXC
 #include "/Engine/Public/Platform.ush"
+#endif
 
 StructuredBuffer<float> GridValues;
 RWTexture2D<float4> OutputTexture;
