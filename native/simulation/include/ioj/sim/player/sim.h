@@ -45,6 +45,8 @@ struct PlayerSpawnData {
     Transform3d right_socket{Transform3d{}};
     Transform3d middle_socket{Transform3d{}};
 
+    FlightModelLoadout flight_models{make_default_flight_model_loadout()};
+
     SpaceShipFlightMode flight_mode{SpaceShipFlightMode::ForwardSpeed};
     SpaceShipControlMode control_mode{SpaceShipControlMode::Velocity};
 
@@ -90,6 +92,16 @@ struct Sim {
     auto get_presentation_state() const noexcept -> PlayerPresentationState const& {
         return state_.presentation;
     }
+    auto get_flight_intent() const noexcept -> PlayerFlightIntent const& { return flight_intent_; }
+    auto get_active_flight_model_slot() const noexcept -> FlightModelSlot {
+        return active_flight_model_slot_;
+    }
+    auto get_active_flight_model_profile() const noexcept -> FlightModelProfile const& {
+        return flight_model_profile(flight_models_, active_flight_model_slot_);
+    }
+    auto get_active_flight_model_config() const noexcept -> FlightModelConfig const& {
+        return get_active_flight_model_profile().config;
+    }
     void configure(PlayerSpawnData const& spawn) noexcept;
     void set_config(PlayerSimConfig const& new_config) noexcept;
     void set_team(Team new_team) noexcept;
@@ -119,6 +131,9 @@ struct Sim {
     void stop_brake();
     void roll(float direction) noexcept;
     void set_flight_mode(SpaceShipFlightMode new_flight_mode) noexcept;
+    void select_flight_model_slot(FlightModelSlot slot) noexcept;
+    [[nodiscard]] auto set_flight_model_slot_profile(FlightModelSlot slot,
+                                                     FlightModelProfile profile) noexcept -> bool;
 
     /* **************************************** */
     // Weapons
@@ -185,6 +200,9 @@ struct Sim {
   private:
     PlayerSimulationState state_{};
     PlayerSimulationState planned_state_{};
+    PlayerFlightIntent flight_intent_{};
+    FlightModelLoadout flight_models_{make_default_flight_model_loadout()};
+    FlightModelSlot active_flight_model_slot_{FlightModelSlot::Up};
     /* **************************************** */
     // Tick phases
     /* **************************************** */
@@ -212,6 +230,7 @@ struct Sim {
     void set_boost_brake_state(BoostBrakeState state);
     void set_boost_brake_state(BoostBrakeState new_state, PlayerSimulationState& state);
     void update_boost_brake(float dt, PlayerSimulationState& state);
+    void refresh_effective_action(PlayerSimulationState& state) noexcept;
 
     /* **************************************** */
     // Weapons
