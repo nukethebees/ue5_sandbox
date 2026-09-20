@@ -376,6 +376,23 @@ TEST(GeneratedPackedValue, ExhaustivelyRoundTripsUint8Storage) {
     }
 }
 
+TEST(GeneratedPackedValue, RoundTripsMostSignificantFirstFields) {
+    static_assert(NetworkHeader::version_offset == 28);
+    static_assert(NetworkHeader::kind_offset == 20);
+    static_assert(NetworkHeader::length_offset == 0);
+
+    NetworkHeader header;
+    header.set_version(std::uint8_t{0xa});
+    header.set_kind(std::uint8_t{0xbc});
+    header.set_length(std::uint16_t{0x1234});
+    EXPECT_EQ(header.raw_value(), std::uint32_t{0xabc01234});
+
+    auto const from_raw{NetworkHeader{std::uint32_t{0x5a70beef}}};
+    EXPECT_EQ(from_raw.version(), std::uint8_t{0x5});
+    EXPECT_EQ(from_raw.kind(), std::uint8_t{0xa7});
+    EXPECT_EQ(from_raw.length(), std::uint16_t{0xbeef});
+}
+
 TEST(GeneratedPackedValue, HandlesFullWidthStorageAndNarrowEnums) {
     auto const maximum{std::numeric_limits<std::uint64_t>::max()};
     static_assert(PackedWide::value_bits == 64);

@@ -348,6 +348,8 @@ struct PackedAnalysis {
     std::string schema_storage_type;
     std::string storage_type;
     bool storage_overridden{};
+    std::optional<codegen::PackedByteOrder> byte_order;
+    codegen::PackedBitOrder bit_order{codegen::PackedBitOrder::least_significant_first};
     std::optional<TypeFacts> storage_facts;
     std::optional<std::uint64_t> storage_bits;
     std::optional<std::uint64_t> bits_used;

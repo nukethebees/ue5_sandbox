@@ -97,6 +97,8 @@ struct PackedType {
     ResolvedTypeRef storage_type;
     std::vector<PackedSegment> segments;
     std::optional<std::uint64_t> invalid_raw_value;
+    std::optional<codegen::PackedByteOrder> byte_order;
+    codegen::PackedBitOrder bit_order{codegen::PackedBitOrder::least_significant_first};
 };
 
 struct RecordMember {

@@ -542,7 +542,20 @@ void PlannerUi::draw_new_packed_value_dialog() {
         ImGui::InputText("Name", new_packed_value_name_.data(), new_packed_value_name_.size());
         ImGui::InputText(
             "Storage type", new_packed_storage_type_.data(), new_packed_storage_type_.size());
+        constexpr std::array byte_order_labels{"Unspecified", "Little endian", "Big endian"};
+        ImGui::Combo("Serialized byte order",
+                     &new_packed_byte_order_,
+                     byte_order_labels.data(),
+                     static_cast<int>(byte_order_labels.size()));
+        constexpr std::array bit_order_labels{
+            "Default (LSB-first)", "Explicit LSB-first", "MSB-first"};
+        ImGui::Combo("Segment bit order",
+                     &new_packed_bit_order_,
+                     bit_order_labels.data(),
+                     static_cast<int>(bit_order_labels.size()));
         ImGui::TextDisabled("The declaration starts with one editable 1-bit uint8 field.");
+        ImGui::TextDisabled(
+            "Byte order describes serialized bytes; it does not change the host integer ABI.");
 
         auto const ready{new_packed_value_name_.front() != '\0' &&
                          new_packed_storage_type_.front() != '\0'};
@@ -581,7 +594,23 @@ void PlannerUi::draw_new_packed_value_dialog() {
                                     .named_codes = {},
                                     .relationship = std::nullopt}},
                                 .invalid_value = std::nullopt,
-                                .export_specifier = std::nullopt},
+                                .export_specifier = std::nullopt,
+                                .byte_order =
+                                    new_packed_byte_order_ == 0
+                                        ? std::nullopt
+                                        : std::optional{new_packed_byte_order_ == 1
+                                                            ? codegen::PackedByteOrder::
+                                                                  little_endian
+                                                            : codegen::PackedByteOrder::big_endian},
+                                .bit_order =
+                                    new_packed_bit_order_ == 0
+                                        ? std::nullopt
+                                        : std::
+                                              optional{new_packed_bit_order_ == 1
+                                                           ? codegen::PackedBitOrder::
+                                                                 least_significant_first
+                                                           : codegen::PackedBitOrder::
+                                                                 most_significant_first}},
                         .insertion_index = std::nullopt},
                     identity)) {
                 new_packed_value_name_.fill('\0');
@@ -589,6 +618,8 @@ void PlannerUi::draw_new_packed_value_dialog() {
                               new_packed_storage_type_.size(),
                               "%s",
                               "std::uint32_t");
+                new_packed_byte_order_ = 0;
+                new_packed_bit_order_ = 0;
                 selected_field_ = "value";
                 ImGui::CloseCurrentPopup();
             }

@@ -51,6 +51,8 @@ void draw_packed_bar(PackedAnalysis const& analysis,
     auto const origin{ImGui::GetCursorScreenPos()};
     constexpr float height{74.0F};
     auto const denominator{static_cast<float>(std::max<std::uint64_t>(1, common_bits))};
+    auto const most_significant_first{analysis.bit_order ==
+                                      codegen::PackedBitOrder::most_significant_first};
     auto const storage_width{available * static_cast<float>(analysis.storage_bits.value_or(0)) /
                              denominator};
     auto* draw_list{ImGui::GetWindowDrawList()};
@@ -66,8 +68,15 @@ void draw_packed_bar(PackedAnalysis const& analysis,
     float unused_right{};
     if (analysis.unused_bits.value_or(0) != 0 && analysis.bits_used.has_value()) {
         has_unused = true;
-        unused_left = origin.x + available * static_cast<float>(*analysis.bits_used) / denominator;
-        unused_right = origin.x + storage_width;
+        if (most_significant_first) {
+            unused_left = origin.x;
+            unused_right =
+                origin.x + available * static_cast<float>(*analysis.unused_bits) / denominator;
+        } else {
+            unused_left =
+                origin.x + available * static_cast<float>(*analysis.bits_used) / denominator;
+            unused_right = origin.x + storage_width;
+        }
         draw_list->AddRectFilled({unused_left, origin.y},
                                  {unused_right, origin.y + height},
                                  ImGui::GetColorU32(unused_color),
@@ -84,6 +93,9 @@ void draw_packed_bar(PackedAnalysis const& analysis,
 
     for (std::size_t index{}; index < analysis.fields.size(); ++index) {
         auto const& field{analysis.fields[index]};
+        if (most_significant_first && !field.most_significant_bit.has_value()) {
+            continue;
+        }
         auto const left{origin.x +
                         available * static_cast<float>(field.least_significant_bit) / denominator};
         auto const right{origin.x +
@@ -140,6 +152,9 @@ void draw_packed_bar(PackedAnalysis const& analysis,
 
     for (std::size_t index{}; index < analysis.fields.size(); ++index) {
         auto const& field{analysis.fields[index]};
+        if (most_significant_first && !field.most_significant_bit.has_value()) {
+            continue;
+        }
         auto const left{origin.x +
                         available * static_cast<float>(field.least_significant_bit) / denominator};
         auto const right{origin.x +
@@ -159,16 +174,20 @@ void draw_packed_bar(PackedAnalysis const& analysis,
     }
 
     if (analysis.overflow_bits.value_or(0) != 0) {
-        auto const overflow_left{origin.x + storage_width};
-        auto const overflow_right{origin.x + available * static_cast<float>(*analysis.bits_used) /
-                                                 denominator};
+        auto const overflow_width{available * static_cast<float>(*analysis.overflow_bits) /
+                                  denominator};
+        auto const overflow_left{most_significant_first ? origin.x : origin.x + storage_width};
+        auto const overflow_right{
+            most_significant_first
+                ? origin.x + overflow_width
+                : origin.x + available * static_cast<float>(*analysis.bits_used) / denominator};
         draw_list->AddRectFilled({overflow_left, origin.y},
                                  {overflow_right, origin.y + height},
                                  ImGui::GetColorU32(overflow_color),
                                  0.0F);
         draw_list->AddText({overflow_left + 4.0F, origin.y + height - 20.0F},
                            ImGui::GetColorU32(ImGuiCol_Text),
-                           "overflow");
+                           most_significant_first ? "overflow below bit 0" : "overflow");
     }
     draw_list->AddText(
         {origin.x, origin.y + height + 3.0F}, ImGui::GetColorU32(ImGuiCol_TextDisabled), "bit 0");
@@ -191,10 +210,16 @@ void draw_packed_bar(PackedAnalysis const& analysis,
         constexpr float divider_handle_half_width{5.0F};
         for (std::size_t index{}; index + 1 < analysis.fields.size(); ++index) {
             auto const& field{analysis.fields[index]};
-            auto const divider_x{
-                origin.x + available *
-                               static_cast<float>(field.least_significant_bit + field.bit_width) /
-                               denominator};
+            auto const& next_field{analysis.fields[index + 1]};
+            if (most_significant_first && (!field.most_significant_bit.has_value() ||
+                                           !next_field.most_significant_bit.has_value())) {
+                continue;
+            }
+            auto const divider_bit{most_significant_first
+                                       ? field.least_significant_bit
+                                       : field.least_significant_bit + field.bit_width};
+            auto const divider_x{origin.x +
+                                 available * static_cast<float>(divider_bit) / denominator};
             auto const within_handle{hovered && std::abs(mouse_position.x - divider_x) <=
                                                     divider_handle_half_width};
             auto const active{dragged_divider.has_value() && *dragged_divider == index};
@@ -218,6 +243,9 @@ void draw_packed_bar(PackedAnalysis const& analysis,
     if (hovered) {
         auto const mouse_x{mouse_position.x};
         for (auto const& field : analysis.fields) {
+            if (most_significant_first && !field.most_significant_bit.has_value()) {
+                continue;
+            }
             auto const left{origin.x + available * static_cast<float>(field.least_significant_bit) /
                                            denominator};
             auto const right{origin.x +
@@ -296,7 +324,9 @@ void draw_packed_bar(PackedAnalysis const& analysis,
             auto const index{*dragged_divider};
             auto const& left_field{analysis.fields[index]};
             auto const& right_field{analysis.fields[index + 1]};
-            if (left_field.reserved || right_field.reserved) {
+            if (left_field.reserved || right_field.reserved ||
+                (most_significant_first && (!left_field.most_significant_bit.has_value() ||
+                                            !right_field.most_significant_bit.has_value()))) {
                 dragged_divider.reset();
             } else {
                 auto const pair_width{static_cast<std::uint64_t>(left_field.bit_width) +
@@ -305,15 +335,21 @@ void draw_packed_bar(PackedAnalysis const& analysis,
                     std::uint64_t{1}, pair_width > 64 ? pair_width - 64 : std::uint64_t{1})};
                 auto const maximum_left{std::min(std::uint64_t{64}, pair_width - 1)};
                 if (pair_width >= 2 && minimum_left <= maximum_left) {
-                    auto const left_edge{origin.x +
-                                         available *
-                                             static_cast<float>(left_field.least_significant_bit) /
-                                             denominator};
+                    auto const pair_low_bit{most_significant_first
+                                                ? right_field.least_significant_bit
+                                                : left_field.least_significant_bit};
+                    auto const pair_low{origin.x +
+                                        available * static_cast<float>(pair_low_bit) / denominator};
                     auto const relative_bits{
-                        std::round((mouse_position.x - left_edge) * denominator / available)};
-                    auto const requested_left{relative_bits <= 0.0F
-                                                  ? std::uint64_t{0}
-                                                  : static_cast<std::uint64_t>(relative_bits)};
+                        std::round((mouse_position.x - pair_low) * denominator / available)};
+                    auto const relative_from_low{relative_bits <= 0.0F
+                                                     ? std::uint64_t{0}
+                                                     : static_cast<std::uint64_t>(relative_bits)};
+                    auto const requested_left{most_significant_first
+                                                  ? (relative_from_low >= pair_width
+                                                         ? std::uint64_t{0}
+                                                         : pair_width - relative_from_low)
+                                                  : relative_from_low};
                     auto const new_left{std::clamp(requested_left, minimum_left, maximum_left)};
                     auto const new_right{pair_width - new_left};
                     if (new_left != left_field.bit_width) {
@@ -523,6 +559,15 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
 
     auto const& scale_analysis{*active_packed_};
     auto const& aggregate{scale_analysis.aggregate};
+    auto const byte_order{
+        scale_analysis.byte_order.has_value()
+            ? std::string{codegen::packed_byte_order_name(*scale_analysis.byte_order)}
+            : std::string{"Unspecified"}};
+    ImGui::Text("Serialized byte order: %s", byte_order.c_str());
+    ImGui::Text("Segment bit order: %s",
+                std::string{codegen::packed_bit_order_name(scale_analysis.bit_order)}.c_str());
+    ImGui::TextDisabled(
+        "Byte order is a serialization fact; the diagram uses numeric storage bit positions.");
     if (ImGui::BeginTable("packed-aggregate",
                           2,
                           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |

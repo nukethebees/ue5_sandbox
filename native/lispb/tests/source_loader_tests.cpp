@@ -144,6 +144,8 @@ TEST(SourceLoader, ReadsPackedValueModule) {
   :namespace project
   (packed-value FighterState
     :storage std::uint32_t
+    :byte-order big
+    :bit-order msb-first
     :invalid-value 0x7fffffff
     :mutable true
     (field entity_index std::uint32_t :bits auto :range-helper true :minimum 0 :maximum 1000000
@@ -160,6 +162,8 @@ TEST(SourceLoader, ReadsPackedValueModule) {
     auto const& value{module.values.front()};
     EXPECT_EQ(value.name, "FighterState");
     EXPECT_EQ(value.storage_type.name, "std::uint32_t");
+    EXPECT_EQ(value.byte_order, PackedByteOrder::big_endian);
+    EXPECT_EQ(value.bit_order, PackedBitOrder::most_significant_first);
     EXPECT_EQ(value.invalid_value, std::uint64_t{0x7fffffff});
     EXPECT_TRUE(value.mutable_value);
     ASSERT_EQ(value.segments.size(), 3);
@@ -202,6 +206,8 @@ TEST(SourceLoader, ReadsSignedArbitraryWidthPackedField) {
 
     auto const manifest{files.load()};
     auto const& value{std::get<PackedValueModuleSchema>(manifest.modules.front()).values.front()};
+    EXPECT_FALSE(value.byte_order.has_value());
+    EXPECT_FALSE(value.bit_order.has_value());
     auto const& delta{std::get<PackedFieldSchema>(value.segments.front())};
     EXPECT_EQ(delta.type.name, "std::int32_t");
     EXPECT_FALSE(delta.bits.has_value());
@@ -212,6 +218,29 @@ TEST(SourceLoader, ReadsSignedArbitraryWidthPackedField) {
     EXPECT_EQ(delta.named_codes[0].value, PackedIntegerValue{0});
     EXPECT_EQ(delta.named_codes[1].value, PackedIntegerValue{-128});
     EXPECT_TRUE(delta.named_codes[1].sentinel);
+}
+
+TEST(SourceLoader, RejectsUnknownPackedPhysicalOrdering) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(packed-value-module packed
+  :header "Packed.h"
+  (packed-value Value
+    :storage std::uint32_t
+    :byte-order middle
+    (field value std::uint32_t :bits 32)))
+)");
+    EXPECT_THROW(static_cast<void>(files.load()), ManifestError);
+
+    files.write_root(R"(
+(packed-value-module packed
+  :header "Packed.h"
+  (packed-value Value
+    :storage std::uint32_t
+    :bit-order byte-first
+    (field value std::uint32_t :bits 32)))
+)");
+    EXPECT_THROW(static_cast<void>(files.load()), ManifestError);
 }
 
 TEST(SourceLoader, ReadsStandaloneIntegerScalarDomain) {

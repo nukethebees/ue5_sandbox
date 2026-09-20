@@ -189,6 +189,8 @@ class PlannerUi {
     int new_enum_signedness_{};
     std::array<char, 128> new_packed_value_name_{};
     std::array<char, 128> new_packed_storage_type_{"std::uint32_t"};
+    int new_packed_byte_order_{};
+    int new_packed_bit_order_{};
     std::array<char, 128> new_integer_scalar_name_{};
     std::array<char, 32> new_integer_scalar_minimum_{"0"};
     std::array<char, 32> new_integer_scalar_maximum_{"255"};

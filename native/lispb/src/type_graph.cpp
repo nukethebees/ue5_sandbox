@@ -459,6 +459,9 @@ class TypeGraphBuilder {
                             .storage_type = resolve_ref(source.storage_type, module.settings.name),
                             .segments = {},
                             .invalid_raw_value = source.invalid_value,
+                            .byte_order = source.byte_order,
+                            .bit_order = source.bit_order.value_or(
+                                codegen::PackedBitOrder::least_significant_first),
                         };
                         type.segments.reserve(source.segments.size());
                         for (auto const& segment : source.segments) {

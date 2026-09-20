@@ -338,14 +338,24 @@ auto packed_value_text(PackedValueSchema const& schema,
     output += "    static_assert(std::numeric_limits<storage_type>::digits == " +
               std::to_string(storage_bits) + ");\n";
 
-    int offset{};
+    auto const most_significant_first{packed.bit_order ==
+                                      codegen::PackedBitOrder::most_significant_first};
+    auto offset{most_significant_first ? storage_bits : 0};
     for (auto const& segment : schema.segments) {
         auto const* field{std::get_if<PackedFieldSchema>(&segment)};
+        auto const segment_bits{
+            field != nullptr ? static_cast<int>(resolved_width_for_field(packed, field->name))
+                             : std::get<PackedReservedBitsSchema>(segment).bits};
+        if (most_significant_first) {
+            offset -= segment_bits;
+        }
         if (field == nullptr) {
-            offset += std::get<PackedReservedBitsSchema>(segment).bits;
+            if (!most_significant_first) {
+                offset += segment_bits;
+            }
             continue;
         }
-        auto const field_bits{resolved_width_for_field(packed, field->name)};
+        auto const field_bits{static_cast<std::uint32_t>(segment_bits)};
         auto const field_type{resolve_type(field->type, types)};
         dependencies.insert(
             dependencies.end(), field_type.dependencies.begin(), field_type.dependencies.end());
@@ -429,7 +439,9 @@ auto packed_value_text(PackedValueSchema const& schema,
                 }
             }
         }
-        offset += static_cast<int>(field_bits);
+        if (!most_significant_first) {
+            offset += segment_bits;
+        }
     }
 
     if (schema.invalid_value.has_value()) {

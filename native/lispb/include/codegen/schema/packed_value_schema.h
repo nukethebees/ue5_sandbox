@@ -1,5 +1,6 @@
 #pragma once
 
+#include <codegen/schema/packed_order.h>
 #include <codegen/schema/packed_segment_schema.h>
 #include <codegen/schema/type_ref.h>
 
@@ -17,6 +18,8 @@ struct PackedValueSchema {
     std::optional<std::uint64_t> invalid_value;
     std::optional<std::string> export_specifier;
     bool mutable_value{false};
+    std::optional<PackedByteOrder> byte_order;
+    std::optional<PackedBitOrder> bit_order;
 };
 
 } // namespace codegen

@@ -2914,6 +2914,53 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         }
     }
 
+    constexpr std::array byte_order_labels{"Unspecified", "Little endian", "Big endian"};
+    auto byte_order_index{
+        schema->byte_order.has_value()
+            ? (*schema->byte_order == codegen::PackedByteOrder::little_endian ? 1 : 2)
+            : 0};
+    if (ImGui::Combo("Serialized byte order",
+                     &byte_order_index,
+                     byte_order_labels.data(),
+                     static_cast<int>(byte_order_labels.size()))) {
+        auto replacement{*schema};
+        replacement.byte_order =
+            byte_order_index == 0
+                ? std::nullopt
+                : std::optional{byte_order_index == 1 ? codegen::PackedByteOrder::little_endian
+                                                      : codegen::PackedByteOrder::big_endian};
+        if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+            selected_field_ = packed_editor_field_;
+            return true;
+        }
+    }
+
+    constexpr std::array bit_order_labels{"Default (LSB-first)", "Explicit LSB-first", "MSB-first"};
+    auto bit_order_index{
+        schema->bit_order.has_value()
+            ? (*schema->bit_order == codegen::PackedBitOrder::least_significant_first ? 1 : 2)
+            : 0};
+    if (ImGui::Combo("Segment bit order",
+                     &bit_order_index,
+                     bit_order_labels.data(),
+                     static_cast<int>(bit_order_labels.size()))) {
+        auto replacement{*schema};
+        replacement.bit_order =
+            bit_order_index == 0
+                ? std::nullopt
+                : std::optional{bit_order_index == 1
+                                    ? codegen::PackedBitOrder::least_significant_first
+                                    : codegen::PackedBitOrder::most_significant_first};
+        if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+            selected_field_ = packed_editor_field_;
+            return true;
+        }
+    }
+    ImGui::TextDisabled(
+        "Byte order describes serialized bytes; segment order controls numeric bit offsets.");
+
     ImGui::SetNextItemWidth(-1.0F);
     auto const invalid_submitted{ImGui::InputText("Invalid raw value",
                                                   packed_invalid_value_.data(),

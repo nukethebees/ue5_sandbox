@@ -37,6 +37,7 @@ class TemporarySchema {
   (packed-value ExistingPacked
     ; Keep the packed declaration note.
     :storage   std::uint32_t
+    :byte-order   little ; packed byte-order note
     :invalid-value 4294967295
     (field value std::uint8_t :bits 8)
     (field counter std::uint16_t
@@ -601,6 +602,8 @@ TEST(EditableSchemaDocument, PreservesPackedFormattingForNonStructuralEdits) {
     auto replacement{*document.packed_value_schema(packed)};
     replacement.invalid_value = 4'294'967'294U;
     replacement.export_specifier = "PACKED_API";
+    replacement.byte_order = codegen::PackedByteOrder::big_endian;
+    replacement.bit_order = codegen::PackedBitOrder::most_significant_first;
     auto& field{std::get<codegen::PackedFieldSchema>(replacement.segments[1])};
     field.type.name = "std::uint32_t";
     field.bits = 7;
@@ -616,7 +619,14 @@ TEST(EditableSchemaDocument, PreservesPackedFormattingForNonStructuralEdits) {
     ASSERT_TRUE(applied.has_value()) << applied.error().message;
     ASSERT_TRUE(*applied);
     ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.packed_value_schema(packed)->byte_order,
+              codegen::PackedByteOrder::little_endian);
+    EXPECT_FALSE(document.packed_value_schema(packed)->bit_order.has_value());
     ASSERT_TRUE(document.redo().value());
+    EXPECT_EQ(document.packed_value_schema(packed)->byte_order,
+              codegen::PackedByteOrder::big_endian);
+    EXPECT_EQ(document.packed_value_schema(packed)->bit_order,
+              codegen::PackedBitOrder::most_significant_first);
 
     auto preview{document.preview_source_updates()};
     ASSERT_TRUE(preview.has_value()) << preview.error().message;
@@ -624,6 +634,8 @@ TEST(EditableSchemaDocument, PreservesPackedFormattingForNonStructuralEdits) {
     auto const& updated{preview->front().updated};
     EXPECT_NE(updated.find("; Keep the packed declaration note"), std::string::npos);
     EXPECT_NE(updated.find(":storage   std::uint32_t"), std::string::npos);
+    EXPECT_NE(updated.find(":byte-order   big ; packed byte-order note"), std::string::npos);
+    EXPECT_NE(updated.find(":bit-order msb-first"), std::string::npos);
     EXPECT_NE(updated.find(":invalid-value 4294967294"), std::string::npos);
     EXPECT_NE(updated.find("; Keep the packed field note"), std::string::npos);
     EXPECT_NE(updated.find("(field counter std::uint32_t"), std::string::npos);
@@ -644,6 +656,11 @@ TEST(EditableSchemaDocument, PreservesPackedFormattingForNonStructuralEdits) {
     ASSERT_NE(schema, nullptr);
     EXPECT_EQ(schema->invalid_value, 4'294'967'294U);
     EXPECT_EQ(schema->export_specifier, "PACKED_API");
+    EXPECT_EQ(schema->byte_order, codegen::PackedByteOrder::big_endian);
+    EXPECT_EQ(schema->bit_order, codegen::PackedBitOrder::most_significant_first);
+    auto const& reloaded_type{packed_type(reloaded, reloaded_packed)};
+    EXPECT_EQ(reloaded_type.byte_order, codegen::PackedByteOrder::big_endian);
+    EXPECT_EQ(reloaded_type.bit_order, codegen::PackedBitOrder::most_significant_first);
     auto const& reloaded_field{std::get<codegen::PackedFieldSchema>(schema->segments[1])};
     EXPECT_EQ(reloaded_field.type.name, "std::uint32_t");
     EXPECT_EQ(reloaded_field.bits, 7);
@@ -1082,7 +1099,10 @@ TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsPackedValues) {
                                                         codegen::TypeRef{"@existing"},
                                                         8,
                                                         codegen::PackedFieldKind::enumeration}},
-                .invalid_value = 0xffffffffU}})};
+                .invalid_value = 0xffffffffU,
+                .export_specifier = std::nullopt,
+                .byte_order = codegen::PackedByteOrder::big_endian,
+                .bit_order = codegen::PackedBitOrder::most_significant_first}})};
     ASSERT_TRUE(create.has_value()) << create.error().message;
     ASSERT_TRUE(*create);
 
@@ -1098,6 +1118,8 @@ TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsPackedValues) {
 
     auto const& created_type{packed_type(document, created)};
     ASSERT_EQ(created_type.segments.size(), 3U);
+    EXPECT_EQ(created_type.byte_order, codegen::PackedByteOrder::big_endian);
+    EXPECT_EQ(created_type.bit_order, codegen::PackedBitOrder::most_significant_first);
     auto const& created_index{std::get<PackedField>(created_type.segments[0])};
     auto const& created_reserved{std::get<PackedReservedBits>(created_type.segments[1])};
     auto const& created_state{std::get<PackedField>(created_type.segments[2])};
@@ -1187,6 +1209,8 @@ TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsPackedValues) {
     ASSERT_EQ(preview->size(), 1U);
     EXPECT_NE(preview->front().updated.find("(packed-value DesignedId"), std::string::npos);
     EXPECT_NE(preview->front().updated.find(":storage std::uint32_t"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":byte-order big"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":bit-order msb-first"), std::string::npos);
     EXPECT_NE(preview->front().updated.find("(field state @existing :bits 8 :kind enum)"),
               std::string::npos);
     EXPECT_NE(preview->front().updated.find("(reserved future :bits 4)"), std::string::npos);
@@ -1213,6 +1237,8 @@ TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsPackedValues) {
     ASSERT_TRUE(reloaded_declaration.has_value());
     auto const& reloaded_type{packed_type(reloaded, *reloaded_declaration)};
     ASSERT_EQ(reloaded_type.segments.size(), 3U);
+    EXPECT_EQ(reloaded_type.byte_order, codegen::PackedByteOrder::big_endian);
+    EXPECT_EQ(reloaded_type.bit_order, codegen::PackedBitOrder::most_significant_first);
     auto const& reloaded_state{std::get<PackedField>(reloaded_type.segments[0])};
     auto const& reloaded_reserved{std::get<PackedReservedBits>(reloaded_type.segments[1])};
     auto const& reloaded_index{std::get<PackedField>(reloaded_type.segments[2])};
@@ -1278,7 +1304,11 @@ TEST(EditableSchemaDocument, RoundTripsSignedArbitraryWidthPackedField) {
                              .minimum_value = -100,
                              .maximum_value = 100,
                              .named_codes = {{.name = "Unknown", .value = -128, .sentinel = true}}},
-                         codegen::PackedReservedBitsSchema{.name = "future", .bits = 24}}}})};
+                         codegen::PackedReservedBitsSchema{.name = "future", .bits = 24}},
+            .invalid_value = std::nullopt,
+            .export_specifier = std::nullopt,
+            .byte_order = std::nullopt,
+            .bit_order = std::nullopt}})};
     ASSERT_TRUE(create.has_value()) << create.error().message;
     ASSERT_TRUE(*create);
     EXPECT_EQ(std::get<PackedField>(packed_type(document, created).segments[0]).kind,

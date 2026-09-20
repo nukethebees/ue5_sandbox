@@ -489,6 +489,28 @@ auto parse_packed_relationship_kind(Form const& form) -> PackedFieldRelationKind
     return found->second;
 }
 
+auto parse_packed_byte_order(Form const& form) -> PackedByteOrder {
+    auto const name{text(form, "packed byte order")};
+    if (name == "little") {
+        return PackedByteOrder::little_endian;
+    }
+    if (name == "big") {
+        return PackedByteOrder::big_endian;
+    }
+    fail(form.token.span, "packed byte order must be 'little' or 'big'");
+}
+
+auto parse_packed_bit_order(Form const& form) -> PackedBitOrder {
+    auto const name{text(form, "packed bit order")};
+    if (name == "lsb-first") {
+        return PackedBitOrder::least_significant_first;
+    }
+    if (name == "msb-first") {
+        return PackedBitOrder::most_significant_first;
+    }
+    fail(form.token.span, "packed bit order must be 'lsb-first' or 'msb-first'");
+}
+
 auto parse_packed_field(Form const& form) -> PackedFieldSchema {
     Fields const fields{form, "field", 2};
     fields.validate({"bits", "kind", "range-helper", "minimum", "maximum"}, {"code", "relation"});
@@ -563,9 +585,16 @@ auto parse_packed_reserved_bits(Form const& form) -> PackedReservedBitsSchema {
 
 auto parse_packed_value(Form const& form) -> PackedValueSchema {
     Fields const fields{form, "packed-value", 1};
-    fields.validate({"storage", "invalid-value", "export-specifier", "mutable"},
+    fields.validate({"storage",
+                     "invalid-value",
+                     "export-specifier",
+                     "mutable",
+                     "byte-order",
+                     "bit-order"},
                     {"field", "reserved"});
     auto const* invalid_value{fields.optional("invalid-value")};
+    auto const* byte_order{fields.optional("byte-order")};
+    auto const* bit_order{fields.optional("bit-order")};
 
     std::vector<PackedSegmentSchema> segments;
     segments.reserve(fields.declarations().size());
@@ -586,6 +615,12 @@ auto parse_packed_value(Form const& form) -> PackedValueSchema {
                                                         *invalid_value, "packed invalid value")},
         .export_specifier = optional_text(fields, "export-specifier"),
         .mutable_value = boolean_or(fields, "mutable"),
+        .byte_order = byte_order == nullptr
+                         ? std::nullopt
+                         : std::optional<PackedByteOrder>{parse_packed_byte_order(*byte_order)},
+        .bit_order = bit_order == nullptr
+                        ? std::nullopt
+                        : std::optional<PackedBitOrder>{parse_packed_bit_order(*bit_order)},
     };
 }
 

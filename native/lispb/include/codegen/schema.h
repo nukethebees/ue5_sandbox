@@ -26,6 +26,7 @@
 #include <codegen/schema/optional_sentinel_schema.h>
 #include <codegen/schema/packed_field_kind.h>
 #include <codegen/schema/packed_field_schema.h>
+#include <codegen/schema/packed_order.h>
 #include <codegen/schema/packed_value_module_schema.h>
 #include <codegen/schema/packed_value_schema.h>
 #include <codegen/schema/parameter_schema.h>

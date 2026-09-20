@@ -59,6 +59,12 @@ facts remain unknown rather than falling back to analyzer literals.
 Packed declarations use ordered field-or-reserved segments. Named `(reserved ... :bits N)` regions
 occupy durable physical positions, generate no value API, and are reported separately from semantic
 payload and implicit trailing unused storage.
+Packed values may now declare `:bit-order lsb-first|msb-first` and optional serialized
+`:byte-order little|big`. Omitted bit order preserves the historical LSB-first allocation. MSB-first
+allocation changes resolved bit ranges and generated numeric getters/setters, including mixed
+reserved segments; byte order is retained and displayed as an external serialization fact but does
+not silently alter the host integer ABI or imply an unimplemented codec. Creation, inline editing,
+token-local source preservation, undo/redo, save/reload, analysis, and the bit diagram support both.
 Packed fields may use `:kind signed` with an explicit or derived arbitrary width up to 64 bits.
 Validation requires a matching signed semantic integer type; analysis reports the exact
 two's-complement range, and lowering performs checked assignment plus safe sign extension, including

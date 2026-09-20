@@ -261,6 +261,149 @@ static_assert(sizeof(PackedByte) == sizeof(PackedByte::storage_type));
 static_assert(std::is_trivially_copyable_v<PackedByte>);
 static_assert(std::is_standard_layout_v<PackedByte>);
 
+struct NetworkHeader {
+    using storage_type = std::uint32_t;
+    static_assert(std::is_unsigned_v<storage_type>);
+    static_assert(std::numeric_limits<storage_type>::digits == 32);
+    using version_type = std::uint8_t;
+
+    inline static constexpr int version_offset{28};
+    inline static constexpr int version_bits{4};
+    inline static constexpr storage_type version_value_mask{storage_type{0xf}};
+    inline static constexpr storage_type version_mask{storage_type{0xf0000000}};
+    using kind_type = std::uint8_t;
+
+    inline static constexpr int kind_offset{20};
+    inline static constexpr int kind_bits{8};
+    inline static constexpr storage_type kind_value_mask{storage_type{0xff}};
+    inline static constexpr storage_type kind_mask{storage_type{0xff00000}};
+    using length_type = std::uint16_t;
+
+    inline static constexpr int length_offset{0};
+    inline static constexpr int length_bits{16};
+    inline static constexpr storage_type length_value_mask{storage_type{0xffff}};
+    inline static constexpr storage_type length_mask{storage_type{0xffff}};
+
+    constexpr NetworkHeader() noexcept = default;
+    explicit constexpr NetworkHeader(storage_type const raw) noexcept
+        : value_{raw} {}
+
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+
+    [[nodiscard]] static constexpr auto try_make(std::uint8_t const version_value,
+                                                 std::uint8_t const kind_value,
+                                                 std::uint16_t const length_value,
+                                                 NetworkHeader& out_result) noexcept -> bool {
+        NetworkHeader result{storage_type{0}};
+        if (!result.try_set_version(version_value)) {
+            return false;
+        }
+        if (!result.try_set_kind(kind_value)) {
+            return false;
+        }
+        if (!result.try_set_length(length_value)) {
+            return false;
+        }
+        if (!result.is_valid()) {
+            return false;
+        }
+        out_result = result;
+        return true;
+    }
+
+    [[nodiscard]] static constexpr auto make(std::uint8_t const version_value,
+                                             std::uint8_t const kind_value,
+                                             std::uint16_t const length_value) noexcept
+        -> NetworkHeader {
+        NetworkHeader result;
+        [[maybe_unused]] auto const success{
+            try_make(version_value, kind_value, length_value, result)};
+        assert(success && "Packed field value does not fit.");
+        return result;
+    }
+
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+
+    [[nodiscard]] constexpr auto operator<=>(NetworkHeader const&) const noexcept = default;
+
+    [[nodiscard]] constexpr auto version() const noexcept -> std::uint8_t {
+        return static_cast<std::uint8_t>(static_cast<storage_type>(value_ >> version_offset) &
+                                         version_value_mask);
+    }
+
+    [[nodiscard]] constexpr auto try_set_version(std::uint8_t const value) noexcept -> bool {
+        if (value > static_cast<std::uint8_t>(version_value_mask)) {
+            return false;
+        }
+        auto const encoded{static_cast<storage_type>(value)};
+        auto const cleared{
+            static_cast<storage_type>(value_ & static_cast<storage_type>(~version_mask))};
+        auto const shifted{static_cast<storage_type>(
+            static_cast<storage_type>(encoded & version_value_mask) << version_offset)};
+        value_ = static_cast<storage_type>(cleared | shifted);
+        return true;
+    }
+
+    constexpr void set_version(std::uint8_t const value) noexcept {
+        if (!try_set_version(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+
+    [[nodiscard]] constexpr auto kind() const noexcept -> std::uint8_t {
+        return static_cast<std::uint8_t>(static_cast<storage_type>(value_ >> kind_offset) &
+                                         kind_value_mask);
+    }
+
+    [[nodiscard]] constexpr auto try_set_kind(std::uint8_t const value) noexcept -> bool {
+        if (value > static_cast<std::uint8_t>(kind_value_mask)) {
+            return false;
+        }
+        auto const encoded{static_cast<storage_type>(value)};
+        auto const cleared{
+            static_cast<storage_type>(value_ & static_cast<storage_type>(~kind_mask))};
+        auto const shifted{static_cast<storage_type>(
+            static_cast<storage_type>(encoded & kind_value_mask) << kind_offset)};
+        value_ = static_cast<storage_type>(cleared | shifted);
+        return true;
+    }
+
+    constexpr void set_kind(std::uint8_t const value) noexcept {
+        if (!try_set_kind(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+
+    [[nodiscard]] constexpr auto length() const noexcept -> std::uint16_t {
+        return static_cast<std::uint16_t>(static_cast<storage_type>(value_ >> length_offset) &
+                                          length_value_mask);
+    }
+
+    [[nodiscard]] constexpr auto try_set_length(std::uint16_t const value) noexcept -> bool {
+        if (value > static_cast<std::uint16_t>(length_value_mask)) {
+            return false;
+        }
+        auto const encoded{static_cast<storage_type>(value)};
+        auto const cleared{
+            static_cast<storage_type>(value_ & static_cast<storage_type>(~length_mask))};
+        auto const shifted{static_cast<storage_type>(
+            static_cast<storage_type>(encoded & length_value_mask) << length_offset)};
+        value_ = static_cast<storage_type>(cleared | shifted);
+        return true;
+    }
+
+    constexpr void set_length(std::uint16_t const value) noexcept {
+        if (!try_set_length(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(sizeof(NetworkHeader) == sizeof(NetworkHeader::storage_type));
+static_assert(std::is_trivially_copyable_v<NetworkHeader>);
+static_assert(std::is_standard_layout_v<NetworkHeader>);
+
 struct PackedWide {
     using storage_type = std::uint64_t;
     static_assert(std::is_unsigned_v<storage_type>);

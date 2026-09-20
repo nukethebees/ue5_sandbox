@@ -258,7 +258,9 @@ TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesPackedValue) {
                                                                                .relationship =
                                                                                    std::nullopt}},
                                        .invalid_value = 0xffffffffU,
-                                       .export_specifier = std::nullopt},
+                                       .export_specifier = std::nullopt,
+                                       .byte_order = std::nullopt,
+                                       .bit_order = std::nullopt},
         .insertion_index = std::nullopt})};
     ASSERT_TRUE(applied.has_value()) << applied.error().message;
     ASSERT_TRUE(*applied);

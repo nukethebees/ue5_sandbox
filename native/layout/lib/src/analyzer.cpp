@@ -2212,6 +2212,8 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                           .storage_type = effective_storage_type(types, type, packed, variant),
                           .storage_overridden =
                               variant.overrides.packed_storage_types.contains(type),
+                          .byte_order = packed.byte_order,
+                          .bit_order = packed.bit_order,
                           .storage_facts = std::nullopt,
                           .storage_bits = std::nullopt,
                           .bits_used = std::nullopt,
@@ -2264,6 +2266,14 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
         auto const width{field != nullptr ? effective_field_width(type, *field, variant)
                                           : reserved->bit_width};
         auto const next_offset{checked_add(offset, width)};
+        auto least_significant_bit{offset};
+        if (packed.bit_order == codegen::PackedBitOrder::most_significant_first) {
+            least_significant_bit = 0;
+            if (result.storage_bits.has_value() && next_offset.has_value() &&
+                *next_offset <= *result.storage_bits) {
+                least_significant_bit = *result.storage_bits - *next_offset;
+            }
+        }
         PackedFieldAnalysis field_result{
             .name = field != nullptr ? field->name : reserved->name,
             .semantic_type = field != nullptr
@@ -2279,7 +2289,7 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
             .overridden =
                 field != nullptr && variant.overrides.packed_field_widths.contains(
                                         FieldOverrideId{.type = type, .field_name = field->name}),
-            .least_significant_bit = offset,
+            .least_significant_bit = least_significant_bit,
             .most_significant_bit = std::nullopt,
             .maximum_unsigned_value =
                 field != nullptr ? maximum_unsigned_value(width) : std::nullopt,
@@ -2394,8 +2404,11 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                 field != nullptr && field->kind == codegen::PackedFieldKind::signed_integer);
         }
         if (next_offset.has_value()) {
-            if (width != 0) {
-                field_result.most_significant_bit = *next_offset - 1;
+            auto const positioned{
+                packed.bit_order == codegen::PackedBitOrder::least_significant_first ||
+                (result.storage_bits.has_value() && *next_offset <= *result.storage_bits)};
+            if (width != 0 && positioned) {
+                field_result.most_significant_bit = least_significant_bit + width - 1;
             }
             offset = *next_offset;
         } else {

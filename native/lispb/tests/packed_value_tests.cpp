@@ -124,6 +124,34 @@ TEST(PackedValue, ReservedSegmentsOccupyBitsWithoutGeneratingValueApi) {
     EXPECT_EQ(header.find("future_value"), std::string::npos);
 }
 
+TEST(PackedValue, MostSignificantFirstSegmentsDriveGeneratedNumericOffsets) {
+    auto module{valid_module()};
+    auto& value{module.values.front()};
+    field(value, 0).bits = 20;
+    value.segments.insert(value.segments.begin() + 1,
+                          PackedReservedBitsSchema{.name = "future", .bits = 4});
+    value.byte_order = PackedByteOrder::big_endian;
+    value.bit_order = PackedBitOrder::most_significant_first;
+
+    auto const header{lower(std::move(module))};
+
+    EXPECT_NE(header.find("entity_index_offset{12}"), std::string::npos);
+    EXPECT_NE(header.find("entity_index_mask{storage_type{0xfffff000}}"), std::string::npos);
+    EXPECT_NE(header.find("state_offset{0}"), std::string::npos);
+    EXPECT_NE(header.find("state_mask{storage_type{0xff}}"), std::string::npos);
+    EXPECT_EQ(header.find("future_offset"), std::string::npos);
+}
+
+TEST(PackedValue, SerializedByteOrderDoesNotChangeHostNumericOffsets) {
+    auto module{valid_module()};
+    module.values.front().byte_order = PackedByteOrder::big_endian;
+
+    auto const header{lower(std::move(module))};
+
+    EXPECT_NE(header.find("entity_index_offset{0}"), std::string::npos);
+    EXPECT_NE(header.find("state_offset{24}"), std::string::npos);
+}
+
 TEST(PackedValue, LowersSignedArbitraryWidthFieldWithSafeSignExtension) {
     auto module{valid_module()};
     module.values.front().mutable_value = true;

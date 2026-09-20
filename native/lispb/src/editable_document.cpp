@@ -576,6 +576,12 @@ auto render_packed_value(codegen::PackedValueSchema const& schema) -> std::strin
     std::ostringstream output;
     output << "(packed-value " << schema.name << "\n    :storage "
            << render_type_ref(schema.storage_type);
+    if (schema.byte_order.has_value()) {
+        output << "\n    :byte-order " << packed_byte_order_name(*schema.byte_order);
+    }
+    if (schema.bit_order.has_value()) {
+        output << "\n    :bit-order " << packed_bit_order_name(*schema.bit_order);
+    }
     if (schema.invalid_value.has_value()) {
         output << "\n    :invalid-value " << *schema.invalid_value;
     }
@@ -730,8 +736,16 @@ auto try_render_source_preserved_packed_value(codegen::PackedValueSchema const& 
         }
     }
 
-    auto const properties{std::array<SourceProperty, 4>{
+    auto const properties{std::array<SourceProperty, 6>{
         std::pair{"storage", std::optional{render_type_ref(schema.storage_type)}},
+        std::pair{"byte-order",
+                  schema.byte_order.has_value()
+                      ? std::optional{std::string{packed_byte_order_name(*schema.byte_order)}}
+                      : std::nullopt},
+        std::pair{"bit-order",
+                  schema.bit_order.has_value()
+                      ? std::optional{std::string{packed_bit_order_name(*schema.bit_order)}}
+                      : std::nullopt},
         std::pair{"invalid-value",
                   schema.invalid_value.has_value()
                       ? std::optional{std::to_string(*schema.invalid_value)}

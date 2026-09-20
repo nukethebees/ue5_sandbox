@@ -31,7 +31,10 @@ struct VarintComparisonFixture {
     lispb::schema::TypeId second;
 };
 
-auto entity_id_type(bool const include_reserved = false, bool const constrain_index = false)
+auto entity_id_type(bool const include_reserved = false,
+                    bool const constrain_index = false,
+                    std::optional<codegen::PackedByteOrder> const byte_order = std::nullopt,
+                    std::optional<codegen::PackedBitOrder> const bit_order = std::nullopt)
     -> TypeFixture {
     codegen::EnumModuleSchema enums{};
     enums.settings.name = "entity_types";
@@ -87,6 +90,8 @@ auto entity_id_type(bool const include_reserved = false, bool const constrain_in
     }
     packed_value.segments.emplace_back(std::move(entity_type));
     packed_value.invalid_value = 0xffffffff;
+    packed_value.byte_order = byte_order;
+    packed_value.bit_order = bit_order;
     packed.values.push_back(std::move(packed_value));
 
     codegen::Manifest manifest{};
@@ -2312,6 +2317,49 @@ TEST(PackedAnalyzer, SeparatesReservedPayloadAndTrailingUnusedBits) {
     EXPECT_EQ(analysis.aggregate.total_payload_bits, 2'800U);
     EXPECT_EQ(analysis.aggregate.total_reserved_bits, 400U);
     EXPECT_EQ(analysis.aggregate.total_unused_bits, 0U);
+}
+
+TEST(PackedAnalyzer, ReportsExplicitByteOrderAndMostSignificantFirstRanges) {
+    auto const fixture{entity_id_type(true,
+                                      false,
+                                      codegen::PackedByteOrder::big_endian,
+                                      codegen::PackedBitOrder::most_significant_first)};
+    auto const analysis{Analyzer::analyze_packed(
+        fixture.types, fixture.type, Variant{}, AbiProfile::host_common())};
+
+    EXPECT_EQ(analysis.byte_order, codegen::PackedByteOrder::big_endian);
+    EXPECT_EQ(analysis.bit_order, codegen::PackedBitOrder::most_significant_first);
+    ASSERT_EQ(analysis.fields.size(), 3U);
+    EXPECT_EQ(analysis.fields[0].least_significant_bit, 12U);
+    EXPECT_EQ(analysis.fields[0].most_significant_bit, 31U);
+    EXPECT_EQ(analysis.fields[1].least_significant_bit, 8U);
+    EXPECT_EQ(analysis.fields[1].most_significant_bit, 11U);
+    EXPECT_EQ(analysis.fields[2].least_significant_bit, 0U);
+    EXPECT_EQ(analysis.fields[2].most_significant_bit, 7U);
+
+    auto compact_fixture{entity_id_type(false,
+                                        false,
+                                        codegen::PackedByteOrder::little_endian,
+                                        codegen::PackedBitOrder::most_significant_first)};
+    Variant variant;
+    variant.overrides.packed_field_widths[{.type = compact_fixture.type, .field_name = "index"}] =
+        20;
+    auto compact{Analyzer::analyze_packed(
+        compact_fixture.types, compact_fixture.type, variant, AbiProfile::host_common())};
+    EXPECT_EQ(compact.unused_bits, 4U);
+    EXPECT_EQ(compact.fields[0].least_significant_bit, 12U);
+    EXPECT_EQ(compact.fields[0].most_significant_bit, 31U);
+    EXPECT_EQ(compact.fields[1].least_significant_bit, 4U);
+    EXPECT_EQ(compact.fields[1].most_significant_bit, 11U);
+
+    variant.overrides.packed_field_widths[{.type = compact_fixture.type, .field_name = "index"}] =
+        25;
+    auto overflow{Analyzer::analyze_packed(
+        compact_fixture.types, compact_fixture.type, variant, AbiProfile::host_common())};
+    EXPECT_EQ(overflow.overflow_bits, 1U);
+    EXPECT_EQ(overflow.fields[0].least_significant_bit, 7U);
+    EXPECT_EQ(overflow.fields[0].most_significant_bit, 31U);
+    EXPECT_FALSE(overflow.fields[1].most_significant_bit.has_value());
 }
 
 TEST(PackedAnalyzer, ReportsPackedFieldSemanticRangeCodeSpace) {

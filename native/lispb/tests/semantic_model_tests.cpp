@@ -256,6 +256,27 @@ TEST(SemanticTypeGraph, ResolvesPackedFieldsAndDependencies) {
               graph.users_of(*entity_type).end());
 }
 
+TEST(SemanticTypeGraph, RetainsPackedPhysicalOrdering) {
+    codegen::Manifest const manifest{
+        .schema_version = codegen::manifest_schema_version,
+        .modules = {codegen::PackedValueModuleSchema{
+            .settings = codegen::ModuleSettings{.name = "wire", .header = "Wire.h"},
+            .values = {codegen::PackedValueSchema{
+                .name = "Header",
+                .storage_type = codegen::TypeRef{"std::uint32_t"},
+                .segments = {codegen::PackedFieldSchema{
+                    "kind", codegen::TypeRef{"std::uint8_t"}, 8}},
+                .byte_order = codegen::PackedByteOrder::big_endian,
+                .bit_order = codegen::PackedBitOrder::most_significant_first}}}}};
+
+    auto const graph{resolve_type_graph(manifest)};
+    auto const header{graph.find_declared("wire", "Header")};
+    ASSERT_TRUE(header.has_value());
+    auto const& packed{std::get<PackedType>(graph.type(*header).definition)};
+    EXPECT_EQ(packed.byte_order, codegen::PackedByteOrder::big_endian);
+    EXPECT_EQ(packed.bit_order, codegen::PackedBitOrder::most_significant_first);
+}
+
 TEST(SemanticTypeGraph, ResolvesStandardLibrarySoaColumns) {
     auto const graph{production_graph()};
     auto const entity_type{graph.find_declared("native_entity_type", "EntityType")};

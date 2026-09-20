@@ -171,6 +171,14 @@ same profile fact rather than an analyzer constant. Missing
 profile facts, unknown physical types, and nested SoAs produce diagnostics and Unknown results
 rather than guesses.
 
+Packed physical ordering belongs to `PackedValueSchema` / resolved `PackedType`, not to semantic
+field types or the target profile. Absent `:bit-order` means the historical LSB-first segment
+allocation; explicit `msb-first` allocates declaration-order segments downward from the storage
+MSB and drives both generated numeric masks/offsets and analysis. Optional `:byte-order` records the
+little/big order of an external serialized byte sequence. It does not change C++ object ABI or
+claim a serializer exists. The editable document token-locally preserves both properties, while
+the planner keeps serialized byte ordering visually distinct from numeric storage bit positions.
+
 `MemoryFacts` may also provide L1 data, L2, and L3 capacities. Aggregate packed storage, record
 storage, and standard-library SoA column payload compare their selected-count working set directly
 with each supplied capacity. Fit remains Unknown when either the aggregate size or capacity is

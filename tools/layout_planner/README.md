@@ -171,6 +171,12 @@ requiring a C++ `int17` primitive.
 Use **+ Reserved** for named future-use regions; they participate in physical offsets but have no
 semantic type or generated getter/setter. The bit map and scale analysis distinguish semantic
 payload, explicit reserved bits, and implicit trailing unused bits.
+Packed declarations can explicitly choose LSB-first or MSB-first segment allocation. MSB-first
+places the first declared segment at the high end of storage; generated numeric getters/setters,
+reported ranges, unused-bit placement, and divider dragging follow that choice. Optional little- or
+big-endian byte order describes serialized bytes only: it is displayed and persisted but does not
+change the host integer's ABI or fabricate a serializer. Both properties are editable during
+creation or inline and participate in ordinary undo/redo and source-preserving save/reload.
 A signed or unsigned field can also define an inclusive semantic range in the inline table (for example
 `-100..100`). LispB stores this as `:minimum` / `:maximum`; generated setters reject out-of-range
 values. The Named codes grid attaches symbolic constants to ordinary integer values without
