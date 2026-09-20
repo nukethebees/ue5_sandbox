@@ -27,8 +27,9 @@ struct FVertexFactoryInput {
 };
 
 struct FVertexFactoryInterpolantsVSToPS {
-    float2 TexCoord : TEXCOORD0;
-    float3 Colour   : TEXCOORD1;
+    float2 TexCoord  : TEXCOORD0;
+    float3 Colour    : TEXCOORD1;
+    float2 ShapeData : TEXCOORD2;
 };
 
 struct FVertexFactoryIntermediates {
@@ -36,6 +37,7 @@ struct FVertexFactoryIntermediates {
     float3 PositionInstanceSpace;
     float2 TexCoord;
     float3 Colour;
+    float2 ShapeData;
     FSceneDataIntermediates SceneData;
 };
 
@@ -64,7 +66,7 @@ float3 space_dust_wrap(float3 position, float3 dimensions) {
 }
 
 struct FSpaceDustProjection {
-    float2 PixelPosition;
+    float2 ReferencePixelPosition;
     float ViewDepth;
     float IsValid;
 };
@@ -72,18 +74,25 @@ struct FSpaceDustProjection {
 FSpaceDustProjection space_dust_project(float3 relative_position, bool is_orthographic) {
     float3 const TranslatedWorldPosition =
         ResolvedView.TranslatedWorldCameraOrigin + relative_position;
-    float4 const ClipPosition =
+    float4 const RawClipPosition =
         mul(float4(TranslatedWorldPosition, 1.0), ResolvedView.TranslatedWorldToClip);
-    float const ViewDepth = dot(relative_position, ResolvedView.ViewForward);
+    float const RawViewDepth = dot(relative_position, ResolvedView.ViewForward);
+    float const HasFiniteProjection =
+        all(IsFinite(RawClipPosition)) && IsFinite(RawViewDepth) ? 1.0 : 0.0;
+    float4 const ClipPosition = MakeFinite(RawClipPosition);
+    float const ViewDepth = MakeFinite(RawViewDepth);
     float const HasSafeW = step(0.0001, abs(ClipPosition.w));
     float const SafeW = HasSafeW > 0.0 ? ClipPosition.w : 1.0;
     float const IsInFront =
-        is_orthographic ? 1.0 : step(1.0, ViewDepth) * step(0.0001, ClipPosition.w);
+        is_orthographic ? 1.0 : step(0.0001, ViewDepth) * step(0.0001, ClipPosition.w);
+    float2 const NdcPosition = clamp(ClipPosition.xy / SafeW, -8.0, 8.0);
+    float const ActualToReferencePixelScale = 1080.0 / max(ResolvedView.ViewSizeAndInvSize.y, 1.0);
 
     FSpaceDustProjection projection;
-    projection.PixelPosition = ClipPosition.xy / SafeW * ResolvedView.ViewSizeAndInvSize.xy * 0.5;
+    projection.ReferencePixelPosition =
+        NdcPosition * ResolvedView.ViewSizeAndInvSize.xy * 0.5 * ActualToReferencePixelScale;
     projection.ViewDepth = ViewDepth;
-    projection.IsValid = HasSafeW * IsInFront;
+    projection.IsValid = HasFiniteProjection * HasSafeW * IsInFront;
     return projection;
 }
 
@@ -96,26 +105,30 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
     Intermediates.SceneData = VF_GPUSCENE_GET_INTERMEDIATES(Input);
 
     uint const InstanceId = GetInstanceId(Input.InstanceId);
+    uint const ParticleSeed = InstanceId ^ SpaceDustRandomSeed;
     float3 const RelativePosition =
         space_dust_wrap(space_dust_random_position(InstanceId) * SpaceDustVolumeDimensions -
                             SpaceDustTranslationPhase,
                         SpaceDustVolumeDimensions);
-    float const TotalSpeed = length(SpaceDustWorldVelocity);
+    float3 const WorldVelocity = clamp(MakeFinite(SpaceDustWorldVelocity), -1.0e8, 1.0e8);
+    float const TotalSpeed = length(WorldVelocity);
     float const SpeedVisibility =
-        saturate((TotalSpeed - SpaceDustMinimumVisibleSpeed) /
-                 max(SpaceDustFullVisibleSpeed - SpaceDustMinimumVisibleSpeed, 0.001));
+        smoothstep(SpaceDustMinimumVisibleSpeed, SpaceDustFullVisibleSpeed, TotalSpeed);
+    float const SizeVariation = lerp(0.8, 1.2, space_dust_random(ParticleSeed ^ 0xa511e9b3u));
+    float const IntensityVariation = lerp(0.65, 1.0, space_dust_random(ParticleSeed ^ 0x63d83595u));
+    float const ParticleWorldSize = SpaceDustParticleSize * SizeVariation;
 
     bool const IsOrthographic = IsOrthoProjection(ResolvedView.ViewToClip);
     // The earlier camera origin was -velocity * dt, so the same world point was +velocity * dt.
     float3 const ReferenceRelativePosition =
-        RelativePosition + SpaceDustWorldVelocity * SpaceDustStreakSeconds;
+        RelativePosition + WorldVelocity * SpaceDustStreakSeconds;
     FSpaceDustProjection const CurrentProjection =
         space_dust_project(RelativePosition, IsOrthographic);
     FSpaceDustProjection const ReferenceProjection =
         space_dust_project(ReferenceRelativePosition, IsOrthographic);
     float2 const PixelDisplacement =
-        CurrentProjection.PixelPosition - ReferenceProjection.PixelPosition;
-    float const MotionPixels = sqrt(max(dot(PixelDisplacement, PixelDisplacement), 0.0));
+        CurrentProjection.ReferencePixelPosition - ReferenceProjection.ReferencePixelPosition;
+    float const MotionPixels = length(PixelDisplacement);
     float const ProjectionVisibility = CurrentProjection.IsValid * ReferenceProjection.IsValid;
     float const MotionVisibility =
         smoothstep(SpaceDustMinimumMotionPixels, SpaceDustFullMotionPixels, MotionPixels) *
@@ -125,36 +138,45 @@ FVertexFactoryIntermediates GetVertexFactoryIntermediates(FVertexFactoryInput In
     float2 const ThicknessPixelDirection = float2(-PixelDirection.y, PixelDirection.x);
 
     float const ProjectionDepth = IsOrthographic ? 1.0 : max(CurrentProjection.ViewDepth, 1.0);
-    float2 const ViewToPixels =
-        float2(ResolvedView.ViewToClip[0][0] * ResolvedView.ViewSizeAndInvSize.x,
-               ResolvedView.ViewToClip[1][1] * ResolvedView.ViewSizeAndInvSize.y) *
-        0.5;
-    float2 const SafeViewToPixels = float2(abs(ViewToPixels.x) > 0.0001 ? ViewToPixels.x : 0.0001,
-                                           abs(ViewToPixels.y) > 0.0001 ? ViewToPixels.y : 0.0001);
-    float2 const WorldUnitsPerPixel = ProjectionDepth / SafeViewToPixels;
+    float const ActualToReferencePixelScale = 1080.0 / max(ResolvedView.ViewSizeAndInvSize.y, 1.0);
+    float2 const ViewToReferencePixels =
+        abs(float2(ResolvedView.ViewToClip[0][0] * ResolvedView.ViewSizeAndInvSize.x,
+                   ResolvedView.ViewToClip[1][1] * ResolvedView.ViewSizeAndInvSize.y) *
+            (0.5 * ActualToReferencePixelScale));
+    float2 const SafeViewToReferencePixels = max(ViewToReferencePixels, 0.0001);
+    float2 const WorldUnitsPerReferencePixel = ProjectionDepth / SafeViewToReferencePixels;
     float3 const StreakOffsetPerPixel =
-        ResolvedView.ViewRight * PixelDirection.x * WorldUnitsPerPixel.x +
-        ResolvedView.ViewUp * PixelDirection.y * WorldUnitsPerPixel.y;
+        ResolvedView.ViewRight * PixelDirection.x * WorldUnitsPerReferencePixel.x +
+        ResolvedView.ViewUp * PixelDirection.y * WorldUnitsPerReferencePixel.y;
     float3 const ThicknessOffsetPerPixel =
-        ResolvedView.ViewRight * ThicknessPixelDirection.x * WorldUnitsPerPixel.x +
-        ResolvedView.ViewUp * ThicknessPixelDirection.y * WorldUnitsPerPixel.y;
-    float const ParticleSizePixels = SpaceDustParticleSize / max(abs(WorldUnitsPerPixel.y), 0.0001);
-    float const ThicknessPixels = clamp(ParticleSizePixels, 1.5, 3.0);
-    float const LengthPixels =
-        min(max(ParticleSizePixels, MotionPixels), SpaceDustMaximumStreakPixels);
+        ResolvedView.ViewRight * ThicknessPixelDirection.x * WorldUnitsPerReferencePixel.x +
+        ResolvedView.ViewUp * ThicknessPixelDirection.y * WorldUnitsPerReferencePixel.y;
+    float const ParticleSizePixels = ParticleWorldSize / max(WorldUnitsPerReferencePixel.y, 0.0001);
+    float const MaximumLengthPixels = max(SpaceDustMaximumStreakPixels, 0.0);
+    float const ThicknessPixels = min(clamp(ParticleSizePixels, 1.5, 3.0), MaximumLengthPixels);
+    float const TravelPixels = min(MotionPixels, max(MaximumLengthPixels - ThicknessPixels, 0.0));
+    float const LengthPixels = ThicknessPixels + TravelPixels;
     float const HalfLengthPixels = LengthPixels * 0.5;
     float const HalfThicknessPixels = ThicknessPixels * 0.5;
-    float3 const Centre = RelativePosition - StreakOffsetPerPixel * HalfLengthPixels;
+    float3 const Centre = RelativePosition - StreakOffsetPerPixel * TravelPixels * 0.5;
     float3 const BillboardOffset = StreakOffsetPerPixel * Input.Corner.x * HalfLengthPixels +
                                    ThicknessOffsetPerPixel * Input.Corner.y * HalfThicknessPixels;
+    float const AspectRatio = LengthPixels / max(ThicknessPixels, 0.0001);
 
     float3 const EdgeDistance = 1.0 - abs(RelativePosition) / (SpaceDustVolumeDimensions * 0.5);
     float const EdgeFade = saturate(min(EdgeDistance.x, min(EdgeDistance.y, EdgeDistance.z)) /
                                     max(SpaceDustVolumeEdgeFadeFraction, 0.001));
-    float const FrontFade = step(1.0, dot(RelativePosition, ResolvedView.ViewForward));
-    float const HeadFade = saturate(0.55 + (Input.Corner.x * 0.5 + 0.5) * 0.45);
-    Intermediates.Colour = SpaceDustColour * SpaceDustBrightness * SpeedVisibility *
-                           MotionVisibility * EdgeFade * FrontFade * HeadFade;
+    float const NearFadeStart = max(ParticleWorldSize * 4.0, 25.0);
+    float const NearFadeEnd = max(ParticleWorldSize * 16.0, 100.0);
+    float const CurrentNearFade =
+        smoothstep(NearFadeStart, NearFadeEnd, CurrentProjection.ViewDepth);
+    float const ReferenceNearFade =
+        smoothstep(NearFadeStart, NearFadeEnd, ReferenceProjection.ViewDepth);
+    float const NearFade = IsOrthographic ? 1.0 : min(CurrentNearFade, ReferenceNearFade);
+    float3 const Colour = SpaceDustColour * SpaceDustBrightness * IntensityVariation *
+                          SpeedVisibility * MotionVisibility * EdgeFade * NearFade;
+    Intermediates.Colour = Colour;
+    Intermediates.ShapeData = float2(max(AspectRatio, 1.0), 0.0);
     Intermediates.WorldPosition =
         float4(ResolvedView.TranslatedWorldCameraOrigin + Centre + BillboardOffset, 1.0);
     Intermediates.PositionInstanceSpace = RelativePosition;
@@ -168,7 +190,8 @@ FMaterialPixelParameters GetMaterialPixelParameters(FVertexFactoryInterpolantsVS
 #if NUM_MATERIAL_TEXCOORDS
     UNROLL
     for (int CoordinateIndex = 0; CoordinateIndex < NUM_MATERIAL_TEXCOORDS; ++CoordinateIndex) {
-        Result.TexCoords[CoordinateIndex] = Interpolants.TexCoord;
+        Result.TexCoords[CoordinateIndex] =
+            CoordinateIndex == 0 ? Interpolants.TexCoord : Interpolants.ShapeData;
     }
 #endif
     Result.VertexColor = float4(Interpolants.Colour, 1.0);
@@ -227,6 +250,7 @@ FVertexFactoryInterpolantsVSToPS
     FVertexFactoryInterpolantsVSToPS Interpolants;
     Interpolants.TexCoord = Intermediates.TexCoord;
     Interpolants.Colour = Intermediates.Colour;
+    Interpolants.ShapeData = Intermediates.ShapeData;
     return Interpolants;
 }
 float4 VertexFactoryGetPreviousWorldPosition(FVertexFactoryInput Input,

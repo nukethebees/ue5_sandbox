@@ -18,8 +18,8 @@ struct Tuning {
     float particle_size{8.0f};
     float brightness{0.35f};
     Vector3f colour{make_vector3f(0.82f, 0.9f, 1.0f)};
-    float minimum_visible_speed{1000.0f};
-    float full_visible_speed{8000.0f};
+    float minimum_visible_speed{100.0f};
+    float full_visible_speed{2000.0f};
     float streak_seconds{0.0125f};
     float minimum_motion_pixels{0.75f};
     float full_motion_pixels{4.0f};
@@ -31,6 +31,11 @@ struct WorldLocation {
     double x{};
     double y{};
     double z{};
+};
+
+struct ParticleVariation {
+    float size_scale{};
+    float intensity_scale{};
 };
 
 [[nodiscard]] inline auto normalise_tuning(Tuning tuning) noexcept -> Tuning {
@@ -93,5 +98,15 @@ struct WorldLocation {
     auto const seed{instance_id ^ random_seed};
     return make_vector3f(
         random_unit(seed), random_unit(seed ^ 0x68bc21ebu), random_unit(seed ^ 0x02e5be93u));
+}
+
+[[nodiscard]] constexpr auto make_particle_variation(std::uint32_t const instance_id,
+                                                     std::uint32_t const random_seed) noexcept
+    -> ParticleVariation {
+    auto const seed{instance_id ^ random_seed};
+    return {
+        .size_scale = 0.8f + random_unit(seed ^ 0xa511e9b3u) * 0.4f,
+        .intensity_scale = 0.65f + random_unit(seed ^ 0x63d83595u) * 0.35f,
+    };
 }
 }

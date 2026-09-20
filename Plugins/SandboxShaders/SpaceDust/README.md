@@ -38,14 +38,21 @@ screen-space direction and pixel displacement. Sideways travel therefore
 produces broadly parallel flow, while forward travel produces perspective
 motion that grows radially and is stronger for nearby particles.
 
-Both total world speed and per-particle pixel displacement gate visibility. A
-particle that does not move far enough on screen fades away instead of
-remaining as a minimum-sized star-like point. Streak length is the measured
-pixel displacement capped by `maximum_streak_pixels`; the soft procedural
-material turns the stretched quad into a subtle ellipse without a texture.
-Camera rotation is not treated as translational motion. The material remains
-additive/unlit, tests normal scene depth, and does not write depth, so opaque
-hulls can occlude dust.
+Per-particle pixel displacement is the dominant visibility signal. Total world
+speed supplies only a gentle near-zero activation fade, so the field does not
+switch on together. A particle that does not move far enough on screen fades
+away instead of remaining as a minimum-sized star-like point. Each visible
+quad covers the particle thickness plus its bounded displacement, and the
+material turns that swept footprint into a soft directional capsule with a
+rounded head and fading tail. Seeded size and intensity variation keeps marks
+from looking mechanically identical without introducing temporal twinkle.
+
+Very close particles receive an additional smooth depth fade instead of
+popping at the camera plane. Pixel measurements use a 1080-pixel reference
+view height, keeping visibility thresholds, thickness, and maximum length
+consistent across render resolutions. Camera rotation is not treated as
+translational motion. The material remains additive/unlit, tests normal scene
+depth, and does not write depth, so opaque hulls can occlude dust.
 
 ## Tuning
 
@@ -53,16 +60,19 @@ hulls can occlude dust.
 
 - enable flag, count, seed, and volume dimensions;
 - size, brightness, and colour;
-- minimum/full world-speed visibility;
+- minimum/full world-speed activation;
 - streak time, minimum/full apparent-motion pixels, and maximum pixel length;
 - volume-edge fade.
 
 The default is intentionally sparse at 96 candidate instances, with apparent
-motion fading from invisible at 0.75 pixels to fully visible at 4 pixels. The
-candidate count can exceed the number visible in a frame because particles
-outside the view, behind the camera, near volume edges, or below the motion
-threshold contribute nothing. Count and enabled state recreate the proxy.
-Other settings and motion are tiny per-frame parameter updates.
+motion fading from invisible at 0.75 reference pixels to fully visible at 4
+reference pixels. World-speed activation fades gently from 100 to 2,000 world
+units per second; apparent motion still decides which individual particles are
+visible. The candidate count can exceed the number visible in a frame because
+particles outside the view, behind or very near the camera, near volume edges,
+or below the motion threshold contribute nothing. Count and enabled state
+recreate the proxy. Other settings and motion are tiny per-frame parameter
+updates.
 
 ## Measurement
 
@@ -90,6 +100,10 @@ and covered pixels.
 9. Nearby opaque geometry: dust does not visibly render through hulls.
 10. Long travel, teleports, and reset: no wrapping, precision, or pattern
     regression appears.
+11. Close camera crossings: particles fade smoothly instead of popping or
+    producing a sudden capped line.
+12. Representative render resolutions: apparent density, activation, and
+    streak proportions remain consistent relative to the view.
 
 `native/core/tests/space_dust_math_tests.cpp` covers settings and motion-threshold
 normalisation, sparse defaults, large/negative translation-phase wrapping, and
