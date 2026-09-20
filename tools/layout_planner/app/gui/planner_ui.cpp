@@ -934,6 +934,7 @@ void PlannerUi::refresh_analysis() {
     baseline_soa_.reset();
     active_soa_.reset();
     soa_access_analysis_.reset();
+    record_soa_access_comparison_.reset();
     soa_variants_.clear();
     comparison_a_packed_.reset();
     comparison_b_packed_.reset();
@@ -1086,6 +1087,18 @@ void PlannerUi::refresh_analysis() {
         if (!access_columns.empty()) {
             soa_access_analysis_ = Analyzer::analyze_soa_access(
                 *active_soa_, access_columns, abi_, workspace_.element_count());
+            if (soa->equivalent_type.has_value() &&
+                std::holds_alternative<RecordType>(
+                    workspace_.types().type(soa->equivalent_type->type).definition)) {
+                auto const equivalent_record{Analyzer::analyze_record(workspace_.types(),
+                                                                      soa->equivalent_type->type,
+                                                                      abi_,
+                                                                      workspace_.element_count())};
+                auto const record_access{
+                    Analyzer::analyze_record_access(equivalent_record, access_columns, abi_)};
+                record_soa_access_comparison_ =
+                    Analyzer::compare_record_soa_access(record_access, *soa_access_analysis_);
+            }
         }
         for (auto const& variant : workspace_.variants()) {
             if (variant.id != LayoutWorkspace::baseline_variant_id) {

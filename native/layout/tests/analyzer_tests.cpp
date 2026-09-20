@@ -3011,5 +3011,67 @@ TEST(SoaAnalyzer, DiagnosesSelectedColumnAccessOverflowAndExcessCapacity) {
     EXPECT_FALSE(access.diagnostics.empty());
 }
 
+TEST(SoaAnalyzer, ComparesEquivalentRecordAndSoaAccessFacts) {
+    auto const record_fixture{
+        record_type({codegen::RecordSchema{.name = "Row",
+                                           .members = {record_member("small", "std::uint8_t"),
+                                                       record_member("medium", "std::uint32_t"),
+                                                       record_member("wide", "std::uint64_t")},
+                                           .export_specifier = std::nullopt}},
+                    "Row")};
+    auto const soa_fixture{soa_type(
+        {{"small", "std::uint8_t"}, {"medium", "std::uint32_t"}, {"wide", "std::uint64_t"}})};
+    auto const abi{AbiProfile::host_common()};
+    auto const record{
+        Analyzer::analyze_record(record_fixture.types, record_fixture.type, abi, 100)};
+    auto const soa{
+        Analyzer::analyze_soa(soa_fixture.types, soa_fixture.type, Variant{}, abi, 1'000)};
+    std::vector<std::string> const members{"small", "wide"};
+    auto const record_access{Analyzer::analyze_record_access(record, members, abi)};
+    auto const soa_access{Analyzer::analyze_soa_access(soa, members, abi, 100)};
+
+    auto const comparison{Analyzer::compare_record_soa_access(record_access, soa_access)};
+
+    EXPECT_EQ(comparison.member_names, members);
+    EXPECT_EQ(comparison.element_count, 100);
+    EXPECT_EQ(comparison.record.useful_bytes, 900);
+    EXPECT_EQ(comparison.soa.useful_bytes, 900);
+    EXPECT_EQ(comparison.record.cache_lines, 25);
+    EXPECT_EQ(comparison.record.cache_bytes, 1'600);
+    EXPECT_EQ(comparison.soa.cache_lines, 15);
+    EXPECT_EQ(comparison.soa.cache_bytes, 960);
+    EXPECT_EQ(comparison.record.pages, 1);
+    EXPECT_EQ(comparison.record.page_bytes, 4'096);
+    EXPECT_EQ(comparison.soa.pages, 2);
+    EXPECT_EQ(comparison.soa.page_bytes, 8'192);
+    EXPECT_EQ(comparison.useful_byte_delta->direction, NumericDeltaDirection::unchanged);
+    EXPECT_EQ(comparison.cache_line_delta->direction, NumericDeltaDirection::decreased);
+    EXPECT_EQ(comparison.cache_line_delta->magnitude, 10);
+    EXPECT_EQ(comparison.cache_byte_delta->magnitude, 640);
+    EXPECT_EQ(comparison.page_delta->direction, NumericDeltaDirection::increased);
+    EXPECT_EQ(comparison.page_delta->magnitude, 1);
+    EXPECT_EQ(comparison.page_byte_delta->magnitude, 4'096);
+    EXPECT_TRUE(comparison.diagnostics.empty());
+}
+
+TEST(SoaAnalyzer, RejectsIncompatibleRecordAndSoaAccessSets) {
+    RecordAccessAnalysis record;
+    record.member_names = {"first"};
+    record.element_count = 10;
+    SoaAccessAnalysis soa;
+    soa.column_names = {"second"};
+    soa.element_count = 10;
+
+    auto comparison{Analyzer::compare_record_soa_access(record, soa)};
+    EXPECT_FALSE(comparison.diagnostics.empty());
+    EXPECT_FALSE(comparison.cache_line_delta.has_value());
+
+    soa.column_names = {"first"};
+    soa.element_count = 11;
+    comparison = Analyzer::compare_record_soa_access(record, soa);
+    EXPECT_FALSE(comparison.diagnostics.empty());
+    EXPECT_FALSE(comparison.useful_byte_delta.has_value());
+}
+
 } // namespace
 } // namespace ioj::layout

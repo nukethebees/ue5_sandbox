@@ -406,6 +406,11 @@ analysis computes exact touched-region unions for a contiguous aligned object ar
 uses the distinct physical model of one allocation per selected column and reports minimum region
 footprints; element count remains session workload state and is not conflated with SoA allocation
 capacity or persisted into LispB.
+When a standard-library SoA declares an equivalent type that resolves to a record, the Layout view
+also applies the same selected names and count to both models and shows useful bytes, cache lines,
+cache footprint, pages, page footprint, and signed deltas side by side. The UI explicitly labels the
+AoS aligned-array results as exact and the independent SoA allocation results as lower bounds; it
+does not turn those physical facts into a speed claim.
 
 ## 9. Physical-fact accuracy
 

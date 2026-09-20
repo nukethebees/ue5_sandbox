@@ -1092,6 +1092,63 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
         ImGui::TextDisabled("Select SoA columns in the Access column to define the access set.");
     }
 
+    if (record_soa_access_comparison_.has_value() && soa.equivalent_type.has_value()) {
+        auto const& comparison{*record_soa_access_comparison_};
+        auto const& record_identity{workspace_.types().type(soa.equivalent_type->type).identity};
+        ImGui::SeparatorText("Equivalent AoS / SoA access");
+        ImGui::Text("Equivalent record: %s", record_identity.name.c_str());
+        if (ImGui::BeginTable("record-soa-access-comparison",
+                              4,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("Metric");
+            ImGui::TableSetupColumn("AoS exact");
+            ImGui::TableSetupColumn("SoA minimum");
+            ImGui::TableSetupColumn("SoA - AoS");
+            ImGui::TableHeadersRow();
+            auto draw_stat{[](char const* const label,
+                              std::string const& record_value,
+                              std::string const& soa_value,
+                              std::string const& delta) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(label);
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(record_value.c_str());
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(soa_value.c_str());
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(delta.c_str());
+            }};
+            draw_stat("Useful payload",
+                      detail::format_bytes(comparison.record.useful_bytes),
+                      detail::format_bytes(comparison.soa.useful_bytes),
+                      detail::format_delta_bytes(comparison.useful_byte_delta));
+            draw_stat("Cache lines",
+                      detail::format_number(comparison.record.cache_lines),
+                      detail::format_number(comparison.soa.cache_lines),
+                      detail::format_delta_number(comparison.cache_line_delta));
+            draw_stat("Cache-line footprint",
+                      detail::format_bytes(comparison.record.cache_bytes),
+                      detail::format_bytes(comparison.soa.cache_bytes),
+                      detail::format_delta_bytes(comparison.cache_byte_delta));
+            draw_stat("Pages",
+                      detail::format_number(comparison.record.pages),
+                      detail::format_number(comparison.soa.pages),
+                      detail::format_delta_number(comparison.page_delta));
+            draw_stat("Page footprint",
+                      detail::format_bytes(comparison.record.page_bytes),
+                      detail::format_bytes(comparison.soa.page_bytes),
+                      detail::format_delta_bytes(comparison.page_byte_delta));
+            ImGui::EndTable();
+        }
+        ImGui::TextDisabled(
+            "AoS figures are exact for an aligned contiguous object array. SoA figures are lower "
+            "bounds across separate column allocations because their allocation origins are "
+            "unknown. Deltas compare these stated physical models; they are not speed estimates.");
+        draw_diagnostics(comparison.diagnostics);
+    }
+
     bool activated{};
     draw_payload_regions(baseline, nullptr, selected_field_, "Baseline", common_total, activated);
     for (auto const& [variant_id, analysis] : soa_variants_) {

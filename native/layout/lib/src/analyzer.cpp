@@ -2870,4 +2870,61 @@ auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
     return result;
 }
 
+auto Analyzer::compare_record_soa_access(RecordAccessAnalysis const& record,
+                                         SoaAccessAnalysis const& soa)
+    -> RecordSoaAccessComparison {
+    RecordSoaAccessComparison result{.member_names = soa.column_names,
+                                     .element_count = soa.element_count,
+                                     .record = {.useful_bytes = record.useful_bytes,
+                                                .cache_lines = record.cache_lines_touched,
+                                                .cache_bytes = record.cache_bytes_touched,
+                                                .pages = record.pages_touched,
+                                                .page_bytes = std::nullopt},
+                                     .soa = {.useful_bytes = soa.useful_bytes,
+                                             .cache_lines = soa.minimum_cache_lines_touched,
+                                             .cache_bytes = soa.minimum_cache_bytes_touched,
+                                             .pages = soa.minimum_pages_touched,
+                                             .page_bytes = soa.minimum_page_bytes_touched},
+                                     .useful_byte_delta = std::nullopt,
+                                     .cache_line_delta = std::nullopt,
+                                     .cache_byte_delta = std::nullopt,
+                                     .page_delta = std::nullopt,
+                                     .page_byte_delta = std::nullopt,
+                                     .diagnostics = {}};
+    for (auto const& diagnostic : record.diagnostics) {
+        result.diagnostics.push_back({diagnostic.severity, "AoS access: " + diagnostic.message});
+    }
+    for (auto const& diagnostic : soa.diagnostics) {
+        result.diagnostics.push_back({diagnostic.severity, "SoA access: " + diagnostic.message});
+    }
+    if (record.element_count != soa.element_count) {
+        result.diagnostics.push_back({DiagnosticSeverity::error,
+                                      "AoS and SoA access analyses use different element counts."});
+        return result;
+    }
+    auto const record_names{
+        std::set<std::string, std::less<>>{record.member_names.begin(), record.member_names.end()}};
+    auto const soa_names{
+        std::set<std::string, std::less<>>{soa.column_names.begin(), soa.column_names.end()}};
+    if (record_names != soa_names) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "AoS and SoA access analyses do not select the same named fields."});
+        return result;
+    }
+    if (record.pages_touched.has_value() && record.page_bytes.has_value()) {
+        result.record.page_bytes = checked_multiply(*record.pages_touched, *record.page_bytes);
+        if (!result.record.page_bytes.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, "AoS touched page footprint overflows uint64."});
+        }
+    }
+    result.useful_byte_delta = numeric_delta(result.record.useful_bytes, result.soa.useful_bytes);
+    result.cache_line_delta = numeric_delta(result.record.cache_lines, result.soa.cache_lines);
+    result.cache_byte_delta = numeric_delta(result.record.cache_bytes, result.soa.cache_bytes);
+    result.page_delta = numeric_delta(result.record.pages, result.soa.pages);
+    result.page_byte_delta = numeric_delta(result.record.page_bytes, result.soa.page_bytes);
+    return result;
+}
+
 } // namespace ioj::layout

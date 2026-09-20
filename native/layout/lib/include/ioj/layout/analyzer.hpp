@@ -590,6 +590,27 @@ struct SoaAccessAnalysis {
     std::vector<Diagnostic> diagnostics;
 };
 
+struct AccessFootprintSummary {
+    std::optional<std::uint64_t> useful_bytes;
+    std::optional<std::uint64_t> cache_lines;
+    std::optional<std::uint64_t> cache_bytes;
+    std::optional<std::uint64_t> pages;
+    std::optional<std::uint64_t> page_bytes;
+};
+
+struct RecordSoaAccessComparison {
+    std::vector<std::string> member_names;
+    std::uint64_t element_count{};
+    AccessFootprintSummary record;
+    AccessFootprintSummary soa;
+    std::optional<NumericDelta> useful_byte_delta;
+    std::optional<NumericDelta> cache_line_delta;
+    std::optional<NumericDelta> cache_byte_delta;
+    std::optional<NumericDelta> page_delta;
+    std::optional<NumericDelta> page_byte_delta;
+    std::vector<Diagnostic> diagnostics;
+};
+
 class Analyzer {
   public:
     static auto analyze_enum(lispb::schema::TypeGraph const& types,
@@ -680,6 +701,9 @@ class Analyzer {
                                    std::span<std::string const> column_names,
                                    AbiProfile const& abi,
                                    std::uint64_t element_count) -> SoaAccessAnalysis;
+    static auto compare_record_soa_access(RecordAccessAnalysis const& record,
+                                          SoaAccessAnalysis const& soa)
+        -> RecordSoaAccessComparison;
 };
 
 auto physical_type_spelling(lispb::schema::TypeGraph const& types, lispb::schema::TypeId type)
