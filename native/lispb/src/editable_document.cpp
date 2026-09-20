@@ -416,6 +416,8 @@ auto declaration_head(codegen::ModuleSchema const& module) -> std::string_view {
                 return "enum";
             } else if constexpr (std::is_same_v<Module, codegen::PackedValueModuleSchema>) {
                 return "packed-value";
+            } else if constexpr (std::is_same_v<Module, codegen::RecordModuleSchema>) {
+                return "record";
             } else if constexpr (std::is_same_v<Module, codegen::SoaModuleSchema>) {
                 return "struct";
             }
@@ -432,6 +434,8 @@ auto declaration_count(codegen::ModuleSchema const& module) -> std::size_t {
                 return value.enums.size();
             } else if constexpr (std::is_same_v<Module, codegen::PackedValueModuleSchema>) {
                 return value.values.size();
+            } else if constexpr (std::is_same_v<Module, codegen::RecordModuleSchema>) {
+                return value.records.size();
             } else if constexpr (std::is_same_v<Module, codegen::SoaModuleSchema>) {
                 return value.structs.size();
             } else if constexpr (std::is_same_v<Module, codegen::VectorModuleSchema>) {
@@ -459,6 +463,10 @@ void for_each_declaration(codegen::Manifest const& manifest, Function&& function
                 } else if constexpr (std::is_same_v<Module, codegen::PackedValueModuleSchema>) {
                     for (std::size_t index{}; index < value.values.size(); ++index) {
                         add(index, value.values[index].name);
+                    }
+                } else if constexpr (std::is_same_v<Module, codegen::RecordModuleSchema>) {
+                    for (std::size_t index{}; index < value.records.size(); ++index) {
+                        add(index, value.records[index].name);
                     }
                 } else if constexpr (std::is_same_v<Module, codegen::SoaModuleSchema>) {
                     for (std::size_t index{}; index < value.structs.size(); ++index) {

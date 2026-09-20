@@ -698,6 +698,34 @@ auto parse_setting(Form const& form) -> SettingSchema {
     };
 }
 
+auto parse_record_member(Form const& form) -> RecordMemberSchema {
+    Fields const fields{form, "member", 2};
+    fields.validate({"count"});
+    auto const* count{fields.optional("count")};
+    return RecordMemberSchema{
+        .name = text(fields.positional(0), "record member name"),
+        .type = parse_type_ref(fields.positional(1)),
+        .count = count == nullptr
+                   ? std::nullopt
+                   : std::optional<std::uint64_t>{unsigned_integer(*count, "record member count")},
+    };
+}
+
+auto parse_record(Form const& form) -> RecordSchema {
+    Fields const fields{form, "record", 1};
+    fields.validate({"export-specifier"}, {"member"});
+    std::vector<RecordMemberSchema> members;
+    members.reserve(fields.declarations().size());
+    for (auto const* declaration : fields.declarations()) {
+        members.push_back(parse_record_member(*declaration));
+    }
+    return RecordSchema{
+        .name = text(fields.positional(0), "record name"),
+        .members = std::move(members),
+        .export_specifier = optional_text(fields, "export-specifier"),
+    };
+}
+
 auto parse_module(Form const& form) -> ModuleSchema {
     auto const head{form.head()};
     if (head == "packed-value-module") {
@@ -711,6 +739,18 @@ auto parse_module(Form const& form) -> ModuleSchema {
             values.push_back(parse_packed_value(*declaration));
         }
         return PackedValueModuleSchema{parse_module_settings(fields), std::move(values)};
+    }
+    if (head == "record-module") {
+        Fields const fields{form, head, 1};
+        fields.validate(
+            {"header", "source", "header-include", "namespace", "include-order", "prelude"},
+            {"record"});
+        std::vector<RecordSchema> records;
+        records.reserve(fields.declarations().size());
+        for (auto const* declaration : fields.declarations()) {
+            records.push_back(parse_record(*declaration));
+        }
+        return RecordModuleSchema{parse_module_settings(fields), std::move(records)};
     }
     if (head == "soa-module") {
         Fields const fields{form, head, 1};

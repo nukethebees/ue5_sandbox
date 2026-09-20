@@ -55,6 +55,11 @@ and declaration ownership rather than inventing type-kind folders.
 
 ## Supported analysis and limits
 
+Ordinary AoS semantics use `record-module` / `record` declarations rather than overloading SoA
+columns. A record member references the shared semantic type graph and may have a fixed element
+count; C++ lowering is one consumer and emits an ordinary struct plus `std::array` where needed.
+Physical member offsets and padding remain target analysis, not durable semantic properties.
+
 The planner supports enum value-domain analysis, packed storage type/bit-range analysis, and flat
 standard-library SoA/vector-SoA payload analysis. Enum analysis derives implicit literal values,
 count-sentinel code use, minimum semantic width, backing fit, and unused backing codes; arbitrary

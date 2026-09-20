@@ -204,6 +204,31 @@ TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
     EXPECT_EQ(opaque_values.front().initializer, "static_cast<uint8>(1)");
 }
 
+TEST(SourceLoader, ReadsRecordModuleAndFixedArrays) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(record-module data
+  :header "Data.h"
+  :namespace project
+  (record Position
+    (member x float)
+    (member y float))
+  (record Trail
+    :export-specifier PROJECT_API
+    (member points Position :count 4)))
+)");
+
+    auto const manifest{files.load()};
+    auto const& module{std::get<RecordModuleSchema>(manifest.modules.front())};
+    ASSERT_EQ(module.records.size(), 2U);
+    EXPECT_EQ(module.records[0].name, "Position");
+    ASSERT_EQ(module.records[0].members.size(), 2U);
+    EXPECT_EQ(module.records[0].members[0].type.name, "float");
+    EXPECT_FALSE(module.records[0].members[0].count.has_value());
+    EXPECT_EQ(module.records[1].export_specifier, "PROJECT_API");
+    EXPECT_EQ(module.records[1].members[0].count, 4);
+}
+
 TEST(SourceLoader, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {
     TemporaryManifest files;
     files.write_root(R"(

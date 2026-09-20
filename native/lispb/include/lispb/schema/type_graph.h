@@ -73,6 +73,16 @@ struct PackedType {
     std::optional<std::uint64_t> invalid_raw_value;
 };
 
+struct RecordMember {
+    std::string name;
+    ResolvedTypeRef semantic_type;
+    std::optional<std::uint64_t> count;
+};
+
+struct RecordType {
+    std::vector<RecordMember> members;
+};
+
 enum class SoaSourceKind { structure, vector };
 
 struct SoaColumn {
@@ -89,7 +99,7 @@ struct SoaType {
     std::optional<std::string> related_storage_name;
 };
 
-using TypeDefinition = std::variant<ExternalType, EnumType, PackedType, SoaType>;
+using TypeDefinition = std::variant<ExternalType, EnumType, PackedType, RecordType, SoaType>;
 
 struct TypeNode {
     TypeIdentity identity;

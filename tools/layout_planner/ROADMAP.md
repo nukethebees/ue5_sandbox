@@ -45,6 +45,11 @@ semantic bit width, target-backed signed/unsigned fit, and unused backing codes.
 expressions remain explicitly unknown. Durable explicit-width/value-domain enum authoring remains a
 future shared-schema change rather than planner-only metadata.
 
+The shared LispB schema now has an initial ordinary `record-module`: records contain semantic
+members and optional fixed element counts, resolve to `RecordType` nodes and dependency edges, and
+lower to ordinary C++ structs with `std::array` for fixed arrays. Editable-document commands and
+target-derived record layout are the next vertical steps.
+
 ## 1. Editable document and command foundation
 
 - Own a mutable draft of the validated LispB declarations.

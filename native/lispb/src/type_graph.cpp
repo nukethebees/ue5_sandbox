@@ -97,6 +97,14 @@ class TypeGraphBuilder {
                                     module.values[index].name,
                                     PackedType{});
                         }
+                    } else if constexpr (std::is_same_v<Module, codegen::RecordModuleSchema>) {
+                        for (std::size_t index{}; index < module.records.size(); ++index) {
+                            declare(module_index,
+                                    index,
+                                    module.settings,
+                                    module.records[index].name,
+                                    RecordType{});
+                        }
                     } else if constexpr (std::is_same_v<Module, codegen::SoaModuleSchema>) {
                         for (std::size_t index{}; index < module.structs.size(); ++index) {
                             declare(module_index,
@@ -242,6 +250,17 @@ class TypeGraphBuilder {
                                  .range_helper = field.range_helper});
                         }
                         graph_.types_[declaration.id.value].definition = std::move(type);
+                    } else if constexpr (std::is_same_v<Module, codegen::RecordModuleSchema>) {
+                        auto const& source{module.records[declaration.declaration_index]};
+                        RecordType type;
+                        type.members.reserve(source.members.size());
+                        for (auto const& member : source.members) {
+                            type.members.push_back(
+                                {.name = member.name,
+                                 .semantic_type = resolve_ref(member.type, module.settings.name),
+                                 .count = member.count});
+                        }
+                        graph_.types_[declaration.id.value].definition = std::move(type);
                     } else if constexpr (std::is_same_v<Module, codegen::SoaModuleSchema>) {
                         auto const& source{module.structs[declaration.declaration_index]};
                         SoaType type{.backend = module.backend,
@@ -304,6 +323,10 @@ class TypeGraphBuilder {
                         add_dependency(node, definition.storage_type.type);
                         for (auto const& field : definition.fields) {
                             add_dependency(node, field.semantic_type.type);
+                        }
+                    } else if constexpr (std::is_same_v<Definition, RecordType>) {
+                        for (auto const& member : definition.members) {
+                            add_dependency(node, member.semantic_type.type);
                         }
                     } else if constexpr (std::is_same_v<Definition, SoaType>) {
                         for (auto const& column : definition.columns) {

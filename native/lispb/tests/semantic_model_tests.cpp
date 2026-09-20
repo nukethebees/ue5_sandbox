@@ -102,6 +102,37 @@ TEST(SemanticTypeGraph, ResolvesStandardLibrarySoaColumns) {
     }
 }
 
+TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
+    codegen::Manifest const manifest{
+        .schema_version = codegen::manifest_schema_version,
+        .modules = {codegen::RecordModuleSchema{
+            .settings = codegen::ModuleSettings{.name = "records", .header = "Records.h"},
+            .records =
+                {
+                    codegen::RecordSchema{
+                        .name = "Position",
+                        .members = {{.name = "x", .type = codegen::TypeRef{"float"}}}},
+                    codegen::RecordSchema{.name = "Path",
+                                          .members = {{.name = "points",
+                                                       .type = codegen::TypeRef{"Position"},
+                                                       .count = 8}}},
+                }}},
+    };
+
+    auto const graph{resolve_type_graph(manifest)};
+    auto const position{graph.find_declared("records", "Position")};
+    auto const path{graph.find_declared("records", "Path")};
+    ASSERT_TRUE(position.has_value());
+    ASSERT_TRUE(path.has_value());
+    auto const& record{std::get<RecordType>(graph.type(*path).definition)};
+    ASSERT_EQ(record.members.size(), 1U);
+    EXPECT_EQ(record.members[0].semantic_type.type, *position);
+    EXPECT_EQ(record.members[0].count, 8);
+    EXPECT_NE(std::ranges::find(graph.dependencies_of(*path), *position),
+              graph.dependencies_of(*path).end());
+    EXPECT_NE(std::ranges::find(graph.users_of(*position), *path), graph.users_of(*position).end());
+}
+
 TEST(SemanticTypeGraph, KeepsUnknownRegisteredTypesAsExternalLeaves) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,

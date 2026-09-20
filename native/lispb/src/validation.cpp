@@ -635,6 +635,42 @@ void validate_packed_values(PackedValueModuleSchema const& module,
     }
 }
 
+void validate_records(RecordModuleSchema const& module,
+                      std::map<std::string, CppType> const& types) {
+    if (module.settings.source.has_value()) {
+        throw std::invalid_argument{"Record module '" + module.settings.name +
+                                    "' must not have a source output"};
+    }
+    if (module.records.empty()) {
+        throw std::invalid_argument{"Record module '" + module.settings.name +
+                                    "' must have records"};
+    }
+    std::vector<std::string> record_names;
+    record_names.reserve(module.records.size());
+    for (auto const& record : module.records) {
+        require_identifier(record.name, "Record name");
+        validate_export_specifier(record.export_specifier,
+                                  "Record '" + record.name + "' export specifier");
+        if (record.members.empty()) {
+            throw std::invalid_argument{"Record '" + record.name + "' must have members"};
+        }
+        record_names.push_back(record.name);
+        std::vector<std::string> member_names;
+        member_names.reserve(record.members.size());
+        for (auto const& member : record.members) {
+            auto const context{"Record '" + record.name + "' member '" + member.name + "'"};
+            require_identifier(member.name, "Record '" + record.name + "' member name");
+            validate_type(member.type, types, context);
+            if (member.count == 0) {
+                throw std::invalid_argument{context + " count must be greater than zero"};
+            }
+            member_names.push_back(member.name);
+        }
+        require_unique_names(member_names, "Record '" + record.name + "' members");
+    }
+    require_unique_names(record_names, "Record module '" + module.settings.name + "' records");
+}
+
 void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> const& types) {
     if (module.structs.empty()) {
         throw std::invalid_argument{"SOA module '" + module.settings.name + "' must have schemas"};
@@ -1315,6 +1351,8 @@ void validate_manifest(Manifest const& manifest) {
                     validate_enum(module, manifest.types);
                 } else if constexpr (std::is_same_v<T, PackedValueModuleSchema>) {
                     validate_packed_values(module, manifest.types, manifest.modules);
+                } else if constexpr (std::is_same_v<T, RecordModuleSchema>) {
+                    validate_records(module, manifest.types);
                 } else if constexpr (std::is_same_v<T, SoaModuleSchema>) {
                     validate_soa(module, manifest.types);
                 } else if constexpr (std::is_same_v<T, StaticTableModuleSchema>) {
