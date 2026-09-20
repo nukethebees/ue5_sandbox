@@ -94,7 +94,8 @@ Nested SoA columns edit optional fixed-schema and nested-schema references throu
 whole-schema command path, and array selection clears those nested-only properties before
 validation. The coordinated mask workflow enables or disables the generated mask type, field enum,
 storage column, and field membership atomically so intermediate invalid configurations never enter
-history. Dimension metadata remains source-preserved and read-only.
+history. Per-field mask dimensions use persistent UI edit buffers but commit only through normal
+whole-schema commands, keeping validation and undo/redo in the editable document.
 
 The application treats a C++ schema target as the open authoring document. Open/recent operations
 load its project manifest and target, while Save As materializes the current draft as a validated,

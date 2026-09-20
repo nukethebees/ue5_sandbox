@@ -282,6 +282,17 @@ auto unique_member_name(std::vector<codegen::SoaMemberSchema> const& members,
     return candidate;
 }
 
+auto unique_mask_dimension_name(std::vector<codegen::SoaMaskDimensionSchema> const& dimensions,
+                                std::string const& stem) -> std::string {
+    auto suffix{std::size_t{1}};
+    auto candidate{stem};
+    while (std::ranges::find(dimensions, candidate, &codegen::SoaMaskDimensionSchema::index_name) !=
+           dimensions.end()) {
+        candidate = stem + std::to_string(suffix++);
+    }
+    return candidate;
+}
+
 auto unique_record_member_name(std::vector<codegen::RecordMemberSchema> const& members,
                                std::string const& stem) -> std::string {
     auto suffix{std::size_t{1}};
@@ -4415,7 +4426,6 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
                                   ? std::optional<std::size_t>{}
                                   : std::optional<std::size_t>{static_cast<std::size_t>(
                                         selected - schema->members.begin())}};
-
     if (record_editor_declaration_ != declaration || record_editor_member_ != selected_field_) {
         record_editor_declaration_ = declaration;
         record_editor_member_ = selected_field_;
@@ -4715,6 +4725,13 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                                   ? std::optional<std::size_t>{}
                                   : std::optional<std::size_t>{static_cast<std::size_t>(
                                         selected - schema->members.begin())}};
+    auto const selected_is_mask_storage{selected != schema->members.end() &&
+                                        schema->field_mask_name.has_value() &&
+                                        selected->type.name == *schema->field_mask_name};
+    auto const selected_is_final_mask_field{
+        selected != schema->members.end() && selected->mask_field &&
+        std::ranges::count_if(schema->members,
+                              [](auto const& member) { return member.mask_field; }) == 1};
 
     if (soa_editor_declaration_ != declaration || soa_editor_member_ != selected_field_) {
         soa_editor_declaration_ = declaration;
@@ -4734,6 +4751,24 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                           soa_member_nested_schema_.size(),
                           "%s",
                           selected->nested_schema.value_or("").c_str());
+            soa_mask_dimension_names_.clear();
+            soa_mask_dimension_extents_.clear();
+            soa_mask_dimension_names_.reserve(selected->mask_dimensions.size());
+            soa_mask_dimension_extents_.reserve(selected->mask_dimensions.size());
+            for (auto const& dimension : selected->mask_dimensions) {
+                std::array<char, 128> name{};
+                std::array<char, 128> extent{};
+                std::snprintf(name.data(), name.size(), "%s", dimension.index_name.c_str());
+                std::snprintf(extent.data(), extent.size(), "%s", dimension.extent.c_str());
+                soa_mask_dimension_names_.push_back(name);
+                soa_mask_dimension_extents_.push_back(extent);
+            }
+            if (selected->mask_dimensions.empty()) {
+                soa_mask_dimension_index_.reset();
+            } else if (!soa_mask_dimension_index_.has_value() ||
+                       *soa_mask_dimension_index_ >= selected->mask_dimensions.size()) {
+                soa_mask_dimension_index_ = 0;
+            }
         }
     }
 
@@ -4755,7 +4790,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
         }
     }
     ImGui::SameLine();
-    ImGui::BeginDisabled(!selected_index.has_value());
+    ImGui::BeginDisabled(!selected_index.has_value() || selected_is_mask_storage);
     if (ImGui::Button("Duplicate")) {
         auto replacement{*schema};
         auto copy{replacement.members[*selected_index]};
@@ -4794,7 +4829,8 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
-    ImGui::BeginDisabled(!selected_index.has_value() || schema->members.size() == 1);
+    ImGui::BeginDisabled(!selected_index.has_value() || schema->members.size() == 1 ||
+                         selected_is_mask_storage || selected_is_final_mask_field);
     if (ImGui::Button("Delete")) {
         auto replacement{*schema};
         replacement.members.erase(replacement.members.begin() +
@@ -4850,6 +4886,8 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             }
 
             ImGui::TableNextColumn();
+            auto const row_mask_storage{schema->field_mask_name.has_value() &&
+                                        member.type.name == *schema->field_mask_name};
             if (row_selected) {
                 ImGui::SetNextItemWidth(-1.0F);
                 auto const submitted{ImGui::InputText("##name",
@@ -4866,7 +4904,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             }
 
             ImGui::TableNextColumn();
-            if (row_selected) {
+            if (row_selected && !row_mask_storage) {
                 ImGui::SetNextItemWidth(std::max(60.0F, ImGui::GetContentRegionAvail().x - 58.0F));
                 auto const submitted{ImGui::InputText("##type",
                                                       soa_member_type_.data(),
@@ -4901,10 +4939,14 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                     soa_member_fixed_schema_.front() = '\0';
                     soa_member_nested_schema_.front() = '\0';
                 }
+                auto const mask_storage{schema->field_mask_name.has_value() &&
+                                        member.type.name == *schema->field_mask_name};
+                ImGui::BeginDisabled(member.mask_field || mask_storage);
                 if (ImGui::Selectable("nested", member.kind == codegen::SoaMemberKind::nested)) {
                     pending = *schema;
                     pending->members[index].kind = codegen::SoaMemberKind::nested;
                 }
+                ImGui::EndDisabled();
                 ImGui::EndCombo();
             } else if (!row_selected) {
                 ImGui::TextUnformatted(kind_label);
@@ -4997,10 +5039,15 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                                   (!included || mask_field_count > 1)};
             ImGui::BeginDisabled(!can_toggle);
             if (ImGui::Checkbox("Included in generated field mask", &included)) {
-                pending = *schema;
-                pending->members[*selected_index].mask_field = included;
+                auto replacement{*schema};
+                replacement.members[*selected_index].mask_field = included;
                 if (!included) {
-                    pending->members[*selected_index].mask_dimensions.clear();
+                    replacement.members[*selected_index].mask_dimensions.clear();
+                }
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_editor_declaration_.reset();
+                    return true;
                 }
             }
             ImGui::EndDisabled();
@@ -5037,13 +5084,144 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             }
         }
 
-        if (!member.mask_dimensions.empty()) {
-            ImGui::TextDisabled("Mask dimensions");
-            for (auto const& dimension : member.mask_dimensions) {
-                ImGui::BulletText("%s: %s", dimension.index_name.c_str(), dimension.extent.c_str());
+        if (member.mask_field) {
+            ImGui::SeparatorText("Mask dimensions");
+            if (ImGui::Button("+ Dimension")) {
+                auto replacement{*schema};
+                auto& dimensions{replacement.members[*selected_index].mask_dimensions};
+                auto const name{unique_mask_dimension_name(dimensions, "index")};
+                dimensions.push_back(
+                    codegen::SoaMaskDimensionSchema{.index_name = name, .extent = "1"});
+                auto const new_index{dimensions.size() - 1};
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_mask_dimension_index_ = new_index;
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+            ImGui::SameLine();
+            auto const dimension_index{soa_mask_dimension_index_};
+            auto const has_dimension{dimension_index.has_value() &&
+                                     *dimension_index < member.mask_dimensions.size()};
+            ImGui::BeginDisabled(!has_dimension);
+            if (ImGui::Button("Duplicate dimension")) {
+                auto replacement{*schema};
+                auto& dimensions{replacement.members[*selected_index].mask_dimensions};
+                auto copy{dimensions[*dimension_index]};
+                copy.index_name = unique_mask_dimension_name(dimensions, copy.index_name + "_copy");
+                dimensions.insert(
+                    dimensions.begin() + static_cast<std::ptrdiff_t>(*dimension_index + 1), copy);
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_mask_dimension_index_ = *dimension_index + 1;
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!has_dimension || *dimension_index == 0);
+            if (ImGui::Button("Dimension up")) {
+                auto replacement{*schema};
+                auto& dimensions{replacement.members[*selected_index].mask_dimensions};
+                std::swap(dimensions[*dimension_index], dimensions[*dimension_index - 1]);
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_mask_dimension_index_ = *dimension_index - 1;
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!has_dimension ||
+                                 *dimension_index + 1 >= member.mask_dimensions.size());
+            if (ImGui::Button("Dimension down")) {
+                auto replacement{*schema};
+                auto& dimensions{replacement.members[*selected_index].mask_dimensions};
+                std::swap(dimensions[*dimension_index], dimensions[*dimension_index + 1]);
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_mask_dimension_index_ = *dimension_index + 1;
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (ImGui::Button("Delete dimension")) {
+                auto replacement{*schema};
+                auto& dimensions{replacement.members[*selected_index].mask_dimensions};
+                dimensions.erase(dimensions.begin() +
+                                 static_cast<std::ptrdiff_t>(*dimension_index));
+                auto const next_index{
+                    dimensions.empty()
+                        ? std::optional<std::size_t>{}
+                        : std::optional{std::min(*dimension_index, dimensions.size() - 1)}};
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_mask_dimension_index_ = next_index;
+                    soa_editor_declaration_.reset();
+                    return true;
+                }
+            }
+            ImGui::EndDisabled();
+
+            if (soa_mask_dimension_names_.size() == member.mask_dimensions.size() &&
+                soa_mask_dimension_extents_.size() == member.mask_dimensions.size() &&
+                ImGui::BeginTable("soa-mask-dimensions",
+                                  3,
+                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                      ImGuiTableFlags_Resizable |
+                                      ImGuiTableFlags_SizingStretchProp)) {
+                ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
+                ImGui::TableSetupColumn("Index name");
+                ImGui::TableSetupColumn("Extent");
+                ImGui::TableHeadersRow();
+                for (std::size_t index{}; index < member.mask_dimensions.size(); ++index) {
+                    ImGui::PushID(static_cast<int>(index));
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    auto const row_selected{soa_mask_dimension_index_ == index};
+                    if (ImGui::Selectable(
+                            "::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+                        soa_mask_dimension_index_ = index;
+                    }
+
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-1.0F);
+                    auto const name_submitted{
+                        ImGui::InputText("##name",
+                                         soa_mask_dimension_names_[index].data(),
+                                         soa_mask_dimension_names_[index].size(),
+                                         ImGuiInputTextFlags_EnterReturnsTrue)};
+                    if (name_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                        if (!pending.has_value()) {
+                            pending = *schema;
+                        }
+                        pending->members[*selected_index].mask_dimensions[index].index_name =
+                            soa_mask_dimension_names_[index].data();
+                    }
+
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-1.0F);
+                    auto const extent_submitted{
+                        ImGui::InputText("##extent",
+                                         soa_mask_dimension_extents_[index].data(),
+                                         soa_mask_dimension_extents_[index].size(),
+                                         ImGuiInputTextFlags_EnterReturnsTrue)};
+                    if (extent_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                        if (!pending.has_value()) {
+                            pending = *schema;
+                        }
+                        pending->members[*selected_index].mask_dimensions[index].extent =
+                            soa_mask_dimension_extents_[index].data();
+                    }
+                    ImGui::PopID();
+                }
+                ImGui::EndTable();
             }
         }
-        ImGui::TextDisabled("Mask dimensions remain source-preserved and read only.");
     }
 
     if (navigate_to.has_value()) {
@@ -5067,6 +5245,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
         if (apply_document_edit(
                 ReplaceSoa{.declaration = *declaration, .schema = std::move(*pending)})) {
             selected_field_ = std::move(selected_after_edit);
+            soa_editor_declaration_.reset();
             return true;
         }
     }

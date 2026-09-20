@@ -284,8 +284,9 @@ optional fixed-schema and nested-schema references inline, and switching back to
 nested-only properties. Coordinated generated field-mask/storage/dimension authoring remains
 partially complete: the UI atomically enables generated names, the required storage column, and the
 first selected mask field; it safely disables the whole configuration and toggles additional
-eligible array fields without allowing the final field to be removed. Existing dimensions are
-displayed and source-preserved; direct dimension editing remains follow-up.
+eligible array fields without allowing the final field to be removed. Selected mask fields expose
+an inline ordered dimension table with add, duplicate, delete, button reorder, and direct name/extent
+editing through normal semantic commands.
 
 - Create standard-library SoA declarations.
 - Add, remove, duplicate, and reorder columns.

@@ -258,8 +258,8 @@ switching back to array removes those invalid nested-only properties. Existing m
 edited through coordinated actions: enable creates both generated type names, the required storage
 column, and the first mask field in one undoable command; disable removes the whole configuration;
 eligible array columns can be included or excluded while retaining at least one field. Existing mask
-dimensions remain source-preserved and read-only. Capacity remains a planner experiment setting and
-is not written into LispB.
+dimensions are edited inline with add, duplicate, delete, reorder, and direct name/extent controls.
+Capacity remains a planner experiment setting and is not written into LispB.
 
 Raw unions use **+ New union** and an existing `union-module`. Alternatives are edited inline with
 the shared semantic type picker and may be scalars or positive fixed arrays. Add, duplicate,

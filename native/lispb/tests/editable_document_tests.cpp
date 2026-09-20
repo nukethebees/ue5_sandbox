@@ -3183,6 +3183,8 @@ TEST(EditableSchemaDocument, EnablesAndDisablesSoaFieldMaskAsCoordinatedEdits) {
     enabled.members[0].mask_field = true;
     enabled.members[0].mask_dimensions.push_back(
         codegen::SoaMaskDimensionSchema{.index_name = "lane", .extent = "4"});
+    enabled.members[0].mask_dimensions.push_back(
+        codegen::SoaMaskDimensionSchema{.index_name = "batch", .extent = "8"});
     enabled.members.push_back(codegen::SoaMemberSchema{
         .name = "field_mask",
         .kind = codegen::SoaMemberKind::array,
@@ -3206,7 +3208,8 @@ TEST(EditableSchemaDocument, EnablesAndDisablesSoaFieldMaskAsCoordinatedEdits) {
     EXPECT_NE(preview->front().updated.find(":field-enum-name ExistingSoaField"),
               std::string::npos);
     EXPECT_NE(preview->front().updated.find(":mask-field true"), std::string::npos);
-    EXPECT_NE(preview->front().updated.find(":mask-dimensions ((lane \"4\"))"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":mask-dimensions ((lane \"4\") (batch \"8\"))"),
+              std::string::npos);
     EXPECT_NE(preview->front().updated.find("(member field_mask array ExistingSoaFieldMask)"),
               std::string::npos);
     EXPECT_NE(preview->front().updated.find("; Keep the custom function note"), std::string::npos);
@@ -3227,8 +3230,11 @@ TEST(EditableSchemaDocument, EnablesAndDisablesSoaFieldMaskAsCoordinatedEdits) {
     EXPECT_EQ(reloaded_schema->field_enum_name, "ExistingSoaField");
     ASSERT_EQ(reloaded_schema->members.size(), 3U);
     EXPECT_TRUE(reloaded_schema->members[0].mask_field);
-    ASSERT_EQ(reloaded_schema->members[0].mask_dimensions.size(), 1U);
+    ASSERT_EQ(reloaded_schema->members[0].mask_dimensions.size(), 2U);
     EXPECT_EQ(reloaded_schema->members[0].mask_dimensions[0].index_name, "lane");
+    EXPECT_EQ(reloaded_schema->members[0].mask_dimensions[0].extent, "4");
+    EXPECT_EQ(reloaded_schema->members[0].mask_dimensions[1].index_name, "batch");
+    EXPECT_EQ(reloaded_schema->members[0].mask_dimensions[1].extent, "8");
 
     auto disabled{*reloaded_schema};
     std::erase_if(disabled.members,
