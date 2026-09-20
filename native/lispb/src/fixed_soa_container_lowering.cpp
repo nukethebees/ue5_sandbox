@@ -17,27 +17,31 @@ TypeDependency const move_temp{"MoveTemp", "Templates/UnrealTemplate.h", {}};
 TypeDependency const std_memory{"std::addressof", "memory", {}};
 TypeDependency const std_type_traits{"std::is_constructible_v", "type_traits", {}};
 
-auto fixed_trait(FixedLayout const& layout, std::string const& trait) -> std::string {
-    std::vector<std::string> values;
+auto unique_fixed_leaf_type_spellings(FixedLayout const& layout) -> std::vector<std::string> {
+    std::vector<std::string> result;
     std::set<std::string> types;
     for (auto const& leaf : layout.leaves) {
         if (!types.insert(leaf.type.spelling).second) {
             continue;
         }
-        values.push_back("std::" + trait + "<" + leaf.type.spelling + ">");
+        result.push_back(leaf.type.spelling);
+    }
+    return result;
+}
+
+auto fixed_trait(FixedLayout const& layout, std::string const& trait) -> std::string {
+    std::vector<std::string> values;
+    for (auto const& spelling : unique_fixed_leaf_type_spellings(layout)) {
+        values.push_back("std::" + trait + "<" + spelling + ">");
     }
     return join(values, " &&\n    ");
 }
 
 auto fixed_uninitialised_storage_trait(FixedLayout const& layout) -> std::string {
     std::vector<std::string> values;
-    std::set<std::string> types;
-    for (auto const& leaf : layout.leaves) {
-        if (!types.insert(leaf.type.spelling).second) {
-            continue;
-        }
-        values.push_back("std::is_trivially_copyable_v<" + leaf.type.spelling + ">");
-        values.push_back("std::is_trivially_destructible_v<" + leaf.type.spelling + ">");
+    for (auto const& spelling : unique_fixed_leaf_type_spellings(layout)) {
+        values.push_back("std::is_trivially_copyable_v<" + spelling + ">");
+        values.push_back("std::is_trivially_destructible_v<" + spelling + ">");
     }
     return join(values, " &&\n    ");
 }
