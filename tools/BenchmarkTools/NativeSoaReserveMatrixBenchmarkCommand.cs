@@ -82,9 +82,20 @@ internal static class NativeSoaReserveMatrixBenchmarkCommand
                     {
                         throw new BenchmarkToolException($"Native reserve benchmark did not produce '{destination}'.");
                     }
-                    using var document = JsonDocument.Parse(File.ReadAllText(destination));
-                    ValidateResult(document.RootElement, name);
-                    runs.Add(new ReserveRun(backend, implementation, owner_count, document.RootElement.Clone()));
+                    JsonDocument document;
+                    try
+                    {
+                        document = JsonDocument.Parse(File.ReadAllText(destination));
+                    }
+                    catch (JsonException exception)
+                    {
+                        throw new BenchmarkToolException($"Native reserve benchmark produced malformed JSON in '{destination}': {exception.Message}");
+                    }
+                    using (document)
+                    {
+                        ValidateResult(document.RootElement, name);
+                        runs.Add(new ReserveRun(backend, implementation, owner_count, document.RootElement.Clone()));
+                    }
                 }
             }
         }
@@ -116,21 +127,32 @@ internal static class NativeSoaReserveMatrixBenchmarkCommand
 
     private static void ValidateResult(JsonElement document, string name)
     {
-        if (!document.TryGetProperty("benchmarks", out var benchmarks) || benchmarks.ValueKind != JsonValueKind.Array)
+        try
         {
-            throw new BenchmarkToolException("Google Benchmark output did not contain a benchmarks array.");
-        }
-        var names = benchmarks.EnumerateArray().Select(record => record.TryGetProperty("run_name", out var run_name) ? run_name.GetString() : null).ToHashSet(StringComparer.Ordinal);
-        if (names.Count != 1 || !names.Contains(name))
-        {
-            throw new BenchmarkToolException($"Expected exactly one benchmark: {name}.");
-        }
-        foreach (var record in benchmarks.EnumerateArray())
-        {
-            if (record.TryGetProperty("error_occurred", out var error) && error.GetBoolean())
+            if (document.ValueKind != JsonValueKind.Object || !document.TryGetProperty("benchmarks", out var benchmarks) || benchmarks.ValueKind != JsonValueKind.Array)
             {
-                throw new BenchmarkToolException(record.TryGetProperty("error_message", out var message) ? message.GetString() ?? "Google Benchmark failed." : "Google Benchmark failed.");
+                throw new BenchmarkToolException("Google Benchmark output did not contain a benchmarks array.");
             }
+            var names = benchmarks.EnumerateArray().Select(record => record.ValueKind == JsonValueKind.Object && record.TryGetProperty("run_name", out var run_name) ? run_name.GetString() : null).ToHashSet(StringComparer.Ordinal);
+            if (names.Count != 1 || !names.Contains(name))
+            {
+                throw new BenchmarkToolException($"Expected exactly one benchmark: {name}.");
+            }
+            foreach (var record in benchmarks.EnumerateArray())
+            {
+                if (record.ValueKind != JsonValueKind.Object)
+                {
+                    throw new BenchmarkToolException("Google Benchmark output contained a non-object benchmark record.");
+                }
+                if (record.TryGetProperty("error_occurred", out var error) && error.ValueKind == JsonValueKind.True)
+                {
+                    throw new BenchmarkToolException(record.TryGetProperty("error_message", out var message) && message.ValueKind == JsonValueKind.String ? message.GetString() ?? "Google Benchmark failed." : "Google Benchmark failed.");
+                }
+            }
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or FormatException)
+        {
+            throw new BenchmarkToolException($"Google Benchmark output was malformed: {exception.Message}");
         }
     }
 
@@ -151,21 +173,39 @@ internal static class NativeSoaReserveMatrixBenchmarkCommand
         }
     }
 
-    private static IEnumerable<double> TimingValues(JsonElement result)
+    private static IReadOnlyList<double> TimingValues(JsonElement result)
     {
-        foreach (var record in result.GetProperty("benchmarks").EnumerateArray())
+        try
         {
-            if (record.TryGetProperty("run_type", out var type) && type.GetString() == "aggregate")
+            var benchmarks = result.GetProperty("benchmarks");
+            if (benchmarks.ValueKind != JsonValueKind.Array)
             {
-                continue;
+                throw new BenchmarkToolException("Google Benchmark output did not contain a benchmarks array.");
             }
-            var multiplier = record.GetProperty("time_unit").GetString() switch { "ns" => 1e-6, "us" => 1e-3, "ms" => 1.0, "s" => 1e3, _ => throw new BenchmarkToolException("Invalid Google Benchmark time unit.") };
-            var value = record.GetProperty("real_time").GetDouble() * multiplier;
-            if (!double.IsFinite(value) || value <= 0)
+            var timings = new List<double>();
+            foreach (var record in benchmarks.EnumerateArray())
             {
-                throw new BenchmarkToolException("Invalid Google Benchmark timing.");
+                if (record.ValueKind != JsonValueKind.Object)
+                {
+                    throw new BenchmarkToolException("Google Benchmark output contained a non-object benchmark record.");
+                }
+                if (record.TryGetProperty("run_type", out var type) && type.ValueKind == JsonValueKind.String && type.GetString() == "aggregate")
+                {
+                    continue;
+                }
+                var multiplier = record.GetProperty("time_unit").GetString() switch { "ns" => 1e-6, "us" => 1e-3, "ms" => 1.0, "s" => 1e3, _ => throw new BenchmarkToolException("Invalid Google Benchmark time unit.") };
+                var value = record.GetProperty("real_time").GetDouble() * multiplier;
+                if (!double.IsFinite(value) || value <= 0)
+                {
+                    throw new BenchmarkToolException("Invalid Google Benchmark timing.");
+                }
+                timings.Add(value);
             }
-            yield return value;
+            return timings;
+        }
+        catch (Exception exception) when (exception is InvalidOperationException or FormatException)
+        {
+            throw new BenchmarkToolException($"Google Benchmark timing was malformed: {exception.Message}");
         }
     }
 
