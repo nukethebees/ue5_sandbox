@@ -18,6 +18,8 @@
 #include <HAL/IConsoleManager.h>
 #include <NiagaraComponent.h>
 
+#include <utility>
+
 #include "SandboxGameShared/utilities/macros/null_checks.hpp"
 
 namespace {
@@ -74,8 +76,6 @@ auto ATestSpaceShip::make_spawn_data() const -> ::ioj::sim::player::PlayerSpawnD
     result.transform = ml::to_native(GetActorTransform());
     result.body_transform =
         ml::to_native(ship_mesh ? ship_mesh->GetRelativeTransform() : FTransform::Identity);
-    result.flight_mode = ml::to_native(flight_mode);
-    result.control_mode = ml::to_native(control_mode);
     result.laser_mode = ml::to_native(laser_mode);
     result.laser_fire_rate = ml::to_native(laser_fire_rate);
     result.health = {health.health, health.max_health};
@@ -170,6 +170,10 @@ void ATestSpaceShip::set_lateral_move_input(float const input) {
     commands().set_lateral_move_input(input);
 }
 
+void ATestSpaceShip::set_forward_move_input(float const input) {
+    commands().set_forward_move_input(input);
+}
+
 void ATestSpaceShip::set_vertical_move_input(float const input) {
     commands().set_vertical_move_input(input);
 }
@@ -186,12 +190,25 @@ void ATestSpaceShip::set_ship_1d_control_y(float const input) {
     commands().set_ship_1d_control_y(input);
 }
 
-void ATestSpaceShip::select_next_control_mode() {
-    commands().select_next_control_mode();
+void ATestSpaceShip::select_flight_model_slot(::ioj::sim::player::FlightModelSlot const slot) {
+    commands().select_flight_model_slot(slot);
 }
 
-void ATestSpaceShip::select_previous_control_mode() {
-    commands().select_previous_control_mode();
+auto ATestSpaceShip::set_flight_model_slot_profile(::ioj::sim::player::FlightModelSlot const slot,
+                                                   ::ioj::sim::player::FlightModelProfile profile)
+    -> bool {
+    return commands().set_flight_model_slot_profile(slot, std::move(profile));
+}
+auto ATestSpaceShip::get_active_flight_model_profile() const
+    -> ::ioj::sim::player::FlightModelProfile {
+    if (!bound_simulation) {
+        UE_LOG(LogSandbox,
+               Warning,
+               TEXT("ATestSpaceShip::get_active_flight_model_profile: Simulation is unavailable."));
+        return ::ioj::sim::player::make_flight_model_profile(
+            ::ioj::sim::player::FlightModelPreset::Gunship);
+    }
+    return bound_simulation->get_active_flight_model_profile();
 }
 
 void ATestSpaceShip::start_sampling() {
@@ -256,54 +273,30 @@ void ATestSpaceShip::roll(float const direction) {
     commands().roll(direction);
 }
 
-auto ATestSpaceShip::get_target_speed() const -> float {
-    return simulation().get_controller_state().target_speed;
+auto ATestSpaceShip::get_persistent_forward_target_speed() const -> float {
+    return simulation().get_controller_state().persistent_forward_target_speed;
 }
 
 auto ATestSpaceShip::get_move_input() const -> FVector2D {
-    return ml::to_unreal(simulation().planar_movement_direction);
+    auto const& input{simulation().get_flight_intent().translation};
+    return {input.y, input.x};
 }
 
-auto ATestSpaceShip::get_control_mode() const -> ETestSpaceShipControlMode {
-    return ml::to_unreal(simulation().control_mode);
+auto ATestSpaceShip::get_sampled_target_speed_scale() const -> FVector2D {
+    return ml::to_unreal(simulation().get_sampled_target_speed_scale());
 }
 
-auto ATestSpaceShip::get_flight_mode() const -> ETestSpaceShipFlightMode {
-    return ml::to_unreal(simulation().flight_mode);
-}
-
-void ATestSpaceShip::set_control_mode(ETestSpaceShipControlMode const new_control_mode) noexcept {
-    control_mode = new_control_mode;
-    if (bound_simulation) {
-        commands().set_control_mode(ml::to_native(new_control_mode));
-    }
-}
-
-void ATestSpaceShip::set_flight_mode(ETestSpaceShipFlightMode const new_flight_mode) noexcept {
-    flight_mode = new_flight_mode;
-    if (bound_simulation) {
-        commands().set_flight_mode(ml::to_native(new_flight_mode));
-    }
-}
-
-auto ATestSpaceShip::get_target_local_planar_velocity_scale() const -> FVector2D {
-    return ml::to_unreal(simulation().target_local_planar_velocity_scale);
-}
-
-auto ATestSpaceShip::is_sampling() const -> bool {
-    return simulation().sampling;
-}
-
-auto ATestSpaceShip::get_target_local_planar_velocity() const -> FVector {
-    return ml::to_unreal(simulation().target_local_planar_velocity);
+auto ATestSpaceShip::is_sampling_target_speed() const -> bool {
+    return simulation().is_sampling_target_speed();
 }
 
 auto ATestSpaceShip::get_turn_input() const -> FVector2D {
-    return ml::to_unreal(simulation().rotation_input);
+    auto const& input{simulation().get_flight_intent().rotation};
+    return {input.y, input.x};
 }
 
 auto ATestSpaceShip::get_throttle() const -> float {
-    return simulation().throttle;
+    return simulation().get_flight_intent().accelerator;
 }
 
 /* **************************************** */

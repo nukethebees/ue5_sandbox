@@ -59,20 +59,32 @@ struct FShipControlContextTestAccess {
         context.stop_brake_at(time_seconds);
     }
 
-    static void cycle_next_control_mode(FShipControlContext& context) {
-        context.cycle_next_control_mode();
+    static void start_boost(FShipControlContext& context) { context.start_boost(); }
+
+    static void stop_boost(FShipControlContext& context) { context.stop_boost(); }
+
+    static void select_flight_model_up(FShipControlContext& context) {
+        context.select_flight_model_up();
     }
 
-    static void cycle_previous_control_mode(FShipControlContext& context) {
-        context.cycle_previous_control_mode();
+    static void select_flight_model_right(FShipControlContext& context) {
+        context.select_flight_model_right();
     }
 
-    static auto throttle_power_press_active(FShipControlContext const& context) -> bool {
-        return context.throttle_power_press_active_;
+    static void select_flight_model_down(FShipControlContext& context) {
+        context.select_flight_model_down();
     }
 
-    static auto brake_power_press_active(FShipControlContext const& context) -> bool {
-        return context.brake_power_press_active_;
+    static void select_flight_model_left(FShipControlContext& context) {
+        context.select_flight_model_left();
+    }
+
+    static auto throttle_press_active(FShipControlContext const& context) -> bool {
+        return context.throttle_press_active_;
+    }
+
+    static auto brake_press_active(FShipControlContext const& context) -> bool {
+        return context.brake_press_active_;
     }
 
     static void seed_throttle_tap(FShipControlContext& context) {
@@ -129,7 +141,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                              main_menu_mode->PlayerControllerClass == controller_class);
     }
 
-    TEST_METHOD(RuntimePlayerUsesPlanarVelocityForControlModeExperiment)
+    TEST_METHOD(RuntimePlayerProvidesDefaultFlightModelLoadout)
     {
         auto const* const config{ml::load_default_level_config()};
         auto const* const player{config && IsValid(config->classes.player_ship_class)
@@ -141,10 +153,20 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         }
 
         auto const spawn{player->make_spawn_data()};
-        TestRunner->TestTrue(TEXT("Runtime player uses PlanarVelocity"),
-                             spawn.flight_mode == ::ioj::sim::SpaceShipFlightMode::PlanarVelocity);
-        TestRunner->TestTrue(TEXT("Runtime player starts in Velocity control mode"),
-                             spawn.control_mode == ::ioj::sim::SpaceShipControlMode::Velocity);
+        TestRunner->TestTrue(
+            TEXT("Runtime player provides the four default model slots"),
+            ::ioj::sim::player::flight_model_profile(spawn.flight_models,
+                                                     ::ioj::sim::player::FlightModelSlot::Up)
+                        .base_preset == ::ioj::sim::player::FlightModelPreset::Starfox &&
+                ::ioj::sim::player::flight_model_profile(spawn.flight_models,
+                                                         ::ioj::sim::player::FlightModelSlot::Right)
+                        .base_preset == ::ioj::sim::player::FlightModelPreset::Fighter &&
+                ::ioj::sim::player::flight_model_profile(spawn.flight_models,
+                                                         ::ioj::sim::player::FlightModelSlot::Down)
+                        .base_preset == ::ioj::sim::player::FlightModelPreset::Skater &&
+                ::ioj::sim::player::flight_model_profile(spawn.flight_models,
+                                                         ::ioj::sim::player::FlightModelSlot::Left)
+                        .base_preset == ::ioj::sim::player::FlightModelPreset::Gunship);
     }
 
     TEST_METHOD(RuntimeControllerInputsMatchAuthoredController)
@@ -243,6 +265,9 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         matches(TEXT("Runtime lateral action matches the authored controller"),
                 runtime_input->lateral_move,
                 source_input->lateral_move);
+        matches(TEXT("Runtime forward action matches the authored controller"),
+                runtime_input->forward_move,
+                source_input->forward_move);
         matches(TEXT("Runtime vertical action matches the authored controller"),
                 runtime_input->vertical_move,
                 source_input->vertical_move);
@@ -262,12 +287,14 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         matches(TEXT("Runtime Y sample action matches the authored controller"),
                 runtime_input->ship_1d_control_y,
                 source_input->ship_1d_control_y);
-        matches(TEXT("Runtime next control-mode action matches the authored controller"),
-                runtime_input->cycle_next_control_mode,
-                source_input->cycle_next_control_mode);
-        matches(TEXT("Runtime previous control-mode action matches the authored controller"),
-                runtime_input->cycle_previous_control_mode,
-                source_input->cycle_previous_control_mode);
+        TestRunner->TestTrue(TEXT("Runtime D-pad Up flight-model action is generated"),
+                             IsValid(runtime_input->select_flight_model_up));
+        TestRunner->TestTrue(TEXT("Runtime D-pad Right flight-model action is generated"),
+                             IsValid(runtime_input->select_flight_model_right));
+        TestRunner->TestTrue(TEXT("Runtime D-pad Down flight-model action is generated"),
+                             IsValid(runtime_input->select_flight_model_down));
+        TestRunner->TestTrue(TEXT("Runtime D-pad Left flight-model action is generated"),
+                             IsValid(runtime_input->select_flight_model_left));
         matches(TEXT("Runtime global mapping matches the authored controller"),
                 runtime_global->mapping_context,
                 source_global->mapping_context);
@@ -326,6 +353,12 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
             mapping_context->HasMappingForInputAction(input->cycle_input_mapping_context));
         TestRunner->TestTrue(TEXT("Mapping contains analog throttle"),
                              mapping_context->HasMappingForInputAction(input->throttle));
+        TestRunner->TestTrue(
+            TEXT("Mapping contains direct flight-model selection"),
+            mapping_context->HasMappingForInputAction(input->select_flight_model_up) &&
+                mapping_context->HasMappingForInputAction(input->select_flight_model_right) &&
+                mapping_context->HasMappingForInputAction(input->select_flight_model_down) &&
+                mapping_context->HasMappingForInputAction(input->select_flight_model_left));
 
         mapping_context->ForEachKeyMapping([this](FEnhancedActionKeyMapping const& mapping) {
             TestRunner->TestTrue(TEXT("Mapping contains a valid action"), IsValid(mapping.Action));
@@ -368,10 +401,16 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                     return mapping.Action == action && mapping.Key == key;
                 });
         };
-        TestRunner->TestTrue(TEXT("W has vertical movement"),
-                             has_mapping(input->vertical_move, EKeys::W));
-        TestRunner->TestTrue(TEXT("S has vertical movement"),
-                             has_mapping(input->vertical_move, EKeys::S));
+        TestRunner->TestTrue(TEXT("W has forward movement"),
+                             has_mapping(input->forward_move, EKeys::W));
+        TestRunner->TestTrue(TEXT("W also publishes accelerator intent"),
+                             has_mapping(input->throttle, EKeys::W));
+        TestRunner->TestTrue(TEXT("S has backward movement"),
+                             has_mapping(input->forward_move, EKeys::S));
+        TestRunner->TestTrue(TEXT("Space has upward movement"),
+                             has_mapping(input->vertical_move, EKeys::SpaceBar));
+        TestRunner->TestTrue(TEXT("Left Control has downward movement"),
+                             has_mapping(input->vertical_move, EKeys::LeftControl));
         TestRunner->TestTrue(TEXT("A has sampled lateral control"),
                              has_mapping(input->ship_1d_control_x, EKeys::A));
         TestRunner->TestTrue(TEXT("D has sampled lateral control"),
@@ -422,6 +461,17 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                              has_mapping(input->brake, EKeys::Gamepad_LeftShoulder));
         TestRunner->TestTrue(TEXT("Right trigger fires lasers"),
                              has_mapping(input->fire_laser, EKeys::Gamepad_RightTriggerAxis));
+        TestRunner->TestTrue(TEXT("D-pad Up selects the Up flight-model slot"),
+                             has_mapping(input->select_flight_model_up, EKeys::Gamepad_DPad_Up));
+        TestRunner->TestTrue(
+            TEXT("D-pad Right selects the Right flight-model slot"),
+            has_mapping(input->select_flight_model_right, EKeys::Gamepad_DPad_Right));
+        TestRunner->TestTrue(
+            TEXT("D-pad Down selects the Down flight-model slot"),
+            has_mapping(input->select_flight_model_down, EKeys::Gamepad_DPad_Down));
+        TestRunner->TestTrue(
+            TEXT("D-pad Left selects the Left flight-model slot"),
+            has_mapping(input->select_flight_model_left, EKeys::Gamepad_DPad_Left));
 
         TSet<ml::ioj::EControlBindingGroup> groups;
         for (auto const& mapping : mapping_context->GetMappings()) {
@@ -455,11 +505,11 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
 
         auto const* const forward_mapping{
             mapping_context->GetMappings().FindByPredicate([input](auto const& mapping) {
-                return mapping.Action == input->vertical_move && mapping.Key == EKeys::W;
+                return mapping.Action == input->forward_move && mapping.Key == EKeys::W;
             })};
         auto const* const backward_mapping{
             mapping_context->GetMappings().FindByPredicate([input](auto const& mapping) {
-                return mapping.Action == input->vertical_move && mapping.Key == EKeys::S;
+                return mapping.Action == input->forward_move && mapping.Key == EKeys::S;
             })};
         if (TestRunner->TestNotNull(TEXT("Forward mapping has presentation"), forward_mapping) &&
             TestRunner->TestNotNull(TEXT("Backward mapping has presentation"), backward_mapping)) {
@@ -930,18 +980,18 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         simulation.set_ship_1d_control_y(1.0f);
         simulation.stop_sampling();
         TestRunner->TestEqual(TEXT("Released sample retains the committed direction"),
-                              ml::to_unreal(simulation.target_local_planar_velocity_scale),
+                              ml::to_unreal(simulation.get_sampled_target_speed_scale()),
                               FVector2D{0.0f, 1.0f});
 
         simulation.start_sampling();
         TestRunner->TestEqual(TEXT("New sample starts from neutral"),
-                              ml::to_unreal(simulation.target_local_planar_velocity_scale),
+                              ml::to_unreal(simulation.get_sampled_target_speed_scale()),
                               FVector2D::ZeroVector);
 
         simulation.set_ship_1d_control_x(1.0f);
         simulation.start_sampling();
         TestRunner->TestEqual(TEXT("Starting a second axis does not reset the active sample"),
-                              ml::to_unreal(simulation.target_local_planar_velocity_scale),
+                              ml::to_unreal(simulation.get_sampled_target_speed_scale()),
                               FVector2D{1.0f, 0.0f});
     }
 
@@ -957,67 +1007,68 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         ::ioj::sim::lasers::Sim lasers{clock, combat_events, queries};
         ::ioj::sim::player::Sim simulation{
             clock, ledger, combat_events, health_table, queries, lasers};
-        ::ioj::sim::PlayerSimConfig config;
-        config.cruise_speed = 1000.f;
-        config.forward_velocity_trim_fraction = 0.1f;
-        simulation.set_config(config);
-        simulation.set_flight_mode(::ioj::sim::SpaceShipFlightMode::PlanarVelocity);
+        auto profile{::ioj::sim::player::make_flight_model_profile(
+            ::ioj::sim::player::FlightModelPreset::Gunship)};
+        profile.config.translation.forward.manual.semantic =
+            ::ioj::sim::player::TranslationSemantic::TargetSpeed;
+        profile.config.translation.forward.normal.positive_speed_limit = 1000.f;
+        profile.config.translation.forward.normal.negative_speed_limit = 1000.f;
+        profile.config.translation.right.manual.semantic =
+            ::ioj::sim::player::TranslationSemantic::TargetSpeed;
+        profile.config.translation.right.normal.positive_speed_limit = 1000.f;
+        profile.config.translation.right.normal.negative_speed_limit = 1000.f;
+        TestRunner->TestTrue(TEXT("Target-speed experiment is accepted"),
+                             simulation.set_flight_model_slot_profile(
+                                 ::ioj::sim::player::FlightModelSlot::Left, profile));
+        simulation.select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Left);
 
         simulation.start_sampling();
         simulation.set_ship_2d_control({0.25, -0.5});
         simulation.stop_sampling();
-        TestRunner->TestTrue(TEXT("Sample establishes a reverse persistent target"),
-                             ml::to_unreal(simulation.target_local_planar_velocity)
-                                 .Equals(FVector{-500.0, 250.0, 0.0}));
+        TestRunner->TestTrue(
+            TEXT("Sample establishes a reverse persistent target"),
+            FMath::IsNearlyEqual(simulation.get_controller_state().persistent_forward_target_speed,
+                                 -500.f) &&
+                FMath::IsNearlyEqual(
+                    simulation.get_controller_state().persistent_right_target_speed, 250.f));
 
         simulation.adjust_desired_forward_velocity(1.f);
-        TestRunner->TestTrue(TEXT("Increasing makes reverse velocity less negative"),
-                             ml::to_unreal(simulation.target_local_planar_velocity)
-                                 .Equals(FVector{-400.0, 250.0, 0.0}));
+        TestRunner->TestTrue(
+            TEXT("Increasing makes reverse velocity less negative"),
+            FMath::IsNearlyEqual(simulation.get_controller_state().persistent_forward_target_speed,
+                                 -450.f));
 
         ::ioj::sim::PlayerSimTestAccess::set_transform(
             simulation, ml::to_native(FTransform{FRotator{0.0, 90.0, 0.0}}));
         simulation.adjust_desired_forward_velocity(1.f);
-        TestRunner->TestTrue(TEXT("Trim follows the current ship forward axis"),
-                             ml::to_unreal(simulation.target_local_planar_velocity)
-                                 .Equals(FVector{-400.0, 350.0, 0.0}, 0.01));
+        TestRunner->TestTrue(
+            TEXT("Trim remains model-local after rotating"),
+            FMath::IsNearlyEqual(simulation.get_controller_state().persistent_forward_target_speed,
+                                 -400.f));
 
         for (int32 adjustment{}; adjustment < 20; ++adjustment) {
             simulation.adjust_desired_forward_velocity(-1.f);
         }
-        auto const forward{ml::to_unreal(simulation.get_physical_state().transform.forward())};
         TestRunner->TestTrue(
             TEXT("Reverse trim clamps to the configured velocity limit"),
-            FMath::IsNearlyEqual(
-                FVector::DotProduct(ml::to_unreal(simulation.target_local_planar_velocity),
-                                    forward),
-                -config.cruise_speed,
-                0.01));
+            FMath::IsNearlyEqual(simulation.get_controller_state().persistent_forward_target_speed,
+                                 -1000.f));
 
-        auto const persistent_target{simulation.target_local_planar_velocity};
-        simulation.control_mode = ::ioj::sim::SpaceShipControlMode::Power;
-        simulation.adjust_desired_forward_velocity(1.f);
-        TestRunner->TestTrue(TEXT("Power mode leaves the persistent target unchanged"),
-                             ml::to_unreal(simulation.target_local_planar_velocity)
-                                 .Equals(ml::to_unreal(persistent_target)));
-        simulation.control_mode = ::ioj::sim::SpaceShipControlMode::Velocity;
-        simulation.set_flight_mode(::ioj::sim::SpaceShipFlightMode::ForwardSpeed);
-        simulation.adjust_desired_forward_velocity(1.f);
-        TestRunner->TestTrue(TEXT("Forward-speed flight leaves the planar target unchanged"),
-                             ml::to_unreal(simulation.target_local_planar_velocity)
-                                 .Equals(ml::to_unreal(persistent_target)));
-        simulation.set_flight_mode(::ioj::sim::SpaceShipFlightMode::PlanarVelocity);
+        auto const persistent_target{
+            simulation.get_controller_state().persistent_forward_target_speed};
         simulation.start_boost();
         simulation.stop_boost();
-        TestRunner->TestTrue(TEXT("Boost preserves the persistent planar target"),
-                             ml::to_unreal(simulation.target_local_planar_velocity)
-                                 .Equals(ml::to_unreal(persistent_target)));
+        TestRunner->TestTrue(
+            TEXT("Boost preserves the persistent target"),
+            FMath::IsNearlyEqual(simulation.get_controller_state().persistent_forward_target_speed,
+                                 persistent_target));
 
         simulation.start_sampling();
         simulation.adjust_desired_forward_velocity(1.f);
-        TestRunner->TestTrue(TEXT("Trim does not alter an active sample"),
-                             ml::to_unreal(simulation.target_local_planar_velocity)
-                                 .Equals(ml::to_unreal(persistent_target)));
+        TestRunner->TestTrue(
+            TEXT("Trim does not alter an active sample"),
+            FMath::IsNearlyEqual(simulation.get_controller_state().persistent_forward_target_speed,
+                                 persistent_target));
     }
 
     TEST_METHOD(ConfiguredObserverAndBenchmarkMappingsAreComplete)
@@ -1201,6 +1252,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         input.cycle_prev_fire_rate = move_action;
         input.cycle_input_mapping_context = move_action;
         input.lateral_move = move_action;
+        input.forward_move = move_action;
         input.vertical_move = move_action;
         input.sample_and_hold = move_action;
         input.increase_desired_forward_velocity = move_action;
@@ -1208,8 +1260,10 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         input.ship_2d_control = move_action;
         input.ship_1d_control_x = move_action;
         input.ship_1d_control_y = move_action;
-        input.cycle_next_control_mode = move_action;
-        input.cycle_previous_control_mode = move_action;
+        input.select_flight_model_up = move_action;
+        input.select_flight_model_right = move_action;
+        input.select_flight_model_down = move_action;
+        input.select_flight_model_left = move_action;
 
         auto& sentinel_binding{input_component->BindActionValueLambda(
             sentinel_action, ETriggerEvent::Started, [](FInputActionValue const&) {})};
@@ -1245,26 +1299,34 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                               input_component->GetActionEventBindings().Num(),
                               bindings_after_bind);
 
-        simulation.flight_mode = ::ioj::sim::SpaceShipFlightMode::PlanarVelocity;
-        simulation.control_mode = ::ioj::sim::SpaceShipControlMode::Power;
-
         FShipControlContextTestAccess::start_throttle(context, 0.5f, 1.0);
-        TestRunner->TestTrue(TEXT("Power throttle receives analog input"),
+        TestRunner->TestTrue(TEXT("Throttle always publishes analog intent"),
                              FMath::IsNearlyEqual(ship->get_throttle(), 0.5f));
         FShipControlContextTestAccess::stop_throttle(context, 1.1);
-        TestRunner->TestTrue(TEXT("Power throttle release clears input"),
+        TestRunner->TestTrue(TEXT("Throttle release clears intent"),
                              FMath::IsNearlyZero(ship->get_throttle()));
 
         FShipControlContextTestAccess::start_throttle(context, 1.f, 2.0);
         FShipControlContextTestAccess::stop_throttle(context, 2.1);
         FShipControlContextTestAccess::start_throttle(context, 1.f, 2.2);
-        TestRunner->TestTrue(TEXT("Power throttle double-tap starts boost"),
+        TestRunner->TestTrue(TEXT("Throttle double-tap publishes boost intent"),
                              simulation.get_controller_state().effective_action ==
                                  ::ioj::sim::player::BoostBrakeState::Boost);
+        FShipControlContextTestAccess::select_flight_model_up(context);
+        TestRunner->TestTrue(TEXT("Model selection clears gesture-derived boost intent"),
+                             simulation.get_controller_state().effective_action ==
+                                 ::ioj::sim::player::BoostBrakeState::None);
         FShipControlContextTestAccess::stop_throttle(context, 2.3);
 
+        FShipControlContextTestAccess::start_boost(context);
+        FShipControlContextTestAccess::select_flight_model_right(context);
+        TestRunner->TestTrue(TEXT("Model selection preserves an explicitly held boost button"),
+                             simulation.get_controller_state().effective_action ==
+                                 ::ioj::sim::player::BoostBrakeState::Boost);
+        FShipControlContextTestAccess::stop_boost(context);
+
         FShipControlContextTestAccess::start_brake(context, 3.0);
-        TestRunner->TestTrue(TEXT("Power brake starts normal braking"),
+        TestRunner->TestTrue(TEXT("Brake publishes normal braking intent"),
                              simulation.get_controller_state().effective_action ==
                                  ::ioj::sim::player::BoostBrakeState::Brake);
         FShipControlContextTestAccess::stop_brake(context, 3.1);
@@ -1272,81 +1334,46 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         FShipControlContextTestAccess::start_brake(context, 4.0);
         FShipControlContextTestAccess::stop_brake(context, 4.1);
         FShipControlContextTestAccess::start_brake(context, 4.2);
-        TestRunner->TestTrue(TEXT("Power brake double-tap starts emergency braking"),
+        TestRunner->TestTrue(TEXT("Brake double-tap publishes emergency braking intent"),
                              simulation.get_controller_state().effective_action ==
                                  ::ioj::sim::player::BoostBrakeState::EmergencyBrake);
+        FShipControlContextTestAccess::select_flight_model_down(context);
+        TestRunner->TestTrue(
+            TEXT("Model selection preserves held brake without preserving the emergency gesture"),
+            simulation.get_controller_state().effective_action ==
+                ::ioj::sim::player::BoostBrakeState::Brake);
         FShipControlContextTestAccess::stop_brake(context, 4.3);
 
-        commands.select_previous_control_mode();
-        FShipControlContextTestAccess::start_throttle(context, 0.5f, 5.0);
-        TestRunner->TestTrue(TEXT("Velocity throttle press preserves ordinary boost"),
-                             simulation.get_controller_state().effective_action ==
-                                 ::ioj::sim::player::BoostBrakeState::Boost);
-        TestRunner->TestTrue(TEXT("Velocity throttle does not set Power throttle"),
-                             FMath::IsNearlyZero(ship->get_throttle()));
-        FShipControlContextTestAccess::stop_throttle(context, 5.1);
-        TestRunner->TestTrue(TEXT("Velocity throttle release stops boost"),
-                             simulation.get_controller_state().effective_action ==
-                                 ::ioj::sim::player::BoostBrakeState::None);
+        FShipControlContextTestAccess::select_flight_model_up(context);
+        TestRunner->TestTrue(TEXT("D-pad Up selects Starfox slot"),
+                             simulation.get_active_flight_model_slot() ==
+                                 ::ioj::sim::player::FlightModelSlot::Up);
+        FShipControlContextTestAccess::select_flight_model_right(context);
+        TestRunner->TestTrue(TEXT("D-pad Right selects Fighter slot"),
+                             simulation.get_active_flight_model_slot() ==
+                                 ::ioj::sim::player::FlightModelSlot::Right);
+        FShipControlContextTestAccess::select_flight_model_down(context);
+        TestRunner->TestTrue(TEXT("D-pad Down selects Skater slot"),
+                             simulation.get_active_flight_model_slot() ==
+                                 ::ioj::sim::player::FlightModelSlot::Down);
+        FShipControlContextTestAccess::select_flight_model_left(context);
+        TestRunner->TestTrue(TEXT("D-pad Left selects Gunship slot"),
+                             simulation.get_active_flight_model_slot() ==
+                                 ::ioj::sim::player::FlightModelSlot::Left);
 
-        FShipControlContextTestAccess::start_throttle(context, 0.5f, 5.2);
-        commands.select_next_control_mode();
-        FShipControlContextTestAccess::set_throttle(context, 0.5f);
-        TestRunner->TestTrue(TEXT("Velocity-to-Power held throttle becomes analog thrust"),
-                             FMath::IsNearlyEqual(ship->get_throttle(), 0.5f));
-        FShipControlContextTestAccess::stop_throttle(context, 5.3);
-        TestRunner->TestTrue(TEXT("Mode-switch release clears throttle"),
-                             FMath::IsNearlyZero(ship->get_throttle()));
-        TestRunner->TestTrue(TEXT("Mode-switch release leaves boost clear"),
-                             simulation.get_controller_state().effective_action ==
-                                 ::ioj::sim::player::BoostBrakeState::None);
-
-        FShipControlContextTestAccess::start_throttle(context, 0.5f, 5.4);
-        commands.select_previous_control_mode();
-        FShipControlContextTestAccess::set_throttle(context, 0.5f);
-        TestRunner->TestTrue(TEXT("Power-to-Velocity held throttle starts ordinary boost"),
-                             simulation.get_controller_state().effective_action ==
-                                 ::ioj::sim::player::BoostBrakeState::Boost);
-        FShipControlContextTestAccess::stop_throttle(context, 5.5);
-        TestRunner->TestTrue(TEXT("Power-to-Velocity release stops boost"),
-                             simulation.get_controller_state().effective_action ==
-                                 ::ioj::sim::player::BoostBrakeState::None);
-
-        commands.select_next_control_mode();
         FShipControlContextTestAccess::start_throttle(context, 1.f, 6.0);
-        FShipControlContextTestAccess::stop_throttle(context, 6.1);
-        FShipControlContextTestAccess::cycle_previous_control_mode(context);
-        commands.select_next_control_mode();
-        FShipControlContextTestAccess::start_throttle(context, 1.f, 6.2);
-        TestRunner->TestTrue(TEXT("Power throttle tap cannot survive previous-mode cycle"),
-                             simulation.get_controller_state().effective_action ==
-                                 ::ioj::sim::player::BoostBrakeState::None);
-        FShipControlContextTestAccess::stop_throttle(context, 6.3);
+        TestRunner->TestTrue(TEXT("Throttle press is tracked"),
+                             FShipControlContextTestAccess::throttle_press_active(context));
+        FShipControlContextTestAccess::select_flight_model_up(context);
+        TestRunner->TestFalse(TEXT("Model selection clears active throttle gesture state"),
+                              FShipControlContextTestAccess::throttle_press_active(context));
 
         FShipControlContextTestAccess::start_brake(context, 7.0);
-        FShipControlContextTestAccess::stop_brake(context, 7.1);
-        FShipControlContextTestAccess::cycle_next_control_mode(context);
-        commands.select_previous_control_mode();
-        FShipControlContextTestAccess::start_brake(context, 7.2);
-        TestRunner->TestTrue(TEXT("Power brake tap cannot survive next-mode cycle"),
-                             simulation.get_controller_state().effective_action ==
-                                 ::ioj::sim::player::BoostBrakeState::Brake);
-        FShipControlContextTestAccess::stop_brake(context, 7.3);
-
-        FShipControlContextTestAccess::start_throttle(context, 1.f, 8.0);
-        TestRunner->TestTrue(TEXT("Power throttle press is tracked"),
-                             FShipControlContextTestAccess::throttle_power_press_active(context));
-        FShipControlContextTestAccess::cycle_previous_control_mode(context);
-        TestRunner->TestFalse(TEXT("Mode cycle clears active Power throttle press"),
-                              FShipControlContextTestAccess::throttle_power_press_active(context));
-
-        commands.select_next_control_mode();
-        FShipControlContextTestAccess::start_brake(context, 8.1);
-        TestRunner->TestTrue(TEXT("Power brake press is tracked"),
-                             FShipControlContextTestAccess::brake_power_press_active(context));
-        FShipControlContextTestAccess::cycle_next_control_mode(context);
-        TestRunner->TestFalse(TEXT("Mode cycle clears active Power brake press"),
-                              FShipControlContextTestAccess::brake_power_press_active(context));
+        TestRunner->TestTrue(TEXT("Brake press is tracked"),
+                             FShipControlContextTestAccess::brake_press_active(context));
+        FShipControlContextTestAccess::select_flight_model_right(context);
+        TestRunner->TestFalse(TEXT("Model selection clears active brake gesture state"),
+                              FShipControlContextTestAccess::brake_press_active(context));
 
         ship->set_move_input(FVector2D{0.5f, -0.25f});
         ship->turn(FVector2D{0.25f, 0.75f});

@@ -1,6 +1,7 @@
 #include <SpaceGame/settings/ControlSettingsTypes.h>
 #include <SpaceGame/settings/GameSettingsBackend.h>
 #include <SpaceGame/settings/GameSettingsEditState.h>
+#include <SpaceGame/settings/GameSettingsSubsystem.h>
 
 #include <CQTest.h>
 
@@ -13,13 +14,13 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
         applied.master_volume = 0.25f;
         applied.bees = 2;
         applied.player_ship_flight_control_preset =
-            ml::ioj::EPlayerShipFlightControlPreset::PlanarVelocity;
+            ml::ioj::EPlayerShipFlightControlPreset::Gunship;
         auto defaults{applied};
         defaults.vsync = true;
         defaults.master_volume = 1.0f;
         defaults.bees = 0;
         defaults.player_ship_flight_control_preset =
-            ml::ioj::EPlayerShipFlightControlPreset::ForwardSpeed;
+            ml::ioj::EPlayerShipFlightControlPreset::Starfox;
 
         ml::ioj::FGameSettingsEditState state;
         state.begin(applied, defaults);
@@ -52,13 +53,13 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
 
         state.set_setting(
             ml::ioj::EGameSetting::PlayerShipFlightControlPreset,
-            ml::ioj::FGameSettingValue{ml::ioj::EPlayerShipFlightControlPreset::PlanarPower});
+            ml::ioj::FGameSettingValue{ml::ioj::EPlayerShipFlightControlPreset::Skater});
         TestRunner->TestTrue(TEXT("Flight controls are tracked as a Controls setting"),
                              state.is_dirty(ml::ioj::EGameSettingCategory::Controls));
         state.reset_category(ml::ioj::EGameSettingCategory::Controls);
         TestRunner->TestEqual(TEXT("Reset restores the default flight control preset"),
                               state.pending().player_ship_flight_control_preset,
-                              ml::ioj::EPlayerShipFlightControlPreset::ForwardSpeed);
+                              ml::ioj::EPlayerShipFlightControlPreset::Starfox);
     }
 
     TEST_METHOD(AvailabilityUsesPendingState)
@@ -196,5 +197,47 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Custom profiles reset response settings only"),
                              ml::ioj::control_reset_scope(true) ==
                                  ml::ioj::EControlResetScope::SettingsOnly);
+    }
+
+    TEST_METHOD(RuntimeFlightModelEditsAreValidatedAndMarkedCustom)
+    {
+        auto* const settings{NewObject<ml::ioj::UGameSettingsSubsystem>()};
+        int32 change_count{};
+        settings->flight_model_config_changed.AddLambda([&change_count] { ++change_count; });
+
+        auto profile{::ioj::sim::player::make_flight_model_profile(
+            ::ioj::sim::player::FlightModelPreset::Fighter)};
+        profile.config.translation.forward.passive_drag = 321.f;
+        TestRunner->TestTrue(TEXT("Valid runtime flight-model edits are accepted"),
+                             settings->set_flight_model_profile(profile));
+        TestRunner->TestTrue(TEXT("A runtime edit marks the profile custom"),
+                             settings->flight_model_profile().customized);
+        TestRunner->TestTrue(
+            TEXT("The edited underlying value remains inspectable"),
+            FMath::IsNearlyEqual(
+                settings->flight_model_profile().config.translation.forward.passive_drag, 321.f));
+        TestRunner->TestEqual(
+            TEXT("Accepted edits emit the targeted change signal"), change_count, 1);
+
+        auto invalid{settings->flight_model_profile()};
+        invalid.config.translation.forward.passive_drag = -1.f;
+        TestRunner->TestFalse(TEXT("Invalid runtime flight-model edits are rejected"),
+                              settings->set_flight_model_profile(invalid));
+        TestRunner->TestTrue(
+            TEXT("Rejected edits preserve the previous runtime profile"),
+            FMath::IsNearlyEqual(
+                settings->flight_model_profile().config.translation.forward.passive_drag, 321.f));
+        TestRunner->TestEqual(TEXT("Rejected edits do not emit a change signal"), change_count, 1);
+
+        auto observed{::ioj::sim::player::make_flight_model_profile(
+            ::ioj::sim::player::FlightModelPreset::Skater)};
+        TestRunner->TestTrue(TEXT("A valid native selection can update the editor view"),
+                             settings->observe_flight_model_profile(observed));
+        TestRunner->TestTrue(TEXT("Observing a selection does not mark it custom"),
+                             settings->flight_model_profile().base_preset ==
+                                     ::ioj::sim::player::FlightModelPreset::Skater &&
+                                 !settings->flight_model_profile().customized);
+        TestRunner->TestEqual(
+            TEXT("Observing a native selection does not reapply configuration"), change_count, 1);
     }
 };

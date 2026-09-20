@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ioj/sim/player/flight_model_config.h>
 #include <SpaceGame/ships/common/SpaceShipControllerInputs.h>
 #include <SpaceGame/ships/player/ShipInputGestureRecognizer.h>
 
@@ -39,7 +40,9 @@ struct SPACEGAME_API FShipControlContext {
     void bind_actions();
     void remove_action_bindings();
     void neutralise_ship_input();
-    void reset_power_gesture_state();
+    void reset_flight_gesture_state();
+    void select_flight_model_slot(::ioj::sim::player::FlightModelSlot slot);
+    void publish_boost_intent();
     void add_mapping_context();
     void remove_mapping_context();
 
@@ -47,6 +50,8 @@ struct SPACEGAME_API FShipControlContext {
     void move_completed();
     void set_lateral_move_input(FInputActionValue const& value);
     void lateral_move_completed();
+    void set_forward_move_input(FInputActionValue const& value);
+    void forward_move_completed();
     void set_vertical_move_input(FInputActionValue const& value);
     void vertical_move_completed();
     void set_ship_2d_control_started();
@@ -54,8 +59,10 @@ struct SPACEGAME_API FShipControlContext {
     void ship_2d_control_completed();
     void set_ship_1d_control_x(FInputActionValue const& value);
     void set_ship_1d_control_y(FInputActionValue const& value);
-    void cycle_next_control_mode();
-    void cycle_previous_control_mode();
+    void select_flight_model_up();
+    void select_flight_model_right();
+    void select_flight_model_down();
+    void select_flight_model_left();
     void start_sampling();
     void stop_sampling();
     void increase_desired_forward_velocity();
@@ -102,8 +109,10 @@ struct SPACEGAME_API FShipControlContext {
     bool pointer_turn_engaged_{false};
     FShipInputGestureRecognizer throttle_gesture_{};
     FShipInputGestureRecognizer brake_gesture_{};
-    bool throttle_power_press_active_{false};
-    bool brake_power_press_active_{false};
+    bool throttle_press_active_{false};
+    bool throttle_boost_active_{false};
+    bool boost_press_active_{false};
+    bool brake_press_active_{false};
     bool initialised_{false};
     bool bound_{false};
 

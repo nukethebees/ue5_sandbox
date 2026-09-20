@@ -85,8 +85,8 @@ class SPACEGAMEPRESENTATION_API UShipHudWidget : public USimulationHudWidget {
     void set_flight_vector_debug(ml::ship_hud::FFlightVectorDebugData const& value);
     void set_ship_velocity(FVector value);
     void set_target_velocity(FVector value);
-    void set_control_mode(FStringView value);
-    void set_flight_mode(FStringView value);
+    void set_flight_model(FStringView value);
+    void set_flight_action(float throttle, FStringView action);
     void set_font_size(int32 const new_font_size);
     auto get_font_size() const noexcept -> int32 { return font_size; }
     void set_mission_state(::ioj::sim::MissionState const new_state);

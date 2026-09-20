@@ -11,9 +11,7 @@
 #include <ioj/sim/sim_config.h>
 
 #include <ioj/sim/entity_types.h>
-#include <ioj/sim/player/control_mode.h>
 #include <ioj/sim/player/fire_rate.h>
-#include <ioj/sim/player/flight_mode.h>
 #include <ioj/sim/player/flight_model_runtime.h>
 #include <ioj/sim/player/laser_firing_state.h>
 #include <ioj/sim/player/ship_laser_mode.h>
@@ -46,9 +44,6 @@ struct PlayerSpawnData {
     Transform3d middle_socket{Transform3d{}};
 
     FlightModelLoadout flight_models{make_default_flight_model_loadout()};
-
-    SpaceShipFlightMode flight_mode{SpaceShipFlightMode::ForwardSpeed};
-    SpaceShipControlMode control_mode{SpaceShipControlMode::Velocity};
 
     ShipLaserMode laser_mode{ShipLaserMode::Single};
     ShipFireRate laser_fire_rate{ShipFireRate::Burst3};
@@ -111,14 +106,12 @@ struct Sim {
     // Flight controls
     /* **************************************** */
     void set_move_input(ml::Vector2d input) noexcept;
+    void set_forward_move_input(float input) noexcept;
     void set_lateral_move_input(float input) noexcept;
     void set_vertical_move_input(float input) noexcept;
     void set_ship_2d_control(ml::Vector2d input);
     void set_ship_1d_control_x(float input);
     void set_ship_1d_control_y(float input);
-    void select_next_control_mode();
-    void select_previous_control_mode();
-    void set_control_mode(SpaceShipControlMode new_control_mode);
     void start_sampling() noexcept;
     void stop_sampling();
     void adjust_desired_forward_velocity(float direction);
@@ -130,7 +123,6 @@ struct Sim {
     void start_emergency_brake();
     void stop_brake();
     void roll(float direction) noexcept;
-    void set_flight_mode(SpaceShipFlightMode new_flight_mode) noexcept;
     void select_flight_model_slot(FlightModelSlot slot) noexcept;
     [[nodiscard]] auto set_flight_model_slot_profile(FlightModelSlot slot,
                                                      FlightModelProfile profile) noexcept -> bool;
@@ -156,7 +148,10 @@ struct Sim {
 
     auto get_kills() const -> std::int32_t;
     auto get_speed() const noexcept -> float;
-    auto get_cruise_speed() const noexcept -> float { return config.cruise_speed; }
+    auto is_sampling_target_speed() const noexcept -> bool { return sampling_target_speed_; }
+    auto get_sampled_target_speed_scale() const noexcept -> ml::Vector2d {
+        return sampled_target_speed_scale_;
+    }
     auto get_energy() const -> float;
     auto energy_is_full() const -> bool;
     auto get_middle_socket() const -> Transform3d;
@@ -172,15 +167,6 @@ struct Sim {
     Transform3d right_socket{Transform3d{}};
     Transform3d middle_socket{Transform3d{}};
 
-    SpaceShipFlightMode flight_mode{SpaceShipFlightMode::ForwardSpeed};
-    SpaceShipControlMode control_mode{SpaceShipControlMode::Velocity};
-    ml::Vector2d target_local_planar_velocity_scale{ml::Vector2d{}};
-    ml::Vector3d target_local_planar_velocity{ml::Vector3d{}};
-    ml::Vector2d planar_movement_direction{ml::Vector2d{}};
-    ml::Vector2d rotation_input{ml::Vector2d{}};
-    float roll_input{0.f};
-    float throttle{};
-
     ShipLaserMode laser_mode{ShipLaserMode::Single};
     float laser_shot_cooldown{0.f};
     std::int32_t lasers_fired_this_burst{0};
@@ -189,7 +175,6 @@ struct Sim {
     LaserFiringState laser_firing_mode{LaserFiringState::idle};
     ShipFireRate laser_fire_rate{ShipFireRate::Burst3};
 
-    bool sampling{false};
     bool speed_sampling_enabled{};
 
     std::int32_t speed_sample_index{0};
@@ -201,6 +186,8 @@ struct Sim {
     PlayerSimulationState state_{};
     PlayerSimulationState planned_state_{};
     PlayerFlightIntent flight_intent_{};
+    ml::Vector2d sampled_target_speed_scale_{};
+    bool sampling_target_speed_{};
     FlightModelLoadout flight_models_{make_default_flight_model_loadout()};
     FlightModelSlot active_flight_model_slot_{FlightModelSlot::Up};
     /* **************************************** */
@@ -220,15 +207,7 @@ struct Sim {
     /* **************************************** */
     // Movement
     /* **************************************** */
-    void integrate_velocity(float dt, PlayerSimulationState& state);
-    void update_rotation(float dt, PlayerSimulationState& state);
     void update_body_orientation(float dt, PlayerSimulationState& state);
-    void integrate_power_velocity(float dt, PlayerSimulationState& state);
-    void set_desired_planar_velocity(ml::Vector3d desired_velocity);
-    [[nodiscard]] auto uses_power_controller() const noexcept -> bool;
-    std::uint64_t boost_start_sequence_{};
-    void set_boost_brake_state(BoostBrakeState state);
-    void set_boost_brake_state(BoostBrakeState new_state, PlayerSimulationState& state);
     void update_boost_brake(float dt, PlayerSimulationState& state);
     void refresh_effective_action(PlayerSimulationState& state) noexcept;
 

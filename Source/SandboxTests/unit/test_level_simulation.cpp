@@ -563,7 +563,9 @@ auto FPlayerBoostFrameOutputTest::RunTest(FString const&) -> bool {
     data.level_events.initialisation.player_entity_index =
         data.level_events.initialisation.entity_count++;
     data.player = actor->make_spawn_data();
-    data.player->config.boost_depletion_time = 0.05f;
+    auto& active_profile{::ioj::sim::player::flight_model_profile(
+        data.player->flight_models, data.player->flight_models.initial_slot)};
+    active_profile.config.boost.energy_drain_per_second = 20.f;
     ::ioj::sim::LevelSim simulation{MoveTemp(data)};
     simulation.finish_initialisation();
     simulation.start();
