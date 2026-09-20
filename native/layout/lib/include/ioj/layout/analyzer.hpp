@@ -578,8 +578,10 @@ struct SoaColumnAccessAnalysis {
     std::optional<std::uint64_t> useful_bytes;
     std::optional<std::uint64_t> minimum_cache_lines;
     std::optional<std::uint64_t> minimum_cache_bytes;
+    std::optional<std::uint64_t> non_payload_cache_bytes;
     std::optional<std::uint64_t> minimum_pages;
     std::optional<std::uint64_t> minimum_page_bytes;
+    std::optional<std::uint64_t> non_payload_page_bytes;
     std::optional<std::uint64_t> allocated_capacity_payload_bytes;
     std::optional<std::uint64_t> capacity_slack_payload_bytes;
 };
@@ -633,8 +635,10 @@ struct SoaColumnAccessComparison {
     std::optional<NumericDelta> useful_byte_delta;
     std::optional<NumericDelta> cache_line_delta;
     std::optional<NumericDelta> cache_byte_delta;
+    std::optional<NumericDelta> non_payload_cache_byte_delta;
     std::optional<NumericDelta> page_delta;
     std::optional<NumericDelta> page_byte_delta;
+    std::optional<NumericDelta> non_payload_page_byte_delta;
     std::optional<NumericDelta> allocated_capacity_payload_delta;
     std::optional<NumericDelta> capacity_slack_payload_delta;
 };
@@ -649,6 +653,14 @@ struct SoaAccessComparison {
     std::optional<std::uint64_t> second_allocated_capacity_payload_bytes;
     std::optional<std::uint64_t> first_capacity_slack_payload_bytes;
     std::optional<std::uint64_t> second_capacity_slack_payload_bytes;
+    std::optional<std::uint64_t> first_full_logical_payload_bytes;
+    std::optional<std::uint64_t> second_full_logical_payload_bytes;
+    std::optional<std::uint64_t> first_unselected_payload_bytes;
+    std::optional<std::uint64_t> second_unselected_payload_bytes;
+    std::optional<std::uint64_t> first_non_payload_cache_bytes;
+    std::optional<std::uint64_t> second_non_payload_cache_bytes;
+    std::optional<std::uint64_t> first_non_payload_page_bytes;
+    std::optional<std::uint64_t> second_non_payload_page_bytes;
     std::optional<NumericDelta> useful_byte_delta;
     std::optional<NumericDelta> cache_line_delta;
     std::optional<NumericDelta> cache_byte_delta;
@@ -656,6 +668,10 @@ struct SoaAccessComparison {
     std::optional<NumericDelta> page_byte_delta;
     std::optional<NumericDelta> allocated_capacity_payload_delta;
     std::optional<NumericDelta> capacity_slack_payload_delta;
+    std::optional<NumericDelta> full_logical_payload_delta;
+    std::optional<NumericDelta> unselected_payload_delta;
+    std::optional<NumericDelta> non_payload_cache_byte_delta;
+    std::optional<NumericDelta> non_payload_page_byte_delta;
     std::vector<Diagnostic> diagnostics;
 };
 

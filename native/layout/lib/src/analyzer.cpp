@@ -2782,8 +2782,10 @@ auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
             .useful_bytes = flat_accessed_bytes,
             .minimum_cache_lines = std::nullopt,
             .minimum_cache_bytes = std::nullopt,
+            .non_payload_cache_bytes = std::nullopt,
             .minimum_pages = std::nullopt,
             .minimum_page_bytes = std::nullopt,
+            .non_payload_page_bytes = std::nullopt,
             .allocated_capacity_payload_bytes = column->total_bytes,
             .capacity_slack_payload_bytes = std::nullopt};
         if (column_access.allocated_capacity_payload_bytes.has_value() &&
@@ -2795,6 +2797,7 @@ auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
         auto derive_column_regions = [&](std::optional<std::uint64_t> const region_size,
                                          std::optional<std::uint64_t>& regions,
                                          std::optional<std::uint64_t>& bytes,
+                                         std::optional<std::uint64_t>& non_payload_bytes,
                                          std::string_view const region_name) {
             if (!region_size.has_value() || *region_size == 0 ||
                 !column_access.useful_bytes.has_value()) {
@@ -2807,15 +2810,19 @@ auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
                                               "Selected SoA column '" + column_name + "' minimum " +
                                                   std::string{region_name} +
                                                   " footprint overflows uint64."});
+            } else {
+                non_payload_bytes = *bytes - *column_access.useful_bytes;
             }
         };
         derive_column_regions(result.cache_line_bytes,
                               column_access.minimum_cache_lines,
                               column_access.minimum_cache_bytes,
+                              column_access.non_payload_cache_bytes,
                               "cache-line");
         derive_column_regions(result.page_bytes,
                               column_access.minimum_pages,
                               column_access.minimum_page_bytes,
+                              column_access.non_payload_page_bytes,
                               "page");
         result.columns.push_back(std::move(column_access));
         if (flat_accessed_bytes.has_value()) {
@@ -2991,6 +2998,14 @@ auto Analyzer::compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnaly
         .second_allocated_capacity_payload_bytes = second.allocated_capacity_payload_bytes,
         .first_capacity_slack_payload_bytes = first.capacity_slack_payload_bytes,
         .second_capacity_slack_payload_bytes = second.capacity_slack_payload_bytes,
+        .first_full_logical_payload_bytes = first.full_logical_payload_bytes,
+        .second_full_logical_payload_bytes = second.full_logical_payload_bytes,
+        .first_unselected_payload_bytes = first.unselected_payload_bytes,
+        .second_unselected_payload_bytes = second.unselected_payload_bytes,
+        .first_non_payload_cache_bytes = first.non_payload_cache_bytes,
+        .second_non_payload_cache_bytes = second.non_payload_cache_bytes,
+        .first_non_payload_page_bytes = first.non_payload_page_bytes,
+        .second_non_payload_page_bytes = second.non_payload_page_bytes,
         .useful_byte_delta = std::nullopt,
         .cache_line_delta = std::nullopt,
         .cache_byte_delta = std::nullopt,
@@ -2998,6 +3013,10 @@ auto Analyzer::compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnaly
         .page_byte_delta = std::nullopt,
         .allocated_capacity_payload_delta = std::nullopt,
         .capacity_slack_payload_delta = std::nullopt,
+        .full_logical_payload_delta = std::nullopt,
+        .unselected_payload_delta = std::nullopt,
+        .non_payload_cache_byte_delta = std::nullopt,
+        .non_payload_page_byte_delta = std::nullopt,
         .diagnostics = {}};
     for (auto const& diagnostic : first.diagnostics) {
         result.diagnostics.push_back(
@@ -3047,9 +3066,13 @@ auto Analyzer::compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnaly
                                                second_column->minimum_cache_lines),
              .cache_byte_delta = numeric_delta(first_column->minimum_cache_bytes,
                                                second_column->minimum_cache_bytes),
+             .non_payload_cache_byte_delta = numeric_delta(first_column->non_payload_cache_bytes,
+                                                           second_column->non_payload_cache_bytes),
              .page_delta = numeric_delta(first_column->minimum_pages, second_column->minimum_pages),
              .page_byte_delta =
                  numeric_delta(first_column->minimum_page_bytes, second_column->minimum_page_bytes),
+             .non_payload_page_byte_delta = numeric_delta(first_column->non_payload_page_bytes,
+                                                          second_column->non_payload_page_bytes),
              .allocated_capacity_payload_delta =
                  numeric_delta(first_column->allocated_capacity_payload_bytes,
                                second_column->allocated_capacity_payload_bytes),
@@ -3067,6 +3090,14 @@ auto Analyzer::compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnaly
                       result.second_allocated_capacity_payload_bytes);
     result.capacity_slack_payload_delta = numeric_delta(result.first_capacity_slack_payload_bytes,
                                                         result.second_capacity_slack_payload_bytes);
+    result.full_logical_payload_delta = numeric_delta(result.first_full_logical_payload_bytes,
+                                                      result.second_full_logical_payload_bytes);
+    result.unselected_payload_delta = numeric_delta(result.first_unselected_payload_bytes,
+                                                    result.second_unselected_payload_bytes);
+    result.non_payload_cache_byte_delta =
+        numeric_delta(result.first_non_payload_cache_bytes, result.second_non_payload_cache_bytes);
+    result.non_payload_page_byte_delta =
+        numeric_delta(result.first_non_payload_page_bytes, result.second_non_payload_page_bytes);
     return result;
 }
 

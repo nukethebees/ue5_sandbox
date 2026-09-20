@@ -102,7 +102,9 @@ variants. Each side retains its own capacity and column type overrides while hea
 reports useful payload, minimum cache-line/page footprints, allocated payload at capacity, capacity
 slack, and checked deltas. An expandable per-column breakdown identifies the exact physical type,
 element size, footprint, capacity, and slack contribution behind each aggregate delta. Mismatched
-workloads are rejected, and the UI makes no speed claim.
+workloads are rejected. Complete logical payload, unselected workload payload, capacity slack, and
+non-payload bytes inside minimum cache/page footprints remain distinct comparison categories. The
+UI makes no speed claim.
 
 Enum declarations now support an optional durable semantic `:bit-width`; absence means auto width
 derived from literal and implicit values. Individual values may be marked `:sentinel true`, including

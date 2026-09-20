@@ -804,6 +804,14 @@ void PlannerUi::draw_comparison_panel() {
                                detail::format_bytes(access.first.useful_bytes),
                                detail::format_bytes(access.second.useful_bytes),
                                detail::format_delta_bytes(access.useful_byte_delta));
+                comparison_row("Complete logical payload at workload count",
+                               detail::format_bytes(access.first_full_logical_payload_bytes),
+                               detail::format_bytes(access.second_full_logical_payload_bytes),
+                               detail::format_delta_bytes(access.full_logical_payload_delta));
+                comparison_row("Unselected payload at workload count",
+                               detail::format_bytes(access.first_unselected_payload_bytes),
+                               detail::format_bytes(access.second_unselected_payload_bytes),
+                               detail::format_delta_bytes(access.unselected_payload_delta));
                 comparison_row("Minimum cache lines",
                                detail::format_number(access.first.cache_lines),
                                detail::format_number(access.second.cache_lines),
@@ -812,6 +820,10 @@ void PlannerUi::draw_comparison_panel() {
                                detail::format_bytes(access.first.cache_bytes),
                                detail::format_bytes(access.second.cache_bytes),
                                detail::format_delta_bytes(access.cache_byte_delta));
+                comparison_row("Non-payload bytes in minimum cache footprint",
+                               detail::format_bytes(access.first_non_payload_cache_bytes),
+                               detail::format_bytes(access.second_non_payload_cache_bytes),
+                               detail::format_delta_bytes(access.non_payload_cache_byte_delta));
                 comparison_row("Minimum pages",
                                detail::format_number(access.first.pages),
                                detail::format_number(access.second.pages),
@@ -820,6 +832,10 @@ void PlannerUi::draw_comparison_panel() {
                                detail::format_bytes(access.first.page_bytes),
                                detail::format_bytes(access.second.page_bytes),
                                detail::format_delta_bytes(access.page_byte_delta));
+                comparison_row("Non-payload bytes in minimum page footprint",
+                               detail::format_bytes(access.first_non_payload_page_bytes),
+                               detail::format_bytes(access.second_non_payload_page_bytes),
+                               detail::format_delta_bytes(access.non_payload_page_byte_delta));
                 comparison_row("Allocated payload at capacity",
                                detail::format_bytes(access.first_allocated_capacity_payload_bytes),
                                detail::format_bytes(access.second_allocated_capacity_payload_bytes),
@@ -862,6 +878,11 @@ void PlannerUi::draw_comparison_panel() {
                                        detail::format_bytes(column.first.minimum_cache_bytes),
                                        detail::format_bytes(column.second.minimum_cache_bytes),
                                        detail::format_delta_bytes(column.cache_byte_delta));
+                        comparison_row(
+                            "Non-payload bytes in minimum cache footprint",
+                            detail::format_bytes(column.first.non_payload_cache_bytes),
+                            detail::format_bytes(column.second.non_payload_cache_bytes),
+                            detail::format_delta_bytes(column.non_payload_cache_byte_delta));
                         comparison_row("Minimum pages",
                                        detail::format_number(column.first.minimum_pages),
                                        detail::format_number(column.second.minimum_pages),
@@ -870,6 +891,11 @@ void PlannerUi::draw_comparison_panel() {
                                        detail::format_bytes(column.first.minimum_page_bytes),
                                        detail::format_bytes(column.second.minimum_page_bytes),
                                        detail::format_delta_bytes(column.page_byte_delta));
+                        comparison_row(
+                            "Non-payload bytes in minimum page footprint",
+                            detail::format_bytes(column.first.non_payload_page_bytes),
+                            detail::format_bytes(column.second.non_payload_page_bytes),
+                            detail::format_delta_bytes(column.non_payload_page_byte_delta));
                         comparison_row(
                             "Allocated payload at capacity",
                             detail::format_bytes(column.first.allocated_capacity_payload_bytes),
