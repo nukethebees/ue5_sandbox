@@ -4,6 +4,12 @@ public static class Program
 {
     public static int Main(string[] arguments)
     {
+        if (IsModuleMigrationHelp(arguments))
+        {
+            WriteModuleMigrationUsage(Console.Out);
+            return 0;
+        }
+
         if (TryParse(arguments, out var request))
         {
             return RunSpaceGameLayerCheck(request!);
@@ -15,7 +21,7 @@ public static class Program
         }
 
         Console.Error.WriteLine("Usage: ArchitectureChecks --root <path>");
-        Console.Error.WriteLine("       ArchitectureChecks module-migration --root <path> [--baseline <revision>] [--old-module <module>] [--plugin-module <module>]...");
+        Console.Error.WriteLine("       ArchitectureChecks module-migration --help");
         return 2;
     }
 
@@ -155,6 +161,26 @@ public static class Program
 
         request = new ModuleMigrationRequest(root_path, baseline, old_module, plugin_modules);
         return true;
+    }
+
+    internal static bool IsModuleMigrationHelp(IReadOnlyList<string> arguments)
+    {
+        ArgumentNullException.ThrowIfNull(arguments);
+
+        return arguments.Count == 2 &&
+               string.Equals(arguments[0], "module-migration", StringComparison.Ordinal) &&
+               (string.Equals(arguments[1], "--help", StringComparison.Ordinal) ||
+                string.Equals(arguments[1], "-h", StringComparison.Ordinal));
+    }
+
+    internal static void WriteModuleMigrationUsage(TextWriter output)
+    {
+        ArgumentNullException.ThrowIfNull(output);
+
+        output.WriteLine("Usage: ArchitectureChecks module-migration --root <path> [--baseline <revision>] [--old-module <module>] [--plugin-module <module>]...");
+        output.WriteLine("Defaults: old module Sandbox; plugin modules ShooterGame and SandboxGameShared.");
+        output.WriteLine("Explicit --plugin-module arguments replace the default plugin modules.");
+        output.WriteLine("The audit is advisory: findings do not cause a failure exit code.");
     }
 
     private static bool IsModuleName(string value)

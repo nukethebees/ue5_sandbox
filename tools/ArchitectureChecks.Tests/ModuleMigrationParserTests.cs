@@ -47,12 +47,36 @@ public sealed class ModuleMigrationParserTests
             +ClassRedirects=( NewName = "/Script/ShooterGame.Ship", OldName = "/Script/Sandbox.Ship" )
             +StructRedirects=(OldName="/Script/Sandbox.Loadout",NewName="/Script/ShooterGame.Loadout")
             +EnumRedirects=(OldName="/Script/Sandbox.EShipState",NewName="/Script/ShooterGame.EShipState")
+            +ClassRedirects=(OldName="/Script/Sandbox.Before",MatchSubstring=true,NewName="/Script/ShooterGame.Before")
+            +ClassRedirects=(MatchSubstring=false,NewName="/Script/ShooterGame.After",OldName="/Script/Sandbox.After")
+            +ClassRedirects=(OldName="/Script/Sandbox.Trailing",NewName="/Script/ShooterGame.Trailing",MatchSubstring=true)
             """
         );
 
         Assert.IsTrue(redirects.Contains(new CoreRedirect(ReflectedTypeKind.Class, "/Script/Sandbox.Ship", "/Script/ShooterGame.Ship")));
         Assert.IsTrue(redirects.Contains(new CoreRedirect(ReflectedTypeKind.Struct, "/Script/Sandbox.Loadout", "/Script/ShooterGame.Loadout")));
         Assert.IsTrue(redirects.Contains(new CoreRedirect(ReflectedTypeKind.Enum, "/Script/Sandbox.EShipState", "/Script/ShooterGame.EShipState")));
+        Assert.IsTrue(redirects.Contains(new CoreRedirect(ReflectedTypeKind.Class, "/Script/Sandbox.Before", "/Script/ShooterGame.Before")));
+        Assert.IsTrue(redirects.Contains(new CoreRedirect(ReflectedTypeKind.Class, "/Script/Sandbox.After", "/Script/ShooterGame.After")));
+        Assert.IsTrue(redirects.Contains(new CoreRedirect(ReflectedTypeKind.Class, "/Script/Sandbox.Trailing", "/Script/ShooterGame.Trailing")));
+    }
+
+    [TestMethod]
+    public void Core_redirect_parser_ignores_malformed_entries_and_preserves_escaped_quoted_values()
+    {
+        var redirects = new CoreRedirectParser().Parse(
+            """
+            +ClassRedirects=(OldName="/Script/Sandbox.MissingNew")
+            +ClassRedirects=(OldName="/Script/Sandbox.Unterminated,NewName="/Script/ShooterGame.Unterminated")
+            +ClassRedirects=(OldName="/Script/Sandbox.Say\"Hi",NewName="/Script/ShooterGame.Say\"Hi")
+            """
+        );
+
+        Assert.AreEqual(1, redirects.Count);
+        Assert.IsTrue(redirects.Contains(new CoreRedirect(
+            ReflectedTypeKind.Class,
+            "/Script/Sandbox.Say\"Hi",
+            "/Script/ShooterGame.Say\"Hi")));
     }
 
     [TestMethod]
@@ -124,6 +148,67 @@ public sealed class ModuleMigrationParserTests
         Assert.IsFalse(Program.TryParseModuleMigration(["module-migration", "--plugin-module", "One"], out _));
         Assert.IsFalse(Program.TryParseModuleMigration(["module-migration", "--root", "repo", "--old-module", "not/a/module"], out _));
     }
+
+    [TestMethod]
+    public void Repository_path_containment_allows_only_in_repository_paths()
+    {
+        using var fixture = new ArchitectureCheckFixture();
+
+        Assert.AreEqual(
+            Path.Combine(fixture.Root, "Source", "Thing.h"),
+            ModuleMigrationChecker.ToFullPath(fixture.Root, "Source/Thing.h"));
+        Assert.ThrowsException<ModuleMigrationException>(
+            () => ModuleMigrationChecker.ToFullPath(fixture.Root, ".."));
+        Assert.ThrowsException<ModuleMigrationException>(
+            () => ModuleMigrationChecker.ToFullPath(fixture.Root, "nested/../../Outside.h"));
+        Assert.ThrowsException<ModuleMigrationException>(
+            () => ModuleMigrationChecker.ToFullPath(fixture.Root, Path.Combine(fixture.Root, "Rooted.h")));
+        Assert.AreEqual(
+            Path.Combine(fixture.Root, "..valid", "Thing.h"),
+            ModuleMigrationChecker.ToFullPath(fixture.Root, "..valid/Thing.h"));
+    }
+
+    [TestMethod]
+    [DoNotParallelize]
+    public void Module_migration_help_returns_success_and_invalid_arguments_remain_errors()
+    {
+        var help = RunProgram(["module-migration", "--help"]);
+        Assert.AreEqual(0, help.ExitCode);
+        StringAssert.Contains(help.StandardOutput, "Usage: ArchitectureChecks module-migration");
+        StringAssert.Contains(help.StandardOutput, "old module Sandbox");
+        StringAssert.Contains(help.StandardOutput, "ShooterGame and SandboxGameShared");
+        StringAssert.Contains(help.StandardOutput, "replace the default plugin modules");
+        StringAssert.Contains(help.StandardOutput, "advisory");
+
+        var short_help = RunProgram(["module-migration", "-h"]);
+        Assert.AreEqual(0, short_help.ExitCode);
+
+        var invalid = RunProgram(["module-migration"]);
+        Assert.AreEqual(2, invalid.ExitCode);
+        StringAssert.Contains(invalid.StandardError, "ArchitectureChecks module-migration --help");
+    }
+
+    private static ProgramResult RunProgram(IReadOnlyList<string> arguments)
+    {
+        var standard_output = new StringWriter();
+        var standard_error = new StringWriter();
+        var original_output = Console.Out;
+        var original_error = Console.Error;
+        try
+        {
+            Console.SetOut(standard_output);
+            Console.SetError(standard_error);
+            var exit_code = Program.Main(arguments.ToArray());
+            return new ProgramResult(exit_code, standard_output.ToString(), standard_error.ToString());
+        }
+        finally
+        {
+            Console.SetOut(original_output);
+            Console.SetError(original_error);
+        }
+    }
+
+    private sealed record ProgramResult(int ExitCode, string StandardOutput, string StandardError);
 
     private sealed class RecordingProcessRunner(ProcessResult result) : IProcessRunner
     {
