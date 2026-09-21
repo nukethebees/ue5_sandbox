@@ -202,7 +202,7 @@ void LevelSim::configure_player(player::PlayerSpawnData const& spawn) {
 }
 void LevelSim::initialise_spatial_queries(LevelSimInitData& data) {
     // Configure collision queries and buffers
-    query_manager_.initialise(data.grid_dimensions, data.cell_size, data.entity_bounds);
+    query_manager_.initialise(data.grid_geometry, data.entity_bounds);
     query_manager_.reserve_thread_buffers(
         static_cast<std::int32_t>(std::max(1u, std::thread::hardware_concurrency())));
 
@@ -431,7 +431,7 @@ void LevelSim::advance(time_type const dt) {
             }
 
             {
-                SANDBOX_PROFILE_SCOPE("Detect collision overlaps");
+                SANDBOX_PROFILE_SCOPE("Refresh spatial index and detect overlaps");
 
                 auto const fighter_candidates{fighters_simulation_.get_overlap_candidates()};
                 overlap_candidates_.insert(overlap_candidates_.end(),
@@ -441,6 +441,7 @@ void LevelSim::advance(time_type const dt) {
                 auto const duplicates{std::ranges::unique(overlap_candidates_)};
                 overlap_candidates_.erase(duplicates.begin(), duplicates.end());
 
+                query_manager_.refresh_spatial_index();
                 ml::FrameScratchScope scratch_scope{frame_memory_};
                 auto const overlaps{
                     query_manager_.detect_overlaps(overlap_candidates_, scratch_scope.scratch())};

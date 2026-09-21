@@ -426,15 +426,11 @@ void append_grid_overlaps(GridGeometry const geometry,
 auto CollisionUniformGrid::get_grid_dims() const noexcept -> collision::CellCoord {
     return geometry_.dimensions;
 }
-void CollisionUniformGrid::set_grid_dims(collision::CellCoord const grid_dims) noexcept {
-    geometry_.dimensions = grid_dims;
+void CollisionUniformGrid::set_geometry(GridGeometry const geometry) noexcept {
+    geometry_ = geometry;
 }
-
 auto CollisionUniformGrid::get_cell_dims() const noexcept -> Vector3f {
     return geometry_.cell_dimensions;
-}
-void CollisionUniformGrid::set_cell_dims(Vector3f const cell_dims) noexcept {
-    geometry_.cell_dimensions = cell_dims;
 }
 
 CollisionUniformGrid::CollisionUniformGrid(AgentAccessor const& agents) noexcept

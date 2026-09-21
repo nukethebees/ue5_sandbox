@@ -5,8 +5,7 @@ namespace ioj::sim::tests::tick_phases {
 auto make_world() -> LevelSimInitData {
     LevelSimInitData data{};
     data.clock_settings.tick_rate = 10.0;
-    data.grid_dimensions = {16, 16, 4};
-    data.cell_size = {{1000.f, 1000.f, 1000.f}};
+    data.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.capital_ships.fighter_spawn_slots = 0;
     data.lasers.n_preallocated_instances = 8;
     data.overlap_response.damage_per_overlap_detection = 25;
@@ -152,6 +151,27 @@ TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
     ASSERT_EQ(lasers.num(), 1);
     EXPECT_NEAR(lasers.locations.ys[0], 200.f, 0.001f);
     EXPECT_FLOAT_EQ(lasers.velocities.ys[0], 1000.f);
+}
+
+TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
+    auto data{make_world()};
+    add_moving_player(data);
+    add_capital_spawn(data, {{0.f, 100.f, 0.f}}, Team::White, -1, 0.f, 60.f, 100);
+
+    LevelSim simulation{std::move(data)};
+    simulation.finish_initialisation();
+    simulation.get_player_ship_commands()->set_lateral_move_input(1.f);
+
+    simulation.start();
+    simulation.advance(simulation.get_clock().get_tick_period());
+
+    auto const* const player{simulation.get_player_ship_simulation()};
+    EXPECT_NEAR(player->get_movement_state().transform.location.y, 100.0, 0.001);
+    EXPECT_EQ(simulation.get_spatial_query_manager()
+                  .get_aabb_overlap_events()
+                  .entity_entity_overlaps.num(),
+              1);
+    EXPECT_EQ(player->get_health().health, 75);
 }
 
 TEST(TickPhases, AuthoredSpawnCanBeHitOnItsScheduledTick) {

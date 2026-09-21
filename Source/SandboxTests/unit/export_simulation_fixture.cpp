@@ -322,9 +322,10 @@ TEST_CLASS(SimulationFixtureExport, "Sandbox.FixtureTools")
             out, "data.clock_settings.tick_period", data.clock_settings.get_tick_period());
         ml::fixture_export::write(
             out, "data.clock_settings.accumulator", data.clock_settings.accumulator);
-        out << "    data.grid_dimensions = {" << data.grid_dimensions.x << ", "
-            << data.grid_dimensions.y << ", " << data.grid_dimensions.z << "};\n";
-        ml::fixture_export::vector3f(out, "data.cell_size", data.cell_size);
+        out << "    data.grid_geometry.dimensions = {" << data.grid_geometry.dimensions.x << ", "
+            << data.grid_geometry.dimensions.y << ", " << data.grid_geometry.dimensions.z << "};\n";
+        ml::fixture_export::vector3f(
+            out, "data.grid_geometry.cell_dimensions", data.grid_geometry.cell_dimensions);
         ml::fixture_export::vector3f(
             out, "data.turrets.fire_point_offset", data.turrets.fire_point_offset);
         ml::fixture_export::write(out, "player.team", player.team);

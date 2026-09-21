@@ -34,12 +34,11 @@ struct CollisionUniformGrid {
     auto operator=(CollisionUniformGrid&&) -> CollisionUniformGrid& = delete;
 
     auto is_configured() const noexcept -> bool;
+    void set_geometry(GridGeometry geometry) noexcept;
 
     auto get_grid_dims() const noexcept -> CellCoord;
-    void set_grid_dims(CellCoord const grid_dims) noexcept;
 
     auto get_cell_dims() const noexcept -> Vector3f;
-    void set_cell_dims(Vector3f const cell_dims) noexcept;
 
     auto num_cells() const -> std::int32_t;
     auto get_cell_entities(CellCoord const cell_coord) const -> std::span<EntityUniqueId const> {

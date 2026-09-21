@@ -33,7 +33,7 @@ class CollisionSystem {
     auto operator=(CollisionSystem const&) -> CollisionSystem& = delete;
     auto operator=(CollisionSystem&&) -> CollisionSystem& = delete;
 
-    void initialise(CellCoord grid_dimensions, Vector3f cell_size, EntityAABBs const& bounds);
+    void initialise(GridGeometry grid_geometry, EntityAABBs const& bounds);
     void set_static_collision(WorldAABBs bounds);
     auto add_static_collision_aabb(Vector3f min_point, Vector3f max_point) -> StaticGeometryIndex;
 

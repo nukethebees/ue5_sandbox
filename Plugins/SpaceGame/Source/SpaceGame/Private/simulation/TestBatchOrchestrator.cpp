@@ -419,9 +419,10 @@ void ATestBatchOrchestrator::clear_player_ship() {
 /* **************************************** */
 // Level initialization
 /* **************************************** */
-auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors,
-                                                   TOptional<ml::FProxyLevelSimBuild>& proxy_build)
-    -> bool {
+auto ATestBatchOrchestrator::initialise_simulation(
+    ml::FLevelStartErrors& errors,
+    TOptional<ml::FProxyLevelSimBuild>& proxy_build,
+    ::ioj::sim::collision::GridGeometry& grid_geometry) -> bool {
     auto& world{*GetWorld()};
     auto const& config{*level_config};
 
@@ -480,6 +481,7 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
         }
         result->fighter_diagnostics_enabled =
             ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;
+        grid_geometry = result->grid_geometry;
         level_simulation_.Emplace(MoveTemp(result.value()));
         return true;
     }
@@ -512,6 +514,7 @@ auto ATestBatchOrchestrator::initialise_simulation(ml::FLevelStartErrors& errors
         data.game_memory = &game_subsystem->get_game_memory();
     }
     data.fighter_diagnostics_enabled = ml::fighter_diagnostics::enabled.GetValueOnGameThread() != 0;
+    grid_geometry = data.grid_geometry;
     level_simulation_.Emplace(MoveTemp(data));
     return true;
 }
@@ -565,7 +568,8 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     set_level_config(*level_config);
     ml::FLevelStartErrors simulation_errors;
     TOptional<ml::FProxyLevelSimBuild> proxy_build;
-    if (!initialise_simulation(simulation_errors, proxy_build)) {
+    ::ioj::sim::collision::GridGeometry grid_geometry{};
+    if (!initialise_simulation(simulation_errors, proxy_build, grid_geometry)) {
         handle_level_start_failure(
             FString::Printf(TEXT("Cannot start level:\n%s"), *simulation_errors.format()));
         return false;
@@ -581,8 +585,8 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         on_proxy_entities_bound.Broadcast(proxy_entities);
         proxy_build->destroy_proxy_actors();
     }
-    auto static_bounds{
-        world_collision_.initialise_static_geometry(*world, level_config->collision_grid)};
+    auto static_bounds{world_collision_.initialise_static_geometry(
+        *world, level_config->collision_grid, grid_geometry)};
     level_simulation_->set_static_collision(MoveTemp(static_bounds));
 
     telemetry_environment_ = make_level_telemetry_environment(*world);

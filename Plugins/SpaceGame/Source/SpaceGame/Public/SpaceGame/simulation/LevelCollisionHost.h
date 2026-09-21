@@ -22,7 +22,9 @@ struct SPACEGAME_API FLevelCollisionHost {
                                        UStaticMesh const*,
                                        static_cast<std::size_t>(::ioj::sim::EntityType::COUNT)>;
     static auto extract_entity_bounds(EntityMeshes const& meshes) -> FEntityBoundsExtractionResult;
-    auto initialise_static_geometry(UWorld& world, FCollisionGridConfig const& config)
+    auto initialise_static_geometry(UWorld& world,
+                                    FCollisionGridConfig const& config,
+                                    ::ioj::sim::collision::GridGeometry grid_geometry)
         -> ::ioj::sim::collision::WorldAABBs;
     void restore_collision();
     auto get_static_collision_sources() const noexcept -> FStaticCollisionSources::ConstView {

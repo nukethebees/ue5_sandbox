@@ -65,8 +65,7 @@ auto make_simulation_data(SimulationFixture const& fixture) -> LevelSimInitData 
     data.turrets = fixture.data.turrets;
     data.spinners = fixture.data.spinners;
     data.entity_bounds = fixture.data.entity_bounds;
-    data.grid_dimensions = fixture.data.grid_dimensions;
-    data.cell_size = fixture.data.cell_size;
+    data.grid_geometry = fixture.data.grid_geometry;
     data.frame_memory_capacity_bytes = fixture.data.frame_memory_capacity_bytes;
     data.fighter_fire_point_distance = fixture.data.fighter_fire_point_distance;
     return data;

@@ -57,8 +57,8 @@ struct LevelSimInitData {
 
     collision::EntityAABBs entity_bounds{};
     collision::WorldAABBs static_bounds{};
-    collision::CellCoord grid_dimensions{400, 400, 5};
-    Vector3f cell_size{ml::make_vector3f(5000.f, 5000.f, 20000.f)};
+    collision::GridGeometry grid_geometry{{400, 400, 5},
+                                          ml::make_vector3f(5000.f, 5000.f, 20000.f)};
 
     std::size_t frame_memory_capacity_bytes{16 * 1024 * 1024};
 

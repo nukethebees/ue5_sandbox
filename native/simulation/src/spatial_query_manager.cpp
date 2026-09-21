@@ -301,12 +301,11 @@ SpatialQueryManager::SpatialQueryManager(AgentAccessor const& agents)
     : agents_{agents}
     , collision_system_{agents} {}
 
-void SpatialQueryManager::initialise(collision::CellCoord const grid_dimensions,
-                                     Vector3f const cell_size,
+void SpatialQueryManager::initialise(collision::GridGeometry const grid_geometry,
                                      collision::EntityAABBs const& entity_bounds) {
     reserve_thread_buffers(1);
 
-    collision_system_.initialise(grid_dimensions, cell_size, entity_bounds);
+    collision_system_.initialise(grid_geometry, entity_bounds);
 
     for (auto const type : ml::EnumTraits<EntityType>::values) {
         entity_radii_[type] = collision::get_entity_radius(entity_bounds, type);

@@ -42,8 +42,7 @@ static_assert(std::is_const_v<std::remove_reference_t<
 namespace {
 auto make_battle() -> LevelSimInitData {
     LevelSimInitData data;
-    data.grid_dimensions = {16, 16, 4};
-    data.cell_size = {{1000.f, 1000.f, 1000.f}};
+    data.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.lasers.n_preallocated_instances = 16;
     data.capital_ships.fighter_spawn_slots = 0;
     add_capital_spawn(data, {{-1000.f, 0.f, 0.f}}, Team::Green, -1, 60.f, 60.f, 100);

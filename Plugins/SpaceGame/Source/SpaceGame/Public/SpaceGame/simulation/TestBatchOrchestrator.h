@@ -196,7 +196,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void load_authored_level();
     auto should_initialise_in_begin_play() const noexcept -> bool;
     auto initialise_simulation(ml::FLevelStartErrors& errors,
-                               TOptional<ml::FProxyLevelSimBuild>& proxy_build) -> bool;
+                               TOptional<ml::FProxyLevelSimBuild>& proxy_build,
+                               ::ioj::sim::collision::GridGeometry& grid_geometry) -> bool;
     void handle_level_start_failure(FString message);
 
     /* **************************************** */

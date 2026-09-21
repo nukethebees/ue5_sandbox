@@ -56,8 +56,7 @@ struct SpatialQueryManager {
     auto operator=(SpatialQueryManager const&) -> SpatialQueryManager& = delete;
     auto operator=(SpatialQueryManager&&) -> SpatialQueryManager& = delete;
 
-    void initialise(collision::CellCoord const grid_dimensions,
-                    Vector3f const cell_size,
+    void initialise(collision::GridGeometry grid_geometry,
                     collision::EntityAABBs const& entity_bounds);
 
     void reserve_thread_buffers(std::int32_t count);

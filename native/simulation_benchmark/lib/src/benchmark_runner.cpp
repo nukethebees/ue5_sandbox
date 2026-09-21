@@ -214,7 +214,7 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
     data.clock_settings.tick_rate = simulation_tick_rate_hz;
     data.clock_settings.time_scale = static_cast<double>(options.game_speed);
     data.clock_settings.accumulator = 0.0;
-    data.grid_dimensions.z = std::max(data.grid_dimensions.z, 25);
+    data.grid_geometry.dimensions.z = std::max(data.grid_geometry.dimensions.z, 25);
     if (options.fighter_stress_cap.has_value()) {
         data.fighters.max_live_fighters = *options.fighter_stress_cap;
         data.fighters.laser.damage = 0;

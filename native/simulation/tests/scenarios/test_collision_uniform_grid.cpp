@@ -46,8 +46,7 @@ struct TraceFixture {
 
         set_entity_aabb(EntityType::CapitalShip, aabb_centre, half_extents);
 
-        grid.set_grid_dims({fixture_grid_dims.x, fixture_grid_dims.y, fixture_grid_dims.z});
-        grid.set_cell_dims(fixture_cell_dims);
+        grid.set_geometry({fixture_grid_dims, fixture_cell_dims});
         owners.publish();
         grid.rebuild_entity_grid(aabbs);
     }

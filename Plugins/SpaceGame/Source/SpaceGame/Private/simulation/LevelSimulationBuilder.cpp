@@ -240,8 +240,8 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
     data.fighter_fire_point_distance =
         IsValid(socket) ? static_cast<float>(socket->RelativeLocation.Size()) : 0.f;
     auto const dimensions{config.collision_grid.calculate_grid_dimensions()};
-    data.grid_dimensions = {dimensions.X, dimensions.Y, dimensions.Z};
-    data.cell_size = ml::to_native(config.collision_grid.cell_size);
+    data.grid_geometry = {{dimensions.X, dimensions.Y, dimensions.Z},
+                          ml::to_native(config.collision_grid.cell_size)};
 
     ioj::FLevelCollisionHost::EntityMeshes meshes{};
     meshes[::ioj::sim::EntityType::PlayerShip] = player_collision_mesh;

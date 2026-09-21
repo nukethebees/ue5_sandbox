@@ -10,11 +10,9 @@
 #include <utility>
 
 namespace ioj::sim::collision {
-void CollisionSystem::initialise(CellCoord const grid_dimensions,
-                                 Vector3f const cell_size,
+void CollisionSystem::initialise(GridGeometry const grid_geometry,
                                  collision::EntityAABBs const& bounds) {
-    uniform_grid_.set_grid_dims(grid_dimensions);
-    uniform_grid_.set_cell_dims(cell_size);
+    uniform_grid_.set_geometry(grid_geometry);
     entity_aabbs_ = bounds;
     entity_entity_overlaps_.reset();
     entity_static_overlaps_.reset();
@@ -34,7 +32,6 @@ void CollisionSystem::refresh_spatial_index() {
 auto CollisionSystem::detect_overlaps(std::span<EntityUniqueId const> const overlap_candidates,
                                       ml::FrameScratch& scratch) -> DetectedOverlapsView {
     SANDBOX_PROFILE_SCOPE("CollisionSystem::detect_overlaps");
-    refresh_spatial_index();
     collect_overlaps_for_candidates(overlap_candidates, scratch);
 
     auto const entity_entity_overlaps{entity_entity_overlaps_.get_const_view()};

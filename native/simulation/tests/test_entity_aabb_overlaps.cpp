@@ -24,10 +24,11 @@ struct OverlapFixture {
         set_bounds(EntityType::CapitalShip, capital_centre, capital_half_extents);
         set_bounds(EntityType::Turret, Vector3f{}, turret_half_extents);
 
-        query_manager.initialise({40, 40, 40}, {{50.f, 50.f, 50.f}}, entity_bounds);
+        query_manager.initialise({{40, 40, 40}, {{50.f, 50.f, 50.f}}}, entity_bounds);
     }
 
-    void detect_overlaps(std::span<EntityUniqueId const> const overlap_candidates) {
+    void refresh_and_detect_overlaps(std::span<EntityUniqueId const> const overlap_candidates) {
+        query_manager.refresh_spatial_index();
         {
             ml::FrameScratchScope scratch_scope{frame_memory};
             query_manager.detect_overlaps(overlap_candidates, scratch_scope.scratch());
@@ -77,13 +78,13 @@ struct OverlapFixture {
                        alive.empty() || alive[index] != 0 ? 100 : 0);
         }
         owners.publish();
-        detect_overlaps(entity_ids);
+        refresh_and_detect_overlaps(entity_ids);
     }
 
     void run_quiet_tick() {
         query_manager.reset_frame_collision_events();
         owners.publish();
-        detect_overlaps({});
+        refresh_and_detect_overlaps({});
     }
 
     void end_tick() {}
@@ -156,7 +157,7 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
     owner.locations.set(0, {{300.f, 0.f, 0.f}});
     owner.locations.set(1, {{315.f, 0.f, 0.f}});
     fixture.query_manager.reset_frame_collision_events();
-    fixture.detect_overlaps(fixture.ids(handles));
+    fixture.refresh_and_detect_overlaps(fixture.ids(handles));
     check_single_pair(fixture.get_entity_overlaps(), moved, stationary);
     owner.teams[0] = Team::Green;
     auto const& queries{fixture.query_manager};
@@ -185,7 +186,7 @@ TEST(EntityAABBOverlaps, MovedEntityOverlapsStationaryEntity) {
     EXPECT_GT(radii[1], 0.f);
     EXPECT_EQ(radii[2], 0.f);
     fixture.query_manager.reset_frame_collision_events();
-    fixture.detect_overlaps(fixture.ids(handles));
+    fixture.refresh_and_detect_overlaps(fixture.ids(handles));
     tests::expect_equal(fixture.get_entity_overlaps().num(),
                         0,
                         "Overlap generation reads owner health without intermediary publication");
@@ -282,6 +283,35 @@ TEST(EntityAABBOverlaps, RefreshSpatialIndexDoesNotDetectOrAppendEvents) {
     tests::expect_equal(static_cast<std::int32_t>(events.batches.size()),
                         0,
                         "Refresh-only updates append no event batches");
+}
+
+TEST(EntityAABBOverlaps, DetectOverlapsUsesExistingSpatialIndex) {
+    OverlapFixture fixture;
+    auto const candidate{fixture.spawn({{0.f, 0.f, 0.f}})};
+    auto const stationary{fixture.spawn({{500.f, 0.f, 0.f}})};
+    fixture.finish_spawning();
+
+    fixture.owners.set(stationary, {{15.f, 0.f, 0.f}}, {}, 100);
+    fixture.owners.publish();
+    std::array const candidates{candidate};
+    {
+        ml::FrameScratchScope scratch_scope{fixture.frame_memory};
+        auto const overlaps{
+            fixture.query_manager.detect_overlaps(candidates, scratch_scope.scratch())};
+        EXPECT_EQ(overlaps.entity_entity_overlaps.num(), 0);
+    }
+
+    fixture.query_manager.refresh_spatial_index();
+    {
+        ml::FrameScratchScope scratch_scope{fixture.frame_memory};
+        auto const overlaps{
+            fixture.query_manager.detect_overlaps(candidates, scratch_scope.scratch())};
+        check_single_pair(overlaps.entity_entity_overlaps, candidate, stationary);
+    }
+
+    auto const events{fixture.query_manager.get_aabb_overlap_events()};
+    EXPECT_EQ(events.batches.size(), 2u);
+    check_single_pair(events.entity_entity_overlaps, candidate, stationary);
 }
 
 TEST(EntityAABBOverlaps, RotatedConservativeWorldBoundsUseExistingBoundsRules) {
@@ -596,7 +626,7 @@ TEST(EntityAABBOverlaps, ReinitialiseClearsResultsAndAllowsSubsequentUpdate) {
     std::array const rotations{Rotator3f{}};
     fixture.run_tick(handles, locations, rotations);
 
-    fixture.query_manager.initialise({40, 40, 40}, {{50.f, 50.f, 50.f}}, fixture.entity_bounds);
+    fixture.query_manager.initialise({{40, 40, 40}, {{50.f, 50.f, 50.f}}}, fixture.entity_bounds);
 
     auto const cleared_events{fixture.query_manager.get_aabb_overlap_events()};
     tests::expect_equal(cleared_events.entity_entity_overlaps.num(),
@@ -606,7 +636,7 @@ TEST(EntityAABBOverlaps, ReinitialiseClearsResultsAndAllowsSubsequentUpdate) {
                         0,
                         "Reinitialisation clears static overlap events");
 
-    fixture.detect_overlaps(fixture.ids(handles));
+    fixture.refresh_and_detect_overlaps(fixture.ids(handles));
     check_single_pair(fixture.get_entity_overlaps(), moved, stationary);
     check_single_static_overlap(fixture.get_static_overlaps(), moved, static_index);
 }
@@ -645,7 +675,7 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
     tests::expect_true(reset_events.entity_static_overlaps.entities.data() == static_storage,
                        "Static event storage is retained across reset");
 
-    fixture.detect_overlaps(fixture.ids(handles));
+    fixture.refresh_and_detect_overlaps(fixture.ids(handles));
     auto const recaptured_events{fixture.query_manager.get_aabb_overlap_events()};
     check_single_pair(recaptured_events.entity_entity_overlaps, moved, stationary);
     check_single_static_overlap(recaptured_events.entity_static_overlaps, moved, static_index);
@@ -655,7 +685,7 @@ TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
     tests::expect_true(recaptured_events.entity_static_overlaps.entities.data() == static_storage,
                        "Static event storage is reused after recapture");
 
-    fixture.detect_overlaps(fixture.ids(handles));
+    fixture.refresh_and_detect_overlaps(fixture.ids(handles));
     auto const appended_events{fixture.query_manager.get_aabb_overlap_events()};
     tests::expect_equal(appended_events.entity_entity_overlaps.num(),
                         2,
@@ -711,7 +741,7 @@ TEST(EntityAABBOverlaps, InvalidDeadAndRetiredCandidatesAreIgnored) {
 
     std::array const overlap_candidates{
         EntityUniqueId{}, EntityUniqueId::make(999, EntityType::PlayerShip), removed_id, live};
-    fixture.detect_overlaps(std::span<EntityUniqueId const>{
+    fixture.refresh_and_detect_overlaps(std::span<EntityUniqueId const>{
         overlap_candidates.data(),
         static_cast<std::size_t>(static_cast<std::int32_t>(overlap_candidates.size()))});
 

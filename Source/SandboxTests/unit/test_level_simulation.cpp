@@ -50,8 +50,7 @@ static_assert(
 namespace {
 auto make_battle() -> ::ioj::sim::LevelSimInitData {
     ::ioj::sim::LevelSimInitData data;
-    data.grid_dimensions = {16, 16, 4};
-    data.cell_size = {1000.f, 1000.f, 1000.f};
+    data.grid_geometry = {{16, 16, 4}, {1000.f, 1000.f, 1000.f}};
     data.lasers.n_preallocated_instances = 16;
     data.capital_ships.fighter_spawn_slots = 0;
     auto& spawn_storage{data.level_events.initial_spawns.capital_spawns};

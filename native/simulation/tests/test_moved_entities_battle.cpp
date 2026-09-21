@@ -20,8 +20,7 @@ struct FighterTransformSnapshot {
 auto make_long_running_battle() -> LevelSimInitData {
     LevelSimInitData data;
     data.clock_settings.tick_rate = 60.0;
-    data.grid_dimensions = {96, 96, 32};
-    data.cell_size = {{2000.f, 2000.f, 5000.f}};
+    data.grid_geometry = {{96, 96, 32}, {{2000.f, 2000.f, 5000.f}}};
     data.lasers.n_preallocated_instances = 256;
     data.fighters.speed = 3000.f;
     data.fighters.laser.damage = 0;

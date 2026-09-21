@@ -98,8 +98,8 @@ auto make_reference_level_simulation_data() -> ReferenceLevelSimulationData {
     data.clock_settings.tick_rate = 6.00000000000000000e+01;
     data.clock_settings.time_scale = 1.00000000000000000e+00;
     data.clock_settings.accumulator = 0.00000000000000000e+00;
-    data.grid_dimensions = {400, 400, 5};
-    data.cell_size = {{5.000000000e+03f, 5.000000000e+03f, 2.000000000e+04f}};
+    data.grid_geometry.dimensions = {400, 400, 5};
+    data.grid_geometry.cell_dimensions = {{5.000000000e+03f, 5.000000000e+03f, 2.000000000e+04f}};
     data.turrets.fire_point_offset = {{0.000000000e+00f, 0.000000000e+00f, 1.560000000e+03f}};
     player.team = static_cast<decltype(player.team)>(0);
     player.flight_mode = static_cast<decltype(player.flight_mode)>(1);

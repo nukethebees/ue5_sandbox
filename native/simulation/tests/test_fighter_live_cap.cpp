@@ -13,8 +13,7 @@ auto make_cap_battle(std::span<Team const> const capital_teams,
                      std::int32_t const spawn_slots,
                      float const spawn_cooldown = 60.f) -> LevelSimInitData {
     LevelSimInitData data;
-    data.grid_dimensions = {16, 16, 4};
-    data.cell_size = {{1000.f, 1000.f, 1000.f}};
+    data.grid_geometry = {{16, 16, 4}, {{1000.f, 1000.f, 1000.f}}};
     data.lasers.n_preallocated_instances = 32;
     data.overlap_response.damage_per_overlap_detection = 1;
     data.fighters.health = 1000;

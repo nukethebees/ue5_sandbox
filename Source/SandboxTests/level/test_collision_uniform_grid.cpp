@@ -56,10 +56,13 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         ::ioj::sim::AgentAccessor agents{indexes, health_table};
         ::ioj::sim::collision::CollisionUniformGrid grid{agents};
         auto const configured_dims{config.calculate_grid_dimensions()};
-        grid.set_grid_dims({configured_dims.X, configured_dims.Y, configured_dims.Z});
-        grid.set_cell_dims(ml::to_native(config.cell_size));
+        auto const grid_geometry{::ioj::sim::collision::GridGeometry{
+            {configured_dims.X, configured_dims.Y, configured_dims.Z},
+            ml::to_native(config.cell_size)}};
+        grid.set_geometry(grid_geometry);
         ml::ioj::FLevelCollisionHost collision_host;
-        grid.set_static_aabbs(collision_host.initialise_static_geometry(*world, config));
+        grid.set_static_aabbs(
+            collision_host.initialise_static_geometry(*world, config, grid_geometry));
 
         auto const sources{collision_host.get_static_collision_sources()};
         auto const source_count{sources.num()};
@@ -88,7 +91,8 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         checks.is_true(unsupported_component->GetCollisionEnabled() == ECollisionEnabled::QueryOnly,
                        TEXT("Failed harvest leaves Unreal collision enabled"));
 
-        grid.set_static_aabbs(collision_host.initialise_static_geometry(*world, config));
+        grid.set_static_aabbs(
+            collision_host.initialise_static_geometry(*world, config, grid_geometry));
         checks.are_equal(source_count,
                          collision_host.get_static_collision_sources().num(),
                          TEXT("Reinitialization restores and reharvests static geometry"));

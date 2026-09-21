@@ -217,17 +217,13 @@ auto FLevelCollisionHost::extract_entity_bounds(EntityMeshes const& meshes)
     }
     return result;
 }
-auto FLevelCollisionHost::initialise_static_geometry(UWorld& world,
-                                                     FCollisionGridConfig const& config)
-    -> ::ioj::sim::collision::WorldAABBs {
+auto FLevelCollisionHost::initialise_static_geometry(
+    UWorld& world,
+    FCollisionGridConfig const& config,
+    ::ioj::sim::collision::GridGeometry const grid_geometry) -> ::ioj::sim::collision::WorldAABBs {
     TRACE_CPUPROFILER_EVENT_SCOPE(
         Sandbox::ioj::sim::FLevelCollisionHost::initialise_static_geometry);
     checkf(config.is_valid(), TEXT("Cannot harvest static collision with an invalid grid config"));
-    auto const dimensions{config.calculate_grid_dimensions()};
-    auto const grid_geometry{::ioj::sim::collision::GridGeometry{
-        {dimensions.X, dimensions.Y, dimensions.Z},
-        ml::make_vector3f(config.cell_size.X, config.cell_size.Y, config.cell_size.Z)}};
-
     auto const previous_sources{static_collision_sources_.get_const_view()};
     auto const previous_source_count{previous_sources.num()};
     for (int32 source_index{}; source_index < previous_source_count; ++source_index) {
