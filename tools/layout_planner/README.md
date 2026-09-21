@@ -335,6 +335,11 @@ then changes the field's type/kind metadata through the normal packed replacemen
 durable semantic changes remain separate Undo/Redo steps. If field binding is rejected, the
 just-created enum is rolled back rather than leaving an orphan declaration. Choosing an existing
 declared enum in the type chooser likewise updates the field type and enum kind together.
+Signed and unsigned integer fields offer the parallel **Create integer scalar for selected
+field...** workflow. It prefills the field's live range, signedness, width policy, and named codes;
+**Create and use** moves those domain facts into a reusable shared scalar while preserving the
+field's physical placement width and relationship. Creation and binding remain separate Undo/Redo
+steps, with the new scalar rolled back if binding fails.
 
 Standalone integer-scalar authoring uses **+ New integer scalar** and an existing `scalar-module`.
 The declaration records a signed or unsigned inclusive live range, auto or explicit 1-64-bit

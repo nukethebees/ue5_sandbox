@@ -4598,6 +4598,104 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             ImGui::TextDisabled("Creates a shared enum declaration, then binds this field.");
         }
 
+        auto scalar_module_index{std::optional<std::size_t>{}};
+        auto fallback_scalar_module_index{std::optional<std::size_t>{}};
+        for (std::size_t module_index{}; module_index < modules.size(); ++module_index) {
+            auto const* scalar_module{
+                std::get_if<codegen::ScalarModuleSchema>(&modules[module_index])};
+            if (scalar_module == nullptr) {
+                continue;
+            }
+            if (!fallback_scalar_module_index.has_value()) {
+                fallback_scalar_module_index = module_index;
+            }
+            if (scalar_module->settings.namespace_name.value_or("") ==
+                node.identity.namespace_name) {
+                scalar_module_index = module_index;
+                break;
+            }
+        }
+        if (!scalar_module_index.has_value()) {
+            scalar_module_index = fallback_scalar_module_index;
+        }
+        auto const scalar_compatible{
+            selected_resolved_field != nullptr && selected_integer_scalar == nullptr &&
+            (selected_schema_field->kind == codegen::PackedFieldKind::signed_integer ||
+             selected_schema_field->kind == codegen::PackedFieldKind::unsigned_integer)};
+        ImGui::BeginDisabled(!scalar_module_index.has_value() || !scalar_compatible);
+        if (ImGui::Button("Create integer scalar for selected field...")) {
+            new_integer_scalar_module_index_ = *scalar_module_index;
+            auto const& scalar_module{
+                std::get<codegen::ScalarModuleSchema>(modules[new_integer_scalar_module_index_])};
+            auto const scalar_namespace{scalar_module.settings.namespace_name.value_or("")};
+            auto const suggested_name{suggested_type_name(selected_schema_field->name, "Value")};
+            auto unique_name{suggested_name};
+            auto suffix_number{std::size_t{1}};
+            while (std::ranges::any_of(document_->types().types(), [&](auto const& candidate) {
+                return candidate.identity.namespace_name == scalar_namespace &&
+                       candidate.identity.name == unique_name;
+            })) {
+                unique_name = suggested_name + std::to_string(suffix_number++);
+            }
+            std::snprintf(new_integer_scalar_name_.data(),
+                          new_integer_scalar_name_.size(),
+                          "%s",
+                          unique_name.c_str());
+
+            new_integer_scalar_signed_ =
+                selected_schema_field->kind == codegen::PackedFieldKind::signed_integer;
+            new_integer_scalar_width_auto_ = !selected_schema_field->bits.has_value();
+            new_integer_scalar_bit_width_ = selected_resolved_field->bit_width;
+
+            auto minimum{codegen::PackedIntegerValue{0}};
+            auto maximum{codegen::PackedIntegerValue{0}};
+            if (selected_schema_field->minimum_value.has_value() &&
+                selected_schema_field->maximum_value.has_value()) {
+                minimum = *selected_schema_field->minimum_value;
+                maximum = *selected_schema_field->maximum_value;
+            } else if (new_integer_scalar_signed_) {
+                auto const negative_limit{selected_resolved_field->bit_width == 64
+                                              ? std::uint64_t{1} << 63
+                                              : std::uint64_t{1}
+                                                    << (selected_resolved_field->bit_width - 1)};
+                minimum = codegen::PackedIntegerValue::from_parts(true, negative_limit);
+                maximum =
+                    codegen::PackedIntegerValue{static_cast<std::int64_t>(negative_limit - 1)};
+            } else {
+                maximum = codegen::PackedIntegerValue{
+                    selected_resolved_field->bit_width == 64
+                        ? (std::numeric_limits<std::uint64_t>::max)()
+                        : (std::uint64_t{1} << selected_resolved_field->bit_width) - 1};
+            }
+            auto const minimum_text{codegen::format_packed_integer(minimum)};
+            auto const maximum_text{codegen::format_packed_integer(maximum)};
+            std::snprintf(new_integer_scalar_minimum_.data(),
+                          new_integer_scalar_minimum_.size(),
+                          "%s",
+                          minimum_text.c_str());
+            std::snprintf(new_integer_scalar_maximum_.data(),
+                          new_integer_scalar_maximum_.size(),
+                          "%s",
+                          maximum_text.c_str());
+            pending_packed_integer_scalar_binding_ = PendingPackedIntegerScalarBinding{
+                .packed_declaration = *declaration, .field_name = selected_segment_name};
+            open_new_integer_scalar_dialog_ = true;
+        }
+        ImGui::EndDisabled();
+        if (!scalar_module_index.has_value()) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("No scalar module is available.");
+        } else if (selected_integer_scalar != nullptr) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("This field already uses a shared integer scalar.");
+        } else if (!scalar_compatible) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("Requires a resolved signed or unsigned integer field.");
+        } else {
+            ImGui::SameLine();
+            ImGui::TextDisabled("Moves this field's domain into a shared scalar declaration.");
+        }
+
         ImGui::SeparatorText("Semantic relationship");
         ImGui::SetNextItemWidth(180.0F);
         auto const current_kind{semantic_relationship_kinds[static_cast<std::size_t>(

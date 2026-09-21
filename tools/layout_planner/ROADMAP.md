@@ -128,6 +128,10 @@ through the existing enum-create and packed-replace histories. The same shared t
 unique cross-module declarations using qualified source spellings and marks ambiguous spellings
 nonselectable rather than allowing them to resolve as external leaves. Choosing an existing enum
 updates the packed field type and kind together. A rejected contextual bind rolls back the new enum.
+Signed/unsigned packed fields can likewise create a shared integer scalar with the current range,
+signedness, width policy, and named codes prefilled, then bind through the existing scalar-create
+and packed-replace histories. Placement width and field relationship remain intact, two-step
+undo/redo is preserved, and a rejected bind rolls the new scalar back.
 Ordinary standard-library SoA array columns now offer the corresponding shared-record workflow. The
 record is initialized with the column's current semantic type, then the existing `CreateRecord` and
 `ReplaceSoa` histories bind it using qualified source spelling. Column kind, generation metadata,
@@ -487,9 +491,10 @@ multiline conversion rows and comments; incompatible policies never enter histor
 ## 3. Packed-value and bit-field authoring
 
 The initial end-to-end slice, including explicit reserved-bit regions and named field sentinel
-codes, is implemented. Reusable standalone named-value/range-constrained integer scalars and an
-initial explicit linear-quantized representation are implemented separately; packed/container
-placement and machine API lowering remain future work.
+codes, is implemented. Reusable standalone named-value/range-constrained integer scalars can now be
+placed in packed fields with shared domain validation, analysis, generated accessors, and contextual
+creation/binding. Initial explicit linear-quantized representations remain standalone; their packed
+or container placement and machine API lowering remain future work.
 
 - Create packed values with a backing storage type and optional invalid raw value.
 - Add, remove, duplicate, and reorder fields.

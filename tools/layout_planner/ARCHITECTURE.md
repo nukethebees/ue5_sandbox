@@ -709,6 +709,12 @@ integer scalar's shared domain; enum fields consume the shared enum domain width
 `PackedField` retains an auto-provenance flag alongside its concrete
 width, so validation, layout, variants, visualization, and C++ lowering never need a magic numeric
 sentinel for "auto".
+The contextual packed-field scalar workflow is orchestration over those same shared commands, not a
+new model. It creates an `IntegerScalarSchema` from the field's current range, signedness, width
+policy, and named codes, then applies a separate `ReplacePackedValue` that clears only the duplicated
+field-local domain. Physical placement width and field relationship remain on the field. A failed
+bind immediately undoes scalar creation, while a successful pair stays as two ordinary history
+steps and follows the existing preview/save/reload path.
 Packed semantic fields and standalone `integer-scalar` declarations may own one source-backed
 relationship with a declared target. `SemanticRelationSchema` and `SemanticRelationship` are shared
 schema/graph values rather than packed- or planner-specific annotations. Kinds include `index_into`,

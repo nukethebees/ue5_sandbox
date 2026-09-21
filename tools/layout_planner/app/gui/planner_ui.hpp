@@ -50,6 +50,11 @@ class PlannerUi {
         std::string field_name;
     };
 
+    struct PendingPackedIntegerScalarBinding {
+        lispb::schema::DeclarationId packed_declaration;
+        std::string field_name;
+    };
+
     struct PendingSoaRecordBinding {
         lispb::schema::DeclarationId soa_declaration;
         std::string column_name;
@@ -119,6 +124,7 @@ class PlannerUi {
                              std::optional<lispb::schema::TypeIdentity> selection = std::nullopt)
         -> bool;
     auto bind_new_enum_to_packed_field(lispb::schema::TypeIdentity const& enumeration) -> bool;
+    auto bind_new_integer_scalar_to_packed_field(lispb::schema::TypeIdentity const& scalar) -> bool;
     auto bind_new_record_to_soa_column(lispb::schema::TypeIdentity const& record) -> bool;
     auto apply_project_edit(lispb::ProjectEditCommand command) -> bool;
     [[nodiscard]] auto project_history_active() const -> bool;
@@ -500,6 +506,7 @@ class PlannerUi {
     std::optional<PendingPackedEnumBinding> pending_packed_enum_binding_;
     bool open_new_packed_value_dialog_{};
     bool open_new_integer_scalar_dialog_{};
+    std::optional<PendingPackedIntegerScalarBinding> pending_packed_integer_scalar_binding_;
     bool open_new_linear_quantized_dialog_{};
     bool open_new_integer_varint_dialog_{};
     bool open_new_fixed_point_dialog_{};

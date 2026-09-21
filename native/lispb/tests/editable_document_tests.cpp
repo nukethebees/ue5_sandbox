@@ -2963,6 +2963,135 @@ TEST(EditableSchemaDocument, CreatesEnumAndBindsPackedFieldAcrossModules) {
     EXPECT_EQ(reloaded_field.kind, codegen::PackedFieldKind::enumeration);
 }
 
+TEST(EditableSchemaDocument, CreatesIntegerScalarAndBindsPackedFieldAcrossModules) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const existing_scalar{
+        declaration_id(document, "authored_scalars", "ExistingScalar", "authored")};
+    auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
+    auto const scalar{document.allocate_declaration_id()};
+
+    auto const* original_packed{document.packed_value_schema(packed)};
+    ASSERT_NE(original_packed, nullptr);
+    auto const original_field{std::get<codegen::PackedFieldSchema>(original_packed->segments[1])};
+    ASSERT_EQ(original_field.name, "counter");
+    ASSERT_TRUE(original_field.relationship.has_value());
+    auto expect_original_relationship =
+        [&](std::optional<codegen::SemanticRelationSchema> const& relationship) {
+            ASSERT_TRUE(relationship.has_value());
+            EXPECT_EQ(relationship->kind, original_field.relationship->kind);
+            EXPECT_EQ(relationship->target.name, original_field.relationship->target.name);
+            EXPECT_EQ(relationship->target.suffix, original_field.relationship->target.suffix);
+            EXPECT_EQ(relationship->target.nested, original_field.relationship->target.nested);
+            EXPECT_EQ(relationship->unit, original_field.relationship->unit);
+        };
+
+    auto created{document.apply(CreateIntegerScalar{
+        .declaration = scalar,
+        .module_index = document.declaration(existing_scalar)->module_index,
+        .schema =
+            codegen::IntegerScalarSchema{.name = "CounterValue",
+                                         .signedness = false,
+                                         .minimum_value = *original_field.minimum_value,
+                                         .maximum_value = *original_field.maximum_value,
+                                         .bit_width = 8,
+                                         .named_codes = original_field.named_codes,
+                                         .relationship = std::nullopt,
+                                         .cpp_emission = codegen::IntegerScalarCppEmission::none,
+                                         .cpp_type = std::nullopt},
+        .insertion_index = std::nullopt})};
+    ASSERT_TRUE(created.has_value()) << created.error().message;
+    ASSERT_TRUE(*created);
+
+    auto replacement{*document.packed_value_schema(packed)};
+    auto& field{std::get<codegen::PackedFieldSchema>(replacement.segments[1])};
+    field.type = codegen::TypeRef{"authored::CounterValue"};
+    field.kind = codegen::PackedFieldKind::unsigned_integer;
+    field.range_helper = false;
+    field.minimum_value.reset();
+    field.maximum_value.reset();
+    field.named_codes.clear();
+    auto bound{document.apply(
+        ReplacePackedValue{.declaration = packed, .schema = std::move(replacement)})};
+    ASSERT_TRUE(bound.has_value()) << bound.error().message;
+    ASSERT_TRUE(*bound);
+
+    auto const scalar_type{document.types().find(document.declaration(scalar)->identity)};
+    ASSERT_TRUE(scalar_type.has_value());
+    auto const& bound_field{std::get<PackedField>(packed_type(document, packed).segments[1])};
+    EXPECT_EQ(bound_field.semantic_type.type, *scalar_type);
+    EXPECT_EQ(bound_field.bit_width, 8U);
+    EXPECT_FALSE(bound_field.bit_width_auto);
+    EXPECT_EQ(bound_field.minimum_value, codegen::PackedIntegerValue{0});
+    EXPECT_EQ(bound_field.maximum_value, codegen::PackedIntegerValue{100});
+    ASSERT_EQ(bound_field.named_codes.size(), 2U);
+    EXPECT_EQ(bound_field.named_codes[0].name, "Invalid");
+    EXPECT_TRUE(bound_field.named_codes[0].sentinel);
+    auto const& bound_schema_field{
+        std::get<codegen::PackedFieldSchema>(document.packed_value_schema(packed)->segments[1])};
+    EXPECT_EQ(bound_schema_field.bits, original_field.bits);
+    expect_original_relationship(bound_schema_field.relationship);
+    EXPECT_FALSE(bound_schema_field.minimum_value.has_value());
+    EXPECT_TRUE(bound_schema_field.named_codes.empty());
+
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_NE(document.declaration(scalar), nullptr);
+    auto const& restored_field{
+        std::get<codegen::PackedFieldSchema>(document.packed_value_schema(packed)->segments[1])};
+    EXPECT_EQ(restored_field.type.name, original_field.type.name);
+    EXPECT_EQ(restored_field.type.suffix, original_field.type.suffix);
+    EXPECT_EQ(restored_field.type.nested, original_field.type.nested);
+    EXPECT_EQ(restored_field.minimum_value, original_field.minimum_value);
+    ASSERT_EQ(restored_field.named_codes.size(), original_field.named_codes.size());
+    for (std::size_t index{}; index < original_field.named_codes.size(); ++index) {
+        EXPECT_EQ(restored_field.named_codes[index].name, original_field.named_codes[index].name);
+        EXPECT_EQ(restored_field.named_codes[index].value, original_field.named_codes[index].value);
+        EXPECT_EQ(restored_field.named_codes[index].sentinel,
+                  original_field.named_codes[index].sentinel);
+    }
+    expect_original_relationship(restored_field.relationship);
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.declaration(scalar), nullptr);
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.redo().value());
+    auto const rebound_scalar_type{document.types().find(document.declaration(scalar)->identity)};
+    ASSERT_TRUE(rebound_scalar_type.has_value());
+    EXPECT_EQ(std::get<PackedField>(packed_type(document, packed).segments[1]).semantic_type.type,
+              *rebound_scalar_type);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find("(integer-scalar CounterValue"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":bit-width 8"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("authored::CounterValue"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the packed field note."), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the future segment note."), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_scalar{
+        declaration_id(reloaded, "authored_scalars", "CounterValue", "authored")};
+    auto const reloaded_packed{
+        declaration_id(reloaded, "authored_packed", "ExistingPacked", "authored")};
+    auto const resolved_scalar_type{
+        reloaded.types().find(reloaded.declaration(reloaded_scalar)->identity)};
+    ASSERT_TRUE(resolved_scalar_type.has_value());
+    auto const& reloaded_field{
+        std::get<PackedField>(packed_type(reloaded, reloaded_packed).segments[1])};
+    EXPECT_EQ(reloaded_field.semantic_type.type, *resolved_scalar_type);
+    EXPECT_EQ(reloaded_field.bit_width, 8U);
+    EXPECT_EQ(reloaded_field.minimum_value, codegen::PackedIntegerValue{0});
+    EXPECT_EQ(reloaded_field.maximum_value, codegen::PackedIntegerValue{100});
+    ASSERT_EQ(reloaded_field.named_codes.size(), 2U);
+    auto const& reloaded_schema_field{std::get<codegen::PackedFieldSchema>(
+        reloaded.packed_value_schema(reloaded_packed)->segments[1])};
+    expect_original_relationship(reloaded_schema_field.relationship);
+    EXPECT_FALSE(reloaded_schema_field.minimum_value.has_value());
+    EXPECT_TRUE(reloaded_schema_field.named_codes.empty());
+}
+
 TEST(EditableSchemaDocument, BindsPackedFieldToSharedIntegerScalarDomain) {
     TemporarySchema files;
     auto document{files.load()};

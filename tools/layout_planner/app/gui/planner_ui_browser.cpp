@@ -820,6 +820,78 @@ auto PlannerUi::bind_new_enum_to_packed_field(TypeIdentity const& enumeration) -
     return true;
 }
 
+auto PlannerUi::bind_new_integer_scalar_to_packed_field(TypeIdentity const& scalar) -> bool {
+    if (!pending_packed_integer_scalar_binding_.has_value()) {
+        return true;
+    }
+    auto const binding{*pending_packed_integer_scalar_binding_};
+    auto const* packed_info{document_->declaration(binding.packed_declaration)};
+    auto const* packed_schema{document_->packed_value_schema(binding.packed_declaration)};
+    auto const packed_identity{packed_info == nullptr ? std::optional<TypeIdentity>{}
+                                                      : std::optional{packed_info->identity}};
+    auto rollback_creation = [&](std::string message) {
+        auto const rollback{document_->undo()};
+        if (rollback.has_value() && *rollback) {
+            sync_document_graph(packed_identity);
+            schema_edit_message_ = std::move(message) + " The new integer scalar was rolled back.";
+        } else if (!rollback.has_value()) {
+            schema_edit_message_ =
+                std::move(message) +
+                " The new integer scalar could not be rolled back: " + rollback.error().message;
+        } else {
+            schema_edit_message_ =
+                std::move(message) +
+                " The new integer scalar could not be rolled back because history did not change.";
+        }
+        return false;
+    };
+
+    if (packed_info == nullptr || packed_schema == nullptr) {
+        return rollback_creation("The packed declaration is no longer available.");
+    }
+    auto const scalar_declaration{document_->find_declaration(scalar)};
+    auto const* scalar_schema{scalar_declaration.has_value()
+                                  ? document_->integer_scalar_schema(*scalar_declaration)
+                                  : nullptr};
+    if (scalar_schema == nullptr) {
+        return rollback_creation("The new integer scalar is no longer available.");
+    }
+
+    auto replacement{*packed_schema};
+    auto const segment{std::ranges::find_if(replacement.segments, [&](auto const& candidate) {
+        return codegen::packed_segment_name(candidate) == binding.field_name;
+    })};
+    if (segment == replacement.segments.end()) {
+        return rollback_creation("The selected packed field is no longer available.");
+    }
+    auto* field{std::get_if<codegen::PackedFieldSchema>(&*segment)};
+    if (field == nullptr) {
+        return rollback_creation("The selected packed segment is no longer a field.");
+    }
+
+    field->type = codegen::TypeRef{.name = scalar.namespace_name.empty()
+                                             ? scalar.name
+                                             : scalar.namespace_name + "::" + scalar.name,
+                                   .suffix = {},
+                                   .nested = std::nullopt};
+    field->kind = scalar_schema->signedness ? codegen::PackedFieldKind::signed_integer
+                                            : codegen::PackedFieldKind::unsigned_integer;
+    field->range_helper = false;
+    field->minimum_value.reset();
+    field->maximum_value.reset();
+    field->named_codes.clear();
+    if (!apply_document_edit(ReplacePackedValue{.declaration = binding.packed_declaration,
+                                                .schema = std::move(replacement)},
+                             packed_info->identity)) {
+        return rollback_creation("The integer scalar was valid, but binding the packed field "
+                                 "failed: " +
+                                 schema_edit_message_);
+    }
+
+    selected_field_ = binding.field_name;
+    return true;
+}
+
 void PlannerUi::draw_new_packed_value_dialog() {
     if (open_new_packed_value_dialog_) {
         ImGui::OpenPopup("New packed value");
@@ -982,6 +1054,14 @@ void PlannerUi::draw_new_integer_scalar_dialog() {
         return;
     }
 
+    if (pending_packed_integer_scalar_binding_.has_value()) {
+        ImGui::TextWrapped(
+            "Create a shared integer-scalar domain and bind packed field '%s' to it. Creation and "
+            "binding are separate undoable history steps.",
+            pending_packed_integer_scalar_binding_->field_name.c_str());
+        ImGui::Separator();
+    }
+
     auto const& modules{document_->manifest().modules};
     auto first_scalar_module{std::optional<std::size_t>{}};
     for (std::size_t index{}; index < modules.size(); ++index) {
@@ -1035,7 +1115,9 @@ void PlannerUi::draw_new_integer_scalar_dialog() {
                          (new_integer_scalar_width_auto_ || (new_integer_scalar_bit_width_ >= 1 &&
                                                              new_integer_scalar_bit_width_ <= 64))};
         ImGui::BeginDisabled(!ready);
-        if (ImGui::Button("Create")) {
+        auto const create_label{
+            pending_packed_integer_scalar_binding_.has_value() ? "Create and use" : "Create"};
+        if (ImGui::Button(create_label)) {
             auto const& module{
                 std::get<codegen::ScalarModuleSchema>(modules[new_integer_scalar_module_index_])};
             auto const name{std::string{new_integer_scalar_name_.data()}};
@@ -1045,6 +1127,28 @@ void PlannerUi::draw_new_integer_scalar_dialog() {
                              .namespace_name = module.settings.namespace_name.value_or(""),
                              .name = name}};
             auto const id{document_->allocate_declaration_id()};
+            auto selection{std::optional<TypeIdentity>{identity}};
+            auto named_codes{std::vector<codegen::PackedNamedCodeSchema>{}};
+            if (pending_packed_integer_scalar_binding_.has_value()) {
+                auto const& binding{*pending_packed_integer_scalar_binding_};
+                if (auto const* packed_info{document_->declaration(binding.packed_declaration)};
+                    packed_info != nullptr) {
+                    selection = packed_info->identity;
+                }
+                if (auto const* packed_schema{
+                        document_->packed_value_schema(binding.packed_declaration)};
+                    packed_schema != nullptr) {
+                    auto const segment{
+                        std::ranges::find_if(packed_schema->segments, [&](auto const& candidate) {
+                            return codegen::packed_segment_name(candidate) == binding.field_name;
+                        })};
+                    if (segment != packed_schema->segments.end()) {
+                        if (auto const* field{std::get_if<codegen::PackedFieldSchema>(&*segment)}) {
+                            named_codes = field->named_codes;
+                        }
+                    }
+                }
+            }
             if (apply_document_edit(
                     CreateIntegerScalar{
                         .declaration = id,
@@ -1058,12 +1162,13 @@ void PlannerUi::draw_new_integer_scalar_dialog() {
                                 .bit_width = new_integer_scalar_width_auto_
                                                ? std::nullopt
                                                : std::optional{new_integer_scalar_bit_width_},
-                                .named_codes = {},
+                                .named_codes = std::move(named_codes),
                                 .relationship = std::nullopt,
                                 .cpp_emission = codegen::IntegerScalarCppEmission::none,
                                 .cpp_type = std::nullopt},
                         .insertion_index = std::nullopt},
-                    identity)) {
+                    selection) &&
+                bind_new_integer_scalar_to_packed_field(identity)) {
                 new_integer_scalar_name_.fill('\0');
                 std::snprintf(new_integer_scalar_minimum_.data(),
                               new_integer_scalar_minimum_.size(),
@@ -1077,6 +1182,7 @@ void PlannerUi::draw_new_integer_scalar_dialog() {
                 new_integer_scalar_width_auto_ = true;
                 new_integer_scalar_bit_width_ = 8;
                 selected_integer_scalar_code_.clear();
+                pending_packed_integer_scalar_binding_.reset();
                 ImGui::CloseCurrentPopup();
             }
         }
@@ -1088,6 +1194,7 @@ void PlannerUi::draw_new_integer_scalar_dialog() {
         }
     }
     if (ImGui::Button("Cancel")) {
+        pending_packed_integer_scalar_binding_.reset();
         ImGui::CloseCurrentPopup();
     }
     if (!schema_edit_message_.empty()) {
