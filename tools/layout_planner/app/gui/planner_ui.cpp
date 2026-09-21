@@ -1310,6 +1310,9 @@ void PlannerUi::draw_diagnostics_panel() {
     if (!diagnostics_view_open_) {
         return;
     }
+    if (std::exchange(focus_diagnostics_view_, false)) {
+        ImGui::SetNextWindowFocus();
+    }
     auto const was_open{diagnostics_view_open_};
     if (!ImGui::Begin("Diagnostics", &diagnostics_view_open_)) {
         ImGui::End();
@@ -1383,17 +1386,37 @@ void PlannerUi::draw_diagnostics_panel() {
     append_analysis("SoA target comparison", soa_target_comparison_);
     append_analysis("SoA access", soa_access_analysis_);
     append_analysis("SoA target access comparison", soa_target_access_comparison_);
-    if (content.empty()) {
+    if (content.empty() && schema_warning_message_.empty()) {
         ImGui::TextDisabled("No current diagnostics.");
     } else {
-        if (ImGui::Button("Copy all")) {
-            ImGui::SetClipboardText(content.c_str());
+        auto copy_text{content};
+        if (!schema_warning_message_.empty()) {
+            copy_text = "Warning\n" + schema_warning_message_;
+            if (!content.empty()) {
+                copy_text += "\n\n" + content;
+            }
         }
-        ImGui::InputTextMultiline("##diagnostics-text",
-                                  content.data(),
-                                  content.size() + 1,
-                                  ImGui::GetContentRegionAvail(),
-                                  ImGuiInputTextFlags_ReadOnly);
+        if (ImGui::Button("Copy all")) {
+            ImGui::SetClipboardText(copy_text.c_str());
+        }
+        if (!schema_warning_message_.empty()) {
+            ImGui::SeparatorText("Warning");
+            ImGui::PushStyleColor(ImGuiCol_Text,
+                                  detail::diagnostic_color(DiagnosticSeverity::warning));
+            ImGui::InputTextMultiline("##schema-warning",
+                                      schema_warning_message_.data(),
+                                      schema_warning_message_.size() + 1,
+                                      {0.0F, ImGui::GetTextLineHeightWithSpacing() * 4.0F},
+                                      ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_WordWrap);
+            ImGui::PopStyleColor();
+        }
+        if (!content.empty()) {
+            ImGui::InputTextMultiline("##diagnostics-text",
+                                      content.data(),
+                                      content.size() + 1,
+                                      ImGui::GetContentRegionAvail(),
+                                      ImGuiInputTextFlags_ReadOnly);
+        }
     }
 
     ImGui::End();
@@ -1686,6 +1709,7 @@ auto PlannerUi::load_project(std::filesystem::path const& path,
 }
 
 void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
+    schema_warning_message_.clear();
     project_path_ = std::move(loaded.project_path);
     target_name_ = std::move(loaded.target_name);
     use_builtin_target_profile(false);

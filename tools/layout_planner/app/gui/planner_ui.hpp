@@ -441,6 +441,7 @@ class PlannerUi {
     std::string enum_editor_value_;
     std::array<char, 128> enum_underlying_type_{"std::uint8_t"};
     std::string schema_edit_message_;
+    std::string schema_warning_message_;
     std::size_t new_enum_module_index_{};
     std::size_t new_packed_module_index_{};
     std::size_t new_integer_scalar_module_index_{};
@@ -541,6 +542,7 @@ class PlannerUi {
     bool open_new_soa_dialog_{};
     bool source_view_open_{};
     bool diagnostics_view_open_{true};
+    bool focus_diagnostics_view_{};
     bool focus_source_view_{};
     bool open_project_dialog_{};
     bool open_new_project_dialog_{};
