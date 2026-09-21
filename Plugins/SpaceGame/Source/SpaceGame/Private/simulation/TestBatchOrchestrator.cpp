@@ -581,10 +581,8 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         on_proxy_entities_bound.Broadcast(proxy_entities);
         proxy_build->destroy_proxy_actors();
     }
-    auto static_bounds{world_collision_.initialise_static_geometry(
-        *world,
-        level_config->collision_grid,
-        get_spatial_query_manager().get_collision_system().get_uniform_grid())};
+    auto static_bounds{
+        world_collision_.initialise_static_geometry(*world, level_config->collision_grid)};
     level_simulation_->set_static_collision(MoveTemp(static_bounds));
 
     telemetry_environment_ = make_level_telemetry_environment(*world);
@@ -766,10 +764,15 @@ void ATestBatchOrchestrator::update_collision_bounds_visualization() {
         return;
     }
 
-    auto const* const collision_system{presentation_enabled && level_simulation_.IsSet()
-                                           ? &get_spatial_query_manager().get_collision_system()
-                                           : nullptr};
-    collision_grid_visualization->update_collision_bounds(collision_system);
+    if (!presentation_enabled || !level_simulation_.IsSet()) {
+        collision_grid_visualization->clear_collision_bounds();
+        return;
+    }
+
+    auto const& spatial_queries{get_spatial_query_manager()};
+    collision_grid_visualization->update_collision_bounds(
+        spatial_queries.get_entity_collision_bounds(),
+        spatial_queries.get_static_collision_bounds());
 }
 
 /* **************************************** */

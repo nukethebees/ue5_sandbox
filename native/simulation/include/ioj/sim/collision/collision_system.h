@@ -16,41 +16,40 @@ class FrameScratch;
 
 namespace ioj::sim {
 class AgentAccessor;
+struct SpatialQueryManager;
+struct SpatialQueryManagerTestAccess;
 }
 
 namespace ioj::sim::collision {
 
-struct CollisionSystem {
-  public:
+class CollisionSystem {
+  private:
+    friend struct ::ioj::sim::SpatialQueryManager;
+    friend struct ::ioj::sim::SpatialQueryManagerTestAccess;
+
     explicit CollisionSystem(AgentAccessor const& agents) noexcept;
     CollisionSystem(CollisionSystem const&) = delete;
     CollisionSystem(CollisionSystem&&) = delete;
     auto operator=(CollisionSystem const&) -> CollisionSystem& = delete;
     auto operator=(CollisionSystem&&) -> CollisionSystem& = delete;
 
-    void initialise(EntityAABBs const& bounds);
-    auto update(std::span<EntityUniqueId const> collision_dirty_entities, ml::FrameScratch& scratch)
-        -> DetectedOverlapsView;
+    void initialise(CellCoord grid_dimensions, Vector3f cell_size, EntityAABBs const& bounds);
+    void set_static_collision(WorldAABBs bounds);
+    auto add_static_collision_aabb(Vector3f min_point, Vector3f max_point) -> StaticGeometryIndex;
 
-    void reset_frame_events();
-    void refresh_queries();
+    void refresh_spatial_index();
+    auto detect_overlaps(std::span<EntityUniqueId const> overlap_candidates,
+                         ml::FrameScratch& scratch) -> DetectedOverlapsView;
+
+    void reset_frame_collision_events();
     auto get_aabb_overlap_events() const -> AABBOverlapEventsView {
         return overlap_event_storage_.get_view();
     }
+    auto get_entity_collision_bounds() const -> WorldAABBsColumnsConstView;
+    auto get_static_collision_bounds() const -> WorldAABBsColumnsConstView;
 
-    auto get_entity_aabbs() const noexcept -> EntityAABBs const& { return entity_aabbs_; }
-    auto get_entity_entity_overlaps() const -> EntityEntityOverlaps::ConstView {
-        return entity_entity_overlaps_.get_const_view();
-    }
-    auto get_entity_static_overlaps() const -> EntityStaticOverlaps::ConstView {
-        return entity_static_overlaps_.get_const_view();
-    }
-    auto get_uniform_grid() noexcept -> CollisionUniformGrid& { return uniform_grid_; }
-    auto get_uniform_grid() const noexcept -> CollisionUniformGrid const& { return uniform_grid_; }
-  private:
-    void rebuild_grid();
-    void collect_overlaps_for_moved_entities(
-        std::span<EntityUniqueId const> collision_dirty_entities, ml::FrameScratch& scratch);
+    void collect_overlaps_for_candidates(std::span<EntityUniqueId const> overlap_candidates,
+                                         ml::FrameScratch& scratch);
     void finalize_overlaps(ml::FrameScratch& scratch);
 
     AgentAccessor const& agents_;

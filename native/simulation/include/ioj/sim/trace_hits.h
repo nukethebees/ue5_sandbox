@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ioj/sim/collision_types.h"
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/vector_types.h"
 #include "ioj/sim/vectors3f.h"
@@ -14,7 +15,7 @@ namespace ioj::sim {
 struct LineTraceResult {
     Vector3f location{};
     EntityUniqueId entity;
-    std::int32_t static_geometry_index{-1};
+    collision::StaticGeometryIndex static_geometry_index{collision::invalid_static_geometry_index};
     bool hit{false};
 };
 
@@ -27,7 +28,7 @@ struct TraceHitsConstView {
 
     Vectors3fConstView locations;
     std::span<EntityUniqueId const> entities;
-    std::span<std::int32_t const> static_geometry_indices;
+    std::span<collision::StaticGeometryIndex const> static_geometry_indices;
     std::span<std::uint8_t const> hits;
 
     [[nodiscard]] auto num() const noexcept -> size_type { return locations.num(); }
@@ -72,7 +73,7 @@ struct TraceHitsView {
 
     Vectors3fView locations;
     std::span<EntityUniqueId> entities;
-    std::span<std::int32_t> static_geometry_indices;
+    std::span<collision::StaticGeometryIndex> static_geometry_indices;
     std::span<std::uint8_t> hits;
 
     [[nodiscard]] auto num() const noexcept -> size_type { return locations.num(); }
@@ -81,7 +82,7 @@ struct TraceHitsView {
     void set(size_type const index,
              Vector3f const location,
              EntityUniqueId const entity,
-             std::int32_t const static_geometry_index,
+             collision::StaticGeometryIndex const static_geometry_index,
              std::uint8_t const hit) const {
         ml::native_soa::require(index >= 0 && index < num());
         auto const array_index{static_cast<std::size_t>(index)};
@@ -124,7 +125,7 @@ struct TraceHits {
 
     Vectors3f locations;
     ml::native_soa::Vector<EntityUniqueId> entities;
-    ml::native_soa::Vector<std::int32_t> static_geometry_indices;
+    ml::native_soa::Vector<collision::StaticGeometryIndex> static_geometry_indices;
     ml::native_soa::Vector<std::uint8_t> hits;
 
     [[nodiscard]] auto num() const noexcept -> size_type { return locations.num(); }
@@ -171,13 +172,13 @@ struct TraceHits {
     void set(size_type const index,
              Vector3f const location,
              EntityUniqueId const entity,
-             std::int32_t const static_geometry_index,
+             collision::StaticGeometryIndex const static_geometry_index,
              std::uint8_t const hit) {
         get_view().set(index, location, entity, static_geometry_index, hit);
     }
     auto add(Vector3f const location,
              EntityUniqueId const entity,
-             std::int32_t const static_geometry_index,
+             collision::StaticGeometryIndex const static_geometry_index,
              std::uint8_t const hit) -> size_type {
         return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
             locations.add(location);

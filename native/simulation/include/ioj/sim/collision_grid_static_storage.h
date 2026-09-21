@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ioj/sim/collision_grid.h"
+#include "ioj/sim/collision_types.h"
 #include "ioj/sim/world_aabbs.h"
 
 #include <cstdint>
@@ -19,8 +20,8 @@ enum class StaticGridBuildErrorCode : std::uint8_t {
 
 struct StaticGridBuildError {
     StaticGridBuildErrorCode code;
-    std::int32_t aabb_index{-1};
-    std::int32_t cell_index{-1};
+    StaticGeometryIndex aabb_index{invalid_static_geometry_index};
+    CellIndex cell_index{-1};
     std::int64_t count{};
 };
 
@@ -35,11 +36,11 @@ class CollisionGridStaticStorage {
 
     void reset() noexcept;
     void set_aabbs(WorldAABBs aabbs) noexcept;
-    auto add_aabb(Vector3f min_point, Vector3f max_point) -> std::int32_t;
+    auto add_aabb(Vector3f min_point, Vector3f max_point) -> StaticGeometryIndex;
     [[nodiscard]] auto rebuild(GridGeometry geometry) -> std::expected<void, StaticGridBuildError>;
 
     [[nodiscard]] auto aabbs() const noexcept -> WorldAABBs const&;
-    [[nodiscard]] auto aabb_indices_for_cell(std::int32_t cell_index) const noexcept
+    [[nodiscard]] auto aabb_indices_for_cell(CellIndex cell_index) const noexcept
         -> std::span<AabbIndex const>;
   private:
     WorldAABBs aabbs_;

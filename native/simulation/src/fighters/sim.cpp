@@ -457,7 +457,7 @@ void Sim::plan_movement(float const dt, ml::FrameScratch& scratch) {
 void Sim::apply_movement(ml::FrameScratch& scratch) {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::apply_movement");
     auto const data{entity_buffers.current().get_view().columns()};
-    collision_dirty_entities_.clear();
+    overlap_candidates_.clear();
     auto const count{data.num()};
     for (std::int32_t index{}; index < count; ++index) {
         auto const direction{data.aim_directions[index]};
@@ -469,16 +469,16 @@ void Sim::apply_movement(ml::FrameScratch& scratch) {
         auto const before{direction_to_rotation(direction)};
         auto const after{direction_to_rotation(planned_direction)};
         if (before.pitch != after.pitch || before.yaw != after.yaw || before.roll != after.roll) {
-            collision_dirty_entities_.push_back(data.entity_ids[index]);
+            overlap_candidates_.push_back(data.entity_ids[index]);
         }
     }
     data.velocities.each_column([](auto& column) { std::ranges::fill(column, 0.f); });
     copy_vectors(data.aim_directions, data.planned_aim_directions.get_const_view());
     move(movement_tick_period_, get_task_view(Task::MoveToDestination), scratch);
     move(movement_tick_period_, get_task_view(Task::Attack), scratch);
-    std::ranges::sort(collision_dirty_entities_);
-    auto const duplicates{std::ranges::unique(collision_dirty_entities_)};
-    collision_dirty_entities_.erase(duplicates.begin(), duplicates.end());
+    std::ranges::sort(overlap_candidates_);
+    auto const duplicates{std::ranges::unique(overlap_candidates_)};
+    overlap_candidates_.erase(duplicates.begin(), duplicates.end());
 
     lasers::FrameSpawnRequests requests{scratch};
     for (auto const index : pending_fire_indices_) {
@@ -604,7 +604,7 @@ void Sim::move(float const dt, TaskView const& fighters, ml::FrameScratch& scrat
         auto const before{previous_locations.get_const_view()[index]};
         auto const after{fighters.locations[index]};
         if (before.X != after.X || before.Y != after.Y || before.Z != after.Z) {
-            collision_dirty_entities_.push_back(fighters.entity_ids[index]);
+            overlap_candidates_.push_back(fighters.entity_ids[index]);
         }
     }
 }

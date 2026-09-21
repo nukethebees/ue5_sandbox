@@ -144,10 +144,7 @@ void LevelSim::finish_initialisation() {
 
     // Build indexes and query state
     rebuild_agent_indexes();
-    {
-        ml::FrameScratchScope scratch_scope{frame_memory_};
-        query_manager_.update({}, scratch_scope.scratch());
-    }
+    query_manager_.refresh_spatial_index();
 
     // Start telemetry and mission
     initialise_telemetry();
@@ -210,8 +207,7 @@ void LevelSim::initialise_spatial_queries(LevelSimInitData& data) {
         static_cast<std::int32_t>(std::max(1u, std::thread::hardware_concurrency())));
 
     // Install static bounds
-    query_manager_.get_collision_system().get_uniform_grid().set_static_aabbs(
-        std::move(data.static_bounds));
+    query_manager_.set_static_collision(std::move(data.static_bounds));
 }
 void LevelSim::begin_subsystems() {
     // Start player subsystem
@@ -242,12 +238,11 @@ void LevelSim::set_fighter_diagnostics_enabled(bool const enabled) noexcept {
 }
 void LevelSim::set_static_collision(collision::WorldAABBs bounds) {
     assert(state_ == OrchestratorState::Uninitialised);
-    query_manager_.get_collision_system().get_uniform_grid().set_static_aabbs(std::move(bounds));
+    query_manager_.set_static_collision(std::move(bounds));
 }
 auto LevelSim::add_static_collision_aabb(Vector3f const min_point, Vector3f const max_point)
-    -> std::int32_t {
-    return query_manager_.get_collision_system().get_uniform_grid().add_static_aabb(min_point,
-                                                                                    max_point);
+    -> collision::StaticGeometryIndex {
+    return query_manager_.add_static_collision_aabb(min_point, max_point);
 }
 
 /* **************************************** */
@@ -296,7 +291,7 @@ void LevelSim::advance(time_type const dt) {
     capital_ships_simulation_.reset_frame_output();
     turrets_simulation_.reset_frame_output();
     lasers_simulation_.reset_frame_output();
-    query_manager_.get_collision_system().reset_frame_events();
+    query_manager_.reset_frame_collision_events();
     clock_.tick_loop.add_time(dt);
 
     auto publish_entity_deaths{[&] {
@@ -335,7 +330,7 @@ void LevelSim::advance(time_type const dt) {
             lasers_phase_.commit_spawns();
 
             // Track new collision entities
-            collision_dirty_entities_.clear();
+            overlap_candidates_.clear();
             auto collect_new = [&](auto const data) {
                 auto const count{data.entity_ids.size()};
                 for (std::size_t index{}; index < count; ++index) {
@@ -343,7 +338,7 @@ void LevelSim::advance(time_type const dt) {
                     if (id.index() >=
                         entity_identity_offset(id.entity_type(),
                                                previous_issued_counts[id.entity_type()])) {
-                        collision_dirty_entities_.push_back(id);
+                        overlap_candidates_.push_back(id);
                     }
                 }
             };
@@ -364,7 +359,7 @@ void LevelSim::advance(time_type const dt) {
             rebuild_agent_indexes();
             mission_manager_.prepare_objectives();
             capital_ships_simulation_.refresh_fighter_ids(scratch);
-            query_manager_.get_collision_system().refresh_queries();
+            query_manager_.refresh_spatial_index();
         }
 
         /* -------------------------------------------------------------------------------- */
@@ -423,7 +418,7 @@ void LevelSim::advance(time_type const dt) {
                     before_rotation.pitch != after_rotation.pitch ||
                     before_rotation.yaw != after_rotation.yaw ||
                     before_rotation.roll != after_rotation.roll) {
-                    collision_dirty_entities_.push_back(player_ship_simulation_->unique_entity_id);
+                    overlap_candidates_.push_back(player_ship_simulation_->unique_entity_id);
                 }
             }
 
@@ -436,18 +431,19 @@ void LevelSim::advance(time_type const dt) {
             }
 
             {
-                SANDBOX_PROFILE_SCOPE("Update collision overlaps");
+                SANDBOX_PROFILE_SCOPE("Detect collision overlaps");
 
-                auto const moved{fighters_simulation_.get_collision_dirty_entities()};
-                collision_dirty_entities_.insert(
-                    collision_dirty_entities_.end(), moved.begin(), moved.end());
-                std::ranges::sort(collision_dirty_entities_);
-                auto const duplicates{std::ranges::unique(collision_dirty_entities_)};
-                collision_dirty_entities_.erase(duplicates.begin(), duplicates.end());
+                auto const fighter_candidates{fighters_simulation_.get_overlap_candidates()};
+                overlap_candidates_.insert(overlap_candidates_.end(),
+                                           fighter_candidates.begin(),
+                                           fighter_candidates.end());
+                std::ranges::sort(overlap_candidates_);
+                auto const duplicates{std::ranges::unique(overlap_candidates_)};
+                overlap_candidates_.erase(duplicates.begin(), duplicates.end());
 
                 ml::FrameScratchScope scratch_scope{frame_memory_};
                 auto const overlaps{
-                    query_manager_.update(collision_dirty_entities_, scratch_scope.scratch())};
+                    query_manager_.detect_overlaps(overlap_candidates_, scratch_scope.scratch())};
                 overlap_handler_.handle(overlaps);
             }
         }

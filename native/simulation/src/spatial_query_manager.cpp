@@ -35,8 +35,9 @@ struct TraceRequest {
 };
 
 template <QueryMode Mode>
-auto trace_impl(ioj::sim::SpatialQueryManager const& manager, TraceRequest const& request)
-    -> ioj::sim::LineTraceResult {
+auto trace_impl(ioj::sim::SpatialQueryManager const& manager,
+                ioj::sim::collision::CollisionUniformGrid const& uniform_grid,
+                TraceRequest const& request) -> ioj::sim::LineTraceResult {
     auto const count{[&] {
         if constexpr (Mode == QueryMode::ClosestHit) {
             return 1;
@@ -89,7 +90,6 @@ auto trace_impl(ioj::sim::SpatialQueryManager const& manager, TraceRequest const
         }
     }()};
 
-    auto const& uniform_grid{manager.get_collision_system().get_uniform_grid()};
     if constexpr (Mode == QueryMode::ClosestHit) {
         uniform_grid.trace_aabbs(trace_view, hits.get_view(), request.ignored_entities);
     } else if constexpr (Mode == QueryMode::ClearLine) {
@@ -177,11 +177,11 @@ auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
 
     auto const absolute_radius{std::abs(radius)};
     auto const radius_extent{ml::make_vector3f(absolute_radius, absolute_radius, absolute_radius)};
-    auto [min_coord, max_coord]{
-        grid.to_cell_coord_bounds(origin - radius_extent, origin + radius_extent)};
+    auto [min_coord,
+          max_coord]{grid.to_cell_coord_bounds(origin - radius_extent, origin + radius_extent)};
     auto const dimensions{grid.get_grid_dims()};
-    auto const max_grid_coord{collision::CellCoord{
-        dimensions.x - 1, dimensions.y - 1, dimensions.z - 1}};
+    auto const max_grid_coord{
+        collision::CellCoord{dimensions.x - 1, dimensions.y - 1, dimensions.z - 1}};
     if (max_coord.x < 0 || max_coord.y < 0 || max_coord.z < 0 || min_coord.x > max_grid_coord.x ||
         min_coord.y > max_grid_coord.y || min_coord.z > max_grid_coord.z) {
         return 0;
@@ -299,18 +299,14 @@ void SpatialQueryManager::release_thread_buffer(std::int32_t const index) const 
 /* **************************************** */
 SpatialQueryManager::SpatialQueryManager(AgentAccessor const& agents)
     : agents_{agents}
-    , collision{agents} {}
+    , collision_system_{agents} {}
 
 void SpatialQueryManager::initialise(collision::CellCoord const grid_dimensions,
                                      Vector3f const cell_size,
                                      collision::EntityAABBs const& entity_bounds) {
     reserve_thread_buffers(1);
 
-    auto& uniform_grid{collision.get_uniform_grid()};
-    uniform_grid.set_grid_dims(grid_dimensions);
-    uniform_grid.set_cell_dims(cell_size);
-
-    collision.initialise(entity_bounds);
+    collision_system_.initialise(grid_dimensions, cell_size, entity_bounds);
 
     for (auto const type : ml::EnumTraits<EntityType>::values) {
         entity_radii_[type] = collision::get_entity_radius(entity_bounds, type);
@@ -327,6 +323,7 @@ void
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::trace_line_of_sight");
 
     trace_impl<QueryMode::HitEntity>(*this,
+                                     collision_system_.uniform_grid_,
                                      {.start_locations = start_locations,
                                       .end_locations = end_locations,
                                       .out_entity_ids = out_entity_ids});
@@ -340,6 +337,7 @@ void
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::has_line_of_sight_to_targets");
 
     trace_impl<QueryMode::TargetLineOfSight>(*this,
+                                             collision_system_.uniform_grid_,
                                              {.end_locations = end_locations,
                                               .scalar_start = start_location,
                                               .targets = targets,
@@ -352,6 +350,7 @@ void SpatialQueryManager::have_clear_lines(
     std::span<std::uint8_t> const clear_lines,
     std::span<EntityUniqueId const> const ignored_entities) const {
     trace_impl<QueryMode::ClearLine>(*this,
+                                     collision_system_.uniform_grid_,
                                      {.start_locations = start_locations,
                                       .end_locations = end_locations,
                                       .ignored_entities = ignored_entities,
@@ -371,10 +370,11 @@ void SpatialQueryManager::trace_closest_lines(
     assert(ignored_entities.empty() || ignored_entities.size() == static_cast<std::size_t>(count));
 
     auto const traces{LineTracesConstView{start_locations, end_locations}};
+    auto const& uniform_grid{collision_system_.uniform_grid_};
     if (ignored_entities.empty()) {
-        collision.get_uniform_grid().trace_aabbs(traces, out_hits);
+        uniform_grid.trace_aabbs(traces, out_hits);
     } else {
-        collision.get_uniform_grid().trace_aabbs(traces, out_hits, ignored_entities);
+        uniform_grid.trace_aabbs(traces, out_hits, ignored_entities);
     }
 }
 
@@ -392,11 +392,11 @@ void SpatialQueryManager::sweep_closest_aabbs(
     assert(out_hits.num() == count);
     assert(ignored_entities.empty() || ignored_entities.size() == static_cast<std::size_t>(count));
 
-    collision.get_uniform_grid().sweep_aabbs(LineTracesConstView{start_locations, end_locations},
-                                             moving_half_extent,
-                                             out_hits,
-                                             ignored_entities,
-                                             entity_filter);
+    collision_system_.uniform_grid_.sweep_aabbs(LineTracesConstView{start_locations, end_locations},
+                                                moving_half_extent,
+                                                out_hits,
+                                                ignored_entities,
+                                                entity_filter);
 }
 
 /* **************************************** */
@@ -414,6 +414,7 @@ auto SpatialQueryManager::trace_closest(Vector3f const start_location,
     -> LineTraceResult {
     std::array<EntityUniqueId, 1> ignored_entities{ignored_entity};
     return trace_impl<QueryMode::ClosestHit>(*this,
+                                             collision_system_.uniform_grid_,
                                              {.scalar_start = start_location,
                                               .scalar_end = end_location,
                                               .ignored_entities = ignored_entities});
@@ -430,7 +431,7 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
         return 0;
     }
 
-    auto const& grid{collision.get_uniform_grid()};
+    auto const& grid{collision_system_.uniform_grid_};
     validate_grid_for_range_query(grid, origin, radius);
     query_manager::ThreadBufferLease const buffer_lease{*this};
     {
@@ -459,7 +460,7 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
         return 0;
     }
 
-    auto const& grid{collision.get_uniform_grid()};
+    auto const& grid{collision_system_.uniform_grid_};
     validate_grid_for_range_query(grid, origin, radius);
     query_manager::ThreadBufferLease const buffer_lease{*this};
     return collect_entities_in_range(
@@ -487,7 +488,7 @@ auto SpatialQueryManager::get_any_non_team_entity(Team const team,
 void SpatialQueryManager::are_spheres_in_bounds(Vectors3fConstView const centres,
                                                 float const radius,
                                                 std::span<std::uint8_t> const out_results) const {
-    collision.get_uniform_grid().are_spheres_in_bounds(centres, radius, out_results);
+    collision_system_.uniform_grid_.are_spheres_in_bounds(centres, radius, out_results);
 }
 
 auto SpatialQueryManager::get_entity_type_radius(EntityType const entity_type) const noexcept
@@ -511,13 +512,40 @@ void SpatialQueryManager::copy_entity_radii(std::span<EntityUniqueId const> cons
 }
 
 /* **************************************** */
-// Collision state and telemetry
+// Collision and spatial-index lifecycle
 /* **************************************** */
-auto SpatialQueryManager::update(std::span<EntityUniqueId const> const dirty_entities,
-                                 ml::FrameScratch& scratch) -> collision::DetectedOverlapsView {
-    SANDBOX_PROFILE_SCOPE("SpatialQueryManager::update");
+void SpatialQueryManager::set_static_collision(collision::WorldAABBs bounds) {
+    collision_system_.set_static_collision(std::move(bounds));
+}
+auto SpatialQueryManager::add_static_collision_aabb(Vector3f const min_point,
+                                                    Vector3f const max_point)
+    -> collision::StaticGeometryIndex {
+    return collision_system_.add_static_collision_aabb(min_point, max_point);
+}
+void SpatialQueryManager::refresh_spatial_index() {
+    SANDBOX_PROFILE_SCOPE("SpatialQueryManager::refresh_spatial_index");
+    collision_system_.refresh_spatial_index();
+}
+auto SpatialQueryManager::detect_overlaps(std::span<EntityUniqueId const> const overlap_candidates,
+                                          ml::FrameScratch& scratch)
+    -> collision::DetectedOverlapsView {
+    SANDBOX_PROFILE_SCOPE("SpatialQueryManager::detect_overlaps");
 
-    return collision.update(dirty_entities, scratch);
+    return collision_system_.detect_overlaps(overlap_candidates, scratch);
+}
+void SpatialQueryManager::reset_frame_collision_events() {
+    collision_system_.reset_frame_collision_events();
+}
+auto SpatialQueryManager::get_aabb_overlap_events() const -> collision::AABBOverlapEventsView {
+    return collision_system_.get_aabb_overlap_events();
+}
+auto SpatialQueryManager::get_entity_collision_bounds() const
+    -> collision::WorldAABBsColumnsConstView {
+    return collision_system_.get_entity_collision_bounds();
+}
+auto SpatialQueryManager::get_static_collision_bounds() const
+    -> collision::WorldAABBsColumnsConstView {
+    return collision_system_.get_static_collision_bounds();
 }
 
 }

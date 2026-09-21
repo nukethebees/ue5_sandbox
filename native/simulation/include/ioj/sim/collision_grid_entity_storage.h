@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ioj/sim/collision_grid.h"
 #include "ioj/sim/entity_cell_data.h"
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/world_aabbs.h"
@@ -11,7 +12,7 @@ namespace ioj::sim::collision {
 struct CollisionGridEntityStorage {
     std::vector<std::int32_t> cell_offsets;
     std::vector<std::uint16_t> cell_counts;
-    std::vector<std::int32_t> non_empty_cell_indices;
+    std::vector<CellIndex> non_empty_cell_indices;
     std::vector<EntityUniqueId> entities;
     WorldAABBs aabbs;
 

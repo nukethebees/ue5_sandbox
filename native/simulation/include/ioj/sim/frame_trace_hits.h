@@ -26,7 +26,7 @@ struct FrameTraceHits {
 
     FrameVectors3f locations;
     ml::FrameArray<EntityUniqueId> entities;
-    ml::FrameArray<std::int32_t> static_geometry_indices;
+    ml::FrameArray<collision::StaticGeometryIndex> static_geometry_indices;
     ml::FrameArray<std::uint8_t> hits;
 };
 } // namespace ioj::sim

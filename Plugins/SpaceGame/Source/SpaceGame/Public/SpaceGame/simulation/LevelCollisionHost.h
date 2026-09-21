@@ -1,13 +1,13 @@
 #pragma once
-#include <ioj/sim/collision/collision_system.h>
+#include <ioj/sim/collision_grid.h>
 #include <ioj/sim/entity_aabbs.h>
 #include <ioj/sim/entity_type.h>
+#include <ioj/sim/world_aabbs.h>
 #include <SpaceGame/simulation/StaticCollisionSources.h>
 #include <SpaceGameSimulation/levels/LevelStartErrors.h>
 
 #include <cstddef>
 #include <expected>
-#include <optional>
 
 class UStaticMesh;
 class UWorld;
@@ -22,13 +22,8 @@ struct SPACEGAME_API FLevelCollisionHost {
                                        UStaticMesh const*,
                                        static_cast<std::size_t>(::ioj::sim::EntityType::COUNT)>;
     static auto extract_entity_bounds(EntityMeshes const& meshes) -> FEntityBoundsExtractionResult;
-    auto initialise_static_geometry(UWorld& world,
-                                    FCollisionGridConfig const& config,
-                                    ::ioj::sim::collision::CollisionUniformGrid const& grid)
+    auto initialise_static_geometry(UWorld& world, FCollisionGridConfig const& config)
         -> ::ioj::sim::collision::WorldAABBs;
-    auto add_static_geometry(UPrimitiveComponent& component,
-                             ::ioj::sim::collision::CollisionUniformGrid const& grid)
-        -> std::optional<::ioj::sim::collision::WorldAABB>;
     void restore_collision();
     auto get_static_collision_sources() const noexcept -> FStaticCollisionSources::ConstView {
         return static_collision_sources_.get_const_view();

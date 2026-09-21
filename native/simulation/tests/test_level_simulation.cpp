@@ -62,8 +62,7 @@ auto make_overlap_response_battle() -> LevelSimInitData {
     data.player->transform.location = {-1000.0, 0.0, 0.0};
     data.player->config.lateral_adjustment_speed = 1.f;
     data.player->health = {150, 150};
-    data.entity_bounds.set_half_extents(EntityType::CapitalShip,
-                                        {{100.f, 100.f, 100.f}});
+    data.entity_bounds.set_half_extents(EntityType::CapitalShip, {{100.f, 100.f, 100.f}});
     return data;
 }
 
@@ -518,9 +517,7 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
 
     for (std::int32_t overlap_detection{}; overlap_detection < 3; ++overlap_detection) {
         simulation.advance(dt);
-        auto const events{simulation.get_spatial_query_manager()
-                              .get_collision_system()
-                              .get_aabb_overlap_events()};
+        auto const events{simulation.get_spatial_query_manager().get_aabb_overlap_events()};
         tests::expect_equal(
             events.entity_entity_overlaps.num(), 1, "The tick captures one unique dynamic overlap");
         tests::expect_equal(

@@ -152,8 +152,7 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
     simulation.get_player_ship_commands()->set_lateral_move_input(1.f);
     ml::TimeSeriesData<Sample> samples;
     harness.on_end_tick = [&](LevelSim& level) {
-        auto const events{
-            level.get_spatial_query_manager().get_collision_system().get_aabb_overlap_events()};
+        auto const events{level.get_spatial_query_manager().get_aabb_overlap_events()};
         auto const capital{level.get_agent_accessor().read(capital_id)};
         samples.add(harness.get_time(),
                     Sample{

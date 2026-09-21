@@ -72,7 +72,7 @@ TEST(TickPhases, AuthoredSpawnHasPhysicalPresenceBeforeItsFirstThinking) {
               75);
     EXPECT_EQ(simulation.get_lasers().get_number_spawned(), 0);
 
-    auto const events{queries.get_collision_system().get_aabb_overlap_events()};
+    auto const events{queries.get_aabb_overlap_events()};
     EXPECT_EQ(events.entity_entity_overlaps.num(), 1);
 
     simulation.advance(simulation.get_clock().get_tick_period());
@@ -121,8 +121,7 @@ TEST(TickPhases, CarrierSpawnIsDeferredAndParticipatesInLaunchOverlaps) {
     auto const hit{queries.trace_closest({{-20.f, 0.f, 0.f}}, {{20.f, 0.f, 0.f}}, parent)};
     EXPECT_TRUE(hit.hit);
     EXPECT_EQ(hit.entity, fighter);
-    EXPECT_EQ(queries.get_collision_system().get_aabb_overlap_events().entity_entity_overlaps.num(),
-              1);
+    EXPECT_EQ(queries.get_aabb_overlap_events().entity_entity_overlaps.num(), 1);
 }
 
 TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
@@ -235,8 +234,7 @@ TEST(TickPhases, SpawnMissionEventsSeeSameTickResolvedDeathWithoutDuplicateOverl
     EXPECT_EQ(simulation.get_mission_manager().get_mission_state(), MissionState::Failed);
 
     auto const& queries{simulation.get_spatial_query_manager()};
-    EXPECT_EQ(queries.get_collision_system().get_aabb_overlap_events().entity_entity_overlaps.num(),
-              1);
+    EXPECT_EQ(queries.get_aabb_overlap_events().entity_entity_overlaps.num(), 1);
     EXPECT_EQ(queries.trace_closest({{-20.f, 0.f, 0.f}}, {{20.f, 0.f, 0.f}}).entity,
               capitals.get_id(0));
 

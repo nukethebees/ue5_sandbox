@@ -1,8 +1,8 @@
 #include "SpaceGamePresentation/simulation/CollisionGridVisualizationComponent.h"
 
-#include <ioj/sim/collision/collision_system.h>
 #include <ioj/sim/collision_grid.h>
 #include <ioj/sim/world_aabb_operations.h>
+#include <ioj/sim/world_aabbs.h>
 #include <SpaceGamePresentation/integration/VectorConversion.h>
 
 #include <Engine/EngineTypes.h>
@@ -305,9 +305,10 @@ void UCollisionGridVisualizationComponent::configure(
 }
 
 void UCollisionGridVisualizationComponent::update_collision_bounds(
-    ::ioj::sim::collision::CollisionSystem const* const collision_system) {
+    ::ioj::sim::collision::WorldAABBsColumnsConstView const entity_aabbs,
+    ::ioj::sim::collision::WorldAABBsColumnsConstView const static_aabbs) {
     auto const max_draw_distance{FMath::Max(collision_bounds_max_draw_distance_, 0.f)};
-    auto const visible{show_collision_bounds_ && collision_system != nullptr};
+    auto const visible{show_collision_bounds_};
     auto const settings_changed{collision_bounds_visible_ != visible ||
                                 applied_collision_bounds_max_draw_distance_ != max_draw_distance};
     collision_bounds_visible_ = visible;
@@ -321,7 +322,6 @@ void UCollisionGridVisualizationComponent::update_collision_bounds(
         return;
     }
 
-    auto const entity_aabbs{collision_system->get_uniform_grid().get_entity_world_bounds()};
     auto const entity_count{entity_aabbs.num()};
     entity_bounds_.Reset();
     entity_bounds_.Reserve(entity_count);
@@ -330,13 +330,11 @@ void UCollisionGridVisualizationComponent::update_collision_bounds(
                                ml::to_unreal(::ioj::sim::collision::max_at(entity_aabbs, i)));
     }
 
-    auto const& static_aabbs{collision_system->get_uniform_grid().get_static_aabbs()};
     auto const static_count{static_aabbs.num()};
-    auto const static_columns{static_aabbs.get_const_view().columns()};
     static_bounds_.SetNumUninitialized(static_count, EAllowShrinking::No);
     for (int32 i{}; i < static_count; ++i) {
-        static_bounds_[i] = FBox3f{ml::to_unreal(::ioj::sim::collision::min_at(static_columns, i)),
-                                   ml::to_unreal(::ioj::sim::collision::max_at(static_columns, i))};
+        static_bounds_[i] = FBox3f{ml::to_unreal(::ioj::sim::collision::min_at(static_aabbs, i)),
+                                   ml::to_unreal(::ioj::sim::collision::max_at(static_aabbs, i))};
     }
 
     if (settings_changed) {
@@ -349,7 +347,9 @@ void UCollisionGridVisualizationComponent::update_collision_bounds(
 }
 
 void UCollisionGridVisualizationComponent::clear_collision_bounds() {
-    if (entity_bounds_.IsEmpty() && static_bounds_.IsEmpty()) {
+    auto const was_visible{collision_bounds_visible_};
+    collision_bounds_visible_ = false;
+    if (!was_visible && entity_bounds_.IsEmpty() && static_bounds_.IsEmpty()) {
         return;
     }
 
@@ -361,6 +361,8 @@ void UCollisionGridVisualizationComponent::clear_collision_bounds() {
         } else {
             MarkRenderStateDirty();
         }
+    } else if (was_visible) {
+        MarkRenderStateDirty();
     }
 }
 

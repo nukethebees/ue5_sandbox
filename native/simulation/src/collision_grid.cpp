@@ -136,7 +136,7 @@ auto num_cells(GridGeometry const geometry) noexcept -> int {
     return geometry.dimensions.x * geometry.dimensions.y * geometry.dimensions.z;
 }
 
-auto to_index(GridGeometry const geometry, CellCoord const coordinate) noexcept -> int {
+auto to_index(GridGeometry const geometry, CellCoord const coordinate) noexcept -> CellIndex {
     return coordinate.x + coordinate.y * geometry.dimensions.x +
            coordinate.z * geometry.dimensions.x * geometry.dimensions.y;
 }

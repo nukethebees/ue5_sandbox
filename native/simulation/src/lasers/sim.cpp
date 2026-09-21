@@ -240,15 +240,16 @@ void Sim::handle_collisions(float const dt, ml::FrameScratch& scratch) {
                 trace_ends.set(trace_index, start + trace_velocities[trace_index] * step);
             }
 
-            auto const traces{LineTracesConstView{
-                collision_scratch.trace_starts.get_const_view().slice(i_start, trace_count),
-                collision_scratch.trace_ends.get_const_view().slice(i_start, trace_count)}};
+            auto const trace_starts_view{
+                collision_scratch.trace_starts.get_const_view().slice(i_start, trace_count)};
+            auto const trace_ends_view{
+                collision_scratch.trace_ends.get_const_view().slice(i_start, trace_count)};
             auto const hits{collision_scratch.trace_hits.get_view().slice(i_start, trace_count)};
             auto const ignored_entities{
                 std::span<EntityUniqueId const>{entities.instigator_ids}.subspan(i_start,
                                                                                  trace_count)};
-            query_manager.get_collision_system().get_uniform_grid().trace_aabbs(
-                traces, hits, ignored_entities);
+            query_manager.trace_closest_lines(
+                trace_starts_view, trace_ends_view, hits, ignored_entities);
         });
 
     ml::FrameArray<std::int32_t> to_remove{&scratch};

@@ -5,7 +5,7 @@
 #include "CollisionGridVisualizationComponent.generated.h"
 
 namespace ioj::sim::collision {
-struct CollisionSystem;
+struct WorldAABBsColumnsConstView;
 }
 
 struct FCollisionGridVisualizationSettings {
@@ -24,7 +24,8 @@ class SPACEGAMEPRESENTATION_API UCollisionGridVisualizationComponent final
     UCollisionGridVisualizationComponent();
 
     void configure(TOptional<FCollisionGridVisualizationSettings> settings);
-    void update_collision_bounds(::ioj::sim::collision::CollisionSystem const* collision_system);
+    void update_collision_bounds(::ioj::sim::collision::WorldAABBsColumnsConstView entity_aabbs,
+                                 ::ioj::sim::collision::WorldAABBsColumnsConstView static_aabbs);
     void clear_collision_bounds();
     void clear();
 

@@ -8,6 +8,7 @@
 
 namespace ioj::sim::collision {
 using Vec3f = Vector3f;
+using CellIndex = std::int32_t;
 
 inline constexpr float no_trace_hit{std::numeric_limits<float>::infinity()};
 
@@ -35,7 +36,7 @@ struct GridGeometry {
 [[nodiscard]] auto calculate_grid_dimensions(Vector3f grid_size, Vector3f cell_size) noexcept
     -> CellCoord;
 [[nodiscard]] auto num_cells(GridGeometry geometry) noexcept -> int;
-[[nodiscard]] auto to_index(GridGeometry geometry, CellCoord coordinate) noexcept -> int;
+[[nodiscard]] auto to_index(GridGeometry geometry, CellCoord coordinate) noexcept -> CellIndex;
 [[nodiscard]] auto to_cell_coord(float value, float cell_dimension, int grid_dimension) noexcept
     -> int;
 [[nodiscard]] auto to_cell_min(int coordinate, float cell_dimension, int grid_dimension) noexcept

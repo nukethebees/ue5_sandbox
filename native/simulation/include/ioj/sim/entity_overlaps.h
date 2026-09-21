@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "ioj/sim/collision_types.h"
 #include "ioj/sim/entity_unique_id.h"
 #include "sandbox/core/address_cast.h"
 #include "sandbox/core/native_soa/storage.h"
@@ -254,7 +255,7 @@ struct EntityStaticOverlapsConstView {
     using ConstView = EntityStaticOverlapsConstView;
     using size_type = std::int32_t;
     std::span<EntityUniqueId const> entities;
-    std::span<std::int32_t const> static_geometry_indices;
+    std::span<ioj::sim::collision::StaticGeometryIndex const> static_geometry_indices;
     auto num() const noexcept -> size_type { return static_cast<size_type>(entities.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -301,7 +302,7 @@ struct EntityStaticOverlapsView {
     using ConstView = EntityStaticOverlapsConstView;
     using size_type = std::int32_t;
     std::span<EntityUniqueId> entities;
-    std::span<std::int32_t> static_geometry_indices;
+    std::span<ioj::sim::collision::StaticGeometryIndex> static_geometry_indices;
     auto num() const noexcept -> size_type { return static_cast<size_type>(entities.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -340,7 +341,7 @@ struct EntityStaticOverlapsView {
     }
     void set(size_type const index,
              EntityUniqueId const new_entities,
-             std::int32_t const new_static_geometry_indices) const {
+             ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices) const {
         ml::native_soa::require(index >= 0 && index < num());
         entities[static_cast<std::size_t>(index)] = new_entities;
         static_geometry_indices[static_cast<std::size_t>(index)] = new_static_geometry_indices;
@@ -351,7 +352,7 @@ struct EntityStaticOverlaps {
     using ConstView = EntityStaticOverlapsConstView;
     using size_type = std::int32_t;
     ml::native_soa::Vector<EntityUniqueId> entities;
-    ml::native_soa::Vector<std::int32_t> static_geometry_indices;
+    ml::native_soa::Vector<ioj::sim::collision::StaticGeometryIndex> static_geometry_indices;
     auto num() const noexcept -> size_type { return static_cast<size_type>(entities.size()); }
     auto is_empty() const noexcept -> bool { return num() == 0; }
     template <typename Fn>
@@ -391,10 +392,11 @@ struct EntityStaticOverlaps {
     }
     void set(size_type const index,
              EntityUniqueId const new_entities,
-             std::int32_t const new_static_geometry_indices) {
+             ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices) {
         get_view().set(index, new_entities, new_static_geometry_indices);
     }
-    auto add(EntityUniqueId const new_entities, std::int32_t const new_static_geometry_indices)
+    auto add(EntityUniqueId const new_entities,
+             ioj::sim::collision::StaticGeometryIndex const new_static_geometry_indices)
         -> size_type {
         return ml::native_soa::vector_storage_ops::append_rows(*this, 1, [&] {
             entities.emplace_back(new_entities);
@@ -417,9 +419,10 @@ struct EntityStaticOverlaps {
         {
             auto const address{ml::address_cast(source.static_geometry_indices.data())};
             auto const begin{ml::address_cast(static_geometry_indices.data())};
-            ml::native_soa::require(address < begin ||
-                                    address >= begin + static_geometry_indices.size() *
-                                                           sizeof(std::int32_t));
+            ml::native_soa::require(
+                address < begin ||
+                address >= begin + static_geometry_indices.size() *
+                                       sizeof(ioj::sim::collision::StaticGeometryIndex));
         }
         ml::native_soa::vector_storage_ops::append_rows(*this, count, [&] {
             entities.insert(entities.end(), source.entities.data(), source.entities.data() + count);

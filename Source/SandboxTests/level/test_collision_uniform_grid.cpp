@@ -3,7 +3,7 @@
 #include <CQTest.h>
 #include <Engine/World.h>
 #include <ioj/sim/agent_accessor.h>
-#include <ioj/sim/collision/collision_system.h>
+#include <ioj/sim/collision/collision_uniform_grid.h>
 #include <Misc/ScopeExit.h>
 #include <SandboxTests/support/SoftTestAssertions.h>
 #include <SandboxTests/support/TestCollisionActor.h>
@@ -54,13 +54,12 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         ::ioj::sim::AgentIndexes indexes{clock};
         ::ioj::sim::HealthTable health_table;
         ::ioj::sim::AgentAccessor agents{indexes, health_table};
-        ::ioj::sim::collision::CollisionSystem collision{agents};
-        auto& grid{collision.get_uniform_grid()};
+        ::ioj::sim::collision::CollisionUniformGrid grid{agents};
         auto const configured_dims{config.calculate_grid_dimensions()};
         grid.set_grid_dims({configured_dims.X, configured_dims.Y, configured_dims.Z});
         grid.set_cell_dims(ml::to_native(config.cell_size));
         ml::ioj::FLevelCollisionHost collision_host;
-        grid.set_static_aabbs(collision_host.initialise_static_geometry(*world, config, grid));
+        grid.set_static_aabbs(collision_host.initialise_static_geometry(*world, config));
 
         auto const sources{collision_host.get_static_collision_sources()};
         auto const source_count{sources.num()};
@@ -89,7 +88,7 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
         checks.is_true(unsupported_component->GetCollisionEnabled() == ECollisionEnabled::QueryOnly,
                        TEXT("Failed harvest leaves Unreal collision enabled"));
 
-        grid.set_static_aabbs(collision_host.initialise_static_geometry(*world, config, grid));
+        grid.set_static_aabbs(collision_host.initialise_static_geometry(*world, config));
         checks.are_equal(source_count,
                          collision_host.get_static_collision_sources().num(),
                          TEXT("Reinitialization restores and reharvests static geometry"));

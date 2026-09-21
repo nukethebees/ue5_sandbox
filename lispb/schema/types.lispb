@@ -192,6 +192,11 @@
   :header "ioj/sim/index_span.h"
   :pass-by value)
 
+(type native_static_geometry_index
+  :spelling "ioj::sim::collision::StaticGeometryIndex"
+  :header "ioj/sim/collision_types.h"
+  :pass-by value)
+
 (type native_vectors_3f
   :spelling "Vectors3f"
   :header "ioj/sim/vectors3f.h")

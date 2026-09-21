@@ -104,7 +104,8 @@ struct LevelSim {
     void set_fighter_diagnostics_enabled(bool enabled) noexcept;
     // Replaces static collision during initialization, before finish_initialisation().
     void set_static_collision(collision::WorldAABBs bounds);
-    auto add_static_collision_aabb(Vector3f min_point, Vector3f max_point) -> std::int32_t;
+    auto add_static_collision_aabb(Vector3f min_point, Vector3f max_point)
+        -> collision::StaticGeometryIndex;
     // Borrowed until this LevelSim is destroyed; null when the level has no player.
     auto get_player_ship_commands() noexcept -> player::CommandInterface* {
         return player_ship_commands_.has_value() ? &player_ship_commands_.value() : nullptr;
@@ -186,7 +187,7 @@ struct LevelSim {
     AgentAccessor agent_accessor_{agent_indexes_, entity_tables_.health};
     SpatialQueryManager query_manager_;
     OverlapHandler overlap_handler_;
-    std::vector<EntityUniqueId> collision_dirty_entities_;
+    std::vector<EntityUniqueId> overlap_candidates_;
 
     lasers::Sim lasers_simulation_;
     lasers::PhaseInterface lasers_phase_;

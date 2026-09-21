@@ -6,6 +6,7 @@
 #include <ioj/sim/collision_grid.h>
 #include <ioj/sim/collision_grid_entity_storage.h>
 #include <ioj/sim/collision_grid_static_storage.h>
+#include <ioj/sim/collision_types.h>
 #include <ioj/sim/entity_world_bounds.h>
 #include <ioj/sim/trace_hits.h>
 #include <sandbox/core/frame_array.h>
@@ -26,8 +27,6 @@ enum class TraceEntityFilter : std::uint8_t {
 };
 
 struct CollisionUniformGrid {
-    static inline Vector3f const origin{};
-
     explicit CollisionUniformGrid(AgentAccessor const& agents) noexcept;
     CollisionUniformGrid(CollisionUniformGrid const&) = delete;
     CollisionUniformGrid(CollisionUniformGrid&&) = delete;
@@ -43,9 +42,6 @@ struct CollisionUniformGrid {
     void set_cell_dims(Vector3f const cell_dims) noexcept;
 
     auto num_cells() const -> std::int32_t;
-    auto get_non_empty_cell_count() const noexcept -> std::int32_t {
-        return static_cast<std::int32_t>(entity_storage_.non_empty_cell_indices.size());
-    }
     auto get_cell_entities(CellCoord const cell_coord) const -> std::span<EntityUniqueId const> {
         auto const dimensions{geometry_.dimensions};
         assert(cell_coord.x >= 0 && cell_coord.x < dimensions.x && cell_coord.y >= 0 &&
@@ -53,8 +49,8 @@ struct CollisionUniformGrid {
 
         auto const row_stride{dimensions.x};
         auto const plane_stride{row_stride * dimensions.y};
-        auto const cell_index{
-            cell_coord.x + cell_coord.y * row_stride + cell_coord.z * plane_stride};
+        auto const cell_index{cell_coord.x + cell_coord.y * row_stride +
+                              cell_coord.z * plane_stride};
         auto const element{static_cast<std::size_t>(cell_index)};
         auto const count{entity_storage_.cell_counts[element]};
         if (count == 0) {
@@ -65,21 +61,7 @@ struct CollisionUniformGrid {
     }
 
     auto to_cell_coord(Vector3f pos) const -> CellCoord;
-    auto to_min_cell_coord(Vector3f pos) const -> CellCoord;
-    auto to_max_cell_coord(Vector3f pos) const -> CellCoord;
     auto to_cell_coord_bounds(Vector3f min_point, Vector3f max_point) const -> CellCoordBounds;
-
-    auto to_cell_min_x(std::int32_t x) const -> float;
-    auto to_cell_min_y(std::int32_t y) const -> float;
-    auto to_cell_min_z(std::int32_t z) const -> float;
-    auto to_cell_min(std::int32_t x, std::int32_t y, std::int32_t z) const -> Vector3f;
-    auto to_cell_min(CellCoord coord) const -> Vector3f;
-
-    auto to_cell_centre_x(std::int32_t x) const -> float;
-    auto to_cell_centre_y(std::int32_t y) const -> float;
-    auto to_cell_centre_z(std::int32_t z) const -> float;
-    auto to_cell_centre(std::int32_t x, std::int32_t y, std::int32_t z) const -> Vector3f;
-    auto to_cell_centre(CellCoord coord) const -> Vector3f;
 
     auto is_cell_coord_in_bounds(CellCoord coord) const -> bool;
     auto is_cell_coord_in_bounds(CellCoord min_coord, CellCoord max_coord) const -> bool;
@@ -90,8 +72,8 @@ struct CollisionUniformGrid {
 
     void reset();
     void set_static_aabbs(WorldAABBs static_aabbs);
-    auto add_static_aabb(Vector3f min_point, Vector3f max_point) -> std::int32_t;
-    void rebuild_grid(EntityAABBs const& entity_aabbs);
+    auto add_static_aabb(Vector3f min_point, Vector3f max_point) -> StaticGeometryIndex;
+    void rebuild_entity_grid(EntityAABBs const& entity_aabbs);
 
     auto get_static_aabbs() const noexcept -> WorldAABBs const& { return static_storage_.aabbs(); }
     auto get_entity_world_bounds() const -> WorldAABBsColumnsConstView;
@@ -100,7 +82,7 @@ struct CollisionUniformGrid {
     void append_overlaps(WorldAABB const& query_bounds,
                          EntityUniqueId ignored_entity,
                          ml::FrameArray<EntityUniqueId>& out_entities,
-                         ml::FrameArray<std::int32_t>& out_static_geometry_indices) const;
+                         ml::FrameArray<StaticGeometryIndex>& out_static_geometry_indices) const;
     void trace_aabbs(LineTracesConstView const& traces, TraceHitsView const& hits) const;
     void trace_aabbs(LineTracesConstView const& traces,
                      TraceHitsView const& hits,
@@ -111,12 +93,6 @@ struct CollisionUniformGrid {
                      std::span<EntityUniqueId const> ignored_entities = {},
                      TraceEntityFilter entity_filter = TraceEntityFilter::None) const;
   private:
-    auto to_cell_x(float value) const -> std::int32_t;
-    auto to_cell_y(float value) const -> std::int32_t;
-    auto to_cell_z(float value) const -> std::int32_t;
-    auto to_index(std::int32_t x, std::int32_t y, std::int32_t z) const -> std::int32_t;
-    auto to_index(CellCoord coord) const -> std::int32_t;
-    auto to_index(Vector3f pos) const -> std::int32_t;
     void rebuild_static_grid();
 
     AgentAccessor const& agents_;

@@ -92,7 +92,7 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
             }
         }
 
-        auto const moved{level.get_fighters().get_collision_dirty_entities()};
+        auto const moved{level.get_fighters().get_overlap_candidates()};
         std::set<EntityUniqueId> const unique_moved{moved.begin(), moved.end()};
         for (auto const id : unique_moved) {
             if (!previous_transforms.contains(id)) {

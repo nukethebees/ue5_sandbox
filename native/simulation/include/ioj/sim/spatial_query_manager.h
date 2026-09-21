@@ -17,6 +17,7 @@
 namespace ioj::sim {
 class AgentAccessor;
 struct SpatialQueryManager;
+struct SpatialQueryManagerTestAccess;
 }
 
 namespace ml {
@@ -119,20 +120,24 @@ struct SpatialQueryManager {
     void copy_entity_radii(std::span<EntityUniqueId const> ids, std::span<float> out_radii) const;
 
     /* **************************************** */
-    // Collision state and telemetry
+    // Collision and spatial-index lifecycle
     /* **************************************** */
-    auto get_collision_system() noexcept -> collision::CollisionSystem& { return collision; }
-    auto get_collision_system() const noexcept -> collision::CollisionSystem const& {
-        return collision;
-    }
-
-    auto update(std::span<EntityUniqueId const> dirty_entities, ml::FrameScratch& scratch)
-        -> collision::DetectedOverlapsView;
+    void set_static_collision(collision::WorldAABBs bounds);
+    auto add_static_collision_aabb(Vector3f min_point, Vector3f max_point)
+        -> collision::StaticGeometryIndex;
+    void refresh_spatial_index();
+    auto detect_overlaps(std::span<EntityUniqueId const> overlap_candidates,
+                         ml::FrameScratch& scratch) -> collision::DetectedOverlapsView;
+    void reset_frame_collision_events();
+    auto get_aabb_overlap_events() const -> collision::AABBOverlapEventsView;
+    auto get_entity_collision_bounds() const -> collision::WorldAABBsColumnsConstView;
+    auto get_static_collision_bounds() const -> collision::WorldAABBsColumnsConstView;
   private:
     /* **************************************** */
     // Thread buffer leasing
     /* **************************************** */
     friend class query_manager::ThreadBufferLease;
+    friend struct SpatialQueryManagerTestAccess;
 
     using ThreadBuffers = query_manager::ThreadBuffers;
 
@@ -146,7 +151,7 @@ struct SpatialQueryManager {
 
     mutable QueryThreadBufferPool thread_buffer_pool_;
 
-    collision::CollisionSystem collision;
+    collision::CollisionSystem collision_system_;
     EntityTypeRadii entity_radii_{};
 };
 }

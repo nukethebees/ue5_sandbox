@@ -7,19 +7,35 @@
 #include <sandbox/core/frame_memory_resource.h>
 
 #include <algorithm>
+#include <utility>
 
 namespace ioj::sim::collision {
-void CollisionSystem::initialise(collision::EntityAABBs const& bounds) {
+void CollisionSystem::initialise(CellCoord const grid_dimensions,
+                                 Vector3f const cell_size,
+                                 collision::EntityAABBs const& bounds) {
+    uniform_grid_.set_grid_dims(grid_dimensions);
+    uniform_grid_.set_cell_dims(cell_size);
     entity_aabbs_ = bounds;
     entity_entity_overlaps_.reset();
     entity_static_overlaps_.reset();
-    reset_frame_events();
+    reset_frame_collision_events();
 }
-auto CollisionSystem::update(std::span<EntityUniqueId const> const collision_dirty_entities,
-                             ml::FrameScratch& scratch) -> DetectedOverlapsView {
-    SANDBOX_PROFILE_SCOPE("CollisionSystem::update");
-    rebuild_grid();
-    collect_overlaps_for_moved_entities(collision_dirty_entities, scratch);
+void CollisionSystem::set_static_collision(WorldAABBs bounds) {
+    uniform_grid_.set_static_aabbs(std::move(bounds));
+}
+auto CollisionSystem::add_static_collision_aabb(Vector3f const min_point, Vector3f const max_point)
+    -> StaticGeometryIndex {
+    return uniform_grid_.add_static_aabb(min_point, max_point);
+}
+void CollisionSystem::refresh_spatial_index() {
+    SANDBOX_PROFILE_SCOPE("CollisionSystem::refresh_spatial_index");
+    uniform_grid_.rebuild_entity_grid(entity_aabbs_);
+}
+auto CollisionSystem::detect_overlaps(std::span<EntityUniqueId const> const overlap_candidates,
+                                      ml::FrameScratch& scratch) -> DetectedOverlapsView {
+    SANDBOX_PROFILE_SCOPE("CollisionSystem::detect_overlaps");
+    refresh_spatial_index();
+    collect_overlaps_for_candidates(overlap_candidates, scratch);
 
     auto const entity_entity_overlaps{entity_entity_overlaps_.get_const_view()};
     auto const entity_static_overlaps{entity_static_overlaps_.get_const_view()};
@@ -27,30 +43,29 @@ auto CollisionSystem::update(std::span<EntityUniqueId const> const collision_dir
 
     return {entity_entity_overlaps, entity_static_overlaps};
 }
-void CollisionSystem::reset_frame_events() {
+void CollisionSystem::reset_frame_collision_events() {
     overlap_event_storage_.reset();
 }
 CollisionSystem::CollisionSystem(AgentAccessor const& agents) noexcept
     : agents_{agents}
     , uniform_grid_{agents} {}
-void CollisionSystem::rebuild_grid() {
-    SANDBOX_PROFILE_SCOPE("CollisionSystem::rebuild_grid");
-    uniform_grid_.rebuild_grid(entity_aabbs_);
+auto CollisionSystem::get_entity_collision_bounds() const -> WorldAABBsColumnsConstView {
+    return uniform_grid_.get_entity_world_bounds();
 }
-void CollisionSystem::refresh_queries() {
-    rebuild_grid();
+auto CollisionSystem::get_static_collision_bounds() const -> WorldAABBsColumnsConstView {
+    return uniform_grid_.get_static_aabbs().get_const_view().columns();
 }
-void CollisionSystem::collect_overlaps_for_moved_entities(
-    std::span<EntityUniqueId const> const collision_dirty_entities, ml::FrameScratch& scratch) {
-    SANDBOX_PROFILE_SCOPE("CollisionSystem::collect_overlaps_for_moved_entities");
+void CollisionSystem::collect_overlaps_for_candidates(
+    std::span<EntityUniqueId const> const overlap_candidates, ml::FrameScratch& scratch) {
+    SANDBOX_PROFILE_SCOPE("CollisionSystem::collect_overlaps_for_candidates");
 
     entity_entity_overlaps_.reset();
     entity_static_overlaps_.reset();
 
     ml::FrameArray<EntityUniqueId> overlapping_entities{&scratch};
-    ml::FrameArray<std::int32_t> overlapping_static_geometry_indices{&scratch};
+    ml::FrameArray<StaticGeometryIndex> overlapping_static_geometry_indices{&scratch};
 
-    for (auto const id : collision_dirty_entities) {
+    for (auto const id : overlap_candidates) {
         auto const state{agents_.read_alive(id)};
         if (!state) {
             continue;
@@ -122,8 +137,7 @@ void CollisionSystem::finalize_overlaps(ml::FrameScratch& scratch) {
                 auto const rhs_entity{values.entities[rhs]};
                 return lhs_entity < rhs_entity ||
                        (lhs_entity == rhs_entity &&
-                        values.static_geometry_indices[lhs] <
-                            values.static_geometry_indices[rhs]);
+                        values.static_geometry_indices[lhs] < values.static_geometry_indices[rhs]);
             },
             sort_indices.view());
 
