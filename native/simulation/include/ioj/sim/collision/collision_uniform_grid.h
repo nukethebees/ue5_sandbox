@@ -42,11 +42,7 @@ struct CollisionUniformGrid {
 
     auto num_cells() const -> std::int32_t;
     auto get_non_empty_cell_count() const noexcept -> std::int32_t {
-        return entity_storage_.non_empty_cell_count();
-    }
-    auto get_native_geometry() const noexcept -> GridGeometry { return geometry_; }
-    auto get_native_entity_storage() const noexcept -> CollisionGridEntityStorage const& {
-        return entity_storage_;
+        return static_cast<std::int32_t>(entity_storage_.non_empty_cell_indices.size());
     }
     auto get_cell_entities(CellCoord const cell_coord) const -> std::span<EntityUniqueId const>;
 
@@ -80,9 +76,7 @@ struct CollisionUniformGrid {
     void rebuild_grid(EntityAABBs const& entity_aabbs);
 
     auto get_static_aabbs() const noexcept -> WorldAABBs const& { return static_storage_.aabbs(); }
-    auto get_entity_world_bounds() const -> WorldAABBsColumnsConstView {
-        return entity_storage_.entity_world_bounds();
-    }
+    auto get_entity_world_bounds() const -> WorldAABBsColumnsConstView;
 
     // Appends exact overlaps. Multi-cell participants may be appended more than once.
     void append_overlaps(WorldAABB const& query_bounds,

@@ -6,7 +6,6 @@
 #include <span>
 
 #include <ioj/sim/collision_events.h>
-#include <ioj/sim/collision_overlap_storage.h>
 
 #include <ioj/sim/collision/collision_uniform_grid.h>
 #include <ioj/sim/entity_overlaps.h>
@@ -41,10 +40,10 @@ struct CollisionSystem {
 
     auto get_entity_aabbs() const noexcept -> EntityAABBs const& { return entity_aabbs_; }
     auto get_entity_entity_overlaps() const -> EntityEntityOverlaps::ConstView {
-        return overlap_storage_.entity_entity_overlaps();
+        return entity_entity_overlaps_.get_const_view();
     }
     auto get_entity_static_overlaps() const -> EntityStaticOverlaps::ConstView {
-        return overlap_storage_.entity_static_overlaps();
+        return entity_static_overlaps_.get_const_view();
     }
     auto get_uniform_grid() noexcept -> CollisionUniformGrid& { return uniform_grid_; }
     auto get_uniform_grid() const noexcept -> CollisionUniformGrid const& { return uniform_grid_; }
@@ -52,12 +51,14 @@ struct CollisionSystem {
     void rebuild_grid();
     void collect_overlaps_for_moved_entities(
         std::span<EntityUniqueId const> collision_dirty_entities, ml::FrameScratch& scratch);
+    void finalize_overlaps(ml::FrameScratch& scratch);
 
     AgentAccessor const& agents_;
     CollisionUniformGrid uniform_grid_;
 
     EntityAABBs entity_aabbs_{};
-    CollisionOverlapStorage overlap_storage_;
+    EntityEntityOverlaps entity_entity_overlaps_;
+    EntityStaticOverlaps entity_static_overlaps_;
 
     AABBOverlapEventStorage overlap_event_storage_;
 };

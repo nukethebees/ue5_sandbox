@@ -164,8 +164,7 @@ auto ThreadBufferLease::get() const -> ThreadBuffers& {
 namespace ioj::sim {
 namespace {
 template <typename IncludeEntity>
-auto collect_entities_in_range(collision::GridGeometry const geometry,
-                               collision::CollisionGridEntityStorage const& grid_entities,
+auto collect_entities_in_range(collision::CollisionUniformGrid const& grid,
                                AgentAccessor const& agents,
                                QueryThreadBuffers& buffers,
                                Vector3f const origin,
@@ -179,9 +178,10 @@ auto collect_entities_in_range(collision::GridGeometry const geometry,
     auto const absolute_radius{std::abs(radius)};
     auto const radius_extent{ml::make_vector3f(absolute_radius, absolute_radius, absolute_radius)};
     auto [min_coord, max_coord]{
-        collision::to_cell_coord_bounds(geometry, origin - radius_extent, origin + radius_extent)};
+        grid.to_cell_coord_bounds(origin - radius_extent, origin + radius_extent)};
+    auto const dimensions{grid.get_grid_dims()};
     auto const max_grid_coord{collision::CellCoord{
-        geometry.dimensions.x - 1, geometry.dimensions.y - 1, geometry.dimensions.z - 1}};
+        dimensions.x - 1, dimensions.y - 1, dimensions.z - 1}};
     if (max_coord.x < 0 || max_coord.y < 0 || max_coord.z < 0 || min_coord.x > max_grid_coord.x ||
         min_coord.y > max_grid_coord.y || min_coord.z > max_grid_coord.z) {
         return 0;
@@ -211,8 +211,7 @@ auto collect_entities_in_range(collision::GridGeometry const geometry,
     for (auto x{min_coord.x}; x <= max_coord.x; ++x) {
         for (auto y{min_coord.y}; y <= max_coord.y; ++y) {
             for (auto z{min_coord.z}; z <= max_coord.z; ++z) {
-                auto const cell_index{collision::to_index(geometry, {x, y, z})};
-                for (auto const id : grid_entities.entities_for_cell(cell_index)) {
+                for (auto const id : grid.get_cell_entities({x, y, z})) {
                     auto const local_index{agents.indexes().find(id)};
                     if (local_index < 0) {
                         continue;
@@ -438,8 +437,7 @@ auto SpatialQueryManager::collect_non_team_entities_in_range(
         SANDBOX_PROFILE_SCOPE(
             "Sandbox::SpatialQueryManager::collect_non_team_entities_in_range::loop");
         return collect_entities_in_range(
-            grid.get_native_geometry(),
-            grid.get_native_entity_storage(),
+            grid,
             agents_,
             buffer_lease.get(),
             origin,
@@ -465,8 +463,7 @@ auto SpatialQueryManager::collect_entities_of_type_in_range(
     validate_grid_for_range_query(grid, origin, radius);
     query_manager::ThreadBufferLease const buffer_lease{*this};
     return collect_entities_in_range(
-        grid.get_native_geometry(),
-        grid.get_native_entity_storage(),
+        grid,
         agents_,
         buffer_lease.get(),
         origin,

@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <cstddef>
 #include <format>
 #include <utility>
 
@@ -29,6 +30,30 @@ enum class IgnoredEntityMode : std::uint8_t {
     None,
     PerTrace,
 };
+
+auto entities_for_cell(CollisionGridEntityStorage const& storage,
+                       std::int32_t const cell_index) noexcept
+    -> std::span<EntityUniqueId const> {
+    assert(cell_index >= 0 && static_cast<std::size_t>(cell_index) < storage.cell_counts.size());
+
+    auto const element{static_cast<std::size_t>(cell_index)};
+    auto const count{storage.cell_counts[element]};
+    if (count == 0) {
+        return {};
+    }
+    return std::span{storage.entities}.subspan(
+        static_cast<std::size_t>(storage.cell_offsets[element]), count);
+}
+
+auto aabbs_for_cell(CollisionGridEntityStorage const& storage,
+                    std::int32_t const cell_index) noexcept -> WorldAABBsColumnsConstView {
+    assert(cell_index >= 0 && static_cast<std::size_t>(cell_index) < storage.cell_counts.size());
+
+    auto const element{static_cast<std::size_t>(cell_index)};
+    return storage.aabbs
+        .get_const_view(storage.cell_offsets[element], storage.cell_counts[element])
+        .columns();
+}
 
 template <TraceKind Kind, IgnoredEntityMode IgnoredMode, TraceEntityFilter EntityFilter>
 void trace_grid_aabbs(GridGeometry const geometry,
@@ -90,10 +115,10 @@ void trace_grid_aabbs(GridGeometry const geometry,
         }
 
         auto const trace_cell{[&](std::int32_t const cell_index) {
-            auto const entities{entity_storage.entities_for_cell(cell_index)};
+            auto const entities{entities_for_cell(entity_storage, cell_index)};
             auto const entity_count{static_cast<std::int32_t>(entities.size())};
             if (entity_count > 0) {
-                auto const aabbs{entity_storage.aabbs_for_cell(cell_index)};
+                auto const aabbs{aabbs_for_cell(entity_storage, cell_index)};
                 for (std::int32_t entity_index{}; entity_index < entity_count; ++entity_index) {
                     auto const entity{entities[static_cast<std::size_t>(entity_index)]};
                     auto const id{entity};
@@ -368,10 +393,10 @@ void append_grid_overlaps(GridGeometry const geometry,
         for (auto y{min_coord.y}; y <= max_coord.y; ++y) {
             auto cell_index{row_index};
             for (auto x{min_coord.x}; x <= max_coord.x; ++x, ++cell_index) {
-                auto const entities{entity_storage.entities_for_cell(cell_index)};
+                auto const entities{entities_for_cell(entity_storage, cell_index)};
                 auto const entity_count{static_cast<std::int32_t>(entities.size())};
                 if (entity_count > 0) {
-                    auto const aabbs{entity_storage.aabbs_for_cell(cell_index)};
+                    auto const aabbs{aabbs_for_cell(entity_storage, cell_index)};
 
                     for (std::int32_t entity_index{}; entity_index < entity_count; ++entity_index) {
                         auto const entity{entities[static_cast<std::size_t>(entity_index)]};
@@ -432,12 +457,18 @@ auto CollisionUniformGrid::get_cell_entities(collision::CellCoord const cell_coo
     assert(is_cell_coord_in_bounds(cell_coord));
 
     auto const cell_index{to_index(cell_coord)};
-    return entity_storage_.entities_for_cell(cell_index);
+    return collision_uniform_grid_detail::entities_for_cell(entity_storage_, cell_index);
 }
 
 void CollisionUniformGrid::reset() {
     geometry_ = {};
-    entity_storage_.reset();
+    entity_storage_.cell_offsets.clear();
+    entity_storage_.cell_counts.clear();
+    entity_storage_.non_empty_cell_indices.clear();
+    entity_storage_.entities.clear();
+    entity_storage_.aabbs.reset();
+    entity_storage_.cell_write_indices.clear();
+    entity_storage_.rebuild_entities.reset();
     static_storage_.reset();
 }
 
@@ -490,10 +521,31 @@ void CollisionUniformGrid::rebuild_grid(collision::EntityAABBs const& entity_aab
     }
 
     auto const geometry{geometry_};
-    entity_storage_.begin_rebuild(geometry.dimensions);
+    auto& storage{entity_storage_};
+    auto const dimensions{geometry.dimensions};
+    assert(dimensions.x > 0 && dimensions.y > 0 && dimensions.z > 0);
 
     {
-        SANDBOX_PROFILE_SCOPE("count_loop");
+        SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::clear_entity_grid");
+
+        for (auto const cell_index : storage.non_empty_cell_indices) {
+            storage.cell_counts[static_cast<std::size_t>(cell_index)] = 0;
+        }
+        storage.non_empty_cell_indices.clear();
+
+        auto const cell_count{static_cast<std::size_t>(dimensions.x) *
+                              static_cast<std::size_t>(dimensions.y) *
+                              static_cast<std::size_t>(dimensions.z)};
+        if (storage.cell_counts.size() != cell_count) {
+            storage.cell_counts.assign(cell_count, std::uint16_t{});
+        }
+        storage.cell_offsets.resize(cell_count);
+        storage.cell_write_indices.resize(cell_count);
+        storage.rebuild_entities.reset();
+    }
+
+    {
+        SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::gather_and_count_entities");
 
         agents_.for_each_alive_spatial([&](EntityUniqueId const id,
                                            Vector3f const location,
@@ -520,12 +572,103 @@ void CollisionUniformGrid::rebuild_grid(collision::EntityAABBs const& entity_aab
                     to_string(max_coord),
                     to_string(geometry.dimensions)));
             }
-            entity_storage_.add(bounds.min, bounds.max, min_coord, max_coord, id);
+
+            collision::add(
+                storage.rebuild_entities, bounds.min, bounds.max, min_coord, max_coord, id);
+
+            auto const row_stride{dimensions.x};
+            auto const plane_stride{row_stride * dimensions.y};
+            auto plane_index{min_coord.x + min_coord.y * row_stride +
+                             min_coord.z * plane_stride};
+            for (auto z{min_coord.z}; z <= max_coord.z; ++z) {
+                auto row_index{plane_index};
+                for (auto y{min_coord.y}; y <= max_coord.y; ++y) {
+                    auto cell_index{row_index};
+                    for (auto x{min_coord.x}; x <= max_coord.x; ++x, ++cell_index) {
+                        auto& count{storage.cell_counts[static_cast<std::size_t>(cell_index)]};
+                        if (count == 0) {
+                            storage.non_empty_cell_indices.push_back(cell_index);
+                        }
+                        ++count;
+                    }
+                    row_index += row_stride;
+                }
+                plane_index += plane_stride;
+            }
         });
     }
-    if (!entity_storage_.finish_rebuild()) {
-        ml::fatal_error("Collision grid entity membership index is inconsistent");
+
+    {
+        SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::calculate_entity_cell_offsets");
+
+        std::int32_t entry_count{};
+        for (auto const cell_index : storage.non_empty_cell_indices) {
+            auto const element{static_cast<std::size_t>(cell_index)};
+            storage.cell_offsets[element] = entry_count;
+            storage.cell_write_indices[element] = entry_count;
+            entry_count += storage.cell_counts[element];
+        }
+
+        storage.aabbs.reset();
+        storage.aabbs.add_uninitialised(entry_count);
+        storage.entities.resize(static_cast<std::size_t>(entry_count));
     }
+
+    {
+        SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::scatter_entities");
+
+        auto const rebuild_entities{storage.rebuild_entities.get_const_view().columns()};
+        auto const entity_count{rebuild_entities.num()};
+        auto const row_stride{dimensions.x};
+        auto const plane_stride{row_stride * dimensions.y};
+
+        for (std::int32_t entity_index{}; entity_index < entity_count; ++entity_index) {
+            auto const min_cell{min_cell_at(rebuild_entities, entity_index)};
+            auto const max_cell{max_cell_at(rebuild_entities, entity_index)};
+            auto const min_point{min_point_at(rebuild_entities, entity_index)};
+            auto const max_point{max_point_at(rebuild_entities, entity_index)};
+
+            auto plane_index{min_cell.x + min_cell.y * row_stride + min_cell.z * plane_stride};
+            for (auto z{min_cell.z}; z <= max_cell.z; ++z) {
+                auto row_index{plane_index};
+                for (auto y{min_cell.y}; y <= max_cell.y; ++y) {
+                    auto cell_index{row_index};
+                    for (auto x{min_cell.x}; x <= max_cell.x; ++x, ++cell_index) {
+                        auto& write_index{
+                            storage.cell_write_indices[static_cast<std::size_t>(cell_index)]};
+                        auto const destination{write_index++};
+                        storage.entities[static_cast<std::size_t>(destination)] =
+                            rebuild_entities.entity_ids[static_cast<std::size_t>(entity_index)];
+                        collision::set(storage.aabbs, destination, min_point, max_point);
+                    }
+                    row_index += row_stride;
+                }
+                plane_index += plane_stride;
+            }
+        }
+    }
+
+    {
+        SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::validate_entity_grid");
+
+        for (auto const cell_index : storage.non_empty_cell_indices) {
+            auto const element{static_cast<std::size_t>(cell_index)};
+            if (storage.cell_write_indices[element] !=
+                storage.cell_offsets[element] + storage.cell_counts[element]) {
+                ml::fatal_error("Collision grid entity membership index is inconsistent");
+            }
+        }
+    }
+}
+
+auto CollisionUniformGrid::get_entity_world_bounds() const -> WorldAABBsColumnsConstView {
+    auto const entities{entity_storage_.rebuild_entities.get_const_view().columns()};
+    return {entities.min_point_xs,
+            entities.min_point_ys,
+            entities.min_point_zs,
+            entities.max_point_xs,
+            entities.max_point_ys,
+            entities.max_point_zs};
 }
 
 void CollisionUniformGrid::append_overlaps(

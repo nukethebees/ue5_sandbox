@@ -577,6 +577,43 @@ TEST(EntityAABBOverlaps, EventsMirrorAuthoritativeResults) {
     }
 }
 
+TEST(EntityAABBOverlaps, ReinitialiseClearsResultsAndAllowsSubsequentUpdate) {
+    OverlapFixture fixture;
+    auto const static_index{fixture.add_static({{-10.f, -10.f, -10.f}}, {{10.f, 10.f, 10.f}})};
+    auto const stationary{fixture.spawn({{0.f, 0.f, 0.f}})};
+    auto const moved{fixture.spawn({{100.f, 0.f, 0.f}})};
+    fixture.finish_spawning();
+
+    std::array const handles{moved};
+    std::array const locations{Vector3f{{15.f, 0.f, 0.f}}};
+    std::array const rotations{Rotator3f{}};
+    fixture.run_tick(handles, locations, rotations);
+
+    auto& collision_system{fixture.query_manager.get_collision_system()};
+    check_single_pair(collision_system.get_entity_entity_overlaps(), moved, stationary);
+    check_single_static_overlap(collision_system.get_entity_static_overlaps(), moved, static_index);
+
+    collision_system.initialise(fixture.entity_bounds);
+
+    tests::expect_equal(collision_system.get_entity_entity_overlaps().num(),
+                        0,
+                        "Reinitialisation clears current dynamic overlaps");
+    tests::expect_equal(collision_system.get_entity_static_overlaps().num(),
+                        0,
+                        "Reinitialisation clears current static overlaps");
+    auto const cleared_events{collision_system.get_aabb_overlap_events()};
+    tests::expect_equal(cleared_events.entity_entity_overlaps.num(),
+                        0,
+                        "Reinitialisation clears dynamic overlap events");
+    tests::expect_equal(cleared_events.entity_static_overlaps.num(),
+                        0,
+                        "Reinitialisation clears static overlap events");
+
+    fixture.update_collision(fixture.ids(handles));
+    check_single_pair(collision_system.get_entity_entity_overlaps(), moved, stationary);
+    check_single_static_overlap(collision_system.get_entity_static_overlaps(), moved, static_index);
+}
+
 TEST(EntityAABBOverlaps, FrameEventResetRetainsStorageAndPassesAppend) {
 
     OverlapFixture fixture;

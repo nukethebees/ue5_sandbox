@@ -18,7 +18,6 @@ target_sources(native-simulation PRIVATE
   ../include/ioj/sim/collision_grid_entity_storage.h
   ../include/ioj/sim/collision_grid_static_storage.h
   ../include/ioj/sim/collision_grid.h
-  ../include/ioj/sim/collision_overlap_storage.h
   ../include/ioj/sim/deterministic_bias.h
   ../include/ioj/sim/direct_damage_events.h
   ../include/ioj/sim/entity_aabbs.h
@@ -104,10 +103,8 @@ target_sources(native-simulation PRIVATE
   attack_distance_band.cpp
   batch_operations.cpp
   collision_events.cpp
-  collision_grid_entity_storage.cpp
   collision_grid_static_storage.cpp
   collision_grid.cpp
-  collision_overlap_storage.cpp
   deterministic_bias.cpp
   combat_statistics.cpp
   entity_world_bounds.cpp

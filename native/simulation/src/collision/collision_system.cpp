@@ -15,7 +15,8 @@
 namespace ioj::sim::collision {
 void CollisionSystem::initialise(collision::EntityAABBs const& bounds) {
     entity_aabbs_ = bounds;
-    overlap_storage_.reset();
+    entity_entity_overlaps_.reset();
+    entity_static_overlaps_.reset();
     reset_frame_events();
 }
 auto CollisionSystem::update(std::span<EntityUniqueId const> const collision_dirty_entities,
@@ -24,10 +25,11 @@ auto CollisionSystem::update(std::span<EntityUniqueId const> const collision_dir
     rebuild_grid();
     collect_overlaps_for_moved_entities(collision_dirty_entities, scratch);
 
-    overlap_event_storage_.append_batch(overlap_storage_.entity_entity_overlaps(),
-                                        overlap_storage_.entity_static_overlaps());
+    auto const entity_entity_overlaps{entity_entity_overlaps_.get_const_view()};
+    auto const entity_static_overlaps{entity_static_overlaps_.get_const_view()};
+    overlap_event_storage_.append_batch(entity_entity_overlaps, entity_static_overlaps);
 
-    return overlap_storage_.get_view();
+    return {entity_entity_overlaps, entity_static_overlaps};
 }
 void CollisionSystem::reset_frame_events() {
     overlap_event_storage_.reset();
@@ -46,7 +48,8 @@ void CollisionSystem::collect_overlaps_for_moved_entities(
     std::span<EntityUniqueId const> const collision_dirty_entities, ml::FrameScratch& scratch) {
     SANDBOX_PROFILE_SCOPE("CollisionSystem::collect_overlaps_for_moved_entities");
 
-    overlap_storage_.clear();
+    entity_entity_overlaps_.reset();
+    entity_static_overlaps_.reset();
 
     ml::FrameArray<EntityUniqueId> overlapping_entities{&scratch};
     ml::FrameArray<std::int32_t> overlapping_static_geometry_indices{&scratch};
@@ -67,14 +70,83 @@ void CollisionSystem::collect_overlaps_for_moved_entities(
             bounds, id, overlapping_entities, overlapping_static_geometry_indices);
 
         for (auto const overlapping_entity : overlapping_entities) {
-            overlap_storage_.add_entity_overlap(id, overlapping_entity);
+            if (overlapping_entity < id) {
+                entity_entity_overlaps_.add(overlapping_entity, id);
+            } else {
+                entity_entity_overlaps_.add(id, overlapping_entity);
+            }
         }
 
         for (auto const static_geometry_index : overlapping_static_geometry_indices) {
-            overlap_storage_.add_static_overlap(id, static_geometry_index);
+            entity_static_overlaps_.add(id, static_geometry_index);
         }
     }
 
-    overlap_storage_.finalize(scratch);
+    finalize_overlaps(scratch);
+}
+void CollisionSystem::finalize_overlaps(ml::FrameScratch& scratch) {
+    auto const entity_overlap_count{entity_entity_overlaps_.num()};
+    auto const static_overlap_count{entity_static_overlaps_.num()};
+    auto const sort_index_count{std::max(entity_overlap_count, static_overlap_count)};
+    ml::FrameArray<std::int32_t> sort_indices{&scratch};
+    sort_indices.reserve(sort_index_count);
+
+    if (entity_overlap_count > 1) {
+        sort_indices.set_num(entity_overlap_count);
+        entity_entity_overlaps_.sort(
+            [](EntityEntityOverlaps const& values, std::int32_t const lhs, std::int32_t const rhs) {
+                auto const lhs_first{values.first_entities[lhs]};
+                auto const rhs_first{values.first_entities[rhs]};
+                return lhs_first < rhs_first ||
+                       (lhs_first == rhs_first &&
+                        values.second_entities[lhs] < values.second_entities[rhs]);
+            },
+            sort_indices.view());
+
+        std::int32_t write_index{1};
+        for (std::int32_t read_index{1}; read_index < entity_overlap_count; ++read_index) {
+            if (entity_entity_overlaps_.first_entities[read_index] ==
+                    entity_entity_overlaps_.first_entities[write_index - 1] &&
+                entity_entity_overlaps_.second_entities[read_index] ==
+                    entity_entity_overlaps_.second_entities[write_index - 1]) {
+                continue;
+            }
+            entity_entity_overlaps_.set(write_index,
+                                        entity_entity_overlaps_.first_entities[read_index],
+                                        entity_entity_overlaps_.second_entities[read_index]);
+            ++write_index;
+        }
+        entity_entity_overlaps_.set_num(write_index);
+    }
+
+    if (static_overlap_count > 1) {
+        sort_indices.set_num(static_overlap_count);
+        entity_static_overlaps_.sort(
+            [](EntityStaticOverlaps const& values, std::int32_t const lhs, std::int32_t const rhs) {
+                auto const lhs_entity{values.entities[lhs]};
+                auto const rhs_entity{values.entities[rhs]};
+                return lhs_entity < rhs_entity ||
+                       (lhs_entity == rhs_entity &&
+                        values.static_geometry_indices[lhs] <
+                            values.static_geometry_indices[rhs]);
+            },
+            sort_indices.view());
+
+        std::int32_t write_index{1};
+        for (std::int32_t read_index{1}; read_index < static_overlap_count; ++read_index) {
+            if (entity_static_overlaps_.entities[read_index] ==
+                    entity_static_overlaps_.entities[write_index - 1] &&
+                entity_static_overlaps_.static_geometry_indices[read_index] ==
+                    entity_static_overlaps_.static_geometry_indices[write_index - 1]) {
+                continue;
+            }
+            entity_static_overlaps_.set(
+                write_index,
+                entity_static_overlaps_.entities[read_index],
+                entity_static_overlaps_.static_geometry_indices[read_index]);
+            ++write_index;
+        }
+        entity_static_overlaps_.set_num(write_index);
+    }
 }
 }
