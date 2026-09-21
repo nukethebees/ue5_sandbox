@@ -515,7 +515,7 @@ void CollisionUniformGrid::rebuild_entity_grid(collision::EntityAABBs const& ent
     auto const plane_stride{row_stride * dimensions.y};
 
     {
-        SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::prepare_entity_grid");
+        SANDBOX_PROFILE_SCOPE("prepare entity grid");
 
         for (auto const cell_index : storage.non_empty_cell_indices) {
             storage.cell_counts[static_cast<std::size_t>(cell_index)] = 0;
@@ -534,7 +534,7 @@ void CollisionUniformGrid::rebuild_entity_grid(collision::EntityAABBs const& ent
     }
 
     {
-        SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::gather_and_count_entities");
+        SANDBOX_PROFILE_SCOPE("gather and count entities");
 
         agents_.for_each_alive_spatial(
             [&](EntityUniqueId const id, Vector3f const location, Rotator3f const rotation, Team) {
@@ -584,7 +584,7 @@ void CollisionUniformGrid::rebuild_entity_grid(collision::EntityAABBs const& ent
     }
 
     {
-        SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::calculate_entity_cell_offsets");
+        SANDBOX_PROFILE_SCOPE("calculate entity cell offsets");
 
         CollisionGridEntityStorage::CellEntryOffset entry_count{};
         for (auto const cell_index : storage.non_empty_cell_indices) {
@@ -600,7 +600,7 @@ void CollisionUniformGrid::rebuild_entity_grid(collision::EntityAABBs const& ent
     }
 
     {
-        SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::scatter_entities");
+        SANDBOX_PROFILE_SCOPE("scatter entities");
 
         auto const rebuild_entity_data{storage.rebuild_entity_data.get_const_view().columns()};
         auto const entity_count{rebuild_entity_data.num()};
@@ -632,7 +632,7 @@ void CollisionUniformGrid::rebuild_entity_grid(collision::EntityAABBs const& ent
     }
 
     {
-        SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::validate_entity_grid");
+        SANDBOX_PROFILE_SCOPE("validate entity grid");
 
         for (auto const cell_index : storage.non_empty_cell_indices) {
             auto const element{static_cast<std::size_t>(cell_index)};
