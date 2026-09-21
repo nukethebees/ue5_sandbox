@@ -221,7 +221,8 @@ void integrate_axis(float const dt,
     };
 
     if (axis.config.passive_drag > 0.f) {
-        move_component_toward_zero(manual_axis, axis.config.passive_drag);
+        move_component_toward_zero(axis_vector(axis, axis.config.passive_drag_reference_frame),
+                                   axis.config.passive_drag);
     }
     auto const manual_command_active{
         axis.config.manual.semantic == TranslationSemantic::TargetSpeed
@@ -231,7 +232,9 @@ void integrate_axis(float const dt,
         axis.config.automatic.semantic != TranslationSemantic::Disabled && automatic_input != 0.f};
     if (!manual_command_active && !automatic_command_active &&
         axis.config.active_stabilization_rate > 0.f) {
-        move_component_toward_zero(manual_axis, axis.config.active_stabilization_rate);
+        move_component_toward_zero(
+            axis_vector(axis, axis.config.active_stabilization_reference_frame),
+            axis.config.active_stabilization_rate);
     }
 }
 

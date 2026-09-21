@@ -382,6 +382,7 @@ void FShipControlContext::select_flight_model_slot(::ioj::sim::player::FlightMod
     auto* const ship{get_ship()};
     auto const preserve_brake{brake_press_active_};
     reset_flight_gesture_state();
+    brake_press_active_ = preserve_brake;
     if (ship == nullptr) {
         return;
     }

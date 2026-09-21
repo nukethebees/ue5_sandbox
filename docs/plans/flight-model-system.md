@@ -188,7 +188,9 @@ struct TranslationAxisConfig {
     TranslationDriveConfig normal{};
     TranslationDriveConfig boosted{};
     float passive_drag{};
+    ReferenceFrame passive_drag_reference_frame{ReferenceFrame::Ship};
     float active_stabilization_rate{};
+    ReferenceFrame active_stabilization_reference_frame{ReferenceFrame::Ship};
 };
 
 struct TranslationAxesConfig {
@@ -223,6 +225,12 @@ contributions. Disabled-channel tuning data may remain populated so semantics ca
 without destructive edits. Active stabilization engages only when neither the manual nor automatic
 channel currently commands movement, so it does not silently counter a configured automatic
 channel or a non-zero persistent target.
+
+Passive drag and active stabilization each have their own explicit reference frame. They never
+inherit a frame from the manual or automatic channel, including when either channel is disabled.
+This permits, for example, ship-frame passive drag alongside world-frame automatic acceleration,
+or world-frame neutral stabilization alongside ship-frame controls. Both fields default to Ship,
+which preserves the behavior of the four initial presets.
 
 Rotation data:
 
@@ -302,9 +310,10 @@ engagement and reseeds affected translation responses.
 
 Validation rejects invalid enum representations, non-finite and negative rates/scales, normalized
 automatic values outside `[-1, 1]`, manual automatic values, automatic Accelerator sources,
-ambiguous dual-target channels, and unsafe SecondOrder parameters. It deliberately permits target
-scales above caps because the cap has defined saturation semantics, zero rates/limits for
-experimentation, and target-plus-acceleration or acceleration-plus-acceleration composition.
+ambiguous dual-target channels, invalid passive-drag/stabilization frames, and unsafe SecondOrder
+parameters. It deliberately permits target scales above caps because the cap has defined
+saturation semantics, zero rates/limits for experimentation, and target-plus-acceleration or
+acceleration-plus-acceleration composition.
 
 Normal and boosted axis limits/rates are explicit values. Never derive a boosted limit by
 multiplying `effectively_unlimited_speed`. World velocity remains double precision, so magnitude
@@ -513,6 +522,11 @@ First implementation UI/settings behavior:
   cap, and resultant-limit fields with mode-appropriate visibility/labels. Unlimited caps use an
   explicit editor toggle backed by the same largest-finite-float runtime value.
 - Apply valid edits immediately to the active native slot and display `Custom (based on X)`.
+- Treat translation semantic choices as editor transactions: selecting a target semantic disables
+  an existing target semantic on the other channel without discarding its tuning data, while
+  target-plus-acceleration and acceleration-plus-acceleration remain untouched. Selecting manual
+  `TargetSpeed` also selects Axis input in the same transaction. Native validation remains the
+  final boundary.
 - Keep custom numeric edits session-scoped for the first implementation.
 - Replace the broad settings callback with targeted flight-setting synchronization so changing an
   unrelated setting cannot reset the active model.
@@ -791,6 +805,10 @@ Skater, Gunship, transitions, and Unreal command routing have their replacement 
   model.
 - [x] Made rotation stabilization delay state per-axis so one rotation input cannot suppress
   stabilization on unrelated axes.
+- [x] Gave passive drag and active stabilization independent explicit Ship/World frames, with
+  matching validation, editor rows, and observable evaluator tests.
+- [x] Made mutually exclusive target-semantic editor changes transactional while retaining strict
+  native rejection of target-plus-target configurations.
 - [x] Complete final format, native, DebugGame, game, tool/codegen, and generated-artifact gates.
 
 Final-pass validation repeated formatting, all 233 native simulation tests, the 41-test DebugGame
