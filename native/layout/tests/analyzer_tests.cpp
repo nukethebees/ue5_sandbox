@@ -240,6 +240,42 @@ auto packed_linear_quantized_type() -> TypeFixture {
     return {std::move(types), type};
 }
 
+auto packed_fixed_point_type() -> TypeFixture {
+    codegen::RepresentationModuleSchema representations{};
+    representations.settings.name = "representations";
+    representations.settings.header = "Representations.h";
+    representations.settings.namespace_name = "project";
+    representations.fixed_points.push_back(
+        codegen::FixedPointSchema{.name = "VelocityQ8_4",
+                                  .signedness = true,
+                                  .total_bits = 12,
+                                  .fractional_bits = 4,
+                                  .rounding = codegen::FixedPointRounding::toward_zero});
+
+    codegen::PackedValueModuleSchema packed{};
+    packed.settings.name = "packed";
+    packed.settings.header = "Packed.h";
+    packed.settings.namespace_name = "project";
+    codegen::PackedValueSchema motion{};
+    motion.name = "Motion";
+    motion.storage_type.name = "std::uint16_t";
+    codegen::PackedFieldSchema velocity{};
+    velocity.name = "velocity";
+    velocity.type.name = "project::VelocityQ8_4";
+    velocity.bits.reset();
+    velocity.kind = codegen::PackedFieldKind::fixed_point;
+    motion.segments.emplace_back(std::move(velocity));
+    motion.segments.emplace_back(codegen::PackedReservedBitsSchema{.name = "future", .bits = 4});
+    packed.values.push_back(std::move(motion));
+
+    codegen::Manifest manifest{};
+    manifest.schema_version = codegen::manifest_schema_version;
+    manifest.modules = {std::move(representations), std::move(packed)};
+    auto types{lispb::schema::resolve_type_graph(manifest)};
+    auto const type{*types.find_declared("packed", "Motion")};
+    return {std::move(types), type};
+}
+
 auto integer_scalar_type() -> TypeFixture {
     codegen::Manifest manifest{
         .schema_version = codegen::manifest_schema_version,
@@ -4211,6 +4247,39 @@ TEST(PackedAnalyzer, ReportsPlacedLinearQuantizationFacts) {
     auto const ignored_override{Analyzer::analyze_packed(
         fixture.types, fixture.type, overridden, AbiProfile::host_common())};
     EXPECT_EQ(ignored_override.fields.front().bit_width, 8U);
+    EXPECT_FALSE(ignored_override.fields.front().overridden);
+    ASSERT_EQ(ignored_override.diagnostics.size(), 1U);
+    EXPECT_EQ(ignored_override.diagnostics.front().severity, DiagnosticSeverity::warning);
+}
+
+TEST(PackedAnalyzer, ReportsPlacedFixedPointFacts) {
+    auto const fixture{packed_fixed_point_type()};
+    auto const analysis{Analyzer::analyze_packed(
+        fixture.types, fixture.type, Variant{}, AbiProfile::host_common())};
+
+    ASSERT_EQ(analysis.fields.size(), 2U);
+    auto const& field{analysis.fields.front()};
+    EXPECT_EQ(field.kind, codegen::PackedFieldKind::fixed_point);
+    EXPECT_EQ(field.schema_bit_width, 12U);
+    EXPECT_TRUE(field.schema_bit_width_auto);
+    ASSERT_TRUE(field.fixed_point.has_value());
+    EXPECT_TRUE(field.fixed_point->signedness);
+    EXPECT_EQ(field.fixed_point->total_bits, 12U);
+    EXPECT_EQ(field.fixed_point->whole_bits, 7U);
+    EXPECT_EQ(field.fixed_point->fractional_bits, 4U);
+    EXPECT_EQ(field.fixed_point->minimum_raw_value, codegen::PackedIntegerValue{-2048});
+    EXPECT_EQ(field.fixed_point->maximum_raw_value, codegen::PackedIntegerValue{2047});
+    EXPECT_EQ(field.fixed_point->minimum_value, -128.0L);
+    EXPECT_EQ(field.fixed_point->maximum_value, 127.9375L);
+    EXPECT_EQ(field.fixed_point->resolution, 0.0625L);
+    EXPECT_EQ(field.fixed_point->rounding, codegen::FixedPointRounding::toward_zero);
+    EXPECT_TRUE(analysis.diagnostics.empty());
+
+    Variant overridden;
+    overridden.overrides.packed_field_widths[{.type = fixture.type, .field_name = "velocity"}] = 11;
+    auto const ignored_override{Analyzer::analyze_packed(
+        fixture.types, fixture.type, overridden, AbiProfile::host_common())};
+    EXPECT_EQ(ignored_override.fields.front().bit_width, 12U);
     EXPECT_FALSE(ignored_override.fields.front().overridden);
     ASSERT_EQ(ignored_override.diagnostics.size(), 1U);
     EXPECT_EQ(ignored_override.diagnostics.front().severity, DiagnosticSeverity::warning);

@@ -390,6 +390,7 @@ struct PackedFieldAnalysis {
     std::optional<std::uint64_t> unused_codes;
     std::vector<PackedNamedCodeAnalysis> named_codes;
     std::optional<LinearQuantizedAnalysis> linear_quantized;
+    std::optional<FixedPointAnalysis> fixed_point;
     std::optional<codegen::SemanticRelationKind> relationship_kind;
     std::optional<codegen::SemanticRelationUnit> relationship_unit;
     std::optional<std::string> relationship_target;

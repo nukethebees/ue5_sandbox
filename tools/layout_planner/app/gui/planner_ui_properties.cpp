@@ -3846,6 +3846,11 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             ? std::get_if<LinearQuantizedType>(
                   &workspace_.types().type(selected_resolved_field->semantic_type.type).definition)
             : nullptr};
+    auto const* selected_fixed_point{
+        selected_resolved_field != nullptr
+            ? std::get_if<FixedPointType>(
+                  &workspace_.types().type(selected_resolved_field->semantic_type.type).definition)
+            : nullptr};
     if (selected_schema_field == nullptr) {
         selected_packed_code_.clear();
     } else if (std::ranges::find(selected_schema_field->named_codes,
@@ -4152,13 +4157,23 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                     ? std::get_if<LinearQuantizedType>(
                           &workspace_.types().type(resolved_field->semantic_type.type).definition)
                     : nullptr};
+            auto const* field_fixed_point{
+                resolved_field != nullptr
+                    ? std::get_if<FixedPointType>(
+                          &workspace_.types().type(resolved_field->semantic_type.type).definition)
+                    : nullptr};
             layout::LinearQuantizedAnalysis const* field_quantization_analysis{};
+            layout::FixedPointAnalysis const* field_fixed_point_analysis{};
             if (field != nullptr && active_packed_.has_value()) {
                 auto const analyzed_field{std::ranges::find(
                     active_packed_->fields, field->name, &layout::PackedFieldAnalysis::name)};
                 if (analyzed_field != active_packed_->fields.end() &&
                     analyzed_field->linear_quantized.has_value()) {
                     field_quantization_analysis = &*analyzed_field->linear_quantized;
+                }
+                if (analyzed_field != active_packed_->fields.end() &&
+                    analyzed_field->fixed_point.has_value()) {
+                    field_fixed_point_analysis = &*analyzed_field->fixed_point;
                 }
             }
             auto const& segment_name{codegen::packed_segment_name(segment)};
@@ -4311,6 +4326,15 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                         pending_field.maximum_value.reset();
                         pending_field.named_codes.clear();
                         pending_field.relationship.reset();
+                    } else if (picked_type != workspace_.types().types().end() &&
+                               std::holds_alternative<FixedPointType>(picked_type->definition)) {
+                        pending_field.kind = codegen::PackedFieldKind::fixed_point;
+                        pending_field.bits.reset();
+                        pending_field.range_helper = false;
+                        pending_field.minimum_value.reset();
+                        pending_field.maximum_value.reset();
+                        pending_field.named_codes.clear();
+                        pending_field.relationship.reset();
                     } else if (picked_type != workspace_.types().types().end()) {
                         if (auto const* scalar{
                                 std::get_if<IntegerScalarType>(&picked_type->definition)}) {
@@ -4376,13 +4400,15 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 field == nullptr                                            ? "reserved"
                 : field->kind == codegen::PackedFieldKind::enumeration      ? "enum"
                 : field->kind == codegen::PackedFieldKind::linear_quantized ? "linear quantized"
+                : field->kind == codegen::PackedFieldKind::fixed_point      ? "fixed point"
                 : field->kind == codegen::PackedFieldKind::signed_integer   ? "signed"
                                                                             : "unsigned"};
             if (field == nullptr) {
                 ImGui::TextDisabled("reserved");
             } else if (row_selected) {
                 ImGui::BeginDisabled(field_uses_integer_scalar ||
-                                     field_linear_quantized != nullptr);
+                                     field_linear_quantized != nullptr ||
+                                     field_fixed_point != nullptr);
                 if (ImGui::BeginCombo("##kind", kind_label)) {
                     if (ImGui::Selectable("unsigned",
                                           field->kind ==
@@ -4471,6 +4497,19 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                         pending_field.named_codes.clear();
                         pending_field.relationship.reset();
                     }
+                    if (ImGui::Selectable("fixed point",
+                                          field->kind == codegen::PackedFieldKind::fixed_point)) {
+                        pending = *schema;
+                        auto& pending_field{
+                            std::get<codegen::PackedFieldSchema>(pending->segments[index])};
+                        pending_field.kind = codegen::PackedFieldKind::fixed_point;
+                        pending_field.bits.reset();
+                        pending_field.range_helper = false;
+                        pending_field.minimum_value.reset();
+                        pending_field.maximum_value.reset();
+                        pending_field.named_codes.clear();
+                        pending_field.relationship.reset();
+                    }
                     ImGui::EndCombo();
                 }
                 ImGui::EndDisabled();
@@ -4485,7 +4524,8 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             } else if (row_selected) {
                 ImGui::BeginDisabled(field->kind != codegen::PackedFieldKind::unsigned_integer ||
                                      field_uses_integer_scalar ||
-                                     field_linear_quantized != nullptr);
+                                     field_linear_quantized != nullptr ||
+                                     field_fixed_point != nullptr);
                 if (ImGui::Checkbox("##range-helper", &range_helper)) {
                     pending = *schema;
                     std::get<codegen::PackedFieldSchema>(pending->segments[index]).range_helper =
@@ -4509,6 +4549,10 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 auto const maximum{
                     codegen::format_packed_integer(field_quantization_analysis->source_maximum)};
                 ImGui::TextDisabled("%s..%s (quantized)", minimum.c_str(), maximum.c_str());
+            } else if (field_fixed_point_analysis != nullptr) {
+                ImGui::TextDisabled("%.9Lg..%.9Lg (fixed)",
+                                    field_fixed_point_analysis->minimum_value,
+                                    field_fixed_point_analysis->maximum_value);
             } else if (row_selected) {
                 ImGui::SetNextItemWidth(70.0F);
                 auto range_submitted{ImGui::InputText("##minimum",
@@ -4567,6 +4611,12 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                                        ? (std::numeric_limits<std::uint64_t>::max)()
                                        : field_quantization_analysis->usable_code_count.value - 1};
                 ImGui::Text("encoded 0..%llu", static_cast<unsigned long long>(maximum));
+            } else if (field_fixed_point_analysis != nullptr) {
+                auto const minimum{
+                    codegen::format_packed_integer(field_fixed_point_analysis->minimum_raw_value)};
+                auto const maximum{
+                    codegen::format_packed_integer(field_fixed_point_analysis->maximum_raw_value)};
+                ImGui::Text("raw %s..%s", minimum.c_str(), maximum.c_str());
             } else if (index < packed.segments.size()) {
                 auto const* resolved{
                     std::get_if<lispb::schema::PackedField>(&packed.segments[index])};
@@ -4754,12 +4804,88 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             ImGui::TextDisabled("Moves this field's domain into a shared scalar declaration.");
         }
 
+        auto representation_module_index{std::optional<std::size_t>{}};
+        auto fallback_representation_module_index{std::optional<std::size_t>{}};
+        for (std::size_t module_index{}; module_index < modules.size(); ++module_index) {
+            auto const* representation_module{
+                std::get_if<codegen::RepresentationModuleSchema>(&modules[module_index])};
+            if (representation_module == nullptr) {
+                continue;
+            }
+            if (!fallback_representation_module_index.has_value()) {
+                fallback_representation_module_index = module_index;
+            }
+            if (representation_module->settings.namespace_name.value_or("") ==
+                node.identity.namespace_name) {
+                representation_module_index = module_index;
+                break;
+            }
+        }
+        if (!representation_module_index.has_value()) {
+            representation_module_index = fallback_representation_module_index;
+        }
+        auto const plain_integer_field{
+            selected_resolved_field != nullptr && selected_integer_scalar == nullptr &&
+            (selected_schema_field->kind == codegen::PackedFieldKind::signed_integer ||
+             selected_schema_field->kind == codegen::PackedFieldKind::unsigned_integer) &&
+            !selected_schema_field->minimum_value.has_value() &&
+            !selected_schema_field->maximum_value.has_value() &&
+            selected_schema_field->named_codes.empty() &&
+            !selected_schema_field->relationship.has_value() &&
+            !selected_schema_field->range_helper};
+        ImGui::BeginDisabled(!representation_module_index.has_value() || !plain_integer_field);
+        if (ImGui::Button("Create fixed point for selected field...")) {
+            new_fixed_point_module_index_ = *representation_module_index;
+            auto const& module{std::get<codegen::RepresentationModuleSchema>(
+                modules[new_fixed_point_module_index_])};
+            auto const namespace_name{module.settings.namespace_name.value_or("")};
+            auto const suggested_name{suggested_type_name(selected_schema_field->name, "Fixed")};
+            auto unique_name{suggested_name};
+            auto suffix_number{std::size_t{1}};
+            while (std::ranges::any_of(document_->types().types(), [&](auto const& candidate) {
+                return candidate.identity.namespace_name == namespace_name &&
+                       candidate.identity.name == unique_name;
+            })) {
+                unique_name = suggested_name + std::to_string(suffix_number++);
+            }
+            std::snprintf(new_fixed_point_name_.data(),
+                          new_fixed_point_name_.size(),
+                          "%s",
+                          unique_name.c_str());
+            new_fixed_point_signed_ =
+                selected_schema_field->kind == codegen::PackedFieldKind::signed_integer;
+            new_fixed_point_total_bits_ = selected_resolved_field->bit_width;
+            auto const available_magnitude_bits{new_fixed_point_total_bits_ -
+                                                (new_fixed_point_signed_ ? 1U : 0U)};
+            new_fixed_point_fractional_bits_ =
+                std::min(new_fixed_point_total_bits_ / 2, available_magnitude_bits);
+            new_fixed_point_rounding_ = 0;
+            pending_packed_fixed_point_binding_ = PendingPackedFixedPointBinding{
+                .packed_declaration = *declaration, .field_name = selected_segment_name};
+            open_new_fixed_point_dialog_ = true;
+        }
+        ImGui::EndDisabled();
+        if (!representation_module_index.has_value()) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("No representation module is available.");
+        } else if (!plain_integer_field) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("Requires a plain integer field without local semantic metadata.");
+        } else {
+            ImGui::SameLine();
+            ImGui::TextDisabled("Creates a shared scaled-integer representation for this width.");
+        }
+
         ImGui::SeparatorText("Semantic relationship");
         if (selected_linear_quantized != nullptr) {
             ImGui::TextDisabled(
                 "This placement inherits semantic meaning through the quantizer's source scalar.");
+        } else if (selected_fixed_point != nullptr) {
+            ImGui::TextDisabled(
+                "This fixed-point placement owns its scaled numerical representation.");
         }
-        ImGui::BeginDisabled(selected_linear_quantized != nullptr);
+        ImGui::BeginDisabled(selected_linear_quantized != nullptr ||
+                             selected_fixed_point != nullptr);
         ImGui::SetNextItemWidth(180.0F);
         auto const current_kind{semantic_relationship_kinds[static_cast<std::size_t>(
             std::clamp(packed_relationship_kind_,
@@ -5045,7 +5171,40 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         ImGui::TextDisabled(
             "Generated packed APIs expose encoded codes; decoding remains representation policy.");
     } else if (!pending.has_value() && selected_schema_field != nullptr &&
-               selected_index.has_value() && selected_linear_quantized == nullptr) {
+               selected_fixed_point != nullptr) {
+        ImGui::SeparatorText("Fixed point");
+        layout::FixedPointAnalysis const* fixed{};
+        if (active_packed_.has_value()) {
+            auto const analyzed_field{std::ranges::find(
+                active_packed_->fields, selected_field_, &layout::PackedFieldAnalysis::name)};
+            if (analyzed_field != active_packed_->fields.end() &&
+                analyzed_field->fixed_point.has_value()) {
+                fixed = &*analyzed_field->fixed_point;
+            }
+        }
+        if (fixed != nullptr) {
+            auto const minimum_raw{codegen::format_packed_integer(fixed->minimum_raw_value)};
+            auto const maximum_raw{codegen::format_packed_integer(fixed->maximum_raw_value)};
+            ImGui::Text("Raw range: %s..%s", minimum_raw.c_str(), maximum_raw.c_str());
+            ImGui::Text(
+                "Numerical range: %.9Lg..%.9Lg", fixed->minimum_value, fixed->maximum_value);
+            ImGui::Text("Width: %u total / %u whole / %u fractional bits",
+                        fixed->total_bits,
+                        fixed->whole_bits,
+                        fixed->fractional_bits);
+            ImGui::Text("Scale: %.9Lg", fixed->scale);
+            ImGui::Text("Resolution: %.9Lg", fixed->resolution);
+            ImGui::Text("Maximum rounding error: %.9Lg", fixed->maximum_rounding_error);
+            ImGui::Text("Rounding: %s", codegen::fixed_point_rounding_name(fixed->rounding).data());
+        } else {
+            ImGui::TextDisabled("Fixed-point analysis is unavailable.");
+        }
+        ImGui::TextDisabled(
+            "Generated packed APIs expose scaled raw integers; conversion remains representation "
+            "policy.");
+    } else if (!pending.has_value() && selected_schema_field != nullptr &&
+               selected_index.has_value() && selected_linear_quantized == nullptr &&
+               selected_fixed_point == nullptr) {
         auto const selected_segment_name{selected_field_};
         auto const effective_width{
             selected_resolved_field != nullptr ? selected_resolved_field->bit_width : 1U};

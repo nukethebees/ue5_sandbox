@@ -653,7 +653,14 @@ fractional widths, and nearest-even or toward-zero rounding. Its semantic node h
 primitive or ABI facts. Headless analysis derives the exact integer raw range, power-of-two scale
 and resolution, numerical endpoints, rounding-error bound, and checked selected-count encoded bits;
 allocated bytes, alignment, cache, and page consequences remain Unknown until placement/lowering is
-declared.
+declared. A packed field may explicitly place the representation with `:kind fixed-point`. The field
+retains the representation `TypeId`, derives exactly its total width, rejects competing integer
+domain/helper/relationship facts, and ignores session width overrides with an explanation. Packed
+lowering chooses only the smallest signed or unsigned native carrier for the scaled raw integer and
+emits deliberately named `*_raw` APIs plus exact raw boundaries. It does not fabricate a standalone
+representation wrapper or claim to decode a real value. Packed analysis embeds the same
+`FixedPointAnalysis`, so the UI does not reimplement scale, range, resolution, or rounding facts.
+Conversion helpers and non-packed placement remain later policies.
 
 `mini-float` is an explicit binary floating-like representation with 0-or-1 sign bits, bounded
 exponent and significand widths, and a signed exponent bias. The initial policy reserves the

@@ -399,6 +399,20 @@ share a source, Comparison shows both exact size bounds and their selected-count
 The same source-keyed session distribution is evaluated under both encodings to show factual sample,
 expected-value, and selected-count estimate deltas.
 
+Fixed-point authoring uses **+ New fixed point** with explicit signedness, total width, fractional
+width, and rounding policy. Standalone analysis reports raw range, numerical endpoints, scale,
+resolution, and maximum rounding error without inventing an ABI wrapper. A plain packed integer
+field also offers **Create fixed point for selected field...**, prefilled with its signedness and
+exact width; creation and binding are separate undoable edits, and failed binding rolls back the
+new declaration. Fields with local ranges, codes, helpers, or relationships must first resolve
+those semantics explicitly rather than silently losing them. To place an existing fixed-point
+representation in a packed value, choose it in the field type picker. The field switches atomically
+to **fixed point**, follows the exact representation width, and clears competing integer-field
+range, code, helper, and relationship metadata. The packed table and detail view reuse the same
+headless fixed-point facts. Generated packed APIs expose only `*_raw` scaled integer accessors with
+signed or unsigned boundary validation; they do not silently return decoded real values or apply
+rounding. Conversion helpers and non-packed placement remain later representation policy.
+
 Sentinel-encoded optional authoring uses **+ New optional**. The creation flow only offers integer
 scalars that already own at least one named sentinel, and the flat Properties editor constrains both
 source and absence-code choices to valid shared semantic declarations. LispB stores the policy as

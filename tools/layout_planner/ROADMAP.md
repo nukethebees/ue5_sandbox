@@ -348,7 +348,14 @@ first-class semantic representation without a fabricated C++ primitive or ABI `s
 analysis reports exact raw range, whole/fractional/sign allocation, scale, resolution, numerical
 range, rounding-error bound, and overflow-safe selected-count encoded bits. Creation, flat editing,
 duplication, rename, draft deletion, undo/redo, preview, save/reload, browser/graph navigation, and
-end-to-end analysis are implemented.
+end-to-end analysis are implemented. Existing fixed-point declarations are also selectable as
+packed field types through an explicit `fixed-point` kind. Placement retains their graph identity,
+uses the exact total width, reuses headless numerical facts, and generates signed/unsigned `*_raw`
+scaled-integer APIs with boundary validation rather than pretending to return decoded values.
+Plain packed integer fields can create a new shared fixed-point declaration with their signedness
+and width prefilled, then bind to it through two undoable edits; invalid binding rolls back the
+declaration. Existing semantic ranges/codes/relationships disable contextual conversion to avoid
+silently discarding meaning.
 
 `representation-module` now supports source-backed `mini-float` representations. Explicit
 sign, exponent, significand, and bias fields use an initial IEEE-style policy with distinct zero/
@@ -500,7 +507,9 @@ placed in packed fields with shared domain validation, analysis, generated acces
 creation/binding. Linear-quantized representations can now be placed in packed fields through an
 explicit kind. Placement retains the representation graph identity, derives its exact encoded width,
 reuses the quantization analyzer, and lowers an honestly named raw encoded-code API with reserved-
-code validation. Decoded-value helpers and non-packed container placement remain future work.
+code validation. Fixed-point representations likewise retain identity and exact total width while
+lowering only explicit signed/unsigned scaled `*_raw` accessors and reusing fixed-point analysis.
+Decoded-value helpers and non-packed container placement remain future work.
 
 - Create packed values with a backing storage type and optional invalid raw value.
 - Add, remove, duplicate, and reorder fields.
