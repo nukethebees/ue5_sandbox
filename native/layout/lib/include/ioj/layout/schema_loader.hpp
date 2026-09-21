@@ -2,6 +2,7 @@
 
 #include <ioj/layout/diagnostic.hpp>
 
+#include <lispb/project.h>
 #include <lispb/schema/editable_document.h>
 
 #include <filesystem>
@@ -12,6 +13,7 @@
 namespace ioj::layout {
 
 struct SchemaLoadResult {
+    std::optional<lispb::EditableProjectDocument> project_document;
     std::optional<lispb::schema::EditableSchemaDocument> document;
     std::vector<Diagnostic> diagnostics;
     std::filesystem::path project_path;

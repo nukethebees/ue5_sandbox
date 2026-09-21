@@ -112,6 +112,8 @@ TEST(SchemaLoader, LoadsSemanticEnumsPackedValuesAndSoas) {
     auto const project_path{std::filesystem::path{SANDBOX_SOURCE_DIR} / "lispb/project.lispb"};
     auto const loaded{load_lispb_schema(project_path, "sandbox-code")};
     ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
+    ASSERT_TRUE(loaded.project_document.has_value());
+    EXPECT_EQ(loaded.project_document->path(), std::filesystem::absolute(project_path));
     ASSERT_TRUE(loaded.document.has_value());
     auto const& types{loaded.document->types()};
 
@@ -184,6 +186,8 @@ TEST(SchemaLoader, ClonesCurrentDraftAndLoadsIndependentProject) {
     auto cloned{clone_lispb_schema(*loaded.document, files.path("copy.lispb"), "test-schema")};
 
     ASSERT_TRUE(cloned.loaded) << diagnostic_text(cloned);
+    ASSERT_TRUE(cloned.project_document.has_value());
+    EXPECT_EQ(cloned.project_document->path(), std::filesystem::absolute(files.path("copy.lispb")));
     ASSERT_TRUE(cloned.document.has_value());
     EXPECT_FALSE(cloned.document->dirty());
     EXPECT_TRUE(std::filesystem::exists(files.path("copy_schema/types.lispb")));
@@ -664,7 +668,8 @@ TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesSoa) {
             .fixed_schema = std::nullopt,
             .nested_schema = std::nullopt,
             .mask_field = false,
-            .mask_dimensions = {}},
+            .mask_dimensions = {},
+            .relationship = std::nullopt},
         codegen::SoaMemberSchema{
             .name = "values",
             .kind = codegen::SoaMemberKind::array,
@@ -672,7 +677,13 @@ TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesSoa) {
             .fixed_schema = std::nullopt,
             .nested_schema = std::nullopt,
             .mask_field = false,
-            .mask_dimensions = {}}};
+            .mask_dimensions = {},
+            .relationship = codegen::SemanticRelationSchema{
+                .kind = codegen::SemanticRelationKind::references,
+                .target = codegen::TypeRef{.name = "ExistingColumns",
+                                           .suffix = {},
+                                           .nested = std::nullopt},
+                .unit = std::nullopt}}};
     auto const created{loaded.document->allocate_declaration_id()};
     auto applied{loaded.document->apply(lispb::schema::CreateSoa{
         .declaration = created,
@@ -689,6 +700,13 @@ TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesSoa) {
     EXPECT_EQ(analysis.bytes_per_logical_element, 5U);
     EXPECT_EQ(analysis.total_payload_bytes, 500U);
     EXPECT_TRUE(analysis.diagnostics.empty());
+    auto const& designed_soa{
+        std::get<lispb::schema::SoaType>(loaded.document->types().type(*designed).definition)};
+    ASSERT_TRUE(designed_soa.columns[1].relationship.has_value());
+    EXPECT_EQ(loaded.document->types()
+                  .type(designed_soa.columns[1].relationship->target.type)
+                  .identity.name,
+              "ExistingColumns");
 
     auto saved{loaded.document->save()};
     ASSERT_TRUE(saved.has_value()) << saved.error().message;
@@ -706,6 +724,10 @@ TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesSoa) {
     EXPECT_EQ(soa.columns[1].name, "values");
     EXPECT_EQ(reloaded.document->types().type(soa.columns[0].semantic_type.type).identity.name,
               "State");
+    ASSERT_TRUE(soa.columns[1].relationship.has_value());
+    EXPECT_EQ(
+        reloaded.document->types().type(soa.columns[1].relationship->target.type).identity.name,
+        "ExistingColumns");
 
     analysis = Analyzer::analyze_soa(
         reloaded.document->types(), *reloaded_designed, Variant{}, AbiProfile::host_common(), 100);
@@ -730,25 +752,44 @@ TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesRecord) {
     auto applied{loaded.document->apply(lispb::schema::CreateRecord{
         .declaration = created,
         .module_index = loaded.document->declaration(*existing)->module_index,
-        .schema = codegen::RecordSchema{.name = "DesignedRecord",
-                                        .members =
-                                            {{.name = "state",
-                                              .type = codegen::TypeRef{.name = "@state",
-                                                                       .suffix = {},
-                                                                       .nested = std::nullopt},
-                                              .count = std::nullopt},
-                                             {.name = "values",
-                                              .type = codegen::TypeRef{.name = "std::uint32_t",
-                                                                       .suffix = {},
-                                                                       .nested = std::nullopt},
-                                              .count = 2}},
-                                        .export_specifier = std::nullopt},
+        .schema =
+            codegen::RecordSchema{.name = "DesignedRecord",
+                                  .members =
+                                      {{.name = "state",
+                                        .type = codegen::TypeRef{.name = "@state",
+                                                                 .suffix = {},
+                                                                 .nested = std::nullopt},
+                                        .count =
+                                            std::nullopt,
+                                        .relationship = codegen::
+                                            SemanticRelationSchema{.kind = codegen::SemanticRelationKind::references,
+                                                                   .target = codegen::TypeRef{.name =
+                                                                                                  "ExistingRecord",
+                                                                                              .suffix = {},
+                                                                                              .nested =
+                                                                                                  std::nullopt},
+                                                                   .unit = std::nullopt}},
+                                       {.name = "values",
+                                        .type =
+                                            codegen::TypeRef{
+                                                .name = "std::uint32_t",
+                                                .suffix = {},
+                                                .nested = std::nullopt},
+                                        .count = 2,
+                                        .relationship = std::nullopt}},
+                                  .export_specifier = std::nullopt},
         .insertion_index = std::nullopt})};
     ASSERT_TRUE(applied.has_value()) << applied.error().message;
     ASSERT_TRUE(*applied);
 
     auto const designed{loaded.document->types().find_declared("records", "DesignedRecord")};
+    auto const existing_type{loaded.document->types().find_declared("records", "ExistingRecord")};
     ASSERT_TRUE(designed.has_value());
+    ASSERT_TRUE(existing_type.has_value());
+    auto const& designed_record{
+        std::get<lispb::schema::RecordType>(loaded.document->types().type(*designed).definition)};
+    ASSERT_TRUE(designed_record.members[0].relationship.has_value());
+    EXPECT_EQ(designed_record.members[0].relationship->target.type, *existing_type);
     auto analysis{
         Analyzer::analyze_record(loaded.document->types(), *designed, AbiProfile::host_common())};
     EXPECT_EQ(analysis.members[0].offset_bytes, 0);
@@ -773,6 +814,11 @@ TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesRecord) {
     EXPECT_EQ(record.members[0].name, "state");
     EXPECT_EQ(reloaded.document->types().type(record.members[0].semantic_type.type).identity.name,
               "State");
+    ASSERT_TRUE(record.members[0].relationship.has_value());
+    auto const reloaded_existing{
+        reloaded.document->types().find_declared("records", "ExistingRecord")};
+    ASSERT_TRUE(reloaded_existing.has_value());
+    EXPECT_EQ(record.members[0].relationship->target.type, *reloaded_existing);
     EXPECT_EQ(record.members[1].count, 2);
 
     analysis = Analyzer::analyze_record(

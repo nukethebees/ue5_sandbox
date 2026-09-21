@@ -1,9 +1,13 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
+#include <expected>
+#include <filesystem>
 #include <map>
 #include <optional>
 #include <string>
+#include <string_view>
 
 namespace ioj::layout {
 
@@ -38,6 +42,13 @@ struct MemoryFacts {
     auto operator==(MemoryFacts const&) const -> bool = default;
 };
 
+struct AbiProfileParseError {
+    std::size_t line{};
+    std::string message;
+
+    auto operator==(AbiProfileParseError const&) const -> bool = default;
+};
+
 class AbiProfile {
   public:
     explicit AbiProfile(std::string name = {}, AbiProfileIdentity identity = {});
@@ -52,6 +63,7 @@ class AbiProfile {
     auto name() const -> std::string const&;
     auto identity() const -> AbiProfileIdentity const&;
     auto types() const -> std::map<std::string, TypeFacts, std::less<>> const&;
+    auto representations() const -> std::map<std::string, std::string, std::less<>> const&;
     auto memory_facts() const -> MemoryFacts const&;
   private:
     std::string name_;
@@ -60,5 +72,10 @@ class AbiProfile {
     std::map<std::string, std::string, std::less<>> representations_;
     MemoryFacts memory_facts_;
 };
+
+auto parse_abi_profile(std::string_view source) -> std::expected<AbiProfile, AbiProfileParseError>;
+auto load_abi_profile(std::filesystem::path const& path)
+    -> std::expected<AbiProfile, AbiProfileParseError>;
+auto serialize_abi_profile(AbiProfile const& profile) -> std::string;
 
 } // namespace ioj::layout

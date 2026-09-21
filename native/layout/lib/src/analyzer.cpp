@@ -59,6 +59,252 @@ auto maximum_signed_value(std::uint32_t const bits) -> std::optional<std::int64_
     return static_cast<std::int64_t>((std::uint64_t{1} << (bits - 1)) - 1);
 }
 
+auto minimum_bits_for_code_count(ExactCodeCount const count) -> std::uint32_t {
+    if (count.two_to_64) {
+        return 64;
+    }
+    auto remaining{count.value > 1 ? count.value - 1 : 0};
+    std::uint32_t bits{1};
+    while (remaining > 1) {
+        remaining >>= 1;
+        ++bits;
+    }
+    return bits;
+}
+
+struct RelationshipExtentRequirement {
+    std::optional<ExactCodeCount> live_values;
+    std::optional<ExactCodeCount> required_codes;
+    std::uint32_t minimum_code_count_bits{1};
+};
+
+auto relationship_extent_requirement(std::uint64_t const extent,
+                                     bool const includes_terminal_count,
+                                     std::uint64_t const sentinel_codes)
+    -> RelationshipExtentRequirement {
+    auto const maximum{(std::numeric_limits<std::uint64_t>::max)()};
+    auto live_is_two_to_64{includes_terminal_count && extent == maximum};
+    auto const live_value{live_is_two_to_64 ? std::uint64_t{0}
+                                            : extent + (includes_terminal_count ? 1U : 0U)};
+    RelationshipExtentRequirement result{
+        .live_values = ExactCodeCount{.value = live_value, .two_to_64 = live_is_two_to_64},
+        .required_codes = std::nullopt,
+        .minimum_code_count_bits = 1};
+    if (live_is_two_to_64) {
+        if (sentinel_codes == 0) {
+            result.required_codes = ExactCodeCount{.value = 0, .two_to_64 = true};
+            result.minimum_code_count_bits = 64;
+        } else {
+            result.minimum_code_count_bits = 65;
+        }
+        return result;
+    }
+
+    auto const remaining{maximum - live_value};
+    if (sentinel_codes <= remaining) {
+        result.required_codes =
+            ExactCodeCount{.value = live_value + sentinel_codes, .two_to_64 = false};
+    } else if (sentinel_codes - remaining == 1) {
+        result.required_codes = ExactCodeCount{.value = 0, .two_to_64 = true};
+    }
+    result.minimum_code_count_bits = result.required_codes.has_value()
+                                       ? minimum_bits_for_code_count(*result.required_codes)
+                                       : 65;
+    return result;
+}
+
+auto relationship_code_space_extent_limit(std::uint32_t const width,
+                                          bool const includes_terminal_count,
+                                          std::uint64_t const sentinel_codes)
+    -> std::optional<std::uint64_t> {
+    if (width == 0 || width > 64) {
+        return std::nullopt;
+    }
+    auto const overhead{
+        checked_add(sentinel_codes, includes_terminal_count ? std::uint64_t{1} : 0)};
+    if (!overhead.has_value()) {
+        return std::nullopt;
+    }
+    if (width == 64) {
+        if (*overhead == 0) {
+            return (std::numeric_limits<std::uint64_t>::max)();
+        }
+        return (std::numeric_limits<std::uint64_t>::max)() - (*overhead - 1);
+    }
+
+    auto const code_count{std::uint64_t{1} << width};
+    if (*overhead > code_count) {
+        return std::nullopt;
+    }
+    return code_count - *overhead;
+}
+
+auto relationship_semantic_extent_limit(
+    codegen::SemanticRelationKind const kind,
+    std::optional<codegen::PackedIntegerValue> const minimum_value,
+    std::optional<codegen::PackedIntegerValue> const maximum_value)
+    -> std::optional<std::uint64_t> {
+    if (!minimum_value.has_value() || !maximum_value.has_value() || minimum_value->negative ||
+        minimum_value->magnitude != 0 || maximum_value->negative) {
+        return std::nullopt;
+    }
+    if (kind == codegen::SemanticRelationKind::count_of) {
+        return maximum_value->magnitude;
+    }
+    if (maximum_value->magnitude == (std::numeric_limits<std::uint64_t>::max)()) {
+        return maximum_value->magnitude;
+    }
+    return maximum_value->magnitude + 1;
+}
+
+auto relationship_sentinel_extent_limit(
+    codegen::SemanticRelationKind const kind,
+    std::span<lispb::schema::PackedNamedCode const> const named_codes)
+    -> std::optional<std::uint64_t> {
+    auto limit{(std::numeric_limits<std::uint64_t>::max)()};
+    for (auto const& code : named_codes) {
+        if (!code.sentinel) {
+            continue;
+        }
+        if (code.value.negative ||
+            (kind == codegen::SemanticRelationKind::count_of && code.value.magnitude == 0)) {
+            return std::nullopt;
+        }
+        auto const candidate{kind == codegen::SemanticRelationKind::count_of
+                                 ? code.value.magnitude - 1
+                                 : code.value.magnitude};
+        limit = std::min(limit, candidate);
+    }
+    return limit;
+}
+
+struct RelationshipExtentAnalysis {
+    std::uint64_t target_extent{};
+    std::optional<ExactCodeCount> live_values;
+    std::optional<ExactCodeCount> required_codes;
+    std::uint32_t minimum_required_bits{1};
+    bool width_sufficient{};
+    std::optional<std::uint64_t> code_space_capacity_limit;
+    std::optional<std::uint64_t> capacity_headroom;
+    std::optional<std::uint64_t> semantic_capacity_limit;
+    std::optional<std::uint64_t> sentinel_capacity_limit;
+    std::optional<std::uint64_t> effective_capacity_limit;
+    std::optional<std::uint64_t> effective_capacity_headroom;
+    std::vector<Diagnostic> diagnostics;
+};
+
+auto analyze_unsigned_relationship_extent(
+    std::string_view const context,
+    codegen::SemanticRelationKind const kind,
+    std::uint64_t const target_extent,
+    std::span<lispb::schema::PackedNamedCode const> const named_codes,
+    std::uint32_t const width,
+    std::optional<codegen::PackedIntegerValue> const minimum_value,
+    std::optional<codegen::PackedIntegerValue> const maximum_value) -> RelationshipExtentAnalysis {
+    auto const includes_terminal_count{kind == codegen::SemanticRelationKind::count_of};
+    auto const sentinel_count{static_cast<std::uint64_t>(
+        std::ranges::count(named_codes, true, &lispb::schema::PackedNamedCode::sentinel))};
+    auto const requirement{
+        relationship_extent_requirement(target_extent, includes_terminal_count, sentinel_count)};
+    auto const capacity_limit{
+        relationship_code_space_extent_limit(width, includes_terminal_count, sentinel_count)};
+    auto const semantic_limit{
+        relationship_semantic_extent_limit(kind, minimum_value, maximum_value)};
+    auto const sentinel_limit{relationship_sentinel_extent_limit(kind, named_codes)};
+    auto effective_limit{std::optional<std::uint64_t>{}};
+    if (capacity_limit.has_value() && semantic_limit.has_value() && sentinel_limit.has_value()) {
+        effective_limit = std::min({*capacity_limit, *semantic_limit, *sentinel_limit});
+    }
+    auto result{RelationshipExtentAnalysis{.target_extent = target_extent,
+                                           .live_values = requirement.live_values,
+                                           .required_codes = requirement.required_codes,
+                                           .minimum_required_bits = 1,
+                                           .width_sufficient = false,
+                                           .code_space_capacity_limit = capacity_limit,
+                                           .capacity_headroom = std::nullopt,
+                                           .semantic_capacity_limit = semantic_limit,
+                                           .sentinel_capacity_limit = sentinel_limit,
+                                           .effective_capacity_limit = effective_limit,
+                                           .effective_capacity_headroom = std::nullopt,
+                                           .diagnostics = {}}};
+
+    auto const has_live_value{includes_terminal_count || target_extent != 0};
+    auto const maximum_live_value{
+        includes_terminal_count ? target_extent
+                                : (target_extent == 0 ? std::uint64_t{0} : target_extent - 1)};
+    auto maximum_encoded_value{maximum_live_value};
+    for (auto const& code : named_codes) {
+        if (!code.sentinel) {
+            continue;
+        }
+        maximum_encoded_value = std::max(maximum_encoded_value, code.value.magnitude);
+        auto const collides{!code.value.negative && has_live_value &&
+                            (includes_terminal_count ? code.value.magnitude <= target_extent
+                                                     : code.value.magnitude < target_extent)};
+        if (collides) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 std::string{context} + " sentinel code '" + code.name +
+                     "' collides with the live values required by its '" +
+                     std::string{codegen::semantic_relation_kind_name(kind)} + "' target extent."});
+        }
+    }
+
+    auto numeric_bits{std::uint32_t{1}};
+    if (has_live_value || sentinel_count != 0) {
+        auto const numeric_requirement{
+            codegen::minimum_packed_integer_bits(codegen::PackedIntegerValue{0},
+                                                 codegen::PackedIntegerValue{maximum_encoded_value},
+                                                 false)};
+        numeric_bits = numeric_requirement.value_or(65);
+    }
+    result.minimum_required_bits = std::max(requirement.minimum_code_count_bits, numeric_bits);
+    result.width_sufficient =
+        result.minimum_required_bits <= 64 && width >= result.minimum_required_bits;
+    if (result.width_sufficient && result.code_space_capacity_limit.has_value() &&
+        target_extent <= *result.code_space_capacity_limit) {
+        result.capacity_headroom = *result.code_space_capacity_limit - target_extent;
+    }
+    if (result.width_sufficient && result.effective_capacity_limit.has_value() &&
+        target_extent <= *result.effective_capacity_limit) {
+        result.effective_capacity_headroom = *result.effective_capacity_limit - target_extent;
+    }
+    if (!result.width_sufficient) {
+        result.diagnostics.push_back({DiagnosticSeverity::error,
+                                      std::string{context} + " uses " + std::to_string(width) +
+                                          " bits but its '" +
+                                          std::string{codegen::semantic_relation_kind_name(kind)} +
+                                          "' target extent requires at least " +
+                                          std::to_string(result.minimum_required_bits) + " bits."});
+    }
+    if (has_live_value && minimum_value.has_value() && maximum_value.has_value() &&
+        (minimum_value->negative || minimum_value->magnitude != 0 || maximum_value->negative ||
+         maximum_value->magnitude < maximum_live_value)) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             std::string{context} +
+                 " semantic range does not cover the live values required by its '" +
+                 std::string{codegen::semantic_relation_kind_name(kind)} + "' target extent."});
+    }
+    return result;
+}
+
+auto relationship_target_extent(lispb::schema::SemanticRelationship const& relationship,
+                                RelationshipTargetFacts const& target_facts)
+    -> std::optional<std::uint64_t> {
+    if (relationship.kind == codegen::SemanticRelationKind::index_into ||
+        relationship.kind == codegen::SemanticRelationKind::count_of) {
+        return target_facts.element_capacity;
+    }
+    if (relationship.kind != codegen::SemanticRelationKind::offset_into ||
+        !relationship.unit.has_value()) {
+        return std::nullopt;
+    }
+    return *relationship.unit == codegen::SemanticRelationUnit::elements
+             ? target_facts.element_capacity
+             : target_facts.byte_extent;
+}
+
 auto packed_range_count(codegen::PackedIntegerValue const minimum,
                         codegen::PackedIntegerValue const maximum) -> std::optional<std::uint64_t> {
     if (codegen::packed_integer_less(maximum, minimum)) {
@@ -174,6 +420,30 @@ auto minimum_regions(std::uint64_t const bytes, std::uint64_t const region_bytes
     return bytes / region_bytes + (bytes % region_bytes == 0 ? 0 : 1);
 }
 
+auto classified_useful_bytes(std::optional<std::uint64_t> const useful_bytes, bool const included)
+    -> std::optional<std::uint64_t> {
+    return included ? useful_bytes : std::optional<std::uint64_t>{std::uint64_t{}};
+}
+
+auto logical_useful_bytes(std::optional<std::uint64_t> const classified_bytes,
+                          std::uint64_t const multiplicity) -> std::optional<std::uint64_t> {
+    if (multiplicity == 0 || !classified_bytes.has_value()) {
+        return std::nullopt;
+    }
+    return checked_multiply(*classified_bytes, multiplicity);
+}
+
+auto access_intents_match(std::span<AccessIntent const> const first,
+                          std::span<AccessIntent const> const second) -> bool {
+    if (first.size() != second.size()) {
+        return false;
+    }
+    return std::ranges::all_of(first, [&](AccessIntent const& access) {
+        auto const match{std::ranges::find(second, access.name, &AccessIntent::name)};
+        return match != second.end() && match->operation == access.operation;
+    });
+}
+
 auto straddling_elements(std::uint64_t const element_bytes,
                          std::uint64_t const element_count,
                          std::uint64_t const region_bytes,
@@ -181,6 +451,9 @@ auto straddling_elements(std::uint64_t const element_bytes,
     -> std::optional<std::uint64_t> {
     if (element_count == 0) {
         return 0;
+    }
+    if (element_bytes == 0) {
+        return std::nullopt;
     }
     if (element_bytes > region_bytes) {
         return element_count;
@@ -193,6 +466,57 @@ auto straddling_elements(std::uint64_t const element_bytes,
     auto const coincident_boundary_period{region_bytes / std::gcd(element_bytes, region_bytes)};
     auto const coincident_boundaries{(element_count - 1) / coincident_boundary_period};
     return boundaries_before_end - coincident_boundaries;
+}
+
+auto straddling_elements_at_offset(std::uint64_t const element_bytes,
+                                   std::uint64_t const element_count,
+                                   std::uint64_t const region_bytes,
+                                   std::optional<std::uint64_t> const total_bytes,
+                                   std::uint64_t const allocation_offset)
+    -> std::optional<std::uint64_t> {
+    if (element_count == 0) {
+        return 0;
+    }
+    if (element_bytes == 0 || !total_bytes.has_value()) {
+        return std::nullopt;
+    }
+    if (element_bytes > region_bytes) {
+        return element_count;
+    }
+
+    auto const period{region_bytes / std::gcd(element_bytes, region_bytes)};
+    constexpr std::uint64_t maximum_period{1'000'000};
+    auto const elements_to_analyze{std::min(element_count, period)};
+    if (elements_to_analyze > maximum_period) {
+        return std::nullopt;
+    }
+
+    auto offset_in_region{allocation_offset % region_bytes};
+    std::uint64_t straddles_in_analyzed_elements{};
+    std::uint64_t straddles_in_remainder{};
+    auto const remainder{element_count % period};
+    for (std::uint64_t index{}; index < elements_to_analyze; ++index) {
+        auto const straddles{offset_in_region > region_bytes - element_bytes};
+        straddles_in_analyzed_elements += straddles ? 1U : 0U;
+        if (index < remainder) {
+            straddles_in_remainder += straddles ? 1U : 0U;
+        }
+        if (offset_in_region >= region_bytes - element_bytes) {
+            offset_in_region -= region_bytes - element_bytes;
+        } else {
+            offset_in_region += element_bytes;
+        }
+    }
+    if (element_count <= period) {
+        return straddles_in_analyzed_elements;
+    }
+
+    auto const full_periods{element_count / period};
+    auto const full_period_straddles{
+        checked_multiply(straddles_in_analyzed_elements, full_periods)};
+    return full_period_straddles.has_value()
+             ? checked_add(*full_period_straddles, straddles_in_remainder)
+             : std::nullopt;
 }
 
 auto touched_regions(std::uint64_t const stride_bytes,
@@ -318,6 +642,29 @@ auto cache_line_tiling(std::uint64_t const element_bytes, std::uint64_t const ca
             .minimum_cache_lines_per_element = minimum_regions(element_bytes, cache_line_bytes)};
 }
 
+auto resolved_enum_domain(lispb::schema::EnumType const& enumeration) -> lispb::schema::EnumDomain {
+    std::vector<lispb::schema::EnumDomainInput> values;
+    values.reserve(enumeration.enumerators.size());
+    for (auto const& enumerator : enumeration.enumerators) {
+        values.push_back({.name = enumerator.name,
+                          .explicit_value = enumerator.explicit_value,
+                          .reserved = enumerator.sentinel || enumerator.count_sentinel});
+    }
+    return lispb::schema::analyze_enum_domain(values, enumeration.signedness);
+}
+
+auto derived_enum_backing_type(lispb::schema::EnumType const& enumeration)
+    -> std::optional<std::string> {
+    auto const domain{resolved_enum_domain(enumeration)};
+    auto const requirement{
+        lispb::schema::derive_enum_storage_requirement(domain, enumeration.bit_width)};
+    if (!requirement.has_value()) {
+        return std::nullopt;
+    }
+    return "std::" + std::string{requirement->signedness ? "int" : "uint"} +
+           std::to_string(requirement->bit_width) + "_t";
+}
+
 } // namespace
 
 auto physical_type_spelling(lispb::schema::TypeGraph const& types, lispb::schema::TypeId const type)
@@ -331,8 +678,11 @@ auto physical_type_spelling(lispb::schema::TypeGraph const& types, lispb::schema
             return codegen::native_spelling(external->cpp_type.spelling);
         }
         if (auto const* enumeration{std::get_if<lispb::schema::EnumType>(&node.definition)}) {
-            current = enumeration->underlying_type.type;
-            continue;
+            if (enumeration->underlying_type.has_value()) {
+                current = enumeration->underlying_type->type;
+                continue;
+            }
+            return derived_enum_backing_type(*enumeration);
         }
         if (auto const* packed{std::get_if<lispb::schema::PackedType>(&node.definition)}) {
             current = packed->storage_type.type;
@@ -900,10 +1250,13 @@ auto numeric_delta(std::optional<std::uint64_t> const baseline,
 
 auto Analyzer::analyze_enum(lispb::schema::TypeGraph const& types,
                             lispb::schema::TypeId const type,
-                            AbiProfile const& abi) -> EnumDomainAnalysis {
+                            AbiProfile const& abi,
+                            std::uint64_t const element_count) -> EnumDomainAnalysis {
     auto const& enumeration{std::get<lispb::schema::EnumType>(types.type(type).definition)};
-    auto const backing_type{physical_type_spelling(types, enumeration.underlying_type.type)
-                                .value_or(enumeration.underlying_type.cpp_type.spelling)};
+    auto const backing_type{enumeration.underlying_type.has_value()
+                                ? physical_type_spelling(types, enumeration.underlying_type->type)
+                                      .value_or(enumeration.underlying_type->cpp_type.spelling)
+                                : derived_enum_backing_type(enumeration).value_or("Unknown")};
     EnumDomainAnalysis result{.type = type,
                               .backing_type = backing_type,
                               .backing_facts = abi.find(backing_type),
@@ -922,8 +1275,24 @@ auto Analyzer::analyze_enum(lispb::schema::TypeGraph const& types,
                               .backing_can_represent_domain = std::nullopt,
                               .unused_backing_codes = std::nullopt,
                               .enumerators = {},
-                              .diagnostics = {}};
-    if (!result.backing_facts.has_value()) {
+                              .diagnostics = {},
+                              .aggregate = {.element_count = element_count,
+                                            .total_storage_bytes = std::nullopt,
+                                            .cache_line_bytes = std::nullopt,
+                                            .minimum_cache_lines = std::nullopt,
+                                            .complete_elements_per_cache_line = std::nullopt,
+                                            .cache_line_straddling_elements = std::nullopt,
+                                            .page_bytes = std::nullopt,
+                                            .minimum_pages = std::nullopt,
+                                            .complete_elements_per_page = std::nullopt,
+                                            .page_straddling_elements = std::nullopt,
+                                            .cache_capacity = {}}};
+    if (backing_type == "Unknown") {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Enum C++ backing storage cannot be derived because semantic signedness or width is "
+             "unknown."});
+    } else if (!result.backing_facts.has_value()) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::warning,
              "Unknown physical facts for enum backing type '" + backing_type + "'."});
@@ -939,14 +1308,7 @@ auto Analyzer::analyze_enum(lispb::schema::TypeGraph const& types,
         }
     }
 
-    std::vector<lispb::schema::EnumDomainInput> domain_inputs;
-    domain_inputs.reserve(enumeration.enumerators.size());
-    for (auto const& enumerator : enumeration.enumerators) {
-        domain_inputs.push_back({.name = enumerator.name,
-                                 .explicit_value = enumerator.explicit_value,
-                                 .reserved = enumerator.sentinel || enumerator.count_sentinel});
-    }
-    auto const domain{lispb::schema::analyze_enum_domain(domain_inputs, enumeration.signedness)};
+    auto const domain{resolved_enum_domain(enumeration)};
     result.live_value_count = domain.live_value_count;
     result.reserved_value_count = domain.reserved_value_count;
     result.minimum_value = domain.minimum_value;
@@ -1002,18 +1364,211 @@ auto Analyzer::analyze_enum(lispb::schema::TypeGraph const& types,
                          " does not fit backing type '" + backing_type + "'."});
             }
         }
-        if (result.backing_bits.has_value() && *result.backing_bits < 64) {
-            auto const backing_codes{std::uint64_t{1} << *result.backing_bits};
+        auto backing_code_bits{std::optional<std::uint64_t>{}};
+        if (result.backing_facts.has_value() &&
+            result.backing_facts->integer_signed == std::optional{false} &&
+            result.backing_facts->unsigned_value_bits.has_value()) {
+            backing_code_bits = *result.backing_facts->unsigned_value_bits;
+        } else if (result.backing_facts.has_value() &&
+                   result.backing_facts->integer_signed == std::optional{true}) {
+            backing_code_bits = result.backing_bits;
+        }
+        if (backing_code_bits.has_value() && *backing_code_bits < 64) {
+            auto const backing_codes{std::uint64_t{1} << *backing_code_bits};
             if (domain.distinct_code_count <= backing_codes) {
                 result.unused_backing_codes = backing_codes - domain.distinct_code_count;
             }
         }
     }
+
+    auto const backing_size{
+        result.backing_facts.transform([](TypeFacts const& facts) { return facts.size_bytes; })};
+    if (backing_size.has_value() && *backing_size != 0) {
+        result.aggregate.total_storage_bytes = checked_multiply(*backing_size, element_count);
+        if (!result.aggregate.total_storage_bytes.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Enum standalone backing aggregate storage overflows uint64."});
+        }
+
+        auto const& memory{abi.memory_facts()};
+        result.aggregate.cache_line_bytes = memory.cache_line_bytes;
+        if (!memory.cache_line_bytes.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::warning,
+                 "Cache-line size is unknown for ABI profile '" + abi.name() + "'."});
+        } else if (*memory.cache_line_bytes == 0) {
+            result.aggregate.cache_line_bytes.reset();
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, "ABI profile cache-line size must be non-zero."});
+        } else {
+            if (result.aggregate.total_storage_bytes.has_value()) {
+                result.aggregate.minimum_cache_lines = minimum_regions(
+                    *result.aggregate.total_storage_bytes, *memory.cache_line_bytes);
+            }
+            result.aggregate.complete_elements_per_cache_line =
+                *memory.cache_line_bytes / *backing_size;
+            result.aggregate.cache_line_straddling_elements =
+                straddling_elements(*backing_size,
+                                    element_count,
+                                    *memory.cache_line_bytes,
+                                    result.aggregate.total_storage_bytes);
+        }
+
+        result.aggregate.page_bytes = memory.page_bytes;
+        if (!memory.page_bytes.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::warning,
+                 "Page size is unknown for ABI profile '" + abi.name() + "'."});
+        } else if (*memory.page_bytes == 0) {
+            result.aggregate.page_bytes.reset();
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, "ABI profile page size must be non-zero."});
+        } else {
+            if (result.aggregate.total_storage_bytes.has_value()) {
+                result.aggregate.minimum_pages =
+                    minimum_regions(*result.aggregate.total_storage_bytes, *memory.page_bytes);
+            }
+            result.aggregate.complete_elements_per_page = *memory.page_bytes / *backing_size;
+            result.aggregate.page_straddling_elements =
+                straddling_elements(*backing_size,
+                                    element_count,
+                                    *memory.page_bytes,
+                                    result.aggregate.total_storage_bytes);
+        }
+    }
+    result.aggregate.cache_capacity =
+        cache_capacity_analysis(result.aggregate.total_storage_bytes, abi.memory_facts());
     return result;
 }
 
-auto Analyzer::analyze_integer_scalar(lispb::schema::TypeGraph const& types,
-                                      lispb::schema::TypeId const type) -> IntegerScalarAnalysis {
+auto Analyzer::compare_enum_targets(EnumDomainAnalysis const& first,
+                                    EnumDomainAnalysis const& second) -> EnumTargetComparison {
+    EnumTargetComparison result;
+    result.first = first;
+    result.second = second;
+    for (auto const& diagnostic : first.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "First target enum: " + diagnostic.message});
+    }
+    for (auto const& diagnostic : second.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "Second target enum: " + diagnostic.message});
+    }
+
+    if (first.type != second.type) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error, "Compared target analyses describe different enums."});
+        return result;
+    }
+    if (first.aggregate.element_count != second.aggregate.element_count) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared target enum analyses use different element counts."});
+        return result;
+    }
+    if (first.backing_type != second.backing_type ||
+        first.live_value_count != second.live_value_count ||
+        first.reserved_value_count != second.reserved_value_count ||
+        first.minimum_value != second.minimum_value ||
+        first.maximum_value != second.maximum_value ||
+        first.signed_domain != second.signed_domain ||
+        first.declared_signedness != second.declared_signedness ||
+        first.minimum_required_bits != second.minimum_required_bits ||
+        first.declared_bit_width != second.declared_bit_width ||
+        first.effective_bit_width != second.effective_bit_width ||
+        first.semantic_width_can_represent_domain != second.semantic_width_can_represent_domain ||
+        first.unused_semantic_codes != second.unused_semantic_codes) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared target enum analyses do not describe the same semantic domain and C++ "
+             "backing choice."});
+        return result;
+    }
+
+    std::set<std::string, std::less<>> first_names;
+    std::set<std::string, std::less<>> second_names;
+    for (auto const& enumerator : first.enumerators) {
+        first_names.insert(enumerator.name);
+    }
+    for (auto const& enumerator : second.enumerators) {
+        second_names.insert(enumerator.name);
+    }
+    if (first_names.size() != first.enumerators.size() ||
+        second_names.size() != second.enumerators.size() || first_names != second_names) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared target enum analyses do not contain the same unique enumerators."});
+        return result;
+    }
+    for (std::size_t index{}; index < first.enumerators.size(); ++index) {
+        auto const& first_enumerator{first.enumerators[index]};
+        auto const& second_enumerator{second.enumerators[index]};
+        if (first_enumerator.name != second_enumerator.name ||
+            first_enumerator.sentinel != second_enumerator.sentinel ||
+            first_enumerator.count_sentinel != second_enumerator.count_sentinel ||
+            first_enumerator.code != second_enumerator.code) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Compared target enum analyses do not contain the same ordered enumerators, "
+                 "resolved codes, and reserved roles."});
+            return result;
+        }
+    }
+
+    auto const first_size{
+        first.backing_facts.transform([](TypeFacts const& facts) { return facts.size_bytes; })};
+    auto const second_size{
+        second.backing_facts.transform([](TypeFacts const& facts) { return facts.size_bytes; })};
+    auto const first_alignment{first.backing_facts.transform(
+        [](TypeFacts const& facts) { return facts.alignment_bytes; })};
+    auto const second_alignment{second.backing_facts.transform(
+        [](TypeFacts const& facts) { return facts.alignment_bytes; })};
+    auto const first_value_bits{first.backing_facts.and_then([](TypeFacts const& facts) {
+        return facts.unsigned_value_bits.transform(
+            [](std::uint32_t const bits) { return static_cast<std::uint64_t>(bits); });
+    })};
+    auto const second_value_bits{second.backing_facts.and_then([](TypeFacts const& facts) {
+        return facts.unsigned_value_bits.transform(
+            [](std::uint32_t const bits) { return static_cast<std::uint64_t>(bits); });
+    })};
+    result.backing_size_delta = numeric_delta(first_size, second_size);
+    result.backing_alignment_delta = numeric_delta(first_alignment, second_alignment);
+    result.backing_value_bit_delta = numeric_delta(first_value_bits, second_value_bits);
+    result.backing_bit_delta = numeric_delta(first.backing_bits, second.backing_bits);
+    result.unused_backing_code_delta =
+        numeric_delta(first.unused_backing_codes, second.unused_backing_codes);
+    if (first.backing_can_represent_domain.has_value() &&
+        second.backing_can_represent_domain.has_value()) {
+        result.backing_fit_changed =
+            *first.backing_can_represent_domain != *second.backing_can_represent_domain;
+    }
+    result.total_storage_delta =
+        numeric_delta(first.aggregate.total_storage_bytes, second.aggregate.total_storage_bytes);
+    result.cache_line_size_delta =
+        numeric_delta(first.aggregate.cache_line_bytes, second.aggregate.cache_line_bytes);
+    result.minimum_cache_line_delta =
+        numeric_delta(first.aggregate.minimum_cache_lines, second.aggregate.minimum_cache_lines);
+    result.complete_elements_per_cache_line_delta =
+        numeric_delta(first.aggregate.complete_elements_per_cache_line,
+                      second.aggregate.complete_elements_per_cache_line);
+    result.cache_line_straddling_delta =
+        numeric_delta(first.aggregate.cache_line_straddling_elements,
+                      second.aggregate.cache_line_straddling_elements);
+    result.page_size_delta = numeric_delta(first.aggregate.page_bytes, second.aggregate.page_bytes);
+    result.minimum_page_delta =
+        numeric_delta(first.aggregate.minimum_pages, second.aggregate.minimum_pages);
+    result.complete_elements_per_page_delta = numeric_delta(
+        first.aggregate.complete_elements_per_page, second.aggregate.complete_elements_per_page);
+    result.page_straddling_delta = numeric_delta(first.aggregate.page_straddling_elements,
+                                                 second.aggregate.page_straddling_elements);
+    return result;
+}
+
+auto Analyzer::analyze_integer_scalar(
+    lispb::schema::TypeGraph const& types,
+    lispb::schema::TypeId const type,
+    std::span<RelationshipTargetFacts const> const relationship_targets) -> IntegerScalarAnalysis {
     auto const& scalar{std::get<lispb::schema::IntegerScalarType>(types.type(type).definition)};
     auto required_minimum{scalar.minimum_value};
     auto required_maximum{scalar.maximum_value};
@@ -1062,20 +1617,128 @@ auto Analyzer::analyze_integer_scalar(lispb::schema::TypeGraph const& types,
         }
     }
 
-    return {.type = type,
-            .signedness = scalar.signedness,
-            .minimum_value = scalar.minimum_value,
-            .maximum_value = scalar.maximum_value,
-            .live_value_count = live_count,
-            .sentinel_code_count = sentinel_count,
-            .required_code_count = required_count,
-            .minimum_required_bits = *codegen::minimum_packed_integer_bits(
-                required_minimum, required_maximum, scalar.signedness),
-            .declared_bit_width =
-                scalar.bit_width_auto ? std::nullopt : std::optional{scalar.bit_width},
-            .effective_bit_width = scalar.bit_width,
-            .unused_codes = unused_codes,
-            .named_codes = std::move(named_codes)};
+    auto result{IntegerScalarAnalysis{
+        .type = type,
+        .signedness = scalar.signedness,
+        .minimum_value = scalar.minimum_value,
+        .maximum_value = scalar.maximum_value,
+        .live_value_count = live_count,
+        .sentinel_code_count = sentinel_count,
+        .required_code_count = required_count,
+        .minimum_required_bits = *codegen::minimum_packed_integer_bits(
+            required_minimum, required_maximum, scalar.signedness),
+        .declared_bit_width =
+            scalar.bit_width_auto ? std::nullopt : std::optional{scalar.bit_width},
+        .effective_bit_width = scalar.bit_width,
+        .unused_codes = unused_codes,
+        .named_codes = std::move(named_codes),
+        .relationship_kind = scalar.relationship.has_value()
+                               ? std::optional{scalar.relationship->kind}
+                               : std::nullopt,
+        .relationship_unit =
+            scalar.relationship.has_value() ? scalar.relationship->unit : std::nullopt,
+        .relationship_target =
+            scalar.relationship.has_value()
+                ? std::optional{types.type(scalar.relationship->target.type).identity.name}
+                : std::nullopt,
+        .relationship_target_extent = std::nullopt,
+        .relationship_live_value_count = std::nullopt,
+        .relationship_required_code_count = std::nullopt,
+        .relationship_minimum_required_bits = std::nullopt,
+        .relationship_width_sufficient = std::nullopt,
+        .relationship_code_space_capacity_limit = std::nullopt,
+        .relationship_capacity_headroom = std::nullopt,
+        .relationship_semantic_capacity_limit = std::nullopt,
+        .relationship_sentinel_capacity_limit = std::nullopt,
+        .relationship_effective_capacity_limit = std::nullopt,
+        .relationship_effective_capacity_headroom = std::nullopt,
+        .diagnostics = {}}};
+    if (scalar.relationship.has_value() &&
+        (scalar.relationship->kind == codegen::SemanticRelationKind::index_into ||
+         scalar.relationship->kind == codegen::SemanticRelationKind::count_of ||
+         scalar.relationship->kind == codegen::SemanticRelationKind::offset_into)) {
+        auto const target_facts{std::ranges::find(relationship_targets,
+                                                  scalar.relationship->target.type,
+                                                  &RelationshipTargetFacts::target)};
+        if (target_facts != relationship_targets.end()) {
+            auto const target_extent{
+                relationship_target_extent(*scalar.relationship, *target_facts)};
+            if (!target_extent.has_value()) {
+                return result;
+            }
+            auto const extent_analysis{analyze_unsigned_relationship_extent(
+                "Integer scalar '" + types.type(type).identity.name + "'",
+                scalar.relationship->kind,
+                *target_extent,
+                scalar.named_codes,
+                scalar.bit_width,
+                scalar.minimum_value,
+                scalar.maximum_value)};
+            result.relationship_target_extent = extent_analysis.target_extent;
+            result.relationship_live_value_count = extent_analysis.live_values;
+            result.relationship_required_code_count = extent_analysis.required_codes;
+            result.relationship_minimum_required_bits = extent_analysis.minimum_required_bits;
+            result.relationship_width_sufficient = extent_analysis.width_sufficient;
+            result.relationship_code_space_capacity_limit =
+                extent_analysis.code_space_capacity_limit;
+            result.relationship_capacity_headroom = extent_analysis.capacity_headroom;
+            result.relationship_semantic_capacity_limit = extent_analysis.semantic_capacity_limit;
+            result.relationship_sentinel_capacity_limit = extent_analysis.sentinel_capacity_limit;
+            result.relationship_effective_capacity_limit = extent_analysis.effective_capacity_limit;
+            result.relationship_effective_capacity_headroom =
+                extent_analysis.effective_capacity_headroom;
+            result.diagnostics = extent_analysis.diagnostics;
+        }
+    }
+    return result;
+}
+
+auto Analyzer::compare_integer_scalar_capacity(
+    lispb::schema::TypeGraph const& types,
+    lispb::schema::TypeId const type,
+    std::span<RelationshipTargetFacts const> const first_relationship_targets,
+    std::span<RelationshipTargetFacts const> const second_relationship_targets)
+    -> IntegerScalarCapacityComparison {
+    auto first{analyze_integer_scalar(types, type, first_relationship_targets)};
+    auto second{analyze_integer_scalar(types, type, second_relationship_targets)};
+    auto const widen{[](std::optional<std::uint32_t> const value) {
+        return value.transform(
+            [](std::uint32_t const bits) { return static_cast<std::uint64_t>(bits); });
+    }};
+    auto fit_changed{std::optional<bool>{}};
+    if (first.relationship_width_sufficient.has_value() &&
+        second.relationship_width_sufficient.has_value()) {
+        fit_changed = *first.relationship_width_sufficient != *second.relationship_width_sufficient;
+    }
+    auto const target_extent_delta{
+        numeric_delta(first.relationship_target_extent, second.relationship_target_extent)};
+    auto const minimum_width_delta{numeric_delta(widen(first.relationship_minimum_required_bits),
+                                                 widen(second.relationship_minimum_required_bits))};
+    auto const capacity_limit_delta{numeric_delta(first.relationship_code_space_capacity_limit,
+                                                  second.relationship_code_space_capacity_limit)};
+    auto const capacity_headroom_delta{
+        numeric_delta(first.relationship_capacity_headroom, second.relationship_capacity_headroom)};
+    auto const semantic_limit_delta{numeric_delta(first.relationship_semantic_capacity_limit,
+                                                  second.relationship_semantic_capacity_limit)};
+    auto const sentinel_limit_delta{numeric_delta(first.relationship_sentinel_capacity_limit,
+                                                  second.relationship_sentinel_capacity_limit)};
+    auto const effective_limit_delta{numeric_delta(first.relationship_effective_capacity_limit,
+                                                   second.relationship_effective_capacity_limit)};
+    auto const effective_headroom_delta{
+        numeric_delta(first.relationship_effective_capacity_headroom,
+                      second.relationship_effective_capacity_headroom)};
+
+    return {.first = std::move(first),
+            .second = std::move(second),
+            .relationship_target_extent_delta = target_extent_delta,
+            .relationship_minimum_required_bit_delta = minimum_width_delta,
+            .relationship_code_space_capacity_limit_delta = capacity_limit_delta,
+            .relationship_capacity_headroom_delta = capacity_headroom_delta,
+            .relationship_semantic_capacity_limit_delta = semantic_limit_delta,
+            .relationship_sentinel_capacity_limit_delta = sentinel_limit_delta,
+            .relationship_effective_capacity_limit_delta = effective_limit_delta,
+            .relationship_effective_capacity_headroom_delta = effective_headroom_delta,
+            .relationship_width_fit_changed = fit_changed};
 }
 
 auto Analyzer::analyze_optional_sentinel(lispb::schema::TypeGraph const& types,
@@ -1772,6 +2435,121 @@ auto Analyzer::analyze_record(lispb::schema::TypeGraph const& types,
     return result;
 }
 
+auto Analyzer::compare_record_targets(RecordAnalysis const& first, RecordAnalysis const& second)
+    -> RecordTargetComparison {
+    RecordTargetComparison result;
+    result.first = first;
+    result.second = second;
+    for (auto const& diagnostic : first.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "First target record: " + diagnostic.message});
+    }
+    for (auto const& diagnostic : second.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "Second target record: " + diagnostic.message});
+    }
+    if (first.type != second.type) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error, "Compared target analyses describe different records."});
+        return result;
+    }
+    if (first.aggregate.element_count != second.aggregate.element_count) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared target record analyses use different element counts."});
+        return result;
+    }
+
+    std::set<std::string, std::less<>> expected_names;
+    for (auto const& member : first.members) {
+        expected_names.insert(member.name);
+    }
+    std::set<std::string, std::less<>> second_names;
+    for (auto const& member : second.members) {
+        second_names.insert(member.name);
+    }
+    if (expected_names.size() != first.members.size() ||
+        second_names.size() != second.members.size() || expected_names != second_names) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared target record analyses do not contain the same unique members."});
+        return result;
+    }
+
+    for (auto const& first_member : first.members) {
+        auto const second_member{
+            std::ranges::find(second.members, first_member.name, &RecordMemberAnalysis::name)};
+        if (second_member == second.members.end() ||
+            first_member.semantic_type != second_member->semantic_type ||
+            first_member.element_count != second_member->element_count) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Compared target record member '" + first_member.name +
+                     "' has incompatible semantic identity or element count."});
+            return result;
+        }
+    }
+
+    for (auto const& first_member : first.members) {
+        auto const second_member{
+            std::ranges::find(second.members, first_member.name, &RecordMemberAnalysis::name)};
+        auto const first_size{first_member.element_facts.transform(
+            [](TypeFacts const& facts) { return facts.size_bytes; })};
+        auto const second_size{second_member->element_facts.transform(
+            [](TypeFacts const& facts) { return facts.size_bytes; })};
+        auto const first_alignment{first_member.element_facts.transform(
+            [](TypeFacts const& facts) { return facts.alignment_bytes; })};
+        auto const second_alignment{second_member->element_facts.transform(
+            [](TypeFacts const& facts) { return facts.alignment_bytes; })};
+        result.members.push_back(
+            {.name = first_member.name,
+             .first = first_member,
+             .second = *second_member,
+             .element_size_delta = numeric_delta(first_size, second_size),
+             .element_alignment_delta = numeric_delta(first_alignment, second_alignment),
+             .offset_delta = numeric_delta(first_member.offset_bytes, second_member->offset_bytes),
+             .extent_delta = numeric_delta(first_member.extent_bytes, second_member->extent_bytes),
+             .padding_before_delta = numeric_delta(first_member.padding_before_bytes,
+                                                   second_member->padding_before_bytes)});
+    }
+
+    result.payload_delta = numeric_delta(first.payload_bytes, second.payload_bytes);
+    result.internal_padding_delta =
+        numeric_delta(first.internal_padding_bytes, second.internal_padding_bytes);
+    result.tail_padding_delta = numeric_delta(first.tail_padding_bytes, second.tail_padding_bytes);
+    result.size_delta = numeric_delta(first.size_bytes, second.size_bytes);
+    result.alignment_delta = numeric_delta(first.alignment_bytes, second.alignment_bytes);
+    result.total_storage_delta =
+        numeric_delta(first.aggregate.total_storage_bytes, second.aggregate.total_storage_bytes);
+    result.total_payload_delta =
+        numeric_delta(first.aggregate.total_payload_bytes, second.aggregate.total_payload_bytes);
+    result.total_internal_padding_delta =
+        numeric_delta(first.aggregate.total_internal_padding_bytes,
+                      second.aggregate.total_internal_padding_bytes);
+    result.total_tail_padding_delta = numeric_delta(first.aggregate.total_tail_padding_bytes,
+                                                    second.aggregate.total_tail_padding_bytes);
+    result.total_padding_delta =
+        numeric_delta(first.aggregate.total_padding_bytes, second.aggregate.total_padding_bytes);
+    result.cache_line_size_delta =
+        numeric_delta(first.aggregate.cache_line_bytes, second.aggregate.cache_line_bytes);
+    result.minimum_cache_line_delta =
+        numeric_delta(first.aggregate.minimum_cache_lines, second.aggregate.minimum_cache_lines);
+    result.complete_elements_per_cache_line_delta =
+        numeric_delta(first.aggregate.complete_elements_per_cache_line,
+                      second.aggregate.complete_elements_per_cache_line);
+    result.cache_line_straddling_delta =
+        numeric_delta(first.aggregate.cache_line_straddling_elements,
+                      second.aggregate.cache_line_straddling_elements);
+    result.page_size_delta = numeric_delta(first.aggregate.page_bytes, second.aggregate.page_bytes);
+    result.minimum_page_delta =
+        numeric_delta(first.aggregate.minimum_pages, second.aggregate.minimum_pages);
+    result.complete_elements_per_page_delta = numeric_delta(
+        first.aggregate.complete_elements_per_page, second.aggregate.complete_elements_per_page);
+    result.page_straddling_delta = numeric_delta(first.aggregate.page_straddling_elements,
+                                                 second.aggregate.page_straddling_elements);
+    return result;
+}
+
 auto Analyzer::analyze_union(lispb::schema::TypeGraph const& types,
                              lispb::schema::TypeId const type,
                              AbiProfile const& abi,
@@ -1848,6 +2626,116 @@ auto Analyzer::analyze_union(lispb::schema::TypeGraph const& types,
                                     result.aggregate.total_storage_bytes);
         }
     }
+    return result;
+}
+
+auto Analyzer::compare_union_targets(UnionAnalysis const& first, UnionAnalysis const& second)
+    -> UnionTargetComparison {
+    UnionTargetComparison result;
+    result.first = first;
+    result.second = second;
+    for (auto const& diagnostic : first.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "First target raw union: " + diagnostic.message});
+    }
+    for (auto const& diagnostic : second.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "Second target raw union: " + diagnostic.message});
+    }
+    if (first.type != second.type) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error, "Compared target analyses describe different raw unions."});
+        return result;
+    }
+    if (first.aggregate.element_count != second.aggregate.element_count) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared target raw-union analyses use different element counts."});
+        return result;
+    }
+
+    std::set<std::string, std::less<>> first_names;
+    for (auto const& alternative : first.alternatives) {
+        first_names.insert(alternative.name);
+    }
+    std::set<std::string, std::less<>> second_names;
+    for (auto const& alternative : second.alternatives) {
+        second_names.insert(alternative.name);
+    }
+    if (first_names.size() != first.alternatives.size() ||
+        second_names.size() != second.alternatives.size() || first_names != second_names) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared target raw-union analyses do not contain the same unique alternatives."});
+        return result;
+    }
+
+    for (auto const& first_alternative : first.alternatives) {
+        auto const second_alternative{std::ranges::find(
+            second.alternatives, first_alternative.name, &UnionAlternativeAnalysis::name)};
+        if (second_alternative == second.alternatives.end() ||
+            first_alternative.semantic_type != second_alternative->semantic_type ||
+            first_alternative.element_count != second_alternative->element_count) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Compared target raw-union alternative '" + first_alternative.name +
+                     "' has incompatible semantic identity or element count."});
+            return result;
+        }
+    }
+
+    result.alternatives.reserve(first.alternatives.size());
+    for (auto const& first_alternative : first.alternatives) {
+        auto const second_alternative{std::ranges::find(
+            second.alternatives, first_alternative.name, &UnionAlternativeAnalysis::name)};
+        auto const first_size{first_alternative.element_facts.transform(
+            [](TypeFacts const& facts) { return facts.size_bytes; })};
+        auto const second_size{second_alternative->element_facts.transform(
+            [](TypeFacts const& facts) { return facts.size_bytes; })};
+        auto const first_alignment{first_alternative.element_facts.transform(
+            [](TypeFacts const& facts) { return facts.alignment_bytes; })};
+        auto const second_alignment{second_alternative->element_facts.transform(
+            [](TypeFacts const& facts) { return facts.alignment_bytes; })};
+        result.alternatives.push_back(
+            {.name = first_alternative.name,
+             .first = first_alternative,
+             .second = *second_alternative,
+             .element_size_delta = numeric_delta(first_size, second_size),
+             .element_alignment_delta = numeric_delta(first_alignment, second_alignment),
+             .extent_delta =
+                 numeric_delta(first_alternative.extent_bytes, second_alternative->extent_bytes),
+             .slack_delta =
+                 numeric_delta(first_alternative.slack_bytes, second_alternative->slack_bytes),
+             .total_slack_delta = numeric_delta(first_alternative.total_slack_bytes,
+                                                second_alternative->total_slack_bytes)});
+    }
+
+    result.largest_alternative_delta =
+        numeric_delta(first.largest_alternative_bytes, second.largest_alternative_bytes);
+    result.tail_padding_delta = numeric_delta(first.tail_padding_bytes, second.tail_padding_bytes);
+    result.size_delta = numeric_delta(first.size_bytes, second.size_bytes);
+    result.alignment_delta = numeric_delta(first.alignment_bytes, second.alignment_bytes);
+    result.total_storage_delta =
+        numeric_delta(first.aggregate.total_storage_bytes, second.aggregate.total_storage_bytes);
+    result.total_tail_padding_delta = numeric_delta(first.aggregate.total_tail_padding_bytes,
+                                                    second.aggregate.total_tail_padding_bytes);
+    result.cache_line_size_delta =
+        numeric_delta(first.aggregate.cache_line_bytes, second.aggregate.cache_line_bytes);
+    result.minimum_cache_line_delta =
+        numeric_delta(first.aggregate.minimum_cache_lines, second.aggregate.minimum_cache_lines);
+    result.complete_elements_per_cache_line_delta =
+        numeric_delta(first.aggregate.complete_elements_per_cache_line,
+                      second.aggregate.complete_elements_per_cache_line);
+    result.cache_line_straddling_delta =
+        numeric_delta(first.aggregate.cache_line_straddling_elements,
+                      second.aggregate.cache_line_straddling_elements);
+    result.page_size_delta = numeric_delta(first.aggregate.page_bytes, second.aggregate.page_bytes);
+    result.minimum_page_delta =
+        numeric_delta(first.aggregate.minimum_pages, second.aggregate.minimum_pages);
+    result.complete_elements_per_page_delta = numeric_delta(
+        first.aggregate.complete_elements_per_page, second.aggregate.complete_elements_per_page);
+    result.page_straddling_delta = numeric_delta(first.aggregate.page_straddling_elements,
+                                                 second.aggregate.page_straddling_elements);
     return result;
 }
 
@@ -1947,6 +2835,376 @@ auto Analyzer::analyze_tagged_union(lispb::schema::TypeGraph const& types,
                                     result.aggregate.total_storage_bytes);
         }
     }
+    return result;
+}
+
+auto Analyzer::compare_tagged_union_targets(TaggedUnionAnalysis const& first,
+                                            TaggedUnionAnalysis const& second)
+    -> TaggedUnionTargetComparison {
+    TaggedUnionTargetComparison result;
+    result.first = first;
+    result.second = second;
+    for (auto const& diagnostic : first.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "First target tagged union: " + diagnostic.message});
+    }
+    for (auto const& diagnostic : second.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "Second target tagged union: " + diagnostic.message});
+    }
+    if (first.type != second.type) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared target analyses describe different tagged unions."});
+        return result;
+    }
+    if (first.aggregate.element_count != second.aggregate.element_count) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared target tagged-union analyses use different element counts."});
+        return result;
+    }
+    if (first.discriminant_type != second.discriminant_type ||
+        first.mapped_live_tags != second.mapped_live_tags ||
+        first.unmapped_live_tags != second.unmapped_live_tags ||
+        first.sentinel_tags != second.sentinel_tags ||
+        first.count_sentinel_tag != second.count_sentinel_tag) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared target tagged-union analyses have incompatible discriminant or tag "
+             "coverage semantics."});
+        return result;
+    }
+
+    std::set<std::string, std::less<>> first_names;
+    std::set<std::string, std::less<>> first_tags;
+    for (auto const& alternative : first.alternatives) {
+        first_names.insert(alternative.name);
+        first_tags.insert(alternative.tag);
+    }
+    std::set<std::string, std::less<>> second_names;
+    std::set<std::string, std::less<>> second_tags;
+    for (auto const& alternative : second.alternatives) {
+        second_names.insert(alternative.name);
+        second_tags.insert(alternative.tag);
+    }
+    if (first_names.size() != first.alternatives.size() ||
+        first_tags.size() != first.alternatives.size() ||
+        second_names.size() != second.alternatives.size() ||
+        second_tags.size() != second.alternatives.size() || first_names != second_names ||
+        first_tags != second_tags) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared target tagged-union analyses do not contain the same unique alternatives "
+             "and tags."});
+        return result;
+    }
+    for (auto const& first_alternative : first.alternatives) {
+        auto const second_alternative{std::ranges::find(
+            second.alternatives, first_alternative.name, &TaggedUnionAlternativeAnalysis::name)};
+        if (second_alternative == second.alternatives.end() ||
+            first_alternative.tag != second_alternative->tag ||
+            first_alternative.semantic_type != second_alternative->semantic_type ||
+            first_alternative.element_count != second_alternative->element_count) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Compared target tagged-union alternative '" + first_alternative.name +
+                     "' has incompatible tag, semantic identity, or element count."});
+            return result;
+        }
+    }
+
+    result.alternatives.reserve(first.alternatives.size());
+    for (auto const& first_alternative : first.alternatives) {
+        auto const second_alternative{std::ranges::find(
+            second.alternatives, first_alternative.name, &TaggedUnionAlternativeAnalysis::name)};
+        auto const first_size{first_alternative.element_facts.transform(
+            [](TypeFacts const& facts) { return facts.size_bytes; })};
+        auto const second_size{second_alternative->element_facts.transform(
+            [](TypeFacts const& facts) { return facts.size_bytes; })};
+        auto const first_alignment{first_alternative.element_facts.transform(
+            [](TypeFacts const& facts) { return facts.alignment_bytes; })};
+        auto const second_alignment{second_alternative->element_facts.transform(
+            [](TypeFacts const& facts) { return facts.alignment_bytes; })};
+        result.alternatives.push_back(
+            {.name = first_alternative.name,
+             .first = first_alternative,
+             .second = *second_alternative,
+             .element_size_delta = numeric_delta(first_size, second_size),
+             .element_alignment_delta = numeric_delta(first_alignment, second_alignment),
+             .extent_delta =
+                 numeric_delta(first_alternative.extent_bytes, second_alternative->extent_bytes),
+             .payload_slack_delta = numeric_delta(first_alternative.payload_slack_bytes,
+                                                  second_alternative->payload_slack_bytes),
+             .total_payload_slack_delta =
+                 numeric_delta(first_alternative.total_payload_slack_bytes,
+                               second_alternative->total_payload_slack_bytes)});
+    }
+
+    auto const first_discriminant_size{first.discriminant_facts.transform(
+        [](TypeFacts const& facts) { return facts.size_bytes; })};
+    auto const second_discriminant_size{second.discriminant_facts.transform(
+        [](TypeFacts const& facts) { return facts.size_bytes; })};
+    auto const first_discriminant_alignment{first.discriminant_facts.transform(
+        [](TypeFacts const& facts) { return facts.alignment_bytes; })};
+    auto const second_discriminant_alignment{second.discriminant_facts.transform(
+        [](TypeFacts const& facts) { return facts.alignment_bytes; })};
+    result.discriminant_size_delta =
+        numeric_delta(first_discriminant_size, second_discriminant_size);
+    result.discriminant_alignment_delta =
+        numeric_delta(first_discriminant_alignment, second_discriminant_alignment);
+    result.largest_alternative_delta =
+        numeric_delta(first.largest_alternative_bytes, second.largest_alternative_bytes);
+    result.payload_size_delta = numeric_delta(first.payload_size_bytes, second.payload_size_bytes);
+    result.payload_alignment_delta =
+        numeric_delta(first.payload_alignment_bytes, second.payload_alignment_bytes);
+    result.payload_offset_delta =
+        numeric_delta(first.payload_offset_bytes, second.payload_offset_bytes);
+    result.internal_padding_delta =
+        numeric_delta(first.internal_padding_bytes, second.internal_padding_bytes);
+    result.tail_padding_delta = numeric_delta(first.tail_padding_bytes, second.tail_padding_bytes);
+    result.size_delta = numeric_delta(first.size_bytes, second.size_bytes);
+    result.alignment_delta = numeric_delta(first.alignment_bytes, second.alignment_bytes);
+    result.total_storage_delta =
+        numeric_delta(first.aggregate.total_storage_bytes, second.aggregate.total_storage_bytes);
+    result.total_discriminant_delta = numeric_delta(first.aggregate.total_discriminant_bytes,
+                                                    second.aggregate.total_discriminant_bytes);
+    result.total_payload_delta =
+        numeric_delta(first.aggregate.total_payload_bytes, second.aggregate.total_payload_bytes);
+    result.total_internal_padding_delta =
+        numeric_delta(first.aggregate.total_internal_padding_bytes,
+                      second.aggregate.total_internal_padding_bytes);
+    result.total_tail_padding_delta = numeric_delta(first.aggregate.total_tail_padding_bytes,
+                                                    second.aggregate.total_tail_padding_bytes);
+    result.total_padding_delta =
+        numeric_delta(first.aggregate.total_padding_bytes, second.aggregate.total_padding_bytes);
+    result.cache_line_size_delta =
+        numeric_delta(first.aggregate.cache_line_bytes, second.aggregate.cache_line_bytes);
+    result.minimum_cache_line_delta =
+        numeric_delta(first.aggregate.minimum_cache_lines, second.aggregate.minimum_cache_lines);
+    result.complete_elements_per_cache_line_delta =
+        numeric_delta(first.aggregate.complete_elements_per_cache_line,
+                      second.aggregate.complete_elements_per_cache_line);
+    result.cache_line_straddling_delta =
+        numeric_delta(first.aggregate.cache_line_straddling_elements,
+                      second.aggregate.cache_line_straddling_elements);
+    result.page_size_delta = numeric_delta(first.aggregate.page_bytes, second.aggregate.page_bytes);
+    result.minimum_page_delta =
+        numeric_delta(first.aggregate.minimum_pages, second.aggregate.minimum_pages);
+    result.complete_elements_per_page_delta = numeric_delta(
+        first.aggregate.complete_elements_per_page, second.aggregate.complete_elements_per_page);
+    result.page_straddling_delta = numeric_delta(first.aggregate.page_straddling_elements,
+                                                 second.aggregate.page_straddling_elements);
+    return result;
+}
+
+auto Analyzer::analyze_union_distribution(UnionAnalysis const& analysis,
+                                          std::span<UnionDistributionEntry const> const entries,
+                                          std::uint64_t const selected_element_count)
+    -> UnionDistributionAnalysis {
+    UnionDistributionAnalysis result{.type = analysis.type,
+                                     .valid_entry_count = 0,
+                                     .total_weight = 0,
+                                     .total_extent_bytes = 0,
+                                     .total_slack_bytes = 0,
+                                     .expected_extent_bytes_per_value = std::nullopt,
+                                     .expected_slack_bytes_per_value = std::nullopt,
+                                     .selected_element_count = selected_element_count,
+                                     .expected_selected_extent_bytes = std::nullopt,
+                                     .expected_selected_slack_bytes = std::nullopt,
+                                     .entries = {},
+                                     .diagnostics = {}};
+    std::set<std::string, std::less<>> seen_alternatives;
+    auto exact_weight_overflow_reported{false};
+    auto exact_extent_overflow_reported{false};
+    auto exact_slack_overflow_reported{false};
+    auto numerical_weight{0.0L};
+    auto numerical_extent{0.0L};
+    auto numerical_slack{0.0L};
+    auto numerical_complete{true};
+
+    for (auto const& entry : entries) {
+        if (!seen_alternatives.insert(entry.alternative_name).second) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Raw-union distribution contains duplicate alternative '" +
+                     entry.alternative_name + "'."});
+            continue;
+        }
+        auto const alternative{std::ranges::find(
+            analysis.alternatives, entry.alternative_name, &UnionAlternativeAnalysis::name)};
+        if (alternative == analysis.alternatives.end()) {
+            result.diagnostics.push_back({DiagnosticSeverity::error,
+                                          "Raw-union distribution contains unknown alternative '" +
+                                              entry.alternative_name + "'."});
+            continue;
+        }
+
+        ++result.valid_entry_count;
+        auto const weighted_extent{alternative->extent_bytes.has_value()
+                                       ? checked_multiply(entry.weight, *alternative->extent_bytes)
+                                       : std::nullopt};
+        auto const weighted_slack{alternative->slack_bytes.has_value()
+                                      ? checked_multiply(entry.weight, *alternative->slack_bytes)
+                                      : std::nullopt};
+        result.entries.push_back({.alternative_name = entry.alternative_name,
+                                  .weight = entry.weight,
+                                  .extent_bytes = alternative->extent_bytes,
+                                  .slack_bytes = alternative->slack_bytes,
+                                  .weighted_extent_bytes = weighted_extent,
+                                  .weighted_slack_bytes = weighted_slack});
+        numerical_weight += static_cast<long double>(entry.weight);
+        if (alternative->extent_bytes.has_value() && alternative->slack_bytes.has_value()) {
+            numerical_extent += static_cast<long double>(entry.weight) *
+                                static_cast<long double>(*alternative->extent_bytes);
+            numerical_slack += static_cast<long double>(entry.weight) *
+                               static_cast<long double>(*alternative->slack_bytes);
+        } else if (entry.weight != 0) {
+            numerical_complete = false;
+        }
+
+        if (result.total_weight.has_value()) {
+            result.total_weight = checked_add(*result.total_weight, entry.weight);
+            if (!result.total_weight.has_value() && !exact_weight_overflow_reported) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Raw-union distribution weight total overflows uint64."});
+                exact_weight_overflow_reported = true;
+            }
+        }
+        if (result.total_extent_bytes.has_value()) {
+            result.total_extent_bytes =
+                weighted_extent.has_value()
+                    ? checked_add(*result.total_extent_bytes, *weighted_extent)
+                    : std::nullopt;
+            if (!result.total_extent_bytes.has_value() && !exact_extent_overflow_reported) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Raw-union distribution extent total overflows or is Unknown."});
+                exact_extent_overflow_reported = true;
+            }
+        }
+        if (result.total_slack_bytes.has_value()) {
+            result.total_slack_bytes = weighted_slack.has_value()
+                                         ? checked_add(*result.total_slack_bytes, *weighted_slack)
+                                         : std::nullopt;
+            if (!result.total_slack_bytes.has_value() && !exact_slack_overflow_reported) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Raw-union distribution slack total overflows or is Unknown."});
+                exact_slack_overflow_reported = true;
+            }
+        }
+    }
+
+    if (numerical_weight > 0.0L && numerical_complete) {
+        result.expected_extent_bytes_per_value = numerical_extent / numerical_weight;
+        result.expected_slack_bytes_per_value = numerical_slack / numerical_weight;
+        result.expected_selected_extent_bytes = *result.expected_extent_bytes_per_value *
+                                                static_cast<long double>(selected_element_count);
+        result.expected_selected_slack_bytes = *result.expected_slack_bytes_per_value *
+                                               static_cast<long double>(selected_element_count);
+    } else {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::warning,
+             "Expected raw-union alternative usage is Unknown because the distribution has no "
+             "positive valid weight with complete target facts."});
+    }
+    return result;
+}
+
+auto Analyzer::compare_union_distributions(UnionDistributionAnalysis const& first,
+                                           UnionDistributionAnalysis const& second)
+    -> UnionDistributionComparison {
+    UnionDistributionComparison result;
+    result.first = first;
+    result.second = second;
+    for (auto const& diagnostic : first.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "First target raw-union distribution: " + diagnostic.message});
+    }
+    for (auto const& diagnostic : second.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "Second target raw-union distribution: " + diagnostic.message});
+    }
+    if (first.type != second.type ||
+        first.selected_element_count != second.selected_element_count) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared raw-union distributions use different types or selected counts."});
+        return result;
+    }
+    if (first.valid_entry_count != second.valid_entry_count ||
+        first.entries.size() != second.entries.size()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared raw-union distributions do not contain the same valid entries."});
+        return result;
+    }
+
+    std::set<std::string, std::less<>> first_names;
+    for (auto const& entry : first.entries) {
+        first_names.insert(entry.alternative_name);
+    }
+    std::set<std::string, std::less<>> second_names;
+    for (auto const& entry : second.entries) {
+        second_names.insert(entry.alternative_name);
+    }
+    if (first_names.size() != first.entries.size() ||
+        second_names.size() != second.entries.size() || first_names != second_names) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared raw-union distributions do not contain the same unique alternatives."});
+        return result;
+    }
+    for (auto const& first_entry : first.entries) {
+        auto const second_entry{
+            std::ranges::find(second.entries,
+                              first_entry.alternative_name,
+                              &UnionDistributionEntryAnalysis::alternative_name)};
+        if (second_entry == second.entries.end() || first_entry.weight != second_entry->weight) {
+            result.diagnostics.push_back({DiagnosticSeverity::error,
+                                          "Compared raw-union distribution entry '" +
+                                              first_entry.alternative_name +
+                                              "' has an incompatible weight."});
+            return result;
+        }
+    }
+
+    result.entries.reserve(first.entries.size());
+    for (auto const& first_entry : first.entries) {
+        auto const second_entry{
+            std::ranges::find(second.entries,
+                              first_entry.alternative_name,
+                              &UnionDistributionEntryAnalysis::alternative_name)};
+        result.entries.push_back(
+            {.alternative_name = first_entry.alternative_name,
+             .first = first_entry,
+             .second = *second_entry,
+             .extent_delta = numeric_delta(first_entry.extent_bytes, second_entry->extent_bytes),
+             .slack_delta = numeric_delta(first_entry.slack_bytes, second_entry->slack_bytes),
+             .weighted_extent_delta = numeric_delta(first_entry.weighted_extent_bytes,
+                                                    second_entry->weighted_extent_bytes),
+             .weighted_slack_delta = numeric_delta(first_entry.weighted_slack_bytes,
+                                                   second_entry->weighted_slack_bytes)});
+    }
+    result.total_weight_delta = numeric_delta(first.total_weight, second.total_weight);
+    result.total_extent_delta = numeric_delta(first.total_extent_bytes, second.total_extent_bytes);
+    result.total_slack_delta = numeric_delta(first.total_slack_bytes, second.total_slack_bytes);
+    auto decimal_delta = [](std::optional<long double> const first_value,
+                            std::optional<long double> const second_value) {
+        return first_value.has_value() && second_value.has_value()
+                 ? std::optional{*second_value - *first_value}
+                 : std::nullopt;
+    };
+    result.expected_extent_per_value_delta = decimal_delta(first.expected_extent_bytes_per_value,
+                                                           second.expected_extent_bytes_per_value);
+    result.expected_slack_per_value_delta =
+        decimal_delta(first.expected_slack_bytes_per_value, second.expected_slack_bytes_per_value);
+    result.expected_selected_extent_delta =
+        decimal_delta(first.expected_selected_extent_bytes, second.expected_selected_extent_bytes);
+    result.expected_selected_slack_delta =
+        decimal_delta(first.expected_selected_slack_bytes, second.expected_selected_slack_bytes);
     return result;
 }
 
@@ -2079,31 +3337,170 @@ auto Analyzer::analyze_tagged_union_distribution(
     return result;
 }
 
+auto Analyzer::compare_tagged_union_distributions(TaggedUnionDistributionAnalysis const& first,
+                                                  TaggedUnionDistributionAnalysis const& second)
+    -> TaggedUnionDistributionComparison {
+    TaggedUnionDistributionComparison result;
+    result.first = first;
+    result.second = second;
+    for (auto const& diagnostic : first.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "First target tagged-union distribution: " + diagnostic.message});
+    }
+    for (auto const& diagnostic : second.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity,
+             "Second target tagged-union distribution: " + diagnostic.message});
+    }
+    if (first.type != second.type ||
+        first.selected_element_count != second.selected_element_count) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared tagged-union distributions use different types or selected counts."});
+        return result;
+    }
+    if (first.valid_entry_count != second.valid_entry_count ||
+        first.entries.size() != second.entries.size()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared tagged-union distributions do not contain the same valid entries."});
+        return result;
+    }
+
+    std::set<std::string, std::less<>> first_tags;
+    for (auto const& entry : first.entries) {
+        first_tags.insert(entry.tag);
+    }
+    std::set<std::string, std::less<>> second_tags;
+    for (auto const& entry : second.entries) {
+        second_tags.insert(entry.tag);
+    }
+    if (first_tags.size() != first.entries.size() || second_tags.size() != second.entries.size() ||
+        first_tags != second_tags) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared tagged-union distributions do not contain the same unique tags."});
+        return result;
+    }
+    for (auto const& first_entry : first.entries) {
+        auto const second_entry{std::ranges::find(
+            second.entries, first_entry.tag, &TaggedUnionDistributionEntryAnalysis::tag)};
+        if (second_entry == second.entries.end() ||
+            first_entry.alternative_name != second_entry->alternative_name ||
+            first_entry.weight != second_entry->weight) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Compared tagged-union distribution entry '" + first_entry.tag +
+                     "' has incompatible alternative identity or weight."});
+            return result;
+        }
+    }
+
+    result.entries.reserve(first.entries.size());
+    for (auto const& first_entry : first.entries) {
+        auto const second_entry{std::ranges::find(
+            second.entries, first_entry.tag, &TaggedUnionDistributionEntryAnalysis::tag)};
+        result.entries.push_back(
+            {.tag = first_entry.tag,
+             .first = first_entry,
+             .second = *second_entry,
+             .payload_extent_delta = numeric_delta(first_entry.payload_extent_bytes,
+                                                   second_entry->payload_extent_bytes),
+             .payload_slack_delta =
+                 numeric_delta(first_entry.payload_slack_bytes, second_entry->payload_slack_bytes),
+             .weighted_payload_extent_delta =
+                 numeric_delta(first_entry.weighted_payload_extent_bytes,
+                               second_entry->weighted_payload_extent_bytes),
+             .weighted_payload_slack_delta =
+                 numeric_delta(first_entry.weighted_payload_slack_bytes,
+                               second_entry->weighted_payload_slack_bytes)});
+    }
+    result.total_weight_delta = numeric_delta(first.total_weight, second.total_weight);
+    result.total_payload_extent_delta =
+        numeric_delta(first.total_payload_extent_bytes, second.total_payload_extent_bytes);
+    result.total_payload_slack_delta =
+        numeric_delta(first.total_payload_slack_bytes, second.total_payload_slack_bytes);
+    auto decimal_delta = [](std::optional<long double> const first_value,
+                            std::optional<long double> const second_value) {
+        return first_value.has_value() && second_value.has_value()
+                 ? std::optional{*second_value - *first_value}
+                 : std::nullopt;
+    };
+    result.expected_payload_extent_per_value_delta =
+        decimal_delta(first.expected_payload_extent_bytes_per_value,
+                      second.expected_payload_extent_bytes_per_value);
+    result.expected_payload_slack_per_value_delta =
+        decimal_delta(first.expected_payload_slack_bytes_per_value,
+                      second.expected_payload_slack_bytes_per_value);
+    result.expected_selected_payload_extent_delta =
+        decimal_delta(first.expected_selected_payload_extent_bytes,
+                      second.expected_selected_payload_extent_bytes);
+    result.expected_selected_payload_slack_delta = decimal_delta(
+        first.expected_selected_payload_slack_bytes, second.expected_selected_payload_slack_bytes);
+    return result;
+}
+
 auto Analyzer::analyze_record_access(RecordAnalysis const& record,
-                                     std::span<std::string const> const member_names,
-                                     AbiProfile const& abi) -> RecordAccessAnalysis {
-    RecordAccessAnalysis result{.member_names = {},
+                                     std::span<AccessIntent const> const accesses,
+                                     AbiProfile const& abi,
+                                     std::uint64_t const multiplicity) -> RecordAccessAnalysis {
+    RecordAccessAnalysis result{.type = record.type,
+                                .member_names = {},
+                                .accesses = {},
                                 .element_count = record.aggregate.element_count,
+                                .multiplicity = multiplicity,
                                 .useful_bytes = std::nullopt,
+                                .read_useful_bytes = std::uint64_t{},
+                                .write_useful_bytes = std::uint64_t{},
+                                .logical_read_useful_bytes = std::nullopt,
+                                .logical_write_useful_bytes = std::nullopt,
                                 .object_footprint_bytes = record.aggregate.total_storage_bytes,
                                 .cache_line_bytes = std::nullopt,
                                 .cache_lines_touched = std::nullopt,
                                 .cache_bytes_touched = std::nullopt,
+                                .read_cache_lines_touched = std::nullopt,
+                                .read_cache_bytes_touched = std::nullopt,
+                                .write_cache_lines_touched = std::nullopt,
+                                .write_cache_bytes_touched = std::nullopt,
                                 .non_selected_cache_bytes = std::nullopt,
+                                .cache_footprint_capacity =
+                                    cache_capacity_analysis(std::nullopt, abi.memory_facts()),
                                 .page_bytes = std::nullopt,
                                 .pages_touched = std::nullopt,
+                                .page_bytes_touched = std::nullopt,
+                                .read_pages_touched = std::nullopt,
+                                .read_page_bytes_touched = std::nullopt,
+                                .write_pages_touched = std::nullopt,
+                                .write_page_bytes_touched = std::nullopt,
+                                .non_selected_page_bytes = std::nullopt,
                                 .diagnostics = {}};
+    if (multiplicity == 0) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error, "Access multiplicity must be non-zero."});
+    }
     if (!record.size_bytes.has_value()) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error, "Record has incomplete target layout facts."});
-        return result;
     }
 
     std::set<std::string, std::less<>> unique_names;
     std::vector<std::pair<std::uint64_t, std::uint64_t>> member_layouts;
+    std::vector<std::pair<std::uint64_t, std::uint64_t>> read_member_layouts;
+    std::vector<std::pair<std::uint64_t, std::uint64_t>> write_member_layouts;
     std::uint64_t useful_bytes_per_element{};
-    for (auto const& member_name : member_names) {
+    std::optional<std::uint64_t> read_bytes_per_element{std::uint64_t{}};
+    std::optional<std::uint64_t> write_bytes_per_element{std::uint64_t{}};
+    for (auto const& access : accesses) {
+        auto const& member_name{access.name};
         if (!unique_names.insert(member_name).second) {
+            auto const existing{
+                std::ranges::find(result.accesses, member_name, &AccessIntent::name)};
+            if (existing != result.accesses.end() && existing->operation != access.operation) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Selected record member '" + member_name +
+                         "' has conflicting access classifications; the first is used."});
+            }
             continue;
         }
         auto const member{
@@ -2115,13 +3512,26 @@ auto Analyzer::analyze_record_access(RecordAnalysis const& record,
             continue;
         }
         result.member_names.push_back(member_name);
+        result.accesses.push_back(access);
         if (!member->offset_bytes.has_value() || !member->extent_bytes.has_value()) {
             result.diagnostics.push_back({DiagnosticSeverity::error,
                                           "Selected record member '" + member_name +
                                               "' has incomplete target layout facts."});
+            if (access.operation != AccessOperation::write) {
+                read_bytes_per_element.reset();
+            }
+            if (access.operation != AccessOperation::read) {
+                write_bytes_per_element.reset();
+            }
             continue;
         }
         member_layouts.emplace_back(*member->offset_bytes, *member->extent_bytes);
+        if (access.operation != AccessOperation::write) {
+            read_member_layouts.emplace_back(*member->offset_bytes, *member->extent_bytes);
+        }
+        if (access.operation != AccessOperation::read) {
+            write_member_layouts.emplace_back(*member->offset_bytes, *member->extent_bytes);
+        }
         auto const next{checked_add(useful_bytes_per_element, *member->extent_bytes)};
         if (!next.has_value()) {
             result.diagnostics.push_back(
@@ -2129,6 +3539,24 @@ auto Analyzer::analyze_record_access(RecordAnalysis const& record,
             return result;
         }
         useful_bytes_per_element = *next;
+
+        auto accumulate_classified = [&](std::optional<std::uint64_t>& total,
+                                         bool const included,
+                                         char const* const category) {
+            if (!included || !total.has_value()) {
+                return;
+            }
+            total = checked_add(*total, *member->extent_bytes);
+            if (!total.has_value()) {
+                result.diagnostics.push_back({DiagnosticSeverity::error,
+                                              std::string{"Selected member "} + category +
+                                                  " byte count per element overflows uint64."});
+            }
+        };
+        accumulate_classified(
+            read_bytes_per_element, access.operation != AccessOperation::write, "read");
+        accumulate_classified(
+            write_bytes_per_element, access.operation != AccessOperation::read, "write");
     }
     if (member_layouts.empty()) {
         if (result.diagnostics.empty()) {
@@ -2137,11 +3565,28 @@ auto Analyzer::analyze_record_access(RecordAnalysis const& record,
         }
         return result;
     }
+    if (!record.size_bytes.has_value()) {
+        return result;
+    }
     std::ranges::sort(member_layouts);
+    std::ranges::sort(read_member_layouts);
+    std::ranges::sort(write_member_layouts);
     result.useful_bytes = checked_multiply(useful_bytes_per_element, result.element_count);
     if (!result.useful_bytes.has_value()) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error, "Selected member useful byte count overflows uint64."});
+    }
+    result.read_useful_bytes = read_bytes_per_element.and_then(
+        [&](std::uint64_t const bytes) { return checked_multiply(bytes, result.element_count); });
+    result.write_useful_bytes = write_bytes_per_element.and_then(
+        [&](std::uint64_t const bytes) { return checked_multiply(bytes, result.element_count); });
+    if (read_bytes_per_element.has_value() && !result.read_useful_bytes.has_value()) {
+        result.diagnostics.push_back({DiagnosticSeverity::error,
+                                      "Selected member read useful byte count overflows uint64."});
+    }
+    if (write_bytes_per_element.has_value() && !result.write_useful_bytes.has_value()) {
+        result.diagnostics.push_back({DiagnosticSeverity::error,
+                                      "Selected member write useful byte count overflows uint64."});
     }
 
     auto analyze_regions = [&](std::optional<std::uint64_t> const region_bytes,
@@ -2175,38 +3620,245 @@ auto Analyzer::analyze_record_access(RecordAnalysis const& record,
         memory.cache_line_bytes, "Cache-line", result.cache_lines_touched, result.cache_line_bytes);
     analyze_regions(memory.page_bytes, "Page", result.pages_touched, result.page_bytes);
 
-    if (result.cache_lines_touched.has_value() && result.cache_line_bytes.has_value()) {
-        result.cache_bytes_touched =
-            checked_multiply(*result.cache_lines_touched, *result.cache_line_bytes);
-        if (!result.cache_bytes_touched.has_value()) {
-            result.diagnostics.push_back(
-                {DiagnosticSeverity::error, "Touched cache-line byte count overflows uint64."});
-        } else if (result.useful_bytes.has_value()) {
-            if (*result.cache_bytes_touched >= *result.useful_bytes) {
-                result.non_selected_cache_bytes =
-                    *result.cache_bytes_touched - *result.useful_bytes;
-            } else {
-                result.diagnostics.push_back(
-                    {DiagnosticSeverity::error,
-                     "Touched cache-line bytes are smaller than useful member bytes."});
-            }
+    auto analyze_operation_regions = [&](auto const& layouts,
+                                         std::optional<std::uint64_t> const region_bytes,
+                                         std::optional<std::uint64_t>& output_regions,
+                                         std::optional<std::uint64_t>& output_bytes,
+                                         char const* const category) {
+        if (layouts.empty()) {
+            output_regions = 0;
+            output_bytes = 0;
+            return;
         }
+        if (!region_bytes.has_value() || *region_bytes == 0) {
+            return;
+        }
+        std::string error;
+        output_regions = touched_regions(
+            *record.size_bytes, layouts, result.element_count, *region_bytes, error);
+        if (!output_regions.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, std::string{category} + ": " + error});
+            return;
+        }
+        output_bytes = checked_multiply(*output_regions, *region_bytes);
+        if (!output_bytes.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 std::string{category} + " address-coverage byte count overflows uint64."});
+        }
+    };
+    analyze_operation_regions(read_member_layouts,
+                              memory.cache_line_bytes,
+                              result.read_cache_lines_touched,
+                              result.read_cache_bytes_touched,
+                              "Read cache-line");
+    analyze_operation_regions(write_member_layouts,
+                              memory.cache_line_bytes,
+                              result.write_cache_lines_touched,
+                              result.write_cache_bytes_touched,
+                              "Write cache-line");
+    analyze_operation_regions(read_member_layouts,
+                              memory.page_bytes,
+                              result.read_pages_touched,
+                              result.read_page_bytes_touched,
+                              "Read page");
+    analyze_operation_regions(write_member_layouts,
+                              memory.page_bytes,
+                              result.write_pages_touched,
+                              result.write_page_bytes_touched,
+                              "Write page");
+
+    auto derive_footprint = [&](std::optional<std::uint64_t> const region_count,
+                                std::optional<std::uint64_t> const region_bytes,
+                                std::optional<std::uint64_t>& footprint_bytes,
+                                std::optional<std::uint64_t>& non_selected_bytes,
+                                char const* const region_name) {
+        if (!region_count.has_value() || !region_bytes.has_value()) {
+            return;
+        }
+        footprint_bytes = checked_multiply(*region_count, *region_bytes);
+        if (!footprint_bytes.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 std::string{"Touched "} + region_name + " byte count overflows uint64."});
+            return;
+        }
+        if (!result.useful_bytes.has_value()) {
+            return;
+        }
+        if (*footprint_bytes < *result.useful_bytes) {
+            result.diagnostics.push_back({DiagnosticSeverity::error,
+                                          std::string{"Touched "} + region_name +
+                                              " bytes are smaller than useful member bytes."});
+            return;
+        }
+        non_selected_bytes = *footprint_bytes - *result.useful_bytes;
+    };
+    derive_footprint(result.cache_lines_touched,
+                     result.cache_line_bytes,
+                     result.cache_bytes_touched,
+                     result.non_selected_cache_bytes,
+                     "cache-line");
+    derive_footprint(result.pages_touched,
+                     result.page_bytes,
+                     result.page_bytes_touched,
+                     result.non_selected_page_bytes,
+                     "page");
+    result.cache_footprint_capacity =
+        cache_capacity_analysis(result.cache_bytes_touched, abi.memory_facts());
+    result.logical_read_useful_bytes = logical_useful_bytes(result.read_useful_bytes, multiplicity);
+    result.logical_write_useful_bytes =
+        logical_useful_bytes(result.write_useful_bytes, multiplicity);
+    if (multiplicity != 0 && result.read_useful_bytes.has_value() &&
+        !result.logical_read_useful_bytes.has_value()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error, "Logical read useful byte total overflows uint64."});
+    }
+    if (multiplicity != 0 && result.write_useful_bytes.has_value() &&
+        !result.logical_write_useful_bytes.has_value()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error, "Logical write useful byte total overflows uint64."});
     }
     return result;
 }
 
+auto Analyzer::analyze_record_access(RecordAnalysis const& record,
+                                     std::span<std::string const> const member_names,
+                                     AbiProfile const& abi,
+                                     AccessOperation const operation,
+                                     std::uint64_t const multiplicity) -> RecordAccessAnalysis {
+    std::vector<AccessIntent> accesses;
+    accesses.reserve(member_names.size());
+    for (auto const& member_name : member_names) {
+        accesses.push_back({.name = member_name, .operation = operation});
+    }
+    return analyze_record_access(record, accesses, abi, multiplicity);
+}
+
 auto Analyzer::analyze_record_member_access(RecordAnalysis const& record,
                                             std::string_view const member_name,
-                                            AbiProfile const& abi) -> RecordAccessAnalysis {
+                                            AbiProfile const& abi,
+                                            AccessOperation const operation,
+                                            std::uint64_t const multiplicity)
+    -> RecordAccessAnalysis {
     auto const names{std::vector<std::string>{std::string{member_name}}};
-    return analyze_record_access(record, names, abi);
+    return analyze_record_access(record, names, abi, operation, multiplicity);
+}
+
+auto Analyzer::compare_record_access(RecordAccessAnalysis const& first,
+                                     RecordAccessAnalysis const& second) -> RecordAccessComparison {
+    RecordAccessComparison result;
+    result.first = first;
+    result.second = second;
+    for (auto const& diagnostic : first.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "First target record access: " + diagnostic.message});
+    }
+    for (auto const& diagnostic : second.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "Second target record access: " + diagnostic.message});
+    }
+    if (first.type != second.type) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared record access analyses describe different records."});
+        return result;
+    }
+    if (first.element_count != second.element_count) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared record access analyses use different element counts."});
+        return result;
+    }
+    if (first.multiplicity != second.multiplicity) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared record access analyses use different access multiplicities."});
+        return result;
+    }
+
+    auto unique_names{[](auto const& values, auto const projection) {
+        std::set<std::string, std::less<>> names;
+        for (auto const& value : values) {
+            names.insert(projection(value));
+        }
+        return names;
+    }};
+    auto const first_member_names{unique_names(
+        first.member_names, [](std::string const& name) -> std::string const& { return name; })};
+    auto const second_member_names{unique_names(
+        second.member_names, [](std::string const& name) -> std::string const& { return name; })};
+    auto const first_access_names{
+        unique_names(first.accesses,
+                     [](AccessIntent const& access) -> std::string const& { return access.name; })};
+    auto const second_access_names{
+        unique_names(second.accesses,
+                     [](AccessIntent const& access) -> std::string const& { return access.name; })};
+    if (first_member_names.size() != first.member_names.size() ||
+        second_member_names.size() != second.member_names.size() ||
+        first_access_names.size() != first.accesses.size() ||
+        second_access_names.size() != second.accesses.size() ||
+        first_member_names != first_access_names || second_member_names != second_access_names ||
+        first_member_names != second_member_names) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared record access analyses do not contain the same complete unique selected "
+             "member set."});
+        return result;
+    }
+    if (!access_intents_match(first.accesses, second.accesses)) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared record access analyses use different per-member access classifications."});
+        return result;
+    }
+
+    result.useful_byte_delta = numeric_delta(first.useful_bytes, second.useful_bytes);
+    result.read_useful_byte_delta =
+        numeric_delta(first.read_useful_bytes, second.read_useful_bytes);
+    result.write_useful_byte_delta =
+        numeric_delta(first.write_useful_bytes, second.write_useful_bytes);
+    result.logical_read_useful_byte_delta =
+        numeric_delta(first.logical_read_useful_bytes, second.logical_read_useful_bytes);
+    result.logical_write_useful_byte_delta =
+        numeric_delta(first.logical_write_useful_bytes, second.logical_write_useful_bytes);
+    result.object_footprint_byte_delta =
+        numeric_delta(first.object_footprint_bytes, second.object_footprint_bytes);
+    result.cache_line_size_delta = numeric_delta(first.cache_line_bytes, second.cache_line_bytes);
+    result.cache_line_delta = numeric_delta(first.cache_lines_touched, second.cache_lines_touched);
+    result.cache_byte_delta = numeric_delta(first.cache_bytes_touched, second.cache_bytes_touched);
+    result.read_cache_line_delta =
+        numeric_delta(first.read_cache_lines_touched, second.read_cache_lines_touched);
+    result.read_cache_byte_delta =
+        numeric_delta(first.read_cache_bytes_touched, second.read_cache_bytes_touched);
+    result.write_cache_line_delta =
+        numeric_delta(first.write_cache_lines_touched, second.write_cache_lines_touched);
+    result.write_cache_byte_delta =
+        numeric_delta(first.write_cache_bytes_touched, second.write_cache_bytes_touched);
+    result.non_selected_cache_byte_delta =
+        numeric_delta(first.non_selected_cache_bytes, second.non_selected_cache_bytes);
+    result.page_size_delta = numeric_delta(first.page_bytes, second.page_bytes);
+    result.page_delta = numeric_delta(first.pages_touched, second.pages_touched);
+    result.page_byte_delta = numeric_delta(first.page_bytes_touched, second.page_bytes_touched);
+    result.read_page_delta = numeric_delta(first.read_pages_touched, second.read_pages_touched);
+    result.read_page_byte_delta =
+        numeric_delta(first.read_page_bytes_touched, second.read_page_bytes_touched);
+    result.write_page_delta = numeric_delta(first.write_pages_touched, second.write_pages_touched);
+    result.write_page_byte_delta =
+        numeric_delta(first.write_page_bytes_touched, second.write_page_bytes_touched);
+    result.non_selected_page_byte_delta =
+        numeric_delta(first.non_selected_page_bytes, second.non_selected_page_bytes);
+    return result;
 }
 
 auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                               lispb::schema::TypeId const type,
                               Variant const& variant,
                               AbiProfile const& abi,
-                              std::uint64_t const element_count) -> PackedAnalysis {
+                              std::uint64_t const element_count,
+                              std::span<RelationshipTargetFacts const> const relationship_targets)
+    -> PackedAnalysis {
     auto const& packed{std::get<lispb::schema::PackedType>(types.type(type).definition)};
     auto const schema_storage{physical_type_spelling(types, packed.storage_type.type)
                                   .value_or(packed.storage_type.cpp_type.spelling)};
@@ -2235,9 +3887,11 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                                         .cache_line_bytes = std::nullopt,
                                         .minimum_cache_lines = std::nullopt,
                                         .complete_elements_per_cache_line = std::nullopt,
+                                        .cache_line_straddling_elements = std::nullopt,
                                         .page_bytes = std::nullopt,
                                         .minimum_pages = std::nullopt,
                                         .complete_elements_per_page = std::nullopt,
+                                        .page_straddling_elements = std::nullopt,
                                         .cache_capacity = {}}};
     result.storage_facts = abi.find(result.storage_type);
     if (!result.storage_facts.has_value()) {
@@ -2315,10 +3969,24 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
             .relationship_kind = field != nullptr && field->relationship.has_value()
                                    ? std::optional{field->relationship->kind}
                                    : std::nullopt,
+            .relationship_unit = field != nullptr && field->relationship.has_value()
+                                   ? field->relationship->unit
+                                   : std::nullopt,
             .relationship_target =
                 field != nullptr && field->relationship.has_value()
                     ? std::optional{types.type(field->relationship->target.type).identity.name}
-                    : std::nullopt};
+                    : std::nullopt,
+            .relationship_target_extent = std::nullopt,
+            .relationship_live_value_count = std::nullopt,
+            .relationship_required_code_count = std::nullopt,
+            .relationship_minimum_required_bits = std::nullopt,
+            .relationship_width_sufficient = std::nullopt,
+            .relationship_code_space_capacity_limit = std::nullopt,
+            .relationship_capacity_headroom = std::nullopt,
+            .relationship_semantic_capacity_limit = std::nullopt,
+            .relationship_sentinel_capacity_limit = std::nullopt,
+            .relationship_effective_capacity_limit = std::nullopt,
+            .relationship_effective_capacity_headroom = std::nullopt};
         if (width == 0) {
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
@@ -2406,6 +4074,48 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                 *maximum_required_code,
                 field != nullptr && field->kind == codegen::PackedFieldKind::signed_integer);
         }
+        if (field != nullptr && field->relationship.has_value() &&
+            (field->relationship->kind == codegen::SemanticRelationKind::index_into ||
+             field->relationship->kind == codegen::SemanticRelationKind::count_of ||
+             field->relationship->kind == codegen::SemanticRelationKind::offset_into)) {
+            auto const target_facts{std::ranges::find(relationship_targets,
+                                                      field->relationship->target.type,
+                                                      &RelationshipTargetFacts::target)};
+            if (target_facts != relationship_targets.end()) {
+                auto const target_extent{
+                    relationship_target_extent(*field->relationship, *target_facts)};
+                if (target_extent.has_value()) {
+                    auto const extent_analysis{
+                        analyze_unsigned_relationship_extent("Packed field '" + field->name + "'",
+                                                             field->relationship->kind,
+                                                             *target_extent,
+                                                             field->named_codes,
+                                                             width,
+                                                             field->minimum_value,
+                                                             field->maximum_value)};
+                    field_result.relationship_target_extent = extent_analysis.target_extent;
+                    field_result.relationship_live_value_count = extent_analysis.live_values;
+                    field_result.relationship_required_code_count = extent_analysis.required_codes;
+                    field_result.relationship_minimum_required_bits =
+                        extent_analysis.minimum_required_bits;
+                    field_result.relationship_width_sufficient = extent_analysis.width_sufficient;
+                    field_result.relationship_code_space_capacity_limit =
+                        extent_analysis.code_space_capacity_limit;
+                    field_result.relationship_capacity_headroom = extent_analysis.capacity_headroom;
+                    field_result.relationship_semantic_capacity_limit =
+                        extent_analysis.semantic_capacity_limit;
+                    field_result.relationship_sentinel_capacity_limit =
+                        extent_analysis.sentinel_capacity_limit;
+                    field_result.relationship_effective_capacity_limit =
+                        extent_analysis.effective_capacity_limit;
+                    field_result.relationship_effective_capacity_headroom =
+                        extent_analysis.effective_capacity_headroom;
+                    result.diagnostics.insert(result.diagnostics.end(),
+                                              extent_analysis.diagnostics.begin(),
+                                              extent_analysis.diagnostics.end());
+                }
+            }
+        }
         if (next_offset.has_value()) {
             auto const positioned{
                 packed.bit_order == codegen::PackedBitOrder::least_significant_first ||
@@ -2487,6 +4197,11 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                 }
                 result.aggregate.complete_elements_per_cache_line =
                     *memory.cache_line_bytes / element_bytes;
+                result.aggregate.cache_line_straddling_elements =
+                    straddling_elements(element_bytes,
+                                        element_count,
+                                        *memory.cache_line_bytes,
+                                        result.aggregate.total_storage_bytes);
             }
 
             result.aggregate.page_bytes = memory.page_bytes;
@@ -2504,6 +4219,11 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                         minimum_regions(*result.aggregate.total_storage_bytes, *memory.page_bytes);
                 }
                 result.aggregate.complete_elements_per_page = *memory.page_bytes / element_bytes;
+                result.aggregate.page_straddling_elements =
+                    straddling_elements(element_bytes,
+                                        element_count,
+                                        *memory.page_bytes,
+                                        result.aggregate.total_storage_bytes);
             }
         }
     }
@@ -2534,11 +4254,629 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
     return result;
 }
 
+auto Analyzer::compare_packed_targets(PackedAnalysis const& first, PackedAnalysis const& second)
+    -> PackedTargetComparison {
+    PackedTargetComparison result;
+    result.first = first;
+    result.second = second;
+    for (auto const& diagnostic : first.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "First target packed layout: " + diagnostic.message});
+    }
+    for (auto const& diagnostic : second.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "Second target packed layout: " + diagnostic.message});
+    }
+
+    if (first.type != second.type) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared target packed analyses describe different semantic types."});
+        return result;
+    }
+    if (first.aggregate.element_count != second.aggregate.element_count) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared target packed analyses use different element counts."});
+        return result;
+    }
+    if (first.schema_storage_type != second.schema_storage_type ||
+        first.storage_type != second.storage_type ||
+        first.storage_overridden != second.storage_overridden ||
+        first.byte_order != second.byte_order || first.bit_order != second.bit_order ||
+        first.invalid_raw_value != second.invalid_raw_value ||
+        first.fields.size() != second.fields.size()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared target packed analyses do not use the same physical variant."});
+        return result;
+    }
+
+    auto named_codes_match = [](std::span<PackedNamedCodeAnalysis const> const first_codes,
+                                std::span<PackedNamedCodeAnalysis const> const second_codes) {
+        if (first_codes.size() != second_codes.size()) {
+            return false;
+        }
+        for (std::size_t index{}; index < first_codes.size(); ++index) {
+            if (first_codes[index].name != second_codes[index].name ||
+                first_codes[index].value != second_codes[index].value ||
+                first_codes[index].sentinel != second_codes[index].sentinel) {
+                return false;
+            }
+        }
+        return true;
+    };
+    std::set<std::string, std::less<>> names;
+    for (std::size_t index{}; index < first.fields.size(); ++index) {
+        auto const& first_field{first.fields[index]};
+        auto const& second_field{second.fields[index]};
+        auto const unique_name{names.insert(first_field.name).second};
+        if (!unique_name || first_field.name != second_field.name ||
+            first_field.semantic_type != second_field.semantic_type ||
+            first_field.logical_type != second_field.logical_type ||
+            first_field.kind != second_field.kind ||
+            first_field.reserved != second_field.reserved ||
+            first_field.schema_bit_width != second_field.schema_bit_width ||
+            first_field.schema_bit_width_auto != second_field.schema_bit_width_auto ||
+            first_field.bit_width != second_field.bit_width ||
+            first_field.overridden != second_field.overridden ||
+            first_field.minimum_semantic_value != second_field.minimum_semantic_value ||
+            first_field.maximum_semantic_value != second_field.maximum_semantic_value ||
+            first_field.sentinel_code_count != second_field.sentinel_code_count ||
+            !named_codes_match(first_field.named_codes, second_field.named_codes) ||
+            first_field.relationship_kind != second_field.relationship_kind ||
+            first_field.relationship_unit != second_field.relationship_unit ||
+            first_field.relationship_target != second_field.relationship_target) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Compared target packed analyses do not contain the same ordered segments and "
+                 "physical variant."});
+            return result;
+        }
+    }
+
+    result.fields.reserve(first.fields.size());
+    for (std::size_t index{}; index < first.fields.size(); ++index) {
+        auto const& first_field{first.fields[index]};
+        auto const& second_field{second.fields[index]};
+        result.fields.push_back(
+            {.name = first_field.name,
+             .first = first_field,
+             .second = second_field,
+             .least_significant_bit_delta = numeric_delta(first_field.least_significant_bit,
+                                                          second_field.least_significant_bit),
+             .most_significant_bit_delta =
+                 numeric_delta(first_field.most_significant_bit, second_field.most_significant_bit),
+             .unused_code_delta =
+                 numeric_delta(first_field.unused_codes, second_field.unused_codes),
+             .relationship_target_extent_delta = numeric_delta(
+                 first_field.relationship_target_extent, second_field.relationship_target_extent),
+             .relationship_minimum_required_bit_delta =
+                 numeric_delta(first_field.relationship_minimum_required_bits,
+                               second_field.relationship_minimum_required_bits),
+             .relationship_capacity_headroom_delta =
+                 numeric_delta(first_field.relationship_capacity_headroom,
+                               second_field.relationship_capacity_headroom),
+             .relationship_effective_capacity_limit_delta =
+                 numeric_delta(first_field.relationship_effective_capacity_limit,
+                               second_field.relationship_effective_capacity_limit),
+             .relationship_effective_capacity_headroom_delta =
+                 numeric_delta(first_field.relationship_effective_capacity_headroom,
+                               second_field.relationship_effective_capacity_headroom)});
+    }
+
+    auto const first_storage_size{
+        first.storage_facts.transform([](TypeFacts const& facts) { return facts.size_bytes; })};
+    auto const second_storage_size{
+        second.storage_facts.transform([](TypeFacts const& facts) { return facts.size_bytes; })};
+    auto const first_storage_alignment{first.storage_facts.transform(
+        [](TypeFacts const& facts) { return facts.alignment_bytes; })};
+    auto const second_storage_alignment{second.storage_facts.transform(
+        [](TypeFacts const& facts) { return facts.alignment_bytes; })};
+    auto const first_storage_value_bits{first.storage_facts.and_then(
+        [](TypeFacts const& facts) { return facts.unsigned_value_bits; })};
+    auto const second_storage_value_bits{second.storage_facts.and_then(
+        [](TypeFacts const& facts) { return facts.unsigned_value_bits; })};
+    result.storage_size_delta = numeric_delta(first_storage_size, second_storage_size);
+    result.storage_alignment_delta =
+        numeric_delta(first_storage_alignment, second_storage_alignment);
+    result.storage_value_bit_delta =
+        numeric_delta(first_storage_value_bits, second_storage_value_bits);
+    result.storage_bit_delta = numeric_delta(first.storage_bits, second.storage_bits);
+    result.bits_used_delta = numeric_delta(first.bits_used, second.bits_used);
+    result.payload_bit_delta = numeric_delta(first.payload_bits, second.payload_bits);
+    result.reserved_bit_delta = numeric_delta(first.reserved_bits, second.reserved_bits);
+    result.unused_bit_delta = numeric_delta(first.unused_bits, second.unused_bits);
+    auto known_overflow_bits = [](PackedAnalysis const& analysis) -> std::optional<std::uint64_t> {
+        if (!analysis.storage_bits.has_value() || !analysis.bits_used.has_value()) {
+            return std::nullopt;
+        }
+        return analysis.overflow_bits.value_or(0);
+    };
+    result.overflow_bit_delta =
+        numeric_delta(known_overflow_bits(first), known_overflow_bits(second));
+    result.total_storage_delta =
+        numeric_delta(first.aggregate.total_storage_bytes, second.aggregate.total_storage_bytes);
+    result.total_payload_bit_delta =
+        numeric_delta(first.aggregate.total_payload_bits, second.aggregate.total_payload_bits);
+    result.total_reserved_bit_delta =
+        numeric_delta(first.aggregate.total_reserved_bits, second.aggregate.total_reserved_bits);
+    result.total_unused_bit_delta =
+        numeric_delta(first.aggregate.total_unused_bits, second.aggregate.total_unused_bits);
+    result.cache_line_size_delta =
+        numeric_delta(first.aggregate.cache_line_bytes, second.aggregate.cache_line_bytes);
+    result.minimum_cache_line_delta =
+        numeric_delta(first.aggregate.minimum_cache_lines, second.aggregate.minimum_cache_lines);
+    result.complete_elements_per_cache_line_delta =
+        numeric_delta(first.aggregate.complete_elements_per_cache_line,
+                      second.aggregate.complete_elements_per_cache_line);
+    result.cache_line_straddling_delta =
+        numeric_delta(first.aggregate.cache_line_straddling_elements,
+                      second.aggregate.cache_line_straddling_elements);
+    result.page_size_delta = numeric_delta(first.aggregate.page_bytes, second.aggregate.page_bytes);
+    result.minimum_page_delta =
+        numeric_delta(first.aggregate.minimum_pages, second.aggregate.minimum_pages);
+    result.complete_elements_per_page_delta = numeric_delta(
+        first.aggregate.complete_elements_per_page, second.aggregate.complete_elements_per_page);
+    result.page_straddling_delta = numeric_delta(first.aggregate.page_straddling_elements,
+                                                 second.aggregate.page_straddling_elements);
+    return result;
+}
+
+auto Analyzer::analyze_packed_access(PackedAnalysis const& packed,
+                                     std::span<AccessIntent const> const accesses,
+                                     AbiProfile const& abi,
+                                     std::uint64_t const multiplicity) -> PackedAccessAnalysis {
+    PackedAccessAnalysis result;
+    result.type = packed.type;
+    result.element_count = packed.aggregate.element_count;
+    result.multiplicity = multiplicity;
+    result.storage_footprint_bytes = packed.aggregate.total_storage_bytes;
+    result.cache_line_bytes = packed.aggregate.cache_line_bytes;
+    result.minimum_cache_lines_touched = packed.aggregate.minimum_cache_lines;
+    result.page_bytes = packed.aggregate.page_bytes;
+    result.minimum_pages_touched = packed.aggregate.minimum_pages;
+
+    if (multiplicity == 0) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error, "Access multiplicity must be non-zero."});
+    }
+
+    if (result.storage_footprint_bytes.has_value()) {
+        result.storage_footprint_bits = checked_multiply(*result.storage_footprint_bytes, 8);
+        if (!result.storage_footprint_bits.has_value()) {
+            result.diagnostics.push_back({DiagnosticSeverity::error,
+                                          "Packed storage footprint bit count overflows uint64."});
+        }
+    } else {
+        result.diagnostics.push_back({packed.storage_facts.has_value()
+                                          ? DiagnosticSeverity::error
+                                          : DiagnosticSeverity::warning,
+                                      "Packed storage footprint is Unknown."});
+    }
+
+    std::set<std::string, std::less<>> unique_names;
+    std::uint64_t useful_bits_per_element{};
+    std::uint64_t read_bits_per_element{};
+    std::uint64_t write_bits_per_element{};
+    bool read_selected{};
+    bool write_selected{};
+    for (auto const& access : accesses) {
+        if (!unique_names.insert(access.name).second) {
+            auto const existing{
+                std::ranges::find(result.accesses, access.name, &AccessIntent::name)};
+            if (existing != result.accesses.end() && existing->operation != access.operation) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Selected packed field '" + access.name +
+                         "' has conflicting access classifications; the first is used."});
+            }
+            continue;
+        }
+
+        auto const field{std::ranges::find(packed.fields, access.name, &PackedFieldAnalysis::name)};
+        if (field == packed.fields.end()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Selected packed field '" + access.name + "' no longer exists."});
+            continue;
+        }
+        if (field->reserved) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Reserved packed region '" + access.name + "' cannot be selected for access."});
+            continue;
+        }
+
+        auto accumulate_bits = [&](std::uint64_t& total, char const* const category) -> bool {
+            auto const next{checked_add(total, field->bit_width)};
+            if (!next.has_value()) {
+                result.diagnostics.push_back({DiagnosticSeverity::error,
+                                              std::string{"Selected packed-field "} + category +
+                                                  " bit count per element overflows uint64."});
+                return false;
+            }
+            total = *next;
+            return true;
+        };
+        if (!accumulate_bits(useful_bits_per_element, "useful")) {
+            return result;
+        }
+        if (access.operation != AccessOperation::write) {
+            read_selected = true;
+            if (!accumulate_bits(read_bits_per_element, "read")) {
+                return result;
+            }
+        }
+        if (access.operation != AccessOperation::read) {
+            write_selected = true;
+            if (!accumulate_bits(write_bits_per_element, "write")) {
+                return result;
+            }
+        }
+
+        PackedFieldAccessAnalysis field_access;
+        field_access.name = access.name;
+        field_access.operation = access.operation;
+        field_access.bit_width = field->bit_width;
+        field_access.useful_bits = checked_multiply(field->bit_width, result.element_count);
+        if (!field_access.useful_bits.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Selected packed field '" + access.name + "' useful bit count overflows uint64."});
+        }
+        field_access.read_useful_bits = access.operation != AccessOperation::write
+                                          ? field_access.useful_bits
+                                          : std::optional<std::uint64_t>{0};
+        field_access.write_useful_bits = access.operation != AccessOperation::read
+                                           ? field_access.useful_bits
+                                           : std::optional<std::uint64_t>{0};
+        if (multiplicity != 0) {
+            field_access.logical_read_useful_bits = field_access.read_useful_bits.and_then(
+                [&](std::uint64_t const bits) { return checked_multiply(bits, multiplicity); });
+            field_access.logical_write_useful_bits = field_access.write_useful_bits.and_then(
+                [&](std::uint64_t const bits) { return checked_multiply(bits, multiplicity); });
+            if (field_access.read_useful_bits.has_value() &&
+                !field_access.logical_read_useful_bits.has_value()) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Selected packed field '" + access.name +
+                         "' logical read useful bit count overflows uint64."});
+            }
+            if (field_access.write_useful_bits.has_value() &&
+                !field_access.logical_write_useful_bits.has_value()) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Selected packed field '" + access.name +
+                         "' logical write useful bit count overflows uint64."});
+            }
+        }
+        result.field_names.push_back(access.name);
+        result.accesses.push_back(access);
+        result.fields.push_back(std::move(field_access));
+    }
+
+    if (result.accesses.empty()) {
+        if (result.diagnostics.empty()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::warning, "No packed fields are selected for access."});
+        }
+        result.cache_footprint_capacity = cache_capacity_analysis(std::nullopt, abi.memory_facts());
+        return result;
+    }
+
+    auto scale_bits = [&](std::uint64_t const per_element,
+                          char const* const category) -> std::optional<std::uint64_t> {
+        auto const total{checked_multiply(per_element, result.element_count)};
+        if (!total.has_value()) {
+            result.diagnostics.push_back({DiagnosticSeverity::error,
+                                          std::string{"Selected packed-field "} + category +
+                                              " bit count overflows uint64."});
+        }
+        return total;
+    };
+    result.useful_bits = scale_bits(useful_bits_per_element, "useful");
+    result.read_useful_bits = scale_bits(read_bits_per_element, "read useful");
+    result.write_useful_bits = scale_bits(write_bits_per_element, "write useful");
+    if (multiplicity != 0) {
+        result.logical_read_useful_bits = result.read_useful_bits.and_then(
+            [&](std::uint64_t const bits) { return checked_multiply(bits, multiplicity); });
+        result.logical_write_useful_bits = result.write_useful_bits.and_then(
+            [&](std::uint64_t const bits) { return checked_multiply(bits, multiplicity); });
+        if (result.read_useful_bits.has_value() && !result.logical_read_useful_bits.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, "Logical read useful bit total overflows uint64."});
+        }
+        if (result.write_useful_bits.has_value() && !result.logical_write_useful_bits.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error, "Logical write useful bit total overflows uint64."});
+        }
+    }
+
+    if (result.storage_footprint_bits.has_value() && result.useful_bits.has_value()) {
+        if (*result.useful_bits <= *result.storage_footprint_bits) {
+            result.non_useful_storage_bits = *result.storage_footprint_bits - *result.useful_bits;
+        } else {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Selected useful bits exceed the packed physical storage footprint."});
+        }
+    }
+    if (packed.unused_bits.has_value() && result.storage_footprint_bits.has_value()) {
+        std::uint64_t unselected_bits_per_element{};
+        bool unselected_bits_known{true};
+        for (auto const& field : packed.fields) {
+            if (field.reserved ||
+                std::ranges::find(result.field_names, field.name) != result.field_names.end()) {
+                continue;
+            }
+            auto const next{checked_add(unselected_bits_per_element, field.bit_width)};
+            if (!next.has_value()) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Unselected packed-field bit count per element overflows uint64."});
+                unselected_bits_known = false;
+                break;
+            }
+            unselected_bits_per_element = *next;
+        }
+        auto scale_category = [&](std::optional<std::uint64_t> const per_element,
+                                  char const* const category) -> std::optional<std::uint64_t> {
+            if (!per_element.has_value()) {
+                return std::nullopt;
+            }
+            auto const scaled{checked_multiply(*per_element, result.element_count)};
+            if (!scaled.has_value()) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     std::string{"Packed access "} + category + " bit count overflows uint64."});
+            }
+            return scaled;
+        };
+        result.unselected_field_bits = scale_category(
+            unselected_bits_known ? std::optional{unselected_bits_per_element} : std::nullopt,
+            "unselected-field");
+        result.reserved_region_bits = scale_category(packed.reserved_bits, "reserved-region");
+        result.physically_unused_storage_bits =
+            scale_category(packed.unused_bits, "physically-unused-storage");
+
+        if (result.unselected_field_bits.has_value() && result.reserved_region_bits.has_value() &&
+            result.physically_unused_storage_bits.has_value() &&
+            result.non_useful_storage_bits.has_value()) {
+            auto const categorized{
+                checked_add(*result.unselected_field_bits, *result.reserved_region_bits)
+                    .and_then([&](std::uint64_t const bits) {
+                        return checked_add(bits, *result.physically_unused_storage_bits);
+                    })};
+            if (!categorized.has_value()) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Packed non-useful storage category total overflows uint64."});
+            } else if (*categorized != *result.non_useful_storage_bits) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Packed non-useful storage categories do not match the total."});
+            }
+        }
+    } else if (packed.overflow_bits.has_value() && *packed.overflow_bits != 0) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Packed non-useful storage categories are Unknown because fields exceed storage."});
+    }
+
+    auto derive_region_bytes = [&](std::optional<std::uint64_t> const regions,
+                                   std::optional<std::uint64_t> const bytes_per_region,
+                                   std::optional<std::uint64_t>& output,
+                                   char const* const category) {
+        if (!regions.has_value() || !bytes_per_region.has_value()) {
+            return;
+        }
+        output = checked_multiply(*regions, *bytes_per_region);
+        if (!output.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 std::string{"Packed access "} + category + " byte count overflows uint64."});
+        }
+    };
+    derive_region_bytes(result.minimum_cache_lines_touched,
+                        result.cache_line_bytes,
+                        result.minimum_cache_bytes_touched,
+                        "cache-line");
+    derive_region_bytes(
+        result.minimum_pages_touched, result.page_bytes, result.minimum_page_bytes_touched, "page");
+
+    auto classify_regions = [&](bool const selected,
+                                std::optional<std::uint64_t> const all_regions,
+                                std::optional<std::uint64_t> const bytes_per_region,
+                                std::optional<std::uint64_t>& operation_regions,
+                                std::optional<std::uint64_t>& operation_bytes,
+                                char const* const category) {
+        if (!selected) {
+            operation_regions = 0;
+            operation_bytes = 0;
+            return;
+        }
+        operation_regions = all_regions;
+        derive_region_bytes(operation_regions, bytes_per_region, operation_bytes, category);
+    };
+    classify_regions(read_selected,
+                     result.minimum_cache_lines_touched,
+                     result.cache_line_bytes,
+                     result.read_cache_lines_touched,
+                     result.read_cache_bytes_touched,
+                     "read cache-line");
+    classify_regions(write_selected,
+                     result.minimum_cache_lines_touched,
+                     result.cache_line_bytes,
+                     result.write_cache_lines_touched,
+                     result.write_cache_bytes_touched,
+                     "write cache-line");
+    classify_regions(read_selected,
+                     result.minimum_pages_touched,
+                     result.page_bytes,
+                     result.read_pages_touched,
+                     result.read_page_bytes_touched,
+                     "read page");
+    classify_regions(write_selected,
+                     result.minimum_pages_touched,
+                     result.page_bytes,
+                     result.write_pages_touched,
+                     result.write_page_bytes_touched,
+                     "write page");
+
+    if (!result.cache_line_bytes.has_value()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::warning,
+             "Packed access cache-line footprint is Unknown for ABI profile '" + abi.name() +
+                 "'."});
+    } else if (!result.minimum_cache_lines_touched.has_value()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error, "Packed access cache-line count is Unknown."});
+    }
+    if (!result.page_bytes.has_value()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::warning,
+             "Packed access page footprint is Unknown for ABI profile '" + abi.name() + "'."});
+    } else if (!result.minimum_pages_touched.has_value()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error, "Packed access page count is Unknown."});
+    }
+    result.cache_footprint_capacity =
+        cache_capacity_analysis(result.minimum_cache_bytes_touched, abi.memory_facts());
+    return result;
+}
+
+auto Analyzer::compare_packed_access(PackedAccessAnalysis const& first,
+                                     PackedAccessAnalysis const& second) -> PackedAccessComparison {
+    PackedAccessComparison result;
+    result.field_names = first.field_names;
+    result.accesses = first.accesses;
+    result.element_count = first.element_count;
+    result.multiplicity = first.multiplicity;
+    result.first = first;
+    result.second = second;
+    for (auto const& diagnostic : first.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "First packed access: " + diagnostic.message});
+    }
+    for (auto const& diagnostic : second.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "Second packed access: " + diagnostic.message});
+    }
+    if (first.type != second.type) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared packed access analyses describe different packed values."});
+        return result;
+    }
+    if (first.element_count != second.element_count) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared packed access analyses use different element counts."});
+        return result;
+    }
+    if (!access_intents_match(first.accesses, second.accesses)) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared packed access analyses use different per-field access classifications."});
+        return result;
+    }
+    if (first.multiplicity != second.multiplicity) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared packed access analyses use different access multiplicities."});
+        return result;
+    }
+    auto const first_names{
+        std::set<std::string, std::less<>>{first.field_names.begin(), first.field_names.end()}};
+    auto const second_names{
+        std::set<std::string, std::less<>>{second.field_names.begin(), second.field_names.end()}};
+    if (first_names != second_names) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared packed access analyses do not select the same named fields."});
+        return result;
+    }
+    for (auto const& field_name : result.field_names) {
+        auto const first_field{
+            std::ranges::find(first.fields, field_name, &PackedFieldAccessAnalysis::name)};
+        auto const second_field{
+            std::ranges::find(second.fields, field_name, &PackedFieldAccessAnalysis::name)};
+        if (first_field == first.fields.end() || second_field == second.fields.end()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Compared packed access analysis is missing details for selected field '" +
+                     field_name + "'."});
+            return result;
+        }
+        result.fields.push_back(
+            {.name = field_name,
+             .first = *first_field,
+             .second = *second_field,
+             .bit_width_delta = numeric_delta(first_field->bit_width, second_field->bit_width),
+             .useful_bit_delta = numeric_delta(first_field->useful_bits, second_field->useful_bits),
+             .read_useful_bit_delta =
+                 numeric_delta(first_field->read_useful_bits, second_field->read_useful_bits),
+             .write_useful_bit_delta =
+                 numeric_delta(first_field->write_useful_bits, second_field->write_useful_bits),
+             .logical_read_useful_bit_delta = numeric_delta(first_field->logical_read_useful_bits,
+                                                            second_field->logical_read_useful_bits),
+             .logical_write_useful_bit_delta = numeric_delta(
+                 first_field->logical_write_useful_bits, second_field->logical_write_useful_bits)});
+    }
+
+    result.useful_bit_delta = numeric_delta(first.useful_bits, second.useful_bits);
+    result.read_useful_bit_delta = numeric_delta(first.read_useful_bits, second.read_useful_bits);
+    result.write_useful_bit_delta =
+        numeric_delta(first.write_useful_bits, second.write_useful_bits);
+    result.logical_read_useful_bit_delta =
+        numeric_delta(first.logical_read_useful_bits, second.logical_read_useful_bits);
+    result.logical_write_useful_bit_delta =
+        numeric_delta(first.logical_write_useful_bits, second.logical_write_useful_bits);
+    result.storage_footprint_byte_delta =
+        numeric_delta(first.storage_footprint_bytes, second.storage_footprint_bytes);
+    result.storage_footprint_bit_delta =
+        numeric_delta(first.storage_footprint_bits, second.storage_footprint_bits);
+    result.non_useful_storage_bit_delta =
+        numeric_delta(first.non_useful_storage_bits, second.non_useful_storage_bits);
+    result.unselected_field_bit_delta =
+        numeric_delta(first.unselected_field_bits, second.unselected_field_bits);
+    result.reserved_region_bit_delta =
+        numeric_delta(first.reserved_region_bits, second.reserved_region_bits);
+    result.physically_unused_storage_bit_delta =
+        numeric_delta(first.physically_unused_storage_bits, second.physically_unused_storage_bits);
+    result.cache_line_size_delta = numeric_delta(first.cache_line_bytes, second.cache_line_bytes);
+    result.cache_line_delta =
+        numeric_delta(first.minimum_cache_lines_touched, second.minimum_cache_lines_touched);
+    result.cache_byte_delta =
+        numeric_delta(first.minimum_cache_bytes_touched, second.minimum_cache_bytes_touched);
+    result.read_cache_line_delta =
+        numeric_delta(first.read_cache_lines_touched, second.read_cache_lines_touched);
+    result.read_cache_byte_delta =
+        numeric_delta(first.read_cache_bytes_touched, second.read_cache_bytes_touched);
+    result.write_cache_line_delta =
+        numeric_delta(first.write_cache_lines_touched, second.write_cache_lines_touched);
+    result.write_cache_byte_delta =
+        numeric_delta(first.write_cache_bytes_touched, second.write_cache_bytes_touched);
+    result.page_size_delta = numeric_delta(first.page_bytes, second.page_bytes);
+    result.page_delta = numeric_delta(first.minimum_pages_touched, second.minimum_pages_touched);
+    result.page_byte_delta =
+        numeric_delta(first.minimum_page_bytes_touched, second.minimum_page_bytes_touched);
+    result.read_page_delta = numeric_delta(first.read_pages_touched, second.read_pages_touched);
+    result.read_page_byte_delta =
+        numeric_delta(first.read_page_bytes_touched, second.read_page_bytes_touched);
+    result.write_page_delta = numeric_delta(first.write_pages_touched, second.write_pages_touched);
+    result.write_page_byte_delta =
+        numeric_delta(first.write_page_bytes_touched, second.write_page_bytes_touched);
+    return result;
+}
+
 auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
                            lispb::schema::TypeId const type,
                            Variant const& variant,
                            AbiProfile const& abi,
-                           std::uint64_t const default_capacity) -> SoaAnalysis {
+                           std::uint64_t const default_capacity,
+                           SoaAllocationStrategy const allocation_strategy) -> SoaAnalysis {
     auto const& soa{std::get<lispb::schema::SoaType>(types.type(type).definition)};
     auto capacity{default_capacity};
     bool capacity_overridden{};
@@ -2550,14 +4888,25 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
     SoaAnalysis result{.type = type,
                        .capacity = capacity,
                        .capacity_overridden = capacity_overridden,
+                       .allocation_strategy = allocation_strategy,
+                       .allocation_count =
+                           capacity == 0 || soa.columns.empty()
+                               ? 0U
+                               : (allocation_strategy == SoaAllocationStrategy::separate_columns
+                                      ? static_cast<std::uint64_t>(soa.columns.size())
+                                      : 1U),
                        .columns = {},
                        .bytes_per_logical_element = std::nullopt,
                        .total_payload_bytes = std::nullopt,
+                       .total_allocation_bytes = std::nullopt,
+                       .total_alignment_padding_bytes = std::nullopt,
+                       .allocation_alignment_bytes = std::nullopt,
+                       .cache_line_bytes = abi.memory_facts().cache_line_bytes,
                        .page_bytes = abi.memory_facts().page_bytes,
                        .minimum_pages = std::nullopt,
                        .cache_capacity = {},
                        .diagnostics = {}};
-    auto const cache_line_bytes{abi.memory_facts().cache_line_bytes};
+    auto const cache_line_bytes{result.cache_line_bytes};
     auto const has_cache_line_size{cache_line_bytes.has_value() && *cache_line_bytes != 0};
     if (!cache_line_bytes.has_value()) {
         result.diagnostics.push_back(
@@ -2582,6 +4931,10 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
     std::uint64_t total_pages{};
     bool complete{true};
     bool pages_complete{has_page_size};
+    bool allocation_complete{true};
+    std::uint64_t allocation_offset{};
+    std::uint64_t allocation_padding{};
+    std::uint64_t allocation_alignment{1};
     result.columns.reserve(soa.columns.size());
 
     for (auto const& column : soa.columns) {
@@ -2594,6 +4947,8 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
                 FieldOverrideId{.type = type, .field_name = column.name}),
             .type_facts = std::nullopt,
             .total_bytes = std::nullopt,
+            .allocation_offset_bytes = std::nullopt,
+            .padding_before_bytes = std::nullopt,
             .minimum_cache_lines = std::nullopt,
             .elements_per_cache_line = std::nullopt,
             .minimum_pages = std::nullopt,
@@ -2603,6 +4958,7 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
         if (!column_result.type_facts.has_value()) {
             complete = false;
             pages_complete = false;
+            allocation_complete = false;
             result.diagnostics.push_back({DiagnosticSeverity::error,
                                           "Unknown physical facts for SoA column '" + column.name +
                                               "' type '" + column_result.physical_type + "'."});
@@ -2611,12 +4967,14 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
         }
 
         auto const size{column_result.type_facts->size_bytes};
-        if (size == 0) {
+        auto const alignment{column_result.type_facts->alignment_bytes};
+        if (size == 0 || alignment == 0) {
             complete = false;
             pages_complete = false;
+            allocation_complete = false;
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
-                 "SoA column '" + column.name + "' has a zero-byte physical type."});
+                 "SoA column '" + column.name + "' has a zero-byte size or zero-byte alignment."});
             result.columns.push_back(std::move(column_result));
             continue;
         }
@@ -2671,6 +5029,33 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
                 total_bytes = *next_total;
             }
         }
+        if (allocation_strategy == SoaAllocationStrategy::aligned_contiguous) {
+            auto const aligned{align_up(allocation_offset, alignment)};
+            if (!aligned.has_value() || !column_result.total_bytes.has_value()) {
+                allocation_complete = false;
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Aligned contiguous allocation arithmetic overflows at SoA column '" +
+                         column.name + "'."});
+            } else {
+                column_result.allocation_offset_bytes = *aligned;
+                column_result.padding_before_bytes = *aligned - allocation_offset;
+                auto const next_padding{
+                    checked_add(allocation_padding, *column_result.padding_before_bytes)};
+                auto const next_offset{checked_add(*aligned, *column_result.total_bytes)};
+                if (!next_padding.has_value() || !next_offset.has_value()) {
+                    allocation_complete = false;
+                    result.diagnostics.push_back(
+                        {DiagnosticSeverity::error,
+                         "Aligned contiguous allocation total overflows at SoA column '" +
+                             column.name + "'."});
+                } else {
+                    allocation_padding = *next_padding;
+                    allocation_offset = *next_offset;
+                    allocation_alignment = std::max(allocation_alignment, alignment);
+                }
+            }
+        }
         result.columns.push_back(std::move(column_result));
     }
 
@@ -2678,39 +5063,218 @@ auto Analyzer::analyze_soa(lispb::schema::TypeGraph const& types,
         result.bytes_per_logical_element = row_bytes;
         result.total_payload_bytes = total_bytes;
     }
-    result.cache_capacity = cache_capacity_analysis(result.total_payload_bytes, abi.memory_facts());
-    if (pages_complete) {
+    if (allocation_strategy == SoaAllocationStrategy::separate_columns) {
+        result.total_allocation_bytes = result.total_payload_bytes;
+        result.total_alignment_padding_bytes = 0;
+    } else if (allocation_complete) {
+        result.total_allocation_bytes = allocation_offset;
+        result.total_alignment_padding_bytes = allocation_padding;
+        result.allocation_alignment_bytes = allocation_alignment;
+    }
+    result.cache_capacity =
+        cache_capacity_analysis(result.total_allocation_bytes, abi.memory_facts());
+    if (allocation_strategy == SoaAllocationStrategy::aligned_contiguous &&
+        result.total_allocation_bytes.has_value() && has_page_size) {
+        result.minimum_pages = minimum_regions(*result.total_allocation_bytes, *result.page_bytes);
+    } else if (pages_complete) {
         result.minimum_pages = total_pages;
     }
     return result;
 }
 
+auto Analyzer::compare_soa_targets(SoaAnalysis const& first, SoaAnalysis const& second)
+    -> SoaTargetComparison {
+    SoaTargetComparison result;
+    result.first = first;
+    result.second = second;
+    for (auto const& diagnostic : first.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "First target SoA layout: " + diagnostic.message});
+    }
+    for (auto const& diagnostic : second.diagnostics) {
+        result.diagnostics.push_back(
+            {diagnostic.severity, "Second target SoA layout: " + diagnostic.message});
+    }
+
+    if (first.type != second.type) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared target SoA analyses describe different semantic types."});
+        return result;
+    }
+    if (first.capacity != second.capacity ||
+        first.capacity_overridden != second.capacity_overridden) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared target SoA analyses use different capacities or capacity overrides."});
+        return result;
+    }
+    if (first.allocation_strategy != second.allocation_strategy) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared target SoA analyses use different allocation strategies."});
+        return result;
+    }
+    if (first.columns.size() != second.columns.size()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared target SoA analyses do not contain the same ordered columns."});
+        return result;
+    }
+
+    std::set<std::string, std::less<>> names;
+    for (std::size_t index{}; index < first.columns.size(); ++index) {
+        auto const& first_column{first.columns[index]};
+        auto const& second_column{second.columns[index]};
+        auto const unique_name{names.insert(first_column.name).second};
+        if (!unique_name || first_column.name != second_column.name ||
+            first_column.semantic_type != second_column.semantic_type ||
+            first_column.schema_type != second_column.schema_type ||
+            first_column.physical_type != second_column.physical_type ||
+            first_column.overridden != second_column.overridden) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Compared target SoA analyses do not contain the same unique ordered columns "
+                 "and physical variant."});
+            return result;
+        }
+    }
+
+    result.compatible = true;
+    result.columns.reserve(first.columns.size());
+    for (std::size_t index{}; index < first.columns.size(); ++index) {
+        auto const& first_column{first.columns[index]};
+        auto const& second_column{second.columns[index]};
+        auto const first_size{first_column.type_facts.transform(
+            [](TypeFacts const& facts) { return facts.size_bytes; })};
+        auto const second_size{second_column.type_facts.transform(
+            [](TypeFacts const& facts) { return facts.size_bytes; })};
+        auto const first_alignment{first_column.type_facts.transform(
+            [](TypeFacts const& facts) { return facts.alignment_bytes; })};
+        auto const second_alignment{second_column.type_facts.transform(
+            [](TypeFacts const& facts) { return facts.alignment_bytes; })};
+        result.columns.push_back(
+            {.name = first_column.name,
+             .first = first_column,
+             .second = second_column,
+             .element_size_delta = numeric_delta(first_size, second_size),
+             .element_alignment_delta = numeric_delta(first_alignment, second_alignment),
+             .total_byte_delta = numeric_delta(first_column.total_bytes, second_column.total_bytes),
+             .allocation_offset_delta = numeric_delta(first_column.allocation_offset_bytes,
+                                                      second_column.allocation_offset_bytes),
+             .padding_before_delta = numeric_delta(first_column.padding_before_bytes,
+                                                   second_column.padding_before_bytes),
+             .minimum_cache_line_delta =
+                 numeric_delta(first_column.minimum_cache_lines, second_column.minimum_cache_lines),
+             .elements_per_cache_line_delta = numeric_delta(first_column.elements_per_cache_line,
+                                                            second_column.elements_per_cache_line),
+             .minimum_page_delta =
+                 numeric_delta(first_column.minimum_pages, second_column.minimum_pages),
+             .complete_elements_per_page_delta =
+                 numeric_delta(first_column.complete_elements_per_page,
+                               second_column.complete_elements_per_page)});
+    }
+
+    result.allocation_count_delta = numeric_delta(first.allocation_count, second.allocation_count);
+    result.bytes_per_logical_element_delta =
+        numeric_delta(first.bytes_per_logical_element, second.bytes_per_logical_element);
+    result.total_payload_delta =
+        numeric_delta(first.total_payload_bytes, second.total_payload_bytes);
+    result.total_allocation_delta =
+        numeric_delta(first.total_allocation_bytes, second.total_allocation_bytes);
+    result.total_alignment_padding_delta =
+        numeric_delta(first.total_alignment_padding_bytes, second.total_alignment_padding_bytes);
+    result.allocation_alignment_delta =
+        numeric_delta(first.allocation_alignment_bytes, second.allocation_alignment_bytes);
+    result.cache_line_size_delta = numeric_delta(first.cache_line_bytes, second.cache_line_bytes);
+    result.page_size_delta = numeric_delta(first.page_bytes, second.page_bytes);
+    result.minimum_page_delta = numeric_delta(first.minimum_pages, second.minimum_pages);
+    return result;
+}
+
+auto Analyzer::derive_relationship_target_facts(lispb::schema::TypeGraph const& types,
+                                                Variant const& variant,
+                                                AbiProfile const& abi,
+                                                std::uint64_t const default_capacity,
+                                                SoaAllocationStrategy const allocation_strategy)
+    -> std::vector<RelationshipTargetFacts> {
+    std::vector<RelationshipTargetFacts> result;
+    auto const resolved_types{types.types()};
+    result.reserve(resolved_types.size());
+
+    for (std::size_t type_index{}; type_index < resolved_types.size(); ++type_index) {
+        if (!std::holds_alternative<lispb::schema::SoaType>(
+                resolved_types[type_index].definition)) {
+            continue;
+        }
+
+        auto const type{lispb::schema::TypeId{.value = static_cast<std::uint32_t>(type_index)}};
+        auto const analysis{
+            analyze_soa(types, type, variant, abi, default_capacity, allocation_strategy)};
+        result.push_back({.target = type,
+                          .element_capacity = analysis.capacity,
+                          .byte_extent = analysis.total_allocation_bytes});
+    }
+    return result;
+}
+
 auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
-                                  std::span<std::string const> const column_names,
+                                  std::span<AccessIntent const> const accesses,
                                   AbiProfile const& abi,
-                                  std::uint64_t const element_count) -> SoaAccessAnalysis {
+                                  std::uint64_t const element_count,
+                                  std::uint64_t const multiplicity) -> SoaAccessAnalysis {
     SoaAccessAnalysis result{.column_names = {},
+                             .accesses = {},
                              .columns = {},
                              .element_count = element_count,
+                             .multiplicity = multiplicity,
+                             .allocation_strategy = soa.allocation_strategy,
+                             .footprint_exact = soa.allocation_strategy ==
+                                                SoaAllocationStrategy::aligned_contiguous,
+                             .allocation_count = soa.allocation_count,
                              .useful_bytes = std::uint64_t{},
+                             .read_useful_bytes = std::uint64_t{},
+                             .write_useful_bytes = std::uint64_t{},
+                             .logical_read_useful_bytes = std::nullopt,
+                             .logical_write_useful_bytes = std::nullopt,
                              .full_logical_payload_bytes = std::nullopt,
                              .unselected_payload_bytes = std::nullopt,
                              .allocated_capacity_payload_bytes = soa.total_payload_bytes,
                              .capacity_slack_payload_bytes = std::nullopt,
+                             .total_allocation_bytes = soa.total_allocation_bytes,
+                             .alignment_padding_bytes = soa.total_alignment_padding_bytes,
                              .cache_line_bytes = abi.memory_facts().cache_line_bytes,
                              .minimum_cache_lines_touched = std::uint64_t{},
                              .minimum_cache_bytes_touched = std::nullopt,
+                             .minimum_read_cache_lines_touched = std::uint64_t{},
+                             .minimum_read_cache_bytes_touched = std::nullopt,
+                             .minimum_write_cache_lines_touched = std::uint64_t{},
+                             .minimum_write_cache_bytes_touched = std::nullopt,
                              .non_payload_cache_bytes = std::nullopt,
+                             .minimum_cache_footprint_capacity =
+                                 cache_capacity_analysis(std::nullopt, abi.memory_facts()),
                              .page_bytes = abi.memory_facts().page_bytes,
                              .minimum_pages_touched = std::uint64_t{},
                              .minimum_page_bytes_touched = std::nullopt,
+                             .minimum_read_pages_touched = std::uint64_t{},
+                             .minimum_read_page_bytes_touched = std::nullopt,
+                             .minimum_write_pages_touched = std::uint64_t{},
+                             .minimum_write_page_bytes_touched = std::nullopt,
                              .non_payload_page_bytes = std::nullopt,
                              .diagnostics = {}};
+    if (multiplicity == 0) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error, "Access multiplicity must be non-zero."});
+    }
     if (!result.cache_line_bytes.has_value() || *result.cache_line_bytes == 0) {
         result.minimum_cache_lines_touched.reset();
+        result.minimum_read_cache_lines_touched.reset();
+        result.minimum_write_cache_lines_touched.reset();
     }
     if (!result.page_bytes.has_value() || *result.page_bytes == 0) {
         result.minimum_pages_touched.reset();
+        result.minimum_read_pages_touched.reset();
+        result.minimum_write_pages_touched.reset();
     }
     if (soa.bytes_per_logical_element.has_value()) {
         result.full_logical_payload_bytes =
@@ -2733,8 +5297,20 @@ auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
             *result.allocated_capacity_payload_bytes - *result.full_logical_payload_bytes;
     }
     std::set<std::string, std::less<>> unique_names;
-    for (auto const& column_name : column_names) {
+    std::vector<std::pair<std::uint64_t, std::uint64_t>> accessed_intervals;
+    std::vector<std::pair<std::uint64_t, std::uint64_t>> read_intervals;
+    std::vector<std::pair<std::uint64_t, std::uint64_t>> write_intervals;
+    for (auto const& access : accesses) {
+        auto const& column_name{access.name};
         if (!unique_names.insert(column_name).second) {
+            auto const existing{
+                std::ranges::find(result.accesses, column_name, &AccessIntent::name)};
+            if (existing != result.accesses.end() && existing->operation != access.operation) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Selected SoA column '" + column_name +
+                         "' has conflicting access classifications; the first is used."});
+            }
             continue;
         }
         auto const column{std::ranges::find(soa.columns, column_name, &SoaColumnAnalysis::name)};
@@ -2745,6 +5321,7 @@ auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
             continue;
         }
         result.column_names.push_back(column_name);
+        result.accesses.push_back(access);
 
         auto accumulate = [&](std::optional<std::uint64_t> const value,
                               std::optional<std::uint64_t>& total,
@@ -2776,18 +5353,47 @@ auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
         }
         SoaColumnAccessAnalysis column_access{
             .name = column_name,
+            .operation = access.operation,
             .physical_type = column->physical_type,
             .element_bytes = column->type_facts.transform(
                 [](TypeFacts const& facts) { return facts.size_bytes; }),
             .useful_bytes = flat_accessed_bytes,
+            .read_useful_bytes = classified_useful_bytes(
+                flat_accessed_bytes, access.operation != AccessOperation::write),
+            .write_useful_bytes = classified_useful_bytes(
+                flat_accessed_bytes, access.operation != AccessOperation::read),
+            .logical_read_useful_bytes = logical_useful_bytes(
+                classified_useful_bytes(flat_accessed_bytes,
+                                        access.operation != AccessOperation::write),
+                multiplicity),
+            .logical_write_useful_bytes = logical_useful_bytes(
+                classified_useful_bytes(flat_accessed_bytes,
+                                        access.operation != AccessOperation::read),
+                multiplicity),
             .minimum_cache_lines = std::nullopt,
             .minimum_cache_bytes = std::nullopt,
             .non_payload_cache_bytes = std::nullopt,
+            .aligned_cache_line_straddling_elements = std::nullopt,
             .minimum_pages = std::nullopt,
             .minimum_page_bytes = std::nullopt,
             .non_payload_page_bytes = std::nullopt,
+            .aligned_page_straddling_elements = std::nullopt,
             .allocated_capacity_payload_bytes = column->total_bytes,
             .capacity_slack_payload_bytes = std::nullopt};
+        if (multiplicity != 0 && column_access.read_useful_bytes.has_value() &&
+            !column_access.logical_read_useful_bytes.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Selected SoA column '" + column_name +
+                     "' logical read useful byte total overflows uint64."});
+        }
+        if (multiplicity != 0 && column_access.write_useful_bytes.has_value() &&
+            !column_access.logical_write_useful_bytes.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Selected SoA column '" + column_name +
+                     "' logical write useful byte total overflows uint64."});
+        }
         if (column_access.allocated_capacity_payload_bytes.has_value() &&
             column_access.useful_bytes.has_value() &&
             *column_access.allocated_capacity_payload_bytes >= *column_access.useful_bytes) {
@@ -2824,6 +5430,73 @@ auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
                               column_access.minimum_page_bytes,
                               column_access.non_payload_page_bytes,
                               "page");
+        if (access.operation != AccessOperation::write) {
+            accumulate(column_access.minimum_cache_lines,
+                       result.minimum_read_cache_lines_touched,
+                       "minimum read cache-line count");
+            accumulate(column_access.minimum_pages,
+                       result.minimum_read_pages_touched,
+                       "minimum read page count");
+        }
+        if (access.operation != AccessOperation::read) {
+            accumulate(column_access.minimum_cache_lines,
+                       result.minimum_write_cache_lines_touched,
+                       "minimum write cache-line count");
+            accumulate(column_access.minimum_pages,
+                       result.minimum_write_pages_touched,
+                       "minimum write page count");
+        }
+        if (soa.allocation_strategy == SoaAllocationStrategy::aligned_contiguous &&
+            column->allocation_offset_bytes.has_value() && flat_accessed_bytes.has_value() &&
+            *flat_accessed_bytes != 0) {
+            auto const interval{std::pair{*column->allocation_offset_bytes, *flat_accessed_bytes}};
+            accessed_intervals.push_back(interval);
+            if (access.operation != AccessOperation::write) {
+                read_intervals.push_back(interval);
+            }
+            if (access.operation != AccessOperation::read) {
+                write_intervals.push_back(interval);
+            }
+        }
+        if (column_access.element_bytes.has_value()) {
+            if (*column_access.element_bytes == 0) {
+                result.diagnostics.push_back(
+                    {DiagnosticSeverity::error,
+                     "Selected SoA column '" + column_name + "' has zero-sized elements."});
+            } else {
+                if (result.cache_line_bytes.has_value() && *result.cache_line_bytes != 0) {
+                    column_access.aligned_cache_line_straddling_elements =
+                        soa.allocation_strategy == SoaAllocationStrategy::aligned_contiguous &&
+                                column->allocation_offset_bytes.has_value()
+                            ? straddling_elements_at_offset(*column_access.element_bytes,
+                                                            element_count,
+                                                            *result.cache_line_bytes,
+                                                            column_access.useful_bytes,
+                                                            *column->allocation_offset_bytes)
+                            : straddling_elements(*column_access.element_bytes,
+                                                  element_count,
+                                                  *result.cache_line_bytes,
+                                                  column_access.useful_bytes);
+                }
+                if (result.page_bytes.has_value() && *result.page_bytes != 0) {
+                    column_access.aligned_page_straddling_elements =
+                        soa.allocation_strategy == SoaAllocationStrategy::aligned_contiguous &&
+                                column->allocation_offset_bytes.has_value()
+                            ? straddling_elements_at_offset(*column_access.element_bytes,
+                                                            element_count,
+                                                            *result.page_bytes,
+                                                            column_access.useful_bytes,
+                                                            *column->allocation_offset_bytes)
+                            : straddling_elements(*column_access.element_bytes,
+                                                  element_count,
+                                                  *result.page_bytes,
+                                                  column_access.useful_bytes);
+                }
+            }
+        }
+        accumulate(column_access.read_useful_bytes, result.read_useful_bytes, "read useful bytes");
+        accumulate(
+            column_access.write_useful_bytes, result.write_useful_bytes, "write useful bytes");
         result.columns.push_back(std::move(column_access));
         if (flat_accessed_bytes.has_value()) {
             accumulate(flat_accessed_bytes, result.useful_bytes, "payload bytes");
@@ -2851,13 +5524,40 @@ auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
 
     if (result.column_names.empty()) {
         result.useful_bytes.reset();
+        result.read_useful_bytes.reset();
+        result.write_useful_bytes.reset();
+        result.logical_read_useful_bytes =
+            logical_useful_bytes(result.read_useful_bytes, multiplicity);
+        result.logical_write_useful_bytes =
+            logical_useful_bytes(result.write_useful_bytes, multiplicity);
         result.minimum_cache_lines_touched.reset();
+        result.minimum_read_cache_lines_touched.reset();
+        result.minimum_write_cache_lines_touched.reset();
         result.minimum_pages_touched.reset();
+        result.minimum_read_pages_touched.reset();
+        result.minimum_write_pages_touched.reset();
         if (result.diagnostics.empty()) {
             result.diagnostics.push_back(
                 {DiagnosticSeverity::warning, "No SoA columns are selected for access."});
         }
         return result;
+    }
+
+    if (std::ranges::none_of(result.accesses, [](AccessIntent const& access) {
+            return access.operation != AccessOperation::write;
+        })) {
+        result.minimum_read_cache_lines_touched = 0;
+        result.minimum_read_cache_bytes_touched = 0;
+        result.minimum_read_pages_touched = 0;
+        result.minimum_read_page_bytes_touched = 0;
+    }
+    if (std::ranges::none_of(result.accesses, [](AccessIntent const& access) {
+            return access.operation != AccessOperation::read;
+        })) {
+        result.minimum_write_cache_lines_touched = 0;
+        result.minimum_write_cache_bytes_touched = 0;
+        result.minimum_write_pages_touched = 0;
+        result.minimum_write_page_bytes_touched = 0;
     }
 
     if (result.full_logical_payload_bytes.has_value() && result.useful_bytes.has_value()) {
@@ -2868,6 +5568,63 @@ auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
                  "Selected SoA payload bytes exceed the complete logical payload."});
+        }
+    }
+    if (soa.allocation_strategy == SoaAllocationStrategy::aligned_contiguous) {
+        if (element_count > soa.capacity || !soa.total_allocation_bytes.has_value()) {
+            result.footprint_exact = false;
+            result.minimum_cache_lines_touched.reset();
+            result.minimum_read_cache_lines_touched.reset();
+            result.minimum_write_cache_lines_touched.reset();
+            result.minimum_pages_touched.reset();
+            result.minimum_read_pages_touched.reset();
+            result.minimum_write_pages_touched.reset();
+        } else {
+            auto exact_regions = [&](auto& intervals,
+                                     std::optional<std::uint64_t> const region_size,
+                                     std::optional<std::uint64_t>& regions,
+                                     char const* const region_name) {
+                if (element_count == 0 || intervals.empty()) {
+                    regions = 0;
+                    return;
+                }
+                if (!region_size.has_value() || *region_size == 0) {
+                    regions.reset();
+                    return;
+                }
+                std::ranges::sort(intervals);
+                std::string error;
+                regions = touched_regions(0, intervals, 1, *region_size, error);
+                if (!regions.has_value()) {
+                    result.diagnostics.push_back(
+                        {DiagnosticSeverity::error,
+                         std::string{"Contiguous SoA "} + region_name + ": " + error});
+                }
+            };
+            exact_regions(accessed_intervals,
+                          result.cache_line_bytes,
+                          result.minimum_cache_lines_touched,
+                          "cache-line access analysis");
+            exact_regions(read_intervals,
+                          result.cache_line_bytes,
+                          result.minimum_read_cache_lines_touched,
+                          "read cache-line access analysis");
+            exact_regions(write_intervals,
+                          result.cache_line_bytes,
+                          result.minimum_write_cache_lines_touched,
+                          "write cache-line access analysis");
+            exact_regions(accessed_intervals,
+                          result.page_bytes,
+                          result.minimum_pages_touched,
+                          "page access analysis");
+            exact_regions(read_intervals,
+                          result.page_bytes,
+                          result.minimum_read_pages_touched,
+                          "read page access analysis");
+            exact_regions(write_intervals,
+                          result.page_bytes,
+                          result.minimum_write_pages_touched,
+                          "write page access analysis");
         }
     }
     auto derive_region_bytes = [&](std::optional<std::uint64_t>& region_size,
@@ -2914,35 +5671,143 @@ auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
                         result.minimum_cache_bytes_touched,
                         result.non_payload_cache_bytes,
                         "cache-line");
+    result.minimum_cache_footprint_capacity =
+        cache_capacity_analysis(result.minimum_cache_bytes_touched, abi.memory_facts());
     derive_region_bytes(result.page_bytes,
                         result.minimum_pages_touched,
                         result.minimum_page_bytes_touched,
                         result.non_payload_page_bytes,
                         "page");
+    auto derive_classified_region_bytes = [&](std::optional<std::uint64_t> const region_size,
+                                              std::optional<std::uint64_t> const regions,
+                                              std::optional<std::uint64_t>& bytes,
+                                              char const* const category) {
+        if (!region_size.has_value() || !regions.has_value()) {
+            return;
+        }
+        bytes = checked_multiply(*regions, *region_size);
+        if (!bytes.has_value()) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 std::string{category} + " address-coverage byte count overflows uint64."});
+        }
+    };
+    derive_classified_region_bytes(result.cache_line_bytes,
+                                   result.minimum_read_cache_lines_touched,
+                                   result.minimum_read_cache_bytes_touched,
+                                   "Minimum read cache-line");
+    derive_classified_region_bytes(result.cache_line_bytes,
+                                   result.minimum_write_cache_lines_touched,
+                                   result.minimum_write_cache_bytes_touched,
+                                   "Minimum write cache-line");
+    derive_classified_region_bytes(result.page_bytes,
+                                   result.minimum_read_pages_touched,
+                                   result.minimum_read_page_bytes_touched,
+                                   "Minimum read page");
+    derive_classified_region_bytes(result.page_bytes,
+                                   result.minimum_write_pages_touched,
+                                   result.minimum_write_page_bytes_touched,
+                                   "Minimum write page");
+    result.logical_read_useful_bytes = logical_useful_bytes(result.read_useful_bytes, multiplicity);
+    result.logical_write_useful_bytes =
+        logical_useful_bytes(result.write_useful_bytes, multiplicity);
+    if (multiplicity != 0 && result.read_useful_bytes.has_value() &&
+        !result.logical_read_useful_bytes.has_value()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error, "Logical read useful byte total overflows uint64."});
+    }
+    if (multiplicity != 0 && result.write_useful_bytes.has_value() &&
+        !result.logical_write_useful_bytes.has_value()) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error, "Logical write useful byte total overflows uint64."});
+    }
     return result;
+}
+
+auto Analyzer::analyze_soa_access(SoaAnalysis const& soa,
+                                  std::span<std::string const> const column_names,
+                                  AbiProfile const& abi,
+                                  std::uint64_t const element_count,
+                                  AccessOperation const operation,
+                                  std::uint64_t const multiplicity) -> SoaAccessAnalysis {
+    std::vector<AccessIntent> accesses;
+    accesses.reserve(column_names.size());
+    for (auto const& column_name : column_names) {
+        accesses.push_back({.name = column_name, .operation = operation});
+    }
+    return analyze_soa_access(soa, accesses, abi, element_count, multiplicity);
 }
 
 auto Analyzer::compare_record_soa_access(RecordAccessAnalysis const& record,
                                          SoaAccessAnalysis const& soa)
     -> RecordSoaAccessComparison {
-    RecordSoaAccessComparison result{.member_names = soa.column_names,
-                                     .element_count = soa.element_count,
-                                     .record = {.useful_bytes = record.useful_bytes,
-                                                .cache_lines = record.cache_lines_touched,
-                                                .cache_bytes = record.cache_bytes_touched,
-                                                .pages = record.pages_touched,
-                                                .page_bytes = std::nullopt},
-                                     .soa = {.useful_bytes = soa.useful_bytes,
-                                             .cache_lines = soa.minimum_cache_lines_touched,
-                                             .cache_bytes = soa.minimum_cache_bytes_touched,
-                                             .pages = soa.minimum_pages_touched,
-                                             .page_bytes = soa.minimum_page_bytes_touched},
-                                     .useful_byte_delta = std::nullopt,
-                                     .cache_line_delta = std::nullopt,
-                                     .cache_byte_delta = std::nullopt,
-                                     .page_delta = std::nullopt,
-                                     .page_byte_delta = std::nullopt,
-                                     .diagnostics = {}};
+    RecordSoaAccessComparison result{
+        .member_names = soa.column_names,
+        .accesses = soa.accesses,
+        .element_count = soa.element_count,
+        .multiplicity = record.multiplicity,
+        .soa_allocation_strategy = soa.allocation_strategy,
+        .soa_footprint_exact = soa.footprint_exact,
+        .record = {.useful_bytes = record.useful_bytes,
+                   .read_useful_bytes = record.read_useful_bytes,
+                   .write_useful_bytes = record.write_useful_bytes,
+                   .logical_read_useful_bytes = record.logical_read_useful_bytes,
+                   .logical_write_useful_bytes = record.logical_write_useful_bytes,
+                   .cache_lines = record.cache_lines_touched,
+                   .cache_bytes = record.cache_bytes_touched,
+                   .read_cache_lines = record.read_cache_lines_touched,
+                   .read_cache_bytes = record.read_cache_bytes_touched,
+                   .write_cache_lines = record.write_cache_lines_touched,
+                   .write_cache_bytes = record.write_cache_bytes_touched,
+                   .pages = record.pages_touched,
+                   .page_bytes = record.page_bytes_touched,
+                   .read_pages = record.read_pages_touched,
+                   .read_page_bytes = record.read_page_bytes_touched,
+                   .write_pages = record.write_pages_touched,
+                   .write_page_bytes = record.write_page_bytes_touched},
+        .soa = {.useful_bytes = soa.useful_bytes,
+                .read_useful_bytes = soa.read_useful_bytes,
+                .write_useful_bytes = soa.write_useful_bytes,
+                .logical_read_useful_bytes = soa.logical_read_useful_bytes,
+                .logical_write_useful_bytes = soa.logical_write_useful_bytes,
+                .cache_lines = soa.minimum_cache_lines_touched,
+                .cache_bytes = soa.minimum_cache_bytes_touched,
+                .read_cache_lines = soa.minimum_read_cache_lines_touched,
+                .read_cache_bytes = soa.minimum_read_cache_bytes_touched,
+                .write_cache_lines = soa.minimum_write_cache_lines_touched,
+                .write_cache_bytes = soa.minimum_write_cache_bytes_touched,
+                .pages = soa.minimum_pages_touched,
+                .page_bytes = soa.minimum_page_bytes_touched,
+                .read_pages = soa.minimum_read_pages_touched,
+                .read_page_bytes = soa.minimum_read_page_bytes_touched,
+                .write_pages = soa.minimum_write_pages_touched,
+                .write_page_bytes = soa.minimum_write_page_bytes_touched},
+        .record_cache_footprint_capacity = record.cache_footprint_capacity,
+        .soa_minimum_cache_footprint_capacity = soa.minimum_cache_footprint_capacity,
+        .record_non_useful_cache_bytes = record.non_selected_cache_bytes,
+        .soa_non_useful_cache_bytes = soa.non_payload_cache_bytes,
+        .record_non_useful_page_bytes = record.non_selected_page_bytes,
+        .soa_non_useful_page_bytes = soa.non_payload_page_bytes,
+        .useful_byte_delta = std::nullopt,
+        .read_useful_byte_delta = std::nullopt,
+        .write_useful_byte_delta = std::nullopt,
+        .logical_read_useful_byte_delta = std::nullopt,
+        .logical_write_useful_byte_delta = std::nullopt,
+        .cache_line_delta = std::nullopt,
+        .cache_byte_delta = std::nullopt,
+        .read_cache_line_delta = std::nullopt,
+        .read_cache_byte_delta = std::nullopt,
+        .write_cache_line_delta = std::nullopt,
+        .write_cache_byte_delta = std::nullopt,
+        .page_delta = std::nullopt,
+        .page_byte_delta = std::nullopt,
+        .read_page_delta = std::nullopt,
+        .read_page_byte_delta = std::nullopt,
+        .write_page_delta = std::nullopt,
+        .write_page_byte_delta = std::nullopt,
+        .non_useful_cache_byte_delta = std::nullopt,
+        .non_useful_page_byte_delta = std::nullopt,
+        .diagnostics = {}};
     for (auto const& diagnostic : record.diagnostics) {
         result.diagnostics.push_back({diagnostic.severity, "AoS access: " + diagnostic.message});
     }
@@ -2952,6 +5817,18 @@ auto Analyzer::compare_record_soa_access(RecordAccessAnalysis const& record,
     if (record.element_count != soa.element_count) {
         result.diagnostics.push_back({DiagnosticSeverity::error,
                                       "AoS and SoA access analyses use different element counts."});
+        return result;
+    }
+    if (!access_intents_match(record.accesses, soa.accesses)) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "AoS and SoA access analyses use different per-field access classifications."});
+        return result;
+    }
+    if (record.multiplicity != soa.multiplicity) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "AoS and SoA access analyses use different access multiplicities."});
         return result;
     }
     auto const record_names{
@@ -2964,36 +5841,83 @@ auto Analyzer::compare_record_soa_access(RecordAccessAnalysis const& record,
              "AoS and SoA access analyses do not select the same named fields."});
         return result;
     }
-    if (record.pages_touched.has_value() && record.page_bytes.has_value()) {
-        result.record.page_bytes = checked_multiply(*record.pages_touched, *record.page_bytes);
-        if (!result.record.page_bytes.has_value()) {
-            result.diagnostics.push_back(
-                {DiagnosticSeverity::error, "AoS touched page footprint overflows uint64."});
-        }
-    }
     result.useful_byte_delta = numeric_delta(result.record.useful_bytes, result.soa.useful_bytes);
+    result.read_useful_byte_delta =
+        numeric_delta(result.record.read_useful_bytes, result.soa.read_useful_bytes);
+    result.write_useful_byte_delta =
+        numeric_delta(result.record.write_useful_bytes, result.soa.write_useful_bytes);
+    result.logical_read_useful_byte_delta = numeric_delta(result.record.logical_read_useful_bytes,
+                                                          result.soa.logical_read_useful_bytes);
+    result.logical_write_useful_byte_delta = numeric_delta(result.record.logical_write_useful_bytes,
+                                                           result.soa.logical_write_useful_bytes);
     result.cache_line_delta = numeric_delta(result.record.cache_lines, result.soa.cache_lines);
     result.cache_byte_delta = numeric_delta(result.record.cache_bytes, result.soa.cache_bytes);
+    result.read_cache_line_delta =
+        numeric_delta(result.record.read_cache_lines, result.soa.read_cache_lines);
+    result.read_cache_byte_delta =
+        numeric_delta(result.record.read_cache_bytes, result.soa.read_cache_bytes);
+    result.write_cache_line_delta =
+        numeric_delta(result.record.write_cache_lines, result.soa.write_cache_lines);
+    result.write_cache_byte_delta =
+        numeric_delta(result.record.write_cache_bytes, result.soa.write_cache_bytes);
     result.page_delta = numeric_delta(result.record.pages, result.soa.pages);
     result.page_byte_delta = numeric_delta(result.record.page_bytes, result.soa.page_bytes);
+    result.read_page_delta = numeric_delta(result.record.read_pages, result.soa.read_pages);
+    result.read_page_byte_delta =
+        numeric_delta(result.record.read_page_bytes, result.soa.read_page_bytes);
+    result.write_page_delta = numeric_delta(result.record.write_pages, result.soa.write_pages);
+    result.write_page_byte_delta =
+        numeric_delta(result.record.write_page_bytes, result.soa.write_page_bytes);
+    result.non_useful_cache_byte_delta =
+        numeric_delta(result.record_non_useful_cache_bytes, result.soa_non_useful_cache_bytes);
+    result.non_useful_page_byte_delta =
+        numeric_delta(result.record_non_useful_page_bytes, result.soa_non_useful_page_bytes);
     return result;
 }
 
 auto Analyzer::compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnalysis const& second)
     -> SoaAccessComparison {
     auto summary = [](SoaAccessAnalysis const& analysis) {
-        return AccessFootprintSummary{.useful_bytes = analysis.useful_bytes,
-                                      .cache_lines = analysis.minimum_cache_lines_touched,
-                                      .cache_bytes = analysis.minimum_cache_bytes_touched,
-                                      .pages = analysis.minimum_pages_touched,
-                                      .page_bytes = analysis.minimum_page_bytes_touched};
+        return AccessFootprintSummary{
+            .useful_bytes = analysis.useful_bytes,
+            .read_useful_bytes = analysis.read_useful_bytes,
+            .write_useful_bytes = analysis.write_useful_bytes,
+            .logical_read_useful_bytes = analysis.logical_read_useful_bytes,
+            .logical_write_useful_bytes = analysis.logical_write_useful_bytes,
+            .cache_lines = analysis.minimum_cache_lines_touched,
+            .cache_bytes = analysis.minimum_cache_bytes_touched,
+            .read_cache_lines = analysis.minimum_read_cache_lines_touched,
+            .read_cache_bytes = analysis.minimum_read_cache_bytes_touched,
+            .write_cache_lines = analysis.minimum_write_cache_lines_touched,
+            .write_cache_bytes = analysis.minimum_write_cache_bytes_touched,
+            .pages = analysis.minimum_pages_touched,
+            .page_bytes = analysis.minimum_page_bytes_touched,
+            .read_pages = analysis.minimum_read_pages_touched,
+            .read_page_bytes = analysis.minimum_read_page_bytes_touched,
+            .write_pages = analysis.minimum_write_pages_touched,
+            .write_page_bytes = analysis.minimum_write_page_bytes_touched};
     };
     SoaAccessComparison result{
         .column_names = first.column_names,
+        .accesses = first.accesses,
         .columns = {},
         .element_count = first.element_count,
+        .multiplicity = first.multiplicity,
+        .allocation_strategy = first.allocation_strategy,
+        .footprint_exact = first.footprint_exact && second.footprint_exact,
         .first = summary(first),
         .second = summary(second),
+        .first_allocation_count = first.allocation_count,
+        .second_allocation_count = second.allocation_count,
+        .first_total_allocation_bytes = first.total_allocation_bytes,
+        .second_total_allocation_bytes = second.total_allocation_bytes,
+        .first_alignment_padding_bytes = first.alignment_padding_bytes,
+        .second_alignment_padding_bytes = second.alignment_padding_bytes,
+        .allocation_count_delta = std::nullopt,
+        .total_allocation_byte_delta = std::nullopt,
+        .alignment_padding_byte_delta = std::nullopt,
+        .first_minimum_cache_footprint_capacity = first.minimum_cache_footprint_capacity,
+        .second_minimum_cache_footprint_capacity = second.minimum_cache_footprint_capacity,
         .first_allocated_capacity_payload_bytes = first.allocated_capacity_payload_bytes,
         .second_allocated_capacity_payload_bytes = second.allocated_capacity_payload_bytes,
         .first_capacity_slack_payload_bytes = first.capacity_slack_payload_bytes,
@@ -3007,10 +5931,22 @@ auto Analyzer::compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnaly
         .first_non_payload_page_bytes = first.non_payload_page_bytes,
         .second_non_payload_page_bytes = second.non_payload_page_bytes,
         .useful_byte_delta = std::nullopt,
+        .read_useful_byte_delta = std::nullopt,
+        .write_useful_byte_delta = std::nullopt,
+        .logical_read_useful_byte_delta = std::nullopt,
+        .logical_write_useful_byte_delta = std::nullopt,
         .cache_line_delta = std::nullopt,
         .cache_byte_delta = std::nullopt,
+        .read_cache_line_delta = std::nullopt,
+        .read_cache_byte_delta = std::nullopt,
+        .write_cache_line_delta = std::nullopt,
+        .write_cache_byte_delta = std::nullopt,
         .page_delta = std::nullopt,
         .page_byte_delta = std::nullopt,
+        .read_page_delta = std::nullopt,
+        .read_page_byte_delta = std::nullopt,
+        .write_page_delta = std::nullopt,
+        .write_page_byte_delta = std::nullopt,
         .allocated_capacity_payload_delta = std::nullopt,
         .capacity_slack_payload_delta = std::nullopt,
         .full_logical_payload_delta = std::nullopt,
@@ -3032,14 +5968,52 @@ auto Analyzer::compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnaly
              "Compared SoA access analyses use different element counts."});
         return result;
     }
+    if (first.allocation_strategy != second.allocation_strategy) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared SoA access analyses use different allocation strategies."});
+        return result;
+    }
+    if (!access_intents_match(first.accesses, second.accesses)) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared SoA access analyses use different per-column access classifications."});
+        return result;
+    }
+    if (first.multiplicity != second.multiplicity) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared SoA access analyses use different access multiplicities."});
+        return result;
+    }
     auto const first_names{
         std::set<std::string, std::less<>>{first.column_names.begin(), first.column_names.end()}};
     auto const second_names{
         std::set<std::string, std::less<>>{second.column_names.begin(), second.column_names.end()}};
-    if (first_names != second_names) {
+    if (first_names.size() != first.column_names.size() ||
+        second_names.size() != second.column_names.size() || first_names != second_names) {
         result.diagnostics.push_back(
             {DiagnosticSeverity::error,
-             "Compared SoA access analyses do not select the same named columns."});
+             "Compared SoA access analyses do not select the same unique named columns."});
+        return result;
+    }
+    auto detail_names = [](std::span<SoaColumnAccessAnalysis const> const columns) {
+        std::set<std::string, std::less<>> names;
+        for (auto const& column : columns) {
+            if (!names.insert(column.name).second) {
+                return std::optional<std::set<std::string, std::less<>>>{};
+            }
+        }
+        return std::optional{std::move(names)};
+    };
+    auto const first_detail_names{detail_names(first.columns)};
+    auto const second_detail_names{detail_names(second.columns)};
+    if (!first_detail_names.has_value() || !second_detail_names.has_value() ||
+        *first_detail_names != first_names || *second_detail_names != second_names) {
+        result.diagnostics.push_back(
+            {DiagnosticSeverity::error,
+             "Compared SoA access analyses do not contain exactly one detail for every selected "
+             "column."});
         return result;
     }
     for (auto const& column_name : result.column_names) {
@@ -3054,6 +6028,19 @@ auto Analyzer::compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnaly
                      column_name + "'."});
             return result;
         }
+        if (first_column->operation != second_column->operation) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::error,
+                 "Compared SoA access analyses classify selected column '" + column_name +
+                     "' differently."});
+            return result;
+        }
+    }
+    for (auto const& column_name : result.column_names) {
+        auto const first_column{
+            std::ranges::find(first.columns, column_name, &SoaColumnAccessAnalysis::name)};
+        auto const second_column{
+            std::ranges::find(second.columns, column_name, &SoaColumnAccessAnalysis::name)};
         result.columns.push_back(
             {.name = column_name,
              .first = *first_column,
@@ -3062,17 +6049,32 @@ auto Analyzer::compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnaly
                  numeric_delta(first_column->element_bytes, second_column->element_bytes),
              .useful_byte_delta =
                  numeric_delta(first_column->useful_bytes, second_column->useful_bytes),
+             .read_useful_byte_delta =
+                 numeric_delta(first_column->read_useful_bytes, second_column->read_useful_bytes),
+             .write_useful_byte_delta =
+                 numeric_delta(first_column->write_useful_bytes, second_column->write_useful_bytes),
+             .logical_read_useful_byte_delta = numeric_delta(
+                 first_column->logical_read_useful_bytes, second_column->logical_read_useful_bytes),
+             .logical_write_useful_byte_delta =
+                 numeric_delta(first_column->logical_write_useful_bytes,
+                               second_column->logical_write_useful_bytes),
              .cache_line_delta = numeric_delta(first_column->minimum_cache_lines,
                                                second_column->minimum_cache_lines),
              .cache_byte_delta = numeric_delta(first_column->minimum_cache_bytes,
                                                second_column->minimum_cache_bytes),
              .non_payload_cache_byte_delta = numeric_delta(first_column->non_payload_cache_bytes,
                                                            second_column->non_payload_cache_bytes),
+             .aligned_cache_line_straddling_element_delta =
+                 numeric_delta(first_column->aligned_cache_line_straddling_elements,
+                               second_column->aligned_cache_line_straddling_elements),
              .page_delta = numeric_delta(first_column->minimum_pages, second_column->minimum_pages),
              .page_byte_delta =
                  numeric_delta(first_column->minimum_page_bytes, second_column->minimum_page_bytes),
              .non_payload_page_byte_delta = numeric_delta(first_column->non_payload_page_bytes,
                                                           second_column->non_payload_page_bytes),
+             .aligned_page_straddling_element_delta =
+                 numeric_delta(first_column->aligned_page_straddling_elements,
+                               second_column->aligned_page_straddling_elements),
              .allocated_capacity_payload_delta =
                  numeric_delta(first_column->allocated_capacity_payload_bytes,
                                second_column->allocated_capacity_payload_bytes),
@@ -3081,10 +6083,37 @@ auto Analyzer::compare_soa_access(SoaAccessAnalysis const& first, SoaAccessAnaly
                                second_column->capacity_slack_payload_bytes)});
     }
     result.useful_byte_delta = numeric_delta(result.first.useful_bytes, result.second.useful_bytes);
+    result.allocation_count_delta = numeric_delta(first.allocation_count, second.allocation_count);
+    result.total_allocation_byte_delta =
+        numeric_delta(result.first_total_allocation_bytes, result.second_total_allocation_bytes);
+    result.alignment_padding_byte_delta =
+        numeric_delta(result.first_alignment_padding_bytes, result.second_alignment_padding_bytes);
+    result.read_useful_byte_delta =
+        numeric_delta(result.first.read_useful_bytes, result.second.read_useful_bytes);
+    result.write_useful_byte_delta =
+        numeric_delta(result.first.write_useful_bytes, result.second.write_useful_bytes);
+    result.logical_read_useful_byte_delta = numeric_delta(result.first.logical_read_useful_bytes,
+                                                          result.second.logical_read_useful_bytes);
+    result.logical_write_useful_byte_delta = numeric_delta(
+        result.first.logical_write_useful_bytes, result.second.logical_write_useful_bytes);
     result.cache_line_delta = numeric_delta(result.first.cache_lines, result.second.cache_lines);
     result.cache_byte_delta = numeric_delta(result.first.cache_bytes, result.second.cache_bytes);
+    result.read_cache_line_delta =
+        numeric_delta(result.first.read_cache_lines, result.second.read_cache_lines);
+    result.read_cache_byte_delta =
+        numeric_delta(result.first.read_cache_bytes, result.second.read_cache_bytes);
+    result.write_cache_line_delta =
+        numeric_delta(result.first.write_cache_lines, result.second.write_cache_lines);
+    result.write_cache_byte_delta =
+        numeric_delta(result.first.write_cache_bytes, result.second.write_cache_bytes);
     result.page_delta = numeric_delta(result.first.pages, result.second.pages);
     result.page_byte_delta = numeric_delta(result.first.page_bytes, result.second.page_bytes);
+    result.read_page_delta = numeric_delta(result.first.read_pages, result.second.read_pages);
+    result.read_page_byte_delta =
+        numeric_delta(result.first.read_page_bytes, result.second.read_page_bytes);
+    result.write_page_delta = numeric_delta(result.first.write_pages, result.second.write_pages);
+    result.write_page_byte_delta =
+        numeric_delta(result.first.write_page_bytes, result.second.write_page_bytes);
     result.allocated_capacity_payload_delta =
         numeric_delta(result.first_allocated_capacity_payload_bytes,
                       result.second_allocated_capacity_payload_bytes);

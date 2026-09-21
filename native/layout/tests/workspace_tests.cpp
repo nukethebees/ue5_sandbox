@@ -11,7 +11,8 @@ namespace {
 
 auto enumeration(std::string name) -> codegen::EnumSchema {
     return {.name = std::move(name),
-            .underlying_type = {.name = "std::uint8_t", .suffix = {}, .nested = std::nullopt},
+            .underlying_type =
+                codegen::TypeRef{.name = "std::uint8_t", .suffix = {}, .nested = std::nullopt},
             .bit_width = std::nullopt,
             .signedness = std::nullopt,
             .reflection = codegen::EnumReflection::none,

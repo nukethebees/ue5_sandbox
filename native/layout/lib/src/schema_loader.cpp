@@ -56,7 +56,8 @@ auto load_lispb_schema(std::filesystem::path const& project_path, std::string co
     result.project_path = normalized_path(project_path);
     result.target_name = target_name;
     try {
-        auto const project{lispb::load_project(result.project_path)};
+        auto project_document{lispb::load_editable_project_document(result.project_path)};
+        auto const& project{project_document.project()};
         auto const target_found{project.targets.find(target_name)};
         if (target_found == project.targets.end()) {
             result.diagnostics.push_back(
@@ -79,6 +80,7 @@ auto load_lispb_schema(std::filesystem::path const& project_path, std::string co
         }
         result.document =
             lispb::schema::load_editable_schema_document(project.root / target->types, sources);
+        result.project_document = std::move(project_document);
         result.loaded = true;
     } catch (std::exception const& error) {
         result.diagnostics.push_back({DiagnosticSeverity::error, error.what()});
