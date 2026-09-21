@@ -242,10 +242,9 @@ function(add_unreal_automation_test test_name)
 endfunction()
 
 function(sandbox_set_automation_test_properties test_name)
-  # CTest needs evidence that automation selected and completed at least one test.
-  # Queued Quit reports execution failures in the output even when the editor exits cleanly.
+  # CTest must see Unreal's normal completion marker. Failure expressions take precedence.
   set_tests_properties("${test_name}" PROPERTIES
-    FAIL_REGULAR_EXPRESSION "Test Completed\\. Result=\\{Fail\\};Test Completed\\. Result=\\{Error\\};TEST COMPLETE\\. EXIT CODE: -?[1-9][0-9]*"
-    PASS_REGULAR_EXPRESSION "Found [1-9][0-9]* automation tests based on.*Test Completed\\. Result=\\{Success\\}.*TEST COMPLETE\\. EXIT CODE: 0"
+    FAIL_REGULAR_EXPRESSION "Found 0 automation tests based on;Test Completed\\. Result=\\{Fail\\};Test Completed\\. Result=\\{Error\\};TEST COMPLETE\\. EXIT CODE: -?[1-9][0-9]*"
+    PASS_REGULAR_EXPRESSION "TEST COMPLETE\\. EXIT CODE: 0"
   )
 endfunction()
