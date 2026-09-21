@@ -83,6 +83,13 @@ class DotnetHostToolTests(unittest.TestCase):
             self.assertIn(intermediate_directory.as_posix(), build_ninja.replace("\\", "/"))
             self.assertNotIn(legacy_source.as_posix(), build_ninja.replace("\\", "/"))
 
+            up_to_date_timestamp = executable.stat().st_mtime_ns
+            up_to_date_build = self.run_cmake(
+                "--build", str(build_directory), "--target", "architecture-checks-host"
+            )
+            self.assertIn("Building .NET host tool ArchitectureChecks", up_to_date_build)
+            self.assertEqual(executable.stat().st_mtime_ns, up_to_date_timestamp)
+
             original_timestamp = executable.stat().st_mtime_ns
             time.sleep(1.1)
             program = tool_directory / "Program.cs"
@@ -99,6 +106,15 @@ class DotnetHostToolTests(unittest.TestCase):
             added_source.write_text("internal sealed class AddedSource {}\n", encoding="utf-8")
             self.run_cmake("--build", str(build_directory), "--target", "architecture-checks-host")
             self.assertGreater(executable.stat().st_mtime_ns, source_added_timestamp)
+
+            added_source_timestamp = executable.stat().st_mtime_ns
+            time.sleep(1.1)
+            added_source.write_text(
+                "internal sealed class AddedSource { public int Value => 42; }\n",
+                encoding="utf-8",
+            )
+            self.run_cmake("--build", str(build_directory), "--target", "architecture-checks-host")
+            self.assertGreater(executable.stat().st_mtime_ns, added_source_timestamp)
 
     def test_workflows_do_not_prebuild_all_host_tools(self) -> None:
         presets = json.loads(
@@ -122,7 +138,7 @@ class DotnetHostToolTests(unittest.TestCase):
                 workflow_name,
             )
 
-    def run_cmake(self, *arguments: str) -> None:
+    def run_cmake(self, *arguments: str) -> str:
         result = subprocess.run(
             [self.cmake, *arguments],
             check=False,
@@ -130,7 +146,9 @@ class DotnetHostToolTests(unittest.TestCase):
             encoding="utf-8",
             errors="replace",
         )
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        output = result.stdout + result.stderr
+        self.assertEqual(result.returncode, 0, output)
+        return output
 
 
 if __name__ == "__main__":

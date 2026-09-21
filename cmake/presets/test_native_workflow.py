@@ -128,10 +128,14 @@ class NativeWorkflowTests(unittest.TestCase):
             normalized_build_ninja = build_ninja.replace("\\", "/").replace("$:", ":")
             native_binary_tools_directory = self.source_dir / "tools" / "NativeBinaryTools"
             self.assertIn(
+                (native_binary_tools_directory / "NativeBinaryTools.csproj").as_posix(),
+                normalized_build_ninja,
+            )
+            self.assertNotIn(
                 (native_binary_tools_directory / "Program.cs").as_posix(),
                 normalized_build_ninja,
             )
-            self.assertIn(
+            self.assertNotIn(
                 (self.source_dir / "tools" / "Directory.Build.targets").as_posix(),
                 normalized_build_ninja,
             )
