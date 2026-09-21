@@ -369,6 +369,9 @@ Explicit `mini-float` packed placement now retains the first-class graph identit
 encoding width, rejects competing field-local integer semantics, embeds headless mini-float facts,
 and generates an encoded-only unsigned integer API. Source preview/save/reload and generated
 runtime preserve all code patterns; decoded floating arithmetic remains future policy.
+Plain packed integer fields of sufficient width can also create and bind a shared mini-float with
+a valid prefilled bit partition; binding failure rolls back creation. The shortcut is unavailable
+when local domain metadata would otherwise be silently discarded.
 
 `representation-module` also supports source-backed `optional-sentinel` declarations. Each one
 references an integer scalar and selects one of its named sentinel codes as the absence state.

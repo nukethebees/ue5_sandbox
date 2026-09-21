@@ -4929,6 +4929,54 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             ImGui::TextDisabled("Creates a shared scaled-integer representation for this width.");
         }
 
+        auto const mini_float_compatible{
+            plain_integer_field &&
+            selected_resolved_field->bit_width >=
+                (selected_schema_field->kind == codegen::PackedFieldKind::signed_integer ? 3U
+                                                                                         : 2U)};
+        ImGui::BeginDisabled(!representation_module_index.has_value() || !mini_float_compatible);
+        if (ImGui::Button("Create mini float for selected field...")) {
+            new_mini_float_module_index_ = *representation_module_index;
+            auto const& module{std::get<codegen::RepresentationModuleSchema>(
+                modules[new_mini_float_module_index_])};
+            auto const namespace_name{module.settings.namespace_name.value_or("")};
+            auto const suggested_name{suggested_type_name(selected_schema_field->name, "Float")};
+            auto unique_name{suggested_name};
+            auto suffix_number{std::size_t{1}};
+            while (std::ranges::any_of(document_->types().types(), [&](auto const& candidate) {
+                return candidate.identity.namespace_name == namespace_name &&
+                       candidate.identity.name == unique_name;
+            })) {
+                unique_name = suggested_name + std::to_string(suffix_number++);
+            }
+            std::snprintf(new_mini_float_name_.data(),
+                          new_mini_float_name_.size(),
+                          "%s",
+                          unique_name.c_str());
+            new_mini_float_sign_bits_ =
+                selected_schema_field->kind == codegen::PackedFieldKind::signed_integer ? 1U : 0U;
+            auto const available_bits{selected_resolved_field->bit_width -
+                                      new_mini_float_sign_bits_};
+            new_mini_float_exponent_bits_ = std::min(5U, available_bits);
+            new_mini_float_significand_bits_ = available_bits - new_mini_float_exponent_bits_;
+            new_mini_float_exponent_bias_ =
+                static_cast<std::int32_t>((1U << (new_mini_float_exponent_bits_ - 1)) - 1);
+            pending_packed_mini_float_binding_ = PendingPackedMiniFloatBinding{
+                .packed_declaration = *declaration, .field_name = selected_segment_name};
+            open_new_mini_float_dialog_ = true;
+        }
+        ImGui::EndDisabled();
+        if (!representation_module_index.has_value()) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("No representation module is available.");
+        } else if (!mini_float_compatible) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("Requires a plain integer field with at least two encoding bits.");
+        } else {
+            ImGui::SameLine();
+            ImGui::TextDisabled("Creates a shared floating-like encoding for this width.");
+        }
+
         ImGui::SeparatorText("Semantic relationship");
         if (selected_linear_quantized != nullptr) {
             ImGui::TextDisabled(

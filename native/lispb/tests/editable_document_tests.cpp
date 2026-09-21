@@ -3370,6 +3370,130 @@ TEST(EditableSchemaDocument, RollsBackFixedPointCreationWhenPackedBindingFails) 
     EXPECT_TRUE(preview->empty());
 }
 
+TEST(EditableSchemaDocument, CreatesMiniFloatAndBindsPackedFieldAcrossModules) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const existing_mini{
+        declaration_id(document, "authored_representations", "ExistingMiniFloat", "authored")};
+    auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
+    auto const created{document.allocate_declaration_id()};
+    auto const original_field{std::get<codegen::PackedFieldSchema>(
+        document.packed_value_schema(packed)->segments.front())};
+    ASSERT_EQ(original_field.kind, codegen::PackedFieldKind::unsigned_integer);
+
+    auto added{document.apply(
+        CreateMiniFloat{.declaration = created,
+                        .module_index = document.declaration(existing_mini)->module_index,
+                        .schema = codegen::MiniFloatSchema{.name = "ValueFloat",
+                                                           .sign_bits = 0,
+                                                           .exponent_bits = 5,
+                                                           .significand_bits = 3,
+                                                           .exponent_bias = 15},
+                        .insertion_index = std::nullopt})};
+    ASSERT_TRUE(added.has_value()) << added.error().message;
+    ASSERT_TRUE(*added);
+
+    auto replacement{*document.packed_value_schema(packed)};
+    auto& field{std::get<codegen::PackedFieldSchema>(replacement.segments.front())};
+    field.type = codegen::TypeRef{"authored::ValueFloat"};
+    field.kind = codegen::PackedFieldKind::mini_float;
+    field.bits.reset();
+    auto bound{document.apply(
+        ReplacePackedValue{.declaration = packed, .schema = std::move(replacement)})};
+    ASSERT_TRUE(bound.has_value()) << bound.error().message;
+    ASSERT_TRUE(*bound);
+
+    auto const representation_id{document.types().find(document.declaration(created)->identity)};
+    ASSERT_TRUE(representation_id.has_value());
+    auto const& placed_field{std::get<PackedField>(packed_type(document, packed).segments.front())};
+    EXPECT_EQ(placed_field.semantic_type.type, *representation_id);
+    EXPECT_EQ(placed_field.bit_width, 8U);
+    EXPECT_TRUE(placed_field.bit_width_auto);
+    auto const& representation{
+        std::get<MiniFloatType>(document.types().type(*representation_id).definition)};
+    EXPECT_EQ(representation.exponent_bits, 5U);
+    EXPECT_EQ(representation.significand_bits, 3U);
+
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(
+        std::get<codegen::PackedFieldSchema>(document.packed_value_schema(packed)->segments.front())
+            .type.name,
+        original_field.type.name);
+    EXPECT_NE(document.declaration(created), nullptr);
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.declaration(created), nullptr);
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.redo().value());
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find("(mini-float ValueFloat"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("authored::ValueFloat"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":kind mini-float"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the value segment note."), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_mini{
+        declaration_id(reloaded, "authored_representations", "ValueFloat", "authored")};
+    auto const reloaded_packed{
+        declaration_id(reloaded, "authored_packed", "ExistingPacked", "authored")};
+    auto const resolved_mini{reloaded.types().find(reloaded.declaration(reloaded_mini)->identity)};
+    ASSERT_TRUE(resolved_mini.has_value());
+    auto const& reloaded_field{
+        std::get<PackedField>(packed_type(reloaded, reloaded_packed).segments.front())};
+    EXPECT_EQ(reloaded_field.semantic_type.type, *resolved_mini);
+    EXPECT_EQ(reloaded_field.bit_width, 8U);
+    EXPECT_TRUE(reloaded_field.bit_width_auto);
+    EXPECT_EQ(reloaded.mini_float_schema(reloaded_mini)->exponent_bias, 15);
+}
+
+TEST(EditableSchemaDocument, RollsBackMiniFloatCreationWhenPackedBindingFails) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const existing_mini{
+        declaration_id(document, "authored_representations", "ExistingMiniFloat", "authored")};
+    auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
+    auto const created{document.allocate_declaration_id()};
+    auto const identity{TypeIdentity{.origin = TypeOrigin::declaration,
+                                     .module_name = "authored_representations",
+                                     .namespace_name = "authored",
+                                     .name = "TooWideFloat"}};
+    auto added{document.apply(
+        CreateMiniFloat{.declaration = created,
+                        .module_index = document.declaration(existing_mini)->module_index,
+                        .schema = codegen::MiniFloatSchema{.name = identity.name,
+                                                           .sign_bits = 1,
+                                                           .exponent_bits = 5,
+                                                           .significand_bits = 3,
+                                                           .exponent_bias = 15},
+                        .insertion_index = std::nullopt})};
+    ASSERT_TRUE(added.has_value()) << added.error().message;
+    ASSERT_TRUE(*added);
+
+    auto replacement{*document.packed_value_schema(packed)};
+    auto& field{std::get<codegen::PackedFieldSchema>(replacement.segments.front())};
+    field.type = codegen::TypeRef{"authored::TooWideFloat"};
+    field.kind = codegen::PackedFieldKind::mini_float;
+    auto rejected{document.apply(
+        ReplacePackedValue{.declaration = packed, .schema = std::move(replacement)})};
+    ASSERT_FALSE(rejected.has_value());
+    EXPECT_NE(rejected.error().message.find("must equal"), std::string::npos);
+    EXPECT_EQ(
+        std::get<codegen::PackedFieldSchema>(document.packed_value_schema(packed)->segments.front())
+            .type.name,
+        "std::uint8_t");
+
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.declaration(created), nullptr);
+    EXPECT_FALSE(document.types().find(identity).has_value());
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+}
+
 TEST(EditableSchemaDocument, BindsPackedFieldToFixedPointRepresentation) {
     TemporarySchema files;
     auto document{files.load()};

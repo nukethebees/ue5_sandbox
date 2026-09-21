@@ -60,6 +60,11 @@ class PlannerUi {
         std::string field_name;
     };
 
+    struct PendingPackedMiniFloatBinding {
+        lispb::schema::DeclarationId packed_declaration;
+        std::string field_name;
+    };
+
     struct PendingSoaRecordBinding {
         lispb::schema::DeclarationId soa_declaration;
         std::string column_name;
@@ -132,6 +137,7 @@ class PlannerUi {
     auto bind_new_integer_scalar_to_packed_field(lispb::schema::TypeIdentity const& scalar) -> bool;
     auto bind_new_fixed_point_to_packed_field(lispb::schema::TypeIdentity const& fixed_point)
         -> bool;
+    auto bind_new_mini_float_to_packed_field(lispb::schema::TypeIdentity const& mini_float) -> bool;
     auto bind_new_record_to_soa_column(lispb::schema::TypeIdentity const& record) -> bool;
     auto apply_project_edit(lispb::ProjectEditCommand command) -> bool;
     [[nodiscard]] auto project_history_active() const -> bool;
@@ -519,6 +525,7 @@ class PlannerUi {
     bool open_new_fixed_point_dialog_{};
     std::optional<PendingPackedFixedPointBinding> pending_packed_fixed_point_binding_;
     bool open_new_mini_float_dialog_{};
+    std::optional<PendingPackedMiniFloatBinding> pending_packed_mini_float_binding_;
     bool open_new_optional_sentinel_dialog_{};
     bool open_new_optional_presence_bit_dialog_{};
     bool open_new_record_dialog_{};

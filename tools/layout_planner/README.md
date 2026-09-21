@@ -418,6 +418,10 @@ derives its exact sign/exponent/significand width and retains the original repre
 the packed view shows its finite range and code roles when known. Generated C++ deliberately
 exposes `*_encoded` integer bits only, including patterns reserved for infinity or NaN. No decoded
 floating-point accessor, standalone ABI wrapper, or arithmetic behavior is implied.
+For a plain packed integer field of sufficient width, **Create mini float for selected field...**
+prefills an exact-width sign/exponent/significand split. Creation and binding are separate undoable
+changes; a rejected binding rolls back the new representation. Fields with local domain metadata
+must resolve that meaning explicitly before converting to this different encoding.
 
 Sentinel-encoded optional authoring uses **+ New optional**. The creation flow only offers integer
 scalars that already own at least one named sentinel, and the flat Properties editor constrains both

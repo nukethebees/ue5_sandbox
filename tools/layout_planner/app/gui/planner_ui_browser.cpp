@@ -1727,6 +1727,71 @@ void PlannerUi::draw_new_fixed_point_dialog() {
     ImGui::EndPopup();
 }
 
+auto PlannerUi::bind_new_mini_float_to_packed_field(TypeIdentity const& mini_float) -> bool {
+    if (!pending_packed_mini_float_binding_.has_value()) {
+        return true;
+    }
+    auto const binding{*pending_packed_mini_float_binding_};
+    auto const* packed_info{document_->declaration(binding.packed_declaration)};
+    auto const* packed_schema{document_->packed_value_schema(binding.packed_declaration)};
+    auto const packed_identity{packed_info == nullptr ? std::optional<TypeIdentity>{}
+                                                      : std::optional{packed_info->identity}};
+    auto rollback_creation = [&](std::string message) {
+        auto const rollback{document_->undo()};
+        if (rollback.has_value() && *rollback) {
+            sync_document_graph(packed_identity);
+            schema_edit_message_ = std::move(message) + " The new mini float was rolled back.";
+        } else if (!rollback.has_value()) {
+            schema_edit_message_ = std::move(message) +
+                                   " The new mini float could not be rolled "
+                                   "back: " +
+                                   rollback.error().message;
+        } else {
+            schema_edit_message_ = std::move(message) +
+                                   " The new mini float could not be rolled back because history "
+                                   "did not change.";
+        }
+        return false;
+    };
+
+    if (packed_info == nullptr || packed_schema == nullptr) {
+        return rollback_creation("The packed declaration is no longer available.");
+    }
+    auto replacement{*packed_schema};
+    auto const segment{std::ranges::find_if(replacement.segments, [&](auto const& candidate) {
+        return codegen::packed_segment_name(candidate) == binding.field_name;
+    })};
+    if (segment == replacement.segments.end()) {
+        return rollback_creation("The selected packed field is no longer available.");
+    }
+    auto* field{std::get_if<codegen::PackedFieldSchema>(&*segment)};
+    if (field == nullptr) {
+        return rollback_creation("The selected packed segment is no longer a field.");
+    }
+
+    field->type = codegen::TypeRef{.name = mini_float.namespace_name.empty()
+                                             ? mini_float.name
+                                             : mini_float.namespace_name + "::" + mini_float.name,
+                                   .suffix = {},
+                                   .nested = std::nullopt};
+    field->kind = codegen::PackedFieldKind::mini_float;
+    field->bits.reset();
+    field->range_helper = false;
+    field->minimum_value.reset();
+    field->maximum_value.reset();
+    field->named_codes.clear();
+    field->relationship.reset();
+    if (!apply_document_edit(ReplacePackedValue{.declaration = binding.packed_declaration,
+                                                .schema = std::move(replacement)},
+                             packed_info->identity)) {
+        return rollback_creation("The mini float was valid, but binding the packed field failed: " +
+                                 schema_edit_message_);
+    }
+
+    selected_field_ = binding.field_name;
+    return true;
+}
+
 void PlannerUi::draw_new_mini_float_dialog() {
     if (open_new_mini_float_dialog_) {
         ImGui::OpenPopup("New mini float");
@@ -1738,10 +1803,18 @@ void PlannerUi::draw_new_mini_float_dialog() {
     if (!document_.has_value()) {
         ImGui::TextDisabled("No editable LispB document is loaded.");
         if (ImGui::Button("Close")) {
+            pending_packed_mini_float_binding_.reset();
             ImGui::CloseCurrentPopup();
         }
         ImGui::EndPopup();
         return;
+    }
+
+    if (pending_packed_mini_float_binding_.has_value()) {
+        ImGui::TextWrapped("Create a shared mini-float representation and bind packed field '%s' "
+                           "to it. Creation and binding are separate undoable history steps.",
+                           pending_packed_mini_float_binding_->field_name.c_str());
+        ImGui::Separator();
     }
 
     auto const& modules{document_->manifest().modules};
@@ -1819,7 +1892,8 @@ void PlannerUi::draw_new_mini_float_dialog() {
 
         auto const ready{new_mini_float_name_.front() != '\0' && widths_valid && bias_valid};
         ImGui::BeginDisabled(!ready);
-        if (ImGui::Button("Create")) {
+        if (ImGui::Button(pending_packed_mini_float_binding_.has_value() ? "Create and use"
+                                                                         : "Create")) {
             auto const name{std::string{new_mini_float_name_.data()}};
             auto const identity{
                 TypeIdentity{.origin = TypeOrigin::declaration,
@@ -1827,6 +1901,14 @@ void PlannerUi::draw_new_mini_float_dialog() {
                              .namespace_name = selected_module.settings.namespace_name.value_or(""),
                              .name = name}};
             auto const id{document_->allocate_declaration_id()};
+            auto selection{std::optional<TypeIdentity>{identity}};
+            if (pending_packed_mini_float_binding_.has_value()) {
+                if (auto const* packed_info{document_->declaration(
+                        pending_packed_mini_float_binding_->packed_declaration)};
+                    packed_info != nullptr) {
+                    selection = packed_info->identity;
+                }
+            }
             if (apply_document_edit(
                     CreateMiniFloat{.declaration = id,
                                     .module_index = new_mini_float_module_index_,
@@ -1838,14 +1920,21 @@ void PlannerUi::draw_new_mini_float_dialog() {
                                             .significand_bits = new_mini_float_significand_bits_,
                                             .exponent_bias = new_mini_float_exponent_bias_},
                                     .insertion_index = std::nullopt},
-                    identity)) {
+                    selection) &&
+                bind_new_mini_float_to_packed_field(identity)) {
                 new_mini_float_name_.fill('\0');
+                new_mini_float_sign_bits_ = 1;
+                new_mini_float_exponent_bits_ = 5;
+                new_mini_float_significand_bits_ = 10;
+                new_mini_float_exponent_bias_ = 15;
+                pending_packed_mini_float_binding_.reset();
                 ImGui::CloseCurrentPopup();
             }
         }
         ImGui::EndDisabled();
     }
     if (ImGui::Button("Cancel")) {
+        pending_packed_mini_float_binding_.reset();
         ImGui::CloseCurrentPopup();
     }
     if (!schema_edit_message_.empty()) {
