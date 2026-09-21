@@ -84,6 +84,17 @@ TEST(FlightModelConfig, ValidationRejectsInvalidEnumsAndIgnoredChannelFields) {
     config.translation.forward.automatic.automatic_value = 1.01f;
     EXPECT_EQ(validate_flight_model_config(config).error(),
               FlightModelConfigError::InputValueOutOfRange);
+
+    config = make_flight_model_profile(FlightModelPreset::Fighter).config;
+    config.translation.forward.passive_drag_reference_frame = static_cast<ReferenceFrame>(255);
+    EXPECT_EQ(validate_flight_model_config(config).error(),
+              FlightModelConfigError::InvalidEnumValue);
+
+    config = make_flight_model_profile(FlightModelPreset::Fighter).config;
+    config.translation.forward.active_stabilization_reference_frame =
+        static_cast<ReferenceFrame>(255);
+    EXPECT_EQ(validate_flight_model_config(config).error(),
+              FlightModelConfigError::InvalidEnumValue);
 }
 
 TEST(FlightModelConfig, ValidationDefinesManualAndAutomaticComposition) {

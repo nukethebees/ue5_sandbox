@@ -87,6 +87,14 @@ struct FShipControlContextTestAccess {
         return context.brake_press_active_;
     }
 
+    static auto boost_press_active(FShipControlContext const& context) -> bool {
+        return context.boost_press_active_;
+    }
+
+    static auto throttle_boost_active(FShipControlContext const& context) -> bool {
+        return context.throttle_boost_active_;
+    }
+
     static void seed_throttle_tap(FShipControlContext& context) {
         context.throttle_gesture_.begin_press(1.0);
         context.throttle_gesture_.end_press(1.1);
@@ -1316,20 +1324,56 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Model selection clears gesture-derived boost intent"),
                              simulation.get_controller_state().effective_action ==
                                  ::ioj::sim::player::BoostBrakeState::None);
+        FShipControlContextTestAccess::select_flight_model_down(context);
+        TestRunner->TestTrue(TEXT("Repeated model selection leaves throttle boost cleared"),
+                             !FShipControlContextTestAccess::throttle_boost_active(context) &&
+                                 simulation.get_controller_state().effective_action ==
+                                     ::ioj::sim::player::BoostBrakeState::None);
         FShipControlContextTestAccess::stop_throttle(context, 2.3);
 
         FShipControlContextTestAccess::start_boost(context);
         FShipControlContextTestAccess::select_flight_model_right(context);
         TestRunner->TestTrue(TEXT("Model selection preserves an explicitly held boost button"),
-                             simulation.get_controller_state().effective_action ==
-                                 ::ioj::sim::player::BoostBrakeState::Boost);
+                             FShipControlContextTestAccess::boost_press_active(context) &&
+                                 simulation.get_controller_state().effective_action ==
+                                     ::ioj::sim::player::BoostBrakeState::Boost);
+        FShipControlContextTestAccess::select_flight_model_left(context);
+        TestRunner->TestTrue(
+            TEXT("Repeated model selection preserves an explicitly held boost button"),
+            FShipControlContextTestAccess::boost_press_active(context) &&
+                !FShipControlContextTestAccess::throttle_boost_active(context) &&
+                simulation.get_controller_state().effective_action ==
+                    ::ioj::sim::player::BoostBrakeState::Boost);
         FShipControlContextTestAccess::stop_boost(context);
+        TestRunner->TestTrue(TEXT("Boost release after repeated model selection clears intent"),
+                             !FShipControlContextTestAccess::boost_press_active(context) &&
+                                 simulation.get_controller_state().effective_action ==
+                                     ::ioj::sim::player::BoostBrakeState::None);
 
         FShipControlContextTestAccess::start_brake(context, 3.0);
         TestRunner->TestTrue(TEXT("Brake publishes normal braking intent"),
                              simulation.get_controller_state().effective_action ==
                                  ::ioj::sim::player::BoostBrakeState::Brake);
+        FShipControlContextTestAccess::select_flight_model_up(context);
+        TestRunner->TestTrue(TEXT("Model selection preserves a held brake"),
+                             FShipControlContextTestAccess::brake_press_active(context) &&
+                                 simulation.get_controller_state().effective_action ==
+                                     ::ioj::sim::player::BoostBrakeState::Brake);
+        FShipControlContextTestAccess::select_flight_model_right(context);
+        TestRunner->TestTrue(TEXT("Repeated model selection preserves a held brake"),
+                             FShipControlContextTestAccess::brake_press_active(context) &&
+                                 simulation.get_controller_state().effective_action ==
+                                     ::ioj::sim::player::BoostBrakeState::Brake);
         FShipControlContextTestAccess::stop_brake(context, 3.1);
+        TestRunner->TestTrue(TEXT("Brake release after repeated model selection clears intent"),
+                             !FShipControlContextTestAccess::brake_press_active(context) &&
+                                 simulation.get_controller_state().effective_action ==
+                                     ::ioj::sim::player::BoostBrakeState::None);
+        FShipControlContextTestAccess::select_flight_model_down(context);
+        TestRunner->TestTrue(TEXT("Model selection without held brake does not start braking"),
+                             !FShipControlContextTestAccess::brake_press_active(context) &&
+                                 simulation.get_controller_state().effective_action ==
+                                     ::ioj::sim::player::BoostBrakeState::None);
 
         FShipControlContextTestAccess::start_brake(context, 4.0);
         FShipControlContextTestAccess::stop_brake(context, 4.1);
@@ -1371,9 +1415,14 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         FShipControlContextTestAccess::start_brake(context, 7.0);
         TestRunner->TestTrue(TEXT("Brake press is tracked"),
                              FShipControlContextTestAccess::brake_press_active(context));
+        FShipControlContextTestAccess::stop_brake(context, 7.1);
         FShipControlContextTestAccess::select_flight_model_right(context);
-        TestRunner->TestFalse(TEXT("Model selection clears active brake gesture state"),
-                              FShipControlContextTestAccess::brake_press_active(context));
+        FShipControlContextTestAccess::start_brake(context, 7.2);
+        TestRunner->TestTrue(TEXT("Model selection clears pending emergency-brake gesture state"),
+                             FShipControlContextTestAccess::brake_press_active(context) &&
+                                 simulation.get_controller_state().effective_action ==
+                                     ::ioj::sim::player::BoostBrakeState::Brake);
+        FShipControlContextTestAccess::stop_brake(context, 7.3);
 
         ship->set_move_input(FVector2D{0.5f, -0.25f});
         ship->turn(FVector2D{0.25f, 0.75f});
