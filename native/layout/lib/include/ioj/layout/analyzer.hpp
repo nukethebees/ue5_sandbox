@@ -391,6 +391,7 @@ struct PackedFieldAnalysis {
     std::vector<PackedNamedCodeAnalysis> named_codes;
     std::optional<LinearQuantizedAnalysis> linear_quantized;
     std::optional<FixedPointAnalysis> fixed_point;
+    std::optional<MiniFloatAnalysis> mini_float;
     std::optional<codegen::SemanticRelationKind> relationship_kind;
     std::optional<codegen::SemanticRelationUnit> relationship_unit;
     std::optional<std::string> relationship_target;

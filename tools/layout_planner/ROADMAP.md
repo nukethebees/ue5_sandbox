@@ -365,6 +365,10 @@ exponent facts, numerical extrema where the host can represent them, rounding/re
 overflow-safe selected-count payload bits. Typed creation/replacement/deletion, token-local source
 preservation, duplication, rename, undo/redo, preview, save/reload, browser/graph navigation, and a
 flat inline Properties editor are implemented.
+Explicit `mini-float` packed placement now retains the first-class graph identity and exact
+encoding width, rejects competing field-local integer semantics, embeds headless mini-float facts,
+and generates an encoded-only unsigned integer API. Source preview/save/reload and generated
+runtime preserve all code patterns; decoded floating arithmetic remains future policy.
 
 `representation-module` also supports source-backed `optional-sentinel` declarations. Each one
 references an integer scalar and selects one of its named sentinel codes as the absence state.

@@ -3925,7 +3925,8 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                                       FieldOverrideId{.type = type, .field_name = field->name})};
         auto const representation_owned_width{
             field != nullptr && (field->kind == codegen::PackedFieldKind::linear_quantized ||
-                                 field->kind == codegen::PackedFieldKind::fixed_point)};
+                                 field->kind == codegen::PackedFieldKind::fixed_point ||
+                                 field->kind == codegen::PackedFieldKind::mini_float)};
         auto const width{field != nullptr && !representation_owned_width
                              ? effective_field_width(type, *field, variant)
                          : field != nullptr ? field->bit_width
@@ -3974,6 +3975,7 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
             .named_codes = {},
             .linear_quantized = std::nullopt,
             .fixed_point = std::nullopt,
+            .mini_float = std::nullopt,
             .relationship_kind = field != nullptr && field->relationship.has_value()
                                    ? std::optional{field->relationship->kind}
                                    : std::nullopt,
@@ -4007,7 +4009,9 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                      "' ignores a session width override because its " +
                      std::string{field->kind == codegen::PackedFieldKind::linear_quantized
                                      ? "linear-quantized"
-                                     : "fixed-point"} +
+                                 : field->kind == codegen::PackedFieldKind::fixed_point
+                                     ? "fixed-point"
+                                     : "mini-float"} +
                      " representation owns the exact encoded width."});
         }
         if (field != nullptr && !field_result.maximum_unsigned_value.has_value()) {
@@ -4025,6 +4029,9 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
             } else if (std::holds_alternative<lispb::schema::FixedPointType>(
                            types.type(field->semantic_type.type).definition)) {
                 field_result.fixed_point = analyze_fixed_point(types, field->semantic_type.type);
+            } else if (std::holds_alternative<lispb::schema::MiniFloatType>(
+                           types.type(field->semantic_type.type).definition)) {
+                field_result.mini_float = analyze_mini_float(types, field->semantic_type.type);
             }
             field_result.named_codes.reserve(field->named_codes.size());
             for (auto const& code : field->named_codes) {

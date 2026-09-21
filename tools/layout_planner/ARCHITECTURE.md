@@ -673,6 +673,12 @@ editing, preview, save, and reload use the shared editable document. Stable prop
 the same token-local renderer as other simple representations, preserving declaration comments,
 whitespace, and unchanged spelling; new declarations and unsupported structural changes use the
 canonical renderer.
+Packed `:kind mini-float` placement retains the shared representation identity, derives exact
+width, rejects competing integer-field facts, and ignores session width overrides with a warning.
+The generated API exposes only encoded unsigned code bits, including the infinity and NaN
+patterns. Packed analysis embeds the shared `MiniFloatAnalysis`; the UI must show Unknown if a
+numerical endpoint is unavailable rather than manufacturing a finite value. No decoded floating
+arithmetic or standalone compiler ABI is inferred from this placement.
 `optional-sentinel` is a distinct source-backed encoding policy over an `integer-scalar`. It names
 one existing source code whose shared metadata marks it as a sentinel, resolves the exact code value
 and source-derived bit width, and adds a semantic dependency edge. The source scalar remains the

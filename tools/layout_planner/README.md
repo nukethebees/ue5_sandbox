@@ -413,6 +413,12 @@ headless fixed-point facts. Generated packed APIs expose only `*_raw` scaled int
 signed or unsigned boundary validation; they do not silently return decoded real values or apply
 rounding. Conversion helpers and non-packed placement remain later representation policy.
 
+Mini-float declarations also fit in packed fields through the shared type picker. The placement
+derives its exact sign/exponent/significand width and retains the original representation identity;
+the packed view shows its finite range and code roles when known. Generated C++ deliberately
+exposes `*_encoded` integer bits only, including patterns reserved for infinity or NaN. No decoded
+floating-point accessor, standalone ABI wrapper, or arithmetic behavior is implied.
+
 Sentinel-encoded optional authoring uses **+ New optional**. The creation flow only offers integer
 scalars that already own at least one named sentinel, and the flat Properties editor constrains both
 source and absence-code choices to valid shared semantic declarations. LispB stores the policy as

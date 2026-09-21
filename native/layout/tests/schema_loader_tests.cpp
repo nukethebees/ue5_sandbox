@@ -76,7 +76,12 @@ class TemporarySchemaProject {
     :signed true
     :total-bits 8
     :fractional-bits 4
-    :rounding toward-zero))
+    :rounding toward-zero)
+  (mini-float ExistingMiniF8
+    :sign-bits 1
+    :exponent-bits 3
+    :significand-bits 4
+    :bias 3))
 
 (record-module records
   :header "Records.h"
@@ -444,6 +449,73 @@ TEST(SchemaLoader, PlacesSavesReloadsAndAnalyzesFixedPointPackedField) {
     EXPECT_EQ(analysis.fields.front().fixed_point->fractional_bits, 4U);
     EXPECT_EQ(analysis.fields.front().fixed_point->rounding,
               codegen::FixedPointRounding::toward_zero);
+}
+
+TEST(SchemaLoader, PlacesSavesReloadsAndAnalyzesMiniFloatPackedField) {
+    TemporarySchemaProject files;
+    auto loaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
+    ASSERT_TRUE(loaded.document.has_value());
+    auto const packed_declaration{
+        loaded.document->find_declaration({.origin = lispb::schema::TypeOrigin::declaration,
+                                           .module_name = "packed",
+                                           .namespace_name = "test",
+                                           .name = "ExistingPacked"})};
+    ASSERT_TRUE(packed_declaration.has_value());
+
+    auto replacement{*loaded.document->packed_value_schema(*packed_declaration)};
+    auto& field{std::get<codegen::PackedFieldSchema>(replacement.segments.front())};
+    field.type.name = "test::ExistingMiniF8";
+    field.bits.reset();
+    field.kind = codegen::PackedFieldKind::mini_float;
+    auto applied{loaded.document->apply(lispb::schema::ReplacePackedValue{
+        .declaration = *packed_declaration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto const designed{loaded.document->types().find_declared("packed", "ExistingPacked")};
+    ASSERT_TRUE(designed.has_value());
+    auto analysis{Analyzer::analyze_packed(
+        loaded.document->types(), *designed, Variant{}, AbiProfile::host_common())};
+    ASSERT_EQ(analysis.fields.size(), 1U);
+    ASSERT_TRUE(analysis.fields.front().mini_float.has_value());
+    EXPECT_EQ(analysis.fields.front().bit_width, 8U);
+    EXPECT_EQ(analysis.fields.front().mini_float->sign_bits, 1U);
+    EXPECT_EQ(analysis.fields.front().mini_float->exponent_bits, 3U);
+    EXPECT_EQ(analysis.fields.front().mini_float->significand_bits, 4U);
+    EXPECT_TRUE(analysis.diagnostics.empty());
+
+    Variant overridden;
+    overridden.overrides.packed_field_widths[{.type = *designed, .field_name = "value"}] = 7;
+    auto const ignored_override{Analyzer::analyze_packed(
+        loaded.document->types(), *designed, overridden, AbiProfile::host_common())};
+    EXPECT_EQ(ignored_override.fields.front().bit_width, 8U);
+    EXPECT_FALSE(ignored_override.fields.front().overridden);
+    ASSERT_EQ(ignored_override.diagnostics.size(), 1U);
+    EXPECT_EQ(ignored_override.diagnostics.front().severity, DiagnosticSeverity::warning);
+
+    auto saved{loaded.document->save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    ASSERT_EQ(saved->size(), 1U);
+
+    auto reloaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(reloaded.loaded) << diagnostic_text(reloaded);
+    auto const reloaded_packed{
+        reloaded.document->types().find_declared("packed", "ExistingPacked")};
+    ASSERT_TRUE(reloaded_packed.has_value());
+    auto const& packed{std::get<lispb::schema::PackedType>(
+        reloaded.document->types().type(*reloaded_packed).definition)};
+    auto const& reloaded_field{std::get<lispb::schema::PackedField>(packed.segments.front())};
+    EXPECT_EQ(reloaded_field.kind, codegen::PackedFieldKind::mini_float);
+    EXPECT_EQ(reloaded_field.bit_width, 8U);
+    EXPECT_TRUE(reloaded_field.bit_width_auto);
+    EXPECT_EQ(reloaded.document->types().type(reloaded_field.semantic_type.type).identity.name,
+              "ExistingMiniF8");
+
+    analysis = Analyzer::analyze_packed(
+        reloaded.document->types(), *reloaded_packed, Variant{}, AbiProfile::host_common());
+    ASSERT_TRUE(analysis.fields.front().mini_float.has_value());
+    EXPECT_EQ(analysis.fields.front().mini_float->exponent_bias, 3);
 }
 
 TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesLinearQuantizedRepresentation) {

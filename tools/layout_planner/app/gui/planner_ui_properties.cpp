@@ -3851,6 +3851,11 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             ? std::get_if<FixedPointType>(
                   &workspace_.types().type(selected_resolved_field->semantic_type.type).definition)
             : nullptr};
+    auto const* selected_mini_float{
+        selected_resolved_field != nullptr
+            ? std::get_if<MiniFloatType>(
+                  &workspace_.types().type(selected_resolved_field->semantic_type.type).definition)
+            : nullptr};
     if (selected_schema_field == nullptr) {
         selected_packed_code_.clear();
     } else if (std::ranges::find(selected_schema_field->named_codes,
@@ -4162,8 +4167,14 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                     ? std::get_if<FixedPointType>(
                           &workspace_.types().type(resolved_field->semantic_type.type).definition)
                     : nullptr};
+            auto const* field_mini_float{
+                resolved_field != nullptr
+                    ? std::get_if<MiniFloatType>(
+                          &workspace_.types().type(resolved_field->semantic_type.type).definition)
+                    : nullptr};
             layout::LinearQuantizedAnalysis const* field_quantization_analysis{};
             layout::FixedPointAnalysis const* field_fixed_point_analysis{};
+            layout::MiniFloatAnalysis const* field_mini_float_analysis{};
             if (field != nullptr && active_packed_.has_value()) {
                 auto const analyzed_field{std::ranges::find(
                     active_packed_->fields, field->name, &layout::PackedFieldAnalysis::name)};
@@ -4174,6 +4185,10 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 if (analyzed_field != active_packed_->fields.end() &&
                     analyzed_field->fixed_point.has_value()) {
                     field_fixed_point_analysis = &*analyzed_field->fixed_point;
+                }
+                if (analyzed_field != active_packed_->fields.end() &&
+                    analyzed_field->mini_float.has_value()) {
+                    field_mini_float_analysis = &*analyzed_field->mini_float;
                 }
             }
             auto const& segment_name{codegen::packed_segment_name(segment)};
@@ -4335,6 +4350,15 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                         pending_field.maximum_value.reset();
                         pending_field.named_codes.clear();
                         pending_field.relationship.reset();
+                    } else if (picked_type != workspace_.types().types().end() &&
+                               std::holds_alternative<MiniFloatType>(picked_type->definition)) {
+                        pending_field.kind = codegen::PackedFieldKind::mini_float;
+                        pending_field.bits.reset();
+                        pending_field.range_helper = false;
+                        pending_field.minimum_value.reset();
+                        pending_field.maximum_value.reset();
+                        pending_field.named_codes.clear();
+                        pending_field.relationship.reset();
                     } else if (picked_type != workspace_.types().types().end()) {
                         if (auto const* scalar{
                                 std::get_if<IntegerScalarType>(&picked_type->definition)}) {
@@ -4401,6 +4425,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 : field->kind == codegen::PackedFieldKind::enumeration      ? "enum"
                 : field->kind == codegen::PackedFieldKind::linear_quantized ? "linear quantized"
                 : field->kind == codegen::PackedFieldKind::fixed_point      ? "fixed point"
+                : field->kind == codegen::PackedFieldKind::mini_float       ? "mini float"
                 : field->kind == codegen::PackedFieldKind::signed_integer   ? "signed"
                                                                             : "unsigned"};
             if (field == nullptr) {
@@ -4408,7 +4433,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             } else if (row_selected) {
                 ImGui::BeginDisabled(field_uses_integer_scalar ||
                                      field_linear_quantized != nullptr ||
-                                     field_fixed_point != nullptr);
+                                     field_fixed_point != nullptr || field_mini_float != nullptr);
                 if (ImGui::BeginCombo("##kind", kind_label)) {
                     if (ImGui::Selectable("unsigned",
                                           field->kind ==
@@ -4510,6 +4535,19 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                         pending_field.named_codes.clear();
                         pending_field.relationship.reset();
                     }
+                    if (ImGui::Selectable("mini float",
+                                          field->kind == codegen::PackedFieldKind::mini_float)) {
+                        pending = *schema;
+                        auto& pending_field{
+                            std::get<codegen::PackedFieldSchema>(pending->segments[index])};
+                        pending_field.kind = codegen::PackedFieldKind::mini_float;
+                        pending_field.bits.reset();
+                        pending_field.range_helper = false;
+                        pending_field.minimum_value.reset();
+                        pending_field.maximum_value.reset();
+                        pending_field.named_codes.clear();
+                        pending_field.relationship.reset();
+                    }
                     ImGui::EndCombo();
                 }
                 ImGui::EndDisabled();
@@ -4525,7 +4563,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 ImGui::BeginDisabled(field->kind != codegen::PackedFieldKind::unsigned_integer ||
                                      field_uses_integer_scalar ||
                                      field_linear_quantized != nullptr ||
-                                     field_fixed_point != nullptr);
+                                     field_fixed_point != nullptr || field_mini_float != nullptr);
                 if (ImGui::Checkbox("##range-helper", &range_helper)) {
                     pending = *schema;
                     std::get<codegen::PackedFieldSchema>(pending->segments[index]).range_helper =
@@ -4553,6 +4591,15 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 ImGui::TextDisabled("%.9Lg..%.9Lg (fixed)",
                                     field_fixed_point_analysis->minimum_value,
                                     field_fixed_point_analysis->maximum_value);
+            } else if (field_mini_float_analysis != nullptr) {
+                if (field_mini_float_analysis->minimum_finite.has_value() &&
+                    field_mini_float_analysis->maximum_finite.has_value()) {
+                    ImGui::TextDisabled("%.9Lg..%.9Lg (mini float)",
+                                        *field_mini_float_analysis->minimum_finite,
+                                        *field_mini_float_analysis->maximum_finite);
+                } else {
+                    ImGui::TextDisabled("Unknown (mini float)");
+                }
             } else if (row_selected) {
                 ImGui::SetNextItemWidth(70.0F);
                 auto range_submitted{ImGui::InputText("##minimum",
@@ -4617,6 +4664,12 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 auto const maximum{
                     codegen::format_packed_integer(field_fixed_point_analysis->maximum_raw_value)};
                 ImGui::Text("raw %s..%s", minimum.c_str(), maximum.c_str());
+            } else if (field_mini_float_analysis != nullptr) {
+                auto const maximum{
+                    field_mini_float_analysis->total_bits == 64
+                        ? (std::numeric_limits<std::uint64_t>::max)()
+                        : (std::uint64_t{1} << field_mini_float_analysis->total_bits) - 1};
+                ImGui::Text("encoded 0..%llu", static_cast<unsigned long long>(maximum));
             } else if (index < packed.segments.size()) {
                 auto const* resolved{
                     std::get_if<lispb::schema::PackedField>(&packed.segments[index])};
@@ -4883,9 +4936,11 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         } else if (selected_fixed_point != nullptr) {
             ImGui::TextDisabled(
                 "This fixed-point placement owns its scaled numerical representation.");
+        } else if (selected_mini_float != nullptr) {
+            ImGui::TextDisabled("This mini-float placement owns its numerical encoding.");
         }
         ImGui::BeginDisabled(selected_linear_quantized != nullptr ||
-                             selected_fixed_point != nullptr);
+                             selected_fixed_point != nullptr || selected_mini_float != nullptr);
         ImGui::SetNextItemWidth(180.0F);
         auto const current_kind{semantic_relationship_kinds[static_cast<std::size_t>(
             std::clamp(packed_relationship_kind_,
@@ -5203,8 +5258,40 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             "Generated packed APIs expose scaled raw integers; conversion remains representation "
             "policy.");
     } else if (!pending.has_value() && selected_schema_field != nullptr &&
+               selected_mini_float != nullptr) {
+        ImGui::SeparatorText("Mini float");
+        layout::MiniFloatAnalysis const* mini{};
+        if (active_packed_.has_value()) {
+            auto const analyzed_field{std::ranges::find(
+                active_packed_->fields, selected_field_, &layout::PackedFieldAnalysis::name)};
+            if (analyzed_field != active_packed_->fields.end() &&
+                analyzed_field->mini_float.has_value()) {
+                mini = &*analyzed_field->mini_float;
+            }
+        }
+        if (mini != nullptr) {
+            ImGui::Text("Width: %u sign / %u exponent / %u significand bits",
+                        mini->sign_bits,
+                        mini->exponent_bits,
+                        mini->significand_bits);
+            ImGui::Text("Exponent bias: %d", mini->exponent_bias);
+            if (mini->minimum_finite.has_value() && mini->maximum_finite.has_value()) {
+                ImGui::Text(
+                    "Finite range: %.9Lg..%.9Lg", *mini->minimum_finite, *mini->maximum_finite);
+            } else {
+                ImGui::TextDisabled("Finite range: Unknown");
+            }
+            ImGui::Text("Zero / infinity / NaN codes: %llu / %llu / %llu",
+                        static_cast<unsigned long long>(mini->zero_code_count),
+                        static_cast<unsigned long long>(mini->infinity_code_count),
+                        static_cast<unsigned long long>(mini->nan_code_count));
+        } else {
+            ImGui::TextDisabled("Mini-float analysis is unavailable.");
+        }
+        ImGui::TextDisabled("Generated packed APIs expose encoded bits, not decoded values.");
+    } else if (!pending.has_value() && selected_schema_field != nullptr &&
                selected_index.has_value() && selected_linear_quantized == nullptr &&
-               selected_fixed_point == nullptr) {
+               selected_fixed_point == nullptr && selected_mini_float == nullptr) {
         auto const selected_segment_name{selected_field_};
         auto const effective_width{
             selected_resolved_field != nullptr ? selected_resolved_field->bit_width : 1U};
