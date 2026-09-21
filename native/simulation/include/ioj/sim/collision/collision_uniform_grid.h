@@ -10,6 +10,8 @@
 #include <ioj/sim/trace_hits.h>
 #include <sandbox/core/frame_array.h>
 
+#include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <span>
 
@@ -18,6 +20,22 @@ class AgentAccessor;
 }
 
 namespace ioj::sim::collision {
+namespace collision_uniform_grid_detail {
+inline auto entities_for_cell(CollisionGridEntityStorage const& storage,
+                              std::int32_t const cell_index) noexcept
+    -> std::span<EntityUniqueId const> {
+    assert(cell_index >= 0 && static_cast<std::size_t>(cell_index) < storage.cell_counts.size());
+
+    auto const element{static_cast<std::size_t>(cell_index)};
+    auto const count{storage.cell_counts[element]};
+    if (count == 0) {
+        return {};
+    }
+    return std::span{storage.entities}.subspan(
+        static_cast<std::size_t>(storage.cell_offsets[element]), count);
+}
+} // namespace collision_uniform_grid_detail
+
 enum class TraceEntityFilter : std::uint8_t {
     None,
     ExcludeFighters,
@@ -44,7 +62,17 @@ struct CollisionUniformGrid {
     auto get_non_empty_cell_count() const noexcept -> std::int32_t {
         return static_cast<std::int32_t>(entity_storage_.non_empty_cell_indices.size());
     }
-    auto get_cell_entities(CellCoord const cell_coord) const -> std::span<EntityUniqueId const>;
+    auto get_cell_entities(CellCoord const cell_coord) const -> std::span<EntityUniqueId const> {
+        auto const dimensions{geometry_.dimensions};
+        assert(cell_coord.x >= 0 && cell_coord.x < dimensions.x && cell_coord.y >= 0 &&
+               cell_coord.y < dimensions.y && cell_coord.z >= 0 && cell_coord.z < dimensions.z);
+
+        auto const row_stride{dimensions.x};
+        auto const plane_stride{row_stride * dimensions.y};
+        auto const cell_index{
+            cell_coord.x + cell_coord.y * row_stride + cell_coord.z * plane_stride};
+        return collision_uniform_grid_detail::entities_for_cell(entity_storage_, cell_index);
+    }
 
     auto to_cell_coord(Vector3f pos) const -> CellCoord;
     auto to_min_cell_coord(Vector3f pos) const -> CellCoord;

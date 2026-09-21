@@ -17,6 +17,6 @@ struct CollisionGridEntityStorage {
 
     // Rebuild-only scratch and intermediate entity data.
     std::vector<std::int32_t> cell_write_indices;
-    EntityCellData rebuild_entities;
+    EntityCellData rebuild_entity_data;
 };
 } // namespace ioj::sim::collision

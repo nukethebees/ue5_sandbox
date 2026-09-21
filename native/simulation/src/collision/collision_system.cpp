@@ -1,16 +1,12 @@
 #include "ioj/sim/collision/collision_system.h"
-#include <algorithm>
-#include <array>
-#include <cassert>
-#include <format>
-#include <ioj/sim/profiling.h>
-#include <ioj/sim/rotator_math.h>
-#include <sandbox/core/diagnostics.h>
-#include <sandbox/core/frame_array.h>
-#include <sandbox/core/frame_memory_resource.h>
-#include <thread>
 
 #include <ioj/sim/agent_accessor.h>
+#include <ioj/sim/profiling.h>
+#include <ioj/sim/rotator_math.h>
+#include <sandbox/core/frame_array.h>
+#include <sandbox/core/frame_memory_resource.h>
+
+#include <algorithm>
 
 namespace ioj::sim::collision {
 void CollisionSystem::initialise(collision::EntityAABBs const& bounds) {
@@ -54,8 +50,7 @@ void CollisionSystem::collect_overlaps_for_moved_entities(
     ml::FrameArray<EntityUniqueId> overlapping_entities{&scratch};
     ml::FrameArray<std::int32_t> overlapping_static_geometry_indices{&scratch};
 
-    for (auto const dirty_entity : collision_dirty_entities) {
-        auto const id{dirty_entity};
+    for (auto const id : collision_dirty_entities) {
         auto const state{agents_.read_alive(id)};
         if (!state) {
             continue;
