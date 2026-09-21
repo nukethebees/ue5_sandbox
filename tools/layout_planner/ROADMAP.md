@@ -21,12 +21,42 @@ Semantic type graph
 The editable document belongs to the LispB/schema library. The GUI must not introduce planner-only
 copies of enums, packed fields, columns, or future type declarations.
 
+## V1 convergence and release boundary (2026-09-21)
+
+The active V1 work is complete; do not read the ambitious sections below as an open V1 checklist.
+The authoritative local session plan classifies every remaining historical TODO/IN PROGRESS item
+as future/V2 unless a reproducible correctness defect is found in an exposed workflow. The final
+contextual packed mini-float authoring slice is complete. No new feature slice follows it.
+
+V1 supports LispB project open/recent/reopen, validated project cloning and source registration;
+shared source-backed enum, integer scalar, representation, packed value, record, union, tagged
+union, and standard-library SoA editing; inline ordered authoring and drag reorder; command-based
+undo/redo; source preview, diagnostics, dirty-close protection, and validated atomic save/reload.
+Packed linear-quantized, fixed-point, and mini-float placements retain shared representation
+identity; generated APIs deliberately expose encoded/raw bits rather than fabricated decoded
+semantics. Existing layout, waste, cache/page, selected-access, comparison, graph, and docked views
+report only facts established by explicit target/session inputs, showing Unknown otherwise.
+
+Known V1 limits: some complex structural edits safely canonicalize their declaration; ordinary
+Open/Save As still use paths rather than native pickers; variants and capacity/workloads are
+session-only planning state, while accepted semantic edits persist through LispB; target facts
+focus on explicit x86/x86-64 profiles; a standalone mini-float does not imply a C++ floating ABI
+or conversion arithmetic. These are honest scope boundaries, not known source corruption or
+unfinished exposed UI.
+
+Future/V2 only: additional representation placement combinations or contextual shortcuts,
+strong aliases, new encoding families, UNORM/SNORM and custom codecs, optional/union physical
+policies, durable typed semantic variants/scenarios, richer workload/page/zoom analyses, new
+target architectures, sophisticated automatic graph layout, allocator or measured-performance
+models, native file pickers, and further token-level source preservation beyond safe fallback.
+The numbered design sections below retain this history without implicitly requiring its
+completion for V1.
+
 ## Current milestone
 
 The editable document/command foundation supports enum, standalone integer-scalar, linear-
-quantized, integer-varint, fixed-point, optional-sentinel, optional-presence-bit representation,
-packed-value, record, and standard-library
-SoA authoring. Declarations
+quantized, integer-varint, fixed-point, mini-float, optional-sentinel, optional-presence-bit
+representation, packed-value, record, and standard-library SoA authoring. Declarations
 can be added to existing matching modules, and empty enum, packed-value, integer-scalar,
 representation, record, union, and standard-library SoA modules can be created in an already loaded
 module source;
