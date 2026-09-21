@@ -468,7 +468,6 @@ void PlannerUi::draw_project_panel() {
     }
     ImGui::EndDisabled();
     if (!schema_edit_message_.empty()) {
-        ImGui::SameLine();
         ImGui::TextWrapped("%s", schema_edit_message_.c_str());
     }
     ImGui::SetNextItemWidth(-1.0F);
