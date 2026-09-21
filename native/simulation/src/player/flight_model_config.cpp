@@ -174,6 +174,10 @@ namespace ioj::sim::player::flight_model_config_detail {
     if (auto const result{validate_drive(config.boosted)}; !result) {
         return result;
     }
+    if (!valid_enum(config.passive_drag_reference_frame) ||
+        !valid_enum(config.active_stabilization_reference_frame)) {
+        return std::unexpected{FlightModelConfigError::InvalidEnumValue};
+    }
     for (auto const value : {config.passive_drag, config.active_stabilization_rate}) {
         if (auto const result{validate_non_negative(value)}; !result) {
             return result;

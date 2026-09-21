@@ -2,6 +2,7 @@
 
 #include "SandboxUI/slate/SlateSlots.h"
 #include "SandboxUI/widgets/SettingsWidgets.h"
+#include "SpaceGame/settings/FlightModelEditor.h"
 #include "SpaceGame/settings/GameSettingsBackend.h"
 #include "SpaceGame/settings/GameSettingsSubsystem.h"
 #include "SpaceGame/system/GameSubsystem.h"
@@ -1047,10 +1048,10 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                 return static_cast<int32>(axis(config).manual.semantic);
             },
             [axis](FlightConfig& config, int32 const index) {
-                axis(config).manual.semantic = static_cast<TranslationSemantic>(index);
-                if (axis(config).manual.semantic == TranslationSemantic::TargetSpeed) {
-                    axis(config).manual.input_source = InputSource::Axis;
-                }
+                apply_flight_model_translation_semantic_edit(
+                    axis(config),
+                    EFlightModelTranslationChannel::Manual,
+                    static_cast<TranslationSemantic>(index));
             });
         if (current_axis.manual.semantic != TranslationSemantic::Disabled) {
             add_flight_choice(
@@ -1100,7 +1101,10 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                 return static_cast<int32>(axis(config).automatic.semantic);
             },
             [axis](FlightConfig& config, int32 const index) {
-                axis(config).automatic.semantic = static_cast<TranslationSemantic>(index);
+                apply_flight_model_translation_semantic_edit(
+                    axis(config),
+                    EFlightModelTranslationChannel::Automatic,
+                    static_cast<TranslationSemantic>(index));
             });
         if (current_axis.automatic.semantic != TranslationSemantic::Disabled) {
             add_flight_choice(
@@ -1254,35 +1258,59 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                     });
             }
         }
-        if (active) {
-            add_flight_slider(
-                field_label(axis_name, NSLOCTEXT("OptionsMenu", "PassiveDrag", "Passive Drag")),
-                NSLOCTEXT(
-                    "OptionsMenu", "PassiveDragTip", "Continuous passive component-speed loss."),
-                0.f,
-                100000.f,
-                100.f,
-                [axis](FlightConfig const& config) { return axis(config).passive_drag; },
-                [axis](FlightConfig& config, float const value) {
-                    axis(config).passive_drag = value;
-                });
-            add_flight_slider(
-                field_label(
-                    axis_name,
-                    NSLOCTEXT("OptionsMenu", "ActiveStabilization", "Active Stabilization")),
-                NSLOCTEXT("OptionsMenu",
-                          "ActiveStabilizationTip",
-                          "Counter-thrust toward zero while neither channel commands movement."),
-                0.f,
-                100000.f,
-                100.f,
-                [axis](FlightConfig const& config) {
-                    return axis(config).active_stabilization_rate;
-                },
-                [axis](FlightConfig& config, float const value) {
-                    axis(config).active_stabilization_rate = value;
-                });
-        }
+        add_flight_slider(
+            field_label(axis_name, NSLOCTEXT("OptionsMenu", "PassiveDrag", "Passive Drag")),
+            NSLOCTEXT("OptionsMenu", "PassiveDragTip", "Continuous passive component-speed loss."),
+            0.f,
+            100000.f,
+            100.f,
+            [axis](FlightConfig const& config) { return axis(config).passive_drag; },
+            [axis](FlightConfig& config, float const value) { axis(config).passive_drag = value; });
+        add_flight_choice(
+            field_label(
+                axis_name,
+                NSLOCTEXT("OptionsMenu", "PassiveDragReferenceFrame", "Passive Drag Frame")),
+            NSLOCTEXT("OptionsMenu",
+                      "PassiveDragReferenceFrameTip",
+                      "Apply passive component drag in ship or world space."),
+            {NSLOCTEXT("OptionsMenu", "PassiveDragShipFrame", "Ship"),
+             NSLOCTEXT("OptionsMenu", "PassiveDragWorldFrame", "World")},
+            [axis](FlightConfig const& config) {
+                return static_cast<int32>(axis(config).passive_drag_reference_frame);
+            },
+            [axis](FlightConfig& config, int32 const index) {
+                axis(config).passive_drag_reference_frame = static_cast<ReferenceFrame>(index);
+            });
+        add_flight_slider(
+            field_label(axis_name,
+                        NSLOCTEXT("OptionsMenu", "ActiveStabilization", "Active Stabilization")),
+            NSLOCTEXT("OptionsMenu",
+                      "ActiveStabilizationTip",
+                      "Counter-thrust toward zero while neither channel commands movement."),
+            0.f,
+            100000.f,
+            100.f,
+            [axis](FlightConfig const& config) { return axis(config).active_stabilization_rate; },
+            [axis](FlightConfig& config, float const value) {
+                axis(config).active_stabilization_rate = value;
+            });
+        add_flight_choice(
+            field_label(axis_name,
+                        NSLOCTEXT("OptionsMenu",
+                                  "ActiveStabilizationReferenceFrame",
+                                  "Active Stabilization Frame")),
+            NSLOCTEXT("OptionsMenu",
+                      "ActiveStabilizationReferenceFrameTip",
+                      "Apply neutral counter-thrust in ship or world space."),
+            {NSLOCTEXT("OptionsMenu", "ActiveStabilizationShipFrame", "Ship"),
+             NSLOCTEXT("OptionsMenu", "ActiveStabilizationWorldFrame", "World")},
+            [axis](FlightConfig const& config) {
+                return static_cast<int32>(axis(config).active_stabilization_reference_frame);
+            },
+            [axis](FlightConfig& config, int32 const index) {
+                axis(config).active_stabilization_reference_frame =
+                    static_cast<ReferenceFrame>(index);
+            });
         add_section(
             field_label(axis_name,
                         NSLOCTEXT("OptionsMenu", "TranslationSectionSuffix", "Translation")),

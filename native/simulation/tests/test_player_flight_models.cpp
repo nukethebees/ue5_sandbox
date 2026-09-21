@@ -462,6 +462,94 @@ TEST(NativeSimulationFlightModels, PassiveDragAndNeutralStabilizationRemainDisti
     EXPECT_LT(velocity(stabilized).x, stabilized_driven_speed);
 }
 
+TEST(NativeSimulationFlightModels, PassiveDragUsesItsExplicitReferenceFrame) {
+    auto evaluate = [](player::ReferenceFrame const frame) {
+        player::FlightModelConfig config;
+        config.translation.forward.passive_drag = 40.f;
+        config.translation.forward.passive_drag_reference_frame = frame;
+
+        player::PlayerSimulationState state;
+        state.physical.transform.rotation = to_quaternion(Rotator3d{0.0, 90.0, 0.0});
+        state.physical.velocity = {100.0, 100.0, 0.0};
+        player::seed_flight_model_responses(state, config);
+        player::integrate_flight_model(1.f, config, {}, state);
+        return state.physical.velocity;
+    };
+
+    expect_velocity_near(evaluate(player::ReferenceFrame::Ship), {100.0, 60.0, 0.0}, 1.e-5);
+    expect_velocity_near(evaluate(player::ReferenceFrame::World), {60.0, 100.0, 0.0}, 1.e-5);
+}
+
+TEST(NativeSimulationFlightModels, ActiveStabilizationUsesItsExplicitReferenceFrame) {
+    auto evaluate = [](player::ReferenceFrame const frame) {
+        player::FlightModelConfig config;
+        config.translation.forward.active_stabilization_rate = 40.f;
+        config.translation.forward.active_stabilization_reference_frame = frame;
+
+        player::PlayerSimulationState state;
+        state.physical.transform.rotation = to_quaternion(Rotator3d{0.0, 90.0, 0.0});
+        state.physical.velocity = {100.0, 100.0, 0.0};
+        player::seed_flight_model_responses(state, config);
+        player::integrate_flight_model(1.f, config, {}, state);
+        return state.physical.velocity;
+    };
+
+    expect_velocity_near(evaluate(player::ReferenceFrame::Ship), {100.0, 60.0, 0.0}, 1.e-5);
+    expect_velocity_near(evaluate(player::ReferenceFrame::World), {60.0, 100.0, 0.0}, 1.e-5);
+}
+
+TEST(NativeSimulationFlightModels, DisabledManualFrameCannotAffectAxisLevelDamping) {
+    auto evaluate = [](player::ReferenceFrame const unused_manual_frame) {
+        player::FlightModelConfig config;
+        auto& forward{config.translation.forward};
+        forward.manual.reference_frame = unused_manual_frame;
+        forward.passive_drag = 10.f;
+        forward.passive_drag_reference_frame = player::ReferenceFrame::World;
+        forward.active_stabilization_rate = 20.f;
+        forward.active_stabilization_reference_frame = player::ReferenceFrame::World;
+
+        player::PlayerSimulationState state;
+        state.physical.transform.rotation = to_quaternion(Rotator3d{0.0, 90.0, 0.0});
+        state.physical.velocity = {100.0, 100.0, 0.0};
+        player::seed_flight_model_responses(state, config);
+        player::integrate_flight_model(1.f, config, {}, state);
+        return state.physical.velocity;
+    };
+
+    auto const ship_manual{evaluate(player::ReferenceFrame::Ship)};
+    auto const world_manual{evaluate(player::ReferenceFrame::World)};
+    expect_velocity_near(ship_manual, {70.0, 100.0, 0.0}, 1.e-5);
+    expect_velocity_near(world_manual, ship_manual, 1.e-5);
+}
+
+TEST(NativeSimulationFlightModels, AutomaticAccelerationAndPassiveDragKeepIndependentFrames) {
+    auto evaluate = [](player::ReferenceFrame const automatic_frame,
+                       player::ReferenceFrame const drag_frame) {
+        player::FlightModelConfig config;
+        auto& forward{config.translation.forward};
+        forward.automatic.semantic = player::TranslationSemantic::Acceleration;
+        forward.automatic.reference_frame = automatic_frame;
+        forward.automatic.automatic_value = 1.f;
+        forward.normal.positive_acceleration = 10.f;
+        forward.passive_drag = 20.f;
+        forward.passive_drag_reference_frame = drag_frame;
+
+        player::PlayerSimulationState state;
+        state.physical.transform.rotation = to_quaternion(Rotator3d{0.0, 90.0, 0.0});
+        state.physical.velocity = {50.0, 50.0, 0.0};
+        player::seed_flight_model_responses(state, config);
+        player::integrate_flight_model(1.f, config, {}, state);
+        return state.physical.velocity;
+    };
+
+    expect_velocity_near(evaluate(player::ReferenceFrame::World, player::ReferenceFrame::Ship),
+                         {60.0, 30.0, 0.0},
+                         1.e-5);
+    expect_velocity_near(evaluate(player::ReferenceFrame::Ship, player::ReferenceFrame::World),
+                         {30.0, 60.0, 0.0},
+                         1.e-5);
+}
+
 TEST(NativeSimulationFlightModels, BoostResponseChangesWithoutDiscardingAccelerationState) {
     LevelSim simulation{make_data(player::FlightModelPreset::Skater)};
     start(simulation);

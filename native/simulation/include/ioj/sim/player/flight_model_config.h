@@ -105,7 +105,9 @@ struct TranslationAxisConfig {
     TranslationDriveConfig normal{};
     TranslationDriveConfig boosted{};
     float passive_drag{};
+    ReferenceFrame passive_drag_reference_frame{ReferenceFrame::Ship};
     float active_stabilization_rate{};
+    ReferenceFrame active_stabilization_reference_frame{ReferenceFrame::Ship};
 
     auto operator==(TranslationAxisConfig const&) const -> bool = default;
 };

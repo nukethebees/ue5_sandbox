@@ -1,9 +1,11 @@
 #include <SpaceGame/settings/ControlSettingsTypes.h>
+#include <SpaceGame/settings/FlightModelEditor.h>
 #include <SpaceGame/settings/GameSettingsBackend.h>
 #include <SpaceGame/settings/GameSettingsEditState.h>
 #include <SpaceGame/settings/GameSettingsSubsystem.h>
 
 #include <CQTest.h>
+#include <Engine/GameInstance.h>
 
 TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
 {
@@ -201,7 +203,8 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
 
     TEST_METHOD(RuntimeFlightModelEditsAreValidatedAndMarkedCustom)
     {
-        auto* const settings{NewObject<ml::ioj::UGameSettingsSubsystem>()};
+        auto* const game_instance{NewObject<UGameInstance>()};
+        auto* const settings{NewObject<ml::ioj::UGameSettingsSubsystem>(game_instance)};
         int32 change_count{};
         settings->flight_model_config_changed.AddLambda([&change_count] { ++change_count; });
 
@@ -263,5 +266,83 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
                                  !settings->flight_model_profile().customized);
         TestRunner->TestEqual(
             TEXT("Observing a native selection does not reapply configuration"), change_count, 1);
+    }
+
+    TEST_METHOD(RuntimeFlightModelSemanticEditsAreTransactional)
+    {
+        using Channel = ml::ioj::EFlightModelTranslationChannel;
+        using InputSource = ::ioj::sim::player::TranslationInputSource;
+        using Semantic = ::ioj::sim::player::TranslationSemantic;
+
+        auto* const game_instance{NewObject<UGameInstance>()};
+        auto* const settings{NewObject<ml::ioj::UGameSettingsSubsystem>(game_instance)};
+        int32 change_count{};
+        settings->flight_model_config_changed.AddLambda([&change_count] { ++change_count; });
+
+        auto profile{::ioj::sim::player::make_flight_model_profile(
+            ::ioj::sim::player::FlightModelPreset::Starfox)};
+        auto& forward{profile.config.translation.forward};
+        ml::ioj::apply_flight_model_translation_semantic_edit(
+            forward, Channel::Manual, Semantic::TargetVelocity);
+        TestRunner->TestTrue(TEXT("Selecting a manual target disables the automatic target"),
+                             forward.manual.semantic == Semantic::TargetVelocity &&
+                                 forward.automatic.semantic == Semantic::Disabled);
+        TestRunner->TestTrue(TEXT("Disabling the automatic target preserves its tuning data"),
+                             FMath::IsNearlyEqual(forward.automatic.automatic_value, 1.f));
+        TestRunner->TestTrue(TEXT("The manual target transaction is valid and accepted"),
+                             settings->set_flight_model_profile(profile));
+
+        profile = settings->flight_model_profile();
+        ml::ioj::apply_flight_model_translation_semantic_edit(
+            profile.config.translation.forward, Channel::Automatic, Semantic::TargetSpeed);
+        TestRunner->TestTrue(
+            TEXT("Selecting an automatic target disables the manual target"),
+            profile.config.translation.forward.automatic.semantic == Semantic::TargetSpeed &&
+                profile.config.translation.forward.manual.semantic == Semantic::Disabled);
+        TestRunner->TestTrue(TEXT("The automatic target transaction is valid and accepted"),
+                             settings->set_flight_model_profile(profile));
+
+        profile = settings->flight_model_profile();
+        ml::ioj::apply_flight_model_translation_semantic_edit(
+            profile.config.translation.forward, Channel::Manual, Semantic::Acceleration);
+        TestRunner->TestTrue(
+            TEXT("Target and acceleration composition remains intact"),
+            profile.config.translation.forward.manual.semantic == Semantic::Acceleration &&
+                profile.config.translation.forward.automatic.semantic == Semantic::TargetSpeed);
+        TestRunner->TestTrue(TEXT("Target and acceleration composition remains valid"),
+                             settings->set_flight_model_profile(profile));
+
+        profile = settings->flight_model_profile();
+        ml::ioj::apply_flight_model_translation_semantic_edit(
+            profile.config.translation.forward, Channel::Automatic, Semantic::Acceleration);
+        TestRunner->TestTrue(
+            TEXT("Two acceleration channels remain intact"),
+            profile.config.translation.forward.manual.semantic == Semantic::Acceleration &&
+                profile.config.translation.forward.automatic.semantic == Semantic::Acceleration);
+        TestRunner->TestTrue(TEXT("Two acceleration channels remain valid"),
+                             settings->set_flight_model_profile(profile));
+
+        profile = settings->flight_model_profile();
+        profile.config.translation.forward.manual.input_source = InputSource::Accelerator;
+        ml::ioj::apply_flight_model_translation_semantic_edit(
+            profile.config.translation.forward, Channel::Manual, Semantic::TargetSpeed);
+        TestRunner->TestTrue(TEXT("Manual TargetSpeed atomically selects Axis input"),
+                             profile.config.translation.forward.manual.input_source ==
+                                 InputSource::Axis);
+        TestRunner->TestTrue(TEXT("The normalized TargetSpeed transaction is valid and accepted"),
+                             settings->set_flight_model_profile(profile));
+
+        auto const& applied{settings->flight_model_profile()};
+        TestRunner->TestTrue(TEXT("Semantic edits mark the runtime profile custom"),
+                             applied.customized);
+        TestRunner->TestTrue(
+            TEXT("The final semantic edit reaches the runtime profile"),
+            applied.config.translation.forward.manual.semantic == Semantic::TargetSpeed &&
+                applied.config.translation.forward.automatic.semantic == Semantic::Acceleration);
+        TestRunner->TestTrue(
+            TEXT("Every transaction passes native validation"),
+            ::ioj::sim::player::validate_flight_model_config(applied.config).has_value());
+        TestRunner->TestEqual(
+            TEXT("Each accepted transaction emits the runtime change signal"), change_count, 5);
     }
 };
