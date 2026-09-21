@@ -8,6 +8,7 @@ enum class PackedFieldKind {
     enumeration,
     linear_quantized,
     fixed_point,
+    mini_float,
 };
 
 } // namespace codegen

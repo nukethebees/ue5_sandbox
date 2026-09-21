@@ -518,6 +518,27 @@ TEST(GeneratedPackedValue, RoundTripsFixedPointRawCodes) {
     EXPECT_EQ(made.state(), 7);
 }
 
+TEST(GeneratedPackedValue, RoundTripsMiniFloatEncodedCodes) {
+    static_assert(PackedMiniFloat::component_bits == 12);
+    static_assert(PackedMiniFloat::component_maximum_encoded == 0xfff);
+
+    PackedMiniFloat value;
+    EXPECT_TRUE(value.try_set_component_encoded(0xfff));
+    EXPECT_TRUE(value.try_set_state(0xa));
+    EXPECT_EQ(value.component_encoded(), 0xfff);
+    EXPECT_EQ(value.state(), 0xa);
+    EXPECT_EQ(value.raw_value(), 0xafff);
+
+    auto const before_failure{value.raw_value()};
+    EXPECT_FALSE(value.try_set_component_encoded(0x1000));
+    EXPECT_EQ(value.raw_value(), before_failure);
+
+    PackedMiniFloat made;
+    EXPECT_TRUE(PackedMiniFloat::try_make(0x7c0, 3, made));
+    EXPECT_EQ(made.component_encoded(), 0x7c0);
+    EXPECT_EQ(made.state(), 3);
+}
+
 TEST(GeneratedPackedValue, GeneratesConstructionValidationAndRangeHelpers) {
     static_assert(CheckedValue::invalid_value == 0x7fffffffu);
     static_assert(CheckedValue::serial_range_fits(0, CheckedValue::serial_value_mask + 1));

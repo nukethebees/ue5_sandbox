@@ -132,6 +132,24 @@ auto find_fixed_point(TypeRef const& type,
     return nullptr;
 }
 
+auto find_mini_float(TypeRef const& type,
+                     std::map<std::string, CppType> const& types,
+                     std::vector<ModuleSchema> const& modules) -> MiniFloatSchema const* {
+    auto const spelling{resolve_type(type, types).spelling};
+    for (auto const& candidate : modules) {
+        auto const* representation_module{std::get_if<RepresentationModuleSchema>(&candidate)};
+        if (representation_module == nullptr) {
+            continue;
+        }
+        for (auto const& schema : representation_module->mini_floats) {
+            if (qualified_representation_name(*representation_module, schema.name) == spelling) {
+                return &schema;
+            }
+        }
+    }
+    return nullptr;
+}
+
 auto derive_integer_scalar_width(IntegerScalarSchema const& scalar) -> std::optional<int> {
     if (scalar.bit_width.has_value()) {
         return static_cast<int>(*scalar.bit_width);
@@ -169,6 +187,13 @@ auto derive_packed_field_width(PackedFieldSchema const& field,
         auto const* fixed{find_fixed_point(field.type, types, modules)};
         return fixed != nullptr ? std::optional<int>{static_cast<int>(fixed->total_bits)}
                                 : std::nullopt;
+    }
+    if (field.kind == PackedFieldKind::mini_float) {
+        auto const* mini{find_mini_float(field.type, types, modules)};
+        return mini != nullptr
+                 ? std::optional<int>{static_cast<int>(mini->sign_bits + mini->exponent_bits +
+                                                       mini->significand_bits)}
+                 : std::nullopt;
     }
     if (field.kind == PackedFieldKind::enumeration) {
         auto const* enumeration{find_packed_enum(field.type, types, modules)};

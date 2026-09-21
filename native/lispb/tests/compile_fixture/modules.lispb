@@ -86,7 +86,12 @@
     :signed false
     :total-bits 7
     :fractional-bits 7
-    :rounding toward-zero))
+    :rounding toward-zero)
+  (mini-float PositionF12
+    :sign-bits 1
+    :exponent-bits 5
+    :significand-bits 6
+    :bias 15))
 
 (packed-value-module packed_value_fixture
   :header "PackedValues.h"
@@ -156,7 +161,12 @@
     :mutable true
     (field velocity codegen_compile_fixture::VelocityQ8_4 :bits auto :kind fixed-point)
     (field fraction codegen_compile_fixture::FractionQ0_7 :bits auto :kind fixed-point)
-    (field state std::uint16_t :bits 13)))
+    (field state std::uint16_t :bits 13))
+  (packed-value PackedMiniFloat
+    :storage std::uint16_t
+    :mutable true
+    (field component codegen_compile_fixture::PositionF12 :bits auto :kind mini-float)
+    (field state std::uint8_t :bits 4)))
 
 (settings-module settings_fixture
   :header "Settings.h"

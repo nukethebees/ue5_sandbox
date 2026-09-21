@@ -817,6 +817,8 @@ auto packed_field_kind_name(codegen::PackedFieldKind const kind) -> std::string_
             return "linear-quantized";
         case codegen::PackedFieldKind::fixed_point:
             return "fixed-point";
+        case codegen::PackedFieldKind::mini_float:
+            return "mini-float";
     }
     return "unsigned";
 }

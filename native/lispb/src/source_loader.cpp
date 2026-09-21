@@ -559,10 +559,12 @@ auto parse_packed_field(Form const& form) -> PackedFieldSchema {
             kind = PackedFieldKind::linear_quantized;
         } else if (name == "fixed-point") {
             kind = PackedFieldKind::fixed_point;
+        } else if (name == "mini-float") {
+            kind = PackedFieldKind::mini_float;
         } else {
             fail(value->token.span,
                  "packed field kind must be 'unsigned', 'signed', 'enum', "
-                 "'linear-quantized', or 'fixed-point'");
+                 "'linear-quantized', 'fixed-point', or 'mini-float'");
         }
     }
 

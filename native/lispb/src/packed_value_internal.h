@@ -22,6 +22,9 @@ auto find_linear_quantized(TypeRef const& type,
 auto find_fixed_point(TypeRef const& type,
                       std::map<std::string, CppType> const& types,
                       std::vector<ModuleSchema> const& modules) -> FixedPointSchema const*;
+auto find_mini_float(TypeRef const& type,
+                     std::map<std::string, CppType> const& types,
+                     std::vector<ModuleSchema> const& modules) -> MiniFloatSchema const*;
 auto derive_integer_scalar_width(IntegerScalarSchema const& scalar) -> std::optional<int>;
 auto derive_packed_field_width(PackedFieldSchema const& field,
                                std::map<std::string, CppType> const& types,

@@ -164,6 +164,35 @@ auto fixed_point_backed_manifest(bool const signedness = true) -> Manifest {
         }};
 }
 
+auto mini_float_backed_manifest() -> Manifest {
+    return Manifest{
+        .schema_version = manifest_schema_version,
+        .modules = {
+            RepresentationModuleSchema{.settings = ModuleSettings{.name = "representations",
+                                                                  .header = "Representations.h",
+                                                                  .namespace_name = "project"},
+                                       .mini_floats = {MiniFloatSchema{.name = "PositionF12",
+                                                                       .sign_bits = 1,
+                                                                       .exponent_bits = 5,
+                                                                       .significand_bits = 6,
+                                                                       .exponent_bias = 15}}},
+            PackedValueModuleSchema{
+                .settings = ModuleSettings{.name = "packed",
+                                           .header = "Packed.h",
+                                           .namespace_name = "project"},
+                .values = {PackedValueSchema{
+                    .name = "Position",
+                    .storage_type = TypeRef{"std::uint16_t"},
+                    .segments = {PackedFieldSchema{.name = "component",
+                                                   .type = TypeRef{"project::PositionF12"},
+                                                   .bits = std::nullopt,
+                                                   .kind = PackedFieldKind::mini_float},
+                                 PackedFieldSchema{
+                                     .name = "state", .type = TypeRef{"std::uint8_t"}, .bits = 4}},
+                    .mutable_value = true}}},
+        }};
+}
+
 TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
     auto module{valid_module()};
     module.values.front().invalid_value = 0x7fffffffu;
@@ -458,6 +487,67 @@ TEST(PackedValue, RejectsCompetingFixedPointPlacementFacts) {
     velocity.relationship = SemanticRelationSchema{.kind = SemanticRelationKind::encoded_as,
                                                    .target = TypeRef{"project::VelocityQ8_4"},
                                                    .unit = std::nullopt};
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+}
+
+TEST(PackedValue, LowersMiniFloatPlacementAsRawEncodedBits) {
+    auto const files{render_modules(lower_modules(mini_float_backed_manifest()))};
+    ASSERT_EQ(files.size(), 2U);
+    auto const& header{files.back().content};
+    EXPECT_NE(header.find("using component_encoded_type = std::uint16_t;"), std::string::npos);
+    EXPECT_NE(header.find("component_bits{12}"), std::string::npos);
+    EXPECT_NE(header.find("component_maximum_encoded{component_encoded_type{0xfff}}"),
+              std::string::npos);
+    EXPECT_NE(header.find("auto component_encoded() const noexcept -> std::uint16_t"),
+              std::string::npos);
+    EXPECT_NE(header.find("try_set_component_encoded(std::uint16_t const value)"),
+              std::string::npos);
+    EXPECT_NE(header.find("value > component_maximum_encoded"), std::string::npos);
+    EXPECT_EQ(header.find("project::PositionF12"), std::string::npos);
+    EXPECT_EQ(header.find("component()"), std::string::npos);
+
+    auto wide{mini_float_backed_manifest()};
+    auto& wide_representations{std::get<RepresentationModuleSchema>(wide.modules.front())};
+    wide_representations.mini_floats.front().significand_bits = 58;
+    auto& wide_packed{std::get<PackedValueModuleSchema>(wide.modules.back()).values.front()};
+    wide_packed.storage_type = TypeRef{"std::uint64_t"};
+    wide_packed.segments.resize(1);
+    wide_packed.mutable_value = false;
+    auto const wide_files{render_modules(lower_modules(std::move(wide)))};
+    ASSERT_EQ(wide_files.size(), 2U);
+    EXPECT_NE(wide_files.back().content.find("component_bits{64}"), std::string::npos);
+    EXPECT_NE(wide_files.back().content.find("component_maximum_encoded{"
+                                             "component_encoded_type{0xffffffffffffffff}}"),
+              std::string::npos);
+    EXPECT_NE(wide_files.back().content.find(
+                  "assert(component_encoded_value <= component_maximum_encoded);"),
+              std::string::npos);
+}
+
+TEST(PackedValue, RejectsCompetingMiniFloatPlacementFacts) {
+    auto manifest{mini_float_backed_manifest()};
+    auto& packed{std::get<PackedValueModuleSchema>(manifest.modules.back())};
+    auto& component{field(packed.values.front(), 0)};
+    component.bits = 11;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    component.bits.reset();
+    component.kind = PackedFieldKind::unsigned_integer;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    component.kind = PackedFieldKind::mini_float;
+    component.minimum_value = 0;
+    component.maximum_value = 1;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    component.minimum_value.reset();
+    component.maximum_value.reset();
+    component.named_codes.push_back({.name = "Zero", .value = 0, .sentinel = false});
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    component.named_codes.clear();
+    component.range_helper = true;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    component.range_helper = false;
+    component.relationship = SemanticRelationSchema{.kind = SemanticRelationKind::encoded_as,
+                                                    .target = TypeRef{"project::PositionF12"},
+                                                    .unit = std::nullopt};
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 }
 

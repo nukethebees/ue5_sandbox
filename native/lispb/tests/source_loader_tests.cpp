@@ -289,6 +289,34 @@ TEST(SourceLoader, ReadsFixedPointPackedField) {
     EXPECT_EQ(velocity.kind, PackedFieldKind::fixed_point);
 }
 
+TEST(SourceLoader, ReadsMiniFloatPackedField) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(representation-module representations
+  :header "Representations.h"
+  :namespace project
+  (mini-float PositionF12
+    :sign-bits 1
+    :exponent-bits 5
+    :significand-bits 6
+    :bias 15))
+(packed-value-module packed
+  :header "Packed.h"
+  :namespace project
+  (packed-value Position
+    :storage std::uint16_t
+    (field component project::PositionF12 :bits auto :kind mini-float)
+    (field state std::uint8_t :bits 4)))
+)");
+
+    auto const manifest{files.load()};
+    auto const& module{std::get<PackedValueModuleSchema>(manifest.modules.back())};
+    auto const& component{std::get<PackedFieldSchema>(module.values.front().segments.front())};
+    EXPECT_EQ(component.type.name, "project::PositionF12");
+    EXPECT_FALSE(component.bits.has_value());
+    EXPECT_EQ(component.kind, PackedFieldKind::mini_float);
+}
+
 TEST(SourceLoader, RejectsUnknownPackedPhysicalOrdering) {
     TemporaryManifest files;
     files.write_root(R"(

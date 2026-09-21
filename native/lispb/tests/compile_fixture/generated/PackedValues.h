@@ -1304,4 +1304,116 @@ static_assert(sizeof(Motion) == sizeof(Motion::storage_type));
 static_assert(std::is_trivially_copyable_v<Motion>);
 static_assert(std::is_standard_layout_v<Motion>);
 
+struct PackedMiniFloat {
+    using storage_type = std::uint16_t;
+    static_assert(std::is_unsigned_v<storage_type>);
+    static_assert(std::numeric_limits<storage_type>::digits == 16);
+    using component_encoded_type = std::uint16_t;
+    static_assert(std::is_unsigned_v<std::uint16_t>);
+    static_assert(std::numeric_limits<std::uint16_t>::digits >= 12);
+
+    inline static constexpr int component_offset{0};
+    inline static constexpr int component_bits{12};
+    inline static constexpr storage_type component_value_mask{storage_type{0xfff}};
+    inline static constexpr storage_type component_mask{storage_type{0xfff}};
+    inline static constexpr component_encoded_type component_maximum_encoded{
+        component_encoded_type{0xfff}};
+    using state_type = std::uint8_t;
+
+    inline static constexpr int state_offset{12};
+    inline static constexpr int state_bits{4};
+    inline static constexpr storage_type state_value_mask{storage_type{0xf}};
+    inline static constexpr storage_type state_mask{storage_type{0xf000}};
+
+    constexpr PackedMiniFloat() noexcept = default;
+    explicit constexpr PackedMiniFloat(storage_type const raw) noexcept
+        : value_{raw} {}
+
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+
+    [[nodiscard]] static constexpr auto try_make(std::uint16_t const component_encoded_value,
+                                                 std::uint8_t const state_value,
+                                                 PackedMiniFloat& out_result) noexcept -> bool {
+        PackedMiniFloat result{storage_type{0}};
+        if (!result.try_set_component_encoded(component_encoded_value)) {
+            return false;
+        }
+        if (!result.try_set_state(state_value)) {
+            return false;
+        }
+        if (!result.is_valid()) {
+            return false;
+        }
+        out_result = result;
+        return true;
+    }
+
+    [[nodiscard]] static constexpr auto make(std::uint16_t const component_encoded_value,
+                                             std::uint8_t const state_value) noexcept
+        -> PackedMiniFloat {
+        PackedMiniFloat result;
+        [[maybe_unused]] auto const success{try_make(component_encoded_value, state_value, result)};
+        assert(success && "Packed field value does not fit.");
+        return result;
+    }
+
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+
+    [[nodiscard]] constexpr auto operator<=>(PackedMiniFloat const&) const noexcept = default;
+
+    [[nodiscard]] constexpr auto component_encoded() const noexcept -> std::uint16_t {
+        return static_cast<std::uint16_t>(static_cast<storage_type>(value_ >> component_offset) &
+                                          component_value_mask);
+    }
+
+    [[nodiscard]] constexpr auto try_set_component_encoded(std::uint16_t const value) noexcept
+        -> bool {
+        if (value > component_maximum_encoded) {
+            return false;
+        }
+        auto const encoded{static_cast<storage_type>(value)};
+        auto const cleared{
+            static_cast<storage_type>(value_ & static_cast<storage_type>(~component_mask))};
+        auto const shifted{static_cast<storage_type>(
+            static_cast<storage_type>(encoded & component_value_mask) << component_offset)};
+        value_ = static_cast<storage_type>(cleared | shifted);
+        return true;
+    }
+
+    constexpr void set_component_encoded(std::uint16_t const value) noexcept {
+        if (!try_set_component_encoded(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+
+    [[nodiscard]] constexpr auto state() const noexcept -> std::uint8_t {
+        return static_cast<std::uint8_t>(static_cast<storage_type>(value_ >> state_offset) &
+                                         state_value_mask);
+    }
+
+    [[nodiscard]] constexpr auto try_set_state(std::uint8_t const value) noexcept -> bool {
+        if (value > static_cast<std::uint8_t>(state_value_mask)) {
+            return false;
+        }
+        auto const encoded{static_cast<storage_type>(value)};
+        auto const cleared{
+            static_cast<storage_type>(value_ & static_cast<storage_type>(~state_mask))};
+        auto const shifted{static_cast<storage_type>(
+            static_cast<storage_type>(encoded & state_value_mask) << state_offset)};
+        value_ = static_cast<storage_type>(cleared | shifted);
+        return true;
+    }
+
+    constexpr void set_state(std::uint8_t const value) noexcept {
+        if (!try_set_state(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(sizeof(PackedMiniFloat) == sizeof(PackedMiniFloat::storage_type));
+static_assert(std::is_trivially_copyable_v<PackedMiniFloat>);
+static_assert(std::is_standard_layout_v<PackedMiniFloat>);
+
 } // namespace codegen_compile_fixture
