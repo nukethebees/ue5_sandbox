@@ -74,6 +74,15 @@ auto linear_quantized_type_for_field(lispb::schema::PackedType const& packed,
         &type_graph.type(field.semantic_type.type).definition);
 }
 
+auto fixed_point_type_for_field(lispb::schema::PackedType const& packed,
+                                lispb::schema::TypeGraph const& type_graph,
+                                std::string const& field_name)
+    -> lispb::schema::FixedPointType const* {
+    auto const& field{semantic_field_for(packed, field_name)};
+    return std::get_if<lispb::schema::FixedPointType>(
+        &type_graph.type(field.semantic_type.type).definition);
+}
+
 auto enum_domain(lispb::schema::EnumType const& type) -> lispb::schema::EnumDomain {
     std::vector<lispb::schema::EnumDomainInput> values;
     values.reserve(type.enumerators.size());
@@ -131,17 +140,36 @@ void lower_semantic_fields(PackedValueSchema& schema,
         if (quantized != nullptr) {
             field->type =
                 TypeRef{.name = fixed_width_integer_spelling(false, semantic_field.bit_width)};
+            continue;
+        }
+
+        auto const* fixed{std::get_if<lispb::schema::FixedPointType>(
+            &type_graph.type(semantic_field.semantic_type.type).definition)};
+        if (fixed != nullptr) {
+            field->type = TypeRef{
+                .name = fixed_width_integer_spelling(fixed->signedness, semantic_field.bit_width)};
         }
     }
 }
 
 auto packed_field_type_alias(PackedFieldSchema const& field) -> std::string {
-    return field.name +
-           (field.kind == PackedFieldKind::linear_quantized ? "_encoded_type" : "_type");
+    if (field.kind == PackedFieldKind::linear_quantized) {
+        return field.name + "_encoded_type";
+    }
+    if (field.kind == PackedFieldKind::fixed_point) {
+        return field.name + "_raw_type";
+    }
+    return field.name + "_type";
 }
 
 auto packed_field_accessor(PackedFieldSchema const& field) -> std::string {
-    return field.name + (field.kind == PackedFieldKind::linear_quantized ? "_encoded" : "");
+    if (field.kind == PackedFieldKind::linear_quantized) {
+        return field.name + "_encoded";
+    }
+    if (field.kind == PackedFieldKind::fixed_point) {
+        return field.name + "_raw";
+    }
+    return field.name;
 }
 
 auto packed_field_value_name(PackedFieldSchema const& field) -> std::string {
@@ -159,6 +187,7 @@ struct PackedFieldLayout {
     CppType type;
     lispb::schema::EnumType const* enum_type;
     lispb::schema::LinearQuantizedType const* linear_quantized_type;
+    lispb::schema::FixedPointType const* fixed_point_type;
     std::uint32_t bits;
     int offset;
     std::uint64_t value_mask;
@@ -199,6 +228,7 @@ auto packed_field_layouts(PackedValueSchema const& schema,
             .enum_type = enum_type_for_field(packed, type_graph, field->name),
             .linear_quantized_type =
                 linear_quantized_type_for_field(packed, type_graph, field->name),
+            .fixed_point_type = fixed_point_type_for_field(packed, type_graph, field->name),
             .bits = bits,
             .offset = offset,
             .value_mask = value_mask,
@@ -302,6 +332,16 @@ void append_immutable_validation(std::string& output,
         }
         if (packed_field.linear_quantized_type != nullptr) {
             output += "        assert(" + value_name + " <= " + field.name + "_maximum_encoded);\n";
+            continue;
+        }
+        if (packed_field.fixed_point_type != nullptr) {
+            if (packed_field.fixed_point_type->signedness) {
+                output += "        assert(" + value_name + " >= " + field.name +
+                          "_minimum_raw && " + value_name + " <= " + field.name +
+                          "_maximum_raw);\n";
+            } else {
+                output += "        assert(" + value_name + " <= " + field.name + "_maximum_raw);\n";
+            }
             continue;
         }
         if (field.kind == PackedFieldKind::enumeration) {
@@ -456,6 +496,7 @@ auto packed_value_text(PackedValueSchema const& source_schema,
         auto const field_type{resolve_type(field->type, types)};
         auto const* quantized_type{
             linear_quantized_type_for_field(packed, type_graph, field->name)};
+        auto const* fixed_type{fixed_point_type_for_field(packed, type_graph, field->name)};
         dependencies.insert(
             dependencies.end(), field_type.dependencies.begin(), field_type.dependencies.end());
         if (auto dependency{dependency_for_integer(field_type)}) {
@@ -479,6 +520,13 @@ auto packed_value_text(PackedValueSchema const& source_schema,
             output += "    static_assert(std::is_unsigned_v<" + field_type.spelling + ">);\n";
             output += "    static_assert(std::numeric_limits<" + field_type.spelling +
                       ">::digits >= " + std::to_string(field_bits) + ");\n";
+        } else if (field->kind == PackedFieldKind::fixed_point) {
+            output += "    static_assert(std::is_" +
+                      std::string{fixed_type->signedness ? "signed" : "unsigned"} + "_v<" +
+                      field_type.spelling + ">);\n";
+            output += "    static_assert(std::numeric_limits<" + field_type.spelling + ">::digits" +
+                      (fixed_type->signedness ? " + 1" : "") + " >= " + std::to_string(field_bits) +
+                      ");\n";
         }
 
         auto const value_mask{field_bits == 64 ? all_bits : (std::uint64_t{1} << field_bits) - 1};
@@ -495,6 +543,31 @@ auto packed_value_text(PackedValueSchema const& source_schema,
             output += "    inline static constexpr " + packed_field_type_alias(*field) + " " +
                       field->name + "_maximum_encoded{" + packed_field_type_alias(*field) + "{" +
                       hex_value(maximum_quantized_code(*quantized_type)) + "}};\n";
+        }
+        if (fixed_type != nullptr) {
+            auto const raw_type{packed_field_type_alias(*field)};
+            if (fixed_type->signedness) {
+                auto const native_width{*packed_signed_width(field_type.spelling)};
+                if (field_bits == static_cast<std::uint32_t>(native_width)) {
+                    output += "    inline static constexpr " + raw_type + " " + field->name +
+                              "_minimum_raw{std::numeric_limits<" + raw_type + ">::min()};\n";
+                    output += "    inline static constexpr " + raw_type + " " + field->name +
+                              "_maximum_raw{std::numeric_limits<" + raw_type + ">::max()};\n";
+                } else {
+                    auto const sign_magnitude{std::uint64_t{1} << (field_bits - 1)};
+                    output += "    inline static constexpr " + raw_type + " " + field->name +
+                              "_minimum_raw{static_cast<" + raw_type + ">(-" +
+                              std::to_string(sign_magnitude) + ")};\n";
+                    output += "    inline static constexpr " + raw_type + " " + field->name +
+                              "_maximum_raw{static_cast<" + raw_type + ">(" +
+                              std::to_string(sign_magnitude - 1) + ")};\n";
+                }
+            } else {
+                output += "    inline static constexpr " + raw_type + " " + field->name +
+                          "_minimum_raw{" + raw_type + "{0}};\n";
+                output += "    inline static constexpr " + raw_type + " " + field->name +
+                          "_maximum_raw{" + raw_type + "{" + hex_value(value_mask) + "}};\n";
+            }
         }
         if (field->kind == PackedFieldKind::signed_integer) {
             auto const signed_width{*packed_signed_width(field_type.spelling)};
@@ -623,6 +696,7 @@ auto packed_value_text(PackedValueSchema const& source_schema,
         auto const field_type{resolve_type(field.type, types)};
         auto const field_bits{resolved_width_for_field(packed, field.name)};
         auto const accessor{packed_field_accessor(field)};
+        auto const* fixed_type{fixed_point_type_for_field(packed, type_graph, field.name)};
         output += "\n    [[nodiscard]] constexpr auto " + accessor + "() const noexcept -> " +
                   field_type.spelling + " {\n";
         auto const extracted{"static_cast<storage_type>(value_ >> " + field.name + "_offset) & " +
@@ -633,7 +707,8 @@ auto packed_value_text(PackedValueSchema const& source_schema,
             output += "        auto const encoded{static_cast<" + field.name +
                       "_underlying_type>(" + extracted + ")};\n";
             output += "        return static_cast<" + field_type.spelling + ">(encoded);\n";
-        } else if (field.kind == PackedFieldKind::signed_integer) {
+        } else if (field.kind == PackedFieldKind::signed_integer ||
+                   (fixed_type != nullptr && fixed_type->signedness)) {
             auto const sign_bit{std::uint64_t{1} << (field_bits - 1)};
             output += "        auto const encoded{" + extracted + "};\n";
             output += "        auto const sign_bit{storage_type{" + hex_value(sign_bit) + "}};\n";
@@ -644,7 +719,8 @@ auto packed_value_text(PackedValueSchema const& source_schema,
             output += "            static_cast<storage_type>(~encoded & " + field.name +
                       "_value_mask) + storage_type{1})};\n";
             output += "        if (magnitude == sign_bit) {\n";
-            output += "            return " + field.name + "_minimum;\n";
+            output += "            return " + field.name +
+                      (fixed_type != nullptr ? "_minimum_raw;\n" : "_minimum;\n");
             output += "        }\n";
             output += "        return static_cast<" + field_type.spelling + ">(\n";
             output += "            -static_cast<" + field_type.spelling + ">(magnitude));\n";
@@ -661,6 +737,15 @@ auto packed_value_text(PackedValueSchema const& source_schema,
                 output += "        auto const encoded{static_cast<storage_type>(value)};\n";
             } else if (field.kind == PackedFieldKind::linear_quantized) {
                 output += "        if (value > " + field.name + "_maximum_encoded) {\n";
+                output += "            return false;\n        }\n";
+                output += "        auto const encoded{static_cast<storage_type>(value)};\n";
+            } else if (field.kind == PackedFieldKind::fixed_point) {
+                if (fixed_type->signedness) {
+                    output += "        if (value < " + field.name + "_minimum_raw || value > " +
+                              field.name + "_maximum_raw) {\n";
+                } else {
+                    output += "        if (value > " + field.name + "_maximum_raw) {\n";
+                }
                 output += "            return false;\n        }\n";
                 output += "        auto const encoded{static_cast<storage_type>(value)};\n";
             } else if (field.kind == PackedFieldKind::enumeration) {

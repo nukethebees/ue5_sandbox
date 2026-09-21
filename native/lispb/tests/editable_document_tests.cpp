@@ -3240,6 +3240,216 @@ TEST(EditableSchemaDocument, BindsPackedFieldToLinearQuantizedRepresentation) {
     EXPECT_TRUE(reloaded_field.bit_width_auto);
 }
 
+TEST(EditableSchemaDocument, CreatesFixedPointAndBindsPackedFieldAcrossModules) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const existing_fixed{
+        declaration_id(document, "authored_representations", "ExistingFixed", "authored")};
+    auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
+    auto const created{document.allocate_declaration_id()};
+    auto const original_field{std::get<codegen::PackedFieldSchema>(
+        document.packed_value_schema(packed)->segments.front())};
+    ASSERT_EQ(original_field.kind, codegen::PackedFieldKind::unsigned_integer);
+
+    auto added{document.apply(CreateFixedPoint{
+        .declaration = created,
+        .module_index = document.declaration(existing_fixed)->module_index,
+        .schema = codegen::FixedPointSchema{.name = "ValueFixed",
+                                            .signedness = false,
+                                            .total_bits = 8,
+                                            .fractional_bits = 4,
+                                            .rounding = codegen::FixedPointRounding::nearest_even},
+        .insertion_index = std::nullopt})};
+    ASSERT_TRUE(added.has_value()) << added.error().message;
+    ASSERT_TRUE(*added);
+
+    auto replacement{*document.packed_value_schema(packed)};
+    auto& field{std::get<codegen::PackedFieldSchema>(replacement.segments.front())};
+    field.type = codegen::TypeRef{"authored::ValueFixed"};
+    field.kind = codegen::PackedFieldKind::fixed_point;
+    field.bits.reset();
+    auto bound{document.apply(
+        ReplacePackedValue{.declaration = packed, .schema = std::move(replacement)})};
+    ASSERT_TRUE(bound.has_value()) << bound.error().message;
+    ASSERT_TRUE(*bound);
+
+    auto const fixed_type{document.types().find(document.declaration(created)->identity)};
+    ASSERT_TRUE(fixed_type.has_value());
+    auto const& placed_field{std::get<PackedField>(packed_type(document, packed).segments.front())};
+    EXPECT_EQ(placed_field.semantic_type.type, *fixed_type);
+    EXPECT_EQ(placed_field.bit_width, 8U);
+    EXPECT_TRUE(placed_field.bit_width_auto);
+    auto const& representation{
+        std::get<FixedPointType>(document.types().type(*fixed_type).definition)};
+    EXPECT_EQ(representation.fractional_bits, 4U);
+
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(
+        std::get<codegen::PackedFieldSchema>(document.packed_value_schema(packed)->segments.front())
+            .type.name,
+        original_field.type.name);
+    EXPECT_NE(document.declaration(created), nullptr);
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.declaration(created), nullptr);
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.redo().value());
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_TRUE(std::ranges::any_of(*preview, [](auto const& update) {
+        return update.updated.find("ValueFixed") != std::string::npos &&
+               update.updated.find(":fractional-bits 4") != std::string::npos;
+    }));
+    EXPECT_TRUE(std::ranges::any_of(*preview, [](auto const& update) {
+        return update.updated.find("authored::ValueFixed") != std::string::npos &&
+               update.updated.find(":kind fixed-point") != std::string::npos &&
+               update.updated.find("; Keep the value segment note.") != std::string::npos;
+    }));
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_fixed{
+        declaration_id(reloaded, "authored_representations", "ValueFixed", "authored")};
+    auto const reloaded_packed{
+        declaration_id(reloaded, "authored_packed", "ExistingPacked", "authored")};
+    auto const resolved_fixed_type{
+        reloaded.types().find(reloaded.declaration(reloaded_fixed)->identity)};
+    ASSERT_TRUE(resolved_fixed_type.has_value());
+    auto const& reloaded_field{
+        std::get<PackedField>(packed_type(reloaded, reloaded_packed).segments.front())};
+    EXPECT_EQ(reloaded_field.semantic_type.type, *resolved_fixed_type);
+    EXPECT_EQ(reloaded_field.bit_width, 8U);
+    EXPECT_TRUE(reloaded_field.bit_width_auto);
+    EXPECT_EQ(reloaded.fixed_point_schema(reloaded_fixed)->fractional_bits, 4U);
+}
+
+TEST(EditableSchemaDocument, RollsBackFixedPointCreationWhenPackedBindingFails) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const existing_fixed{
+        declaration_id(document, "authored_representations", "ExistingFixed", "authored")};
+    auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
+    auto const created{document.allocate_declaration_id()};
+    auto const identity{TypeIdentity{.origin = TypeOrigin::declaration,
+                                     .module_name = "authored_representations",
+                                     .namespace_name = "authored",
+                                     .name = "TooNarrowFixed"}};
+    auto added{document.apply(CreateFixedPoint{
+        .declaration = created,
+        .module_index = document.declaration(existing_fixed)->module_index,
+        .schema = codegen::FixedPointSchema{.name = identity.name,
+                                            .signedness = false,
+                                            .total_bits = 7,
+                                            .fractional_bits = 3,
+                                            .rounding = codegen::FixedPointRounding::nearest_even},
+        .insertion_index = std::nullopt})};
+    ASSERT_TRUE(added.has_value()) << added.error().message;
+    ASSERT_TRUE(*added);
+
+    auto replacement{*document.packed_value_schema(packed)};
+    auto& field{std::get<codegen::PackedFieldSchema>(replacement.segments.front())};
+    field.type = codegen::TypeRef{"authored::TooNarrowFixed"};
+    field.kind = codegen::PackedFieldKind::fixed_point;
+    field.bits = 8;
+    auto rejected{document.apply(
+        ReplacePackedValue{.declaration = packed, .schema = std::move(replacement)})};
+    ASSERT_FALSE(rejected.has_value());
+    EXPECT_NE(rejected.error().message.find("must equal"), std::string::npos);
+    EXPECT_EQ(
+        std::get<codegen::PackedFieldSchema>(document.packed_value_schema(packed)->segments.front())
+            .type.name,
+        "std::uint8_t");
+
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.declaration(created), nullptr);
+    EXPECT_FALSE(document.types().find(identity).has_value());
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+}
+
+TEST(EditableSchemaDocument, BindsPackedFieldToFixedPointRepresentation) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const fixed{
+        declaration_id(document, "authored_representations", "ExistingFixed", "authored")};
+    auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
+
+    auto replacement{*document.packed_value_schema(packed)};
+    auto& field{std::get<codegen::PackedFieldSchema>(replacement.segments.front())};
+    field.type = codegen::TypeRef{"authored::ExistingFixed"};
+    field.bits.reset();
+    field.kind = codegen::PackedFieldKind::fixed_point;
+    field.range_helper = false;
+    field.minimum_value.reset();
+    field.maximum_value.reset();
+    field.named_codes.clear();
+    field.relationship.reset();
+    auto bound{document.apply(
+        ReplacePackedValue{.declaration = packed, .schema = std::move(replacement)})};
+    ASSERT_TRUE(bound.has_value()) << bound.error().message;
+    ASSERT_TRUE(*bound);
+
+    auto const fixed_type{document.types().find(document.declaration(fixed)->identity)};
+    auto const packed_type_id{document.types().find(document.declaration(packed)->identity)};
+    ASSERT_TRUE(fixed_type.has_value());
+    ASSERT_TRUE(packed_type_id.has_value());
+    auto const& bound_field{std::get<PackedField>(packed_type(document, packed).segments.front())};
+    EXPECT_EQ(bound_field.semantic_type.type, *fixed_type);
+    EXPECT_EQ(bound_field.kind, codegen::PackedFieldKind::fixed_point);
+    EXPECT_EQ(bound_field.bit_width, 8U);
+    EXPECT_TRUE(bound_field.bit_width_auto);
+    EXPECT_NE(std::ranges::find(document.types().dependencies_of(*packed_type_id), *fixed_type),
+              document.types().dependencies_of(*packed_type_id).end());
+
+    auto invalid{*document.packed_value_schema(packed)};
+    std::get<codegen::PackedFieldSchema>(invalid.segments.front()).bits = 7;
+    auto rejected{
+        document.apply(ReplacePackedValue{.declaration = packed, .schema = std::move(invalid)})};
+    ASSERT_FALSE(rejected.has_value());
+    EXPECT_NE(rejected.error().message.find("must equal"), std::string::npos);
+    EXPECT_TRUE(
+        std::get<PackedField>(packed_type(document, packed).segments.front()).bit_width_auto);
+
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(
+        std::get<codegen::PackedFieldSchema>(document.packed_value_schema(packed)->segments.front())
+            .type.name,
+        "std::uint8_t");
+    ASSERT_TRUE(document.redo().value());
+    EXPECT_EQ(
+        std::get<PackedField>(packed_type(document, packed).segments.front()).semantic_type.type,
+        *document.types().find(document.declaration(fixed)->identity));
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find("authored::ExistingFixed"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":bits auto"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":kind fixed-point"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the value segment note."), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the counter segment note."), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_fixed{
+        declaration_id(reloaded, "authored_representations", "ExistingFixed", "authored")};
+    auto const reloaded_packed{
+        declaration_id(reloaded, "authored_packed", "ExistingPacked", "authored")};
+    auto const resolved_fixed_type{
+        reloaded.types().find(reloaded.declaration(reloaded_fixed)->identity)};
+    ASSERT_TRUE(resolved_fixed_type.has_value());
+    auto const& reloaded_field{
+        std::get<PackedField>(packed_type(reloaded, reloaded_packed).segments.front())};
+    EXPECT_EQ(reloaded_field.semantic_type.type, *resolved_fixed_type);
+    EXPECT_EQ(reloaded_field.kind, codegen::PackedFieldKind::fixed_point);
+    EXPECT_EQ(reloaded_field.bit_width, 8U);
+    EXPECT_TRUE(reloaded_field.bit_width_auto);
+}
+
 TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsPackedValues) {
     TemporarySchema files;
     auto document{files.load()};

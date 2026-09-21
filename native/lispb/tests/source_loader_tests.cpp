@@ -261,6 +261,34 @@ TEST(SourceLoader, ReadsLinearQuantizedPackedField) {
     EXPECT_EQ(health.kind, PackedFieldKind::linear_quantized);
 }
 
+TEST(SourceLoader, ReadsFixedPointPackedField) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(representation-module representations
+  :header "Representations.h"
+  :namespace project
+  (fixed-point VelocityQ12_4
+    :signed true
+    :total-bits 16
+    :fractional-bits 4
+    :rounding toward-zero))
+(packed-value-module packed
+  :header "Packed.h"
+  :namespace project
+  (packed-value Motion
+    :storage std::uint32_t
+    (field velocity project::VelocityQ12_4 :bits auto :kind fixed-point)
+    (field state std::uint16_t :bits 16)))
+)");
+
+    auto const manifest{files.load()};
+    auto const& module{std::get<PackedValueModuleSchema>(manifest.modules.back())};
+    auto const& velocity{std::get<PackedFieldSchema>(module.values.front().segments.front())};
+    EXPECT_EQ(velocity.type.name, "project::VelocityQ12_4");
+    EXPECT_FALSE(velocity.bits.has_value());
+    EXPECT_EQ(velocity.kind, PackedFieldKind::fixed_point);
+}
+
 TEST(SourceLoader, RejectsUnknownPackedPhysicalOrdering) {
     TemporaryManifest files;
     files.write_root(R"(

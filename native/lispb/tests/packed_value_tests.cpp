@@ -134,6 +134,36 @@ auto quantized_backed_manifest(std::uint64_t const reserved_codes = 2) -> Manife
         }};
 }
 
+auto fixed_point_backed_manifest(bool const signedness = true) -> Manifest {
+    return Manifest{
+        .schema_version = manifest_schema_version,
+        .modules = {
+            RepresentationModuleSchema{
+                .settings = ModuleSettings{.name = "representations",
+                                           .header = "Representations.h",
+                                           .namespace_name = "project"},
+                .fixed_points = {FixedPointSchema{.name = "VelocityQ8_4",
+                                                  .signedness = signedness,
+                                                  .total_bits = 12,
+                                                  .fractional_bits = 4,
+                                                  .rounding = FixedPointRounding::nearest_even}}},
+            PackedValueModuleSchema{
+                .settings = ModuleSettings{.name = "packed",
+                                           .header = "Packed.h",
+                                           .namespace_name = "project"},
+                .values = {PackedValueSchema{
+                    .name = "Motion",
+                    .storage_type = TypeRef{"std::uint16_t"},
+                    .segments = {PackedFieldSchema{.name = "velocity",
+                                                   .type = TypeRef{"project::VelocityQ8_4"},
+                                                   .bits = std::nullopt,
+                                                   .kind = PackedFieldKind::fixed_point},
+                                 PackedFieldSchema{
+                                     .name = "state", .type = TypeRef{"std::uint8_t"}, .bits = 4}},
+                    .mutable_value = true}}},
+        }};
+}
+
 TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
     auto module{valid_module()};
     module.values.front().invalid_value = 0x7fffffffu;
@@ -358,6 +388,76 @@ TEST(PackedValue, RejectsCompetingLinearQuantizedPlacementFacts) {
     health.minimum_value.reset();
     health.maximum_value.reset();
     health.range_helper = true;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+}
+
+TEST(PackedValue, LowersFixedPointPlacementToExplicitRawCodeApi) {
+    auto const files{render_modules(lower_modules(fixed_point_backed_manifest()))};
+    ASSERT_EQ(files.size(), 2);
+    auto const& header{files.back().content};
+
+    EXPECT_NE(header.find("using velocity_raw_type = std::int16_t;"), std::string::npos);
+    EXPECT_NE(header.find("velocity_minimum_raw{static_cast<velocity_raw_type>(-2048)}"),
+              std::string::npos);
+    EXPECT_NE(header.find("velocity_maximum_raw{static_cast<velocity_raw_type>(2047)}"),
+              std::string::npos);
+    EXPECT_NE(header.find("try_make(std::int16_t const velocity_raw_value"), std::string::npos);
+    EXPECT_NE(header.find("auto velocity_raw() const noexcept -> std::int16_t"), std::string::npos);
+    EXPECT_NE(header.find("try_set_velocity_raw(std::int16_t const value)"), std::string::npos);
+    EXPECT_NE(header.find("value < velocity_minimum_raw || value > velocity_maximum_raw"),
+              std::string::npos);
+    EXPECT_EQ(header.find("project::VelocityQ8_4"), std::string::npos);
+    EXPECT_EQ(header.find("velocity()"), std::string::npos);
+
+    auto const unsigned_files{render_modules(lower_modules(fixed_point_backed_manifest(false)))};
+    ASSERT_EQ(unsigned_files.size(), 2);
+    auto const& unsigned_header{unsigned_files.back().content};
+    EXPECT_NE(unsigned_header.find("using velocity_raw_type = std::uint16_t;"), std::string::npos);
+    EXPECT_NE(unsigned_header.find("velocity_maximum_raw{velocity_raw_type{0xfff}}"),
+              std::string::npos);
+
+    auto immutable_manifest{fixed_point_backed_manifest()};
+    std::get<PackedValueModuleSchema>(immutable_manifest.modules.back())
+        .values.front()
+        .mutable_value = false;
+    auto const immutable_files{render_modules(lower_modules(immutable_manifest))};
+    ASSERT_EQ(immutable_files.size(), 2);
+    EXPECT_NE(immutable_files.back().content.find(
+                  "assert(velocity_raw_value >= velocity_minimum_raw && velocity_raw_value <= "
+                  "velocity_maximum_raw);"),
+              std::string::npos);
+}
+
+TEST(PackedValue, RejectsCompetingFixedPointPlacementFacts) {
+    auto manifest{fixed_point_backed_manifest()};
+    auto& packed{std::get<PackedValueModuleSchema>(manifest.modules.back())};
+    auto& velocity{field(packed.values.front(), 0)};
+
+    velocity.bits = 11;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    velocity.bits.reset();
+    velocity.kind = PackedFieldKind::signed_integer;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    velocity.kind = PackedFieldKind::fixed_point;
+    velocity.minimum_value = -10;
+    velocity.maximum_value = 10;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    velocity.minimum_value.reset();
+    velocity.maximum_value.reset();
+    velocity.named_codes.push_back({.name = "Zero", .value = 0, .sentinel = false});
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    velocity.named_codes.clear();
+    velocity.range_helper = true;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    velocity.range_helper = false;
+    velocity.relationship = SemanticRelationSchema{.kind = SemanticRelationKind::encoded_as,
+                                                   .target = TypeRef{"project::VelocityQ8_4"},
+                                                   .unit = std::nullopt};
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 }
 

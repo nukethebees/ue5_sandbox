@@ -7,6 +7,7 @@ enum class PackedFieldKind {
     signed_integer,
     enumeration,
     linear_quantized,
+    fixed_point,
 };
 
 } // namespace codegen

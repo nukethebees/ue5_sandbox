@@ -488,6 +488,36 @@ TEST(GeneratedPackedValue, RoundTripsLinearQuantizedEncodedCodes) {
     EXPECT_EQ(made.state(), 7);
 }
 
+TEST(GeneratedPackedValue, RoundTripsFixedPointRawCodes) {
+    static_assert(Motion::velocity_bits == 12);
+    static_assert(Motion::velocity_minimum_raw == -2048);
+    static_assert(Motion::velocity_maximum_raw == 2047);
+    static_assert(Motion::fraction_bits == 7);
+    static_assert(Motion::fraction_minimum_raw == 0);
+    static_assert(Motion::fraction_maximum_raw == 127);
+
+    Motion value;
+    EXPECT_TRUE(value.try_set_velocity_raw(-2048));
+    EXPECT_TRUE(value.try_set_fraction_raw(127));
+    EXPECT_TRUE(value.try_set_state(0x1abc));
+    EXPECT_EQ(value.velocity_raw(), -2048);
+    EXPECT_EQ(value.fraction_raw(), 127);
+    EXPECT_EQ(value.state(), 0x1abc);
+    EXPECT_EQ(value.raw_value(), 0xd5e7f800u);
+
+    auto const before_failure{value.raw_value()};
+    EXPECT_FALSE(value.try_set_velocity_raw(-2049));
+    EXPECT_FALSE(value.try_set_velocity_raw(2048));
+    EXPECT_FALSE(value.try_set_fraction_raw(128));
+    EXPECT_EQ(value.raw_value(), before_failure);
+
+    Motion made;
+    EXPECT_TRUE(Motion::try_make(42, 64, 7, made));
+    EXPECT_EQ(made.velocity_raw(), 42);
+    EXPECT_EQ(made.fraction_raw(), 64);
+    EXPECT_EQ(made.state(), 7);
+}
+
 TEST(GeneratedPackedValue, GeneratesConstructionValidationAndRangeHelpers) {
     static_assert(CheckedValue::invalid_value == 0x7fffffffu);
     static_assert(CheckedValue::serial_range_fits(0, CheckedValue::serial_value_mask + 1));

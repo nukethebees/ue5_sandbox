@@ -651,6 +651,8 @@ void validate_packed_values(PackedValueModuleSchema const& module,
                                                 : nullptr};
             auto const* quantized{
                 field != nullptr ? find_linear_quantized(field->type, types, modules) : nullptr};
+            auto const* fixed{field != nullptr ? find_fixed_point(field->type, types, modules)
+                                               : nullptr};
             auto const segment_bits{field != nullptr
                                         ? derive_packed_field_width(*field, types, modules)
                                         : packed_segment_bits(segment)};
@@ -664,6 +666,11 @@ void validate_packed_values(PackedValueModuleSchema const& module,
                     throw std::invalid_argument{
                         segment_context +
                         " linear-quantized type does not resolve to a supported representation"};
+                }
+                if (field != nullptr && field->kind == PackedFieldKind::fixed_point) {
+                    throw std::invalid_argument{
+                        segment_context +
+                        " fixed-point type does not resolve to a supported representation"};
                 }
                 if (field != nullptr && (field->kind == PackedFieldKind::signed_integer ||
                                          field->kind == PackedFieldKind::unsigned_integer)) {
@@ -701,11 +708,14 @@ void validate_packed_values(PackedValueModuleSchema const& module,
             require_identifier(field->name, context + " field name");
             validate_type(field->type, types, field_context);
             if (field->relationship.has_value()) {
-                if (quantized != nullptr) {
+                if (quantized != nullptr || fixed != nullptr) {
                     throw std::invalid_argument{
                         field_context +
-                        " linear-quantized representation owns its semantic relationship through "
-                        "its source scalar"};
+                        (quantized != nullptr
+                             ? " linear-quantized representation owns its semantic relationship "
+                               "through its source scalar"
+                             : " fixed-point representation cannot carry an integer-field "
+                               "semantic relationship")};
                 }
                 validate_semantic_relation(
                     *field->relationship, types, field_context + " relationship");
@@ -727,15 +737,17 @@ void validate_packed_values(PackedValueModuleSchema const& module,
             }
 
             auto const field_type{resolve_type(field->type, types)};
-            if ((scalar != nullptr || quantized != nullptr) &&
+            if ((scalar != nullptr || quantized != nullptr || fixed != nullptr) &&
                 (field->minimum_value.has_value() || field->maximum_value.has_value() ||
                  !field->named_codes.empty())) {
                 throw std::invalid_argument{
                     field_context +
                     (scalar != nullptr
                          ? " integer-scalar type owns its semantic range and named codes"
-                         : " linear-quantized representation owns its semantic domain and code "
-                           "space")};
+                     : quantized != nullptr
+                         ? " linear-quantized representation owns its semantic domain and code "
+                           "space"
+                         : " fixed-point representation owns its raw and numerical domains")};
             }
             if (quantized != nullptr) {
                 if (field->kind != PackedFieldKind::linear_quantized) {
@@ -759,6 +771,26 @@ void validate_packed_values(PackedValueModuleSchema const& module,
                     field_context +
                     " ':kind linear-quantized' type must resolve to a linear-quantized "
                     "representation"};
+            } else if (fixed != nullptr) {
+                if (field->kind != PackedFieldKind::fixed_point) {
+                    throw std::invalid_argument{
+                        field_context + " kind must be 'fixed-point' for its representation type"};
+                }
+                if (field->bits.has_value() &&
+                    *field->bits != static_cast<int>(fixed->total_bits)) {
+                    throw std::invalid_argument{
+                        field_context + " width must equal its fixed-point representation's " +
+                        std::to_string(fixed->total_bits) + "-bit encoding"};
+                }
+                if (field->range_helper) {
+                    throw std::invalid_argument{
+                        field_context +
+                        " fixed-point representation cannot use an integer range helper"};
+                }
+            } else if (field->kind == PackedFieldKind::fixed_point) {
+                throw std::invalid_argument{
+                    field_context +
+                    " ':kind fixed-point' type must resolve to a fixed-point representation"};
             } else if (scalar != nullptr) {
                 auto const expected_kind{scalar->signedness ? PackedFieldKind::signed_integer
                                                             : PackedFieldKind::unsigned_integer};
@@ -842,7 +874,7 @@ void validate_packed_values(PackedValueModuleSchema const& module,
                 throw std::invalid_argument{field_context +
                                             " range helper requires an unsigned integer field"};
             }
-            if (scalar == nullptr && quantized == nullptr) {
+            if (scalar == nullptr && quantized == nullptr && fixed == nullptr) {
                 if (field->minimum_value.has_value() != field->maximum_value.has_value()) {
                     throw std::invalid_argument{
                         field_context + " semantic range requires both minimum and maximum"};
@@ -932,6 +964,15 @@ void validate_packed_values(PackedValueModuleSchema const& module,
                 if (value.mutable_value) {
                     names.push_back("set_" + field->name + "_encoded");
                     names.push_back("try_set_" + field->name + "_encoded");
+                }
+            } else if (fixed != nullptr) {
+                names.push_back(field->name + "_raw_type");
+                names.push_back(field->name + "_raw");
+                names.push_back(field->name + "_minimum_raw");
+                names.push_back(field->name + "_maximum_raw");
+                if (value.mutable_value) {
+                    names.push_back("set_" + field->name + "_raw");
+                    names.push_back("try_set_" + field->name + "_raw");
                 }
             } else {
                 names.push_back(field->name + "_type");

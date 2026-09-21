@@ -1142,4 +1142,166 @@ static_assert(sizeof(Vitals) == sizeof(Vitals::storage_type));
 static_assert(std::is_trivially_copyable_v<Vitals>);
 static_assert(std::is_standard_layout_v<Vitals>);
 
+struct Motion {
+    using storage_type = std::uint32_t;
+    static_assert(std::is_unsigned_v<storage_type>);
+    static_assert(std::numeric_limits<storage_type>::digits == 32);
+    using velocity_raw_type = std::int16_t;
+    static_assert(std::is_signed_v<std::int16_t>);
+    static_assert(std::numeric_limits<std::int16_t>::digits + 1 >= 12);
+
+    inline static constexpr int velocity_offset{0};
+    inline static constexpr int velocity_bits{12};
+    inline static constexpr storage_type velocity_value_mask{storage_type{0xfff}};
+    inline static constexpr storage_type velocity_mask{storage_type{0xfff}};
+    inline static constexpr velocity_raw_type velocity_minimum_raw{
+        static_cast<velocity_raw_type>(-2048)};
+    inline static constexpr velocity_raw_type velocity_maximum_raw{
+        static_cast<velocity_raw_type>(2047)};
+    using fraction_raw_type = std::uint8_t;
+    static_assert(std::is_unsigned_v<std::uint8_t>);
+    static_assert(std::numeric_limits<std::uint8_t>::digits >= 7);
+
+    inline static constexpr int fraction_offset{12};
+    inline static constexpr int fraction_bits{7};
+    inline static constexpr storage_type fraction_value_mask{storage_type{0x7f}};
+    inline static constexpr storage_type fraction_mask{storage_type{0x7f000}};
+    inline static constexpr fraction_raw_type fraction_minimum_raw{fraction_raw_type{0}};
+    inline static constexpr fraction_raw_type fraction_maximum_raw{fraction_raw_type{0x7f}};
+    using state_type = std::uint16_t;
+
+    inline static constexpr int state_offset{19};
+    inline static constexpr int state_bits{13};
+    inline static constexpr storage_type state_value_mask{storage_type{0x1fff}};
+    inline static constexpr storage_type state_mask{storage_type{0xfff80000}};
+
+    constexpr Motion() noexcept = default;
+    explicit constexpr Motion(storage_type const raw) noexcept
+        : value_{raw} {}
+
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+
+    [[nodiscard]] static constexpr auto try_make(std::int16_t const velocity_raw_value,
+                                                 std::uint8_t const fraction_raw_value,
+                                                 std::uint16_t const state_value,
+                                                 Motion& out_result) noexcept -> bool {
+        Motion result{storage_type{0}};
+        if (!result.try_set_velocity_raw(velocity_raw_value)) {
+            return false;
+        }
+        if (!result.try_set_fraction_raw(fraction_raw_value)) {
+            return false;
+        }
+        if (!result.try_set_state(state_value)) {
+            return false;
+        }
+        if (!result.is_valid()) {
+            return false;
+        }
+        out_result = result;
+        return true;
+    }
+
+    [[nodiscard]] static constexpr auto make(std::int16_t const velocity_raw_value,
+                                             std::uint8_t const fraction_raw_value,
+                                             std::uint16_t const state_value) noexcept -> Motion {
+        Motion result;
+        [[maybe_unused]] auto const success{
+            try_make(velocity_raw_value, fraction_raw_value, state_value, result)};
+        assert(success && "Packed field value does not fit.");
+        return result;
+    }
+
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool { return true; }
+
+    [[nodiscard]] constexpr auto operator<=>(Motion const&) const noexcept = default;
+
+    [[nodiscard]] constexpr auto velocity_raw() const noexcept -> std::int16_t {
+        auto const encoded{static_cast<storage_type>(value_ >> velocity_offset) &
+                           velocity_value_mask};
+        auto const sign_bit{storage_type{0x800}};
+        if ((encoded & sign_bit) == 0) {
+            return static_cast<std::int16_t>(encoded);
+        }
+        auto const magnitude{static_cast<storage_type>(
+            static_cast<storage_type>(~encoded & velocity_value_mask) + storage_type{1})};
+        if (magnitude == sign_bit) {
+            return velocity_minimum_raw;
+        }
+        return static_cast<std::int16_t>(-static_cast<std::int16_t>(magnitude));
+    }
+
+    [[nodiscard]] constexpr auto try_set_velocity_raw(std::int16_t const value) noexcept -> bool {
+        if (value < velocity_minimum_raw || value > velocity_maximum_raw) {
+            return false;
+        }
+        auto const encoded{static_cast<storage_type>(value)};
+        auto const cleared{
+            static_cast<storage_type>(value_ & static_cast<storage_type>(~velocity_mask))};
+        auto const shifted{static_cast<storage_type>(
+            static_cast<storage_type>(encoded & velocity_value_mask) << velocity_offset)};
+        value_ = static_cast<storage_type>(cleared | shifted);
+        return true;
+    }
+
+    constexpr void set_velocity_raw(std::int16_t const value) noexcept {
+        if (!try_set_velocity_raw(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+
+    [[nodiscard]] constexpr auto fraction_raw() const noexcept -> std::uint8_t {
+        return static_cast<std::uint8_t>(static_cast<storage_type>(value_ >> fraction_offset) &
+                                         fraction_value_mask);
+    }
+
+    [[nodiscard]] constexpr auto try_set_fraction_raw(std::uint8_t const value) noexcept -> bool {
+        if (value > fraction_maximum_raw) {
+            return false;
+        }
+        auto const encoded{static_cast<storage_type>(value)};
+        auto const cleared{
+            static_cast<storage_type>(value_ & static_cast<storage_type>(~fraction_mask))};
+        auto const shifted{static_cast<storage_type>(
+            static_cast<storage_type>(encoded & fraction_value_mask) << fraction_offset)};
+        value_ = static_cast<storage_type>(cleared | shifted);
+        return true;
+    }
+
+    constexpr void set_fraction_raw(std::uint8_t const value) noexcept {
+        if (!try_set_fraction_raw(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+
+    [[nodiscard]] constexpr auto state() const noexcept -> std::uint16_t {
+        return static_cast<std::uint16_t>(static_cast<storage_type>(value_ >> state_offset) &
+                                          state_value_mask);
+    }
+
+    [[nodiscard]] constexpr auto try_set_state(std::uint16_t const value) noexcept -> bool {
+        if (value > static_cast<std::uint16_t>(state_value_mask)) {
+            return false;
+        }
+        auto const encoded{static_cast<storage_type>(value)};
+        auto const cleared{
+            static_cast<storage_type>(value_ & static_cast<storage_type>(~state_mask))};
+        auto const shifted{static_cast<storage_type>(
+            static_cast<storage_type>(encoded & state_value_mask) << state_offset)};
+        value_ = static_cast<storage_type>(cleared | shifted);
+        return true;
+    }
+
+    constexpr void set_state(std::uint16_t const value) noexcept {
+        if (!try_set_state(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(sizeof(Motion) == sizeof(Motion::storage_type));
+static_assert(std::is_trivially_copyable_v<Motion>);
+static_assert(std::is_standard_layout_v<Motion>);
+
 } // namespace codegen_compile_fixture
