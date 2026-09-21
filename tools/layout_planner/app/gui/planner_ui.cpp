@@ -924,68 +924,80 @@ void PlannerUi::gate_new_declaration_dialogs() {
 
     auto require_module = [&](bool& requested,
                               bool const available,
-                              std::string_view const module_phrase,
-                              std::string_view const declaration_kind) -> bool {
-        if (!requested) {
-            return false;
+                              int const module_kind,
+                              std::string_view const suggested_name,
+                              NewDeclarationDialog const declaration) {
+        if (!requested || available) {
+            return;
         }
-        if (available) {
-            schema_warning_message_.clear();
-            return false;
-        }
+
         requested = false;
-        schema_warning_message_ = "Create " + std::string{module_phrase} +
-                                  " module with + New module before creating " +
-                                  std::string{declaration_kind} + ".";
-        if (!diagnostics_view_open_) {
-            diagnostics_view_open_ = true;
-            ImGui::MarkIniSettingsDirty();
+        declaration_after_new_module_ = declaration;
+        new_module_kind_ = module_kind;
+        new_module_header_.fill('\0');
+        new_module_namespace_.fill('\0');
+        confirm_unchecked_module_header_ = false;
+        auto name{std::string{suggested_name}};
+        auto suffix{2};
+        auto const& modules{document_->manifest().modules};
+        while (std::ranges::any_of(modules, [&](auto const& module) {
+            return std::visit([&](auto const& value) { return value.settings.name == name; },
+                              module);
+        })) {
+            name = std::string{suggested_name} + "_" + std::to_string(suffix++);
         }
-        focus_diagnostics_view_ = true;
-        project_changed_ = true;
-        return true;
+        std::snprintf(new_module_name_.data(), new_module_name_.size(), "%s", name.c_str());
+        schema_warning_message_.clear();
+        open_new_module_dialog_ = true;
     };
 
-    if (require_module(open_new_enum_dialog_, has_enum, "an enum", "an enum")) {
-        pending_packed_enum_binding_.reset();
-    }
-    require_module(open_new_packed_value_dialog_, has_packed, "a packed value", "a packed value");
-    if (require_module(open_new_integer_scalar_dialog_,
-                       has_scalar,
-                       "an integer scalar",
-                       "an integer scalar")) {
-        pending_packed_integer_scalar_binding_.reset();
-    }
+    require_module(open_new_enum_dialog_, has_enum, 0, "enums", NewDeclarationDialog::enumeration);
+    require_module(open_new_packed_value_dialog_,
+                   has_packed,
+                   1,
+                   "packed_values",
+                   NewDeclarationDialog::packed_value);
+    require_module(open_new_integer_scalar_dialog_,
+                   has_scalar,
+                   2,
+                   "scalars",
+                   NewDeclarationDialog::integer_scalar);
     require_module(open_new_linear_quantized_dialog_,
                    has_representation,
-                   "a representation",
-                   "a quantization");
-    require_module(
-        open_new_integer_varint_dialog_, has_representation, "a representation", "a varint");
-    if (require_module(open_new_fixed_point_dialog_,
-                       has_representation,
-                       "a representation",
-                       "a fixed point")) {
-        pending_packed_fixed_point_binding_.reset();
-    }
-    if (require_module(
-            open_new_mini_float_dialog_, has_representation, "a representation", "a mini float")) {
-        pending_packed_mini_float_binding_.reset();
-    }
+                   3,
+                   "representations",
+                   NewDeclarationDialog::quantization);
+    require_module(open_new_integer_varint_dialog_,
+                   has_representation,
+                   3,
+                   "representations",
+                   NewDeclarationDialog::varint);
+    require_module(open_new_fixed_point_dialog_,
+                   has_representation,
+                   3,
+                   "representations",
+                   NewDeclarationDialog::fixed_point);
+    require_module(open_new_mini_float_dialog_,
+                   has_representation,
+                   3,
+                   "representations",
+                   NewDeclarationDialog::mini_float);
     require_module(open_new_optional_sentinel_dialog_,
                    has_representation,
-                   "a representation",
-                   "a sentinel optional");
+                   3,
+                   "representations",
+                   NewDeclarationDialog::optional_sentinel);
     require_module(open_new_optional_presence_bit_dialog_,
                    has_representation,
-                   "a representation",
-                   "a presence-bit optional");
-    if (require_module(open_new_record_dialog_, has_record, "a record", "a record")) {
-        pending_soa_record_binding_.reset();
-    }
-    require_module(open_new_union_dialog_, has_union, "a union", "a union");
-    require_module(open_new_tagged_union_dialog_, has_union, "a union", "a tagged union");
-    require_module(open_new_soa_dialog_, has_soa, "a standard-library SoA", "a SoA");
+                   3,
+                   "representations",
+                   NewDeclarationDialog::optional_presence_bit);
+    require_module(open_new_record_dialog_, has_record, 4, "records", NewDeclarationDialog::record);
+    require_module(
+        open_new_union_dialog_, has_union, 5, "unions", NewDeclarationDialog::union_value);
+    require_module(
+        open_new_tagged_union_dialog_, has_union, 5, "unions", NewDeclarationDialog::tagged_union);
+    require_module(open_new_soa_dialog_, has_soa, 6, "soa", NewDeclarationDialog::soa);
 }
 
 auto PlannerUi::draw_view_menu() -> bool {

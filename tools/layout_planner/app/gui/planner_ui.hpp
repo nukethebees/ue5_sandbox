@@ -71,6 +71,22 @@ class PlannerUi {
         std::string column_name;
     };
 
+    enum class NewDeclarationDialog {
+        enumeration,
+        packed_value,
+        integer_scalar,
+        quantization,
+        varint,
+        fixed_point,
+        mini_float,
+        optional_sentinel,
+        optional_presence_bit,
+        record,
+        union_value,
+        tagged_union,
+        soa,
+    };
+
     static auto settings_read_open(ImGuiContext* context,
                                    ImGuiSettingsHandler* handler,
                                    char const* name) -> void*;
@@ -295,6 +311,8 @@ class PlannerUi {
     std::array<char, 128> new_module_namespace_{};
     int new_module_kind_{};
     std::size_t new_module_source_file_index_{1};
+    std::optional<NewDeclarationDialog> declaration_after_new_module_;
+    bool confirm_unchecked_module_header_{};
     std::array<char, 128> new_enum_name_{};
     std::array<char, 128> new_enum_underlying_type_{"std::uint8_t"};
     bool new_enum_backing_auto_{true};

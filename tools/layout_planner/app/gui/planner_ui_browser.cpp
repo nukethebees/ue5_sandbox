@@ -2,6 +2,7 @@
 
 #include "planner_ui_support.hpp"
 
+#include <codegen/path_utils.h>
 #include <imgui.h>
 
 #include <algorithm>
@@ -338,6 +339,7 @@ void PlannerUi::draw_project_panel() {
     ImGui::SeparatorText("Schema declarations");
     ImGui::BeginDisabled(!document_.has_value() || project_history_active());
     if (ImGui::Button("+ New module")) {
+        declaration_after_new_module_.reset();
         open_new_module_dialog_ = true;
     }
     ImGui::SameLine();
@@ -505,9 +507,21 @@ void PlannerUi::draw_new_module_dialog() {
 
     constexpr std::array kinds{
         "Enum", "Packed value", "Integer scalar", "Representation", "Record", "Union", "SoA"};
+    ImGui::BeginDisabled(declaration_after_new_module_.has_value());
     ImGui::Combo("Kind", &new_module_kind_, kinds.data(), static_cast<int>(kinds.size()));
-    ImGui::InputText("Module name", new_module_name_.data(), new_module_name_.size());
-    ImGui::InputText("Generated header", new_module_header_.data(), new_module_header_.size());
+    ImGui::EndDisabled();
+    if (ImGui::InputText("Module name", new_module_name_.data(), new_module_name_.size()) &&
+        new_module_header_.front() == '\0') {
+        confirm_unchecked_module_header_ = false;
+    }
+    auto const module_name{std::string{new_module_name_.data()}};
+    auto const default_header{module_name + ".h"};
+    if (ImGui::InputTextWithHint("Generated header",
+                                 default_header.c_str(),
+                                 new_module_header_.data(),
+                                 new_module_header_.size())) {
+        confirm_unchecked_module_header_ = false;
+    }
     ImGui::InputText(
         "Namespace (optional)", new_module_namespace_.data(), new_module_namespace_.size());
 
@@ -525,16 +539,88 @@ void PlannerUi::draw_new_module_dialog() {
         }
         ImGui::EndCombo();
     }
-    ImGui::TextDisabled(
-        "Creates a valid empty destination; add declarations with the normal New controls.");
+    if (declaration_after_new_module_.has_value()) {
+        ImGui::TextDisabled("Creates this module, then opens the requested declaration form.");
+    } else {
+        ImGui::TextDisabled(
+            "Creates a valid empty destination; add declarations with the normal New controls.");
+    }
 
-    auto const ready{new_module_name_.front() != '\0' && new_module_header_.front() != '\0' &&
+    auto const header{std::filesystem::path{new_module_header_.front() == '\0'
+                                                ? default_header
+                                                : std::string{new_module_header_.data()}}};
+    std::string conflict;
+    if (module_name.empty()) {
+        conflict = "Enter a module name.";
+    } else if (new_module_header_.front() == '\0' &&
+               !std::ranges::all_of(module_name, [](unsigned char const character) {
+                   return std::isalnum(character) != 0 || character == '_' || character == '-';
+               })) {
+        conflict = "Enter an explicit header for this module name.";
+    } else if (header.is_absolute() || header.has_root_path() ||
+               std::ranges::find(header, std::filesystem::path{".."}) != header.end() ||
+               header.filename().empty() || header.filename() == ".") {
+        conflict = "Generated header must be a relative file path within the output root.";
+    }
+
+    if (conflict.empty()) {
+        auto const header_key{codegen::output_path_key(header)};
+        for (auto const& candidate : document_->manifest().modules) {
+            std::visit(
+                [&](auto const& module) {
+                    if (module.settings.name == module_name) {
+                        conflict = "A module with this name already exists.";
+                    } else if (codegen::output_path_key(module.settings.header) == header_key ||
+                               (module.settings.source.has_value() &&
+                                codegen::output_path_key(*module.settings.source) == header_key)) {
+                        conflict = "Another module already uses this generated output path.";
+                    }
+                },
+                candidate);
+            if (!conflict.empty()) {
+                break;
+            }
+        }
+    }
+
+    auto output_location_known{false};
+    if (conflict.empty() && project_document_.has_value()) {
+        auto const& project{project_document_->project()};
+        auto const target{project.targets.find(target_name_)};
+        if (target != project.targets.end()) {
+            if (auto const* schema{std::get_if<lispb::CppSchemaTarget>(&target->second)}) {
+                if (schema->output_root.base == lispb::PathBase::project) {
+                    output_location_known = true;
+                    std::error_code error;
+                    auto const output_path{project.root / schema->output_root.path / header};
+                    if (std::filesystem::exists(output_path, error)) {
+                        conflict = "A file already exists at " + output_path.string() +
+                                   ". Choose another header.";
+                    } else if (error) {
+                        conflict =
+                            "Cannot inspect generated header destination: " + error.message();
+                    }
+                }
+            }
+        }
+    }
+    if (conflict.empty() && !output_location_known) {
+        ImGui::TextColored(ImVec4{1.0F, 0.85F, 0.2F, 1.0F},
+                           "Output location cannot be checked; check for an existing file first.");
+        ImGui::Checkbox("I checked the output path", &confirm_unchecked_module_header_);
+    }
+    if (!conflict.empty()) {
+        ImGui::TextColored(ImVec4{1.0F, 0.85F, 0.2F, 1.0F}, "%s", conflict.c_str());
+    }
+
+    auto const ready{conflict.empty() &&
+                     (output_location_known || confirm_unchecked_module_header_) &&
                      new_module_kind_ >= 0 && new_module_kind_ < static_cast<int>(kinds.size())};
     ImGui::BeginDisabled(!ready);
     if (ImGui::Button("Create")) {
         auto const settings{codegen::ModuleSettings{
             .name = new_module_name_.data(),
-            .header = new_module_header_.data(),
+            .header = header,
             .source = std::nullopt,
             .header_include = std::nullopt,
             .namespace_name = new_module_namespace_.front() == '\0'
@@ -578,12 +664,62 @@ void PlannerUi::draw_new_module_dialog() {
             new_module_name_.fill('\0');
             new_module_header_.fill('\0');
             new_module_namespace_.fill('\0');
+            confirm_unchecked_module_header_ = false;
             ImGui::CloseCurrentPopup();
+            if (declaration_after_new_module_.has_value()) {
+                switch (*declaration_after_new_module_) {
+                    case NewDeclarationDialog::enumeration:
+                        open_new_enum_dialog_ = true;
+                        break;
+                    case NewDeclarationDialog::packed_value:
+                        open_new_packed_value_dialog_ = true;
+                        break;
+                    case NewDeclarationDialog::integer_scalar:
+                        open_new_integer_scalar_dialog_ = true;
+                        break;
+                    case NewDeclarationDialog::quantization:
+                        open_new_linear_quantized_dialog_ = true;
+                        break;
+                    case NewDeclarationDialog::varint:
+                        open_new_integer_varint_dialog_ = true;
+                        break;
+                    case NewDeclarationDialog::fixed_point:
+                        open_new_fixed_point_dialog_ = true;
+                        break;
+                    case NewDeclarationDialog::mini_float:
+                        open_new_mini_float_dialog_ = true;
+                        break;
+                    case NewDeclarationDialog::optional_sentinel:
+                        open_new_optional_sentinel_dialog_ = true;
+                        break;
+                    case NewDeclarationDialog::optional_presence_bit:
+                        open_new_optional_presence_bit_dialog_ = true;
+                        break;
+                    case NewDeclarationDialog::record:
+                        open_new_record_dialog_ = true;
+                        break;
+                    case NewDeclarationDialog::union_value:
+                        open_new_union_dialog_ = true;
+                        break;
+                    case NewDeclarationDialog::tagged_union:
+                        open_new_tagged_union_dialog_ = true;
+                        break;
+                    case NewDeclarationDialog::soa:
+                        open_new_soa_dialog_ = true;
+                        break;
+                }
+                declaration_after_new_module_.reset();
+            }
         }
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
     if (ImGui::Button("Cancel")) {
+        declaration_after_new_module_.reset();
+        new_module_name_.fill('\0');
+        new_module_header_.fill('\0');
+        new_module_namespace_.fill('\0');
+        confirm_unchecked_module_header_ = false;
         ImGui::CloseCurrentPopup();
     }
     if (!schema_edit_message_.empty()) {
