@@ -224,22 +224,28 @@ function(add_unreal_automation_test test_name)
 
   sandbox_make_automation_filter_expression(automation_filter_expression
     ${automation_test_FILTERS})
+  sandbox_make_automation_exec_commands(automation_exec_commands
+    "${automation_filter_expression}")
   sandbox_make_space_game_test_arguments(space_game_test_arguments
     "${SANDBOX_SPACE_GAME_TEST_TIME_SCALE}")
 
   add_unreal_editor_test("${test_name}"
     ARGUMENTS
-      "-ExecCmds=Automation Now; RunTests ${automation_filter_expression}; Quit"
+      "${automation_exec_commands}"
       -nullrhi
       ${space_game_test_arguments}
     LABELS ${automation_test_LABELS}
     TIMEOUT 900
   )
 
-  # Unreal's queued Quit waits for automation completion and exits non-zero on test errors.
-  # Also inspect the test output so a future engine regression cannot turn a reported
-  # automation failure into a passing CTest result.
+  sandbox_set_automation_test_properties("${test_name}")
+endfunction()
+
+function(sandbox_set_automation_test_properties test_name)
+  # CTest needs evidence that automation selected and completed at least one test.
+  # Queued Quit reports execution failures in the output even when the editor exits cleanly.
   set_tests_properties("${test_name}" PROPERTIES
-    FAIL_REGULAR_EXPRESSION "Test Completed\\. Result=\\{Fail\\};TEST COMPLETE\\. EXIT CODE: -[0-9]+"
+    FAIL_REGULAR_EXPRESSION "Test Completed\\. Result=\\{Fail\\};Test Completed\\. Result=\\{Error\\};TEST COMPLETE\\. EXIT CODE: -?[1-9][0-9]*"
+    PASS_REGULAR_EXPRESSION "Found [1-9][0-9]* automation tests based on.*Test Completed\\. Result=\\{Success\\}.*TEST COMPLETE\\. EXIT CODE: 0"
   )
 endfunction()

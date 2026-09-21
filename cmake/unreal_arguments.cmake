@@ -7,6 +7,12 @@ function(sandbox_make_automation_filter_expression output_variable)
   set(${output_variable} "${expression}" PARENT_SCOPE)
 endfunction()
 
+function(sandbox_make_automation_exec_commands output_variable filter_expression)
+  set(${output_variable}
+    "-ExecCmds=Automation Now; RunTests ${filter_expression}; Quit"
+    PARENT_SCOPE)
+endfunction()
+
 function(sandbox_make_space_game_test_arguments output_variable time_scale)
   set(arguments)
   if(time_scale)

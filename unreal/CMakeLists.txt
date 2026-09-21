@@ -331,26 +331,34 @@ add_unreal_automation_test(
   LABELS usfloader
 )
 
+sandbox_make_automation_exec_commands(ismc_render_test_commands
+  "StartsWith:SandboxISMC.RenderTests")
 add_unreal_editor_test(SandboxISMC.RenderTests
   ARGUMENTS
-    "-ExecCmds=Automation Now; Automation RunTests StartsWith:SandboxISMC.RenderTests; Quit"
+    "${ismc_render_test_commands}"
     -RenderOffscreen
   LABELS level all
   TIMEOUT 900
 )
+sandbox_set_automation_test_properties(SandboxISMC.RenderTests)
 
+sandbox_make_automation_exec_commands(spark_render_test_commands
+  "StartsWith:Sandbox.SparkRenderTests")
 add_unreal_editor_test(Sandbox.SparkRenderTests
   ARGUMENTS
-    "-ExecCmds=Automation Now; Automation RunTests StartsWith:Sandbox.SparkRenderTests; Quit"
+    "${spark_render_test_commands}"
     -RenderOffscreen
   LABELS level all
   TIMEOUT 900
 )
+sandbox_set_automation_test_properties(Sandbox.SparkRenderTests)
 
+sandbox_make_automation_exec_commands(spark_benchmark_commands
+  "StartsWith:SandboxBenchmarks.SparkBenchmark")
 add_unreal_editor_test(SandboxBenchmarks.SparkBenchmark
   ACTIVITY BENCHMARK
   ARGUMENTS
-    "-ExecCmds=Automation Now; Automation RunTests StartsWith:SandboxBenchmarks.SparkBenchmark; Quit"
+    "${spark_benchmark_commands}"
     "-SandboxSparkBenchmarkSeconds=${SANDBOX_SPARK_BENCHMARK_SECONDS}"
     "-SandboxSparkBenchmarkCapacity=${SANDBOX_SPARK_BENCHMARK_CAPACITY}"
     "-SandboxSparkBenchmarkSparksPerHit=${SANDBOX_SPARK_BENCHMARK_SPARKS_PER_HIT}"
@@ -361,21 +369,27 @@ add_unreal_editor_test(SandboxBenchmarks.SparkBenchmark
   LABELS spark-benchmark
   TIMEOUT 1200
 )
+sandbox_set_automation_test_properties(SandboxBenchmarks.SparkBenchmark)
 
+sandbox_make_automation_exec_commands(level_telemetry_storage_benchmark_commands
+  "SandboxBenchmarks.LevelTelemetryStorage")
 add_unreal_editor_test(SandboxBenchmarks.LevelTelemetryStorage
   ACTIVITY BENCHMARK
   ARGUMENTS
-    "-ExecCmds=Automation Now; Automation RunTests SandboxBenchmarks.LevelTelemetryStorage; Quit"
+    "${level_telemetry_storage_benchmark_commands}"
     "-SandboxTelemetryBenchmarkSamples=${SANDBOX_TELEMETRY_BENCHMARK_SAMPLES}"
     -FullStdOutLogOutput
   LABELS telemetry-benchmark
   TIMEOUT 1200
 )
+sandbox_set_automation_test_properties(SandboxBenchmarks.LevelTelemetryStorage)
 
+sandbox_make_automation_exec_commands(ismc_remote_benchmark_commands
+  "SandboxISMC.RemoteBenchmark")
 add_unreal_editor_test(SandboxISMC.RemoteBenchmark
   ACTIVITY BENCHMARK
   ARGUMENTS
-    "-ExecCmds=Automation Now; Automation RunTests SandboxISMC.RemoteBenchmark; Quit"
+    "${ismc_remote_benchmark_commands}"
     "-SandboxISMCBenchmarkSeconds=${SANDBOX_ISMC_BENCHMARK_SECONDS}"
     "-SandboxISMCBenchmarkInstances=${SANDBOX_ISMC_BENCHMARK_INSTANCES}"
     "-SandboxISMCBenchmarkChurn=${SANDBOX_ISMC_BENCHMARK_CHURN}"
@@ -394,6 +408,7 @@ add_unreal_editor_test(SandboxISMC.RemoteBenchmark
   LABELS sandbox-ismc-benchmark
   TIMEOUT 600
 )
+sandbox_set_automation_test_properties(SandboxISMC.RemoteBenchmark)
 
 add_custom_target(unreal-unit-tests
   DEPENDS
@@ -501,36 +516,45 @@ add_unreal_editor_target(generate-space-dust-material
   FOLDER "Sandbox/Unreal/Maintenance"
 )
 
+sandbox_make_automation_exec_commands(material_compilation_test_commands
+  "StartsWith:SandboxShaders.MaterialCompilation")
 add_unreal_editor_test(SandboxShaders.MaterialCompilation
   NO_LOCAL_DDC
   ARGUMENTS
-    "-ExecCmds=Automation Now; Automation RunTests StartsWith:SandboxShaders.MaterialCompilation; Quit"
+    "${material_compilation_test_commands}"
     -AllowCommandletRendering
     -DDC-ForceMemoryCache
   LABELS focused-material all
   TIMEOUT 900
 )
+sandbox_set_automation_test_properties(SandboxShaders.MaterialCompilation)
 
+sandbox_make_automation_exec_commands(included_function_compilation_test_commands
+  "StartsWith:USFLoader.IncludedFunctionCompilation")
 add_unreal_editor_test(USFLoader.IncludedFunctionCompilation
   NO_LOCAL_DDC
   ARGUMENTS
-    "-ExecCmds=Automation Now; Automation RunTests StartsWith:USFLoader.IncludedFunctionCompilation; Quit"
+    "${included_function_compilation_test_commands}"
     -AllowCommandletRendering
     -DDC-ForceMemoryCache
   LABELS usfloader
   TIMEOUT 900
 )
+sandbox_set_automation_test_properties(USFLoader.IncludedFunctionCompilation)
 
+sandbox_make_automation_exec_commands(material_synth_test_commands
+  "SandboxEditor.MaterialSynth")
 add_unreal_editor_test(SandboxEditor.MaterialSynth
   NO_LOCAL_DDC
   ARGUMENTS
-    "-ExecCmds=Automation Now; Automation RunTests SandboxEditor.MaterialSynth; Quit"
+    "${material_synth_test_commands}"
     -RenderOffscreen
     -AllowCommandletRendering
     -DDC-ForceMemoryCache
   LABELS "material-synth;all"
   TIMEOUT 900
 )
+sandbox_set_automation_test_properties(SandboxEditor.MaterialSynth)
 
 add_unreal_editor_test(SandboxUI.EntityOverlayBenchmark
   NO_LOCAL_DDC
@@ -576,9 +600,11 @@ set_tests_properties(SandboxShaders.GpuStarfieldMatrix PROPERTIES
 
 sandbox_unreal_jobserver_command(gpu_tutorial_shader_tests_command STANDARD SHARED unreal-test
   "Test SandboxGpuTutorials shaders")
+sandbox_make_automation_exec_commands(gpu_tutorial_shader_test_commands
+  "StartsWith:SandboxGpuTutorials.UnitTests")
 add_custom_target(gpu-tutorial-shader-tests
   COMMAND ${gpu_tutorial_shader_tests_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
-    "-ExecCmds=Automation Now; Automation RunTests StartsWith:SandboxGpuTutorials.UnitTests; Quit"
+    "${gpu_tutorial_shader_test_commands}"
     -unattended
     -nop4
     -nosplash
