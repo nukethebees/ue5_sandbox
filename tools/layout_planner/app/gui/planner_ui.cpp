@@ -977,7 +977,8 @@ auto PlannerUi::draw_file_menu() -> bool {
     auto const can_redo{use_project_history ? project_document_->can_redo()
                                             : has_document && document_->can_redo()};
     if (ImGui::MenuItem("New Project...")) {
-        new_project_path_.fill('\0');
+        auto const suggested{std::filesystem::current_path() / "lispb" / "new_project.lispb"};
+        set_text_buffer(new_project_path_, suggested.string());
         set_text_buffer(new_project_target_, "new-schema");
         schema_edit_message_.clear();
         open_new_project_dialog_ = true;
@@ -1088,9 +1089,46 @@ void PlannerUi::draw_project_path_dialogs() {
         ImGui::SetNextItemWidth(360.0F);
         ImGui::InputText(
             "##new-project-target", new_project_target_.data(), new_project_target_.size());
-        ImGui::TextDisabled("Creates an empty types file and one source beside the manifest.");
+        ImGui::TextDisabled(
+            "Creates an empty types file and a starter module beside the manifest.");
+        std::string destination_warning;
+        if (new_project_path_.front() != '\0') {
+            std::error_code error;
+            auto const destination{
+                std::filesystem::absolute(new_project_path_.data(), error).lexically_normal()};
+            if (error) {
+                destination_warning = "Cannot inspect project path: " + error.message();
+            } else {
+                auto temporary_project{destination};
+                temporary_project += ".layout-planner.tmp";
+                auto const source_directory{destination.parent_path() /
+                                            (destination.stem().string() + "_schema")};
+                for (auto const& path : {destination, source_directory, temporary_project}) {
+                    auto const status{std::filesystem::symlink_status(path, error)};
+                    if (error && error != std::errc::no_such_file_or_directory) {
+                        destination_warning =
+                            "Cannot inspect " + path.string() + ": " + error.message();
+                        break;
+                    }
+                    if (error == std::errc::no_such_file_or_directory) {
+                        error.clear();
+                        continue;
+                    }
+                    error.clear();
+                    if (status.type() != std::filesystem::file_type::not_found) {
+                        destination_warning = "Already exists: " + path.string() +
+                                              ". Choose another project path; existing files "
+                                              "will not be overwritten.";
+                        break;
+                    }
+                }
+            }
+        }
+        if (!destination_warning.empty()) {
+            ImGui::TextWrapped("%s", destination_warning.c_str());
+        }
         ImGui::BeginDisabled(new_project_path_.front() == '\0' ||
-                             new_project_target_.front() == '\0');
+                             new_project_target_.front() == '\0' || !destination_warning.empty());
         if (ImGui::Button("Create")) {
             if (has_dirty_changes()) {
                 schema_edit_message_ = "Save or undo the current LispB changes before creating "

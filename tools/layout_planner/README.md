@@ -46,7 +46,8 @@ Use `--help` to list command-line options. Project-load and schema diagnostics a
 application and on standard error.
 
 Use **File > New Project** to create a blank editable project. Enter a `.lispb` manifest path and a
-schema target name; the planner creates an empty types file and source in a sibling `_schema` directory.
+schema target name; the planner creates an empty types file and a starter module with no declarations
+in a sibling `_schema` directory. The dialog warns about existing destinations before creation.
 The open project's name appears in the window title. Diagnostics can be selected and copied, or copied
 all at once with **Copy all**.
 

@@ -116,15 +116,28 @@ auto create_blank_lispb_schema(std::filesystem::path const& destination_project_
             throw std::invalid_argument{"New project parent directory does not exist: " +
                                         destination.parent_path().string()};
         }
-        if (std::filesystem::exists(destination) || std::filesystem::exists(source_directory) ||
-            std::filesystem::exists(temporary_project)) {
-            throw std::invalid_argument{"New project destination already exists"};
+        for (auto const& path : {destination, source_directory, temporary_project}) {
+            std::error_code error;
+            auto const status{std::filesystem::symlink_status(path, error)};
+            if (error && error != std::errc::no_such_file_or_directory) {
+                throw std::filesystem::filesystem_error{
+                    "Cannot inspect new project destination", path, error};
+            }
+            if (error == std::errc::no_such_file_or_directory) {
+                continue;
+            }
+            if (status.type() != std::filesystem::file_type::not_found) {
+                throw std::invalid_argument{"New project destination already exists: " +
+                                            path.string()};
+            }
         }
 
         std::filesystem::create_directory(source_directory);
         source_directory_created = true;
         write_file(source_directory / "types.lispb", "");
-        write_file(source_directory / "source.lispb", "");
+        write_file(source_directory / "source.lispb",
+                   "(scalar-module starter\n"
+                   "  :header \"Starter.h\")\n");
 
         auto const relative_directory{source_directory.filename()};
         std::ostringstream project;
