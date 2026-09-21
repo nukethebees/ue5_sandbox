@@ -101,9 +101,14 @@ void trace_grid_aabbs(GridGeometry const geometry,
         }
 
         auto const trace_cell{[&](std::int32_t const cell_index) {
-            auto const entities{entities_for_cell(entity_storage, cell_index)};
-            auto const entity_count{static_cast<std::int32_t>(entities.size())};
+            assert(cell_index >= 0 &&
+                   static_cast<std::size_t>(cell_index) < entity_storage.cell_counts.size());
+            auto const element{static_cast<std::size_t>(cell_index)};
+            auto const count{entity_storage.cell_counts[element]};
+            auto const entity_count{static_cast<std::int32_t>(count)};
             if (entity_count > 0) {
+                auto const entities{std::span{entity_storage.entities}.subspan(
+                    static_cast<std::size_t>(entity_storage.cell_offsets[element]), count)};
                 auto const aabbs{aabbs_for_cell(entity_storage, cell_index)};
                 for (std::int32_t entity_index{}; entity_index < entity_count; ++entity_index) {
                     auto const entity{entities[static_cast<std::size_t>(entity_index)]};
@@ -379,9 +384,14 @@ void append_grid_overlaps(GridGeometry const geometry,
         for (auto y{min_coord.y}; y <= max_coord.y; ++y) {
             auto cell_index{row_index};
             for (auto x{min_coord.x}; x <= max_coord.x; ++x, ++cell_index) {
-                auto const entities{entities_for_cell(entity_storage, cell_index)};
-                auto const entity_count{static_cast<std::int32_t>(entities.size())};
+                assert(cell_index >= 0 &&
+                       static_cast<std::size_t>(cell_index) < entity_storage.cell_counts.size());
+                auto const element{static_cast<std::size_t>(cell_index)};
+                auto const count{entity_storage.cell_counts[element]};
+                auto const entity_count{static_cast<std::int32_t>(count)};
                 if (entity_count > 0) {
+                    auto const entities{std::span{entity_storage.entities}.subspan(
+                        static_cast<std::size_t>(entity_storage.cell_offsets[element]), count)};
                     auto const aabbs{aabbs_for_cell(entity_storage, cell_index)};
 
                     for (std::int32_t entity_index{}; entity_index < entity_count; ++entity_index) {

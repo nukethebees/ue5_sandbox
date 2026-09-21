@@ -20,22 +20,6 @@ class AgentAccessor;
 }
 
 namespace ioj::sim::collision {
-namespace collision_uniform_grid_detail {
-inline auto entities_for_cell(CollisionGridEntityStorage const& storage,
-                              std::int32_t const cell_index) noexcept
-    -> std::span<EntityUniqueId const> {
-    assert(cell_index >= 0 && static_cast<std::size_t>(cell_index) < storage.cell_counts.size());
-
-    auto const element{static_cast<std::size_t>(cell_index)};
-    auto const count{storage.cell_counts[element]};
-    if (count == 0) {
-        return {};
-    }
-    return std::span{storage.entities}.subspan(
-        static_cast<std::size_t>(storage.cell_offsets[element]), count);
-}
-} // namespace collision_uniform_grid_detail
-
 enum class TraceEntityFilter : std::uint8_t {
     None,
     ExcludeFighters,
@@ -71,7 +55,13 @@ struct CollisionUniformGrid {
         auto const plane_stride{row_stride * dimensions.y};
         auto const cell_index{
             cell_coord.x + cell_coord.y * row_stride + cell_coord.z * plane_stride};
-        return collision_uniform_grid_detail::entities_for_cell(entity_storage_, cell_index);
+        auto const element{static_cast<std::size_t>(cell_index)};
+        auto const count{entity_storage_.cell_counts[element]};
+        if (count == 0) {
+            return {};
+        }
+        return std::span{entity_storage_.entities}.subspan(
+            static_cast<std::size_t>(entity_storage_.cell_offsets[element]), count);
     }
 
     auto to_cell_coord(Vector3f pos) const -> CellCoord;
