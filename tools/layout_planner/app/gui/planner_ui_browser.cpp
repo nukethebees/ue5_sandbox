@@ -323,11 +323,9 @@ void PlannerUi::draw_project_panel() {
                         .destination = rename_project_source_path_.data()})) {
                     rename_project_source_.reset();
                     rename_project_source_path_.fill('\0');
-                    source_view_open_ = true;
-                    focus_source_view_ = true;
                     schema_edit_message_ =
-                        "Staged source rename. Preview the project change, then Save to move the "
-                        "file and reload.";
+                        "Staged source rename. Use Preview LispB changes to inspect it, then "
+                        "Save to move the file and reload.";
                     ImGui::CloseCurrentPopup();
                 }
             }
