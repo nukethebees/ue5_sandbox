@@ -1,6 +1,8 @@
 #include "lowering.h"
 #include "lowering_utils.h"
 
+#include <lispb/schema/enum_domain.h>
+
 #include <algorithm>
 #include <cctype>
 #include <sstream>
@@ -276,9 +278,31 @@ auto enum_values(EnumSchema const& schema) -> std::vector<EnumeratorSchema const
     return result;
 }
 
+auto enum_underlying_type(EnumSchema const& schema, std::map<std::string, CppType> const& types)
+    -> CppType {
+    if (schema.underlying_type.has_value()) {
+        return resolve_type(*schema.underlying_type, types);
+    }
+
+    auto const domain{lispb::schema::analyze_enum_domain(schema)};
+    auto const requirement{
+        lispb::schema::derive_enum_storage_requirement(domain, schema.bit_width)};
+    if (!requirement.has_value()) {
+        throw std::invalid_argument{"Enum '" + schema.name +
+                                    "' has no derivable C++ backing storage"};
+    }
+
+    auto const prefix{requirement->signedness ? "int" : "uint"};
+    auto const spelling{schema.native_api
+                            ? "std::" + std::string{prefix} +
+                                  std::to_string(requirement->bit_width) + "_t"
+                            : std::string{prefix} + std::to_string(requirement->bit_width)};
+    return CppType{spelling, schema.native_api ? "cstdint" : "CoreMinimal.h"};
+}
+
 auto native_enum_declaration(EnumSchema const& schema, std::map<std::string, CppType> const& types)
     -> std::string {
-    auto const underlying{resolve_type(schema.underlying_type, types).spelling};
+    auto const underlying{enum_underlying_type(schema, types).spelling};
     std::ostringstream output;
     output << "enum class " << schema.name << " : " << underlying << " {\n";
     for (auto const& value : schema.values) {
@@ -396,6 +420,24 @@ auto unreal_underlying_type(CppType const& native_type) -> std::string {
     if (native_type.spelling == "std::uint16_t") {
         return "uint16";
     }
+    if (native_type.spelling == "std::uint32_t") {
+        return "uint32";
+    }
+    if (native_type.spelling == "std::uint64_t") {
+        return "uint64";
+    }
+    if (native_type.spelling == "std::int8_t") {
+        return "int8";
+    }
+    if (native_type.spelling == "std::int16_t") {
+        return "int16";
+    }
+    if (native_type.spelling == "std::int32_t") {
+        return "int32";
+    }
+    if (native_type.spelling == "std::int64_t") {
+        return "int64";
+    }
     return native_type.spelling;
 }
 
@@ -406,7 +448,7 @@ auto unreal_projection_header(EnumSchema const& schema,
     output << (projection.reflection == EnumReflection::blueprint ? "UENUM(BlueprintType)"
                                                                   : "UENUM()")
            << "\nenum class " << projection.name << " : "
-           << unreal_underlying_type(resolve_type(schema.underlying_type, types)) << " {\n";
+           << unreal_underlying_type(enum_underlying_type(schema, types)) << " {\n";
     for (auto const& value : schema.values) {
         output << "    " << value.name;
         if (value.initializer.has_value()) {
@@ -567,7 +609,7 @@ auto lower_enum_module(EnumModuleSchema const& module, std::map<std::string, Cpp
         declarations.add(
             Enum{
                 .name = schema.name,
-                .underlying_type = resolve_type(schema.underlying_type, types),
+                .underlying_type = enum_underlying_type(schema, types),
                 .values = std::move(values),
             },
             2);

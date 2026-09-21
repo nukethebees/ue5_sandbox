@@ -276,9 +276,13 @@ auto parse_fixed(Form const& form) -> FixedSoaSchema {
     };
 }
 
+auto parse_semantic_relation_kind(Form const& form) -> SemanticRelationKind;
+auto parse_semantic_relation_unit(Form const& form) -> SemanticRelationUnit;
+
 auto parse_member(Form const& form) -> SoaMemberSchema {
     Fields const fields{form, "member", 3};
-    fields.validate({"fixed-schema", "nested-schema", "mask-field", "mask-dimensions"});
+    fields.validate({"fixed-schema", "nested-schema", "mask-field", "mask-dimensions"},
+                    {"relation"});
     auto const kind_name{text(fields.positional(1), "member kind")};
     SoaMemberKind kind;
     if (kind_name == "array") {
@@ -304,6 +308,21 @@ auto parse_member(Form const& form) -> SoaMemberSchema {
             });
         }
     }
+    std::optional<SemanticRelationSchema> relationship;
+    for (auto const* declaration : fields.declarations()) {
+        if (relationship.has_value()) {
+            fail(declaration->token.span, "SOA member may have only one relationship");
+        }
+        Fields const relation{*declaration, "relation", 2};
+        relation.validate({"unit"});
+        auto const* unit{relation.optional("unit")};
+        relationship = {
+            .kind = parse_semantic_relation_kind(relation.positional(0)),
+            .target = parse_type_ref(relation.positional(1)),
+            .unit =
+                unit == nullptr ? std::nullopt : std::optional{parse_semantic_relation_unit(*unit)},
+        };
+    }
     return SoaMemberSchema{
         .name = text(fields.positional(0), "member name"),
         .kind = kind,
@@ -312,6 +331,7 @@ auto parse_member(Form const& form) -> SoaMemberSchema {
         .nested_schema = optional_text(fields, "nested-schema"),
         .mask_field = boolean_or(fields, "mask-field"),
         .mask_dimensions = std::move(mask_dimensions),
+        .relationship = std::move(relationship),
     };
 }
 
@@ -468,25 +488,36 @@ auto parse_enum_unreal_projection(Form const& form) -> EnumUnrealProjection {
     };
 }
 
-auto parse_packed_relationship_kind(Form const& form) -> PackedFieldRelationKind {
-    auto const name{text(form, "packed field relationship kind")};
+auto parse_semantic_relation_kind(Form const& form) -> SemanticRelationKind {
+    auto const name{text(form, "semantic relationship kind")};
     constexpr std::array kinds{
-        std::pair{"index_into", PackedFieldRelationKind::index_into},
-        std::pair{"count_of", PackedFieldRelationKind::count_of},
-        std::pair{"offset_into", PackedFieldRelationKind::offset_into},
-        std::pair{"discriminates", PackedFieldRelationKind::discriminates},
-        std::pair{"contains", PackedFieldRelationKind::contains},
-        std::pair{"member_of", PackedFieldRelationKind::member_of},
-        std::pair{"quantises", PackedFieldRelationKind::quantises},
-        std::pair{"encoded_as", PackedFieldRelationKind::encoded_as},
-        std::pair{"references", PackedFieldRelationKind::references},
+        std::pair{"index_into", SemanticRelationKind::index_into},
+        std::pair{"count_of", SemanticRelationKind::count_of},
+        std::pair{"offset_into", SemanticRelationKind::offset_into},
+        std::pair{"discriminates", SemanticRelationKind::discriminates},
+        std::pair{"contains", SemanticRelationKind::contains},
+        std::pair{"member_of", SemanticRelationKind::member_of},
+        std::pair{"quantises", SemanticRelationKind::quantises},
+        std::pair{"encoded_as", SemanticRelationKind::encoded_as},
+        std::pair{"references", SemanticRelationKind::references},
     };
     auto const found{std::ranges::find_if(
         kinds, [&](auto const& candidate) { return candidate.first == name; })};
     if (found == kinds.end()) {
-        fail(form.token.span, "unknown packed field relationship kind: " + name);
+        fail(form.token.span, "unknown semantic relationship kind: " + name);
     }
     return found->second;
+}
+
+auto parse_semantic_relation_unit(Form const& form) -> SemanticRelationUnit {
+    auto const name{text(form, "semantic relationship unit")};
+    if (name == "elements") {
+        return SemanticRelationUnit::elements;
+    }
+    if (name == "bytes") {
+        return SemanticRelationUnit::bytes;
+    }
+    fail(form.token.span, "semantic relationship unit must be 'elements' or 'bytes'");
 }
 
 auto parse_packed_byte_order(Form const& form) -> PackedByteOrder {
@@ -538,17 +569,20 @@ auto parse_packed_field(Form const& form) -> PackedFieldSchema {
                         : std::optional<int>{integer(bits_form, "packed field bits")}};
     std::vector<PackedNamedCodeSchema> named_codes;
     named_codes.reserve(fields.declarations().size());
-    std::optional<PackedFieldRelationSchema> relationship;
+    std::optional<SemanticRelationSchema> relationship;
     for (auto const* declaration : fields.declarations()) {
         if (declaration->head() == "relation") {
             if (relationship.has_value()) {
                 fail(declaration->token.span, "packed field may have only one relationship");
             }
             Fields const relation{*declaration, "relation", 2};
-            relation.validate({});
+            relation.validate({"unit"});
+            auto const* unit{relation.optional("unit")};
             relationship = {
-                .kind = parse_packed_relationship_kind(relation.positional(0)),
+                .kind = parse_semantic_relation_kind(relation.positional(0)),
                 .target = parse_type_ref(relation.positional(1)),
+                .unit = unit == nullptr ? std::nullopt
+                                        : std::optional{parse_semantic_relation_unit(*unit)},
             };
             continue;
         }
@@ -585,13 +619,9 @@ auto parse_packed_reserved_bits(Form const& form) -> PackedReservedBitsSchema {
 
 auto parse_packed_value(Form const& form) -> PackedValueSchema {
     Fields const fields{form, "packed-value", 1};
-    fields.validate({"storage",
-                     "invalid-value",
-                     "export-specifier",
-                     "mutable",
-                     "byte-order",
-                     "bit-order"},
-                    {"field", "reserved"});
+    fields.validate(
+        {"storage", "invalid-value", "export-specifier", "mutable", "byte-order", "bit-order"},
+        {"field", "reserved"});
     auto const* invalid_value{fields.optional("invalid-value")};
     auto const* byte_order{fields.optional("byte-order")};
     auto const* bit_order{fields.optional("bit-order")};
@@ -616,16 +646,20 @@ auto parse_packed_value(Form const& form) -> PackedValueSchema {
         .export_specifier = optional_text(fields, "export-specifier"),
         .mutable_value = boolean_or(fields, "mutable"),
         .byte_order = byte_order == nullptr
-                         ? std::nullopt
-                         : std::optional<PackedByteOrder>{parse_packed_byte_order(*byte_order)},
-        .bit_order = bit_order == nullptr
                         ? std::nullopt
-                        : std::optional<PackedBitOrder>{parse_packed_bit_order(*bit_order)},
+                        : std::optional<PackedByteOrder>{parse_packed_byte_order(*byte_order)},
+        .bit_order = bit_order == nullptr
+                       ? std::nullopt
+                       : std::optional<PackedBitOrder>{parse_packed_bit_order(*bit_order)},
     };
 }
 
 auto parse_enum(Form const& form) -> EnumSchema {
-    Fields const fields{form, "enum", 2};
+    auto const has_underlying_type{
+        form.children.size() > 2 &&
+        form.children[2].token.kind != codegen::sexpr::TokenKind::keyword &&
+        (!form.children[2].is_list() || form.children[2].head() == "type-ref")};
+    Fields const fields{form, "enum", has_underlying_type ? 2U : 1U};
     fields.validate({"reflection",
                      "enum-array",
                      "count",
@@ -679,7 +713,8 @@ auto parse_enum(Form const& form) -> EnumSchema {
     }
     return EnumSchema{
         .name = text(fields.positional(0), "enum name"),
-        .underlying_type = parse_type_ref(fields.positional(1)),
+        .underlying_type = has_underlying_type ? std::optional{parse_type_ref(fields.positional(1))}
+                                               : std::nullopt,
         .bit_width = bit_width,
         .signedness = optional_boolean(fields, "signed"),
         .reflection = reflection,
@@ -856,14 +891,30 @@ auto parse_setting(Form const& form) -> SettingSchema {
 
 auto parse_record_member(Form const& form) -> RecordMemberSchema {
     Fields const fields{form, "member", 2};
-    fields.validate({"count"});
+    fields.validate({"count"}, {"relation"});
     auto const* count{fields.optional("count")};
+    std::optional<SemanticRelationSchema> relationship;
+    for (auto const* declaration : fields.declarations()) {
+        if (relationship.has_value()) {
+            fail(declaration->token.span, "record member may have only one relationship");
+        }
+        Fields const relation{*declaration, "relation", 2};
+        relation.validate({"unit"});
+        auto const* unit{relation.optional("unit")};
+        relationship = {
+            .kind = parse_semantic_relation_kind(relation.positional(0)),
+            .target = parse_type_ref(relation.positional(1)),
+            .unit =
+                unit == nullptr ? std::nullopt : std::optional{parse_semantic_relation_unit(*unit)},
+        };
+    }
     return RecordMemberSchema{
         .name = text(fields.positional(0), "record member name"),
         .type = parse_type_ref(fields.positional(1)),
         .count = count == nullptr
                    ? std::nullopt
                    : std::optional<std::uint64_t>{unsigned_integer(*count, "record member count")},
+        .relationship = std::move(relationship),
     };
 }
 
@@ -943,7 +994,8 @@ auto parse_tagged_union(Form const& form) -> TaggedUnionSchema {
 
 auto parse_integer_scalar(Form const& form) -> IntegerScalarSchema {
     Fields const fields{form, "integer-scalar", 1};
-    fields.validate({"signed", "minimum", "maximum", "bit-width"}, {"code"});
+    fields.validate({"signed", "minimum", "maximum", "bit-width", "cpp-emission", "cpp-type"},
+                    {"code", "relation"});
 
     std::optional<std::uint32_t> bit_width;
     if (auto const* width{fields.optional("bit-width")}) {
@@ -957,9 +1009,40 @@ auto parse_integer_scalar(Form const& form) -> IntegerScalarSchema {
         }
     }
 
+    auto cpp_emission{IntegerScalarCppEmission::none};
+    if (auto const* emission{fields.optional("cpp-emission")}) {
+        auto const emission_name{text(*emission, "integer scalar C++ emission policy")};
+        if (emission_name == "constants") {
+            cpp_emission = IntegerScalarCppEmission::constants;
+        } else if (emission_name == "constants-with-names") {
+            cpp_emission = IntegerScalarCppEmission::constants_with_names;
+        } else if (emission_name != "none") {
+            fail(emission->token.span,
+                 "integer scalar C++ emission policy must be none, constants, or "
+                 "constants-with-names");
+        }
+    }
+    auto const* cpp_type{fields.optional("cpp-type")};
+
     std::vector<PackedNamedCodeSchema> named_codes;
     named_codes.reserve(fields.declarations().size());
+    std::optional<SemanticRelationSchema> relationship;
     for (auto const* declaration : fields.declarations()) {
+        if (declaration->head() == "relation") {
+            if (relationship.has_value()) {
+                fail(declaration->token.span, "integer scalar may have only one relationship");
+            }
+            Fields const relation{*declaration, "relation", 2};
+            relation.validate({"unit"});
+            auto const* unit{relation.optional("unit")};
+            relationship = {
+                .kind = parse_semantic_relation_kind(relation.positional(0)),
+                .target = parse_type_ref(relation.positional(1)),
+                .unit = unit == nullptr ? std::nullopt
+                                        : std::optional{parse_semantic_relation_unit(*unit)},
+            };
+            continue;
+        }
         Fields const code{*declaration, "code", 1};
         code.validate({"value", "sentinel"});
         named_codes.push_back(
@@ -975,6 +1058,9 @@ auto parse_integer_scalar(Form const& form) -> IntegerScalarSchema {
         .maximum_value = packed_integer(fields.required("maximum"), "integer scalar maximum"),
         .bit_width = bit_width,
         .named_codes = std::move(named_codes),
+        .relationship = std::move(relationship),
+        .cpp_emission = cpp_emission,
+        .cpp_type = cpp_type == nullptr ? std::nullopt : std::optional{parse_type_ref(*cpp_type)},
     };
 }
 

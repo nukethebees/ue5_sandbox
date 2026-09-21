@@ -55,7 +55,7 @@ struct Enumerator {
 };
 
 struct EnumType {
-    ResolvedTypeRef underlying_type;
+    std::optional<ResolvedTypeRef> underlying_type;
     std::optional<std::uint32_t> bit_width;
     std::optional<bool> signedness;
     std::vector<Enumerator> enumerators;
@@ -68,9 +68,10 @@ struct PackedNamedCode {
     bool sentinel{};
 };
 
-struct PackedFieldRelationship {
-    codegen::PackedFieldRelationKind kind{codegen::PackedFieldRelationKind::references};
+struct SemanticRelationship {
+    codegen::SemanticRelationKind kind{codegen::SemanticRelationKind::references};
     ResolvedTypeRef target;
+    std::optional<codegen::SemanticRelationUnit> unit;
 };
 
 struct PackedField {
@@ -83,7 +84,7 @@ struct PackedField {
     std::optional<codegen::PackedIntegerValue> minimum_value;
     std::optional<codegen::PackedIntegerValue> maximum_value;
     std::vector<PackedNamedCode> named_codes;
-    std::optional<PackedFieldRelationship> relationship;
+    std::optional<SemanticRelationship> relationship;
 };
 
 struct PackedReservedBits {
@@ -105,6 +106,7 @@ struct RecordMember {
     std::string name;
     ResolvedTypeRef semantic_type;
     std::optional<std::uint64_t> count;
+    std::optional<SemanticRelationship> relationship;
 };
 
 struct RecordType {
@@ -140,6 +142,7 @@ struct IntegerScalarType {
     std::uint32_t bit_width{};
     bool bit_width_auto{};
     std::vector<PackedNamedCode> named_codes;
+    std::optional<SemanticRelationship> relationship;
 };
 
 struct LinearQuantizedType {
@@ -188,6 +191,7 @@ struct SoaColumn {
     ResolvedTypeRef semantic_type;
     codegen::SoaMemberKind kind{codegen::SoaMemberKind::array};
     std::optional<TypeId> nested_type;
+    std::optional<SemanticRelationship> relationship;
 };
 
 struct SoaType {

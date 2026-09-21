@@ -54,6 +54,48 @@ auto lower_known_enum(PackedValueModuleSchema module, EnumSchema schema) -> std:
     return files.back().content;
 }
 
+auto scalar_backed_manifest(PackedValueModuleSchema module, bool const signedness = false)
+    -> Manifest {
+    auto& packed_field{field(module.values.front(), 0)};
+    packed_field.type = TypeRef{"project::Health"};
+    packed_field.kind =
+        signedness ? PackedFieldKind::signed_integer : PackedFieldKind::unsigned_integer;
+    packed_field.bits.reset();
+    module.settings.namespace_name = "project";
+    module.values.front().segments.resize(1);
+    module.values.front().mutable_value = true;
+
+    return Manifest{
+        .schema_version = manifest_schema_version,
+        .modules = {ScalarModuleSchema{
+                        .settings = ModuleSettings{.name = "scalars",
+                                                   .header = "Scalars.h",
+                                                   .namespace_name = "project"},
+                        .scalars = {IntegerScalarSchema{
+                            .name = "Health",
+                            .signedness = signedness,
+                            .minimum_value =
+                                signedness ? PackedIntegerValue{-100} : PackedIntegerValue{0},
+                            .maximum_value =
+                                signedness ? PackedIntegerValue{100} : PackedIntegerValue{1000},
+                            .bit_width = std::nullopt,
+                            .named_codes = {{.name = "Unknown",
+                                             .value = signedness ? PackedIntegerValue{-128}
+                                                                 : PackedIntegerValue{4095},
+                                             .sentinel = true}},
+                        }}},
+                    std::move(module)},
+    };
+}
+
+auto lower_scalar_backed(PackedValueModuleSchema module, bool const signedness = false)
+    -> std::string {
+    auto const files{
+        render_modules(lower_modules(scalar_backed_manifest(std::move(module), signedness)))};
+    EXPECT_EQ(files.size(), 2);
+    return files.back().content;
+}
+
 TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
     auto module{valid_module()};
     module.values.front().invalid_value = 0x7fffffffu;
@@ -196,6 +238,52 @@ TEST(PackedValue, DerivesAndEnforcesSignedSemanticRangeWithNamedSentinel) {
     EXPECT_NE(header.find("value > static_cast<std::int16_t>(100)"), std::string::npos);
     EXPECT_NE(header.find("value != temperature_Unknown"), std::string::npos);
     EXPECT_NE(header.find("temperature() == temperature_Unknown"), std::string::npos);
+}
+
+TEST(PackedValue, LowersSharedIntegerScalarDomainForPackedPlacement) {
+    auto module{valid_module()};
+    auto const header{lower_scalar_backed(std::move(module))};
+
+    EXPECT_NE(header.find("using entity_index_type = std::uint16_t;"), std::string::npos);
+    EXPECT_NE(header.find("entity_index_bits{12}"), std::string::npos);
+    EXPECT_NE(header.find("entity_index_Unknown{static_cast<std::uint16_t>(4095)}"),
+              std::string::npos);
+    EXPECT_NE(header.find("value < static_cast<std::uint16_t>(0)"), std::string::npos);
+    EXPECT_NE(header.find("value > static_cast<std::uint16_t>(1000)"), std::string::npos);
+    EXPECT_NE(header.find("value != entity_index_Unknown"), std::string::npos);
+    EXPECT_NE(header.find("entity_index() == entity_index_Unknown"), std::string::npos);
+    EXPECT_EQ(header.find("using entity_index_type = project::Health;"), std::string::npos);
+}
+
+TEST(PackedValue, LowersSignedSharedIntegerScalarToSmallestNativeAccessor) {
+    auto module{valid_module()};
+    auto const header{lower_scalar_backed(std::move(module), true)};
+
+    EXPECT_NE(header.find("using entity_index_type = std::int8_t;"), std::string::npos);
+    EXPECT_NE(header.find("entity_index_bits{8}"), std::string::npos);
+    EXPECT_NE(header.find("entity_index_Unknown{static_cast<std::int8_t>(-128)}"),
+              std::string::npos);
+    EXPECT_NE(header.find("sign_bit{storage_type{0x80}}"), std::string::npos);
+}
+
+TEST(PackedValue, RejectsCompetingOrMismatchedIntegerScalarFieldDomain) {
+    auto module{valid_module()};
+    auto manifest{scalar_backed_manifest(std::move(module))};
+    auto& packed{std::get<PackedValueModuleSchema>(manifest.modules.back())};
+    auto& packed_field{field(packed.values.front(), 0)};
+
+    packed_field.minimum_value = 0;
+    packed_field.maximum_value = 1000;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    packed_field.minimum_value.reset();
+    packed_field.maximum_value.reset();
+    packed_field.kind = PackedFieldKind::signed_integer;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    packed_field.kind = PackedFieldKind::unsigned_integer;
+    packed_field.bits = 11;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 }
 
 TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
@@ -355,18 +443,24 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).relationship = PackedFieldRelationSchema{
-        .kind = PackedFieldRelationKind::discriminates, .target = TypeRef{"ExternalPayload"}};
+    field(module.values.front(), 0).relationship =
+        SemanticRelationSchema{.kind = SemanticRelationKind::discriminates,
+                               .target = TypeRef{"ExternalPayload"},
+                               .unit = std::nullopt};
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 1).relationship = PackedFieldRelationSchema{
-        .kind = PackedFieldRelationKind::index_into, .target = TypeRef{"ExternalTable"}};
+    field(module.values.front(), 1).relationship =
+        SemanticRelationSchema{.kind = SemanticRelationKind::index_into,
+                               .target = TypeRef{"ExternalTable"},
+                               .unit = std::nullopt};
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).relationship = PackedFieldRelationSchema{
-        .kind = PackedFieldRelationKind::references, .target = TypeRef{"ExternalType"}};
+    field(module.values.front(), 0).relationship =
+        SemanticRelationSchema{.kind = SemanticRelationKind::references,
+                               .target = TypeRef{"ExternalType"},
+                               .unit = std::nullopt};
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 }
 
@@ -550,8 +644,10 @@ TEST(PackedValue, RejectsFieldsNarrowerThanEnumSemanticDomain) {
 TEST(PackedValue, DerivesAutoWidthFromEnumSemanticDomain) {
     auto module{valid_module()};
     field(module.values.front(), 1).bits.reset();
-    field(module.values.front(), 0).relationship = PackedFieldRelationSchema{
-        .kind = PackedFieldRelationKind::index_into, .target = TypeRef{"FighterStateKind"}};
+    field(module.values.front(), 0).relationship =
+        SemanticRelationSchema{.kind = SemanticRelationKind::index_into,
+                               .target = TypeRef{"FighterStateKind"},
+                               .unit = std::nullopt};
     EnumModuleSchema enums{
         .settings = ModuleSettings{.name = "enums", .header = "Enums.h"},
         .enums = {EnumSchema{

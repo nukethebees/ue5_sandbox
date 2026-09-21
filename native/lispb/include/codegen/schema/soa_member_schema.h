@@ -1,5 +1,6 @@
 #pragma once
 
+#include <codegen/schema/semantic_relation_schema.h>
 #include <codegen/schema/soa_member_kind.h>
 #include <codegen/schema/type_ref.h>
 
@@ -22,6 +23,7 @@ struct SoaMemberSchema {
     std::optional<std::string> nested_schema;
     bool mask_field{false};
     std::vector<SoaMaskDimensionSchema> mask_dimensions;
+    std::optional<SemanticRelationSchema> relationship;
 };
 
 } // namespace codegen

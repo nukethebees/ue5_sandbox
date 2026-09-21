@@ -54,6 +54,9 @@ class TemporarySchema {
       :minimum 0
       :maximum 100
       (code Invalid :value   255 :sentinel true) ; field code note
+      ; pending field code note
+      (code Pending :value 126 :sentinel true) ; pending field trailing note
+      ; field relationship note
       (relation index_into authored::ExistingScalar))
     ; Keep the future segment note.
     (reserved future :bits   16)))
@@ -68,7 +71,9 @@ class TemporarySchema {
     :maximum 1
     :bit-width auto
     (code Pending :value   2 :sentinel true) ; pending code note
-    (code Invalid :value   3 :sentinel true))
+    (code Invalid :value   3 :sentinel true)
+    ; Keep the scalar relationship note.
+    (relation index_into   authored::ExistingPacked)) ; scalar relationship trailing note
   (integer-scalar OtherScalar
     :signed false
     :minimum 0
@@ -172,7 +177,14 @@ class TemporarySchema {
         auto const modules{std::array{path("modules.lispb")}};
         return load_editable_schema_document(path("types.lispb"), modules);
     }
+    auto load_with_module_source(std::string const& name) const -> EditableSchemaDocument {
+        auto const modules{std::array{path("modules.lispb"), path(name)}};
+        return load_editable_schema_document(path("types.lispb"), modules);
+    }
     auto path(std::string const& name) const -> std::filesystem::path { return directory_ / name; }
+    void write_source(std::string const& name, std::string_view const text) const {
+        write(name, text);
+    }
     void replace_module_text(std::string_view const old_text,
                              std::string_view const new_text) const {
         std::ifstream input{path("modules.lispb"), std::ios::binary};
@@ -468,6 +480,359 @@ TEST(EditableSchemaDocument, PreservesEnumCommentsAndFormattingForNonStructuralE
     EXPECT_NE(module_source->text.find("; zero trailing note"), std::string::npos);
 }
 
+TEST(EditableSchemaDocument, PreservesEnumConversionRowsDuringEdits) {
+    TemporarySchema files;
+    files.replace_module_text(R"(  :header "AuthoredEnums.h"
+  :namespace authored
+  (enum Existing std::uint8_t)",
+                              R"(  :header "AuthoredEnums.h"
+  :source "AuthoredEnums.cpp"
+  :namespace authored
+  (enum Existing std::uint8_t
+    :conversions (
+      ; Keep the lexical conversion note.
+      lex-to-string ; lexical conversion trailing note
+      ; Keep the view conversion note.
+      string-view ; view conversion trailing note
+    ))");
+    auto document{files.load()};
+    auto const enumeration{declaration_id(document, "authored_enums", "Existing", "authored")};
+
+    auto replacement{*document.enum_schema(enumeration)};
+    replacement.conversions = {
+        codegen::EnumConversion::string_view,
+        codegen::EnumConversion::string,
+        codegen::EnumConversion::lex_to_string,
+    };
+    auto applied{
+        document.apply(ReplaceEnum{.declaration = enumeration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& reordered{preview->front().updated};
+    auto const view_note{reordered.find("; Keep the view conversion note.")};
+    auto const view_row{reordered.find("string-view ; view conversion trailing note")};
+    auto const string_row{reordered.find("\n      string\n")};
+    auto const lexical_note{reordered.find("; Keep the lexical conversion note.")};
+    auto const lexical_row{reordered.find("lex-to-string ; lexical conversion trailing note")};
+    ASSERT_NE(view_note, std::string::npos);
+    ASSERT_NE(view_row, std::string::npos);
+    ASSERT_NE(string_row, std::string::npos);
+    ASSERT_NE(lexical_note, std::string::npos);
+    ASSERT_NE(lexical_row, std::string::npos);
+    EXPECT_LT(view_note, view_row);
+    EXPECT_LT(view_row, string_row);
+    EXPECT_LT(string_row, lexical_note);
+    EXPECT_LT(lexical_note, lexical_row);
+    EXPECT_NE(reordered.find("; Preserve the zero documentation"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto edited_document{files.load()};
+    auto const edited_enumeration{
+        declaration_id(edited_document, "authored_enums", "Existing", "authored")};
+    replacement = *edited_document.enum_schema(edited_enumeration);
+    replacement.conversions.front() = codegen::EnumConversion::display_string_view;
+    applied = edited_document.apply(
+        ReplaceEnum{.declaration = edited_enumeration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = edited_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& edited{preview->front().updated};
+    EXPECT_NE(edited.find("; Keep the view conversion note."), std::string::npos);
+    EXPECT_NE(edited.find("display-string-view ; view conversion trailing note"),
+              std::string::npos);
+    saved = edited_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto deleting_document{files.load()};
+    auto const deleting_enumeration{
+        declaration_id(deleting_document, "authored_enums", "Existing", "authored")};
+    replacement = *deleting_document.enum_schema(deleting_enumeration);
+    replacement.conversions.pop_back();
+    applied = deleting_document.apply(
+        ReplaceEnum{.declaration = deleting_enumeration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    preview = deleting_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated.find("; Keep the lexical conversion note."),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the view conversion note."), std::string::npos);
+    ASSERT_TRUE(deleting_document.undo().value());
+    ASSERT_TRUE(deleting_document.redo().value());
+    saved = deleting_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto reloaded{files.load()};
+    auto const reloaded_enumeration{
+        declaration_id(reloaded, "authored_enums", "Existing", "authored")};
+    auto const* schema{reloaded.enum_schema(reloaded_enumeration)};
+    ASSERT_NE(schema, nullptr);
+    EXPECT_EQ(schema->conversions,
+              (std::vector{codegen::EnumConversion::display_string_view,
+                           codegen::EnumConversion::string}));
+}
+
+TEST(EditableSchemaDocument, PreservesEnumGenerationPolicyPropertiesDuringEdits) {
+    TemporarySchema files;
+    files.write_source("enum_policy.lispb", R"((enum-module enum_policy
+  :header "EnumPolicy.h"
+  (enum PolicyMode std::uint8_t
+    ; Keep the declaration policy note.
+    :reflection uenum
+    :enum-array true
+    :count Count
+    :export-specifier POLICY_API
+    ; Keep the idle value note.
+    (value Idle)
+    (value Active)
+    (value Count :hidden true)))
+)");
+    auto document{files.load_with_module_source("enum_policy.lispb")};
+    auto const enumeration{declaration_id(document, "enum_policy", "PolicyMode", "")};
+
+    auto replacement{*document.enum_schema(enumeration)};
+    replacement.reflection = codegen::EnumReflection::blueprint;
+    replacement.export_specifier = "POLICY_V2_API";
+    auto applied{
+        document.apply(ReplaceEnum{.declaration = enumeration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find(":reflection blueprint"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":export-specifier POLICY_V2_API"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the declaration policy note."),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the idle value note."), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_TRUE(document.redo().value());
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto native_document{files.load_with_module_source("enum_policy.lispb")};
+    auto const native_enumeration{declaration_id(native_document, "enum_policy", "PolicyMode", "")};
+    replacement = *native_document.enum_schema(native_enumeration);
+    replacement.reflection = codegen::EnumReflection::none;
+    replacement.enum_array = false;
+    replacement.export_specifier.reset();
+    replacement.native_api = true;
+    applied = native_document.apply(
+        ReplaceEnum{.declaration = native_enumeration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    preview = native_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated.find(":reflection"), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find(":enum-array"), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find(":export-specifier"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":native-api true"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the declaration policy note."),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the idle value note."), std::string::npos);
+
+    saved = native_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load_with_module_source("enum_policy.lispb")};
+    auto const reloaded_enumeration{declaration_id(reloaded, "enum_policy", "PolicyMode", "")};
+    auto const* schema{reloaded.enum_schema(reloaded_enumeration)};
+    ASSERT_NE(schema, nullptr);
+    EXPECT_EQ(schema->reflection, codegen::EnumReflection::none);
+    EXPECT_FALSE(schema->enum_array);
+    EXPECT_FALSE(schema->export_specifier.has_value());
+    EXPECT_TRUE(schema->native_api);
+
+    auto invalid{*schema};
+    invalid.export_specifier = "INVALID_API";
+    auto const revision_before{reloaded.revision()};
+    applied = reloaded.apply(
+        ReplaceEnum{.declaration = reloaded_enumeration, .schema = std::move(invalid)});
+    ASSERT_FALSE(applied.has_value());
+    EXPECT_NE(applied.error().message.find("cannot use Unreal enum generation options"),
+              std::string::npos);
+    EXPECT_EQ(reloaded.revision(), revision_before);
+    EXPECT_FALSE(reloaded.dirty());
+    EXPECT_TRUE(reloaded.enum_schema(reloaded_enumeration)->native_api);
+    EXPECT_FALSE(reloaded.enum_schema(reloaded_enumeration)->export_specifier.has_value());
+}
+
+TEST(EditableSchemaDocument, PreservesEnumUnrealProjectionDuringEdits) {
+    TemporarySchema files;
+    files.write_source("enum_projection.lispb", R"((enum-module enum_projection
+  :header "NativeMode.h"
+  (enum NativeMode std::uint8_t
+    ; Keep the native declaration note.
+    :native-api true
+    ; Keep the idle value note.
+    (value Idle)
+    (value Active)
+    ; Keep the projection note.
+    (unreal-projection ENativeMode
+      :header   "Generated/NativeMode.h"
+      :header-include "Generated/NativeMode.h"
+      ; Keep the conversion-header note.
+      :conversion-header "Generated/NativeModeConversion.h"
+      :native-header-include "NativeMode.h"
+      :reflection blueprint)))
+)");
+    auto document{files.load_with_module_source("enum_projection.lispb")};
+    auto const enumeration{declaration_id(document, "enum_projection", "NativeMode", "")};
+
+    auto replacement{*document.enum_schema(enumeration)};
+    ASSERT_TRUE(replacement.unreal_projection.has_value());
+    replacement.unreal_projection->name = "EProjectedNativeMode";
+    replacement.unreal_projection->header_include = "Public/ProjectedNativeMode.h";
+    replacement.unreal_projection->reflection = codegen::EnumReflection::uenum;
+    auto applied{
+        document.apply(ReplaceEnum{.declaration = enumeration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& edited{preview->front().updated};
+    EXPECT_NE(edited.find("(unreal-projection EProjectedNativeMode"), std::string::npos);
+    EXPECT_NE(edited.find(":header   \"Generated/NativeMode.h\""), std::string::npos);
+    EXPECT_NE(edited.find(":header-include \"Public/ProjectedNativeMode.h\""), std::string::npos);
+    EXPECT_EQ(edited.find(":reflection blueprint"), std::string::npos);
+    EXPECT_NE(edited.find("; Keep the native declaration note."), std::string::npos);
+    EXPECT_NE(edited.find("; Keep the idle value note."), std::string::npos);
+    EXPECT_NE(edited.find("; Keep the projection note."), std::string::npos);
+    EXPECT_NE(edited.find("; Keep the conversion-header note."), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_TRUE(document.redo().value());
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto removing_document{files.load_with_module_source("enum_projection.lispb")};
+    auto const removing_enumeration{
+        declaration_id(removing_document, "enum_projection", "NativeMode", "")};
+    replacement = *removing_document.enum_schema(removing_enumeration);
+    replacement.unreal_projection.reset();
+    applied = removing_document.apply(
+        ReplaceEnum{.declaration = removing_enumeration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    preview = removing_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated.find("(unreal-projection"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the native declaration note."),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the idle value note."), std::string::npos);
+    saved = removing_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto adding_document{files.load_with_module_source("enum_projection.lispb")};
+    auto const adding_enumeration{
+        declaration_id(adding_document, "enum_projection", "NativeMode", "")};
+    replacement = *adding_document.enum_schema(adding_enumeration);
+    replacement.unreal_projection =
+        codegen::EnumUnrealProjection{.name = "ENativeMode",
+                                      .header = "Generated/NativeMode.h",
+                                      .header_include = "Generated/NativeMode.h",
+                                      .conversion_header = "Generated/NativeModeConversion.h",
+                                      .native_header_include = "NativeMode.h",
+                                      .reflection = codegen::EnumReflection::blueprint};
+    applied = adding_document.apply(
+        ReplaceEnum{.declaration = adding_enumeration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    preview = adding_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find("(unreal-projection ENativeMode"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":reflection blueprint"), std::string::npos);
+    saved = adding_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto reloaded{files.load_with_module_source("enum_projection.lispb")};
+    auto const reloaded_enumeration{declaration_id(reloaded, "enum_projection", "NativeMode", "")};
+    auto const* schema{reloaded.enum_schema(reloaded_enumeration)};
+    ASSERT_NE(schema, nullptr);
+    ASSERT_TRUE(schema->unreal_projection.has_value());
+    EXPECT_EQ(schema->unreal_projection->name, "ENativeMode");
+    EXPECT_EQ(schema->unreal_projection->header, "Generated/NativeMode.h");
+    EXPECT_EQ(schema->unreal_projection->header_include, "Generated/NativeMode.h");
+    EXPECT_EQ(schema->unreal_projection->conversion_header, "Generated/NativeModeConversion.h");
+    EXPECT_EQ(schema->unreal_projection->native_header_include, "NativeMode.h");
+    EXPECT_EQ(schema->unreal_projection->reflection, codegen::EnumReflection::blueprint);
+
+    auto invalid{*schema};
+    invalid.unreal_projection->reflection = codegen::EnumReflection::none;
+    auto const revision_before{reloaded.revision()};
+    applied = reloaded.apply(
+        ReplaceEnum{.declaration = reloaded_enumeration, .schema = std::move(invalid)});
+    ASSERT_FALSE(applied.has_value());
+    EXPECT_NE(applied.error().message.find("must be reflected"), std::string::npos);
+    EXPECT_EQ(reloaded.revision(), revision_before);
+    EXPECT_FALSE(reloaded.dirty());
+}
+
+TEST(EditableSchemaDocument, PreservesSourceForEnumWithDerivedBacking) {
+    TemporarySchema files;
+    files.replace_module_text("(enum Existing std::uint8_t", "(enum Existing");
+    auto document{files.load()};
+    auto const enumeration{declaration_id(document, "authored_enums", "Existing", "authored")};
+    ASSERT_FALSE(document.enum_schema(enumeration)->underlying_type.has_value());
+
+    auto replacement{*document.enum_schema(enumeration)};
+    replacement.values[1].display_name = "One State";
+    auto applied{
+        document.apply(ReplaceEnum{.declaration = enumeration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find("(enum Existing\n"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Preserve the one documentation too."),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":display-name \"One State\""), std::string::npos);
+
+    auto explicit_backing{*document.enum_schema(enumeration)};
+    explicit_backing.underlying_type =
+        codegen::TypeRef{.name = "std::uint16_t", .suffix = {}, .nested = std::nullopt};
+    auto set_explicit{document.apply(
+        ReplaceEnum{.declaration = enumeration, .schema = std::move(explicit_backing)})};
+    ASSERT_TRUE(set_explicit.has_value()) << set_explicit.error().message;
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_NE(preview->front().updated.find("(enum Existing std::uint16_t"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Preserve the one documentation too."),
+              std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_FALSE(document.enum_schema(enumeration)->underlying_type.has_value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_enum{declaration_id(reloaded, "authored_enums", "Existing", "authored")};
+    ASSERT_FALSE(reloaded.enum_schema(reloaded_enum)->underlying_type.has_value());
+    EXPECT_EQ(reloaded.enum_schema(reloaded_enum)->values[1].display_name, "One State");
+}
+
 TEST(EditableSchemaDocument, PreservesEnumRowsAndCommentsForStructuralEdits) {
     TemporarySchema files;
     auto document{files.load()};
@@ -561,6 +926,48 @@ TEST(EditableSchemaDocument, PreservesEnumRowsAndCommentsForStructuralEdits) {
     EXPECT_NE(module_source->text.find("; Preserve the zero documentation"), std::string::npos);
 }
 
+TEST(EditableSchemaDocument, PreservesEnumeratorRowDuringDirectRename) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const enumeration{declaration_id(document, "authored_enums", "Existing", "authored")};
+
+    auto renamed{document.apply(SetEnumeratorName{
+        .enum_declaration = enumeration, .current_name = "One", .new_name = "Uno"})};
+    ASSERT_TRUE(renamed.has_value()) << renamed.error().message;
+    ASSERT_TRUE(*renamed);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& updated{preview->front().updated};
+    auto const comment{updated.find("; Preserve the one documentation too.")};
+    auto const renamed_value{updated.find("(value Uno :value   \"1\")")};
+    ASSERT_NE(comment, std::string::npos) << updated;
+    ASSERT_NE(renamed_value, std::string::npos);
+    EXPECT_LT(comment, renamed_value);
+    EXPECT_EQ(updated.find("(value One "), std::string::npos);
+    EXPECT_NE(updated.find("; zero trailing note"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_enum{declaration_id(reloaded, "authored_enums", "Existing", "authored")};
+    ASSERT_EQ(reloaded.enum_schema(reloaded_enum)->values.size(), 2U);
+    EXPECT_EQ(reloaded.enum_schema(reloaded_enum)->values[1].name, "Uno");
+    auto const module_source{std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
+        return source.path.filename() == "modules.lispb";
+    })};
+    ASSERT_NE(module_source, reloaded.source_files().end());
+    EXPECT_NE(module_source->text.find("; Preserve the one documentation too."), std::string::npos);
+    EXPECT_NE(module_source->text.find("(value Uno :value   \"1\")"), std::string::npos);
+}
+
 TEST(EditableSchemaDocument, PreservesScalarAndRepresentationFormattingForNonStructuralEdits) {
     TemporarySchema files;
     auto document{files.load()};
@@ -579,6 +986,10 @@ TEST(EditableSchemaDocument, PreservesScalarAndRepresentationFormattingForNonStr
     auto scalar_replacement{*document.integer_scalar_schema(scalar)};
     scalar_replacement.bit_width = 3;
     scalar_replacement.named_codes[0].value = codegen::PackedIntegerValue{4};
+    scalar_replacement.relationship->kind = codegen::SemanticRelationKind::count_of;
+    scalar_replacement.relationship->target.name = "authored::OtherScalar";
+    scalar_replacement.cpp_emission = codegen::IntegerScalarCppEmission::constants;
+    scalar_replacement.cpp_type = codegen::TypeRef{"std::uint8_t"};
     auto scalar_applied{document.apply(
         ReplaceIntegerScalar{.declaration = scalar, .schema = std::move(scalar_replacement)})};
     ASSERT_TRUE(scalar_applied.has_value()) << scalar_applied.error().message;
@@ -626,11 +1037,16 @@ TEST(EditableSchemaDocument, PreservesScalarAndRepresentationFormattingForNonStr
     auto const& updated{preview->front().updated};
     EXPECT_NE(updated.find("; Keep the scalar domain note"), std::string::npos);
     EXPECT_NE(updated.find(":minimum   0"), std::string::npos);
+    EXPECT_NE(updated.find(":cpp-emission constants"), std::string::npos);
+    EXPECT_NE(updated.find(":cpp-type std::uint8_t"), std::string::npos);
     auto const pending_begin{updated.find("(code Pending")};
     ASSERT_NE(pending_begin, std::string::npos);
     EXPECT_NE(updated.find("(code Pending :value   4 :sentinel true"), std::string::npos);
     EXPECT_NE(updated.find("(code Invalid :value   3 :sentinel true"), std::string::npos);
     EXPECT_NE(updated.find("; pending code note"), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the scalar relationship note."), std::string::npos);
+    EXPECT_NE(updated.find("(relation count_of   authored::OtherScalar)"), std::string::npos);
+    EXPECT_NE(updated.find("; scalar relationship trailing note"), std::string::npos);
     EXPECT_NE(updated.find("; Keep the quantization note"), std::string::npos);
     EXPECT_NE(updated.find(":source   authored::ExistingScalar"), std::string::npos);
     EXPECT_NE(updated.find(":bits   3"), std::string::npos);
@@ -662,7 +1078,16 @@ TEST(EditableSchemaDocument, PreservesScalarAndRepresentationFormattingForNonStr
               codegen::PackedIntegerValue{1});
     EXPECT_EQ(reloaded.integer_scalar_schema(reloaded_scalar)->named_codes[0].value,
               codegen::PackedIntegerValue{4});
+    EXPECT_EQ(reloaded.integer_scalar_schema(reloaded_scalar)->cpp_emission,
+              codegen::IntegerScalarCppEmission::constants);
+    ASSERT_TRUE(reloaded.integer_scalar_schema(reloaded_scalar)->cpp_type.has_value());
+    EXPECT_EQ(reloaded.integer_scalar_schema(reloaded_scalar)->cpp_type->name, "std::uint8_t");
     EXPECT_TRUE(reloaded.integer_scalar_schema(reloaded_scalar)->named_codes[1].sentinel);
+    ASSERT_TRUE(reloaded.integer_scalar_schema(reloaded_scalar)->relationship.has_value());
+    EXPECT_EQ(reloaded.integer_scalar_schema(reloaded_scalar)->relationship->kind,
+              codegen::SemanticRelationKind::count_of);
+    EXPECT_EQ(reloaded.integer_scalar_schema(reloaded_scalar)->relationship->target.name,
+              "authored::OtherScalar");
     EXPECT_EQ(reloaded.linear_quantized_schema(reloaded_quantized)->bit_width, 3U);
     EXPECT_EQ(reloaded.linear_quantized_schema(reloaded_quantized)->clipping,
               codegen::QuantizationClipping::clamp);
@@ -678,12 +1103,21 @@ TEST(EditableSchemaDocument, PreservesScalarAndRepresentationFormattingForNonStr
               codegen::FixedPointRounding::toward_zero);
 }
 
-TEST(EditableSchemaDocument, FallsBackToCanonicalScalarRenderingForStructuralEdits) {
+TEST(EditableSchemaDocument, PreservesIntegerScalarCodesForStructuralEdits) {
     TemporarySchema files;
     auto document{files.load()};
     auto const scalar{declaration_id(document, "authored_scalars", "ExistingScalar", "authored")};
     auto replacement{*document.integer_scalar_schema(scalar)};
-    std::ranges::swap(replacement.named_codes[0], replacement.named_codes[1]);
+    replacement.bit_width = 3;
+    replacement.relationship->kind = codegen::SemanticRelationKind::count_of;
+    replacement.relationship->target.name = "authored::OtherScalar";
+    auto pending{replacement.named_codes[0]};
+    auto invalid{replacement.named_codes[1]};
+    invalid.value = codegen::PackedIntegerValue{6};
+    auto pending_copy{pending};
+    pending_copy.name = "PendingCopy";
+    pending_copy.value = codegen::PackedIntegerValue{4};
+    replacement.named_codes = {invalid, pending_copy, pending};
 
     auto applied{document.apply(
         ReplaceIntegerScalar{.declaration = scalar, .schema = std::move(replacement)})};
@@ -694,13 +1128,432 @@ TEST(EditableSchemaDocument, FallsBackToCanonicalScalarRenderingForStructuralEdi
     ASSERT_TRUE(preview.has_value()) << preview.error().message;
     ASSERT_EQ(preview->size(), 1U);
     auto const& updated{preview->front().updated};
-    auto const invalid{updated.find("(code Invalid")};
-    auto const pending{updated.find("(code Pending")};
-    ASSERT_NE(invalid, std::string::npos);
-    ASSERT_NE(pending, std::string::npos);
-    EXPECT_LT(invalid, pending);
-    EXPECT_EQ(updated.find("; Keep the scalar domain note"), std::string::npos);
-    EXPECT_EQ(updated.find("; pending code note"), std::string::npos);
+    auto const scalar_begin{updated.find("(integer-scalar ExistingScalar")};
+    auto const scalar_end{updated.find("(integer-scalar OtherScalar", scalar_begin)};
+    ASSERT_NE(scalar_begin, std::string::npos);
+    ASSERT_NE(scalar_end, std::string::npos);
+    auto const scalar_source{updated.substr(scalar_begin, scalar_end - scalar_begin)};
+    auto const invalid_position{scalar_source.find("(code Invalid")};
+    auto const pending_copy_position{scalar_source.find("(code PendingCopy")};
+    auto const pending_position{scalar_source.find("(code Pending :")};
+    ASSERT_NE(invalid_position, std::string::npos);
+    ASSERT_NE(pending_copy_position, std::string::npos);
+    ASSERT_NE(pending_position, std::string::npos);
+    EXPECT_LT(invalid_position, pending_copy_position);
+    EXPECT_LT(pending_copy_position, pending_position);
+    EXPECT_NE(updated.find("(code Invalid :value   6 :sentinel true)"), std::string::npos);
+    EXPECT_NE(updated.find("(code PendingCopy :value 4 :sentinel true)"), std::string::npos);
+    EXPECT_NE(updated.find("(code Pending :value   2 :sentinel true) ; pending code note"),
+              std::string::npos);
+    EXPECT_NE(updated.find("; Keep the scalar domain note"), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the scalar relationship note"), std::string::npos);
+    EXPECT_NE(updated.find("(relation count_of   authored::OtherScalar)"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_EQ(document.integer_scalar_schema(scalar)->named_codes.size(), 2U);
+    EXPECT_EQ(document.integer_scalar_schema(scalar)->named_codes[0].name, "Pending");
+    ASSERT_TRUE(document.redo().value());
+
+    auto deletion{*document.integer_scalar_schema(scalar)};
+    ASSERT_EQ(deletion.named_codes.size(), 3U);
+    deletion.named_codes.erase(deletion.named_codes.begin() + 2);
+    auto deleted{
+        document.apply(ReplaceIntegerScalar{.declaration = scalar, .schema = std::move(deletion)})};
+    ASSERT_TRUE(deleted.has_value()) << deleted.error().message;
+    ASSERT_TRUE(*deleted);
+
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    auto const& deleted_source{preview->front().updated};
+    auto const deleted_scalar_begin{deleted_source.find("(integer-scalar ExistingScalar")};
+    auto const deleted_scalar_end{
+        deleted_source.find("(integer-scalar OtherScalar", deleted_scalar_begin)};
+    ASSERT_NE(deleted_scalar_begin, std::string::npos);
+    ASSERT_NE(deleted_scalar_end, std::string::npos);
+    auto const deleted_scalar_source{
+        deleted_source.substr(deleted_scalar_begin, deleted_scalar_end - deleted_scalar_begin)};
+    EXPECT_EQ(deleted_scalar_source.find("(code Pending :value"), std::string::npos);
+    EXPECT_EQ(deleted_scalar_source.find("; pending code note"), std::string::npos);
+    EXPECT_NE(deleted_scalar_source.find("(code Invalid :value   6 :sentinel true)"),
+              std::string::npos);
+    EXPECT_NE(deleted_scalar_source.find("(code PendingCopy :value 4 :sentinel true)\n"
+                                         "    ; Keep the scalar relationship note."),
+              std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_scalar{
+        declaration_id(reloaded, "authored_scalars", "ExistingScalar", "authored")};
+    auto const* schema{reloaded.integer_scalar_schema(reloaded_scalar)};
+    ASSERT_NE(schema, nullptr);
+    EXPECT_EQ(schema->bit_width, 3U);
+    ASSERT_EQ(schema->named_codes.size(), 2U);
+    EXPECT_EQ(schema->named_codes[0].name, "Invalid");
+    EXPECT_EQ(schema->named_codes[0].value, codegen::PackedIntegerValue{6});
+    EXPECT_EQ(schema->named_codes[1].name, "PendingCopy");
+    EXPECT_EQ(schema->named_codes[1].value, codegen::PackedIntegerValue{4});
+    ASSERT_TRUE(schema->relationship.has_value());
+    EXPECT_EQ(schema->relationship->kind, codegen::SemanticRelationKind::count_of);
+    EXPECT_EQ(schema->relationship->target.name, "authored::OtherScalar");
+}
+
+TEST(EditableSchemaDocument, PreservesNamedCodeRowsDuringDirectRename) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const scalar{declaration_id(document, "authored_scalars", "ExistingScalar", "authored")};
+    auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
+
+    auto scalar_replacement{*document.integer_scalar_schema(scalar)};
+    scalar_replacement.named_codes[0].name = "Waiting";
+    auto applied{document.apply(
+        ReplaceIntegerScalar{.declaration = scalar, .schema = std::move(scalar_replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto packed_replacement{*document.packed_value_schema(packed)};
+    auto& counter{std::get<codegen::PackedFieldSchema>(packed_replacement.segments[1])};
+    counter.named_codes[1].name = "Queued";
+    applied = document.apply(
+        ReplacePackedValue{.declaration = packed, .schema = std::move(packed_replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& updated{preview->front().updated};
+    EXPECT_NE(updated.find("(code Waiting :value   2 :sentinel true) ; pending code note"),
+              std::string::npos);
+    auto const pending_field_comment{updated.find("; pending field code note")};
+    auto const renamed_field_code{
+        updated.find("(code Queued :value 126 :sentinel true) ; pending field trailing note")};
+    ASSERT_NE(pending_field_comment, std::string::npos);
+    ASSERT_NE(renamed_field_code, std::string::npos);
+    EXPECT_LT(pending_field_comment, renamed_field_code);
+    EXPECT_EQ(updated.find("(code Pending "), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the scalar relationship note."), std::string::npos);
+    EXPECT_NE(updated.find("; field relationship note"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_NE(preview->front().updated.find("(code Waiting :value   2 :sentinel true)"),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(code Pending :value 126 :sentinel true)"),
+              std::string::npos);
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.redo().value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_scalar{
+        declaration_id(reloaded, "authored_scalars", "ExistingScalar", "authored")};
+    auto const reloaded_packed{
+        declaration_id(reloaded, "authored_packed", "ExistingPacked", "authored")};
+    EXPECT_EQ(reloaded.integer_scalar_schema(reloaded_scalar)->named_codes[0].name, "Waiting");
+    auto const& reloaded_counter{std::get<codegen::PackedFieldSchema>(
+        reloaded.packed_value_schema(reloaded_packed)->segments[1])};
+    EXPECT_EQ(reloaded_counter.named_codes[1].name, "Queued");
+
+    auto const module_source{std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
+        return source.path.filename() == "modules.lispb";
+    })};
+    ASSERT_NE(module_source, reloaded.source_files().end());
+    EXPECT_NE(
+        module_source->text.find("(code Waiting :value   2 :sentinel true) ; pending code note"),
+        std::string::npos);
+    EXPECT_NE(module_source->text.find("; pending field code note\n"
+                                       "      (code Queued :value 126 :sentinel true) ; pending "
+                                       "field trailing note"),
+              std::string::npos);
+}
+
+TEST(EditableSchemaDocument, PreservesSourceWhenAddingAndRemovingSemanticRelationships) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const existing_scalar{
+        declaration_id(document, "authored_scalars", "ExistingScalar", "authored")};
+    auto const other_scalar{
+        declaration_id(document, "authored_scalars", "OtherScalar", "authored")};
+    auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
+
+    auto existing_replacement{*document.integer_scalar_schema(existing_scalar)};
+    existing_replacement.relationship.reset();
+    auto applied{document.apply(ReplaceIntegerScalar{.declaration = existing_scalar,
+                                                     .schema = std::move(existing_replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto other_replacement{*document.integer_scalar_schema(other_scalar)};
+    other_replacement.relationship =
+        codegen::SemanticRelationSchema{.kind = codegen::SemanticRelationKind::references,
+                                        .target = codegen::TypeRef{"authored::Existing"},
+                                        .unit = std::nullopt};
+    applied = document.apply(
+        ReplaceIntegerScalar{.declaration = other_scalar, .schema = std::move(other_replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto packed_replacement{*document.packed_value_schema(packed)};
+    auto& value_field{std::get<codegen::PackedFieldSchema>(packed_replacement.segments[0])};
+    value_field.relationship =
+        codegen::SemanticRelationSchema{.kind = codegen::SemanticRelationKind::references,
+                                        .target = codegen::TypeRef{"authored::OtherScalar"},
+                                        .unit = std::nullopt};
+    auto& counter_field{std::get<codegen::PackedFieldSchema>(packed_replacement.segments[1])};
+    counter_field.relationship.reset();
+    applied = document.apply(
+        ReplacePackedValue{.declaration = packed, .schema = std::move(packed_replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& updated{preview->front().updated};
+    EXPECT_NE(updated.find("; Keep the scalar domain note"), std::string::npos);
+    EXPECT_NE(updated.find("; pending code note"), std::string::npos);
+    EXPECT_EQ(updated.find("; Keep the scalar relationship note"), std::string::npos);
+    EXPECT_NE(updated.find("; scalar relationship trailing note"), std::string::npos);
+    EXPECT_EQ(updated.find("(relation index_into   authored::ExistingPacked)"), std::string::npos);
+    EXPECT_NE(updated.find("(relation references authored::Existing)"), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the value segment note"), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the packed field note"), std::string::npos);
+    EXPECT_NE(updated.find("; field code note"), std::string::npos);
+    EXPECT_EQ(updated.find("; field relationship note"), std::string::npos);
+    EXPECT_EQ(updated.find("(relation index_into authored::ExistingScalar)"), std::string::npos);
+    EXPECT_NE(updated.find("(relation references authored::OtherScalar)"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_NE(preview->front().updated.find("; field relationship note"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(relation index_into authored::ExistingScalar)"),
+              std::string::npos);
+    EXPECT_EQ(preview->front().updated.find("(relation references authored::OtherScalar)"),
+              std::string::npos);
+    ASSERT_TRUE(document.redo().value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_existing{
+        declaration_id(reloaded, "authored_scalars", "ExistingScalar", "authored")};
+    auto const reloaded_other{
+        declaration_id(reloaded, "authored_scalars", "OtherScalar", "authored")};
+    auto const reloaded_packed{
+        declaration_id(reloaded, "authored_packed", "ExistingPacked", "authored")};
+    EXPECT_FALSE(reloaded.integer_scalar_schema(reloaded_existing)->relationship.has_value());
+    ASSERT_TRUE(reloaded.integer_scalar_schema(reloaded_other)->relationship.has_value());
+    auto const* reloaded_packed_schema{reloaded.packed_value_schema(reloaded_packed)};
+    ASSERT_NE(reloaded_packed_schema, nullptr);
+    EXPECT_TRUE(std::get<codegen::PackedFieldSchema>(reloaded_packed_schema->segments[0])
+                    .relationship.has_value());
+    EXPECT_FALSE(std::get<codegen::PackedFieldSchema>(reloaded_packed_schema->segments[1])
+                     .relationship.has_value());
+
+    auto remove_other{*reloaded.integer_scalar_schema(reloaded_other)};
+    remove_other.relationship.reset();
+    applied = reloaded.apply(
+        ReplaceIntegerScalar{.declaration = reloaded_other, .schema = std::move(remove_other)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    auto remove_packed{*reloaded.packed_value_schema(reloaded_packed)};
+    std::get<codegen::PackedFieldSchema>(remove_packed.segments[0]).relationship.reset();
+    applied = reloaded.apply(
+        ReplacePackedValue{.declaration = reloaded_packed, .schema = std::move(remove_packed)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = reloaded.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_EQ(preview->front().updated.find("(relation references authored::Existing)"),
+              std::string::npos);
+    EXPECT_EQ(preview->front().updated.find("(relation references authored::OtherScalar)"),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the scalar domain note"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the value segment note"), std::string::npos);
+
+    saved = reloaded.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto final_document{files.load()};
+    auto const final_other{
+        declaration_id(final_document, "authored_scalars", "OtherScalar", "authored")};
+    auto const final_packed{
+        declaration_id(final_document, "authored_packed", "ExistingPacked", "authored")};
+    EXPECT_FALSE(final_document.integer_scalar_schema(final_other)->relationship.has_value());
+    EXPECT_FALSE(std::get<codegen::PackedFieldSchema>(
+                     final_document.packed_value_schema(final_packed)->segments[0])
+                     .relationship.has_value());
+}
+
+TEST(EditableSchemaDocument, PreservesSourceWhenAddingAndRemovingTheFirstNamedCode) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto other_scalar{declaration_id(document, "authored_scalars", "OtherScalar", "authored")};
+    auto packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
+
+    auto other_with_relation{*document.integer_scalar_schema(other_scalar)};
+    other_with_relation.relationship =
+        codegen::SemanticRelationSchema{.kind = codegen::SemanticRelationKind::references,
+                                        .target = codegen::TypeRef{"authored::Existing"},
+                                        .unit = std::nullopt};
+    auto applied{document.apply(ReplaceIntegerScalar{.declaration = other_scalar,
+                                                     .schema = std::move(other_with_relation)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto packed_with_relation{*document.packed_value_schema(packed)};
+    std::get<codegen::PackedFieldSchema>(packed_with_relation.segments[0]).relationship =
+        codegen::SemanticRelationSchema{.kind = codegen::SemanticRelationKind::references,
+                                        .target = codegen::TypeRef{"authored::OtherScalar"},
+                                        .unit = std::nullopt};
+    applied = document.apply(
+        ReplacePackedValue{.declaration = packed, .schema = std::move(packed_with_relation)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto authored{files.load()};
+    other_scalar = declaration_id(authored, "authored_scalars", "OtherScalar", "authored");
+    auto const signed_scalar{
+        declaration_id(authored, "authored_scalars", "SignedScalar", "authored")};
+    packed = declaration_id(authored, "authored_packed", "ExistingPacked", "authored");
+
+    auto other_with_code{*authored.integer_scalar_schema(other_scalar)};
+    other_with_code.named_codes.push_back({.name = "OtherZero", .value = 0, .sentinel = false});
+    applied = authored.apply(
+        ReplaceIntegerScalar{.declaration = other_scalar, .schema = std::move(other_with_code)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto signed_with_code{*authored.integer_scalar_schema(signed_scalar)};
+    signed_with_code.named_codes.push_back({.name = "SignedZero", .value = 0, .sentinel = false});
+    applied = authored.apply(
+        ReplaceIntegerScalar{.declaration = signed_scalar, .schema = std::move(signed_with_code)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto packed_with_code{*authored.packed_value_schema(packed)};
+    std::get<codegen::PackedFieldSchema>(packed_with_code.segments[0])
+        .named_codes.push_back({.name = "ValueOne", .value = 1, .sentinel = false});
+    applied = authored.apply(
+        ReplacePackedValue{.declaration = packed, .schema = std::move(packed_with_code)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{authored.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& updated{preview->front().updated};
+    auto const other_begin{updated.find("(integer-scalar OtherScalar")};
+    auto const other_end{updated.find("(integer-scalar SignedScalar", other_begin)};
+    auto const signed_end{updated.find("(representation-module", other_end)};
+    ASSERT_NE(other_begin, std::string::npos);
+    ASSERT_NE(other_end, std::string::npos);
+    ASSERT_NE(signed_end, std::string::npos);
+    auto const other_source{updated.substr(other_begin, other_end - other_begin)};
+    auto const signed_source{updated.substr(other_end, signed_end - other_end)};
+    auto const other_code{other_source.find("(code OtherZero :value 0)")};
+    auto const other_relation{other_source.find("(relation references authored::Existing)")};
+    ASSERT_NE(other_code, std::string::npos);
+    ASSERT_NE(other_relation, std::string::npos);
+    EXPECT_LT(other_code, other_relation);
+    EXPECT_NE(other_source.find(":minimum 0"), std::string::npos);
+    EXPECT_NE(signed_source.find("(code SignedZero :value 0)"), std::string::npos);
+    EXPECT_NE(signed_source.find(":minimum -100"), std::string::npos);
+
+    auto const packed_begin{updated.find("(packed-value ExistingPacked")};
+    auto const packed_end{updated.find("(scalar-module", packed_begin)};
+    ASSERT_NE(packed_begin, std::string::npos);
+    ASSERT_NE(packed_end, std::string::npos);
+    auto const packed_source{updated.substr(packed_begin, packed_end - packed_begin)};
+    auto const value_begin{packed_source.find("(field value")};
+    auto const value_end{packed_source.find("(field counter", value_begin)};
+    ASSERT_NE(value_begin, std::string::npos);
+    ASSERT_NE(value_end, std::string::npos);
+    auto const value_source{packed_source.substr(value_begin, value_end - value_begin)};
+    auto const value_code{value_source.find("(code ValueOne :value 1)")};
+    auto const value_relation{value_source.find("(relation references authored::OtherScalar)")};
+    ASSERT_NE(value_code, std::string::npos);
+    ASSERT_NE(value_relation, std::string::npos);
+    EXPECT_LT(value_code, value_relation);
+    EXPECT_NE(packed_source.find("; Keep the value segment note"), std::string::npos);
+    EXPECT_NE(packed_source.find("; Keep the counter segment note"), std::string::npos);
+
+    ASSERT_TRUE(authored.undo().value());
+    EXPECT_TRUE(
+        std::get<codegen::PackedFieldSchema>(authored.packed_value_schema(packed)->segments[0])
+            .named_codes.empty());
+    ASSERT_TRUE(authored.redo().value());
+
+    saved = authored.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto with_codes{files.load()};
+    auto const coded_other{
+        declaration_id(with_codes, "authored_scalars", "OtherScalar", "authored")};
+    auto const coded_signed{
+        declaration_id(with_codes, "authored_scalars", "SignedScalar", "authored")};
+    auto const coded_packed{
+        declaration_id(with_codes, "authored_packed", "ExistingPacked", "authored")};
+    ASSERT_EQ(with_codes.integer_scalar_schema(coded_other)->named_codes.size(), 1U);
+    ASSERT_EQ(with_codes.integer_scalar_schema(coded_signed)->named_codes.size(), 1U);
+    ASSERT_EQ(std::get<codegen::PackedFieldSchema>(
+                  with_codes.packed_value_schema(coded_packed)->segments[0])
+                  .named_codes.size(),
+              1U);
+
+    auto other_without_code{*with_codes.integer_scalar_schema(coded_other)};
+    other_without_code.named_codes.clear();
+    applied = with_codes.apply(
+        ReplaceIntegerScalar{.declaration = coded_other, .schema = std::move(other_without_code)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    auto signed_without_code{*with_codes.integer_scalar_schema(coded_signed)};
+    signed_without_code.named_codes.clear();
+    applied = with_codes.apply(ReplaceIntegerScalar{.declaration = coded_signed,
+                                                    .schema = std::move(signed_without_code)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    auto packed_without_code{*with_codes.packed_value_schema(coded_packed)};
+    std::get<codegen::PackedFieldSchema>(packed_without_code.segments[0]).named_codes.clear();
+    applied = with_codes.apply(
+        ReplacePackedValue{.declaration = coded_packed, .schema = std::move(packed_without_code)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = with_codes.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_EQ(preview->front().updated.find("(code OtherZero"), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find("(code SignedZero"), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find("(code ValueOne"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(relation references authored::Existing)"),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(relation references authored::OtherScalar)"),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the value segment note"), std::string::npos);
+
+    saved = with_codes.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto final_document{files.load()};
+    auto const final_other{
+        declaration_id(final_document, "authored_scalars", "OtherScalar", "authored")};
+    auto const final_signed{
+        declaration_id(final_document, "authored_scalars", "SignedScalar", "authored")};
+    auto const final_packed{
+        declaration_id(final_document, "authored_packed", "ExistingPacked", "authored")};
+    EXPECT_TRUE(final_document.integer_scalar_schema(final_other)->named_codes.empty());
+    EXPECT_TRUE(final_document.integer_scalar_schema(final_signed)->named_codes.empty());
+    EXPECT_TRUE(std::get<codegen::PackedFieldSchema>(
+                    final_document.packed_value_schema(final_packed)->segments[0])
+                    .named_codes.empty());
 }
 
 TEST(EditableSchemaDocument, PreservesPackedFormattingForNonStructuralEdits) {
@@ -710,6 +1563,7 @@ TEST(EditableSchemaDocument, PreservesPackedFormattingForNonStructuralEdits) {
     auto replacement{*document.packed_value_schema(packed)};
     replacement.invalid_value = 4'294'967'294U;
     replacement.export_specifier = "PACKED_API";
+    replacement.mutable_value = true;
     replacement.byte_order = codegen::PackedByteOrder::big_endian;
     replacement.bit_order = codegen::PackedBitOrder::most_significant_first;
     auto& field{std::get<codegen::PackedFieldSchema>(replacement.segments[1])};
@@ -718,7 +1572,7 @@ TEST(EditableSchemaDocument, PreservesPackedFormattingForNonStructuralEdits) {
     field.range_helper = true;
     field.maximum_value = codegen::PackedIntegerValue{120};
     field.named_codes[0].value = codegen::PackedIntegerValue{127};
-    field.relationship->kind = codegen::PackedFieldRelationKind::count_of;
+    field.relationship->kind = codegen::SemanticRelationKind::count_of;
     field.relationship->target.name = "authored::OtherScalar";
     std::get<codegen::PackedReservedBitsSchema>(replacement.segments[2]).bits = 17;
 
@@ -730,11 +1584,13 @@ TEST(EditableSchemaDocument, PreservesPackedFormattingForNonStructuralEdits) {
     EXPECT_EQ(document.packed_value_schema(packed)->byte_order,
               codegen::PackedByteOrder::little_endian);
     EXPECT_FALSE(document.packed_value_schema(packed)->bit_order.has_value());
+    EXPECT_FALSE(document.packed_value_schema(packed)->mutable_value);
     ASSERT_TRUE(document.redo().value());
     EXPECT_EQ(document.packed_value_schema(packed)->byte_order,
               codegen::PackedByteOrder::big_endian);
     EXPECT_EQ(document.packed_value_schema(packed)->bit_order,
               codegen::PackedBitOrder::most_significant_first);
+    EXPECT_TRUE(document.packed_value_schema(packed)->mutable_value);
 
     auto preview{document.preview_source_updates()};
     ASSERT_TRUE(preview.has_value()) << preview.error().message;
@@ -754,6 +1610,7 @@ TEST(EditableSchemaDocument, PreservesPackedFormattingForNonStructuralEdits) {
     EXPECT_NE(updated.find("(relation count_of authored::OtherScalar)"), std::string::npos);
     EXPECT_NE(updated.find("(reserved future :bits   17)"), std::string::npos);
     EXPECT_NE(updated.find(":export-specifier PACKED_API"), std::string::npos);
+    EXPECT_NE(updated.find(":mutable true"), std::string::npos);
 
     auto saved{document.save()};
     ASSERT_TRUE(saved.has_value()) << saved.error().message;
@@ -764,6 +1621,7 @@ TEST(EditableSchemaDocument, PreservesPackedFormattingForNonStructuralEdits) {
     ASSERT_NE(schema, nullptr);
     EXPECT_EQ(schema->invalid_value, 4'294'967'294U);
     EXPECT_EQ(schema->export_specifier, "PACKED_API");
+    EXPECT_TRUE(schema->mutable_value);
     EXPECT_EQ(schema->byte_order, codegen::PackedByteOrder::big_endian);
     EXPECT_EQ(schema->bit_order, codegen::PackedBitOrder::most_significant_first);
     auto const& reloaded_type{packed_type(reloaded, reloaded_packed)};
@@ -776,9 +1634,106 @@ TEST(EditableSchemaDocument, PreservesPackedFormattingForNonStructuralEdits) {
     EXPECT_EQ(reloaded_field.maximum_value, codegen::PackedIntegerValue{120});
     EXPECT_EQ(reloaded_field.named_codes[0].value, codegen::PackedIntegerValue{127});
     ASSERT_TRUE(reloaded_field.relationship.has_value());
-    EXPECT_EQ(reloaded_field.relationship->kind, codegen::PackedFieldRelationKind::count_of);
+    EXPECT_EQ(reloaded_field.relationship->kind, codegen::SemanticRelationKind::count_of);
     EXPECT_EQ(reloaded_field.relationship->target.name, "authored::OtherScalar");
     EXPECT_EQ(std::get<codegen::PackedReservedBitsSchema>(schema->segments[2]).bits, 17);
+}
+
+TEST(EditableSchemaDocument, PreservesPackedSegmentRowsDuringDirectRename) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
+
+    auto field_replacement{*document.packed_value_schema(packed)};
+    std::get<codegen::PackedFieldSchema>(field_replacement.segments[1]).name = "metadata";
+    auto applied{document.apply(
+        ReplacePackedValue{.declaration = packed, .schema = std::move(field_replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& updated{preview->front().updated};
+    EXPECT_EQ(updated.find("(field counter "), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the counter segment note."), std::string::npos);
+    EXPECT_NE(updated.find("(field metadata std::uint16_t"), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the packed field note."), std::string::npos);
+    EXPECT_NE(updated.find(":bits   8"), std::string::npos);
+    EXPECT_NE(updated.find("(code Invalid :value   255 :sentinel true) ; field code note"),
+              std::string::npos);
+    EXPECT_NE(updated.find("; pending field code note"), std::string::npos);
+    EXPECT_NE(updated.find("(code Pending :value 126 :sentinel true)"), std::string::npos);
+    EXPECT_NE(updated.find("; field relationship note"), std::string::npos);
+    EXPECT_NE(updated.find("(relation index_into authored::ExistingScalar)"), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the future segment note."), std::string::npos);
+    EXPECT_NE(updated.find("(reserved future :bits   16)"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto reserved_document{files.load()};
+    auto const saved_packed{
+        declaration_id(reserved_document, "authored_packed", "ExistingPacked", "authored")};
+    auto reserved_replacement{*reserved_document.packed_value_schema(saved_packed)};
+    std::get<codegen::PackedReservedBitsSchema>(reserved_replacement.segments[2]).name = "spare";
+    applied = reserved_document.apply(
+        ReplacePackedValue{.declaration = saved_packed, .schema = std::move(reserved_replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = reserved_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& reserved_updated{preview->front().updated};
+    EXPECT_NE(reserved_updated.find("; Keep the counter segment note."), std::string::npos);
+    EXPECT_NE(reserved_updated.find("(field metadata std::uint16_t"), std::string::npos);
+    EXPECT_NE(reserved_updated.find("; field relationship note"), std::string::npos);
+    EXPECT_EQ(reserved_updated.find("(reserved future "), std::string::npos);
+    EXPECT_NE(reserved_updated.find("; Keep the future segment note."), std::string::npos);
+    EXPECT_NE(reserved_updated.find("(reserved spare :bits   16)"), std::string::npos);
+
+    ASSERT_TRUE(reserved_document.undo().value());
+    preview = reserved_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(reserved_document.redo().value());
+
+    saved = reserved_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_packed{
+        declaration_id(reloaded, "authored_packed", "ExistingPacked", "authored")};
+    auto const* schema{reloaded.packed_value_schema(reloaded_packed)};
+    ASSERT_NE(schema, nullptr);
+    ASSERT_EQ(schema->segments.size(), 3U);
+    auto const& field{std::get<codegen::PackedFieldSchema>(schema->segments[1])};
+    EXPECT_EQ(field.name, "metadata");
+    ASSERT_EQ(field.named_codes.size(), 2U);
+    EXPECT_EQ(field.named_codes[0].name, "Invalid");
+    EXPECT_EQ(field.named_codes[0].value, codegen::PackedIntegerValue{255});
+    EXPECT_EQ(field.named_codes[1].name, "Pending");
+    EXPECT_EQ(field.named_codes[1].value, codegen::PackedIntegerValue{126});
+    ASSERT_TRUE(field.relationship.has_value());
+    EXPECT_EQ(field.relationship->kind, codegen::SemanticRelationKind::index_into);
+    EXPECT_EQ(field.relationship->target.name, "authored::ExistingScalar");
+    EXPECT_EQ(std::get<codegen::PackedReservedBitsSchema>(schema->segments[2]).name, "spare");
+
+    auto const module_source{std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
+        return source.path.filename() == "modules.lispb";
+    })};
+    ASSERT_NE(module_source, reloaded.source_files().end());
+    EXPECT_NE(module_source->text.find("; Keep the counter segment note."), std::string::npos);
+    EXPECT_NE(module_source->text.find("(field metadata std::uint16_t"), std::string::npos);
+    EXPECT_NE(module_source->text.find("; field relationship note"), std::string::npos);
+    EXPECT_NE(module_source->text.find("; Keep the future segment note."), std::string::npos);
+    EXPECT_NE(module_source->text.find("(reserved spare :bits   16)"), std::string::npos);
 }
 
 TEST(EditableSchemaDocument, PreservesPackedSegmentsAndCommentsForStructuralEdits) {
@@ -790,7 +1745,16 @@ TEST(EditableSchemaDocument, PreservesPackedSegmentsAndCommentsForStructuralEdit
     auto value{replacement.segments[0]};
     auto counter{replacement.segments[1]};
     auto future{replacement.segments[2]};
-    std::get<codegen::PackedFieldSchema>(counter).named_codes[0].value = 254;
+    auto& counter_field{std::get<codegen::PackedFieldSchema>(counter)};
+    auto invalid{counter_field.named_codes[0]};
+    auto pending{counter_field.named_codes[1]};
+    invalid.value = 253;
+    auto pending_copy{pending};
+    pending_copy.name = "PendingCopy";
+    pending_copy.value = 252;
+    counter_field.named_codes = {pending, pending_copy, invalid};
+    counter_field.relationship->kind = codegen::SemanticRelationKind::count_of;
+    counter_field.relationship->target.name = "authored::OtherScalar";
     std::get<codegen::PackedReservedBitsSchema>(future).bits = 8;
     auto duplicate{future};
     std::get<codegen::PackedReservedBitsSchema>(duplicate).name = "future_copy";
@@ -827,8 +1791,23 @@ TEST(EditableSchemaDocument, PreservesPackedSegmentsAndCommentsForStructuralEdit
     EXPECT_LT(value_comment, value_position);
     EXPECT_NE(updated.find("; Keep the packed declaration note"), std::string::npos);
     EXPECT_NE(updated.find("; Keep the packed field note"), std::string::npos);
-    EXPECT_NE(updated.find("(code Invalid :value   254 :sentinel true"), std::string::npos);
+    auto const pending_code_comment{updated.find("; pending field code note")};
+    auto const pending_code{updated.find("(code Pending :")};
+    auto const pending_copy_code{updated.find("(code PendingCopy")};
+    auto const invalid_code{updated.find("(code Invalid")};
+    ASSERT_NE(pending_code_comment, std::string::npos);
+    ASSERT_NE(pending_code, std::string::npos);
+    ASSERT_NE(pending_copy_code, std::string::npos);
+    ASSERT_NE(invalid_code, std::string::npos);
+    EXPECT_LT(pending_code_comment, pending_code);
+    EXPECT_LT(pending_code, pending_copy_code);
+    EXPECT_LT(pending_copy_code, invalid_code);
+    EXPECT_NE(updated.find("(code Invalid :value   253 :sentinel true"), std::string::npos);
+    EXPECT_NE(updated.find("(code PendingCopy :value 252 :sentinel true)"), std::string::npos);
     EXPECT_NE(updated.find("; field code note"), std::string::npos);
+    EXPECT_NE(updated.find("; pending field trailing note"), std::string::npos);
+    EXPECT_NE(updated.find("; field relationship note"), std::string::npos);
+    EXPECT_NE(updated.find("(relation count_of authored::OtherScalar)"), std::string::npos);
     EXPECT_NE(updated.find("; value segment trailing note"), std::string::npos);
     EXPECT_NE(updated.find(":bit-order msb-first"), std::string::npos);
 
@@ -842,6 +1821,9 @@ TEST(EditableSchemaDocument, PreservesPackedSegmentsAndCommentsForStructuralEdit
     std::erase_if(deletion.segments, [](auto const& segment) {
         return codegen::packed_segment_name(segment) == "value";
     });
+    auto& deleting_counter{std::get<codegen::PackedFieldSchema>(deletion.segments[1])};
+    std::erase_if(deleting_counter.named_codes,
+                  [](auto const& code) { return code.name == "Pending"; });
     applied =
         document.apply(ReplacePackedValue{.declaration = packed, .schema = std::move(deletion)});
     ASSERT_TRUE(applied.has_value()) << applied.error().message;
@@ -850,11 +1832,23 @@ TEST(EditableSchemaDocument, PreservesPackedSegmentsAndCommentsForStructuralEdit
     preview = document.preview_source_updates();
     ASSERT_TRUE(preview.has_value()) << preview.error().message;
     ASSERT_EQ(preview->size(), 1U);
-    EXPECT_EQ(preview->front().updated.find("(field value"), std::string::npos);
-    EXPECT_EQ(preview->front().updated.find("; Keep the value segment note."), std::string::npos);
-    EXPECT_EQ(preview->front().updated.find("; value segment trailing note"), std::string::npos);
-    EXPECT_NE(preview->front().updated.find("; Keep the counter segment note."), std::string::npos);
-    EXPECT_NE(preview->front().updated.find("; Keep the future segment note."), std::string::npos);
+    auto const& deletion_source{preview->front().updated};
+    auto const packed_begin{deletion_source.find("(packed-value ExistingPacked")};
+    auto const packed_end{deletion_source.find("(scalar-module", packed_begin)};
+    ASSERT_NE(packed_begin, std::string::npos);
+    ASSERT_NE(packed_end, std::string::npos);
+    auto const packed_source{deletion_source.substr(packed_begin, packed_end - packed_begin)};
+    EXPECT_EQ(packed_source.find("(field value"), std::string::npos);
+    EXPECT_EQ(packed_source.find("; Keep the value segment note."), std::string::npos);
+    EXPECT_EQ(packed_source.find("; value segment trailing note"), std::string::npos);
+    EXPECT_EQ(packed_source.find("(code Pending :"), std::string::npos);
+    EXPECT_EQ(packed_source.find("; pending field code note"), std::string::npos);
+    EXPECT_EQ(packed_source.find("; pending field trailing note"), std::string::npos);
+    EXPECT_NE(packed_source.find("(code PendingCopy :value 252 :sentinel true)"),
+              std::string::npos);
+    EXPECT_NE(packed_source.find("; field relationship note"), std::string::npos);
+    EXPECT_NE(packed_source.find("; Keep the counter segment note."), std::string::npos);
+    EXPECT_NE(packed_source.find("; Keep the future segment note."), std::string::npos);
 
     ASSERT_TRUE(document.undo().value());
     preview = document.preview_source_updates();
@@ -875,8 +1869,15 @@ TEST(EditableSchemaDocument, PreservesPackedSegmentsAndCommentsForStructuralEdit
     EXPECT_EQ(codegen::packed_segment_name(schema->segments[1]), "counter");
     EXPECT_EQ(codegen::packed_segment_name(schema->segments[2]), "future_copy");
     EXPECT_EQ(std::get<codegen::PackedReservedBitsSchema>(schema->segments[0]).bits, 8);
-    EXPECT_EQ(std::get<codegen::PackedFieldSchema>(schema->segments[1]).named_codes[0].value,
-              codegen::PackedIntegerValue{254});
+    auto const& reloaded_counter{std::get<codegen::PackedFieldSchema>(schema->segments[1])};
+    ASSERT_EQ(reloaded_counter.named_codes.size(), 2U);
+    EXPECT_EQ(reloaded_counter.named_codes[0].name, "PendingCopy");
+    EXPECT_EQ(reloaded_counter.named_codes[0].value, codegen::PackedIntegerValue{252});
+    EXPECT_EQ(reloaded_counter.named_codes[1].name, "Invalid");
+    EXPECT_EQ(reloaded_counter.named_codes[1].value, codegen::PackedIntegerValue{253});
+    ASSERT_TRUE(reloaded_counter.relationship.has_value());
+    EXPECT_EQ(reloaded_counter.relationship->kind, codegen::SemanticRelationKind::count_of);
+    EXPECT_EQ(reloaded_counter.relationship->target.name, "authored::OtherScalar");
 
     auto const module_source{std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
         return source.path.filename() == "modules.lispb";
@@ -965,6 +1966,224 @@ TEST(EditableSchemaDocument, PreservesAggregateFormattingForNonStructuralEdits) 
     EXPECT_EQ(tagged_schema->alternatives[0].type.name, "std::uint16_t");
     EXPECT_EQ(tagged_schema->alternatives[0].count, 4U);
     EXPECT_EQ(tagged_schema->alternatives[0].tag, "One");
+}
+
+TEST(EditableSchemaDocument, RejectsMalformedAggregateExportSpecifiersWithoutMutation) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
+    auto const record{declaration_id(document, "authored_records", "ExistingRecord", "authored")};
+    auto const raw{declaration_id(document, "authored_unions", "ExistingUnion", "authored")};
+    auto const tagged{declaration_id(document, "authored_unions", "ExistingTagged", "authored")};
+    auto const revision_before{document.revision()};
+
+    auto packed_replacement{*document.packed_value_schema(packed)};
+    packed_replacement.export_specifier = "bad-specifier";
+    auto applied{document.apply(
+        ReplacePackedValue{.declaration = packed, .schema = std::move(packed_replacement)})};
+    ASSERT_FALSE(applied.has_value());
+    EXPECT_NE(applied.error().message.find("export specifier"), std::string::npos);
+
+    auto record_replacement{*document.record_schema(record)};
+    record_replacement.export_specifier = "two words";
+    applied = document.apply(
+        ReplaceRecord{.declaration = record, .schema = std::move(record_replacement)});
+    ASSERT_FALSE(applied.has_value());
+    EXPECT_NE(applied.error().message.find("export specifier"), std::string::npos);
+
+    auto raw_replacement{*document.union_schema(raw)};
+    raw_replacement.export_specifier = "class";
+    applied =
+        document.apply(ReplaceUnion{.declaration = raw, .schema = std::move(raw_replacement)});
+    ASSERT_FALSE(applied.has_value());
+    EXPECT_NE(applied.error().message.find("export specifier"), std::string::npos);
+
+    auto tagged_replacement{*document.tagged_union_schema(tagged)};
+    tagged_replacement.export_specifier = "bad-specifier";
+    applied = document.apply(
+        ReplaceTaggedUnion{.declaration = tagged, .schema = std::move(tagged_replacement)});
+    ASSERT_FALSE(applied.has_value());
+    EXPECT_NE(applied.error().message.find("export specifier"), std::string::npos);
+
+    EXPECT_EQ(document.revision(), revision_before);
+    EXPECT_FALSE(document.dirty());
+    EXPECT_FALSE(document.packed_value_schema(packed)->export_specifier.has_value());
+    EXPECT_FALSE(document.record_schema(record)->export_specifier.has_value());
+    EXPECT_FALSE(document.union_schema(raw)->export_specifier.has_value());
+    EXPECT_FALSE(document.tagged_union_schema(tagged)->export_specifier.has_value());
+}
+
+TEST(EditableSchemaDocument, AuthorsRecordMemberRelationshipsWithReferenceSafety) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const record{declaration_id(document, "authored_records", "ExistingRecord", "authored")};
+    auto const other_scalar{
+        declaration_id(document, "authored_scalars", "OtherScalar", "authored")};
+
+    auto replacement{*document.record_schema(record)};
+    replacement.members[0].relationship =
+        codegen::SemanticRelationSchema{.kind = codegen::SemanticRelationKind::references,
+                                        .target = codegen::TypeRef{"authored::ExistingScalar"},
+                                        .unit = std::nullopt};
+    auto applied{
+        document.apply(ReplaceRecord{.declaration = record, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find("(relation references authored::ExistingScalar)"),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the value member note."), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; value member trailing note"), std::string::npos);
+
+    replacement = *document.record_schema(record);
+    replacement.members[0].relationship =
+        codegen::SemanticRelationSchema{.kind = codegen::SemanticRelationKind::offset_into,
+                                        .target = codegen::TypeRef{"authored::OtherScalar"},
+                                        .unit = codegen::SemanticRelationUnit::bytes};
+    applied =
+        document.apply(ReplaceRecord{.declaration = record, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto blocked_delete{document.apply(DeleteIntegerScalar{.declaration = other_scalar})};
+    ASSERT_FALSE(blocked_delete.has_value());
+    EXPECT_NE(blocked_delete.error().message.find("ExistingRecord"), std::string::npos);
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_EQ(document.record_schema(record)->members[0].relationship->kind,
+              codegen::SemanticRelationKind::references);
+    ASSERT_TRUE(document.redo().value());
+
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_NE(
+        preview->front().updated.find("(relation offset_into authored::OtherScalar :unit bytes)"),
+        std::string::npos);
+    auto const record_type_id{document.types().find(document.declaration(record)->identity)};
+    auto const other_type_id{document.types().find(document.declaration(other_scalar)->identity)};
+    ASSERT_TRUE(record_type_id.has_value());
+    ASSERT_TRUE(other_type_id.has_value());
+    auto const& resolved_record{
+        std::get<RecordType>(document.types().type(*record_type_id).definition)};
+    ASSERT_TRUE(resolved_record.members[0].relationship.has_value());
+    EXPECT_EQ(resolved_record.members[0].relationship->target.type, *other_type_id);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_record{
+        declaration_id(reloaded, "authored_records", "ExistingRecord", "authored")};
+    auto const* reloaded_schema{reloaded.record_schema(reloaded_record)};
+    ASSERT_NE(reloaded_schema, nullptr);
+    ASSERT_TRUE(reloaded_schema->members[0].relationship.has_value());
+    EXPECT_EQ(reloaded_schema->members[0].relationship->kind,
+              codegen::SemanticRelationKind::offset_into);
+    EXPECT_EQ(reloaded_schema->members[0].relationship->target.name, "authored::OtherScalar");
+    EXPECT_EQ(reloaded_schema->members[0].relationship->unit, codegen::SemanticRelationUnit::bytes);
+
+    auto cleared{*reloaded_schema};
+    cleared.members[0].relationship.reset();
+    applied =
+        reloaded.apply(ReplaceRecord{.declaration = reloaded_record, .schema = std::move(cleared)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    preview = reloaded.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_EQ(preview->front().updated.find("(relation offset_into"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the value member note."), std::string::npos);
+    saved = reloaded.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto final_document{files.load()};
+    auto const final_record{
+        declaration_id(final_document, "authored_records", "ExistingRecord", "authored")};
+    EXPECT_FALSE(final_document.record_schema(final_record)->members[0].relationship.has_value());
+}
+
+TEST(EditableSchemaDocument, AuthorsSoaColumnRelationshipsWithReferenceSafety) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const soa{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+    auto const other_scalar{
+        declaration_id(document, "authored_scalars", "OtherScalar", "authored")};
+
+    auto replacement{*document.soa_schema(soa)};
+    replacement.members[0].relationship =
+        codegen::SemanticRelationSchema{.kind = codegen::SemanticRelationKind::references,
+                                        .target = codegen::TypeRef{"authored::ExistingScalar"},
+                                        .unit = std::nullopt};
+    auto applied{document.apply(ReplaceSoa{.declaration = soa, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find("(relation references authored::ExistingScalar)"),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the values SoA member note."),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; SoA values trailing note"), std::string::npos);
+
+    replacement = *document.soa_schema(soa);
+    replacement.members[0].relationship =
+        codegen::SemanticRelationSchema{.kind = codegen::SemanticRelationKind::offset_into,
+                                        .target = codegen::TypeRef{"authored::OtherScalar"},
+                                        .unit = codegen::SemanticRelationUnit::elements};
+    applied = document.apply(ReplaceSoa{.declaration = soa, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto blocked_delete{document.apply(DeleteIntegerScalar{.declaration = other_scalar})};
+    ASSERT_FALSE(blocked_delete.has_value());
+    EXPECT_NE(blocked_delete.error().message.find("ExistingSoa"), std::string::npos);
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_EQ(document.soa_schema(soa)->members[0].relationship->kind,
+              codegen::SemanticRelationKind::references);
+    ASSERT_TRUE(document.redo().value());
+
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_NE(preview->front().updated.find(
+                  "(relation offset_into authored::OtherScalar :unit elements)"),
+              std::string::npos);
+    auto const soa_type_id{document.types().find(document.declaration(soa)->identity)};
+    auto const other_type_id{document.types().find(document.declaration(other_scalar)->identity)};
+    ASSERT_TRUE(soa_type_id.has_value());
+    ASSERT_TRUE(other_type_id.has_value());
+    auto const& resolved{std::get<SoaType>(document.types().type(*soa_type_id).definition)};
+    ASSERT_TRUE(resolved.columns[0].relationship.has_value());
+    EXPECT_EQ(resolved.columns[0].relationship->target.type, *other_type_id);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_soa{declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    auto const* reloaded_schema{reloaded.soa_schema(reloaded_soa)};
+    ASSERT_NE(reloaded_schema, nullptr);
+    ASSERT_TRUE(reloaded_schema->members[0].relationship.has_value());
+    EXPECT_EQ(reloaded_schema->members[0].relationship->kind,
+              codegen::SemanticRelationKind::offset_into);
+    EXPECT_EQ(reloaded_schema->members[0].relationship->target.name, "authored::OtherScalar");
+    EXPECT_EQ(reloaded_schema->members[0].relationship->unit,
+              codegen::SemanticRelationUnit::elements);
+
+    auto cleared{*reloaded_schema};
+    cleared.members[0].relationship.reset();
+    applied = reloaded.apply(ReplaceSoa{.declaration = reloaded_soa, .schema = std::move(cleared)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    preview = reloaded.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_EQ(preview->front().updated.find("(relation offset_into"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the values SoA member note."),
+              std::string::npos);
+    saved = reloaded.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto final_document{files.load()};
+    auto const final_soa{declaration_id(final_document, "authored_soa", "ExistingSoa", "authored")};
+    EXPECT_FALSE(final_document.soa_schema(final_soa)->members[0].relationship.has_value());
 }
 
 TEST(EditableSchemaDocument, PreservesRecordMembersAndCommentsForStructuralEdits) {
@@ -1232,6 +2451,109 @@ TEST(EditableSchemaDocument, PreservesTaggedUnionAlternativesForStructuralEdits)
     EXPECT_EQ(schema->alternatives[0].count, 3U);
 }
 
+TEST(EditableSchemaDocument, PreservesAggregateChildRowsDuringDirectRename) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const record{declaration_id(document, "authored_records", "ExistingRecord", "authored")};
+    auto const raw{declaration_id(document, "authored_unions", "ExistingUnion", "authored")};
+    auto const tagged{declaration_id(document, "authored_unions", "ExistingTagged", "authored")};
+
+    auto record_replacement{*document.record_schema(record)};
+    record_replacement.members[0].name = "payload";
+    auto applied{document.apply(
+        ReplaceRecord{.declaration = record, .schema = std::move(record_replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto raw_replacement{*document.union_schema(raw)};
+    raw_replacement.alternatives[0].name = "payload";
+    applied =
+        document.apply(ReplaceUnion{.declaration = raw, .schema = std::move(raw_replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto tagged_replacement{*document.tagged_union_schema(tagged)};
+    tagged_replacement.alternatives[0].name = "payload";
+    applied = document.apply(
+        ReplaceTaggedUnion{.declaration = tagged, .schema = std::move(tagged_replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& updated{preview->front().updated};
+
+    auto const record_begin{updated.find("(record ExistingRecord")};
+    auto const record_end{updated.find("(union-module", record_begin)};
+    ASSERT_NE(record_begin, std::string::npos);
+    ASSERT_NE(record_end, std::string::npos);
+    auto const record_source{updated.substr(record_begin, record_end - record_begin)};
+    auto const record_comment{record_source.find("; Keep the value member note.")};
+    auto const record_row{record_source.find("(member payload   std::uint32_t)")};
+    ASSERT_NE(record_comment, std::string::npos);
+    ASSERT_NE(record_row, std::string::npos) << record_source;
+    EXPECT_LT(record_comment, record_row);
+    EXPECT_NE(record_source.find("; value member trailing note"), std::string::npos);
+
+    auto const raw_begin{updated.find("(union ExistingUnion")};
+    auto const raw_end{updated.find("(tagged-union ExistingTagged", raw_begin)};
+    ASSERT_NE(raw_begin, std::string::npos);
+    ASSERT_NE(raw_end, std::string::npos);
+    auto const raw_source{updated.substr(raw_begin, raw_end - raw_begin)};
+    auto const raw_comment{raw_source.find("; Keep the value alternative note.")};
+    auto const raw_row{raw_source.find("(alternative payload   std::uint32_t)")};
+    ASSERT_NE(raw_comment, std::string::npos);
+    ASSERT_NE(raw_row, std::string::npos) << raw_source;
+    EXPECT_LT(raw_comment, raw_row);
+    EXPECT_NE(raw_source.find("; value alternative trailing note"), std::string::npos);
+
+    auto const tagged_begin{updated.find("(tagged-union ExistingTagged")};
+    auto const tagged_end{updated.find("(soa-module", tagged_begin)};
+    ASSERT_NE(tagged_begin, std::string::npos);
+    ASSERT_NE(tagged_end, std::string::npos);
+    auto const tagged_source{updated.substr(tagged_begin, tagged_end - tagged_begin)};
+    auto const tagged_comment{tagged_source.find("; Keep the tagged value alternative note.")};
+    auto const tagged_row{tagged_source.find("(alternative payload   std::uint32_t :tag Zero)")};
+    ASSERT_NE(tagged_comment, std::string::npos);
+    ASSERT_NE(tagged_row, std::string::npos) << tagged_source;
+    EXPECT_LT(tagged_comment, tagged_row);
+    EXPECT_NE(tagged_source.find("; tagged value trailing note"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.redo().value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_record{
+        declaration_id(reloaded, "authored_records", "ExistingRecord", "authored")};
+    auto const reloaded_raw{
+        declaration_id(reloaded, "authored_unions", "ExistingUnion", "authored")};
+    auto const reloaded_tagged{
+        declaration_id(reloaded, "authored_unions", "ExistingTagged", "authored")};
+    auto const& member{reloaded.record_schema(reloaded_record)->members[0]};
+    EXPECT_EQ(member.name, "payload");
+    EXPECT_EQ(member.type.name, "std::uint32_t");
+    EXPECT_FALSE(member.count.has_value());
+    auto const& raw_alternative{reloaded.union_schema(reloaded_raw)->alternatives[0]};
+    EXPECT_EQ(raw_alternative.name, "payload");
+    EXPECT_EQ(raw_alternative.type.name, "std::uint32_t");
+    EXPECT_FALSE(raw_alternative.count.has_value());
+    auto const& tagged_alternative{reloaded.tagged_union_schema(reloaded_tagged)->alternatives[0]};
+    EXPECT_EQ(tagged_alternative.name, "payload");
+    EXPECT_EQ(tagged_alternative.type.name, "std::uint32_t");
+    EXPECT_EQ(tagged_alternative.tag, "Zero");
+    EXPECT_FALSE(tagged_alternative.count.has_value());
+}
+
 TEST(EditableSchemaDocument, DeletesTaggedUnionThroughItsExactSourceRange) {
     TemporarySchema files;
     auto document{files.load()};
@@ -1269,7 +2591,8 @@ TEST(EditableSchemaDocument, RenamesEnumAndRepairsTaggedUnionDiscriminant) {
 
     codegen::EnumSchema enum_schema{};
     enum_schema.name = "LocalKind";
-    enum_schema.underlying_type.name = "std::uint8_t";
+    enum_schema.underlying_type =
+        codegen::TypeRef{.name = "std::uint8_t", .suffix = {}, .nested = std::nullopt};
     codegen::EnumeratorSchema value{};
     value.name = "Value";
     enum_schema.values.push_back(std::move(value));
@@ -1312,6 +2635,71 @@ TEST(EditableSchemaDocument, RenamesEnumAndRepairsTaggedUnionDiscriminant) {
 
     ASSERT_TRUE(document.undo().value());
     EXPECT_EQ(document.tagged_union_schema(tagged)->discriminant.name, "authored::LocalKind");
+}
+
+TEST(EditableSchemaDocument, PreservesOwnedSourceWhenRenamingExistingDeclaration) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const scalar{declaration_id(document, "authored_scalars", "ExistingScalar", "authored")};
+    auto const quantized{
+        declaration_id(document, "authored_representations", "ExistingQ1", "authored")};
+    auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
+
+    auto renamed{document.apply(
+        RenameDeclaration{.declaration = scalar, .new_name = "ExistingScalarRenamed"})};
+    ASSERT_TRUE(renamed.has_value()) << renamed.error().message;
+    ASSERT_TRUE(*renamed);
+    EXPECT_EQ(document.linear_quantized_schema(quantized)->source.name,
+              "authored::ExistingScalarRenamed");
+    ASSERT_TRUE(
+        std::get<codegen::PackedFieldSchema>(document.packed_value_schema(packed)->segments[1])
+            .relationship.has_value());
+    EXPECT_EQ(
+        std::get<codegen::PackedFieldSchema>(document.packed_value_schema(packed)->segments[1])
+            .relationship->target.name,
+        "authored::ExistingScalarRenamed");
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& updated{preview->front().updated};
+    EXPECT_NE(updated.find("(integer-scalar ExistingScalarRenamed"), std::string::npos);
+    EXPECT_EQ(updated.find("(integer-scalar ExistingScalar\n"), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the scalar domain note during ordinary edits."),
+              std::string::npos);
+    EXPECT_NE(updated.find(":minimum   0"), std::string::npos);
+    EXPECT_NE(updated.find("(code Pending :value   2 :sentinel true)"), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the quantization note."), std::string::npos);
+    EXPECT_NE(updated.find(":source   authored::ExistingScalarRenamed"), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the packed field note."), std::string::npos);
+    EXPECT_NE(updated.find("(relation index_into authored::ExistingScalarRenamed)"),
+              std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_scalar{
+        declaration_id(reloaded, "authored_scalars", "ExistingScalarRenamed", "authored")};
+    auto const reloaded_quantized{
+        declaration_id(reloaded, "authored_representations", "ExistingQ1", "authored")};
+    EXPECT_NE(reloaded.declaration(reloaded_scalar), nullptr);
+    EXPECT_EQ(reloaded.linear_quantized_schema(reloaded_quantized)->source.name,
+              "authored::ExistingScalarRenamed");
+    auto const module_source{std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
+        return source.path.filename() == "modules.lispb";
+    })};
+    ASSERT_NE(module_source, reloaded.source_files().end());
+    EXPECT_NE(module_source->text.find("; Keep the scalar domain note during ordinary edits."),
+              std::string::npos);
+    EXPECT_NE(module_source->text.find("(code Pending :value   2 :sentinel true)"),
+              std::string::npos);
+    EXPECT_NE(module_source->text.find("; Keep the quantization note."), std::string::npos);
 }
 
 TEST(EditableSchemaDocument, AppliesResolvesAndInvertsTypedCommands) {
@@ -1400,22 +2788,22 @@ TEST(EditableSchemaDocument, CreatesPreviewsSavesAndReloadsEnumDeclarations) {
     ASSERT_TRUE(existing.has_value());
     auto const module_index{document.declaration(*existing)->module_index};
     auto const created{document.allocate_declaration_id()};
-    auto create{document.apply(CreateEnum{
-        .declaration = created,
-        .module_index = module_index,
-        .schema = codegen::EnumSchema{.name = "DesignedState",
-                                      .underlying_type = codegen::TypeRef{"std::uint8_t"},
-                                      .bit_width = 3,
-                                      .signedness = false,
-                                      .values = {{.name = "Idle",
-                                                  .initializer = "0",
-                                                  .display_name = "Idle State",
-                                                  .serialized_name = "idle"},
-                                                 {.name = "Active",
-                                                  .initializer = "7",
-                                                  .display_name = "Active State",
-                                                  .serialized_name = "active",
-                                                  .sentinel = true}}}})};
+    auto create{document.apply(
+        CreateEnum{.declaration = created,
+                   .module_index = module_index,
+                   .schema = codegen::EnumSchema{.name = "DesignedState",
+                                                 .underlying_type = std::nullopt,
+                                                 .bit_width = 3,
+                                                 .signedness = false,
+                                                 .values = {{.name = "Idle",
+                                                             .initializer = "0",
+                                                             .display_name = "Idle State",
+                                                             .serialized_name = "idle"},
+                                                            {.name = "Active",
+                                                             .initializer = "7",
+                                                             .display_name = "Active State",
+                                                             .serialized_name = "active",
+                                                             .sentinel = true}}}})};
     ASSERT_TRUE(create.has_value());
     EXPECT_TRUE(*create);
 
@@ -1425,6 +2813,7 @@ TEST(EditableSchemaDocument, CreatesPreviewsSavesAndReloadsEnumDeclarations) {
     ASSERT_EQ(type.enumerators.size(), 2);
     EXPECT_EQ(type.bit_width, 3);
     EXPECT_EQ(type.signedness, false);
+    EXPECT_FALSE(type.underlying_type.has_value());
     EXPECT_EQ(type.enumerators[1].serialized_name, "active");
     EXPECT_TRUE(type.enumerators[1].sentinel);
 
@@ -1457,7 +2846,7 @@ TEST(EditableSchemaDocument, CreatesPreviewsSavesAndReloadsEnumDeclarations) {
     auto preview{document.preview_source_updates()};
     ASSERT_TRUE(preview.has_value());
     ASSERT_EQ(preview->size(), 1);
-    EXPECT_NE(preview->front().updated.find("(enum DesignedState std::uint8_t"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(enum DesignedState\n"), std::string::npos);
     EXPECT_NE(preview->front().updated.find(":bit-width 3"), std::string::npos);
     EXPECT_NE(preview->front().updated.find(":signed false"), std::string::npos);
     EXPECT_NE(preview->front().updated.find(":display-name \"Idle State\""), std::string::npos);
@@ -1477,6 +2866,7 @@ TEST(EditableSchemaDocument, CreatesPreviewsSavesAndReloadsEnumDeclarations) {
     ASSERT_EQ(reloaded_enum.enumerators.size(), 2);
     EXPECT_EQ(reloaded_enum.bit_width, 3);
     EXPECT_EQ(reloaded_enum.signedness, false);
+    EXPECT_FALSE(reloaded_enum.underlying_type.has_value());
     EXPECT_EQ(reloaded_enum.enumerators[0].display_name, "Idle State");
     EXPECT_EQ(reloaded_enum.enumerators[1].display_name, "Enabled");
     EXPECT_EQ(reloaded_enum.enumerators[1].serialized_name, "active");
@@ -1489,6 +2879,156 @@ TEST(EditableSchemaDocument, CreatesPreviewsSavesAndReloadsEnumDeclarations) {
                                                .name = "DesignedState"})};
     ASSERT_TRUE(saved_declaration.has_value());
     EXPECT_TRUE(document.declaration(*saved_declaration)->source.has_value());
+}
+
+TEST(EditableSchemaDocument, CreatesEnumAndBindsPackedFieldAcrossModules) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const existing_enum{declaration_id(document, "authored_enums", "Existing", "authored")};
+    auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
+    auto const enumeration{document.allocate_declaration_id()};
+
+    auto created{document.apply(CreateEnum{
+        .declaration = enumeration,
+        .module_index = document.declaration(existing_enum)->module_index,
+        .schema = codegen::EnumSchema{.name = "PackedState",
+                                      .underlying_type = codegen::TypeRef{"std::uint8_t"},
+                                      .bit_width = 3,
+                                      .signedness = false,
+                                      .values = {{.name = "Idle", .initializer = "0"},
+                                                 {.name = "Active", .initializer = "1"}}}})};
+    ASSERT_TRUE(created.has_value()) << created.error().message;
+    ASSERT_TRUE(*created);
+
+    auto replacement{*document.packed_value_schema(packed)};
+    auto& field{std::get<codegen::PackedFieldSchema>(replacement.segments.front())};
+    field.type = codegen::TypeRef{"authored::PackedState"};
+    field.bits = 3;
+    field.kind = codegen::PackedFieldKind::enumeration;
+    field.range_helper = false;
+    field.minimum_value.reset();
+    field.maximum_value.reset();
+    field.named_codes.clear();
+    auto bound{document.apply(
+        ReplacePackedValue{.declaration = packed, .schema = std::move(replacement)})};
+    ASSERT_TRUE(bound.has_value()) << bound.error().message;
+    ASSERT_TRUE(*bound);
+
+    auto const enum_type{document.types().find(document.declaration(enumeration)->identity)};
+    ASSERT_TRUE(enum_type.has_value());
+    auto const& bound_field{std::get<PackedField>(packed_type(document, packed).segments.front())};
+    EXPECT_EQ(bound_field.semantic_type.type, *enum_type);
+    EXPECT_EQ(bound_field.bit_width, 3U);
+    EXPECT_EQ(bound_field.kind, codegen::PackedFieldKind::enumeration);
+
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_NE(document.declaration(enumeration), nullptr);
+    EXPECT_EQ(
+        std::get<codegen::PackedFieldSchema>(document.packed_value_schema(packed)->segments.front())
+            .type.name,
+        "std::uint8_t");
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.declaration(enumeration), nullptr);
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.redo().value());
+    auto const rebound_enum_type{
+        document.types().find(document.declaration(enumeration)->identity)};
+    ASSERT_TRUE(rebound_enum_type.has_value());
+    EXPECT_EQ(
+        std::get<PackedField>(packed_type(document, packed).segments.front()).semantic_type.type,
+        *rebound_enum_type);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find("(enum PackedState std::uint8_t"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("authored::PackedState"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":bits 3"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":kind enum"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the value segment note."), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_enum{declaration_id(reloaded, "authored_enums", "PackedState", "authored")};
+    auto const reloaded_packed{
+        declaration_id(reloaded, "authored_packed", "ExistingPacked", "authored")};
+    auto const resolved_enum_type{
+        reloaded.types().find(reloaded.declaration(reloaded_enum)->identity)};
+    ASSERT_TRUE(resolved_enum_type.has_value());
+    auto const& reloaded_field{
+        std::get<PackedField>(packed_type(reloaded, reloaded_packed).segments.front())};
+    EXPECT_EQ(reloaded_field.semantic_type.type, *resolved_enum_type);
+    EXPECT_EQ(reloaded_field.bit_width, 3U);
+    EXPECT_EQ(reloaded_field.kind, codegen::PackedFieldKind::enumeration);
+}
+
+TEST(EditableSchemaDocument, BindsPackedFieldToSharedIntegerScalarDomain) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const scalar{declaration_id(document, "authored_scalars", "ExistingScalar", "authored")};
+    auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
+
+    auto replacement{*document.packed_value_schema(packed)};
+    auto& field{std::get<codegen::PackedFieldSchema>(replacement.segments[1])};
+    field.type = codegen::TypeRef{"authored::ExistingScalar"};
+    field.bits.reset();
+    field.kind = codegen::PackedFieldKind::unsigned_integer;
+    field.range_helper = false;
+    field.minimum_value.reset();
+    field.maximum_value.reset();
+    field.named_codes.clear();
+    field.relationship.reset();
+    auto bound{document.apply(
+        ReplacePackedValue{.declaration = packed, .schema = std::move(replacement)})};
+    ASSERT_TRUE(bound.has_value()) << bound.error().message;
+    ASSERT_TRUE(*bound);
+
+    auto const scalar_type{document.types().find(document.declaration(scalar)->identity)};
+    ASSERT_TRUE(scalar_type.has_value());
+    auto const& bound_field{std::get<PackedField>(packed_type(document, packed).segments[1])};
+    EXPECT_EQ(bound_field.semantic_type.type, *scalar_type);
+    EXPECT_EQ(bound_field.bit_width, 2U);
+    EXPECT_TRUE(bound_field.bit_width_auto);
+    EXPECT_EQ(bound_field.minimum_value, codegen::PackedIntegerValue{0});
+    EXPECT_EQ(bound_field.maximum_value, codegen::PackedIntegerValue{1});
+    ASSERT_EQ(bound_field.named_codes.size(), 2U);
+    EXPECT_EQ(bound_field.named_codes[0].name, "Pending");
+    EXPECT_TRUE(bound_field.named_codes[0].sentinel);
+
+    ASSERT_TRUE(document.undo().value());
+    auto const& restored{
+        std::get<codegen::PackedFieldSchema>(document.packed_value_schema(packed)->segments[1])};
+    EXPECT_EQ(restored.type.name, "std::uint16_t");
+    EXPECT_EQ(restored.minimum_value, codegen::PackedIntegerValue{0});
+    ASSERT_TRUE(document.redo().value());
+    EXPECT_EQ(std::get<PackedField>(packed_type(document, packed).segments[1]).semantic_type.type,
+              *scalar_type);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find("authored::ExistingScalar"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the value segment note."), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the future segment note."), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_scalar{
+        declaration_id(reloaded, "authored_scalars", "ExistingScalar", "authored")};
+    auto const reloaded_packed{
+        declaration_id(reloaded, "authored_packed", "ExistingPacked", "authored")};
+    auto const resolved_scalar_type{
+        reloaded.types().find(reloaded.declaration(reloaded_scalar)->identity)};
+    ASSERT_TRUE(resolved_scalar_type.has_value());
+    auto const& reloaded_field{
+        std::get<PackedField>(packed_type(reloaded, reloaded_packed).segments[1])};
+    EXPECT_EQ(reloaded_field.semantic_type.type, *resolved_scalar_type);
+    EXPECT_EQ(reloaded_field.bit_width, 2U);
+    EXPECT_EQ(reloaded_field.minimum_value, codegen::PackedIntegerValue{0});
+    EXPECT_EQ(reloaded_field.maximum_value, codegen::PackedIntegerValue{1});
+    ASSERT_EQ(reloaded_field.named_codes.size(), 2U);
 }
 
 TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsPackedValues) {
@@ -1520,9 +3060,10 @@ TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsPackedValues) {
                                       {.name = "Invalid", .value = 1'048'575, .sentinel = true},
                                       {.name = "Pending", .value = 1'048'574, .sentinel = true}},
                                  .relationship =
-                                     codegen::PackedFieldRelationSchema{
-                                         .kind = codegen::PackedFieldRelationKind::index_into,
-                                         .target = codegen::TypeRef{"ExistingPacked"}}},
+                                     codegen::SemanticRelationSchema{
+                                         .kind = codegen::SemanticRelationKind::index_into,
+                                         .target = codegen::TypeRef{"ExistingPacked"},
+                                         .unit = std::nullopt}},
                              codegen::PackedReservedBitsSchema{.name = "future", .bits = 4},
                              codegen::PackedFieldSchema{"state",
                                                         codegen::TypeRef{"@existing"},
@@ -1561,7 +3102,7 @@ TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsPackedValues) {
     EXPECT_EQ(created_index.named_codes[1].name, "Invalid");
     EXPECT_TRUE(created_index.named_codes[1].sentinel);
     ASSERT_TRUE(created_index.relationship.has_value());
-    EXPECT_EQ(created_index.relationship->kind, codegen::PackedFieldRelationKind::index_into);
+    EXPECT_EQ(created_index.relationship->kind, codegen::SemanticRelationKind::index_into);
     EXPECT_EQ(document.types().type(created_index.relationship->target.type).identity.name,
               "ExistingPacked");
     EXPECT_EQ(created_reserved.name, "future");
@@ -1593,27 +3134,30 @@ TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsPackedValues) {
     EXPECT_TRUE(std::get<PackedField>(packed_type(document, created).segments[0]).bit_width_auto);
 
     auto relationship_edit{*document.packed_value_schema(created)};
-    std::get<codegen::PackedFieldSchema>(relationship_edit.segments.front()).relationship->kind =
-        codegen::PackedFieldRelationKind::count_of;
+    auto& edited_relationship{
+        *std::get<codegen::PackedFieldSchema>(relationship_edit.segments.front()).relationship};
+    edited_relationship.kind = codegen::SemanticRelationKind::offset_into;
+    edited_relationship.unit = codegen::SemanticRelationUnit::bytes;
     auto relationship_replaced{document.apply(
         ReplacePackedValue{.declaration = created, .schema = std::move(relationship_edit)})};
     ASSERT_TRUE(relationship_replaced.has_value()) << relationship_replaced.error().message;
     ASSERT_TRUE(*relationship_replaced);
     EXPECT_EQ(std::get<PackedField>(packed_type(document, created).segments[0]).relationship->kind,
-              codegen::PackedFieldRelationKind::count_of);
+              codegen::SemanticRelationKind::offset_into);
+    EXPECT_EQ(std::get<PackedField>(packed_type(document, created).segments[0]).relationship->unit,
+              codegen::SemanticRelationUnit::bytes);
     auto undo_relationship{document.undo()};
     ASSERT_TRUE(undo_relationship.has_value());
     ASSERT_TRUE(*undo_relationship);
     EXPECT_EQ(std::get<PackedField>(packed_type(document, created).segments[0]).relationship->kind,
-              codegen::PackedFieldRelationKind::index_into);
+              codegen::SemanticRelationKind::index_into);
     auto redo_relationship{document.redo()};
     ASSERT_TRUE(redo_relationship.has_value());
     ASSERT_TRUE(*redo_relationship);
     EXPECT_EQ(std::get<PackedField>(packed_type(document, created).segments[0]).relationship->kind,
-              codegen::PackedFieldRelationKind::count_of);
-    undo_relationship = document.undo();
-    ASSERT_TRUE(undo_relationship.has_value());
-    ASSERT_TRUE(*undo_relationship);
+              codegen::SemanticRelationKind::offset_into);
+    EXPECT_EQ(std::get<PackedField>(packed_type(document, created).segments[0]).relationship->unit,
+              codegen::SemanticRelationUnit::bytes);
 
     auto reordered{*document.packed_value_schema(created)};
     std::swap(reordered.segments[0], reordered.segments[2]);
@@ -1649,7 +3193,7 @@ TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsPackedValues) {
     EXPECT_NE(preview->front().updated.find("(code Player :value 42)"), std::string::npos);
     EXPECT_NE(preview->front().updated.find("(code Invalid :value 1048575 :sentinel true)"),
               std::string::npos);
-    EXPECT_NE(preview->front().updated.find("(relation index_into ExistingPacked)"),
+    EXPECT_NE(preview->front().updated.find("(relation offset_into ExistingPacked :unit bytes)"),
               std::string::npos);
 
     auto saved{document.save()};
@@ -1688,7 +3232,8 @@ TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsPackedValues) {
     EXPECT_EQ(reloaded_index.named_codes[1].value, 1'048'575U);
     EXPECT_TRUE(reloaded_index.named_codes[1].sentinel);
     ASSERT_TRUE(reloaded_index.relationship.has_value());
-    EXPECT_EQ(reloaded_index.relationship->kind, codegen::PackedFieldRelationKind::index_into);
+    EXPECT_EQ(reloaded_index.relationship->kind, codegen::SemanticRelationKind::offset_into);
+    EXPECT_EQ(reloaded_index.relationship->unit, codegen::SemanticRelationUnit::bytes);
     EXPECT_EQ(reloaded.types().type(reloaded_index.relationship->target.type).identity.name,
               "ExistingPacked");
     EXPECT_EQ(reloaded_type.invalid_raw_value, 0xffffffffU);
@@ -1819,14 +3364,23 @@ TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsIntegerScalars) {
         .declaration = created,
         .module_index = module_index,
         .schema =
-            codegen::IntegerScalarSchema{
-                .name = "DamageReason",
-                .signedness = false,
-                .minimum_value = 0,
-                .maximum_value = 10,
-                .bit_width = std::nullopt,
-                .named_codes = {{.name = "Unknown", .value = 0, .sentinel = false},
-                                {.name = "Invalid", .value = 15, .sentinel = true}}},
+            codegen::IntegerScalarSchema{.name = "DamageReason",
+                                         .signedness = false,
+                                         .minimum_value = 0,
+                                         .maximum_value = 10,
+                                         .bit_width = std::nullopt,
+                                         .named_codes =
+                                             {{.name = "Unknown", .value = 0, .sentinel = false},
+                                              {.name = "Invalid", .value = 15, .sentinel = true}},
+                                         .relationship =
+                                             codegen::SemanticRelationSchema{
+                                                 .kind = codegen::SemanticRelationKind::offset_into,
+                                                 .target =
+                                                     codegen::TypeRef{"authored::ExistingPacked"},
+                                                 .unit = codegen::SemanticRelationUnit::bytes},
+                                         .cpp_emission = codegen::IntegerScalarCppEmission::
+                                             constants_with_names,
+                                         .cpp_type = codegen::TypeRef{"std::uint8_t"}},
         .insertion_index = std::nullopt})};
     ASSERT_TRUE(create.has_value()) << create.error().message;
     ASSERT_TRUE(*create);
@@ -1843,6 +3397,11 @@ TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsIntegerScalars) {
     EXPECT_EQ(created_type.bit_width, 4U);
     ASSERT_EQ(created_type.named_codes.size(), 2U);
     EXPECT_TRUE(created_type.named_codes[1].sentinel);
+    ASSERT_TRUE(created_type.relationship.has_value());
+    EXPECT_EQ(created_type.relationship->kind, codegen::SemanticRelationKind::offset_into);
+    EXPECT_EQ(created_type.relationship->unit, codegen::SemanticRelationUnit::bytes);
+    EXPECT_EQ(document.types().type(created_type.relationship->target.type).identity.name,
+              "ExistingPacked");
 
     auto invalid{*document.integer_scalar_schema(created)};
     invalid.bit_width = 3;
@@ -1874,7 +3433,13 @@ TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsIntegerScalars) {
     EXPECT_NE(preview->front().updated.find(":minimum 0"), std::string::npos);
     EXPECT_NE(preview->front().updated.find(":maximum 10"), std::string::npos);
     EXPECT_NE(preview->front().updated.find(":bit-width 5"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":cpp-emission constants-with-names"),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":cpp-type std::uint8_t"), std::string::npos);
     EXPECT_NE(preview->front().updated.find("(code Invalid :value 15 :sentinel true)"),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find(
+                  "(relation offset_into authored::ExistingPacked :unit bytes)"),
               std::string::npos);
 
     auto saved{document.save()};
@@ -1891,11 +3456,510 @@ TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsIntegerScalars) {
     auto const* schema{reloaded.integer_scalar_schema(*reloaded_declaration)};
     ASSERT_NE(schema, nullptr);
     EXPECT_EQ(schema->bit_width, 5U);
+    EXPECT_EQ(schema->cpp_emission, codegen::IntegerScalarCppEmission::constants_with_names);
+    ASSERT_TRUE(schema->cpp_type.has_value());
+    EXPECT_EQ(schema->cpp_type->name, "std::uint8_t");
     ASSERT_EQ(schema->named_codes.size(), 2U);
     EXPECT_EQ(schema->named_codes[0].name, "Invalid");
+    ASSERT_TRUE(schema->relationship.has_value());
+    EXPECT_EQ(schema->relationship->kind, codegen::SemanticRelationKind::offset_into);
+    EXPECT_EQ(schema->relationship->unit, codegen::SemanticRelationUnit::bytes);
     auto const& reloaded_type{integer_scalar_type(reloaded, *reloaded_declaration)};
     EXPECT_EQ(reloaded_type.bit_width, 5U);
     EXPECT_FALSE(reloaded_type.bit_width_auto);
+    ASSERT_TRUE(reloaded_type.relationship.has_value());
+    EXPECT_EQ(reloaded_type.relationship->unit, codegen::SemanticRelationUnit::bytes);
+    EXPECT_EQ(reloaded.types().type(reloaded_type.relationship->target.type).identity.name,
+              "ExistingPacked");
+}
+
+TEST(EditableSchemaDocument, CreatesModuleThenDeclarationAndReloadsWithoutSourceDamage) {
+    TemporarySchema files;
+    auto document{files.load()};
+    ASSERT_GE(document.source_files().size(), 2U);
+    auto const original_source{document.source_files()[1].text};
+    auto const original_module_count{document.manifest().modules.size()};
+    auto const original_revision{document.revision()};
+
+    auto duplicate{document.apply(
+        CreateModule{.source_file_index = 1,
+                     .schema = codegen::ScalarModuleSchema{
+                         .settings = codegen::ModuleSettings{.name = "authored_scalars",
+                                                             .header = "DuplicateScalars.h",
+                                                             .namespace_name = "authored"},
+                         .scalars = {}}})};
+    ASSERT_FALSE(duplicate.has_value());
+    EXPECT_EQ(document.manifest().modules.size(), original_module_count);
+    EXPECT_EQ(document.revision(), original_revision);
+
+    auto created_module{document.apply(
+        CreateModule{.source_file_index = 1,
+                     .schema = codegen::ScalarModuleSchema{
+                         .settings = codegen::ModuleSettings{.name = "planner_scalars",
+                                                             .header = "PlannerScalars.h",
+                                                             .namespace_name = "planner"},
+                         .scalars = {}}})};
+    ASSERT_TRUE(created_module.has_value()) << created_module.error().message;
+    ASSERT_TRUE(*created_module);
+    ASSERT_EQ(document.manifest().modules.size(), original_module_count + 1);
+    auto const module_index{document.manifest().modules.size() - 1};
+
+    auto const declaration{document.allocate_declaration_id()};
+    auto created_scalar{document.apply(CreateIntegerScalar{
+        .declaration = declaration,
+        .module_index = module_index,
+        .schema =
+            codegen::IntegerScalarSchema{
+                .name = "StatusCode",
+                .signedness = false,
+                .minimum_value = 0,
+                .maximum_value = 3,
+                .bit_width = 2,
+                .named_codes = {{.name = "Unknown", .value = 0, .sentinel = false}},
+                .relationship = std::nullopt,
+                .cpp_emission = codegen::IntegerScalarCppEmission::none,
+                .cpp_type = std::nullopt},
+        .insertion_index = std::nullopt})};
+    ASSERT_TRUE(created_scalar.has_value()) << created_scalar.error().message;
+    ASSERT_TRUE(*created_scalar);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_TRUE(preview->front().updated.starts_with(original_source));
+    EXPECT_NE(preview->front().updated.find("(scalar-module planner_scalars"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":header \"PlannerScalars.h\""), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":namespace planner"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(integer-scalar StatusCode"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.manifest().modules.size(), original_module_count);
+    EXPECT_FALSE(document.dirty());
+    auto reverted_preview{document.preview_source_updates()};
+    ASSERT_TRUE(reverted_preview.has_value());
+    EXPECT_TRUE(reverted_preview->empty());
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.redo().value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    ASSERT_EQ(saved->size(), 1U);
+    auto reloaded{files.load()};
+    ASSERT_EQ(reloaded.manifest().modules.size(), original_module_count + 1);
+    auto const* module{
+        std::get_if<codegen::ScalarModuleSchema>(&reloaded.manifest().modules.back())};
+    ASSERT_NE(module, nullptr);
+    EXPECT_EQ(module->settings.name, "planner_scalars");
+    EXPECT_EQ(module->settings.header, "PlannerScalars.h");
+    EXPECT_EQ(module->settings.namespace_name, "planner");
+    ASSERT_EQ(module->scalars.size(), 1U);
+    EXPECT_EQ(module->scalars.front().name, "StatusCode");
+    EXPECT_TRUE(reloaded.types().find_declared("planner_scalars", "StatusCode").has_value());
+}
+
+TEST(EditableSchemaDocument, CreatesAndReloadsEveryEditableEmptyModuleKind) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const original_module_count{document.manifest().modules.size()};
+    auto settings = [](std::string name) {
+        return codegen::ModuleSettings{.name = name,
+                                       .header = name + ".h",
+                                       .source = std::nullopt,
+                                       .header_include = std::nullopt,
+                                       .namespace_name = "planner",
+                                       .include_order = {},
+                                       .prelude_lines = {}};
+    };
+    std::vector<codegen::ModuleSchema> modules;
+    modules.push_back(codegen::EnumModuleSchema{
+        .settings = settings("new_enums"), .helper_namespace = std::nullopt, .enums = {}});
+    modules.push_back(
+        codegen::PackedValueModuleSchema{.settings = settings("new_packed"), .values = {}});
+    modules.push_back(
+        codegen::ScalarModuleSchema{.settings = settings("new_scalars"), .scalars = {}});
+    modules.push_back(
+        codegen::RepresentationModuleSchema{.settings = settings("new_representations"),
+                                            .linear_quantized = {},
+                                            .integer_varints = {},
+                                            .fixed_points = {},
+                                            .optional_sentinels = {},
+                                            .optional_presence_bits = {},
+                                            .mini_floats = {}});
+    modules.push_back(
+        codegen::RecordModuleSchema{.settings = settings("new_records"), .records = {}});
+    modules.push_back(codegen::UnionModuleSchema{
+        .settings = settings("new_unions"), .unions = {}, .tagged_unions = {}});
+    modules.push_back(codegen::SoaModuleSchema{.settings = settings("new_soas"),
+                                               .structs = {},
+                                               .backend = codegen::SoaBackend::standard_library,
+                                               .array_allocators = {}});
+
+    for (auto& module : modules) {
+        auto created{
+            document.apply(CreateModule{.source_file_index = 1, .schema = std::move(module)})};
+        ASSERT_TRUE(created.has_value()) << created.error().message;
+        ASSERT_TRUE(*created);
+    }
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    for (auto const head : {"enum-module new_enums",
+                            "packed-value-module new_packed",
+                            "scalar-module new_scalars",
+                            "representation-module new_representations",
+                            "record-module new_records",
+                            "union-module new_unions",
+                            "soa-module new_soas"}) {
+        EXPECT_NE(preview->front().updated.find(head), std::string::npos) << head;
+    }
+    EXPECT_NE(preview->front().updated.find(":backend standard-library"), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    ASSERT_EQ(reloaded.manifest().modules.size(), original_module_count + 7);
+    EXPECT_TRUE(std::holds_alternative<codegen::EnumModuleSchema>(
+        reloaded.manifest().modules[original_module_count]));
+    EXPECT_TRUE(std::holds_alternative<codegen::PackedValueModuleSchema>(
+        reloaded.manifest().modules[original_module_count + 1]));
+    EXPECT_TRUE(std::holds_alternative<codegen::ScalarModuleSchema>(
+        reloaded.manifest().modules[original_module_count + 2]));
+    EXPECT_TRUE(std::holds_alternative<codegen::RepresentationModuleSchema>(
+        reloaded.manifest().modules[original_module_count + 3]));
+    EXPECT_TRUE(std::holds_alternative<codegen::RecordModuleSchema>(
+        reloaded.manifest().modules[original_module_count + 4]));
+    EXPECT_TRUE(std::holds_alternative<codegen::UnionModuleSchema>(
+        reloaded.manifest().modules[original_module_count + 5]));
+    EXPECT_TRUE(std::holds_alternative<codegen::SoaModuleSchema>(
+        reloaded.manifest().modules[original_module_count + 6]));
+}
+
+TEST(EditableSchemaDocument, MovesDeclarationsAcrossCompatibleModuleSources) {
+    TemporarySchema files;
+    files.write_source("destinations.lispb", R"((scalar-module destination_scalars
+  :header "DestinationScalars.h"
+  :namespace authored
+  (integer-scalar DestinationScalar
+    :signed false
+    :minimum 0
+    :maximum 7
+    :bit-width 3)
+  (integer-scalar SignedScalar
+    :signed true
+    :minimum -8
+    :maximum 7
+    :bit-width 4))
+
+(scalar-module foreign_scalars
+  :header "ForeignScalars.h"
+  :namespace foreign)
+
+(representation-module destination_representations
+  :header "DestinationRepresentations.h"
+  :namespace authored
+  (linear-quantized DestinationQ
+    :source authored::ExistingScalar
+    :bits 2
+    :reserved-codes 0
+    :clipping reject))
+
+(union-module destination_unions
+  :header "DestinationUnions.h"
+  :namespace authored
+  (union DestinationUnion
+    (alternative value std::uint16_t)))
+)");
+    auto document{files.load_with_module_source("destinations.lispb")};
+    auto const scalar{declaration_id(document, "authored_scalars", "ExistingScalar", "authored")};
+    auto const varint{
+        declaration_id(document, "authored_representations", "ExistingVarint", "authored")};
+    auto const tagged{declaration_id(document, "authored_unions", "ExistingTagged", "authored")};
+    auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
+    auto const signed_scalar{
+        declaration_id(document, "authored_scalars", "SignedScalar", "authored")};
+    auto find_module = [&](std::string_view const name) {
+        auto const modules{document.manifest().modules};
+        auto const found{std::ranges::find_if(modules, [&](auto const& module) {
+            return std::visit([&](auto const& value) { return value.settings.name == name; },
+                              module);
+        })};
+        EXPECT_NE(found, modules.end());
+        return static_cast<std::size_t>(std::distance(modules.begin(), found));
+    };
+    auto declaration_text = [&](DeclarationId const declaration) {
+        auto const* info{document.declaration(declaration)};
+        EXPECT_NE(info, nullptr);
+        EXPECT_TRUE(info != nullptr && info->source.has_value());
+        if (info == nullptr || !info->source.has_value()) {
+            return std::string{};
+        }
+        auto const& range{*info->source};
+        auto const& source{document.source_files()[range.source_file_index].text};
+        return source.substr(range.begin_offset, range.end_offset - range.begin_offset);
+    };
+    auto const scalar_text{declaration_text(scalar)};
+    auto const varint_text{declaration_text(varint)};
+    auto const tagged_text{declaration_text(tagged)};
+    auto const destination_scalars{find_module("destination_scalars")};
+    auto const destination_representations{find_module("destination_representations")};
+    auto const destination_unions{find_module("destination_unions")};
+
+    auto const original_revision{document.revision()};
+    auto rejected{document.apply(MoveDeclaration{.declaration = scalar,
+                                                 .module_index = destination_unions,
+                                                 .insertion_index = std::nullopt})};
+    ASSERT_FALSE(rejected.has_value());
+    EXPECT_NE(rejected.error().message.find("incompatible"), std::string::npos);
+    EXPECT_EQ(document.revision(), original_revision);
+    EXPECT_EQ(document.declaration(scalar)->identity.module_name, "authored_scalars");
+
+    rejected = document.apply(MoveDeclaration{.declaration = signed_scalar,
+                                              .module_index = destination_scalars,
+                                              .insertion_index = std::nullopt});
+    ASSERT_FALSE(rejected.has_value());
+    EXPECT_NE(rejected.error().message.find("duplicate scalar"), std::string::npos);
+    EXPECT_EQ(document.revision(), original_revision);
+    EXPECT_EQ(document.declaration(signed_scalar)->identity.module_name, "authored_scalars");
+    auto const* unchanged_destination{std::get_if<codegen::ScalarModuleSchema>(
+        &document.manifest().modules[destination_scalars])};
+    ASSERT_NE(unchanged_destination, nullptr);
+    EXPECT_EQ(unchanged_destination->scalars.size(), 2U);
+
+    auto moved_scalar{document.apply(MoveDeclaration{
+        .declaration = scalar, .module_index = destination_scalars, .insertion_index = 0})};
+    ASSERT_TRUE(moved_scalar.has_value()) << moved_scalar.error().message;
+    ASSERT_TRUE(*moved_scalar);
+    EXPECT_EQ(document.declaration(scalar)->id, scalar);
+    EXPECT_EQ(document.declaration(scalar)->identity.module_name, "destination_scalars");
+    EXPECT_EQ(document.declaration(scalar)->declaration_index, 0U);
+    EXPECT_FALSE(document.declaration(scalar)->source.has_value());
+    auto const& packed_field{std::get<PackedField>(packed_type(document, packed).segments[1])};
+    ASSERT_TRUE(packed_field.relationship.has_value());
+    EXPECT_EQ(document.types().type(packed_field.relationship->target.type).identity.module_name,
+              "destination_scalars");
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 2U);
+    auto preview_text = [&](std::string_view const filename) -> std::string const& {
+        auto const found{std::ranges::find_if(
+            *preview, [&](auto const& update) { return update.path.filename() == filename; })};
+        EXPECT_NE(found, preview->end());
+        return found->updated;
+    };
+    EXPECT_EQ(preview_text("modules.lispb").find(scalar_text), std::string::npos);
+    EXPECT_NE(preview_text("destinations.lispb").find(scalar_text), std::string::npos);
+    EXPECT_LT(preview_text("destinations.lispb").find(scalar_text),
+              preview_text("destinations.lispb").find("(integer-scalar DestinationScalar"));
+
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.declaration(scalar)->identity.module_name, "authored_scalars");
+    ASSERT_TRUE(document.declaration(scalar)->source.has_value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value());
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+
+    auto moved_varint{document.apply(MoveDeclaration{
+        .declaration = varint, .module_index = destination_representations, .insertion_index = 0})};
+    ASSERT_TRUE(moved_varint.has_value()) << moved_varint.error().message;
+    ASSERT_TRUE(*moved_varint);
+    auto moved_tagged{document.apply(MoveDeclaration{
+        .declaration = tagged, .module_index = destination_unions, .insertion_index = 0})};
+    ASSERT_TRUE(moved_tagged.has_value()) << moved_tagged.error().message;
+    ASSERT_TRUE(*moved_tagged);
+    EXPECT_EQ(document.declaration(varint)->identity.module_name, "destination_representations");
+    EXPECT_EQ(document.declaration(varint)->declaration_index, 1U);
+    EXPECT_EQ(document.declaration(tagged)->identity.module_name, "destination_unions");
+    EXPECT_EQ(document.declaration(tagged)->declaration_index, 1U);
+    EXPECT_EQ(integer_varint_type(document, varint).encoding,
+              codegen::IntegerVarintEncoding::unsigned_varint);
+    EXPECT_FALSE(tagged_union_type(document, tagged).alternatives.empty());
+    auto const quantized{
+        declaration_id(document, "authored_representations", "ExistingQ1", "authored")};
+    auto const optional{
+        declaration_id(document, "authored_representations", "ExistingOptional", "authored")};
+    EXPECT_EQ(linear_quantized_type(document, quantized).bit_width, 1U);
+    EXPECT_EQ(optional_sentinel_type(document, optional).sentinel_name, "Invalid");
+
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 2U);
+    EXPECT_EQ(preview_text("modules.lispb").find(varint_text), std::string::npos);
+    EXPECT_EQ(preview_text("modules.lispb").find(tagged_text), std::string::npos);
+    EXPECT_NE(preview_text("destinations.lispb").find(varint_text), std::string::npos);
+    EXPECT_NE(preview_text("destinations.lispb").find(tagged_text), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    ASSERT_EQ(saved->size(), 2U);
+    auto reloaded{files.load_with_module_source("destinations.lispb")};
+    EXPECT_TRUE(
+        reloaded.types().find_declared("destination_scalars", "ExistingScalar").has_value());
+    EXPECT_TRUE(reloaded.types()
+                    .find_declared("destination_representations", "ExistingVarint")
+                    .has_value());
+    EXPECT_TRUE(reloaded.types().find_declared("destination_unions", "ExistingTagged").has_value());
+    EXPECT_FALSE(reloaded.types().find_declared("authored_scalars", "ExistingScalar").has_value());
+    EXPECT_FALSE(
+        reloaded.types().find_declared("authored_representations", "ExistingVarint").has_value());
+    EXPECT_FALSE(reloaded.types().find_declared("authored_unions", "ExistingTagged").has_value());
+    auto const destination_source{
+        std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
+            return source.path.filename() == "destinations.lispb";
+        })};
+    ASSERT_NE(destination_source, reloaded.source_files().end());
+    EXPECT_NE(destination_source->text.find(scalar_text), std::string::npos);
+    EXPECT_NE(destination_source->text.find(varint_text), std::string::npos);
+    EXPECT_NE(destination_source->text.find(tagged_text), std::string::npos);
+}
+
+TEST(EditableSchemaDocument, RepairsReferencesWhenMovingAcrossNamespaces) {
+    TemporarySchema files;
+    files.write_source("migrated.lispb", R"((scalar-module migrated_scalars
+  :header "MigratedScalars.h"
+  :namespace migrated)
+
+(enum-module migrated_enums
+  :header "MigratedEnums.h"
+  :namespace migrated)
+
+(soa-module migrated_soa
+  :header "MigratedSoa.h"
+  :namespace migrated
+  :backend standard-library)
+)");
+    auto document{files.load_with_module_source("migrated.lispb")};
+    auto find_module = [&](std::string_view const name) {
+        auto const modules{document.manifest().modules};
+        auto const found{std::ranges::find_if(modules, [&](auto const& module) {
+            return std::visit([&](auto const& value) { return value.settings.name == name; },
+                              module);
+        })};
+        EXPECT_NE(found, modules.end());
+        return static_cast<std::size_t>(std::distance(modules.begin(), found));
+    };
+    auto declaration_text = [&](DeclarationId const declaration) {
+        auto const* info{document.declaration(declaration)};
+        EXPECT_NE(info, nullptr);
+        EXPECT_TRUE(info != nullptr && info->source.has_value());
+        if (info == nullptr || !info->source.has_value()) {
+            return std::string{};
+        }
+        auto const& range{*info->source};
+        auto const& source{document.source_files()[range.source_file_index].text};
+        return source.substr(range.begin_offset, range.end_offset - range.begin_offset);
+    };
+
+    auto const enumeration{declaration_id(document, "authored_enums", "Existing", "authored")};
+    auto const migrated_enums{find_module("migrated_enums")};
+    auto const revision_before_alias{document.revision()};
+    auto rejected{document.apply(MoveDeclaration{.declaration = enumeration,
+                                                 .module_index = migrated_enums,
+                                                 .insertion_index = std::nullopt})};
+    ASSERT_FALSE(rejected.has_value());
+    EXPECT_NE(rejected.error().message.find("types-registry editing"), std::string::npos);
+    EXPECT_EQ(document.revision(), revision_before_alias);
+    EXPECT_EQ(document.declaration(enumeration)->identity.module_name, "authored_enums");
+
+    auto const existing_soa{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+    auto const nested_soa{declaration_id(document, "authored_soa", "NestedFlags", "authored")};
+    auto nested_user{*document.soa_schema(nested_soa)};
+    nested_user.members[0].kind = codegen::SoaMemberKind::nested;
+    nested_user.members[0].type.name = "authored::ExistingSoa";
+    nested_user.members[0].fixed_schema = "ExistingSoa";
+    nested_user.members[0].nested_schema = "ExistingSoa";
+    auto added_local_user{
+        document.apply(ReplaceSoa{.declaration = nested_soa, .schema = std::move(nested_user)})};
+    ASSERT_TRUE(added_local_user.has_value()) << added_local_user.error().message;
+    ASSERT_TRUE(*added_local_user);
+    auto const revision_before_local_rejection{document.revision()};
+    rejected = document.apply(MoveDeclaration{.declaration = existing_soa,
+                                              .module_index = find_module("migrated_soa"),
+                                              .insertion_index = std::nullopt});
+    ASSERT_FALSE(rejected.has_value());
+    EXPECT_NE(rejected.error().message.find("module-local nested/fixed"), std::string::npos);
+    EXPECT_EQ(document.revision(), revision_before_local_rejection);
+    EXPECT_EQ(document.declaration(existing_soa)->identity.module_name, "authored_soa");
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_FALSE(document.dirty());
+
+    auto const scalar{declaration_id(document, "authored_scalars", "ExistingScalar", "authored")};
+    auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
+    auto const quantized{
+        declaration_id(document, "authored_representations", "ExistingQ1", "authored")};
+    auto const varint{
+        declaration_id(document, "authored_representations", "ExistingVarint", "authored")};
+    auto const optional{
+        declaration_id(document, "authored_representations", "ExistingOptional", "authored")};
+    auto const presence{
+        declaration_id(document, "authored_representations", "ExistingPresence", "authored")};
+    auto const scalar_text{declaration_text(scalar)};
+    auto const original_type{document.types().find(document.declaration(scalar)->identity)};
+    ASSERT_TRUE(original_type.has_value());
+    auto const original_user_count{document.types().users_of(*original_type).size()};
+    auto const migrated_scalars{find_module("migrated_scalars")};
+
+    auto moved{document.apply(MoveDeclaration{
+        .declaration = scalar, .module_index = migrated_scalars, .insertion_index = std::nullopt})};
+    ASSERT_TRUE(moved.has_value()) << moved.error().message;
+    ASSERT_TRUE(*moved);
+    EXPECT_EQ(document.declaration(scalar)->identity.module_name, "migrated_scalars");
+    EXPECT_EQ(document.declaration(scalar)->identity.namespace_name, "migrated");
+    auto const& packed_field{std::get<PackedField>(packed_type(document, packed).segments[1])};
+    ASSERT_TRUE(packed_field.relationship.has_value());
+    EXPECT_EQ(
+        std::get<codegen::PackedFieldSchema>(document.packed_value_schema(packed)->segments[1])
+            .relationship->target.name,
+        "migrated::ExistingScalar");
+    EXPECT_EQ(document.linear_quantized_schema(quantized)->source.name, "migrated::ExistingScalar");
+    EXPECT_EQ(document.integer_varint_schema(varint)->source.name, "migrated::ExistingScalar");
+    EXPECT_EQ(document.optional_sentinel_schema(optional)->source.name, "migrated::ExistingScalar");
+    EXPECT_EQ(document.optional_presence_bit_schema(presence)->source.name,
+              "migrated::ExistingScalar");
+    auto const moved_type{document.types().find(document.declaration(scalar)->identity)};
+    ASSERT_TRUE(moved_type.has_value());
+    EXPECT_EQ(document.types().users_of(*moved_type).size(), original_user_count);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 2U);
+    auto preview_text = [&](std::string_view const filename) -> std::string const& {
+        auto const found{std::ranges::find_if(
+            *preview, [&](auto const& update) { return update.path.filename() == filename; })};
+        EXPECT_NE(found, preview->end());
+        return found->updated;
+    };
+    EXPECT_EQ(preview_text("modules.lispb").find(scalar_text), std::string::npos);
+    EXPECT_NE(preview_text("modules.lispb").find("migrated::ExistingScalar"), std::string::npos);
+    EXPECT_NE(preview_text("migrated.lispb").find(scalar_text), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.declaration(scalar)->identity.module_name, "authored_scalars");
+    EXPECT_EQ(document.integer_varint_schema(varint)->source.name, "authored::ExistingScalar");
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value());
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+    EXPECT_EQ(document.integer_varint_schema(varint)->source.name, "migrated::ExistingScalar");
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    ASSERT_EQ(saved->size(), 2U);
+    auto reloaded{files.load_with_module_source("migrated.lispb")};
+    auto const reloaded_scalar{
+        declaration_id(reloaded, "migrated_scalars", "ExistingScalar", "migrated")};
+    auto const reloaded_optional{
+        declaration_id(reloaded, "authored_representations", "ExistingOptional", "authored")};
+    EXPECT_EQ(optional_sentinel_type(reloaded, reloaded_optional).source.type,
+              *reloaded.types().find(reloaded.declaration(reloaded_scalar)->identity));
+    auto const migrated_source{
+        std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
+            return source.path.filename() == "migrated.lispb";
+        })};
+    ASSERT_NE(migrated_source, reloaded.source_files().end());
+    EXPECT_NE(migrated_source->text.find(scalar_text), std::string::npos);
 }
 
 TEST(EditableSchemaDocument, RenamesIntegerScalarAndRepairsResolvedUsers) {
@@ -1979,6 +4043,58 @@ TEST(EditableSchemaDocument, RenamesIntegerScalarAndRepairsResolvedUsers) {
         declaration_id(reloaded, "authored_representations", "ExistingPresence", "authored")};
     EXPECT_EQ(optional_presence_bit_type(reloaded, reloaded_presence).source.type,
               *reloaded_source);
+}
+
+TEST(EditableSchemaDocument, RenamesIntegerScalarRelationshipTargetAndPreservesSource) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const target{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
+    auto const scalar{declaration_id(document, "authored_scalars", "ExistingScalar", "authored")};
+
+    auto const blocked_delete{document.apply(DeletePackedValue{.declaration = target})};
+    ASSERT_FALSE(blocked_delete.has_value());
+    EXPECT_NE(blocked_delete.error().message.find("ExistingScalar"), std::string::npos);
+    EXPECT_NE(document.declaration(target), nullptr);
+
+    auto renamed{
+        document.apply(RenameDeclaration{.declaration = target, .new_name = "RenamedPacked"})};
+    ASSERT_TRUE(renamed.has_value()) << renamed.error().message;
+    ASSERT_TRUE(*renamed);
+    ASSERT_TRUE(document.integer_scalar_schema(scalar)->relationship.has_value());
+    EXPECT_EQ(document.integer_scalar_schema(scalar)->relationship->target.name,
+              "authored::RenamedPacked");
+    auto const renamed_target{document.types().find(document.declaration(target)->identity)};
+    ASSERT_TRUE(renamed_target.has_value());
+    EXPECT_EQ(integer_scalar_type(document, scalar).relationship->target.type, *renamed_target);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find("(packed-value RenamedPacked"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the scalar relationship note."),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(relation index_into   authored::RenamedPacked)"),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; scalar relationship trailing note"),
+              std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.integer_scalar_schema(scalar)->relationship->target.name,
+              "authored::ExistingPacked");
+    ASSERT_TRUE(document.redo().value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_scalar{
+        declaration_id(reloaded, "authored_scalars", "ExistingScalar", "authored")};
+    ASSERT_TRUE(reloaded.integer_scalar_schema(reloaded_scalar)->relationship.has_value());
+    EXPECT_EQ(reloaded.integer_scalar_schema(reloaded_scalar)->relationship->target.name,
+              "authored::RenamedPacked");
+    EXPECT_EQ(reloaded.types()
+                  .type(integer_scalar_type(reloaded, reloaded_scalar).relationship->target.type)
+                  .identity.name,
+              "RenamedPacked");
 }
 
 TEST(EditableSchemaDocument, RenamesEnumAndRepairsPackedSemanticReference) {
@@ -2066,12 +4182,20 @@ TEST(EditableSchemaDocument, RenamesSoaAndRepairsDirectAndNestedUsers) {
     nested_user.members[0].type.name = "authored::ExistingSoa";
     nested_user.members[0].fixed_schema = "ExistingSoa";
     nested_user.members[0].nested_schema = "ExistingSoa";
+    nested_user.members[0].relationship =
+        codegen::SemanticRelationSchema{.kind = codegen::SemanticRelationKind::contains,
+                                        .target = codegen::TypeRef{"authored::ExistingSoa"},
+                                        .unit = std::nullopt};
     nested_user.equivalent_type = codegen::TypeRef{"authored::ExistingSoa"};
     ASSERT_TRUE(document.apply(ReplaceSoa{.declaration = nested, .schema = std::move(nested_user)})
                     .has_value());
 
     auto record_user{*document.record_schema(record)};
     record_user.members[1].type.name = "authored::ExistingSoa";
+    record_user.members[1].relationship =
+        codegen::SemanticRelationSchema{.kind = codegen::SemanticRelationKind::references,
+                                        .target = codegen::TypeRef{"authored::ExistingSoa"},
+                                        .unit = std::nullopt};
     ASSERT_TRUE(
         document.apply(ReplaceRecord{.declaration = record, .schema = std::move(record_user)})
             .has_value());
@@ -2087,8 +4211,12 @@ TEST(EditableSchemaDocument, RenamesSoaAndRepairsDirectAndNestedUsers) {
     EXPECT_EQ(document.soa_schema(nested)->members[0].type.name, "authored::ExistingSoa");
     EXPECT_EQ(document.soa_schema(nested)->members[0].fixed_schema, "ExistingSoa");
     EXPECT_EQ(document.soa_schema(nested)->members[0].nested_schema, "ExistingSoa");
+    EXPECT_EQ(document.soa_schema(nested)->members[0].relationship->target.name,
+              "authored::ExistingSoa");
     EXPECT_EQ(document.soa_schema(nested)->equivalent_type->name, "authored::ExistingSoa");
     EXPECT_EQ(document.record_schema(record)->members[1].type.name, "authored::ExistingSoa");
+    EXPECT_EQ(document.record_schema(record)->members[1].relationship->target.name,
+              "authored::ExistingSoa");
 
     auto renamed{
         document.apply(RenameDeclaration{.declaration = declaration, .new_name = "RenamedSoa"})};
@@ -2102,16 +4230,22 @@ TEST(EditableSchemaDocument, RenamesSoaAndRepairsDirectAndNestedUsers) {
     EXPECT_EQ(document.soa_schema(nested)->members[0].type.name, "authored::RenamedSoa");
     EXPECT_EQ(document.soa_schema(nested)->members[0].fixed_schema, "RenamedSoa");
     EXPECT_EQ(document.soa_schema(nested)->members[0].nested_schema, "RenamedSoa");
+    EXPECT_EQ(document.soa_schema(nested)->members[0].relationship->target.name,
+              "authored::RenamedSoa");
     EXPECT_EQ(document.soa_schema(nested)->equivalent_type->name, "authored::RenamedSoa");
     EXPECT_EQ(document.record_schema(record)->members[1].type.name, "authored::RenamedSoa");
+    EXPECT_EQ(document.record_schema(record)->members[1].relationship->target.name,
+              "authored::RenamedSoa");
 
     auto const renamed_type{document.types().find(document.declaration(declaration)->identity)};
     ASSERT_TRUE(renamed_type.has_value());
     auto const& nested_column{soa_type(document, nested).columns[0]};
     EXPECT_EQ(nested_column.semantic_type.type, *renamed_type);
     EXPECT_EQ(nested_column.nested_type, *renamed_type);
+    EXPECT_EQ(nested_column.relationship->target.type, *renamed_type);
     EXPECT_EQ(soa_type(document, nested).equivalent_type->type, *renamed_type);
     EXPECT_EQ(record_type(document, record).members[1].semantic_type.type, *renamed_type);
+    EXPECT_EQ(record_type(document, record).members[1].relationship->target.type, *renamed_type);
 
     auto preview{document.preview_source_updates()};
     ASSERT_TRUE(preview.has_value()) << preview.error().message;
@@ -2136,8 +4270,12 @@ TEST(EditableSchemaDocument, RenamesSoaAndRepairsDirectAndNestedUsers) {
     EXPECT_EQ(document.soa_schema(nested)->members[0].type.name, "authored::ExistingSoa");
     EXPECT_EQ(document.soa_schema(nested)->members[0].fixed_schema, "ExistingSoa");
     EXPECT_EQ(document.soa_schema(nested)->members[0].nested_schema, "ExistingSoa");
+    EXPECT_EQ(document.soa_schema(nested)->members[0].relationship->target.name,
+              "authored::ExistingSoa");
     EXPECT_EQ(document.soa_schema(nested)->equivalent_type->name, "authored::ExistingSoa");
     EXPECT_EQ(document.record_schema(record)->members[1].type.name, "authored::ExistingSoa");
+    EXPECT_EQ(document.record_schema(record)->members[1].relationship->target.name,
+              "authored::ExistingSoa");
     ASSERT_TRUE(document.redo().value());
     EXPECT_EQ(document.declaration(declaration)->identity.name, "RenamedSoa");
 
@@ -2157,11 +4295,19 @@ TEST(EditableSchemaDocument, RenamesSoaAndRepairsDirectAndNestedUsers) {
     EXPECT_EQ(reloaded.soa_schema(reloaded_nested)->members[0].type.name, "authored::RenamedSoa");
     EXPECT_EQ(reloaded.soa_schema(reloaded_nested)->members[0].fixed_schema, "RenamedSoa");
     EXPECT_EQ(reloaded.soa_schema(reloaded_nested)->members[0].nested_schema, "RenamedSoa");
+    EXPECT_EQ(reloaded.soa_schema(reloaded_nested)->members[0].relationship->target.name,
+              "authored::RenamedSoa");
     EXPECT_EQ(soa_type(reloaded, reloaded_nested).columns[0].nested_type, *reloaded_type);
+    EXPECT_EQ(soa_type(reloaded, reloaded_nested).columns[0].relationship->target.type,
+              *reloaded_type);
     EXPECT_EQ(reloaded.soa_schema(reloaded_nested)->equivalent_type->name, "authored::RenamedSoa");
     EXPECT_EQ(soa_type(reloaded, reloaded_nested).equivalent_type->type, *reloaded_type);
     EXPECT_EQ(reloaded.record_schema(reloaded_record)->members[1].type.name,
               "authored::RenamedSoa");
+    EXPECT_EQ(reloaded.record_schema(reloaded_record)->members[1].relationship->target.name,
+              "authored::RenamedSoa");
+    EXPECT_EQ(record_type(reloaded, reloaded_record).members[1].relationship->target.type,
+              *reloaded_type);
     auto const module_source{std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
         return source.path.filename() == "modules.lispb";
     })};
@@ -3064,6 +5210,72 @@ TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsTaggedUnions) {
               dependencies.end());
 }
 
+TEST(EditableSchemaDocument, CreatesRecordAndBindsSoaColumnAcrossModules) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const existing_record{
+        declaration_id(document, "authored_records", "ExistingRecord", "authored")};
+    auto const soa{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+    auto const record{document.allocate_declaration_id()};
+
+    auto created{document.apply(CreateRecord{
+        .declaration = record,
+        .module_index = document.declaration(existing_record)->module_index,
+        .schema = codegen::RecordSchema{
+            .name = "ValuesRecord",
+            .members = {{.name = "value", .type = codegen::TypeRef{"std::uint32_t"}}}}})};
+    ASSERT_TRUE(created.has_value()) << created.error().message;
+    ASSERT_TRUE(*created);
+
+    auto replacement{*document.soa_schema(soa)};
+    auto const original_kind{replacement.members.front().kind};
+    replacement.members.front().type = codegen::TypeRef{"authored::ValuesRecord"};
+    auto bound{document.apply(ReplaceSoa{.declaration = soa, .schema = std::move(replacement)})};
+    ASSERT_TRUE(bound.has_value()) << bound.error().message;
+    ASSERT_TRUE(*bound);
+
+    auto const record_type{document.types().find(document.declaration(record)->identity)};
+    ASSERT_TRUE(record_type.has_value());
+    auto const& bound_column{soa_type(document, soa).columns.front()};
+    EXPECT_EQ(bound_column.semantic_type.type, *record_type);
+    EXPECT_EQ(document.soa_schema(soa)->members.front().kind, original_kind);
+    ASSERT_EQ(document.soa_schema(soa)->members.size(), 2U);
+    EXPECT_EQ(document.soa_schema(soa)->members[1].name, "flags");
+
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_NE(document.declaration(record), nullptr);
+    EXPECT_EQ(document.soa_schema(soa)->members.front().type.name, "std::uint32_t");
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.declaration(record), nullptr);
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.redo().value());
+    auto const rebound_record_type{document.types().find(document.declaration(record)->identity)};
+    ASSERT_TRUE(rebound_record_type.has_value());
+    EXPECT_EQ(soa_type(document, soa).columns.front().semantic_type.type, *rebound_record_type);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find("(record ValuesRecord"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("authored::ValuesRecord"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the values SoA member note."),
+              std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; SoA values trailing note"), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_record{
+        declaration_id(reloaded, "authored_records", "ValuesRecord", "authored")};
+    auto const reloaded_soa{declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    auto const resolved_record_type{
+        reloaded.types().find(reloaded.declaration(reloaded_record)->identity)};
+    ASSERT_TRUE(resolved_record_type.has_value());
+    auto const& reloaded_column{soa_type(reloaded, reloaded_soa).columns.front()};
+    EXPECT_EQ(reloaded_column.semantic_type.type, *resolved_record_type);
+    EXPECT_EQ(reloaded.soa_schema(reloaded_soa)->members.front().kind, original_kind);
+}
+
 TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsSoas) {
     TemporarySchema files;
     auto document{files.load()};
@@ -3363,6 +5575,129 @@ TEST(EditableSchemaDocument, AuthorsAndRemovesFixedSoaLayouts) {
     EXPECT_FALSE(final_document.soa_schema(final_declaration)->fixed.has_value());
 }
 
+TEST(EditableSchemaDocument, PreservesFixedSoaContainerRowsDuringEdits) {
+    TemporarySchema files;
+    files.replace_module_text(
+        R"(      (parameter count std::uint32_t :default "0")))
+  (struct NestedFlags)",
+        R"(      (parameter count std::uint32_t :default "0"))
+    ; Keep the fixed-layout note.
+    (fixed ExistingSoaFixedStorage
+      :containers (
+        ; Keep the first fixed container note.
+        ExistingSoaFixedA ; first fixed container trailing note
+        ; Keep the second fixed container note.
+        ExistingSoaFixedB ; second fixed container trailing note
+      ))
+  )
+  (struct NestedFlags)");
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+
+    auto replacement{*document.soa_schema(declaration)};
+    replacement.fixed->storage_name = "ExistingSoaCompactStorage";
+    replacement.fixed->containers = {
+        "ExistingSoaFixedB", "ExistingSoaFixedCopy", "ExistingSoaFixedA"};
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& updated{preview->front().updated};
+    auto const second_comment{updated.find("; Keep the second fixed container note.")};
+    auto const second_row{updated.find("ExistingSoaFixedB ; second fixed container trailing note")};
+    auto const copy_row{updated.find("ExistingSoaFixedCopy")};
+    auto const first_comment{updated.find("; Keep the first fixed container note.")};
+    auto const first_row{updated.find("ExistingSoaFixedA ; first fixed container trailing note")};
+    ASSERT_NE(second_comment, std::string::npos);
+    ASSERT_NE(second_row, std::string::npos);
+    ASSERT_NE(copy_row, std::string::npos);
+    ASSERT_NE(first_comment, std::string::npos);
+    ASSERT_NE(first_row, std::string::npos);
+    EXPECT_LT(second_comment, second_row);
+    EXPECT_LT(second_row, copy_row);
+    EXPECT_LT(copy_row, first_comment);
+    EXPECT_LT(first_comment, first_row);
+    EXPECT_NE(updated.find("(fixed ExistingSoaCompactStorage"), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the fixed-layout note."), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto renamed_document{files.load()};
+    auto const renamed_declaration{
+        declaration_id(renamed_document, "authored_soa", "ExistingSoa", "authored")};
+    auto renamed{*renamed_document.soa_schema(renamed_declaration)};
+    renamed.fixed->containers[0] = "ExistingSoaFixedScratch";
+    applied = renamed_document.apply(
+        ReplaceSoa{.declaration = renamed_declaration, .schema = std::move(renamed)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = renamed_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    auto const& renamed_source{preview->front().updated};
+    EXPECT_NE(renamed_source.find("; Keep the second fixed container note."), std::string::npos);
+    EXPECT_NE(renamed_source.find("ExistingSoaFixedScratch ; second fixed container trailing note"),
+              std::string::npos);
+    ASSERT_TRUE(renamed_document.undo().value());
+    preview = renamed_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(renamed_document.redo().value());
+    saved = renamed_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto deleting_document{files.load()};
+    auto const deleting_declaration{
+        declaration_id(deleting_document, "authored_soa", "ExistingSoa", "authored")};
+    auto deleting{*deleting_document.soa_schema(deleting_declaration)};
+    std::erase(deleting.fixed->containers, "ExistingSoaFixedA");
+    applied = deleting_document.apply(
+        ReplaceSoa{.declaration = deleting_declaration, .schema = std::move(deleting)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = deleting_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    auto const& deleting_source{preview->front().updated};
+    EXPECT_EQ(deleting_source.find("; Keep the first fixed container note."), std::string::npos);
+    EXPECT_EQ(deleting_source.find("; first fixed container trailing note"), std::string::npos);
+    EXPECT_NE(deleting_source.find("; Keep the second fixed container note."), std::string::npos);
+    EXPECT_NE(deleting_source.find("ExistingSoaFixedScratch"), std::string::npos);
+    ASSERT_TRUE(deleting_document.undo().value());
+    ASSERT_TRUE(deleting_document.redo().value());
+    saved = deleting_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    auto const* schema{reloaded.soa_schema(reloaded_declaration)};
+    ASSERT_NE(schema, nullptr);
+    ASSERT_TRUE(schema->fixed.has_value());
+    EXPECT_EQ(schema->fixed->storage_name, "ExistingSoaCompactStorage");
+    EXPECT_EQ(schema->fixed->containers,
+              (std::vector<std::string>{"ExistingSoaFixedScratch", "ExistingSoaFixedCopy"}));
+    auto const module_source{std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
+        return source.path.filename() == "modules.lispb";
+    })};
+    ASSERT_NE(module_source, reloaded.source_files().end());
+    EXPECT_NE(module_source->text.find("; Keep the fixed-layout note."), std::string::npos);
+    EXPECT_NE(module_source->text.find("; Keep the second fixed container note."),
+              std::string::npos);
+    EXPECT_EQ(module_source->text.find("; Keep the first fixed container note."),
+              std::string::npos);
+}
+
 TEST(EditableSchemaDocument, SwitchesSoaViewTypesBetweenExplicitAndDerivedNames) {
     TemporarySchema files;
     auto document{files.load()};
@@ -3554,6 +5889,136 @@ TEST(EditableSchemaDocument, AuthorsAndRemovesSingleAllocationOwners) {
     EXPECT_TRUE(final_document.soa_schema(final_declaration)->fixed.has_value());
 }
 
+TEST(EditableSchemaDocument, PreservesSingleAllocationVariantRowsDuringEdits) {
+    TemporarySchema files;
+    files.replace_module_text(
+        R"(      (parameter count std::uint32_t :default "0")))
+  (struct NestedFlags)",
+        R"(      (parameter count std::uint32_t :default "0"))
+    ; Keep the single-allocation note.
+    (single-allocation ExistingSoaSingle
+      ; Keep the pool variant note.
+      (variant ExistingSoaPool   @existing) ; pool variant trailing note
+      ; Keep the arena variant note.
+      (variant ExistingSoaArena std::uint32_t) ; arena variant trailing note
+    ))
+  (struct NestedFlags)");
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+
+    auto replacement{*document.soa_schema(declaration)};
+    replacement.single_allocation = "ExistingSoaCompact";
+    auto pool{replacement.single_allocation_variants[0]};
+    auto arena{replacement.single_allocation_variants[1]};
+    arena.allocator.name = "std::uint64_t";
+    auto pool_copy{pool};
+    pool_copy.name = "ExistingSoaPoolCopy";
+    pool_copy.allocator.name = "std::uint16_t";
+    replacement.single_allocation_variants = {arena, pool_copy, pool};
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& updated{preview->front().updated};
+    auto const arena_comment{updated.find("; Keep the arena variant note.")};
+    auto const arena_row{updated.find("(variant ExistingSoaArena std::uint64_t)")};
+    auto const copy_row{updated.find("(variant ExistingSoaPoolCopy std::uint16_t)")};
+    auto const pool_comment{updated.find("; Keep the pool variant note.")};
+    auto const pool_row{updated.find("(variant ExistingSoaPool   @existing)")};
+    ASSERT_NE(arena_comment, std::string::npos);
+    ASSERT_NE(arena_row, std::string::npos);
+    ASSERT_NE(copy_row, std::string::npos);
+    ASSERT_NE(pool_comment, std::string::npos);
+    ASSERT_NE(pool_row, std::string::npos);
+    EXPECT_LT(arena_comment, arena_row);
+    EXPECT_LT(arena_row, copy_row);
+    EXPECT_LT(copy_row, pool_comment);
+    EXPECT_LT(pool_comment, pool_row);
+    EXPECT_NE(updated.find("(single-allocation ExistingSoaCompact"), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the single-allocation note."), std::string::npos);
+    EXPECT_NE(updated.find("; arena variant trailing note"), std::string::npos);
+    EXPECT_NE(updated.find("; pool variant trailing note"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto renamed_document{files.load()};
+    auto const renamed_declaration{
+        declaration_id(renamed_document, "authored_soa", "ExistingSoa", "authored")};
+    auto renamed{*renamed_document.soa_schema(renamed_declaration)};
+    renamed.single_allocation_variants[0].name = "ExistingSoaScratch";
+    applied = renamed_document.apply(
+        ReplaceSoa{.declaration = renamed_declaration, .schema = std::move(renamed)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = renamed_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    auto const& renamed_source{preview->front().updated};
+    EXPECT_NE(renamed_source.find("; Keep the arena variant note."), std::string::npos);
+    EXPECT_NE(renamed_source.find("(variant ExistingSoaScratch std::uint64_t)"), std::string::npos);
+    EXPECT_NE(renamed_source.find("; arena variant trailing note"), std::string::npos);
+    ASSERT_TRUE(renamed_document.undo().value());
+    preview = renamed_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(renamed_document.redo().value());
+    saved = renamed_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto deleting_document{files.load()};
+    auto const deleting_declaration{
+        declaration_id(deleting_document, "authored_soa", "ExistingSoa", "authored")};
+    auto deleting{*deleting_document.soa_schema(deleting_declaration)};
+    std::erase_if(deleting.single_allocation_variants,
+                  [](auto const& variant) { return variant.name == "ExistingSoaPool"; });
+    applied = deleting_document.apply(
+        ReplaceSoa{.declaration = deleting_declaration, .schema = std::move(deleting)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = deleting_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    auto const& deleting_source{preview->front().updated};
+    EXPECT_EQ(deleting_source.find("; Keep the pool variant note."), std::string::npos);
+    EXPECT_EQ(deleting_source.find("; pool variant trailing note"), std::string::npos);
+    EXPECT_NE(deleting_source.find("; Keep the arena variant note."), std::string::npos);
+    EXPECT_NE(deleting_source.find("(variant ExistingSoaScratch std::uint64_t)"),
+              std::string::npos);
+    ASSERT_TRUE(deleting_document.undo().value());
+    ASSERT_TRUE(deleting_document.redo().value());
+    saved = deleting_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    auto const* schema{reloaded.soa_schema(reloaded_declaration)};
+    ASSERT_NE(schema, nullptr);
+    EXPECT_EQ(schema->single_allocation, "ExistingSoaCompact");
+    ASSERT_EQ(schema->single_allocation_variants.size(), 2U);
+    EXPECT_EQ(schema->single_allocation_variants[0].name, "ExistingSoaScratch");
+    EXPECT_EQ(schema->single_allocation_variants[0].allocator.name, "std::uint64_t");
+    EXPECT_EQ(schema->single_allocation_variants[1].name, "ExistingSoaPoolCopy");
+    EXPECT_EQ(schema->single_allocation_variants[1].allocator.name, "std::uint16_t");
+    auto const module_source{std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
+        return source.path.filename() == "modules.lispb";
+    })};
+    ASSERT_NE(module_source, reloaded.source_files().end());
+    EXPECT_NE(module_source->text.find("; Keep the single-allocation note."), std::string::npos);
+    EXPECT_NE(module_source->text.find("; Keep the arena variant note."), std::string::npos);
+    EXPECT_EQ(module_source->text.find("; Keep the pool variant note."), std::string::npos);
+}
+
 TEST(EditableSchemaDocument, SoaColumnEditPreservesOtherDeclarationMetadata) {
     TemporarySchema files;
     auto document{files.load()};
@@ -3666,6 +6131,197 @@ TEST(EditableSchemaDocument, AuthorsSoaStorageOperationsWithoutDisturbingAdvance
     ASSERT_EQ(schema->functions.size(), 1U);
     EXPECT_EQ(schema->functions.front().body_lines, std::vector<std::string>{"values.clear();"});
     EXPECT_TRUE(schema->functions.front().is_noexcept);
+}
+
+TEST(EditableSchemaDocument, PreservesSoaStorageOperationRowsDuringEdits) {
+    TemporarySchema files;
+    files.replace_module_text(R"(    :operations (reserve set-num))",
+                              R"(    :operations (
+      ; Keep the reserve operation note.
+      reserve ; reserve operation trailing note
+      ; Keep the set operation note.
+      set-num ; set operation trailing note
+    ))");
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+
+    auto replacement{*document.soa_schema(declaration)};
+    replacement.operations = {
+        codegen::StorageOperation::set_num,
+        codegen::StorageOperation::reset,
+        codegen::StorageOperation::reserve,
+    };
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& reordered{preview->front().updated};
+    auto const set_note{reordered.find("; Keep the set operation note.")};
+    auto const set_row{reordered.find("set-num ; set operation trailing note")};
+    auto const reset_row{reordered.find("      reset")};
+    auto const reserve_note{reordered.find("; Keep the reserve operation note.")};
+    auto const reserve_row{reordered.find("reserve ; reserve operation trailing note")};
+    ASSERT_NE(set_note, std::string::npos);
+    ASSERT_NE(set_row, std::string::npos);
+    ASSERT_NE(reset_row, std::string::npos);
+    ASSERT_NE(reserve_note, std::string::npos);
+    ASSERT_NE(reserve_row, std::string::npos);
+    EXPECT_LT(set_note, set_row);
+    EXPECT_LT(set_row, reset_row);
+    EXPECT_LT(reset_row, reserve_note);
+    EXPECT_LT(reserve_note, reserve_row);
+    EXPECT_NE(reordered.find("; Keep the custom function note."), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto edited_document{files.load()};
+    auto const edited_declaration{
+        declaration_id(edited_document, "authored_soa", "ExistingSoa", "authored")};
+    replacement = *edited_document.soa_schema(edited_declaration);
+    replacement.operations.front() = codegen::StorageOperation::copy_element;
+    applied = edited_document.apply(
+        ReplaceSoa{.declaration = edited_declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = edited_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& edited{preview->front().updated};
+    EXPECT_NE(edited.find("; Keep the set operation note."), std::string::npos);
+    EXPECT_NE(edited.find("copy-element ; set operation trailing note"), std::string::npos);
+    EXPECT_NE(edited.find("; Keep the reserve operation note."), std::string::npos);
+    saved = edited_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto deleting_document{files.load()};
+    auto const deleting_declaration{
+        declaration_id(deleting_document, "authored_soa", "ExistingSoa", "authored")};
+    replacement = *deleting_document.soa_schema(deleting_declaration);
+    replacement.operations.pop_back();
+    applied = deleting_document.apply(
+        ReplaceSoa{.declaration = deleting_declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = deleting_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& deleting{preview->front().updated};
+    EXPECT_EQ(deleting.find("; Keep the reserve operation note."), std::string::npos);
+    EXPECT_EQ(deleting.find("; reserve operation trailing note"), std::string::npos);
+    EXPECT_NE(deleting.find("; Keep the set operation note."), std::string::npos);
+    EXPECT_NE(deleting.find("copy-element ; set operation trailing note"), std::string::npos);
+    ASSERT_TRUE(deleting_document.undo().value());
+    ASSERT_TRUE(deleting_document.redo().value());
+    saved = deleting_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto clearing_document{files.load()};
+    auto const clearing_declaration{
+        declaration_id(clearing_document, "authored_soa", "ExistingSoa", "authored")};
+    replacement = *clearing_document.soa_schema(clearing_declaration);
+    replacement.operations.clear();
+    applied = clearing_document.apply(
+        ReplaceSoa{.declaration = clearing_declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    preview = clearing_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated.find(":operations"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the custom function note."), std::string::npos);
+    saved = clearing_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto adding_document{files.load()};
+    auto const adding_declaration{
+        declaration_id(adding_document, "authored_soa", "ExistingSoa", "authored")};
+    replacement = *adding_document.soa_schema(adding_declaration);
+    replacement.operations = {codegen::StorageOperation::reserve};
+    applied = adding_document.apply(
+        ReplaceSoa{.declaration = adding_declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    preview = adding_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find(":operations (reserve)"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the custom function note."), std::string::npos);
+    saved = adding_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    auto const* schema{reloaded.soa_schema(reloaded_declaration)};
+    ASSERT_NE(schema, nullptr);
+    EXPECT_EQ(schema->operations, (std::vector{codegen::StorageOperation::reserve}));
+}
+
+TEST(EditableSchemaDocument, PreservesAllSoaStorageOperationShorthandUntilItChanges) {
+    TemporarySchema files;
+    files.replace_module_text(R"(    :operations (reserve set-num))",
+                              R"(    :operations (all) ; Keep the all-operations shorthand.)");
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+    EXPECT_EQ(document.soa_schema(declaration)->operations, codegen::all_storage_operations());
+
+    auto replacement{*document.soa_schema(declaration)};
+    replacement.members.front().type.name = "std::uint16_t";
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(
+        preview->front().updated.find(":operations (all) ; Keep the all-operations shorthand."),
+        std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(member values array   std::uint16_t)"),
+              std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    replacement = *reloaded.soa_schema(reloaded_declaration);
+    replacement.operations.pop_back();
+    applied = reloaded.apply(
+        ReplaceSoa{.declaration = reloaded_declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = reloaded.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& updated{preview->front().updated};
+    EXPECT_EQ(updated.find(":operations (all)"), std::string::npos);
+    EXPECT_NE(updated.find(":operations (reset reserve add-uninitialised add-defaulted "
+                           "remove-at-swap set-num copy-element)"),
+              std::string::npos);
+    EXPECT_NE(updated.find("; Keep the all-operations shorthand."), std::string::npos);
+
+    saved = reloaded.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto final_document{files.load()};
+    auto const final_declaration{
+        declaration_id(final_document, "authored_soa", "ExistingSoa", "authored")};
+    EXPECT_EQ(final_document.soa_schema(final_declaration)->operations.size(),
+              codegen::all_storage_operations().size() - 1);
 }
 
 TEST(EditableSchemaDocument, AuthorsAndRemovesSoaGenerationPolicy) {
@@ -4141,6 +6797,146 @@ TEST(EditableSchemaDocument, AuthorsOrdersAndEditsSoaFunctionBodiesAndDependenci
     EXPECT_EQ(schema->functions.front().parameters.front().name, "count");
 }
 
+TEST(EditableSchemaDocument, PreservesSoaFunctionBodyAndDependencyRowsDuringEdits) {
+    TemporarySchema files;
+    files.replace_module_text(R"(      :body ("values.clear();"))",
+                              R"(      :body (
+        ; Keep the first body note.
+        "values.clear();" ; first body trailing note
+        ; Keep the second body note.
+        "flags.clear();" ; second body trailing note
+      )
+      :dependencies (
+        ; Keep the existing dependency note.
+        "existing" ; existing dependency trailing note
+        ; Keep the helper dependency note.
+        "helper" ; helper dependency trailing note
+      ))");
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+
+    auto replacement{*document.soa_schema(declaration)};
+    replacement.functions.front().body_lines = {
+        "flags.clear();", "values.shrink_to_fit();", "values.clear();"};
+    replacement.functions.front().dependencies = {"helper", "existing"};
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& reordered{preview->front().updated};
+    auto const second_body_note{reordered.find("; Keep the second body note.")};
+    auto const flags_row{reordered.find("\"flags.clear();\"")};
+    auto const inserted_body_row{reordered.find("\"values.shrink_to_fit();\"")};
+    auto const first_body_note{reordered.find("; Keep the first body note.")};
+    auto const values_row{reordered.find("\"values.clear();\"")};
+    auto const helper_note{reordered.find("; Keep the helper dependency note.")};
+    auto const helper_row{reordered.find("\"helper\"")};
+    auto const existing_note{reordered.find("; Keep the existing dependency note.")};
+    auto const existing_row{reordered.find("\"existing\"")};
+    ASSERT_NE(second_body_note, std::string::npos);
+    ASSERT_NE(flags_row, std::string::npos);
+    ASSERT_NE(inserted_body_row, std::string::npos);
+    ASSERT_NE(first_body_note, std::string::npos);
+    ASSERT_NE(values_row, std::string::npos);
+    ASSERT_NE(helper_note, std::string::npos);
+    ASSERT_NE(helper_row, std::string::npos);
+    ASSERT_NE(existing_note, std::string::npos);
+    ASSERT_NE(existing_row, std::string::npos);
+    EXPECT_LT(second_body_note, flags_row);
+    EXPECT_LT(flags_row, inserted_body_row);
+    EXPECT_LT(inserted_body_row, first_body_note);
+    EXPECT_LT(first_body_note, values_row);
+    EXPECT_LT(helper_note, helper_row);
+    EXPECT_LT(helper_row, existing_note);
+    EXPECT_LT(existing_note, existing_row);
+    EXPECT_NE(reordered.find("; second body trailing note"), std::string::npos);
+    EXPECT_NE(reordered.find("; first body trailing note"), std::string::npos);
+    EXPECT_NE(reordered.find("; helper dependency trailing note"), std::string::npos);
+    EXPECT_NE(reordered.find("; existing dependency trailing note"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    auto const* schema{reloaded.soa_schema(reloaded_declaration)};
+    EXPECT_EQ(
+        schema->functions.front().body_lines,
+        (std::vector<std::string>{"flags.clear();", "values.shrink_to_fit();", "values.clear();"}));
+    EXPECT_EQ(schema->functions.front().dependencies,
+              (std::vector<std::string>{"helper", "existing"}));
+
+    replacement = *schema;
+    replacement.functions.front().body_lines.front() = "flags.reset();";
+    replacement.functions.front().dependencies.erase(
+        replacement.functions.front().dependencies.begin() + 1);
+    applied = reloaded.apply(
+        ReplaceSoa{.declaration = reloaded_declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+    ASSERT_TRUE(reloaded.undo().value());
+    EXPECT_EQ(reloaded.soa_schema(reloaded_declaration)->functions.front().body_lines.front(),
+              "flags.clear();");
+    ASSERT_TRUE(reloaded.redo().value());
+
+    preview = reloaded.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& edited{preview->front().updated};
+    EXPECT_NE(edited.find("; Keep the second body note."), std::string::npos);
+    EXPECT_NE(edited.find("\"flags.reset();\" ; second body trailing note"), std::string::npos);
+    EXPECT_NE(edited.find("; Keep the helper dependency note."), std::string::npos);
+    EXPECT_NE(edited.find("; helper dependency trailing note"), std::string::npos);
+    EXPECT_EQ(edited.find("; Keep the existing dependency note."), std::string::npos);
+    EXPECT_EQ(edited.find("; existing dependency trailing note"), std::string::npos);
+
+    saved = reloaded.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto final_document{files.load()};
+    auto const final_declaration{
+        declaration_id(final_document, "authored_soa", "ExistingSoa", "authored")};
+    replacement = *final_document.soa_schema(final_declaration);
+    replacement.functions.front().body_lines.erase(
+        replacement.functions.front().body_lines.begin() + 2);
+    replacement.functions.front().dependencies.front() = "existing";
+    applied = final_document.apply(
+        ReplaceSoa{.declaration = final_declaration, .schema = std::move(replacement)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = final_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& final_source{preview->front().updated};
+    EXPECT_NE(final_source.find("; Keep the helper dependency note."), std::string::npos);
+    EXPECT_NE(final_source.find("\"existing\" ; helper dependency trailing note"),
+              std::string::npos);
+    EXPECT_EQ(final_source.find("; Keep the first body note."), std::string::npos);
+    EXPECT_EQ(final_source.find("; first body trailing note"), std::string::npos);
+    EXPECT_NE(final_source.find("; Keep the second body note."), std::string::npos);
+    EXPECT_NE(final_source.find("\"values.shrink_to_fit();\""), std::string::npos);
+
+    saved = final_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto persisted{files.load()};
+    auto const persisted_declaration{
+        declaration_id(persisted, "authored_soa", "ExistingSoa", "authored")};
+    schema = persisted.soa_schema(persisted_declaration);
+    EXPECT_EQ(schema->functions.front().body_lines,
+              (std::vector<std::string>{"flags.reset();", "values.shrink_to_fit();"}));
+    EXPECT_EQ(schema->functions.front().dependencies, (std::vector<std::string>{"existing"}));
+}
+
 TEST(EditableSchemaDocument, AuthorsSoaFunctionAdvancedSignatureProperties) {
     TemporarySchema files;
     auto document{files.load()};
@@ -4444,6 +7240,302 @@ TEST(EditableSchemaDocument, PreservesSoaMembersAndAdvancedFormsForStructuralEdi
     EXPECT_EQ(schema->functions[0].body_lines, std::vector<std::string>{"values.clear();"});
 }
 
+TEST(EditableSchemaDocument, PreservesSoaMemberRowDuringDirectRename) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+    auto replacement{*document.soa_schema(declaration)};
+    replacement.members[0].name = "payload";
+
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& updated{preview->front().updated};
+    auto const member_comment{updated.find("; Keep the values SoA member note.")};
+    auto const member_row{updated.find("(member payload array   std::uint32_t)")};
+    auto const function_row{updated.find("(function clear void")};
+    ASSERT_NE(member_comment, std::string::npos);
+    ASSERT_NE(member_row, std::string::npos) << updated;
+    ASSERT_NE(function_row, std::string::npos);
+    EXPECT_LT(member_comment, member_row);
+    EXPECT_LT(member_row, function_row);
+    EXPECT_NE(updated.find("; SoA values trailing note"), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the custom function note."), std::string::npos);
+    EXPECT_NE(updated.find(":body (\"values.clear();\")"), std::string::npos);
+    EXPECT_NE(updated.find("; Keep the count parameter note."), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    auto const* schema{reloaded.soa_schema(reloaded_declaration)};
+    ASSERT_NE(schema, nullptr);
+    ASSERT_EQ(schema->members.size(), 2U);
+    EXPECT_EQ(schema->members[0].name, "payload");
+    EXPECT_EQ(schema->members[0].type.name, "std::uint32_t");
+    ASSERT_EQ(schema->functions.size(), 1U);
+    EXPECT_EQ(schema->functions[0].body_lines, std::vector<std::string>{"values.clear();"});
+
+    auto const module_source{std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
+        return source.path.filename() == "modules.lispb";
+    })};
+    ASSERT_NE(module_source, reloaded.source_files().end());
+    EXPECT_NE(module_source->text.find("; Keep the values SoA member note."), std::string::npos);
+    EXPECT_NE(module_source->text.find("(member payload array   std::uint32_t)"),
+              std::string::npos);
+    EXPECT_NE(module_source->text.find("; Keep the custom function note."), std::string::npos);
+}
+
+TEST(EditableSchemaDocument, PreservesSoaUsingDeclarationRowsDuringEdits) {
+    TemporarySchema files;
+    files.replace_module_text(R"(    :using-declarations ("Base::reset"))",
+                              R"(    :using-declarations (
+      ; Keep the reset using note.
+      "Base::reset" ; reset using trailing note
+      ; Keep the copy using note.
+      "Base::copy" ; copy using trailing note
+    ))");
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+
+    auto replacement{*document.soa_schema(declaration)};
+    replacement.using_declarations = {"Base::copy", "Base::reserve", "Base::reset"};
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& updated{preview->front().updated};
+    auto const copy_comment{updated.find("; Keep the copy using note.")};
+    auto const copy_row{updated.find("\"Base::copy\" ; copy using trailing note")};
+    auto const reserve_row{updated.find("\"Base::reserve\"")};
+    auto const reset_comment{updated.find("; Keep the reset using note.")};
+    auto const reset_row{updated.find("\"Base::reset\" ; reset using trailing note")};
+    ASSERT_NE(copy_comment, std::string::npos);
+    ASSERT_NE(copy_row, std::string::npos);
+    ASSERT_NE(reserve_row, std::string::npos);
+    ASSERT_NE(reset_comment, std::string::npos);
+    ASSERT_NE(reset_row, std::string::npos);
+    EXPECT_LT(copy_comment, copy_row);
+    EXPECT_LT(copy_row, reserve_row);
+    EXPECT_LT(reserve_row, reset_comment);
+    EXPECT_LT(reset_comment, reset_row);
+    EXPECT_NE(updated.find("; Keep the custom function note."), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto edited_document{files.load()};
+    auto const edited_declaration{
+        declaration_id(edited_document, "authored_soa", "ExistingSoa", "authored")};
+    auto edited{*edited_document.soa_schema(edited_declaration)};
+    edited.using_declarations[0] = "Base::move";
+    applied = edited_document.apply(
+        ReplaceSoa{.declaration = edited_declaration, .schema = std::move(edited)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = edited_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    auto const& edited_source{preview->front().updated};
+    EXPECT_NE(edited_source.find("; Keep the copy using note."), std::string::npos);
+    EXPECT_NE(edited_source.find("\"Base::move\" ; copy using trailing note"), std::string::npos);
+    ASSERT_TRUE(edited_document.undo().value());
+    preview = edited_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(edited_document.redo().value());
+    saved = edited_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto deleting_document{files.load()};
+    auto const deleting_declaration{
+        declaration_id(deleting_document, "authored_soa", "ExistingSoa", "authored")};
+    auto deleting{*deleting_document.soa_schema(deleting_declaration)};
+    std::erase(deleting.using_declarations, "Base::reset");
+    applied = deleting_document.apply(
+        ReplaceSoa{.declaration = deleting_declaration, .schema = std::move(deleting)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = deleting_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    auto const& deleting_source{preview->front().updated};
+    EXPECT_EQ(deleting_source.find("; Keep the reset using note."), std::string::npos);
+    EXPECT_EQ(deleting_source.find("; reset using trailing note"), std::string::npos);
+    EXPECT_NE(deleting_source.find("; Keep the copy using note."), std::string::npos);
+    EXPECT_NE(deleting_source.find("\"Base::move\""), std::string::npos);
+    ASSERT_TRUE(deleting_document.undo().value());
+    ASSERT_TRUE(deleting_document.redo().value());
+    saved = deleting_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    auto const* schema{reloaded.soa_schema(reloaded_declaration)};
+    ASSERT_NE(schema, nullptr);
+    EXPECT_EQ(schema->using_declarations,
+              (std::vector<std::string>{"Base::move", "Base::reserve"}));
+    auto const module_source{std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
+        return source.path.filename() == "modules.lispb";
+    })};
+    ASSERT_NE(module_source, reloaded.source_files().end());
+    EXPECT_NE(module_source->text.find("; Keep the copy using note."), std::string::npos);
+    EXPECT_EQ(module_source->text.find("; Keep the reset using note."), std::string::npos);
+    EXPECT_NE(module_source->text.find("; Keep the custom function note."), std::string::npos);
+}
+
+TEST(EditableSchemaDocument, PreservesSoaMaskDimensionRowsDuringEdits) {
+    TemporarySchema files;
+    files.replace_module_text(
+        R"(    :using-declarations ("Base::reset")
+    ; Keep the values SoA member note.
+    (member values array   std::uint32_t) ; SoA values trailing note
+    ; Keep the flags SoA member note.)",
+        R"(    :using-declarations ("Base::reset")
+    :field-mask-name ExistingSoaFieldMask
+    :field-enum-name ExistingSoaField
+    ; Keep the values SoA member note.
+    (member values array   std::uint32_t
+      :mask-field true
+      :mask-dimensions (
+        ; Keep the lane dimension note.
+        (lane   "4") ; lane dimension trailing note
+        ; Keep the batch dimension note.
+        (batch "8") ; batch dimension trailing note
+      )) ; SoA values trailing note
+    (member field_mask array ExistingSoaFieldMask)
+    ; Keep the flags SoA member note.)");
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+
+    auto replacement{*document.soa_schema(declaration)};
+    auto batch{replacement.members[0].mask_dimensions[1]};
+    batch.extent = "16";
+    auto lane{replacement.members[0].mask_dimensions[0]};
+    auto tile{codegen::SoaMaskDimensionSchema{.index_name = "tile", .extent = "32"}};
+    replacement.members[0].mask_dimensions = {batch, tile, lane};
+    auto applied{
+        document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    auto const& updated{preview->front().updated};
+    auto const batch_comment{updated.find("; Keep the batch dimension note.")};
+    auto const batch_row{updated.find("(batch \"16\") ; batch dimension trailing note")};
+    auto const tile_row{updated.find("(tile \"32\")")};
+    auto const lane_comment{updated.find("; Keep the lane dimension note.")};
+    auto const lane_row{updated.find("(lane   \"4\") ; lane dimension trailing note")};
+    ASSERT_NE(batch_comment, std::string::npos);
+    ASSERT_NE(batch_row, std::string::npos);
+    ASSERT_NE(tile_row, std::string::npos);
+    ASSERT_NE(lane_comment, std::string::npos);
+    ASSERT_NE(lane_row, std::string::npos);
+    EXPECT_LT(batch_comment, batch_row);
+    EXPECT_LT(batch_row, tile_row);
+    EXPECT_LT(tile_row, lane_comment);
+    EXPECT_LT(lane_comment, lane_row);
+    EXPECT_NE(updated.find("; Keep the values SoA member note."), std::string::npos);
+    EXPECT_NE(updated.find("; SoA values trailing note"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(document.redo().value());
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto renamed_document{files.load()};
+    auto const renamed_declaration{
+        declaration_id(renamed_document, "authored_soa", "ExistingSoa", "authored")};
+    auto renamed{*renamed_document.soa_schema(renamed_declaration)};
+    renamed.members[0].mask_dimensions[0].index_name = "group";
+    applied = renamed_document.apply(
+        ReplaceSoa{.declaration = renamed_declaration, .schema = std::move(renamed)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = renamed_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    auto const& renamed_source{preview->front().updated};
+    EXPECT_NE(renamed_source.find("; Keep the batch dimension note."), std::string::npos);
+    EXPECT_NE(renamed_source.find("(group \"16\") ; batch dimension trailing note"),
+              std::string::npos);
+    ASSERT_TRUE(renamed_document.undo().value());
+    preview = renamed_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+    ASSERT_TRUE(renamed_document.redo().value());
+    saved = renamed_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto deleting_document{files.load()};
+    auto const deleting_declaration{
+        declaration_id(deleting_document, "authored_soa", "ExistingSoa", "authored")};
+    auto deleting{*deleting_document.soa_schema(deleting_declaration)};
+    std::erase_if(deleting.members[0].mask_dimensions,
+                  [](auto const& dimension) { return dimension.index_name == "lane"; });
+    applied = deleting_document.apply(
+        ReplaceSoa{.declaration = deleting_declaration, .schema = std::move(deleting)});
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    preview = deleting_document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    auto const& deleting_source{preview->front().updated};
+    EXPECT_EQ(deleting_source.find("; Keep the lane dimension note."), std::string::npos);
+    EXPECT_EQ(deleting_source.find("; lane dimension trailing note"), std::string::npos);
+    EXPECT_NE(deleting_source.find("; Keep the batch dimension note."), std::string::npos);
+    EXPECT_NE(deleting_source.find("(group \"16\")"), std::string::npos);
+    ASSERT_TRUE(deleting_document.undo().value());
+    ASSERT_TRUE(deleting_document.redo().value());
+    saved = deleting_document.save();
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+
+    auto reloaded{files.load()};
+    auto const reloaded_declaration{
+        declaration_id(reloaded, "authored_soa", "ExistingSoa", "authored")};
+    auto const* schema{reloaded.soa_schema(reloaded_declaration)};
+    ASSERT_NE(schema, nullptr);
+    ASSERT_EQ(schema->members[0].mask_dimensions.size(), 2U);
+    EXPECT_EQ(schema->members[0].mask_dimensions[0].index_name, "group");
+    EXPECT_EQ(schema->members[0].mask_dimensions[0].extent, "16");
+    EXPECT_EQ(schema->members[0].mask_dimensions[1].index_name, "tile");
+    EXPECT_EQ(schema->members[0].mask_dimensions[1].extent, "32");
+    auto const module_source{std::ranges::find_if(reloaded.source_files(), [](auto const& source) {
+        return source.path.filename() == "modules.lispb";
+    })};
+    ASSERT_NE(module_source, reloaded.source_files().end());
+    EXPECT_NE(module_source->text.find("; Keep the batch dimension note."), std::string::npos);
+    EXPECT_EQ(module_source->text.find("; Keep the lane dimension note."), std::string::npos);
+    EXPECT_NE(module_source->text.find("; Keep the values SoA member note."), std::string::npos);
+}
+
 TEST(EditableSchemaDocument, EnablesAndDisablesSoaFieldMaskAsCoordinatedEdits) {
     TemporarySchema files;
     auto document{files.load()};
@@ -4464,7 +7556,8 @@ TEST(EditableSchemaDocument, EnablesAndDisablesSoaFieldMaskAsCoordinatedEdits) {
         .fixed_schema = std::nullopt,
         .nested_schema = std::nullopt,
         .mask_field = false,
-        .mask_dimensions = {}});
+        .mask_dimensions = {},
+        .relationship = std::nullopt});
 
     auto applied{
         document.apply(ReplaceSoa{.declaration = declaration, .schema = std::move(enabled)})};

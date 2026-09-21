@@ -6,6 +6,10 @@
 #include <string>
 #include <vector>
 
+namespace codegen {
+struct EnumSchema;
+}
+
 namespace lispb::schema {
 
 struct EnumCode {
@@ -46,8 +50,17 @@ struct EnumDomain {
     std::vector<EnumDomainIssue> issues;
 };
 
+struct EnumStorageRequirement {
+    bool signedness{};
+    std::uint32_t bit_width{};
+};
+
 auto analyze_enum_domain(std::span<EnumDomainInput const> values,
                          std::optional<bool> signedness = std::nullopt) -> EnumDomain;
+auto analyze_enum_domain(codegen::EnumSchema const& schema) -> EnumDomain;
+auto derive_enum_storage_requirement(EnumDomain const& domain,
+                                     std::optional<std::uint32_t> declared_bit_width)
+    -> std::optional<EnumStorageRequirement>;
 auto format_enum_code(EnumCode value) -> std::string;
 
 } // namespace lispb::schema

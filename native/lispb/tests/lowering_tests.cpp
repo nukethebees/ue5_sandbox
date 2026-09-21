@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include <limits>
 #include <map>
 #include <string>
 #include <utility>
@@ -121,6 +122,124 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
     EXPECT_NE(header.find("try_parse_serialized_native_state"), std::string::npos);
     EXPECT_NE(header.find("EnumTraits<::fixture::NativeState>"), std::string::npos);
     EXPECT_EQ(header.find("CoreMinimal.h"), std::string::npos);
+}
+
+TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
+    auto const files{render_modules(lower_modules(Manifest{
+        .schema_version = manifest_schema_version,
+        .modules = {EnumModuleSchema{
+            .settings = ModuleSettings{.name = "native_enum",
+                                       .header = "NativeEnum.h",
+                                       .namespace_name = "fixture"},
+            .enums = {EnumSchema{.name = "SignedState",
+                                 .underlying_type = std::nullopt,
+                                 .bit_width = 12,
+                                 .signedness = true,
+                                 .values = {EnumeratorSchema{.name = "Below", .initializer = "-1"},
+                                            EnumeratorSchema{.name = "Above", .initializer = "1"}},
+                                 .native_api = true}},
+        }},
+    }))};
+
+    ASSERT_EQ(files.size(), 1);
+    auto const& header{files.front().content};
+    EXPECT_NE(header.find("enum class SignedState : std::int16_t"), std::string::npos);
+    EXPECT_NE(header.find("#include <cstdint>"), std::string::npos);
+}
+
+TEST(Lowering, DerivesUnrealStyleEnumBackingWithoutChangingSemanticWidth) {
+    auto const output{render_enum(EnumModuleSchema{
+        .settings = ModuleSettings{.name = "states", .header = "States.h", .source = "States.cpp"},
+        .enums = {EnumSchema{
+            .name = "EState",
+            .underlying_type = std::nullopt,
+            .bit_width = 12,
+            .signedness = false,
+            .values = {EnumeratorSchema{.name = "Idle", .initializer = "0"},
+                       EnumeratorSchema{.name = "Maximum", .initializer = "4095"}},
+        }},
+    })};
+
+    EXPECT_NE(output.header.find("#include \"CoreMinimal.h\""), std::string::npos);
+    EXPECT_NE(output.header.find("enum class EState : uint16"), std::string::npos);
+}
+
+TEST(Lowering, EmitsRequestedNamedScalarConstantsWithoutInventingScalarTypes) {
+    auto const files{render_modules(lower_modules(Manifest{
+        .schema_version = manifest_schema_version,
+        .types = {{"native_uint8", CppType{"std::uint8_t", "cstdint"}},
+                  {"native_int64", CppType{"std::int64_t", "cstdint"}},
+                  {"native_uint64", CppType{"std::uint64_t", "cstdint"}}},
+        .modules = {ScalarModuleSchema{
+            .settings = ModuleSettings{.name = "semantic_values",
+                                       .header = "SemanticValues.h",
+                                       .namespace_name = "fixture"},
+            .scalars = {IntegerScalarSchema{
+                            .name = "NoOutput",
+                            .signedness = false,
+                            .minimum_value = 0,
+                            .maximum_value = 1,
+                            .bit_width = std::nullopt,
+                            .named_codes = {{.name = "Zero", .value = 0, .sentinel = false}},
+                        },
+                        IntegerScalarSchema{
+                            .name = "DamageReason",
+                            .signedness = false,
+                            .minimum_value = 0,
+                            .maximum_value = 10,
+                            .bit_width = std::nullopt,
+                            .named_codes = {{.name = "Unknown", .value = 0, .sentinel = false},
+                                            {.name = "Invalid", .value = 255, .sentinel = true}},
+                            .cpp_emission = IntegerScalarCppEmission::constants_with_names,
+                            .cpp_type = TypeRef{"@native_uint8"},
+                        },
+                        IntegerScalarSchema{
+                            .name = "SignedLimit",
+                            .signedness = true,
+                            .minimum_value =
+                                PackedIntegerValue::from_parts(true, std::uint64_t{1} << 63),
+                            .maximum_value = 0,
+                            .bit_width = 64,
+                            .named_codes = {{.name = "Minimum",
+                                             .value = PackedIntegerValue::from_parts(
+                                                 true, std::uint64_t{1} << 63),
+                                             .sentinel = false}},
+                            .cpp_emission = IntegerScalarCppEmission::constants,
+                            .cpp_type = TypeRef{"@native_int64"},
+                        },
+                        IntegerScalarSchema{
+                            .name = "UnsignedLimit",
+                            .signedness = false,
+                            .minimum_value = 0,
+                            .maximum_value = (std::numeric_limits<std::uint64_t>::max)(),
+                            .bit_width = 64,
+                            .named_codes = {{.name = "Maximum",
+                                             .value = (std::numeric_limits<std::uint64_t>::max)(),
+                                             .sentinel = false}},
+                            .cpp_emission = IntegerScalarCppEmission::constants,
+                            .cpp_type = TypeRef{"@native_uint64"},
+                        }},
+        }},
+    }))};
+
+    ASSERT_EQ(files.size(), 1U);
+    auto const& header{files.front().content};
+    EXPECT_NE(header.find("#include <cstdint>"), std::string::npos) << header;
+    EXPECT_NE(header.find("namespace fixture"), std::string::npos);
+    EXPECT_NE(header.find("inline constexpr std::uint8_t DamageReason_Unknown"), std::string::npos);
+    EXPECT_NE(header.find("inline constexpr std::uint8_t DamageReason_Invalid"), std::string::npos);
+    EXPECT_NE(header.find("#include <string_view>"), std::string::npos);
+    EXPECT_NE(header.find("constexpr auto DamageReason_name(std::uint8_t const value)"),
+              std::string::npos);
+    EXPECT_NE(header.find("case DamageReason_Unknown"), std::string::npos);
+    EXPECT_NE(header.find("return \"Unknown\""), std::string::npos);
+    EXPECT_NE(header.find("return {};"), std::string::npos);
+    EXPECT_NE(header.find("static_cast<std::int64_t>((-9223372036854775807LL - 1))"),
+              std::string::npos);
+    EXPECT_NE(header.find("static_cast<std::uint64_t>(18446744073709551615ULL)"),
+              std::string::npos);
+    EXPECT_EQ(header.find("NoOutput_Zero"), std::string::npos);
+    EXPECT_EQ(header.find("using DamageReason"), std::string::npos);
 }
 
 TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) {

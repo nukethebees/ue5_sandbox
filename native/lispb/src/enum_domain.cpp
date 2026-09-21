@@ -1,5 +1,7 @@
 #include <lispb/schema/enum_domain.h>
 
+#include <codegen/schema/enum_schema.h>
+
 #include <cctype>
 #include <charconv>
 #include <limits>
@@ -177,6 +179,35 @@ auto analyze_enum_domain(std::span<EnumDomainInput const> const values,
         }
     }
     return result;
+}
+
+auto analyze_enum_domain(codegen::EnumSchema const& schema) -> EnumDomain {
+    std::vector<EnumDomainInput> values;
+    values.reserve(schema.values.size());
+    for (auto const& value : schema.values) {
+        values.push_back({.name = value.name,
+                          .explicit_value = value.initializer,
+                          .reserved = value.sentinel ||
+                                      (schema.count.has_value() && value.name == *schema.count)});
+    }
+    return analyze_enum_domain(values, schema.signedness);
+}
+
+auto derive_enum_storage_requirement(EnumDomain const& domain,
+                                     std::optional<std::uint32_t> const declared_bit_width)
+    -> std::optional<EnumStorageRequirement> {
+    auto const effective_width{declared_bit_width.has_value() ? declared_bit_width
+                                                              : domain.minimum_required_bits};
+    if (!domain.signed_domain.has_value() || !effective_width.has_value() ||
+        *effective_width == 0 || *effective_width > 64) {
+        return std::nullopt;
+    }
+
+    auto const storage_width{*effective_width <= 8    ? 8U
+                             : *effective_width <= 16 ? 16U
+                             : *effective_width <= 32 ? 32U
+                                                      : 64U};
+    return EnumStorageRequirement{.signedness = *domain.signed_domain, .bit_width = storage_width};
 }
 
 auto format_enum_code(EnumCode const value) -> std::string {

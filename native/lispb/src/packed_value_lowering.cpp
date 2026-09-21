@@ -46,22 +46,23 @@ auto dependency_for_integer(CppType const& type) -> std::optional<TypeDependency
     return std::nullopt;
 }
 
+auto semantic_field_for(lispb::schema::PackedType const& packed, std::string const& field_name)
+    -> lispb::schema::PackedField const& {
+    for (auto const& segment : packed.segments) {
+        if (auto const* field{std::get_if<lispb::schema::PackedField>(&segment)};
+            field != nullptr && field->name == field_name) {
+            return *field;
+        }
+    }
+    throw std::invalid_argument{"Missing semantic packed field '" + field_name + "'"};
+}
+
 auto enum_type_for_field(lispb::schema::PackedType const& packed,
                          lispb::schema::TypeGraph const& type_graph,
                          std::string const& field_name) -> lispb::schema::EnumType const* {
-    lispb::schema::PackedField const* field{};
-    for (auto const& segment : packed.segments) {
-        if (auto const* candidate{std::get_if<lispb::schema::PackedField>(&segment)};
-            candidate != nullptr && candidate->name == field_name) {
-            field = candidate;
-            break;
-        }
-    }
-    if (field == nullptr) {
-        throw std::invalid_argument{"Missing semantic packed field '" + field_name + "'"};
-    }
+    auto const& field{semantic_field_for(packed, field_name)};
     return std::get_if<lispb::schema::EnumType>(
-        &type_graph.type(field->semantic_type.type).definition);
+        &type_graph.type(field.semantic_type.type).definition);
 }
 
 auto enum_domain(lispb::schema::EnumType const& type) -> lispb::schema::EnumDomain {
@@ -78,13 +79,45 @@ auto enum_domain(lispb::schema::EnumType const& type) -> lispb::schema::EnumDoma
 
 auto resolved_width_for_field(lispb::schema::PackedType const& packed,
                               std::string const& field_name) -> std::uint32_t {
-    for (auto const& segment : packed.segments) {
-        if (auto const* field{std::get_if<lispb::schema::PackedField>(&segment)};
-            field != nullptr && field->name == field_name) {
-            return field->bit_width;
+    return semantic_field_for(packed, field_name).bit_width;
+}
+
+auto fixed_width_integer_spelling(bool const signedness, std::uint32_t const required_bits)
+    -> std::string {
+    auto const storage_bits{required_bits <= 8    ? 8
+                            : required_bits <= 16 ? 16
+                            : required_bits <= 32 ? 32
+                                                  : 64};
+    return "std::" + std::string{signedness ? "int" : "uint"} + std::to_string(storage_bits) + "_t";
+}
+
+void lower_integer_scalar_fields(PackedValueSchema& schema,
+                                 lispb::schema::PackedType const& packed,
+                                 lispb::schema::TypeGraph const& type_graph) {
+    for (auto& segment : schema.segments) {
+        auto* field{std::get_if<PackedFieldSchema>(&segment)};
+        if (field == nullptr) {
+            continue;
+        }
+
+        auto const& semantic_field{semantic_field_for(packed, field->name)};
+        auto const* scalar{std::get_if<lispb::schema::IntegerScalarType>(
+            &type_graph.type(semantic_field.semantic_type.type).definition)};
+        if (scalar == nullptr) {
+            continue;
+        }
+
+        field->type = TypeRef{
+            .name = fixed_width_integer_spelling(scalar->signedness, semantic_field.bit_width)};
+        field->minimum_value = semantic_field.minimum_value;
+        field->maximum_value = semantic_field.maximum_value;
+        field->named_codes.clear();
+        field->named_codes.reserve(semantic_field.named_codes.size());
+        for (auto const& code : semantic_field.named_codes) {
+            field->named_codes.push_back(
+                {.name = code.name, .value = code.value, .sentinel = code.sentinel});
         }
     }
-    throw std::invalid_argument{"Missing semantic packed field '" + field_name + "'"};
 }
 
 struct PackedFieldLayout {
@@ -299,10 +332,13 @@ void append_immutable_construction(std::string& output,
     output += "        return " + schema.name + "{" + raw_value + "};\n    }\n\n";
 }
 
-auto packed_value_text(PackedValueSchema const& schema,
+auto packed_value_text(PackedValueSchema const& source_schema,
                        std::map<std::string, CppType> const& types,
                        lispb::schema::PackedType const& packed,
                        lispb::schema::TypeGraph const& type_graph) -> Raw {
+    auto schema{source_schema};
+    lower_integer_scalar_fields(schema, packed, type_graph);
+
     auto const storage{resolve_type(schema.storage_type, types)};
     auto const storage_bits{*packed_unsigned_width(storage.spelling)};
     auto const all_bits{storage_bits == 64 ? std::numeric_limits<std::uint64_t>::max()

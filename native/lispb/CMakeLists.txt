@@ -25,7 +25,7 @@ target_link_libraries(lispb-output PRIVATE sandbox::codegen_warnings)
 add_library(lispb-project src/project.cpp)
 target_compile_features(lispb-project PUBLIC cxx_std_23)
 target_include_directories(lispb-project PUBLIC include)
-target_link_libraries(lispb-project PRIVATE lispb-syntax sandbox::codegen_warnings)
+target_link_libraries(lispb-project PRIVATE lispb-schema lispb-syntax sandbox::codegen_warnings)
 
 add_library(lispb-schema)
 target_sources(lispb-schema PRIVATE
@@ -114,6 +114,7 @@ set(CODEGEN_COMPILE_FIXTURE_HEADERS
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/SourceFacade.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PlainEnums.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PackedEnums.h"
+  "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/ScalarValues.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/PackedValues.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/ReflectedEnums.h"
   "${CODEGEN_COMPILE_FIXTURE_OUTPUT}/Settings.h"
@@ -196,6 +197,7 @@ add_executable(codegen-tests
   tests/source_loader_tests.cpp
   tests/lowering_tests.cpp
   tests/packed_value_tests.cpp
+  tests/project_tests.cpp
   tests/record_lowering_tests.cpp
   tests/union_lowering_tests.cpp
   tests/semantic_model_tests.cpp

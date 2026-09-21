@@ -10,6 +10,7 @@
 #include "PlainEnums.h"
 #include "ReferenceFacade.h"
 #include "ReflectedEnums.h"
+#include "ScalarValues.h"
 #include "Settings.h"
 #include "Soa.h"
 #include "SourceFacade.h"

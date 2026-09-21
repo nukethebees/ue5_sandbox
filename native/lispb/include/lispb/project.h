@@ -1,7 +1,10 @@
 #pragma once
 
+#include <cstdint>
+#include <expected>
 #include <filesystem>
 #include <map>
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
@@ -52,7 +55,101 @@ struct Project {
     std::map<std::string, std::vector<std::string>, std::less<>> groups;
 };
 
+struct ProjectEditError {
+    std::string message;
+};
+
+struct AddCppSchemaSource {
+    std::string target_name;
+    std::filesystem::path source;
+};
+
+struct RemoveCppSchemaSource {
+    std::string target_name;
+    std::filesystem::path source;
+};
+
+struct CreateCppSchemaSource {
+    std::string target_name;
+    std::filesystem::path source;
+    std::string contents;
+};
+
+struct DeletePendingCppSchemaSource {
+    std::string target_name;
+    std::filesystem::path source;
+};
+
+using ProjectEditCommand = std::variant<AddCppSchemaSource,
+                                        RemoveCppSchemaSource,
+                                        CreateCppSchemaSource,
+                                        DeletePendingCppSchemaSource>;
+
+struct ProjectSourceUpdate {
+    std::filesystem::path path;
+    std::string original;
+    std::string updated;
+};
+
+class EditableProjectDocument {
+  public:
+    [[nodiscard]] auto project() const -> Project const& { return project_; }
+    [[nodiscard]] auto path() const -> std::filesystem::path const& { return path_; }
+    [[nodiscard]] auto dirty() const -> bool {
+        return history_position_ != saved_history_position_;
+    }
+    [[nodiscard]] auto can_undo() const -> bool { return history_position_ != 0; }
+    [[nodiscard]] auto can_redo() const -> bool { return history_position_ < history_.size(); }
+    [[nodiscard]] auto revision() const -> std::uint64_t { return revision_; }
+    [[nodiscard]] auto source_is_pending(std::filesystem::path const& source) const -> bool {
+        return pending_sources_.contains(source.lexically_normal());
+    }
+
+    auto apply(ProjectEditCommand command) -> std::expected<bool, ProjectEditError>;
+    auto undo() -> std::expected<bool, ProjectEditError>;
+    auto redo() -> std::expected<bool, ProjectEditError>;
+    [[nodiscard]] auto preview_source_updates() const
+        -> std::expected<std::vector<ProjectSourceUpdate>, ProjectEditError>;
+    auto save() -> std::expected<bool, ProjectEditError>;
+  private:
+    struct SourceListItem {
+        std::filesystem::path source;
+        std::size_t begin_offset{};
+        std::size_t end_offset{};
+    };
+
+    struct SourceListRange {
+        std::size_t begin_offset{};
+        std::size_t end_offset{};
+        std::size_t closing_offset{};
+        std::size_t item_indentation{};
+        std::vector<std::filesystem::path> original_sources;
+        std::vector<SourceListItem> original_items;
+    };
+
+    struct PendingSource {
+        std::string target_name;
+        std::string contents;
+    };
+
+    friend auto load_editable_project_document(std::filesystem::path const& path)
+        -> EditableProjectDocument;
+    auto apply_internal(ProjectEditCommand const& command)
+        -> std::expected<ProjectEditCommand, ProjectEditError>;
+
+    std::filesystem::path path_;
+    std::string source_;
+    Project project_;
+    std::map<std::string, SourceListRange, std::less<>> source_lists_;
+    std::map<std::filesystem::path, PendingSource> pending_sources_;
+    std::vector<ProjectEditCommand> history_;
+    std::size_t history_position_{};
+    std::size_t saved_history_position_{};
+    std::uint64_t revision_{};
+};
+
 auto load_project(std::filesystem::path const& path) -> Project;
+auto load_editable_project_document(std::filesystem::path const& path) -> EditableProjectDocument;
 auto resolve(RootedPath const& path,
              std::filesystem::path const& project_root,
              std::filesystem::path const& build_root) -> std::filesystem::path;

@@ -37,8 +37,9 @@ TEST(SemanticTypeGraph, PreservesEntityTypeEnumSemantics) {
     EXPECT_EQ(node.identity.namespace_name, "ioj::sim");
     auto const* type{std::get_if<EnumType>(&node.definition)};
     ASSERT_NE(type, nullptr);
-    EXPECT_EQ(graph.type(type->underlying_type.type).cpp_spelling, "std::uint8_t");
-    EXPECT_NE(std::ranges::find(graph.dependencies_of(*id), type->underlying_type.type),
+    ASSERT_TRUE(type->underlying_type.has_value());
+    EXPECT_EQ(graph.type(type->underlying_type->type).cpp_spelling, "std::uint8_t");
+    EXPECT_NE(std::ranges::find(graph.dependencies_of(*id), type->underlying_type->type),
               graph.dependencies_of(*id).end());
     EXPECT_EQ(type->count, "COUNT");
 
@@ -84,21 +85,57 @@ TEST(SemanticTypeGraph, PreservesExplicitEnumSemanticWidth) {
     EXPECT_FALSE(type.enumerators[1].count_sentinel);
 }
 
+TEST(SemanticTypeGraph, KeepsDerivedEnumBackingOutOfSemanticDependencies) {
+    codegen::Manifest const manifest{
+        .schema_version = codegen::manifest_schema_version,
+        .modules = {codegen::EnumModuleSchema{
+            .settings = codegen::ModuleSettings{.name = "states", .header = "States.h"},
+            .enums = {codegen::EnumSchema{
+                .name = "State",
+                .underlying_type = std::nullopt,
+                .bit_width = 3,
+                .signedness = false,
+                .values = {codegen::EnumeratorSchema{"Idle", "0"},
+                           codegen::EnumeratorSchema{"Active", "7"}},
+            }},
+        }},
+    };
+
+    auto const graph{resolve_type_graph(manifest)};
+    auto const state{graph.find_declared("states", "State")};
+    ASSERT_TRUE(state.has_value());
+    auto const& type{std::get<EnumType>(graph.type(*state).definition)};
+    EXPECT_FALSE(type.underlying_type.has_value());
+    EXPECT_TRUE(graph.dependencies_of(*state).empty());
+}
+
 TEST(SemanticTypeGraph, ResolvesStandaloneIntegerScalarWithoutPhysicalFacts) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::ScalarModuleSchema{
-            .settings = codegen::ModuleSettings{.name = "semantic_values",
-                                                .header = "SemanticValues.h",
-                                                .namespace_name = "project"},
-            .scalars = {codegen::IntegerScalarSchema{
-                .name = "DamageReason",
-                .signedness = false,
-                .minimum_value = 0,
-                .maximum_value = 10,
-                .bit_width = std::nullopt,
-                .named_codes = {{.name = "Unknown", .value = 0, .sentinel = false},
-                                {.name = "Invalid", .value = 15, .sentinel = true}}}}}}};
+        .modules = {
+            codegen::ScalarModuleSchema{
+                .settings = codegen::ModuleSettings{.name = "semantic_values",
+                                                    .header = "SemanticValues.h",
+                                                    .namespace_name = "project"},
+                .scalars = {codegen::IntegerScalarSchema{
+                                .name = "DamageReason",
+                                .signedness = false,
+                                .minimum_value = 0,
+                                .maximum_value = 10,
+                                .bit_width = std::nullopt,
+                                .named_codes = {{.name = "Unknown", .value = 0, .sentinel = false},
+                                                {.name = "Invalid", .value = 15, .sentinel = true}},
+                                .relationship =
+                                    codegen::SemanticRelationSchema{
+                                        .kind = codegen::SemanticRelationKind::offset_into,
+                                        .target = codegen::TypeRef{"project::EntityTable"},
+                                        .unit = codegen::SemanticRelationUnit::bytes}},
+                            codegen::IntegerScalarSchema{.name = "EntityTable",
+                                                         .signedness = false,
+                                                         .minimum_value = 0,
+                                                         .maximum_value = 1'023,
+                                                         .bit_width = 10,
+                                                         .named_codes = {}}}}}};
 
     auto const graph{resolve_type_graph(manifest)};
     auto const scalar_id{graph.find_declared("semantic_values", "DamageReason")};
@@ -114,7 +151,40 @@ TEST(SemanticTypeGraph, ResolvesStandaloneIntegerScalarWithoutPhysicalFacts) {
     EXPECT_EQ(scalar->bit_width, 4U);
     ASSERT_EQ(scalar->named_codes.size(), 2U);
     EXPECT_TRUE(scalar->named_codes[1].sentinel);
-    EXPECT_TRUE(node.dependencies.empty());
+    ASSERT_TRUE(scalar->relationship.has_value());
+    EXPECT_EQ(scalar->relationship->kind, codegen::SemanticRelationKind::offset_into);
+    EXPECT_EQ(scalar->relationship->unit, codegen::SemanticRelationUnit::bytes);
+    auto const target{graph.find_declared("semantic_values", "EntityTable")};
+    ASSERT_TRUE(target.has_value());
+    EXPECT_EQ(scalar->relationship->target.type, *target);
+    ASSERT_EQ(node.dependencies.size(), 1U);
+    EXPECT_EQ(node.dependencies.front(), *target);
+    ASSERT_EQ(graph.type(*target).users.size(), 1U);
+    EXPECT_EQ(graph.type(*target).users.front(), *scalar_id);
+}
+
+TEST(SemanticTypeGraph, RejectsIntegerScalarRelationshipToExternalLeaf) {
+    codegen::Manifest const manifest{
+        .schema_version = codegen::manifest_schema_version,
+        .types = {{"external_table",
+                   codegen::CppType{"project::ExternalTable", "ExternalTable.h"}}},
+        .modules = {codegen::ScalarModuleSchema{
+            .settings = codegen::ModuleSettings{.name = "semantic_values",
+                                                .header = "SemanticValues.h",
+                                                .namespace_name = "project"},
+            .scalars = {
+                codegen::IntegerScalarSchema{.name = "EntityIndex",
+                                             .signedness = false,
+                                             .minimum_value = 0,
+                                             .maximum_value = 1'023,
+                                             .bit_width = 10,
+                                             .named_codes = {},
+                                             .relationship = codegen::SemanticRelationSchema{
+                                                 .kind = codegen::SemanticRelationKind::index_into,
+                                                 .target = codegen::TypeRef{"@external_table"},
+                                                 .unit = std::nullopt}}}}}};
+
+    EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
 
 TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
@@ -256,6 +326,73 @@ TEST(SemanticTypeGraph, ResolvesPackedFieldsAndDependencies) {
               graph.users_of(*entity_type).end());
 }
 
+TEST(SemanticTypeGraph, ResolvesPackedIntegerScalarDomainAndDependency) {
+    codegen::Manifest const
+        manifest{
+            .schema_version = codegen::manifest_schema_version,
+            .modules =
+                {
+                    codegen::ScalarModuleSchema{
+                        .settings = codegen::ModuleSettings{.name = "domains",
+                                                            .header = "Domains.h",
+                                                            .namespace_name = "project"},
+                        .scalars = {codegen::IntegerScalarSchema{
+                            .name = "Health",
+                            .signedness = false,
+                            .minimum_value = 0,
+                            .maximum_value = 1000,
+                            .bit_width = std::nullopt,
+                            .named_codes = {{.name = "Invalid", .value = 4095, .sentinel = true}},
+                        }}},
+                    codegen::PackedValueModuleSchema{
+                        .settings = codegen::ModuleSettings{.name = "packed",
+                                                            .header = "Packed.h",
+                                                            .namespace_name = "project"},
+                        .values = {codegen::
+                                       PackedValueSchema{
+                                           .name = "Status",
+                                           .storage_type = codegen::TypeRef{"std::uint16_t"},
+                                           .segments = {codegen::
+                                                            PackedFieldSchema{
+                                                                .name = "healt"
+                                                                        "h",
+                                                                .type = codegen::TypeRef{"pr"
+                                                                                         "oj"
+                                                                                         "ec"
+                                                                                         "t:"
+                                                                                         ":H"
+                                                                                         "ea"
+                                                                                         "lt"
+                                                                                         "h"},
+                                                                .bits = std::nullopt,
+                                                                .kind = codegen::PackedFieldKind::unsigned_integer,
+                                                            }},
+                                       }}},
+                },
+        };
+
+    auto const graph{resolve_type_graph(manifest)};
+    auto const health{graph.find_declared("domains", "Health")};
+    auto const status{graph.find_declared("packed", "Status")};
+    ASSERT_TRUE(health.has_value());
+    ASSERT_TRUE(status.has_value());
+
+    auto const& packed{std::get<PackedType>(graph.type(*status).definition)};
+    ASSERT_EQ(packed.segments.size(), 1U);
+    auto const& field{std::get<PackedField>(packed.segments.front())};
+    EXPECT_EQ(field.semantic_type.type, *health);
+    EXPECT_EQ(field.bit_width, 12U);
+    EXPECT_TRUE(field.bit_width_auto);
+    EXPECT_EQ(field.minimum_value, codegen::PackedIntegerValue{0});
+    EXPECT_EQ(field.maximum_value, codegen::PackedIntegerValue{1000});
+    ASSERT_EQ(field.named_codes.size(), 1U);
+    EXPECT_EQ(field.named_codes.front().name, "Invalid");
+    EXPECT_TRUE(field.named_codes.front().sentinel);
+    EXPECT_NE(std::ranges::find(graph.dependencies_of(*status), *health),
+              graph.dependencies_of(*status).end());
+    EXPECT_NE(std::ranges::find(graph.users_of(*health), *status), graph.users_of(*health).end());
+}
+
 TEST(SemanticTypeGraph, RetainsPackedPhysicalOrdering) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
@@ -306,35 +443,94 @@ TEST(SemanticTypeGraph, ResolvesStandardLibrarySoaColumns) {
     }
 }
 
+TEST(SemanticTypeGraph, ResolvesSoaColumnRelationshipsAndDependencies) {
+    codegen::Manifest const manifest{
+        .schema_version = codegen::manifest_schema_version,
+        .modules = {codegen::SoaModuleSchema{
+            .settings = codegen::ModuleSettings{.name = "tables", .header = "Tables.h"},
+            .structs =
+                {codegen::SoaSchema{
+                     .name = "Target",
+                     .members = {codegen::SoaMemberSchema{.name = "values",
+                                                          .kind = codegen::SoaMemberKind::array,
+                                                          .type = codegen::TypeRef{"float"},
+                                                          .relationship = std::nullopt}}},
+                 codegen::SoaSchema{
+                     .name = "User",
+                     .members = {codegen::SoaMemberSchema{
+                         .name = "identifiers",
+                         .kind = codegen::SoaMemberKind::array,
+                         .type = codegen::TypeRef{"std::uint32_t"},
+                         .relationship =
+                             codegen::SemanticRelationSchema{.kind = codegen::SemanticRelationKind::
+                                                                 index_into,
+                                                             .target = codegen::TypeRef{"Target"},
+                                                             .unit = std::nullopt}}}}},
+            .backend = codegen::SoaBackend::standard_library}}};
+
+    auto const graph{resolve_type_graph(manifest)};
+    auto const target{graph.find_declared("tables", "Target")};
+    auto const user{graph.find_declared("tables", "User")};
+    ASSERT_TRUE(target.has_value());
+    ASSERT_TRUE(user.has_value());
+    auto const& soa{std::get<SoaType>(graph.type(*user).definition)};
+    ASSERT_EQ(soa.columns.size(), 1U);
+    ASSERT_TRUE(soa.columns[0].relationship.has_value());
+    EXPECT_EQ(soa.columns[0].relationship->kind, codegen::SemanticRelationKind::index_into);
+    EXPECT_EQ(soa.columns[0].relationship->target.type, *target);
+    EXPECT_NE(std::ranges::find(graph.dependencies_of(*user), *target),
+              graph.dependencies_of(*user).end());
+    EXPECT_NE(std::ranges::find(graph.users_of(*target), *user), graph.users_of(*target).end());
+}
+
 TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::RecordModuleSchema{
-            .settings = codegen::ModuleSettings{.name = "records", .header = "Records.h"},
-            .records =
-                {
-                    codegen::RecordSchema{
-                        .name = "Position",
-                        .members = {{.name = "x", .type = codegen::TypeRef{"float"}}}},
-                    codegen::RecordSchema{.name = "Path",
-                                          .members = {{.name = "points",
-                                                       .type = codegen::TypeRef{"Position"},
-                                                       .count = 8}}},
-                }}},
+        .modules =
+            {
+                codegen::RecordModuleSchema{
+                    .settings = codegen::ModuleSettings{.name = "records", .header = "Records.h"},
+                    .records =
+                        {
+                            codegen::RecordSchema{
+                                .name = "Position",
+                                .members = {{.name = "x", .type = codegen::TypeRef{"float"}}}},
+                            codegen::RecordSchema{
+                                .name = "Table",
+                                .members = {{.name = "value", .type = codegen::TypeRef{"float"}}}},
+                            codegen::RecordSchema{
+                                .name = "Path",
+                                .members = {{.name = "points",
+                                             .type = codegen::TypeRef{"Position"},
+                                             .count = 8,
+                                             .relationship = codegen::
+                                                 SemanticRelationSchema{.kind = codegen::SemanticRelationKind::member_of,
+                                                                        .target = codegen::TypeRef{"Table"},
+                                                                        .unit =
+                                                                            std::nullopt}}}},
+                        }}},
     };
 
     auto const graph{resolve_type_graph(manifest)};
     auto const position{graph.find_declared("records", "Position")};
+    auto const table{graph.find_declared("records", "Table")};
     auto const path{graph.find_declared("records", "Path")};
     ASSERT_TRUE(position.has_value());
+    ASSERT_TRUE(table.has_value());
     ASSERT_TRUE(path.has_value());
     auto const& record{std::get<RecordType>(graph.type(*path).definition)};
     ASSERT_EQ(record.members.size(), 1U);
     EXPECT_EQ(record.members[0].semantic_type.type, *position);
     EXPECT_EQ(record.members[0].count, 8);
+    ASSERT_TRUE(record.members[0].relationship.has_value());
+    EXPECT_EQ(record.members[0].relationship->kind, codegen::SemanticRelationKind::member_of);
+    EXPECT_EQ(record.members[0].relationship->target.type, *table);
     EXPECT_NE(std::ranges::find(graph.dependencies_of(*path), *position),
               graph.dependencies_of(*path).end());
     EXPECT_NE(std::ranges::find(graph.users_of(*position), *path), graph.users_of(*position).end());
+    EXPECT_NE(std::ranges::find(graph.dependencies_of(*path), *table),
+              graph.dependencies_of(*path).end());
+    EXPECT_NE(std::ranges::find(graph.users_of(*table), *path), graph.users_of(*table).end());
 }
 
 TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {

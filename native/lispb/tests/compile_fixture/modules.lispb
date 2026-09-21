@@ -50,6 +50,20 @@
     (value One)
     (value COUNT)))
 
+(scalar-module scalar_fixture
+  :header "ScalarValues.h"
+  :namespace codegen_compile_fixture
+  (integer-scalar DamageReason
+    :signed false
+    :minimum 0
+    :maximum 10
+    :bit-width auto
+    :cpp-emission constants-with-names
+    :cpp-type @standard_uint8
+    (code Unknown :value 0)
+    (code Laser :value 1)
+    (code Invalid :value 255 :sentinel true)))
+
 (packed-value-module packed_value_fixture
   :header "PackedValues.h"
   :namespace codegen_compile_fixture
@@ -340,4 +354,4 @@
 
 (umbrella-module all_fixture
   :header "Generated.h"
-  :headers ("Homogeneous.h" "Soa.h" "Vector1.h" "Vector2.h" "Vector3.h" "InlineFacade.h" "SourceFacade.h" "ReferenceFacade.h" "PlainEnums.h" "ReflectedEnums.h" "PackedEnums.h" "PackedValues.h" "Settings.h" "StaticTables.h"))
+  :headers ("Homogeneous.h" "Soa.h" "Vector1.h" "Vector2.h" "Vector3.h" "InlineFacade.h" "SourceFacade.h" "ReferenceFacade.h" "PlainEnums.h" "ReflectedEnums.h" "PackedEnums.h" "ScalarValues.h" "PackedValues.h" "Settings.h" "StaticTables.h"))

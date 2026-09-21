@@ -1,8 +1,8 @@
 #pragma once
 
 #include <codegen/schema/packed_field_kind.h>
-#include <codegen/schema/packed_field_relation_schema.h>
 #include <codegen/schema/packed_integer_value.h>
+#include <codegen/schema/semantic_relation_schema.h>
 #include <codegen/schema/type_ref.h>
 
 #include <cstdint>
@@ -27,7 +27,7 @@ struct PackedFieldSchema {
     std::optional<PackedIntegerValue> minimum_value;
     std::optional<PackedIntegerValue> maximum_value;
     std::vector<PackedNamedCodeSchema> named_codes;
-    std::optional<PackedFieldRelationSchema> relationship;
+    std::optional<SemanticRelationSchema> relationship;
 };
 
 } // namespace codegen

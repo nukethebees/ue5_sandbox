@@ -5,6 +5,7 @@
 #include <map>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace codegen {
 namespace {
@@ -269,10 +270,6 @@ TEST(Validation, RejectsEmptyModuleNames) {
 
 TEST(Validation, RejectsInvalidEnumDefinitions) {
     auto module{valid_enum_module()};
-    module.enums.clear();
-    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
-
-    module = valid_enum_module();
     module.enums.front().values.clear();
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
@@ -371,6 +368,190 @@ TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
     ASSERT_TRUE(lowered.front().header.has_value());
     EXPECT_EQ(lowered.front().header->path, "Scalars.h");
     EXPECT_TRUE(lowered.front().header->nodes.empty());
+}
+
+TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
+    auto module{valid_integer_scalar_module()};
+    module.scalars.front().cpp_type = TypeRef{"std::uint8_t"};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_integer_scalar_module();
+    module.scalars.front().cpp_emission = IntegerScalarCppEmission::constants;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_integer_scalar_module();
+    module.scalars.front().cpp_emission = IntegerScalarCppEmission::constants;
+    module.scalars.front().cpp_type = TypeRef{"std::uint8_t"};
+    EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
+
+    module = valid_integer_scalar_module();
+    module.scalars.front().cpp_emission = IntegerScalarCppEmission::constants;
+    module.scalars.front().cpp_type = TypeRef{"std::int8_t"};
+    module.scalars.front().maximum_value = 127;
+    module.scalars.front().named_codes[1].value = 128;
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_integer_scalar_module();
+    module.scalars.front().cpp_emission = IntegerScalarCppEmission::constants;
+    module.scalars.front().cpp_type = TypeRef{"float"};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_integer_scalar_module();
+    module.scalars.front().cpp_emission = IntegerScalarCppEmission::constants;
+    module.scalars.front().cpp_type = TypeRef{"std::uint8_t"};
+    module.scalars.front().named_codes.clear();
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_integer_scalar_module();
+    module.scalars.front().cpp_emission = IntegerScalarCppEmission::constants_with_names;
+    module.scalars.front().cpp_type = TypeRef{"std::uint8_t"};
+    module.scalars.front().named_codes.front().name = "name";
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
+TEST(Validation, AllowsEmptyEditableModulesToRemainGenerationDestinations) {
+    auto settings = [](std::string name) {
+        return ModuleSettings{.name = name, .header = name + ".h"};
+    };
+    std::vector<ModuleSchema> modules;
+    modules.push_back(EnumModuleSchema{
+        .settings = settings("enums"), .helper_namespace = std::nullopt, .enums = {}});
+    modules.push_back(PackedValueModuleSchema{.settings = settings("packed"), .values = {}});
+    modules.push_back(ScalarModuleSchema{.settings = settings("scalars"), .scalars = {}});
+    modules.push_back(RepresentationModuleSchema{.settings = settings("representations"),
+                                                 .linear_quantized = {},
+                                                 .integer_varints = {},
+                                                 .fixed_points = {},
+                                                 .optional_sentinels = {},
+                                                 .optional_presence_bits = {},
+                                                 .mini_floats = {}});
+    modules.push_back(RecordModuleSchema{.settings = settings("records"), .records = {}});
+    modules.push_back(
+        UnionModuleSchema{.settings = settings("unions"), .unions = {}, .tagged_unions = {}});
+    modules.push_back(SoaModuleSchema{.settings = settings("soas"),
+                                      .structs = {},
+                                      .backend = SoaBackend::standard_library,
+                                      .array_allocators = {}});
+
+    for (auto& module : modules) {
+        auto manifest{Manifest{.schema_version = manifest_schema_version,
+                               .types = {},
+                               .modules = {std::move(module)}}};
+        EXPECT_NO_THROW(render_modules(lower_modules(manifest)));
+    }
+}
+
+TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
+    auto module{RecordModuleSchema{
+        .settings = ModuleSettings{.name = "records", .header = "Records.h"},
+        .records = {
+            RecordSchema{.name = "Target",
+                         .members = {{.name = "value", .type = TypeRef{"std::uint32_t"}}}},
+            RecordSchema{
+                .name = "User",
+                .members = {{.name = "value",
+                             .type = TypeRef{"std::uint32_t"},
+                             .relationship =
+                                 SemanticRelationSchema{.kind = SemanticRelationKind::references,
+                                                        .target = TypeRef{"Target"},
+                                                        .unit = std::nullopt}}}},
+        }}};
+    EXPECT_NO_THROW(lower_modules(manifest_with(module)));
+
+    module.records[1].members[0].relationship =
+        SemanticRelationSchema{.kind = SemanticRelationKind::offset_into,
+                               .target = TypeRef{"Target"},
+                               .unit = std::nullopt};
+    EXPECT_THROW(lower_modules(manifest_with(module)), std::invalid_argument);
+
+    module.records[1].members[0].relationship =
+        SemanticRelationSchema{.kind = SemanticRelationKind::references,
+                               .target = TypeRef{"Target"},
+                               .unit = SemanticRelationUnit::elements};
+    EXPECT_THROW(lower_modules(manifest_with(module)), std::invalid_argument);
+
+    module.records[1].members[0].relationship =
+        SemanticRelationSchema{.kind = SemanticRelationKind::offset_into,
+                               .target = TypeRef{"Target"},
+                               .unit = SemanticRelationUnit::bytes};
+    EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
+}
+
+TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
+    auto module{valid_soa_module()};
+    module.structs.push_back(SoaSchema{.name = "Target",
+                                       .members = {SoaMemberSchema{.name = "values",
+                                                                   .kind = SoaMemberKind::array,
+                                                                   .type = TypeRef{"std::uint32_t"},
+                                                                   .relationship = std::nullopt}}});
+    auto& relationship{module.structs.front().members.front().relationship};
+    relationship = SemanticRelationSchema{.kind = SemanticRelationKind::references,
+                                          .target = TypeRef{"Target"},
+                                          .unit = std::nullopt};
+    EXPECT_NO_THROW(lower_modules(manifest_with(module)));
+
+    relationship = SemanticRelationSchema{.kind = SemanticRelationKind::offset_into,
+                                          .target = TypeRef{"Target"},
+                                          .unit = std::nullopt};
+    EXPECT_THROW(lower_modules(manifest_with(module)), std::invalid_argument);
+
+    relationship = SemanticRelationSchema{.kind = SemanticRelationKind::references,
+                                          .target = TypeRef{"Target"},
+                                          .unit = SemanticRelationUnit::elements};
+    EXPECT_THROW(lower_modules(manifest_with(module)), std::invalid_argument);
+
+    relationship = SemanticRelationSchema{.kind = SemanticRelationKind::offset_into,
+                                          .target = TypeRef{"Target"},
+                                          .unit = SemanticRelationUnit::bytes};
+    EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
+}
+
+TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
+    for (auto const kind : {SemanticRelationKind::index_into,
+                            SemanticRelationKind::count_of,
+                            SemanticRelationKind::offset_into}) {
+        auto module{valid_integer_scalar_module()};
+        auto& scalar{module.scalars.front()};
+        scalar.signedness = true;
+        scalar.minimum_value = -10;
+        scalar.maximum_value = 10;
+        scalar.named_codes.clear();
+        scalar.relationship =
+            SemanticRelationSchema{.kind = kind,
+                                   .target = TypeRef{"DamageReason"},
+                                   .unit = kind == SemanticRelationKind::offset_into
+                                             ? std::optional{SemanticRelationUnit::bytes}
+                                             : std::nullopt};
+        EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+    }
+
+    auto module{valid_integer_scalar_module()};
+    module.scalars.front().relationship =
+        SemanticRelationSchema{.kind = SemanticRelationKind::references,
+                               .target = TypeRef{"DamageReason"},
+                               .unit = std::nullopt};
+    EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
+
+    module = valid_integer_scalar_module();
+    module.scalars.front().relationship =
+        SemanticRelationSchema{.kind = SemanticRelationKind::offset_into,
+                               .target = TypeRef{"DamageReason"},
+                               .unit = std::nullopt};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_integer_scalar_module();
+    module.scalars.front().relationship =
+        SemanticRelationSchema{.kind = SemanticRelationKind::index_into,
+                               .target = TypeRef{"DamageReason"},
+                               .unit = SemanticRelationUnit::elements};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = valid_integer_scalar_module();
+    module.scalars.front().relationship =
+        SemanticRelationSchema{.kind = SemanticRelationKind::offset_into,
+                               .target = TypeRef{"DamageReason"},
+                               .unit = SemanticRelationUnit::bytes};
+    EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
 }
 
 TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHeader) {
@@ -704,6 +885,23 @@ TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
 
     schema.values.back().initializer = "128";
     EXPECT_THROW(static_cast<void>(lower_modules(manifest_with(std::move(module), types))),
+                 std::invalid_argument);
+}
+
+TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
+    auto module{valid_native_enum_module()};
+    auto& schema{module.enums.front()};
+    schema.underlying_type.reset();
+    schema.bit_width = 12;
+    schema.signedness = false;
+
+    EXPECT_NO_THROW(static_cast<void>(lower_modules(manifest_with(module))));
+
+    schema.values.front().initializer = "calculate_state()";
+    schema.values.back().initializer.reset();
+    schema.bit_width.reset();
+    schema.signedness.reset();
+    EXPECT_THROW(static_cast<void>(lower_modules(manifest_with(std::move(module)))),
                  std::invalid_argument);
 }
 

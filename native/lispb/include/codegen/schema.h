@@ -36,6 +36,7 @@
 #include <codegen/schema/representation_module_schema.h>
 #include <codegen/schema/scalar_module_schema.h>
 #include <codegen/schema/schema_version.h>
+#include <codegen/schema/semantic_relation_schema.h>
 #include <codegen/schema/settings_module_schema.h>
 #include <codegen/schema/soa_member_kind.h>
 #include <codegen/schema/soa_member_schema.h>

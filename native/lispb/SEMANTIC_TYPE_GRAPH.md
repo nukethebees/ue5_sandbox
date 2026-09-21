@@ -12,7 +12,11 @@ known spelling, header, and passing policy without claiming knowledge of their s
 
 The graph keeps logical meaning separate from physical representation. An enum node references its
 underlying type, a packed node references both its storage and the logical type of every bit field,
-and a SoA node references each column type. ABI and layout consumers follow those references to
+a record node references each member type, and a SoA node references each column type. Packed
+fields, integer scalars, record members, and SoA columns may also carry explicit labeled semantic
+relationships
+to declared nodes. Those relationships participate in graph navigation and reference safety but do
+not independently create storage. ABI and layout consumers follow physical type references to
 derive sizes; they do not replace an enum or packed value with its storage type in the semantic
 model. `dependencies_of` and `users_of` expose the resulting directed graph.
 

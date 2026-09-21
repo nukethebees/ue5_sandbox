@@ -118,40 +118,6 @@ auto render_type_ref(codegen::TypeRef const& type) -> std::string {
     return result + ')';
 }
 
-auto reflection_name(codegen::EnumReflection const reflection) -> std::string_view {
-    switch (reflection) {
-        case codegen::EnumReflection::none:
-            return "none";
-        case codegen::EnumReflection::uenum:
-            return "uenum";
-        case codegen::EnumReflection::blueprint:
-            return "blueprint";
-    }
-    return "none";
-}
-
-auto conversion_name(codegen::EnumConversion const conversion) -> std::string_view {
-    switch (conversion) {
-        case codegen::EnumConversion::lex_to_string:
-            return "lex-to-string";
-        case codegen::EnumConversion::string_view:
-            return "string-view";
-        case codegen::EnumConversion::string:
-            return "string";
-        case codegen::EnumConversion::lex_to_display_string:
-            return "lex-to-display-string";
-        case codegen::EnumConversion::display_string_view:
-            return "display-string-view";
-        case codegen::EnumConversion::display_string:
-            return "display-string";
-        case codegen::EnumConversion::lex_to_serialized_string:
-            return "lex-to-serialized-string";
-        case codegen::EnumConversion::try_parse_serialized:
-            return "try-parse-serialized";
-    }
-    return "lex-to-string";
-}
-
 auto render_enum_value(codegen::EnumeratorSchema const& value) -> std::string {
     std::ostringstream output;
     output << "(value " << value.name;
@@ -174,9 +140,26 @@ auto render_enum_value(codegen::EnumeratorSchema const& value) -> std::string {
     return output.str();
 }
 
+auto render_enum_unreal_projection(codegen::EnumUnrealProjection const& projection) -> std::string {
+    std::ostringstream output;
+    output << "(unreal-projection " << projection.name << "\n      :header "
+           << quote(projection.header.string()) << "\n      :header-include "
+           << quote(projection.header_include) << "\n      :conversion-header "
+           << quote(projection.conversion_header.string()) << "\n      :native-header-include "
+           << quote(projection.native_header_include);
+    if (projection.reflection != codegen::EnumReflection::uenum) {
+        output << "\n      :reflection " << codegen::enum_reflection_name(projection.reflection);
+    }
+    output << ')';
+    return output.str();
+}
+
 auto render_enum(codegen::EnumSchema const& schema) -> std::string {
     std::ostringstream output;
-    output << "(enum " << schema.name << ' ' << render_type_ref(schema.underlying_type);
+    output << "(enum " << schema.name;
+    if (schema.underlying_type.has_value()) {
+        output << ' ' << render_type_ref(*schema.underlying_type);
+    }
     if (schema.bit_width.has_value()) {
         output << "\n    :bit-width " << *schema.bit_width;
     }
@@ -184,7 +167,7 @@ auto render_enum(codegen::EnumSchema const& schema) -> std::string {
         output << "\n    :signed " << (*schema.signedness ? "true" : "false");
     }
     if (schema.reflection != codegen::EnumReflection::none) {
-        output << "\n    :reflection " << reflection_name(schema.reflection);
+        output << "\n    :reflection " << codegen::enum_reflection_name(schema.reflection);
     }
     if (schema.enum_array) {
         output << "\n    :enum-array true";
@@ -195,7 +178,8 @@ auto render_enum(codegen::EnumSchema const& schema) -> std::string {
     if (!schema.conversions.empty()) {
         output << "\n    :conversions (";
         for (std::size_t index{}; index < schema.conversions.size(); ++index) {
-            output << (index == 0 ? "" : " ") << conversion_name(schema.conversions[index]);
+            output << (index == 0 ? "" : " ")
+                   << codegen::enum_conversion_name(schema.conversions[index]);
         }
         output << ')';
     }
@@ -209,16 +193,7 @@ auto render_enum(codegen::EnumSchema const& schema) -> std::string {
         output << "\n    " << render_enum_value(value);
     }
     if (schema.unreal_projection.has_value()) {
-        auto const& projection{*schema.unreal_projection};
-        output << "\n    (unreal-projection " << projection.name << "\n      :header "
-               << quote(projection.header.string()) << "\n      :header-include "
-               << quote(projection.header_include) << "\n      :conversion-header "
-               << quote(projection.conversion_header.string()) << "\n      :native-header-include "
-               << quote(projection.native_header_include);
-        if (projection.reflection != codegen::EnumReflection::uenum) {
-            output << "\n      :reflection " << reflection_name(projection.reflection);
-        }
-        output << ')';
+        output << "\n    " << render_enum_unreal_projection(*schema.unreal_projection);
     }
     output << ')';
     return output.str();
@@ -388,6 +363,21 @@ auto patch_source_properties(Form const& target,
     return true;
 }
 
+auto source_property_matches(Form const& target,
+                             std::size_t const positional_count,
+                             std::string_view const name,
+                             std::optional<std::string> const& expected) -> bool {
+    for (auto index{positional_count + 1}; index + 1 < target.children.size(); ++index) {
+        if (target.children[index].token.kind != codegen::sexpr::TokenKind::keyword ||
+            target.children[index].token.text != name) {
+            continue;
+        }
+        return expected.has_value() &&
+               source_form_matches_rendered(target.children[index + 1], *expected);
+    }
+    return !expected.has_value();
+}
+
 auto apply_source_replacements(std::string_view const original,
                                std::vector<SourceReplacement> replacements)
     -> std::optional<std::string> {
@@ -479,6 +469,78 @@ auto parse_owned_source_declaration(std::string_view const original, std::string
     }
 }
 
+auto try_patch_owned_declaration_name(std::string_view const original,
+                                      std::string const& current_name)
+    -> std::optional<std::string> {
+    try {
+        auto forms{codegen::sexpr::read_forms("editable declaration", original)};
+        if (forms.size() != 1 || forms.front().children.size() < 2 ||
+            forms.front().children[1].is_list() ||
+            forms.front().children[1].token.kind != codegen::sexpr::TokenKind::atom ||
+            forms.front().children[1].token.text == current_name) {
+            return std::nullopt;
+        }
+        std::vector<SourceReplacement> replacements;
+        if (!replace_source_form(forms.front().children[1], current_name, original, replacements)) {
+            return std::nullopt;
+        }
+        return apply_source_replacements(original, std::move(replacements));
+    } catch (std::exception const&) {
+        return std::nullopt;
+    }
+}
+
+auto patch_source_atom_list_property(Form const& source,
+                                     std::size_t positional_count,
+                                     std::string_view property_name,
+                                     std::span<std::string const> values,
+                                     std::string_view property_indentation,
+                                     std::string_view row_indentation,
+                                     std::string_view original,
+                                     std::vector<SourceReplacement>& replacements) -> bool;
+
+template <typename Child, typename FieldsMatch>
+auto infer_single_positional_rename(std::span<Form const* const> const source_rows,
+                                    std::span<Child const> const current_rows,
+                                    FieldsMatch&& fields_match)
+    -> std::optional<std::pair<std::string_view, std::string_view>> {
+    if (source_rows.size() != current_rows.size()) {
+        return std::nullopt;
+    }
+
+    std::optional<std::pair<std::string_view, std::string_view>> renamed;
+    for (std::size_t index{}; index < source_rows.size(); ++index) {
+        if (source_rows[index]->children.size() < 2) {
+            return std::nullopt;
+        }
+        auto const& source_name{source_rows[index]->children[1].token.text};
+        auto const& current_name{current_rows[index].name};
+        if (source_name == current_name) {
+            continue;
+        }
+        if (renamed.has_value()) {
+            return std::nullopt;
+        }
+        if (!fields_match(*source_rows[index], current_rows[index])) {
+            return std::nullopt;
+        }
+        renamed = std::pair{std::string_view{source_name}, std::string_view{current_name}};
+    }
+
+    if (!renamed.has_value()) {
+        return std::nullopt;
+    }
+    auto const source_has_new_name{std::ranges::any_of(source_rows, [&](Form const* const row) {
+        return row->children[1].token.text == renamed->second;
+    })};
+    auto const current_has_old_name{std::ranges::find(current_rows, renamed->first, &Child::name) !=
+                                    current_rows.end()};
+    if (source_has_new_name || current_has_old_name) {
+        return std::nullopt;
+    }
+    return renamed;
+}
+
 auto try_render_source_preserved_enum(codegen::EnumSchema const& schema,
                                       std::string_view const original)
     -> std::optional<std::string> {
@@ -487,26 +549,30 @@ auto try_render_source_preserved_enum(codegen::EnumSchema const& schema,
         return std::nullopt;
     }
     auto const& form{*parsed};
-    if (form.children.size() < 3) {
+    if (form.children.size() < 2) {
         return std::nullopt;
     }
-    auto const& underlying{form.children[2]};
-    if (underlying.is_list() || !schema.underlying_type.suffix.empty() ||
-        schema.underlying_type.nested.has_value()) {
+    auto const source_has_underlying{
+        form.children.size() > 2 &&
+        form.children[2].token.kind != codegen::sexpr::TokenKind::keyword &&
+        (!form.children[2].is_list() || form.children[2].head() == "type-ref")};
+    if (schema.underlying_type.has_value() &&
+        (!schema.underlying_type->suffix.empty() || schema.underlying_type->nested.has_value())) {
         return std::nullopt;
     }
 
     std::vector<Form const*> values;
+    Form const* source_projection{};
     for (auto const& child : form.children) {
         if (child.head() == "unreal-projection") {
-            return std::nullopt;
+            if (source_projection != nullptr) {
+                return std::nullopt;
+            }
+            source_projection = &child;
         }
         if (child.head() == "value") {
             values.push_back(&child);
         }
-    }
-    if (schema.unreal_projection.has_value()) {
-        return std::nullopt;
     }
     for (auto const* value : values) {
         if (value->children.size() < 2) {
@@ -516,21 +582,78 @@ auto try_render_source_preserved_enum(codegen::EnumSchema const& schema,
 
     std::vector<SourceReplacement> replacements;
 
-    if (underlying.token.text != schema.underlying_type.name &&
-        !replace_source_form(underlying, schema.underlying_type.name, original, replacements)) {
-        return std::nullopt;
+    if (source_projection != nullptr && schema.unreal_projection.has_value()) {
+        auto const& projection{*schema.unreal_projection};
+        if (source_projection->children.size() < 2 ||
+            !patch_source_form(
+                source_projection->children[1], projection.name, original, replacements)) {
+            return std::nullopt;
+        }
+        auto const projection_properties{std::array<SourceProperty, 5>{
+            std::pair{"header", std::optional{quote(projection.header.string())}},
+            std::pair{"header-include", std::optional{quote(projection.header_include)}},
+            std::pair{"conversion-header",
+                      std::optional{quote(projection.conversion_header.string())}},
+            std::pair{"native-header-include",
+                      std::optional{quote(projection.native_header_include)}},
+            std::pair{"reflection",
+                      projection.reflection != codegen::EnumReflection::uenum
+                          ? std::optional{std::string{
+                                codegen::enum_reflection_name(projection.reflection)}}
+                          : std::nullopt}}};
+        if (!patch_source_properties(
+                *source_projection, 1, projection_properties, "      ", original, replacements)) {
+            return std::nullopt;
+        }
+    } else if (source_projection != nullptr) {
+        auto begin{source_projection->token.span.offset};
+        while (begin > 0 && original[begin - 1] != '\n' &&
+               std::isspace(static_cast<unsigned char>(original[begin - 1])) != 0) {
+            --begin;
+        }
+        auto const end{
+            source_form_line_end(*source_projection, original, form.closing.span.offset)};
+        if (!end.has_value()) {
+            return std::nullopt;
+        }
+        replacements.push_back({.begin = begin, .end = *end, .text = {}});
+    } else if (schema.unreal_projection.has_value()) {
+        replacements.push_back(
+            {.begin = form.closing.span.offset,
+             .end = form.closing.span.offset,
+             .text = "\n    " + render_enum_unreal_projection(*schema.unreal_projection)});
     }
 
-    std::string conversions;
-    if (!schema.conversions.empty()) {
-        conversions = "(";
-        for (std::size_t index{}; index < schema.conversions.size(); ++index) {
-            conversions += index == 0 ? "" : " ";
-            conversions += conversion_name(schema.conversions[index]);
+    if (source_has_underlying && schema.underlying_type.has_value()) {
+        auto const& underlying{form.children[2]};
+        if (underlying.token.text != schema.underlying_type->name &&
+            !replace_source_form(
+                underlying, schema.underlying_type->name, original, replacements)) {
+            return std::nullopt;
         }
-        conversions += ')';
+    } else if (source_has_underlying) {
+        auto const& underlying{form.children[2]};
+        auto const underlying_end{source_form_end(underlying, original)};
+        if (!underlying_end.has_value()) {
+            return std::nullopt;
+        }
+        replacements.push_back(
+            {.begin = underlying.token.span.offset, .end = *underlying_end, .text = {}});
+    } else if (schema.underlying_type.has_value()) {
+        auto const name_end{source_form_end(form.children[1], original)};
+        if (!name_end.has_value()) {
+            return std::nullopt;
+        }
+        replacements.push_back(
+            {.begin = *name_end, .end = *name_end, .text = " " + schema.underlying_type->name});
     }
-    auto const enum_properties{std::array<SourceProperty, 8>{
+
+    std::vector<std::string> conversion_names;
+    conversion_names.reserve(schema.conversions.size());
+    for (auto const conversion : schema.conversions) {
+        conversion_names.emplace_back(codegen::enum_conversion_name(conversion));
+    }
+    auto const enum_properties{std::array<SourceProperty, 7>{
         std::pair{"bit-width",
                   schema.bit_width.has_value() ? std::optional{std::to_string(*schema.bit_width)}
                                                : std::nullopt},
@@ -540,16 +663,25 @@ auto try_render_source_preserved_enum(codegen::EnumSchema const& schema,
                       : std::nullopt},
         std::pair{"reflection",
                   schema.reflection != codegen::EnumReflection::none
-                      ? std::optional{std::string{reflection_name(schema.reflection)}}
+                      ? std::optional{std::string{codegen::enum_reflection_name(schema.reflection)}}
                       : std::nullopt},
         std::pair{"enum-array",
                   schema.enum_array ? std::optional<std::string>{"true"} : std::nullopt},
         std::pair{"count", schema.count},
-        std::pair{"conversions", conversions.empty() ? std::nullopt : std::optional{conversions}},
         std::pair{"export-specifier", schema.export_specifier},
         std::pair{"native-api",
                   schema.native_api ? std::optional<std::string>{"true"} : std::nullopt}}};
-    if (!patch_source_properties(form, 2, enum_properties, "    ", original, replacements)) {
+    auto const positional_count{source_has_underlying ? 2U : 1U};
+    if (!patch_source_properties(
+            form, positional_count, enum_properties, "    ", original, replacements) ||
+        !patch_source_atom_list_property(form,
+                                         positional_count,
+                                         "conversions",
+                                         conversion_names,
+                                         "    ",
+                                         "      ",
+                                         original,
+                                         replacements)) {
         return std::nullopt;
     }
 
@@ -560,7 +692,8 @@ auto try_render_source_preserved_enum(codegen::EnumSchema const& schema,
 
     auto const first_value_offset{values.front()->token.span.offset};
     for (auto const& child : form.children) {
-        if (child.token.span.offset > first_value_offset && child.head() != "value") {
+        if (child.token.span.offset > first_value_offset && child.head() != "value" &&
+            child.head() != "unreal-projection") {
             return std::nullopt;
         }
     }
@@ -603,6 +736,25 @@ auto try_render_source_preserved_enum(codegen::EnumSchema const& schema,
     }
 
     auto const values_end{row_begin};
+    auto const renamed_value{infer_single_positional_rename<codegen::EnumeratorSchema>(
+        values, schema.values, [](Form const& source, codegen::EnumeratorSchema const& value) {
+            return source_property_matches(
+                       source, 1, "value", value.initializer.transform(quote)) &&
+                   source_property_matches(
+                       source, 1, "display-name", value.display_name.transform(quote)) &&
+                   source_property_matches(source,
+                                           1,
+                                           "hidden",
+                                           value.hidden ? std::optional<std::string>{"true"}
+                                                        : std::nullopt) &&
+                   source_property_matches(
+                       source, 1, "serialized-name", value.serialized_name.transform(quote)) &&
+                   source_property_matches(source,
+                                           1,
+                                           "sentinel",
+                                           value.sentinel ? std::optional<std::string>{"true"}
+                                                          : std::nullopt);
+        })};
     auto rendered_values{std::string{}};
     auto append_row = [&](std::string row) {
         auto const preceding_newline{rendered_values.empty()
@@ -615,7 +767,9 @@ auto try_render_source_preserved_enum(codegen::EnumSchema const& schema,
     };
 
     for (auto const& value : schema.values) {
-        auto const found{source_values.find(value.name)};
+        auto const renamed{renamed_value.has_value() && renamed_value->second == value.name};
+        auto const found{
+            source_values.find(renamed ? renamed_value->first : std::string_view{value.name})};
         if (found == source_values.end()) {
             append_row("    " + render_enum_value(value));
             continue;
@@ -629,6 +783,11 @@ auto try_render_source_preserved_enum(codegen::EnumSchema const& schema,
             std::pair{"sentinel",
                       value.sentinel ? std::optional<std::string>{"true"} : std::nullopt}}};
         std::vector<SourceReplacement> value_replacements;
+        if (renamed &&
+            !patch_source_form(
+                found->second.form->children[1], value.name, original, value_replacements)) {
+            return std::nullopt;
+        }
         if (!patch_source_properties(
                 *found->second.form, 1, value_properties, "      ", original, value_replacements)) {
             return std::nullopt;
@@ -750,6 +909,19 @@ void render_function(std::ostringstream& output,
     output << ')';
 }
 
+auto render_named_code(codegen::PackedNamedCodeSchema const& code) -> std::string;
+
+auto render_semantic_relation(codegen::SemanticRelationSchema const& relationship) -> std::string {
+    std::ostringstream output;
+    output << "(relation " << semantic_relation_kind_name(relationship.kind) << ' '
+           << render_type_ref(relationship.target);
+    if (relationship.unit.has_value()) {
+        output << " :unit " << semantic_relation_unit_name(*relationship.unit);
+    }
+    output << ')';
+    return output.str();
+}
+
 auto render_packed_segment(codegen::PackedSegmentSchema const& segment) -> std::string {
     std::ostringstream output;
     std::visit(
@@ -776,17 +948,10 @@ auto render_packed_segment(codegen::PackedSegmentSchema const& segment) -> std::
                     output << " :maximum " << format_packed_integer(*value.maximum_value);
                 }
                 for (auto const& code : value.named_codes) {
-                    output << "\n      (code " << code.name << " :value "
-                           << format_packed_integer(code.value);
-                    if (code.sentinel) {
-                        output << " :sentinel true";
-                    }
-                    output << ')';
+                    output << "\n      " << render_named_code(code);
                 }
                 if (value.relationship.has_value()) {
-                    output << "\n      (relation "
-                           << packed_field_relation_kind_name(value.relationship->kind) << ' '
-                           << render_type_ref(value.relationship->target) << ')';
+                    output << "\n      " << render_semantic_relation(*value.relationship);
                 }
             } else {
                 output << "(reserved " << value.name << " :bits " << value.bits;
@@ -823,6 +988,16 @@ auto render_packed_value(codegen::PackedValueSchema const& schema) -> std::strin
     return output.str();
 }
 
+auto render_named_code(codegen::PackedNamedCodeSchema const& code) -> std::string {
+    std::ostringstream output;
+    output << "(code " << code.name << " :value " << format_packed_integer(code.value);
+    if (code.sentinel) {
+        output << " :sentinel true";
+    }
+    output << ')';
+    return output.str();
+}
+
 auto render_integer_scalar(codegen::IntegerScalarSchema const& schema) -> std::string {
     std::ostringstream output;
     output << "(integer-scalar " << schema.name << "\n    :signed "
@@ -834,12 +1009,17 @@ auto render_integer_scalar(codegen::IntegerScalarSchema const& schema) -> std::s
     } else {
         output << "auto";
     }
+    if (schema.cpp_emission != codegen::IntegerScalarCppEmission::none) {
+        output << "\n    :cpp-emission " << integer_scalar_cpp_emission_name(schema.cpp_emission);
+    }
+    if (schema.cpp_type.has_value()) {
+        output << "\n    :cpp-type " << render_type_ref(*schema.cpp_type);
+    }
     for (auto const& code : schema.named_codes) {
-        output << "\n    (code " << code.name << " :value " << format_packed_integer(code.value);
-        if (code.sentinel) {
-            output << " :sentinel true";
-        }
-        output << ')';
+        output << "\n    " << render_named_code(code);
+    }
+    if (schema.relationship.has_value()) {
+        output << "\n    " << render_semantic_relation(*schema.relationship);
     }
     output << ')';
     return output.str();
@@ -893,6 +1073,238 @@ auto render_optional_presence_bit(codegen::OptionalPresenceBitSchema const& sche
     return output.str();
 }
 
+auto patch_source_named_code_rows(Form const& parent,
+                                  std::span<Form const* const> const source_code_forms,
+                                  std::span<codegen::PackedNamedCodeSchema const> const codes,
+                                  Form const* const trailing_form,
+                                  std::string_view const indentation,
+                                  std::string_view const property_indentation,
+                                  std::string_view const original,
+                                  std::vector<SourceReplacement>& replacements) -> bool {
+    if (source_code_forms.empty()) {
+        if (codes.empty()) {
+            return true;
+        }
+
+        auto insertion_begin{parent.closing.span.offset};
+        if (trailing_form != nullptr) {
+            insertion_begin = 0;
+            for (auto const& child : parent.children) {
+                if (child.token.span.offset >= trailing_form->token.span.offset) {
+                    continue;
+                }
+                auto const child_end{
+                    source_form_line_end(child, original, trailing_form->token.span.offset)};
+                if (!child_end.has_value()) {
+                    return false;
+                }
+                insertion_begin = (std::max)(insertion_begin, *child_end);
+            }
+            if (insertion_begin > trailing_form->token.span.offset) {
+                return false;
+            }
+        }
+
+        auto rendered_codes{std::string{}};
+        if (insertion_begin > 0 && original[insertion_begin - 1] != '\n') {
+            rendered_codes += '\n';
+        }
+        for (std::size_t index{}; index < codes.size(); ++index) {
+            if (index != 0) {
+                rendered_codes += '\n';
+            }
+            rendered_codes += std::string{indentation} + render_named_code(codes[index]);
+        }
+        if (trailing_form != nullptr && rendered_codes.back() != '\n') {
+            rendered_codes += '\n';
+        }
+        replacements.push_back(
+            {.begin = insertion_begin, .end = insertion_begin, .text = std::move(rendered_codes)});
+        return true;
+    }
+
+    auto const first_code_offset{source_code_forms.front()->token.span.offset};
+    if (trailing_form != nullptr && trailing_form->token.span.offset < first_code_offset) {
+        return false;
+    }
+    for (auto const& child : parent.children) {
+        if (child.token.span.offset > first_code_offset && child.head() != "code" &&
+            &child != trailing_form) {
+            return false;
+        }
+    }
+
+    auto codes_begin{std::size_t{}};
+    for (auto const& child : parent.children) {
+        if (child.token.span.offset >= first_code_offset) {
+            continue;
+        }
+        auto const child_end{source_form_line_end(child, original, first_code_offset)};
+        if (!child_end.has_value()) {
+            return false;
+        }
+        codes_begin = (std::max)(codes_begin, *child_end);
+    }
+    if (codes_begin > first_code_offset) {
+        return false;
+    }
+
+    struct SourceCode {
+        Form const* form{};
+        std::size_t begin{};
+        std::size_t end{};
+    };
+    std::map<std::string_view, SourceCode> source_codes;
+    auto row_begin{codes_begin};
+    auto const region_end{trailing_form != nullptr ? trailing_form->token.span.offset
+                                                   : parent.closing.span.offset};
+    for (auto const* code : source_code_forms) {
+        if (code->children.size() < 2) {
+            return false;
+        }
+        auto const row_end{source_form_line_end(*code, original, region_end)};
+        if (!row_end.has_value() || row_begin > code->token.span.offset ||
+            *row_end < code->closing.span.offset + 1) {
+            return false;
+        }
+        if (!source_codes
+                 .emplace(code->children[1].token.text,
+                          SourceCode{.form = code, .begin = row_begin, .end = *row_end})
+                 .second) {
+            return false;
+        }
+        row_begin = *row_end;
+    }
+
+    auto const codes_end{row_begin};
+    auto const renamed_code{infer_single_positional_rename<codegen::PackedNamedCodeSchema>(
+        source_code_forms,
+        codes,
+        [](Form const& source, codegen::PackedNamedCodeSchema const& code) {
+            return source_property_matches(
+                       source, 1, "value", std::optional{format_packed_integer(code.value)}) &&
+                   source_property_matches(source,
+                                           1,
+                                           "sentinel",
+                                           code.sentinel ? std::optional<std::string>{"true"}
+                                                         : std::nullopt);
+        })};
+    auto rendered_codes{std::string{}};
+    auto append_row = [&](std::string row) {
+        auto const preceding_newline{rendered_codes.empty()
+                                         ? codes_begin > 0 && original[codes_begin - 1] == '\n'
+                                         : rendered_codes.back() == '\n'};
+        if (!preceding_newline && (row.empty() || row.front() != '\n')) {
+            rendered_codes += '\n';
+        }
+        rendered_codes += std::move(row);
+    };
+
+    for (auto const& code : codes) {
+        auto const renamed{renamed_code.has_value() && renamed_code->second == code.name};
+        auto const found{
+            source_codes.find(renamed ? renamed_code->first : std::string_view{code.name})};
+        if (found == source_codes.end()) {
+            append_row(std::string{indentation} + render_named_code(code));
+            continue;
+        }
+
+        auto const code_properties{std::array<SourceProperty, 2>{
+            std::pair{"value", std::optional{format_packed_integer(code.value)}},
+            std::pair{"sentinel",
+                      code.sentinel ? std::optional<std::string>{"true"} : std::nullopt}}};
+        std::vector<SourceReplacement> code_replacements;
+        if (renamed &&
+            !patch_source_form(
+                found->second.form->children[1], code.name, original, code_replacements)) {
+            return false;
+        }
+        if (!patch_source_properties(*found->second.form,
+                                     1,
+                                     code_properties,
+                                     property_indentation,
+                                     original,
+                                     code_replacements)) {
+            return false;
+        }
+        auto rendered{apply_source_replacements_to_range(
+            original, found->second.begin, found->second.end, std::move(code_replacements))};
+        if (!rendered.has_value()) {
+            return false;
+        }
+        append_row(std::move(*rendered));
+    }
+    if (!rendered_codes.empty() && rendered_codes.back() != '\n' && codes_end < original.size() &&
+        original[codes_end] != ')') {
+        rendered_codes += '\n';
+    }
+    replacements.push_back(
+        {.begin = codes_begin, .end = codes_end, .text = std::move(rendered_codes)});
+    return true;
+}
+
+auto patch_source_optional_relation(
+    Form const& parent,
+    Form const* const source_relation,
+    std::optional<codegen::SemanticRelationSchema> const& relationship,
+    std::string_view const indentation,
+    std::string_view const property_indentation,
+    std::string_view const original,
+    std::vector<SourceReplacement>& replacements) -> bool {
+    if (source_relation != nullptr && relationship.has_value()) {
+        if (source_relation->children.size() < 3 ||
+            !patch_source_form(source_relation->children[1],
+                               std::string{semantic_relation_kind_name(relationship->kind)},
+                               original,
+                               replacements) ||
+            !patch_source_form(source_relation->children[2],
+                               render_type_ref(relationship->target),
+                               original,
+                               replacements)) {
+            return false;
+        }
+        auto const relation_properties{std::array<SourceProperty, 1>{std::pair{
+            "unit", relationship->unit.transform([](codegen::SemanticRelationUnit const unit) {
+                return std::string{codegen::semantic_relation_unit_name(unit)};
+            })}}};
+        return patch_source_properties(
+            *source_relation, 2, relation_properties, property_indentation, original, replacements);
+    }
+
+    if (source_relation == nullptr && relationship.has_value()) {
+        replacements.push_back(
+            {.begin = parent.closing.span.offset,
+             .end = parent.closing.span.offset,
+             .text = "\n" + std::string{indentation} + render_semantic_relation(*relationship)});
+        return true;
+    }
+
+    if (source_relation == nullptr) {
+        return true;
+    }
+
+    auto relation_begin{std::size_t{}};
+    for (auto const& child : parent.children) {
+        if (child.token.span.offset >= source_relation->token.span.offset) {
+            continue;
+        }
+        auto const child_end{
+            source_form_line_end(child, original, source_relation->token.span.offset)};
+        if (!child_end.has_value()) {
+            return false;
+        }
+        relation_begin = (std::max)(relation_begin, *child_end);
+    }
+    auto const relation_end{
+        source_form_line_end(*source_relation, original, parent.closing.span.offset)};
+    if (!relation_end.has_value() || relation_begin > source_relation->token.span.offset ||
+        *relation_end < source_relation->closing.span.offset + 1) {
+        return false;
+    }
+    replacements.push_back({.begin = relation_begin, .end = *relation_end, .text = {}});
+    return true;
+}
+
 auto patch_source_packed_segment(codegen::PackedSegmentSchema const& segment,
                                  Form const& source_segment,
                                  std::string_view const original,
@@ -932,39 +1344,31 @@ auto patch_source_packed_segment(codegen::PackedSegmentSchema const& segment,
             if (child.head() == "code") {
                 codes.push_back(&child);
             } else if (child.head() == "relation") {
+                if (relation != nullptr) {
+                    return false;
+                }
                 relation = &child;
             }
         }
-        if (codes.size() != field->named_codes.size() ||
-            (relation != nullptr) != field->relationship.has_value()) {
+        if (codes.empty() && !field->named_codes.empty() && relation == nullptr &&
+            field->relationship.has_value()) {
             return false;
         }
-        for (std::size_t code_index{}; code_index < codes.size(); ++code_index) {
-            auto const& code{field->named_codes[code_index]};
-            if (codes[code_index]->children.size() < 2 ||
-                codes[code_index]->children[1].token.text != code.name) {
-                return false;
-            }
-            auto const code_properties{std::array<SourceProperty, 2>{
-                std::pair{"value", std::optional{format_packed_integer(code.value)}},
-                std::pair{"sentinel",
-                          code.sentinel ? std::optional<std::string>{"true"} : std::nullopt}}};
-            if (!patch_source_properties(
-                    *codes[code_index], 1, code_properties, "        ", original, replacements)) {
-                return false;
-            }
-        }
-        if (relation != nullptr &&
-            (relation->children.size() < 3 ||
-             !patch_source_form(
-                 relation->children[1],
-                 std::string{codegen::packed_field_relation_kind_name(field->relationship->kind)},
-                 original,
-                 replacements) ||
-             !patch_source_form(relation->children[2],
-                                render_type_ref(field->relationship->target),
-                                original,
-                                replacements))) {
+        if (!patch_source_named_code_rows(source_segment,
+                                          codes,
+                                          field->named_codes,
+                                          relation,
+                                          "      ",
+                                          "        ",
+                                          original,
+                                          replacements) ||
+            !patch_source_optional_relation(source_segment,
+                                            relation,
+                                            field->relationship,
+                                            "      ",
+                                            "        ",
+                                            original,
+                                            replacements)) {
             return false;
         }
         return true;
@@ -975,6 +1379,142 @@ auto patch_source_packed_segment(codegen::PackedSegmentSchema const& segment,
         std::pair{"bits", std::optional{std::to_string(reserved.bits)}}}};
     return patch_source_properties(
         source_segment, 1, reserved_properties, "      ", original, replacements);
+}
+
+auto packed_segment_matches_except_name(Form const& source_segment,
+                                        codegen::PackedSegmentSchema const& segment) -> bool {
+    if (auto const field{std::get_if<codegen::PackedFieldSchema>(&segment)}) {
+        auto const structural_match{source_segment.head() == "field" &&
+                                    source_segment.children.size() >= 3};
+        auto const type_match{
+            structural_match &&
+            source_form_matches_rendered(source_segment.children[2], render_type_ref(field->type))};
+        auto const bits_match{source_property_matches(
+            source_segment,
+            2,
+            "bits",
+            std::optional{field->bits.has_value() ? std::to_string(*field->bits)
+                                                  : std::string{"auto"}})};
+        auto const kind_match{source_property_matches(
+            source_segment,
+            2,
+            "kind",
+            field->kind != codegen::PackedFieldKind::unsigned_integer
+                ? std::optional{std::string{packed_field_kind_name(field->kind)}}
+                : std::nullopt)};
+        auto const range_match{source_property_matches(
+            source_segment,
+            2,
+            "range-helper",
+            field->range_helper ? std::optional<std::string>{"true"} : std::nullopt)};
+        auto const minimum_match{source_property_matches(
+            source_segment,
+            2,
+            "minimum",
+            field->minimum_value.transform(codegen::format_packed_integer))};
+        auto const maximum_match{source_property_matches(
+            source_segment,
+            2,
+            "maximum",
+            field->maximum_value.transform(codegen::format_packed_integer))};
+        if (!structural_match || !type_match || !bits_match || !kind_match || !range_match ||
+            !minimum_match || !maximum_match) {
+            return false;
+        }
+
+        std::vector<Form const*> codes;
+        Form const* relation{};
+        for (auto const& child : source_segment.children) {
+            if (child.head() == "code") {
+                codes.push_back(&child);
+            } else if (child.head() == "relation") {
+                if (relation != nullptr) {
+                    return false;
+                }
+                relation = &child;
+            }
+        }
+        if (codes.size() != field->named_codes.size()) {
+            return false;
+        }
+        for (std::size_t index{}; index < codes.size(); ++index) {
+            auto const& code{field->named_codes[index]};
+            if (codes[index]->children.size() < 2 ||
+                codes[index]->children[1].token.text != code.name ||
+                !source_property_matches(
+                    *codes[index], 1, "value", std::optional{format_packed_integer(code.value)}) ||
+                !source_property_matches(*codes[index],
+                                         1,
+                                         "sentinel",
+                                         code.sentinel ? std::optional<std::string>{"true"}
+                                                       : std::nullopt)) {
+                return false;
+            }
+        }
+
+        if (relation == nullptr || !field->relationship.has_value()) {
+            return relation == nullptr && !field->relationship.has_value();
+        }
+        auto const relation_match{
+            relation->children.size() >= 3 &&
+            source_form_matches_rendered(
+                relation->children[1],
+                std::string{semantic_relation_kind_name(field->relationship->kind)}) &&
+            source_form_matches_rendered(relation->children[2],
+                                         render_type_ref(field->relationship->target)) &&
+            source_property_matches(
+                *relation, 2, "unit", field->relationship->unit.transform([](auto const unit) {
+                    return std::string{semantic_relation_unit_name(unit)};
+                }))};
+        return relation_match;
+    }
+
+    auto const& reserved{std::get<codegen::PackedReservedBitsSchema>(segment)};
+    return source_segment.head() == "reserved" && source_segment.children.size() >= 2 &&
+           source_property_matches(
+               source_segment, 1, "bits", std::optional{std::to_string(reserved.bits)});
+}
+
+auto infer_single_packed_segment_rename(
+    std::span<Form const* const> const source_segments,
+    std::span<codegen::PackedSegmentSchema const> const current_segments)
+    -> std::optional<std::pair<std::string_view, std::string_view>> {
+    if (source_segments.size() != current_segments.size()) {
+        return std::nullopt;
+    }
+
+    std::optional<std::pair<std::string_view, std::string_view>> renamed;
+    for (std::size_t index{}; index < source_segments.size(); ++index) {
+        if (source_segments[index]->children.size() < 2) {
+            return std::nullopt;
+        }
+        auto const& source_name{source_segments[index]->children[1].token.text};
+        auto const& current_name{codegen::packed_segment_name(current_segments[index])};
+        if (source_name == current_name) {
+            continue;
+        }
+        if (renamed.has_value() ||
+            !packed_segment_matches_except_name(*source_segments[index], current_segments[index])) {
+            return std::nullopt;
+        }
+        renamed = std::pair{std::string_view{source_name}, std::string_view{current_name}};
+    }
+
+    if (!renamed.has_value()) {
+        return std::nullopt;
+    }
+    auto const source_has_new_name{
+        std::ranges::any_of(source_segments, [&](Form const* const segment) {
+            return segment->children[1].token.text == renamed->second;
+        })};
+    auto const current_has_old_name{
+        std::ranges::any_of(current_segments, [&](codegen::PackedSegmentSchema const& segment) {
+            return codegen::packed_segment_name(segment) == renamed->first;
+        })};
+    if (source_has_new_name || current_has_old_name) {
+        return std::nullopt;
+    }
+    return renamed;
 }
 
 auto try_render_source_preserved_packed_value(codegen::PackedValueSchema const& schema,
@@ -1070,6 +1610,7 @@ auto try_render_source_preserved_packed_value(codegen::PackedValueSchema const& 
     }
 
     auto const segments_end{row_begin};
+    auto const renamed_segment{infer_single_packed_segment_rename(segments, schema.segments)};
     auto rendered_segments{std::string{}};
     auto append_row = [&](std::string row) {
         auto const preceding_newline{
@@ -1085,7 +1626,9 @@ auto try_render_source_preserved_packed_value(codegen::PackedValueSchema const& 
         auto const head{std::holds_alternative<codegen::PackedFieldSchema>(segment)
                             ? std::string_view{"field"}
                             : std::string_view{"reserved"}};
-        auto const key{SegmentKey{head, codegen::packed_segment_name(segment)}};
+        auto const& current_name{codegen::packed_segment_name(segment)};
+        auto const renamed{renamed_segment.has_value() && renamed_segment->second == current_name};
+        auto const key{SegmentKey{head, renamed ? renamed_segment->first : current_name}};
         auto const found{source_segments.find(key)};
         if (found == source_segments.end()) {
             append_row("    " + render_packed_segment(segment));
@@ -1093,6 +1636,12 @@ auto try_render_source_preserved_packed_value(codegen::PackedValueSchema const& 
         }
 
         std::vector<SourceReplacement> segment_replacements;
+        if (renamed && !patch_source_form(found->second.form->children[1],
+                                          std::string{current_name},
+                                          original,
+                                          segment_replacements)) {
+            return std::nullopt;
+        }
         if (!patch_source_packed_segment(
                 segment, *found->second.form, original, segment_replacements)) {
             return std::nullopt;
@@ -1134,42 +1683,57 @@ auto try_render_source_preserved_integer_scalar(codegen::IntegerScalarSchema con
     }
 
     std::vector<Form const*> codes;
+    Form const* relation{};
     for (auto const& child : parsed->children) {
         if (child.head() == "code") {
             codes.push_back(&child);
+        } else if (child.head() == "relation") {
+            if (relation != nullptr) {
+                return std::nullopt;
+            }
+            relation = &child;
         }
     }
-    if (codes.size() != schema.named_codes.size()) {
-        return std::nullopt;
-    }
-    for (std::size_t index{}; index < codes.size(); ++index) {
-        if (codes[index]->children.size() < 2 ||
-            codes[index]->children[1].token.text != schema.named_codes[index].name) {
+    for (auto const* code : codes) {
+        if (code->children.size() < 2) {
             return std::nullopt;
         }
     }
 
-    auto const properties{std::array<SourceProperty, 4>{
+    auto const properties{std::array<SourceProperty, 6>{
         std::pair{"signed", std::optional{schema.signedness ? "true" : "false"}},
         std::pair{"minimum", std::optional{format_packed_integer(schema.minimum_value)}},
         std::pair{"maximum", std::optional{format_packed_integer(schema.maximum_value)}},
         std::pair{"bit-width",
                   std::optional{schema.bit_width.has_value() ? std::to_string(*schema.bit_width)
-                                                             : std::string{"auto"}}}}};
+                                                             : std::string{"auto"}}},
+        std::pair{
+            "cpp-emission",
+            schema.cpp_emission != codegen::IntegerScalarCppEmission::none
+                ? std::optional{std::string{integer_scalar_cpp_emission_name(schema.cpp_emission)}}
+                : std::nullopt},
+        std::pair{"cpp-type",
+                  schema.cpp_type.has_value() ? std::optional{render_type_ref(*schema.cpp_type)}
+                                              : std::nullopt}}};
     std::vector<SourceReplacement> replacements;
     if (!patch_source_properties(*parsed, 1, properties, "    ", original, replacements)) {
         return std::nullopt;
     }
-    for (std::size_t index{}; index < codes.size(); ++index) {
-        auto const& code{schema.named_codes[index]};
-        auto const code_properties{std::array<SourceProperty, 2>{
-            std::pair{"value", std::optional{format_packed_integer(code.value)}},
-            std::pair{"sentinel",
-                      code.sentinel ? std::optional<std::string>{"true"} : std::nullopt}}};
-        if (!patch_source_properties(
-                *codes[index], 1, code_properties, "      ", original, replacements)) {
-            return std::nullopt;
-        }
+    if (codes.empty() && !schema.named_codes.empty() && relation == nullptr &&
+        schema.relationship.has_value()) {
+        return std::nullopt;
+    }
+    if (!patch_source_named_code_rows(*parsed,
+                                      codes,
+                                      schema.named_codes,
+                                      relation,
+                                      "    ",
+                                      "      ",
+                                      original,
+                                      replacements) ||
+        !patch_source_optional_relation(
+            *parsed, relation, schema.relationship, "    ", "      ", original, replacements)) {
+        return std::nullopt;
     }
     return apply_source_replacements(original, std::move(replacements));
 }
@@ -1246,6 +1810,11 @@ auto render_aggregate_child(std::string_view const head, Child const& child) -> 
     output << '(' << head << ' ' << child.name << ' ' << render_type_ref(child.type);
     if (child.count.has_value()) {
         output << " :count " << *child.count;
+    }
+    if constexpr (std::is_same_v<Child, codegen::RecordMemberSchema>) {
+        if (child.relationship.has_value()) {
+            output << "\n      " << render_semantic_relation(*child.relationship);
+        }
     }
     output << ')';
     return output.str();
@@ -1383,6 +1952,38 @@ auto try_render_source_preserved_aggregate(std::string_view const declaration_he
     }
 
     auto const children_end{row_begin};
+    auto const renamed_child{infer_single_positional_rename<Child>(
+        source_children, children, [](Form const& source, Child const& child) {
+            if (source.children.size() < 3 ||
+                !source_form_matches_rendered(source.children[2], render_type_ref(child.type)) ||
+                !source_property_matches(source,
+                                         2,
+                                         "count",
+                                         child.count.has_value()
+                                             ? std::optional{std::to_string(*child.count)}
+                                             : std::nullopt)) {
+                return false;
+            }
+            if constexpr (!std::is_same_v<Child, codegen::RecordMemberSchema>) {
+                return true;
+            } else {
+                Form const* source_relation{};
+                for (auto const& nested : source.children) {
+                    if (nested.head() != "relation") {
+                        continue;
+                    }
+                    if (source_relation != nullptr) {
+                        return false;
+                    }
+                    source_relation = &nested;
+                }
+                return child.relationship.has_value()
+                         ? source_relation != nullptr &&
+                               source_form_matches_rendered(
+                                   *source_relation, render_semantic_relation(*child.relationship))
+                         : source_relation == nullptr;
+            }
+        })};
     auto rendered_children{std::string{}};
     auto append_row = [&](std::string row) {
         auto const preceding_newline{
@@ -1395,13 +1996,20 @@ auto try_render_source_preserved_aggregate(std::string_view const declaration_he
     };
 
     for (auto const& child : children) {
-        auto const found{source_by_name.find(child.name)};
+        auto const renamed{renamed_child.has_value() && renamed_child->second == child.name};
+        auto const found{
+            source_by_name.find(renamed ? renamed_child->first : std::string_view{child.name})};
         if (found == source_by_name.end()) {
             append_row("    " + render_aggregate_child(child_head, child));
             continue;
         }
 
         std::vector<SourceReplacement> child_replacements;
+        if (renamed &&
+            !patch_source_form(
+                found->second.form->children[1], child.name, original, child_replacements)) {
+            return std::nullopt;
+        }
         if (!patch_source_form(found->second.form->children[2],
                                render_type_ref(child.type),
                                original,
@@ -1414,6 +2022,27 @@ auto try_render_source_preserved_aggregate(std::string_view const declaration_he
         if (!patch_source_properties(
                 *found->second.form, 2, child_properties, "      ", original, child_replacements)) {
             return std::nullopt;
+        }
+        if constexpr (std::is_same_v<Child, codegen::RecordMemberSchema>) {
+            Form const* source_relation{};
+            for (auto const& nested : found->second.form->children) {
+                if (nested.head() != "relation") {
+                    continue;
+                }
+                if (source_relation != nullptr) {
+                    return std::nullopt;
+                }
+                source_relation = &nested;
+            }
+            if (!patch_source_optional_relation(*found->second.form,
+                                                source_relation,
+                                                child.relationship,
+                                                "      ",
+                                                "        ",
+                                                original,
+                                                child_replacements)) {
+                return std::nullopt;
+            }
         }
         auto rendered{apply_source_replacements_to_range(
             original, found->second.begin, found->second.end, std::move(child_replacements))};
@@ -1524,6 +2153,23 @@ auto try_render_source_preserved_tagged_union(codegen::TaggedUnionSchema const& 
     }
 
     auto const alternatives_end{row_begin};
+    auto const renamed_alternative{
+        infer_single_positional_rename<codegen::TaggedUnionAlternativeSchema>(
+            alternatives,
+            schema.alternatives,
+            [](Form const& source, codegen::TaggedUnionAlternativeSchema const& alternative) {
+                return source.children.size() >= 3 &&
+                       source_form_matches_rendered(source.children[2],
+                                                    render_type_ref(alternative.type)) &&
+                       source_property_matches(source, 2, "tag", std::optional{alternative.tag}) &&
+                       source_property_matches(
+                           source,
+                           2,
+                           "count",
+                           alternative.count.has_value()
+                               ? std::optional{std::to_string(*alternative.count)}
+                               : std::nullopt);
+            })};
     auto rendered_alternatives{std::string{}};
     auto append_row = [&](std::string row) {
         auto const preceding_newline{rendered_alternatives.empty()
@@ -1537,13 +2183,22 @@ auto try_render_source_preserved_tagged_union(codegen::TaggedUnionSchema const& 
     };
 
     for (auto const& alternative : schema.alternatives) {
-        auto const found{source_by_name.find(alternative.name)};
+        auto const renamed{renamed_alternative.has_value() &&
+                           renamed_alternative->second == alternative.name};
+        auto const found{source_by_name.find(renamed ? renamed_alternative->first
+                                                     : std::string_view{alternative.name})};
         if (found == source_by_name.end()) {
             append_row("    " + render_tagged_union_alternative(alternative));
             continue;
         }
 
         std::vector<SourceReplacement> alternative_replacements;
+        if (renamed && !patch_source_form(found->second.form->children[1],
+                                          alternative.name,
+                                          original,
+                                          alternative_replacements)) {
+            return std::nullopt;
+        }
         if (!patch_source_form(found->second.form->children[2],
                                render_type_ref(alternative.type),
                                original,
@@ -1598,6 +2253,9 @@ auto render_soa_member(codegen::SoaMemberSchema const& member) -> std::string {
                    << quote(dimension.extent) << ')';
         }
         output << ')';
+    }
+    if (member.relationship.has_value()) {
+        output << "\n      " << render_semantic_relation(*member.relationship);
     }
     output << ')';
     return output.str();
@@ -1671,6 +2329,823 @@ auto render_soa(codegen::SoaSchema const& schema) -> std::string {
     return output.str();
 }
 
+auto render_editable_module(codegen::ModuleSchema const& schema) -> std::optional<std::string> {
+    return std::visit(
+        [](auto const& module) -> std::optional<std::string> {
+            using Module = std::decay_t<decltype(module)>;
+            std::string_view head;
+            if constexpr (std::is_same_v<Module, codegen::EnumModuleSchema>) {
+                head = "enum-module";
+            } else if constexpr (std::is_same_v<Module, codegen::PackedValueModuleSchema>) {
+                head = "packed-value-module";
+            } else if constexpr (std::is_same_v<Module, codegen::ScalarModuleSchema>) {
+                head = "scalar-module";
+            } else if constexpr (std::is_same_v<Module, codegen::RepresentationModuleSchema>) {
+                head = "representation-module";
+            } else if constexpr (std::is_same_v<Module, codegen::RecordModuleSchema>) {
+                head = "record-module";
+            } else if constexpr (std::is_same_v<Module, codegen::UnionModuleSchema>) {
+                head = "union-module";
+            } else if constexpr (std::is_same_v<Module, codegen::SoaModuleSchema>) {
+                head = "soa-module";
+            } else {
+                return std::nullopt;
+            }
+
+            auto const& settings{module.settings};
+            std::ostringstream output;
+            output << '(' << head << ' ' << settings.name << "\n  :header "
+                   << quote(settings.header.generic_string());
+            if (settings.source.has_value()) {
+                output << "\n  :source " << quote(settings.source->generic_string());
+            }
+            if (settings.header_include.has_value()) {
+                output << "\n  :header-include " << quote(*settings.header_include);
+            }
+            if (settings.namespace_name.has_value()) {
+                output << "\n  :namespace " << *settings.namespace_name;
+            }
+            if (!settings.include_order.empty()) {
+                output << "\n  :include-order ";
+                render_quoted_list(output, settings.include_order);
+            }
+            if (!settings.prelude_lines.empty()) {
+                output << "\n  :prelude ";
+                render_quoted_list(output, settings.prelude_lines);
+            }
+            if constexpr (std::is_same_v<Module, codegen::EnumModuleSchema>) {
+                if (module.helper_namespace.has_value()) {
+                    output << "\n  :helper-namespace " << *module.helper_namespace;
+                }
+            } else if constexpr (std::is_same_v<Module, codegen::SoaModuleSchema>) {
+                if (module.backend == codegen::SoaBackend::standard_library) {
+                    output << "\n  :backend standard-library";
+                }
+                for (auto const& allocator : module.array_allocators) {
+                    output << "\n  (array-allocator " << allocator.prefix << ' '
+                           << render_type_ref(allocator.allocator) << ')';
+                }
+            }
+
+            auto append = [&](std::string const& declaration) { output << "\n  " << declaration; };
+            if constexpr (std::is_same_v<Module, codegen::EnumModuleSchema>) {
+                for (auto const& declaration : module.enums) {
+                    append(render_enum(declaration));
+                }
+            } else if constexpr (std::is_same_v<Module, codegen::PackedValueModuleSchema>) {
+                for (auto const& declaration : module.values) {
+                    append(render_packed_value(declaration));
+                }
+            } else if constexpr (std::is_same_v<Module, codegen::ScalarModuleSchema>) {
+                for (auto const& declaration : module.scalars) {
+                    append(render_integer_scalar(declaration));
+                }
+            } else if constexpr (std::is_same_v<Module, codegen::RepresentationModuleSchema>) {
+                for (auto const& declaration : module.linear_quantized) {
+                    append(render_linear_quantized(declaration));
+                }
+                for (auto const& declaration : module.integer_varints) {
+                    append(render_integer_varint(declaration));
+                }
+                for (auto const& declaration : module.fixed_points) {
+                    append(render_fixed_point(declaration));
+                }
+                for (auto const& declaration : module.optional_sentinels) {
+                    append(render_optional_sentinel(declaration));
+                }
+                for (auto const& declaration : module.optional_presence_bits) {
+                    append(render_optional_presence_bit(declaration));
+                }
+                for (auto const& declaration : module.mini_floats) {
+                    append(render_mini_float(declaration));
+                }
+            } else if constexpr (std::is_same_v<Module, codegen::RecordModuleSchema>) {
+                for (auto const& declaration : module.records) {
+                    append(render_record(declaration));
+                }
+            } else if constexpr (std::is_same_v<Module, codegen::UnionModuleSchema>) {
+                for (auto const& declaration : module.unions) {
+                    append(render_union(declaration));
+                }
+                for (auto const& declaration : module.tagged_unions) {
+                    append(render_tagged_union(declaration));
+                }
+            } else if constexpr (std::is_same_v<Module, codegen::SoaModuleSchema>) {
+                for (auto const& declaration : module.structs) {
+                    append(render_soa(declaration));
+                }
+            }
+            output << ')';
+            return output.str();
+        },
+        schema);
+}
+
+auto render_single_allocation_variant(codegen::SingleAllocationVariant const& variant)
+    -> std::string {
+    return "(variant " + variant.name + " " + render_type_ref(variant.allocator) + ")";
+}
+
+auto render_fixed_containers(std::span<std::string const> const containers) -> std::string {
+    auto rendered{std::string{"("}};
+    for (std::size_t index{}; index < containers.size(); ++index) {
+        rendered += index == 0 ? "" : " ";
+        rendered += containers[index];
+    }
+    rendered += ')';
+    return rendered;
+}
+
+auto render_fixed_soa(codegen::FixedSoaSchema const& schema) -> std::string {
+    auto rendered{"(fixed " + schema.storage_name};
+    if (!schema.containers.empty()) {
+        rendered += " :containers " + render_fixed_containers(schema.containers);
+    }
+    rendered += ')';
+    return rendered;
+}
+
+auto render_mask_dimension(codegen::SoaMaskDimensionSchema const& dimension) -> std::string {
+    return "(" + dimension.index_name + " " + quote(dimension.extent) + ")";
+}
+
+auto render_mask_dimensions(std::span<codegen::SoaMaskDimensionSchema const> const dimensions)
+    -> std::string {
+    auto rendered{std::string{}};
+    if (!dimensions.empty()) {
+        rendered = "(";
+        for (std::size_t index{}; index < dimensions.size(); ++index) {
+            rendered += index == 0 ? "" : " ";
+            rendered += render_mask_dimension(dimensions[index]);
+        }
+        rendered += ')';
+    }
+    return rendered;
+}
+
+auto infer_single_mask_dimension_rename(
+    std::span<Form const> const source_dimensions,
+    std::span<codegen::SoaMaskDimensionSchema const> const current_dimensions)
+    -> std::optional<std::pair<std::string_view, std::string_view>> {
+    if (source_dimensions.size() != current_dimensions.size()) {
+        return std::nullopt;
+    }
+
+    std::optional<std::pair<std::string_view, std::string_view>> renamed;
+    for (std::size_t index{}; index < source_dimensions.size(); ++index) {
+        if (!source_dimensions[index].is_list() || source_dimensions[index].children.size() != 2) {
+            return std::nullopt;
+        }
+        auto const& source_name{source_dimensions[index].children[0].token.text};
+        auto const& current{current_dimensions[index]};
+        if (source_name == current.index_name) {
+            continue;
+        }
+        if (renamed.has_value() ||
+            !source_form_matches_rendered(source_dimensions[index].children[1],
+                                          quote(current.extent))) {
+            return std::nullopt;
+        }
+        renamed = std::pair{std::string_view{source_name}, std::string_view{current.index_name}};
+    }
+
+    if (!renamed.has_value()) {
+        return std::nullopt;
+    }
+    auto const source_has_new_name{
+        std::ranges::any_of(source_dimensions, [&](Form const& dimension) {
+            return dimension.children[0].token.text == renamed->second;
+        })};
+    auto const current_has_old_name{
+        std::ranges::find(
+            current_dimensions, renamed->first, &codegen::SoaMaskDimensionSchema::index_name) !=
+        current_dimensions.end()};
+    return source_has_new_name || current_has_old_name ? std::nullopt : renamed;
+}
+
+auto patch_source_mask_dimensions(Form const& source_member,
+                                  std::span<codegen::SoaMaskDimensionSchema const> const dimensions,
+                                  std::string_view const original,
+                                  std::vector<SourceReplacement>& replacements) -> bool {
+    Form const* source_dimensions{};
+    for (std::size_t index{4}; index + 1 < source_member.children.size(); ++index) {
+        if (source_member.children[index].token.kind == codegen::sexpr::TokenKind::keyword &&
+            source_member.children[index].token.text == "mask-dimensions") {
+            source_dimensions = &source_member.children[index + 1];
+            break;
+        }
+    }
+
+    auto const rendered_dimensions{render_mask_dimensions(dimensions)};
+    if (source_dimensions == nullptr || dimensions.empty()) {
+        auto const properties{std::array<SourceProperty, 1>{std::pair{
+            "mask-dimensions",
+            rendered_dimensions.empty() ? std::nullopt : std::optional{rendered_dimensions}}}};
+        return patch_source_properties(
+            source_member, 3, properties, "      ", original, replacements);
+    }
+    if (!source_dimensions->is_list()) {
+        return false;
+    }
+    for (auto const& dimension : source_dimensions->children) {
+        if (!dimension.is_list() || dimension.children.size() != 2) {
+            return false;
+        }
+    }
+
+    auto const renamed_dimension{
+        infer_single_mask_dimension_rename(source_dimensions->children, dimensions)};
+    auto const rows_begin{source_dimensions->token.span.offset + 1};
+    auto const multiline{
+        original.substr(rows_begin, source_dimensions->closing.span.offset - rows_begin)
+            .find('\n') != std::string_view::npos};
+    if (!multiline) {
+        if (source_dimensions->children.size() != dimensions.size()) {
+            return patch_source_form(
+                *source_dimensions, rendered_dimensions, original, replacements);
+        }
+        for (std::size_t index{}; index < dimensions.size(); ++index) {
+            auto const& source_dimension{source_dimensions->children[index]};
+            auto const& dimension{dimensions[index]};
+            auto const same_name{source_dimension.children[0].token.text == dimension.index_name};
+            auto const renamed{renamed_dimension.has_value() &&
+                               renamed_dimension->first ==
+                                   source_dimension.children[0].token.text &&
+                               renamed_dimension->second == dimension.index_name};
+            if (!same_name && !renamed) {
+                return patch_source_form(
+                    *source_dimensions, rendered_dimensions, original, replacements);
+            }
+            if ((renamed &&
+                 !patch_source_form(
+                     source_dimension.children[0], dimension.index_name, original, replacements)) ||
+                !patch_source_form(source_dimension.children[1],
+                                   quote(dimension.extent),
+                                   original,
+                                   replacements)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    struct SourceDimension {
+        Form const* form{};
+        std::size_t begin{};
+        std::size_t end{};
+    };
+    std::map<std::string_view, SourceDimension> source_by_name;
+    auto row_begin{rows_begin};
+    for (auto const& dimension : source_dimensions->children) {
+        auto const row_end{
+            source_form_line_end(dimension, original, source_dimensions->closing.span.offset)};
+        if (!row_end.has_value() || row_begin > dimension.token.span.offset ||
+            !source_by_name
+                 .emplace(dimension.children[0].token.text,
+                          SourceDimension{.form = &dimension, .begin = row_begin, .end = *row_end})
+                 .second) {
+            return false;
+        }
+        row_begin = *row_end;
+    }
+
+    auto rendered_rows{std::string{}};
+    auto append_row = [&](std::string row) {
+        auto const preceding_newline{rendered_rows.empty()
+                                         ? rows_begin > 0 && original[rows_begin - 1] == '\n'
+                                         : rendered_rows.back() == '\n'};
+        if (!preceding_newline && (row.empty() || row.front() != '\n')) {
+            rendered_rows += '\n';
+        }
+        rendered_rows += std::move(row);
+    };
+    for (auto const& dimension : dimensions) {
+        auto const renamed{renamed_dimension.has_value() &&
+                           renamed_dimension->second == dimension.index_name};
+        auto const found{source_by_name.find(renamed ? renamed_dimension->first
+                                                     : std::string_view{dimension.index_name})};
+        if (found == source_by_name.end()) {
+            append_row("        " + render_mask_dimension(dimension));
+            continue;
+        }
+
+        std::vector<SourceReplacement> dimension_replacements;
+        if ((renamed && !patch_source_form(found->second.form->children[0],
+                                           dimension.index_name,
+                                           original,
+                                           dimension_replacements)) ||
+            !patch_source_form(found->second.form->children[1],
+                               quote(dimension.extent),
+                               original,
+                               dimension_replacements)) {
+            return false;
+        }
+        auto rendered{apply_source_replacements_to_range(
+            original, found->second.begin, found->second.end, std::move(dimension_replacements))};
+        if (!rendered.has_value()) {
+            return false;
+        }
+        append_row(std::move(*rendered));
+    }
+    replacements.push_back(
+        {.begin = rows_begin, .end = row_begin, .text = std::move(rendered_rows)});
+    return true;
+}
+
+enum class SourceListValueKind { atom, quoted_string };
+
+auto render_source_list_value(std::string_view const value, SourceListValueKind const kind)
+    -> std::string {
+    return kind == SourceListValueKind::quoted_string ? quote(value) : std::string{value};
+}
+
+auto render_source_list_values(std::span<std::string const> const values,
+                               SourceListValueKind const kind) -> std::string {
+    auto rendered{std::string{"("}};
+    for (std::size_t index{}; index < values.size(); ++index) {
+        rendered += index == 0 ? "" : " ";
+        rendered += render_source_list_value(values[index], kind);
+    }
+    rendered += ')';
+    return rendered;
+}
+
+auto render_quoted_values(std::span<std::string const> const values) -> std::string {
+    return render_source_list_values(values, SourceListValueKind::quoted_string);
+}
+
+auto infer_single_list_value_edit(std::span<Form const> const source_values,
+                                  std::span<std::string const> const current_values)
+    -> std::optional<std::pair<std::string_view, std::string_view>> {
+    if (source_values.size() != current_values.size()) {
+        return std::nullopt;
+    }
+
+    std::optional<std::pair<std::string_view, std::string_view>> edited;
+    for (std::size_t index{}; index < source_values.size(); ++index) {
+        auto const& source_value{source_values[index].token.text};
+        auto const& current_value{current_values[index]};
+        if (source_value == current_value) {
+            continue;
+        }
+        if (edited.has_value()) {
+            return std::nullopt;
+        }
+        edited = std::pair{std::string_view{source_value}, std::string_view{current_value}};
+    }
+
+    if (!edited.has_value()) {
+        return std::nullopt;
+    }
+    auto const source_has_new_value{std::ranges::any_of(
+        source_values, [&](Form const& value) { return value.token.text == edited->second; })};
+    auto const current_has_old_value{std::ranges::find(current_values, edited->first) !=
+                                     current_values.end()};
+    return source_has_new_value || current_has_old_value ? std::nullopt : edited;
+}
+
+auto patch_source_scalar_list_property(Form const& source,
+                                       std::size_t const positional_count,
+                                       std::string_view const property_name,
+                                       std::span<std::string const> const values,
+                                       SourceListValueKind const value_kind,
+                                       std::string_view const property_indentation,
+                                       std::string_view const row_indentation,
+                                       std::string_view const original,
+                                       std::vector<SourceReplacement>& replacements) -> bool {
+    Form const* source_values{};
+    for (auto index{positional_count + 1}; index + 1 < source.children.size(); ++index) {
+        if (source.children[index].token.kind == codegen::sexpr::TokenKind::keyword &&
+            source.children[index].token.text == property_name) {
+            source_values = &source.children[index + 1];
+            break;
+        }
+    }
+
+    auto const rendered_values{values.empty()
+                                   ? std::optional<std::string>{}
+                                   : std::optional{render_source_list_values(values, value_kind)}};
+    if (source_values == nullptr || values.empty()) {
+        auto const properties{
+            std::array<SourceProperty, 1>{std::pair{property_name, rendered_values}}};
+        return patch_source_properties(
+            source, positional_count, properties, property_indentation, original, replacements);
+    }
+    auto const expected_token_kind{value_kind == SourceListValueKind::quoted_string
+                                       ? codegen::sexpr::TokenKind::string
+                                       : codegen::sexpr::TokenKind::atom};
+    if (!source_values->is_list() ||
+        std::ranges::any_of(source_values->children, [&](Form const& value) {
+            return value.is_list() || value.token.kind != expected_token_kind;
+        })) {
+        return false;
+    }
+
+    std::set<std::string_view> unique_source_values;
+    for (auto const& value : source_values->children) {
+        if (!unique_source_values.insert(value.token.text).second) {
+            return patch_source_form(*source_values, *rendered_values, original, replacements);
+        }
+    }
+    std::set<std::string_view> unique_current_values;
+    for (auto const& value : values) {
+        if (!unique_current_values.insert(value).second) {
+            return patch_source_form(*source_values, *rendered_values, original, replacements);
+        }
+    }
+
+    auto const edited_value{infer_single_list_value_edit(source_values->children, values)};
+    auto const rows_begin{source_values->token.span.offset + 1};
+    auto const multiline{
+        original.substr(rows_begin, source_values->closing.span.offset - rows_begin).find('\n') !=
+        std::string_view::npos};
+    if (!multiline) {
+        if (source_values->children.size() != values.size()) {
+            return patch_source_form(*source_values, *rendered_values, original, replacements);
+        }
+        for (std::size_t index{}; index < values.size(); ++index) {
+            auto const& source_value{source_values->children[index]};
+            auto const& current_value{values[index]};
+            auto const same_value{source_value.token.text == current_value};
+            auto const edited{edited_value.has_value() &&
+                              edited_value->first == source_value.token.text &&
+                              edited_value->second == current_value};
+            if (!same_value && !edited) {
+                return patch_source_form(*source_values, *rendered_values, original, replacements);
+            }
+            if (edited && !patch_source_form(source_value,
+                                             render_source_list_value(current_value, value_kind),
+                                             original,
+                                             replacements)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    struct SourceValue {
+        Form const* form{};
+        std::size_t begin{};
+        std::size_t end{};
+    };
+    std::map<std::string_view, SourceValue> source_by_value;
+    auto row_begin{rows_begin};
+    for (auto const& value : source_values->children) {
+        auto const row_end{
+            source_form_line_end(value, original, source_values->closing.span.offset)};
+        if (!row_end.has_value() || row_begin > value.token.span.offset ||
+            !source_by_value
+                 .emplace(value.token.text,
+                          SourceValue{.form = &value, .begin = row_begin, .end = *row_end})
+                 .second) {
+            return patch_source_form(*source_values, *rendered_values, original, replacements);
+        }
+        row_begin = *row_end;
+    }
+
+    auto rendered_rows{std::string{}};
+    auto append_row = [&](std::string row) {
+        auto const preceding_newline{rendered_rows.empty()
+                                         ? rows_begin > 0 && original[rows_begin - 1] == '\n'
+                                         : rendered_rows.back() == '\n'};
+        if (!preceding_newline && (row.empty() || row.front() != '\n')) {
+            rendered_rows += '\n';
+        }
+        rendered_rows += std::move(row);
+    };
+    for (auto const& value : values) {
+        auto const edited{edited_value.has_value() && edited_value->second == value};
+        auto const found{
+            source_by_value.find(edited ? edited_value->first : std::string_view{value})};
+        if (found == source_by_value.end()) {
+            append_row(std::string{row_indentation} + render_source_list_value(value, value_kind));
+            continue;
+        }
+
+        std::vector<SourceReplacement> value_replacements;
+        if (edited && !patch_source_form(*found->second.form,
+                                         render_source_list_value(value, value_kind),
+                                         original,
+                                         value_replacements)) {
+            return false;
+        }
+        auto rendered{apply_source_replacements_to_range(
+            original, found->second.begin, found->second.end, std::move(value_replacements))};
+        if (!rendered.has_value()) {
+            return false;
+        }
+        append_row(std::move(*rendered));
+    }
+    replacements.push_back(
+        {.begin = rows_begin, .end = row_begin, .text = std::move(rendered_rows)});
+    return true;
+}
+
+auto patch_source_quoted_list_property(Form const& source,
+                                       std::size_t const positional_count,
+                                       std::string_view const property_name,
+                                       std::span<std::string const> const values,
+                                       std::string_view const property_indentation,
+                                       std::string_view const row_indentation,
+                                       std::string_view const original,
+                                       std::vector<SourceReplacement>& replacements) -> bool {
+    return patch_source_scalar_list_property(source,
+                                             positional_count,
+                                             property_name,
+                                             values,
+                                             SourceListValueKind::quoted_string,
+                                             property_indentation,
+                                             row_indentation,
+                                             original,
+                                             replacements);
+}
+
+auto patch_source_atom_list_property(Form const& source,
+                                     std::size_t const positional_count,
+                                     std::string_view const property_name,
+                                     std::span<std::string const> const values,
+                                     std::string_view const property_indentation,
+                                     std::string_view const row_indentation,
+                                     std::string_view const original,
+                                     std::vector<SourceReplacement>& replacements) -> bool {
+    return patch_source_scalar_list_property(source,
+                                             positional_count,
+                                             property_name,
+                                             values,
+                                             SourceListValueKind::atom,
+                                             property_indentation,
+                                             row_indentation,
+                                             original,
+                                             replacements);
+}
+
+auto infer_single_fixed_container_rename(std::span<Form const> const source_containers,
+                                         std::span<std::string const> const current_containers)
+    -> std::optional<std::pair<std::string_view, std::string_view>> {
+    if (source_containers.size() != current_containers.size()) {
+        return std::nullopt;
+    }
+
+    std::optional<std::pair<std::string_view, std::string_view>> renamed;
+    for (std::size_t index{}; index < source_containers.size(); ++index) {
+        auto const& source_name{source_containers[index].token.text};
+        auto const& current_name{current_containers[index]};
+        if (source_name == current_name) {
+            continue;
+        }
+        if (renamed.has_value()) {
+            return std::nullopt;
+        }
+        renamed = std::pair{std::string_view{source_name}, std::string_view{current_name}};
+    }
+
+    if (!renamed.has_value()) {
+        return std::nullopt;
+    }
+    auto const source_has_new_name{
+        std::ranges::any_of(source_containers, [&](Form const& container) {
+            return container.token.text == renamed->second;
+        })};
+    auto const current_has_old_name{std::ranges::find(current_containers, renamed->first) !=
+                                    current_containers.end()};
+    return source_has_new_name || current_has_old_name ? std::nullopt : renamed;
+}
+
+auto patch_source_fixed_soa(codegen::FixedSoaSchema const& schema,
+                            Form const& source,
+                            std::string_view const original,
+                            std::vector<SourceReplacement>& replacements) -> bool {
+    if (source.children.size() < 2 ||
+        !patch_source_form(source.children[1], schema.storage_name, original, replacements)) {
+        return false;
+    }
+
+    Form const* source_containers{};
+    for (std::size_t index{2}; index + 1 < source.children.size(); ++index) {
+        if (source.children[index].token.kind == codegen::sexpr::TokenKind::keyword &&
+            source.children[index].token.text == "containers") {
+            source_containers = &source.children[index + 1];
+            break;
+        }
+    }
+
+    auto const rendered_containers{schema.containers.empty()
+                                       ? std::optional<std::string>{}
+                                       : std::optional{render_fixed_containers(schema.containers)}};
+    if (source_containers == nullptr || schema.containers.empty()) {
+        auto const properties{
+            std::array<SourceProperty, 1>{std::pair{"containers", rendered_containers}}};
+        return patch_source_properties(source, 1, properties, "      ", original, replacements);
+    }
+    if (!source_containers->is_list()) {
+        return false;
+    }
+
+    auto const renamed_container{
+        infer_single_fixed_container_rename(source_containers->children, schema.containers)};
+    auto const rows_begin{source_containers->token.span.offset + 1};
+    auto const multiline{
+        original.substr(rows_begin, source_containers->closing.span.offset - rows_begin)
+            .find('\n') != std::string_view::npos};
+    if (!multiline) {
+        if (renamed_container.has_value()) {
+            for (auto const& container : source_containers->children) {
+                if (container.token.text == renamed_container->first) {
+                    return patch_source_form(
+                        container, std::string{renamed_container->second}, original, replacements);
+                }
+            }
+        }
+        return patch_source_form(*source_containers, *rendered_containers, original, replacements);
+    }
+
+    struct SourceContainer {
+        Form const* form{};
+        std::size_t begin{};
+        std::size_t end{};
+    };
+    std::map<std::string_view, SourceContainer> source_by_name;
+    auto row_begin{rows_begin};
+    for (auto const& container : source_containers->children) {
+        auto const row_end{
+            source_form_line_end(container, original, source_containers->closing.span.offset)};
+        if (!row_end.has_value() || row_begin > container.token.span.offset ||
+            !source_by_name
+                 .emplace(container.token.text,
+                          SourceContainer{.form = &container, .begin = row_begin, .end = *row_end})
+                 .second) {
+            return false;
+        }
+        row_begin = *row_end;
+    }
+
+    auto rendered_rows{std::string{}};
+    auto append_row = [&](std::string row) {
+        auto const preceding_newline{rendered_rows.empty()
+                                         ? rows_begin > 0 && original[rows_begin - 1] == '\n'
+                                         : rendered_rows.back() == '\n'};
+        if (!preceding_newline && (row.empty() || row.front() != '\n')) {
+            rendered_rows += '\n';
+        }
+        rendered_rows += std::move(row);
+    };
+    for (auto const& container : schema.containers) {
+        auto const renamed{renamed_container.has_value() && renamed_container->second == container};
+        auto const found{
+            source_by_name.find(renamed ? renamed_container->first : std::string_view{container})};
+        if (found == source_by_name.end()) {
+            append_row("        " + container);
+            continue;
+        }
+
+        std::vector<SourceReplacement> container_replacements;
+        if (renamed &&
+            !patch_source_form(*found->second.form, container, original, container_replacements)) {
+            return false;
+        }
+        auto rendered{apply_source_replacements_to_range(
+            original, found->second.begin, found->second.end, std::move(container_replacements))};
+        if (!rendered.has_value()) {
+            return false;
+        }
+        append_row(std::move(*rendered));
+    }
+    replacements.push_back(
+        {.begin = rows_begin, .end = row_begin, .text = std::move(rendered_rows)});
+    return true;
+}
+
+auto render_single_allocation(codegen::SoaSchema const& schema) -> std::string {
+    std::ostringstream rendered;
+    rendered << "(single-allocation " << *schema.single_allocation;
+    for (auto const& variant : schema.single_allocation_variants) {
+        rendered << "\n      " << render_single_allocation_variant(variant);
+    }
+    rendered << ')';
+    return std::move(rendered).str();
+}
+
+auto patch_source_single_allocation(codegen::SoaSchema const& schema,
+                                    Form const& source,
+                                    std::string_view const original,
+                                    std::vector<SourceReplacement>& replacements) -> bool {
+    if (!schema.single_allocation.has_value() || source.children.size() < 2 ||
+        !patch_source_form(source.children[1], *schema.single_allocation, original, replacements)) {
+        return false;
+    }
+
+    std::vector<Form const*> variants;
+    for (auto const& child : source.children) {
+        if (child.head() == "variant") {
+            if (child.children.size() < 3) {
+                return false;
+            }
+            variants.push_back(&child);
+        }
+    }
+
+    if (variants.empty()) {
+        if (schema.single_allocation_variants.empty()) {
+            return true;
+        }
+
+        auto rendered{std::string{}};
+        for (auto const& variant : schema.single_allocation_variants) {
+            rendered += "\n      " + render_single_allocation_variant(variant);
+        }
+        replacements.push_back({.begin = source.closing.span.offset,
+                                .end = source.closing.span.offset,
+                                .text = std::move(rendered)});
+        return true;
+    }
+
+    auto const first_variant_offset{variants.front()->token.span.offset};
+    auto variants_begin{std::size_t{}};
+    for (auto const& child : source.children) {
+        if (child.token.span.offset >= first_variant_offset) {
+            continue;
+        }
+        auto const child_end{source_form_line_end(child, original, first_variant_offset)};
+        if (!child_end.has_value()) {
+            return false;
+        }
+        variants_begin = (std::max)(variants_begin, *child_end);
+    }
+    if (variants_begin > first_variant_offset) {
+        return false;
+    }
+
+    struct SourceVariant {
+        Form const* form{};
+        std::size_t begin{};
+        std::size_t end{};
+    };
+    std::map<std::string_view, SourceVariant> source_by_name;
+    auto row_begin{variants_begin};
+    for (auto const* variant : variants) {
+        auto const row_end{source_form_line_end(*variant, original, source.closing.span.offset)};
+        if (!row_end.has_value() || row_begin > variant->token.span.offset ||
+            *row_end < variant->closing.span.offset + 1 ||
+            !source_by_name
+                 .emplace(variant->children[1].token.text,
+                          SourceVariant{.form = variant, .begin = row_begin, .end = *row_end})
+                 .second) {
+            return false;
+        }
+        row_begin = *row_end;
+    }
+
+    auto const variants_end{row_begin};
+    auto const renamed_variant{infer_single_positional_rename<codegen::SingleAllocationVariant>(
+        variants,
+        schema.single_allocation_variants,
+        [](Form const& source_variant, codegen::SingleAllocationVariant const& variant) {
+            return source_variant.children.size() >= 3 &&
+                   source_form_matches_rendered(source_variant.children[2],
+                                                render_type_ref(variant.allocator));
+        })};
+    auto rendered_variants{std::string{}};
+    auto append_row = [&](std::string row) {
+        auto const preceding_newline{
+            rendered_variants.empty() ? variants_begin > 0 && original[variants_begin - 1] == '\n'
+                                      : rendered_variants.back() == '\n'};
+        if (!preceding_newline && (row.empty() || row.front() != '\n')) {
+            rendered_variants += '\n';
+        }
+        rendered_variants += std::move(row);
+    };
+
+    for (auto const& variant : schema.single_allocation_variants) {
+        auto const renamed{renamed_variant.has_value() && renamed_variant->second == variant.name};
+        auto const found{
+            source_by_name.find(renamed ? renamed_variant->first : std::string_view{variant.name})};
+        if (found == source_by_name.end()) {
+            append_row("      " + render_single_allocation_variant(variant));
+            continue;
+        }
+
+        std::vector<SourceReplacement> variant_replacements;
+        if ((renamed &&
+             !patch_source_form(
+                 found->second.form->children[1], variant.name, original, variant_replacements)) ||
+            !patch_source_form(found->second.form->children[2],
+                               render_type_ref(variant.allocator),
+                               original,
+                               variant_replacements)) {
+            return false;
+        }
+        auto rendered{apply_source_replacements_to_range(
+            original, found->second.begin, found->second.end, std::move(variant_replacements))};
+        if (!rendered.has_value()) {
+            return false;
+        }
+        append_row(std::move(*rendered));
+    }
+    replacements.push_back(
+        {.begin = variants_begin, .end = variants_end, .text = std::move(rendered_variants)});
+    return true;
+}
+
 auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                                      std::string_view const original)
     -> std::optional<std::string> {
@@ -1730,31 +3205,15 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
         }
     }
     std::string trailing_forms;
-    auto render_fixed = [](codegen::FixedSoaSchema const& fixed_schema) {
-        std::ostringstream rendered;
-        rendered << "(fixed " << fixed_schema.storage_name;
-        if (!fixed_schema.containers.empty()) {
-            rendered << " :containers (";
-            for (std::size_t index{}; index < fixed_schema.containers.size(); ++index) {
-                rendered << (index == 0 ? "" : " ") << fixed_schema.containers[index];
-            }
-            rendered << ')';
-        }
-        rendered << ')';
-        return std::move(rendered).str();
-    };
     if (fixed != nullptr && schema.fixed.has_value()) {
-        auto rendered{render_fixed(*schema.fixed)};
-        if (!source_form_matches_rendered(*fixed, rendered)) {
-            replacements.push_back({.begin = fixed->token.span.offset,
-                                    .end = fixed->closing.span.offset + 1,
-                                    .text = std::move(rendered)});
+        if (!patch_source_fixed_soa(*schema.fixed, *fixed, original, replacements)) {
+            return std::nullopt;
         }
     } else if (fixed != nullptr) {
         replacements.push_back(
             {.begin = fixed->token.span.offset, .end = fixed->closing.span.offset + 1, .text = {}});
     } else if (schema.fixed.has_value()) {
-        auto rendered{render_fixed(*schema.fixed)};
+        auto rendered{render_fixed_soa(*schema.fixed)};
         if (single_allocation != nullptr) {
             replacements.push_back({.begin = single_allocation->token.span.offset,
                                     .end = single_allocation->token.span.offset,
@@ -1763,22 +3222,9 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
             trailing_forms += "\n    " + std::move(rendered);
         }
     }
-    auto render_single_allocation = [](codegen::SoaSchema const& source_schema) {
-        std::ostringstream rendered;
-        rendered << "(single-allocation " << *source_schema.single_allocation;
-        for (auto const& variant : source_schema.single_allocation_variants) {
-            rendered << "\n      (variant " << variant.name << ' '
-                     << render_type_ref(variant.allocator) << ')';
-        }
-        rendered << ')';
-        return std::move(rendered).str();
-    };
     if (single_allocation != nullptr && schema.single_allocation.has_value()) {
-        auto rendered{render_single_allocation(schema)};
-        if (!source_form_matches_rendered(*single_allocation, rendered)) {
-            replacements.push_back({.begin = single_allocation->token.span.offset,
-                                    .end = single_allocation->closing.span.offset + 1,
-                                    .text = std::move(rendered)});
+        if (!patch_source_single_allocation(schema, *single_allocation, original, replacements)) {
+            return std::nullopt;
         }
     } else if (single_allocation != nullptr) {
         replacements.push_back({.begin = single_allocation->token.span.offset,
@@ -1794,28 +3240,30 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                                 .text = std::move(trailing_forms)});
     }
 
-    std::string operations;
-    if (!schema.operations.empty()) {
-        operations = "(";
-        for (std::size_t index{}; index < schema.operations.size(); ++index) {
-            operations += index == 0 ? "" : " ";
-            operations += storage_operation_name(schema.operations[index]);
+    std::vector<std::string> operation_names;
+    operation_names.reserve(schema.operations.size());
+    for (auto const operation : schema.operations) {
+        operation_names.emplace_back(storage_operation_name(operation));
+    }
+    auto source_operations_use_all{false};
+    for (std::size_t index{2}; index + 1 < parsed->children.size(); ++index) {
+        if (parsed->children[index].token.kind != codegen::sexpr::TokenKind::keyword ||
+            parsed->children[index].token.text != "operations") {
+            continue;
         }
-        operations += ')';
+        auto const& value{parsed->children[index + 1]};
+        source_operations_use_all =
+            value.is_list() && value.children.size() == 1 &&
+            value.children.front().token.kind == codegen::sexpr::TokenKind::atom &&
+            value.children.front().token.text == "all";
+        break;
     }
-    std::string using_declarations;
-    if (!schema.using_declarations.empty()) {
-        std::ostringstream rendered;
-        render_quoted_list(rendered, schema.using_declarations);
-        using_declarations = std::move(rendered).str();
-    }
-    auto const properties{std::array<SourceProperty, 10>{
+    auto const preserve_all_operations{source_operations_use_all &&
+                                       schema.operations == codegen::all_storage_operations()};
+    auto const properties{std::array<SourceProperty, 8>{
         std::pair{"view-name", schema.view_name},
         std::pair{"const-view-name", schema.const_view_name},
-        std::pair{"operations", operations.empty() ? std::nullopt : std::optional{operations}},
         std::pair{"export-specifier", schema.export_specifier},
-        std::pair{"using-declarations",
-                  using_declarations.empty() ? std::nullopt : std::optional{using_declarations}},
         std::pair{"equivalent-type",
                   schema.equivalent_type.has_value()
                       ? std::optional{render_type_ref(*schema.equivalent_type)}
@@ -1827,7 +3275,23 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                   schema.layout_only ? std::optional<std::string>{"true"} : std::nullopt},
         std::pair{"field-mask-name", schema.field_mask_name},
         std::pair{"field-enum-name", schema.field_enum_name}}};
-    if (!patch_source_properties(*parsed, 1, properties, "    ", original, replacements)) {
+    if (!patch_source_properties(*parsed, 1, properties, "    ", original, replacements) ||
+        (!preserve_all_operations && !patch_source_atom_list_property(*parsed,
+                                                                      1,
+                                                                      "operations",
+                                                                      operation_names,
+                                                                      "    ",
+                                                                      "      ",
+                                                                      original,
+                                                                      replacements)) ||
+        !patch_source_quoted_list_property(*parsed,
+                                           1,
+                                           "using-declarations",
+                                           schema.using_declarations,
+                                           "    ",
+                                           "      ",
+                                           original,
+                                           replacements)) {
         return std::nullopt;
     }
 
@@ -1875,6 +3339,44 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
     }
 
     auto const members_end{row_begin};
+    auto const renamed_member{infer_single_positional_rename<codegen::SoaMemberSchema>(
+        members, schema.members, [&](Form const& source, codegen::SoaMemberSchema const& member) {
+            auto const dimensions{render_mask_dimensions(member.mask_dimensions)};
+            if (source.children.size() < 4 ||
+                !source_form_matches_rendered(source.children[2],
+                                              soa_member_kind_name(member.kind)) ||
+                !source_form_matches_rendered(source.children[3], render_type_ref(member.type)) ||
+                !source_property_matches(source, 3, "fixed-schema", member.fixed_schema) ||
+                !source_property_matches(source, 3, "nested-schema", member.nested_schema) ||
+                !source_property_matches(source,
+                                         3,
+                                         "mask-field",
+                                         member.mask_field ? std::optional<std::string>{"true"}
+                                                           : std::nullopt) ||
+                !source_property_matches(source,
+                                         3,
+                                         "mask-dimensions",
+                                         dimensions.empty() ? std::nullopt
+                                                            : std::optional{dimensions})) {
+                return false;
+            }
+
+            Form const* source_relation{};
+            for (auto const& nested : source.children) {
+                if (nested.head() != "relation") {
+                    continue;
+                }
+                if (source_relation != nullptr) {
+                    return false;
+                }
+                source_relation = &nested;
+            }
+            return member.relationship.has_value()
+                     ? source_relation != nullptr &&
+                           source_form_matches_rendered(
+                               *source_relation, render_semantic_relation(*member.relationship))
+                     : source_relation == nullptr;
+        })};
     auto rendered_members{std::string{}};
     auto append_row = [&](std::string row) {
         auto const preceding_newline{rendered_members.empty()
@@ -1887,13 +3389,20 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
     };
 
     for (auto const& member : schema.members) {
-        auto const found{source_by_name.find(member.name)};
+        auto const renamed{renamed_member.has_value() && renamed_member->second == member.name};
+        auto const found{
+            source_by_name.find(renamed ? renamed_member->first : std::string_view{member.name})};
         if (found == source_by_name.end()) {
             append_row("    " + render_soa_member(member));
             continue;
         }
 
         std::vector<SourceReplacement> member_replacements;
+        if (renamed &&
+            !patch_source_form(
+                found->second.form->children[1], member.name, original, member_replacements)) {
+            return std::nullopt;
+        }
         if (!patch_source_form(found->second.form->children[2],
                                std::string{soa_member_kind_name(member.kind)},
                                original,
@@ -1904,30 +3413,38 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                                member_replacements)) {
             return std::nullopt;
         }
-        std::string dimensions;
-        if (!member.mask_dimensions.empty()) {
-            dimensions = "(";
-            for (std::size_t dimension_index{}; dimension_index < member.mask_dimensions.size();
-                 ++dimension_index) {
-                auto const& dimension{member.mask_dimensions[dimension_index]};
-                dimensions += dimension_index == 0 ? "" : " ";
-                dimensions += "(" + dimension.index_name + " " + quote(dimension.extent) + ")";
-            }
-            dimensions += ')';
-        }
-        auto const member_properties{std::array<SourceProperty, 4>{
+        auto const member_properties{std::array<SourceProperty, 3>{
             std::pair{"fixed-schema", member.fixed_schema},
             std::pair{"nested-schema", member.nested_schema},
             std::pair{"mask-field",
-                      member.mask_field ? std::optional<std::string>{"true"} : std::nullopt},
-            std::pair{"mask-dimensions",
-                      dimensions.empty() ? std::nullopt : std::optional{dimensions}}}};
+                      member.mask_field ? std::optional<std::string>{"true"} : std::nullopt}}};
         if (!patch_source_properties(*found->second.form,
                                      3,
                                      member_properties,
                                      "      ",
                                      original,
-                                     member_replacements)) {
+                                     member_replacements) ||
+            !patch_source_mask_dimensions(
+                *found->second.form, member.mask_dimensions, original, member_replacements)) {
+            return std::nullopt;
+        }
+        Form const* source_relation{};
+        for (auto const& nested : found->second.form->children) {
+            if (nested.head() != "relation") {
+                continue;
+            }
+            if (source_relation != nullptr) {
+                return std::nullopt;
+            }
+            source_relation = &nested;
+        }
+        if (!patch_source_optional_relation(*found->second.form,
+                                            source_relation,
+                                            member.relationship,
+                                            "      ",
+                                            "        ",
+                                            original,
+                                            member_replacements)) {
             return std::nullopt;
         }
         auto rendered{apply_source_replacements_to_range(
@@ -1940,11 +3457,6 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
     replacements.push_back(
         {.begin = members_begin, .end = members_end, .text = std::move(rendered_members)});
 
-    auto render_quoted_values = [](std::vector<std::string> const& values) {
-        std::ostringstream rendered;
-        render_quoted_list(rendered, values);
-        return std::move(rendered).str();
-    };
     auto source_property = [](Form const& form, std::string_view const name) -> Form const* {
         for (std::size_t index{3}; index + 1 < form.children.size(); ++index) {
             if (form.children[index].token.kind == codegen::sexpr::TokenKind::keyword &&
@@ -2340,15 +3852,35 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
             }
             auto function_properties{rendered_function_properties(function)};
             auto const* source_body{source_property(*found->form, "body")};
+            auto const* source_dependencies{source_property(*found->form, "dependencies")};
+            auto const patch_body_rows{source_body != nullptr && source_body->is_list() &&
+                                       !function.body_lines.empty()};
+            auto const patch_dependency_rows{source_dependencies != nullptr &&
+                                             source_dependencies->is_list() &&
+                                             !function.dependencies.empty()};
+            auto retain_source_property = [&](Form const& property,
+                                              std::optional<std::string>& rendered) {
+                auto const property_end{source_form_end(property, original)};
+                if (!property_end.has_value()) {
+                    return false;
+                }
+                rendered = std::string{original.substr(property.token.span.offset,
+                                                       *property_end - property.token.span.offset)};
+                return true;
+            };
             if (source_body != nullptr &&
                 source_body->token.kind == codegen::sexpr::TokenKind::raw_literal &&
                 body_property_matches(*found->form, function)) {
-                auto const body_end{source_form_end(*source_body, original)};
-                if (!body_end.has_value()) {
+                if (!retain_source_property(*source_body, function_properties[0].second)) {
                     return std::nullopt;
                 }
-                function_properties.front().second = std::string{original.substr(
-                    source_body->token.span.offset, *body_end - source_body->token.span.offset)};
+            } else if (patch_body_rows &&
+                       !retain_source_property(*source_body, function_properties[0].second)) {
+                return std::nullopt;
+            }
+            if (patch_dependency_rows &&
+                !retain_source_property(*source_dependencies, function_properties[1].second)) {
+                return std::nullopt;
             }
             if (!patch_source_properties(*found->form,
                                          2,
@@ -2356,6 +3888,25 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
                                          "      ",
                                          original,
                                          function_replacements)) {
+                return std::nullopt;
+            }
+            if ((patch_body_rows && !patch_source_quoted_list_property(*found->form,
+                                                                       2,
+                                                                       "body",
+                                                                       function.body_lines,
+                                                                       "      ",
+                                                                       "        ",
+                                                                       original,
+                                                                       function_replacements)) ||
+                (patch_dependency_rows &&
+                 !patch_source_quoted_list_property(*found->form,
+                                                    2,
+                                                    "dependencies",
+                                                    function.dependencies,
+                                                    "      ",
+                                                    "        ",
+                                                    original,
+                                                    function_replacements))) {
                 return std::nullopt;
             }
             if (!patch_function_parameters(*found->form, function, function_replacements)) {
@@ -2514,6 +4065,195 @@ void for_each_declaration(codegen::Manifest const& manifest, Function&& function
                 }
             },
             module);
+    }
+}
+
+void refresh_declaration_locations(codegen::Manifest const& manifest,
+                                   TypeGraph const& types,
+                                   std::vector<DeclarationInfo>& declarations) {
+    std::set<DeclarationId> located;
+    for_each_declaration(
+        manifest,
+        [&](std::size_t const module_index,
+            std::size_t const declaration_index,
+            codegen::ModuleSettings const& settings,
+            std::string const& name) {
+            auto const declaration{
+                std::ranges::find_if(declarations, [&](DeclarationInfo const& candidate) {
+                    return candidate.module_index == module_index &&
+                           candidate.identity.name == name;
+                })};
+            if (declaration == declarations.end() || !located.insert(declaration->id).second) {
+                throw std::logic_error{"Cannot reconcile declaration locations after module move"};
+            }
+            auto const type{types.find_declared(settings.name, name)};
+            if (!type.has_value()) {
+                throw std::logic_error{"Resolved graph omitted moved declaration '" +
+                                       settings.name + ":" + name + "'"};
+            }
+            declaration->identity = types.type(*type).identity;
+            declaration->declaration_index = declaration_index;
+        });
+    if (located.size() != declarations.size()) {
+        throw std::logic_error{"Cannot reconcile every declaration after module move"};
+    }
+}
+
+enum class LocalSoaReferencePolicy { ignore, rename, reject };
+
+void repair_semantic_references(codegen::Manifest& manifest,
+                                TypeGraph const& types,
+                                std::span<DeclarationInfo const> const declarations,
+                                TypeId const target,
+                                std::string const& new_spelling,
+                                std::size_t const target_module_index,
+                                std::string_view const old_name,
+                                LocalSoaReferencePolicy const local_soa_policy,
+                                std::string_view const new_local_name = {}) {
+    auto repair_ref = [&](codegen::TypeRef& reference, TypeId const resolved) {
+        if (resolved != target) {
+            return;
+        }
+        if (reference.name.starts_with('@')) {
+            throw std::invalid_argument{"Cannot repair registered semantic reference '" +
+                                        reference.name + "' to '" + std::string{old_name} + "'"};
+        }
+        reference.name = new_spelling;
+    };
+
+    auto const target_is_soa{std::holds_alternative<SoaType>(types.type(target).definition)};
+    for (auto const& user_info : declarations) {
+        auto const user_type{types.find(user_info.identity)};
+        if (!user_type.has_value()) {
+            continue;
+        }
+        auto const& definition{types.type(*user_type).definition};
+        auto& module{manifest.modules[user_info.module_index]};
+        if (auto const* resolved{std::get_if<EnumType>(&definition)}) {
+            auto& schema{
+                std::get<codegen::EnumModuleSchema>(module).enums[user_info.declaration_index]};
+            if (schema.underlying_type.has_value() && resolved->underlying_type.has_value()) {
+                repair_ref(*schema.underlying_type, resolved->underlying_type->type);
+            }
+        } else if (auto const* resolved{std::get_if<IntegerScalarType>(&definition)}) {
+            auto& scalar{
+                std::get<codegen::ScalarModuleSchema>(module).scalars[user_info.declaration_index]};
+            if (scalar.relationship.has_value() && resolved->relationship.has_value()) {
+                repair_ref(scalar.relationship->target, resolved->relationship->target.type);
+            }
+        } else if (auto const* resolved{std::get_if<LinearQuantizedType>(&definition)}) {
+            auto& representations{std::get<codegen::RepresentationModuleSchema>(module)};
+            repair_ref(representations.linear_quantized[user_info.declaration_index].source,
+                       resolved->source.type);
+        } else if (auto const* resolved{std::get_if<IntegerVarintType>(&definition)}) {
+            auto& representations{std::get<codegen::RepresentationModuleSchema>(module)};
+            auto const index{user_info.declaration_index - representations.linear_quantized.size()};
+            repair_ref(representations.integer_varints[index].source, resolved->source.type);
+        } else if (auto const* resolved{std::get_if<OptionalSentinelType>(&definition)}) {
+            auto& representations{std::get<codegen::RepresentationModuleSchema>(module)};
+            auto const index{user_info.declaration_index - representations.linear_quantized.size() -
+                             representations.integer_varints.size() -
+                             representations.fixed_points.size()};
+            repair_ref(representations.optional_sentinels[index].source, resolved->source.type);
+        } else if (auto const* resolved{std::get_if<OptionalPresenceBitType>(&definition)}) {
+            auto& representations{std::get<codegen::RepresentationModuleSchema>(module)};
+            auto const index{user_info.declaration_index - representations.linear_quantized.size() -
+                             representations.integer_varints.size() -
+                             representations.fixed_points.size() -
+                             representations.optional_sentinels.size()};
+            repair_ref(representations.optional_presence_bits[index].source, resolved->source.type);
+        } else if (auto const* resolved{std::get_if<PackedType>(&definition)}) {
+            auto& schema{std::get<codegen::PackedValueModuleSchema>(module)
+                             .values[user_info.declaration_index]};
+            repair_ref(schema.storage_type, resolved->storage_type.type);
+            for (std::size_t index{}; index < schema.segments.size(); ++index) {
+                auto* source_field{
+                    std::get_if<codegen::PackedFieldSchema>(&schema.segments[index])};
+                auto const* resolved_field{std::get_if<PackedField>(&resolved->segments[index])};
+                if (source_field == nullptr || resolved_field == nullptr) {
+                    continue;
+                }
+                repair_ref(source_field->type, resolved_field->semantic_type.type);
+                if (source_field->relationship.has_value() &&
+                    resolved_field->relationship.has_value()) {
+                    repair_ref(source_field->relationship->target,
+                               resolved_field->relationship->target.type);
+                }
+            }
+        } else if (auto const* resolved{std::get_if<RecordType>(&definition)}) {
+            auto& schema{
+                std::get<codegen::RecordModuleSchema>(module).records[user_info.declaration_index]};
+            for (std::size_t index{}; index < schema.members.size(); ++index) {
+                repair_ref(schema.members[index].type, resolved->members[index].semantic_type.type);
+                if (schema.members[index].relationship.has_value() &&
+                    resolved->members[index].relationship.has_value()) {
+                    repair_ref(schema.members[index].relationship->target,
+                               resolved->members[index].relationship->target.type);
+                }
+            }
+        } else if (auto const* resolved{std::get_if<UnionType>(&definition)}) {
+            auto& schema{
+                std::get<codegen::UnionModuleSchema>(module).unions[user_info.declaration_index]};
+            for (std::size_t index{}; index < schema.alternatives.size(); ++index) {
+                repair_ref(schema.alternatives[index].type,
+                           resolved->alternatives[index].semantic_type.type);
+            }
+        } else if (auto const* resolved{std::get_if<TaggedUnionType>(&definition)}) {
+            auto& union_module{std::get<codegen::UnionModuleSchema>(module)};
+            auto const tagged_index{user_info.declaration_index - union_module.unions.size()};
+            auto& schema{union_module.tagged_unions[tagged_index]};
+            repair_ref(schema.discriminant, resolved->discriminant.type);
+            for (std::size_t index{}; index < schema.alternatives.size(); ++index) {
+                repair_ref(schema.alternatives[index].type,
+                           resolved->alternatives[index].semantic_type.type);
+            }
+        } else if (auto const* resolved{std::get_if<SoaType>(&definition)}) {
+            auto* soa_module{std::get_if<codegen::SoaModuleSchema>(&module)};
+            if (soa_module == nullptr) {
+                auto* vector_module{std::get_if<codegen::VectorModuleSchema>(&module)};
+                if (vector_module != nullptr) {
+                    if (!resolved->columns.empty()) {
+                        repair_ref(vector_module->value_type,
+                                   resolved->columns.front().semantic_type.type);
+                    }
+                    if (resolved->equivalent_type.has_value()) {
+                        repair_ref(vector_module->equivalent_type, resolved->equivalent_type->type);
+                    }
+                }
+                continue;
+            }
+            auto& schema{soa_module->structs[user_info.declaration_index]};
+            for (std::size_t index{}; index < schema.members.size(); ++index) {
+                auto& source_member{schema.members[index]};
+                repair_ref(source_member.type, resolved->columns[index].semantic_type.type);
+                if (source_member.relationship.has_value() &&
+                    resolved->columns[index].relationship.has_value()) {
+                    repair_ref(source_member.relationship->target,
+                               resolved->columns[index].relationship->target.type);
+                }
+                auto const nested_reference{target_is_soa &&
+                                            resolved->columns[index].nested_type == target &&
+                                            source_member.nested_schema.has_value()};
+                auto const fixed_reference{target_is_soa &&
+                                           user_info.module_index == target_module_index &&
+                                           source_member.fixed_schema == old_name};
+                if ((nested_reference || fixed_reference) &&
+                    local_soa_policy == LocalSoaReferencePolicy::reject) {
+                    throw std::invalid_argument{
+                        "Cannot move SoA '" + std::string{old_name} +
+                        "' across modules while module-local nested/fixed schema references exist"};
+                }
+                if (nested_reference && local_soa_policy == LocalSoaReferencePolicy::rename) {
+                    source_member.nested_schema = new_local_name;
+                }
+                if (fixed_reference && local_soa_policy == LocalSoaReferencePolicy::rename) {
+                    source_member.fixed_schema = new_local_name;
+                }
+            }
+            if (schema.equivalent_type.has_value() && resolved->equivalent_type.has_value()) {
+                repair_ref(*schema.equivalent_type, resolved->equivalent_type->type);
+            }
+        }
     }
 }
 
@@ -3030,9 +4770,10 @@ auto EditableSchemaDocument::preview_source_updates() const
             [&](auto const& edit) {
                 if constexpr (requires { edit.enum_declaration; }) {
                     touched.insert(edit.enum_declaration);
-                } else {
+                } else if constexpr (requires { edit.declaration; }) {
                     touched.insert(edit.declaration);
-                    if constexpr (std::is_same_v<std::decay_t<decltype(edit)>, RenameDeclaration>) {
+                    if constexpr (std::is_same_v<std::decay_t<decltype(edit)>, RenameDeclaration> ||
+                                  std::is_same_v<std::decay_t<decltype(edit)>, MoveDeclaration>) {
                         auto const* renamed{declaration(edit.declaration)};
                         if (renamed != nullptr) {
                             auto const type{types_.find(renamed->identity)};
@@ -3087,13 +4828,24 @@ auto EditableSchemaDocument::preview_source_updates() const
                                    auto const preserve,
                                    auto const canonical) -> std::optional<std::string> {
         auto const* info{declaration(id)};
-        if (info != nullptr && info->source.has_value()) {
-            auto const& range{*info->source};
-            auto const& source{source_files_[range.source_file_index].text};
+        auto range{info == nullptr ? std::optional<SourceRange>{} : info->source};
+        if (!range.has_value()) {
+            auto const tombstone{source_tombstones_.find(id)};
+            if (tombstone != source_tombstones_.end()) {
+                range = tombstone->second;
+            }
+        }
+        if (range.has_value()) {
+            auto const& source{source_files_[range->source_file_index].text};
             auto const original{std::string_view{source}.substr(
-                range.begin_offset, range.end_offset - range.begin_offset)};
+                range->begin_offset, range->end_offset - range->begin_offset)};
             if (auto preserved{preserve(schema, original)}) {
                 return preserved;
+            }
+            if (auto renamed{try_patch_owned_declaration_name(original, schema.name)}) {
+                if (auto preserved{preserve(schema, *renamed)}) {
+                    return preserved;
+                }
             }
         }
         return canonical(schema);
@@ -3176,36 +4928,99 @@ auto EditableSchemaDocument::preview_source_updates() const
                  .end = info->source->end_offset,
                  .text = *rendered});
         } else {
+            auto const tombstone{source_tombstones_.find(id)};
+            if (tombstone != source_tombstones_.end()) {
+                auto const& source{tombstone->second};
+                replacements[source.source_file_index].push_back(
+                    {.begin = source.begin_offset, .end = source.end_offset, .text = {}});
+            }
             insertions[info->module_index].insert(id);
         }
     }
+    struct InsertionBoundary {
+        std::size_t source_file_index{};
+        std::size_t offset{};
+        bool before_declaration{};
+
+        auto operator<=>(InsertionBoundary const&) const = default;
+    };
+    std::map<InsertionBoundary, std::vector<DeclarationInfo const*>> bounded_insertions;
     for (auto const& [module_index, ids] : insertions) {
+        if (pending_module_sources_.contains(module_index)) {
+            continue;
+        }
         if (module_index >= module_source_ranges_.size() ||
             !module_source_ranges_[module_index].has_value()) {
             return std::unexpected{SchemaEditError{"New declaration's module has no source range"}};
         }
-        auto const& module_range{*module_source_ranges_[module_index]};
-        std::string insertion;
-        std::vector<DeclarationInfo const*> ordered;
         for (auto const& declaration_info : declarations_) {
-            if (declaration_info.module_index == module_index &&
-                ids.contains(declaration_info.id)) {
-                ordered.push_back(&declaration_info);
+            if (declaration_info.module_index != module_index ||
+                !ids.contains(declaration_info.id)) {
+                continue;
+            }
+
+            DeclarationInfo const* next{};
+            for (auto const& candidate : declarations_) {
+                if (candidate.module_index == module_index && candidate.source.has_value() &&
+                    candidate.declaration_index > declaration_info.declaration_index &&
+                    (next == nullptr || candidate.declaration_index < next->declaration_index)) {
+                    next = &candidate;
+                }
+            }
+            if (next != nullptr) {
+                auto const& source{source_files_[next->source->source_file_index].text};
+                auto const line_break{next->source->begin_offset == 0
+                                          ? std::string::npos
+                                          : source.rfind('\n', next->source->begin_offset - 1)};
+                auto const line_begin{line_break == std::string::npos ? 0 : line_break + 1};
+                bounded_insertions[{.source_file_index = next->source->source_file_index,
+                                    .offset = line_begin,
+                                    .before_declaration = true}]
+                    .push_back(&declaration_info);
+            } else {
+                auto const& module_range{*module_source_ranges_[module_index]};
+                bounded_insertions[{.source_file_index = module_range.source_file_index,
+                                    .offset = module_range.end_offset - 1,
+                                    .before_declaration = false}]
+                    .push_back(&declaration_info);
             }
         }
-        std::ranges::sort(ordered, {}, &DeclarationInfo::declaration_index);
-        for (auto const* declaration_info : ordered) {
+    }
+    for (auto& [boundary, declarations] : bounded_insertions) {
+        std::ranges::sort(declarations, {}, &DeclarationInfo::declaration_index);
+        std::string insertion;
+        for (auto const* declaration_info : declarations) {
             auto const rendered{render_declaration(declaration_info->id)};
             if (!rendered.has_value()) {
                 return std::unexpected{
                     SchemaEditError{"New declaration kind cannot be serialized"}};
             }
-            insertion += "\n  " + *rendered;
+            insertion += boundary.before_declaration ? "  " + *rendered + "\n" : "\n  " + *rendered;
         }
-        replacements[module_range.source_file_index].push_back(
-            {.begin = module_range.end_offset - 1,
-             .end = module_range.end_offset - 1,
-             .text = std::move(insertion)});
+        replacements[boundary.source_file_index].push_back(
+            {.begin = boundary.offset, .end = boundary.offset, .text = std::move(insertion)});
+    }
+    std::map<std::size_t, std::string> pending_module_text;
+    for (auto const& [module_index, source_file_index] : pending_module_sources_) {
+        if (module_index >= manifest_.modules.size() || source_file_index >= source_files_.size()) {
+            return std::unexpected{SchemaEditError{"Invalid pending module source ownership"}};
+        }
+        auto rendered{render_editable_module(manifest_.modules[module_index])};
+        if (!rendered.has_value()) {
+            return std::unexpected{SchemaEditError{"New module kind cannot be serialized"}};
+        }
+        auto& insertion{pending_module_text[source_file_index]};
+        auto const& source{source_files_[source_file_index].text};
+        if (insertion.empty() && !source.empty()) {
+            insertion = source.ends_with('\n') ? "\n" : "\n\n";
+        }
+        insertion += std::move(*rendered) + "\n\n";
+    }
+    for (auto& [source_file_index, insertion] : pending_module_text) {
+        insertion.pop_back();
+        auto const& source{source_files_[source_file_index].text};
+        replacements[source_file_index].push_back(
+            {.begin = source.size(), .end = source.size(), .text = std::move(insertion)});
     }
 
     std::vector<SchemaSourceUpdate> updates;
@@ -3222,6 +5037,9 @@ auto EditableSchemaDocument::preview_source_updates() const
             }
             updated.replace(
                 replacement.begin, replacement.end - replacement.begin, replacement.text);
+        }
+        if (updated == source_files_[source_index].text) {
+            continue;
         }
         updates.push_back({.path = source_files_[source_index].path,
                            .original = source_files_[source_index].text,
@@ -3364,7 +5182,308 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
     return std::visit(
         [&](auto const& edit) -> std::expected<std::optional<SchemaEditCommand>, SchemaEditError> {
             using Edit = std::decay_t<decltype(edit)>;
-            if constexpr (std::is_same_v<Edit, SetEnumeratorDisplayName>) {
+            if constexpr (std::is_same_v<Edit, CreateModule>) {
+                if (edit.source_file_index == 0 || edit.source_file_index >= source_files_.size() ||
+                    std::ranges::find(module_paths_, source_files_[edit.source_file_index].path) ==
+                        module_paths_.end()) {
+                    return std::unexpected{
+                        SchemaEditError{"New modules require an existing loaded module source"}};
+                }
+                if (!render_editable_module(edit.schema).has_value()) {
+                    return std::unexpected{SchemaEditError{"Module kind is not editable"}};
+                }
+                if (declaration_count(edit.schema) != 0) {
+                    return std::unexpected{
+                        SchemaEditError{"CreateModule requires an empty module schema"}};
+                }
+
+                auto const module_index{manifest_.modules.size()};
+                manifest_.modules.push_back(edit.schema);
+                module_source_ranges_.push_back(std::nullopt);
+                pending_module_sources_.emplace(module_index, edit.source_file_index);
+                try {
+                    codegen::validate_manifest(manifest_);
+                    types_ = resolve_type_graph(manifest_);
+                } catch (std::exception const& error) {
+                    pending_module_sources_.erase(module_index);
+                    module_source_ranges_.pop_back();
+                    manifest_.modules.pop_back();
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+                return SchemaEditCommand{DeleteModule{.module_index = module_index}};
+            } else if constexpr (std::is_same_v<Edit, DeleteModule>) {
+                if (manifest_.modules.empty() ||
+                    edit.module_index + 1 != manifest_.modules.size()) {
+                    return std::unexpected{
+                        SchemaEditError{"Only the newest unsaved module can be removed"}};
+                }
+                auto const source{pending_module_sources_.find(edit.module_index)};
+                if (source == pending_module_sources_.end() ||
+                    declaration_count(manifest_.modules[edit.module_index]) != 0) {
+                    return std::unexpected{
+                        SchemaEditError{"Module is source-backed or still contains declarations"}};
+                }
+
+                auto schema{manifest_.modules.back()};
+                auto const source_file_index{source->second};
+                manifest_.modules.pop_back();
+                module_source_ranges_.pop_back();
+                pending_module_sources_.erase(source);
+                types_ = resolve_type_graph(manifest_);
+                return SchemaEditCommand{CreateModule{.source_file_index = source_file_index,
+                                                      .schema = std::move(schema)}};
+            } else if constexpr (std::is_same_v<Edit, MoveDeclaration>) {
+                auto const declaration_it{
+                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id)};
+                if (declaration_it == declarations_.end()) {
+                    return std::unexpected{SchemaEditError{"Unknown declaration"}};
+                }
+                if (edit.module_index >= manifest_.modules.size()) {
+                    return std::unexpected{SchemaEditError{"Unknown destination module index"}};
+                }
+                if (edit.module_index == declaration_it->module_index) {
+                    return std::nullopt;
+                }
+                if (declaration_it->source.has_value() &&
+                    pending_module_sources_.contains(edit.module_index)) {
+                    return std::unexpected{SchemaEditError{
+                        "Save a newly created module before moving source-backed declarations into "
+                        "it"}};
+                }
+
+                auto const& source_settings{std::visit(
+                    [](auto const& module) -> codegen::ModuleSettings const& {
+                        return module.settings;
+                    },
+                    manifest_.modules[declaration_it->module_index])};
+                auto const& destination_settings{std::visit(
+                    [](auto const& module) -> codegen::ModuleSettings const& {
+                        return module.settings;
+                    },
+                    manifest_.modules[edit.module_index])};
+
+                auto restored_source{std::optional<SourceRange>{}};
+                if (edit.restore_source_ownership) {
+                    auto const tombstone{source_tombstones_.find(edit.declaration)};
+                    if (tombstone == source_tombstones_.end()) {
+                        return std::unexpected{SchemaEditError{
+                            "Moved declaration has no source ownership to restore"}};
+                    }
+                    restored_source = tombstone->second;
+                }
+
+                auto const previous_manifest{manifest_};
+                auto const previous_declarations{declarations_};
+                auto const previous_tombstones{source_tombstones_};
+                auto const original_info{*declaration_it};
+                auto const target{types_.find(original_info.identity)};
+                if (!target.has_value()) {
+                    return std::unexpected{
+                        SchemaEditError{"Declaration is missing from the type graph"}};
+                }
+                auto const namespace_changed{source_settings.namespace_name !=
+                                             destination_settings.namespace_name};
+                if (namespace_changed) {
+                    for (auto const& [registered_name, cpp_type] : manifest_.types) {
+                        static_cast<void>(cpp_type);
+                        if (types_.find_registered(registered_name) == target) {
+                            return std::unexpected{SchemaEditError{
+                                "Moving a declaration registered as '@" + registered_name +
+                                "' across namespaces requires source-aware types-registry "
+                                "editing"}};
+                        }
+                    }
+                }
+                if (namespace_changed) {
+                    auto const new_spelling{destination_settings.namespace_name.has_value()
+                                                ? *destination_settings.namespace_name +
+                                                      "::" + original_info.identity.name
+                                                : original_info.identity.name};
+                    try {
+                        repair_semantic_references(manifest_,
+                                                   types_,
+                                                   declarations_,
+                                                   *target,
+                                                   new_spelling,
+                                                   original_info.module_index,
+                                                   original_info.identity.name,
+                                                   LocalSoaReferencePolicy::reject);
+                    } catch (std::exception const& error) {
+                        manifest_ = previous_manifest;
+                        return std::unexpected{SchemaEditError{error.what()}};
+                    }
+                }
+                auto move_schema = [&]<typename Schema>(std::vector<Schema>& source,
+                                                        std::size_t const source_index,
+                                                        std::vector<Schema>& destination)
+                    -> std::expected<std::size_t, SchemaEditError> {
+                    if (source_index >= source.size()) {
+                        return std::unexpected{
+                            SchemaEditError{"Declaration has an invalid source position"}};
+                    }
+                    auto const insertion_index{edit.insertion_index.value_or(destination.size())};
+                    if (insertion_index > destination.size()) {
+                        return std::unexpected{
+                            SchemaEditError{"Invalid destination insertion index"}};
+                    }
+                    auto schema{std::move(source[source_index])};
+                    source.erase(source.begin() + static_cast<std::ptrdiff_t>(source_index));
+                    destination.insert(destination.begin() +
+                                           static_cast<std::ptrdiff_t>(insertion_index),
+                                       std::move(schema));
+                    return source_index;
+                };
+
+                auto moved{std::expected<std::size_t, SchemaEditError>{
+                    std::unexpected{SchemaEditError{"Destination module is incompatible"}}}};
+                auto& source_module{manifest_.modules[original_info.module_index]};
+                auto& destination_module{manifest_.modules[edit.module_index]};
+                if (enum_schema(edit.declaration) != nullptr) {
+                    auto* source{std::get_if<codegen::EnumModuleSchema>(&source_module)};
+                    auto* destination{std::get_if<codegen::EnumModuleSchema>(&destination_module)};
+                    if (source != nullptr && destination != nullptr) {
+                        moved = move_schema(
+                            source->enums, original_info.declaration_index, destination->enums);
+                    }
+                } else if (packed_value_schema(edit.declaration) != nullptr) {
+                    auto* source{std::get_if<codegen::PackedValueModuleSchema>(&source_module)};
+                    auto* destination{
+                        std::get_if<codegen::PackedValueModuleSchema>(&destination_module)};
+                    if (source != nullptr && destination != nullptr) {
+                        moved = move_schema(
+                            source->values, original_info.declaration_index, destination->values);
+                    }
+                } else if (integer_scalar_schema(edit.declaration) != nullptr) {
+                    auto* source{std::get_if<codegen::ScalarModuleSchema>(&source_module)};
+                    auto* destination{
+                        std::get_if<codegen::ScalarModuleSchema>(&destination_module)};
+                    if (source != nullptr && destination != nullptr) {
+                        moved = move_schema(
+                            source->scalars, original_info.declaration_index, destination->scalars);
+                    }
+                } else if (linear_quantized_schema(edit.declaration) != nullptr) {
+                    auto* source{std::get_if<codegen::RepresentationModuleSchema>(&source_module)};
+                    auto* destination{
+                        std::get_if<codegen::RepresentationModuleSchema>(&destination_module)};
+                    if (source != nullptr && destination != nullptr) {
+                        moved = move_schema(source->linear_quantized,
+                                            original_info.declaration_index,
+                                            destination->linear_quantized);
+                    }
+                } else if (integer_varint_schema(edit.declaration) != nullptr) {
+                    auto* source{std::get_if<codegen::RepresentationModuleSchema>(&source_module)};
+                    auto* destination{
+                        std::get_if<codegen::RepresentationModuleSchema>(&destination_module)};
+                    if (source != nullptr && destination != nullptr) {
+                        moved = move_schema(source->integer_varints,
+                                            original_info.declaration_index -
+                                                source->linear_quantized.size(),
+                                            destination->integer_varints);
+                    }
+                } else if (fixed_point_schema(edit.declaration) != nullptr) {
+                    auto* source{std::get_if<codegen::RepresentationModuleSchema>(&source_module)};
+                    auto* destination{
+                        std::get_if<codegen::RepresentationModuleSchema>(&destination_module)};
+                    if (source != nullptr && destination != nullptr) {
+                        auto const offset{source->linear_quantized.size() +
+                                          source->integer_varints.size()};
+                        moved = move_schema(source->fixed_points,
+                                            original_info.declaration_index - offset,
+                                            destination->fixed_points);
+                    }
+                } else if (optional_sentinel_schema(edit.declaration) != nullptr) {
+                    auto* source{std::get_if<codegen::RepresentationModuleSchema>(&source_module)};
+                    auto* destination{
+                        std::get_if<codegen::RepresentationModuleSchema>(&destination_module)};
+                    if (source != nullptr && destination != nullptr) {
+                        auto const offset{source->linear_quantized.size() +
+                                          source->integer_varints.size() +
+                                          source->fixed_points.size()};
+                        moved = move_schema(source->optional_sentinels,
+                                            original_info.declaration_index - offset,
+                                            destination->optional_sentinels);
+                    }
+                } else if (optional_presence_bit_schema(edit.declaration) != nullptr) {
+                    auto* source{std::get_if<codegen::RepresentationModuleSchema>(&source_module)};
+                    auto* destination{
+                        std::get_if<codegen::RepresentationModuleSchema>(&destination_module)};
+                    if (source != nullptr && destination != nullptr) {
+                        auto const offset{
+                            source->linear_quantized.size() + source->integer_varints.size() +
+                            source->fixed_points.size() + source->optional_sentinels.size()};
+                        moved = move_schema(source->optional_presence_bits,
+                                            original_info.declaration_index - offset,
+                                            destination->optional_presence_bits);
+                    }
+                } else if (mini_float_schema(edit.declaration) != nullptr) {
+                    auto* source{std::get_if<codegen::RepresentationModuleSchema>(&source_module)};
+                    auto* destination{
+                        std::get_if<codegen::RepresentationModuleSchema>(&destination_module)};
+                    if (source != nullptr && destination != nullptr) {
+                        auto const offset{
+                            source->linear_quantized.size() + source->integer_varints.size() +
+                            source->fixed_points.size() + source->optional_sentinels.size() +
+                            source->optional_presence_bits.size()};
+                        moved = move_schema(source->mini_floats,
+                                            original_info.declaration_index - offset,
+                                            destination->mini_floats);
+                    }
+                } else if (record_schema(edit.declaration) != nullptr) {
+                    auto* source{std::get_if<codegen::RecordModuleSchema>(&source_module)};
+                    auto* destination{
+                        std::get_if<codegen::RecordModuleSchema>(&destination_module)};
+                    if (source != nullptr && destination != nullptr) {
+                        moved = move_schema(
+                            source->records, original_info.declaration_index, destination->records);
+                    }
+                } else if (union_schema(edit.declaration) != nullptr) {
+                    auto* source{std::get_if<codegen::UnionModuleSchema>(&source_module)};
+                    auto* destination{std::get_if<codegen::UnionModuleSchema>(&destination_module)};
+                    if (source != nullptr && destination != nullptr) {
+                        moved = move_schema(
+                            source->unions, original_info.declaration_index, destination->unions);
+                    }
+                } else if (tagged_union_schema(edit.declaration) != nullptr) {
+                    auto* source{std::get_if<codegen::UnionModuleSchema>(&source_module)};
+                    auto* destination{std::get_if<codegen::UnionModuleSchema>(&destination_module)};
+                    if (source != nullptr && destination != nullptr) {
+                        moved = move_schema(source->tagged_unions,
+                                            original_info.declaration_index - source->unions.size(),
+                                            destination->tagged_unions);
+                    }
+                } else if (soa_schema(edit.declaration) != nullptr) {
+                    auto* source{std::get_if<codegen::SoaModuleSchema>(&source_module)};
+                    auto* destination{std::get_if<codegen::SoaModuleSchema>(&destination_module)};
+                    if (source != nullptr && destination != nullptr) {
+                        moved = move_schema(
+                            source->structs, original_info.declaration_index, destination->structs);
+                    }
+                }
+                if (!moved.has_value()) {
+                    manifest_ = previous_manifest;
+                    return std::unexpected{std::move(moved.error())};
+                }
+
+                remember_source_tombstone(original_info);
+                declaration_it->module_index = edit.module_index;
+                declaration_it->source = restored_source;
+                try {
+                    codegen::validate_manifest(manifest_);
+                    auto resolved{resolve_type_graph(manifest_)};
+                    refresh_declaration_locations(manifest_, resolved, declarations_);
+                    types_ = std::move(resolved);
+                } catch (std::exception const& error) {
+                    manifest_ = previous_manifest;
+                    declarations_ = previous_declarations;
+                    source_tombstones_ = previous_tombstones;
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+                return SchemaEditCommand{
+                    MoveDeclaration{.declaration = edit.declaration,
+                                    .module_index = original_info.module_index,
+                                    .insertion_index = *moved,
+                                    .restore_source_ownership = original_info.source.has_value()}};
+            } else if constexpr (std::is_same_v<Edit, SetEnumeratorDisplayName>) {
                 auto const* info{declaration(edit.enum_declaration)};
                 if (info == nullptr) {
                     return std::unexpected{SchemaEditError{"Unknown declaration id"}};
@@ -3795,131 +5914,16 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                 auto const new_spelling{target_settings.namespace_name.has_value()
                                             ? *target_settings.namespace_name + "::" + edit.new_name
                                             : edit.new_name};
-                auto repair_ref = [&](codegen::TypeRef& reference, TypeId const resolved) {
-                    if (resolved != *target) {
-                        return;
-                    }
-                    if (reference.name.starts_with('@')) {
-                        throw std::invalid_argument{
-                            "Cannot repair registered semantic reference '" + reference.name +
-                            "' while renaming '" + old_name + "'"};
-                    }
-                    reference.name = new_spelling;
-                };
-
                 try {
-                    for (auto const& user_info : declarations_) {
-                        auto const user_type{types_.find(user_info.identity)};
-                        if (!user_type.has_value()) {
-                            continue;
-                        }
-                        auto const& definition{types_.type(*user_type).definition};
-                        auto& module{manifest_.modules[user_info.module_index]};
-                        if (auto const* resolved{std::get_if<LinearQuantizedType>(&definition)}) {
-                            auto& representations{
-                                std::get<codegen::RepresentationModuleSchema>(module)};
-                            repair_ref(representations.linear_quantized[user_info.declaration_index]
-                                           .source,
-                                       resolved->source.type);
-                        } else if (auto const* resolved{
-                                       std::get_if<IntegerVarintType>(&definition)}) {
-                            auto& representations{
-                                std::get<codegen::RepresentationModuleSchema>(module)};
-                            auto const index{user_info.declaration_index -
-                                             representations.linear_quantized.size()};
-                            repair_ref(representations.integer_varints[index].source,
-                                       resolved->source.type);
-                        } else if (auto const* resolved{
-                                       std::get_if<OptionalSentinelType>(&definition)}) {
-                            auto& representations{
-                                std::get<codegen::RepresentationModuleSchema>(module)};
-                            auto const index{user_info.declaration_index -
-                                             representations.linear_quantized.size() -
-                                             representations.integer_varints.size() -
-                                             representations.fixed_points.size()};
-                            repair_ref(representations.optional_sentinels[index].source,
-                                       resolved->source.type);
-                        } else if (auto const* resolved{
-                                       std::get_if<OptionalPresenceBitType>(&definition)}) {
-                            auto& representations{
-                                std::get<codegen::RepresentationModuleSchema>(module)};
-                            auto const index{user_info.declaration_index -
-                                             representations.linear_quantized.size() -
-                                             representations.integer_varints.size() -
-                                             representations.fixed_points.size() -
-                                             representations.optional_sentinels.size()};
-                            repair_ref(representations.optional_presence_bits[index].source,
-                                       resolved->source.type);
-                        } else if (auto const* resolved{std::get_if<PackedType>(&definition)}) {
-                            auto& schema{std::get<codegen::PackedValueModuleSchema>(module)
-                                             .values[user_info.declaration_index]};
-                            for (std::size_t index{}; index < schema.segments.size(); ++index) {
-                                auto* source_field{std::get_if<codegen::PackedFieldSchema>(
-                                    &schema.segments[index])};
-                                auto const* resolved_field{
-                                    std::get_if<PackedField>(&resolved->segments[index])};
-                                if (source_field == nullptr || resolved_field == nullptr) {
-                                    continue;
-                                }
-                                repair_ref(source_field->type, resolved_field->semantic_type.type);
-                                if (source_field->relationship.has_value() &&
-                                    resolved_field->relationship.has_value()) {
-                                    repair_ref(source_field->relationship->target,
-                                               resolved_field->relationship->target.type);
-                                }
-                            }
-                        } else if (auto const* resolved{std::get_if<RecordType>(&definition)}) {
-                            auto& schema{std::get<codegen::RecordModuleSchema>(module)
-                                             .records[user_info.declaration_index]};
-                            for (std::size_t index{}; index < schema.members.size(); ++index) {
-                                repair_ref(schema.members[index].type,
-                                           resolved->members[index].semantic_type.type);
-                            }
-                        } else if (auto const* resolved{std::get_if<UnionType>(&definition)}) {
-                            auto& schema{std::get<codegen::UnionModuleSchema>(module)
-                                             .unions[user_info.declaration_index]};
-                            for (std::size_t index{}; index < schema.alternatives.size(); ++index) {
-                                repair_ref(schema.alternatives[index].type,
-                                           resolved->alternatives[index].semantic_type.type);
-                            }
-                        } else if (auto const* resolved{
-                                       std::get_if<TaggedUnionType>(&definition)}) {
-                            auto& union_module{std::get<codegen::UnionModuleSchema>(module)};
-                            auto const tagged_index{user_info.declaration_index -
-                                                    union_module.unions.size()};
-                            auto& schema{union_module.tagged_unions[tagged_index]};
-                            repair_ref(schema.discriminant, resolved->discriminant.type);
-                            for (std::size_t index{}; index < schema.alternatives.size(); ++index) {
-                                repair_ref(schema.alternatives[index].type,
-                                           resolved->alternatives[index].semantic_type.type);
-                            }
-                        } else if (auto const* resolved{std::get_if<SoaType>(&definition)}) {
-                            auto* soa_module{std::get_if<codegen::SoaModuleSchema>(&module)};
-                            if (soa_module == nullptr) {
-                                continue;
-                            }
-                            auto& schema{soa_module->structs[user_info.declaration_index]};
-                            for (std::size_t index{}; index < schema.members.size(); ++index) {
-                                auto& source_member{schema.members[index]};
-                                repair_ref(source_member.type,
-                                           resolved->columns[index].semantic_type.type);
-                                if (resolved->columns[index].nested_type == target &&
-                                    source_member.nested_schema.has_value()) {
-                                    source_member.nested_schema = edit.new_name;
-                                }
-                                if (user_info.module_index == declaration_it->module_index &&
-                                    source_member.fixed_schema == old_name) {
-                                    source_member.fixed_schema = edit.new_name;
-                                }
-                            }
-                            if (schema.equivalent_type.has_value() &&
-                                resolved->equivalent_type.has_value()) {
-                                repair_ref(*schema.equivalent_type,
-                                           resolved->equivalent_type->type);
-                            }
-                        }
-                    }
-
+                    repair_semantic_references(manifest_,
+                                               types_,
+                                               declarations_,
+                                               *target,
+                                               new_spelling,
+                                               declaration_it->module_index,
+                                               old_name,
+                                               LocalSoaReferencePolicy::rename,
+                                               edit.new_name);
                     auto& target_module{manifest_.modules[declaration_it->module_index]};
                     if (std::holds_alternative<EnumType>(target_definition)) {
                         std::get<codegen::EnumModuleSchema>(target_module)

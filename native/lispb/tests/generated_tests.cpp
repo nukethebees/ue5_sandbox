@@ -718,6 +718,15 @@ TEST(GeneratedEnum, ValuesAndConversions) {
           "<invalid EReflectedFixture>");
 }
 
+TEST(GeneratedIntegerScalar, ConstantsAndNameLookup) {
+    static_assert(DamageReason_Unknown == 0);
+    static_assert(DamageReason_Laser == 1);
+    static_assert(DamageReason_Invalid == 255);
+    static_assert(DamageReason_name(DamageReason_Unknown) == "Unknown");
+    static_assert(DamageReason_name(DamageReason_Laser) == "Laser");
+    static_assert(DamageReason_name(10).empty());
+}
+
 TEST(GeneratedStaticTable, Operations) {
     static_assert(FStaticTableFixture::num() == 3);
     static_assert(FStaticTableFixture::first_index == 0);

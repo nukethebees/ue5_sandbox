@@ -9,7 +9,9 @@
 #include <lispb/schema/type_graph.h>
 
 #include <iterator>
+#include <limits>
 #include <set>
+#include <sstream>
 #include <stdexcept>
 #include <type_traits>
 
@@ -53,6 +55,99 @@ auto lower_semantic_module(ModuleSettings const& settings) -> Module {
     };
 }
 
+auto scalar_constant_literal(CppType const& type, PackedIntegerValue const value) -> std::string {
+    std::string literal;
+    if (value.negative && value.magnitude == (std::uint64_t{1} << 63)) {
+        literal = "(-9223372036854775807LL - 1)";
+    } else {
+        literal = value.negative ? "-" : "";
+        literal += std::to_string(value.magnitude);
+        if (!value.negative && value.magnitude > static_cast<std::uint64_t>(
+                                                     (std::numeric_limits<std::int64_t>::max)())) {
+            literal += "ULL";
+        }
+    }
+    return "static_cast<" + type.spelling + ">(" + literal + ")";
+}
+
+auto scalar_cpp_type(TypeRef const& reference, std::map<std::string, CppType> const& types)
+    -> CppType {
+    auto type{resolve_type(reference, types)};
+    if (type.dependencies.empty() &&
+        (type.spelling.starts_with("std::uint") || type.spelling.starts_with("std::int"))) {
+        type.dependencies.push_back({type.spelling, "cstdint", {}});
+    } else if (type.dependencies.empty() &&
+               (type.spelling.starts_with("uint") || type.spelling.starts_with("int")) &&
+               type.spelling != "int") {
+        type.dependencies.push_back({type.spelling, "CoreTypes.h", {}});
+    }
+    return type;
+}
+
+auto lower_scalar_module(ScalarModuleSchema const& module,
+                         std::map<std::string, CppType> const& types) -> Module {
+    NodeListBuilder declarations;
+    for (auto const& scalar : module.scalars) {
+        if (scalar.cpp_emission == IntegerScalarCppEmission::none) {
+            continue;
+        }
+        if (!scalar.cpp_type.has_value()) {
+            throw std::invalid_argument{"Integer scalar '" + scalar.name +
+                                        "' constants emission requires a C++ type"};
+        }
+        auto const cpp_type{scalar_cpp_type(*scalar.cpp_type, types)};
+        for (auto const& code : scalar.named_codes) {
+            auto const declaration{"inline constexpr " + cpp_type.spelling + " " + scalar.name +
+                                   "_" + code.name + "{" +
+                                   scalar_constant_literal(cpp_type, code.value) + "};"};
+            declarations.add(raw(declaration, cpp_type.dependencies), 1);
+        }
+        if (scalar.cpp_emission == IntegerScalarCppEmission::constants_with_names) {
+            auto dependencies{cpp_type.dependencies};
+            dependencies.push_back(TypeDependency{"std::string_view", "string_view", {}});
+
+            std::ostringstream lookup;
+            lookup << "[[nodiscard]] constexpr auto " << scalar.name << "_name("
+                   << cpp_type.spelling
+                   << " const value) noexcept -> std::string_view {\n"
+                      "    switch (value) {\n";
+            for (auto const& code : scalar.named_codes) {
+                lookup << "        case " << scalar.name << '_' << code.name << ": {\n"
+                       << "            return " << render(string_literal(code.name)) << ";\n"
+                       << "        }\n";
+            }
+            lookup << "    }\n\n"
+                      "    return {};\n"
+                      "}";
+            declarations.add(raw(lookup.str(), std::move(dependencies)), 2);
+        }
+    }
+
+    auto declaration_nodes{declarations.build()};
+    NodeListBuilder header_nodes;
+    if (!declaration_nodes.empty()) {
+        header_nodes.add(IncludeDependencies{}, 2);
+    }
+    if (!module.settings.prelude_lines.empty()) {
+        header_nodes.add(raw(detail::join_lines(module.settings.prelude_lines)), 2);
+    }
+    if (module.settings.namespace_name.has_value() && !declaration_nodes.empty()) {
+        header_nodes.add(Namespace{*module.settings.namespace_name, std::move(declaration_nodes)});
+    } else {
+        header_nodes.append(std::move(declaration_nodes));
+    }
+    return Module{
+        .name = module.settings.name,
+        .header =
+            CppFile{
+                .path = module.settings.header,
+                .nodes = header_nodes.build(),
+                .clang_format_off = true,
+                .include_order = module.settings.include_order,
+            },
+    };
+}
+
 } // namespace
 
 auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
@@ -71,7 +166,7 @@ auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
                     result.push_back(
                         detail::lower_packed_value_module(module, manifest.types, type_graph));
                 } else if constexpr (std::is_same_v<T, ScalarModuleSchema>) {
-                    result.push_back(lower_semantic_module(module.settings));
+                    result.push_back(lower_scalar_module(module, manifest.types));
                 } else if constexpr (std::is_same_v<T, RepresentationModuleSchema>) {
                     result.push_back(lower_semantic_module(module.settings));
                 } else if constexpr (std::is_same_v<T, RecordModuleSchema>) {

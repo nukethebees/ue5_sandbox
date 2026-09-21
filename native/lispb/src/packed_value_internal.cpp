@@ -13,6 +13,13 @@ auto qualified_enum_name(EnumModuleSchema const& module, EnumSchema const& schem
              : schema.name;
 }
 
+auto qualified_scalar_name(ScalarModuleSchema const& module, IntegerScalarSchema const& schema)
+    -> std::string {
+    return module.settings.namespace_name.has_value()
+             ? *module.settings.namespace_name + "::" + schema.name
+             : schema.name;
+}
+
 } // namespace
 
 auto packed_unsigned_width(std::string_view const spelling) -> std::optional<int> {
@@ -63,11 +70,51 @@ auto find_packed_enum(TypeRef const& type,
     return nullptr;
 }
 
+auto find_integer_scalar(TypeRef const& type,
+                         std::map<std::string, CppType> const& types,
+                         std::vector<ModuleSchema> const& modules) -> IntegerScalarSchema const* {
+    auto const spelling{resolve_type(type, types).spelling};
+    for (auto const& candidate : modules) {
+        auto const* scalar_module{std::get_if<ScalarModuleSchema>(&candidate)};
+        if (scalar_module == nullptr) {
+            continue;
+        }
+        for (auto const& schema : scalar_module->scalars) {
+            if (qualified_scalar_name(*scalar_module, schema) == spelling) {
+                return &schema;
+            }
+        }
+    }
+    return nullptr;
+}
+
+auto derive_integer_scalar_width(IntegerScalarSchema const& scalar) -> std::optional<int> {
+    if (scalar.bit_width.has_value()) {
+        return static_cast<int>(*scalar.bit_width);
+    }
+
+    auto minimum_code{scalar.minimum_value};
+    auto maximum_code{scalar.maximum_value};
+    for (auto const& code : scalar.named_codes) {
+        if (packed_integer_less(code.value, minimum_code)) {
+            minimum_code = code.value;
+        }
+        if (packed_integer_less(maximum_code, code.value)) {
+            maximum_code = code.value;
+        }
+    }
+    auto const bits{minimum_packed_integer_bits(minimum_code, maximum_code, scalar.signedness)};
+    return bits.has_value() ? std::optional<int>{static_cast<int>(*bits)} : std::nullopt;
+}
+
 auto derive_packed_field_width(PackedFieldSchema const& field,
                                std::map<std::string, CppType> const& types,
                                std::vector<ModuleSchema> const& modules) -> std::optional<int> {
     if (field.bits.has_value()) {
         return field.bits;
+    }
+    if (auto const* scalar{find_integer_scalar(field.type, types, modules)}) {
+        return derive_integer_scalar_width(*scalar);
     }
     if (field.kind == PackedFieldKind::enumeration) {
         auto const* enumeration{find_packed_enum(field.type, types, modules)};

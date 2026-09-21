@@ -63,7 +63,8 @@ TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
   :header "Generated.h"
   (struct FData
     :operations (all)
-    (member handles array @handle)))
+    (member handles array @handle
+      (relation offset_into FData :unit elements))))
 )");
     auto const manifest{files.load()};
 
@@ -73,8 +74,12 @@ TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
     ASSERT_EQ(manifest.modules.size(), 1);
     auto const& module{std::get<SoaModuleSchema>(manifest.modules.front())};
     EXPECT_EQ(module.structs.front().operations, all_storage_operations());
-    EXPECT_EQ(resolve_type(module.structs.front().members.front().type, manifest.types).spelling,
-              "FHandle");
+    auto const& member{module.structs.front().members.front()};
+    EXPECT_EQ(resolve_type(member.type, manifest.types).spelling, "FHandle");
+    ASSERT_TRUE(member.relationship.has_value());
+    EXPECT_EQ(member.relationship->kind, SemanticRelationKind::offset_into);
+    EXPECT_EQ(member.relationship->target.name, "FData");
+    EXPECT_EQ(member.relationship->unit, SemanticRelationUnit::elements);
 }
 
 TEST(SourceLoader, ReadsStandardLibrarySoaBackend) {
@@ -181,7 +186,7 @@ TEST(SourceLoader, ReadsPackedValueModule) {
     EXPECT_EQ(index.named_codes[1].value, 1'048'575U);
     EXPECT_TRUE(index.named_codes[1].sentinel);
     ASSERT_TRUE(index.relationship.has_value());
-    EXPECT_EQ(index.relationship->kind, PackedFieldRelationKind::index_into);
+    EXPECT_EQ(index.relationship->kind, SemanticRelationKind::index_into);
     EXPECT_EQ(index.relationship->target.name, "FighterState");
     auto const& reserved{std::get<PackedReservedBitsSchema>(value.segments[1])};
     EXPECT_EQ(reserved.name, "future");
@@ -254,22 +259,46 @@ TEST(SourceLoader, ReadsStandaloneIntegerScalarDomain) {
     :minimum 0
     :maximum 10
     :bit-width auto
+    :cpp-emission constants-with-names
+    :cpp-type std::uint8_t
     (code Unknown :value 0)
-    (code Invalid :value 15 :sentinel true)))
+    (code Invalid :value 15 :sentinel true)
+    (relation index_into EntityTable))
+  (integer-scalar EntityTable
+    :signed false
+    :minimum 0
+    :maximum 1023
+    :bit-width 10)
+  (integer-scalar PayloadOffset
+    :signed false
+    :minimum 0
+    :maximum 65535
+    :bit-width 16
+    (relation offset_into EntityTable :unit bytes)))
 )");
 
     auto const manifest{files.load()};
     auto const& module{std::get<ScalarModuleSchema>(manifest.modules.front())};
-    ASSERT_EQ(module.scalars.size(), 1U);
+    ASSERT_EQ(module.scalars.size(), 3U);
     auto const& scalar{module.scalars.front()};
     EXPECT_EQ(scalar.name, "DamageReason");
     EXPECT_FALSE(scalar.signedness);
     EXPECT_EQ(scalar.minimum_value, PackedIntegerValue{0});
     EXPECT_EQ(scalar.maximum_value, PackedIntegerValue{10});
     EXPECT_FALSE(scalar.bit_width.has_value());
+    EXPECT_EQ(scalar.cpp_emission, IntegerScalarCppEmission::constants_with_names);
+    ASSERT_TRUE(scalar.cpp_type.has_value());
+    EXPECT_EQ(scalar.cpp_type->name, "std::uint8_t");
     ASSERT_EQ(scalar.named_codes.size(), 2U);
     EXPECT_EQ(scalar.named_codes[1].value, PackedIntegerValue{15});
     EXPECT_TRUE(scalar.named_codes[1].sentinel);
+    ASSERT_TRUE(scalar.relationship.has_value());
+    EXPECT_EQ(scalar.relationship->kind, SemanticRelationKind::index_into);
+    EXPECT_EQ(scalar.relationship->target.name, "EntityTable");
+    EXPECT_FALSE(scalar.relationship->unit.has_value());
+    ASSERT_TRUE(module.scalars[2].relationship.has_value());
+    EXPECT_EQ(module.scalars[2].relationship->kind, SemanticRelationKind::offset_into);
+    EXPECT_EQ(module.scalars[2].relationship->unit, SemanticRelationUnit::bytes);
 }
 
 TEST(SourceLoader, ReadsPhysicalRepresentations) {
@@ -392,6 +421,25 @@ TEST(SourceLoader, ReadsExplicitEnumBitWidth) {
     EXPECT_EQ(schema.signedness, false);
 }
 
+TEST(SourceLoader, ReadsEnumWithoutCppBackingType) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(enum-module states
+  :header "States.h"
+  (enum State
+    :bit-width 3
+    :signed false
+    (value Idle :value "0")
+    (value Active :value "7")))
+)");
+
+    auto const manifest{files.load()};
+    auto const& schema{std::get<EnumModuleSchema>(manifest.modules.front()).enums.front()};
+    EXPECT_FALSE(schema.underlying_type.has_value());
+    EXPECT_EQ(schema.bit_width, 3);
+    EXPECT_EQ(schema.signedness, false);
+}
+
 TEST(SourceLoader, ReadsExplicitSignedEnumDomain) {
     TemporaryManifest files;
     files.write_root(R"(
@@ -491,7 +539,8 @@ TEST(SourceLoader, ReadsRecordModuleAndFixedArrays) {
     (member y float))
   (record Trail
     :export-specifier PROJECT_API
-    (member points Position :count 4)))
+    (member points Position :count 4
+      (relation contains Position))))
 )");
 
     auto const manifest{files.load()};
@@ -503,6 +552,9 @@ TEST(SourceLoader, ReadsRecordModuleAndFixedArrays) {
     EXPECT_FALSE(module.records[0].members[0].count.has_value());
     EXPECT_EQ(module.records[1].export_specifier, "PROJECT_API");
     EXPECT_EQ(module.records[1].members[0].count, 4);
+    ASSERT_TRUE(module.records[1].members[0].relationship.has_value());
+    EXPECT_EQ(module.records[1].members[0].relationship->kind, SemanticRelationKind::contains);
+    EXPECT_EQ(module.records[1].members[0].relationship->target.name, "Position");
 }
 
 TEST(SourceLoader, ReadsRawUnionModuleAndFixedArrayAlternatives) {

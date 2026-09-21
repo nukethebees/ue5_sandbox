@@ -63,6 +63,22 @@ struct SetEnumeratorName {
     std::string new_name;
 };
 
+struct CreateModule {
+    std::size_t source_file_index{};
+    codegen::ModuleSchema schema;
+};
+
+struct DeleteModule {
+    std::size_t module_index{};
+};
+
+struct MoveDeclaration {
+    DeclarationId declaration;
+    std::size_t module_index{};
+    std::optional<std::size_t> insertion_index;
+    bool restore_source_ownership{};
+};
+
 struct CreateEnum {
     DeclarationId declaration;
     std::size_t module_index{};
@@ -278,6 +294,9 @@ struct DeleteSoa {
 
 using SchemaEditCommand = std::variant<SetEnumeratorDisplayName,
                                        SetEnumeratorName,
+                                       CreateModule,
+                                       DeleteModule,
+                                       MoveDeclaration,
                                        CreateEnum,
                                        ReplaceEnum,
                                        DeleteEnum,
@@ -401,6 +420,7 @@ class EditableSchemaDocument {
     std::filesystem::path types_path_;
     std::vector<std::filesystem::path> module_paths_;
     std::vector<std::optional<SourceRange>> module_source_ranges_;
+    std::map<std::size_t, std::size_t> pending_module_sources_;
     std::vector<DeclarationInfo> declarations_;
     std::map<DeclarationId, SourceRange> source_tombstones_;
     std::vector<HistoryEntry> history_;
