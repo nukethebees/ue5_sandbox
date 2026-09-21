@@ -1873,6 +1873,8 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     new_varint_distribution_value_[0] = '0';
     new_varint_distribution_weight_ = 1;
     new_project_source_path_.fill('\0');
+    rename_project_source_path_.fill('\0');
+    rename_project_source_.reset();
     record_access_set_explicit_ = false;
     soa_access_set_explicit_ = false;
     rename_editor_declaration_.reset();

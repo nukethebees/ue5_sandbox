@@ -1,6 +1,7 @@
 #include <lispb/project.h>
 #include <lispb/schema/type_graph.h>
 
+#include <codegen/path_utils.h>
 #include <codegen/sexpr/fields.h>
 #include <codegen/source_loader.h>
 
@@ -95,6 +96,17 @@ auto path_entry_exists(std::filesystem::path const& path) -> bool {
         throw std::filesystem::filesystem_error{"Cannot inspect path", path, error};
     }
     return status.type() != std::filesystem::file_type::not_found;
+}
+
+void require_project_source_location(Project const& project, std::filesystem::path const& path) {
+    auto const root{std::filesystem::weakly_canonical(project.root)};
+    auto const parent{std::filesystem::weakly_canonical(path.parent_path())};
+    auto const relative{parent.lexically_relative(root)};
+    if (relative.empty() || relative.is_absolute() || relative.has_root_path() ||
+        std::ranges::find(relative, std::filesystem::path{".."}) != relative.end()) {
+        throw std::invalid_argument{"C++ schema source path escapes the project root: " +
+                                    path.string()};
+    }
 }
 
 void write_file(std::filesystem::path const& path,
@@ -484,13 +496,24 @@ auto EditableProjectDocument::apply_internal(ProjectEditCommand const& command)
                 }};
                 auto const validate_candidate{
                     [&](Project const& project_candidate,
-                        PendingSourceValidation const* const additional = nullptr) {
+                        PendingSourceValidation const* const additional = nullptr,
+                        std::map<std::filesystem::path, std::filesystem::path> const* const
+                            renames = nullptr) {
                         std::vector<PendingSourceValidation> pending;
                         for (auto const& [pending_source, pending_value] : pending_sources_) {
                             if (pending_value.target_name == edit.target_name) {
                                 pending.push_back(
                                     {.source = pending_source, .contents = pending_value.contents});
                             }
+                        }
+                        auto const& current_renames{renames == nullptr ? pending_renames_
+                                                                       : *renames};
+                        std::vector<std::string> rename_contents;
+                        rename_contents.reserve(current_renames.size());
+                        for (auto const& [destination, original] : current_renames) {
+                            rename_contents.push_back(read_file(project_.root / original));
+                            pending.push_back(
+                                {.source = destination, .contents = rename_contents.back()});
                         }
                         if (additional != nullptr) {
                             pending.push_back(*additional);
@@ -506,6 +529,13 @@ auto EditableProjectDocument::apply_internal(ProjectEditCommand const& command)
                     if (!std::filesystem::is_regular_file(project_.root / source)) {
                         throw std::invalid_argument{"C++ schema source does not exist: " +
                                                     (project_.root / source).string()};
+                    }
+                    if (std::ranges::any_of(pending_renames_, [&](auto const& rename) {
+                            return codegen::output_path_key(rename.second) ==
+                                   codegen::output_path_key(source);
+                        })) {
+                        throw std::invalid_argument{
+                            "Undo the staged rename before registering its original source"};
                     }
                     auto const& original{source_lists_.at(edit.target_name).original_sources};
                     auto const original_source{std::ranges::find_if(original, same_source)};
@@ -534,6 +564,10 @@ auto EditableProjectDocument::apply_internal(ProjectEditCommand const& command)
                         throw std::invalid_argument{"Pending schema sources must be removed "
                                                     "through their creation history"};
                     }
+                    if (pending_renames_.contains(source)) {
+                        throw std::invalid_argument{
+                            "Undo the staged rename before unregistering this source"};
+                    }
                     auto const existing{std::ranges::find_if(candidate_sources, same_source)};
                     if (existing == candidate_sources.end()) {
                         throw std::invalid_argument{"C++ schema source is not registered: " +
@@ -543,6 +577,109 @@ auto EditableProjectDocument::apply_internal(ProjectEditCommand const& command)
                     validate_candidate(candidate);
                     project_ = std::move(candidate);
                     return AddCppSchemaSource{.target_name = edit.target_name, .source = source};
+                } else if constexpr (std::is_same_v<Edit, RenameCppSchemaSource>) {
+                    auto const destination{normalized_source_path(edit.destination)};
+                    if (source == destination) {
+                        throw std::invalid_argument{"New C++ schema source path is unchanged"};
+                    }
+                    if (pending_sources_.contains(source)) {
+                        throw std::invalid_argument{
+                            "Save the pending source creation before renaming it"};
+                    }
+                    auto const existing{std::ranges::find_if(candidate_sources, same_source)};
+                    if (existing == candidate_sources.end()) {
+                        throw std::invalid_argument{"C++ schema source is not registered: " +
+                                                    source.generic_string()};
+                    }
+                    auto const renamed{pending_renames_.find(source)};
+                    auto const original{renamed == pending_renames_.end() ? source
+                                                                          : renamed->second};
+                    auto const original_path{project_.root / original};
+                    if (!std::filesystem::is_regular_file(original_path) ||
+                        std::filesystem::is_symlink(original_path)) {
+                        throw std::invalid_argument{"C++ schema source does not exist: " +
+                                                    original_path.string()};
+                    }
+                    require_project_source_location(project_, original_path);
+                    auto const destination_key{codegen::output_path_key(destination)};
+                    auto const original_key{codegen::output_path_key(original)};
+                    for (auto const& [name, candidate_target] : project_.targets) {
+                        if (auto const* schema{std::get_if<CppSchemaTarget>(&candidate_target)}) {
+                            if (codegen::output_path_key(schema->types) ==
+                                codegen::output_path_key(original)) {
+                                throw std::invalid_argument{
+                                    "A types registry cannot be renamed as a schema source"};
+                            }
+                            for (auto const& registered : schema->sources) {
+                                if (name != edit.target_name &&
+                                    codegen::output_path_key(registered) == original_key) {
+                                    throw std::invalid_argument{
+                                        "Source is shared by another target and cannot be renamed "
+                                        "here"};
+                                }
+                                if (registered != source &&
+                                    codegen::output_path_key(registered) == destination_key) {
+                                    throw std::invalid_argument{
+                                        "C++ schema source destination is already registered: " +
+                                        destination.generic_string()};
+                                }
+                            }
+                        } else if (auto const* slate{std::get_if<SlateTarget>(&candidate_target)}) {
+                            if (std::ranges::any_of(slate->sources, [&](auto const& registered) {
+                                    return codegen::output_path_key(registered) == original_key;
+                                })) {
+                                throw std::invalid_argument{
+                                    "Source is shared by another target and cannot be renamed "
+                                    "here"};
+                            }
+                        } else if (auto const* kernel{
+                                       std::get_if<KernelTarget>(&candidate_target)}) {
+                            if (std::ranges::any_of(kernel->sources, [&](auto const& registered) {
+                                    return codegen::output_path_key(registered) == original_key;
+                                })) {
+                                throw std::invalid_argument{
+                                    "Source is shared by another target and cannot be renamed "
+                                    "here"};
+                            }
+                        } else if (auto const* material{
+                                       std::get_if<MaterialTarget>(&candidate_target)}) {
+                            if (codegen::output_path_key(material->source) == original_key) {
+                                throw std::invalid_argument{
+                                    "Source is shared by another target and cannot be renamed "
+                                    "here"};
+                            }
+                        }
+                    }
+                    if (pending_sources_.contains(destination)) {
+                        throw std::invalid_argument{
+                            "C++ schema source destination is pending creation: " +
+                            destination.generic_string()};
+                    }
+                    auto const destination_path{project_.root / destination};
+                    require_project_source_location(project_, destination_path);
+                    if (destination != original && path_entry_exists(destination_path)) {
+                        throw std::invalid_argument{
+                            "C++ schema source destination already exists: " +
+                            destination_path.string()};
+                    }
+                    if (!std::filesystem::is_directory(destination_path.parent_path())) {
+                        throw std::invalid_argument{
+                            "C++ schema source parent directory does not exist: " +
+                            destination_path.parent_path().string()};
+                    }
+
+                    *existing = destination;
+                    auto updated_renames{pending_renames_};
+                    updated_renames.erase(source);
+                    if (destination != original) {
+                        updated_renames.emplace(destination, original);
+                    }
+                    validate_candidate(candidate, nullptr, &updated_renames);
+                    project_ = std::move(candidate);
+                    pending_renames_ = std::move(updated_renames);
+                    return RenameCppSchemaSource{.target_name = edit.target_name,
+                                                 .source = destination,
+                                                 .destination = source};
                 } else if constexpr (std::is_same_v<Edit, CreateCppSchemaSource>) {
                     if (std::ranges::any_of(target->sources, same_source)) {
                         throw std::invalid_argument{"C++ schema source is already registered: " +
@@ -679,8 +816,15 @@ auto EditableProjectDocument::preview_source_updates() const
             }
             std::string insertion;
             for (auto const& source : target->sources) {
-                if (std::ranges::any_of(range.original_sources, [&](auto const& original) {
-                        return same_path(original, source);
+                if (std::ranges::any_of(
+                        range.original_sources,
+                        [&](auto const& original) { return same_path(original, source); }) ||
+                    std::ranges::any_of(pending_renames_, [&](auto const& rename) {
+                        return same_path(rename.first, source) &&
+                               std::ranges::any_of(range.original_sources,
+                                                   [&](auto const& original) {
+                                                       return same_path(original, rename.second);
+                                                   });
                     })) {
                     continue;
                 }
@@ -703,7 +847,18 @@ auto EditableProjectDocument::preview_source_updates() const
             std::ranges::sort(removed_items, std::greater{}, &SourceListItem::begin_offset);
             for (auto const& item : removed_items) {
                 auto const begin{item.begin_offset - range.begin_offset};
-                rendered.erase(begin, item.end_offset - item.begin_offset);
+                auto const renamed{std::ranges::find_if(pending_renames_, [&](auto const& rename) {
+                    return same_path(rename.second, item.source) &&
+                           std::ranges::any_of(target->sources, [&](auto const& source) {
+                               return same_path(source, rename.first);
+                           });
+                })};
+                if (renamed == pending_renames_.end()) {
+                    rendered.erase(begin, item.end_offset - item.begin_offset);
+                } else {
+                    rendered.replace(
+                        begin, item.end_offset - item.begin_offset, quote(renamed->first));
+                }
             }
             replacements.push_back({.begin = range.begin_offset,
                                     .end = range.end_offset,
@@ -751,15 +906,26 @@ auto EditableProjectDocument::save() -> std::expected<bool, ProjectEditError> {
         std::filesystem::path destination;
         std::filesystem::path temporary;
     };
+    struct StagedRename {
+        std::filesystem::path original;
+        std::filesystem::path destination;
+    };
     std::vector<StagedSource> staged_sources;
     staged_sources.reserve(pending_sources_.size());
+    std::vector<StagedRename> staged_renames;
+    staged_renames.reserve(pending_renames_.size());
     auto temporary_manifest{path_};
     temporary_manifest += ".layout-planner.tmp";
     std::vector<std::filesystem::path> created_temporaries;
     std::vector<std::filesystem::path> published_sources;
+    std::vector<StagedRename> published_renames;
     auto manifest_published{false};
 
     try {
+        if (read_file(path_) != source_) {
+            throw std::invalid_argument{
+                "LispB project changed on disk; reload it before saving source-list edits"};
+        }
         if (path_entry_exists(temporary_manifest)) {
             throw std::invalid_argument{"Temporary LispB project path already exists: " +
                                         temporary_manifest.string()};
@@ -787,6 +953,27 @@ auto EditableProjectDocument::save() -> std::expected<bool, ProjectEditError> {
                                       .source = source,
                                       .destination = destination,
                                       .temporary = std::move(temporary)});
+        }
+
+        for (auto const& [destination, original] : pending_renames_) {
+            auto const original_path{project_.root / original};
+            auto const destination_path{project_.root / destination};
+            require_project_source_location(project_, original_path);
+            require_project_source_location(project_, destination_path);
+            if (!std::filesystem::is_regular_file(original_path) ||
+                std::filesystem::is_symlink(original_path)) {
+                throw std::invalid_argument{"C++ schema source cannot be renamed: " +
+                                            original_path.string()};
+            }
+            if (path_entry_exists(destination_path)) {
+                throw std::invalid_argument{"C++ schema source destination already exists: " +
+                                            destination_path.string()};
+            }
+            if (!std::filesystem::is_directory(destination_path.parent_path())) {
+                throw std::invalid_argument{"C++ schema source parent directory does not exist: " +
+                                            destination_path.parent_path().string()};
+            }
+            staged_renames.push_back({.original = original_path, .destination = destination_path});
         }
 
         created_temporaries.push_back(temporary_manifest);
@@ -818,6 +1005,18 @@ auto EditableProjectDocument::save() -> std::expected<bool, ProjectEditError> {
             }
             *registered = temporary_source;
         }
+        for (auto const& [destination, original] : pending_renames_) {
+            for (auto& [name, candidate_target] : candidate.targets) {
+                static_cast<void>(name);
+                if (auto* target{std::get_if<CppSchemaTarget>(&candidate_target)}) {
+                    for (auto& source : target->sources) {
+                        if (source.lexically_normal() == destination) {
+                            source = original;
+                        }
+                    }
+                }
+            }
+        }
         for (auto const& [target_name, range] : source_lists_) {
             auto const* target{std::get_if<CppSchemaTarget>(&project_.targets.at(target_name))};
             if (target != nullptr && target->sources != range.original_sources) {
@@ -828,6 +1027,10 @@ auto EditableProjectDocument::save() -> std::expected<bool, ProjectEditError> {
         for (auto const& staged : staged_sources) {
             publish_new_file(staged.temporary, staged.destination);
             published_sources.push_back(staged.destination);
+        }
+        for (auto const& staged : staged_renames) {
+            publish_new_file(staged.original, staged.destination);
+            published_renames.push_back(staged);
         }
         replace_file(temporary_manifest, path_);
         manifest_published = true;
@@ -840,6 +1043,15 @@ auto EditableProjectDocument::save() -> std::expected<bool, ProjectEditError> {
             std::filesystem::remove(temporary, ignored);
         }
         if (!manifest_published) {
+            for (auto renamed{published_renames.rbegin()}; renamed != published_renames.rend();
+                 ++renamed) {
+                try {
+                    publish_new_file(renamed->destination, renamed->original);
+                } catch (std::exception const& rollback_error) {
+                    message += "; failed to roll back renamed source '" +
+                               renamed->destination.string() + "': " + rollback_error.what();
+                }
+            }
             for (auto const& published : published_sources) {
                 std::error_code rollback_error;
                 std::filesystem::remove(published, rollback_error);

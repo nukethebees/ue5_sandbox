@@ -242,6 +242,7 @@ void PlannerUi::draw_project_panel() {
         ImGui::SeparatorText("Project sources");
         ImGui::TextDisabled("Target: %s", target_name_.c_str());
         std::optional<std::filesystem::path> unregister_source;
+        auto open_rename_source{false};
         auto const target_found{project_document_->project().targets.find(target_name_)};
         auto const* project_target{
             target_found == project_document_->project().targets.end()
@@ -251,12 +252,37 @@ void PlannerUi::draw_project_panel() {
             for (auto const& source : project_target->sources) {
                 auto const source_label{source.generic_string()};
                 auto const pending{project_document_->source_is_pending(source)};
+                auto const renamed_from{project_document_->renamed_source_original(source)};
                 ImGui::PushID(source_label.c_str());
-                ImGui::BulletText("%s%s", source_label.c_str(), pending ? " (pending new)" : "");
+                auto source_display{source_label};
+                if (pending) {
+                    source_display += " (pending new)";
+                } else if (renamed_from.has_value()) {
+                    source_display +=
+                        " (rename pending from " + renamed_from->generic_string() + ")";
+                }
+                ImGui::BulletText("%s", source_display.c_str());
                 ImGui::SameLine();
-                ImGui::BeginDisabled(pending || (document_.has_value() && document_->dirty()));
+                auto const schema_dirty{document_.has_value() && document_->dirty()};
+                ImGui::BeginDisabled(pending || renamed_from.has_value() || schema_dirty);
                 if (ImGui::SmallButton("Unregister")) {
                     unregister_source = source;
+                }
+                ImGui::EndDisabled();
+                if (renamed_from.has_value() &&
+                    ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                    ImGui::SetTooltip("Undo the staged rename before unregistering this source.");
+                }
+                ImGui::SameLine();
+                ImGui::BeginDisabled(pending || schema_dirty);
+                if (ImGui::SmallButton("Rename")) {
+                    rename_project_source_ = source;
+                    std::snprintf(rename_project_source_path_.data(),
+                                  rename_project_source_path_.size(),
+                                  "%s",
+                                  source_label.c_str());
+                    schema_edit_message_.clear();
+                    open_rename_source = true;
                 }
                 ImGui::EndDisabled();
                 if (pending && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
@@ -270,6 +296,52 @@ void PlannerUi::draw_project_panel() {
                                                             .source = *unregister_source})) {
             schema_edit_message_ =
                 "Staged source unregistration. The source file will remain on disk after Save.";
+        }
+        if (open_rename_source) {
+            ImGui::OpenPopup("Rename LispB source");
+        }
+        if (ImGui::BeginPopupModal(
+                "Rename LispB source", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::TextDisabled("Current: %s",
+                                rename_project_source_.has_value()
+                                    ? rename_project_source_->generic_string().c_str()
+                                    : "");
+            ImGui::SetNextItemWidth(400.0F);
+            ImGui::InputText("New relative path",
+                             rename_project_source_path_.data(),
+                             rename_project_source_path_.size());
+            ImGui::TextDisabled("The file moves and the project source list updates on Save.");
+            auto const ready{rename_project_source_.has_value() &&
+                             rename_project_source_path_.front() != '\0' &&
+                             std::filesystem::path{rename_project_source_path_.data()} !=
+                                 *rename_project_source_};
+            ImGui::BeginDisabled(!ready);
+            if (ImGui::Button("Stage rename")) {
+                if (apply_project_edit(lispb::RenameCppSchemaSource{
+                        .target_name = target_name_,
+                        .source = *rename_project_source_,
+                        .destination = rename_project_source_path_.data()})) {
+                    rename_project_source_.reset();
+                    rename_project_source_path_.fill('\0');
+                    source_view_open_ = true;
+                    focus_source_view_ = true;
+                    schema_edit_message_ =
+                        "Staged source rename. Preview the project change, then Save to move the "
+                        "file and reload.";
+                    ImGui::CloseCurrentPopup();
+                }
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            if (ImGui::Button("Cancel")) {
+                rename_project_source_.reset();
+                rename_project_source_path_.fill('\0');
+                ImGui::CloseCurrentPopup();
+            }
+            if (!schema_edit_message_.empty()) {
+                ImGui::TextWrapped("%s", schema_edit_message_.c_str());
+            }
+            ImGui::EndPopup();
         }
         ImGui::SetNextItemWidth(360.0F);
         ImGui::InputTextWithHint("##new-project-source",

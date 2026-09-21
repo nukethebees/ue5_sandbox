@@ -69,6 +69,12 @@ struct RemoveCppSchemaSource {
     std::filesystem::path source;
 };
 
+struct RenameCppSchemaSource {
+    std::string target_name;
+    std::filesystem::path source;
+    std::filesystem::path destination;
+};
+
 struct CreateCppSchemaSource {
     std::string target_name;
     std::filesystem::path source;
@@ -82,6 +88,7 @@ struct DeletePendingCppSchemaSource {
 
 using ProjectEditCommand = std::variant<AddCppSchemaSource,
                                         RemoveCppSchemaSource,
+                                        RenameCppSchemaSource,
                                         CreateCppSchemaSource,
                                         DeletePendingCppSchemaSource>;
 
@@ -103,6 +110,11 @@ class EditableProjectDocument {
     [[nodiscard]] auto revision() const -> std::uint64_t { return revision_; }
     [[nodiscard]] auto source_is_pending(std::filesystem::path const& source) const -> bool {
         return pending_sources_.contains(source.lexically_normal());
+    }
+    [[nodiscard]] auto renamed_source_original(std::filesystem::path const& source) const
+        -> std::optional<std::filesystem::path> {
+        auto const found{pending_renames_.find(source.lexically_normal())};
+        return found == pending_renames_.end() ? std::nullopt : std::optional{found->second};
     }
 
     auto apply(ProjectEditCommand command) -> std::expected<bool, ProjectEditError>;
@@ -142,6 +154,7 @@ class EditableProjectDocument {
     Project project_;
     std::map<std::string, SourceListRange, std::less<>> source_lists_;
     std::map<std::filesystem::path, PendingSource> pending_sources_;
+    std::map<std::filesystem::path, std::filesystem::path> pending_renames_;
     std::vector<ProjectEditCommand> history_;
     std::size_t history_position_{};
     std::size_t saved_history_position_{};

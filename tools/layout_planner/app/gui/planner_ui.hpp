@@ -306,6 +306,8 @@ class PlannerUi {
     std::array<char, 1024> open_project_path_{};
     std::array<char, 1024> save_as_project_path_{};
     std::array<char, 512> new_project_source_path_{};
+    std::array<char, 1024> rename_project_source_path_{};
+    std::optional<std::filesystem::path> rename_project_source_;
     std::array<char, 128> new_module_name_{};
     std::array<char, 256> new_module_header_{};
     std::array<char, 128> new_module_namespace_{};
