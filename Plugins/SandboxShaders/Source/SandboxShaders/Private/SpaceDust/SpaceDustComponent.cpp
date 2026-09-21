@@ -216,7 +216,6 @@ class FSpaceDustSceneProxy final : public FPrimitiveSceneProxy {
         , parameters_{parameters}
         , particle_count_{particle_count} {
         bWillEverBeLit = false;
-        bIsAlwaysVisible = true;
         BeginInitResource(&vertex_factory_);
     }
 
@@ -334,6 +333,7 @@ auto apply_native_settings(FSpaceDustSettings settings, ml::space_dust::Tuning c
     settings.colour.R = native.colour.X;
     settings.colour.G = native.colour.Y;
     settings.colour.B = native.colour.Z;
+    settings.colour.A = 1.0f;
     settings.minimum_visible_speed = native.minimum_visible_speed;
     settings.full_visible_speed = native.full_visible_speed;
     settings.streak_seconds = native.streak_seconds;
@@ -384,16 +384,15 @@ USpaceDustComponent::USpaceDustComponent() {
 
 void USpaceDustComponent::apply_settings(FSpaceDustSettings const& settings) {
     auto const normalised{normalise_space_dust_settings(settings)};
+    auto const bounds_change{settings_.volume_dimensions != normalised.volume_dimensions};
 
-    auto const structural_change{settings_.enabled != normalised.enabled ||
-                                 settings_.particle_count != normalised.particle_count};
     settings_ = normalised;
     update_translation_phase();
-    if (structural_change) {
-        MarkRenderStateDirty();
-    } else {
-        MarkRenderDynamicDataDirty();
+    if (bounds_change) {
+        UpdateBounds();
+        MarkRenderTransformDirty();
     }
+    MarkRenderDynamicDataDirty();
 }
 
 void USpaceDustComponent::update_motion(FVector const world_velocity) {
@@ -403,10 +402,8 @@ void USpaceDustComponent::update_motion(FVector const world_velocity) {
 }
 
 FPrimitiveSceneProxy* USpaceDustComponent::CreateSceneProxy() {
-    if (!settings_.enabled || settings_.particle_count <= 0 || !IsValid(material_)) {
-        if (!IsValid(material_)) {
-            UE_LOG(LogSpaceDust, Warning, TEXT("Space dust material is unavailable."));
-        }
+    if (!IsValid(material_)) {
+        UE_LOG(LogSpaceDust, Warning, TEXT("Space dust material is unavailable."));
         return nullptr;
     }
 
@@ -414,13 +411,12 @@ FPrimitiveSceneProxy* USpaceDustComponent::CreateSceneProxy() {
         this,
         material_,
         make_render_parameters(settings_, translation_phase_, world_velocity_),
-        settings_.particle_count};
+        settings_.enabled ? settings_.particle_count : 0};
 }
 
 FBoxSphereBounds USpaceDustComponent::CalcBounds(FTransform const& local_to_world) const {
     auto const extent{settings_.volume_dimensions * 0.5};
-    return FBoxSphereBounds{FVector::ZeroVector, extent, extent.Length()}.TransformBy(
-        local_to_world);
+    return FBoxSphereBounds{local_to_world.GetLocation(), extent, extent.Length()};
 }
 
 void USpaceDustComponent::SendRenderDynamicData_Concurrent() {

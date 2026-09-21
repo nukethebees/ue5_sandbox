@@ -25,7 +25,9 @@ fresh phase from the authoritative presentation transform.
 
 ## Renderer
 
-The scene proxy submits one instanced indexed-quad mesh per visible owner view.
+The scene proxy is created whenever the material is valid and persists through
+ordinary tuning changes. It submits one instanced indexed-quad mesh per visible
+owner view.
 There is no particle buffer, spawn list, compute dispatch, lifetime state, or
 CPU particle loop.  The vertex shader obtains each instance's stable seed from
 `SV_InstanceID`, hashes it into a local position, subtracts the translation
@@ -59,7 +61,7 @@ depth, and does not write depth, so opaque hulls can occlude dust.
 `FPlayerShipConfig::space_dust` exposes the initial controls:
 
 - enable flag, count, seed, and volume dimensions;
-- size, brightness, and colour;
+- size, brightness, and RGB colour (alpha is ignored and normalised to 1);
 - minimum/full world-speed activation;
 - streak time, minimum/full apparent-motion pixels, and maximum pixel length;
 - volume-edge fade.
@@ -70,9 +72,17 @@ reference pixels. World-speed activation fades gently from 100 to 2,000 world
 units per second; apparent motion still decides which individual particles are
 visible. The candidate count can exceed the number visible in a frame because
 particles outside the view, behind or very near the camera, near volume edges,
-or below the motion threshold contribute nothing. Count and enabled state
-recreate the proxy. Other settings and motion are tiny per-frame parameter
-updates.
+or below the motion threshold contribute nothing. The public count is clamped
+to 2,048 to limit additive overdraw, while still allowing a stress test well
+above the usual 96–384 candidates.
+
+Enabled state, count, motion, and all other tuning flow through dynamic render
+data. Disabling the effect sends a zero instance count, so it does not recreate
+the proxy. Volume-dimension changes additionally update the component bounds
+and mark its render transform dirty so Unreal refreshes the scene's culling
+bounds. The bounds stay centred on the camera and aligned with the shader's
+world-axis volume regardless of camera rotation. Normal primitive frustum
+culling is used; scene-depth testing still occludes dust behind opaque geometry.
 
 ## Measurement
 

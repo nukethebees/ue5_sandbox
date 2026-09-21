@@ -45,6 +45,16 @@ TEST(NativeCoreSpaceDustMath, UsesSparseMotionDrivenDefaults) {
     EXPECT_FLOAT_EQ(tuning.full_motion_pixels, 4.0f);
 }
 
+TEST(NativeCoreSpaceDustMath, ClampsParticleCountToProductionMaximum) {
+    ml::space_dust::Tuning tuning;
+    tuning.particle_count = 65536;
+
+    auto const normalised{ml::space_dust::normalise_tuning(tuning)};
+
+    EXPECT_EQ(ml::space_dust::maximum_particle_count, 2048);
+    EXPECT_EQ(normalised.particle_count, ml::space_dust::maximum_particle_count);
+}
+
 TEST(NativeCoreSpaceDustMath, OrdersMotionVisibilityThresholds) {
     ml::space_dust::Tuning tuning;
     tuning.minimum_motion_pixels = 6.0f;

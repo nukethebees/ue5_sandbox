@@ -17,7 +17,7 @@ struct SANDBOXSHADERS_API FSpaceDustSettings {
     UPROPERTY(EditAnywhere,
               BlueprintReadWrite,
               Category = "Space Dust",
-              meta = (ClampMin = "0", ClampMax = "65536"))
+              meta = (ClampMin = "0", ClampMax = "2048"))
     int32 particle_count{96};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Space Dust", meta = (ClampMin = "0"))
@@ -32,7 +32,10 @@ struct SANDBOXSHADERS_API FSpaceDustSettings {
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Space Dust", meta = (ClampMin = "0.0"))
     float brightness{0.35f};
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Space Dust")
+    UPROPERTY(EditAnywhere,
+              BlueprintReadWrite,
+              Category = "Space Dust",
+              meta = (ToolTip = "RGB dust tint; alpha is ignored."))
     FLinearColor colour{0.82f, 0.9f, 1.0f, 1.0f};
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Space Dust", meta = (ClampMin = "0.0"))

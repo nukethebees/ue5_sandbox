@@ -8,7 +8,7 @@
 #include <limits>
 
 namespace ml::space_dust {
-inline constexpr std::int32_t maximum_particle_count{65536};
+inline constexpr std::int32_t maximum_particle_count{2048};
 
 struct Tuning {
     bool enabled{true};

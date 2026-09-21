@@ -1,3 +1,4 @@
+#include "SandboxShaders/SpaceDust/SpaceDustComponent.h"
 #include "SbxShadersExperiments/ConstructionSpawn/ConstructionSpawnExperimentActor.h"
 #include "SbxShadersExperiments/EnergyBeam/EnergyBeamExperimentActor.h"
 #include "SbxShadersExperiments/EnergyShield/EnergyShieldExperimentActor.h"
@@ -189,6 +190,38 @@ TEST_CLASS(ShaderInfrastructure, "SandboxShaders.UnitTests")
                               1);
         TestRunner->TestEqual(
             TEXT("Showcase contains one camera"), count_actor_type<ACameraActor>(*world), 1);
+    }
+
+    TEST_METHOD(UpdatesSpaceDustBoundsWhenVolumeChanges)
+    {
+        auto* const component{NewObject<USpaceDustComponent>()};
+        component->UpdateBounds();
+
+        auto settings{component->get_settings()};
+        settings.volume_dimensions = FVector{1000.0, 2000.0, 3000.0};
+        component->apply_settings(settings);
+
+        TestRunner->TestTrue(
+            TEXT("Updated volume changes component bounds"),
+            component->GetBounds().BoxExtent.Equals(FVector{500.0, 1000.0, 1500.0}));
+
+        auto const rotated_transform{
+            FTransform{FRotator{0.0, 90.0, 0.0}, FVector{125.0, -250.0, 300.0}}};
+        auto const rotated_bounds{component->CalcBounds(rotated_transform)};
+        TestRunner->TestTrue(TEXT("Dust bounds remain centred on the camera"),
+                             rotated_bounds.Origin.Equals(rotated_transform.GetLocation()));
+        TestRunner->TestTrue(TEXT("Dust volume remains world-axis aligned"),
+                             rotated_bounds.BoxExtent.Equals(FVector{500.0, 1000.0, 1500.0}));
+    }
+
+    TEST_METHOD(IgnoresSpaceDustColourAlpha)
+    {
+        FSpaceDustSettings settings;
+        settings.colour.A = 0.25f;
+
+        auto const normalised{normalise_space_dust_settings(settings)};
+
+        TestRunner->TestEqual(TEXT("Colour alpha is canonical opaque"), normalised.colour.A, 1.0f);
     }
 };
 
