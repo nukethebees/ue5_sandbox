@@ -442,11 +442,22 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
     TEST_METHOD(MouseWheelAdjustsPersistentDesiredForwardVelocity)
     {
         auto const default_profile{ml::ioj::control_profile_definitions()[0].id};
-        auto desired_forward_scale = [this] {
+        auto desired_forward_target = [this] {
             auto const* const controller{controller_.Get()};
             auto const* const ship{IsValid(controller) ? Cast<ATestSpaceShip>(controller->GetPawn())
                                                        : nullptr};
-            return IsValid(ship) ? ship->get_sampled_target_speed_scale().Y : 0.f;
+            return IsValid(ship) ? ship->get_persistent_forward_target_speed() : 0.f;
+        };
+        auto configured_forward_step = [this] {
+            auto const* const controller{controller_.Get()};
+            auto const* const ship{IsValid(controller) ? Cast<ATestSpaceShip>(controller->GetPawn())
+                                                       : nullptr};
+            if (!IsValid(ship)) {
+                return 0.f;
+            }
+            auto const& drive{
+                ship->get_active_flight_model_profile().config.translation.forward.normal};
+            return FMath::Min(drive.positive_target_speed, drive.positive_speed_limit) * 0.05f;
         };
         TestCommandBuilder
             .Do([this, default_profile] {
@@ -473,25 +484,26 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 press_key(EKeys::MouseScrollUp);
             })
             .Until(
-                [this, desired_forward_scale] {
-                    return !checks.all_passed || desired_forward_scale() > 0.f;
+                [this, desired_forward_target] {
+                    return !checks.all_passed || desired_forward_target() > 0.f;
                 },
                 timeout)
-            .Then([this, desired_forward_scale] {
-                checks.is_true(FMath::IsNearlyEqual(desired_forward_scale(), 0.05f),
-                               TEXT("Wheel up applies one configured trim step"));
+            .Then([this, configured_forward_step, desired_forward_target] {
+                checks.is_true(
+                    FMath::IsNearlyEqual(desired_forward_target(), configured_forward_step()),
+                    TEXT("Wheel up applies one configured trim step"));
                 checks.is_true(!snapshot().sampling_active,
                                TEXT("Wheel trim does not enter sampling"));
                 release_key(EKeys::MouseScrollUp);
                 press_key(EKeys::MouseScrollDown);
             })
             .Until(
-                [this, desired_forward_scale] {
-                    return !checks.all_passed || FMath::IsNearlyZero(desired_forward_scale());
+                [this, desired_forward_target] {
+                    return !checks.all_passed || FMath::IsNearlyZero(desired_forward_target());
                 },
                 timeout)
-            .Then([this, desired_forward_scale] {
-                checks.is_true(FMath::IsNearlyZero(desired_forward_scale()),
+            .Then([this, desired_forward_target] {
+                checks.is_true(FMath::IsNearlyZero(desired_forward_target()),
                                TEXT("Wheel down adjusts the existing persistent target"));
                 checks.is_true(!snapshot().sampling_active,
                                TEXT("Decreasing velocity remains outside sampling"));
