@@ -13,6 +13,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 
 namespace ioj::layout_planner {
 namespace {
@@ -153,6 +154,16 @@ auto module_label(codegen::ModuleSchema const& module) -> std::string {
         module);
 }
 
+auto is_editable_module_destination(codegen::ModuleSchema const& module) -> bool {
+    return std::holds_alternative<codegen::EnumModuleSchema>(module) ||
+           std::holds_alternative<codegen::PackedValueModuleSchema>(module) ||
+           std::holds_alternative<codegen::ScalarModuleSchema>(module) ||
+           std::holds_alternative<codegen::RepresentationModuleSchema>(module) ||
+           std::holds_alternative<codegen::RecordModuleSchema>(module) ||
+           std::holds_alternative<codegen::UnionModuleSchema>(module) ||
+           std::holds_alternative<codegen::SoaModuleSchema>(module);
+}
+
 auto matches_filter(TypeNode const& node, std::string_view const filter) -> bool {
     if (filter.empty()) {
         return true;
@@ -217,12 +228,123 @@ auto complete(TypeGraph const& types,
 } // namespace
 
 void PlannerUi::draw_project_panel() {
-    ImGui::Begin("Project / Schema");
+    if (!project_view_open_) {
+        return;
+    }
+    auto const was_open{project_view_open_};
+    ImGui::Begin("Project / Schema", &project_view_open_);
+    persist_view_visibility(was_open, project_view_open_);
     if (!project_path_.empty()) {
         ImGui::TextDisabled("%s", project_path_.string().c_str());
     }
-    ImGui::BeginDisabled(!document_.has_value());
+    if (project_document_.has_value()) {
+        ImGui::SeparatorText("Project sources");
+        ImGui::TextDisabled("Target: %s", target_name_.c_str());
+        std::optional<std::filesystem::path> unregister_source;
+        auto const target_found{project_document_->project().targets.find(target_name_)};
+        auto const* project_target{
+            target_found == project_document_->project().targets.end()
+                ? nullptr
+                : std::get_if<lispb::CppSchemaTarget>(&target_found->second)};
+        if (project_target != nullptr) {
+            for (auto const& source : project_target->sources) {
+                auto const source_label{source.generic_string()};
+                auto const pending{project_document_->source_is_pending(source)};
+                ImGui::PushID(source_label.c_str());
+                ImGui::BulletText("%s%s", source_label.c_str(), pending ? " (pending new)" : "");
+                ImGui::SameLine();
+                ImGui::BeginDisabled(pending || (document_.has_value() && document_->dirty()));
+                if (ImGui::SmallButton("Unregister")) {
+                    unregister_source = source;
+                }
+                ImGui::EndDisabled();
+                if (pending && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                    ImGui::SetTooltip("Undo the pending creation to remove this unpublished file.");
+                }
+                ImGui::PopID();
+            }
+        }
+        if (unregister_source.has_value() &&
+            apply_project_edit(lispb::RemoveCppSchemaSource{.target_name = target_name_,
+                                                            .source = *unregister_source})) {
+            source_view_open_ = true;
+            focus_source_view_ = true;
+            schema_edit_message_ =
+                "Staged source unregistration. The source file will remain on disk after Save.";
+        }
+        ImGui::SetNextItemWidth(360.0F);
+        ImGui::InputTextWithHint("##new-project-source",
+                                 "relative/path/to/new-source.lispb",
+                                 new_project_source_path_.data(),
+                                 new_project_source_path_.size());
+        ImGui::SameLine();
+        auto const schema_dirty{document_.has_value() && document_->dirty()};
+        ImGui::BeginDisabled(new_project_source_path_.front() == '\0' || schema_dirty);
+        if (ImGui::Button("Register existing")) {
+            if (apply_project_edit(lispb::AddCppSchemaSource{
+                    .target_name = target_name_, .source = new_project_source_path_.data()})) {
+                new_project_source_path_.fill('\0');
+                source_view_open_ = true;
+                focus_source_view_ = true;
+                schema_edit_message_ =
+                    "Staged an existing LispB source registration. Preview it, then Save to "
+                    "reload.";
+            }
+        }
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip(
+                "The existing source is validated with the complete target before the draft is "
+                "accepted.");
+        }
+        ImGui::SameLine();
+        ImGui::BeginDisabled(new_project_source_path_.front() == '\0' || schema_dirty);
+        if (ImGui::Button("Create empty")) {
+            if (apply_project_edit(
+                    lispb::CreateCppSchemaSource{.target_name = target_name_,
+                                                 .source = new_project_source_path_.data(),
+                                                 .contents = {}})) {
+                new_project_source_path_.fill('\0');
+                source_view_open_ = true;
+                focus_source_view_ = true;
+                schema_edit_message_ =
+                    "Staged a new empty LispB source. Preview it, then Save to publish and reload.";
+            }
+        }
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip(
+                "The destination stays absent until explicit Save. The first module is authored "
+                "through + New module after reload.");
+        }
+        if (project_history_active()) {
+            ImGui::TextDisabled(
+                project_document_->dirty()
+                    ? "Project source-list draft active; schema editing resumes after Save or "
+                      "discard."
+                    : "Project source-list draft is fully undone; Redo it or discard its history.");
+            if (ImGui::SmallButton("Discard project source draft")) {
+                auto loaded{load_lispb_schema(project_path_, target_name_)};
+                if (loaded.loaded) {
+                    adopt_loaded_schema(std::move(loaded));
+                    schema_edit_message_ = "Discarded the project source-list draft.";
+                } else {
+                    schema_edit_message_ = loaded.diagnostics.empty()
+                                             ? "Could not reload the LispB project."
+                                             : loaded.diagnostics.front().message;
+                }
+            }
+        }
+    }
+
+    ImGui::SeparatorText("Schema declarations");
+    ImGui::BeginDisabled(!document_.has_value() || project_history_active());
+    if (ImGui::Button("+ New module")) {
+        open_new_module_dialog_ = true;
+    }
+    ImGui::SameLine();
     if (ImGui::Button("+ New enum")) {
+        pending_packed_enum_binding_.reset();
         open_new_enum_dialog_ = true;
     }
     ImGui::SameLine();
@@ -259,6 +381,7 @@ void PlannerUi::draw_project_panel() {
     }
     ImGui::SameLine();
     if (ImGui::Button("+ New record")) {
+        pending_soa_record_binding_.reset();
         open_new_record_dialog_ = true;
     }
     ImGui::SameLine();
@@ -306,7 +429,8 @@ void PlannerUi::draw_project_panel() {
                 declarations.push_back(&declaration);
             }
         }
-        if (declarations.empty()) {
+        if (declarations.empty() &&
+            (!filter.empty() || !is_editable_module_destination(modules[module_index]))) {
             continue;
         }
         std::ranges::sort(declarations, {}, &DeclarationInfo::declaration_index);
@@ -314,7 +438,8 @@ void PlannerUi::draw_project_panel() {
         auto const label{module_label(modules[module_index])};
         ImGui::PushID(static_cast<int>(module_index));
         auto const open{ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_DefaultOpen)};
-        if (ImGui::IsItemHovered() && declarations.front()->source.has_value()) {
+        if (ImGui::IsItemHovered() && !declarations.empty() &&
+            declarations.front()->source.has_value()) {
             auto const source_index{declarations.front()->source->source_file_index};
             if (source_index < document_->source_files().size()) {
                 ImGui::SetTooltip("%s",
@@ -322,6 +447,9 @@ void PlannerUi::draw_project_panel() {
             }
         }
         if (open) {
+            if (declarations.empty()) {
+                ImGui::TextDisabled("Empty module; choose it from a New declaration dialog.");
+            }
             for (auto const* declaration : declarations) {
                 auto const type{*workspace_.types().find(declaration->identity)};
                 auto const& node{workspace_.types().type(type)};
@@ -331,6 +459,8 @@ void PlannerUi::draw_project_panel() {
                 if (ImGui::Selectable(item_label.c_str(), selected)) {
                     selected_type_ = type;
                     selected_field_.clear();
+                    packed_access_fields_.clear();
+                    packed_access_set_explicit_ = false;
                     record_access_members_.clear();
                     record_access_set_explicit_ = false;
                     packed_dragged_divider_.reset();
@@ -357,6 +487,112 @@ void PlannerUi::draw_project_panel() {
     ImGui::End();
 }
 
+void PlannerUi::draw_new_module_dialog() {
+    if (open_new_module_dialog_) {
+        ImGui::OpenPopup("New editable module");
+        open_new_module_dialog_ = false;
+    }
+    if (!ImGui::BeginPopupModal(
+            "New editable module", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        return;
+    }
+    if (!document_.has_value() || document_->source_files().size() < 2) {
+        ImGui::TextDisabled("No loaded LispB module source can receive a new module.");
+        if (ImGui::Button("Close")) {
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+        return;
+    }
+
+    constexpr std::array kinds{
+        "Enum", "Packed value", "Integer scalar", "Representation", "Record", "Union", "SoA"};
+    ImGui::Combo("Kind", &new_module_kind_, kinds.data(), static_cast<int>(kinds.size()));
+    ImGui::InputText("Module name", new_module_name_.data(), new_module_name_.size());
+    ImGui::InputText("Generated header", new_module_header_.data(), new_module_header_.size());
+    ImGui::InputText(
+        "Namespace (optional)", new_module_namespace_.data(), new_module_namespace_.size());
+
+    auto const sources{document_->source_files()};
+    if (new_module_source_file_index_ == 0 || new_module_source_file_index_ >= sources.size()) {
+        new_module_source_file_index_ = 1;
+    }
+    auto const source_label{sources[new_module_source_file_index_].path.filename().string()};
+    if (ImGui::BeginCombo("LispB source", source_label.c_str())) {
+        for (std::size_t index{1}; index < sources.size(); ++index) {
+            auto const label{sources[index].path.string()};
+            if (ImGui::Selectable(label.c_str(), index == new_module_source_file_index_)) {
+                new_module_source_file_index_ = index;
+            }
+        }
+        ImGui::EndCombo();
+    }
+    ImGui::TextDisabled(
+        "Creates a valid empty destination; add declarations with the normal New controls.");
+
+    auto const ready{new_module_name_.front() != '\0' && new_module_header_.front() != '\0' &&
+                     new_module_kind_ >= 0 && new_module_kind_ < static_cast<int>(kinds.size())};
+    ImGui::BeginDisabled(!ready);
+    if (ImGui::Button("Create")) {
+        auto const settings{codegen::ModuleSettings{
+            .name = new_module_name_.data(),
+            .header = new_module_header_.data(),
+            .source = std::nullopt,
+            .header_include = std::nullopt,
+            .namespace_name = new_module_namespace_.front() == '\0'
+                                ? std::nullopt
+                                : std::optional<std::string>{new_module_namespace_.data()},
+            .include_order = {},
+            .prelude_lines = {}}};
+        auto module = [&]() -> codegen::ModuleSchema {
+            switch (new_module_kind_) {
+                case 0:
+                    return codegen::EnumModuleSchema{
+                        .settings = settings, .helper_namespace = std::nullopt, .enums = {}};
+                case 1:
+                    return codegen::PackedValueModuleSchema{.settings = settings, .values = {}};
+                case 2:
+                    return codegen::ScalarModuleSchema{.settings = settings, .scalars = {}};
+                case 3:
+                    return codegen::RepresentationModuleSchema{.settings = settings,
+                                                               .linear_quantized = {},
+                                                               .integer_varints = {},
+                                                               .fixed_points = {},
+                                                               .optional_sentinels = {},
+                                                               .optional_presence_bits = {},
+                                                               .mini_floats = {}};
+                case 4:
+                    return codegen::RecordModuleSchema{.settings = settings, .records = {}};
+                case 5:
+                    return codegen::UnionModuleSchema{
+                        .settings = settings, .unions = {}, .tagged_unions = {}};
+                default:
+                    return codegen::SoaModuleSchema{.settings = settings,
+                                                    .structs = {},
+                                                    .backend =
+                                                        codegen::SoaBackend::standard_library,
+                                                    .array_allocators = {}};
+            }
+        }();
+        if (apply_document_edit(CreateModule{.source_file_index = new_module_source_file_index_,
+                                             .schema = std::move(module)})) {
+            new_module_name_.fill('\0');
+            new_module_header_.fill('\0');
+            new_module_namespace_.fill('\0');
+            ImGui::CloseCurrentPopup();
+        }
+    }
+    ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Cancel")) {
+        ImGui::CloseCurrentPopup();
+    }
+    if (!schema_edit_message_.empty()) {
+        ImGui::TextWrapped("%s", schema_edit_message_.c_str());
+    }
+    ImGui::EndPopup();
+}
+
 void PlannerUi::draw_new_enum_dialog() {
     if (open_new_enum_dialog_) {
         ImGui::OpenPopup("New enum");
@@ -372,6 +608,14 @@ void PlannerUi::draw_new_enum_dialog() {
         }
         ImGui::EndPopup();
         return;
+    }
+
+    if (pending_packed_enum_binding_.has_value()) {
+        ImGui::TextWrapped(
+            "Create a shared enum declaration and bind packed field '%s' to it. Creation and "
+            "binding are separate undoable history steps.",
+            pending_packed_enum_binding_->field_name.c_str());
+        ImGui::Separator();
     }
 
     auto const& modules{document_->manifest().modules};
@@ -405,9 +649,16 @@ void PlannerUi::draw_new_enum_dialog() {
             ImGui::EndCombo();
         }
         ImGui::InputText("Name", new_enum_name_.data(), new_enum_name_.size());
-        ImGui::InputText(
-            "Underlying type", new_enum_underlying_type_.data(), new_enum_underlying_type_.size());
-        ImGui::TextDisabled("Use a registered name such as @native_uint8 or a C++ spelling.");
+        ImGui::Checkbox("Auto C++ backing", &new_enum_backing_auto_);
+        if (!new_enum_backing_auto_) {
+            ImGui::InputText("C++ backing type",
+                             new_enum_underlying_type_.data(),
+                             new_enum_underlying_type_.size());
+            ImGui::TextDisabled("Use a registered name such as @native_uint8 or a C++ spelling.");
+        } else {
+            ImGui::TextDisabled(
+                "A legal fixed-width C++ backing is derived from the semantic domain.");
+        }
         ImGui::Checkbox("Auto semantic width", &new_enum_width_auto_);
         if (!new_enum_width_auto_) {
             ImGui::InputScalar(
@@ -422,10 +673,13 @@ void PlannerUi::draw_new_enum_dialog() {
                      static_cast<int>(signedness_labels.size()));
 
         auto const ready{
-            new_enum_name_.front() != '\0' && new_enum_underlying_type_.front() != '\0' &&
+            new_enum_name_.front() != '\0' &&
+            (new_enum_backing_auto_ || new_enum_underlying_type_.front() != '\0') &&
             (new_enum_width_auto_ || (new_enum_bit_width_ >= 1 && new_enum_bit_width_ <= 64))};
         ImGui::BeginDisabled(!ready);
-        if (ImGui::Button("Create")) {
+        auto const create_label{pending_packed_enum_binding_.has_value() ? "Create and use"
+                                                                         : "Create"};
+        if (ImGui::Button(create_label)) {
             auto const& module{
                 std::get<codegen::EnumModuleSchema>(modules[new_enum_module_index_])};
             auto const name{std::string{new_enum_name_.data()}};
@@ -440,6 +694,14 @@ void PlannerUi::draw_new_enum_dialog() {
                              .namespace_name = module.settings.namespace_name.value_or(""),
                              .name = name}};
             auto const id{document_->allocate_declaration_id()};
+            auto selection{std::optional<TypeIdentity>{identity}};
+            if (pending_packed_enum_binding_.has_value()) {
+                if (auto const* packed_info{
+                        document_->declaration(pending_packed_enum_binding_->packed_declaration)};
+                    packed_info != nullptr) {
+                    selection = packed_info->identity;
+                }
+            }
             if (apply_document_edit(
                     CreateEnum{
                         .declaration = id,
@@ -447,10 +709,12 @@ void PlannerUi::draw_new_enum_dialog() {
                         .schema =
                             codegen::EnumSchema{
                                 .name = name,
-                                .underlying_type =
-                                    codegen::TypeRef{.name = new_enum_underlying_type_.data(),
-                                                     .suffix = {},
-                                                     .nested = std::nullopt},
+                                .underlying_type = new_enum_backing_auto_
+                                                     ? std::optional<codegen::TypeRef>{}
+                                                     : std::optional{codegen::TypeRef{
+                                                           .name = new_enum_underlying_type_.data(),
+                                                           .suffix = {},
+                                                           .nested = std::nullopt}},
                                 .bit_width = bit_width,
                                 .signedness = signedness,
                                 .reflection = codegen::EnumReflection::none,
@@ -466,7 +730,8 @@ void PlannerUi::draw_new_enum_dialog() {
                                 .native_api = false,
                                 .unreal_projection = std::nullopt},
                         .insertion_index = std::nullopt},
-                    identity)) {
+                    selection) &&
+                bind_new_enum_to_packed_field(identity)) {
                 new_enum_name_.fill('\0');
                 std::snprintf(new_enum_underlying_type_.data(),
                               new_enum_underlying_type_.size(),
@@ -475,7 +740,9 @@ void PlannerUi::draw_new_enum_dialog() {
                 new_enum_width_auto_ = true;
                 new_enum_bit_width_ = 1;
                 new_enum_signedness_ = 0;
+                new_enum_backing_auto_ = true;
                 selected_enumerator_ = "Value0";
+                pending_packed_enum_binding_.reset();
                 ImGui::CloseCurrentPopup();
             }
         }
@@ -483,12 +750,74 @@ void PlannerUi::draw_new_enum_dialog() {
         ImGui::SameLine();
     }
     if (ImGui::Button("Cancel")) {
+        pending_packed_enum_binding_.reset();
         ImGui::CloseCurrentPopup();
     }
     if (!schema_edit_message_.empty()) {
         ImGui::TextWrapped("%s", schema_edit_message_.c_str());
     }
     ImGui::EndPopup();
+}
+
+auto PlannerUi::bind_new_enum_to_packed_field(TypeIdentity const& enumeration) -> bool {
+    if (!pending_packed_enum_binding_.has_value()) {
+        return true;
+    }
+    auto const binding{*pending_packed_enum_binding_};
+    auto const* packed_info{document_->declaration(binding.packed_declaration)};
+    auto const* packed_schema{document_->packed_value_schema(binding.packed_declaration)};
+    auto const packed_identity{packed_info == nullptr ? std::optional<TypeIdentity>{}
+                                                      : std::optional{packed_info->identity}};
+    auto rollback_creation = [&](std::string message) {
+        auto const rollback{document_->undo()};
+        if (rollback.has_value() && *rollback) {
+            sync_document_graph(packed_identity);
+            schema_edit_message_ = std::move(message) + " The new enum was rolled back.";
+        } else if (!rollback.has_value()) {
+            schema_edit_message_ = std::move(message) + " The new enum could not be rolled back: " +
+                                   rollback.error().message;
+        } else {
+            schema_edit_message_ = std::move(message) +
+                                   " The new enum could not be rolled back because history did "
+                                   "not change.";
+        }
+        return false;
+    };
+
+    if (packed_info == nullptr || packed_schema == nullptr) {
+        return rollback_creation("The packed declaration is no longer available.");
+    }
+    auto replacement{*packed_schema};
+    auto const segment{std::ranges::find_if(replacement.segments, [&](auto const& candidate) {
+        return codegen::packed_segment_name(candidate) == binding.field_name;
+    })};
+    if (segment == replacement.segments.end()) {
+        return rollback_creation("The selected packed field is no longer available.");
+    }
+    auto* field{std::get_if<codegen::PackedFieldSchema>(&*segment)};
+    if (field == nullptr) {
+        return rollback_creation("The selected packed segment is no longer a field.");
+    }
+
+    field->type = codegen::TypeRef{.name = enumeration.namespace_name.empty()
+                                             ? enumeration.name
+                                             : enumeration.namespace_name + "::" + enumeration.name,
+                                   .suffix = {},
+                                   .nested = std::nullopt};
+    field->kind = codegen::PackedFieldKind::enumeration;
+    field->range_helper = false;
+    field->minimum_value.reset();
+    field->maximum_value.reset();
+    field->named_codes.clear();
+    if (!apply_document_edit(ReplacePackedValue{.declaration = binding.packed_declaration,
+                                                .schema = std::move(replacement)},
+                             packed_info->identity)) {
+        return rollback_creation("The enum was valid, but binding the packed field failed: " +
+                                 schema_edit_message_);
+    }
+
+    selected_field_ = binding.field_name;
+    return true;
 }
 
 void PlannerUi::draw_new_packed_value_dialog() {
@@ -729,7 +1058,10 @@ void PlannerUi::draw_new_integer_scalar_dialog() {
                                 .bit_width = new_integer_scalar_width_auto_
                                                ? std::nullopt
                                                : std::optional{new_integer_scalar_bit_width_},
-                                .named_codes = {}},
+                                .named_codes = {},
+                                .relationship = std::nullopt,
+                                .cpp_emission = codegen::IntegerScalarCppEmission::none,
+                                .cpp_type = std::nullopt},
                         .insertion_index = std::nullopt},
                     identity)) {
                 new_integer_scalar_name_.fill('\0');
@@ -1673,6 +2005,14 @@ void PlannerUi::draw_new_record_dialog() {
         return;
     }
 
+    if (pending_soa_record_binding_.has_value()) {
+        ImGui::TextWrapped(
+            "Create a shared record declaration and bind SoA column '%s' to it. Creation and "
+            "binding are separate undoable history steps.",
+            pending_soa_record_binding_->column_name.c_str());
+        ImGui::Separator();
+    }
+
     auto const& modules{document_->manifest().modules};
     auto first_record_module{std::optional<std::size_t>{}};
     for (std::size_t index{}; index < modules.size(); ++index) {
@@ -1712,7 +2052,9 @@ void PlannerUi::draw_new_record_dialog() {
         auto const ready{new_record_name_.front() != '\0' &&
                          new_record_member_type_.front() != '\0'};
         ImGui::BeginDisabled(!ready);
-        if (ImGui::Button("Create")) {
+        auto const create_label{pending_soa_record_binding_.has_value() ? "Create and use"
+                                                                        : "Create"};
+        if (ImGui::Button(create_label)) {
             auto const& module{
                 std::get<codegen::RecordModuleSchema>(modules[new_record_module_index_])};
             auto const name{std::string{new_record_name_.data()}};
@@ -1728,19 +2070,32 @@ void PlannerUi::draw_new_record_dialog() {
                              .type = codegen::TypeRef{.name = new_record_member_type_.data(),
                                                       .suffix = {},
                                                       .nested = std::nullopt},
-                             .count = std::nullopt}},
+                             .count = std::nullopt,
+                             .relationship = std::nullopt}},
                 .export_specifier = std::nullopt}};
+            auto selection{std::optional<TypeIdentity>{identity}};
+            if (pending_soa_record_binding_.has_value()) {
+                if (auto const* soa_info{
+                        document_->declaration(pending_soa_record_binding_->soa_declaration)};
+                    soa_info != nullptr) {
+                    selection = soa_info->identity;
+                }
+            }
             if (apply_document_edit(CreateRecord{.declaration = id,
                                                  .module_index = new_record_module_index_,
                                                  .schema = std::move(schema),
                                                  .insertion_index = std::nullopt},
-                                    identity)) {
+                                    selection) &&
+                bind_new_record_to_soa_column(identity)) {
                 new_record_name_.fill('\0');
                 std::snprintf(new_record_member_type_.data(),
                               new_record_member_type_.size(),
                               "%s",
                               "std::uint32_t");
-                selected_field_ = "value";
+                if (!pending_soa_record_binding_.has_value()) {
+                    selected_field_ = "value";
+                }
+                pending_soa_record_binding_.reset();
                 ImGui::CloseCurrentPopup();
             }
         }
@@ -1748,12 +2103,65 @@ void PlannerUi::draw_new_record_dialog() {
         ImGui::SameLine();
     }
     if (ImGui::Button("Cancel")) {
+        pending_soa_record_binding_.reset();
         ImGui::CloseCurrentPopup();
     }
     if (!schema_edit_message_.empty()) {
         ImGui::TextWrapped("%s", schema_edit_message_.c_str());
     }
     ImGui::EndPopup();
+}
+
+auto PlannerUi::bind_new_record_to_soa_column(TypeIdentity const& record) -> bool {
+    if (!pending_soa_record_binding_.has_value()) {
+        return true;
+    }
+    auto const binding{*pending_soa_record_binding_};
+    auto const* soa_info{document_->declaration(binding.soa_declaration)};
+    auto const* soa_schema{document_->soa_schema(binding.soa_declaration)};
+    auto const soa_identity{soa_info == nullptr ? std::optional<TypeIdentity>{}
+                                                : std::optional{soa_info->identity}};
+    auto rollback_creation = [&](std::string message) {
+        auto const rollback{document_->undo()};
+        if (rollback.has_value() && *rollback) {
+            sync_document_graph(soa_identity);
+            schema_edit_message_ = std::move(message) + " The new record was rolled back.";
+        } else if (!rollback.has_value()) {
+            schema_edit_message_ =
+                std::move(message) +
+                " The new record could not be rolled back: " + rollback.error().message;
+        } else {
+            schema_edit_message_ = std::move(message) +
+                                   " The new record could not be rolled back because history did "
+                                   "not change.";
+        }
+        return false;
+    };
+
+    if (soa_info == nullptr || soa_schema == nullptr) {
+        return rollback_creation("The SoA declaration is no longer available.");
+    }
+    auto replacement{*soa_schema};
+    auto const column{std::ranges::find(
+        replacement.members, binding.column_name, &codegen::SoaMemberSchema::name)};
+    if (column == replacement.members.end()) {
+        return rollback_creation("The selected SoA column is no longer available.");
+    }
+
+    column->type = codegen::TypeRef{.name = record.namespace_name.empty()
+                                              ? record.name
+                                              : record.namespace_name + "::" + record.name,
+                                    .suffix = {},
+                                    .nested = std::nullopt};
+    if (!apply_document_edit(
+            ReplaceSoa{.declaration = binding.soa_declaration, .schema = std::move(replacement)},
+            soa_info->identity)) {
+        return rollback_creation("The record was valid, but binding the SoA column failed: " +
+                                 schema_edit_message_);
+    }
+
+    selected_field_ = binding.column_name;
+    return true;
 }
 
 void PlannerUi::draw_new_union_dialog() {
@@ -2104,7 +2512,8 @@ void PlannerUi::draw_new_soa_dialog() {
                 .fixed_schema = std::nullopt,
                 .nested_schema = std::nullopt,
                 .mask_field = false,
-                .mask_dimensions = {}}};
+                .mask_dimensions = {},
+                .relationship = std::nullopt}};
             if (apply_document_edit(CreateSoa{.declaration = id,
                                               .module_index = new_soa_module_index_,
                                               .schema = std::move(schema),

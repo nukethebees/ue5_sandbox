@@ -8,6 +8,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -17,8 +18,14 @@ auto format_bytes(std::optional<std::uint64_t> bytes) -> std::string;
 auto format_number(std::optional<std::uint64_t> value) -> std::string;
 auto format_code_count(layout::ExactCodeCount value) -> std::string;
 auto format_fit(std::optional<bool> fits) -> std::string;
+auto access_operation_name(layout::AccessOperation operation) -> char const*;
+auto access_operation_summary(std::span<layout::AccessIntent const> accesses) -> char const*;
 auto format_delta_bytes(std::optional<layout::NumericDelta> delta) -> std::string;
 auto format_delta_number(std::optional<layout::NumericDelta> delta) -> std::string;
+auto relationship_extent_term(codegen::SemanticRelationKind kind) -> std::string_view;
+auto relationship_extent_unit(codegen::SemanticRelationKind kind,
+                              std::optional<codegen::SemanticRelationUnit> unit)
+    -> std::string_view;
 auto parse_unsigned(std::string_view text) -> std::optional<std::uint64_t>;
 auto parse_packed_integer(std::string_view text) -> std::optional<codegen::PackedIntegerValue>;
 auto diagnostic_color(layout::DiagnosticSeverity severity) -> ImVec4;

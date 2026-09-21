@@ -5,11 +5,15 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include <algorithm>
 #include <charconv>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <iterator>
 #include <set>
 #include <string_view>
+#include <tuple>
 #include <utility>
 #include <variant>
 
@@ -29,6 +33,160 @@ auto parse_float_setting(std::string_view const line, std::string_view const pre
     auto const [end, error]{std::from_chars(value.data(), value.data() + value.size(), parsed)};
     return error == std::errc{} && end == value.data() + value.size() ? std::optional{parsed}
                                                                       : std::nullopt;
+}
+
+auto percent_encode(std::string_view const value) -> std::string {
+    constexpr char hex[]{"0123456789ABCDEF"};
+    std::string result;
+    result.reserve(value.size());
+    for (auto const byte : value) {
+        auto const character{static_cast<unsigned char>(byte)};
+        auto const unreserved{(character >= 'a' && character <= 'z') ||
+                              (character >= 'A' && character <= 'Z') ||
+                              (character >= '0' && character <= '9') || character == '-' ||
+                              character == '_' || character == '.' || character == '~'};
+        if (unreserved) {
+            result.push_back(static_cast<char>(character));
+        } else {
+            result.push_back('%');
+            result.push_back(hex[character >> 4U]);
+            result.push_back(hex[character & 0x0fU]);
+        }
+    }
+    return result;
+}
+
+auto reconcile_weight_keys(std::map<std::string, std::uint64_t>& weights,
+                           std::vector<std::string> const& previous_keys,
+                           std::vector<std::string> const& current_keys) -> bool {
+    std::set<std::string, std::less<>> previous{previous_keys.begin(), previous_keys.end()};
+    std::set<std::string, std::less<>> current{current_keys.begin(), current_keys.end()};
+    std::vector<std::string> removed;
+    std::vector<std::string> added;
+    std::ranges::set_difference(previous, current, std::back_inserter(removed));
+    std::ranges::set_difference(current, previous, std::back_inserter(added));
+
+    auto changed{false};
+    if (removed.size() == 1 && added.size() == 1) {
+        auto const previous_weight{weights.find(removed.front())};
+        if (previous_weight != weights.end()) {
+            auto const weight{previous_weight->second};
+            weights.erase(previous_weight);
+            weights.insert_or_assign(added.front(), weight);
+            changed = true;
+        }
+    }
+
+    auto const previous_size{weights.size()};
+    std::erase_if(weights, [&](auto const& entry) { return !current.contains(entry.first); });
+    return changed || weights.size() != previous_size;
+}
+
+auto percent_decode(std::string_view const value) -> std::optional<std::string> {
+    auto hex_value = [](char const character) -> std::optional<unsigned char> {
+        if (character >= '0' && character <= '9') {
+            return static_cast<unsigned char>(character - '0');
+        }
+        if (character >= 'A' && character <= 'F') {
+            return static_cast<unsigned char>(10 + character - 'A');
+        }
+        if (character >= 'a' && character <= 'f') {
+            return static_cast<unsigned char>(10 + character - 'a');
+        }
+        return std::nullopt;
+    };
+
+    std::string result;
+    result.reserve(value.size());
+    for (std::size_t index{}; index < value.size(); ++index) {
+        if (value[index] != '%') {
+            result.push_back(value[index]);
+            continue;
+        }
+        if (index + 2 >= value.size()) {
+            return std::nullopt;
+        }
+        auto const high{hex_value(value[index + 1])};
+        auto const low{hex_value(value[index + 2])};
+        if (!high.has_value() || !low.has_value()) {
+            return std::nullopt;
+        }
+        result.push_back(static_cast<char>((*high << 4U) | *low));
+        index += 2;
+    }
+    return result;
+}
+
+auto parse_graph_position(std::string_view const value)
+    -> std::optional<std::tuple<std::string, TypeIdentity, std::array<float, 2>>> {
+    std::array<std::string_view, 7> parts;
+    auto remaining{value};
+    for (std::size_t index{}; index + 1 < parts.size(); ++index) {
+        auto const separator{remaining.find('|')};
+        if (separator == std::string_view::npos) {
+            return std::nullopt;
+        }
+        parts[index] = remaining.substr(0, separator);
+        remaining.remove_prefix(separator + 1);
+    }
+    parts.back() = remaining;
+
+    int origin{};
+    auto const [origin_end, origin_error]{
+        std::from_chars(parts[1].data(), parts[1].data() + parts[1].size(), origin)};
+    float x{};
+    auto const [x_end,
+                x_error]{std::from_chars(parts[5].data(), parts[5].data() + parts[5].size(), x)};
+    float y{};
+    auto const [y_end,
+                y_error]{std::from_chars(parts[6].data(), parts[6].data() + parts[6].size(), y)};
+    auto const project{percent_decode(parts[0])};
+    auto const module{percent_decode(parts[2])};
+    auto const namespace_name{percent_decode(parts[3])};
+    auto const name{percent_decode(parts[4])};
+    if (origin_error != std::errc{} || origin_end != parts[1].data() + parts[1].size() ||
+        origin < static_cast<int>(TypeOrigin::declaration) ||
+        origin > static_cast<int>(TypeOrigin::cpp_spelling) || x_error != std::errc{} ||
+        x_end != parts[5].data() + parts[5].size() || y_error != std::errc{} ||
+        y_end != parts[6].data() + parts[6].size() || !std::isfinite(x) || !std::isfinite(y) ||
+        std::abs(x) > 10'000'000.0F || std::abs(y) > 10'000'000.0F || !project.has_value() ||
+        !module.has_value() || !namespace_name.has_value() || !name.has_value() ||
+        project->empty() || name->empty()) {
+        return std::nullopt;
+    }
+    return std::tuple{*project,
+                      TypeIdentity{.origin = static_cast<TypeOrigin>(origin),
+                                   .module_name = *module,
+                                   .namespace_name = *namespace_name,
+                                   .name = *name},
+                      std::array{x, y}};
+}
+
+auto graph_project_key(std::filesystem::path const& path) -> std::string {
+    return path.lexically_normal().generic_string();
+}
+
+auto parse_target_profile_mapping(std::string_view const value)
+    -> std::optional<std::pair<std::string, std::filesystem::path>> {
+    auto const separator{value.find('|')};
+    if (separator == std::string_view::npos ||
+        value.find('|', separator + 1) != std::string_view::npos) {
+        return std::nullopt;
+    }
+    auto const project{percent_decode(value.substr(0, separator))};
+    auto const profile{percent_decode(value.substr(separator + 1))};
+    if (!project.has_value() || project->empty() || !profile.has_value() || profile->empty()) {
+        return std::nullopt;
+    }
+    return std::pair{*project, std::filesystem::path{*profile}};
+}
+
+template <std::size_t Size>
+void set_text_buffer(std::array<char, Size>& buffer, std::string_view const value) {
+    static_assert(Size > 0);
+    buffer.fill('\0');
+    auto const count{std::min(value.size(), Size - 1)};
+    std::copy_n(value.begin(), count, buffer.begin());
 }
 
 auto parse_int_setting(std::string_view const line, std::string_view const prefix)
@@ -78,13 +236,12 @@ auto type_fact_sources(AbiProfile const& abi) -> std::string {
     return result.empty() ? "Unknown" : result;
 }
 
-void draw_target_profile(AbiProfile const& abi) {
-    if (!ImGui::CollapsingHeader("Target profile", ImGuiTreeNodeFlags_DefaultOpen)) {
-        return;
-    }
+void draw_target_profile_summary(AbiProfile const& abi) {
     auto const& identity{abi.identity()};
     auto const& memory{abi.memory_facts()};
     auto const primitive_sources{type_fact_sources(abi)};
+    auto const cache_line_bytes{detail::format_bytes(memory.cache_line_bytes)};
+    auto const page_bytes{detail::format_bytes(memory.page_bytes)};
     auto const l1_capacity{detail::format_bytes(memory.l1_data_cache_bytes)};
     auto const l2_capacity{detail::format_bytes(memory.l2_cache_bytes)};
     auto const l3_capacity{detail::format_bytes(memory.l3_cache_bytes)};
@@ -105,12 +262,72 @@ void draw_target_profile(AbiProfile const& abi) {
         draw_row("ABI", known_or_unknown(identity.abi));
         draw_row("Compiler", known_or_unknown(identity.compiler));
         draw_row("Build configuration", known_or_unknown(identity.build_configuration));
+        draw_row("Cache-line size", cache_line_bytes.c_str());
+        draw_row("Page size", page_bytes.c_str());
         draw_row("L1 data cache capacity", l1_capacity.c_str());
         draw_row("L2 cache capacity", l2_capacity.c_str());
         draw_row("L3 cache capacity", l3_capacity.c_str());
         draw_row("Primitive fact source", primitive_sources.c_str());
         draw_row("Memory fact source", known_or_unknown(memory.provenance));
         ImGui::EndTable();
+    }
+
+    if (ImGui::TreeNodeEx("Primitive facts", ImGuiTreeNodeFlags_SpanAvailWidth)) {
+        if (abi.types().empty()) {
+            ImGui::TextDisabled("No primitive facts; physical layout remains Unknown.");
+        } else if (ImGui::BeginTable("target-primitive-facts",
+                                     6,
+                                     ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                         ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("Type");
+            ImGui::TableSetupColumn("Size");
+            ImGui::TableSetupColumn("Alignment");
+            ImGui::TableSetupColumn("Kind");
+            ImGui::TableSetupColumn("Value bits");
+            ImGui::TableSetupColumn("Provenance");
+            ImGui::TableHeadersRow();
+            for (auto const& [spelling, facts] : abi.types()) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(spelling.c_str());
+                ImGui::TableNextColumn();
+                ImGui::Text("%llu", static_cast<unsigned long long>(facts.size_bytes));
+                ImGui::TableNextColumn();
+                ImGui::Text("%llu", static_cast<unsigned long long>(facts.alignment_bytes));
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(!facts.integer_signed.has_value()
+                                           ? "Non-integer"
+                                           : (*facts.integer_signed ? "Signed" : "Unsigned"));
+                ImGui::TableNextColumn();
+                if (facts.unsigned_value_bits.has_value()) {
+                    ImGui::Text("%u", *facts.unsigned_value_bits);
+                } else {
+                    ImGui::TextDisabled("Unknown");
+                }
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(known_or_unknown(facts.provenance));
+            }
+            ImGui::EndTable();
+        }
+
+        if (!abi.representations().empty() &&
+            ImGui::BeginTable("target-representation-aliases",
+                              2,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_SizingStretchProp)) {
+            ImGui::TableSetupColumn("Representation alias");
+            ImGui::TableSetupColumn("Represented by");
+            ImGui::TableHeadersRow();
+            for (auto const& [spelling, represented_by] : abi.representations()) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(spelling.c_str());
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(represented_by.c_str());
+            }
+            ImGui::EndTable();
+        }
+        ImGui::TreePop();
     }
 }
 
@@ -119,9 +336,12 @@ void draw_target_profile(AbiProfile const& abi) {
 PlannerUi::PlannerUi(SchemaLoadResult loaded)
     : project_path_{std::move(loaded.project_path)}
     , target_name_{std::move(loaded.target_name)}
+    , project_document_{std::move(loaded.project_document)}
     , document_{std::move(loaded.document)}
     , workspace_{document_.has_value() ? document_->types() : TypeGraph{}}
     , load_diagnostics_{std::move(loaded.diagnostics)} {
+    target_memory_fact_defaults_ = abi_.memory_facts();
+    sync_target_memory_fact_inputs();
     auto const types{workspace_.types().types()};
     auto const found{std::ranges::find_if(types, [](auto const& type) {
         if (std::holds_alternative<EnumType>(type.definition) ||
@@ -145,6 +365,231 @@ PlannerUi::PlannerUi(SchemaLoadResult loaded)
         selected_type_ = TypeId{static_cast<std::uint32_t>(found - types.begin())};
     }
     sync_variant_name();
+}
+
+void PlannerUi::sync_target_memory_fact_inputs() {
+    auto write_value = [](auto& buffer, std::optional<std::uint64_t> const value) {
+        buffer.fill('\0');
+        if (!value.has_value()) {
+            return;
+        }
+        auto const [end,
+                    error]{std::to_chars(buffer.data(), buffer.data() + buffer.size() - 1, *value)};
+        if (error == std::errc{}) {
+            *end = '\0';
+        }
+    };
+    auto const& memory{abi_.memory_facts()};
+    write_value(target_cache_line_bytes_, memory.cache_line_bytes);
+    write_value(target_page_bytes_, memory.page_bytes);
+    write_value(target_l1_data_cache_bytes_, memory.l1_data_cache_bytes);
+    write_value(target_l2_cache_bytes_, memory.l2_cache_bytes);
+    write_value(target_l3_cache_bytes_, memory.l3_cache_bytes);
+    target_memory_fact_error_.clear();
+}
+
+auto PlannerUi::load_target_profile(std::filesystem::path const& path, bool const persist) -> bool {
+    auto loaded{load_abi_profile(path)};
+    if (!loaded.has_value()) {
+        target_profile_load_error_ =
+            loaded.error().line == 0
+                ? loaded.error().message
+                : "Line " + std::to_string(loaded.error().line) + ": " + loaded.error().message;
+        return false;
+    }
+
+    auto stored_path{path.lexically_normal()};
+    std::error_code path_error;
+    auto const absolute_path{std::filesystem::absolute(path, path_error)};
+    if (!path_error) {
+        stored_path = absolute_path.lexically_normal();
+    }
+    auto const path_text{stored_path.string()};
+    set_text_buffer(target_profile_path_, path_text);
+    abi_ = std::move(*loaded);
+    target_memory_fact_defaults_ = abi_.memory_facts();
+    sync_target_memory_fact_inputs();
+    target_profile_load_error_.clear();
+    ++target_profile_revision_;
+
+    if (persist && !project_path_.empty()) {
+        persisted_target_profile_paths_.insert_or_assign(graph_project_key(project_path_),
+                                                         std::move(stored_path));
+        ImGui::MarkIniSettingsDirty();
+    }
+    return true;
+}
+
+void PlannerUi::use_builtin_target_profile(bool const clear_persisted) {
+    abi_ = AbiProfile::host_common();
+    target_memory_fact_defaults_ = abi_.memory_facts();
+    sync_target_memory_fact_inputs();
+    target_profile_load_error_.clear();
+    target_profile_path_.fill('\0');
+    ++target_profile_revision_;
+
+    if (clear_persisted && !project_path_.empty() &&
+        persisted_target_profile_paths_.erase(graph_project_key(project_path_)) != 0) {
+        ImGui::MarkIniSettingsDirty();
+    }
+}
+
+auto PlannerUi::load_comparison_target_profile(std::filesystem::path const& path) -> bool {
+    auto loaded{load_abi_profile(path)};
+    if (!loaded.has_value()) {
+        comparison_target_profile_error_ =
+            loaded.error().line == 0
+                ? loaded.error().message
+                : "Line " + std::to_string(loaded.error().line) + ": " + loaded.error().message;
+        return false;
+    }
+
+    auto stored_path{path.lexically_normal()};
+    std::error_code path_error;
+    auto const absolute_path{std::filesystem::absolute(path, path_error)};
+    if (!path_error) {
+        stored_path = absolute_path.lexically_normal();
+    }
+    set_text_buffer(comparison_target_profile_path_, stored_path.string());
+    comparison_abi_ = std::move(*loaded);
+    comparison_target_profile_error_.clear();
+    ++comparison_target_profile_revision_;
+    return true;
+}
+
+void PlannerUi::use_builtin_comparison_target_profile() {
+    comparison_abi_ = AbiProfile::host_common();
+    comparison_target_profile_path_.fill('\0');
+    comparison_target_profile_error_.clear();
+    ++comparison_target_profile_revision_;
+}
+
+auto PlannerUi::draw_target_profile() -> bool {
+    if (!ImGui::CollapsingHeader("Target profile", ImGuiTreeNodeFlags_DefaultOpen)) {
+        return false;
+    }
+    draw_target_profile_summary(abi_);
+
+    ImGui::SeparatorText("Generated target profile");
+    ImGui::TextDisabled(
+        "Loads explicit compiler/configuration facts for this analysis session; it never modifies "
+        "LispB.");
+    ImGui::SetNextItemWidth(-1.0F);
+    ImGui::InputText("Profile path", target_profile_path_.data(), target_profile_path_.size());
+
+    bool changed{};
+    if (ImGui::Button("Load profile")) {
+        auto const path{std::filesystem::path{target_profile_path_.data()}};
+        if (path.empty()) {
+            target_profile_load_error_ = "Target profile path is required.";
+        } else if (load_target_profile(path, true)) {
+            changed = true;
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Use built-in profile")) {
+        use_builtin_target_profile(true);
+        changed = true;
+    }
+    if (!target_profile_load_error_.empty()) {
+        ImGui::TextColored(
+            ImVec4{0.95F, 0.45F, 0.35F, 1.0F}, "%s", target_profile_load_error_.c_str());
+    }
+
+    ImGui::SeparatorText("Session memory facts");
+    ImGui::TextDisabled(
+        "Byte values apply to analysis only. Empty fields are Unknown; line/page sizes must be "
+        "non-zero.");
+    constexpr auto flags{ImGuiInputTextFlags_CharsDecimal};
+    ImGui::SetNextItemWidth(180.0F);
+    ImGui::InputText("Cache-line bytes",
+                     target_cache_line_bytes_.data(),
+                     target_cache_line_bytes_.size(),
+                     flags);
+    ImGui::SetNextItemWidth(180.0F);
+    ImGui::InputText("Page bytes", target_page_bytes_.data(), target_page_bytes_.size(), flags);
+    ImGui::SetNextItemWidth(180.0F);
+    ImGui::InputText("L1 data cache bytes",
+                     target_l1_data_cache_bytes_.data(),
+                     target_l1_data_cache_bytes_.size(),
+                     flags);
+    ImGui::SetNextItemWidth(180.0F);
+    ImGui::InputText(
+        "L2 cache bytes", target_l2_cache_bytes_.data(), target_l2_cache_bytes_.size(), flags);
+    ImGui::SetNextItemWidth(180.0F);
+    ImGui::InputText(
+        "L3 cache bytes", target_l3_cache_bytes_.data(), target_l3_cache_bytes_.size(), flags);
+
+    if (ImGui::Button("Apply memory facts")) {
+        MemoryFacts candidate;
+        auto parse_value = [&](char const* const text,
+                               char const* const label,
+                               bool const require_non_zero,
+                               std::optional<std::uint64_t>& output) {
+            auto const value{std::string_view{text}};
+            if (value.empty()) {
+                output.reset();
+                return true;
+            }
+            std::uint64_t parsed{};
+            auto const [end,
+                        error]{std::from_chars(value.data(), value.data() + value.size(), parsed)};
+            if (error != std::errc{} || end != value.data() + value.size()) {
+                target_memory_fact_error_ = std::string{label} + " must be an unsigned integer.";
+                return false;
+            }
+            if (require_non_zero && parsed == 0) {
+                target_memory_fact_error_ = std::string{label} + " must be non-zero or empty.";
+                return false;
+            }
+            output = parsed;
+            return true;
+        };
+        auto const valid{
+            parse_value(target_cache_line_bytes_.data(),
+                        "Cache-line bytes",
+                        true,
+                        candidate.cache_line_bytes) &&
+            parse_value(target_page_bytes_.data(), "Page bytes", true, candidate.page_bytes) &&
+            parse_value(target_l1_data_cache_bytes_.data(),
+                        "L1 data cache bytes",
+                        false,
+                        candidate.l1_data_cache_bytes) &&
+            parse_value(
+                target_l2_cache_bytes_.data(), "L2 cache bytes", false, candidate.l2_cache_bytes) &&
+            parse_value(
+                target_l3_cache_bytes_.data(), "L3 cache bytes", false, candidate.l3_cache_bytes)};
+        if (valid) {
+            auto const matches_defaults{
+                candidate.cache_line_bytes == target_memory_fact_defaults_.cache_line_bytes &&
+                candidate.page_bytes == target_memory_fact_defaults_.page_bytes &&
+                candidate.l1_data_cache_bytes == target_memory_fact_defaults_.l1_data_cache_bytes &&
+                candidate.l2_cache_bytes == target_memory_fact_defaults_.l2_cache_bytes &&
+                candidate.l3_cache_bytes == target_memory_fact_defaults_.l3_cache_bytes};
+            candidate.provenance =
+                matches_defaults ? target_memory_fact_defaults_.provenance : "Session override";
+            if (candidate != abi_.memory_facts()) {
+                abi_.set_memory_facts(std::move(candidate));
+                ++target_profile_revision_;
+                changed = true;
+            }
+            target_memory_fact_error_.clear();
+        }
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Restore profile facts")) {
+        if (abi_.memory_facts() != target_memory_fact_defaults_) {
+            abi_.set_memory_facts(target_memory_fact_defaults_);
+            ++target_profile_revision_;
+            changed = true;
+        }
+        sync_target_memory_fact_inputs();
+    }
+    if (!target_memory_fact_error_.empty()) {
+        ImGui::TextColored(
+            ImVec4{0.95F, 0.45F, 0.35F, 1.0F}, "%s", target_memory_fact_error_.c_str());
+    }
+    return changed;
 }
 
 void PlannerUi::register_settings_handler() {
@@ -192,7 +637,7 @@ void PlannerUi::remember_window_size(WindowSize const size) {
 }
 
 void PlannerUi::request_close() {
-    if (!document_.has_value() || !document_->dirty()) {
+    if (!has_dirty_changes()) {
         close_confirmed_ = true;
         return;
     }
@@ -214,6 +659,12 @@ void PlannerUi::validate_comparison_variants() {
     }
 }
 
+void PlannerUi::persist_view_visibility(bool const previous, bool const current) {
+    if (previous != current) {
+        ImGui::MarkIniSettingsDirty();
+    }
+}
+
 auto PlannerUi::settings_read_open(ImGuiContext*, ImGuiSettingsHandler* handler, char const* name)
     -> void* {
     if (std::strcmp(name, "Settings") != 0) {
@@ -221,6 +672,9 @@ auto PlannerUi::settings_read_open(ImGuiContext*, ImGuiSettingsHandler* handler,
     }
     auto* ui{static_cast<PlannerUi*>(handler->UserData)};
     ui->recent_projects_.clear();
+    ui->graph_node_positions_.clear();
+    ui->persisted_graph_node_positions_.clear();
+    ui->persisted_target_profile_paths_.clear();
     return ui;
 }
 
@@ -247,6 +701,72 @@ void PlannerUi::settings_read_line(ImGuiContext*,
         ui->graph_view_open_ = value.substr(graph_open_prefix.size()) != "0";
         return;
     }
+    constexpr std::string_view project_open_prefix{"ProjectOpen="};
+    if (value.starts_with(project_open_prefix)) {
+        ui->project_view_open_ = value.substr(project_open_prefix.size()) != "0";
+        return;
+    }
+    constexpr std::string_view layout_open_prefix{"LayoutOpen="};
+    if (value.starts_with(layout_open_prefix)) {
+        ui->layout_view_open_ = value.substr(layout_open_prefix.size()) != "0";
+        return;
+    }
+    constexpr std::string_view properties_open_prefix{"PropertiesOpen="};
+    if (value.starts_with(properties_open_prefix)) {
+        ui->properties_view_open_ = value.substr(properties_open_prefix.size()) != "0";
+        return;
+    }
+    constexpr std::string_view variants_open_prefix{"VariantsOpen="};
+    if (value.starts_with(variants_open_prefix)) {
+        ui->variants_view_open_ = value.substr(variants_open_prefix.size()) != "0";
+        return;
+    }
+    constexpr std::string_view comparison_open_prefix{"ComparisonOpen="};
+    if (value.starts_with(comparison_open_prefix)) {
+        ui->comparison_view_open_ = value.substr(comparison_open_prefix.size()) != "0";
+        return;
+    }
+    constexpr std::string_view source_open_prefix{"SourceOpen="};
+    if (value.starts_with(source_open_prefix)) {
+        ui->source_view_open_ = value.substr(source_open_prefix.size()) != "0";
+        return;
+    }
+    constexpr std::string_view diagnostics_open_prefix{"DiagnosticsOpen="};
+    if (value.starts_with(diagnostics_open_prefix)) {
+        ui->diagnostics_view_open_ = value.substr(diagnostics_open_prefix.size()) != "0";
+        return;
+    }
+    constexpr std::string_view target_profile_prefix{"TargetProfile="};
+    if (value.starts_with(target_profile_prefix)) {
+        auto const parsed{parse_target_profile_mapping(value.substr(target_profile_prefix.size()))};
+        if (!parsed.has_value()) {
+            return;
+        }
+        auto const& [project, profile]{*parsed};
+        ui->persisted_target_profile_paths_.insert_or_assign(project, profile);
+        if (project == graph_project_key(ui->project_path_)) {
+            ui->use_builtin_target_profile(false);
+            set_text_buffer(ui->target_profile_path_, profile.string());
+            static_cast<void>(ui->load_target_profile(profile, false));
+        }
+        return;
+    }
+    constexpr std::string_view graph_node_prefix{"GraphNode="};
+    if (value.starts_with(graph_node_prefix)) {
+        auto const parsed{parse_graph_position(value.substr(graph_node_prefix.size()))};
+        if (!parsed.has_value()) {
+            return;
+        }
+        auto const& [project, identity, position]{*parsed};
+        ui->persisted_graph_node_positions_[project][identity] = position;
+        if (project == graph_project_key(ui->project_path_)) {
+            auto const types{ui->workspace_.types().types()};
+            if (std::ranges::find(types, identity, &TypeNode::identity) != types.end()) {
+                ui->graph_node_positions_[identity] = position;
+            }
+        }
+        return;
+    }
     constexpr std::string_view recent_prefix{"RecentProject="};
     if (value.starts_with(recent_prefix) && value.size() > recent_prefix.size() &&
         ui->recent_projects_.size() < 20) {
@@ -264,9 +784,37 @@ void PlannerUi::settings_write_all(ImGuiContext*,
         output->appendf("WindowWidth=%d\n", size->width);
         output->appendf("WindowHeight=%d\n", size->height);
     }
+    output->appendf("ProjectOpen=%d\n", ui->project_view_open_ ? 1 : 0);
+    output->appendf("LayoutOpen=%d\n", ui->layout_view_open_ ? 1 : 0);
+    output->appendf("PropertiesOpen=%d\n", ui->properties_view_open_ ? 1 : 0);
+    output->appendf("VariantsOpen=%d\n", ui->variants_view_open_ ? 1 : 0);
+    output->appendf("ComparisonOpen=%d\n", ui->comparison_view_open_ ? 1 : 0);
     output->appendf("GraphOpen=%d\n", ui->graph_view_open_ ? 1 : 0);
+    output->appendf("SourceOpen=%d\n", ui->source_view_open_ ? 1 : 0);
+    output->appendf("DiagnosticsOpen=%d\n", ui->diagnostics_view_open_ ? 1 : 0);
     for (auto const& path : ui->recent_projects_) {
         output->appendf("RecentProject=%s\n", path.string().c_str());
+    }
+    for (auto const& [project, profile] : ui->persisted_target_profile_paths_) {
+        auto const encoded_project{percent_encode(project)};
+        auto const encoded_profile{percent_encode(profile.generic_string())};
+        output->appendf("TargetProfile=%s|%s\n", encoded_project.c_str(), encoded_profile.c_str());
+    }
+    for (auto const& [project, positions] : ui->persisted_graph_node_positions_) {
+        auto const encoded_project{percent_encode(project)};
+        for (auto const& [identity, position] : positions) {
+            auto const encoded_module{percent_encode(identity.module_name)};
+            auto const encoded_namespace{percent_encode(identity.namespace_name)};
+            auto const encoded_name{percent_encode(identity.name)};
+            output->appendf("GraphNode=%s|%d|%s|%s|%s|%g|%g\n",
+                            encoded_project.c_str(),
+                            static_cast<int>(identity.origin),
+                            encoded_module.c_str(),
+                            encoded_namespace.c_str(),
+                            encoded_name.c_str(),
+                            position[0],
+                            position[1]);
+        }
     }
     output->append("\n");
 }
@@ -289,6 +837,9 @@ auto PlannerUi::draw() -> bool {
     refresh_analysis();
     draw_comparison_panel();
     draw_graph_panel();
+    draw_source_panel();
+    draw_diagnostics_panel();
+    draw_new_module_dialog();
     draw_new_enum_dialog();
     draw_new_packed_value_dialog();
     draw_new_integer_scalar_dialog();
@@ -302,7 +853,6 @@ auto PlannerUi::draw() -> bool {
     draw_new_union_dialog();
     draw_new_tagged_union_dialog();
     draw_new_soa_dialog();
-    draw_source_preview();
     draw_close_confirmation();
     draw_project_path_dialogs();
     return view_changed || revision_before != workspace_.revision() ||
@@ -329,16 +879,47 @@ auto PlannerUi::draw_view_menu() -> bool {
         }
         if (ImGui::MenuItem("Reset panel layout")) {
             reset_dock_layout_requested_ = true;
+            project_view_open_ = true;
+            layout_view_open_ = true;
+            properties_view_open_ = true;
+            variants_view_open_ = true;
+            comparison_view_open_ = true;
+            graph_view_open_ = true;
+            source_view_open_ = false;
+            diagnostics_view_open_ = true;
+            ImGui::MarkIniSettingsDirty();
             changed = true;
         }
+        auto toggle_view = [&](char const* const label, bool& open) {
+            if (ImGui::MenuItem(label, nullptr, open)) {
+                open = !open;
+                ImGui::MarkIniSettingsDirty();
+                changed = true;
+            }
+        };
+        toggle_view("Project / Schema", project_view_open_);
+        toggle_view("Layout", layout_view_open_);
+        toggle_view("Properties", properties_view_open_);
+        toggle_view("Variants", variants_view_open_);
+        toggle_view("Comparison", comparison_view_open_);
         if (ImGui::MenuItem("Graph", nullptr, graph_view_open_)) {
             graph_view_open_ = !graph_view_open_;
             ImGui::MarkIniSettingsDirty();
             changed = true;
         }
+        if (ImGui::MenuItem("Source", nullptr, source_view_open_)) {
+            source_view_open_ = !source_view_open_;
+            ImGui::MarkIniSettingsDirty();
+            changed = true;
+        }
+        if (ImGui::MenuItem("Diagnostics", nullptr, diagnostics_view_open_)) {
+            diagnostics_view_open_ = !diagnostics_view_open_;
+            ImGui::MarkIniSettingsDirty();
+            changed = true;
+        }
         ImGui::EndMenu();
     }
-    if (document_.has_value() && document_->dirty()) {
+    if (has_dirty_changes()) {
         ImGui::SameLine();
         ImGui::TextColored({0.95F, 0.72F, 0.25F, 1.0F}, "Unsaved LispB changes");
     }
@@ -352,6 +933,11 @@ auto PlannerUi::draw_file_menu() -> bool {
         return false;
     }
     auto const has_document{document_.has_value()};
+    auto const use_project_history{project_history_active()};
+    auto const can_undo{use_project_history ? project_document_->can_undo()
+                                            : has_document && document_->can_undo()};
+    auto const can_redo{use_project_history ? project_document_->can_redo()
+                                            : has_document && document_->can_redo()};
     if (ImGui::MenuItem("Open Project...")) {
         std::snprintf(open_project_path_.data(),
                       open_project_path_.size(),
@@ -369,52 +955,67 @@ auto PlannerUi::draw_file_menu() -> bool {
         ImGui::EndMenu();
     }
     ImGui::Separator();
-    ImGui::BeginDisabled(!has_document || !document_->can_undo());
+    ImGui::BeginDisabled(!can_undo);
     if (ImGui::MenuItem("Undo")) {
-        auto const selection{selected_type_.transform(
-            [&](TypeId const type) { return workspace_.types().type(type).identity; })};
-        auto result{document_->undo()};
-        if (result.has_value() && *result) {
-            sync_document_graph(selection);
-            changed = true;
-        } else if (!result.has_value()) {
-            schema_edit_message_ = result.error().message;
+        if (use_project_history) {
+            auto result{project_document_->undo()};
+            if (result.has_value() && *result) {
+                schema_edit_message_ = "Undid the staged project source change.";
+                changed = true;
+            } else if (!result.has_value()) {
+                schema_edit_message_ = result.error().message;
+            }
+        } else {
+            auto const selection{selected_type_.transform(
+                [&](TypeId const type) { return workspace_.types().type(type).identity; })};
+            auto result{document_->undo()};
+            if (result.has_value() && *result) {
+                sync_document_graph(selection);
+                changed = true;
+            } else if (!result.has_value()) {
+                schema_edit_message_ = result.error().message;
+            }
         }
     }
     ImGui::EndDisabled();
-    ImGui::BeginDisabled(!has_document || !document_->can_redo());
+    ImGui::BeginDisabled(!can_redo);
     if (ImGui::MenuItem("Redo")) {
-        auto const selection{selected_type_.transform(
-            [&](TypeId const type) { return workspace_.types().type(type).identity; })};
-        auto result{document_->redo()};
-        if (result.has_value() && *result) {
-            sync_document_graph(selection);
-            changed = true;
-        } else if (!result.has_value()) {
-            schema_edit_message_ = result.error().message;
+        if (use_project_history) {
+            auto result{project_document_->redo()};
+            if (result.has_value() && *result) {
+                schema_edit_message_ = "Redid the staged project source change.";
+                changed = true;
+            } else if (!result.has_value()) {
+                schema_edit_message_ = result.error().message;
+            }
+        } else {
+            auto const selection{selected_type_.transform(
+                [&](TypeId const type) { return workspace_.types().type(type).identity; })};
+            auto result{document_->redo()};
+            if (result.has_value() && *result) {
+                sync_document_graph(selection);
+                changed = true;
+            } else if (!result.has_value()) {
+                schema_edit_message_ = result.error().message;
+            }
         }
     }
     ImGui::EndDisabled();
     ImGui::Separator();
-    ImGui::BeginDisabled(!has_document || !document_->dirty());
+    ImGui::BeginDisabled(!has_dirty_changes());
     if (ImGui::MenuItem("Preview LispB changes")) {
-        open_source_preview_ = true;
+        source_view_open_ = true;
+        focus_source_view_ = true;
+        ImGui::MarkIniSettingsDirty();
+        changed = true;
     }
     if (ImGui::MenuItem("Save")) {
-        auto const selection{selected_type_.transform(
-            [&](TypeId const type) { return workspace_.types().type(type).identity; })};
-        auto result{document_->save()};
-        if (result.has_value()) {
-            sync_document_graph(selection);
-            schema_edit_message_ =
-                "Saved and reloaded " + std::to_string(result->size()) + " LispB source file(s).";
+        if (save_changes()) {
             changed = true;
-        } else {
-            schema_edit_message_ = result.error().message;
         }
     }
     ImGui::EndDisabled();
-    ImGui::BeginDisabled(!has_document);
+    ImGui::BeginDisabled(!has_document || use_project_history);
     if (ImGui::MenuItem("Save As...")) {
         auto destination{project_path_.parent_path() /
                          (project_path_.stem().string() + "_copy.lispb")};
@@ -493,42 +1094,172 @@ void PlannerUi::draw_project_path_dialogs() {
     }
 }
 
-void PlannerUi::draw_source_preview() {
-    if (open_source_preview_) {
-        ImGui::OpenPopup("LispB source preview");
-        open_source_preview_ = false;
-    }
-    if (!ImGui::BeginPopupModal(
-            "LispB source preview", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+void PlannerUi::draw_source_panel() {
+    if (!source_view_open_) {
         return;
     }
-    auto updates{document_->preview_source_updates()};
-    if (!updates.has_value()) {
-        ImGui::TextWrapped("%s", updates.error().message.c_str());
-    } else {
-        for (auto const& update : *updates) {
-            ImGui::SeparatorText(update.path.string().c_str());
-            if (ImGui::BeginTabBar(update.path.string().c_str())) {
-                if (ImGui::BeginTabItem("Updated")) {
-                    ImGui::BeginChild("updated-source", {760.0F, 360.0F}, true);
-                    ImGui::TextUnformatted(update.updated.c_str());
-                    ImGui::EndChild();
-                    ImGui::EndTabItem();
-                }
-                if (ImGui::BeginTabItem("Original")) {
-                    ImGui::BeginChild("original-source", {760.0F, 360.0F}, true);
-                    ImGui::TextUnformatted(update.original.c_str());
-                    ImGui::EndChild();
-                    ImGui::EndTabItem();
-                }
-                ImGui::EndTabBar();
+    if (std::exchange(focus_source_view_, false)) {
+        ImGui::SetNextWindowFocus();
+    }
+    auto const was_open{source_view_open_};
+    if (!ImGui::Begin("Source", &source_view_open_)) {
+        ImGui::End();
+        persist_view_visibility(was_open, source_view_open_);
+        return;
+    }
+    if (!document_.has_value()) {
+        ImGui::TextDisabled("Open a LispB project to inspect source changes.");
+        ImGui::End();
+        persist_view_visibility(was_open, source_view_open_);
+        return;
+    }
+    struct SourceViewUpdate {
+        std::filesystem::path path;
+        std::string original;
+        std::string updated;
+    };
+    std::vector<SourceViewUpdate> updates;
+    std::string preview_error;
+    if (project_document_.has_value()) {
+        auto project_updates{project_document_->preview_source_updates()};
+        if (!project_updates.has_value()) {
+            preview_error = project_updates.error().message;
+        } else {
+            for (auto& update : *project_updates) {
+                updates.push_back({.path = std::move(update.path),
+                                   .original = std::move(update.original),
+                                   .updated = std::move(update.updated)});
             }
         }
     }
-    if (ImGui::Button("Close")) {
-        ImGui::CloseCurrentPopup();
+    auto schema_updates{document_->preview_source_updates()};
+    if (!schema_updates.has_value()) {
+        if (!preview_error.empty()) {
+            preview_error += "\n";
+        }
+        preview_error += schema_updates.error().message;
+    } else {
+        for (auto& update : *schema_updates) {
+            updates.push_back({.path = std::move(update.path),
+                               .original = std::move(update.original),
+                               .updated = std::move(update.updated)});
+        }
     }
-    ImGui::EndPopup();
+    if (!preview_error.empty()) {
+        ImGui::TextWrapped("%s", preview_error.c_str());
+    } else if (updates.empty()) {
+        ImGui::TextDisabled("No unsaved LispB source changes.");
+    } else if (ImGui::BeginTabBar("source-files")) {
+        for (auto const& update : updates) {
+            ImGui::PushID(update.path.string().c_str());
+            auto const label{update.path.filename().string() + "###" + update.path.string()};
+            if (ImGui::BeginTabItem(label.c_str())) {
+                ImGui::TextDisabled("%s", update.path.string().c_str());
+                if (ImGui::BeginTabBar("source-version-tabs")) {
+                    if (ImGui::BeginTabItem("Updated")) {
+                        ImGui::BeginChild("updated-source", {0.0F, 0.0F}, true);
+                        ImGui::TextUnformatted(update.updated.c_str());
+                        ImGui::EndChild();
+                        ImGui::EndTabItem();
+                    }
+                    if (ImGui::BeginTabItem("Original")) {
+                        ImGui::BeginChild("original-source", {0.0F, 0.0F}, true);
+                        ImGui::TextUnformatted(update.original.c_str());
+                        ImGui::EndChild();
+                        ImGui::EndTabItem();
+                    }
+                    ImGui::EndTabBar();
+                }
+                ImGui::EndTabItem();
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndTabBar();
+    }
+    ImGui::End();
+    persist_view_visibility(was_open, source_view_open_);
+}
+
+void PlannerUi::draw_diagnostics_panel() {
+    if (!diagnostics_view_open_) {
+        return;
+    }
+    auto const was_open{diagnostics_view_open_};
+    if (!ImGui::Begin("Diagnostics", &diagnostics_view_open_)) {
+        ImGui::End();
+        persist_view_visibility(was_open, diagnostics_view_open_);
+        return;
+    }
+
+    bool drew_content{};
+    if (!schema_edit_message_.empty()) {
+        ImGui::SeparatorText("Document status");
+        ImGui::TextWrapped("%s", schema_edit_message_.c_str());
+        drew_content = true;
+    }
+    if (!load_diagnostics_.empty()) {
+        ImGui::SeparatorText("Project load");
+        draw_diagnostics(load_diagnostics_);
+        drew_content = true;
+    }
+    if (!target_profile_load_error_.empty() || !target_memory_fact_error_.empty() ||
+        !comparison_target_profile_error_.empty()) {
+        ImGui::SeparatorText("Target profile");
+        if (!target_profile_load_error_.empty()) {
+            ImGui::TextWrapped("%s", target_profile_load_error_.c_str());
+        }
+        if (!target_memory_fact_error_.empty()) {
+            ImGui::TextWrapped("%s", target_memory_fact_error_.c_str());
+        }
+        if (!comparison_target_profile_error_.empty()) {
+            ImGui::TextWrapped("Comparison: %s", comparison_target_profile_error_.c_str());
+        }
+        drew_content = true;
+    }
+    auto draw_analysis = [&](char const* const label, auto const& analysis) {
+        if (!analysis.has_value() || analysis->diagnostics.empty()) {
+            return;
+        }
+        ImGui::SeparatorText(label);
+        draw_diagnostics(analysis->diagnostics);
+        drew_content = true;
+    };
+    draw_analysis("Semantic domain", enum_domain_);
+    draw_analysis("Enum target comparison", enum_target_comparison_);
+    draw_analysis("Integer scalar", integer_scalar_analysis_);
+    draw_analysis("Varint", integer_varint_analysis_);
+    draw_analysis("Fixed point", fixed_point_analysis_);
+    draw_analysis("Mini-float", mini_float_analysis_);
+    draw_analysis("Sentinel optional", optional_sentinel_analysis_);
+    draw_analysis("Presence-bit optional", optional_presence_bit_analysis_);
+    draw_analysis("Packed layout", active_packed_);
+    draw_analysis("Packed target comparison", packed_target_comparison_);
+    draw_analysis("Packed access", packed_access_analysis_);
+    draw_analysis("Packed target access comparison", packed_target_access_comparison_);
+    draw_analysis("Packed access comparison", packed_access_comparison_);
+    draw_analysis("Record layout", record_analysis_);
+    draw_analysis("Record target comparison", record_target_comparison_);
+    draw_analysis("Record access", record_access_analysis_);
+    draw_analysis("Record target access comparison", record_target_access_comparison_);
+    draw_analysis("Union layout", union_analysis_);
+    draw_analysis("Union target comparison", union_target_comparison_);
+    draw_analysis("Raw-union workload", union_distribution_analysis_);
+    draw_analysis("Raw-union target workload comparison", union_target_distribution_comparison_);
+    draw_analysis("Tagged-union layout", tagged_union_analysis_);
+    draw_analysis("Tagged-union target comparison", tagged_union_target_comparison_);
+    draw_analysis("Tagged-union workload", tagged_union_distribution_analysis_);
+    draw_analysis("Tagged-union target workload comparison",
+                  tagged_union_target_distribution_comparison_);
+    draw_analysis("SoA layout", active_soa_);
+    draw_analysis("SoA target comparison", soa_target_comparison_);
+    draw_analysis("SoA access", soa_access_analysis_);
+    draw_analysis("SoA target access comparison", soa_target_access_comparison_);
+    if (!drew_content) {
+        ImGui::TextDisabled("No current diagnostics.");
+    }
+
+    ImGui::End();
+    persist_view_visibility(was_open, diagnostics_view_open_);
 }
 
 void PlannerUi::draw_close_confirmation() {
@@ -540,15 +1271,12 @@ void PlannerUi::draw_close_confirmation() {
             "Unsaved LispB changes", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         return;
     }
-    ImGui::TextWrapped("The editable schema contains unsaved LispB changes.");
+    ImGui::TextWrapped("The editable project contains unsaved LispB changes.");
     ImGui::TextUnformatted("Save them before closing?");
     if (ImGui::Button("Save and close")) {
-        auto result{document_->save()};
-        if (result.has_value()) {
+        if (save_changes()) {
             close_confirmed_ = true;
             ImGui::CloseCurrentPopup();
-        } else {
-            schema_edit_message_ = result.error().message;
         }
     }
     ImGui::SameLine();
@@ -566,10 +1294,92 @@ void PlannerUi::draw_close_confirmation() {
     ImGui::EndPopup();
 }
 
+auto PlannerUi::project_history_active() const -> bool {
+    return project_document_.has_value() &&
+           (project_document_->can_undo() || project_document_->can_redo());
+}
+
+auto PlannerUi::has_dirty_changes() const -> bool {
+    return (project_document_.has_value() && project_document_->dirty()) ||
+           (document_.has_value() && document_->dirty());
+}
+
+auto PlannerUi::save_changes() -> bool {
+    if (project_document_.has_value() && project_document_->dirty()) {
+        if (document_.has_value() && document_->dirty()) {
+            schema_edit_message_ =
+                "Project-source and schema drafts cannot be saved as one ambiguous history.";
+            return false;
+        }
+        auto result{project_document_->save()};
+        if (!result.has_value()) {
+            schema_edit_message_ = result.error().message;
+            return false;
+        }
+        auto const manifest_changed{*result};
+        auto loaded{load_lispb_schema(project_path_, target_name_)};
+        if (!loaded.loaded) {
+            schema_edit_message_ = loaded.diagnostics.empty()
+                                     ? "Saved the project source list but could not reload it."
+                                     : loaded.diagnostics.front().message;
+            return false;
+        }
+        adopt_loaded_schema(std::move(loaded));
+        schema_edit_message_ = manifest_changed
+                                 ? "Saved the project source list and reloaded the editable "
+                                   "project."
+                                 : "The project source list already matched disk; reloaded and "
+                                   "cleared its draft history.";
+        return true;
+    }
+    if (!document_.has_value() || !document_->dirty()) {
+        return false;
+    }
+
+    auto const selection{selected_type_.transform(
+        [&](TypeId const type) { return workspace_.types().type(type).identity; })};
+    auto result{document_->save()};
+    if (!result.has_value()) {
+        schema_edit_message_ = result.error().message;
+        return false;
+    }
+    sync_document_graph(selection);
+    schema_edit_message_ =
+        "Saved and reloaded " + std::to_string(result->size()) + " LispB source file(s).";
+    return true;
+}
+
+auto PlannerUi::apply_project_edit(lispb::ProjectEditCommand command) -> bool {
+    if (!project_document_.has_value()) {
+        schema_edit_message_ = "No editable LispB project manifest is loaded.";
+        return false;
+    }
+    if (document_.has_value() && document_->dirty()) {
+        schema_edit_message_ = "Save or undo schema edits before changing the project source list.";
+        return false;
+    }
+    auto result{project_document_->apply(std::move(command))};
+    if (!result.has_value()) {
+        schema_edit_message_ = result.error().message;
+        return false;
+    }
+    if (!*result) {
+        return false;
+    }
+    schema_edit_message_.clear();
+    project_changed_ = true;
+    return true;
+}
+
 auto PlannerUi::apply_document_edit(SchemaEditCommand command,
                                     std::optional<TypeIdentity> selection) -> bool {
     if (!document_.has_value()) {
         schema_edit_message_ = "No editable LispB document is loaded.";
+        return false;
+    }
+    if (project_history_active()) {
+        schema_edit_message_ = "Save, redo, or discard the project source-list draft before "
+                               "editing schema declarations.";
         return false;
     }
     if (!selection.has_value() && selected_type_.has_value()) {
@@ -589,6 +1399,75 @@ auto PlannerUi::apply_document_edit(SchemaEditCommand command,
 }
 
 void PlannerUi::sync_document_graph(std::optional<TypeIdentity> selection) {
+    auto raw_weights_changed{false};
+    for (auto entry = union_distributions_.begin(); entry != union_distributions_.end();) {
+        auto const* declaration{document_->declaration(entry->first)};
+        auto const* schema{document_->union_schema(entry->first)};
+        if (declaration == nullptr || schema == nullptr) {
+            entry = union_distributions_.erase(entry);
+            raw_weights_changed = true;
+            continue;
+        }
+
+        std::vector<std::string> previous_keys;
+        if (auto const previous_type{workspace_.types().find(declaration->identity)};
+            previous_type.has_value()) {
+            auto const* previous_union{
+                std::get_if<UnionType>(&workspace_.types().type(*previous_type).definition)};
+            if (previous_union != nullptr) {
+                previous_keys.reserve(previous_union->alternatives.size());
+                for (auto const& alternative : previous_union->alternatives) {
+                    previous_keys.push_back(alternative.name);
+                }
+            }
+        }
+        std::vector<std::string> current_keys;
+        current_keys.reserve(schema->alternatives.size());
+        for (auto const& alternative : schema->alternatives) {
+            current_keys.push_back(alternative.name);
+        }
+        raw_weights_changed |= reconcile_weight_keys(entry->second, previous_keys, current_keys);
+        ++entry;
+    }
+    if (raw_weights_changed) {
+        ++union_distribution_revision_;
+    }
+
+    auto tagged_weights_changed{false};
+    for (auto entry = tagged_union_distributions_.begin();
+         entry != tagged_union_distributions_.end();) {
+        auto const* declaration{document_->declaration(entry->first)};
+        auto const* schema{document_->tagged_union_schema(entry->first)};
+        if (declaration == nullptr || schema == nullptr) {
+            entry = tagged_union_distributions_.erase(entry);
+            tagged_weights_changed = true;
+            continue;
+        }
+
+        std::vector<std::string> previous_keys;
+        if (auto const previous_type{workspace_.types().find(declaration->identity)};
+            previous_type.has_value()) {
+            auto const* previous_union{
+                std::get_if<TaggedUnionType>(&workspace_.types().type(*previous_type).definition)};
+            if (previous_union != nullptr) {
+                previous_keys.reserve(previous_union->alternatives.size());
+                for (auto const& alternative : previous_union->alternatives) {
+                    previous_keys.push_back(alternative.tag);
+                }
+            }
+        }
+        std::vector<std::string> current_keys;
+        current_keys.reserve(schema->alternatives.size());
+        for (auto const& alternative : schema->alternatives) {
+            current_keys.push_back(alternative.tag);
+        }
+        tagged_weights_changed |= reconcile_weight_keys(entry->second, previous_keys, current_keys);
+        ++entry;
+    }
+    if (tagged_weights_changed) {
+        ++tagged_distribution_revision_;
+    }
+
     workspace_.replace_types(document_->types());
     selected_type_.reset();
     if (selection.has_value()) {
@@ -620,7 +1499,7 @@ void PlannerUi::sync_document_graph(std::optional<TypeIdentity> selection) {
 }
 
 auto PlannerUi::load_project(std::filesystem::path const& path, bool const allow_dirty) -> bool {
-    if (!allow_dirty && document_.has_value() && document_->dirty()) {
+    if (!allow_dirty && has_dirty_changes()) {
         schema_edit_message_ =
             "Save or undo the current LispB changes before opening another project.";
         return false;
@@ -639,11 +1518,29 @@ auto PlannerUi::load_project(std::filesystem::path const& path, bool const allow
 void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     project_path_ = std::move(loaded.project_path);
     target_name_ = std::move(loaded.target_name);
+    use_builtin_target_profile(false);
+    use_builtin_comparison_target_profile();
+    if (auto const saved_profile{
+            persisted_target_profile_paths_.find(graph_project_key(project_path_))};
+        saved_profile != persisted_target_profile_paths_.end()) {
+        set_text_buffer(target_profile_path_, saved_profile->second.string());
+        static_cast<void>(load_target_profile(saved_profile->second, false));
+    }
+    project_document_ = std::move(loaded.project_document);
     document_ = std::move(loaded.document);
     load_diagnostics_ = std::move(loaded.diagnostics);
     workspace_ = LayoutWorkspace{document_.has_value() ? document_->types() : TypeGraph{}};
     selected_type_.reset();
+    graph_node_positions_.clear();
     auto const types{workspace_.types().types()};
+    if (auto const saved{persisted_graph_node_positions_.find(graph_project_key(project_path_))};
+        saved != persisted_graph_node_positions_.end()) {
+        for (auto const& [identity, position] : saved->second) {
+            if (std::ranges::find(types, identity, &TypeNode::identity) != types.end()) {
+                graph_node_positions_[identity] = position;
+            }
+        }
+    }
     for (std::size_t index{}; index < types.size(); ++index) {
         auto const& definition{types[index].definition};
         auto const* soa{std::get_if<SoaType>(&definition)};
@@ -666,14 +1563,19 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     }
     selected_field_.clear();
     selected_enumerator_.clear();
+    packed_access_fields_.clear();
     record_access_members_.clear();
     soa_access_columns_.clear();
     varint_distributions_.clear();
+    packed_access_set_explicit_ = false;
+    union_distributions_.clear();
+    ++union_distribution_revision_;
     tagged_union_distributions_.clear();
     ++tagged_distribution_revision_;
     new_varint_distribution_value_.fill('\0');
     new_varint_distribution_value_[0] = '0';
     new_varint_distribution_weight_ = 1;
+    new_project_source_path_.fill('\0');
     record_access_set_explicit_ = false;
     soa_access_set_explicit_ = false;
     rename_editor_declaration_.reset();
@@ -767,6 +1669,8 @@ void PlannerUi::setup_default_dock_layout(unsigned int const dockspace_id) {
     ImGui::DockBuilderDockWindow("Layout", center_id);
     ImGui::DockBuilderDockWindow("Properties", right_id);
     ImGui::DockBuilderDockWindow("Comparison", comparison_id);
+    ImGui::DockBuilderDockWindow("Source", comparison_id);
+    ImGui::DockBuilderDockWindow("Diagnostics", comparison_id);
     ImGui::DockBuilderFinish(dockspace_id);
     dock_layout_initialized_ = true;
     reset_dock_layout_requested_ = false;
@@ -784,7 +1688,8 @@ void PlannerUi::refresh_analysis() {
             std::get_if<SoaType>(&workspace_.types().type(*selected_type_).definition)};
         if (selected_soa != nullptr &&
             selected_soa->backend == codegen::SoaBackend::standard_library) {
-            std::erase_if(soa_access_columns_, [&](std::string const& name) {
+            std::erase_if(soa_access_columns_, [&](auto const& entry) {
+                auto const& name{entry.first};
                 return std::ranges::none_of(
                     selected_soa->columns, [&](auto const& column) { return column.name == name; });
             });
@@ -904,7 +1809,14 @@ void PlannerUi::refresh_analysis() {
     }
 
     if (cached_revision_ == workspace_.revision() && cached_type_ == selected_type_ &&
+        cached_target_profile_revision_ == target_profile_revision_ &&
+        cached_comparison_target_profile_revision_ == comparison_target_profile_revision_ &&
+        cached_access_operation_ == access_operation_ &&
+        cached_access_multiplicity_ == access_multiplicity_ &&
+        cached_soa_allocation_strategy_ == soa_allocation_strategy_ &&
         cached_selected_field_ == selected_field_ &&
+        cached_packed_access_fields_ == packed_access_fields_ &&
+        cached_packed_access_set_explicit_ == packed_access_set_explicit_ &&
         cached_record_access_members_ == record_access_members_ &&
         cached_record_access_set_explicit_ == record_access_set_explicit_ &&
         cached_soa_access_columns_ == soa_access_columns_ &&
@@ -914,11 +1826,14 @@ void PlannerUi::refresh_analysis() {
         cached_quantized_comparison_type_ == quantized_comparison_type_ &&
         cached_varint_comparison_type_ == varint_comparison_type_ &&
         cached_optional_comparison_type_ == optional_comparison_type_ &&
+        cached_union_distribution_revision_ == union_distribution_revision_ &&
         cached_tagged_distribution_revision_ == tagged_distribution_revision_) {
         return;
     }
     enum_domain_.reset();
+    enum_target_comparison_.reset();
     integer_scalar_analysis_.reset();
+    integer_scalar_capacity_comparison_.reset();
     linear_quantized_analysis_.reset();
     linear_quantized_comparison_.reset();
     integer_varint_analysis_.reset();
@@ -930,10 +1845,16 @@ void PlannerUi::refresh_analysis() {
     optional_encoding_comparison_.reset();
     baseline_packed_.reset();
     active_packed_.reset();
+    packed_target_comparison_.reset();
+    packed_access_analysis_.reset();
+    packed_target_access_comparison_.reset();
+    packed_access_comparison_.reset();
     packed_variants_.clear();
     baseline_soa_.reset();
     active_soa_.reset();
+    soa_target_comparison_.reset();
     soa_access_analysis_.reset();
+    soa_target_access_comparison_.reset();
     record_soa_access_comparison_.reset();
     soa_access_comparison_.reset();
     soa_variants_.clear();
@@ -942,13 +1863,27 @@ void PlannerUi::refresh_analysis() {
     comparison_a_soa_.reset();
     comparison_b_soa_.reset();
     record_analysis_.reset();
+    record_target_comparison_.reset();
     record_access_analysis_.reset();
+    record_target_access_comparison_.reset();
     union_analysis_.reset();
+    union_target_comparison_.reset();
+    union_distribution_analysis_.reset();
+    union_target_distribution_comparison_.reset();
     tagged_union_analysis_.reset();
+    tagged_union_target_comparison_.reset();
     tagged_union_distribution_analysis_.reset();
+    tagged_union_target_distribution_comparison_.reset();
     cached_revision_ = workspace_.revision();
+    cached_target_profile_revision_ = target_profile_revision_;
+    cached_comparison_target_profile_revision_ = comparison_target_profile_revision_;
+    cached_access_operation_ = access_operation_;
+    cached_access_multiplicity_ = access_multiplicity_;
+    cached_soa_allocation_strategy_ = soa_allocation_strategy_;
     cached_type_ = selected_type_;
     cached_selected_field_ = selected_field_;
+    cached_packed_access_fields_ = packed_access_fields_;
+    cached_packed_access_set_explicit_ = packed_access_set_explicit_;
     cached_record_access_members_ = record_access_members_;
     cached_record_access_set_explicit_ = record_access_set_explicit_;
     cached_soa_access_columns_ = soa_access_columns_;
@@ -958,6 +1893,7 @@ void PlannerUi::refresh_analysis() {
     cached_quantized_comparison_type_ = quantized_comparison_type_;
     cached_varint_comparison_type_ = varint_comparison_type_;
     cached_optional_comparison_type_ = optional_comparison_type_;
+    cached_union_distribution_revision_ = union_distribution_revision_;
     cached_tagged_distribution_revision_ = tagged_distribution_revision_;
     if (!selected_type_.has_value()) {
         return;
@@ -968,11 +1904,35 @@ void PlannerUi::refresh_analysis() {
     auto const& comparison_a{*workspace_.variant(comparison_a_variant_id_)};
     auto const& comparison_b{*workspace_.variant(comparison_b_variant_id_)};
     auto const element_count{workspace_.element_count()};
+    auto const relationship_targets_for{[this](Variant const& variant) {
+        return Analyzer::derive_relationship_target_facts(workspace_.types(),
+                                                          variant,
+                                                          abi_,
+                                                          workspace_.default_capacity(),
+                                                          soa_allocation_strategy_);
+    }};
+    auto const relationship_targets_for_profile{
+        [this](Variant const& variant, AbiProfile const& abi) {
+            return Analyzer::derive_relationship_target_facts(workspace_.types(),
+                                                              variant,
+                                                              abi,
+                                                              workspace_.default_capacity(),
+                                                              soa_allocation_strategy_);
+        }};
     if (std::holds_alternative<EnumType>(definition)) {
-        enum_domain_ = Analyzer::analyze_enum(workspace_.types(), *selected_type_, abi_);
+        enum_domain_ =
+            Analyzer::analyze_enum(workspace_.types(), *selected_type_, abi_, element_count);
+        auto const comparison_domain{Analyzer::analyze_enum(
+            workspace_.types(), *selected_type_, comparison_abi_, element_count)};
+        enum_target_comparison_ = Analyzer::compare_enum_targets(*enum_domain_, comparison_domain);
     } else if (std::holds_alternative<IntegerScalarType>(definition)) {
+        auto const active_targets{relationship_targets_for(active)};
         integer_scalar_analysis_ =
-            Analyzer::analyze_integer_scalar(workspace_.types(), *selected_type_);
+            Analyzer::analyze_integer_scalar(workspace_.types(), *selected_type_, active_targets);
+        auto const comparison_a_targets{relationship_targets_for(comparison_a)};
+        auto const comparison_b_targets{relationship_targets_for(comparison_b)};
+        integer_scalar_capacity_comparison_ = Analyzer::compare_integer_scalar_capacity(
+            workspace_.types(), *selected_type_, comparison_a_targets, comparison_b_targets);
     } else if (std::holds_alternative<LinearQuantizedType>(definition)) {
         linear_quantized_analysis_ =
             Analyzer::analyze_linear_quantized(workspace_.types(), *selected_type_);
@@ -1022,22 +1982,63 @@ void PlannerUi::refresh_analysis() {
     } else if (std::holds_alternative<RecordType>(definition)) {
         record_analysis_ =
             Analyzer::analyze_record(workspace_.types(), *selected_type_, abi_, element_count);
-        std::vector<std::string> access_members{record_access_members_.begin(),
-                                                record_access_members_.end()};
+        auto const comparison_record{Analyzer::analyze_record(
+            workspace_.types(), *selected_type_, comparison_abi_, element_count)};
+        record_target_comparison_ =
+            Analyzer::compare_record_targets(*record_analysis_, comparison_record);
+        std::vector<AccessIntent> access_members;
+        access_members.reserve(record_access_members_.size());
+        for (auto const& [name, operation] : record_access_members_) {
+            access_members.push_back({.name = name, .operation = operation});
+        }
         if (!record_access_set_explicit_ && !selected_field_.empty()) {
             access_members.clear();
-            access_members.push_back(selected_field_);
+            access_members.push_back({.name = selected_field_, .operation = access_operation_});
         }
         if (!access_members.empty()) {
-            record_access_analysis_ =
-                Analyzer::analyze_record_access(*record_analysis_, access_members, abi_);
+            record_access_analysis_ = Analyzer::analyze_record_access(
+                *record_analysis_, access_members, abi_, access_multiplicity_);
+            auto const comparison_access{Analyzer::analyze_record_access(
+                comparison_record, access_members, comparison_abi_, access_multiplicity_)};
+            record_target_access_comparison_ =
+                Analyzer::compare_record_access(*record_access_analysis_, comparison_access);
         }
     } else if (std::holds_alternative<UnionType>(definition)) {
         union_analysis_ =
             Analyzer::analyze_union(workspace_.types(), *selected_type_, abi_, element_count);
+        auto const comparison_target_union{Analyzer::analyze_union(
+            workspace_.types(), *selected_type_, comparison_abi_, element_count)};
+        union_target_comparison_ =
+            Analyzer::compare_union_targets(*union_analysis_, comparison_target_union);
+        auto const declaration{
+            document_.has_value()
+                ? document_->find_declaration(workspace_.types().type(*selected_type_).identity)
+                : std::optional<DeclarationId>{}};
+        auto const found{declaration.has_value() ? union_distributions_.find(*declaration)
+                                                 : union_distributions_.end()};
+        if (found != union_distributions_.end()) {
+            std::vector<UnionDistributionEntry> entries;
+            for (auto const& [alternative_name, weight] : found->second) {
+                if (weight != 0) {
+                    entries.push_back({.alternative_name = alternative_name, .weight = weight});
+                }
+            }
+            if (!entries.empty()) {
+                union_distribution_analysis_ =
+                    Analyzer::analyze_union_distribution(*union_analysis_, entries, element_count);
+                auto const comparison_target_distribution{Analyzer::analyze_union_distribution(
+                    comparison_target_union, entries, element_count)};
+                union_target_distribution_comparison_ = Analyzer::compare_union_distributions(
+                    *union_distribution_analysis_, comparison_target_distribution);
+            }
+        }
     } else if (std::holds_alternative<TaggedUnionType>(definition)) {
         tagged_union_analysis_ = Analyzer::analyze_tagged_union(
             workspace_.types(), *selected_type_, abi_, element_count);
+        auto const comparison_target_tagged{Analyzer::analyze_tagged_union(
+            workspace_.types(), *selected_type_, comparison_abi_, element_count)};
+        tagged_union_target_comparison_ = Analyzer::compare_tagged_union_targets(
+            *tagged_union_analysis_, comparison_target_tagged);
         auto const declaration{
             document_.has_value()
                 ? document_->find_declaration(workspace_.types().type(*selected_type_).identity)
@@ -1054,40 +2055,130 @@ void PlannerUi::refresh_analysis() {
             if (!entries.empty()) {
                 tagged_union_distribution_analysis_ = Analyzer::analyze_tagged_union_distribution(
                     *tagged_union_analysis_, entries, element_count);
+                auto const comparison_target_distribution{
+                    Analyzer::analyze_tagged_union_distribution(
+                        comparison_target_tagged, entries, element_count)};
+                tagged_union_target_distribution_comparison_ =
+                    Analyzer::compare_tagged_union_distributions(
+                        *tagged_union_distribution_analysis_, comparison_target_distribution);
             }
         }
     } else if (std::holds_alternative<PackedType>(definition)) {
+        auto const baseline_targets{relationship_targets_for(baseline)};
+        auto const active_targets{relationship_targets_for(active)};
         baseline_packed_ = Analyzer::analyze_packed(
-            workspace_.types(), *selected_type_, baseline, abi_, element_count);
+            workspace_.types(), *selected_type_, baseline, abi_, element_count, baseline_targets);
         active_packed_ = Analyzer::analyze_packed(
-            workspace_.types(), *selected_type_, active, abi_, element_count);
-        for (auto const& variant : workspace_.variants()) {
-            if (variant.id != LayoutWorkspace::baseline_variant_id) {
-                packed_variants_.emplace_back(
-                    variant.id,
-                    Analyzer::analyze_packed(
-                        workspace_.types(), *selected_type_, variant, abi_, element_count));
+            workspace_.types(), *selected_type_, active, abi_, element_count, active_targets);
+        auto const comparison_target_facts{
+            relationship_targets_for_profile(active, comparison_abi_)};
+        auto const comparison_target_packed{Analyzer::analyze_packed(workspace_.types(),
+                                                                     *selected_type_,
+                                                                     active,
+                                                                     comparison_abi_,
+                                                                     element_count,
+                                                                     comparison_target_facts)};
+        packed_target_comparison_ =
+            Analyzer::compare_packed_targets(*active_packed_, comparison_target_packed);
+        std::vector<AccessIntent> access_fields;
+        access_fields.reserve(packed_access_fields_.size());
+        for (auto const& [name, operation] : packed_access_fields_) {
+            access_fields.push_back({.name = name, .operation = operation});
+        }
+        if (!packed_access_set_explicit_ && !selected_field_.empty()) {
+            access_fields.clear();
+            auto const selected{std::ranges::find(
+                active_packed_->fields, selected_field_, &PackedFieldAnalysis::name)};
+            if (selected != active_packed_->fields.end() && !selected->reserved) {
+                access_fields.push_back({.name = selected_field_, .operation = access_operation_});
             }
         }
-        comparison_a_packed_ = Analyzer::analyze_packed(
-            workspace_.types(), *selected_type_, comparison_a, abi_, element_count);
-        comparison_b_packed_ = Analyzer::analyze_packed(
-            workspace_.types(), *selected_type_, comparison_b, abi_, element_count);
+        if (!access_fields.empty()) {
+            packed_access_analysis_ = Analyzer::analyze_packed_access(
+                *active_packed_, access_fields, abi_, access_multiplicity_);
+            auto const comparison_target_access{Analyzer::analyze_packed_access(
+                comparison_target_packed, access_fields, comparison_abi_, access_multiplicity_)};
+            packed_target_access_comparison_ =
+                Analyzer::compare_packed_access(*packed_access_analysis_, comparison_target_access);
+        }
+        for (auto const& variant : workspace_.variants()) {
+            if (variant.id != LayoutWorkspace::baseline_variant_id) {
+                auto const targets{relationship_targets_for(variant)};
+                packed_variants_.emplace_back(variant.id,
+                                              Analyzer::analyze_packed(workspace_.types(),
+                                                                       *selected_type_,
+                                                                       variant,
+                                                                       abi_,
+                                                                       element_count,
+                                                                       targets));
+            }
+        }
+        auto const comparison_a_targets{relationship_targets_for(comparison_a)};
+        auto const comparison_b_targets{relationship_targets_for(comparison_b)};
+        comparison_a_packed_ = Analyzer::analyze_packed(workspace_.types(),
+                                                        *selected_type_,
+                                                        comparison_a,
+                                                        abi_,
+                                                        element_count,
+                                                        comparison_a_targets);
+        comparison_b_packed_ = Analyzer::analyze_packed(workspace_.types(),
+                                                        *selected_type_,
+                                                        comparison_b,
+                                                        abi_,
+                                                        element_count,
+                                                        comparison_b_targets);
+        if (!access_fields.empty()) {
+            auto const comparison_a_access{Analyzer::analyze_packed_access(
+                *comparison_a_packed_, access_fields, abi_, access_multiplicity_)};
+            auto const comparison_b_access{Analyzer::analyze_packed_access(
+                *comparison_b_packed_, access_fields, abi_, access_multiplicity_)};
+            packed_access_comparison_ =
+                Analyzer::compare_packed_access(comparison_a_access, comparison_b_access);
+        }
     } else if (auto const* soa{std::get_if<SoaType>(&definition)};
                soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
-        baseline_soa_ = Analyzer::analyze_soa(
-            workspace_.types(), *selected_type_, baseline, abi_, workspace_.default_capacity());
-        active_soa_ = Analyzer::analyze_soa(
-            workspace_.types(), *selected_type_, active, abi_, workspace_.default_capacity());
-        std::vector<std::string> access_columns{soa_access_columns_.begin(),
-                                                soa_access_columns_.end()};
+        baseline_soa_ = Analyzer::analyze_soa(workspace_.types(),
+                                              *selected_type_,
+                                              baseline,
+                                              abi_,
+                                              workspace_.default_capacity(),
+                                              soa_allocation_strategy_);
+        active_soa_ = Analyzer::analyze_soa(workspace_.types(),
+                                            *selected_type_,
+                                            active,
+                                            abi_,
+                                            workspace_.default_capacity(),
+                                            soa_allocation_strategy_);
+        auto const comparison_target_soa{Analyzer::analyze_soa(workspace_.types(),
+                                                               *selected_type_,
+                                                               active,
+                                                               comparison_abi_,
+                                                               workspace_.default_capacity(),
+                                                               soa_allocation_strategy_)};
+        soa_target_comparison_ = Analyzer::compare_soa_targets(*active_soa_, comparison_target_soa);
+        std::vector<AccessIntent> access_columns;
+        access_columns.reserve(soa_access_columns_.size());
+        for (auto const& [name, operation] : soa_access_columns_) {
+            access_columns.push_back({.name = name, .operation = operation});
+        }
         if (!soa_access_set_explicit_ && !selected_field_.empty()) {
             access_columns.clear();
-            access_columns.push_back(selected_field_);
+            access_columns.push_back({.name = selected_field_, .operation = access_operation_});
         }
         if (!access_columns.empty()) {
-            soa_access_analysis_ = Analyzer::analyze_soa_access(
-                *active_soa_, access_columns, abi_, workspace_.element_count());
+            soa_access_analysis_ = Analyzer::analyze_soa_access(*active_soa_,
+                                                                access_columns,
+                                                                abi_,
+                                                                workspace_.element_count(),
+                                                                access_multiplicity_);
+            auto const comparison_target_access{
+                Analyzer::analyze_soa_access(comparison_target_soa,
+                                             access_columns,
+                                             comparison_abi_,
+                                             workspace_.element_count(),
+                                             access_multiplicity_)};
+            soa_target_access_comparison_ =
+                Analyzer::compare_soa_access(*soa_access_analysis_, comparison_target_access);
             if (soa->equivalent_type.has_value() &&
                 std::holds_alternative<RecordType>(
                     workspace_.types().type(soa->equivalent_type->type).definition)) {
@@ -1095,8 +2186,8 @@ void PlannerUi::refresh_analysis() {
                                                                       soa->equivalent_type->type,
                                                                       abi_,
                                                                       workspace_.element_count())};
-                auto const record_access{
-                    Analyzer::analyze_record_access(equivalent_record, access_columns, abi_)};
+                auto const record_access{Analyzer::analyze_record_access(
+                    equivalent_record, access_columns, abi_, access_multiplicity_)};
                 record_soa_access_comparison_ =
                     Analyzer::compare_record_soa_access(record_access, *soa_access_analysis_);
             }
@@ -1108,26 +2199,48 @@ void PlannerUi::refresh_analysis() {
                                                                  *selected_type_,
                                                                  variant,
                                                                  abi_,
-                                                                 workspace_.default_capacity()));
+                                                                 workspace_.default_capacity(),
+                                                                 soa_allocation_strategy_));
             }
         }
-        comparison_a_soa_ = Analyzer::analyze_soa(
-            workspace_.types(), *selected_type_, comparison_a, abi_, workspace_.default_capacity());
-        comparison_b_soa_ = Analyzer::analyze_soa(
-            workspace_.types(), *selected_type_, comparison_b, abi_, workspace_.default_capacity());
+        comparison_a_soa_ = Analyzer::analyze_soa(workspace_.types(),
+                                                  *selected_type_,
+                                                  comparison_a,
+                                                  abi_,
+                                                  workspace_.default_capacity(),
+                                                  soa_allocation_strategy_);
+        comparison_b_soa_ = Analyzer::analyze_soa(workspace_.types(),
+                                                  *selected_type_,
+                                                  comparison_b,
+                                                  abi_,
+                                                  workspace_.default_capacity(),
+                                                  soa_allocation_strategy_);
         if (!access_columns.empty()) {
-            auto const first_access{Analyzer::analyze_soa_access(
-                *comparison_a_soa_, access_columns, abi_, workspace_.element_count())};
-            auto const second_access{Analyzer::analyze_soa_access(
-                *comparison_b_soa_, access_columns, abi_, workspace_.element_count())};
+            auto const first_access{Analyzer::analyze_soa_access(*comparison_a_soa_,
+                                                                 access_columns,
+                                                                 abi_,
+                                                                 workspace_.element_count(),
+                                                                 access_multiplicity_)};
+            auto const second_access{Analyzer::analyze_soa_access(*comparison_b_soa_,
+                                                                  access_columns,
+                                                                  abi_,
+                                                                  workspace_.element_count(),
+                                                                  access_multiplicity_)};
             soa_access_comparison_ = Analyzer::compare_soa_access(first_access, second_access);
         }
     }
 }
 
 void PlannerUi::draw_layout_panel() {
-    ImGui::Begin("Layout");
-    draw_target_profile(abi_);
+    if (!layout_view_open_) {
+        return;
+    }
+    auto const was_open{layout_view_open_};
+    ImGui::Begin("Layout", &layout_view_open_);
+    persist_view_visibility(was_open, layout_view_open_);
+    if (draw_target_profile()) {
+        refresh_analysis();
+    }
     ImGui::Separator();
     if (ImGui::Button("+ Add variant")) {
         create_variant_for_selected_schema();
@@ -1136,7 +2249,53 @@ void PlannerUi::draw_layout_panel() {
     if (!selected_type_.has_value()) {
         ImGui::TextDisabled("Select a supported schema.");
     } else if (auto const& definition{workspace_.types().type(*selected_type_).definition};
-               auto const* packed = std::get_if<PackedType>(&definition)) {
+               std::holds_alternative<EnumType>(definition)) {
+        auto const& analysis{*enum_domain_};
+        auto const& aggregate{analysis.aggregate};
+        ImGui::SeparatorText("Standalone C++ backing scale");
+        if (draw_element_count()) {
+            ImGui::End();
+            return;
+        }
+        if (ImGui::BeginTable("enum-backing-aggregate",
+                              2,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_SizingStretchProp)) {
+            auto draw_stat{[](char const* const label, std::string const& value) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(label);
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(value.c_str());
+            }};
+            draw_stat("C++ backing", analysis.backing_type);
+            draw_stat("Physical backing / value",
+                      detail::format_bytes(analysis.backing_facts.transform(
+                          [](TypeFacts const& facts) { return facts.size_bytes; })));
+            draw_stat("Total standalone backing storage",
+                      detail::format_bytes(aggregate.total_storage_bytes));
+            draw_stat("Minimum cache lines", detail::format_number(aggregate.minimum_cache_lines));
+            draw_stat("Complete standalone values / cache line",
+                      detail::format_number(aggregate.complete_elements_per_cache_line));
+            draw_stat("Values crossing cache-line boundaries",
+                      detail::format_number(aggregate.cache_line_straddling_elements));
+            draw_stat("Minimum pages", detail::format_number(aggregate.minimum_pages));
+            draw_stat("Complete standalone values / page",
+                      detail::format_number(aggregate.complete_elements_per_page));
+            draw_stat("Values crossing page boundaries",
+                      detail::format_number(aggregate.page_straddling_elements));
+            draw_stat("Fits L1 data cache",
+                      detail::format_fit(aggregate.cache_capacity.fits_l1_data));
+            draw_stat("Fits L2 cache", detail::format_fit(aggregate.cache_capacity.fits_l2));
+            draw_stat("Fits L3 cache", detail::format_fit(aggregate.cache_capacity.fits_l3));
+            ImGui::EndTable();
+        }
+        ImGui::TextDisabled(
+            "This is a contiguous array of the generated standalone C++ backing at a cache-line/"
+            "page-aligned origin. Semantic width is not sizeof, and packed-field uses are not "
+            "included.");
+        draw_diagnostics(analysis.diagnostics);
+    } else if (auto const* packed = std::get_if<PackedType>(&definition)) {
         draw_packed_layout(*packed, *baseline_packed_);
     } else if (auto const* soa{std::get_if<SoaType>(&definition)};
                soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
@@ -1261,6 +2420,79 @@ void PlannerUi::draw_layout_panel() {
                 ImGui::TextUnformatted(detail::format_bytes(alternative.total_slack_bytes).c_str());
             }
             ImGui::EndTable();
+        }
+        if (union_distribution_analysis_.has_value()) {
+            auto const& distribution{*union_distribution_analysis_};
+            ImGui::SeparatorText("Explicit session workload");
+            if (ImGui::BeginTable("union-distribution-summary",
+                                  2,
+                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                      ImGuiTableFlags_SizingStretchProp)) {
+                auto draw_stat{[](char const* const label, std::string const& value) {
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(label);
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(value.c_str());
+                }};
+                draw_stat("Sample weight", detail::format_number(distribution.total_weight));
+                draw_stat("Sample active extent",
+                          detail::format_bytes(distribution.total_extent_bytes));
+                draw_stat("Sample conditional slack",
+                          detail::format_bytes(distribution.total_slack_bytes));
+                auto format_decimal{[](std::optional<long double> const value) {
+                    if (!value.has_value()) {
+                        return std::string{"Unknown"};
+                    }
+                    std::array<char, 64> text{};
+                    std::snprintf(
+                        text.data(), text.size(), "%.8g bytes", static_cast<double>(*value));
+                    return std::string{text.data()};
+                }};
+                draw_stat("Expected active extent / value",
+                          format_decimal(distribution.expected_extent_bytes_per_value));
+                draw_stat("Expected conditional slack / value",
+                          format_decimal(distribution.expected_slack_bytes_per_value));
+                draw_stat("Expected active extent at selected count",
+                          format_decimal(distribution.expected_selected_extent_bytes));
+                draw_stat("Expected conditional slack at selected count",
+                          format_decimal(distribution.expected_selected_slack_bytes));
+                ImGui::EndTable();
+            }
+            if (ImGui::BeginTable("union-distribution-entries",
+                                  6,
+                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                      ImGuiTableFlags_SizingStretchProp)) {
+                ImGui::TableSetupColumn("Alternative");
+                ImGui::TableSetupColumn("Weight");
+                ImGui::TableSetupColumn("Extent");
+                ImGui::TableSetupColumn("Slack");
+                ImGui::TableSetupColumn("Weighted extent");
+                ImGui::TableSetupColumn("Weighted slack");
+                ImGui::TableHeadersRow();
+                for (auto const& entry : distribution.entries) {
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(entry.alternative_name.c_str());
+                    ImGui::TableNextColumn();
+                    ImGui::Text("%llu", static_cast<unsigned long long>(entry.weight));
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(detail::format_bytes(entry.extent_bytes).c_str());
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(detail::format_bytes(entry.slack_bytes).c_str());
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(
+                        detail::format_bytes(entry.weighted_extent_bytes).c_str());
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(
+                        detail::format_bytes(entry.weighted_slack_bytes).c_str());
+                }
+                ImGui::EndTable();
+            }
+            ImGui::TextDisabled(
+                "Expected values are conditional on the explicit session weights; a raw union "
+                "stores no runtime tag and the workload is not persisted to LispB.");
+            draw_diagnostics(distribution.diagnostics);
         }
         ImGui::TextDisabled(
             "Each scaled slack value assumes every object uses that alternative; no tag "
@@ -1448,9 +2680,67 @@ void PlannerUi::draw_layout_panel() {
     } else if (std::holds_alternative<EnumType>(definition)) {
         ImGui::TextDisabled("Enums have semantic metadata but no standalone aggregate layout.");
     } else if (std::holds_alternative<IntegerScalarType>(definition)) {
+        auto const& analysis{*integer_scalar_analysis_};
+        if (analysis.relationship_kind.has_value() && analysis.relationship_target.has_value()) {
+            ImGui::Text(
+                "Relationship: %s -> %s",
+                std::string{codegen::semantic_relation_kind_name(*analysis.relationship_kind)}
+                    .c_str(),
+                analysis.relationship_target->c_str());
+            if (analysis.relationship_target_extent.has_value()) {
+                auto const kind{*analysis.relationship_kind};
+                auto const term{detail::relationship_extent_term(kind)};
+                auto const unit{detail::relationship_extent_unit(kind, analysis.relationship_unit)};
+                ImGui::Text("Session target %s: %llu %s",
+                            term.data(),
+                            static_cast<unsigned long long>(*analysis.relationship_target_extent),
+                            unit.data());
+                ImGui::Text(
+                    "Required live values: %s",
+                    analysis.relationship_live_value_count.has_value()
+                        ? detail::format_code_count(*analysis.relationship_live_value_count).c_str()
+                        : "Unknown");
+                auto const required_codes{
+                    analysis.relationship_required_code_count.has_value()
+                        ? detail::format_code_count(*analysis.relationship_required_code_count)
+                    : analysis.relationship_minimum_required_bits.value_or(0) > 64
+                        ? std::string{"> 2^64"}
+                        : std::string{"Unknown"}};
+                ImGui::Text("Required codes: %s", required_codes.c_str());
+                ImGui::Text("Minimum width: %u bits", *analysis.relationship_minimum_required_bits);
+                ImGui::Text("Current semantic width fits: %s",
+                            *analysis.relationship_width_sufficient ? "Yes" : "No");
+                ImGui::Text(
+                    "Code-space %s limit: %s",
+                    term.data(),
+                    detail::format_number(analysis.relationship_code_space_capacity_limit).c_str());
+                ImGui::Text("Code-space %s headroom: %s",
+                            term.data(),
+                            detail::format_number(analysis.relationship_capacity_headroom).c_str());
+                ImGui::Text(
+                    "Semantic-range %s limit: %s",
+                    term.data(),
+                    detail::format_number(analysis.relationship_semantic_capacity_limit).c_str());
+                ImGui::Text(
+                    "Sentinel-placement %s limit: %s",
+                    term.data(),
+                    detail::format_number(analysis.relationship_sentinel_capacity_limit).c_str());
+                ImGui::Text(
+                    "Effective valid %s limit: %s",
+                    term.data(),
+                    detail::format_number(analysis.relationship_effective_capacity_limit).c_str());
+                ImGui::Text("Effective valid %s headroom: %s",
+                            term.data(),
+                            detail::format_number(analysis.relationship_effective_capacity_headroom)
+                                .c_str());
+            } else {
+                ImGui::TextDisabled("No supported session target fact is available.");
+            }
+        }
         ImGui::TextDisabled(
-            "Semantic integer scalars have no standalone physical layout. Reference one from a "
-            "physical representation to analyze storage.");
+            "Semantic integer scalars have no standalone physical layout. Target facts explain "
+            "the domain requirement but do not create an ABI sizeof or mutate LispB.");
+        draw_diagnostics(analysis.diagnostics);
     } else if (std::holds_alternative<LinearQuantizedType>(definition)) {
         auto const& analysis{*linear_quantized_analysis_};
         ImGui::Text("Encoded width: %u bits", analysis.encoded_storage_bits);

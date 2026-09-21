@@ -27,44 +27,177 @@ The editable document/command foundation supports enum, standalone integer-scala
 quantized, integer-varint, fixed-point, optional-sentinel, optional-presence-bit representation,
 packed-value, record, and standard-library
 SoA authoring. Declarations
-can be added to existing matching modules;
+can be added to existing matching modules, and empty enum, packed-value, integer-scalar,
+representation, record, union, and standard-library SoA modules can be created in an already loaded
+module source;
 ordered values/fields/members/codes can be added, duplicated, deleted, reordered, and edited inline;
 packed widths can also be changed through the bit diagram. Semantic edits support undo/redo,
 affected-source preview, and validated save/reload. Supported declarations can be renamed through
 graph-derived reference repair, and source-less declarations created in the active draft can be
 deleted after reverse-user checks. Source-backed deletion now removes the exact owned top-level
-source range through undoable document tombstones and rejects registered-alias users. Module
-creation remains follow-up work. Existing enums, integer scalars, and simple
+source range through undoable document tombstones and rejects registered-alias users. A shared
+source-aware editable project document can register or unregister an existing valid `cpp-schema`
+source, or stage a brand-new relative source, with typed undo/redo and target-wide validation.
+Unregistration never deletes the source file. Preview includes the
+exact manifest edit and complete new-file contents; save validates temporary files together,
+publishes new sources before atomically replacing the manifest, rolls them back if manifest
+publication fails, and reloads clean state. The Project view lists the live registry, unregisters
+sources, registers an existing relative source, or stages an empty one nonmodally; global preview,
+Undo/Redo, Save, project switching, and
+dirty-close protection include
+the project draft. Schema and project histories are intentionally exclusive, and successful Save
+reloads the schema so the empty source can immediately receive its first module through the
+ordinary editable-schema command path. Editable
+declarations can move between compatible existing modules while retaining stable IDs, exact owned
+source, undo/redo, and validated cross-file save/reload. Cross-namespace moves repair supported
+graph-derived references atomically and reject registered aliases or module-local SoA links that
+cannot be represented safely. Existing enums,
+integer scalars, and simple
 representation and packed-value declarations now preserve declaration-local comments, whitespace,
 and unchanged token spelling for ordinary nonstructural property/value edits. Stable packed
-field/reserved segments, named codes, and existing relationships are covered. Enum value insertion,
+field/reserved segments, named codes, and relationship add/edit/clear forms are covered for packed
+fields and standalone integer scalars. Enum value insertion,
 duplication, deletion, and reorder now preserve stable existing row blocks with their leading and
-trailing comments while rendering only new rows canonically. Packed field/reserved insertion,
-duplication, deletion, and reorder use the same bounded-block approach, keyed by segment kind and
-name; stable nested named codes and relationships retain their source text while new segments are
-rendered canonically. Record members and raw-union alternatives also preserve stable named row
+trailing comments while rendering only new rows canonically. One unambiguous same-position direct
+enumerator rename now preserves that exact row block and patches only the owned name token;
+multi-row or rename/reorder ambiguity remains conservative. Standalone integer-scalar code rows
+now use the same stable-name block behavior, including one unambiguous same-position direct rename,
+while scalar properties and relationships stay outside
+the ordered region. Packed field/reserved insertion, duplication, deletion, and reorder use the
+same bounded-block approach, keyed by segment kind and name; stable nested named codes and
+relationships retain their source text while new segments are rendered canonically. Nested packed
+named-code rows now also preserve stable blocks through insertion, duplication, deletion, and
+reorder. One unambiguous same-position direct rename patches the original row's name token; new or
+ambiguous names render canonically. One unambiguous same-position packed field or reserved-region
+rename likewise retains its complete block and patches only the atomic name when all non-name
+semantics match; mixed-kind, rename-plus-edit, and multi-row ambiguity stay conservative. Empty
+scalar/field code regions support local
+first-row insertion before a relationship or parent close and deletion back to empty. Record
+members and raw-union alternatives also
+preserve stable named row
 blocks through insertion, duplication, deletion, and reorder, rendering only new children
-canonically. Tagged-union alternatives now use the same stable named-block behavior while keeping
+canonically. One unambiguous same-position direct child rename retains its exact row block and
+patches the name token. Tagged-union alternatives use the same behavior while keeping
 discriminant/export properties outside the ordered alternative region. Structural child edits for
 other declaration kinds still use canonical rendering. Ordinary standard-library SoA members use a
 bounded named-block region that stops before custom functions, fixed layouts, and single-allocation
 forms. Stable members retain comments and token-local kind/type/property edits through structural
-changes while advanced untouched forms are semantically verified; unsupported or ambiguous edits
-retain canonical fallback.
+changes; one same-position direct member rename retains its block only when every non-name semantic
+matches. Advanced untouched forms are semantically verified; unsupported or ambiguous edits
+retain canonical fallback. Existing single-allocation forms now patch their owner locally and
+preserve stable allocator-variant row blocks through allocator edits, insertion, deletion, reorder,
+and one unambiguous allocator-preserving direct rename; whole-form enable/disable remains canonical.
+Existing fixed-layout forms now patch their storage name and ordered container region locally;
+multiline/commented lists preserve stable blocks through structural edits and one unambiguous direct
+rename, while compact lists avoid whole-declaration canonicalization.
+Existing member mask-dimension lists now preserve stable named dimension blocks and comments through
+extent edits, insertion, deletion, reorder, and one extent-preserving direct rename; first add/last
+remove remain localized canonical property operations.
+Multiline `using` declaration lists now preserve unique opaque-string blocks and comments through
+insertion, deletion, reorder, and one direct value edit; compact or ambiguous/duplicate lists
+canonicalize only the property value rather than the whole declaration.
+Custom-function list-form body fragments and registered dependency keys now use the same unique
+quoted-row boundary. Stable multiline blocks preserve comments and escaping through insertion,
+deletion, reorder, and one direct edit; compact or ambiguous/duplicate lists retain localized
+fallback. Unchanged raw `#cpp` bodies remain exact, while a semantic body edit replaces only the
+bounded body property value with the quoted-list form.
+Multiline SoA storage-operation lists use the corresponding atom-row boundary. Stable unique
+operation blocks preserve their comments and spacing through capability insertion, deletion,
+reorder, and one direct substitution; compact or ambiguous lists canonicalize only the bounded
+property value, and first-add/last-remove remain ordinary localized property edits. An unchanged
+`(all)` shorthand remains exact and expands only when the resolved capability set changes.
+Enum conversion policy is now authorable as a flat inline checkbox set backed directly by the
+shared `EnumSchema`. Shared descriptors provide one durable order and source spelling. Multiline
+`:conversions` lists use the same atom-row source boundary, retaining stable unique rows and
+comments through insertion, deletion, reorder, and direct substitution while compact or ambiguous
+lists keep fallback localized to the property value.
+The remaining ordinary enum generation policy is inline as well: reflection mode, enum-array
+helpers, native API mode, and the optional export specifier all use `ReplaceEnum`. Shared
+validation rejects incompatible native/Unreal combinations transactionally, and ordinary property
+patching retains declaration comments and unrelated value/conversion rows through save/reload.
+Optional export specifiers are also directly authorable for packed values, records, raw unions, and
+tagged unions. Each flat input uses its declaration's typed replace command and shared identifier
+validation, while existing property source boundaries retain comments and ordered child rows.
+Packed values additionally expose the existing mutable generated-API policy inline through
+`ReplacePackedValue`; it remains separate from semantic domain and physical layout facts.
+Native plain enums now expose their complete optional Unreal projection inline, including every
+required generated path/include and projection reflection mode. The nested source boundary patches
+existing forms locally and bounds add/remove to the form, retaining enum comments and value rows.
+Selected packed fields can now create a shared enum with their resolved width prefilled and bind it
+through the existing enum-create and packed-replace histories. The same shared type chooser exposes
+unique cross-module declarations using qualified source spellings and marks ambiguous spellings
+nonselectable rather than allowing them to resolve as external leaves. Choosing an existing enum
+updates the packed field type and kind together. A rejected contextual bind rolls back the new enum.
+Ordinary standard-library SoA array columns now offer the corresponding shared-record workflow. The
+record is initialized with the column's current semantic type, then the existing `CreateRecord` and
+`ReplaceSoa` histories bind it using qualified source spelling. Column kind, generation metadata,
+and session planning state remain unchanged; failed binding rolls the new record back.
+Packed signed and unsigned fields can now reference standalone integer-scalar declarations as their
+semantic domain. Validation derives auto width and fit from the scalar's signed range, explicit or
+derived semantic width, and named sentinel codes while rejecting competing field-local domains.
+The graph retains the scalar dependency and publishes its range/code facts on the resolved field for
+analysis. C++ lowering chooses a conventional fixed-width accessor only for the packed placement,
+preserving the scalar's lack of standalone ABI facts. The type picker performs the kind/domain
+transition atomically and the packed editor presents the shared range and codes as scalar-owned.
 
 Project Open, Save, validated Save As cloning, persisted recent-project history, and module-first
 schema browsing are implemented. A native file picker and richer multi-target project selection are
 later usability work; the current path dialogs deliberately keep the file workflow simple.
+All major workbench views are independently showable, dockable, and visibility-persistent. Source
+is a nonmodal affected-file Updated/Original inspector over the editable document preview, and
+Diagnostics consolidates existing project/document/active-analysis messages. Reset restores the
+default workspace rather than requiring manual reconstruction.
 
 Target profiles now identify platform, architecture, ABI, compiler, and build configuration as
 independently optional facts. The built-in compiler profile obtains the identity facts CMake can
 state, leaves ABI Unknown, and keeps primitive and memory-fact provenance separate. Optional cache
 capacities drive packed, record, and standard-library SoA aggregate working-set fit without guessed
-built-in values. Packed analysis
+built-in values. Layout exposes cache-line, page, and optional cache-capacity facts as session-only
+target-profile inputs; applying or restoring them immediately refreshes analysis without changing
+LispB or semantic dirty history. A target-built `layout-profile-probe` now serializes the exact
+compiler/configuration primitive facts to a deterministic versioned text profile. The planner can
+load that profile explicitly for the session; parsing rejects malformed sizes, alignments, integer
+metadata, duplicates, and representation cycles transactionally while omitted facts remain
+Unknown. Individual primitive/alias facts are inspectable, and the selected path persists per
+project through UI workspace settings; stale files fall back to the built-in profile with a
+diagnostic rather than contaminating schema state. For a selected record, Comparison accepts a
+second session-only target profile and applies both profiles to the same semantic record and element
+count. Headless name-based member matching reports checked member/object/aggregate/cache/page deltas,
+keeps Unknown facts unknown, prefixes diagnostics by side, and rejects mismatched semantic inputs
+without partial results. The selected-member intent map and multiplicity are also held fixed across
+both record targets; a checked workload join reports useful/logical bytes, enclosing AoS footprint,
+exact read/write cache/page address coverage, non-selected footprint, and cache fit without claiming
+measured traffic. Raw unions reuse the same selected-count/profile workflow, transactionally
+matching alternatives before reporting element size/alignment, extent, conditional slack, object,
+aggregate, cache/page, straddling, and cache-fit consequences without making an ABI-compatibility
+claim. Tagged unions extend this with transactional discriminant/tag-role validation and report
+discriminant, payload-union, object-padding, alternative-slack, and aggregate physical changes while
+applying any optional explicit distribution's exact same tag weights to both targets for checked
+per-entry, weighted, expected-per-value, and selected-count extent/slack deltas. Selected packed values
+reuse that profile B while holding the active
+physical variant fixed; transactional ordered-segment matching exposes target storage, bit
+position/overflow, relationship-capacity, aggregate, cache-line, and page differences separately
+from the existing variant comparison. The complete selected-field intent map and multiplicity are
+also held fixed across packed targets, exposing useful/logical bits, containing storage, waste
+categories, minimum read/write cache/page coverage, and cache fit without implying sub-word fetches.
+Standard-library SoAs also hold the active variant, capacity,
+allocation strategy, and selected workload fixed across profiles. Transactional ordered-column
+matching reports target-dependent size/alignment, contiguous offsets/padding, allocation,
+cache/page, cache-fit, workload coverage, straddling, and capacity-slack facts before the existing
+same-target variant comparison. The UI makes no performance claim and neither profile enters LispB.
+Selected enums also reuse profile B while holding their complete semantic domain, ordered codes,
+sentinel roles, signedness, semantic width, and C++ backing spelling fixed. A transactional join
+reports target backing size/alignment/storage bits/value-bit capacity/domain fit/code slack without
+giving semantic width a fabricated standalone size or turning code-space slack into byte waste.
+The shared selected count separately scales the generated standalone backing into checked storage,
+cache/page, aligned-origin straddling, and cache-fit facts under both profiles; it does not imply
+bit-packed enum storage.
+Packed analysis
 also supports selectable element-count presets and custom counts, reporting
-overflow-safe aggregate bytes, unused bits, minimum cache lines, and minimum pages. Cache-line and
-page sizes now come from an explicit x86/x86-64 baseline profile with provenance; unknown profile
-facts remain unknown rather than falling back to analyzer literals.
+overflow-safe aggregate bytes, unused bits, minimum cache lines/pages, and aligned-contiguous
+cache-line/page boundary-straddling element counts. Cache-line and page sizes now come from an
+explicit x86/x86-64 baseline profile with provenance; unknown profile facts remain unknown rather
+than falling back to analyzer literals.
 Packed declarations use ordered field-or-reserved segments. Named `(reserved ... :bits N)` regions
 occupy durable physical positions, generate no value API, and are reported separately from semantic
 payload and implicit trailing unused storage.
@@ -86,10 +219,12 @@ the live range, while `:sentinel true` codes must be outside it; generated const
 raw-value validation, analysis, inline authoring, and save/reload all preserve those roles without
 lowering the field as a language enum.
 Packed fields may declare `:bits auto`. Shared resolution derives signed/unsigned integer widths
-from range/code facts and enum widths from the enum semantic domain, then retains both auto provenance and a
-concrete physical width for analysis and lowering. Unknown domains are rejected rather than guessed.
-Standard-library SoA analysis also reports per-column and aggregate minimum pages using the target
-page size, treating each vector as a separate allocation and excluding unknown allocator overhead.
+from local range/code facts or a referenced integer scalar, and enum widths from the enum semantic
+domain, then retains both auto provenance and a concrete physical width for analysis and lowering.
+Unknown domains are rejected rather than guessed.
+Under the default separate-column strategy, standard-library SoA analysis reports per-column and
+aggregate minimum pages using the target page size, treating each vector as an independent
+allocation and excluding unknown allocator overhead.
 An explicit session-only SoA access set now reports useful and unselected logical payload at the
 shared element count, allocated payload at the independently modeled capacity, and the sum of each
 selected column's minimum cache-line/page footprint. It also reports unused allocated-capacity
@@ -97,6 +232,20 @@ payload separately from unselected-column payload at the workload count. Flat Ac
 selected-only/all actions drive the analysis; unknown target facts and arithmetic overflow remain
 Unknown, and the UI labels region bytes as minimum physical footprints rather than measured traffic
 or performance.
+A packed-field access set uses the same flat selection and per-field read/write intent. Headless
+analysis reports selected physical and multiplicity-scaled logical useful bits, whole-storage
+footprint, non-useful storage bits, minimum cache-line/page address coverage, operation-specific
+coverage, and cache-capacity fit. Selecting fewer bitfields never fabricates a sub-word physical
+fetch; Unknown target facts and overflow stay explicit.
+The packed Comparison view applies one complete field-intent map, count, and multiplicity to both
+selected physical variants. Checked deltas separate selected/useful-bit changes from containing-word
+storage, cache-line, page, and cache-fit consequences. Mismatched workloads are rejected; unknown or
+overflowed physical facts stay Unknown, and the UI makes no ranking or performance claim. An
+expandable per-field breakdown retains operation, physical width, classified useful bits, and
+multiplicity-scaled logical bits for each selected field; it deliberately does not invent per-field
+cache/page fetch coverage. Aggregate non-useful storage is decomposed into checked unselected-field,
+explicit-reserved-region, and physically-unused-backing categories whose sum is verified when all
+facts are known. Overflowed or invalid physical layouts leave those categories Unknown.
 The Comparison view now applies that same selected-column workload to both selected physical
 variants. Each side retains its own capacity and column type overrides while headless comparison
 reports useful payload, minimum cache-line/page footprints, allocated payload at capacity, capacity
@@ -104,7 +253,31 @@ slack, and checked deltas. An expandable per-column breakdown identifies the exa
 element size, footprint, capacity, and slack contribution behind each aggregate delta. Mismatched
 workloads are rejected. Complete logical payload, unselected workload payload, capacity slack, and
 non-payload bytes inside minimum cache/page footprints remain distinct comparison categories. The
-UI makes no speed claim.
+selected access set's minimum cache-line footprint is also compared against optional target L1,
+L2, and L3 capacities. Equivalent-record comparison retains the record's exact aligned-array fit
+beside the SoA lower-bound fit, and separately reports useful versus non-useful bytes in each
+cache/page footprint. Selected columns additionally report aligned-origin cache-line/page
+straddling counts, including checked cross-variant deltas. Each selected record member or SoA
+column can be classified as read, write, or read+write while unique storage and address-coverage
+facts stay separate from classified useful bytes. Comparisons require the same complete named
+intent map. Positive access multiplicity scales overflow-checked logical useful-byte totals without
+multiplying the physical footprint. Read and write cache/page address coverage is derived
+separately—exact for aligned-contiguous AoS and as a separate-allocation minimum for SoA—without
+inferring write policy or measured traffic. Compact composition bars visualize those categories
+from analysis facts only;
+the UI labels the models explicitly and makes no speed claim.
+
+SoA allocation strategy is now explicit session-only analysis state. The existing separate-column
+strategy retains one allocation per column and lower-bound region sums. The aligned-contiguous
+strategy places capacity-sized columns in declaration order using target-derived alignment, reports
+column offsets, padding, total block bytes, block alignment, and allocation count, and unions
+selected prefixes into exact cache/page coverage from a region-aligned block origin. Both variants
+in a comparison use the same chosen strategy. Capacity and strategy do not enter LispB, and
+allocator headers, growth policy, heap overhead, and speed remain Unknown.
+The aligned-contiguous Layout view also provides a horizontally scrollable cache-line/page map over
+those analyzer-owned facts. It shows capacity extents, padding gaps, target-region boundaries, and
+read/write/read+write selected prefixes at their actual block offsets; Unknown/separate/oversized
+cases remain explicit rather than receiving fabricated geometry.
 
 Enum declarations now support an optional durable semantic `:bit-width`; absence means auto width
 derived from literal and implicit values. Individual values may be marked `:sentinel true`, including
@@ -115,8 +288,10 @@ Optional `:signed true` or `:signed false` constrains the semantic domain; absen
 from known values. Signedness participates in minimum-width derivation independently of the C++
 lowering type.
 Known undersized domains are rejected through normal edit rollback; general initializer expressions
-remain explicitly unknown. The existing underlying type remains the current C++ lowering preference,
-not the semantic width.
+remain explicitly unknown. The positional underlying type is optional and remains an explicit C++
+lowering preference when present. When absent, known signedness/effective semantic width selects the
+smallest legal fixed-width C++ primitive downstream; Unknown facts reject generation rather than
+guessing, and no fabricated primitive dependency enters the semantic graph.
 
 Standalone `scalar-module` declarations now provide ordinary `integer-scalar` semantic domains
 without a C++ underlying type. Each scalar stores signedness, an inclusive live range, auto or
@@ -124,7 +299,12 @@ explicit 1-64-bit width, and ordered named live/sentinel codes. The shared graph
 `IntegerScalarType` nodes with no target size/alignment facts; headless analysis reports live,
 sentinel, required, and unused code space. Creation, flat inline editing and drag reorder,
 undo/redo, preview, save, and reload use the same editable-document path. Scalar modules emit an
-otherwise empty configured header and do not fabricate a physical C++ value type.
+otherwise empty configured header by default and do not fabricate a physical C++ value type. An
+explicit, source-backed `:cpp-emission constants` policy can instead project the ordered named codes
+as typed `inline constexpr` C++ constants. The author chooses a validated integral output type; this
+projection remains downstream policy and does not add ABI size/alignment to the semantic scalar.
+`constants-with-names` additionally emits an allocation-free `constexpr` value-to-symbol lookup
+whose empty result honestly represents unnamed values.
 
 `representation-module` now provides an initial source-backed `linear-quantized` physical
 representation. It references an `integer-scalar` through the shared graph rather than copying its
@@ -192,7 +372,8 @@ headless analysis and the Comparison view; policy roles, encoded width, redundan
 and selected-count payload-bit deltas remain separate from unspecified allocated storage.
 
 The shared LispB schema now has an initial ordinary `record-module`: records contain semantic
-members and optional fixed element counts, resolve to `RecordType` nodes and dependency edges, and
+members, optional fixed element counts, and optional source-backed semantic relationships. They
+resolve to `RecordType` nodes and labeled dependency edges and
 lower to dependency-ordered ordinary C++ structs with `std::array` for fixed arrays. Illegal
 by-value record cycles are rejected. Target-derived record analysis reports recursive member
 offsets, fixed-array extents, alignment, internal/tail padding, and total size in a byte map while
@@ -207,10 +388,31 @@ registered, and target-physical references plus navigation to the resolved seman
 The record grid now defines an explicit session-only multi-member sequential access set, defaulting
 to the focused member, and reports unioned useful bytes, enclosing AoS footprint, distinct cache
 lines/pages, and non-selected bytes in touched cache lines under the documented aligned-array model.
-Packed fields now support optional source-backed semantic relationships to declared types. Initial
-kinds cover index/count/offset, discriminant, containment/membership, quantisation/encoding, and
-general reference edges. They round-trip, validate, appear as labeled graph dependencies, and are
-editable/navigable inline. Capacity propagation remains pending durable table/buffer capacity facts.
+The Comparison view can independently load a second target profile and show the same record's
+member size/alignment/offset/extent/padding, complete object layout, aggregate storage/padding,
+cache-line/page behavior, cache-capacity fit, and checked physical deltas at the shared selected
+count. Missing facts remain Unknown and semantic-member mismatches reject the whole comparison.
+Packed fields, reusable standalone integer scalars, record members, and standard-library SoA columns
+now support optional source-backed semantic relationships to declared types through the same shared
+relation schema/graph value. Initial kinds
+cover index/count/offset, discriminant, containment/membership, quantisation/encoding, and general
+reference edges. All four owners round-trip, validate, participate in rename/deletion safety,
+appear as labeled graph dependencies, and are editable/navigable inline. Record and SoA-column
+relationships remain ABI/storage-neutral metadata. Unsigned `index_into`, `count_of`,
+and explicitly unit-bearing `offset_into` fields/scalars consume explicit analyzer-derived SoA
+target facts per physical variant. The headless derivation owns the resolved-graph walk and SoA
+physical analysis; the UI supplies session inputs only. Element offsets use capacity; byte offsets use the selected
+allocation strategy's checked total allocation extent. Analysis distinguishes live indices/offsets
+from terminal-inclusive counts, adds named sentinel states, handles exact and excess `2^64`
+requirements without overflow, diagnoses collisions/range/width failures, and exposes the
+derivation in packed bit tooltips/Comparison and scalar/field Properties/Layout. Scalar Comparison
+also applies variants A/B to the same durable domain and reports checked capacity and minimum-width
+deltas plus fit transitions without inventing standalone storage. Packed and scalar views also show
+the current-width code-space target-capacity limit after sentinel/terminal states and remaining
+code-space headroom. Separate zero-based semantic-range and concrete-sentinel limits combine into an
+effective valid-capacity/extent boundary only when all facts are known, so a packed field without a range
+does not receive optimistic semantic headroom. This remains planning state: it does not write
+capacity/extent into the semantic graph or silently change durable auto widths.
 
 The shared schema also has a source-backed `union-module` / raw `union` vertical slice. Ordered
 alternatives may be scalar or fixed arrays, resolve to first-class dependency-bearing semantic
@@ -220,7 +422,16 @@ grid cover name/type/count editing, type navigation, and button/drag reorder. Ta
 derives maximum alternative extent, alignment-rounded size, tail padding, and per-alternative union
 slack while leaving unknown/overflowed facts explicit. Selected-count analysis scales storage,
 tail padding, and conditional per-alternative slack, and reports target-driven cache-line/page
-footprints and boundary crossings without inventing an alternative distribution.
+footprints and boundary crossings without inventing an alternative distribution. A separate
+session-only, stable-declaration-keyed alternative workload is now available when the user supplies
+weights explicitly. Headless analysis validates unique known alternatives, preserves Unknown and
+overflow, and reports per-row extent/slack, checked weighted totals, and conditional per-value/
+selected-count expectations. Layout and Properties show the workload, while Comparison applies the
+same exact weights to both target profiles only after an all-or-nothing identity/count/weight join.
+This workload is not schema state and does not imply a stored discriminant or performance result.
+Session workload keys now reconcile whenever the editable graph changes: raw alternative renames
+and tagged tag reassignments migrate a weight when unambiguous, deletion prunes stale keys, and
+reorder/property edits preserve the current workload across apply/undo/redo synchronization.
 
 The initial tagged-union foundation is also source-backed. A distinct `tagged-union` declaration
 references an enum discriminant and gives each ordered payload alternative one symbolic,
@@ -259,6 +470,11 @@ weight, and overflow remain diagnostic, and weights never enter LispB source.
 
 ## 2. Enum authoring vertical slice
 
+Generation policy is source-backed and authorable inline. Reflection, enum-array helpers, native
+API mode, export specifier, and conversion functions all pass through ordinary `ReplaceEnum`
+validation/history. Conversion changes normalize into shared canonical order and preserve stable
+multiline conversion rows and comments; incompatible policies never enter history.
+
 - Create an enum in a selected module and namespace.
 - Select its underlying semantic type.
 - Add, remove, duplicate, and reorder enumerators.
@@ -286,7 +502,9 @@ placement and machine API lowering remain future work.
   field types or generated accessors.
 - Support both numeric edits and direct divider dragging.
 - Display unused bits, overflow, representable ranges, and dependency edges immediately.
-- Allow creation of a referenced enum from the field workflow.
+- **DONE:** Allow creation of a referenced enum from the field workflow, with width-prefilled shared
+  enum creation, immediate packed-field binding, rollback on bind rejection, and ordinary two-step
+  undo/redo.
 - Save and reload the resulting LispB without losing semantics.
 
 The primary acceptance case is creating an enum backed by `uint8`, then creating a packed `uint32`
@@ -296,7 +514,10 @@ value with a 24-bit integer field and an 8-bit field that semantically reference
 
 The initial standard-library SoA vertical slice is implemented. Selected nested columns expose
 optional fixed-schema and nested-schema references inline, and switching back to array clears those
-nested-only properties. Coordinated generated field-mask/storage/dimension authoring remains
+nested-only properties. Selected columns also expose source-backed semantic relationship
+kind/target/unit editing, type picking, clearing, and navigation. Those links add graph/reference
+safety without turning capacity or allocation placement into durable schema. Coordinated generated
+field-mask/storage/dimension authoring remains
 partially complete: the UI atomically enables generated names, the required storage column, and the
 first selected mask field; it safely disables the whole configuration and toggles additional
 eligible array fields without allowing the final field to be removed. Selected mask fields expose
@@ -337,12 +558,15 @@ function and parameter blocks during unambiguous direct renames; overload ambigu
 simultaneous unmatched rows, and ambiguous rename/reorder combinations retain canonical fallback.
 Unchanged raw `#cpp` bodies retain their exact spelling through unambiguous function and parameter
 renames. Editing a raw body replaces only its bounded property value with the canonical quoted-list
-form, preserving the containing function's comments and other properties.
+form, preserving the containing function's comments and other properties. Multiline list-form body
+and dependency entries preserve stable unique source blocks and comments through structural edits
+and one direct value edit; duplicates or ambiguous mappings canonicalize only the affected list.
 
 - Create standard-library SoA declarations.
 - Add, remove, duplicate, and reorder columns.
 - Select semantic column types and supported column kinds.
-- Navigate to or create referenced types.
+- **DONE:** Navigate to referenced types and create a shared record directly from an ordinary SoA
+  array-column workflow.
 - Keep planning-only capacity experiments separate from source semantics unless capacity becomes a
   declared LispB property.
 - Save, reload, analyze, and generate the declaration.
@@ -350,10 +574,18 @@ form, preserving the containing function's comments and other properties.
 ## 5. Relationship and declaration lifecycle operations
 
 An initial dockable pan/zoom relationship graph is implemented over the resolved semantic graph,
-with selectable nodes and field-aware dependency labels. Packed-field relationship editing and the
-initial shared relationship-kind set are implemented. Duplication, supported-kind rename, and
-reverse-user/registered-alias-safe deletion of draft or source-backed declarations are implemented;
-declaration move and capacity-derived consequences remain future work.
+with selectable nodes and field-aware dependency labels. Edge labels now provide hover source/
+target inspection and click-through target navigation without owning semantic state; **Fit all**
+frames the complete simple column layout. A flat case-insensitive type/module/namespace/kind search
+cycles and focuses matching nodes while retaining the complete topology. Nodes can be left-dragged
+into stable-identity manual world positions; Fit/Focus use those positions, **Automatic layout**
+discards them, and the existing ImGui settings store persists escaped positions per normalized
+project path while ignoring malformed or stale identities. Selecting a node colors its direct
+dependencies, users, and bidirectional/cyclic neighbors distinctly and dims unrelated topology
+without hiding or disabling it; every role is derived from the current graph. Packed-field relationship editing and the
+initial shared relationship-kind set are implemented. Duplication, supported-kind rename,
+compatible cross-namespace module movement, and reverse-user/registered-alias-safe deletion of draft
+or source-backed declarations are implemented; capacity-derived consequences remain future work.
 
 - Provide a searchable semantic type picker.
 - Navigate from a field or column to its referenced definition.
@@ -361,7 +593,9 @@ declaration move and capacity-derived consequences remain future work.
 - Report all reverse users before deletion.
 - Reject unsafe deletion or require explicit reference repair.
 - Duplicate declarations under a new stable identity.
-- Move declarations between modules where legal.
+- **DONE:** Move editable declarations between compatible existing modules, preserving stable
+  identity/history and exact cross-file source through save/reload. Namespace-changing moves repair
+  supported graph-derived references and reject aliases or local links outside source-aware repair.
 - Keep unresolved references as explicit draft errors; never silently convert them to external
   leaves.
 
@@ -375,8 +609,11 @@ Typed rename is implemented for enums, integer scalars, quantizations, varints, 
 records, unions, and ordinary SoA declarations with stable declaration ID, graph-derived reverse-
 user repair, undo/redo, multi-declaration preview, and save/reload. SoA rename additionally repairs
 module-local nested/fixed schema identities, retains explicit helper names while implicit names
-follow the declaration, and validates generated-name collisions transactionally. Registered-alias
-repair and vector-SoA module rename remain lifecycle extensions.
+follow the declaration, and validates generated-name collisions transactionally. The shared source
+boundary now patches a validated owner's atomic name token and retries its ordinary source-preserving
+renderer, retaining comments, custom whitespace, stable child blocks, and localized repaired-user
+edits across all supported kinds. Registered-alias repair and vector-SoA module rename remain
+lifecycle extensions.
 Draft and source-backed declarations can be deleted through their existing typed commands only when
 they have no resolved reverse users or registered alias. The document performs those checks before
 mutation, validates the remaining manifest, and preserves undo/redo and stable identity on
@@ -411,8 +648,9 @@ hot/cold grouping using the same command, validation, serialization, and depende
 - Compare complete subsystem costs and identify the largest contributors.
 - Reference semantic types by stable identity rather than redeclaring their schemas.
 
-Initial explicit access sets are implemented for AoS records and standard-library SoAs. Record
-analysis computes exact touched-region unions for a contiguous aligned object array. SoA analysis
+Initial explicit access sets are implemented for packed values, AoS records, and standard-library
+SoAs. Packed analysis separates selected useful bits from the whole containing-word array footprint.
+Record analysis computes exact touched-region unions for a contiguous aligned object array. SoA analysis
 uses the distinct physical model of one allocation per selected column and reports minimum region
 footprints; element count remains session workload state and is not conflated with SoA allocation
 capacity or persisted into LispB.
@@ -428,9 +666,11 @@ shown side by side.
 
 ## 9. Physical-fact accuracy
 
-- Record provenance for every ABI fact. Primitive and memory fact groups now carry provenance;
-  generated per-fact loading remains follow-up work.
-- Load generated `sizeof` and `alignof` facts from the real target compiler and configuration.
+- Record provenance for every ABI fact. Primitive facts carry per-type provenance and memory facts
+  carry independent group provenance.
+- Load generated `sizeof` and `alignof` facts from the real target compiler and configuration. The
+  initial probe, deterministic profile format, transactional loader, and explicit session selection
+  are implemented; broader project/profile discovery remains follow-up work.
 - Identify profiles by platform, architecture, ABI, compiler, and build configuration. The explicit
   optional identity value and honest Unknown handling are implemented.
 - Accept optional L1-data/L2/L3 capacity facts and compare known aggregate working sets against

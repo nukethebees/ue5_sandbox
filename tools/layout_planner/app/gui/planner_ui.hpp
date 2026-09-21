@@ -45,6 +45,16 @@ class PlannerUi {
     auto take_close_confirmation() -> bool;
     auto draw() -> bool;
   private:
+    struct PendingPackedEnumBinding {
+        lispb::schema::DeclarationId packed_declaration;
+        std::string field_name;
+    };
+
+    struct PendingSoaRecordBinding {
+        lispb::schema::DeclarationId soa_declaration;
+        std::string column_name;
+    };
+
     static auto settings_read_open(ImGuiContext* context,
                                    ImGuiSettingsHandler* handler,
                                    char const* name) -> void*;
@@ -57,11 +67,14 @@ class PlannerUi {
                                    ImGuiTextBuffer* output);
     void validate_comparison_variants();
     void setup_default_dock_layout(unsigned int dockspace_id);
+    void persist_view_visibility(bool previous, bool current);
     auto draw_view_menu() -> bool;
     auto draw_file_menu() -> bool;
-    void draw_source_preview();
+    void draw_source_panel();
+    void draw_diagnostics_panel();
     void draw_close_confirmation();
     void draw_project_path_dialogs();
+    void draw_new_module_dialog();
     void draw_new_enum_dialog();
     void draw_new_packed_value_dialog();
     void draw_new_integer_scalar_dialog();
@@ -105,6 +118,12 @@ class PlannerUi {
     auto apply_document_edit(lispb::schema::SchemaEditCommand command,
                              std::optional<lispb::schema::TypeIdentity> selection = std::nullopt)
         -> bool;
+    auto bind_new_enum_to_packed_field(lispb::schema::TypeIdentity const& enumeration) -> bool;
+    auto bind_new_record_to_soa_column(lispb::schema::TypeIdentity const& record) -> bool;
+    auto apply_project_edit(lispb::ProjectEditCommand command) -> bool;
+    [[nodiscard]] auto project_history_active() const -> bool;
+    [[nodiscard]] auto has_dirty_changes() const -> bool;
+    auto save_changes() -> bool;
     auto draw_type_picker(std::string_view module_name, lispb::schema::TypeIdentity const& owner)
         -> std::optional<std::string>;
     void sync_document_graph(std::optional<lispb::schema::TypeIdentity> selection);
@@ -114,11 +133,18 @@ class PlannerUi {
     void refresh_analysis();
     void draw_project_panel();
     void draw_layout_panel();
+    auto draw_target_profile() -> bool;
     void draw_properties_panel();
     void draw_variants_panel();
     void draw_comparison_panel();
+    auto draw_comparison_target_profile_picker() -> bool;
+    void draw_enum_target_comparison();
+    auto draw_soa_target_comparison() -> bool;
+    void draw_union_target_comparison();
+    void draw_tagged_union_target_comparison();
     void draw_graph_panel();
     auto draw_element_count() -> bool;
+    auto draw_access_operation() -> bool;
     void draw_packed_layout(lispb::schema::PackedType const& packed,
                             layout::PackedAnalysis const& baseline);
     void draw_record_layout(layout::RecordAnalysis const& analysis);
@@ -127,33 +153,61 @@ class PlannerUi {
     auto duplicate_selected_declaration(lispb::schema::TypeNode const& node) -> bool;
     auto delete_declaration(lispb::schema::DeclarationId declaration) -> bool;
     void sync_variant_name();
+    void sync_target_memory_fact_inputs();
+    auto load_target_profile(std::filesystem::path const& path, bool persist) -> bool;
+    void use_builtin_target_profile(bool clear_persisted);
+    auto load_comparison_target_profile(std::filesystem::path const& path) -> bool;
+    void use_builtin_comparison_target_profile();
     void create_variant_for_selected_schema();
 
     std::filesystem::path project_path_;
     std::string target_name_;
     std::vector<std::filesystem::path> recent_projects_;
+    std::optional<lispb::EditableProjectDocument> project_document_;
     std::optional<lispb::schema::EditableSchemaDocument> document_;
     layout::LayoutWorkspace workspace_;
     layout::AbiProfile abi_{layout::AbiProfile::host_common()};
+    layout::AbiProfile comparison_abi_{layout::AbiProfile::host_common()};
+    layout::MemoryFacts target_memory_fact_defaults_;
     std::vector<layout::Diagnostic> load_diagnostics_;
     std::optional<lispb::schema::TypeId> selected_type_;
     std::string selected_field_;
+    layout::AccessOperation access_operation_{layout::AccessOperation::read};
+    std::uint64_t access_multiplicity_{1};
+    bool access_multiplicity_error_{};
+    layout::SoaAllocationStrategy soa_allocation_strategy_{
+        layout::SoaAllocationStrategy::separate_columns};
+    bool soa_region_map_pages_{};
+    float soa_region_pixels_{64.0F};
 
     std::uint64_t cached_revision_{};
+    std::uint64_t target_profile_revision_{};
+    std::uint64_t cached_target_profile_revision_{};
+    std::uint64_t comparison_target_profile_revision_{};
+    std::uint64_t cached_comparison_target_profile_revision_{};
+    layout::AccessOperation cached_access_operation_{layout::AccessOperation::read};
+    std::uint64_t cached_access_multiplicity_{1};
+    layout::SoaAllocationStrategy cached_soa_allocation_strategy_{
+        layout::SoaAllocationStrategy::separate_columns};
     std::optional<lispb::schema::TypeId> cached_type_;
     std::string cached_selected_field_;
-    std::set<std::string, std::less<>> cached_record_access_members_;
+    std::map<std::string, layout::AccessOperation, std::less<>> cached_packed_access_fields_;
+    bool cached_packed_access_set_explicit_{};
+    std::map<std::string, layout::AccessOperation, std::less<>> cached_record_access_members_;
     bool cached_record_access_set_explicit_{};
-    std::set<std::string, std::less<>> cached_soa_access_columns_;
+    std::map<std::string, layout::AccessOperation, std::less<>> cached_soa_access_columns_;
     bool cached_soa_access_set_explicit_{};
     std::uint64_t cached_comparison_a_variant_id_{std::numeric_limits<std::uint64_t>::max()};
     std::uint64_t cached_comparison_b_variant_id_{std::numeric_limits<std::uint64_t>::max()};
     std::optional<lispb::schema::TypeIdentity> cached_quantized_comparison_type_;
     std::optional<lispb::schema::TypeIdentity> cached_varint_comparison_type_;
     std::optional<lispb::schema::TypeIdentity> cached_optional_comparison_type_;
+    std::uint64_t cached_union_distribution_revision_{std::numeric_limits<std::uint64_t>::max()};
     std::uint64_t cached_tagged_distribution_revision_{std::numeric_limits<std::uint64_t>::max()};
     std::optional<layout::EnumDomainAnalysis> enum_domain_;
+    std::optional<layout::EnumTargetComparison> enum_target_comparison_;
     std::optional<layout::IntegerScalarAnalysis> integer_scalar_analysis_;
+    std::optional<layout::IntegerScalarCapacityComparison> integer_scalar_capacity_comparison_;
     std::optional<layout::LinearQuantizedAnalysis> linear_quantized_analysis_;
     std::optional<layout::LinearQuantizedComparison> linear_quantized_comparison_;
     std::optional<layout::IntegerVarintAnalysis> integer_varint_analysis_;
@@ -165,30 +219,61 @@ class PlannerUi {
     std::optional<layout::OptionalEncodingComparison> optional_encoding_comparison_;
     std::optional<layout::PackedAnalysis> baseline_packed_;
     std::optional<layout::PackedAnalysis> active_packed_;
+    std::optional<layout::PackedTargetComparison> packed_target_comparison_;
+    std::optional<layout::PackedAccessAnalysis> packed_access_analysis_;
+    std::optional<layout::PackedAccessComparison> packed_target_access_comparison_;
+    std::optional<layout::PackedAccessComparison> packed_access_comparison_;
     std::vector<std::pair<std::uint64_t, layout::PackedAnalysis>> packed_variants_;
     std::optional<layout::SoaAnalysis> baseline_soa_;
     std::optional<layout::SoaAnalysis> active_soa_;
+    std::optional<layout::SoaTargetComparison> soa_target_comparison_;
     std::optional<layout::SoaAccessAnalysis> soa_access_analysis_;
+    std::optional<layout::SoaAccessComparison> soa_target_access_comparison_;
     std::optional<layout::RecordSoaAccessComparison> record_soa_access_comparison_;
     std::optional<layout::SoaAccessComparison> soa_access_comparison_;
     std::vector<std::pair<std::uint64_t, layout::SoaAnalysis>> soa_variants_;
     std::optional<layout::PackedAnalysis> comparison_a_packed_;
     std::optional<layout::PackedAnalysis> comparison_b_packed_;
     std::optional<layout::RecordAnalysis> record_analysis_;
+    std::optional<layout::RecordTargetComparison> record_target_comparison_;
     std::optional<layout::RecordAccessAnalysis> record_access_analysis_;
+    std::optional<layout::RecordAccessComparison> record_target_access_comparison_;
     std::optional<layout::UnionAnalysis> union_analysis_;
+    std::optional<layout::UnionTargetComparison> union_target_comparison_;
+    std::optional<layout::UnionDistributionAnalysis> union_distribution_analysis_;
+    std::optional<layout::UnionDistributionComparison> union_target_distribution_comparison_;
     std::optional<layout::TaggedUnionAnalysis> tagged_union_analysis_;
+    std::optional<layout::TaggedUnionTargetComparison> tagged_union_target_comparison_;
     std::optional<layout::TaggedUnionDistributionAnalysis> tagged_union_distribution_analysis_;
+    std::optional<layout::TaggedUnionDistributionComparison>
+        tagged_union_target_distribution_comparison_;
     std::optional<layout::SoaAnalysis> comparison_a_soa_;
     std::optional<layout::SoaAnalysis> comparison_b_soa_;
 
     std::array<char, 128> variant_name_{};
     std::array<char, 128> schema_filter_{};
     std::array<char, 128> type_picker_filter_{};
+    std::array<char, 1024> target_profile_path_{};
+    std::array<char, 1024> comparison_target_profile_path_{};
+    std::array<char, 32> target_cache_line_bytes_{};
+    std::array<char, 32> target_page_bytes_{};
+    std::array<char, 32> target_l1_data_cache_bytes_{};
+    std::array<char, 32> target_l2_cache_bytes_{};
+    std::array<char, 32> target_l3_cache_bytes_{};
+    std::string target_profile_load_error_;
+    std::string comparison_target_profile_error_;
+    std::string target_memory_fact_error_;
     std::array<char, 1024> open_project_path_{};
     std::array<char, 1024> save_as_project_path_{};
+    std::array<char, 512> new_project_source_path_{};
+    std::array<char, 128> new_module_name_{};
+    std::array<char, 256> new_module_header_{};
+    std::array<char, 128> new_module_namespace_{};
+    int new_module_kind_{};
+    std::size_t new_module_source_file_index_{1};
     std::array<char, 128> new_enum_name_{};
     std::array<char, 128> new_enum_underlying_type_{"std::uint8_t"};
+    bool new_enum_backing_auto_{true};
     bool new_enum_width_auto_{true};
     std::uint32_t new_enum_bit_width_{1};
     int new_enum_signedness_{};
@@ -239,8 +324,16 @@ class PlannerUi {
     std::array<char, 128> enum_value_initializer_{};
     std::array<char, 128> enum_value_display_name_{};
     std::array<char, 128> enum_value_serialized_name_{};
+    std::array<char, 128> enum_export_specifier_{};
+    std::array<char, 128> enum_projection_name_{};
+    std::array<char, 260> enum_projection_header_{};
+    std::array<char, 260> enum_projection_header_include_{};
+    std::array<char, 260> enum_projection_conversion_header_{};
+    std::array<char, 260> enum_projection_native_header_include_{};
+    int enum_projection_reflection_{};
     std::array<char, 128> packed_storage_type_{};
     std::array<char, 64> packed_invalid_value_{};
+    std::array<char, 128> packed_export_specifier_{};
     std::array<char, 128> packed_field_name_{};
     std::array<char, 128> packed_field_type_{};
     std::array<char, 32> packed_field_minimum_{};
@@ -248,20 +341,27 @@ class PlannerUi {
     std::array<char, 128> packed_code_name_{};
     std::array<char, 32> packed_code_value_{};
     std::array<char, 128> packed_relationship_target_{};
+    std::array<char, 128> integer_scalar_relationship_target_{};
     std::array<char, 32> integer_scalar_minimum_{};
     std::array<char, 32> integer_scalar_maximum_{};
+    std::array<char, 128> integer_scalar_cpp_type_{};
     std::array<char, 128> integer_scalar_code_name_{};
     std::array<char, 32> integer_scalar_code_value_{};
     std::array<char, 128> record_member_name_{};
     std::array<char, 128> record_member_type_{};
+    std::array<char, 128> record_relationship_target_{};
+    std::array<char, 128> record_export_specifier_{};
     std::array<char, 128> union_alternative_name_{};
     std::array<char, 128> union_alternative_type_{};
+    std::array<char, 128> union_export_specifier_{};
     std::array<char, 128> tagged_union_alternative_name_{};
     std::array<char, 128> tagged_union_alternative_type_{};
+    std::array<char, 128> tagged_union_export_specifier_{};
     std::array<char, 128> soa_member_name_{};
     std::array<char, 128> soa_member_type_{};
     std::array<char, 128> soa_member_fixed_schema_{};
     std::array<char, 128> soa_member_nested_schema_{};
+    std::array<char, 128> soa_relationship_target_{};
     std::array<char, 128> soa_equivalent_type_{};
     std::array<char, 128> soa_export_specifier_{};
     std::vector<std::array<char, 256>> soa_using_declarations_;
@@ -295,15 +395,20 @@ class PlannerUi {
     std::vector<std::array<char, 128>> soa_mask_dimension_extents_;
     std::optional<std::size_t> soa_mask_dimension_index_;
     std::string selected_enumerator_;
-    std::set<std::string, std::less<>> record_access_members_;
-    std::set<std::string, std::less<>> soa_access_columns_;
+    std::map<std::string, layout::AccessOperation, std::less<>> packed_access_fields_;
+    std::map<std::string, layout::AccessOperation, std::less<>> record_access_members_;
+    std::map<std::string, layout::AccessOperation, std::less<>> soa_access_columns_;
     std::map<lispb::schema::TypeIdentity, std::vector<VarintDistributionRow>> varint_distributions_;
+    std::map<lispb::schema::DeclarationId, std::map<std::string, std::uint64_t>>
+        union_distributions_;
+    std::uint64_t union_distribution_revision_{};
     std::map<lispb::schema::DeclarationId, std::map<std::string, std::uint64_t>>
         tagged_union_distributions_;
     std::uint64_t tagged_distribution_revision_{};
     std::array<char, 32> new_varint_distribution_value_{"0"};
     std::uint64_t new_varint_distribution_weight_{1};
     bool record_access_set_explicit_{};
+    bool packed_access_set_explicit_{};
     bool soa_access_set_explicit_{};
     std::optional<lispb::schema::DeclarationId> rename_editor_declaration_;
     std::array<char, 128> declaration_name_{};
@@ -311,6 +416,7 @@ class PlannerUi {
     std::string delete_declaration_name_;
     std::optional<lispb::schema::DeclarationId> enum_editor_declaration_;
     std::string enum_editor_value_;
+    std::array<char, 128> enum_underlying_type_{"std::uint8_t"};
     std::string schema_edit_message_;
     std::size_t new_enum_module_index_{};
     std::size_t new_packed_module_index_{};
@@ -349,6 +455,13 @@ class PlannerUi {
     std::string soa_editor_member_;
     int packed_field_bits_{1};
     int packed_relationship_kind_{};
+    int integer_scalar_relationship_kind_{};
+    int packed_relationship_unit_{};
+    int integer_scalar_relationship_unit_{};
+    int record_relationship_kind_{};
+    int record_relationship_unit_{};
+    int soa_relationship_kind_{};
+    int soa_relationship_unit_{};
     bool packed_code_sentinel_{};
     bool integer_scalar_code_sentinel_{};
     std::uint64_t record_member_count_{1};
@@ -372,12 +485,19 @@ class PlannerUi {
     float graph_pan_x_{32.0F};
     float graph_pan_y_{32.0F};
     float graph_zoom_{1.0F};
+    std::map<lispb::schema::TypeIdentity, std::array<float, 2>> graph_node_positions_;
+    std::map<std::string, std::map<lispb::schema::TypeIdentity, std::array<float, 2>>, std::less<>>
+        persisted_graph_node_positions_;
+    std::map<std::string, std::filesystem::path, std::less<>> persisted_target_profile_paths_;
+    std::array<char, 128> graph_search_{};
     std::optional<int> window_width_;
     std::optional<int> window_height_;
     bool dock_layout_initialized_{};
     bool reset_dock_layout_requested_{};
     bool comparison_b_follows_active_{true};
+    bool open_new_module_dialog_{};
     bool open_new_enum_dialog_{};
+    std::optional<PendingPackedEnumBinding> pending_packed_enum_binding_;
     bool open_new_packed_value_dialog_{};
     bool open_new_integer_scalar_dialog_{};
     bool open_new_linear_quantized_dialog_{};
@@ -387,17 +507,26 @@ class PlannerUi {
     bool open_new_optional_sentinel_dialog_{};
     bool open_new_optional_presence_bit_dialog_{};
     bool open_new_record_dialog_{};
+    std::optional<PendingSoaRecordBinding> pending_soa_record_binding_;
     bool open_new_union_dialog_{};
     bool open_new_tagged_union_dialog_{};
     bool open_new_soa_dialog_{};
-    bool open_source_preview_{};
+    bool source_view_open_{};
+    bool diagnostics_view_open_{true};
+    bool focus_source_view_{};
     bool open_project_dialog_{};
     bool open_save_as_dialog_{};
     bool project_changed_{};
     bool open_close_confirmation_{};
     bool close_confirmed_{};
+    bool project_view_open_{true};
+    bool layout_view_open_{true};
+    bool properties_view_open_{true};
+    bool variants_view_open_{true};
+    bool comparison_view_open_{true};
     bool graph_view_open_{true};
     bool graph_focus_selected_{};
+    bool graph_fit_all_{};
 };
 
 } // namespace ioj::layout_planner

@@ -25,6 +25,9 @@ inline constexpr ImVec4 unused_hatch_color{0.82F, 0.85F, 0.89F, 0.45F};
 inline constexpr ImVec4 bit_grid_color{0.86F, 0.9F, 0.95F, 0.2F};
 inline constexpr ImVec4 packed_detail_text_color{0.9F, 0.93F, 0.98F, 1.0F};
 inline constexpr ImVec4 overflow_color{0.85F, 0.55F, 0.2F, 1.0F};
+inline constexpr ImVec4 read_access_color{0.25F, 0.72F, 0.48F, 1.0F};
+inline constexpr ImVec4 write_access_color{0.9F, 0.43F, 0.28F, 1.0F};
+inline constexpr ImVec4 read_write_access_color{0.72F, 0.42F, 0.9F, 1.0F};
 
 struct PackedDividerAdjustment {
     std::size_t left_field_index{};
@@ -35,6 +38,7 @@ struct PackedDividerAdjustment {
 void draw_packed_bar(PackedAnalysis const& analysis,
                      PackedAnalysis const* const baseline,
                      std::string& selected_field,
+                     std::map<std::string, AccessOperation, std::less<>> const& access_fields,
                      char const* const label,
                      std::uint64_t const common_bits,
                      bool const editable,
@@ -116,6 +120,17 @@ void draw_packed_bar(PackedAnalysis const& analysis,
         draw_list->AddRect({left, origin.y},
                            {left + width, origin.y + height},
                            ImGui::GetColorU32(ImGuiCol_Border));
+        auto const access{access_fields.find(field.name)};
+        if (!field.reserved && access != access_fields.end()) {
+            auto const access_color{access->second == AccessOperation::read ? read_access_color
+                                    : access->second == AccessOperation::write
+                                        ? write_access_color
+                                        : read_write_access_color};
+            constexpr float access_band_height{7.0F};
+            draw_list->AddRectFilled({left + 1.0F, origin.y + height - access_band_height},
+                                     {left + width - 1.0F, origin.y + height - 1.0F},
+                                     ImGui::GetColorU32(access_color));
+        }
         if (field.least_significant_bit >= analysis.storage_bits.value_or(0)) {
             draw_list->AddLine({left, origin.y},
                                {left + width, origin.y + height},
@@ -264,6 +279,11 @@ void draw_packed_bar(PackedAnalysis const& analysis,
             ImGui::Text("Logical type: %s", field.logical_type.c_str());
             ImGui::Text(
                 "%s width: %u bits", field.reserved ? "Reserved" : "Planning", field.bit_width);
+            if (auto const access{access_fields.find(field.name)};
+                !field.reserved && access != access_fields.end()) {
+                ImGui::Text("Workload operation: %s",
+                            detail::access_operation_name(access->second));
+            }
             if (field.schema_bit_width_auto) {
                 ImGui::Text("Source width: auto => %u bits", field.schema_bit_width);
             }
@@ -306,11 +326,85 @@ void draw_packed_bar(PackedAnalysis const& analysis,
                                 code.sentinel ? " (sentinel)" : "");
                 }
                 if (field.relationship_kind.has_value() && field.relationship_target.has_value()) {
-                    ImGui::Text("Relationship: %s -> %s",
-                                std::string{codegen::packed_field_relation_kind_name(
-                                                *field.relationship_kind)}
-                                    .c_str(),
-                                field.relationship_target->c_str());
+                    ImGui::Text(
+                        "Relationship: %s -> %s",
+                        std::string{codegen::semantic_relation_kind_name(*field.relationship_kind)}
+                            .c_str(),
+                        field.relationship_target->c_str());
+                    if (field.relationship_target_extent.has_value()) {
+                        auto const kind{*field.relationship_kind};
+                        auto const term{detail::relationship_extent_term(kind)};
+                        auto const unit{
+                            detail::relationship_extent_unit(kind, field.relationship_unit)};
+                        ImGui::Separator();
+                        ImGui::Text(
+                            "Session target %s: %llu %s",
+                            term.data(),
+                            static_cast<unsigned long long>(*field.relationship_target_extent),
+                            unit.data());
+                        ImGui::Text(
+                            "Required live values: %s",
+                            field.relationship_live_value_count.has_value()
+                                ? detail::format_code_count(*field.relationship_live_value_count)
+                                      .c_str()
+                                : "Unknown");
+                        auto const required_codes{
+                            field.relationship_required_code_count.has_value()
+                                ? detail::format_code_count(*field.relationship_required_code_count)
+                            : field.relationship_minimum_required_bits.value_or(0) > 64
+                                ? std::string{"> 2^64"}
+                                : std::string{"Unknown"}};
+                        ImGui::Text("Required codes: %s", required_codes.c_str());
+                        ImGui::Text(
+                            "Minimum width: %s",
+                            field.relationship_minimum_required_bits.has_value()
+                                ? (std::to_string(*field.relationship_minimum_required_bits) +
+                                   " bits")
+                                      .c_str()
+                                : "Unknown");
+                        ImGui::Text("Planning width fits: %s",
+                                    field.relationship_width_sufficient.has_value()
+                                        ? (*field.relationship_width_sufficient ? "Yes" : "No")
+                                        : "Unknown");
+                        ImGui::Text(
+                            "Code-space %s limit: %s",
+                            term.data(),
+                            detail::format_number(field.relationship_code_space_capacity_limit)
+                                .c_str());
+                        ImGui::Text(
+                            "Code-space %s headroom: %s",
+                            term.data(),
+                            detail::format_number(field.relationship_capacity_headroom).c_str());
+                        ImGui::Text(
+                            "Semantic-range %s limit: %s",
+                            term.data(),
+                            detail::format_number(field.relationship_semantic_capacity_limit)
+                                .c_str());
+                        ImGui::Text(
+                            "Sentinel-placement %s limit: %s",
+                            term.data(),
+                            detail::format_number(field.relationship_sentinel_capacity_limit)
+                                .c_str());
+                        ImGui::Text(
+                            "Effective valid %s limit: %s",
+                            term.data(),
+                            detail::format_number(field.relationship_effective_capacity_limit)
+                                .c_str());
+                        ImGui::Text(
+                            "Effective valid %s headroom: %s",
+                            term.data(),
+                            detail::format_number(field.relationship_effective_capacity_headroom)
+                                .c_str());
+                        if (kind == codegen::SemanticRelationKind::count_of) {
+                            ImGui::TextDisabled(
+                                "count_of includes the terminal count 0..capacity.");
+                        } else if (kind == codegen::SemanticRelationKind::offset_into) {
+                            ImGui::TextDisabled(
+                                "offset_into uses live offsets 0..extent-1 in the declared unit.");
+                        } else {
+                            ImGui::TextDisabled("index_into uses live indices 0..capacity-1.");
+                        }
+                    }
                 }
             }
             ImGui::EndTooltip();
@@ -374,10 +468,10 @@ void draw_payload_regions(SoaAnalysis const& analysis,
     ImGui::SameLine();
     ImGui::TextDisabled("capacity %llu — %s",
                         static_cast<unsigned long long>(analysis.capacity),
-                        detail::format_bytes(analysis.total_payload_bytes).c_str());
-    if (!analysis.total_payload_bytes.has_value()) {
+                        detail::format_bytes(analysis.total_allocation_bytes).c_str());
+    if (!analysis.total_allocation_bytes.has_value()) {
         ImGui::TextDisabled(
-            "Aggregate payload is unknown because one or more column facts are unknown.");
+            "Allocation is unknown because one or more column size/alignment facts are unknown.");
         return;
     }
 
@@ -386,13 +480,21 @@ void draw_payload_regions(SoaAnalysis const& analysis,
     constexpr float height{64.0F};
     auto const denominator{static_cast<float>(std::max<std::uint64_t>(1, common_total))};
     auto x{origin.x};
-    auto const total_width{available * static_cast<float>(*analysis.total_payload_bytes) /
+    auto const total_width{available * static_cast<float>(*analysis.total_allocation_bytes) /
                            denominator};
     auto* draw_list{ImGui::GetWindowDrawList()};
+    draw_list->AddRectFilled({origin.x, origin.y},
+                             {origin.x + total_width, origin.y + height},
+                             ImGui::GetColorU32(unused_color),
+                             2.0F);
     for (std::size_t index{}; index < analysis.columns.size(); ++index) {
         auto const& column{analysis.columns[index]};
         if (!column.total_bytes.has_value()) {
             continue;
+        }
+        if (column.allocation_offset_bytes.has_value()) {
+            x = origin.x +
+                available * static_cast<float>(*column.allocation_offset_bytes) / denominator;
         }
         auto const width{
             std::max(2.0F, available * static_cast<float>(*column.total_bytes) / denominator)};
@@ -415,7 +517,9 @@ void draw_payload_regions(SoaAnalysis const& analysis,
                                ImGui::GetColorU32(ImGuiCol_TextDisabled),
                                bytes.c_str());
         }
-        x += width;
+        if (!column.allocation_offset_bytes.has_value()) {
+            x += width;
+        }
     }
     draw_list->AddRect({origin.x, origin.y},
                        {origin.x + total_width, origin.y + height},
@@ -436,6 +540,10 @@ void draw_payload_regions(SoaAnalysis const& analysis,
             if (!column.total_bytes.has_value()) {
                 continue;
             }
+            if (column.allocation_offset_bytes.has_value()) {
+                x = origin.x +
+                    available * static_cast<float>(*column.allocation_offset_bytes) / denominator;
+            }
             auto const width{
                 std::max(2.0F, available * static_cast<float>(*column.total_bytes) / denominator)};
             if (mouse_x >= x && mouse_x < x + width) {
@@ -452,19 +560,203 @@ void draw_payload_regions(SoaAnalysis const& analysis,
                         return facts.size_bytes;
                     })).c_str());
                 ImGui::Text("Payload: %s", detail::format_bytes(column.total_bytes).c_str());
+                ImGui::Text("Block offset: %s",
+                            detail::format_bytes(column.allocation_offset_bytes).c_str());
+                ImGui::Text("Padding before: %s",
+                            detail::format_bytes(column.padding_before_bytes).c_str());
                 ImGui::Text("Minimum cache lines: %s",
                             detail::format_number(column.minimum_cache_lines).c_str());
                 ImGui::EndTooltip();
                 break;
             }
-            x += width;
+            if (!column.allocation_offset_bytes.has_value()) {
+                x += width;
+            }
         }
     }
     ImGui::Dummy({available, ImGui::GetStyle().ItemSpacing.y});
 }
 
+void draw_soa_region_map(SoaAnalysis const& analysis,
+                         SoaAccessAnalysis const* const access,
+                         bool const pages,
+                         float const pixels_per_region) {
+    auto const region_bytes{pages ? analysis.page_bytes : analysis.cache_line_bytes};
+    auto const* const region_name{pages ? "page" : "cache line"};
+    if (!analysis.total_allocation_bytes.has_value() || !region_bytes.has_value() ||
+        *region_bytes == 0) {
+        ImGui::TextDisabled("The contiguous block or selected target region size is Unknown.");
+        return;
+    }
+    if (*analysis.total_allocation_bytes == 0) {
+        ImGui::TextDisabled("The zero-capacity block occupies no target regions.");
+        return;
+    }
+
+    auto const total_regions{*analysis.total_allocation_bytes / *region_bytes +
+                             (*analysis.total_allocation_bytes % *region_bytes == 0 ? 0U : 1U)};
+    constexpr std::uint64_t maximum_regions{50'000};
+    if (total_regions > maximum_regions) {
+        ImGui::TextDisabled("The block spans %llu %ss, above the %llu-region visualization limit.",
+                            static_cast<unsigned long long>(total_regions),
+                            region_name,
+                            static_cast<unsigned long long>(maximum_regions));
+        return;
+    }
+
+    auto const requested_width{static_cast<double>(total_regions) * pixels_per_region};
+    constexpr double maximum_canvas_width{16'000'000.0};
+    if (requested_width > maximum_canvas_width) {
+        ImGui::TextDisabled(
+            "This zoom would create a %.1f Mpx canvas. Reduce zoom below the 16 Mpx limit.",
+            requested_width / 1'000'000.0);
+        return;
+    }
+    auto const content_width{
+        std::max(ImGui::GetContentRegionAvail().x, static_cast<float>(requested_width))};
+    constexpr float canvas_height{128.0F};
+    if (!ImGui::BeginChild(
+            "soa-region-map", {0.0F, 156.0F}, true, ImGuiWindowFlags_HorizontalScrollbar)) {
+        ImGui::EndChild();
+        return;
+    }
+    auto const origin{ImGui::GetCursorScreenPos()};
+    ImGui::InvisibleButton("soa-region-map-canvas", {content_width, canvas_height});
+    auto const hovered{ImGui::IsItemHovered()};
+    auto* const draw_list{ImGui::GetWindowDrawList()};
+    auto const pixels_per_byte{static_cast<double>(pixels_per_region) /
+                               static_cast<double>(*region_bytes)};
+    auto const block_right{
+        origin.x + static_cast<float>(static_cast<double>(*analysis.total_allocation_bytes) *
+                                      pixels_per_byte)};
+    draw_list->AddRectFilled({origin.x, origin.y + 24.0F},
+                             {block_right, origin.y + 114.0F},
+                             ImGui::GetColorU32(unused_color));
+
+    for (std::size_t index{}; index < analysis.columns.size(); ++index) {
+        auto const& column{analysis.columns[index]};
+        if (!column.allocation_offset_bytes.has_value() || !column.total_bytes.has_value()) {
+            continue;
+        }
+        auto const left{origin.x +
+                        static_cast<float>(static_cast<double>(*column.allocation_offset_bytes) *
+                                           pixels_per_byte)};
+        auto const right{
+            left + static_cast<float>(static_cast<double>(*column.total_bytes) * pixels_per_byte)};
+        auto const color{ImVec4{0.17F + 0.05F * (index % 3), 0.38F, 0.52F, 0.88F}};
+        draw_list->AddRectFilled(
+            {left, origin.y + 26.0F}, {right, origin.y + 76.0F}, ImGui::GetColorU32(color));
+        draw_list->AddRect({left, origin.y + 26.0F},
+                           {right, origin.y + 76.0F},
+                           ImGui::GetColorU32(ImGuiCol_Border));
+        if (right - left > 54.0F) {
+            draw_list->AddText({left + 4.0F, origin.y + 42.0F},
+                               ImGui::GetColorU32(ImGuiCol_Text),
+                               column.name.c_str());
+        }
+    }
+
+    if (access != nullptr && access->footprint_exact) {
+        for (auto const& selected : access->columns) {
+            auto const column{
+                std::ranges::find(analysis.columns, selected.name, &SoaColumnAnalysis::name)};
+            if (column == analysis.columns.end() || !column->allocation_offset_bytes.has_value() ||
+                !selected.useful_bytes.has_value()) {
+                continue;
+            }
+            auto const left{origin.x + static_cast<float>(
+                                           static_cast<double>(*column->allocation_offset_bytes) *
+                                           pixels_per_byte)};
+            auto const right{left + static_cast<float>(static_cast<double>(*selected.useful_bytes) *
+                                                       pixels_per_byte)};
+            auto const color{selected.operation == AccessOperation::read
+                                 ? ImVec4{0.20F, 0.64F, 0.92F, 0.95F}
+                             : selected.operation == AccessOperation::write
+                                 ? ImVec4{0.94F, 0.48F, 0.20F, 0.95F}
+                                 : ImVec4{0.72F, 0.36F, 0.90F, 0.95F}};
+            draw_list->AddRectFilled(
+                {left, origin.y + 82.0F}, {right, origin.y + 110.0F}, ImGui::GetColorU32(color));
+            draw_list->AddRect({left, origin.y + 82.0F},
+                               {right, origin.y + 110.0F},
+                               ImGui::GetColorU32(ImGuiCol_Border));
+        }
+    }
+
+    auto const scroll_x{ImGui::GetScrollX()};
+    auto const visible_width{ImGui::GetWindowWidth()};
+    auto const first_region{
+        static_cast<std::uint64_t>(std::max(0.0F, std::floor(scroll_x / pixels_per_region)))};
+    auto const last_region{std::min(
+        total_regions,
+        static_cast<std::uint64_t>(std::ceil((scroll_x + visible_width) / pixels_per_region)) + 1)};
+    auto const label_stride{std::max(
+        std::uint64_t{1}, static_cast<std::uint64_t>(std::ceil(56.0F / pixels_per_region)))};
+    for (auto region{first_region}; region <= last_region; ++region) {
+        auto const x{origin.x + static_cast<float>(region) * pixels_per_region};
+        draw_list->AddLine(
+            {x, origin.y + 18.0F}, {x, origin.y + 116.0F}, ImGui::GetColorU32(bit_grid_color));
+        if (region < total_regions && region % label_stride == 0) {
+            auto const label{std::to_string(region)};
+            draw_list->AddText(
+                {x + 3.0F, origin.y}, ImGui::GetColorU32(ImGuiCol_TextDisabled), label.c_str());
+        }
+    }
+    draw_list->AddRect({origin.x, origin.y + 24.0F},
+                       {block_right, origin.y + 114.0F},
+                       ImGui::GetColorU32(ImGuiCol_Border),
+                       0.0F,
+                       0,
+                       2.0F);
+
+    if (hovered) {
+        auto const mouse_x{ImGui::GetIO().MousePos.x};
+        auto const byte_offset{static_cast<std::uint64_t>(
+            std::max(0.0, std::floor(static_cast<double>(mouse_x - origin.x) / pixels_per_byte)))};
+        if (byte_offset < *analysis.total_allocation_bytes) {
+            auto const column = std::ranges::find_if(analysis.columns, [&](auto const& candidate) {
+                return candidate.allocation_offset_bytes.has_value() &&
+                       candidate.total_bytes.has_value() &&
+                       byte_offset >= *candidate.allocation_offset_bytes &&
+                       byte_offset - *candidate.allocation_offset_bytes < *candidate.total_bytes;
+            });
+            ImGui::BeginTooltip();
+            ImGui::Text("Block byte: %llu", static_cast<unsigned long long>(byte_offset));
+            ImGui::Text("%s: %llu",
+                        pages ? "Page" : "Cache line",
+                        static_cast<unsigned long long>(byte_offset / *region_bytes));
+            if (column == analysis.columns.end()) {
+                ImGui::TextUnformatted("Alignment gap");
+            } else {
+                ImGui::Text("Column: %s", column->name.c_str());
+                ImGui::Text("Column byte: %llu",
+                            static_cast<unsigned long long>(byte_offset -
+                                                            *column->allocation_offset_bytes));
+                if (access != nullptr && access->footprint_exact) {
+                    auto const selected{std::ranges::find(
+                        access->columns, column->name, &SoaColumnAccessAnalysis::name)};
+                    if (selected != access->columns.end() && selected->useful_bytes.has_value() &&
+                        byte_offset - *column->allocation_offset_bytes < *selected->useful_bytes) {
+                        ImGui::Text("Selected access: %s",
+                                    detail::access_operation_name(selected->operation));
+                    }
+                }
+            }
+            ImGui::EndTooltip();
+        }
+    }
+    ImGui::EndChild();
+    ImGui::TextDisabled("Capacity blocks");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4{0.20F, 0.64F, 0.92F, 1.0F}, "Read");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4{0.94F, 0.48F, 0.20F, 1.0F}, "Write");
+    ImGui::SameLine();
+    ImGui::TextColored(ImVec4{0.72F, 0.36F, 0.90F, 1.0F}, "Read + write");
+}
+
 void draw_cache_line(CacheLineTiling const& tiling) {
-    ImGui::SeparatorText("64-byte cache-line view");
+    auto const heading{std::to_string(tiling.cache_line_bytes) + "-byte cache-line view"};
+    ImGui::SeparatorText(heading.c_str());
     ImGui::Text("%llu-byte element | minimum %llu line%s per element",
                 static_cast<unsigned long long>(tiling.element_bytes),
                 static_cast<unsigned long long>(tiling.minimum_cache_lines_per_element),
@@ -504,8 +796,9 @@ void draw_cache_line(CacheLineTiling const& tiling) {
     }
     ImGui::Dummy({available, height});
     if (tiling.exact_elements_per_cache_line.has_value()) {
-        ImGui::Text("%llu elements / 64-byte line",
-                    static_cast<unsigned long long>(*tiling.exact_elements_per_cache_line));
+        ImGui::Text("%llu elements / %llu-byte line",
+                    static_cast<unsigned long long>(*tiling.exact_elements_per_cache_line),
+                    static_cast<unsigned long long>(tiling.cache_line_bytes));
     } else {
         ImGui::Text(
             "%llu complete elements, then %llu byte%s of the next element in an aligned line.",
@@ -515,6 +808,61 @@ void draw_cache_line(CacheLineTiling const& tiling) {
     }
     ImGui::TextDisabled(
         "This shows byte tiling only; allocation alignment and CPU behavior are not predicted.");
+}
+
+void draw_footprint_composition(char const* const label,
+                                std::optional<std::uint64_t> const useful_bytes,
+                                std::optional<std::uint64_t> const footprint_bytes,
+                                std::optional<std::uint64_t> const non_useful_bytes) {
+    ImGui::PushID(label);
+    ImGui::TextUnformatted(label);
+    if (!useful_bytes.has_value() || !footprint_bytes.has_value() ||
+        !non_useful_bytes.has_value() || *useful_bytes > *footprint_bytes ||
+        *non_useful_bytes != *footprint_bytes - *useful_bytes) {
+        ImGui::TextDisabled("Unknown or inconsistent footprint facts.");
+        ImGui::PopID();
+        return;
+    }
+    if (*footprint_bytes == 0) {
+        ImGui::TextDisabled("No footprint at the current element count.");
+        ImGui::PopID();
+        return;
+    }
+
+    auto const available{std::max(1.0F, ImGui::GetContentRegionAvail().x)};
+    constexpr float height{20.0F};
+    auto const origin{ImGui::GetCursorScreenPos()};
+    auto const useful_width{available *
+                            static_cast<float>(static_cast<long double>(*useful_bytes) /
+                                               static_cast<long double>(*footprint_bytes))};
+    auto* draw_list{ImGui::GetWindowDrawList()};
+    draw_list->AddRectFilled({origin.x, origin.y},
+                             {origin.x + available, origin.y + height},
+                             ImGui::GetColorU32(unused_color),
+                             2.0F);
+    if (useful_width > 0.0F) {
+        draw_list->AddRectFilled({origin.x, origin.y},
+                                 {origin.x + useful_width, origin.y + height},
+                                 ImGui::GetColorU32(selected_color),
+                                 2.0F);
+    }
+    draw_list->AddRect({origin.x, origin.y},
+                       {origin.x + available, origin.y + height},
+                       ImGui::GetColorU32(ImGuiCol_Border),
+                       2.0F);
+    ImGui::InvisibleButton("footprint-composition", {available, height});
+    if (ImGui::IsItemHovered()) {
+        ImGui::BeginTooltip();
+        ImGui::Text("Useful: %s", detail::format_bytes(useful_bytes).c_str());
+        ImGui::Text("Non-useful: %s", detail::format_bytes(non_useful_bytes).c_str());
+        ImGui::Text("Footprint: %s", detail::format_bytes(footprint_bytes).c_str());
+        ImGui::EndTooltip();
+    }
+    ImGui::TextDisabled("%s useful | %s non-useful | %s total",
+                        detail::format_bytes(useful_bytes).c_str(),
+                        detail::format_bytes(non_useful_bytes).c_str(),
+                        detail::format_bytes(footprint_bytes).c_str());
+    ImGui::PopID();
 }
 
 } // namespace
@@ -543,6 +891,44 @@ auto PlannerUi::draw_element_count() -> bool {
     ImGui::SetNextItemWidth(150.0F);
     if (ImGui::InputScalar("Elements", ImGuiDataType_U64, &custom_count) && custom_count != 0) {
         changed = workspace_.set_element_count(custom_count) || changed;
+    }
+    return changed;
+}
+
+auto PlannerUi::draw_access_operation() -> bool {
+    bool changed{};
+    auto operation_index{static_cast<int>(access_operation_)};
+    ImGui::SetNextItemWidth(180.0F);
+    if (ImGui::Combo("Default / all", &operation_index, "Read\0Write\0Read + write\0")) {
+        access_operation_ = static_cast<AccessOperation>(operation_index);
+        for (auto& [name, operation] : packed_access_fields_) {
+            static_cast<void>(name);
+            operation = access_operation_;
+        }
+        for (auto& [name, operation] : record_access_members_) {
+            static_cast<void>(name);
+            operation = access_operation_;
+        }
+        for (auto& [name, operation] : soa_access_columns_) {
+            static_cast<void>(name);
+            operation = access_operation_;
+        }
+        changed = true;
+    }
+    auto multiplicity{access_multiplicity_};
+    ImGui::SetNextItemWidth(180.0F);
+    if (ImGui::InputScalar("Accesses / element", ImGuiDataType_U64, &multiplicity)) {
+        if (multiplicity == 0) {
+            access_multiplicity_error_ = true;
+        } else {
+            access_multiplicity_ = multiplicity;
+            access_multiplicity_error_ = false;
+            changed = true;
+        }
+    }
+    if (access_multiplicity_error_) {
+        ImGui::TextColored(ImVec4{0.95F, 0.45F, 0.35F, 1.0F},
+                           "Access multiplicity must be non-zero.");
     }
     return changed;
 }
@@ -586,9 +972,13 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
         draw_stat("Minimum cache lines", detail::format_number(aggregate.minimum_cache_lines));
         draw_stat("Complete elements / cache line",
                   detail::format_number(aggregate.complete_elements_per_cache_line));
+        draw_stat("Elements crossing cache-line boundaries",
+                  detail::format_number(aggregate.cache_line_straddling_elements));
         draw_stat("Minimum pages", detail::format_number(aggregate.minimum_pages));
         draw_stat("Complete elements / page",
                   detail::format_number(aggregate.complete_elements_per_page));
+        draw_stat("Elements crossing page boundaries",
+                  detail::format_number(aggregate.page_straddling_elements));
         draw_stat("Fits L1 data cache", detail::format_fit(aggregate.cache_capacity.fits_l1_data));
         draw_stat("Fits L2 cache", detail::format_fit(aggregate.cache_capacity.fits_l2));
         draw_stat("Fits L3 cache", detail::format_fit(aggregate.cache_capacity.fits_l3));
@@ -607,8 +997,113 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
                         abi_.memory_facts().provenance.empty()
                             ? "Unknown"
                             : abi_.memory_facts().provenance.c_str());
+    ImGui::TextDisabled("Boundary crossing assumes a contiguous packed-value array whose base is "
+                        "cache-line/page aligned.");
+
+    ImGui::SeparatorText("Sequential access set");
+    if (draw_access_operation()) {
+        refresh_analysis();
+    }
+    if (packed_access_analysis_.has_value()) {
+        auto const& access{*packed_access_analysis_};
+        std::string field_names;
+        for (auto const& field_name : access.field_names) {
+            if (!field_names.empty()) {
+                field_names += ", ";
+            }
+            field_names += field_name;
+        }
+        ImGui::Text("Fields: %s", field_names.c_str());
+        if (ImGui::BeginTable("packed-access",
+                              2,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_SizingStretchProp)) {
+            auto draw_access_stat{[](char const* const label, std::string const& value) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(label);
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(value.c_str());
+            }};
+            draw_access_stat("Selected useful bits", detail::format_number(access.useful_bits));
+            draw_access_stat("Read useful bits", detail::format_number(access.read_useful_bits));
+            draw_access_stat("Write useful bits", detail::format_number(access.write_useful_bits));
+            draw_access_stat("Logical read useful bits",
+                             detail::format_number(access.logical_read_useful_bits));
+            draw_access_stat("Logical write useful bits",
+                             detail::format_number(access.logical_write_useful_bits));
+            draw_access_stat("Packed storage footprint",
+                             detail::format_bytes(access.storage_footprint_bytes));
+            draw_access_stat("Non-useful storage bits",
+                             detail::format_number(access.non_useful_storage_bits));
+            draw_access_stat("Unselected ordinary-field bits",
+                             detail::format_number(access.unselected_field_bits));
+            draw_access_stat("Explicit reserved-region bits",
+                             detail::format_number(access.reserved_region_bits));
+            draw_access_stat("Physically unused backing bits",
+                             detail::format_number(access.physically_unused_storage_bits));
+            draw_access_stat("Minimum cache lines",
+                             detail::format_number(access.minimum_cache_lines_touched));
+            draw_access_stat("Minimum cache-line bytes",
+                             detail::format_bytes(access.minimum_cache_bytes_touched));
+            draw_access_stat("Read cache lines",
+                             detail::format_number(access.read_cache_lines_touched));
+            draw_access_stat("Write cache lines",
+                             detail::format_number(access.write_cache_lines_touched));
+            draw_access_stat("Minimum pages", detail::format_number(access.minimum_pages_touched));
+            draw_access_stat("Minimum page bytes",
+                             detail::format_bytes(access.minimum_page_bytes_touched));
+            draw_access_stat("Read pages", detail::format_number(access.read_pages_touched));
+            draw_access_stat("Write pages", detail::format_number(access.write_pages_touched));
+            draw_access_stat("Cache footprint fits L1 data",
+                             detail::format_fit(access.cache_footprint_capacity.fits_l1_data));
+            draw_access_stat("Cache footprint fits L2",
+                             detail::format_fit(access.cache_footprint_capacity.fits_l2));
+            draw_access_stat("Cache footprint fits L3",
+                             detail::format_fit(access.cache_footprint_capacity.fits_l3));
+            ImGui::EndTable();
+        }
+        ImGui::TextDisabled(
+            "Useful bits follow the selected field set; physical cache/page coverage addresses "
+            "each containing packed storage element and is not a sub-word fetch estimate.");
+        draw_diagnostics(access.diagnostics);
+    } else {
+        ImGui::TextDisabled("Select a non-reserved field or choose an explicit access set.");
+    }
 
     ImGui::SeparatorText("Bit layout");
+    std::map<std::string, AccessOperation, std::less<>> effective_access_fields;
+    if (packed_access_set_explicit_) {
+        effective_access_fields = packed_access_fields_;
+    } else if (!selected_field_.empty()) {
+        auto const selected{
+            std::ranges::find(baseline.fields, selected_field_, &PackedFieldAnalysis::name)};
+        if (selected != baseline.fields.end() && !selected->reserved) {
+            effective_access_fields.emplace(selected_field_, access_operation_);
+        }
+    }
+    if (!effective_access_fields.empty()) {
+        ImGui::ColorButton("read-workload-color",
+                           read_access_color,
+                           ImGuiColorEditFlags_NoTooltip,
+                           {10.0F, 10.0F});
+        ImGui::SameLine();
+        ImGui::TextDisabled("Read");
+        ImGui::SameLine();
+        ImGui::ColorButton("write-workload-color",
+                           write_access_color,
+                           ImGuiColorEditFlags_NoTooltip,
+                           {10.0F, 10.0F});
+        ImGui::SameLine();
+        ImGui::TextDisabled("Write");
+        ImGui::SameLine();
+        ImGui::ColorButton("read-write-workload-color",
+                           read_write_access_color,
+                           ImGuiColorEditFlags_NoTooltip,
+                           {10.0F, 10.0F});
+        ImGui::SameLine();
+        ImGui::TextDisabled("Read + write — operation bands, not independent fetch regions");
+    }
     auto common_bits{std::max(
         {baseline.storage_bits.value_or(0), baseline.bits_used.value_or(0), std::uint64_t{1}})};
     for (auto const& [variant_id, analysis] : packed_variants_) {
@@ -633,6 +1128,7 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
     draw_packed_bar(baseline,
                     nullptr,
                     selected_field_,
+                    effective_access_fields,
                     "Baseline",
                     common_bits,
                     packed_schema != nullptr,
@@ -708,6 +1204,7 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
         draw_packed_bar(analysis,
                         &baseline,
                         selected_field_,
+                        effective_access_fields,
                         label.c_str(),
                         common_bits,
                         true,
@@ -827,6 +1324,9 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
         "Boundary crossing assumes a contiguous array whose base is cache-line/page aligned.");
 
     ImGui::SeparatorText("Sequential access set");
+    if (draw_access_operation()) {
+        refresh_analysis();
+    }
     if (record_access_analysis_.has_value()) {
         auto const& access{*record_access_analysis_};
         std::string member_names;
@@ -848,21 +1348,63 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted(value.c_str());
             }};
+            draw_stat("Operation", detail::access_operation_summary(access.accesses));
             draw_stat("Useful selected bytes", detail::format_bytes(access.useful_bytes));
+            draw_stat("Classified read useful bytes",
+                      detail::format_bytes(access.read_useful_bytes));
+            draw_stat("Classified write useful bytes",
+                      detail::format_bytes(access.write_useful_bytes));
+            draw_stat("Logical read useful bytes",
+                      detail::format_bytes(access.logical_read_useful_bytes));
+            draw_stat("Logical write useful bytes",
+                      detail::format_bytes(access.logical_write_useful_bytes));
             draw_stat("Enclosing AoS footprint",
                       detail::format_bytes(access.object_footprint_bytes));
             draw_stat("Distinct cache lines touched",
                       detail::format_number(access.cache_lines_touched));
             draw_stat("Bytes in touched cache lines",
                       detail::format_bytes(access.cache_bytes_touched));
+            draw_stat("Read cache lines covered",
+                      detail::format_number(access.read_cache_lines_touched));
+            draw_stat("Read cache-line address coverage",
+                      detail::format_bytes(access.read_cache_bytes_touched));
+            draw_stat("Write cache lines covered",
+                      detail::format_number(access.write_cache_lines_touched));
+            draw_stat("Write cache-line address coverage",
+                      detail::format_bytes(access.write_cache_bytes_touched));
             draw_stat("Non-selected bytes in touched cache lines",
                       detail::format_bytes(access.non_selected_cache_bytes));
+            draw_stat("Exact footprint <= L1 data cache",
+                      detail::format_fit(access.cache_footprint_capacity.fits_l1_data));
+            draw_stat("Exact footprint <= L2 cache",
+                      detail::format_fit(access.cache_footprint_capacity.fits_l2));
+            draw_stat("Exact footprint <= L3 cache",
+                      detail::format_fit(access.cache_footprint_capacity.fits_l3));
             draw_stat("Distinct pages touched", detail::format_number(access.pages_touched));
+            draw_stat("Bytes in touched pages", detail::format_bytes(access.page_bytes_touched));
+            draw_stat("Read pages covered", detail::format_number(access.read_pages_touched));
+            draw_stat("Read page address coverage",
+                      detail::format_bytes(access.read_page_bytes_touched));
+            draw_stat("Write pages covered", detail::format_number(access.write_pages_touched));
+            draw_stat("Write page address coverage",
+                      detail::format_bytes(access.write_page_bytes_touched));
+            draw_stat("Non-selected bytes in touched pages",
+                      detail::format_bytes(access.non_selected_page_bytes));
             ImGui::EndTable();
         }
+        draw_footprint_composition("Exact cache-line footprint composition",
+                                   access.useful_bytes,
+                                   access.cache_bytes_touched,
+                                   access.non_selected_cache_bytes);
+        draw_footprint_composition("Exact page footprint composition",
+                                   access.useful_bytes,
+                                   access.page_bytes_touched,
+                                   access.non_selected_page_bytes);
         ImGui::TextDisabled(
-            "One sequential read of the selected members per element; aligned contiguous AoS base "
-            "assumed.");
+            "One sequential classified access to the selected members per element; aligned "
+            "contiguous AoS base assumed. Footprints describe address coverage and do not infer "
+            "write allocation, eviction, or bus traffic. Logical useful totals multiply by the "
+            "declared accesses per element only.");
         draw_diagnostics(access.diagnostics);
     } else {
         ImGui::TextDisabled("Select record members in the Access column to define the access set.");
@@ -980,8 +1522,22 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
     if (draw_element_count()) {
         return;
     }
+    auto strategy_index{static_cast<int>(soa_allocation_strategy_)};
+    ImGui::SetNextItemWidth(240.0F);
+    if (ImGui::Combo("Allocation strategy",
+                     &strategy_index,
+                     "Separate columns\0Aligned contiguous block\0")) {
+        soa_allocation_strategy_ = static_cast<SoaAllocationStrategy>(strategy_index);
+        refresh_analysis();
+        return;
+    }
+    ImGui::TextDisabled(
+        soa_allocation_strategy_ == SoaAllocationStrategy::separate_columns
+            ? "Each column is a separate allocation; region footprints are lower bounds."
+            : "Columns occupy one alignment-aware block; region coverage assumes a region-aligned "
+              "block origin.");
     if (ImGui::BeginTable("soa-columns",
-                          9,
+                          11,
                           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                               ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Column");
@@ -989,6 +1545,8 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
         ImGui::TableSetupColumn("Planning type");
         ImGui::TableSetupColumn("Element B");
         ImGui::TableSetupColumn("Payload");
+        ImGui::TableSetupColumn("Block offset");
+        ImGui::TableSetupColumn("Pad before");
         ImGui::TableSetupColumn("Min lines");
         ImGui::TableSetupColumn("Exact / line");
         ImGui::TableSetupColumn("Min pages");
@@ -1014,6 +1572,10 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
             ImGui::TableNextColumn();
             ImGui::TextUnformatted(detail::format_bytes(column.total_bytes).c_str());
             ImGui::TableNextColumn();
+            ImGui::TextUnformatted(detail::format_bytes(column.allocation_offset_bytes).c_str());
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(detail::format_bytes(column.padding_before_bytes).c_str());
+            ImGui::TableNextColumn();
             ImGui::TextUnformatted(detail::format_number(column.minimum_cache_lines).c_str());
             ImGui::TableNextColumn();
             ImGui::TextUnformatted(detail::format_number(column.elements_per_cache_line).c_str());
@@ -1026,13 +1588,28 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
         ImGui::EndTable();
     }
 
-    auto common_total{baseline.total_payload_bytes.value_or(0)};
+    auto common_total{baseline.total_allocation_bytes.value_or(0)};
     for (auto const& [variant_id, analysis] : soa_variants_) {
         static_cast<void>(variant_id);
-        common_total = std::max(common_total, analysis.total_payload_bytes.value_or(0));
+        common_total = std::max(common_total, analysis.total_allocation_bytes.value_or(0));
     }
-    ImGui::SeparatorText("Aggregate column payload");
-    ImGui::Text("Minimum pages across separate columns: %s",
+    ImGui::SeparatorText("Allocation");
+    ImGui::Text("Modeled allocations: %llu",
+                static_cast<unsigned long long>(active.allocation_count));
+    if (soa_allocation_strategy_ == SoaAllocationStrategy::separate_columns) {
+        ImGui::Text("Payload / minimum allocation bytes: %s",
+                    detail::format_bytes(active.total_payload_bytes).c_str());
+    } else {
+        ImGui::Text("Payload: %s    Alignment padding: %s    Total block: %s",
+                    detail::format_bytes(active.total_payload_bytes).c_str(),
+                    detail::format_bytes(active.total_alignment_padding_bytes).c_str(),
+                    detail::format_bytes(active.total_allocation_bytes).c_str());
+    }
+    ImGui::Text("Allocation alignment: %s",
+                detail::format_bytes(active.allocation_alignment_bytes).c_str());
+    ImGui::Text(soa_allocation_strategy_ == SoaAllocationStrategy::separate_columns
+                    ? "Minimum allocation pages: %s"
+                    : "Contiguous block pages: %s",
                 detail::format_number(active.minimum_pages).c_str());
     ImGui::Text("Fits L1 data cache: %s",
                 detail::format_fit(active.cache_capacity.fits_l1_data).c_str());
@@ -1040,6 +1617,9 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
     ImGui::Text("Fits L3 cache: %s", detail::format_fit(active.cache_capacity.fits_l3).c_str());
 
     ImGui::SeparatorText("Sequential access set");
+    if (draw_access_operation()) {
+        refresh_analysis();
+    }
     if (soa_access_analysis_.has_value()) {
         auto const& access{*soa_access_analysis_};
         std::string column_names;
@@ -1061,7 +1641,21 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted(value.c_str());
             }};
+            auto const* const region_qualifier{access.footprint_exact ? "Exact" : "Minimum"};
+            auto const* const region_qualifier_lower{access.footprint_exact ? "exact" : "minimum"};
+            draw_stat("Operation", detail::access_operation_summary(access.accesses));
+            draw_stat("Footprint model",
+                      access.footprint_exact ? "Exact aligned contiguous block"
+                                             : "Minimum across separate allocations");
             draw_stat("Useful selected payload", detail::format_bytes(access.useful_bytes));
+            draw_stat("Classified read useful payload",
+                      detail::format_bytes(access.read_useful_bytes));
+            draw_stat("Classified write useful payload",
+                      detail::format_bytes(access.write_useful_bytes));
+            draw_stat("Logical read useful payload",
+                      detail::format_bytes(access.logical_read_useful_bytes));
+            draw_stat("Logical write useful payload",
+                      detail::format_bytes(access.logical_write_useful_bytes));
             draw_stat("Complete logical payload at count",
                       detail::format_bytes(access.full_logical_payload_bytes));
             draw_stat("Unselected payload at count",
@@ -1070,26 +1664,139 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
                       detail::format_bytes(access.allocated_capacity_payload_bytes));
             draw_stat("Unused allocated capacity payload",
                       detail::format_bytes(access.capacity_slack_payload_bytes));
-            draw_stat("Minimum cache lines touched",
+            draw_stat((std::string{region_qualifier} + " cache lines touched").c_str(),
                       detail::format_number(access.minimum_cache_lines_touched));
-            draw_stat("Minimum cache-line footprint",
+            draw_stat((std::string{region_qualifier} + " cache-line footprint").c_str(),
                       detail::format_bytes(access.minimum_cache_bytes_touched));
-            draw_stat("Non-payload bytes in minimum cache footprint",
-                      detail::format_bytes(access.non_payload_cache_bytes));
-            draw_stat("Minimum pages touched", detail::format_number(access.minimum_pages_touched));
-            draw_stat("Minimum page footprint",
+            draw_stat((std::string{region_qualifier} + " read cache lines").c_str(),
+                      detail::format_number(access.minimum_read_cache_lines_touched));
+            draw_stat((std::string{region_qualifier} + " read cache-line coverage").c_str(),
+                      detail::format_bytes(access.minimum_read_cache_bytes_touched));
+            draw_stat((std::string{region_qualifier} + " write cache lines").c_str(),
+                      detail::format_number(access.minimum_write_cache_lines_touched));
+            draw_stat((std::string{region_qualifier} + " write cache-line coverage").c_str(),
+                      detail::format_bytes(access.minimum_write_cache_bytes_touched));
+            draw_stat(
+                (std::string{"Non-payload bytes in "} + region_qualifier_lower + " cache footprint")
+                    .c_str(),
+                detail::format_bytes(access.non_payload_cache_bytes));
+            draw_stat((std::string{region_qualifier} + " footprint <= L1 data cache").c_str(),
+                      detail::format_fit(access.minimum_cache_footprint_capacity.fits_l1_data));
+            draw_stat((std::string{region_qualifier} + " footprint <= L2 cache").c_str(),
+                      detail::format_fit(access.minimum_cache_footprint_capacity.fits_l2));
+            draw_stat((std::string{region_qualifier} + " footprint <= L3 cache").c_str(),
+                      detail::format_fit(access.minimum_cache_footprint_capacity.fits_l3));
+            draw_stat((std::string{region_qualifier} + " pages touched").c_str(),
+                      detail::format_number(access.minimum_pages_touched));
+            draw_stat((std::string{region_qualifier} + " page footprint").c_str(),
                       detail::format_bytes(access.minimum_page_bytes_touched));
-            draw_stat("Non-payload bytes in minimum page footprint",
-                      detail::format_bytes(access.non_payload_page_bytes));
+            draw_stat((std::string{region_qualifier} + " read pages").c_str(),
+                      detail::format_number(access.minimum_read_pages_touched));
+            draw_stat((std::string{region_qualifier} + " read page coverage").c_str(),
+                      detail::format_bytes(access.minimum_read_page_bytes_touched));
+            draw_stat((std::string{region_qualifier} + " write pages").c_str(),
+                      detail::format_number(access.minimum_write_pages_touched));
+            draw_stat((std::string{region_qualifier} + " write page coverage").c_str(),
+                      detail::format_bytes(access.minimum_write_page_bytes_touched));
+            draw_stat(
+                (std::string{"Non-payload bytes in "} + region_qualifier_lower + " page footprint")
+                    .c_str(),
+                detail::format_bytes(access.non_payload_page_bytes));
             ImGui::EndTable();
         }
-        ImGui::TextDisabled(
-            "One sequential access to each selected column at the current count. Each standard-"
-            "library column is a separate allocation; line/page values are minimum footprints, "
-            "not measured traffic or performance.");
+        draw_footprint_composition(access.footprint_exact
+                                       ? "Exact cache-line footprint composition"
+                                       : "Minimum cache-line footprint composition",
+                                   access.useful_bytes,
+                                   access.minimum_cache_bytes_touched,
+                                   access.non_payload_cache_bytes);
+        draw_footprint_composition(access.footprint_exact ? "Exact page footprint composition"
+                                                          : "Minimum page footprint composition",
+                                   access.useful_bytes,
+                                   access.minimum_page_bytes_touched,
+                                   access.non_payload_page_bytes);
+        if (!access.columns.empty() && ImGui::TreeNode("Selected column boundary crossings")) {
+            if (ImGui::BeginTable("soa-access-boundary-crossings",
+                                  5,
+                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                      ImGuiTableFlags_Resizable)) {
+                ImGui::TableSetupColumn("Column");
+                ImGui::TableSetupColumn("Operation");
+                ImGui::TableSetupColumn("Element bytes");
+                ImGui::TableSetupColumn("Cache-line straddles");
+                ImGui::TableSetupColumn("Page straddles");
+                ImGui::TableHeadersRow();
+                for (auto const& column : access.columns) {
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(column.name.c_str());
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(detail::access_operation_name(column.operation));
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(detail::format_bytes(column.element_bytes).c_str());
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(
+                        detail::format_number(column.aligned_cache_line_straddling_elements)
+                            .c_str());
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(
+                        detail::format_number(column.aligned_page_straddling_elements).c_str());
+                }
+                ImGui::EndTable();
+            }
+            ImGui::TextDisabled(access.footprint_exact
+                                    ? "Counts use each column's actual offset within the "
+                                      "region-aligned contiguous block."
+                                    : "Counts assume each separate column allocation begins on "
+                                      "the corresponding cache-line/page boundary.");
+            ImGui::TreePop();
+        }
+        ImGui::TextDisabled(access.footprint_exact
+                                ? "One sequential classified access to each selected column at the "
+                                  "current count. Line/page values are exact for the selected "
+                                  "prefixes in a region-aligned contiguous block, not write "
+                                  "allocation, measured traffic, or performance. Logical useful "
+                                  "totals multiply by accesses per element only."
+                                : "One sequential classified access to each selected column at the "
+                                  "current count. Each standard-library column is a separate "
+                                  "allocation; line/page values are lower bounds, not write "
+                                  "allocation, measured traffic, or performance. Logical useful "
+                                  "totals multiply by accesses per element only.");
         draw_diagnostics(access.diagnostics);
     } else {
         ImGui::TextDisabled("Select SoA columns in the Access column to define the access set.");
+    }
+
+    ImGui::SeparatorText("Cache-line / page block map");
+    if (soa_allocation_strategy_ == SoaAllocationStrategy::separate_columns) {
+        ImGui::TextDisabled(
+            "A single address map is unavailable because separate allocation origins are Unknown."
+            " Select the aligned contiguous strategy to inspect one region-aligned block.");
+    } else {
+        auto region_kind{soa_region_map_pages_ ? 1 : 0};
+        ImGui::SetNextItemWidth(180.0F);
+        if (ImGui::Combo("Region", &region_kind, "Cache lines\0Pages\0")) {
+            soa_region_map_pages_ = region_kind == 1;
+        }
+        ImGui::SetNextItemWidth(240.0F);
+        ImGui::SliderFloat("Zoom",
+                           &soa_region_pixels_,
+                           16.0F,
+                           4'096.0F,
+                           "%.0f px / region",
+                           ImGuiSliderFlags_Logarithmic);
+        draw_soa_region_map(active,
+                            soa_access_analysis_.has_value() ? &*soa_access_analysis_ : nullptr,
+                            soa_region_map_pages_,
+                            soa_region_pixels_);
+        if (soa_access_analysis_.has_value() && !soa_access_analysis_->footprint_exact) {
+            ImGui::TextDisabled(
+                "The selected-prefix overlay is unavailable because the access count exceeds "
+                "capacity or the contiguous allocation is Unknown.");
+        }
+        ImGui::TextDisabled(
+            "The block origin is aligned to the selected target region. Boundaries and selected "
+            "prefixes show addresses only; they are not cache traffic or a performance estimate.");
     }
 
     if (record_soa_access_comparison_.has_value() && soa.equivalent_type.has_value()) {
@@ -1103,7 +1810,7 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
                                   ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
             ImGui::TableSetupColumn("Metric");
             ImGui::TableSetupColumn("AoS exact");
-            ImGui::TableSetupColumn("SoA minimum");
+            ImGui::TableSetupColumn(comparison.soa_footprint_exact ? "SoA exact" : "SoA minimum");
             ImGui::TableSetupColumn("SoA - AoS");
             ImGui::TableHeadersRow();
             auto draw_stat{[](char const* const label,
@@ -1120,6 +1827,22 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted(delta.c_str());
             }};
+            draw_stat("Classified read useful payload",
+                      detail::format_bytes(comparison.record.read_useful_bytes),
+                      detail::format_bytes(comparison.soa.read_useful_bytes),
+                      detail::format_delta_bytes(comparison.read_useful_byte_delta));
+            draw_stat("Classified write useful payload",
+                      detail::format_bytes(comparison.record.write_useful_bytes),
+                      detail::format_bytes(comparison.soa.write_useful_bytes),
+                      detail::format_delta_bytes(comparison.write_useful_byte_delta));
+            draw_stat("Logical read useful payload",
+                      detail::format_bytes(comparison.record.logical_read_useful_bytes),
+                      detail::format_bytes(comparison.soa.logical_read_useful_bytes),
+                      detail::format_delta_bytes(comparison.logical_read_useful_byte_delta));
+            draw_stat("Logical write useful payload",
+                      detail::format_bytes(comparison.record.logical_write_useful_bytes),
+                      detail::format_bytes(comparison.soa.logical_write_useful_bytes),
+                      detail::format_delta_bytes(comparison.logical_write_useful_byte_delta));
             draw_stat("Useful payload",
                       detail::format_bytes(comparison.record.useful_bytes),
                       detail::format_bytes(comparison.soa.useful_bytes),
@@ -1132,6 +1855,31 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
                       detail::format_bytes(comparison.record.cache_bytes),
                       detail::format_bytes(comparison.soa.cache_bytes),
                       detail::format_delta_bytes(comparison.cache_byte_delta));
+            draw_stat("Read cache-line address coverage",
+                      detail::format_bytes(comparison.record.read_cache_bytes),
+                      detail::format_bytes(comparison.soa.read_cache_bytes),
+                      detail::format_delta_bytes(comparison.read_cache_byte_delta));
+            draw_stat("Write cache-line address coverage",
+                      detail::format_bytes(comparison.record.write_cache_bytes),
+                      detail::format_bytes(comparison.soa.write_cache_bytes),
+                      detail::format_delta_bytes(comparison.write_cache_byte_delta));
+            draw_stat("Non-useful bytes in cache-line footprint",
+                      detail::format_bytes(comparison.record_non_useful_cache_bytes),
+                      detail::format_bytes(comparison.soa_non_useful_cache_bytes),
+                      detail::format_delta_bytes(comparison.non_useful_cache_byte_delta));
+            draw_stat(
+                "Footprint <= L1 data cache",
+                detail::format_fit(comparison.record_cache_footprint_capacity.fits_l1_data),
+                detail::format_fit(comparison.soa_minimum_cache_footprint_capacity.fits_l1_data),
+                "—");
+            draw_stat("Footprint <= L2 cache",
+                      detail::format_fit(comparison.record_cache_footprint_capacity.fits_l2),
+                      detail::format_fit(comparison.soa_minimum_cache_footprint_capacity.fits_l2),
+                      "—");
+            draw_stat("Footprint <= L3 cache",
+                      detail::format_fit(comparison.record_cache_footprint_capacity.fits_l3),
+                      detail::format_fit(comparison.soa_minimum_cache_footprint_capacity.fits_l3),
+                      "—");
             draw_stat("Pages",
                       detail::format_number(comparison.record.pages),
                       detail::format_number(comparison.soa.pages),
@@ -1140,12 +1888,50 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
                       detail::format_bytes(comparison.record.page_bytes),
                       detail::format_bytes(comparison.soa.page_bytes),
                       detail::format_delta_bytes(comparison.page_byte_delta));
+            draw_stat("Read page address coverage",
+                      detail::format_bytes(comparison.record.read_page_bytes),
+                      detail::format_bytes(comparison.soa.read_page_bytes),
+                      detail::format_delta_bytes(comparison.read_page_byte_delta));
+            draw_stat("Write page address coverage",
+                      detail::format_bytes(comparison.record.write_page_bytes),
+                      detail::format_bytes(comparison.soa.write_page_bytes),
+                      detail::format_delta_bytes(comparison.write_page_byte_delta));
+            draw_stat("Non-useful bytes in page footprint",
+                      detail::format_bytes(comparison.record_non_useful_page_bytes),
+                      detail::format_bytes(comparison.soa_non_useful_page_bytes),
+                      detail::format_delta_bytes(comparison.non_useful_page_byte_delta));
             ImGui::EndTable();
         }
+        ImGui::TextDisabled("Cache-line footprint composition");
+        draw_footprint_composition("AoS exact cache-line footprint",
+                                   comparison.record.useful_bytes,
+                                   comparison.record.cache_bytes,
+                                   comparison.record_non_useful_cache_bytes);
+        draw_footprint_composition(comparison.soa_footprint_exact
+                                       ? "SoA exact cache-line footprint"
+                                       : "SoA minimum cache-line footprint",
+                                   comparison.soa.useful_bytes,
+                                   comparison.soa.cache_bytes,
+                                   comparison.soa_non_useful_cache_bytes);
+        ImGui::TextDisabled("Page footprint composition");
+        draw_footprint_composition("AoS exact page footprint",
+                                   comparison.record.useful_bytes,
+                                   comparison.record.page_bytes,
+                                   comparison.record_non_useful_page_bytes);
+        draw_footprint_composition(comparison.soa_footprint_exact ? "SoA exact page footprint"
+                                                                  : "SoA minimum page footprint",
+                                   comparison.soa.useful_bytes,
+                                   comparison.soa.page_bytes,
+                                   comparison.soa_non_useful_page_bytes);
         ImGui::TextDisabled(
-            "AoS figures are exact for an aligned contiguous object array. SoA figures are lower "
-            "bounds across separate column allocations because their allocation origins are "
-            "unknown. Deltas compare these stated physical models; they are not speed estimates.");
+            comparison.soa_footprint_exact
+                ? "AoS figures use an aligned contiguous object array; SoA figures "
+                  "use the selected aligned contiguous column block. Both are exact "
+                  "under their stated region-aligned origins; deltas are not speed "
+                  "estimates."
+                : "AoS figures are exact for an aligned contiguous object array. "
+                  "SoA figures are lower bounds across separate column allocations "
+                  "because their origins are unknown; deltas are not speed estimates.");
         draw_diagnostics(comparison.diagnostics);
     }
 
@@ -1168,8 +1954,10 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
             sync_variant_name();
         }
     }
-    ImGui::TextDisabled("Regions compare aggregate column payload; standard-library columns remain "
-                        "separate allocations.");
+    ImGui::TextDisabled(
+        soa_allocation_strategy_ == SoaAllocationStrategy::separate_columns
+            ? "Regions compare aggregate payload across separate standard-library allocations."
+            : "Regions compare one alignment-aware contiguous column allocation, including gaps.");
 
     auto const found{std::ranges::find(active.columns, selected_field_, &SoaColumnAnalysis::name)};
     if (found != active.columns.end() && found->cache_line_tiling.has_value()) {

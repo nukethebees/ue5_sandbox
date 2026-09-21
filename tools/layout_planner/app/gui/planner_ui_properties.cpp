@@ -9,6 +9,7 @@
 #include <cctype>
 #include <cstdint>
 #include <cstdio>
+#include <filesystem>
 #include <limits>
 #include <set>
 #include <string>
@@ -20,17 +21,82 @@ namespace {
 using namespace layout;
 using namespace lispb::schema;
 
-inline constexpr std::array packed_relationship_kinds{
-    codegen::PackedFieldRelationKind::index_into,
-    codegen::PackedFieldRelationKind::count_of,
-    codegen::PackedFieldRelationKind::offset_into,
-    codegen::PackedFieldRelationKind::discriminates,
-    codegen::PackedFieldRelationKind::contains,
-    codegen::PackedFieldRelationKind::member_of,
-    codegen::PackedFieldRelationKind::quantises,
-    codegen::PackedFieldRelationKind::encoded_as,
-    codegen::PackedFieldRelationKind::references,
+inline constexpr std::array semantic_relationship_kinds{
+    codegen::SemanticRelationKind::index_into,
+    codegen::SemanticRelationKind::count_of,
+    codegen::SemanticRelationKind::offset_into,
+    codegen::SemanticRelationKind::discriminates,
+    codegen::SemanticRelationKind::contains,
+    codegen::SemanticRelationKind::member_of,
+    codegen::SemanticRelationKind::quantises,
+    codegen::SemanticRelationKind::encoded_as,
+    codegen::SemanticRelationKind::references,
 };
+inline constexpr std::array semantic_relationship_units{
+    codegen::SemanticRelationUnit::elements,
+    codegen::SemanticRelationUnit::bytes,
+};
+inline constexpr auto enum_conversions{codegen::all_enum_conversions()};
+inline constexpr auto enum_reflections{codegen::all_enum_reflections()};
+inline constexpr std::array enum_projection_reflections{codegen::EnumReflection::uenum,
+                                                        codegen::EnumReflection::blueprint};
+
+struct EnumConversionDescriptor {
+    std::string_view source_name;
+    char const* description;
+};
+
+auto enum_conversion_descriptor(codegen::EnumConversion const conversion)
+    -> EnumConversionDescriptor {
+    switch (conversion) {
+        case codegen::EnumConversion::lex_to_string:
+            return {codegen::enum_conversion_name(conversion),
+                    "Generate the basic enum-to-string conversion."};
+        case codegen::EnumConversion::string_view:
+            return {codegen::enum_conversion_name(conversion),
+                    "Generate a string-view conversion."};
+        case codegen::EnumConversion::string:
+            return {codegen::enum_conversion_name(conversion),
+                    "Generate an owning string conversion."};
+        case codegen::EnumConversion::lex_to_display_string:
+            return {codegen::enum_conversion_name(conversion),
+                    "Generate the display-name conversion."};
+        case codegen::EnumConversion::display_string_view:
+            return {codegen::enum_conversion_name(conversion),
+                    "Generate a display-name string-view conversion."};
+        case codegen::EnumConversion::display_string:
+            return {codegen::enum_conversion_name(conversion),
+                    "Generate an owning display-name string conversion."};
+        case codegen::EnumConversion::lex_to_serialized_string:
+            return {codegen::enum_conversion_name(conversion),
+                    "Generate the serialized-name conversion."};
+        case codegen::EnumConversion::try_parse_serialized:
+            return {codegen::enum_conversion_name(conversion),
+                    "Generate parsing from serialized names."};
+    }
+    return {"unknown", "Unknown enum conversion."};
+}
+
+auto has_enum_conversion(std::vector<codegen::EnumConversion> const& conversions,
+                         codegen::EnumConversion const conversion) -> bool {
+    return std::ranges::find(conversions, conversion) != conversions.end();
+}
+
+auto with_enum_conversion(std::vector<codegen::EnumConversion> const& conversions,
+                          codegen::EnumConversion const changed_conversion,
+                          bool const enabled) -> std::vector<codegen::EnumConversion> {
+    std::vector<codegen::EnumConversion> result;
+    result.reserve(enum_conversions.size());
+    for (auto const conversion : enum_conversions) {
+        auto const include{conversion == changed_conversion
+                               ? enabled
+                               : has_enum_conversion(conversions, conversion)};
+        if (include) {
+            result.push_back(conversion);
+        }
+    }
+    return result;
+}
 
 struct StorageOperationDescriptor {
     char const* source_name;
@@ -455,6 +521,28 @@ void move_element(std::vector<Value>& values,
     }
 }
 
+auto suggested_type_name(std::string_view const identifier, std::string_view const suffix)
+    -> std::string {
+    std::string result;
+    result.reserve(identifier.size() + suffix.size());
+    auto uppercase_next{true};
+    for (auto const character : identifier) {
+        if (character == '_') {
+            uppercase_next = true;
+            continue;
+        }
+        result.push_back(
+            uppercase_next ? static_cast<char>(std::toupper(static_cast<unsigned char>(character)))
+                           : character);
+        uppercase_next = false;
+    }
+    if (result.empty() || std::isdigit(static_cast<unsigned char>(result.front()))) {
+        result = "Type";
+    }
+    result += suffix;
+    return result;
+}
+
 } // namespace
 
 auto PlannerUi::draw_type_picker(std::string_view const module_name, TypeIdentity const& owner)
@@ -496,15 +584,33 @@ auto PlannerUi::draw_type_picker(std::string_view const module_name, TypeIdentit
     };
 
     ImGui::BeginChild("type-candidates", {420.0F, 260.0F}, true);
-    ImGui::SeparatorText("Local declarations");
+    std::map<std::string, std::size_t, std::less<>> declaration_spelling_counts;
     for (auto const& declaration : document_->declarations()) {
-        if (declaration.identity.module_name == module_name && declaration.identity != owner) {
-            auto const type{workspace_.types().find(declaration.identity)};
-            if (type.has_value()) {
-                draw_candidate(declaration.identity.name,
-                               workspace_.types().type(*type).cpp_spelling);
-            }
+        if (auto const type{workspace_.types().find(declaration.identity)}; type.has_value()) {
+            ++declaration_spelling_counts[workspace_.types().type(*type).cpp_spelling];
         }
+    }
+
+    ImGui::SeparatorText("Declared semantic types");
+    for (auto const& declaration : document_->declarations()) {
+        if (declaration.identity == owner) {
+            continue;
+        }
+        auto const type{workspace_.types().find(declaration.identity)};
+        if (!type.has_value()) {
+            continue;
+        }
+        auto const& node{workspace_.types().type(*type)};
+        auto const same_module{declaration.identity.module_name == module_name};
+        if (!same_module && declaration_spelling_counts[node.cpp_spelling] != 1) {
+            auto const label{node.cpp_spelling + "  [ambiguous across declaration modules]"};
+            if (filter.empty() || lowercase(label).find(filter) != std::string::npos) {
+                ImGui::TextDisabled("%s", label.c_str());
+            }
+            continue;
+        }
+        auto reference{same_module ? declaration.identity.name : node.cpp_spelling};
+        draw_candidate(std::move(reference), "declared in " + declaration.identity.module_name);
     }
     ImGui::SeparatorText("Registered semantic types");
     auto const owner_type{workspace_.types().find(owner)};
@@ -525,7 +631,12 @@ auto PlannerUi::draw_type_picker(std::string_view const module_name, TypeIdentit
 }
 
 void PlannerUi::draw_properties_panel() {
-    ImGui::Begin("Properties");
+    if (!properties_view_open_) {
+        return;
+    }
+    auto const was_open{properties_view_open_};
+    ImGui::Begin("Properties", &properties_view_open_);
+    persist_view_visibility(was_open, properties_view_open_);
     if (!selected_type_.has_value()) {
         ImGui::TextDisabled("No selection.");
         ImGui::End();
@@ -544,6 +655,75 @@ void PlannerUi::draw_properties_panel() {
         if (duplicate_selected_declaration(node)) {
             ImGui::End();
             return;
+        }
+    }
+    if (selected_declaration.has_value()) {
+        auto const* declaration_info{document_->declaration(*selected_declaration)};
+        auto const editable{document_->enum_schema(*selected_declaration) != nullptr ||
+                            document_->packed_value_schema(*selected_declaration) != nullptr ||
+                            document_->integer_scalar_schema(*selected_declaration) != nullptr ||
+                            document_->linear_quantized_schema(*selected_declaration) != nullptr ||
+                            document_->integer_varint_schema(*selected_declaration) != nullptr ||
+                            document_->fixed_point_schema(*selected_declaration) != nullptr ||
+                            document_->optional_sentinel_schema(*selected_declaration) != nullptr ||
+                            document_->optional_presence_bit_schema(*selected_declaration) !=
+                                nullptr ||
+                            document_->mini_float_schema(*selected_declaration) != nullptr ||
+                            document_->record_schema(*selected_declaration) != nullptr ||
+                            document_->union_schema(*selected_declaration) != nullptr ||
+                            document_->tagged_union_schema(*selected_declaration) != nullptr ||
+                            document_->soa_schema(*selected_declaration) != nullptr};
+        if (declaration_info != nullptr && editable) {
+            auto const& modules{document_->manifest().modules};
+            auto const& source_module{modules[declaration_info->module_index]};
+            auto const& source_settings{std::visit(
+                [](auto const& module) -> codegen::ModuleSettings const& {
+                    return module.settings;
+                },
+                source_module)};
+            std::vector<std::size_t> destinations;
+            for (std::size_t index{}; index < modules.size(); ++index) {
+                if (index == declaration_info->module_index ||
+                    modules[index].index() != source_module.index()) {
+                    continue;
+                }
+                destinations.push_back(index);
+            }
+            if (!destinations.empty()) {
+                std::optional<std::size_t> requested_destination;
+                ImGui::SetNextItemWidth(std::max(120.0F, ImGui::GetContentRegionAvail().x));
+                if (ImGui::BeginCombo("Module", source_settings.name.c_str())) {
+                    for (auto const index : destinations) {
+                        auto const& settings{std::visit(
+                            [](auto const& module) -> codegen::ModuleSettings const& {
+                                return module.settings;
+                            },
+                            modules[index])};
+                        if (ImGui::Selectable(settings.name.c_str())) {
+                            requested_destination = index;
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+                if (requested_destination.has_value()) {
+                    auto const& destination_settings{std::visit(
+                        [](auto const& module) -> codegen::ModuleSettings const& {
+                            return module.settings;
+                        },
+                        modules[*requested_destination])};
+                    auto selection{node.identity};
+                    selection.module_name = destination_settings.name;
+                    if (apply_document_edit(MoveDeclaration{.declaration = *selected_declaration,
+                                                            .module_index = *requested_destination,
+                                                            .insertion_index = std::nullopt},
+                                            selection)) {
+                        ImGui::End();
+                        return;
+                    }
+                }
+                ImGui::TextDisabled(
+                    "Moving repairs semantic references when the namespace changes.");
+            }
         }
     }
     auto const rename_supported{selected_declaration.has_value() &&
@@ -627,14 +807,20 @@ void PlannerUi::draw_properties_panel() {
 
     if (auto const* enumeration{std::get_if<EnumType>(&node.definition)}) {
         ImGui::SeparatorText("Enum");
-        auto const& underlying{workspace_.types().type(enumeration->underlying_type.type)};
-        ImGui::TextUnformatted("Underlying type");
-        ImGui::SameLine();
-        if (ImGui::SmallButton(underlying.cpp_spelling.c_str())) {
-            selected_type_ = enumeration->underlying_type.type;
-            selected_field_.clear();
-            record_access_members_.clear();
-            record_access_set_explicit_ = false;
+        if (enumeration->underlying_type.has_value()) {
+            auto const& underlying{workspace_.types().type(enumeration->underlying_type->type)};
+            ImGui::TextUnformatted("Explicit C++ backing");
+            ImGui::SameLine();
+            if (ImGui::SmallButton(underlying.cpp_spelling.c_str())) {
+                selected_type_ = enumeration->underlying_type->type;
+                selected_field_.clear();
+                record_access_members_.clear();
+                record_access_set_explicit_ = false;
+            }
+        } else if (enum_domain_.has_value()) {
+            ImGui::Text("Derived C++ backing: %s", enum_domain_->backing_type.c_str());
+        } else {
+            ImGui::TextDisabled("Derived C++ backing: Unknown");
         }
         if (enumeration->count.has_value()) {
             ImGui::Text("Count sentinel: %s", enumeration->count->c_str());
@@ -1110,7 +1296,96 @@ void PlannerUi::draw_properties_panel() {
         ImGui::Text("Largest alternative: %s",
                     detail::format_bytes(analysis.largest_alternative_bytes).c_str());
         ImGui::Text("Tail padding: %s", detail::format_bytes(analysis.tail_padding_bytes).c_str());
-        ImGui::TextDisabled("Tagged discriminants are a separate future representation layer.");
+        if (selected_declaration.has_value()) {
+            ImGui::SeparatorText("Session alternative workload");
+            auto& weights{union_distributions_[*selected_declaration]};
+            if (ImGui::BeginTable("raw-union-workload-weights",
+                                  2,
+                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                      ImGuiTableFlags_SizingStretchProp)) {
+                ImGui::TableSetupColumn("Alternative");
+                ImGui::TableSetupColumn("Weight");
+                ImGui::TableHeadersRow();
+                for (auto const& alternative : union_type->alternatives) {
+                    ImGui::PushID(alternative.name.c_str());
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    ImGui::TextUnformatted(alternative.name.c_str());
+                    ImGui::TableNextColumn();
+                    auto& weight{weights[alternative.name]};
+                    ImGui::SetNextItemWidth(-1.0F);
+                    if (ImGui::InputScalar("##weight", ImGuiDataType_U64, &weight)) {
+                        ++union_distribution_revision_;
+                    }
+                    ImGui::PopID();
+                }
+                ImGui::EndTable();
+            }
+            if (ImGui::SmallButton("Clear alternative workload")) {
+                weights.clear();
+                ++union_distribution_revision_;
+            }
+            if (union_distribution_analysis_.has_value()) {
+                auto const& distribution{*union_distribution_analysis_};
+                ImGui::Text("Sample weight: %s",
+                            detail::format_number(distribution.total_weight).c_str());
+                ImGui::Text("Sample active extent: %s",
+                            detail::format_bytes(distribution.total_extent_bytes).c_str());
+                ImGui::Text("Sample conditional slack: %s",
+                            detail::format_bytes(distribution.total_slack_bytes).c_str());
+                if (distribution.expected_extent_bytes_per_value.has_value()) {
+                    ImGui::Text("Expected active extent / value: %.8g bytes",
+                                static_cast<double>(*distribution.expected_extent_bytes_per_value));
+                    ImGui::Text("Expected conditional slack / value: %.8g bytes",
+                                static_cast<double>(*distribution.expected_slack_bytes_per_value));
+                    ImGui::Text(
+                        "Expected active extent at %llu values: %.8g bytes",
+                        static_cast<unsigned long long>(distribution.selected_element_count),
+                        static_cast<double>(*distribution.expected_selected_extent_bytes));
+                    ImGui::Text(
+                        "Expected conditional slack at %llu values: %.8g bytes",
+                        static_cast<unsigned long long>(distribution.selected_element_count),
+                        static_cast<double>(*distribution.expected_selected_slack_bytes));
+                } else {
+                    ImGui::TextDisabled("Expected alternative usage: Unknown");
+                }
+                if (ImGui::BeginTable("raw-union-workload-analysis",
+                                      6,
+                                      ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                          ImGuiTableFlags_SizingStretchProp)) {
+                    ImGui::TableSetupColumn("Alternative");
+                    ImGui::TableSetupColumn("Weight");
+                    ImGui::TableSetupColumn("Extent");
+                    ImGui::TableSetupColumn("Slack");
+                    ImGui::TableSetupColumn("Weighted extent");
+                    ImGui::TableSetupColumn("Weighted slack");
+                    ImGui::TableHeadersRow();
+                    for (auto const& entry : distribution.entries) {
+                        ImGui::TableNextRow();
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(entry.alternative_name.c_str());
+                        ImGui::TableNextColumn();
+                        ImGui::Text("%llu", static_cast<unsigned long long>(entry.weight));
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(detail::format_bytes(entry.extent_bytes).c_str());
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(detail::format_bytes(entry.slack_bytes).c_str());
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(
+                            detail::format_bytes(entry.weighted_extent_bytes).c_str());
+                        ImGui::TableNextColumn();
+                        ImGui::TextUnformatted(
+                            detail::format_bytes(entry.weighted_slack_bytes).c_str());
+                    }
+                    ImGui::EndTable();
+                }
+                draw_diagnostics(distribution.diagnostics);
+            }
+            ImGui::TextDisabled(
+                "Session-only conditional workload; weights are not LispB semantics and do not "
+                "imply a stored discriminant or a performance result.");
+        }
+        ImGui::TextDisabled("A raw union has no stored discriminant; tagged unions are separate.");
         draw_diagnostics(analysis.diagnostics);
         ImGui::SeparatorText("LispB union declaration");
         if (draw_union_editor(node, *union_type)) {
@@ -1670,18 +1945,11 @@ auto PlannerUi::delete_declaration(DeclarationId const declaration) -> bool {
         return false;
     }
 
-    auto result{document_->apply(std::move(*command))};
-    if (!result.has_value()) {
-        schema_edit_message_ = result.error().message;
+    if (!apply_document_edit(std::move(*command))) {
         return false;
     }
-    if (!*result) {
-        return false;
-    }
-    schema_edit_message_.clear();
     record_access_members_.clear();
     record_access_set_explicit_ = false;
-    sync_document_graph(std::nullopt);
     return true;
 }
 
@@ -1711,9 +1979,52 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
                                   ? std::optional<std::size_t>{}
                                   : std::optional<std::size_t>{static_cast<std::size_t>(
                                         selected - schema->values.begin())}};
-    if (enum_editor_declaration_ != declaration || enum_editor_value_ != selected_enumerator_) {
+    auto const enum_declaration_changed{enum_editor_declaration_ != declaration};
+    if (enum_declaration_changed || enum_editor_value_ != selected_enumerator_) {
         enum_editor_declaration_ = declaration;
         enum_editor_value_ = selected_enumerator_;
+        std::snprintf(enum_underlying_type_.data(),
+                      enum_underlying_type_.size(),
+                      "%s",
+                      schema->underlying_type.has_value() ? schema->underlying_type->name.c_str()
+                                                          : "std::uint8_t");
+        std::snprintf(enum_export_specifier_.data(),
+                      enum_export_specifier_.size(),
+                      "%s",
+                      schema->export_specifier.value_or("").c_str());
+        if (enum_declaration_changed) {
+            auto const* projection{
+                schema->unreal_projection.has_value() ? &*schema->unreal_projection : nullptr};
+            std::snprintf(enum_projection_name_.data(),
+                          enum_projection_name_.size(),
+                          "%s",
+                          projection != nullptr ? projection->name.c_str() : "");
+            std::snprintf(enum_projection_header_.data(),
+                          enum_projection_header_.size(),
+                          "%s",
+                          projection != nullptr ? projection->header.string().c_str() : "");
+            std::snprintf(enum_projection_header_include_.data(),
+                          enum_projection_header_include_.size(),
+                          "%s",
+                          projection != nullptr ? projection->header_include.c_str() : "");
+            std::snprintf(enum_projection_conversion_header_.data(),
+                          enum_projection_conversion_header_.size(),
+                          "%s",
+                          projection != nullptr ? projection->conversion_header.string().c_str()
+                                                : "");
+            std::snprintf(enum_projection_native_header_include_.data(),
+                          enum_projection_native_header_include_.size(),
+                          "%s",
+                          projection != nullptr ? projection->native_header_include.c_str() : "");
+            auto const reflection{
+                projection != nullptr
+                    ? std::ranges::find(enum_projection_reflections, projection->reflection)
+                    : enum_projection_reflections.begin()};
+            enum_projection_reflection_ =
+                reflection == enum_projection_reflections.end()
+                    ? 0
+                    : static_cast<int>(reflection - enum_projection_reflections.begin());
+        }
         if (selected != schema->values.end()) {
             std::snprintf(
                 enum_value_name_.data(), enum_value_name_.size(), "%s", selected->name.c_str());
@@ -1721,6 +2032,39 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
             set_buffer(enum_value_display_name_, selected->display_name);
             set_buffer(enum_value_serialized_name_, selected->serialized_name);
         }
+    }
+
+    auto automatic_backing{!schema->underlying_type.has_value()};
+    if (ImGui::Checkbox("Auto C++ backing", &automatic_backing)) {
+        auto replacement{*schema};
+        replacement.underlying_type =
+            automatic_backing
+                ? std::optional<codegen::TypeRef>{}
+                : std::optional{codegen::TypeRef{
+                      .name = enum_underlying_type_.data(), .suffix = {}, .nested = std::nullopt}};
+        static_cast<void>(apply_document_edit(
+            ReplaceEnum{.declaration = *declaration, .schema = std::move(replacement)}));
+        return;
+    }
+    if (schema->underlying_type.has_value()) {
+        auto const submitted{ImGui::InputText("C++ backing type",
+                                              enum_underlying_type_.data(),
+                                              enum_underlying_type_.size(),
+                                              ImGuiInputTextFlags_EnterReturnsTrue)};
+        if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+            if (enum_underlying_type_.front() == '\0') {
+                schema_edit_message_ = "Explicit enum C++ backing type cannot be empty.";
+            } else if (schema->underlying_type->name != enum_underlying_type_.data()) {
+                auto replacement{*schema};
+                replacement.underlying_type = codegen::TypeRef{
+                    .name = enum_underlying_type_.data(), .suffix = {}, .nested = std::nullopt};
+                static_cast<void>(apply_document_edit(
+                    ReplaceEnum{.declaration = *declaration, .schema = std::move(replacement)}));
+            }
+            return;
+        }
+    } else if (enum_domain_.has_value()) {
+        ImGui::TextDisabled("Derived for C++: %s", enum_domain_->backing_type.c_str());
     }
 
     auto automatic_width{!schema->bit_width.has_value()};
@@ -1774,8 +2118,207 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
             ReplaceEnum{.declaration = *declaration, .schema = std::move(replacement)}));
         return;
     }
-    ImGui::TextDisabled("Semantic width describes the value domain; the underlying type remains a "
-                        "lowering choice.");
+    ImGui::TextDisabled("Semantic width describes the value domain; C++ backing storage is a "
+                        "separate lowering choice.");
+
+    ImGui::SeparatorText("Generation policy");
+    auto reflection_index{static_cast<int>(std::ranges::find(enum_reflections, schema->reflection) -
+                                           enum_reflections.begin())};
+    if (reflection_index < 0 || reflection_index >= static_cast<int>(enum_reflections.size())) {
+        reflection_index = 0;
+    }
+    ImGui::SetNextItemWidth(180.0F);
+    if (ImGui::BeginCombo("Reflection",
+                          codegen::enum_reflection_name(
+                              enum_reflections[static_cast<std::size_t>(reflection_index)])
+                              .data())) {
+        for (std::size_t index{}; index < enum_reflections.size(); ++index) {
+            auto const reflection{enum_reflections[index]};
+            auto const selected_reflection{index == static_cast<std::size_t>(reflection_index)};
+            if (ImGui::Selectable(codegen::enum_reflection_name(reflection).data(),
+                                  selected_reflection)) {
+                auto replacement{*schema};
+                replacement.reflection = reflection;
+                ImGui::EndCombo();
+                static_cast<void>(apply_document_edit(
+                    ReplaceEnum{.declaration = *declaration, .schema = std::move(replacement)}));
+                return;
+            }
+            if (selected_reflection) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+
+    auto enum_array{schema->enum_array};
+    if (ImGui::Checkbox("Generate enum-array helpers", &enum_array)) {
+        auto replacement{*schema};
+        replacement.enum_array = enum_array;
+        static_cast<void>(apply_document_edit(
+            ReplaceEnum{.declaration = *declaration, .schema = std::move(replacement)}));
+        return;
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip("Requires a valid final count-sentinel enumerator and implicit values.");
+    }
+
+    auto native_api{schema->native_api};
+    if (ImGui::Checkbox("Use native enum API", &native_api)) {
+        auto replacement{*schema};
+        replacement.native_api = native_api;
+        static_cast<void>(apply_document_edit(
+            ReplaceEnum{.declaration = *declaration, .schema = std::move(replacement)}));
+        return;
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Native API mode is incompatible with reflection, enum arrays, conversions, and an "
+            "export specifier.");
+    }
+
+    ImGui::SetNextItemWidth(-1.0F);
+    auto const export_submitted{ImGui::InputText("Export specifier (optional)##enum",
+                                                 enum_export_specifier_.data(),
+                                                 enum_export_specifier_.size(),
+                                                 ImGuiInputTextFlags_EnterReturnsTrue)};
+    if (export_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+        auto const export_specifier{optional_text(enum_export_specifier_)};
+        if (schema->export_specifier != export_specifier) {
+            auto replacement{*schema};
+            replacement.export_specifier = export_specifier;
+            static_cast<void>(apply_document_edit(
+                ReplaceEnum{.declaration = *declaration, .schema = std::move(replacement)}));
+        }
+        return;
+    }
+
+    ImGui::SeparatorText("Unreal projection");
+    std::optional<codegen::EnumSchema> projection_edit;
+    auto const projection_exists{schema->unreal_projection.has_value()};
+    auto edit_projection_text = [&](char const* label, auto& buffer, auto&& assign) {
+        ImGui::SetNextItemWidth(-1.0F);
+        auto const submitted{ImGui::InputText(
+            label, buffer.data(), buffer.size(), ImGuiInputTextFlags_EnterReturnsTrue)};
+        if (projection_exists && (submitted || ImGui::IsItemDeactivatedAfterEdit())) {
+            if (!projection_edit.has_value()) {
+                projection_edit = *schema;
+            }
+            assign(*projection_edit->unreal_projection, buffer.data());
+        }
+    };
+    edit_projection_text("Projected enum name",
+                         enum_projection_name_,
+                         [](auto& projection, char const* value) { projection.name = value; });
+    edit_projection_text(
+        "Generated header path", enum_projection_header_, [](auto& projection, char const* value) {
+            projection.header = std::filesystem::path{value};
+        });
+    edit_projection_text(
+        "Generated header include",
+        enum_projection_header_include_,
+        [](auto& projection, char const* value) { projection.header_include = value; });
+    edit_projection_text("Conversion header path",
+                         enum_projection_conversion_header_,
+                         [](auto& projection, char const* value) {
+                             projection.conversion_header = std::filesystem::path{value};
+                         });
+    edit_projection_text(
+        "Native header include",
+        enum_projection_native_header_include_,
+        [](auto& projection, char const* value) { projection.native_header_include = value; });
+
+    enum_projection_reflection_ = std::clamp(
+        enum_projection_reflection_, 0, static_cast<int>(enum_projection_reflections.size() - 1));
+    auto const selected_projection_reflection{
+        enum_projection_reflections[static_cast<std::size_t>(enum_projection_reflection_)]};
+    ImGui::SetNextItemWidth(180.0F);
+    if (ImGui::BeginCombo("Projection reflection",
+                          codegen::enum_reflection_name(selected_projection_reflection).data())) {
+        for (std::size_t index{}; index < enum_projection_reflections.size(); ++index) {
+            auto const reflection{enum_projection_reflections[index]};
+            auto const selected_reflection{enum_projection_reflection_ == static_cast<int>(index)};
+            if (ImGui::Selectable(codegen::enum_reflection_name(reflection).data(),
+                                  selected_reflection)) {
+                enum_projection_reflection_ = static_cast<int>(index);
+                if (projection_exists) {
+                    projection_edit = *schema;
+                    projection_edit->unreal_projection->reflection = reflection;
+                }
+            }
+            if (selected_reflection) {
+                ImGui::SetItemDefaultFocus();
+            }
+        }
+        ImGui::EndCombo();
+    }
+
+    if (projection_edit.has_value()) {
+        static_cast<void>(apply_document_edit(
+            ReplaceEnum{.declaration = *declaration, .schema = std::move(*projection_edit)}));
+        return;
+    }
+
+    if (projection_exists) {
+        if (ImGui::Button("Remove Unreal projection")) {
+            auto replacement{*schema};
+            replacement.unreal_projection.reset();
+            static_cast<void>(apply_document_edit(
+                ReplaceEnum{.declaration = *declaration, .schema = std::move(replacement)}));
+            return;
+        }
+    } else {
+        auto const fields_complete{enum_projection_name_.front() != '\0' &&
+                                   enum_projection_header_.front() != '\0' &&
+                                   enum_projection_header_include_.front() != '\0' &&
+                                   enum_projection_conversion_header_.front() != '\0' &&
+                                   enum_projection_native_header_include_.front() != '\0'};
+        ImGui::BeginDisabled(!schema->native_api || !fields_complete);
+        if (ImGui::Button("Add Unreal projection")) {
+            auto replacement{*schema};
+            replacement.unreal_projection = codegen::EnumUnrealProjection{
+                .name = enum_projection_name_.data(),
+                .header = std::filesystem::path{enum_projection_header_.data()},
+                .header_include = enum_projection_header_include_.data(),
+                .conversion_header =
+                    std::filesystem::path{enum_projection_conversion_header_.data()},
+                .native_header_include = enum_projection_native_header_include_.data(),
+                .reflection = selected_projection_reflection};
+            static_cast<void>(apply_document_edit(
+                ReplaceEnum{.declaration = *declaration, .schema = std::move(replacement)}));
+            return;
+        }
+        ImGui::EndDisabled();
+        if (!schema->native_api) {
+            ImGui::TextDisabled("A projection requires native enum API mode.");
+        } else if (!fields_complete) {
+            ImGui::TextDisabled("Fill every projection field before adding it.");
+        }
+    }
+    ImGui::TextDisabled("Projection files are generated consumer outputs; semantic enum width and "
+                        "target layout remain unchanged.");
+
+    ImGui::SeparatorText("Generated conversions");
+    if (ImGui::BeginTable("enum-conversions", 2, ImGuiTableFlags_SizingStretchSame)) {
+        for (auto const conversion : enum_conversions) {
+            auto const descriptor{enum_conversion_descriptor(conversion)};
+            ImGui::TableNextColumn();
+            auto enabled{has_enum_conversion(schema->conversions, conversion)};
+            if (ImGui::Checkbox(descriptor.source_name.data(), &enabled)) {
+                auto replacement{*schema};
+                replacement.conversions =
+                    with_enum_conversion(schema->conversions, conversion, enabled);
+                ImGui::EndTable();
+                static_cast<void>(apply_document_edit(
+                    ReplaceEnum{.declaration = *declaration, .schema = std::move(replacement)}));
+                return;
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("%s", descriptor.description);
+            }
+        }
+        ImGui::EndTable();
+    }
 
     if (ImGui::Button("+ Enumerator")) {
         auto replacement{*schema};
@@ -2027,7 +2570,8 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
     }
 }
 
-auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarType const&) -> bool {
+auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarType const& scalar)
+    -> bool {
     if (!document_.has_value()) {
         return false;
     }
@@ -2064,6 +2608,34 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
                       integer_scalar_maximum_.size(),
                       "%s",
                       codegen::format_packed_integer(schema->maximum_value).c_str());
+        std::snprintf(integer_scalar_cpp_type_.data(),
+                      integer_scalar_cpp_type_.size(),
+                      "%s",
+                      schema->cpp_type.has_value() ? schema->cpp_type->name.c_str() : "");
+        if (schema->relationship.has_value()) {
+            std::snprintf(integer_scalar_relationship_target_.data(),
+                          integer_scalar_relationship_target_.size(),
+                          "%s",
+                          schema->relationship->target.name.c_str());
+            auto const kind{
+                std::ranges::find(semantic_relationship_kinds, schema->relationship->kind)};
+            integer_scalar_relationship_kind_ =
+                kind == semantic_relationship_kinds.end()
+                    ? 0
+                    : static_cast<int>(kind - semantic_relationship_kinds.begin());
+            auto const unit{
+                schema->relationship->unit.has_value()
+                    ? std::ranges::find(semantic_relationship_units, *schema->relationship->unit)
+                    : semantic_relationship_units.end()};
+            integer_scalar_relationship_unit_ =
+                unit == semantic_relationship_units.end()
+                    ? 0
+                    : static_cast<int>(unit - semantic_relationship_units.begin());
+        } else {
+            integer_scalar_relationship_target_.front() = '\0';
+            integer_scalar_relationship_kind_ = 0;
+            integer_scalar_relationship_unit_ = 0;
+        }
     }
     if (integer_scalar_editor_code_ != selected_integer_scalar_code_) {
         integer_scalar_editor_code_ = selected_integer_scalar_code_;
@@ -2160,6 +2732,266 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
     }
     ImGui::TextDisabled(
         "This is a semantic domain. A packed field or future representation chooses storage.");
+
+    ImGui::SeparatorText("C++ output policy");
+    auto emit_cpp_constants{schema->cpp_emission != codegen::IntegerScalarCppEmission::none};
+    if (ImGui::Checkbox("Emit named constants", &emit_cpp_constants)) {
+        auto replacement{*schema};
+        replacement.cpp_emission = emit_cpp_constants ? codegen::IntegerScalarCppEmission::constants
+                                                      : codegen::IntegerScalarCppEmission::none;
+        replacement.cpp_type =
+            emit_cpp_constants ? std::optional{codegen::TypeRef{
+                                     .name = schema->signedness ? "std::int64_t" : "std::uint64_t",
+                                     .suffix = {},
+                                     .nested = std::nullopt}}
+                               : std::nullopt;
+        if (apply_document_edit(ReplaceIntegerScalar{.declaration = *declaration,
+                                                     .schema = std::move(replacement)})) {
+            integer_scalar_editor_declaration_.reset();
+            return true;
+        }
+    }
+    if (emit_cpp_constants) {
+        ImGui::SetNextItemWidth(220.0F);
+        auto const submitted{ImGui::InputText("Constants type",
+                                              integer_scalar_cpp_type_.data(),
+                                              integer_scalar_cpp_type_.size(),
+                                              ImGuiInputTextFlags_EnterReturnsTrue)};
+        if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+            if (integer_scalar_cpp_type_.front() == '\0') {
+                schema_edit_message_ = "C++ constants type cannot be empty.";
+            } else if (!schema->cpp_type.has_value() ||
+                       schema->cpp_type->name != integer_scalar_cpp_type_.data()) {
+                auto replacement{*schema};
+                replacement.cpp_type = codegen::TypeRef{
+                    .name = integer_scalar_cpp_type_.data(), .suffix = {}, .nested = std::nullopt};
+                if (apply_document_edit(ReplaceIntegerScalar{.declaration = *declaration,
+                                                             .schema = std::move(replacement)})) {
+                    integer_scalar_editor_declaration_.reset();
+                    return true;
+                }
+            }
+        }
+        auto emit_name_lookup{schema->cpp_emission ==
+                              codegen::IntegerScalarCppEmission::constants_with_names};
+        if (ImGui::Checkbox("Emit value-to-name lookup", &emit_name_lookup)) {
+            auto replacement{*schema};
+            replacement.cpp_emission = emit_name_lookup
+                                         ? codegen::IntegerScalarCppEmission::constants_with_names
+                                         : codegen::IntegerScalarCppEmission::constants;
+            if (apply_document_edit(ReplaceIntegerScalar{.declaration = *declaration,
+                                                         .schema = std::move(replacement)})) {
+                integer_scalar_editor_declaration_.reset();
+                return true;
+            }
+        }
+        ImGui::TextDisabled("Named codes emit as <Scalar>_<Code>; lookup returns an empty view for "
+                            "unnamed values.");
+    } else {
+        ImGui::TextDisabled("No C++ scalar type or constants are emitted for this domain.");
+    }
+
+    ImGui::SeparatorText("Semantic relationship");
+    auto const current_kind{semantic_relationship_kinds[static_cast<std::size_t>(
+        std::clamp(integer_scalar_relationship_kind_,
+                   0,
+                   static_cast<int>(semantic_relationship_kinds.size() - 1)))]};
+    auto const current_unit{semantic_relationship_units[static_cast<std::size_t>(
+        std::clamp(integer_scalar_relationship_unit_,
+                   0,
+                   static_cast<int>(semantic_relationship_units.size() - 1)))]};
+    ImGui::SetNextItemWidth(180.0F);
+    if (ImGui::BeginCombo("Kind", codegen::semantic_relation_kind_name(current_kind).data())) {
+        for (std::size_t kind_index{}; kind_index < semantic_relationship_kinds.size();
+             ++kind_index) {
+            auto const kind{semantic_relationship_kinds[kind_index]};
+            auto const chosen{integer_scalar_relationship_kind_ == static_cast<int>(kind_index)};
+            if (ImGui::Selectable(codegen::semantic_relation_kind_name(kind).data(), chosen)) {
+                integer_scalar_relationship_kind_ = static_cast<int>(kind_index);
+                if (schema->relationship.has_value()) {
+                    auto replacement{*schema};
+                    replacement.relationship->kind = kind;
+                    replacement.relationship->unit =
+                        kind == codegen::SemanticRelationKind::offset_into
+                            ? std::optional{current_unit}
+                            : std::nullopt;
+                    if (apply_document_edit(ReplaceIntegerScalar{
+                            .declaration = *declaration, .schema = std::move(replacement)})) {
+                        integer_scalar_editor_declaration_.reset();
+                        ImGui::EndCombo();
+                        return true;
+                    }
+                }
+            }
+        }
+        ImGui::EndCombo();
+    }
+    if (current_kind == codegen::SemanticRelationKind::offset_into) {
+        ImGui::SetNextItemWidth(180.0F);
+        if (ImGui::BeginCombo("Unit", codegen::semantic_relation_unit_name(current_unit).data())) {
+            for (std::size_t unit_index{}; unit_index < semantic_relationship_units.size();
+                 ++unit_index) {
+                auto const unit{semantic_relationship_units[unit_index]};
+                auto const chosen{integer_scalar_relationship_unit_ ==
+                                  static_cast<int>(unit_index)};
+                if (ImGui::Selectable(codegen::semantic_relation_unit_name(unit).data(), chosen)) {
+                    integer_scalar_relationship_unit_ = static_cast<int>(unit_index);
+                    if (schema->relationship.has_value()) {
+                        auto replacement{*schema};
+                        replacement.relationship->unit = unit;
+                        if (apply_document_edit(ReplaceIntegerScalar{
+                                .declaration = *declaration, .schema = std::move(replacement)})) {
+                            integer_scalar_editor_declaration_.reset();
+                            ImGui::EndCombo();
+                            return true;
+                        }
+                    }
+                }
+            }
+            ImGui::EndCombo();
+        }
+    }
+
+    ImGui::SetNextItemWidth(std::max(80.0F, ImGui::GetContentRegionAvail().x - 132.0F));
+    auto const target_submitted{ImGui::InputText("Target",
+                                                 integer_scalar_relationship_target_.data(),
+                                                 integer_scalar_relationship_target_.size(),
+                                                 ImGuiInputTextFlags_EnterReturnsTrue)};
+    if (schema->relationship.has_value() &&
+        (target_submitted || ImGui::IsItemDeactivatedAfterEdit())) {
+        if (integer_scalar_relationship_target_.front() == '\0') {
+            schema_edit_message_ = "Relationship target cannot be empty.";
+        } else {
+            auto replacement{*schema};
+            replacement.relationship->target.name = integer_scalar_relationship_target_.data();
+            if (apply_document_edit(ReplaceIntegerScalar{.declaration = *declaration,
+                                                         .schema = std::move(replacement)})) {
+                integer_scalar_editor_declaration_.reset();
+                return true;
+            }
+        }
+    }
+    ImGui::SameLine();
+    ImGui::PushID("integer-scalar-relationship-target");
+    auto picked_relationship_target{draw_type_picker(node.identity.module_name, node.identity)};
+    ImGui::PopID();
+    if (picked_relationship_target.has_value()) {
+        std::snprintf(integer_scalar_relationship_target_.data(),
+                      integer_scalar_relationship_target_.size(),
+                      "%s",
+                      picked_relationship_target->c_str());
+        auto replacement{*schema};
+        replacement.relationship = codegen::SemanticRelationSchema{
+            .kind = current_kind,
+            .target = codegen::TypeRef{.name = *picked_relationship_target,
+                                       .suffix = {},
+                                       .nested = std::nullopt},
+            .unit = current_kind == codegen::SemanticRelationKind::offset_into
+                      ? std::optional{current_unit}
+                      : std::nullopt};
+        if (apply_document_edit(ReplaceIntegerScalar{.declaration = *declaration,
+                                                     .schema = std::move(replacement)})) {
+            integer_scalar_editor_declaration_.reset();
+            return true;
+        }
+    }
+    ImGui::SameLine();
+    if (schema->relationship.has_value()) {
+        if (ImGui::SmallButton("Clear")) {
+            auto replacement{*schema};
+            replacement.relationship.reset();
+            if (apply_document_edit(ReplaceIntegerScalar{.declaration = *declaration,
+                                                         .schema = std::move(replacement)})) {
+                integer_scalar_editor_declaration_.reset();
+                return true;
+            }
+        }
+        ImGui::SameLine();
+        if (scalar.relationship.has_value() && ImGui::SmallButton(">")) {
+            selected_type_ = scalar.relationship->target.type;
+            selected_field_.clear();
+            return true;
+        }
+    } else {
+        ImGui::BeginDisabled(integer_scalar_relationship_target_.front() == '\0');
+        if (ImGui::SmallButton("Add")) {
+            auto replacement{*schema};
+            replacement.relationship = codegen::SemanticRelationSchema{
+                .kind = current_kind,
+                .target = codegen::TypeRef{.name = integer_scalar_relationship_target_.data(),
+                                           .suffix = {},
+                                           .nested = std::nullopt},
+                .unit = current_kind == codegen::SemanticRelationKind::offset_into
+                          ? std::optional{current_unit}
+                          : std::nullopt};
+            if (apply_document_edit(ReplaceIntegerScalar{.declaration = *declaration,
+                                                         .schema = std::move(replacement)})) {
+                integer_scalar_editor_declaration_.reset();
+                return true;
+            }
+        }
+        ImGui::EndDisabled();
+    }
+    ImGui::TextDisabled(
+        "The relationship is durable semantic metadata; session capacity does not rewrite this "
+        "domain or bit width.");
+    if (integer_scalar_analysis_.has_value() &&
+        integer_scalar_analysis_->relationship_target_extent.has_value()) {
+        auto const& analysis{*integer_scalar_analysis_};
+        auto const kind{*analysis.relationship_kind};
+        auto const term{detail::relationship_extent_term(kind)};
+        auto const unit{detail::relationship_extent_unit(kind, analysis.relationship_unit)};
+        auto const heading{"Session " + std::string{term} + " requirement"};
+        ImGui::SeparatorText(heading.c_str());
+        ImGui::Text("Target %s: %llu %s",
+                    term.data(),
+                    static_cast<unsigned long long>(*analysis.relationship_target_extent),
+                    unit.data());
+        ImGui::Text("Live values: %s",
+                    analysis.relationship_live_value_count.has_value()
+                        ? detail::format_code_count(*analysis.relationship_live_value_count).c_str()
+                        : "Unknown");
+        auto const required_codes{
+            analysis.relationship_required_code_count.has_value()
+                ? detail::format_code_count(*analysis.relationship_required_code_count)
+            : analysis.relationship_minimum_required_bits.value_or(0) > 64
+                ? std::string{"> 2^64"}
+                : std::string{"Unknown"}};
+        ImGui::Text("Required codes: %s", required_codes.c_str());
+        ImGui::Text("Minimum width: %u bits", *analysis.relationship_minimum_required_bits);
+        ImGui::Text("Current semantic width fits: %s",
+                    *analysis.relationship_width_sufficient ? "Yes" : "No");
+        ImGui::Text("Code-space %s limit: %s",
+                    term.data(),
+                    detail::format_number(analysis.relationship_code_space_capacity_limit).c_str());
+        ImGui::Text("Code-space %s headroom: %s",
+                    term.data(),
+                    detail::format_number(analysis.relationship_capacity_headroom).c_str());
+        ImGui::Text("Semantic-range %s limit: %s",
+                    term.data(),
+                    detail::format_number(analysis.relationship_semantic_capacity_limit).c_str());
+        ImGui::Text("Sentinel-placement %s limit: %s",
+                    term.data(),
+                    detail::format_number(analysis.relationship_sentinel_capacity_limit).c_str());
+        ImGui::Text("Effective valid %s limit: %s",
+                    term.data(),
+                    detail::format_number(analysis.relationship_effective_capacity_limit).c_str());
+        ImGui::Text(
+            "Effective valid %s headroom: %s",
+            term.data(),
+            detail::format_number(analysis.relationship_effective_capacity_headroom).c_str());
+        if (kind == codegen::SemanticRelationKind::count_of) {
+            ImGui::TextDisabled(
+                "Live counts include 0 through capacity; named sentinels add code states.");
+        } else if (kind == codegen::SemanticRelationKind::offset_into) {
+            ImGui::TextDisabled(
+                "Live offsets span 0 through extent-1 in the declared unit; named sentinels add "
+                "code states.");
+        } else {
+            ImGui::TextDisabled(
+                "Live indices span 0 through capacity-1; named sentinels add code states.");
+        }
+    }
 
     auto const code_width{schema->bit_width.value_or(64)};
     auto const named_value{first_available_scalar_code(*schema, code_width, false)};
@@ -2930,6 +3762,10 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                       schema->invalid_value.has_value()
                           ? std::to_string(*schema->invalid_value).c_str()
                           : "");
+        std::snprintf(packed_export_specifier_.data(),
+                      packed_export_specifier_.size(),
+                      "%s",
+                      schema->export_specifier.value_or("").c_str());
         if (selected != schema->segments.end()) {
             auto const& selected_name{codegen::packed_segment_name(*selected)};
             std::snprintf(
@@ -2959,18 +3795,27 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                                   : "");
                 auto const relationship_kind{
                     field->relationship.has_value()
-                        ? std::ranges::find(packed_relationship_kinds, field->relationship->kind)
-                        : packed_relationship_kinds.end()};
+                        ? std::ranges::find(semantic_relationship_kinds, field->relationship->kind)
+                        : semantic_relationship_kinds.end()};
                 packed_relationship_kind_ =
-                    relationship_kind == packed_relationship_kinds.end()
+                    relationship_kind == semantic_relationship_kinds.end()
                         ? 0
-                        : static_cast<int>(relationship_kind - packed_relationship_kinds.begin());
+                        : static_cast<int>(relationship_kind - semantic_relationship_kinds.begin());
+                auto const relationship_unit{
+                    field->relationship.has_value() && field->relationship->unit.has_value()
+                        ? std::ranges::find(semantic_relationship_units, *field->relationship->unit)
+                        : semantic_relationship_units.end()};
+                packed_relationship_unit_ =
+                    relationship_unit == semantic_relationship_units.end()
+                        ? 0
+                        : static_cast<int>(relationship_unit - semantic_relationship_units.begin());
             } else {
                 packed_field_type_.front() = '\0';
                 packed_field_minimum_.front() = '\0';
                 packed_field_maximum_.front() = '\0';
                 packed_relationship_target_.front() = '\0';
                 packed_relationship_kind_ = 0;
+                packed_relationship_unit_ = 0;
             }
             auto const resolved_width{
                 selected_index.has_value() && *selected_index < packed.segments.size()
@@ -2990,6 +3835,11 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
     auto const* selected_resolved_field{
         selected_index.has_value() && *selected_index < packed.segments.size()
             ? std::get_if<lispb::schema::PackedField>(&packed.segments[*selected_index])
+            : nullptr};
+    auto const* selected_integer_scalar{
+        selected_resolved_field != nullptr
+            ? std::get_if<IntegerScalarType>(
+                  &workspace_.types().type(selected_resolved_field->semantic_type.type).definition)
             : nullptr};
     if (selected_schema_field == nullptr) {
         selected_packed_code_.clear();
@@ -3028,6 +3878,40 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             packed_code_value_.front() = '\0';
             packed_code_sentinel_ = false;
         }
+    }
+
+    ImGui::SetNextItemWidth(-1.0F);
+    auto const export_submitted{ImGui::InputText("Export specifier (optional)##packed",
+                                                 packed_export_specifier_.data(),
+                                                 packed_export_specifier_.size(),
+                                                 ImGuiInputTextFlags_EnterReturnsTrue)};
+    if (export_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+        auto const export_specifier{optional_text(packed_export_specifier_)};
+        if (schema->export_specifier != export_specifier) {
+            auto replacement{*schema};
+            replacement.export_specifier = export_specifier;
+            if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                selected_field_ = packed_editor_field_;
+                return true;
+            }
+        }
+    }
+
+    auto mutable_value{schema->mutable_value};
+    if (ImGui::Checkbox("Generate mutable field API", &mutable_value)) {
+        auto replacement{*schema};
+        replacement.mutable_value = mutable_value;
+        if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+            selected_field_ = packed_editor_field_;
+            return true;
+        }
+    }
+    if (ImGui::IsItemHovered()) {
+        ImGui::SetTooltip(
+            "Generates fallible try_make/try_set and checked setter APIs; it does not change the "
+            "packed bit layout or semantic value domain.");
     }
 
     ImGui::SetNextItemWidth(-1.0F);
@@ -3196,27 +4080,48 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
     ImGui::BeginDisabled(!selected_index.has_value() || schema->segments.size() == 1);
     if (ImGui::Button("Delete")) {
         auto replacement{*schema};
+        auto const deleted_name{
+            codegen::packed_segment_name(replacement.segments[*selected_index])};
         replacement.segments.erase(replacement.segments.begin() +
                                    static_cast<std::ptrdiff_t>(*selected_index));
         auto const next_index{std::min(*selected_index, replacement.segments.size() - 1)};
         auto const next_name{codegen::packed_segment_name(replacement.segments[next_index])};
         if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
                                                    .schema = std::move(replacement)})) {
+            packed_access_fields_.erase(deleted_name);
             selected_field_ = next_name;
             return true;
         }
     }
     ImGui::EndDisabled();
     ImGui::EndDisabled();
+    ImGui::SameLine();
+    if (ImGui::Button("Selected only")) {
+        packed_access_fields_.clear();
+        packed_access_set_explicit_ = false;
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("Access all")) {
+        packed_access_fields_.clear();
+        for (auto const& segment : schema->segments) {
+            if (auto const* field{std::get_if<codegen::PackedFieldSchema>(&segment)}) {
+                packed_access_fields_.insert_or_assign(field->name, access_operation_);
+            }
+        }
+        packed_access_set_explicit_ = true;
+    }
 
     std::optional<codegen::PackedValueSchema> pending;
     std::optional<TypeId> navigate_to;
+    std::optional<std::pair<std::string, std::string>> renamed_field;
     auto selected_after_edit{selected_field_};
     if (ImGui::BeginTable("packed-schema-fields",
-                          9,
+                          11,
                           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                               ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Access", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Operation", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Name");
         ImGui::TableSetupColumn("Semantic type");
         ImGui::TableSetupColumn("Bits", ImGuiTableColumnFlags_WidthFixed);
@@ -3229,6 +4134,14 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         for (std::size_t index{}; index < schema->segments.size(); ++index) {
             auto const& segment{schema->segments[index]};
             auto const* field{std::get_if<codegen::PackedFieldSchema>(&segment)};
+            auto const* resolved_field{
+                index < packed.segments.size()
+                    ? std::get_if<lispb::schema::PackedField>(&packed.segments[index])
+                    : nullptr};
+            auto const field_uses_integer_scalar{
+                resolved_field != nullptr &&
+                std::holds_alternative<IntegerScalarType>(
+                    workspace_.types().type(resolved_field->semantic_type.type).definition)};
             auto const& segment_name{codegen::packed_segment_name(segment)};
             auto const row_selected{selected_field_ == segment_name};
             ImGui::PushID(static_cast<int>(index));
@@ -3257,6 +4170,64 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             }
 
             ImGui::TableNextColumn();
+            if (field == nullptr) {
+                ImGui::TextDisabled("-");
+            } else {
+                auto accessed{packed_access_set_explicit_
+                                  ? packed_access_fields_.contains(field->name)
+                                  : selected_field_ == field->name};
+                if (ImGui::Checkbox("##access", &accessed)) {
+                    if (!packed_access_set_explicit_) {
+                        packed_access_fields_.clear();
+                        for (auto const& selected_segment : schema->segments) {
+                            auto const* selected_schema_field{
+                                std::get_if<codegen::PackedFieldSchema>(&selected_segment)};
+                            if (selected_schema_field != nullptr &&
+                                selected_schema_field->name == selected_field_) {
+                                packed_access_fields_.insert_or_assign(selected_field_,
+                                                                       access_operation_);
+                                break;
+                            }
+                        }
+                        packed_access_set_explicit_ = true;
+                    }
+                    if (accessed) {
+                        packed_access_fields_.insert_or_assign(field->name, access_operation_);
+                    } else {
+                        packed_access_fields_.erase(field->name);
+                    }
+                }
+            }
+
+            ImGui::TableNextColumn();
+            auto const accessed{field != nullptr &&
+                                (packed_access_set_explicit_
+                                     ? packed_access_fields_.contains(field->name)
+                                     : selected_field_ == field->name)};
+            if (accessed) {
+                auto operation{access_operation_};
+                if (packed_access_set_explicit_) {
+                    if (auto const found{packed_access_fields_.find(field->name)};
+                        found != packed_access_fields_.end()) {
+                        operation = found->second;
+                    }
+                }
+                auto operation_index{static_cast<int>(operation)};
+                ImGui::SetNextItemWidth(105.0F);
+                if (ImGui::Combo(
+                        "##access-operation", &operation_index, "Read\0Write\0Read + write\0")) {
+                    if (!packed_access_set_explicit_) {
+                        packed_access_fields_.clear();
+                        packed_access_set_explicit_ = true;
+                    }
+                    packed_access_fields_.insert_or_assign(
+                        field->name, static_cast<AccessOperation>(operation_index));
+                }
+            } else {
+                ImGui::TextDisabled("-");
+            }
+
+            ImGui::TableNextColumn();
             if (row_selected) {
                 ImGui::SetNextItemWidth(-1.0F);
                 auto const submitted{ImGui::InputText("##name",
@@ -3268,6 +4239,9 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                     std::visit([&](auto& value) { value.name = packed_field_name_.data(); },
                                pending->segments[index]);
                     selected_after_edit = packed_field_name_.data();
+                    if (field != nullptr) {
+                        renamed_field = std::pair{field->name, selected_after_edit};
+                    }
                 }
             } else {
                 ImGui::TextUnformatted(segment_name.c_str());
@@ -3290,8 +4264,36 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 ImGui::SameLine();
                 if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
                     pending = *schema;
-                    std::get<codegen::PackedFieldSchema>(pending->segments[index]).type.name =
-                        std::move(*picked);
+                    auto& pending_field{
+                        std::get<codegen::PackedFieldSchema>(pending->segments[index])};
+                    pending_field.type =
+                        codegen::TypeRef{.name = *picked, .suffix = {}, .nested = std::nullopt};
+                    auto const picked_type{std::ranges::find_if(
+                        workspace_.types().types(), [&](TypeNode const& candidate) {
+                            return candidate.identity.origin == TypeOrigin::declaration &&
+                                   ((candidate.identity.module_name == node.identity.module_name &&
+                                     candidate.identity.name == *picked) ||
+                                    candidate.cpp_spelling == *picked);
+                        })};
+                    if (picked_type != workspace_.types().types().end() &&
+                        std::holds_alternative<EnumType>(picked_type->definition)) {
+                        pending_field.kind = codegen::PackedFieldKind::enumeration;
+                        pending_field.range_helper = false;
+                        pending_field.minimum_value.reset();
+                        pending_field.maximum_value.reset();
+                        pending_field.named_codes.clear();
+                    } else if (picked_type != workspace_.types().types().end()) {
+                        if (auto const* scalar{
+                                std::get_if<IntegerScalarType>(&picked_type->definition)}) {
+                            pending_field.kind = scalar->signedness
+                                                   ? codegen::PackedFieldKind::signed_integer
+                                                   : codegen::PackedFieldKind::unsigned_integer;
+                            pending_field.range_helper = false;
+                            pending_field.minimum_value.reset();
+                            pending_field.maximum_value.reset();
+                            pending_field.named_codes.clear();
+                        }
+                    }
                 }
                 ImGui::SameLine();
                 if (index < packed.segments.size() && ImGui::SmallButton(">")) {
@@ -3348,78 +4350,85 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                                       : "unsigned"};
             if (field == nullptr) {
                 ImGui::TextDisabled("reserved");
-            } else if (row_selected && ImGui::BeginCombo("##kind", kind_label)) {
-                if (ImGui::Selectable("unsigned",
-                                      field->kind == codegen::PackedFieldKind::unsigned_integer)) {
-                    pending = *schema;
-                    auto& pending_field{
-                        std::get<codegen::PackedFieldSchema>(pending->segments[index])};
-                    pending_field.kind = codegen::PackedFieldKind::unsigned_integer;
-                    if (auto const mapped{matching_unsigned_type(pending_field.type.name)}) {
-                        pending_field.type.name = *mapped;
+            } else if (row_selected) {
+                ImGui::BeginDisabled(field_uses_integer_scalar);
+                if (ImGui::BeginCombo("##kind", kind_label)) {
+                    if (ImGui::Selectable("unsigned",
+                                          field->kind ==
+                                              codegen::PackedFieldKind::unsigned_integer)) {
+                        pending = *schema;
+                        auto& pending_field{
+                            std::get<codegen::PackedFieldSchema>(pending->segments[index])};
+                        pending_field.kind = codegen::PackedFieldKind::unsigned_integer;
+                        if (auto const mapped{matching_unsigned_type(pending_field.type.name)}) {
+                            pending_field.type.name = *mapped;
+                        }
+                        auto const has_negative_code{
+                            std::ranges::any_of(pending_field.named_codes, [](auto const& code) {
+                                return code.value.negative;
+                            })};
+                        if ((pending_field.minimum_value.has_value() &&
+                             pending_field.minimum_value->negative) ||
+                            has_negative_code) {
+                            pending_field.minimum_value.reset();
+                            pending_field.maximum_value.reset();
+                            pending_field.named_codes.clear();
+                            if (!pending_field.bits.has_value() && index < packed.segments.size()) {
+                                pending_field.bits = static_cast<int>(
+                                    std::get<lispb::schema::PackedField>(packed.segments[index])
+                                        .bit_width);
+                            }
+                        }
                     }
-                    auto const has_negative_code{
-                        std::ranges::any_of(pending_field.named_codes,
-                                            [](auto const& code) { return code.value.negative; })};
-                    if ((pending_field.minimum_value.has_value() &&
-                         pending_field.minimum_value->negative) ||
-                        has_negative_code) {
+                    if (ImGui::Selectable(
+                            "signed", field->kind == codegen::PackedFieldKind::signed_integer)) {
+                        pending = *schema;
+                        auto& pending_field{
+                            std::get<codegen::PackedFieldSchema>(pending->segments[index])};
+                        pending_field.kind = codegen::PackedFieldKind::signed_integer;
+                        if (auto const mapped{matching_signed_type(pending_field.type.name)}) {
+                            pending_field.type.name = *mapped;
+                        }
+                        pending_field.range_helper = false;
+                        auto const transition_width{
+                            pending_field.bits.has_value()
+                                ? static_cast<std::uint32_t>(*pending_field.bits)
+                            : index < packed.segments.size()
+                                ? std::get<lispb::schema::PackedField>(packed.segments[index])
+                                      .bit_width
+                                : std::uint32_t{1}};
+                        if (pending_field.minimum_value.has_value() &&
+                            (!codegen::packed_integer_fits_signed(*pending_field.minimum_value,
+                                                                  transition_width) ||
+                             !codegen::packed_integer_fits_signed(*pending_field.maximum_value,
+                                                                  transition_width))) {
+                            pending_field.minimum_value.reset();
+                            pending_field.maximum_value.reset();
+                            pending_field.named_codes.clear();
+                            if (!pending_field.bits.has_value()) {
+                                pending_field.bits = static_cast<int>(transition_width);
+                            }
+                        } else {
+                            std::erase_if(pending_field.named_codes, [&](auto const& code) {
+                                return !codegen::packed_integer_fits_signed(code.value,
+                                                                            transition_width);
+                            });
+                        }
+                    }
+                    if (ImGui::Selectable("enum",
+                                          field->kind == codegen::PackedFieldKind::enumeration)) {
+                        pending = *schema;
+                        auto& pending_field{
+                            std::get<codegen::PackedFieldSchema>(pending->segments[index])};
+                        pending_field.kind = codegen::PackedFieldKind::enumeration;
+                        pending_field.range_helper = false;
                         pending_field.minimum_value.reset();
                         pending_field.maximum_value.reset();
                         pending_field.named_codes.clear();
-                        if (!pending_field.bits.has_value() && index < packed.segments.size()) {
-                            pending_field.bits = static_cast<int>(
-                                std::get<lispb::schema::PackedField>(packed.segments[index])
-                                    .bit_width);
-                        }
                     }
+                    ImGui::EndCombo();
                 }
-                if (ImGui::Selectable("signed",
-                                      field->kind == codegen::PackedFieldKind::signed_integer)) {
-                    pending = *schema;
-                    auto& pending_field{
-                        std::get<codegen::PackedFieldSchema>(pending->segments[index])};
-                    pending_field.kind = codegen::PackedFieldKind::signed_integer;
-                    if (auto const mapped{matching_signed_type(pending_field.type.name)}) {
-                        pending_field.type.name = *mapped;
-                    }
-                    pending_field.range_helper = false;
-                    auto const transition_width{
-                        pending_field.bits.has_value()
-                            ? static_cast<std::uint32_t>(*pending_field.bits)
-                        : index < packed.segments.size()
-                            ? std::get<lispb::schema::PackedField>(packed.segments[index]).bit_width
-                            : std::uint32_t{1}};
-                    if (pending_field.minimum_value.has_value() &&
-                        (!codegen::packed_integer_fits_signed(*pending_field.minimum_value,
-                                                              transition_width) ||
-                         !codegen::packed_integer_fits_signed(*pending_field.maximum_value,
-                                                              transition_width))) {
-                        pending_field.minimum_value.reset();
-                        pending_field.maximum_value.reset();
-                        pending_field.named_codes.clear();
-                        if (!pending_field.bits.has_value()) {
-                            pending_field.bits = static_cast<int>(transition_width);
-                        }
-                    } else {
-                        std::erase_if(pending_field.named_codes, [&](auto const& code) {
-                            return !codegen::packed_integer_fits_signed(code.value,
-                                                                        transition_width);
-                        });
-                    }
-                }
-                if (ImGui::Selectable("enum",
-                                      field->kind == codegen::PackedFieldKind::enumeration)) {
-                    pending = *schema;
-                    auto& pending_field{
-                        std::get<codegen::PackedFieldSchema>(pending->segments[index])};
-                    pending_field.kind = codegen::PackedFieldKind::enumeration;
-                    pending_field.range_helper = false;
-                    pending_field.minimum_value.reset();
-                    pending_field.maximum_value.reset();
-                    pending_field.named_codes.clear();
-                }
-                ImGui::EndCombo();
+                ImGui::EndDisabled();
             } else if (!row_selected) {
                 ImGui::TextUnformatted(kind_label);
             }
@@ -3443,6 +4452,10 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             ImGui::TableNextColumn();
             if (field == nullptr) {
                 ImGui::TextDisabled("-");
+            } else if (field_uses_integer_scalar && resolved_field->minimum_value.has_value()) {
+                auto const minimum{codegen::format_packed_integer(*resolved_field->minimum_value)};
+                auto const maximum{codegen::format_packed_integer(*resolved_field->maximum_value)};
+                ImGui::TextDisabled("%s..%s (shared)", minimum.c_str(), maximum.c_str());
             } else if (row_selected) {
                 ImGui::SetNextItemWidth(70.0F);
                 auto range_submitted{ImGui::InputText("##minimum",
@@ -3532,25 +4545,85 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
 
     if (!pending.has_value() && selected_schema_field != nullptr && selected_index.has_value()) {
         auto const selected_segment_name{selected_field_};
+        auto enum_module_index{std::optional<std::size_t>{}};
+        auto fallback_enum_module_index{std::optional<std::size_t>{}};
+        auto const& modules{document_->manifest().modules};
+        for (std::size_t module_index{}; module_index < modules.size(); ++module_index) {
+            auto const* enum_module{std::get_if<codegen::EnumModuleSchema>(&modules[module_index])};
+            if (enum_module == nullptr) {
+                continue;
+            }
+            if (!fallback_enum_module_index.has_value()) {
+                fallback_enum_module_index = module_index;
+            }
+            if (enum_module->settings.namespace_name.value_or("") == node.identity.namespace_name) {
+                enum_module_index = module_index;
+                break;
+            }
+        }
+        if (!enum_module_index.has_value()) {
+            enum_module_index = fallback_enum_module_index;
+        }
+        ImGui::BeginDisabled(!enum_module_index.has_value() || selected_resolved_field == nullptr);
+        if (ImGui::Button("Create enum for selected field...")) {
+            new_enum_module_index_ = *enum_module_index;
+            auto const suggested_name{suggested_type_name(selected_schema_field->name, "Type")};
+            std::snprintf(
+                new_enum_name_.data(), new_enum_name_.size(), "%s", suggested_name.c_str());
+            auto& enum_module{std::get<codegen::EnumModuleSchema>(modules[new_enum_module_index_])};
+            auto unique_name{std::string{new_enum_name_.data()}};
+            auto suffix_number{std::size_t{1}};
+            while (std::ranges::find(enum_module.enums, unique_name, &codegen::EnumSchema::name) !=
+                   enum_module.enums.end()) {
+                unique_name = std::string{new_enum_name_.data()} + std::to_string(suffix_number++);
+            }
+            std::snprintf(new_enum_name_.data(), new_enum_name_.size(), "%s", unique_name.c_str());
+            new_enum_backing_auto_ = true;
+            new_enum_width_auto_ = false;
+            new_enum_bit_width_ = selected_resolved_field->bit_width;
+            new_enum_signedness_ = 1;
+            pending_packed_enum_binding_ = PendingPackedEnumBinding{
+                .packed_declaration = *declaration, .field_name = selected_segment_name};
+            open_new_enum_dialog_ = true;
+        }
+        ImGui::EndDisabled();
+        if (!enum_module_index.has_value()) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("No enum module is available.");
+        } else if (selected_resolved_field == nullptr) {
+            ImGui::SameLine();
+            ImGui::TextDisabled("The selected field width is unresolved.");
+        } else {
+            ImGui::SameLine();
+            ImGui::TextDisabled("Creates a shared enum declaration, then binds this field.");
+        }
+
         ImGui::SeparatorText("Semantic relationship");
         ImGui::SetNextItemWidth(180.0F);
-        auto const current_kind{packed_relationship_kinds[static_cast<std::size_t>(
+        auto const current_kind{semantic_relationship_kinds[static_cast<std::size_t>(
             std::clamp(packed_relationship_kind_,
                        0,
-                       static_cast<int>(packed_relationship_kinds.size() - 1)))]};
-        if (ImGui::BeginCombo("Kind",
-                              codegen::packed_field_relation_kind_name(current_kind).data())) {
-            for (std::size_t kind_index{}; kind_index < packed_relationship_kinds.size();
+                       static_cast<int>(semantic_relationship_kinds.size() - 1)))]};
+        auto const current_unit{semantic_relationship_units[static_cast<std::size_t>(
+            std::clamp(packed_relationship_unit_,
+                       0,
+                       static_cast<int>(semantic_relationship_units.size() - 1)))]};
+        if (ImGui::BeginCombo("Kind", codegen::semantic_relation_kind_name(current_kind).data())) {
+            for (std::size_t kind_index{}; kind_index < semantic_relationship_kinds.size();
                  ++kind_index) {
-                auto const kind{packed_relationship_kinds[kind_index]};
+                auto const kind{semantic_relationship_kinds[kind_index]};
                 auto const chosen{packed_relationship_kind_ == static_cast<int>(kind_index)};
-                if (ImGui::Selectable(codegen::packed_field_relation_kind_name(kind).data(),
-                                      chosen)) {
+                if (ImGui::Selectable(codegen::semantic_relation_kind_name(kind).data(), chosen)) {
                     packed_relationship_kind_ = static_cast<int>(kind_index);
                     if (selected_schema_field->relationship.has_value()) {
                         auto replacement{*schema};
-                        std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])
-                            .relationship->kind = kind;
+                        auto& relationship{*std::get<codegen::PackedFieldSchema>(
+                                                replacement.segments[*selected_index])
+                                                .relationship};
+                        relationship.kind = kind;
+                        relationship.unit = kind == codegen::SemanticRelationKind::offset_into
+                                              ? std::optional{current_unit}
+                                              : std::nullopt;
                         if (apply_document_edit(ReplacePackedValue{
                                 .declaration = *declaration, .schema = std::move(replacement)})) {
                             selected_field_ = selected_segment_name;
@@ -3560,6 +4633,35 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 }
             }
             ImGui::EndCombo();
+        }
+
+        if (current_kind == codegen::SemanticRelationKind::offset_into) {
+            ImGui::SetNextItemWidth(180.0F);
+            if (ImGui::BeginCombo("Unit",
+                                  codegen::semantic_relation_unit_name(current_unit).data())) {
+                for (std::size_t unit_index{}; unit_index < semantic_relationship_units.size();
+                     ++unit_index) {
+                    auto const unit{semantic_relationship_units[unit_index]};
+                    auto const chosen{packed_relationship_unit_ == static_cast<int>(unit_index)};
+                    if (ImGui::Selectable(codegen::semantic_relation_unit_name(unit).data(),
+                                          chosen)) {
+                        packed_relationship_unit_ = static_cast<int>(unit_index);
+                        if (selected_schema_field->relationship.has_value()) {
+                            auto replacement{*schema};
+                            std::get<codegen::PackedFieldSchema>(
+                                replacement.segments[*selected_index])
+                                .relationship->unit = unit;
+                            if (apply_document_edit(
+                                    ReplacePackedValue{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                                selected_field_ = selected_segment_name;
+                                return true;
+                            }
+                        }
+                    }
+                }
+                ImGui::EndCombo();
+            }
         }
 
         ImGui::SetNextItemWidth(std::max(80.0F, ImGui::GetContentRegionAvail().x - 132.0F));
@@ -3595,10 +4697,14 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             auto& relationship{
                 std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])
                     .relationship};
-            relationship = codegen::PackedFieldRelationSchema{
+            relationship = codegen::SemanticRelationSchema{
                 .kind = current_kind,
-                .target = codegen::TypeRef{
-                    .name = *picked_relationship_target, .suffix = {}, .nested = std::nullopt}};
+                .target = codegen::TypeRef{.name = *picked_relationship_target,
+                                           .suffix = {},
+                                           .nested = std::nullopt},
+                .unit = current_kind == codegen::SemanticRelationKind::offset_into
+                          ? std::optional{current_unit}
+                          : std::nullopt};
             if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
                                                        .schema = std::move(replacement)})) {
                 selected_field_ = selected_segment_name;
@@ -3622,6 +4728,8 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 selected_resolved_field->relationship.has_value() && ImGui::SmallButton(">")) {
                 selected_type_ = selected_resolved_field->relationship->target.type;
                 selected_field_.clear();
+                packed_access_fields_.clear();
+                packed_access_set_explicit_ = false;
                 record_access_members_.clear();
                 record_access_set_explicit_ = false;
                 return true;
@@ -3631,11 +4739,14 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             if (ImGui::SmallButton("Add")) {
                 auto replacement{*schema};
                 std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])
-                    .relationship = codegen::PackedFieldRelationSchema{
+                    .relationship = codegen::SemanticRelationSchema{
                     .kind = current_kind,
                     .target = codegen::TypeRef{.name = packed_relationship_target_.data(),
                                                .suffix = {},
-                                               .nested = std::nullopt}};
+                                               .nested = std::nullopt},
+                    .unit = current_kind == codegen::SemanticRelationKind::offset_into
+                              ? std::optional{current_unit}
+                              : std::nullopt};
                 if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
                                                            .schema = std::move(replacement)})) {
                     selected_field_ = selected_segment_name;
@@ -3645,12 +4756,104 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             ImGui::EndDisabled();
         }
         ImGui::TextDisabled(
-            "Relationships are semantic graph edges; width changes only when factual capacity "
-            "metadata exists.");
+            "Relationships are semantic graph edges; session capacity analysis does not change "
+            "durable source widths.");
+        layout::PackedFieldAnalysis const* analysis_field{};
+        if (active_packed_.has_value()) {
+            auto const found{std::ranges::find(
+                active_packed_->fields, selected_segment_name, &layout::PackedFieldAnalysis::name)};
+            if (found != active_packed_->fields.end()) {
+                analysis_field = &*found;
+            }
+        }
+        if (analysis_field != nullptr && analysis_field->relationship_target_extent.has_value()) {
+            auto const kind{*analysis_field->relationship_kind};
+            auto const term{detail::relationship_extent_term(kind)};
+            auto const unit{
+                detail::relationship_extent_unit(kind, analysis_field->relationship_unit)};
+            auto const heading{"Session " + std::string{term} + " requirement"};
+            ImGui::SeparatorText(heading.c_str());
+            ImGui::Text(
+                "Target %s: %llu %s",
+                term.data(),
+                static_cast<unsigned long long>(*analysis_field->relationship_target_extent),
+                unit.data());
+            ImGui::Text(
+                "Live values: %s",
+                analysis_field->relationship_live_value_count.has_value()
+                    ? detail::format_code_count(*analysis_field->relationship_live_value_count)
+                          .c_str()
+                    : "Unknown");
+            auto const required_codes{
+                analysis_field->relationship_required_code_count.has_value()
+                    ? detail::format_code_count(*analysis_field->relationship_required_code_count)
+                : analysis_field->relationship_minimum_required_bits.value_or(0) > 64
+                    ? std::string{"> 2^64"}
+                    : std::string{"Unknown"}};
+            ImGui::Text("Required codes: %s", required_codes.c_str());
+            ImGui::Text("Minimum width: %s",
+                        analysis_field->relationship_minimum_required_bits.has_value()
+                            ? (std::to_string(*analysis_field->relationship_minimum_required_bits) +
+                               " bits")
+                                  .c_str()
+                            : "Unknown");
+            ImGui::Text("Current planning width fits: %s",
+                        analysis_field->relationship_width_sufficient.has_value()
+                            ? (*analysis_field->relationship_width_sufficient ? "Yes" : "No")
+                            : "Unknown");
+            ImGui::Text(
+                "Code-space %s limit: %s",
+                term.data(),
+                detail::format_number(analysis_field->relationship_code_space_capacity_limit)
+                    .c_str());
+            ImGui::Text(
+                "Code-space %s headroom: %s",
+                term.data(),
+                detail::format_number(analysis_field->relationship_capacity_headroom).c_str());
+            ImGui::Text("Semantic-range %s limit: %s",
+                        term.data(),
+                        detail::format_number(analysis_field->relationship_semantic_capacity_limit)
+                            .c_str());
+            ImGui::Text("Sentinel-placement %s limit: %s",
+                        term.data(),
+                        detail::format_number(analysis_field->relationship_sentinel_capacity_limit)
+                            .c_str());
+            ImGui::Text("Effective valid %s limit: %s",
+                        term.data(),
+                        detail::format_number(analysis_field->relationship_effective_capacity_limit)
+                            .c_str());
+            ImGui::Text(
+                "Effective valid %s headroom: %s",
+                term.data(),
+                detail::format_number(analysis_field->relationship_effective_capacity_headroom)
+                    .c_str());
+            if (kind == codegen::SemanticRelationKind::count_of) {
+                ImGui::TextDisabled(
+                    "Live counts include 0 through capacity; named sentinels add code states.");
+            } else if (kind == codegen::SemanticRelationKind::offset_into) {
+                ImGui::TextDisabled(
+                    "Live offsets span 0 through extent-1 in the declared unit; named sentinels "
+                    "add code states.");
+            } else {
+                ImGui::TextDisabled(
+                    "Live indices span 0 through capacity-1; named sentinels add code states.");
+            }
+        }
     }
 
     auto selected_code_after_edit{selected_packed_code_};
-    if (!pending.has_value() && selected_schema_field != nullptr && selected_index.has_value()) {
+    if (!pending.has_value() && selected_schema_field != nullptr &&
+        selected_integer_scalar != nullptr && selected_resolved_field != nullptr) {
+        ImGui::SeparatorText("Shared scalar domain");
+        ImGui::TextDisabled(
+            "Range, signedness, and named codes are authored on the referenced integer scalar.");
+        for (auto const& code : selected_resolved_field->named_codes) {
+            auto const value{codegen::format_packed_integer(code.value)};
+            ImGui::BulletText(
+                "%s = %s%s", code.name.c_str(), value.c_str(), code.sentinel ? " (sentinel)" : "");
+        }
+    } else if (!pending.has_value() && selected_schema_field != nullptr &&
+               selected_index.has_value()) {
         auto const selected_segment_name{selected_field_};
         auto const effective_width{
             selected_resolved_field != nullptr ? selected_resolved_field->bit_width : 1U};
@@ -3890,6 +5093,8 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
     if (navigate_to.has_value()) {
         selected_type_ = *navigate_to;
         selected_field_.clear();
+        packed_access_fields_.clear();
+        packed_access_set_explicit_ = false;
         record_access_members_.clear();
         record_access_set_explicit_ = false;
         return true;
@@ -3908,6 +5113,14 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         }
         if (apply_document_edit(
                 ReplacePackedValue{.declaration = *declaration, .schema = std::move(*pending)})) {
+            if (packed_access_set_explicit_ && renamed_field.has_value()) {
+                auto const existing{packed_access_fields_.find(renamed_field->first)};
+                if (existing != packed_access_fields_.end()) {
+                    auto const operation{existing->second};
+                    packed_access_fields_.erase(existing);
+                    packed_access_fields_.insert_or_assign(renamed_field->second, operation);
+                }
+            }
             selected_field_ = std::move(selected_after_edit);
             selected_packed_code_ = std::move(selected_code_after_edit);
             return true;
@@ -3946,6 +5159,10 @@ auto PlannerUi::draw_union_editor(TypeNode const& node, UnionType const& union_t
     if (union_editor_declaration_ != declaration || union_editor_alternative_ != selected_field_) {
         union_editor_declaration_ = declaration;
         union_editor_alternative_ = selected_field_;
+        std::snprintf(union_export_specifier_.data(),
+                      union_export_specifier_.size(),
+                      "%s",
+                      schema->export_specifier.value_or("").c_str());
         if (selected != schema->alternatives.end()) {
             std::snprintf(union_alternative_name_.data(),
                           union_alternative_name_.size(),
@@ -3957,6 +5174,24 @@ auto PlannerUi::draw_union_editor(TypeNode const& node, UnionType const& union_t
                           selected->type.name.c_str());
             union_alternative_is_array_ = selected->count.has_value();
             union_alternative_count_ = selected->count.value_or(1);
+        }
+    }
+
+    ImGui::SetNextItemWidth(-1.0F);
+    auto const export_submitted{ImGui::InputText("Export specifier (optional)##union",
+                                                 union_export_specifier_.data(),
+                                                 union_export_specifier_.size(),
+                                                 ImGuiInputTextFlags_EnterReturnsTrue)};
+    if (export_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+        auto const export_specifier{optional_text(union_export_specifier_)};
+        if (schema->export_specifier != export_specifier) {
+            auto replacement{*schema};
+            replacement.export_specifier = export_specifier;
+            if (apply_document_edit(
+                    ReplaceUnion{.declaration = *declaration, .schema = std::move(replacement)})) {
+                selected_field_ = union_editor_alternative_;
+                return true;
+            }
         }
     }
 
@@ -4211,6 +5446,10 @@ auto PlannerUi::draw_tagged_union_editor(TypeNode const& node, TaggedUnionType c
         tagged_union_editor_alternative_ != selected_field_) {
         tagged_union_editor_declaration_ = declaration;
         tagged_union_editor_alternative_ = selected_field_;
+        std::snprintf(tagged_union_export_specifier_.data(),
+                      tagged_union_export_specifier_.size(),
+                      "%s",
+                      schema->export_specifier.value_or("").c_str());
         if (selected != schema->alternatives.end()) {
             std::snprintf(tagged_union_alternative_name_.data(),
                           tagged_union_alternative_name_.size(),
@@ -4222,6 +5461,24 @@ auto PlannerUi::draw_tagged_union_editor(TypeNode const& node, TaggedUnionType c
                           selected->type.name.c_str());
             tagged_union_alternative_is_array_ = selected->count.has_value();
             tagged_union_alternative_count_ = selected->count.value_or(1);
+        }
+    }
+
+    ImGui::SetNextItemWidth(-1.0F);
+    auto const export_submitted{ImGui::InputText("Export specifier (optional)##tagged-union",
+                                                 tagged_union_export_specifier_.data(),
+                                                 tagged_union_export_specifier_.size(),
+                                                 ImGuiInputTextFlags_EnterReturnsTrue)};
+    if (export_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+        auto const export_specifier{optional_text(tagged_union_export_specifier_)};
+        if (schema->export_specifier != export_specifier) {
+            auto replacement{*schema};
+            replacement.export_specifier = export_specifier;
+            if (apply_document_edit(ReplaceTaggedUnion{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                selected_field_ = tagged_union_editor_alternative_;
+                return true;
+            }
         }
     }
 
@@ -4553,6 +5810,10 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
     if (record_editor_declaration_ != declaration || record_editor_member_ != selected_field_) {
         record_editor_declaration_ = declaration;
         record_editor_member_ = selected_field_;
+        std::snprintf(record_export_specifier_.data(),
+                      record_export_specifier_.size(),
+                      "%s",
+                      schema->export_specifier.value_or("").c_str());
         if (selected != schema->members.end()) {
             std::snprintf(record_member_name_.data(),
                           record_member_name_.size(),
@@ -4564,6 +5825,46 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
                           selected->type.name.c_str());
             record_member_is_array_ = selected->count.has_value();
             record_member_count_ = selected->count.value_or(1);
+            std::snprintf(record_relationship_target_.data(),
+                          record_relationship_target_.size(),
+                          "%s",
+                          selected->relationship.has_value()
+                              ? selected->relationship->target.name.c_str()
+                              : "");
+            auto const relationship_kind{
+                selected->relationship.has_value()
+                    ? std::ranges::find(semantic_relationship_kinds, selected->relationship->kind)
+                    : semantic_relationship_kinds.end()};
+            record_relationship_kind_ =
+                relationship_kind == semantic_relationship_kinds.end()
+                    ? 0
+                    : static_cast<int>(relationship_kind - semantic_relationship_kinds.begin());
+            auto const relationship_unit{
+                selected->relationship.has_value() && selected->relationship->unit.has_value()
+                    ? std::ranges::find(semantic_relationship_units, *selected->relationship->unit)
+                    : semantic_relationship_units.end()};
+            record_relationship_unit_ =
+                relationship_unit == semantic_relationship_units.end()
+                    ? 0
+                    : static_cast<int>(relationship_unit - semantic_relationship_units.begin());
+        }
+    }
+
+    ImGui::SetNextItemWidth(-1.0F);
+    auto const export_submitted{ImGui::InputText("Export specifier (optional)##record",
+                                                 record_export_specifier_.data(),
+                                                 record_export_specifier_.size(),
+                                                 ImGuiInputTextFlags_EnterReturnsTrue)};
+    if (export_submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+        auto const export_specifier{optional_text(record_export_specifier_)};
+        if (schema->export_specifier != export_specifier) {
+            auto replacement{*schema};
+            replacement.export_specifier = export_specifier;
+            if (apply_document_edit(
+                    ReplaceRecord{.declaration = *declaration, .schema = std::move(replacement)})) {
+                selected_field_ = record_editor_member_;
+                return true;
+            }
         }
     }
 
@@ -4573,7 +5874,8 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
         replacement.members.push_back(codegen::RecordMemberSchema{
             .name = name,
             .type = codegen::TypeRef{.name = "std::uint32_t", .suffix = {}, .nested = std::nullopt},
-            .count = std::nullopt});
+            .count = std::nullopt,
+            .relationship = std::nullopt});
         if (apply_document_edit(
                 ReplaceRecord{.declaration = *declaration, .schema = std::move(replacement)})) {
             selected_field_ = std::move(name);
@@ -4646,7 +5948,7 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
     if (ImGui::Button("Access all")) {
         record_access_members_.clear();
         for (auto const& member : schema->members) {
-            record_access_members_.insert(member.name);
+            record_access_members_.insert_or_assign(member.name, access_operation_);
         }
         record_access_set_explicit_ = true;
     }
@@ -4656,11 +5958,12 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
     std::optional<std::pair<std::string, std::string>> renamed_member;
     auto selected_after_edit{selected_field_};
     if (ImGui::BeginTable("record-schema-members",
-                          6,
+                          7,
                           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                               ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Access", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Operation", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Name");
         ImGui::TableSetupColumn("Semantic type");
         ImGui::TableSetupColumn("Fixed array", ImGuiTableColumnFlags_WidthFixed);
@@ -4700,15 +6003,43 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
                 if (!record_access_set_explicit_) {
                     record_access_members_.clear();
                     if (!selected_field_.empty()) {
-                        record_access_members_.insert(selected_field_);
+                        record_access_members_.insert_or_assign(selected_field_, access_operation_);
                     }
                     record_access_set_explicit_ = true;
                 }
                 if (accessed) {
-                    record_access_members_.insert(member.name);
+                    record_access_members_.insert_or_assign(member.name, access_operation_);
                 } else {
                     record_access_members_.erase(member.name);
                 }
+            }
+
+            ImGui::TableNextColumn();
+            if (accessed) {
+                auto operation{access_operation_};
+                if (record_access_set_explicit_) {
+                    if (auto const found{record_access_members_.find(member.name)};
+                        found != record_access_members_.end()) {
+                        operation = found->second;
+                    }
+                }
+                auto operation_index{static_cast<int>(operation)};
+                ImGui::SetNextItemWidth(105.0F);
+                if (ImGui::Combo(
+                        "##access-operation", &operation_index, "Read\0Write\0Read + write\0")) {
+                    if (!record_access_set_explicit_) {
+                        record_access_members_.clear();
+                        if (!selected_field_.empty()) {
+                            record_access_members_.insert_or_assign(selected_field_,
+                                                                    access_operation_);
+                        }
+                        record_access_set_explicit_ = true;
+                    }
+                    record_access_members_.insert_or_assign(
+                        member.name, static_cast<AccessOperation>(operation_index));
+                }
+            } else {
+                ImGui::TextDisabled("-");
             }
 
             ImGui::TableNextColumn();
@@ -4788,6 +6119,161 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
         ImGui::EndTable();
     }
 
+    if (!pending.has_value() && selected_index.has_value()) {
+        auto const member_name{schema->members[*selected_index].name};
+        auto const& member{schema->members[*selected_index]};
+        auto const* resolved_member{
+            *selected_index < record.members.size() ? &record.members[*selected_index] : nullptr};
+        auto const current_kind{semantic_relationship_kinds[static_cast<std::size_t>(
+            std::clamp(record_relationship_kind_,
+                       0,
+                       static_cast<int>(semantic_relationship_kinds.size() - 1)))]};
+        auto const current_unit{semantic_relationship_units[static_cast<std::size_t>(
+            std::clamp(record_relationship_unit_,
+                       0,
+                       static_cast<int>(semantic_relationship_units.size() - 1)))]};
+        ImGui::SeparatorText("Selected member relationship");
+        ImGui::SetNextItemWidth(180.0F);
+        if (ImGui::BeginCombo("Kind", codegen::semantic_relation_kind_name(current_kind).data())) {
+            for (std::size_t kind_index{}; kind_index < semantic_relationship_kinds.size();
+                 ++kind_index) {
+                auto const kind{semantic_relationship_kinds[kind_index]};
+                auto const chosen{record_relationship_kind_ == static_cast<int>(kind_index)};
+                if (ImGui::Selectable(codegen::semantic_relation_kind_name(kind).data(), chosen)) {
+                    record_relationship_kind_ = static_cast<int>(kind_index);
+                    if (member.relationship.has_value()) {
+                        auto replacement{*schema};
+                        replacement.members[*selected_index].relationship->kind = kind;
+                        replacement.members[*selected_index].relationship->unit =
+                            kind == codegen::SemanticRelationKind::offset_into
+                                ? std::optional{current_unit}
+                                : std::nullopt;
+                        if (apply_document_edit(ReplaceRecord{.declaration = *declaration,
+                                                              .schema = std::move(replacement)})) {
+                            record_editor_declaration_.reset();
+                            selected_field_ = member_name;
+                            ImGui::EndCombo();
+                            return true;
+                        }
+                    }
+                }
+            }
+            ImGui::EndCombo();
+        }
+        if (current_kind == codegen::SemanticRelationKind::offset_into) {
+            ImGui::SetNextItemWidth(180.0F);
+            if (ImGui::BeginCombo("Unit",
+                                  codegen::semantic_relation_unit_name(current_unit).data())) {
+                for (std::size_t unit_index{}; unit_index < semantic_relationship_units.size();
+                     ++unit_index) {
+                    auto const unit{semantic_relationship_units[unit_index]};
+                    auto const chosen{record_relationship_unit_ == static_cast<int>(unit_index)};
+                    if (ImGui::Selectable(codegen::semantic_relation_unit_name(unit).data(),
+                                          chosen)) {
+                        record_relationship_unit_ = static_cast<int>(unit_index);
+                        if (member.relationship.has_value()) {
+                            auto replacement{*schema};
+                            replacement.members[*selected_index].relationship->unit = unit;
+                            if (apply_document_edit(
+                                    ReplaceRecord{.declaration = *declaration,
+                                                  .schema = std::move(replacement)})) {
+                                record_editor_declaration_.reset();
+                                selected_field_ = member_name;
+                                ImGui::EndCombo();
+                                return true;
+                            }
+                        }
+                    }
+                }
+                ImGui::EndCombo();
+            }
+        }
+
+        ImGui::SetNextItemWidth(std::max(80.0F, ImGui::GetContentRegionAvail().x - 132.0F));
+        auto const target_submitted{ImGui::InputText("Target",
+                                                     record_relationship_target_.data(),
+                                                     record_relationship_target_.size(),
+                                                     ImGuiInputTextFlags_EnterReturnsTrue)};
+        if (member.relationship.has_value() &&
+            (target_submitted || ImGui::IsItemDeactivatedAfterEdit())) {
+            if (record_relationship_target_.front() == '\0') {
+                schema_edit_message_ = "Relationship target cannot be empty.";
+            } else {
+                auto replacement{*schema};
+                replacement.members[*selected_index].relationship->target.name =
+                    record_relationship_target_.data();
+                if (apply_document_edit(ReplaceRecord{.declaration = *declaration,
+                                                      .schema = std::move(replacement)})) {
+                    record_editor_declaration_.reset();
+                    selected_field_ = member_name;
+                    return true;
+                }
+            }
+        }
+        ImGui::SameLine();
+        ImGui::PushID("record-relationship-target");
+        auto picked_relationship_target{draw_type_picker(node.identity.module_name, node.identity)};
+        ImGui::PopID();
+        if (picked_relationship_target.has_value()) {
+            auto replacement{*schema};
+            replacement.members[*selected_index].relationship = codegen::SemanticRelationSchema{
+                .kind = current_kind,
+                .target = codegen::TypeRef{.name = *picked_relationship_target,
+                                           .suffix = {},
+                                           .nested = std::nullopt},
+                .unit = current_kind == codegen::SemanticRelationKind::offset_into
+                          ? std::optional{current_unit}
+                          : std::nullopt};
+            if (apply_document_edit(
+                    ReplaceRecord{.declaration = *declaration, .schema = std::move(replacement)})) {
+                record_editor_declaration_.reset();
+                selected_field_ = member_name;
+                return true;
+            }
+        }
+        ImGui::SameLine();
+        if (member.relationship.has_value()) {
+            if (ImGui::SmallButton("Clear")) {
+                auto replacement{*schema};
+                replacement.members[*selected_index].relationship.reset();
+                if (apply_document_edit(ReplaceRecord{.declaration = *declaration,
+                                                      .schema = std::move(replacement)})) {
+                    record_editor_declaration_.reset();
+                    selected_field_ = member_name;
+                    return true;
+                }
+            }
+            ImGui::SameLine();
+            if (resolved_member != nullptr && resolved_member->relationship.has_value() &&
+                ImGui::SmallButton(">")) {
+                navigate_to = resolved_member->relationship->target.type;
+            }
+        } else {
+            ImGui::BeginDisabled(record_relationship_target_.front() == '\0');
+            if (ImGui::SmallButton("Add")) {
+                auto replacement{*schema};
+                replacement.members[*selected_index].relationship = codegen::SemanticRelationSchema{
+                    .kind = current_kind,
+                    .target = codegen::TypeRef{.name = record_relationship_target_.data(),
+                                               .suffix = {},
+                                               .nested = std::nullopt},
+                    .unit = current_kind == codegen::SemanticRelationKind::offset_into
+                              ? std::optional{current_unit}
+                              : std::nullopt};
+                if (apply_document_edit(ReplaceRecord{.declaration = *declaration,
+                                                      .schema = std::move(replacement)})) {
+                    record_editor_declaration_.reset();
+                    selected_field_ = member_name;
+                    return true;
+                }
+            }
+            ImGui::EndDisabled();
+        }
+        ImGui::TextDisabled(
+            "The relationship is durable semantic metadata; record offsets and ABI layout still "
+            "come only from the member type, count, and target profile.");
+    }
+
     if (navigate_to.has_value()) {
         selected_type_ = *navigate_to;
         selected_field_.clear();
@@ -4812,9 +6298,13 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
         }
         if (apply_document_edit(
                 ReplaceRecord{.declaration = *declaration, .schema = std::move(*pending)})) {
-            if (record_access_set_explicit_ && renamed_member.has_value() &&
-                record_access_members_.erase(renamed_member->first) != 0) {
-                record_access_members_.insert(renamed_member->second);
+            if (record_access_set_explicit_ && renamed_member.has_value()) {
+                auto const existing{record_access_members_.find(renamed_member->first)};
+                if (existing != record_access_members_.end()) {
+                    auto const operation{existing->second};
+                    record_access_members_.erase(existing);
+                    record_access_members_.insert_or_assign(renamed_member->second, operation);
+                }
             }
             selected_field_ = std::move(selected_after_edit);
             return true;
@@ -5039,6 +6529,28 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                           soa_member_nested_schema_.size(),
                           "%s",
                           selected->nested_schema.value_or("").c_str());
+            std::snprintf(soa_relationship_target_.data(),
+                          soa_relationship_target_.size(),
+                          "%s",
+                          selected->relationship.has_value()
+                              ? selected->relationship->target.name.c_str()
+                              : "");
+            auto const relationship_kind{
+                selected->relationship.has_value()
+                    ? std::ranges::find(semantic_relationship_kinds, selected->relationship->kind)
+                    : semantic_relationship_kinds.begin()};
+            soa_relationship_kind_ =
+                relationship_kind == semantic_relationship_kinds.end()
+                    ? 0
+                    : static_cast<int>(relationship_kind - semantic_relationship_kinds.begin());
+            auto const relationship_unit{
+                selected->relationship.has_value() && selected->relationship->unit.has_value()
+                    ? std::ranges::find(semantic_relationship_units, *selected->relationship->unit)
+                    : semantic_relationship_units.begin()};
+            soa_relationship_unit_ =
+                relationship_unit == semantic_relationship_units.end()
+                    ? 0
+                    : static_cast<int>(relationship_unit - semantic_relationship_units.begin());
             soa_mask_dimension_names_.clear();
             soa_mask_dimension_extents_.clear();
             soa_mask_dimension_names_.reserve(selected->mask_dimensions.size());
@@ -5070,7 +6582,8 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             .fixed_schema = std::nullopt,
             .nested_schema = std::nullopt,
             .mask_field = false,
-            .mask_dimensions = {}});
+            .mask_dimensions = {},
+            .relationship = std::nullopt});
         if (apply_document_edit(
                 ReplaceSoa{.declaration = *declaration, .schema = std::move(replacement)})) {
             selected_field_ = std::move(name);
@@ -5144,7 +6657,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
     if (ImGui::Button("Access all")) {
         soa_access_columns_.clear();
         for (auto const& member : schema->members) {
-            soa_access_columns_.insert(member.name);
+            soa_access_columns_.insert_or_assign(member.name, access_operation_);
         }
         soa_access_set_explicit_ = true;
     }
@@ -5154,11 +6667,12 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
     std::optional<std::pair<std::string, std::string>> renamed_member;
     auto selected_after_edit{selected_field_};
     if (ImGui::BeginTable("soa-schema-members",
-                          5,
+                          6,
                           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                               ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
         ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Access", ImGuiTableColumnFlags_WidthFixed);
+        ImGui::TableSetupColumn("Operation", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Name");
         ImGui::TableSetupColumn("Semantic type");
         ImGui::TableSetupColumn("Kind");
@@ -5197,15 +6711,43 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                 if (!soa_access_set_explicit_) {
                     soa_access_columns_.clear();
                     if (!selected_field_.empty()) {
-                        soa_access_columns_.insert(selected_field_);
+                        soa_access_columns_.insert_or_assign(selected_field_, access_operation_);
                     }
                     soa_access_set_explicit_ = true;
                 }
                 if (accessed) {
-                    soa_access_columns_.insert(member.name);
+                    soa_access_columns_.insert_or_assign(member.name, access_operation_);
                 } else {
                     soa_access_columns_.erase(member.name);
                 }
+            }
+
+            ImGui::TableNextColumn();
+            if (accessed) {
+                auto operation{access_operation_};
+                if (soa_access_set_explicit_) {
+                    if (auto const found{soa_access_columns_.find(member.name)};
+                        found != soa_access_columns_.end()) {
+                        operation = found->second;
+                    }
+                }
+                auto operation_index{static_cast<int>(operation)};
+                ImGui::SetNextItemWidth(105.0F);
+                if (ImGui::Combo(
+                        "##access-operation", &operation_index, "Read\0Write\0Read + write\0")) {
+                    if (!soa_access_set_explicit_) {
+                        soa_access_columns_.clear();
+                        if (!selected_field_.empty()) {
+                            soa_access_columns_.insert_or_assign(selected_field_,
+                                                                 access_operation_);
+                        }
+                        soa_access_set_explicit_ = true;
+                    }
+                    soa_access_columns_.insert_or_assign(
+                        member.name, static_cast<AccessOperation>(operation_index));
+                }
+            } else {
+                ImGui::TextDisabled("-");
             }
 
             ImGui::TableNextColumn();
@@ -5282,6 +6824,8 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
 
     if (selected_index.has_value()) {
         auto const& member{schema->members[*selected_index]};
+        auto const* resolved_column{
+            *selected_index < soa.columns.size() ? &soa.columns[*selected_index] : nullptr};
         ImGui::SeparatorText("Selected column details");
         if (member.kind == codegen::SoaMemberKind::nested) {
             ImGui::SetNextItemWidth(-1.0F);
@@ -5321,6 +6865,232 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             ImGui::TextDisabled("Fixed and nested schema references apply only to nested columns.");
         }
 
+        if (!pending.has_value()) {
+            auto record_module_index{std::optional<std::size_t>{}};
+            auto fallback_record_module_index{std::optional<std::size_t>{}};
+            auto const& modules{document_->manifest().modules};
+            for (std::size_t module_index{}; module_index < modules.size(); ++module_index) {
+                auto const* record_module{
+                    std::get_if<codegen::RecordModuleSchema>(&modules[module_index])};
+                if (record_module == nullptr) {
+                    continue;
+                }
+                if (!fallback_record_module_index.has_value()) {
+                    fallback_record_module_index = module_index;
+                }
+                if (record_module->settings.namespace_name.value_or("") ==
+                    node.identity.namespace_name) {
+                    record_module_index = module_index;
+                    break;
+                }
+            }
+            if (!record_module_index.has_value()) {
+                record_module_index = fallback_record_module_index;
+            }
+            auto const mask_storage{schema->field_mask_name.has_value() &&
+                                    member.type.name == *schema->field_mask_name};
+            auto const can_create_record{record_module_index.has_value() &&
+                                         resolved_column != nullptr && !mask_storage &&
+                                         member.kind == codegen::SoaMemberKind::array};
+            ImGui::BeginDisabled(!can_create_record);
+            if (ImGui::Button("Create record for selected column...")) {
+                new_record_module_index_ = *record_module_index;
+                auto const suggested_name{suggested_type_name(member.name, "Record")};
+                auto& record_module{
+                    std::get<codegen::RecordModuleSchema>(modules[new_record_module_index_])};
+                auto unique_name{suggested_name};
+                auto suffix_number{std::size_t{1}};
+                while (std::ranges::find(
+                           record_module.records, unique_name, &codegen::RecordSchema::name) !=
+                       record_module.records.end()) {
+                    unique_name = suggested_name + std::to_string(suffix_number++);
+                }
+                std::snprintf(
+                    new_record_name_.data(), new_record_name_.size(), "%s", unique_name.c_str());
+                auto first_member_type{member.type.name};
+                auto const& current_type{
+                    workspace_.types().type(resolved_column->semantic_type.type)};
+                if (!first_member_type.starts_with('@') &&
+                    current_type.identity.origin == TypeOrigin::declaration) {
+                    first_member_type = current_type.cpp_spelling;
+                }
+                std::snprintf(new_record_member_type_.data(),
+                              new_record_member_type_.size(),
+                              "%s",
+                              first_member_type.c_str());
+                pending_soa_record_binding_ = PendingSoaRecordBinding{
+                    .soa_declaration = *declaration, .column_name = member.name};
+                open_new_record_dialog_ = true;
+            }
+            ImGui::EndDisabled();
+            if (!record_module_index.has_value()) {
+                ImGui::SameLine();
+                ImGui::TextDisabled("No record module is available.");
+            } else if (resolved_column == nullptr) {
+                ImGui::SameLine();
+                ImGui::TextDisabled("The selected column type is unresolved.");
+            } else if (mask_storage || member.kind != codegen::SoaMemberKind::array) {
+                ImGui::SameLine();
+                ImGui::TextDisabled("Available for ordinary array columns.");
+            } else {
+                ImGui::SameLine();
+                ImGui::TextDisabled("Creates a shared record, then binds this column.");
+            }
+
+            auto const current_kind{semantic_relationship_kinds[static_cast<std::size_t>(
+                std::clamp(soa_relationship_kind_,
+                           0,
+                           static_cast<int>(semantic_relationship_kinds.size() - 1)))]};
+            auto const current_unit{semantic_relationship_units[static_cast<std::size_t>(
+                std::clamp(soa_relationship_unit_,
+                           0,
+                           static_cast<int>(semantic_relationship_units.size() - 1)))]};
+            ImGui::SeparatorText("Selected column relationship");
+            ImGui::SetNextItemWidth(180.0F);
+            if (ImGui::BeginCombo("Kind##soa-column-relationship",
+                                  codegen::semantic_relation_kind_name(current_kind).data())) {
+                for (std::size_t kind_index{}; kind_index < semantic_relationship_kinds.size();
+                     ++kind_index) {
+                    auto const kind{semantic_relationship_kinds[kind_index]};
+                    auto const chosen{soa_relationship_kind_ == static_cast<int>(kind_index)};
+                    if (ImGui::Selectable(codegen::semantic_relation_kind_name(kind).data(),
+                                          chosen)) {
+                        soa_relationship_kind_ = static_cast<int>(kind_index);
+                        if (member.relationship.has_value()) {
+                            auto replacement{*schema};
+                            replacement.members[*selected_index].relationship->kind = kind;
+                            replacement.members[*selected_index].relationship->unit =
+                                kind == codegen::SemanticRelationKind::offset_into
+                                    ? std::optional{current_unit}
+                                    : std::nullopt;
+                            if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                               .schema = std::move(replacement)})) {
+                                soa_editor_declaration_.reset();
+                                selected_field_ = member.name;
+                                ImGui::EndCombo();
+                                return true;
+                            }
+                        }
+                    }
+                }
+                ImGui::EndCombo();
+            }
+            if (current_kind == codegen::SemanticRelationKind::offset_into) {
+                ImGui::SetNextItemWidth(180.0F);
+                if (ImGui::BeginCombo("Unit##soa-column-relationship",
+                                      codegen::semantic_relation_unit_name(current_unit).data())) {
+                    for (std::size_t unit_index{}; unit_index < semantic_relationship_units.size();
+                         ++unit_index) {
+                        auto const unit{semantic_relationship_units[unit_index]};
+                        auto const chosen{soa_relationship_unit_ == static_cast<int>(unit_index)};
+                        if (ImGui::Selectable(codegen::semantic_relation_unit_name(unit).data(),
+                                              chosen)) {
+                            soa_relationship_unit_ = static_cast<int>(unit_index);
+                            if (member.relationship.has_value()) {
+                                auto replacement{*schema};
+                                replacement.members[*selected_index].relationship->unit = unit;
+                                if (apply_document_edit(
+                                        ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                                    soa_editor_declaration_.reset();
+                                    selected_field_ = member.name;
+                                    ImGui::EndCombo();
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                    ImGui::EndCombo();
+                }
+            }
+
+            ImGui::SetNextItemWidth(std::max(80.0F, ImGui::GetContentRegionAvail().x - 132.0F));
+            auto const target_submitted{ImGui::InputText("Target##soa-column-relationship",
+                                                         soa_relationship_target_.data(),
+                                                         soa_relationship_target_.size(),
+                                                         ImGuiInputTextFlags_EnterReturnsTrue)};
+            if (member.relationship.has_value() &&
+                (target_submitted || ImGui::IsItemDeactivatedAfterEdit())) {
+                if (soa_relationship_target_.front() == '\0') {
+                    schema_edit_message_ = "Relationship target cannot be empty.";
+                } else {
+                    auto replacement{*schema};
+                    replacement.members[*selected_index].relationship->target.name =
+                        soa_relationship_target_.data();
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_editor_declaration_.reset();
+                        selected_field_ = member.name;
+                        return true;
+                    }
+                }
+            }
+            ImGui::SameLine();
+            ImGui::PushID("soa-column-relationship-target");
+            auto picked_relationship_target{
+                draw_type_picker(node.identity.module_name, node.identity)};
+            ImGui::PopID();
+            if (picked_relationship_target.has_value()) {
+                auto replacement{*schema};
+                replacement.members[*selected_index].relationship = codegen::SemanticRelationSchema{
+                    .kind = current_kind,
+                    .target = codegen::TypeRef{.name = *picked_relationship_target,
+                                               .suffix = {},
+                                               .nested = std::nullopt},
+                    .unit = current_kind == codegen::SemanticRelationKind::offset_into
+                              ? std::optional{current_unit}
+                              : std::nullopt};
+                if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                   .schema = std::move(replacement)})) {
+                    soa_editor_declaration_.reset();
+                    selected_field_ = member.name;
+                    return true;
+                }
+            }
+            ImGui::SameLine();
+            if (member.relationship.has_value()) {
+                if (ImGui::SmallButton("Clear##soa-column-relationship")) {
+                    auto replacement{*schema};
+                    replacement.members[*selected_index].relationship.reset();
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_editor_declaration_.reset();
+                        selected_field_ = member.name;
+                        return true;
+                    }
+                }
+                ImGui::SameLine();
+                if (resolved_column != nullptr && resolved_column->relationship.has_value() &&
+                    ImGui::SmallButton(">##soa-column-relationship")) {
+                    navigate_to = resolved_column->relationship->target.type;
+                }
+            } else {
+                ImGui::BeginDisabled(soa_relationship_target_.front() == '\0');
+                if (ImGui::SmallButton("Add##soa-column-relationship")) {
+                    auto replacement{*schema};
+                    replacement.members[*selected_index].relationship =
+                        codegen::SemanticRelationSchema{
+                            .kind = current_kind,
+                            .target = codegen::TypeRef{.name = soa_relationship_target_.data(),
+                                                       .suffix = {},
+                                                       .nested = std::nullopt},
+                            .unit = current_kind == codegen::SemanticRelationKind::offset_into
+                                      ? std::optional{current_unit}
+                                      : std::nullopt};
+                    if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
+                                                       .schema = std::move(replacement)})) {
+                        soa_editor_declaration_.reset();
+                        selected_field_ = member.name;
+                        return true;
+                    }
+                }
+                ImGui::EndDisabled();
+            }
+            ImGui::TextDisabled(
+                "The relationship is durable semantic metadata; SoA storage, capacity, and "
+                "allocator placement remain separate physical/session concerns.");
+        }
+
         auto const mask_configured{schema->field_mask_name.has_value() &&
                                    schema->field_enum_name.has_value()};
         if (!mask_configured) {
@@ -5341,7 +7111,8 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                     .fixed_schema = std::nullopt,
                     .nested_schema = std::nullopt,
                     .mask_field = false,
-                    .mask_dimensions = {}});
+                    .mask_dimensions = {},
+                    .relationship = std::nullopt});
                 if (apply_document_edit(ReplaceSoa{.declaration = *declaration,
                                                    .schema = std::move(replacement)})) {
                     selected_field_ = member.name;
@@ -7269,9 +9040,13 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
         }
         if (apply_document_edit(
                 ReplaceSoa{.declaration = *declaration, .schema = std::move(*pending)})) {
-            if (soa_access_set_explicit_ && renamed_member.has_value() &&
-                soa_access_columns_.erase(renamed_member->first) != 0) {
-                soa_access_columns_.insert(renamed_member->second);
+            if (soa_access_set_explicit_ && renamed_member.has_value()) {
+                auto const existing{soa_access_columns_.find(renamed_member->first)};
+                if (existing != soa_access_columns_.end()) {
+                    auto const operation{existing->second};
+                    soa_access_columns_.erase(existing);
+                    soa_access_columns_.insert_or_assign(renamed_member->second, operation);
+                }
             }
             selected_field_ = std::move(selected_after_edit);
             soa_editor_declaration_.reset();
@@ -7282,7 +9057,12 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
 }
 
 void PlannerUi::draw_variants_panel() {
-    ImGui::Begin("Variants");
+    if (!variants_view_open_) {
+        return;
+    }
+    auto const was_open{variants_view_open_};
+    ImGui::Begin("Variants", &variants_view_open_);
+    persist_view_visibility(was_open, variants_view_open_);
     auto const baseline_before_actions{workspace_.active_variant_id() ==
                                        LayoutWorkspace::baseline_variant_id};
     if (ImGui::BeginTable("variant-actions",

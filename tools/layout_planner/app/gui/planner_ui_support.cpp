@@ -42,6 +42,31 @@ auto format_fit(std::optional<bool> const fits) -> std::string {
     return fits.has_value() ? (*fits ? "Yes" : "No") : "Unknown";
 }
 
+auto access_operation_name(layout::AccessOperation const operation) -> char const* {
+    switch (operation) {
+        case layout::AccessOperation::read:
+            return "Read";
+        case layout::AccessOperation::write:
+            return "Write";
+        case layout::AccessOperation::read_write:
+            return "Read + write";
+    }
+    return "Unknown";
+}
+
+auto access_operation_summary(std::span<layout::AccessIntent const> const accesses) -> char const* {
+    if (accesses.empty()) {
+        return "None";
+    }
+    auto const operation{accesses.front().operation};
+    if (std::ranges::any_of(accesses, [&](layout::AccessIntent const& access) {
+            return access.operation != operation;
+        })) {
+        return "Mixed per field";
+    }
+    return access_operation_name(operation);
+}
+
 auto format_delta(std::optional<layout::NumericDelta> const delta, auto const& format_magnitude)
     -> std::string {
     if (!delta.has_value()) {
@@ -68,6 +93,19 @@ auto format_delta_bytes(std::optional<layout::NumericDelta> const delta) -> std:
 auto format_delta_number(std::optional<layout::NumericDelta> const delta) -> std::string {
     return format_delta(delta,
                         [](std::uint64_t const magnitude) { return std::to_string(magnitude); });
+}
+
+auto relationship_extent_term(codegen::SemanticRelationKind const kind) -> std::string_view {
+    return kind == codegen::SemanticRelationKind::offset_into ? "extent" : "capacity";
+}
+
+auto relationship_extent_unit(codegen::SemanticRelationKind const kind,
+                              std::optional<codegen::SemanticRelationUnit> const unit)
+    -> std::string_view {
+    if (kind == codegen::SemanticRelationKind::offset_into && unit.has_value()) {
+        return codegen::semantic_relation_unit_name(*unit);
+    }
+    return "elements";
 }
 
 auto parse_unsigned(std::string_view text) -> std::optional<std::uint64_t> {
