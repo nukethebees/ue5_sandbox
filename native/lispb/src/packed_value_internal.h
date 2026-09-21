@@ -15,6 +15,10 @@ auto find_packed_enum(TypeRef const& type,
 auto find_integer_scalar(TypeRef const& type,
                          std::map<std::string, CppType> const& types,
                          std::vector<ModuleSchema> const& modules) -> IntegerScalarSchema const*;
+auto find_linear_quantized(TypeRef const& type,
+                           std::map<std::string, CppType> const& types,
+                           std::vector<ModuleSchema> const& modules)
+    -> LinearQuantizedSchema const*;
 auto derive_integer_scalar_width(IntegerScalarSchema const& scalar) -> std::optional<int>;
 auto derive_packed_field_width(PackedFieldSchema const& field,
                                std::map<std::string, CppType> const& types,

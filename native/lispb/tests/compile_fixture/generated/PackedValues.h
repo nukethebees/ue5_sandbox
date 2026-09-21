@@ -1031,4 +1031,115 @@ static_assert(sizeof(CheckedValue) == sizeof(CheckedValue::storage_type));
 static_assert(std::is_trivially_copyable_v<CheckedValue>);
 static_assert(std::is_standard_layout_v<CheckedValue>);
 
+struct Vitals {
+    using storage_type = std::uint16_t;
+    static_assert(std::is_unsigned_v<storage_type>);
+    static_assert(std::numeric_limits<storage_type>::digits == 16);
+    using health_encoded_type = std::uint8_t;
+    static_assert(std::is_unsigned_v<std::uint8_t>);
+    static_assert(std::numeric_limits<std::uint8_t>::digits >= 8);
+
+    inline static constexpr int health_offset{0};
+    inline static constexpr int health_bits{8};
+    inline static constexpr storage_type health_value_mask{storage_type{0xff}};
+    inline static constexpr storage_type health_mask{storage_type{0xff}};
+    inline static constexpr health_encoded_type health_maximum_encoded{health_encoded_type{0xfd}};
+    using state_type = std::uint8_t;
+
+    inline static constexpr int state_offset{8};
+    inline static constexpr int state_bits{8};
+    inline static constexpr storage_type state_value_mask{storage_type{0xff}};
+    inline static constexpr storage_type state_mask{storage_type{0xff00}};
+
+    constexpr Vitals() noexcept = default;
+    explicit constexpr Vitals(storage_type const raw) noexcept
+        : value_{raw} {}
+
+    [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
+
+    [[nodiscard]] static constexpr auto try_make(std::uint8_t const health_encoded_value,
+                                                 std::uint8_t const state_value,
+                                                 Vitals& out_result) noexcept -> bool {
+        Vitals result{storage_type{0}};
+        if (!result.try_set_health_encoded(health_encoded_value)) {
+            return false;
+        }
+        if (!result.try_set_state(state_value)) {
+            return false;
+        }
+        if (!result.is_valid()) {
+            return false;
+        }
+        out_result = result;
+        return true;
+    }
+
+    [[nodiscard]] static constexpr auto make(std::uint8_t const health_encoded_value,
+                                             std::uint8_t const state_value) noexcept -> Vitals {
+        Vitals result;
+        [[maybe_unused]] auto const success{try_make(health_encoded_value, state_value, result)};
+        assert(success && "Packed field value does not fit.");
+        return result;
+    }
+
+    [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
+        return health_encoded() <= health_maximum_encoded;
+    }
+
+    [[nodiscard]] constexpr auto operator<=>(Vitals const&) const noexcept = default;
+
+    [[nodiscard]] constexpr auto health_encoded() const noexcept -> std::uint8_t {
+        return static_cast<std::uint8_t>(static_cast<storage_type>(value_ >> health_offset) &
+                                         health_value_mask);
+    }
+
+    [[nodiscard]] constexpr auto try_set_health_encoded(std::uint8_t const value) noexcept -> bool {
+        if (value > health_maximum_encoded) {
+            return false;
+        }
+        auto const encoded{static_cast<storage_type>(value)};
+        auto const cleared{
+            static_cast<storage_type>(value_ & static_cast<storage_type>(~health_mask))};
+        auto const shifted{static_cast<storage_type>(
+            static_cast<storage_type>(encoded & health_value_mask) << health_offset)};
+        value_ = static_cast<storage_type>(cleared | shifted);
+        return true;
+    }
+
+    constexpr void set_health_encoded(std::uint8_t const value) noexcept {
+        if (!try_set_health_encoded(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+
+    [[nodiscard]] constexpr auto state() const noexcept -> std::uint8_t {
+        return static_cast<std::uint8_t>(static_cast<storage_type>(value_ >> state_offset) &
+                                         state_value_mask);
+    }
+
+    [[nodiscard]] constexpr auto try_set_state(std::uint8_t const value) noexcept -> bool {
+        if (value > static_cast<std::uint8_t>(state_value_mask)) {
+            return false;
+        }
+        auto const encoded{static_cast<storage_type>(value)};
+        auto const cleared{
+            static_cast<storage_type>(value_ & static_cast<storage_type>(~state_mask))};
+        auto const shifted{static_cast<storage_type>(
+            static_cast<storage_type>(encoded & state_value_mask) << state_offset)};
+        value_ = static_cast<storage_type>(cleared | shifted);
+        return true;
+    }
+
+    constexpr void set_state(std::uint8_t const value) noexcept {
+        if (!try_set_state(value)) {
+            assert(false && "Packed field value does not fit.");
+        }
+    }
+  private:
+    storage_type value_{};
+};
+static_assert(sizeof(Vitals) == sizeof(Vitals::storage_type));
+static_assert(std::is_trivially_copyable_v<Vitals>);
+static_assert(std::is_standard_layout_v<Vitals>);
+
 } // namespace codegen_compile_fixture

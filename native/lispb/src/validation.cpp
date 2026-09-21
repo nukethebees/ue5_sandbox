@@ -649,6 +649,8 @@ void validate_packed_values(PackedValueModuleSchema const& module,
             auto const* field{std::get_if<PackedFieldSchema>(&segment)};
             auto const* scalar{field != nullptr ? find_integer_scalar(field->type, types, modules)
                                                 : nullptr};
+            auto const* quantized{
+                field != nullptr ? find_linear_quantized(field->type, types, modules) : nullptr};
             auto const segment_bits{field != nullptr
                                         ? derive_packed_field_width(*field, types, modules)
                                         : packed_segment_bits(segment)};
@@ -657,6 +659,11 @@ void validate_packed_values(PackedValueModuleSchema const& module,
                     throw std::invalid_argument{
                         segment_context +
                         " integer-scalar domain does not fit the supported 1-64-bit range"};
+                }
+                if (field != nullptr && field->kind == PackedFieldKind::linear_quantized) {
+                    throw std::invalid_argument{
+                        segment_context +
+                        " linear-quantized type does not resolve to a supported representation"};
                 }
                 if (field != nullptr && (field->kind == PackedFieldKind::signed_integer ||
                                          field->kind == PackedFieldKind::unsigned_integer)) {
@@ -694,6 +701,12 @@ void validate_packed_values(PackedValueModuleSchema const& module,
             require_identifier(field->name, context + " field name");
             validate_type(field->type, types, field_context);
             if (field->relationship.has_value()) {
+                if (quantized != nullptr) {
+                    throw std::invalid_argument{
+                        field_context +
+                        " linear-quantized representation owns its semantic relationship through "
+                        "its source scalar"};
+                }
                 validate_semantic_relation(
                     *field->relationship, types, field_context + " relationship");
                 auto const relation_kind{field->relationship->kind};
@@ -714,13 +727,39 @@ void validate_packed_values(PackedValueModuleSchema const& module,
             }
 
             auto const field_type{resolve_type(field->type, types)};
-            if (scalar != nullptr &&
+            if ((scalar != nullptr || quantized != nullptr) &&
                 (field->minimum_value.has_value() || field->maximum_value.has_value() ||
                  !field->named_codes.empty())) {
                 throw std::invalid_argument{
-                    field_context + " integer-scalar type owns its semantic range and named codes"};
+                    field_context +
+                    (scalar != nullptr
+                         ? " integer-scalar type owns its semantic range and named codes"
+                         : " linear-quantized representation owns its semantic domain and code "
+                           "space")};
             }
-            if (scalar != nullptr) {
+            if (quantized != nullptr) {
+                if (field->kind != PackedFieldKind::linear_quantized) {
+                    throw std::invalid_argument{
+                        field_context + " kind must be 'linear-quantized' for its representation "
+                                        "type"};
+                }
+                if (field->bits.has_value() &&
+                    *field->bits != static_cast<int>(quantized->bit_width)) {
+                    throw std::invalid_argument{
+                        field_context + " width must equal its linear-quantized representation's " +
+                        std::to_string(quantized->bit_width) + "-bit encoding"};
+                }
+                if (field->range_helper) {
+                    throw std::invalid_argument{
+                        field_context +
+                        " linear-quantized representation cannot use an integer range helper"};
+                }
+            } else if (field->kind == PackedFieldKind::linear_quantized) {
+                throw std::invalid_argument{
+                    field_context +
+                    " ':kind linear-quantized' type must resolve to a linear-quantized "
+                    "representation"};
+            } else if (scalar != nullptr) {
                 auto const expected_kind{scalar->signedness ? PackedFieldKind::signed_integer
                                                             : PackedFieldKind::unsigned_integer};
                 if (field->kind != expected_kind) {
@@ -803,7 +842,7 @@ void validate_packed_values(PackedValueModuleSchema const& module,
                 throw std::invalid_argument{field_context +
                                             " range helper requires an unsigned integer field"};
             }
-            if (scalar == nullptr) {
+            if (scalar == nullptr && quantized == nullptr) {
                 if (field->minimum_value.has_value() != field->maximum_value.has_value()) {
                     throw std::invalid_argument{
                         field_context + " semantic range requires both minimum and maximum"};
@@ -881,16 +920,26 @@ void validate_packed_values(PackedValueModuleSchema const& module,
             }
 
             std::vector<std::string> names{
-                field->name + "_type",
-                field->name,
                 field->name + "_offset",
                 field->name + "_bits",
                 field->name + "_value_mask",
                 field->name + "_mask",
             };
-            if (value.mutable_value) {
-                names.push_back("set_" + field->name);
-                names.push_back("try_set_" + field->name);
+            if (quantized != nullptr) {
+                names.push_back(field->name + "_encoded_type");
+                names.push_back(field->name + "_encoded");
+                names.push_back(field->name + "_maximum_encoded");
+                if (value.mutable_value) {
+                    names.push_back("set_" + field->name + "_encoded");
+                    names.push_back("try_set_" + field->name + "_encoded");
+                }
+            } else {
+                names.push_back(field->name + "_type");
+                names.push_back(field->name);
+                if (value.mutable_value) {
+                    names.push_back("set_" + field->name);
+                    names.push_back("try_set_" + field->name);
+                }
             }
             if (field->kind == PackedFieldKind::enumeration) {
                 names.push_back(field->name + "_underlying_type");

@@ -813,6 +813,8 @@ auto packed_field_kind_name(codegen::PackedFieldKind const kind) -> std::string_
             return "signed";
         case codegen::PackedFieldKind::enumeration:
             return "enum";
+        case codegen::PackedFieldKind::linear_quantized:
+            return "linear-quantized";
     }
     return "unsigned";
 }

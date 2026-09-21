@@ -20,6 +20,13 @@ auto qualified_scalar_name(ScalarModuleSchema const& module, IntegerScalarSchema
              : schema.name;
 }
 
+auto qualified_representation_name(RepresentationModuleSchema const& module,
+                                   std::string const& name) -> std::string {
+    return module.settings.namespace_name.has_value()
+             ? *module.settings.namespace_name + "::" + name
+             : name;
+}
+
 } // namespace
 
 auto packed_unsigned_width(std::string_view const spelling) -> std::optional<int> {
@@ -88,6 +95,25 @@ auto find_integer_scalar(TypeRef const& type,
     return nullptr;
 }
 
+auto find_linear_quantized(TypeRef const& type,
+                           std::map<std::string, CppType> const& types,
+                           std::vector<ModuleSchema> const& modules)
+    -> LinearQuantizedSchema const* {
+    auto const spelling{resolve_type(type, types).spelling};
+    for (auto const& candidate : modules) {
+        auto const* representation_module{std::get_if<RepresentationModuleSchema>(&candidate)};
+        if (representation_module == nullptr) {
+            continue;
+        }
+        for (auto const& schema : representation_module->linear_quantized) {
+            if (qualified_representation_name(*representation_module, schema.name) == spelling) {
+                return &schema;
+            }
+        }
+    }
+    return nullptr;
+}
+
 auto derive_integer_scalar_width(IntegerScalarSchema const& scalar) -> std::optional<int> {
     if (scalar.bit_width.has_value()) {
         return static_cast<int>(*scalar.bit_width);
@@ -115,6 +141,11 @@ auto derive_packed_field_width(PackedFieldSchema const& field,
     }
     if (auto const* scalar{find_integer_scalar(field.type, types, modules)}) {
         return derive_integer_scalar_width(*scalar);
+    }
+    if (field.kind == PackedFieldKind::linear_quantized) {
+        auto const* quantized{find_linear_quantized(field.type, types, modules)};
+        return quantized != nullptr ? std::optional<int>{static_cast<int>(quantized->bit_width)}
+                                    : std::nullopt;
     }
     if (field.kind == PackedFieldKind::enumeration) {
         auto const* enumeration{find_packed_enum(field.type, types, modules)};

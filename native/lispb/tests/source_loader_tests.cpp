@@ -225,6 +225,42 @@ TEST(SourceLoader, ReadsSignedArbitraryWidthPackedField) {
     EXPECT_TRUE(delta.named_codes[1].sentinel);
 }
 
+TEST(SourceLoader, ReadsLinearQuantizedPackedField) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(scalar-module scalars
+  :header "Scalars.h"
+  :namespace project
+  (integer-scalar Health
+    :signed false
+    :minimum 0
+    :maximum 1000
+    :bit-width auto))
+(representation-module representations
+  :header "Representations.h"
+  :namespace project
+  (linear-quantized HealthQ8
+    :source project::Health
+    :bits 8
+    :reserved-codes 2
+    :clipping clamp))
+(packed-value-module packed
+  :header "Packed.h"
+  :namespace project
+  (packed-value Vitals
+    :storage std::uint16_t
+    (field health project::HealthQ8 :bits auto :kind linear-quantized)
+    (field state std::uint8_t :bits 8)))
+)");
+
+    auto const manifest{files.load()};
+    auto const& module{std::get<PackedValueModuleSchema>(manifest.modules.back())};
+    auto const& health{std::get<PackedFieldSchema>(module.values.front().segments.front())};
+    EXPECT_EQ(health.type.name, "project::HealthQ8");
+    EXPECT_FALSE(health.bits.has_value());
+    EXPECT_EQ(health.kind, PackedFieldKind::linear_quantized);
+}
+
 TEST(SourceLoader, RejectsUnknownPackedPhysicalOrdering) {
     TemporaryManifest files;
     files.write_root(R"(

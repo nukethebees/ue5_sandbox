@@ -465,6 +465,29 @@ TEST(GeneratedPackedValue, EnforcesSignedSemanticRangeAndSentinel) {
     EXPECT_FALSE(SignedTemperature{std::uint32_t{0x9b}}.is_valid());
 }
 
+TEST(GeneratedPackedValue, RoundTripsLinearQuantizedEncodedCodes) {
+    static_assert(Vitals::health_bits == 8);
+    static_assert(Vitals::health_maximum_encoded == 253);
+
+    Vitals value;
+    EXPECT_TRUE(value.try_set_health_encoded(253));
+    EXPECT_TRUE(value.try_set_state(0xab));
+    EXPECT_EQ(value.health_encoded(), 253);
+    EXPECT_EQ(value.state(), 0xab);
+    EXPECT_EQ(value.raw_value(), 0xabfdu);
+    EXPECT_TRUE(value.is_valid());
+
+    auto const before_failure{value.raw_value()};
+    EXPECT_FALSE(value.try_set_health_encoded(254));
+    EXPECT_EQ(value.raw_value(), before_failure);
+    EXPECT_FALSE(Vitals{0x00feu}.is_valid());
+
+    Vitals made;
+    EXPECT_TRUE(Vitals::try_make(42, 7, made));
+    EXPECT_EQ(made.health_encoded(), 42);
+    EXPECT_EQ(made.state(), 7);
+}
+
 TEST(GeneratedPackedValue, GeneratesConstructionValidationAndRangeHelpers) {
     static_assert(CheckedValue::invalid_value == 0x7fffffffu);
     static_assert(CheckedValue::serial_range_fits(0, CheckedValue::serial_value_mask + 1));

@@ -3160,6 +3160,86 @@ TEST(EditableSchemaDocument, BindsPackedFieldToSharedIntegerScalarDomain) {
     ASSERT_EQ(reloaded_field.named_codes.size(), 2U);
 }
 
+TEST(EditableSchemaDocument, BindsPackedFieldToLinearQuantizedRepresentation) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const quantized{
+        declaration_id(document, "authored_representations", "ExistingQ1", "authored")};
+    auto const packed{declaration_id(document, "authored_packed", "ExistingPacked", "authored")};
+
+    auto replacement{*document.packed_value_schema(packed)};
+    auto& field{std::get<codegen::PackedFieldSchema>(replacement.segments.front())};
+    field.type = codegen::TypeRef{"authored::ExistingQ1"};
+    field.bits.reset();
+    field.kind = codegen::PackedFieldKind::linear_quantized;
+    field.range_helper = false;
+    field.minimum_value.reset();
+    field.maximum_value.reset();
+    field.named_codes.clear();
+    field.relationship.reset();
+    auto bound{document.apply(
+        ReplacePackedValue{.declaration = packed, .schema = std::move(replacement)})};
+    ASSERT_TRUE(bound.has_value()) << bound.error().message;
+    ASSERT_TRUE(*bound);
+
+    auto const quantized_type{document.types().find(document.declaration(quantized)->identity)};
+    auto const packed_type_id{document.types().find(document.declaration(packed)->identity)};
+    ASSERT_TRUE(quantized_type.has_value());
+    ASSERT_TRUE(packed_type_id.has_value());
+    auto const& bound_field{std::get<PackedField>(packed_type(document, packed).segments.front())};
+    EXPECT_EQ(bound_field.semantic_type.type, *quantized_type);
+    EXPECT_EQ(bound_field.kind, codegen::PackedFieldKind::linear_quantized);
+    EXPECT_EQ(bound_field.bit_width, 1U);
+    EXPECT_TRUE(bound_field.bit_width_auto);
+    EXPECT_NE(std::ranges::find(document.types().dependencies_of(*packed_type_id), *quantized_type),
+              document.types().dependencies_of(*packed_type_id).end());
+
+    auto invalid{*document.packed_value_schema(packed)};
+    std::get<codegen::PackedFieldSchema>(invalid.segments.front()).bits = 2;
+    auto rejected{
+        document.apply(ReplacePackedValue{.declaration = packed, .schema = std::move(invalid)})};
+    ASSERT_FALSE(rejected.has_value());
+    EXPECT_NE(rejected.error().message.find("must equal"), std::string::npos);
+    EXPECT_TRUE(
+        std::get<PackedField>(packed_type(document, packed).segments.front()).bit_width_auto);
+
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(
+        std::get<codegen::PackedFieldSchema>(document.packed_value_schema(packed)->segments.front())
+            .type.name,
+        "std::uint8_t");
+    ASSERT_TRUE(document.redo().value());
+    EXPECT_EQ(
+        std::get<PackedField>(packed_type(document, packed).segments.front()).semantic_type.type,
+        *document.types().find(document.declaration(quantized)->identity));
+
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find("authored::ExistingQ1"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":bits auto"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find(":kind linear-quantized"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the value segment note."), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep the counter segment note."), std::string::npos);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_quantized{
+        declaration_id(reloaded, "authored_representations", "ExistingQ1", "authored")};
+    auto const reloaded_packed{
+        declaration_id(reloaded, "authored_packed", "ExistingPacked", "authored")};
+    auto const resolved_quantized_type{
+        reloaded.types().find(reloaded.declaration(reloaded_quantized)->identity)};
+    ASSERT_TRUE(resolved_quantized_type.has_value());
+    auto const& reloaded_field{
+        std::get<PackedField>(packed_type(reloaded, reloaded_packed).segments.front())};
+    EXPECT_EQ(reloaded_field.semantic_type.type, *resolved_quantized_type);
+    EXPECT_EQ(reloaded_field.kind, codegen::PackedFieldKind::linear_quantized);
+    EXPECT_EQ(reloaded_field.bit_width, 1U);
+    EXPECT_TRUE(reloaded_field.bit_width_auto);
+}
+
 TEST(EditableSchemaDocument, CreatesEditsReordersAndReloadsPackedValues) {
     TemporarySchema files;
     auto document{files.load()};

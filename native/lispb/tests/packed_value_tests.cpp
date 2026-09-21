@@ -96,6 +96,44 @@ auto lower_scalar_backed(PackedValueModuleSchema module, bool const signedness =
     return files.back().content;
 }
 
+auto quantized_backed_manifest(std::uint64_t const reserved_codes = 2) -> Manifest {
+    return Manifest{
+        .schema_version = manifest_schema_version,
+        .modules = {
+            ScalarModuleSchema{.settings = ModuleSettings{.name = "scalars",
+                                                          .header = "Scalars.h",
+                                                          .namespace_name = "project"},
+                               .scalars = {IntegerScalarSchema{.name = "Health",
+                                                               .signedness = false,
+                                                               .minimum_value = 0,
+                                                               .maximum_value = 1000,
+                                                               .bit_width = std::nullopt}}},
+            RepresentationModuleSchema{.settings = ModuleSettings{.name = "representations",
+                                                                  .header = "Representations.h",
+                                                                  .namespace_name = "project"},
+                                       .linear_quantized = {LinearQuantizedSchema{
+                                           .name = "HealthQ8",
+                                           .source = TypeRef{"project::Health"},
+                                           .bit_width = 8,
+                                           .reserved_codes = reserved_codes,
+                                           .clipping = QuantizationClipping::clamp}}},
+            PackedValueModuleSchema{
+                .settings = ModuleSettings{.name = "packed",
+                                           .header = "Packed.h",
+                                           .namespace_name = "project"},
+                .values = {PackedValueSchema{
+                    .name = "Vitals",
+                    .storage_type = TypeRef{"std::uint16_t"},
+                    .segments = {PackedFieldSchema{.name = "health",
+                                                   .type = TypeRef{"project::HealthQ8"},
+                                                   .bits = std::nullopt,
+                                                   .kind = PackedFieldKind::linear_quantized},
+                                 PackedFieldSchema{
+                                     .name = "state", .type = TypeRef{"std::uint8_t"}, .bits = 8}},
+                    .mutable_value = true}}},
+        }};
+}
+
 TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
     auto module{valid_module()};
     module.values.front().invalid_value = 0x7fffffffu;
@@ -184,6 +222,23 @@ TEST(PackedValue, MostSignificantFirstSegmentsDriveGeneratedNumericOffsets) {
     EXPECT_EQ(header.find("future_offset"), std::string::npos);
 }
 
+TEST(PackedValue, MostSignificantFirstEnumDomainCanExcludeInvalidRawValue) {
+    auto module{valid_module()};
+    auto& value{module.values.front()};
+    value.invalid_value = 7;
+    value.bit_order = PackedBitOrder::most_significant_first;
+
+    auto const header{
+        lower_known_enum(std::move(module),
+                         EnumSchema{.name = "FighterStateKind",
+                                    .underlying_type = TypeRef{"uint8"},
+                                    .values = {EnumeratorSchema{"Zero", "0"},
+                                               EnumeratorSchema{"COUNT", "5", std::nullopt, true}},
+                                    .count = "COUNT"})};
+
+    EXPECT_EQ(header.find("assert(raw != invalid_value);"), std::string::npos);
+}
+
 TEST(PackedValue, SerializedByteOrderDoesNotChangeHostNumericOffsets) {
     auto module{valid_module()};
     module.values.front().byte_order = PackedByteOrder::big_endian;
@@ -264,6 +319,46 @@ TEST(PackedValue, LowersSignedSharedIntegerScalarToSmallestNativeAccessor) {
     EXPECT_NE(header.find("entity_index_Unknown{static_cast<std::int8_t>(-128)}"),
               std::string::npos);
     EXPECT_NE(header.find("sign_bit{storage_type{0x80}}"), std::string::npos);
+}
+
+TEST(PackedValue, LowersLinearQuantizedPlacementToExplicitEncodedCodeApi) {
+    auto const files{render_modules(lower_modules(quantized_backed_manifest()))};
+    ASSERT_EQ(files.size(), 3);
+    auto const& header{files.back().content};
+
+    EXPECT_NE(header.find("using health_encoded_type = std::uint8_t;"), std::string::npos);
+    EXPECT_NE(header.find("health_maximum_encoded{health_encoded_type{0xfd}}"), std::string::npos);
+    EXPECT_NE(header.find("try_make(std::uint8_t const health_encoded_value"), std::string::npos);
+    EXPECT_NE(header.find("auto health_encoded() const noexcept -> std::uint8_t"),
+              std::string::npos);
+    EXPECT_NE(header.find("try_set_health_encoded(std::uint8_t const value)"), std::string::npos);
+    EXPECT_NE(header.find("value > health_maximum_encoded"), std::string::npos);
+    EXPECT_NE(header.find("health_encoded() <= health_maximum_encoded"), std::string::npos);
+    EXPECT_EQ(header.find("project::HealthQ8"), std::string::npos);
+    EXPECT_EQ(header.find("health()"), std::string::npos);
+}
+
+TEST(PackedValue, RejectsCompetingLinearQuantizedPlacementFacts) {
+    auto manifest{quantized_backed_manifest()};
+    auto& packed{std::get<PackedValueModuleSchema>(manifest.modules.back())};
+    auto& health{field(packed.values.front(), 0)};
+
+    health.bits = 7;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    health.bits.reset();
+    health.kind = PackedFieldKind::unsigned_integer;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    health.kind = PackedFieldKind::linear_quantized;
+    health.minimum_value = 0;
+    health.maximum_value = 1000;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+
+    health.minimum_value.reset();
+    health.maximum_value.reset();
+    health.range_helper = true;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 }
 
 TEST(PackedValue, RejectsCompetingOrMismatchedIntegerScalarFieldDomain) {

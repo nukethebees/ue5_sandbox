@@ -555,8 +555,12 @@ auto parse_packed_field(Form const& form) -> PackedFieldSchema {
             kind = PackedFieldKind::signed_integer;
         } else if (name == "enum") {
             kind = PackedFieldKind::enumeration;
+        } else if (name == "linear-quantized") {
+            kind = PackedFieldKind::linear_quantized;
         } else {
-            fail(value->token.span, "packed field kind must be 'unsigned', 'signed', or 'enum'");
+            fail(value->token.span,
+                 "packed field kind must be 'unsigned', 'signed', 'enum', or "
+                 "'linear-quantized'");
         }
     }
 

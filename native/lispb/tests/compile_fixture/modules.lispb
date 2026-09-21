@@ -62,7 +62,21 @@
     :cpp-type @standard_uint8
     (code Unknown :value 0)
     (code Laser :value 1)
-    (code Invalid :value 255 :sentinel true)))
+    (code Invalid :value 255 :sentinel true))
+  (integer-scalar Health
+    :signed false
+    :minimum 0
+    :maximum 1000
+    :bit-width auto))
+
+(representation-module representation_fixture
+  :header "Representations.h"
+  :namespace codegen_compile_fixture
+  (linear-quantized HealthQ8
+    :source codegen_compile_fixture::Health
+    :bits 8
+    :reserved-codes 2
+    :clipping clamp))
 
 (packed-value-module packed_value_fixture
   :header "PackedValues.h"
@@ -121,7 +135,12 @@
     :storage std::uint32_t
     :invalid-value 0x7fffffff
     (field serial std::uint32_t :bits 24 :range-helper true)
-    (field state @domain_state :bits 8 :kind enum)))
+    (field state @domain_state :bits 8 :kind enum))
+  (packed-value Vitals
+    :storage std::uint16_t
+    :mutable true
+    (field health codegen_compile_fixture::HealthQ8 :bits auto :kind linear-quantized)
+    (field state std::uint8_t :bits 8)))
 
 (settings-module settings_fixture
   :header "Settings.h"
@@ -354,4 +373,4 @@
 
 (umbrella-module all_fixture
   :header "Generated.h"
-  :headers ("Homogeneous.h" "Soa.h" "Vector1.h" "Vector2.h" "Vector3.h" "InlineFacade.h" "SourceFacade.h" "ReferenceFacade.h" "PlainEnums.h" "ReflectedEnums.h" "PackedEnums.h" "ScalarValues.h" "PackedValues.h" "Settings.h" "StaticTables.h"))
+  :headers ("Homogeneous.h" "Soa.h" "Vector1.h" "Vector2.h" "Vector3.h" "InlineFacade.h" "SourceFacade.h" "ReferenceFacade.h" "PlainEnums.h" "ReflectedEnums.h" "PackedEnums.h" "ScalarValues.h" "Representations.h" "PackedValues.h" "Settings.h" "StaticTables.h"))
