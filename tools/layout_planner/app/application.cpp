@@ -56,6 +56,7 @@ class Application {
     bool imgui_renderer_initialized_{};
     bool done_{};
     std::string imgui_ini_path_;
+    std::string window_title_;
     FramePacingState pacing_state_{
         .focused = true,
         .minimized = false,
@@ -141,8 +142,8 @@ auto Application::initialize() -> bool {
     }
 
     auto const flags{SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY};
-    window_ =
-        SDL_CreateWindow("Memory Layout Planner", window_size.width, window_size.height, flags);
+    window_title_ = ui_.window_title();
+    window_ = SDL_CreateWindow(window_title_.c_str(), window_size.width, window_size.height, flags);
     if (window_ == nullptr) {
         std::fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
         return false;
@@ -262,6 +263,11 @@ auto Application::render_frame() -> bool {
     ImGui::NewFrame();
 
     auto const changed{ui_.draw()};
+    auto const title{ui_.window_title()};
+    if (title != window_title_) {
+        window_title_ = title;
+        SDL_SetWindowTitle(window_, window_title_.c_str());
+    }
     if (ui_.take_close_confirmation()) {
         done_ = true;
     }

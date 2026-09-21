@@ -44,6 +44,7 @@ class PlannerUi {
     void request_close();
     auto take_close_confirmation() -> bool;
     auto draw() -> bool;
+    [[nodiscard]] auto window_title() const -> std::string;
   private:
     struct PendingPackedEnumBinding {
         lispb::schema::DeclarationId packed_declaration;
@@ -146,7 +147,9 @@ class PlannerUi {
     auto draw_type_picker(std::string_view module_name, lispb::schema::TypeIdentity const& owner)
         -> std::optional<std::string>;
     void sync_document_graph(std::optional<lispb::schema::TypeIdentity> selection);
-    auto load_project(std::filesystem::path const& path, bool allow_dirty = false) -> bool;
+    auto load_project(std::filesystem::path const& path,
+                      bool allow_dirty = false,
+                      bool use_recent_target = false) -> bool;
     void adopt_loaded_schema(layout::SchemaLoadResult loaded);
     void remember_recent_project(std::filesystem::path const& path);
     void refresh_analysis();
@@ -182,6 +185,7 @@ class PlannerUi {
     std::filesystem::path project_path_;
     std::string target_name_;
     std::vector<std::filesystem::path> recent_projects_;
+    std::map<std::string, std::string, std::less<>> recent_project_targets_;
     std::optional<lispb::EditableProjectDocument> project_document_;
     std::optional<lispb::schema::EditableSchemaDocument> document_;
     layout::LayoutWorkspace workspace_;
@@ -509,6 +513,8 @@ class PlannerUi {
         persisted_graph_node_positions_;
     std::map<std::string, std::filesystem::path, std::less<>> persisted_target_profile_paths_;
     std::array<char, 128> graph_search_{};
+    std::array<char, 1024> new_project_path_{};
+    std::array<char, 128> new_project_target_{};
     std::optional<int> window_width_;
     std::optional<int> window_height_;
     bool dock_layout_initialized_{};
@@ -537,6 +543,7 @@ class PlannerUi {
     bool diagnostics_view_open_{true};
     bool focus_source_view_{};
     bool open_project_dialog_{};
+    bool open_new_project_dialog_{};
     bool open_save_as_dialog_{};
     bool project_changed_{};
     bool open_close_confirmation_{};

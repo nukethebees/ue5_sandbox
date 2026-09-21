@@ -10,6 +10,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <exception>
 #include <iterator>
 #include <set>
 #include <string_view>
@@ -179,6 +180,21 @@ auto parse_target_profile_mapping(std::string_view const value)
         return std::nullopt;
     }
     return std::pair{*project, std::filesystem::path{*profile}};
+}
+
+auto parse_recent_target_mapping(std::string_view const value)
+    -> std::optional<std::pair<std::string, std::string>> {
+    auto const separator{value.find('|')};
+    if (separator == std::string_view::npos ||
+        value.find('|', separator + 1) != std::string_view::npos) {
+        return std::nullopt;
+    }
+    auto const project{percent_decode(value.substr(0, separator))};
+    auto const target{percent_decode(value.substr(separator + 1))};
+    if (!project.has_value() || project->empty() || !target.has_value() || target->empty()) {
+        return std::nullopt;
+    }
+    return std::pair{*project, *target};
 }
 
 template <std::size_t Size>
@@ -608,7 +624,7 @@ void PlannerUi::finish_startup(bool const reopen_recent_project) {
     if (reopen_recent_project) {
         auto const candidates{recent_projects_};
         for (auto const& path : candidates) {
-            if (load_project(path, true)) {
+            if (load_project(path, true, true)) {
                 return;
             }
         }
@@ -616,6 +632,13 @@ void PlannerUi::finish_startup(bool const reopen_recent_project) {
     if (!fallback_path.empty()) {
         static_cast<void>(load_project(fallback_path, true));
     }
+}
+
+auto PlannerUi::window_title() const -> std::string {
+    if (project_path_.empty()) {
+        return "Memory Layout Planner";
+    }
+    return project_path_.stem().string() + " - Memory Layout Planner";
 }
 
 auto PlannerUi::saved_window_size() const -> std::optional<WindowSize> {
@@ -672,6 +695,7 @@ auto PlannerUi::settings_read_open(ImGuiContext*, ImGuiSettingsHandler* handler,
     }
     auto* ui{static_cast<PlannerUi*>(handler->UserData)};
     ui->recent_projects_.clear();
+    ui->recent_project_targets_.clear();
     ui->graph_node_positions_.clear();
     ui->persisted_graph_node_positions_.clear();
     ui->persisted_target_profile_paths_.clear();
@@ -771,6 +795,14 @@ void PlannerUi::settings_read_line(ImGuiContext*,
     if (value.starts_with(recent_prefix) && value.size() > recent_prefix.size() &&
         ui->recent_projects_.size() < 20) {
         ui->recent_projects_.emplace_back(value.substr(recent_prefix.size()));
+        return;
+    }
+    constexpr std::string_view recent_target_prefix{"RecentTarget="};
+    if (value.starts_with(recent_target_prefix)) {
+        auto const mapping{parse_recent_target_mapping(value.substr(recent_target_prefix.size()))};
+        if (mapping.has_value()) {
+            ui->recent_project_targets_.insert_or_assign(mapping->first, mapping->second);
+        }
     }
 }
 
@@ -794,6 +826,12 @@ void PlannerUi::settings_write_all(ImGuiContext*,
     output->appendf("DiagnosticsOpen=%d\n", ui->diagnostics_view_open_ ? 1 : 0);
     for (auto const& path : ui->recent_projects_) {
         output->appendf("RecentProject=%s\n", path.string().c_str());
+        if (auto const found{ui->recent_project_targets_.find(graph_project_key(path))};
+            found != ui->recent_project_targets_.end()) {
+            auto const project{percent_encode(found->first)};
+            auto const target{percent_encode(found->second)};
+            output->appendf("RecentTarget=%s|%s\n", project.c_str(), target.c_str());
+        }
     }
     for (auto const& [project, profile] : ui->persisted_target_profile_paths_) {
         auto const encoded_project{percent_encode(project)};
@@ -938,6 +976,12 @@ auto PlannerUi::draw_file_menu() -> bool {
                                             : has_document && document_->can_undo()};
     auto const can_redo{use_project_history ? project_document_->can_redo()
                                             : has_document && document_->can_redo()};
+    if (ImGui::MenuItem("New Project...")) {
+        new_project_path_.fill('\0');
+        set_text_buffer(new_project_target_, "new-schema");
+        schema_edit_message_.clear();
+        open_new_project_dialog_ = true;
+    }
     if (ImGui::MenuItem("Open Project...")) {
         std::snprintf(open_project_path_.data(),
                       open_project_path_.size(),
@@ -949,7 +993,7 @@ auto PlannerUi::draw_file_menu() -> bool {
         for (auto const& path : recent_projects_) {
             auto const label{path.string()};
             if (ImGui::MenuItem(label.c_str(), nullptr, path == project_path_)) {
-                changed |= load_project(path);
+                changed |= load_project(path, false, true);
             }
         }
         ImGui::EndMenu();
@@ -1032,6 +1076,50 @@ auto PlannerUi::draw_file_menu() -> bool {
 }
 
 void PlannerUi::draw_project_path_dialogs() {
+    if (open_new_project_dialog_) {
+        ImGui::OpenPopup("New LispB project");
+        open_new_project_dialog_ = false;
+    }
+    if (ImGui::BeginPopupModal("New LispB project", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("Project manifest path");
+        ImGui::SetNextItemWidth(720.0F);
+        ImGui::InputText("##new-project-path", new_project_path_.data(), new_project_path_.size());
+        ImGui::TextUnformatted("C++ schema target name");
+        ImGui::SetNextItemWidth(360.0F);
+        ImGui::InputText(
+            "##new-project-target", new_project_target_.data(), new_project_target_.size());
+        ImGui::TextDisabled("Creates an empty types file and one source beside the manifest.");
+        ImGui::BeginDisabled(new_project_path_.front() == '\0' ||
+                             new_project_target_.front() == '\0');
+        if (ImGui::Button("Create")) {
+            if (has_dirty_changes()) {
+                schema_edit_message_ = "Save or undo the current LispB changes before creating "
+                                       "another project.";
+            } else {
+                auto created{create_blank_lispb_schema(new_project_path_.data(),
+                                                       new_project_target_.data())};
+                if (created.loaded) {
+                    adopt_loaded_schema(std::move(created));
+                    schema_edit_message_ = "Created and opened the blank LispB project.";
+                    ImGui::CloseCurrentPopup();
+                } else {
+                    schema_edit_message_ = created.diagnostics.empty()
+                                             ? "Could not create the LispB project."
+                                             : created.diagnostics.front().message;
+                }
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+            ImGui::CloseCurrentPopup();
+        }
+        if (!schema_edit_message_.empty()) {
+            ImGui::TextWrapped("%s", schema_edit_message_.c_str());
+        }
+        ImGui::EndPopup();
+    }
+
     if (open_project_dialog_) {
         ImGui::OpenPopup("Open LispB project");
         open_project_dialog_ = false;
@@ -1043,7 +1131,7 @@ void PlannerUi::draw_project_path_dialogs() {
             "##open-project-path", open_project_path_.data(), open_project_path_.size());
         ImGui::BeginDisabled(open_project_path_.front() == '\0');
         if (ImGui::Button("Open")) {
-            if (load_project(open_project_path_.data())) {
+            if (load_project(open_project_path_.data(), false, true)) {
                 ImGui::CloseCurrentPopup();
             }
         }
@@ -1191,71 +1279,83 @@ void PlannerUi::draw_diagnostics_panel() {
         return;
     }
 
-    bool drew_content{};
-    if (!schema_edit_message_.empty()) {
-        ImGui::SeparatorText("Document status");
-        ImGui::TextWrapped("%s", schema_edit_message_.c_str());
-        drew_content = true;
-    }
-    if (!load_diagnostics_.empty()) {
-        ImGui::SeparatorText("Project load");
-        draw_diagnostics(load_diagnostics_);
-        drew_content = true;
-    }
-    if (!target_profile_load_error_.empty() || !target_memory_fact_error_.empty() ||
-        !comparison_target_profile_error_.empty()) {
-        ImGui::SeparatorText("Target profile");
-        if (!target_profile_load_error_.empty()) {
-            ImGui::TextWrapped("%s", target_profile_load_error_.c_str());
-        }
-        if (!target_memory_fact_error_.empty()) {
-            ImGui::TextWrapped("%s", target_memory_fact_error_.c_str());
-        }
-        if (!comparison_target_profile_error_.empty()) {
-            ImGui::TextWrapped("Comparison: %s", comparison_target_profile_error_.c_str());
-        }
-        drew_content = true;
-    }
-    auto draw_analysis = [&](char const* const label, auto const& analysis) {
-        if (!analysis.has_value() || analysis->diagnostics.empty()) {
+    std::string content;
+    auto append_message = [&](std::string_view const label, std::string_view const message) {
+        if (message.empty()) {
             return;
         }
-        ImGui::SeparatorText(label);
-        draw_diagnostics(analysis->diagnostics);
-        drew_content = true;
+        if (!content.empty()) {
+            content += "\n\n";
+        }
+        content += label;
+        content += '\n';
+        content += message;
     };
-    draw_analysis("Semantic domain", enum_domain_);
-    draw_analysis("Enum target comparison", enum_target_comparison_);
-    draw_analysis("Integer scalar", integer_scalar_analysis_);
-    draw_analysis("Varint", integer_varint_analysis_);
-    draw_analysis("Fixed point", fixed_point_analysis_);
-    draw_analysis("Mini-float", mini_float_analysis_);
-    draw_analysis("Sentinel optional", optional_sentinel_analysis_);
-    draw_analysis("Presence-bit optional", optional_presence_bit_analysis_);
-    draw_analysis("Packed layout", active_packed_);
-    draw_analysis("Packed target comparison", packed_target_comparison_);
-    draw_analysis("Packed access", packed_access_analysis_);
-    draw_analysis("Packed target access comparison", packed_target_access_comparison_);
-    draw_analysis("Packed access comparison", packed_access_comparison_);
-    draw_analysis("Record layout", record_analysis_);
-    draw_analysis("Record target comparison", record_target_comparison_);
-    draw_analysis("Record access", record_access_analysis_);
-    draw_analysis("Record target access comparison", record_target_access_comparison_);
-    draw_analysis("Union layout", union_analysis_);
-    draw_analysis("Union target comparison", union_target_comparison_);
-    draw_analysis("Raw-union workload", union_distribution_analysis_);
-    draw_analysis("Raw-union target workload comparison", union_target_distribution_comparison_);
-    draw_analysis("Tagged-union layout", tagged_union_analysis_);
-    draw_analysis("Tagged-union target comparison", tagged_union_target_comparison_);
-    draw_analysis("Tagged-union workload", tagged_union_distribution_analysis_);
-    draw_analysis("Tagged-union target workload comparison",
-                  tagged_union_target_distribution_comparison_);
-    draw_analysis("SoA layout", active_soa_);
-    draw_analysis("SoA target comparison", soa_target_comparison_);
-    draw_analysis("SoA access", soa_access_analysis_);
-    draw_analysis("SoA target access comparison", soa_target_access_comparison_);
-    if (!drew_content) {
+    auto append_diagnostics = [&](std::string_view const label,
+                                  std::vector<Diagnostic> const& diagnostics) {
+        if (diagnostics.empty()) {
+            return;
+        }
+        std::string messages;
+        for (auto const& diagnostic : diagnostics) {
+            if (!messages.empty()) {
+                messages += '\n';
+            }
+            messages += diagnostic.message;
+        }
+        append_message(label, messages);
+    };
+    auto append_analysis = [&](char const* const label, auto const& analysis) {
+        if (analysis.has_value()) {
+            append_diagnostics(label, analysis->diagnostics);
+        }
+    };
+    append_message("Document status", schema_edit_message_);
+    append_diagnostics("Project load", load_diagnostics_);
+    append_message("Target profile", target_profile_load_error_);
+    append_message("Target profile", target_memory_fact_error_);
+    append_message("Comparison target profile", comparison_target_profile_error_);
+    append_analysis("Semantic domain", enum_domain_);
+    append_analysis("Enum target comparison", enum_target_comparison_);
+    append_analysis("Integer scalar", integer_scalar_analysis_);
+    append_analysis("Varint", integer_varint_analysis_);
+    append_analysis("Fixed point", fixed_point_analysis_);
+    append_analysis("Mini-float", mini_float_analysis_);
+    append_analysis("Sentinel optional", optional_sentinel_analysis_);
+    append_analysis("Presence-bit optional", optional_presence_bit_analysis_);
+    append_analysis("Packed layout", active_packed_);
+    append_analysis("Packed target comparison", packed_target_comparison_);
+    append_analysis("Packed access", packed_access_analysis_);
+    append_analysis("Packed target access comparison", packed_target_access_comparison_);
+    append_analysis("Packed access comparison", packed_access_comparison_);
+    append_analysis("Record layout", record_analysis_);
+    append_analysis("Record target comparison", record_target_comparison_);
+    append_analysis("Record access", record_access_analysis_);
+    append_analysis("Record target access comparison", record_target_access_comparison_);
+    append_analysis("Union layout", union_analysis_);
+    append_analysis("Union target comparison", union_target_comparison_);
+    append_analysis("Raw-union workload", union_distribution_analysis_);
+    append_analysis("Raw-union target workload comparison", union_target_distribution_comparison_);
+    append_analysis("Tagged-union layout", tagged_union_analysis_);
+    append_analysis("Tagged-union target comparison", tagged_union_target_comparison_);
+    append_analysis("Tagged-union workload", tagged_union_distribution_analysis_);
+    append_analysis("Tagged-union target workload comparison",
+                    tagged_union_target_distribution_comparison_);
+    append_analysis("SoA layout", active_soa_);
+    append_analysis("SoA target comparison", soa_target_comparison_);
+    append_analysis("SoA access", soa_access_analysis_);
+    append_analysis("SoA target access comparison", soa_target_access_comparison_);
+    if (content.empty()) {
         ImGui::TextDisabled("No current diagnostics.");
+    } else {
+        if (ImGui::Button("Copy all")) {
+            ImGui::SetClipboardText(content.c_str());
+        }
+        ImGui::InputTextMultiline("##diagnostics-text",
+                                  content.data(),
+                                  content.size() + 1,
+                                  ImGui::GetContentRegionAvail(),
+                                  ImGuiInputTextFlags_ReadOnly);
     }
 
     ImGui::End();
@@ -1498,13 +1598,45 @@ void PlannerUi::sync_document_graph(std::optional<TypeIdentity> selection) {
     packed_dragged_right_width_.reset();
 }
 
-auto PlannerUi::load_project(std::filesystem::path const& path, bool const allow_dirty) -> bool {
+auto PlannerUi::load_project(std::filesystem::path const& path,
+                             bool const allow_dirty,
+                             bool const use_recent_target) -> bool {
     if (!allow_dirty && has_dirty_changes()) {
         schema_edit_message_ =
             "Save or undo the current LispB changes before opening another project.";
         return false;
     }
-    auto loaded{load_lispb_schema(path, target_name_)};
+    auto target{target_name_};
+    if (use_recent_target) {
+        auto const normalized{std::filesystem::absolute(path).lexically_normal()};
+        if (auto const found{recent_project_targets_.find(graph_project_key(normalized))};
+            found != recent_project_targets_.end()) {
+            target = found->second;
+        } else {
+            try {
+                auto const project{lispb::load_project(path)};
+                if (!project.targets.contains(target)) {
+                    std::optional<std::string> only_schema_target;
+                    for (auto const& [name, candidate] : project.targets) {
+                        if (!std::holds_alternative<lispb::CppSchemaTarget>(candidate)) {
+                            continue;
+                        }
+                        if (only_schema_target.has_value()) {
+                            only_schema_target.reset();
+                            break;
+                        }
+                        only_schema_target = name;
+                    }
+                    if (only_schema_target.has_value()) {
+                        target = *only_schema_target;
+                    }
+                }
+            } catch (std::exception const&) {
+                // The schema loader will report the project error.
+            }
+        }
+    }
+    auto loaded{load_lispb_schema(path, target)};
     if (!loaded.loaded) {
         schema_edit_message_ = loaded.diagnostics.empty() ? "Could not load the LispB project."
                                                           : loaded.diagnostics.front().message;
@@ -1636,7 +1768,9 @@ void PlannerUi::remember_recent_project(std::filesystem::path const& path) {
         std::remove(recent_projects_.begin(), recent_projects_.end(), normalized),
         recent_projects_.end());
     recent_projects_.insert(recent_projects_.begin(), normalized);
+    recent_project_targets_.insert_or_assign(graph_project_key(normalized), target_name_);
     if (recent_projects_.size() > 20) {
+        recent_project_targets_.erase(graph_project_key(recent_projects_.back()));
         recent_projects_.resize(20);
     }
     ImGui::MarkIniSettingsDirty();

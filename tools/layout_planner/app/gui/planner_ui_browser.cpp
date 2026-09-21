@@ -267,8 +267,6 @@ void PlannerUi::draw_project_panel() {
         if (unregister_source.has_value() &&
             apply_project_edit(lispb::RemoveCppSchemaSource{.target_name = target_name_,
                                                             .source = *unregister_source})) {
-            source_view_open_ = true;
-            focus_source_view_ = true;
             schema_edit_message_ =
                 "Staged source unregistration. The source file will remain on disk after Save.";
         }

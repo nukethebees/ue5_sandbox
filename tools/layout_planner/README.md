@@ -45,6 +45,11 @@ selection when inspecting another manifest or target:
 Use `--help` to list command-line options. Project-load and schema diagnostics are reported in the
 application and on standard error.
 
+Use **File > New Project** to create a blank editable project. Enter a `.lispb` manifest path and a
+schema target name; the planner creates an empty types file and source in a sibling `_schema` directory.
+The open project's name appears in the window title. Diagnostics can be selected and copied, or copied
+all at once with **Copy all**.
+
 Window size, panel placement, dock split ratios, panel visibility, and text size are saved in the
 per-user application preferences directory and restored on the next launch. Every major workbench
 view can be shown or hidden from **View**. Maximized, minimized, and fullscreen sizes do not replace

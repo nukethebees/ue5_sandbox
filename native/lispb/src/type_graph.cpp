@@ -223,7 +223,9 @@ class TypeGraphBuilder {
             if (matches == nullptr) {
                 auto const by_name{declarations_by_name_.find(cpp_type.spelling)};
                 if (by_name != declarations_by_name_.end()) {
-                    matches = &by_name->second;
+                    if (by_name->second.size() == 1) {
+                        matches = &by_name->second;
+                    }
                 }
             }
             if (matches != nullptr) {
