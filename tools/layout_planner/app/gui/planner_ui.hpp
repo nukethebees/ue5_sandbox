@@ -86,6 +86,7 @@ class PlannerUi {
     void persist_view_visibility(bool previous, bool current);
     auto draw_view_menu() -> bool;
     auto draw_file_menu() -> bool;
+    void gate_new_declaration_dialogs();
     void draw_source_panel();
     void draw_diagnostics_panel();
     void draw_close_confirmation();

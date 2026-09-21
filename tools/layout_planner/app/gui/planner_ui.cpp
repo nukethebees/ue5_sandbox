@@ -876,6 +876,7 @@ auto PlannerUi::draw() -> bool {
     draw_comparison_panel();
     draw_graph_panel();
     draw_source_panel();
+    gate_new_declaration_dialogs();
     draw_diagnostics_panel();
     draw_new_module_dialog();
     draw_new_enum_dialog();
@@ -895,6 +896,96 @@ auto PlannerUi::draw() -> bool {
     draw_project_path_dialogs();
     return view_changed || revision_before != workspace_.revision() ||
            std::exchange(project_changed_, false);
+}
+
+void PlannerUi::gate_new_declaration_dialogs() {
+    if (!document_.has_value()) {
+        return;
+    }
+
+    bool has_enum{};
+    bool has_packed{};
+    bool has_scalar{};
+    bool has_representation{};
+    bool has_record{};
+    bool has_union{};
+    bool has_soa{};
+    for (auto const& module : document_->manifest().modules) {
+        has_enum |= std::holds_alternative<codegen::EnumModuleSchema>(module);
+        has_packed |= std::holds_alternative<codegen::PackedValueModuleSchema>(module);
+        has_scalar |= std::holds_alternative<codegen::ScalarModuleSchema>(module);
+        has_representation |= std::holds_alternative<codegen::RepresentationModuleSchema>(module);
+        has_record |= std::holds_alternative<codegen::RecordModuleSchema>(module);
+        has_union |= std::holds_alternative<codegen::UnionModuleSchema>(module);
+        if (auto const* soa{std::get_if<codegen::SoaModuleSchema>(&module)}) {
+            has_soa |= soa->backend == codegen::SoaBackend::standard_library;
+        }
+    }
+
+    auto require_module = [&](bool& requested,
+                              bool const available,
+                              std::string_view const module_phrase,
+                              std::string_view const declaration_kind) -> bool {
+        if (!requested) {
+            return false;
+        }
+        if (available) {
+            schema_warning_message_.clear();
+            return false;
+        }
+        requested = false;
+        schema_warning_message_ = "Create " + std::string{module_phrase} +
+                                  " module with + New module before creating " +
+                                  std::string{declaration_kind} + ".";
+        if (!diagnostics_view_open_) {
+            diagnostics_view_open_ = true;
+            ImGui::MarkIniSettingsDirty();
+        }
+        focus_diagnostics_view_ = true;
+        project_changed_ = true;
+        return true;
+    };
+
+    if (require_module(open_new_enum_dialog_, has_enum, "an enum", "an enum")) {
+        pending_packed_enum_binding_.reset();
+    }
+    require_module(open_new_packed_value_dialog_, has_packed, "a packed value", "a packed value");
+    if (require_module(open_new_integer_scalar_dialog_,
+                       has_scalar,
+                       "an integer scalar",
+                       "an integer scalar")) {
+        pending_packed_integer_scalar_binding_.reset();
+    }
+    require_module(open_new_linear_quantized_dialog_,
+                   has_representation,
+                   "a representation",
+                   "a quantization");
+    require_module(
+        open_new_integer_varint_dialog_, has_representation, "a representation", "a varint");
+    if (require_module(open_new_fixed_point_dialog_,
+                       has_representation,
+                       "a representation",
+                       "a fixed point")) {
+        pending_packed_fixed_point_binding_.reset();
+    }
+    if (require_module(
+            open_new_mini_float_dialog_, has_representation, "a representation", "a mini float")) {
+        pending_packed_mini_float_binding_.reset();
+    }
+    require_module(open_new_optional_sentinel_dialog_,
+                   has_representation,
+                   "a representation",
+                   "a sentinel optional");
+    require_module(open_new_optional_presence_bit_dialog_,
+                   has_representation,
+                   "a representation",
+                   "a presence-bit optional");
+    if (require_module(open_new_record_dialog_, has_record, "a record", "a record")) {
+        pending_soa_record_binding_.reset();
+    }
+    require_module(open_new_union_dialog_, has_union, "a union", "a union");
+    require_module(open_new_tagged_union_dialog_, has_union, "a union", "a tagged union");
+    require_module(open_new_soa_dialog_, has_soa, "a standard-library SoA", "a SoA");
 }
 
 auto PlannerUi::draw_view_menu() -> bool {

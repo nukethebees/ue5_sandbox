@@ -3,7 +3,6 @@
 #include "planner_ui_support.hpp"
 
 #include <imgui.h>
-#include <imgui_internal.h>
 
 #include <algorithm>
 #include <cctype>
@@ -595,23 +594,8 @@ void PlannerUi::draw_new_module_dialog() {
 
 void PlannerUi::draw_new_enum_dialog() {
     if (open_new_enum_dialog_) {
+        ImGui::OpenPopup("New enum");
         open_new_enum_dialog_ = false;
-        auto const has_enum_module{
-            document_.has_value() &&
-            std::ranges::any_of(document_->manifest().modules, [](auto const& module) {
-                return std::holds_alternative<codegen::EnumModuleSchema>(module);
-            })};
-        if (!has_enum_module) {
-            schema_warning_message_ =
-                "Create an enum module with + New module before creating an enum.";
-            diagnostics_view_open_ = true;
-            focus_diagnostics_view_ = true;
-            project_changed_ = true;
-            ImGui::MarkIniSettingsDirty();
-        } else {
-            schema_warning_message_.clear();
-            ImGui::OpenPopup("New enum");
-        }
     }
     if (!ImGui::BeginPopupModal("New enum", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         return;
