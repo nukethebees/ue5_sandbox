@@ -189,6 +189,57 @@ auto packed_integer_scalar_type() -> TypeFixture {
     return {std::move(types), type};
 }
 
+auto packed_linear_quantized_type() -> TypeFixture {
+    codegen::ScalarModuleSchema domains{};
+    domains.settings.name = "domains";
+    domains.settings.header = "Domains.h";
+    domains.settings.namespace_name = "project";
+    codegen::IntegerScalarSchema health{};
+    health.name = "Health";
+    health.minimum_value = 0;
+    health.maximum_value = 1000;
+    domains.scalars.push_back(std::move(health));
+
+    codegen::RepresentationModuleSchema representations{};
+    representations.settings.name = "representations";
+    representations.settings.header = "Representations.h";
+    representations.settings.namespace_name = "project";
+    codegen::LinearQuantizedSchema health_q8{};
+    health_q8.name = "HealthQ8";
+    health_q8.source.name = "project::Health";
+    health_q8.bit_width = 8;
+    health_q8.reserved_codes = 2;
+    health_q8.clipping = codegen::QuantizationClipping::clamp;
+    representations.linear_quantized.push_back(std::move(health_q8));
+
+    codegen::PackedValueModuleSchema packed{};
+    packed.settings.name = "packed";
+    packed.settings.header = "Packed.h";
+    packed.settings.namespace_name = "project";
+    codegen::PackedValueSchema status{};
+    status.name = "Status";
+    status.storage_type.name = "std::uint16_t";
+    codegen::PackedFieldSchema encoded_health{};
+    encoded_health.name = "health";
+    encoded_health.type.name = "project::HealthQ8";
+    encoded_health.bits.reset();
+    encoded_health.kind = codegen::PackedFieldKind::linear_quantized;
+    status.segments.emplace_back(std::move(encoded_health));
+    codegen::PackedFieldSchema state{};
+    state.name = "state";
+    state.type.name = "std::uint8_t";
+    state.bits = 8;
+    status.segments.emplace_back(std::move(state));
+    packed.values.push_back(std::move(status));
+
+    codegen::Manifest manifest{};
+    manifest.schema_version = codegen::manifest_schema_version;
+    manifest.modules = {std::move(domains), std::move(representations), std::move(packed)};
+    auto types{lispb::schema::resolve_type_graph(manifest)};
+    auto const type{*types.find_declared("packed", "Status")};
+    return {std::move(types), type};
+}
+
 auto integer_scalar_type() -> TypeFixture {
     codegen::Manifest manifest{
         .schema_version = codegen::manifest_schema_version,
@@ -4132,6 +4183,37 @@ TEST(PackedAnalyzer, ReportsSharedIntegerScalarFieldDomain) {
     EXPECT_EQ(field.named_codes.front().name, "Invalid");
     EXPECT_TRUE(field.named_codes.front().sentinel);
     EXPECT_TRUE(analysis.diagnostics.empty());
+}
+
+TEST(PackedAnalyzer, ReportsPlacedLinearQuantizationFacts) {
+    auto const fixture{packed_linear_quantized_type()};
+    auto const analysis{Analyzer::analyze_packed(
+        fixture.types, fixture.type, Variant{}, AbiProfile::host_common())};
+
+    ASSERT_EQ(analysis.fields.size(), 2U);
+    auto const& field{analysis.fields.front()};
+    EXPECT_EQ(field.kind, codegen::PackedFieldKind::linear_quantized);
+    EXPECT_EQ(field.schema_bit_width, 8U);
+    EXPECT_TRUE(field.schema_bit_width_auto);
+    ASSERT_TRUE(field.linear_quantized.has_value());
+    EXPECT_EQ(field.linear_quantized->source_minimum, 0U);
+    EXPECT_EQ(field.linear_quantized->source_maximum, 1000U);
+    EXPECT_EQ(field.linear_quantized->encoded_storage_bits, 8U);
+    EXPECT_EQ(field.linear_quantized->usable_code_count,
+              (ExactCodeCount{.value = 254, .two_to_64 = false}));
+    EXPECT_EQ(field.linear_quantized->reserved_code_count, 2U);
+    EXPECT_NEAR(static_cast<double>(field.linear_quantized->resolution), 1000.0 / 253.0, 1e-12);
+    EXPECT_EQ(field.linear_quantized->clipping, codegen::QuantizationClipping::clamp);
+    EXPECT_TRUE(analysis.diagnostics.empty());
+
+    Variant overridden;
+    overridden.overrides.packed_field_widths[{.type = fixture.type, .field_name = "health"}] = 7;
+    auto const ignored_override{Analyzer::analyze_packed(
+        fixture.types, fixture.type, overridden, AbiProfile::host_common())};
+    EXPECT_EQ(ignored_override.fields.front().bit_width, 8U);
+    EXPECT_FALSE(ignored_override.fields.front().overridden);
+    ASSERT_EQ(ignored_override.diagnostics.size(), 1U);
+    EXPECT_EQ(ignored_override.diagnostics.front().severity, DiagnosticSeverity::warning);
 }
 
 TEST(PackedAnalyzer, DerivesIndexCapacityWidthWithSentinel) {

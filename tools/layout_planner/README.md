@@ -375,10 +375,16 @@ policy. The declaration remains linked to the source domain in the semantic grap
 the source range. Properties and Layout report exact usable capacity where representable, source
 span, linear resolution, maximum half-step rounding error, and endpoint behavior. Edits participate
 in undo/redo and source preview/save/reload. This first representation describes encoded bits but
-does not invent a standalone ABI `sizeof` or generated C++ wrapper. Declare two representations of
+does not invent a standalone ABI `sizeof` or generated C++ wrapper. To place it in a packed value,
+choose the representation in the field type picker; the field switches atomically to **linear
+quantized**, uses the representation's exact width, and clears competing local domain metadata.
+The packed inspector shows the shared source range, usable/reserved codes, resolution, error, and
+clipping policy. Generated packed APIs deliberately expose only `*_encoded` code accessors and
+reject the high-end reserved-code interval—they do not silently treat the code as a decoded source
+value. Declare two representations of
 the same source (for example Q8 and Q10) to compare them directly. The selected-count payload-bit
 totals are exact and overflow-checked; allocated bytes, stride, cache lines, and pages remain
-Unspecified until a container placement policy exists.
+Unspecified until a packed or other container placement policy exists.
 
 Variable-length integer authoring uses **+ New varint** in the same representation module. Unsigned
 varint requires an unsigned integer-scalar source; signed varint and ZigZag+unsigned-varint require

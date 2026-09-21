@@ -309,6 +309,70 @@ TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesPackedValue) {
     EXPECT_TRUE(analysis.diagnostics.empty());
 }
 
+TEST(SchemaLoader, PlacesSavesReloadsAndAnalyzesLinearQuantizedPackedField) {
+    TemporarySchemaProject files;
+    auto loaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
+    ASSERT_TRUE(loaded.document.has_value());
+    auto const packed_declaration{
+        loaded.document->find_declaration({.origin = lispb::schema::TypeOrigin::declaration,
+                                           .module_name = "packed",
+                                           .namespace_name = "test",
+                                           .name = "ExistingPacked"})};
+    ASSERT_TRUE(packed_declaration.has_value());
+
+    auto replacement{*loaded.document->packed_value_schema(*packed_declaration)};
+    auto& field{std::get<codegen::PackedFieldSchema>(replacement.segments.front())};
+    field.type.name = "test::ExistingHealthQ8";
+    field.bits.reset();
+    field.kind = codegen::PackedFieldKind::linear_quantized;
+    field.range_helper = false;
+    field.minimum_value.reset();
+    field.maximum_value.reset();
+    field.named_codes.clear();
+    field.relationship.reset();
+    auto applied{loaded.document->apply(lispb::schema::ReplacePackedValue{
+        .declaration = *packed_declaration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(applied.has_value()) << applied.error().message;
+    ASSERT_TRUE(*applied);
+
+    auto const designed{loaded.document->types().find_declared("packed", "ExistingPacked")};
+    ASSERT_TRUE(designed.has_value());
+    auto analysis{Analyzer::analyze_packed(
+        loaded.document->types(), *designed, Variant{}, AbiProfile::host_common())};
+    ASSERT_EQ(analysis.fields.size(), 1U);
+    ASSERT_TRUE(analysis.fields.front().linear_quantized.has_value());
+    EXPECT_EQ(analysis.fields.front().bit_width, 8U);
+    EXPECT_EQ(analysis.fields.front().linear_quantized->source_maximum, 1000U);
+    EXPECT_EQ(analysis.fields.front().linear_quantized->usable_code_count,
+              (ExactCodeCount{.value = 256, .two_to_64 = false}));
+    EXPECT_TRUE(analysis.diagnostics.empty());
+
+    auto saved{loaded.document->save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    ASSERT_EQ(saved->size(), 1U);
+
+    auto reloaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(reloaded.loaded) << diagnostic_text(reloaded);
+    auto const reloaded_packed{
+        reloaded.document->types().find_declared("packed", "ExistingPacked")};
+    ASSERT_TRUE(reloaded_packed.has_value());
+    auto const& packed{std::get<lispb::schema::PackedType>(
+        reloaded.document->types().type(*reloaded_packed).definition)};
+    auto const& reloaded_field{std::get<lispb::schema::PackedField>(packed.segments.front())};
+    EXPECT_EQ(reloaded_field.kind, codegen::PackedFieldKind::linear_quantized);
+    EXPECT_EQ(reloaded_field.bit_width, 8U);
+    EXPECT_TRUE(reloaded_field.bit_width_auto);
+    EXPECT_EQ(reloaded.document->types().type(reloaded_field.semantic_type.type).identity.name,
+              "ExistingHealthQ8");
+
+    analysis = Analyzer::analyze_packed(
+        reloaded.document->types(), *reloaded_packed, Variant{}, AbiProfile::host_common());
+    ASSERT_TRUE(analysis.fields.front().linear_quantized.has_value());
+    EXPECT_EQ(analysis.fields.front().linear_quantized->source_minimum, 0U);
+    EXPECT_EQ(analysis.fields.front().linear_quantized->source_maximum, 1000U);
+}
+
 TEST(SchemaLoader, CreatesSavesReloadsAndAnalyzesLinearQuantizedRepresentation) {
     TemporarySchemaProject files;
     auto loaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};

@@ -618,8 +618,16 @@ through an unsigned cast or overflowing signed subtraction.
 Because `2^64` cannot be stored in `uint64`, the analysis has an explicit exact `2^64` code-count
 case rather than reporting a known capacity as Unknown; resolution is calculated from the same
 mathematical power of two.
-The configured generated header remains empty: this declaration does not yet choose a standalone
-ABI wrapper, packed placement, or C++ lowering policy.
+The configured generated header remains empty because the declaration does not choose a standalone
+ABI wrapper. A packed field may, however, place the representation explicitly with
+`:kind linear-quantized`. That placement keeps the representation `TypeId`, derives exactly its
+encoded width, and rejects competing field-local range, code, helper, or relationship facts.
+Packed lowering selects only a fixed-width unsigned carrier for the concrete placement and exposes
+it through deliberately named `*_encoded` construction/getter/setter APIs. High-end reserved codes
+are rejected by construction, mutation, and `is_valid`; no generated API pretends that an encoded
+code is the decoded source value. Headless packed analysis embeds the existing quantization analysis
+so the UI consumes the same source range, capacity, resolution, error, endpoint, and clipping facts.
+Quantize/dequantize helpers and non-packed container placement remain later policies.
 `Analyzer::compare_linear_quantized` compares two declarations only when their resolved source
 `TypeId` matches. It carries both analyses and derives exact width/code-space deltas, numerical
 resolution/error deltas, clipping-policy changes, and overflow-safe encoded payload bits for the
@@ -705,7 +713,8 @@ This is an arbitrary-width packed representation, not a fabricated standalone C+
 Packed field source widths are optional: an explicit integer is durable physical intent, while
 `:bits auto` asks shared schema resolution to derive a concrete width. Integer fields derive from
 the signed or unsigned extremes across their local range and named codes, or from a referenced
-integer scalar's shared domain; enum fields consume the shared enum domain width. The resolved
+integer scalar's shared domain; enum fields consume the shared enum domain width; linear-quantized
+fields consume their representation's exact encoded width. The resolved
 `PackedField` retains an auto-provenance flag alongside its concrete
 width, so validation, layout, variants, visualization, and C++ lowering never need a magic numeric
 sentinel for "auto".

@@ -3841,6 +3841,11 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             ? std::get_if<IntegerScalarType>(
                   &workspace_.types().type(selected_resolved_field->semantic_type.type).definition)
             : nullptr};
+    auto const* selected_linear_quantized{
+        selected_resolved_field != nullptr
+            ? std::get_if<LinearQuantizedType>(
+                  &workspace_.types().type(selected_resolved_field->semantic_type.type).definition)
+            : nullptr};
     if (selected_schema_field == nullptr) {
         selected_packed_code_.clear();
     } else if (std::ranges::find(selected_schema_field->named_codes,
@@ -4142,6 +4147,20 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 resolved_field != nullptr &&
                 std::holds_alternative<IntegerScalarType>(
                     workspace_.types().type(resolved_field->semantic_type.type).definition)};
+            auto const* field_linear_quantized{
+                resolved_field != nullptr
+                    ? std::get_if<LinearQuantizedType>(
+                          &workspace_.types().type(resolved_field->semantic_type.type).definition)
+                    : nullptr};
+            layout::LinearQuantizedAnalysis const* field_quantization_analysis{};
+            if (field != nullptr && active_packed_.has_value()) {
+                auto const analyzed_field{std::ranges::find(
+                    active_packed_->fields, field->name, &layout::PackedFieldAnalysis::name)};
+                if (analyzed_field != active_packed_->fields.end() &&
+                    analyzed_field->linear_quantized.has_value()) {
+                    field_quantization_analysis = &*analyzed_field->linear_quantized;
+                }
+            }
             auto const& segment_name{codegen::packed_segment_name(segment)};
             auto const row_selected{selected_field_ == segment_name};
             ImGui::PushID(static_cast<int>(index));
@@ -4282,6 +4301,16 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                         pending_field.minimum_value.reset();
                         pending_field.maximum_value.reset();
                         pending_field.named_codes.clear();
+                    } else if (picked_type != workspace_.types().types().end() &&
+                               std::holds_alternative<LinearQuantizedType>(
+                                   picked_type->definition)) {
+                        pending_field.kind = codegen::PackedFieldKind::linear_quantized;
+                        pending_field.bits.reset();
+                        pending_field.range_helper = false;
+                        pending_field.minimum_value.reset();
+                        pending_field.maximum_value.reset();
+                        pending_field.named_codes.clear();
+                        pending_field.relationship.reset();
                     } else if (picked_type != workspace_.types().types().end()) {
                         if (auto const* scalar{
                                 std::get_if<IntegerScalarType>(&picked_type->definition)}) {
@@ -4343,15 +4372,17 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             }
 
             ImGui::TableNextColumn();
-            auto const kind_label{field == nullptr ? "reserved"
-                                  : field->kind == codegen::PackedFieldKind::enumeration ? "enum"
-                                  : field->kind == codegen::PackedFieldKind::signed_integer
-                                      ? "signed"
-                                      : "unsigned"};
+            auto const kind_label{
+                field == nullptr                                            ? "reserved"
+                : field->kind == codegen::PackedFieldKind::enumeration      ? "enum"
+                : field->kind == codegen::PackedFieldKind::linear_quantized ? "linear quantized"
+                : field->kind == codegen::PackedFieldKind::signed_integer   ? "signed"
+                                                                            : "unsigned"};
             if (field == nullptr) {
                 ImGui::TextDisabled("reserved");
             } else if (row_selected) {
-                ImGui::BeginDisabled(field_uses_integer_scalar);
+                ImGui::BeginDisabled(field_uses_integer_scalar ||
+                                     field_linear_quantized != nullptr);
                 if (ImGui::BeginCombo("##kind", kind_label)) {
                     if (ImGui::Selectable("unsigned",
                                           field->kind ==
@@ -4426,6 +4457,20 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                         pending_field.maximum_value.reset();
                         pending_field.named_codes.clear();
                     }
+                    if (ImGui::Selectable("linear quantized",
+                                          field->kind ==
+                                              codegen::PackedFieldKind::linear_quantized)) {
+                        pending = *schema;
+                        auto& pending_field{
+                            std::get<codegen::PackedFieldSchema>(pending->segments[index])};
+                        pending_field.kind = codegen::PackedFieldKind::linear_quantized;
+                        pending_field.bits.reset();
+                        pending_field.range_helper = false;
+                        pending_field.minimum_value.reset();
+                        pending_field.maximum_value.reset();
+                        pending_field.named_codes.clear();
+                        pending_field.relationship.reset();
+                    }
                     ImGui::EndCombo();
                 }
                 ImGui::EndDisabled();
@@ -4438,7 +4483,9 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             if (field == nullptr) {
                 ImGui::TextDisabled("-");
             } else if (row_selected) {
-                ImGui::BeginDisabled(field->kind != codegen::PackedFieldKind::unsigned_integer);
+                ImGui::BeginDisabled(field->kind != codegen::PackedFieldKind::unsigned_integer ||
+                                     field_uses_integer_scalar ||
+                                     field_linear_quantized != nullptr);
                 if (ImGui::Checkbox("##range-helper", &range_helper)) {
                     pending = *schema;
                     std::get<codegen::PackedFieldSchema>(pending->segments[index]).range_helper =
@@ -4456,6 +4503,12 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 auto const minimum{codegen::format_packed_integer(*resolved_field->minimum_value)};
                 auto const maximum{codegen::format_packed_integer(*resolved_field->maximum_value)};
                 ImGui::TextDisabled("%s..%s (shared)", minimum.c_str(), maximum.c_str());
+            } else if (field_quantization_analysis != nullptr) {
+                auto const minimum{
+                    codegen::format_packed_integer(field_quantization_analysis->source_minimum)};
+                auto const maximum{
+                    codegen::format_packed_integer(field_quantization_analysis->source_maximum)};
+                ImGui::TextDisabled("%s..%s (quantized)", minimum.c_str(), maximum.c_str());
             } else if (row_selected) {
                 ImGui::SetNextItemWidth(70.0F);
                 auto range_submitted{ImGui::InputText("##minimum",
@@ -4509,6 +4562,11 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             ImGui::TableNextColumn();
             if (field == nullptr) {
                 ImGui::TextDisabled("Reserved");
+            } else if (field_quantization_analysis != nullptr) {
+                auto const maximum{field_quantization_analysis->usable_code_count.two_to_64
+                                       ? (std::numeric_limits<std::uint64_t>::max)()
+                                       : field_quantization_analysis->usable_code_count.value - 1};
+                ImGui::Text("encoded 0..%llu", static_cast<unsigned long long>(maximum));
             } else if (index < packed.segments.size()) {
                 auto const* resolved{
                     std::get_if<lispb::schema::PackedField>(&packed.segments[index])};
@@ -4697,6 +4755,11 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         }
 
         ImGui::SeparatorText("Semantic relationship");
+        if (selected_linear_quantized != nullptr) {
+            ImGui::TextDisabled(
+                "This placement inherits semantic meaning through the quantizer's source scalar.");
+        }
+        ImGui::BeginDisabled(selected_linear_quantized != nullptr);
         ImGui::SetNextItemWidth(180.0F);
         auto const current_kind{semantic_relationship_kinds[static_cast<std::size_t>(
             std::clamp(packed_relationship_kind_,
@@ -4853,6 +4916,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             }
             ImGui::EndDisabled();
         }
+        ImGui::EndDisabled();
         ImGui::TextDisabled(
             "Relationships are semantic graph edges; session capacity analysis does not change "
             "durable source widths.");
@@ -4951,7 +5015,37 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 "%s = %s%s", code.name.c_str(), value.c_str(), code.sentinel ? " (sentinel)" : "");
         }
     } else if (!pending.has_value() && selected_schema_field != nullptr &&
-               selected_index.has_value()) {
+               selected_linear_quantized != nullptr) {
+        ImGui::SeparatorText("Linear quantization");
+        layout::LinearQuantizedAnalysis const* quantization{};
+        if (active_packed_.has_value()) {
+            auto const analyzed_field{std::ranges::find(
+                active_packed_->fields, selected_field_, &layout::PackedFieldAnalysis::name)};
+            if (analyzed_field != active_packed_->fields.end() &&
+                analyzed_field->linear_quantized.has_value()) {
+                quantization = &*analyzed_field->linear_quantized;
+            }
+        }
+        if (quantization != nullptr) {
+            auto const source_minimum{codegen::format_packed_integer(quantization->source_minimum)};
+            auto const source_maximum{codegen::format_packed_integer(quantization->source_maximum)};
+            ImGui::Text("Source range: %s..%s", source_minimum.c_str(), source_maximum.c_str());
+            ImGui::Text("Encoded width: %u bits", quantization->encoded_storage_bits);
+            ImGui::Text("Usable codes: %s",
+                        detail::format_code_count(quantization->usable_code_count).c_str());
+            ImGui::Text("Reserved codes: %llu",
+                        static_cast<unsigned long long>(quantization->reserved_code_count));
+            ImGui::Text("Resolution: %.9Lg", quantization->resolution);
+            ImGui::Text("Maximum rounding error: %.9Lg", quantization->maximum_rounding_error);
+            ImGui::Text("Clipping: %s",
+                        codegen::quantization_clipping_name(quantization->clipping).data());
+        } else {
+            ImGui::TextDisabled("Quantization analysis is unavailable.");
+        }
+        ImGui::TextDisabled(
+            "Generated packed APIs expose encoded codes; decoding remains representation policy.");
+    } else if (!pending.has_value() && selected_schema_field != nullptr &&
+               selected_index.has_value() && selected_linear_quantized == nullptr) {
         auto const selected_segment_name{selected_field_};
         auto const effective_width{
             selected_resolved_field != nullptr ? selected_resolved_field->bit_width : 1U};

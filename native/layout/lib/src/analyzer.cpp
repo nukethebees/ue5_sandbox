@@ -3920,8 +3920,15 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
     for (auto const& segment : packed.segments) {
         auto const* field{std::get_if<lispb::schema::PackedField>(&segment)};
         auto const* reserved{std::get_if<lispb::schema::PackedReservedBits>(&segment)};
-        auto const width{field != nullptr ? effective_field_width(type, *field, variant)
-                                          : reserved->bit_width};
+        auto const field_override{field != nullptr &&
+                                  variant.overrides.packed_field_widths.contains(
+                                      FieldOverrideId{.type = type, .field_name = field->name})};
+        auto const fixed_representation_width{
+            field != nullptr && field->kind == codegen::PackedFieldKind::linear_quantized};
+        auto const width{field != nullptr && !fixed_representation_width
+                             ? effective_field_width(type, *field, variant)
+                         : field != nullptr ? field->bit_width
+                                            : reserved->bit_width};
         auto const next_offset{checked_add(offset, width)};
         auto least_significant_bit{offset};
         if (packed.bit_order == codegen::PackedBitOrder::most_significant_first) {
@@ -3943,9 +3950,7 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
             .schema_bit_width = field != nullptr ? field->bit_width : reserved->bit_width,
             .schema_bit_width_auto = field != nullptr && field->bit_width_auto,
             .bit_width = width,
-            .overridden =
-                field != nullptr && variant.overrides.packed_field_widths.contains(
-                                        FieldOverrideId{.type = type, .field_name = field->name}),
+            .overridden = field_override && !fixed_representation_width,
             .least_significant_bit = least_significant_bit,
             .most_significant_bit = std::nullopt,
             .maximum_unsigned_value =
@@ -3966,6 +3971,7 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
             .minimum_required_bits = std::nullopt,
             .unused_codes = std::nullopt,
             .named_codes = {},
+            .linear_quantized = std::nullopt,
             .relationship_kind = field != nullptr && field->relationship.has_value()
                                    ? std::optional{field->relationship->kind}
                                    : std::nullopt,
@@ -3992,6 +3998,13 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
                 {DiagnosticSeverity::error,
                  "Packed segment '" + field_result.name + "' must use at least one bit."});
         }
+        if (field_override && fixed_representation_width) {
+            result.diagnostics.push_back(
+                {DiagnosticSeverity::warning,
+                 "Packed field '" + field->name +
+                     "' ignores a session width override because its linear-quantized "
+                     "representation owns the exact encoded width."});
+        }
         if (field != nullptr && !field_result.maximum_unsigned_value.has_value()) {
             result.diagnostics.push_back(
                 {DiagnosticSeverity::error,
@@ -4000,6 +4013,11 @@ auto Analyzer::analyze_packed(lispb::schema::TypeGraph const& types,
         std::optional<codegen::PackedIntegerValue> minimum_required_code;
         std::optional<codegen::PackedIntegerValue> maximum_required_code;
         if (field != nullptr) {
+            if (std::holds_alternative<lispb::schema::LinearQuantizedType>(
+                    types.type(field->semantic_type.type).definition)) {
+                field_result.linear_quantized =
+                    analyze_linear_quantized(types, field->semantic_type.type);
+            }
             field_result.named_codes.reserve(field->named_codes.size());
             for (auto const& code : field->named_codes) {
                 field_result.named_codes.push_back(
