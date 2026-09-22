@@ -50,6 +50,9 @@ Declaration metadata is exhaustive: semantic-TypeGraph contribution, canonical s
 and generated C++ names are each derived by visiting `DeclarationSchema`. Generated-name ownership
 includes public helper types such as SoA views and homogeneous storage/view traits, so validation
 can reject cross-declaration collisions before lowering a heterogeneous output module.
+SoA array-allocator variants use one validation and expansion policy for canonical and legacy
+programmatic modules; they are limited to plain dynamic Unreal SoAs and their prefixed generated
+types are checked before lowering.
 
 `EditableSchemaDocument` owns the manifest draft, source-file and declaration ranges, stable
 `DeclarationId` values, tombstones, undo/redo, and the last valid resolved graph. Normal-module

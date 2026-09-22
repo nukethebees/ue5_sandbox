@@ -2,6 +2,8 @@
 #include "lowering_utils.h"
 #include "soa_internal.h"
 
+#include <codegen/schema/soa_allocator_variants.h>
+
 #include <algorithm>
 #include <cctype>
 #include <set>
@@ -356,32 +358,14 @@ auto lower_soa_declaration(SoaSchema const& schema,
                            lispb::schema::TypeGraph const& type_graph,
                            std::optional<std::string> const& allocator_prefix)
     -> DeclarationEmission {
-    std::vector<SoaSchema> schemas;
+    std::vector<SoaSchema> original_schemas;
     for (auto const& declaration : module.declarations) {
         if (auto const* soa{std::get_if<SoaSchema>(&declaration)}) {
-            schemas.push_back(*soa);
+            original_schemas.push_back(*soa);
         }
     }
-    auto const original_count{schemas.size()};
-    for (auto const& variant : module.soa_array_allocators) {
-        for (std::size_t index{0}; index < original_count; ++index) {
-            auto copy{schemas[index]};
-            copy.name = variant.prefix + copy.name;
-            copy.view_name = variant.prefix + copy.view_name.value_or(schemas[index].name + "View");
-            copy.const_view_name =
-                variant.prefix + copy.const_view_name.value_or(schemas[index].name + "ConstView");
-            copy.single_allocation.reset();
-            copy.single_allocation_variants.clear();
-            copy.array_allocator = variant.allocator;
-            for (auto& member : copy.members) {
-                if (member.kind == SoaMemberKind::nested && member.nested_schema.has_value()) {
-                    member.type = TypeRef{variant.prefix + *member.nested_schema};
-                    member.nested_schema = variant.prefix + *member.nested_schema;
-                }
-            }
-            schemas.push_back(std::move(copy));
-        }
-    }
+    auto const schemas{expand_soa_allocator_variants(
+        module.soa_backend, original_schemas, module.soa_array_allocators)};
     std::map<std::string, SoaSchema const*> by_name;
     for (auto const& item : schemas) {
         by_name.emplace(item.name, &item);
@@ -425,63 +409,10 @@ auto lower_soa_declaration(SoaSchema const& schema,
 auto lower_soa_module(SoaModuleSchema const& module,
                       std::map<std::string, CppType> const& types,
                       lispb::schema::TypeGraph const& type_graph) -> Module {
-    if (module.array_allocators.empty()) {
-        return lower_soa_module_impl(module, types, type_graph);
-    }
-    if (module.backend == SoaBackend::standard_library) {
-        throw std::invalid_argument{"TArray allocator variants require the Unreal backend"};
-    }
     auto expanded{module};
-    std::set<std::string> names;
-    for (auto const& schema : module.structs) {
-        names.insert(schema.name);
-        names.insert(schema.view_name.value_or(schema.name + "View"));
-        names.insert(schema.const_view_name.value_or(schema.name + "ConstView"));
-        if (schema.single_allocation) {
-            names.insert(*schema.single_allocation);
-        }
-        for (auto const& variant : schema.single_allocation_variants) {
-            names.insert(variant.name);
-        }
-    }
-    for (auto const& variant : module.array_allocators) {
-        if (variant.prefix.empty() ||
-            !std::isalpha(static_cast<unsigned char>(variant.prefix.front())) ||
-            !std::ranges::all_of(variant.prefix,
-                                 [](unsigned char c) { return std::isalnum(c) || c == '_'; })) {
-            throw std::invalid_argument{"Invalid SoA allocator variant prefix: " + variant.prefix};
-        }
-        for (auto const& schema : module.structs) {
-            if (schema.fixed || schema.equivalent_type || !schema.functions.empty() ||
-                !schema.mutable_view_functions.empty() || !schema.using_declarations.empty()) {
-                throw std::invalid_argument{"SoA allocator variants require plain dynamic schemas"};
-            }
-            auto copy{schema};
-            copy.name = variant.prefix + schema.name;
-            copy.view_name = variant.prefix + schema.view_name.value_or(schema.name + "View");
-            copy.const_view_name =
-                variant.prefix + schema.const_view_name.value_or(schema.name + "ConstView");
-            for (auto const& name : {copy.name, *copy.view_name, *copy.const_view_name}) {
-                if (!names.insert(name).second) {
-                    throw std::invalid_argument{"Duplicate SoA allocator variant type: " + name};
-                }
-            }
-            copy.single_allocation.reset();
-            copy.single_allocation_variants.clear();
-            copy.array_allocator = variant.allocator;
-            for (auto& member : copy.members) {
-                if (member.kind == SoaMemberKind::nested) {
-                    if (!member.nested_schema) {
-                        throw std::invalid_argument{
-                            "SoA allocator variants require generated nested schemas"};
-                    }
-                    member.type = TypeRef{variant.prefix + *member.nested_schema};
-                    member.nested_schema = variant.prefix + *member.nested_schema;
-                }
-            }
-            expanded.structs.push_back(std::move(copy));
-        }
-    }
+    expanded.structs =
+        expand_soa_allocator_variants(module.backend, module.structs, module.array_allocators);
+    expanded.array_allocators.clear();
     return lower_soa_module_impl(expanded, types, type_graph);
 }
 

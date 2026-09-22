@@ -2577,9 +2577,10 @@ auto legacy_head_accepts_declaration(std::string_view const head,
 }
 
 auto legacy_head_requires_canonical_module(std::string_view const head,
-                                           codegen::NormalModuleSchema const& module) -> bool {
+                                           codegen::NormalModuleSchema const& module,
+                                           bool const declaration_was_touched) -> bool {
     if (head == "vector-soa-module") {
-        return module.declarations.size() != 1 ||
+        return declaration_was_touched || module.declarations.size() != 1 ||
                !std::holds_alternative<codegen::VectorSoaSchema>(module.declarations.front());
     }
     if (head == "facade-module") {
@@ -4984,13 +4985,20 @@ auto EditableSchemaDocument::preview_source_updates() const
         replacements[range.source_file_index].push_back(
             {.begin = range.begin_offset, .end = range.end_offset, .text = {}});
     }
+    auto module_has_touched_declaration = [&](std::size_t const module_index) {
+        return std::ranges::any_of(touched, [&](DeclarationId const id) {
+            auto const* info{declaration(id)};
+            return info != nullptr && info->module_index == module_index;
+        });
+    };
     for (std::size_t module_index{}; module_index < manifest_.modules.size(); ++module_index) {
         auto const* module{
             std::get_if<codegen::NormalModuleSchema>(&manifest_.modules[module_index])};
         auto const& source_range{module_source_ranges_[module_index]};
         auto const& source_head{module_source_heads_[module_index]};
         if (module == nullptr || !source_range.has_value() || source_head.empty() ||
-            !legacy_head_requires_canonical_module(source_head, *module)) {
+            !legacy_head_requires_canonical_module(
+                source_head, *module, module_has_touched_declaration(module_index))) {
             continue;
         }
 
@@ -5009,6 +5017,15 @@ auto EditableSchemaDocument::preview_source_updates() const
             fully_rendered_modules.insert(module_index);
         }
     }
+    auto covered_by_rendered_module = [&](SourceRange const& range) {
+        return std::ranges::any_of(fully_rendered_modules, [&](std::size_t const module_index) {
+            auto const& module_range{module_source_ranges_[module_index]};
+            return module_range.has_value() &&
+                   module_range->source_file_index == range.source_file_index &&
+                   module_range->begin_offset <= range.begin_offset &&
+                   range.end_offset <= module_range->end_offset;
+        });
+    };
     auto render_source_aware = [&](DeclarationId const id,
                                    auto const& schema,
                                    auto const preserve,
@@ -5107,7 +5124,8 @@ auto EditableSchemaDocument::preview_source_updates() const
         if (info == nullptr) {
             auto const tombstone{source_tombstones_.find(id)};
             if (tombstone != source_tombstones_.end() &&
-                !covered_by_deleted_module(tombstone->second)) {
+                !covered_by_deleted_module(tombstone->second) &&
+                !covered_by_rendered_module(tombstone->second)) {
                 auto const& source{tombstone->second};
                 replacements[source.source_file_index].push_back(
                     {.begin = source.begin_offset, .end = source.end_offset, .text = {}});
