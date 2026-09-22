@@ -19,6 +19,7 @@ set(SANDBOX_UNREAL_BUILD_TOOLS
   "${CMAKE_CURRENT_SOURCE_DIR}/UnrealBuildToolsFixture.ps1"
 )
 add_custom_target(sandbox-unreal-build-tools-preflight)
+add_custom_target(unreal-build-tools-host)
 set(UE_EDITOR_CMD_EXE "${HELPER}")
 set(UE_PLATFORM "${READY}")
 set(UE_CONFIGURATION test)
