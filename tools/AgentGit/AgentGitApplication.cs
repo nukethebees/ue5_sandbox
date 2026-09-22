@@ -167,15 +167,15 @@ internal sealed class AgentGitApplication(
         string working_directory,
         CancellationToken cancellation_token)
     {
-        var initial_context = await discovery.DiscoverAsync(trust, working_directory, cancellation_token);
         if (request.DryRun)
         {
+            var dry_context = await discovery.DiscoverAsync(trust, working_directory, cancellation_token);
             var dry_evaluation = await evaluator.EvaluateAsync(
                 request,
-                initial_context,
+                dry_context,
                 Path.GetFullPath(working_directory),
                 cancellation_token);
-            WriteRepository(initial_context);
+            WriteRepository(dry_context);
             WriteDecision(dry_evaluation);
             if (dry_evaluation.Decision.Allowed)
             {
@@ -187,8 +187,11 @@ internal sealed class AgentGitApplication(
             return ExitCodes.PolicyDenied;
         }
 
+        var initial_common_git_directory = await discovery.DiscoverCommonGitDirectoryAsync(
+            working_directory,
+            cancellation_token);
         var context = await discovery.DiscoverAsync(trust, working_directory, cancellation_token);
-        if (!PathsEqual(context.State.CommonGitDirectory, initial_context.State.CommonGitDirectory))
+        if (!PathsEqual(context.State.CommonGitDirectory, initial_common_git_directory))
         {
             throw new RepositoryStateException("Repository identity changed during pre-execution validation.");
         }
