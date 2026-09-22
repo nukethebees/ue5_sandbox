@@ -102,6 +102,9 @@ arrangement.
    Supported declarations can also be deleted after confirmation
    when the resolved graph has no direct users or registered alias; deletion is a normal undoable
    semantic command for both existing source and newly created declarations.
+   **Delete module** beside each module removes that module and its declarations after confirmation.
+   It refuses the last module and modules with declarations still used or registered elsewhere.
+   The LispB source file remains on disk; File > Undo restores the draft until Save.
 4. Use **Create editable variant** for an in-memory physical experiment. In a variant, change a
    packed field width/storage type or a SoA capacity/column type without modifying LispB. Schema
    values, planning values, and active overrides are shown separately.

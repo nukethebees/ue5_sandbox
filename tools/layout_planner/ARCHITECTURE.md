@@ -42,6 +42,13 @@ physical facts, preserving the logical nodes and their dependency edges. The GUI
 dock layout, cached presentation results, and drawing; it does not own schema semantics or calculate
 layouts.
 
+Module deletion is one source-aware schema command. It removes the selected module and its
+declarations from the draft only after rejecting surviving type users, registered aliases, and
+deletion of the last module. Its inverse restores the module at the same index with its declaration
+IDs and source ownership. Preview removes the entire original top-level LispB form (rather than
+overlapping edits to its children); saving validates and reloads the remaining registered source
+files without deleting a file from disk.
+
 The Graph view renders only `TypeGraph::dependencies_of` edges and derives labels from the resolved
 definition; it owns no relationship records. Edge-label hover/click state is transient presentation
 state, and navigation writes the same selected `TypeId` used by node clicks and the other views.

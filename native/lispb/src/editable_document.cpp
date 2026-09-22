@@ -4847,6 +4847,17 @@ auto EditableSchemaDocument::preview_source_updates() const
     };
     std::vector<std::vector<Replacement>> replacements(source_files_.size());
     std::map<std::size_t, std::set<DeclarationId>> insertions;
+    auto covered_by_deleted_module = [&](SourceRange const& range) {
+        return std::ranges::any_of(deleted_module_source_ranges_, [&](SourceRange const& module) {
+            return module.source_file_index == range.source_file_index &&
+                   module.begin_offset <= range.begin_offset &&
+                   range.end_offset <= module.end_offset;
+        });
+    };
+    for (auto const& range : deleted_module_source_ranges_) {
+        replacements[range.source_file_index].push_back(
+            {.begin = range.begin_offset, .end = range.end_offset, .text = {}});
+    }
     auto render_source_aware = [&](DeclarationId const id,
                                    auto const& schema,
                                    auto const preserve,
@@ -4935,7 +4946,8 @@ auto EditableSchemaDocument::preview_source_updates() const
         auto const* info{declaration(id)};
         if (info == nullptr) {
             auto const tombstone{source_tombstones_.find(id)};
-            if (tombstone != source_tombstones_.end()) {
+            if (tombstone != source_tombstones_.end() &&
+                !covered_by_deleted_module(tombstone->second)) {
                 auto const& source{tombstone->second};
                 replacements[source.source_file_index].push_back(
                     {.begin = source.begin_offset, .end = source.end_offset, .text = {}});
@@ -4946,14 +4958,15 @@ auto EditableSchemaDocument::preview_source_updates() const
         if (!rendered.has_value()) {
             continue;
         }
-        if (info->source.has_value()) {
+        if (info->source.has_value() && !covered_by_deleted_module(*info->source)) {
             replacements[info->source->source_file_index].push_back(
                 {.begin = info->source->begin_offset,
                  .end = info->source->end_offset,
                  .text = *rendered});
         } else {
             auto const tombstone{source_tombstones_.find(id)};
-            if (tombstone != source_tombstones_.end()) {
+            if (tombstone != source_tombstones_.end() &&
+                !covered_by_deleted_module(tombstone->second)) {
                 auto const& source{tombstone->second};
                 replacements[source.source_file_index].push_back(
                     {.begin = source.begin_offset, .end = source.end_offset, .text = {}});
@@ -5236,26 +5249,162 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                 }
                 return SchemaEditCommand{DeleteModule{.module_index = module_index}};
             } else if constexpr (std::is_same_v<Edit, DeleteModule>) {
-                if (manifest_.modules.empty() ||
-                    edit.module_index + 1 != manifest_.modules.size()) {
-                    return std::unexpected{
-                        SchemaEditError{"Only the newest unsaved module can be removed"}};
+                if (edit.module_index >= manifest_.modules.size()) {
+                    return std::unexpected{SchemaEditError{"Unknown module index"}};
                 }
-                auto const source{pending_module_sources_.find(edit.module_index)};
-                if (source == pending_module_sources_.end() ||
-                    declaration_count(manifest_.modules[edit.module_index]) != 0) {
+                if (manifest_.modules.size() == 1) {
                     return std::unexpected{
-                        SchemaEditError{"Module is source-backed or still contains declarations"}};
+                        SchemaEditError{"The project must retain at least one module"}};
                 }
 
-                auto schema{manifest_.modules.back()};
-                auto const source_file_index{source->second};
-                manifest_.modules.pop_back();
-                module_source_ranges_.pop_back();
-                pending_module_sources_.erase(source);
-                types_ = resolve_type_graph(manifest_);
-                return SchemaEditCommand{CreateModule{.source_file_index = source_file_index,
-                                                      .schema = std::move(schema)}};
+                auto const source{module_source_ranges_[edit.module_index]};
+                auto const pending{pending_module_sources_.find(edit.module_index)};
+                if (!source.has_value() && pending == pending_module_sources_.end()) {
+                    return std::unexpected{
+                        SchemaEditError{"Module has no editable source ownership"}};
+                }
+
+                auto const& module_name{std::visit(
+                    [](auto const& module) -> std::string const& { return module.settings.name; },
+                    manifest_.modules[edit.module_index])};
+                for (auto const& info : declarations_) {
+                    if (info.module_index != edit.module_index) {
+                        continue;
+                    }
+                    auto const type{types_.find(info.identity)};
+                    if (!type.has_value()) {
+                        return std::unexpected{
+                            SchemaEditError{"Module declaration is missing from the type graph"}};
+                    }
+                    for (auto const& [registered_name, cpp_type] : manifest_.types) {
+                        static_cast<void>(cpp_type);
+                        if (types_.find_registered(registered_name) == type) {
+                            return std::unexpected{
+                                SchemaEditError{"Cannot delete module '" + module_name +
+                                                "'; declaration '" + info.identity.name +
+                                                "' is registered as '@" + registered_name + "'"}};
+                        }
+                    }
+                    for (auto const user : types_.users_of(*type)) {
+                        auto const& user_node{types_.type(user)};
+                        if (user_node.identity.module_name != module_name) {
+                            return std::unexpected{
+                                SchemaEditError{"Cannot delete module '" + module_name +
+                                                "'; declaration '" + info.identity.name +
+                                                "' is used by '" + user_node.cpp_spelling + "'"}};
+                        }
+                    }
+                }
+
+                auto candidate{manifest_};
+                candidate.modules.erase(candidate.modules.begin() +
+                                        static_cast<std::ptrdiff_t>(edit.module_index));
+                TypeGraph candidate_types;
+                try {
+                    codegen::validate_manifest(candidate);
+                    candidate_types = resolve_type_graph(candidate);
+                } catch (std::exception const& error) {
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+
+                RestoreModule inverse{.module_index = edit.module_index,
+                                      .schema = manifest_.modules[edit.module_index],
+                                      .source = source,
+                                      .pending_source_file_index =
+                                          pending == pending_module_sources_.end()
+                                              ? std::nullopt
+                                              : std::optional{pending->second}};
+                for (auto const& info : declarations_) {
+                    if (info.module_index == edit.module_index) {
+                        inverse.declarations.push_back(info);
+                    }
+                }
+
+                manifest_ = std::move(candidate);
+                types_ = std::move(candidate_types);
+                module_source_ranges_.erase(module_source_ranges_.begin() +
+                                            static_cast<std::ptrdiff_t>(edit.module_index));
+                if (source.has_value()) {
+                    deleted_module_source_ranges_.push_back(*source);
+                }
+                std::erase_if(declarations_, [&](DeclarationInfo const& info) {
+                    return info.module_index == edit.module_index;
+                });
+                for (auto& info : declarations_) {
+                    if (info.module_index > edit.module_index) {
+                        --info.module_index;
+                    }
+                }
+                auto shifted_pending{std::map<std::size_t, std::size_t>{}};
+                for (auto const& [index, source_file_index] : pending_module_sources_) {
+                    if (index != edit.module_index) {
+                        shifted_pending.emplace(index > edit.module_index ? index - 1 : index,
+                                                source_file_index);
+                    }
+                }
+                pending_module_sources_ = std::move(shifted_pending);
+                return SchemaEditCommand{std::move(inverse)};
+            } else if constexpr (std::is_same_v<Edit, RestoreModule>) {
+                if (edit.module_index > manifest_.modules.size()) {
+                    return std::unexpected{SchemaEditError{"Unknown module insertion index"}};
+                }
+                if (edit.source.has_value() == edit.pending_source_file_index.has_value()) {
+                    return std::unexpected{
+                        SchemaEditError{"Module restore has invalid source ownership"}};
+                }
+                auto deleted_range{deleted_module_source_ranges_.end()};
+                if (edit.source.has_value()) {
+                    deleted_range = std::ranges::find_if(
+                        deleted_module_source_ranges_,
+                        [&](SourceRange const& range) { return range == *edit.source; });
+                    if (deleted_range == deleted_module_source_ranges_.end()) {
+                        return std::unexpected{
+                            SchemaEditError{"Deleted module source range is missing"}};
+                    }
+                }
+
+                auto candidate{manifest_};
+                candidate.modules.insert(candidate.modules.begin() +
+                                             static_cast<std::ptrdiff_t>(edit.module_index),
+                                         edit.schema);
+                TypeGraph candidate_types;
+                try {
+                    codegen::validate_manifest(candidate);
+                    candidate_types = resolve_type_graph(candidate);
+                } catch (std::exception const& error) {
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+
+                manifest_ = std::move(candidate);
+                types_ = std::move(candidate_types);
+                module_source_ranges_.insert(module_source_ranges_.begin() +
+                                                 static_cast<std::ptrdiff_t>(edit.module_index),
+                                             edit.source);
+                if (edit.source.has_value()) {
+                    deleted_module_source_ranges_.erase(deleted_range);
+                }
+                for (auto& info : declarations_) {
+                    if (info.module_index >= edit.module_index) {
+                        ++info.module_index;
+                    }
+                }
+                declarations_.insert(
+                    declarations_.end(), edit.declarations.begin(), edit.declarations.end());
+                std::ranges::sort(
+                    declarations_, [](DeclarationInfo const& first, DeclarationInfo const& second) {
+                        return std::pair{first.module_index, first.declaration_index} <
+                               std::pair{second.module_index, second.declaration_index};
+                    });
+                auto shifted_pending{std::map<std::size_t, std::size_t>{}};
+                for (auto const& [index, source_file_index] : pending_module_sources_) {
+                    shifted_pending.emplace(index >= edit.module_index ? index + 1 : index,
+                                            source_file_index);
+                }
+                if (edit.pending_source_file_index.has_value()) {
+                    shifted_pending.emplace(edit.module_index, *edit.pending_source_file_index);
+                }
+                pending_module_sources_ = std::move(shifted_pending);
+                return SchemaEditCommand{DeleteModule{.module_index = edit.module_index}};
             } else if constexpr (std::is_same_v<Edit, MoveDeclaration>) {
                 auto const declaration_it{
                     std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id)};

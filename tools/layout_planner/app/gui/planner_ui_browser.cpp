@@ -211,6 +211,7 @@ void PlannerUi::draw_project_panel() {
     auto const modules{document_.has_value() ? std::span{document_->manifest().modules}
                                              : std::span<codegen::ModuleSchema const>{}};
     std::optional<std::size_t> create_record_in_module;
+    std::optional<std::size_t> requested_delete_module;
     std::optional<std::pair<DeclarationId, std::string>> rename_record;
     for (std::size_t module_index{}; module_index < modules.size(); ++module_index) {
         std::vector<DeclarationInfo const*> declarations;
@@ -300,6 +301,14 @@ void PlannerUi::draw_project_panel() {
                    soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
             add_declaration("+ SoA", new_soa_module_index_, open_new_soa_dialog_);
         }
+        ImGui::BeginDisabled(modules.size() == 1);
+        if (module_buttons.button("Delete module")) {
+            requested_delete_module = module_index;
+        }
+        ImGui::EndDisabled();
+        if (modules.size() == 1 && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip("A LispB project must contain at least one module.");
+        }
         ImGui::EndDisabled();
         if (open) {
             if (declarations.empty()) {
@@ -372,6 +381,50 @@ void PlannerUi::draw_project_panel() {
             ImGui::TreePop();
         }
         ImGui::PopID();
+    }
+
+    if (requested_delete_module.has_value()) {
+        delete_module_index_ = *requested_delete_module;
+        delete_module_name_ = std::visit([](auto const& module) { return module.settings.name; },
+                                         modules[*delete_module_index_]);
+        schema_edit_message_.clear();
+        ImGui::OpenPopup("Delete module?");
+    }
+    if (ImGui::BeginPopupModal("Delete module?", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (delete_module_index_.has_value() && *delete_module_index_ < modules.size()) {
+            auto const declaration_count{std::ranges::count_if(
+                document_->declarations(), [&](DeclarationInfo const& declaration) {
+                    return declaration.module_index == *delete_module_index_;
+                })};
+            ImGui::TextWrapped("Delete module '%s' and its %lld declaration(s)?",
+                               delete_module_name_.c_str(),
+                               static_cast<long long>(declaration_count));
+            ImGui::TextWrapped(
+                "Only this module's LispB form is removed. Its source file remains on disk. "
+                "File > Undo restores the module until you save.");
+            if (ImGui::Button("Delete", {120.0F, 0.0F})) {
+                if (apply_document_edit(DeleteModule{.module_index = *delete_module_index_})) {
+                    delete_module_index_.reset();
+                    delete_module_name_.clear();
+                    ImGui::CloseCurrentPopup();
+                    ImGui::EndPopup();
+                    ImGui::End();
+                    return;
+                }
+            }
+            ImGui::SameLine();
+        }
+        if (ImGui::Button("Cancel", {120.0F, 0.0F})) {
+            delete_module_index_.reset();
+            delete_module_name_.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        if (!schema_edit_message_.empty()) {
+            ImGui::PushStyleColor(ImGuiCol_Text, {0.95F, 0.45F, 0.35F, 1.0F});
+            ImGui::TextWrapped("%s", schema_edit_message_.c_str());
+            ImGui::PopStyleColor();
+        }
+        ImGui::EndPopup();
     }
 
     if (create_record_in_module.has_value()) {
