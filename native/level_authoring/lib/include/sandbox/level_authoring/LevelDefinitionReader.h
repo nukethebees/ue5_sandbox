@@ -16,6 +16,7 @@ struct LevelDefinitionDecodeError {
 
 struct LevelDefinitionReadResult {
     std::optional<::ioj::sim::levels::LevelDefinition> definition{};
+    std::string level_config{};
     std::string script_error{};
     std::vector<LevelDefinitionDecodeError> decode_errors{};
     std::vector<::ioj::sim::levels::LevelValidationError> validation_errors{};

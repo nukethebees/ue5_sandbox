@@ -5,6 +5,7 @@
 #include <expected>
 
 namespace ml::s7 {
-SPACEGAMES7_API auto emit_editor_level_source(FLevelDefinition const& definition)
+SPACEGAMES7_API auto emit_editor_level_source(FLevelDefinition const& definition,
+                                              FStringView level_config = {})
     -> std::expected<FString, FString>;
 }

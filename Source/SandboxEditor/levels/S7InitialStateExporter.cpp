@@ -1,5 +1,6 @@
 #include "SandboxEditor/levels/S7InitialStateExporter.h"
 #include "SandboxEditor/levels/S7InitialStateText.h"
+#include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 
 #include <SandboxGameShared/core/levels/levels.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
@@ -7,6 +8,7 @@
 #include <SpaceGame/levels/LevelEntityResolution.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameS7/LevelDefinitionWriter.h>
 #include <SpaceGameS7/LevelScriptCatalog.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
@@ -32,6 +34,23 @@ struct FExportCandidate {
     FString id_base{};
     FLevelEntityId id{};
 };
+
+auto level_config_path(ULevel const& level) -> FString {
+    for (auto const actor_ptr : level.Actors) {
+        auto const* const document{Cast<AS7LevelAuthoringDocument>(actor_ptr.Get())};
+        if (IsValid(document) && IsValid(document->level_config)) {
+            return document->level_config->GetPathName();
+        }
+    }
+    for (auto const actor_ptr : level.Actors) {
+        auto const* const orchestrator{Cast<ATestBatchOrchestrator>(actor_ptr.Get())};
+        auto const* const config{IsValid(orchestrator) ? orchestrator->get_level_config() : nullptr};
+        if (IsValid(config)) {
+            return config->GetPathName();
+        }
+    }
+    return {};
+}
 
 auto is_ascii_alpha(TCHAR const value) -> bool {
     return (value >= TEXT('a') && value <= TEXT('z')) || (value >= TEXT('A') && value <= TEXT('Z'));
@@ -428,7 +447,8 @@ void execute_s7_initial_state_export() {
         log_export_error(plan.error());
         return;
     }
-    auto const source{s7::emit_editor_level_source(plan->definition)};
+    auto const source{
+        s7::emit_editor_level_source(plan->definition, level_config_path(*level))};
     if (!source) {
         log_export_error(source.error());
         return;
