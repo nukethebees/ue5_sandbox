@@ -8,6 +8,29 @@
 
 namespace ioj::layout_planner::detail {
 
+WrappingButtonRow::WrappingButtonRow() {
+    available_width_ = std::max(1.0F, ImGui::GetContentRegionAvail().x);
+    right_edge_ = ImGui::GetCursorScreenPos().x + available_width_;
+}
+
+auto WrappingButtonRow::button(char const* label) -> bool {
+    auto const natural_width{ImGui::CalcTextSize(label).x +
+                             2.0F * ImGui::GetStyle().FramePadding.x};
+    auto const width{std::min(natural_width, available_width_)};
+    if (has_previous_ && last_right_ + ImGui::GetStyle().ItemSpacing.x + width <= right_edge_) {
+        ImGui::SameLine();
+    }
+    auto const visible_width{std::min(width, std::max(1.0F, ImGui::GetContentRegionAvail().x))};
+    auto const clicked{ImGui::Button(label, {visible_width, 0.0F})};
+    last_right_ = ImGui::GetItemRectMax().x;
+    has_previous_ = true;
+    if (visible_width < natural_width &&
+        ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled | ImGuiHoveredFlags_ForTooltip)) {
+        ImGui::SetTooltip("%s", label);
+    }
+    return clicked;
+}
+
 auto format_bytes(std::optional<std::uint64_t> const bytes) -> std::string {
     if (!bytes.has_value()) {
         return "Unknown";

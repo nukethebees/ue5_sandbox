@@ -233,14 +233,18 @@ void PlannerUi::draw_project_panel() {
         return;
     }
     auto const was_open{project_view_open_};
-    ImGui::Begin("Project / Schema", &project_view_open_);
+    ImGui::Begin("Project / Schema", &project_view_open_, ImGuiWindowFlags_HorizontalScrollbar);
     persist_view_visibility(was_open, project_view_open_);
     if (!project_path_.empty()) {
+        ImGui::PushTextWrapPos(0.0F);
         ImGui::TextDisabled("%s", project_path_.string().c_str());
+        ImGui::PopTextWrapPos();
     }
     if (project_document_.has_value()) {
         ImGui::SeparatorText("Project sources");
+        ImGui::PushTextWrapPos(0.0F);
         ImGui::TextDisabled("Target: %s", target_name_.c_str());
+        ImGui::PopTextWrapPos();
         std::optional<std::filesystem::path> unregister_source;
         auto open_rename_source{false};
         auto const target_found{project_document_->project().targets.find(target_name_)};
@@ -261,11 +265,13 @@ void PlannerUi::draw_project_panel() {
                     source_display +=
                         " (rename pending from " + renamed_from->generic_string() + ")";
                 }
-                ImGui::BulletText("%s", source_display.c_str());
+                ImGui::Bullet();
                 ImGui::SameLine();
+                ImGui::TextWrapped("%s", source_display.c_str());
+                detail::WrappingButtonRow source_buttons;
                 auto const schema_dirty{document_.has_value() && document_->dirty()};
                 ImGui::BeginDisabled(pending || renamed_from.has_value() || schema_dirty);
-                if (ImGui::SmallButton("Unregister")) {
+                if (source_buttons.button("Unregister")) {
                     unregister_source = source;
                 }
                 ImGui::EndDisabled();
@@ -273,9 +279,8 @@ void PlannerUi::draw_project_panel() {
                     ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
                     ImGui::SetTooltip("Undo the staged rename before unregistering this source.");
                 }
-                ImGui::SameLine();
                 ImGui::BeginDisabled(pending || schema_dirty);
-                if (ImGui::SmallButton("Rename")) {
+                if (source_buttons.button("Rename")) {
                     rename_project_source_ = source;
                     std::snprintf(rename_project_source_path_.data(),
                                   rename_project_source_path_.size(),
@@ -341,15 +346,15 @@ void PlannerUi::draw_project_panel() {
             }
             ImGui::EndPopup();
         }
-        ImGui::SetNextItemWidth(360.0F);
+        ImGui::SetNextItemWidth(-1.0F);
         ImGui::InputTextWithHint("##new-project-source",
                                  "relative/path/to/new-source.lispb",
                                  new_project_source_path_.data(),
                                  new_project_source_path_.size());
-        ImGui::SameLine();
+        detail::WrappingButtonRow source_actions;
         auto const schema_dirty{document_.has_value() && document_->dirty()};
         ImGui::BeginDisabled(new_project_source_path_.front() == '\0' || schema_dirty);
-        if (ImGui::Button("Register existing")) {
+        if (source_actions.button("Register existing")) {
             if (apply_project_edit(lispb::AddCppSchemaSource{
                     .target_name = target_name_, .source = new_project_source_path_.data()})) {
                 new_project_source_path_.fill('\0');
@@ -366,9 +371,8 @@ void PlannerUi::draw_project_panel() {
                 "The existing source is validated with the complete target before the draft is "
                 "accepted.");
         }
-        ImGui::SameLine();
         ImGui::BeginDisabled(new_project_source_path_.front() == '\0' || schema_dirty);
-        if (ImGui::Button("Create empty")) {
+        if (source_actions.button("Create empty")) {
             if (apply_project_edit(
                     lispb::CreateCppSchemaSource{.target_name = target_name_,
                                                  .source = new_project_source_path_.data(),
@@ -387,11 +391,13 @@ void PlannerUi::draw_project_panel() {
                 "through + New module after reload.");
         }
         if (project_history_active()) {
+            ImGui::PushTextWrapPos(0.0F);
             ImGui::TextDisabled(
                 project_document_->dirty()
                     ? "Project source-list draft active; schema editing resumes after Save or "
                       "discard."
                     : "Project source-list draft is fully undone; Redo it or discard its history.");
+            ImGui::PopTextWrapPos();
             if (ImGui::SmallButton("Discard project source draft")) {
                 auto loaded{load_lispb_schema(project_path_, target_name_)};
                 if (loaded.loaded) {
@@ -408,62 +414,50 @@ void PlannerUi::draw_project_panel() {
 
     ImGui::SeparatorText("Schema declarations");
     ImGui::BeginDisabled(!document_.has_value() || project_history_active());
-    if (ImGui::Button("+ New module")) {
+    detail::WrappingButtonRow declaration_buttons;
+    if (declaration_buttons.button("+ New module")) {
         declaration_after_new_module_.reset();
         open_new_module_dialog_ = true;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("+ New enum")) {
+    if (declaration_buttons.button("+ New enum")) {
         pending_packed_enum_binding_.reset();
         open_new_enum_dialog_ = true;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("+ New packed value")) {
+    if (declaration_buttons.button("+ New packed value")) {
         open_new_packed_value_dialog_ = true;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("+ New integer scalar")) {
+    if (declaration_buttons.button("+ New integer scalar")) {
         open_new_integer_scalar_dialog_ = true;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("+ New quantization")) {
+    if (declaration_buttons.button("+ New quantization")) {
         open_new_linear_quantized_dialog_ = true;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("+ New varint")) {
+    if (declaration_buttons.button("+ New varint")) {
         open_new_integer_varint_dialog_ = true;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("+ New fixed point")) {
+    if (declaration_buttons.button("+ New fixed point")) {
         open_new_fixed_point_dialog_ = true;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("+ New mini float")) {
+    if (declaration_buttons.button("+ New mini float")) {
         open_new_mini_float_dialog_ = true;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("+ New optional")) {
+    if (declaration_buttons.button("+ New optional")) {
         open_new_optional_sentinel_dialog_ = true;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("+ New presence optional")) {
+    if (declaration_buttons.button("+ New presence optional")) {
         open_new_optional_presence_bit_dialog_ = true;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("+ New record")) {
+    if (declaration_buttons.button("+ New record")) {
         pending_soa_record_binding_.reset();
         open_new_record_dialog_ = true;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("+ New union")) {
+    if (declaration_buttons.button("+ New union")) {
         open_new_union_dialog_ = true;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("+ New tagged union")) {
+    if (declaration_buttons.button("+ New tagged union")) {
         open_new_tagged_union_dialog_ = true;
     }
-    ImGui::SameLine();
-    if (ImGui::Button("+ New SoA")) {
+    if (declaration_buttons.button("+ New SoA")) {
         open_new_soa_dialog_ = true;
     }
     ImGui::EndDisabled();
@@ -517,7 +511,9 @@ void PlannerUi::draw_project_panel() {
         }
         if (open) {
             if (declarations.empty()) {
+                ImGui::PushTextWrapPos(0.0F);
                 ImGui::TextDisabled("Empty module; choose it from a New declaration dialog.");
+                ImGui::PopTextWrapPos();
             }
             for (auto const* declaration : declarations) {
                 auto const type{*workspace_.types().find(declaration->identity)};
@@ -535,7 +531,6 @@ void PlannerUi::draw_project_panel() {
                     packed_dragged_divider_.reset();
                     packed_dragged_variant_id_.reset();
                 }
-                ImGui::SameLine();
                 auto const* status{
                     complete(
                         workspace_.types(), type, baseline, abi_, workspace_.default_capacity())

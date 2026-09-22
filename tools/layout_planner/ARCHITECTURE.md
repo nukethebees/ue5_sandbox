@@ -792,3 +792,14 @@ pan/zoom view over the resolved `TypeGraph`; its deterministic columns and field
 do not duplicate semantic state or assume the graph is acyclic. The renderer follows recent
 activity: it runs smoothly during interaction, reduces its rate while idle or unfocused, and waits
 for events while minimized.
+
+### Responsive layout policy
+
+Every action and piece of explanatory text must remain reachable within its owning view when a dock
+pane or window narrows. Do not extend a row with unconditional `SameLine()` calls or fixed control
+widths that push later items beyond the visible content region. Reflow button groups into additional
+rows, let inputs use the available width, and wrap prose. The Project / Schema view uses
+`WrappingButtonRow` for its declaration and source actions; a button that cannot fit at full width
+stays inside the pane and exposes its full label on hover. For content that cannot sensibly wrap,
+provide an explicit scrollable region rather than silently clipping it. Review new and changed
+views at narrow dock widths as well as their default size.

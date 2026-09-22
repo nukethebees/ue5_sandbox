@@ -14,6 +14,17 @@
 
 namespace ioj::layout_planner::detail {
 
+class WrappingButtonRow {
+  public:
+    WrappingButtonRow();
+    auto button(char const* label) -> bool;
+  private:
+    float right_edge_{};
+    float available_width_{};
+    float last_right_{};
+    bool has_previous_{};
+};
+
 auto format_bytes(std::optional<std::uint64_t> bytes) -> std::string;
 auto format_number(std::optional<std::uint64_t> value) -> std::string;
 auto format_code_count(layout::ExactCodeCount value) -> std::string;
