@@ -27,12 +27,14 @@ Unreal Engine 5.8 project.
   * Finish the coherent implementation and required cleanup
   * Format and review it
   * Run the smallest useful native/focused validation
+  * For native C++ changes, run the clang-tidy workflow and resolve every finding
   * Fix with focused checks then report ready
   * Only build and run what is needed.
 * A feature is **ready for integration** when its implementation is formatted, reviewed, and given
-  credible light/focused validation, and its commits are coherent. Do not repeatedly rebase merely
-  because `dev` advanced; rebase during development only for a specific known dependency. Report
-  readiness and wait for the user's explicit authorization without acquiring a reservation.
+  credible light/focused validation; native C++ changes also have a clean clang-tidy audit; and
+  its commits are coherent. Do not repeatedly rebase merely because `dev` advanced; rebase during
+  development only for a specific known dependency. Report readiness and wait for the user's
+  explicit authorization without acquiring a reservation.
 * After the user authorizes integration, run `integrate-feature` from the feature
   worktree. This queues fairly for the exclusive `integration/dev` jobserver resource; ordinary
   feature work and unrelated jobserver resources remain concurrent.
@@ -68,6 +70,10 @@ Unreal Engine 5.8 project.
   `ctools` as a workflow preflight. Native mimalloc validation likewise builds its configuration-
   local `NativeBinaryTools` host dependency on demand.
 * For final integration, only build and test what your work has affected
+* Native C++ changes must pass `cmake --workflow --preset win-x64-clangcl-debug-tidy` with no
+  clang-tidy diagnostics before they are reported ready or submitted for integration. The workflow
+  itself does not make findings fatal, so inspect its output or `clang-tidy.log` and resolve all
+  findings.
 * Keep benchmarks short; Not more than 3 minutes total
 * Standalone developer-tool tests are not part of the default validation path. Run
   `cmake --workflow --preset tool-tests` only when the change can affect a tool or its tests, a
