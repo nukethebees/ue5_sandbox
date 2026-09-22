@@ -129,6 +129,8 @@ arrangement.
    member extents, padding, minimum cache lines, and minimum pages with overflow-safe arithmetic.
    It also counts elements crossing cache-line and page boundaries for a contiguous array with an
    explicitly stated region-aligned base assumption.
+   Hatched gaps label unused bit, padding byte, and union-slack ranges in layout bars; narrow gaps
+   show their exact range on hover and in the accompanying text.
    The record member grid's Access column defines a sequential access set (defaulting to the
    focused member) and reports useful selected bytes, enclosing AoS footprint, exact distinct
    cache lines/pages touched, and non-selected bytes in the touched cache lines without claiming a

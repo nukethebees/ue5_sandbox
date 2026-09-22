@@ -268,4 +268,43 @@ auto override_count(layout::VariantOverrides const& overrides) -> std::size_t {
            overrides.soa_column_types.size() + overrides.capacities.size();
 }
 
+void draw_labeled_gap(ImDrawList* const draw_list,
+                      ImVec2 const minimum,
+                      ImVec2 const maximum,
+                      std::string_view const label,
+                      std::string_view const compact_label) {
+    if (maximum.x <= minimum.x || maximum.y <= minimum.y) {
+        return;
+    }
+
+    draw_list->AddRectFilled(
+        minimum, maximum, ImGui::GetColorU32(ImVec4{0.34F, 0.38F, 0.43F, 1.0F}));
+    draw_list->PushClipRect(minimum, maximum, true);
+    auto const height{maximum.y - minimum.y};
+    auto const visible_left{std::max(minimum.x, ImGui::GetCurrentWindow()->ClipRect.Min.x)};
+    auto const visible_right{std::min(maximum.x, ImGui::GetCurrentWindow()->ClipRect.Max.x)};
+    constexpr float hatch_spacing{9.0F};
+    for (auto x{visible_left - height}; x < visible_right; x += hatch_spacing) {
+        draw_list->AddLine({x, maximum.y},
+                           {x + height, minimum.y},
+                           ImGui::GetColorU32(ImVec4{0.82F, 0.85F, 0.89F, 0.35F}));
+    }
+
+    auto text{label};
+    auto size{ImGui::CalcTextSize(text.data(), text.data() + text.size())};
+    if (size.x + 8.0F > maximum.x - minimum.x) {
+        text = compact_label;
+        size = ImGui::CalcTextSize(text.data(), text.data() + text.size());
+    }
+    if (!text.empty() && size.x + 6.0F <= maximum.x - minimum.x) {
+        draw_list->AddText({minimum.x + (maximum.x - minimum.x - size.x) * 0.5F,
+                            minimum.y + (height - size.y) * 0.5F},
+                           ImGui::GetColorU32(ImGuiCol_Text),
+                           text.data(),
+                           text.data() + text.size());
+    }
+    draw_list->PopClipRect();
+    draw_list->AddRect(minimum, maximum, ImGui::GetColorU32(ImGuiCol_Border));
+}
+
 } // namespace ioj::layout_planner::detail

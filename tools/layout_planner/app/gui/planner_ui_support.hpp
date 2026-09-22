@@ -55,5 +55,10 @@ auto soa_column(lispb::schema::SoaType const& soa, std::string const& name)
     -> lispb::schema::SoaColumn const*;
 auto has_error(std::vector<layout::Diagnostic> const& diagnostics) -> bool;
 auto override_count(layout::VariantOverrides const& overrides) -> std::size_t;
+void draw_labeled_gap(ImDrawList* draw_list,
+                      ImVec2 minimum,
+                      ImVec2 maximum,
+                      std::string_view label,
+                      std::string_view compact_label);
 
 } // namespace ioj::layout_planner::detail

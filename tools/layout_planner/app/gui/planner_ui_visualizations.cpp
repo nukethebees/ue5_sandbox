@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 namespace ioj::layout_planner {
 namespace {
@@ -21,7 +22,6 @@ using namespace lispb::schema;
 inline constexpr ImVec4 changed_color{0.28F, 0.68F, 0.9F, 1.0F};
 inline constexpr ImVec4 selected_color{0.35F, 0.52F, 0.88F, 1.0F};
 inline constexpr ImVec4 unused_color{0.36F, 0.39F, 0.43F, 1.0F};
-inline constexpr ImVec4 unused_hatch_color{0.82F, 0.85F, 0.89F, 0.45F};
 inline constexpr ImVec4 bit_grid_color{0.86F, 0.9F, 0.95F, 0.2F};
 inline constexpr ImVec4 packed_detail_text_color{0.9F, 0.93F, 0.98F, 1.0F};
 inline constexpr ImVec4 overflow_color{0.85F, 0.55F, 0.2F, 1.0F};
@@ -70,8 +70,12 @@ void draw_packed_bar(PackedAnalysis const& analysis,
     bool has_unused{};
     float unused_left{};
     float unused_right{};
+    std::uint64_t unused_begin{};
+    std::uint64_t unused_end{};
     if (analysis.unused_bits.value_or(0) != 0 && analysis.bits_used.has_value()) {
         has_unused = true;
+        unused_begin = most_significant_first ? 0 : *analysis.bits_used;
+        unused_end = unused_begin + *analysis.unused_bits;
         if (most_significant_first) {
             unused_left = origin.x;
             unused_right =
@@ -81,18 +85,6 @@ void draw_packed_bar(PackedAnalysis const& analysis,
                 origin.x + available * static_cast<float>(*analysis.bits_used) / denominator;
             unused_right = origin.x + storage_width;
         }
-        draw_list->AddRectFilled({unused_left, origin.y},
-                                 {unused_right, origin.y + height},
-                                 ImGui::GetColorU32(unused_color),
-                                 2.0F);
-        draw_list->PushClipRect({unused_left, origin.y}, {unused_right, origin.y + height}, true);
-        constexpr float hatch_spacing{8.0F};
-        for (auto x{unused_left - height}; x < unused_right; x += hatch_spacing) {
-            draw_list->AddLine({x, origin.y + height},
-                               {x + height, origin.y},
-                               ImGui::GetColorU32(unused_hatch_color));
-        }
-        draw_list->PopClipRect();
     }
 
     for (std::size_t index{}; index < analysis.fields.size(); ++index) {
@@ -149,20 +141,12 @@ void draw_packed_bar(PackedAnalysis const& analysis,
     }
 
     if (has_unused) {
-        draw_list->AddRect({unused_left, origin.y},
-                           {unused_right, origin.y + height},
-                           ImGui::GetColorU32(unused_hatch_color),
-                           2.0F,
-                           0,
-                           1.5F);
-        auto const label_text{std::to_string(*analysis.unused_bits) + " unused"};
-        auto const label_size{ImGui::CalcTextSize(label_text.c_str())};
-        if (unused_right - unused_left > label_size.x + 8.0F) {
-            draw_list->AddText({unused_left + (unused_right - unused_left - label_size.x) * 0.5F,
-                                origin.y + height * 0.5F - label_size.y * 0.5F},
-                               ImGui::GetColorU32(ImGuiCol_Text),
-                               label_text.c_str());
-        }
+        auto const range{std::to_string(unused_begin) + ".." + std::to_string(unused_end - 1)};
+        detail::draw_labeled_gap(draw_list,
+                                 {unused_left, origin.y},
+                                 {unused_right, origin.y + height},
+                                 "unused bits " + range,
+                                 "unused " + range);
     }
 
     for (std::size_t index{}; index < analysis.fields.size(); ++index) {
@@ -257,6 +241,11 @@ void draw_packed_bar(PackedAnalysis const& analysis,
     }
     if (hovered) {
         auto const mouse_x{mouse_position.x};
+        if (has_unused && mouse_x >= unused_left && mouse_x < unused_right) {
+            ImGui::SetTooltip("Unused storage bits %llu..%llu",
+                              static_cast<unsigned long long>(unused_begin),
+                              static_cast<unsigned long long>(unused_end - 1));
+        }
         for (auto const& field : analysis.fields) {
             if (most_significant_first && !field.most_significant_bit.has_value()) {
                 continue;
@@ -458,6 +447,39 @@ void draw_packed_bar(PackedAnalysis const& analysis,
     ImGui::Dummy({available, 24.0F});
 }
 
+auto soa_alignment_gaps(SoaAnalysis const& analysis)
+    -> std::vector<std::pair<std::uint64_t, std::uint64_t>> {
+    std::vector<std::pair<std::uint64_t, std::uint64_t>> gaps;
+    if (analysis.allocation_strategy != SoaAllocationStrategy::aligned_contiguous ||
+        !analysis.total_allocation_bytes.has_value()) {
+        return gaps;
+    }
+
+    std::vector<std::pair<std::uint64_t, std::uint64_t>> occupied;
+    for (auto const& column : analysis.columns) {
+        if (!column.allocation_offset_bytes.has_value() || !column.total_bytes.has_value() ||
+            *column.allocation_offset_bytes > *analysis.total_allocation_bytes ||
+            *column.total_bytes >
+                *analysis.total_allocation_bytes - *column.allocation_offset_bytes) {
+            return {};
+        }
+        occupied.emplace_back(*column.allocation_offset_bytes,
+                              *column.allocation_offset_bytes + *column.total_bytes);
+    }
+    std::ranges::sort(occupied);
+    auto next_byte{std::uint64_t{0}};
+    for (auto const& [begin, end] : occupied) {
+        if (begin > next_byte) {
+            gaps.emplace_back(next_byte, begin);
+        }
+        next_byte = std::max(next_byte, end);
+    }
+    if (next_byte < *analysis.total_allocation_bytes) {
+        gaps.emplace_back(next_byte, *analysis.total_allocation_bytes);
+    }
+    return gaps;
+}
+
 void draw_payload_regions(SoaAnalysis const& analysis,
                           SoaAnalysis const* const baseline,
                           std::string& selected_field,
@@ -482,6 +504,7 @@ void draw_payload_regions(SoaAnalysis const& analysis,
     auto x{origin.x};
     auto const total_width{available * static_cast<float>(*analysis.total_allocation_bytes) /
                            denominator};
+    auto const gaps{soa_alignment_gaps(analysis)};
     auto* draw_list{ImGui::GetWindowDrawList()};
     draw_list->AddRectFilled({origin.x, origin.y},
                              {origin.x + total_width, origin.y + height},
@@ -521,6 +544,16 @@ void draw_payload_regions(SoaAnalysis const& analysis,
             x += width;
         }
     }
+    for (auto const& [begin, end] : gaps) {
+        auto const left{origin.x + available * static_cast<float>(begin) / denominator};
+        auto const right{origin.x + available * static_cast<float>(end) / denominator};
+        auto const range{std::to_string(begin) + ".." + std::to_string(end - 1)};
+        detail::draw_labeled_gap(draw_list,
+                                 {left, origin.y},
+                                 {right, origin.y + height},
+                                 "padding " + range,
+                                 "pad " + range);
+    }
     draw_list->AddRect({origin.x, origin.y},
                        {origin.x + total_width, origin.y + height},
                        ImGui::GetColorU32(ImGuiCol_Border),
@@ -535,6 +568,16 @@ void draw_payload_regions(SoaAnalysis const& analysis,
     ImGui::PopID();
     if (hovered) {
         auto const mouse_x{ImGui::GetIO().MousePos.x};
+        for (auto const& [begin, end] : gaps) {
+            auto const left{origin.x + available * static_cast<float>(begin) / denominator};
+            auto const right{origin.x + available * static_cast<float>(end) / denominator};
+            if (mouse_x >= left && mouse_x < right) {
+                ImGui::SetTooltip("Alignment padding: bytes %llu..%llu",
+                                  static_cast<unsigned long long>(begin),
+                                  static_cast<unsigned long long>(end - 1));
+                break;
+            }
+        }
         auto x{origin.x};
         for (auto const& column : analysis.columns) {
             if (!column.total_bytes.has_value()) {
@@ -573,6 +616,11 @@ void draw_payload_regions(SoaAnalysis const& analysis,
                 x += width;
             }
         }
+    }
+    for (auto const& [begin, end] : gaps) {
+        ImGui::TextWrapped("Alignment padding: bytes %llu..%llu",
+                           static_cast<unsigned long long>(begin),
+                           static_cast<unsigned long long>(end - 1));
     }
     ImGui::Dummy({available, ImGui::GetStyle().ItemSpacing.y});
 }
@@ -632,6 +680,7 @@ void draw_soa_region_map(SoaAnalysis const& analysis,
     draw_list->AddRectFilled({origin.x, origin.y + 24.0F},
                              {block_right, origin.y + 114.0F},
                              ImGui::GetColorU32(unused_color));
+    auto const gaps{soa_alignment_gaps(analysis)};
 
     for (std::size_t index{}; index < analysis.columns.size(); ++index) {
         auto const& column{analysis.columns[index]};
@@ -654,6 +703,17 @@ void draw_soa_region_map(SoaAnalysis const& analysis,
                                ImGui::GetColorU32(ImGuiCol_Text),
                                column.name.c_str());
         }
+    }
+    for (auto const& [begin, end] : gaps) {
+        auto const left{origin.x +
+                        static_cast<float>(static_cast<double>(begin) * pixels_per_byte)};
+        auto const right{origin.x + static_cast<float>(static_cast<double>(end) * pixels_per_byte)};
+        auto const range{std::to_string(begin) + ".." + std::to_string(end - 1)};
+        detail::draw_labeled_gap(draw_list,
+                                 {left, origin.y + 26.0F},
+                                 {right, origin.y + 76.0F},
+                                 "padding " + range,
+                                 "pad " + range);
     }
 
     if (access != nullptr && access->footprint_exact) {
@@ -725,7 +785,16 @@ void draw_soa_region_map(SoaAnalysis const& analysis,
                         pages ? "Page" : "Cache line",
                         static_cast<unsigned long long>(byte_offset / *region_bytes));
             if (column == analysis.columns.end()) {
-                ImGui::TextUnformatted("Alignment gap");
+                auto const gap{std::ranges::find_if(gaps, [&](auto const& candidate) {
+                    return byte_offset >= candidate.first && byte_offset < candidate.second;
+                })};
+                if (gap != gaps.end()) {
+                    ImGui::Text("Alignment padding: bytes %llu..%llu",
+                                static_cast<unsigned long long>(gap->first),
+                                static_cast<unsigned long long>(gap->second - 1));
+                } else {
+                    ImGui::TextUnformatted("Unclassified block byte");
+                }
             } else {
                 ImGui::Text("Column: %s", column->name.c_str());
                 ImGui::Text("Column byte: %llu",
@@ -1251,10 +1320,15 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
                     ? std::optional<std::uint32_t>{}
                     : std::optional<std::uint32_t>{adjustment->right_width});
         }
-        if (analysis.unused_bits.value_or(0) != 0) {
-            ImGui::TextDisabled("Hatched region: %llu unused storage bit%s.",
-                                static_cast<unsigned long long>(*analysis.unused_bits),
-                                *analysis.unused_bits == 1 ? "" : "s");
+        if (analysis.unused_bits.value_or(0) != 0 && analysis.bits_used.has_value()) {
+            auto const first_unused_bit{analysis.bit_order ==
+                                                codegen::PackedBitOrder::most_significant_first
+                                            ? std::uint64_t{0}
+                                            : *analysis.bits_used};
+            ImGui::TextWrapped(
+                "Hatched region: unused storage bits %llu..%llu.",
+                static_cast<unsigned long long>(first_unused_bit),
+                static_cast<unsigned long long>(first_unused_bit + *analysis.unused_bits - 1));
         }
         if (analysis.overflow_bits.value_or(0) != 0) {
             ImGui::TextColored(overflow_color,
@@ -1427,6 +1501,33 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
         auto const origin{ImGui::GetCursorScreenPos()};
         constexpr auto height{58.0F};
         auto* const draw_list{ImGui::GetWindowDrawList()};
+        struct ByteGap {
+            std::uint64_t begin{};
+            std::uint64_t end{};
+            char const* kind{};
+        };
+        std::vector<ByteGap> gaps;
+        auto const all_member_extents_known{
+            std::ranges::all_of(analysis.members, [&](auto const& member) {
+                return member.offset_bytes.has_value() && member.extent_bytes.has_value() &&
+                     *member.offset_bytes <= *analysis.size_bytes &&
+                     *member.extent_bytes <= *analysis.size_bytes - *member.offset_bytes;
+            })};
+        if (all_member_extents_known) {
+            auto next_byte{std::uint64_t{0}};
+            for (auto const& member : analysis.members) {
+                if (*member.offset_bytes > next_byte) {
+                    gaps.push_back({next_byte, *member.offset_bytes, "Internal padding"});
+                }
+                next_byte = std::max(next_byte, *member.offset_bytes + *member.extent_bytes);
+            }
+            if (next_byte < *analysis.size_bytes) {
+                gaps.push_back(
+                    {next_byte,
+                     *analysis.size_bytes,
+                     analysis.members.empty() ? "Empty-object storage" : "Tail padding"});
+            }
+        }
         draw_list->AddRectFilled(
             origin, {origin.x + width, origin.y + height}, ImGui::GetColorU32(unused_color), 3.0F);
         for (std::size_t index{}; index < analysis.members.size(); ++index) {
@@ -1461,13 +1562,51 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
                                    range.c_str());
             }
         }
+        for (auto const& gap : gaps) {
+            auto const left{origin.x + width * static_cast<float>(gap.begin) /
+                                           static_cast<float>(*analysis.size_bytes)};
+            auto const right{origin.x + width * static_cast<float>(gap.end) /
+                                            static_cast<float>(*analysis.size_bytes)};
+            auto const range{std::to_string(gap.begin) + ".." + std::to_string(gap.end - 1)};
+            auto const label{std::string{gap.kind} + " " + range};
+            auto const compact_label{std::string{analysis.members.empty() ? "empty " : "pad "} +
+                                     range};
+            detail::draw_labeled_gap(
+                draw_list, {left, origin.y}, {right, origin.y + height}, label, compact_label);
+        }
         draw_list->AddRect(origin,
                            {origin.x + width, origin.y + height},
                            ImGui::GetColorU32(ImGuiCol_Border),
                            3.0F,
                            0,
                            2.0F);
-        ImGui::Dummy({width, height + 4.0F});
+        ImGui::InvisibleButton("##record-object-map", {width, height});
+        if (ImGui::IsItemHovered()) {
+            auto const relative_x{std::clamp(ImGui::GetIO().MousePos.x - origin.x, 0.0F, width)};
+            auto const byte{
+                std::min(*analysis.size_bytes - 1,
+                         static_cast<std::uint64_t>(
+                             relative_x * static_cast<float>(*analysis.size_bytes) / width))};
+            for (auto const& gap : gaps) {
+                if (byte >= gap.begin && byte < gap.end) {
+                    ImGui::SetTooltip("%s: bytes %llu..%llu",
+                                      gap.kind,
+                                      static_cast<unsigned long long>(gap.begin),
+                                      static_cast<unsigned long long>(gap.end - 1));
+                    break;
+                }
+            }
+        }
+        for (auto const& gap : gaps) {
+            ImGui::TextWrapped("%s: bytes %llu..%llu",
+                               gap.kind,
+                               static_cast<unsigned long long>(gap.begin),
+                               static_cast<unsigned long long>(gap.end - 1));
+        }
+        if (!all_member_extents_known) {
+            ImGui::TextWrapped("Grey space includes unknown member ranges; padding cannot be "
+                               "located precisely.");
+        }
     }
 
     if (ImGui::BeginTable("record-layout",

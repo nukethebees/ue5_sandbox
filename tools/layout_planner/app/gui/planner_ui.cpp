@@ -2167,6 +2167,15 @@ void PlannerUi::draw_layout_panel() {
                                          {origin.x + extent_width, origin.y + bar_height},
                                          ImGui::GetColorU32(extent_color),
                                          3.0F);
+                if (*alternative.extent_bytes < *analysis.size_bytes) {
+                    auto const range{std::to_string(*alternative.extent_bytes) + ".." +
+                                     std::to_string(*analysis.size_bytes - 1)};
+                    detail::draw_labeled_gap(draw_list,
+                                             {origin.x + extent_width, origin.y},
+                                             {origin.x + width, origin.y + bar_height},
+                                             "slack " + range,
+                                             range);
+                }
                 draw_list->AddRect(origin,
                                    {origin.x + width, origin.y + bar_height},
                                    ImGui::GetColorU32(ImGuiCol_Border),
@@ -2180,16 +2189,33 @@ void PlannerUi::draw_layout_panel() {
                     analysis_session_.inputs.selection.field = alternative.name;
                 }
                 if (ImGui::IsItemHovered()) {
-                    ImGui::SetTooltip("%s: %s extent, %s slack in each %s object",
-                                      alternative.name.c_str(),
-                                      detail::format_bytes(alternative.extent_bytes).c_str(),
-                                      detail::format_bytes(alternative.slack_bytes).c_str(),
-                                      detail::format_bytes(analysis.size_bytes).c_str());
+                    if (*alternative.extent_bytes == 0) {
+                        ImGui::SetTooltip(
+                            "%s: zero-byte extent; bytes 0..%llu are slack",
+                            alternative.name.c_str(),
+                            static_cast<unsigned long long>(*analysis.size_bytes - 1));
+                    } else if (*alternative.extent_bytes < *analysis.size_bytes) {
+                        ImGui::SetTooltip(
+                            "%s: bytes 0..%llu occupied; bytes %llu..%llu are slack",
+                            alternative.name.c_str(),
+                            static_cast<unsigned long long>(*alternative.extent_bytes - 1),
+                            static_cast<unsigned long long>(*alternative.extent_bytes),
+                            static_cast<unsigned long long>(*analysis.size_bytes - 1));
+                    } else {
+                        ImGui::SetTooltip("%s: all %llu bytes occupied; no slack",
+                                          alternative.name.c_str(),
+                                          static_cast<unsigned long long>(*analysis.size_bytes));
+                    }
+                }
+                if (*alternative.extent_bytes < *analysis.size_bytes) {
+                    ImGui::TextWrapped("Slack: bytes %llu..%llu",
+                                       static_cast<unsigned long long>(*alternative.extent_bytes),
+                                       static_cast<unsigned long long>(*analysis.size_bytes - 1));
                 }
                 ImGui::PopID();
             }
-            ImGui::TextDisabled("Colored bytes belong to the alternative; dark bytes are union "
-                                "slack, including any tail alignment.");
+            ImGui::TextWrapped("Hatched bytes are inactive union storage, including any tail "
+                               "alignment.");
         }
         if (ImGui::BeginTable("union-layout",
                               5,
@@ -2420,15 +2446,40 @@ void PlannerUi::draw_layout_panel() {
                                      {origin.x + payload_end, origin.y + bar_height},
                                      ImGui::GetColorU32(ImVec4{0.62F, 0.39F, 0.20F, 1.0F}),
                                      3.0F);
+            auto const tag_bytes{analysis.discriminant_facts->size_bytes};
+            auto const payload_offset{*analysis.payload_offset_bytes};
+            auto const payload_end_bytes{payload_offset + *analysis.payload_size_bytes};
+            if (tag_bytes < payload_offset) {
+                auto const range{std::to_string(tag_bytes) + ".." +
+                                 std::to_string(payload_offset - 1)};
+                detail::draw_labeled_gap(draw_list,
+                                         {origin.x + tag_end, origin.y},
+                                         {origin.x + payload_begin, origin.y + bar_height},
+                                         "padding " + range,
+                                         "pad " + range);
+            }
+            if (payload_end_bytes < *analysis.size_bytes) {
+                auto const range{std::to_string(payload_end_bytes) + ".." +
+                                 std::to_string(*analysis.size_bytes - 1)};
+                detail::draw_labeled_gap(draw_list,
+                                         {origin.x + payload_end, origin.y},
+                                         {origin.x + width, origin.y + bar_height},
+                                         "tail padding " + range,
+                                         "tail " + range);
+            }
             draw_list->AddRect(origin,
                                {origin.x + width, origin.y + bar_height},
                                ImGui::GetColorU32(ImGuiCol_Border),
                                3.0F);
-            draw_list->AddText(
-                {origin.x + 5.0F, origin.y + 10.0F}, ImGui::GetColorU32(ImGuiCol_Text), "tag");
-            draw_list->AddText({origin.x + payload_begin + 5.0F, origin.y + 10.0F},
-                               ImGui::GetColorU32(ImGuiCol_Text),
-                               "payload union");
+            if (tag_end > ImGui::CalcTextSize("tag").x + 10.0F) {
+                draw_list->AddText(
+                    {origin.x + 5.0F, origin.y + 10.0F}, ImGui::GetColorU32(ImGuiCol_Text), "tag");
+            }
+            if (payload_end - payload_begin > ImGui::CalcTextSize("payload union").x + 10.0F) {
+                draw_list->AddText({origin.x + payload_begin + 5.0F, origin.y + 10.0F},
+                                   ImGui::GetColorU32(ImGuiCol_Text),
+                                   "payload union");
+            }
             ImGui::InvisibleButton("##tagged-union-object-map", {width, bar_height});
             if (ImGui::IsItemHovered()) {
                 ImGui::SetTooltip(
@@ -2437,6 +2488,16 @@ void PlannerUi::draw_layout_panel() {
                     detail::format_bytes(analysis.internal_padding_bytes).c_str(),
                     detail::format_bytes(analysis.payload_size_bytes).c_str(),
                     detail::format_bytes(analysis.tail_padding_bytes).c_str());
+            }
+            if (tag_bytes < payload_offset) {
+                ImGui::TextWrapped("Alignment padding: bytes %llu..%llu",
+                                   static_cast<unsigned long long>(tag_bytes),
+                                   static_cast<unsigned long long>(payload_offset - 1));
+            }
+            if (payload_end_bytes < *analysis.size_bytes) {
+                ImGui::TextWrapped("Tail padding: bytes %llu..%llu",
+                                   static_cast<unsigned long long>(payload_end_bytes),
+                                   static_cast<unsigned long long>(*analysis.size_bytes - 1));
             }
         }
         if (ImGui::BeginTable("tagged-union-semantic-layout",
