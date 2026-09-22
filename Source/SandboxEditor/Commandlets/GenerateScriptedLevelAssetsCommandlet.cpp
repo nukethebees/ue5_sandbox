@@ -126,6 +126,9 @@ constexpr TCHAR ship_brake_action_object_path[]{
     TEXT("/SpaceGame/Input/SpaceShip/IA_ship_brake.IA_ship_brake")};
 constexpr TCHAR ship_fire_action_object_path[]{
     TEXT("/SpaceGame/Input/SpaceShip/IA_ship_fire.IA_ship_fire")};
+constexpr TCHAR ship_cycle_input_profile_action_object_path[]{
+    TEXT("/SpaceGame/Input/SpaceShip/IA_cycle_input_mapping_context."
+         "IA_cycle_input_mapping_context")};
 constexpr TCHAR ship_forward_move_action_object_path[]{
     TEXT("/SpaceGame/Input/SpaceShip/IA_ship_vertical_move.IA_ship_vertical_move")};
 FName const scripted_level_generation_context{TEXT("GenerateScriptedLevelAssets")};
@@ -1145,16 +1148,20 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
     auto* const boost{LoadObject<UInputAction>(nullptr, ship_boost_action_object_path)};
     auto* const brake{LoadObject<UInputAction>(nullptr, ship_brake_action_object_path)};
     auto* const fire{LoadObject<UInputAction>(nullptr, ship_fire_action_object_path)};
+    auto* const cycle_input_profile{
+        LoadObject<UInputAction>(nullptr, ship_cycle_input_profile_action_object_path)};
     if (!actions.is_valid() || !IsValid(base) || !IsValid(aim_move) || !IsValid(move_aim) ||
-        !IsValid(z_roll_aim) || !IsValid(boost) || !IsValid(brake) || !IsValid(fire)) {
+        !IsValid(z_roll_aim) || !IsValid(boost) || !IsValid(brake) || !IsValid(fire) ||
+        !IsValid(cycle_input_profile)) {
         UE_LOG(LogTemp, Error, TEXT("Could not load ship input actions or mapping contexts"));
         return {};
     }
 
-    auto configure_power_gamepad_mappings = [&actions, boost, brake, fire](
+    auto configure_power_gamepad_mappings = [&actions, boost, brake, fire, cycle_input_profile](
                                                 UInputMappingContext& mapping) {
         mapping.Modify();
         mapping.UnmapKey(boost, EKeys::Gamepad_LeftTriggerAxis);
+        mapping.UnmapKey(cycle_input_profile, EKeys::Gamepad_LeftTriggerAxis);
         mapping.UnmapKey(actions.throttle, EKeys::Gamepad_LeftTriggerAxis);
         mapping.MapKey(actions.throttle, EKeys::Gamepad_LeftTriggerAxis);
         mapping.UnmapKey(brake, EKeys::Gamepad_LeftShoulder);

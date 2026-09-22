@@ -3,6 +3,7 @@
 #include <ioj/sim/mission_manager.h>
 #include <SandboxCoreEngine/actor_utils.h>
 #include <SpaceGame/input/ControlProfiles.h>
+#include <SpaceGame/input/SpaceGameInputUserSettings.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/settings/GameSettingsSubsystem.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
@@ -369,7 +370,20 @@ void ASpaceGamePlayerController::initialise_input_user_settings() {
                     "or mapping context are invalid."));
         return;
     }
-    ml::ioj::register_control_profiles(*settings, *mapping_context);
+    if (!ml::ioj::register_control_profiles(*settings, *mapping_context)) {
+        return;
+    }
+
+    auto* const space_game_settings{Cast<ml::ioj::USpaceGameInputUserSettings>(settings)};
+    if (!IsValid(space_game_settings) || !space_game_settings->migrate_legacy_gamepad_bindings()) {
+        return;
+    }
+
+    FModifyContextOptions rebuild_options;
+    rebuild_options.bForceImmediately = true;
+    subsystem->RequestRebuildControlMappings(rebuild_options,
+                                             EInputMappingRebuildType::RebuildWithFlush);
+    space_game_settings->AsyncSaveSettings();
 }
 void ASpaceGamePlayerController::on_ship_control_profile_changed(FString const& profile_name) {
     UE_LOG(LogSandbox, Display, TEXT("Setting control profile to: %s"), *profile_name);

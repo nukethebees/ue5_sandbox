@@ -56,6 +56,7 @@ class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUse
         -> UEnhancedPlayerMappableKeyProfile*;
     auto rename_custom_key_profile(FString const& profile_id, FText const& display_name) -> bool;
     auto delete_custom_key_profile(FString const& profile_id) -> bool;
+    auto migrate_legacy_gamepad_bindings() -> bool;
     [[nodiscard]] auto custom_key_profile_source_id(FString const& profile_id) const -> FString;
     [[nodiscard]] auto custom_key_profile_display_name(FString const& profile_id) const -> FText;
     [[nodiscard]] auto chord_mapping_for_mapping(FString const& profile_id,
@@ -100,6 +101,9 @@ class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUse
 
     UPROPERTY(SaveGame)
     TMap<FString, FString> custom_profile_names_;
+
+    UPROPERTY(SaveGame)
+    int32 gamepad_binding_schema_version_{};
 };
 
 } // namespace ml::ioj
