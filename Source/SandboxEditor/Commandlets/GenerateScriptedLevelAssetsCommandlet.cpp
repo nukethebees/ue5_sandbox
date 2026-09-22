@@ -1161,6 +1161,7 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
         mapping.MapKey(brake, EKeys::Gamepad_LeftShoulder);
         mapping.UnmapKey(fire, EKeys::Gamepad_RightTriggerAxis);
         mapping.MapKey(fire, EKeys::Gamepad_RightTriggerAxis);
+        mapping.UnmapKey(fire, EKeys::Gamepad_FaceButton_Bottom);
         mapping.UnmapKey(actions.vertical_move, EKeys::Gamepad_FaceButton_Top);
         mapping.MapKey(actions.vertical_move, EKeys::Gamepad_FaceButton_Top);
         mapping.UnmapKey(actions.vertical_move, EKeys::Gamepad_FaceButton_Bottom);
