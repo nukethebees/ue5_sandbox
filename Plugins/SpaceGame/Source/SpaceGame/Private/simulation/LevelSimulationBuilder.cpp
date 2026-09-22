@@ -135,14 +135,6 @@ void append_fighter_spawn_slot_errors(
                     error.second_slot,
                     error.clearance));
                 break;
-            case ::ioj::sim::levels::FighterSpawnSlotValidationErrorKind::WorldIntersectsCapital:
-                errors.add(FString::Printf(
-                    TEXT("Capital at %s rotation %s: fighter spawn slot %d intersects world "
-                         "collision bounds plus fighter clearance"),
-                    *ml::to_unreal(error.capital_position).ToString(),
-                    *ml::to_unreal(error.capital_rotation).ToString(),
-                    error.first_slot));
-                break;
         }
     }
 }
@@ -190,12 +182,6 @@ void FProxyLevelSimBuild::destroy_proxy_actors() const {
     level_simulation_builder::destroy_proxy_actors(capital_proxies);
     level_simulation_builder::destroy_proxy_actors(turret_proxies);
     level_simulation_builder::destroy_proxy_actors(spinner_proxies);
-}
-
-void validate_world_fighter_spawn_slots(::ioj::sim::LevelSimInitData const& data,
-                                        FLevelStartErrors& errors) {
-    level_simulation_builder::append_fighter_spawn_slot_errors(
-        ::ioj::sim::levels::validate_world_fighter_spawn_slots(data), data.capital_ships, errors);
 }
 
 auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
@@ -254,6 +240,8 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
         return FLevelSimBuildResult{std::unexpect, MoveTemp(bounds.error())};
     }
     data.entity_bounds = MoveTemp(bounds.value());
+    // A capital's rigid world transform preserves slot clearance. Comparing expanded world AABBs
+    // would report false overlaps when the capital is rotated.
     level_simulation_builder::validate_fighter_spawn_slots(
         data.capital_ships, data.fighters, data.entity_bounds, errors);
     if (errors.has_errors()) {
@@ -299,12 +287,6 @@ auto make_level_simulation_init_data(USpaceGameLevelConfig const& config,
         return FLevelSimBuildResult{std::unexpect, MoveTemp(compiled.error())};
     }
     data.level_events = MoveTemp(compiled.value());
-    FLevelStartErrors spawn_errors;
-    validate_world_fighter_spawn_slots(data, spawn_errors);
-    if (spawn_errors.has_errors()) {
-        return FLevelSimBuildResult{std::unexpect, MoveTemp(spawn_errors)};
-    }
-
     return result;
 }
 
@@ -418,11 +400,6 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     initialisation.mission =
         level_simulation_builder::compile_proxy_mission(mission_definition, entity_indices);
 
-    FLevelStartErrors errors;
-    validate_world_fighter_spawn_slots(build.data, errors);
-    if (errors.has_errors()) {
-        return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(errors)};
-    }
     return result;
 }
 }
