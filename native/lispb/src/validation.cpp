@@ -3,6 +3,7 @@
 #include "schema_internal.h"
 
 #include <codegen/path_utils.h>
+#include <codegen/schema/soa_allocator_variants.h>
 #include <lispb/schema/enum_domain.h>
 
 #include <algorithm>
@@ -1704,6 +1705,10 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
             }
         }
     }
+    for (auto const& variant : module.array_allocators) {
+        validate_type(variant.allocator, types, "SoA allocator variant");
+    }
+    validate_soa_allocator_variants(module.backend, module.structs, module.array_allocators);
     if (!module.settings.source.has_value() && module.backend == SoaBackend::unreal) {
         throw std::invalid_argument{"SOA module '" + module.settings.name +
                                     "' must have a source output"};

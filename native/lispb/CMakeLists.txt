@@ -35,6 +35,7 @@ target_sources(lispb-schema PRIVATE
   src/enum_domain.cpp
   src/packed_value_internal.cpp
   src/schema.cpp
+  src/soa_allocator_variants.cpp
   src/source_loader.cpp
   src/type_graph.cpp
   src/validation.cpp

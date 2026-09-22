@@ -33,6 +33,8 @@ auto soa_generated_cpp_names(SoaSchema const& schema,
     }
     if (schema.fixed.has_value()) {
         result.push_back(schema.fixed->storage_name);
+        result.insert(
+            result.end(), schema.fixed->containers.begin(), schema.fixed->containers.end());
     }
     if (includes_allocator_variants) {
         for (auto const& allocator : module.soa_array_allocators) {

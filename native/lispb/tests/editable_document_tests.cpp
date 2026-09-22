@@ -9030,5 +9030,47 @@ TEST(EditableDocument, HeterogeneousEditPromotesLegacyModuleToCanonicalSource) {
     EXPECT_EQ(document.declaration(state)->id, state);
 }
 
+TEST(EditableDocument, LegacyVectorModuleEditsPromoteTheWholeModule) {
+    TemporarySchema files;
+    files.write_source("legacy_vector.lispb", R"(
+; Keep this file comment.
+(vector-soa-module legacy_vectors
+  :header "LegacyVectors.h"
+  :source "LegacyVectors.cpp"
+  :storage-name LegacyVectors
+  :value-type float
+  :components (xs ys)
+  :equivalent-type int32)
+)");
+    auto document{files.load_with_module_source("legacy_vector.lispb")};
+    auto const declaration{declaration_id(document, "legacy_vectors", "LegacyVectors", "")};
+    auto const& module{std::get<codegen::NormalModuleSchema>(document.manifest().modules.back())};
+    auto replacement{std::get<codegen::VectorSoaSchema>(module.declarations.front())};
+    replacement.components = {"xs", "zs"};
+
+    auto changed{document.apply(
+        ReplaceDeclaration{.declaration = declaration, .schema = std::move(replacement)})};
+    ASSERT_TRUE(changed.has_value()) << changed.error().message;
+    ASSERT_TRUE(*changed);
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find("(module legacy_vectors"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(vector-soa LegacyVectors"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep this file comment."), std::string::npos);
+    EXPECT_EQ(preview->front().updated.find("(vector-soa-module legacy_vectors"),
+              std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_TRUE(document.redo().value());
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load_with_module_source("legacy_vector.lispb")};
+    auto const& reloaded_module{
+        std::get<codegen::NormalModuleSchema>(reloaded.manifest().modules.back())};
+    auto const& vector{std::get<codegen::VectorSoaSchema>(reloaded_module.declarations.front())};
+    EXPECT_EQ(vector.components, (std::vector<std::string>{"xs", "zs"}));
+}
+
 } // namespace
 } // namespace lispb::schema

@@ -98,6 +98,23 @@ auto normal_module(std::vector<DeclarationSchema> declarations,
     };
 }
 
+auto normal_soa_module(SoaSchema schema,
+                       std::vector<SoaAllocatorVariant> allocators = {},
+                       SoaBackend backend = SoaBackend::unreal) -> NormalModuleSchema {
+    return NormalModuleSchema{
+        .settings = ModuleSettings{.name = "mixed", .header = "Mixed.h", .source = "Mixed.cpp"},
+        .declarations = {std::move(schema)},
+        .soa_backend = backend,
+        .soa_array_allocators = std::move(allocators),
+    };
+}
+
+auto plain_soa(std::string name = "Data") -> SoaSchema {
+    return SoaSchema{
+        .name = std::move(name),
+        .members = {{.name = "values", .kind = SoaMemberKind::array, .type = TypeRef{"int32"}}}};
+}
+
 auto valid_enum_module() -> EnumModuleSchema {
     return EnumModuleSchema{
         .settings =
@@ -1836,6 +1853,97 @@ TEST(Validation, NormalModuleCanMixIndependentEnumApis) {
                                  EnumSchema{.name = "UnrealMode",
                                             .underlying_type = TypeRef{"uint8"},
                                             .values = {{.name = "One"}}}});
+    EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
+}
+
+TEST(Validation, NormalModuleMatchesSoaAllocatorVariantRestrictions) {
+    auto const allocator{SoaAllocatorVariant{"Custom", TypeRef{"FAllocator"}}};
+    auto module{normal_soa_module(plain_soa(), {allocator}, SoaBackend::standard_library)};
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = normal_soa_module(plain_soa(), {SoaAllocatorVariant{"1Bad", TypeRef{"FAllocator"}}});
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    auto fixed{plain_soa()};
+    fixed.fixed = FixedSoaSchema{"DataStorage", {}};
+    module = normal_soa_module(std::move(fixed), {allocator});
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    auto equivalent{plain_soa()};
+    equivalent.equivalent_type = TypeRef{"int32"};
+    module = normal_soa_module(std::move(equivalent), {allocator});
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    auto functions{plain_soa()};
+    functions.functions = {{.name = "custom", .return_type = TypeRef{"void"}}};
+    module = normal_soa_module(std::move(functions), {allocator});
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    auto mutable_functions{plain_soa()};
+    mutable_functions.mutable_view_functions = {{.name = "custom", .return_type = TypeRef{"void"}}};
+    module = normal_soa_module(std::move(mutable_functions), {allocator});
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    auto declarations{plain_soa()};
+    declarations.using_declarations = {"value_type = int32"};
+    module = normal_soa_module(std::move(declarations), {allocator});
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    auto nested{plain_soa()};
+    nested.members = {{.name = "child",
+                       .kind = SoaMemberKind::nested,
+                       .type = TypeRef{"int32"},
+                       .nested_schema = "Missing"}};
+    module = normal_soa_module(std::move(nested), {allocator});
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = NormalModuleSchema{
+        .settings = ModuleSettings{.name = "mixed", .header = "Mixed.h", .source = "Mixed.cpp"},
+        .declarations = {plain_soa("Data"), plain_soa("CustomData")},
+        .soa_array_allocators = {allocator},
+    };
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = normal_soa_module(plain_soa(), {allocator});
+    EXPECT_NO_THROW(lower_modules(manifest_with(module)));
+    auto const files{render_modules(lower_modules(manifest_with(std::move(module))))};
+    ASSERT_EQ(files.size(), 2U);
+    EXPECT_NE(files.front().content.find("struct CustomData"), std::string::npos);
+}
+
+TEST(Validation, NormalModuleReservesFixedSoaStorageAndContainerNames) {
+    auto fixed{plain_soa()};
+    fixed.fixed = FixedSoaSchema{"DataStorage", {"FixedData"}};
+    auto module =
+        normal_module({fixed,
+                       RecordSchema{.name = "DataStorage",
+                                    .members = {{.name = "value", .type = TypeRef{"int32"}}}}},
+                      "Mixed.cpp");
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = normal_module({std::move(fixed),
+                            RecordSchema{.name = "FixedData",
+                                         .members = {{.name = "value", .type = TypeRef{"int32"}}}}},
+                           "Mixed.cpp");
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    auto vector = VectorSoaSchema{.name = "Vectors",
+                                  .value_type = TypeRef{"float"},
+                                  .components = {"xs", "ys"},
+                                  .equivalent_type = TypeRef{"int32"},
+                                  .fixed = FixedSoaSchema{"VectorStorage", {"FixedVectors"}}};
+    module = normal_module({std::move(vector),
+                            RecordSchema{.name = "FixedVectors",
+                                         .members = {{.name = "value", .type = TypeRef{"int32"}}}}},
+                           "Mixed.cpp");
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    auto valid{plain_soa()};
+    valid.fixed = FixedSoaSchema{"DataStorage", {"FixedData"}};
+    module = normal_module({std::move(valid),
+                            RecordSchema{.name = "Snapshot",
+                                         .members = {{.name = "value", .type = TypeRef{"int32"}}}}},
+                           "Mixed.cpp");
     EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
 }
 
