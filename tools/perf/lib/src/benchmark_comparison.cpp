@@ -23,6 +23,7 @@
 #include <limits>
 #include <map>
 #include <mutex>
+#include <optional>
 #include <ranges>
 #include <regex>
 #include <sstream>
@@ -131,7 +132,12 @@ class Handle final {
         : value_{value} {}
     Handle(Handle&& other) noexcept
         : value_{std::exchange(other.value_, nullptr)} {}
-    auto operator=(Handle&&) noexcept -> Handle& = delete;
+    auto operator=(Handle&& other) noexcept -> Handle& {
+        if (this != &other) {
+            reset(std::exchange(other.value_, nullptr));
+        }
+        return *this;
+    }
     Handle(Handle const&) = delete;
     auto operator=(Handle const&) -> Handle& = delete;
     ~Handle() { reset(); }
@@ -145,6 +151,25 @@ class Handle final {
     }
   private:
     HANDLE value_{};
+};
+
+class Socket final {
+  public:
+    explicit Socket(SOCKET const value)
+        : value_{value} {}
+    Socket(Socket const&) = delete;
+    auto operator=(Socket const&) -> Socket& = delete;
+    ~Socket() { reset(); }
+
+    [[nodiscard]] auto get() const -> SOCKET { return value_; }
+    void reset(SOCKET const value = INVALID_SOCKET) {
+        if (value_ != INVALID_SOCKET) {
+            closesocket(value_);
+        }
+        value_ = value;
+    }
+  private:
+    SOCKET value_{INVALID_SOCKET};
 };
 
 auto make_environment(std::map<std::wstring, std::wstring, std::less<>> const& changes)
@@ -185,38 +210,49 @@ struct Process {
     Handle stderr_read{};
 };
 
+struct Pipe {
+    Handle read{};
+    Handle write{};
+};
+
+auto create_pipe(std::string_view const description) -> Pipe {
+    SECURITY_ATTRIBUTES security{.nLength = sizeof(SECURITY_ATTRIBUTES),
+                                 .lpSecurityDescriptor = nullptr,
+                                 .bInheritHandle = TRUE};
+    HANDLE read{};
+    HANDLE write{};
+    if (!CreatePipe(&read, &write, &security, 0)) {
+        throw PipelineError{"operating_system_error",
+                            "Could not create " + std::string{description}};
+    }
+
+    Pipe pipe{.read = Handle{read}, .write = Handle{write}};
+    if (!SetHandleInformation(pipe.read.get(), HANDLE_FLAG_INHERIT, 0)) {
+        throw PipelineError{"operating_system_error",
+                            "Could not configure " + std::string{description}};
+    }
+    return pipe;
+}
+
 auto create_process(std::filesystem::path const& executable,
                     std::vector<std::string> const& arguments,
                     std::filesystem::path const& working_directory,
                     std::map<std::wstring, std::wstring, std::less<>> const& environment,
                     bool const capture_stdout,
                     bool const capture_stderr) -> Process {
-    SECURITY_ATTRIBUTES security{.nLength = sizeof(SECURITY_ATTRIBUTES),
-                                 .lpSecurityDescriptor = nullptr,
-                                 .bInheritHandle = TRUE};
     Handle stdout_read;
     Handle stdout_write;
     Handle stderr_read;
     Handle stderr_write;
     if (capture_stdout) {
-        HANDLE read{};
-        HANDLE write{};
-        if (!CreatePipe(&read, &write, &security, 0) ||
-            !SetHandleInformation(read, HANDLE_FLAG_INHERIT, 0)) {
-            throw PipelineError{"operating_system_error", "Could not create benchmark stdout pipe"};
-        }
-        stdout_read.reset(read);
-        stdout_write.reset(write);
+        auto pipe{create_pipe("benchmark stdout pipe")};
+        stdout_read = std::move(pipe.read);
+        stdout_write = std::move(pipe.write);
     }
     if (capture_stderr) {
-        HANDLE read{};
-        HANDLE write{};
-        if (!CreatePipe(&read, &write, &security, 0) ||
-            !SetHandleInformation(read, HANDLE_FLAG_INHERIT, 0)) {
-            throw PipelineError{"operating_system_error", "Could not create benchmark stderr pipe"};
-        }
-        stderr_read.reset(read);
-        stderr_write.reset(write);
+        auto pipe{create_pipe("benchmark stderr pipe")};
+        stderr_read = std::move(pipe.read);
+        stderr_write = std::move(pipe.write);
     }
 
     STARTUPINFOW startup{};
@@ -290,6 +326,50 @@ void read_pipe(HANDLE const handle, std::function<void(std::string_view)> const&
     }
 }
 
+class CapturedProcess final {
+  public:
+    using PipeConsumer = std::function<void(std::string_view)>;
+
+    CapturedProcess(Process process, PipeConsumer stdout_consumer, PipeConsumer stderr_consumer)
+        : process_{std::move(process)} {
+        try {
+            stdout_reader_ = std::thread{[this, consume = std::move(stdout_consumer)] {
+                read_pipe(process_.stdout_read.get(), consume);
+            }};
+            stderr_reader_ = std::thread{[this, consume = std::move(stderr_consumer)] {
+                read_pipe(process_.stderr_read.get(), consume);
+            }};
+        } catch (...) {
+            stop_and_join();
+            throw;
+        }
+    }
+
+    CapturedProcess(CapturedProcess const&) = delete;
+    auto operator=(CapturedProcess const&) -> CapturedProcess& = delete;
+    ~CapturedProcess() { stop_and_join(); }
+
+    [[nodiscard]] auto process() const -> Process const& { return process_; }
+    void stop() noexcept { stop_process(process_); }
+    void join_readers() noexcept {
+        if (stdout_reader_.joinable()) {
+            stdout_reader_.join();
+        }
+        if (stderr_reader_.joinable()) {
+            stderr_reader_.join();
+        }
+    }
+  private:
+    void stop_and_join() noexcept {
+        stop();
+        join_readers();
+    }
+
+    Process process_{};
+    std::thread stdout_reader_{};
+    std::thread stderr_reader_{};
+};
+
 auto run_command(std::filesystem::path const& executable,
                  std::vector<std::string> const& arguments,
                  std::filesystem::path const& working_directory) -> int {
@@ -311,26 +391,20 @@ auto capture_command(std::filesystem::path const& executable,
                      std::vector<std::string> const& arguments,
                      std::filesystem::path const& working_directory,
                      double const timeout_seconds) -> std::pair<int, std::string> {
-    auto process{create_process(executable, arguments, working_directory, {}, true, true)};
     std::string output;
     std::mutex mutex;
-    std::thread stdout_reader{[&] {
-        read_pipe(process.stdout_read.get(), [&](std::string_view const text) {
+    CapturedProcess process{
+        create_process(executable, arguments, working_directory, {}, true, true),
+        [&](std::string_view const text) {
             std::scoped_lock const lock{mutex};
             output.append(text);
-        });
-    }};
-    std::thread stderr_reader{
-        [&] { read_pipe(process.stderr_read.get(), [](std::string_view) {}); }};
-    auto const exit_code{wait_for_process(process, timeout_seconds)};
-    if (!exit_code) {
-        stop_process(process);
-    }
-    stdout_reader.join();
-    stderr_reader.join();
+        },
+        [](std::string_view const) {}};
+    auto const exit_code{wait_for_process(process.process(), timeout_seconds)};
     if (!exit_code) {
         throw PipelineError{"export_timeout", "command timed out: " + executable.string()};
     }
+    process.join_readers();
     return {*exit_code, std::move(output)};
 }
 
@@ -543,21 +617,23 @@ auto unused_loopback_port() -> int {
     struct SocketCleanup final {
         ~SocketCleanup() { WSACleanup(); }
     } cleanup;
-    SOCKET const listener{socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)};
-    if (listener == INVALID_SOCKET) {
+    Socket listener{socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)};
+    if (listener.get() == INVALID_SOCKET) {
         throw PipelineError{"operating_system_error", "Could not allocate Tracy loopback port"};
     }
     sockaddr_in address{};
     address.sin_family = AF_INET;
     address.sin_port = 0;
     address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-    if (bind(listener, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == SOCKET_ERROR) {
-        closesocket(listener);
+    if (bind(listener.get(), reinterpret_cast<sockaddr*>(&address), sizeof(address)) ==
+        SOCKET_ERROR) {
         throw PipelineError{"operating_system_error", "Could not bind Tracy loopback port"};
     }
     int length{sizeof(address)};
-    getsockname(listener, reinterpret_cast<sockaddr*>(&address), &length);
-    closesocket(listener);
+    if (getsockname(listener.get(), reinterpret_cast<sockaddr*>(&address), &length) ==
+        SOCKET_ERROR) {
+        throw PipelineError{"operating_system_error", "Could not inspect Tracy loopback port"};
+    }
     return ntohs(address.sin_port);
 }
 
@@ -569,36 +645,34 @@ auto capture_run(CompareOptions const& options,
     auto const capture_path{output / "capture.tracy"};
     auto const benchmark_path{binary_path(options, preset, benchmark_executable)};
     auto const port{unused_loopback_port()};
-    auto process{create_process(benchmark_path,
-                                benchmark_arguments(options),
-                                options.root,
-                                {{L"TRACY_PORT", std::to_wstring(port)}, {L"TRACY_NO_EXIT", L"1"}},
-                                true,
-                                true)};
     std::string stdout_text;
     std::string stderr_text;
+    std::string stderr_pending;
     std::mutex output_mutex;
     std::condition_variable ready_changed;
     bool ready{};
-    std::thread stdout_reader{[&] {
-        read_pipe(process.stdout_read.get(), [&](std::string_view const text) {
+    CapturedProcess benchmark{
+        create_process(benchmark_path,
+                       benchmark_arguments(options),
+                       options.root,
+                       {{L"TRACY_PORT", std::to_wstring(port)}, {L"TRACY_NO_EXIT", L"1"}},
+                       true,
+                       true),
+        [&](std::string_view const text) {
             std::scoped_lock const lock{output_mutex};
             stdout_text.append(text);
-        });
-    }};
-    std::thread stderr_reader{[&] {
-        std::string pending;
-        read_pipe(process.stderr_read.get(), [&](std::string_view const text) {
+        },
+        [&](std::string_view const text) {
             std::scoped_lock const lock{output_mutex};
             stderr_text.append(text);
-            pending.append(text);
+            stderr_pending.append(text);
             for (;;) {
-                auto const newline{pending.find('\n')};
+                auto const newline{stderr_pending.find('\n')};
                 if (newline == std::string::npos) {
                     break;
                 }
-                auto line{pending.substr(0, newline)};
-                pending.erase(0, newline + 1);
+                auto line{stderr_pending.substr(0, newline)};
+                stderr_pending.erase(0, newline + 1);
                 if (!line.empty() && line.back() == '\r') {
                     line.pop_back();
                 }
@@ -607,26 +681,21 @@ auto capture_run(CompareOptions const& options,
                     ready_changed.notify_all();
                 }
             }
-        });
-    }};
+        }};
+    std::string capture_log;
+    std::mutex capture_mutex;
+    std::optional<CapturedProcess> capture;
     try {
         std::unique_lock lock{output_mutex};
         auto const deadline{std::chrono::steady_clock::now() +
                             std::chrono::duration<double>{options.process_timeout_seconds}};
         while (!ready) {
-            if (WaitForSingleObject(process.handle.get(), 0) == WAIT_OBJECT_0) {
-                lock.unlock();
-                stdout_reader.join();
-                stderr_reader.join();
+            if (WaitForSingleObject(benchmark.process().handle.get(), 0) == WAIT_OBJECT_0) {
                 throw PipelineError{"benchmark_failed",
                                     "benchmark " + std::string{label} +
                                         " exited before requesting a profiler"};
             }
             if (std::chrono::steady_clock::now() >= deadline) {
-                lock.unlock();
-                stop_process(process);
-                stdout_reader.join();
-                stderr_reader.join();
                 throw PipelineError{"benchmark_timeout",
                                     "benchmark " + std::string{label} +
                                         " did not request a profiler in time"};
@@ -635,46 +704,32 @@ auto capture_run(CompareOptions const& options,
         }
         lock.unlock();
 
-        auto capture{create_process(
-            binary_path(options, "tracy-tools", capture_executable),
-            {"-o", capture_path.string(), "-a", "127.0.0.1", "-p", std::to_string(port)},
-            options.root,
-            {},
-            true,
-            true)};
-        std::string capture_log;
-        std::mutex capture_mutex;
-        std::thread capture_stdout{[&] {
-            read_pipe(capture.stdout_read.get(), [&](std::string_view text) {
+        capture.emplace(
+            create_process(
+                binary_path(options, "tracy-tools", capture_executable),
+                {"-o", capture_path.string(), "-a", "127.0.0.1", "-p", std::to_string(port)},
+                options.root,
+                {},
+                true,
+                true),
+            [&](std::string_view const text) {
+                std::scoped_lock const lock{capture_mutex};
+                capture_log.append(text);
+            },
+            [&](std::string_view const text) {
                 std::scoped_lock const lock{capture_mutex};
                 capture_log.append(text);
             });
-        }};
-        std::thread capture_stderr{[&] {
-            read_pipe(capture.stderr_read.get(), [&](std::string_view text) {
-                std::scoped_lock const lock{capture_mutex};
-                capture_log.append(text);
-            });
-        }};
 
-        auto const benchmark_exit{wait_for_process(process, options.process_timeout_seconds)};
+        auto const benchmark_exit{
+            wait_for_process(benchmark.process(), options.process_timeout_seconds)};
         if (!benchmark_exit) {
-            stop_process(process);
-            capture_stdout.join();
-            capture_stderr.join();
-            stop_process(capture);
-            stdout_reader.join();
-            stderr_reader.join();
             throw PipelineError{"benchmark_timeout",
                                 "benchmark " + std::string{label} +
                                     " exceeded the process timeout"};
         }
-        stdout_reader.join();
-        stderr_reader.join();
+        benchmark.join_readers();
         if (*benchmark_exit != 0) {
-            stop_process(capture);
-            capture_stdout.join();
-            capture_stderr.join();
             throw PipelineError{"benchmark_failed",
                                 "benchmark " + std::string{label} + " exited with " +
                                     std::to_string(*benchmark_exit)};
@@ -683,43 +738,30 @@ auto capture_run(CompareOptions const& options,
         try {
             result = Json::parse(stdout_text);
         } catch (Json::parse_error const&) {
-            stop_process(capture);
-            capture_stdout.join();
-            capture_stderr.join();
             throw PipelineError{"benchmark_result_invalid",
                                 "benchmark " + std::string{label} +
                                     " did not emit one JSON result"};
         }
         if (!result.is_object() || !result.contains("environment") ||
             !result["environment"].is_object()) {
-            stop_process(capture);
-            capture_stdout.join();
-            capture_stderr.join();
             throw PipelineError{"benchmark_result_invalid",
                                 "benchmark " + std::string{label} + " environment is missing"};
         }
         if (!result["environment"].value("tracy_enabled", false)) {
-            stop_process(capture);
-            capture_stdout.join();
-            capture_stderr.join();
             throw PipelineError{"tracy_not_enabled",
                                 "benchmark preset " + preset + " does not enable Tracy"};
         }
         write_json(output / "benchmark-result.json", result);
 
         auto const capture_exit{
-            wait_for_process(capture, std::min(options.process_timeout_seconds, 120.0))};
-        if (!capture_exit) {
-            stop_process(capture);
-        }
-        capture_stdout.join();
-        capture_stderr.join();
-        std::ofstream{output / "capture.log"} << capture_log;
-        std::ofstream{output / "benchmark.stderr.log"} << stderr_text;
+            wait_for_process(capture->process(), std::min(options.process_timeout_seconds, 120.0))};
         if (!capture_exit) {
             throw PipelineError{"capture_timeout",
                                 "Tracy capture " + std::string{label} + " did not finish"};
         }
+        capture->join_readers();
+        std::ofstream{output / "capture.log"} << capture_log;
+        std::ofstream{output / "benchmark.stderr.log"} << stderr_text;
         if (*capture_exit != 0) {
             throw PipelineError{"capture_failed",
                                 "Tracy capture " + std::string{label} + " exited with " +
@@ -732,13 +774,14 @@ auto capture_run(CompareOptions const& options,
         }
         return result;
     } catch (...) {
-        stop_process(process);
-        if (stdout_reader.joinable()) {
-            stdout_reader.join();
+        benchmark.stop();
+        if (capture) {
+            capture->stop();
         }
-        if (stderr_reader.joinable()) {
-            stderr_reader.join();
+        if (capture) {
+            capture->join_readers();
         }
+        benchmark.join_readers();
         throw;
     }
 }

@@ -3,6 +3,7 @@
 #include <gtest/gtest.h>
 #include <Windows.h>
 
+#include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -296,6 +297,64 @@ TEST(Process, WritesStructuredFailureWhenBenchmarkExitsBeforeProfilerReady) {
     ASSERT_TRUE(failure.is_object()) << failure.dump();
     EXPECT_EQ(failure.at("status"), "failed");
     EXPECT_EQ(failure.at("warnings").at(0).at("code"), "benchmark_failed");
+}
+
+TEST(Process, StopsCaptureBeforeJoiningReadersWhenBenchmarkTimesOut) {
+    TemporaryDirectory directory;
+    auto const root{directory.path()};
+    auto const helper{std::filesystem::path{SANDBOX_PERF_TEST_HELPER_PATH}};
+    auto const benchmark{root / "out" / "build" / "a" / "bin" / "native-simulation-benchmark.exe"};
+    auto const capture{root / "out" / "build" / "tracy-tools" / "bin" / "tracy-capture.exe"};
+    auto const exporter{root / "out" / "build" / "tracy-tools" / "bin" / "tracy-csvexport.exe"};
+    std::filesystem::create_directories(benchmark.parent_path());
+    std::filesystem::create_directories(capture.parent_path());
+    std::filesystem::copy_file(helper, benchmark);
+    std::filesystem::copy_file(helper, capture);
+    std::filesystem::copy_file(helper, exporter);
+    std::ofstream{root / "level.scm"} << "(level)";
+    auto const output{root / "result"};
+    std::vector<std::string> arguments{"compare",
+                                       "--root",
+                                       root.string(),
+                                       "--level",
+                                       (root / "level.scm").string(),
+                                       "--seconds",
+                                       "1",
+                                       "--a-preset",
+                                       "a",
+                                       "--b-preset",
+                                       "a",
+                                       "--output-dir",
+                                       output.string(),
+                                       "--process-timeout-seconds",
+                                       "0.2",
+                                       "--skip-build",
+                                       "--jobserver-child",
+                                       "--",
+                                       "ready-and-block"};
+    std::vector<char const*> raw_arguments;
+    for (auto const& argument : arguments) {
+        raw_arguments.push_back(argument.c_str());
+    }
+
+    SetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", L"test");
+    std::ostringstream standard_output;
+    std::ostringstream standard_error;
+    auto const started{std::chrono::steady_clock::now()};
+    auto const exit_code{run_application(static_cast<int>(raw_arguments.size()),
+                                         raw_arguments.data(),
+                                         standard_output,
+                                         standard_error)};
+    auto const elapsed{std::chrono::steady_clock::now() - started};
+    SetEnvironmentVariableW(L"NUKETHEBEES_JOBSERVER_JOB", nullptr);
+
+    EXPECT_EQ(exit_code, 1);
+    EXPECT_LT(elapsed, std::chrono::seconds{5});
+    EXPECT_TRUE(std::filesystem::is_regular_file(output / "a" / "capture.tracy.started"));
+    auto const failure = Json::parse(std::ifstream{output / "comparison.json"});
+    ASSERT_TRUE(failure.is_object()) << failure.dump();
+    EXPECT_EQ(failure.at("status"), "failed");
+    EXPECT_EQ(failure.at("warnings").at(0).at("code"), "benchmark_timeout");
 }
 } // namespace
 } // namespace sandbox::perf
