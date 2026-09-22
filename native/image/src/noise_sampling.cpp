@@ -95,8 +95,12 @@ auto fractal_noise_sample(float const x,
             auto const octave_multiplier{1 << octave};
             auto const period_x{base_period_x * octave_multiplier};
             auto const period_y{base_period_y * octave_multiplier};
-            auto const sample_x{width > 1 ? x / static_cast<float>(width - 1) * period_x : 0.0f};
-            auto const sample_y{height > 1 ? y / static_cast<float>(height - 1) * period_y : 0.0f};
+            auto const sample_x{width > 1 ? x / static_cast<float>(width - 1) *
+                                                static_cast<float>(period_x)
+                                          : 0.0f};
+            auto const sample_y{height > 1 ? y / static_cast<float>(height - 1) *
+                                                 static_cast<float>(period_y)
+                                           : 0.0f};
             value += periodic_value_noise(sample_x, sample_y, period_x, period_y, octave_seed) *
                      amplitude;
         } else {

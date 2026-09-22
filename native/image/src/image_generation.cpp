@@ -552,22 +552,28 @@ auto generate_cellular_noise(CellularNoiseParameters const& parameters) -> Gener
         1, generation::round_to_int(static_cast<float>(parameters.width) / parameters.cell_size))};
     auto const cell_count_y{std::max(
         1, generation::round_to_int(static_cast<float>(parameters.height) / parameters.cell_size))};
+    auto const cell_count_x_float{static_cast<float>(cell_count_x)};
+    auto const cell_count_y_float{static_cast<float>(cell_count_y)};
     auto const effective_cell_size{
         parameters.tileable
-            ? std::min(
-                  parameters.width > 1 ? static_cast<float>(parameters.width - 1) / cell_count_x
-                                       : parameters.cell_size,
-                  parameters.height > 1 ? static_cast<float>(parameters.height - 1) / cell_count_y
-                                        : parameters.cell_size)
+            ? std::min(parameters.width > 1
+                           ? static_cast<float>(parameters.width - 1) / cell_count_x_float
+                           : parameters.cell_size,
+                       parameters.height > 1
+                           ? static_cast<float>(parameters.height - 1) / cell_count_y_float
+                           : parameters.cell_size)
             : parameters.cell_size};
     for (std::int32_t y{0}; y < parameters.height; ++y) {
         auto const sample_y{parameters.tileable && parameters.height > 1
-                                ? static_cast<float>(y) / (parameters.height - 1) * cell_count_y
+                                ? static_cast<float>(y) /
+                                      static_cast<float>(parameters.height - 1) * cell_count_y_float
                                 : static_cast<float>(y) / parameters.cell_size};
         auto const base_cell_y{generation::floor_to_int(sample_y)};
         for (std::int32_t x{0}; x < parameters.width; ++x) {
             auto const sample_x{parameters.tileable && parameters.width > 1
-                                    ? static_cast<float>(x) / (parameters.width - 1) * cell_count_x
+                                    ? static_cast<float>(x) /
+                                          static_cast<float>(parameters.width - 1) *
+                                          cell_count_x_float
                                     : static_cast<float>(x) / parameters.cell_size};
             auto const base_cell_x{generation::floor_to_int(sample_x)};
             float nearest_distance_squared{std::numeric_limits<float>::max()};

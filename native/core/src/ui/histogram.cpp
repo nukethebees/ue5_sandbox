@@ -93,10 +93,10 @@ auto hit_test_bin(Vector2f const point,
         point.y >= plot_origin.y + plot_size.y) {
         return std::nullopt;
     }
-    return std::clamp(
-        static_cast<std::int32_t>(std::floor((point.x - plot_origin.x) / plot_size.x * bin_count)),
-        std::int32_t{},
-        bin_count - 1);
+    return std::clamp(static_cast<std::int32_t>(std::floor((point.x - plot_origin.x) / plot_size.x *
+                                                           static_cast<float>(bin_count))),
+                      std::int32_t{},
+                      bin_count - 1);
 }
 
 auto bin_range(float const domain_minimum,
