@@ -639,6 +639,19 @@ void PlannerUi::draw_properties_panel() {
         return;
     }
 
+    auto const revision_before_draw{workspace_.revision()};
+    auto const scroll_before_draw{ImGui::GetScrollY()};
+    auto const content_bottom_before_draw{ImGui::GetScrollMaxY() + ImGui::GetWindowHeight()};
+    auto end_panel = [&] {
+        if (workspace_.revision() != revision_before_draw && scroll_before_draw > 0.0F) {
+            // Keep the old content extent for a frame when a graph rebuild ends drawing early.
+            ImGui::SetCursorPosY(std::max(ImGui::GetCursorPosY(), content_bottom_before_draw));
+            ImGui::Dummy({0.0F, 1.0F});
+            ImGui::SetScrollY(scroll_before_draw);
+        }
+        ImGui::End();
+    };
+
     auto const selected{*selected_type_};
     auto const& node{workspace_.types().type(selected)};
     ImGui::Text("%s", node.identity.name.c_str());
@@ -649,7 +662,7 @@ void PlannerUi::draw_properties_panel() {
                                         : std::optional<DeclarationId>{}};
     if (selected_declaration.has_value() && ImGui::Button("Duplicate declaration")) {
         if (duplicate_selected_declaration(node)) {
-            ImGui::End();
+            end_panel();
             return;
         }
     }
@@ -713,7 +726,7 @@ void PlannerUi::draw_properties_panel() {
                                                             .module_index = *requested_destination,
                                                             .insertion_index = std::nullopt},
                                             selection)) {
-                        ImGui::End();
+                        end_panel();
                         return;
                     }
                 }
@@ -754,7 +767,7 @@ void PlannerUi::draw_properties_panel() {
                                                           .new_name = declaration_name_.data()},
                                         selection)) {
                     rename_editor_declaration_.reset();
-                    ImGui::End();
+                    end_panel();
                     return;
                 }
             }
@@ -788,7 +801,7 @@ void PlannerUi::draw_properties_panel() {
                 delete_declaration_name_.clear();
                 ImGui::CloseCurrentPopup();
                 ImGui::EndPopup();
-                ImGui::End();
+                end_panel();
                 return;
             }
         }
@@ -898,7 +911,7 @@ void PlannerUi::draw_properties_panel() {
         auto const revision_before_edit{workspace_.revision()};
         draw_enum_editor(node, *enumeration);
         if (workspace_.revision() != revision_before_edit) {
-            ImGui::End();
+            end_panel();
             return;
         }
     } else if (auto const* scalar{std::get_if<IntegerScalarType>(&node.definition)}) {
@@ -927,7 +940,7 @@ void PlannerUi::draw_properties_panel() {
                 "Code-space inefficiency; this semantic declaration allocates no bytes itself.");
         }
         if (draw_integer_scalar_editor(node, *scalar)) {
-            ImGui::End();
+            end_panel();
             return;
         }
     } else if (auto const* quantized{std::get_if<LinearQuantizedType>(&node.definition)}) {
@@ -966,7 +979,7 @@ void PlannerUi::draw_properties_panel() {
                 "Resolution/error are numeric encoding facts; no performance estimate is made.");
         }
         if (draw_linear_quantized_editor(node, *quantized)) {
-            ImGui::End();
+            end_panel();
             return;
         }
     } else if (auto const* optional{std::get_if<OptionalSentinelType>(&node.definition)}) {
@@ -1005,7 +1018,7 @@ void PlannerUi::draw_properties_panel() {
             draw_diagnostics(analysis.diagnostics);
         }
         if (draw_optional_sentinel_editor(node, *optional)) {
-            ImGui::End();
+            end_panel();
             return;
         }
     } else if (auto const* optional{std::get_if<OptionalPresenceBitType>(&node.definition)}) {
@@ -1047,7 +1060,7 @@ void PlannerUi::draw_properties_panel() {
             draw_diagnostics(analysis.diagnostics);
         }
         if (draw_optional_presence_bit_editor(node, *optional)) {
-            ImGui::End();
+            end_panel();
             return;
         }
     } else if (auto const* fixed{std::get_if<FixedPointType>(&node.definition)}) {
@@ -1080,7 +1093,7 @@ void PlannerUi::draw_properties_panel() {
             draw_diagnostics(analysis.diagnostics);
         }
         if (draw_fixed_point_editor(node, *fixed)) {
-            ImGui::End();
+            end_panel();
             return;
         }
     } else if (auto const* mini_float{std::get_if<MiniFloatType>(&node.definition)}) {
@@ -1126,7 +1139,7 @@ void PlannerUi::draw_properties_panel() {
             draw_diagnostics(analysis.diagnostics);
         }
         if (draw_mini_float_editor(node, *mini_float)) {
-            ImGui::End();
+            end_panel();
             return;
         }
     } else if (auto const* varint{std::get_if<IntegerVarintType>(&node.definition)}) {
@@ -1273,13 +1286,13 @@ void PlannerUi::draw_properties_panel() {
             "Session workload only; weights are not written into the LispB semantic declaration.");
         draw_diagnostics(distribution.diagnostics);
         if (draw_integer_varint_editor(node, *varint)) {
-            ImGui::End();
+            end_panel();
             return;
         }
     } else if (auto const* record{std::get_if<RecordType>(&node.definition)}) {
         ImGui::SeparatorText("LispB record declaration");
         if (draw_record_editor(node, *record)) {
-            ImGui::End();
+            end_panel();
             return;
         }
     } else if (auto const* union_type{std::get_if<UnionType>(&node.definition)}) {
@@ -1385,7 +1398,7 @@ void PlannerUi::draw_properties_panel() {
         draw_diagnostics(analysis.diagnostics);
         ImGui::SeparatorText("LispB union declaration");
         if (draw_union_editor(node, *union_type)) {
-            ImGui::End();
+            end_panel();
             return;
         }
     } else if (auto const* tagged{std::get_if<TaggedUnionType>(&node.definition)}) {
@@ -1408,7 +1421,7 @@ void PlannerUi::draw_properties_panel() {
         if (ImGui::SmallButton("Go to discriminant")) {
             selected_type_ = tagged->discriminant.type;
             selected_field_.clear();
-            ImGui::End();
+            end_panel();
             return;
         }
         if (ImGui::BeginTable("tagged-union-properties",
@@ -1531,7 +1544,7 @@ void PlannerUi::draw_properties_panel() {
         draw_diagnostics(analysis.diagnostics);
         ImGui::SeparatorText("LispB tagged-union declaration");
         if (draw_tagged_union_editor(node, *tagged)) {
-            ImGui::End();
+            end_panel();
             return;
         }
     } else if (auto const* external{std::get_if<ExternalType>(&node.definition)}) {
@@ -1548,13 +1561,13 @@ void PlannerUi::draw_properties_panel() {
         if (auto const* packed{std::get_if<PackedType>(&node.definition)}) {
             ImGui::SeparatorText("LispB packed declaration");
             if (draw_packed_editor(node, *packed)) {
-                ImGui::End();
+                end_panel();
                 return;
             }
         } else if (auto const* soa{std::get_if<SoaType>(&node.definition)}) {
             ImGui::SeparatorText("LispB SoA declaration");
             if (draw_soa_editor(node, *soa)) {
-                ImGui::End();
+                end_panel();
                 return;
             }
         }
@@ -1747,7 +1760,7 @@ void PlannerUi::draw_properties_panel() {
     };
     draw_links("Depends on", workspace_.types().dependencies_of(selected));
     draw_links("Used by", workspace_.types().users_of(selected));
-    ImGui::End();
+    end_panel();
 }
 
 auto PlannerUi::duplicate_selected_declaration(TypeNode const& node) -> bool {
