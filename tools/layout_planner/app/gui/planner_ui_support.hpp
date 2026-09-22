@@ -29,6 +29,8 @@ class WrappingButtonRow {
 auto begin_editable_table(char const* id, int columns, std::size_t rows) -> bool;
 void editable_table_column(char const* label,
                            ImGuiTableColumnFlags flags = ImGuiTableColumnFlags_None);
+void editable_table_content_hint(std::string_view text, float trailing_width = 0.0F);
+auto prepare_editable_type_input() -> bool;
 auto editable_table_row_handle(bool selected) -> bool;
 
 auto format_bytes(std::optional<std::uint64_t> bytes) -> std::string;

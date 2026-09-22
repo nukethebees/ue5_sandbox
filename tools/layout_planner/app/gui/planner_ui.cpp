@@ -858,11 +858,18 @@ void PlannerUi::settings_write_all(ImGuiContext*,
 }
 
 auto PlannerUi::draw() -> bool {
+    auto const save_shortcut_now{std::exchange(save_shortcut_pending_, false)};
     ImGui::GetStyle().FontScaleMain = text_scale_;
     auto const view_changed{draw_view_menu()};
     ImGui::GetStyle().FontScaleMain = text_scale_;
     auto const dockspace_id{ImGui::DockSpaceOverViewport()};
     setup_default_dock_layout(dockspace_id);
+    auto const save_requested{
+        ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_S, ImGuiInputFlags_RouteGlobal)};
+    if (save_requested) {
+        ImGui::ClearActiveID();
+        save_shortcut_pending_ = true;
+    }
     refresh_analysis();
 
     auto const revision_before{workspace_.revision()};
@@ -894,8 +901,9 @@ auto PlannerUi::draw() -> bool {
     draw_new_soa_dialog();
     draw_close_confirmation();
     draw_project_path_dialogs();
+    auto const saved{save_shortcut_now && has_dirty_changes() && save_changes()};
     return view_changed || revision_before != workspace_.revision() ||
-           std::exchange(project_changed_, false);
+           std::exchange(project_changed_, false) || saved;
 }
 
 void PlannerUi::gate_new_declaration_dialogs() {
@@ -1157,7 +1165,7 @@ auto PlannerUi::draw_file_menu() -> bool {
         ImGui::MarkIniSettingsDirty();
         changed = true;
     }
-    if (ImGui::MenuItem("Save")) {
+    if (ImGui::MenuItem("Save", "Ctrl+S")) {
         if (save_changes()) {
             changed = true;
         }

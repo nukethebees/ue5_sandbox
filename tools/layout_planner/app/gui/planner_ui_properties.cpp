@@ -4371,7 +4371,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             if (field == nullptr) {
                 ImGui::TextDisabled("Reserved");
             } else if (row_selected) {
-                ImGui::SetNextItemWidth(std::max(60.0F, ImGui::GetContentRegionAvail().x - 58.0F));
+                auto const type_controls_inline{detail::prepare_editable_type_input()};
                 auto const submitted{ImGui::InputText("##type",
                                                       packed_field_type_.data(),
                                                       packed_field_type_.size(),
@@ -4381,7 +4381,9 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                     std::get<codegen::PackedFieldSchema>(pending->segments[index]).type.name =
                         packed_field_type_.data();
                 }
-                ImGui::SameLine();
+                if (type_controls_inline) {
+                    ImGui::SameLine();
+                }
                 if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
                     pending = *schema;
                     auto& pending_field{
@@ -4450,6 +4452,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                         navigate_to = resolved->semantic_type.type;
                     }
                 }
+                detail::editable_table_content_hint(packed_field_type_.data(), 80.0F);
             } else {
                 ImGui::TextUnformatted(field->type.name.c_str());
             }
@@ -5884,7 +5887,7 @@ auto PlannerUi::draw_union_editor(TypeNode const& node, UnionType const& union_t
 
             ImGui::TableNextColumn();
             if (row_selected) {
-                ImGui::SetNextItemWidth(std::max(60.0F, ImGui::GetContentRegionAvail().x - 58.0F));
+                auto const type_controls_inline{detail::prepare_editable_type_input()};
                 auto const submitted{ImGui::InputText("##type",
                                                       union_alternative_type_.data(),
                                                       union_alternative_type_.size(),
@@ -5893,7 +5896,9 @@ auto PlannerUi::draw_union_editor(TypeNode const& node, UnionType const& union_t
                     pending = *schema;
                     pending->alternatives[index].type.name = union_alternative_type_.data();
                 }
-                ImGui::SameLine();
+                if (type_controls_inline) {
+                    ImGui::SameLine();
+                }
                 if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
                     pending = *schema;
                     pending->alternatives[index].type.name = std::move(*picked);
@@ -5902,6 +5907,7 @@ auto PlannerUi::draw_union_editor(TypeNode const& node, UnionType const& union_t
                 if (index < union_type.alternatives.size() && ImGui::SmallButton(">")) {
                     navigate_to = union_type.alternatives[index].semantic_type.type;
                 }
+                detail::editable_table_content_hint(union_alternative_type_.data(), 80.0F);
             } else {
                 ImGui::TextUnformatted(alternative.type.name.c_str());
             }
@@ -6254,7 +6260,7 @@ auto PlannerUi::draw_tagged_union_editor(TypeNode const& node, TaggedUnionType c
 
             ImGui::TableNextColumn();
             if (row_selected) {
-                ImGui::SetNextItemWidth(std::max(60.0F, ImGui::GetContentRegionAvail().x - 58.0F));
+                auto const type_controls_inline{detail::prepare_editable_type_input()};
                 auto const submitted{ImGui::InputText("##type",
                                                       tagged_union_alternative_type_.data(),
                                                       tagged_union_alternative_type_.size(),
@@ -6263,7 +6269,9 @@ auto PlannerUi::draw_tagged_union_editor(TypeNode const& node, TaggedUnionType c
                     pending = *schema;
                     pending->alternatives[index].type.name = tagged_union_alternative_type_.data();
                 }
-                ImGui::SameLine();
+                if (type_controls_inline) {
+                    ImGui::SameLine();
+                }
                 if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
                     pending = *schema;
                     pending->alternatives[index].type.name = std::move(*picked);
@@ -6272,6 +6280,7 @@ auto PlannerUi::draw_tagged_union_editor(TypeNode const& node, TaggedUnionType c
                 if (index < tagged_union.alternatives.size() && ImGui::SmallButton(">")) {
                     navigate_to = tagged_union.alternatives[index].semantic_type.type;
                 }
+                detail::editable_table_content_hint(tagged_union_alternative_type_.data(), 80.0F);
             } else {
                 ImGui::TextUnformatted(alternative.type.name.c_str());
             }
@@ -6617,7 +6626,7 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
 
             ImGui::TableNextColumn();
             if (row_selected) {
-                ImGui::SetNextItemWidth(std::max(60.0F, ImGui::GetContentRegionAvail().x - 58.0F));
+                auto const type_controls_inline{detail::prepare_editable_type_input()};
                 auto const submitted{ImGui::InputText("##type",
                                                       record_member_type_.data(),
                                                       record_member_type_.size(),
@@ -6626,7 +6635,9 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
                     pending = *schema;
                     pending->members[index].type.name = record_member_type_.data();
                 }
-                ImGui::SameLine();
+                if (type_controls_inline) {
+                    ImGui::SameLine();
+                }
                 if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
                     pending = *schema;
                     pending->members[index].type.name = std::move(*picked);
@@ -6635,6 +6646,7 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
                 if (index < record.members.size() && ImGui::SmallButton(">")) {
                     navigate_to = record.members[index].semantic_type.type;
                 }
+                detail::editable_table_content_hint(record_member_type_.data(), 80.0F);
             } else {
                 ImGui::TextUnformatted(member.type.name.c_str());
             }
@@ -7326,7 +7338,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
 
             ImGui::TableNextColumn();
             if (row_selected && !row_mask_storage) {
-                ImGui::SetNextItemWidth(std::max(60.0F, ImGui::GetContentRegionAvail().x - 58.0F));
+                auto const type_controls_inline{detail::prepare_editable_type_input()};
                 auto const submitted{ImGui::InputText("##type",
                                                       soa_member_type_.data(),
                                                       soa_member_type_.size(),
@@ -7335,7 +7347,9 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                     pending = *schema;
                     pending->members[index].type.name = soa_member_type_.data();
                 }
-                ImGui::SameLine();
+                if (type_controls_inline) {
+                    ImGui::SameLine();
+                }
                 if (auto picked{draw_type_picker(node.identity.module_name, node.identity)}) {
                     pending = *schema;
                     pending->members[index].type.name = std::move(*picked);
@@ -7344,6 +7358,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                 if (index < soa.columns.size() && ImGui::SmallButton(">")) {
                     navigate_to = soa.columns[index].semantic_type.type;
                 }
+                detail::editable_table_content_hint(soa_member_type_.data(), 80.0F);
             } else {
                 ImGui::TextUnformatted(member.type.name.c_str());
             }

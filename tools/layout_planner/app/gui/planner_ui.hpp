@@ -573,6 +573,7 @@ class PlannerUi {
     bool open_project_dialog_{};
     bool open_new_project_dialog_{};
     bool open_save_as_dialog_{};
+    bool save_shortcut_pending_{};
     bool project_changed_{};
     bool open_close_confirmation_{};
     bool close_confirmed_{};

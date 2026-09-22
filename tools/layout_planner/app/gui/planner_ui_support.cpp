@@ -1,5 +1,7 @@
 #include "planner_ui_support.hpp"
 
+#include <imgui_internal.h>
+
 #include <algorithm>
 #include <array>
 #include <charconv>
@@ -55,8 +57,27 @@ void editable_table_column(char const* label, ImGuiTableColumnFlags const flags)
                              2.0F * ImGui::GetStyle().FramePadding.x};
     auto const width{(flags & ImGuiTableColumnFlags_WidthFixed) != 0
                          ? std::max(32.0F, natural_width)
-                         : std::max(140.0F, natural_width)};
+                         : std::max(std::string_view{label} == "Semantic type" ? 240.0F : 140.0F,
+                                    natural_width)};
     ImGui::TableSetupColumn(label, flags | ImGuiTableColumnFlags_WidthFixed, width);
+}
+
+void editable_table_content_hint(std::string_view const text, float const trailing_width) {
+    // A column-filling InputText otherwise makes separator double-click fit its current width.
+    auto* table{ImGui::GetCurrentTable()};
+    auto& column{table->Columns[table->CurrentColumn]};
+    auto const width{ImGui::CalcTextSize(text.data(), text.data() + text.size()).x +
+                     2.0F * ImGui::GetStyle().FramePadding.x + trailing_width};
+    auto& content_max_x{table->IsUnfrozenRows ? column.ContentMaxXUnfrozen
+                                              : column.ContentMaxXFrozen};
+    content_max_x = std::max(content_max_x, column.WorkMinX + width);
+}
+
+auto prepare_editable_type_input() -> bool {
+    auto const available_width{ImGui::GetContentRegionAvail().x};
+    auto const controls_inline{available_width >= 140.0F};
+    ImGui::SetNextItemWidth(controls_inline ? available_width - 80.0F : -1.0F);
+    return controls_inline;
 }
 
 auto editable_table_row_handle(bool const selected) -> bool {
