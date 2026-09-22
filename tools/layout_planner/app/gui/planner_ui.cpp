@@ -1589,7 +1589,7 @@ void PlannerUi::draw_diagnostics_panel() {
                                       content.data(),
                                       content.size() + 1,
                                       ImGui::GetContentRegionAvail(),
-                                      ImGuiInputTextFlags_ReadOnly);
+                                      ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_WordWrap);
         }
     }
 
