@@ -1,4 +1,4 @@
-(facade-module fighters_command_interface
+(module fighters_command_interface
   :header "native/simulation/include/ioj/sim/fighters/command_interface.h"
   :namespace ioj::sim::fighters
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
@@ -24,7 +24,7 @@
       :const true
       :noexcept true)))
 
-(facade-module player_command_interface
+(module player_command_interface
   :header "native/simulation/include/ioj/sim/player/command_interface.h"
   :namespace ioj::sim::player
   (facade CommandInterface @player_sim simulation
@@ -67,7 +67,7 @@
     (method add_health void (parameter added_health @native_health))
     (method consume_death_notification bool :noexcept true)))
 
-(facade-module player_phase_interface
+(module player_phase_interface
   :header "native/simulation/include/ioj/sim/player/phase_interface.h"
   :source "native/simulation/src/player/phase_interface.cpp"
   :header-include "ioj/sim/player/phase_interface.h"
@@ -88,7 +88,7 @@
     (method generate_fire_commands void)
     (method resolve_damage_events void)))
 
-(facade-module lasers_phase_interface
+(module lasers_phase_interface
   :header "native/simulation/include/ioj/sim/lasers/phase_interface.h"
   :source "native/simulation/src/lasers/phase_interface.cpp"
   :header-include "ioj/sim/lasers/phase_interface.h"
@@ -109,7 +109,7 @@
     (method cleanup_entities void)
     (method finish_action void)))
 
-(facade-module capital_ships_phase_interface
+(module capital_ships_phase_interface
   :header "native/simulation/include/ioj/sim/capital_ships/phase_interface.h"
   :source "native/simulation/src/capital_ships/phase_interface.cpp"
   :header-include "ioj/sim/capital_ships/phase_interface.h"
@@ -135,7 +135,7 @@
     (method remove_entities void)
     (method finish_action void)))
 
-(facade-module fighters_phase_interface
+(module fighters_phase_interface
   :header "native/simulation/include/ioj/sim/fighters/phase_interface.h"
   :source "native/simulation/src/fighters/phase_interface.cpp"
   :header-include "ioj/sim/fighters/phase_interface.h"
@@ -166,7 +166,7 @@
     (method remove_entities void)
     (method finish_action void)))
 
-(facade-module turrets_phase_interface
+(module turrets_phase_interface
   :header "native/simulation/include/ioj/sim/turrets/phase_interface.h"
   :source "native/simulation/src/turrets/phase_interface.cpp"
   :header-include "ioj/sim/turrets/phase_interface.h"
@@ -193,7 +193,7 @@
     (method remove_entities void)
     (method finish_action void)))
 
-(facade-module spinners_phase_interface
+(module spinners_phase_interface
   :header "native/simulation/include/ioj/sim/spinners/phase_interface.h"
   :source "native/simulation/src/spinners/phase_interface.cpp"
   :header-include "ioj/sim/spinners/phase_interface.h"

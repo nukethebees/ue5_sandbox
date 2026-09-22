@@ -217,6 +217,50 @@ auto lower_soa_impl(SoaSchema const& schema,
     return LoweredSoa{header.build(), source.build()};
 }
 
+auto lower_one_soa(SoaSchema const& schema,
+                   std::map<std::string, SoaSchema const*> const& schemas,
+                   SoaBackend const backend,
+                   std::map<std::string, CppType> const& types,
+                   lispb::schema::TypeGraph const& type_graph,
+                   std::string const& module_name) -> LoweredSoa {
+    if (schema.layout_only) {
+        return {};
+    }
+    auto const standard_library{backend == SoaBackend::standard_library};
+    auto lowered{standard_library ? lower_native_soa(schema, schemas, types)
+                                  : lower_soa_impl(schema, types, {})};
+    if (standard_library && schema.field_mask_name.has_value()) {
+        NodeListBuilder header;
+        header.append(field_mask_nodes(schema, true))
+            .new_lines(2)
+            .append(std::move(lowered.header));
+        lowered.header = header.build();
+    }
+    if (schema.fixed.has_value()) {
+        NodeListBuilder header;
+        header.append(std::move(lowered.header))
+            .new_lines(2)
+            .append(lower_fixed_nodes(schema, schemas, types));
+        lowered.header = header.build();
+    }
+    if (schema.single_allocation.has_value()) {
+        NodeListBuilder header;
+        header.append(std::move(lowered.header))
+            .new_lines(2)
+            .append(lower_single_allocation_nodes(
+                schema, schemas, types, type_graph, module_name, backend));
+        for (auto const& variant : schema.single_allocation_variants) {
+            auto copy{schema};
+            copy.single_allocation = variant.name;
+            copy.single_allocation_allocator = variant.allocator;
+            header.new_lines(2).append(lower_single_allocation_nodes(
+                copy, schemas, types, type_graph, module_name, backend));
+        }
+        lowered.header = header.build();
+    }
+    return lowered;
+}
+
 auto lower_soa_module_impl(SoaModuleSchema const& module,
                            std::map<std::string, CppType> const& types,
                            lispb::schema::TypeGraph const& type_graph) -> Module {
@@ -236,38 +280,8 @@ auto lower_soa_module_impl(SoaModuleSchema const& module,
         if (schema.layout_only) {
             continue;
         }
-        auto lowered{standard_library ? lower_native_soa(schema, schemas, types)
-                                      : lower_soa_impl(schema, types, {})};
-        if (standard_library && schema.field_mask_name.has_value()) {
-            NodeListBuilder header;
-            header.append(field_mask_nodes(schema, true))
-                .new_lines(2)
-                .append(std::move(lowered.header));
-            lowered.header = header.build();
-        }
-        if (schema.fixed.has_value()) {
-            NodeListBuilder header;
-            header.append(std::move(lowered.header))
-                .new_lines(2)
-                .append(lower_fixed_nodes(schema, schemas, types));
-            lowered.header = header.build();
-        }
-        if (schema.single_allocation.has_value()) {
-            NodeListBuilder header;
-            header.append(std::move(lowered.header))
-                .new_lines(2)
-                .append(lower_single_allocation_nodes(
-                    schema, schemas, types, type_graph, module.settings.name, module.backend));
-            for (auto const& variant : schema.single_allocation_variants) {
-                auto copy{schema};
-                copy.single_allocation = variant.name;
-                copy.single_allocation_allocator = variant.allocator;
-                header.new_lines(2).append(lower_single_allocation_nodes(
-                    copy, schemas, types, type_graph, module.settings.name, module.backend));
-            }
-            lowered.header = header.build();
-        }
-        lowered_structs.push_back(std::move(lowered));
+        lowered_structs.push_back(lower_one_soa(
+            schema, schemas, module.backend, types, type_graph, module.settings.name));
     }
 
     NodeListBuilder header_nodes;
@@ -334,6 +348,78 @@ auto lower_soa(SoaSchema const& schema,
                std::map<std::string, CppType> const& types,
                Nodes storage_prelude) -> LoweredSoa {
     return lower_soa_impl(schema, types, std::move(storage_prelude));
+}
+
+auto lower_soa_declaration(SoaSchema const& schema,
+                           NormalModuleSchema const& module,
+                           std::map<std::string, CppType> const& types,
+                           lispb::schema::TypeGraph const& type_graph,
+                           std::optional<std::string> const& allocator_prefix)
+    -> DeclarationEmission {
+    std::vector<SoaSchema> schemas;
+    for (auto const& declaration : module.declarations) {
+        if (auto const* soa{std::get_if<SoaSchema>(&declaration)}) {
+            schemas.push_back(*soa);
+        }
+    }
+    auto const original_count{schemas.size()};
+    for (auto const& variant : module.soa_array_allocators) {
+        for (std::size_t index{0}; index < original_count; ++index) {
+            auto copy{schemas[index]};
+            copy.name = variant.prefix + copy.name;
+            copy.view_name = variant.prefix + copy.view_name.value_or(schemas[index].name + "View");
+            copy.const_view_name =
+                variant.prefix + copy.const_view_name.value_or(schemas[index].name + "ConstView");
+            copy.single_allocation.reset();
+            copy.single_allocation_variants.clear();
+            copy.array_allocator = variant.allocator;
+            for (auto& member : copy.members) {
+                if (member.kind == SoaMemberKind::nested && member.nested_schema.has_value()) {
+                    member.type = TypeRef{variant.prefix + *member.nested_schema};
+                    member.nested_schema = variant.prefix + *member.nested_schema;
+                }
+            }
+            schemas.push_back(std::move(copy));
+        }
+    }
+    std::map<std::string, SoaSchema const*> by_name;
+    for (auto const& item : schemas) {
+        by_name.emplace(item.name, &item);
+    }
+
+    NodeListBuilder header;
+    NodeListBuilder source;
+    bool has_header{};
+    bool has_source{};
+    bool format_generated{module.soa_backend == SoaBackend::standard_library};
+    auto add = [&](SoaSchema const& item) {
+        auto lowered{lower_one_soa(
+            item, by_name, module.soa_backend, types, type_graph, module.settings.name)};
+        if (!lowered.header.empty()) {
+            if (has_header) {
+                header.new_lines(2);
+            }
+            header.append(std::move(lowered.header));
+            has_header = true;
+        }
+        if (!lowered.source.empty()) {
+            if (has_source) {
+                source.new_lines(2);
+            }
+            source.append(std::move(lowered.source));
+            has_source = true;
+        }
+        format_generated = format_generated || item.single_allocation.has_value();
+    };
+    auto const wanted{allocator_prefix.has_value() ? *allocator_prefix + schema.name : schema.name};
+    for (auto const& item : schemas) {
+        if (item.name == wanted) {
+            add(item);
+            break;
+        }
+    }
+    return {
+        .header = header.build(), .source = source.build(), .format_generated = format_generated};
 }
 
 auto lower_soa_module(SoaModuleSchema const& module,

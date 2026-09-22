@@ -1,4 +1,4 @@
-(soa-module single_allocation_experiment
+(module single_allocation_experiment
   :header "Plugins/SandboxCore/Source/SbxCoreExperiments/Public/SbxCoreExperiments/soa_types.h"
   :source "Plugins/SandboxCore/Source/SbxCoreExperiments/Private/soa_types.cpp"
   :header-include "SbxCoreExperiments/soa_types.h"

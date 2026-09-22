@@ -7,9 +7,8 @@
 namespace codegen::detail {
 namespace {
 
-auto lower_facade_module_impl(FacadeModuleSchema const& module,
-                              std::map<std::string, CppType> const& types) -> Module {
-    auto const& facade{module.facade};
+auto lower_facade_impl(FacadeSchema const& facade, std::map<std::string, CppType> const& types)
+    -> DeclarationEmission {
     auto target_type{resolve_type(facade.target_type, types)};
     auto const definitions_in_source{facade.definitions_in_source};
     auto binding{FunctionSpec{
@@ -99,57 +98,28 @@ auto lower_facade_module_impl(FacadeModuleSchema const& module,
         .export_specifier = facade.export_specifier,
         .record_kind = "class",
     }};
-    if (module.settings.namespace_name.has_value()) {
-        declaration_node =
-            Namespace{*module.settings.namespace_name, {std::move(declaration_node)}};
-    }
-    NodeListBuilder header_nodes;
-    header_nodes.add(IncludeDependencies{}, 2);
-    if (!module.settings.prelude_lines.empty()) {
-        header_nodes.add(raw(join_lines(module.settings.prelude_lines)), 2);
-    }
-    header_nodes.add(std::move(declaration_node));
-    Module result{
-        .name = module.settings.name,
-        .header =
-            CppFile{
-                .path = module.settings.header,
-                .nodes = header_nodes.build(),
-                .clang_format_off = true,
-                .include_order = module.settings.include_order,
-            },
-    };
-    if (module.settings.source.has_value()) {
-        NodeListBuilder definitions;
+    NodeListBuilder definitions;
+    if (facade.definitions_in_source) {
         definitions.add(definition(binding, facade.name));
         for (auto const& method : methods) {
             definitions.new_lines(2).add(definition(method, facade.name));
         }
-        auto definition_nodes{definitions.build()};
-        if (module.settings.namespace_name.has_value()) {
-            definition_nodes = {
-                Namespace{*module.settings.namespace_name, std::move(definition_nodes)}};
-        }
-        NodeListBuilder source_nodes;
-        source_nodes.add(Include{source_include(module.settings), false}, 2)
-            .add(IncludeDependencies{}, 2)
-            .append(std::move(definition_nodes));
-        result.source = CppFile{
-            .path = *module.settings.source,
-            .nodes = source_nodes.build(),
-            .pragma_once = false,
-            .clang_format_off = true,
-            .include_order = module.settings.include_order,
-        };
     }
-    return result;
+    return {.header = {std::move(declaration_node)}, .source = definitions.build()};
 }
 
 } // namespace
 
 auto lower_facade_module(FacadeModuleSchema const& module,
                          std::map<std::string, CppType> const& types) -> Module {
-    return lower_facade_module_impl(module, types);
+    std::vector<DeclarationEmission> emissions;
+    emissions.push_back(lower_facade_impl(module.facade, types));
+    return assemble_module(module.settings, emissions).front();
+}
+
+auto lower_facade(FacadeSchema const& schema, std::map<std::string, CppType> const& types)
+    -> DeclarationEmission {
+    return lower_facade_impl(schema, types);
 }
 
 } // namespace codegen::detail

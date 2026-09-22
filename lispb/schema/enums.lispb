@@ -1,4 +1,4 @@
-(enum-module game_ui_style_types
+(module game_ui_style_types
   :header "Plugins/SpaceGame/Source/SpaceGamePresentation/Public/SpaceGamePresentation/ui/style/GameUiStyleTypes.h"
   :source "Plugins/SpaceGame/Source/SpaceGamePresentation/Private/ui/style/GameUiStyleTypes.cpp"
   :header-include "SpaceGamePresentation/ui/style/GameUiStyleTypes.h"

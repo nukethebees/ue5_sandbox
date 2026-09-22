@@ -11,9 +11,46 @@ target, review the generated diff, and keep hand-written integration at the boun
 
 See [README.md](README.md) for entry points.
 
+## Schema modules and declarations
+
+A normal `(module name ...)` is one source and C++ output context, not a declaration family.
+Its `NormalModuleSchema` has one ordered `DeclarationSchema` variant sequence. Enums, integer
+scalars, the six physical-representation declarations, packed values, records, ordinary and
+tagged unions, SoAs, vector SoAs, homogeneous layouts, static tables, and facades can coexist.
+The sequence is the source of truth for declaration indices and source-preserving editing.
+Backend and allocator selection, enum helper namespace, header/source paths, C++ namespace,
+includes, and prelude remain module-wide policies. Settings modules remain special because they
+describe generated settings integration rather than independent semantic types; umbrella modules
+remain special because they aggregate existing outputs.
+
+The parser accepts older family-specific module heads as compatibility input and normalizes them
+to `NormalModuleSchema` before validation or graph resolution. Repository schemas use `(module)`.
+Older C++ module structs remain temporarily accepted by the programmatic `Manifest` API; they
+are not emitted by the source loader. Removing that programmatic compatibility surface and its
+legacy validation/lowering paths is a follow-up boundary, not an alternative persisted model.
+
+The `TypeGraph` resolves normal declarations directly in sequence. Its `TypeIdentity` remains
+origin, module name, C++ namespace, and declaration name; its `TypeId` values are per-resolution
+handles, not persistent editor IDs. Registered external types still come from the separate
+`types.lispb` input. The special `:types` project path is retained until registry declarations
+and source-preserving project edits can be migrated together.
+
+C++ lowering is declaration-oriented. Each declaration contributes header/source nodes and
+include requirements in a `DeclarationEmission`; a common assembler applies the module's
+include order, prelude, namespace, and output envelopes. Explicit declaration-specific C++
+operations remain visible in their lowerers. The CLI calls the target compiler library to
+compile and publish targets; compiler selection is not embedded in argument parsing.
+
+`EditableSchemaDocument` owns the manifest draft, source-file and declaration ranges, stable
+`DeclarationId` values, tombstones, undo/redo, and the last valid resolved graph. Normal-module
+declarations move as one variant element, including across declaration families. Successful
+edits replace the graph and adjust locations; rejected edits restore the previous manifest,
+graph, source ownership, and revision. Source-backed module deletion and restoration retain
+their original ranges, including comments and unrelated text.
+
 ## Single-allocation SoA
 
-The LispB `soa-module` schema is validated before lowering. A single-allocation owner is a
+The LispB `soa` declaration is validated before lowering. A single-allocation owner is a
 declaration on a normal SoA; nested schemas and flattened column names are checked during semantic
 validation. The explicit `:vector-components (xs ys)` or `(xs ys zs)` annotation requires
 exactly those ordered arrays with a common resolved element type. The generated compact vector

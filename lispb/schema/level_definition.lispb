@@ -1,4 +1,4 @@
-(soa-module level_definition_soa
+(module level_definition_soa
   :header "Plugins/SpaceGame/Source/SpaceGameSimulation/Public/SpaceGameSimulation/levels/LevelDefinitionSoA.h"
   :source "Plugins/SpaceGame/Source/SpaceGameSimulation/Private/levels/LevelDefinitionSoA.cpp"
   :header-include "SpaceGameSimulation/levels/LevelDefinitionSoA.h"
@@ -14,7 +14,7 @@
     (member rotations nested @rotators_d)
     (member spawn_times_seconds array double)))
 
-(soa-module level_runtime_events
+(module level_runtime_events
   :header "native/simulation/include/ioj/sim/levels/level_runtime_events.h"
   :backend standard-library
   :namespace ioj::sim

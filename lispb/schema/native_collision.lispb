@@ -1,4 +1,4 @@
-(soa-module native_entity_overlaps
+(module native_entity_overlaps
   :header "native/simulation/include/ioj/sim/entity_overlaps.h"
   :backend standard-library
   :namespace ioj::sim::collision

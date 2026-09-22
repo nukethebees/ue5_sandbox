@@ -1415,5 +1415,4 @@ struct PackedMiniFloat {
 static_assert(sizeof(PackedMiniFloat) == sizeof(PackedMiniFloat::storage_type));
 static_assert(std::is_trivially_copyable_v<PackedMiniFloat>);
 static_assert(std::is_standard_layout_v<PackedMiniFloat>);
-
 } // namespace codegen_compile_fixture

@@ -87,6 +87,22 @@ struct MoveDeclaration {
     bool restore_source_ownership{};
 };
 
+struct CreateDeclaration {
+    DeclarationId declaration;
+    std::size_t module_index{};
+    codegen::DeclarationSchema schema;
+    std::optional<std::size_t> insertion_index;
+};
+
+struct ReplaceDeclaration {
+    DeclarationId declaration;
+    codegen::DeclarationSchema schema;
+};
+
+struct DeleteDeclaration {
+    DeclarationId declaration;
+};
+
 struct CreateEnum {
     DeclarationId declaration;
     std::size_t module_index{};
@@ -306,6 +322,9 @@ using SchemaEditCommand = std::variant<SetEnumeratorDisplayName,
                                        DeleteModule,
                                        RestoreModule,
                                        MoveDeclaration,
+                                       CreateDeclaration,
+                                       ReplaceDeclaration,
+                                       DeleteDeclaration,
                                        CreateEnum,
                                        ReplaceEnum,
                                        DeleteEnum,

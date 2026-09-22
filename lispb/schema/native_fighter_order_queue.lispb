@@ -1,4 +1,4 @@
-(soa-module native_fighter_order_queue
+(module native_fighter_order_queue
   :header "native/simulation/include/ioj/sim/fighter_order_queue.h"
   :backend standard-library
   :namespace ioj::sim

@@ -14,7 +14,8 @@ auto find_packed_enum(TypeRef const& type,
                       std::vector<ModuleSchema> const& modules) -> EnumSchema const*;
 auto find_integer_scalar(TypeRef const& type,
                          std::map<std::string, CppType> const& types,
-                         std::vector<ModuleSchema> const& modules) -> IntegerScalarSchema const*;
+                         std::vector<ModuleSchema> const& modules,
+                         std::string_view module_name = {}) -> IntegerScalarSchema const*;
 auto find_linear_quantized(TypeRef const& type,
                            std::map<std::string, CppType> const& types,
                            std::vector<ModuleSchema> const& modules)

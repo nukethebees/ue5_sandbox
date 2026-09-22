@@ -45,13 +45,10 @@ auto lower_semantic_module(ModuleSettings const& settings) -> Module {
     }
     return Module{
         .name = settings.name,
-        .header =
-            CppFile{
-                .path = settings.header,
-                .nodes = nodes.build(),
-                .clang_format_off = true,
-                .include_order = settings.include_order,
-            },
+        .header = CppFile{.path = settings.header,
+                          .nodes = nodes.build(),
+                          .clang_format_off = true,
+                          .include_order = settings.include_order},
     };
 }
 
@@ -84,13 +81,10 @@ auto scalar_cpp_type(TypeRef const& reference, std::map<std::string, CppType> co
     return type;
 }
 
-auto lower_scalar_module(ScalarModuleSchema const& module,
-                         std::map<std::string, CppType> const& types) -> Module {
+auto lower_scalar(IntegerScalarSchema const& scalar, std::map<std::string, CppType> const& types)
+    -> detail::DeclarationEmission {
     NodeListBuilder declarations;
-    for (auto const& scalar : module.scalars) {
-        if (scalar.cpp_emission == IntegerScalarCppEmission::none) {
-            continue;
-        }
+    if (scalar.cpp_emission != IntegerScalarCppEmission::none) {
         if (!scalar.cpp_type.has_value()) {
             throw std::invalid_argument{"Integer scalar '" + scalar.name +
                                         "' constants emission requires a C++ type"};
@@ -123,6 +117,15 @@ auto lower_scalar_module(ScalarModuleSchema const& module,
         }
     }
 
+    return {.header = declarations.build()};
+}
+
+auto lower_scalar_module(ScalarModuleSchema const& module,
+                         std::map<std::string, CppType> const& types) -> Module {
+    NodeListBuilder declarations;
+    for (auto const& scalar : module.scalars) {
+        declarations.append(lower_scalar(scalar, types).header);
+    }
     auto declaration_nodes{declarations.build()};
     NodeListBuilder header_nodes;
     if (!declaration_nodes.empty()) {
@@ -138,13 +141,10 @@ auto lower_scalar_module(ScalarModuleSchema const& module,
     }
     return Module{
         .name = module.settings.name,
-        .header =
-            CppFile{
-                .path = module.settings.header,
-                .nodes = header_nodes.build(),
-                .clang_format_off = true,
-                .include_order = module.settings.include_order,
-            },
+        .header = CppFile{.path = module.settings.header,
+                          .nodes = header_nodes.build(),
+                          .clang_format_off = true,
+                          .include_order = module.settings.include_order},
     };
 }
 
@@ -157,7 +157,60 @@ auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
         std::visit(
             [&](auto const& module) {
                 using T = std::decay_t<decltype(module)>;
-                if constexpr (std::is_same_v<T, EnumModuleSchema>) {
+                if constexpr (std::is_same_v<T, NormalModuleSchema>) {
+                    std::vector<detail::DeclarationEmission> emissions;
+                    emissions.reserve(module.declarations.size());
+                    for (auto const& declaration : module.declarations) {
+                        emissions.push_back(std::visit(
+                            [&](auto const& value) -> detail::DeclarationEmission {
+                                using D = std::decay_t<decltype(value)>;
+                                if constexpr (std::is_same_v<D, IntegerScalarSchema>) {
+                                    return lower_scalar(value, manifest.types);
+                                } else if constexpr (std::is_same_v<D, PackedValueSchema>) {
+                                    return detail::lower_packed_value(
+                                        value, manifest.types, type_graph, module.settings.name);
+                                } else if constexpr (std::is_same_v<D, RecordSchema>) {
+                                    return detail::lower_record(value, manifest.types);
+                                } else if constexpr (std::is_same_v<D, UnionSchema>) {
+                                    return detail::lower_union(value, manifest.types);
+                                } else if constexpr (std::is_same_v<D, TaggedUnionSchema>) {
+                                    return detail::lower_tagged_union(value, manifest.types);
+                                } else if constexpr (std::is_same_v<D, StaticTableSchema>) {
+                                    return detail::lower_static_table(value, manifest.types);
+                                } else if constexpr (std::is_same_v<D, SoaSchema>) {
+                                    return detail::lower_soa_declaration(
+                                        value, module, manifest.types, type_graph);
+                                } else if constexpr (std::is_same_v<D, HomogeneousLayoutSchema>) {
+                                    return detail::lower_homogeneous(value, manifest.types);
+                                } else if constexpr (std::is_same_v<D, FacadeSchema>) {
+                                    return detail::lower_facade(value, manifest.types);
+                                } else if constexpr (std::is_same_v<D, EnumSchema>) {
+                                    return detail::lower_enum(value,
+                                                              module.settings,
+                                                              module.enum_helper_namespace,
+                                                              manifest.types);
+                                } else if constexpr (std::is_same_v<D, VectorSoaSchema>) {
+                                    return detail::lower_vector(
+                                        value, module.soa_backend, manifest.types);
+                                } else {
+                                    return {};
+                                }
+                            },
+                            declaration));
+                    }
+                    for (auto const& allocator : module.soa_array_allocators) {
+                        for (auto const& declaration : module.declarations) {
+                            if (auto const* soa{std::get_if<SoaSchema>(&declaration)}) {
+                                emissions.push_back(detail::lower_soa_declaration(
+                                    *soa, module, manifest.types, type_graph, allocator.prefix));
+                            }
+                        }
+                    }
+                    auto lowered{detail::assemble_module(module.settings, emissions)};
+                    result.insert(result.end(),
+                                  std::make_move_iterator(lowered.begin()),
+                                  std::make_move_iterator(lowered.end()));
+                } else if constexpr (std::is_same_v<T, EnumModuleSchema>) {
                     auto lowered{detail::lower_enum_module(module, manifest.types)};
                     result.insert(result.end(),
                                   std::make_move_iterator(lowered.begin()),

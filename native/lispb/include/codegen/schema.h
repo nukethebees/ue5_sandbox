@@ -1,5 +1,6 @@
 #pragma once
 
+#include <codegen/schema/declaration_schema.h>
 #include <codegen/schema/enum_conversion.h>
 #include <codegen/schema/enum_module_schema.h>
 #include <codegen/schema/enum_reflection.h>
@@ -22,6 +23,7 @@
 #include <codegen/schema/mini_float_schema.h>
 #include <codegen/schema/module_schema.h>
 #include <codegen/schema/module_settings.h>
+#include <codegen/schema/normal_module_schema.h>
 #include <codegen/schema/optional_presence_bit_schema.h>
 #include <codegen/schema/optional_sentinel_schema.h>
 #include <codegen/schema/packed_field_kind.h>
@@ -56,6 +58,7 @@
 #include <codegen/schema/union_module_schema.h>
 #include <codegen/schema/union_schema.h>
 #include <codegen/schema/vector_module_schema.h>
+#include <codegen/schema/vector_soa_schema.h>
 
 #include <map>
 #include <string>

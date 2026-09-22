@@ -322,6 +322,23 @@ void expand(Project const& project,
 
 } // namespace
 
+auto source_files(Target const& target) -> std::vector<std::filesystem::path> {
+    return std::visit(
+        [](auto const& value) -> std::vector<std::filesystem::path> {
+            using TargetType = std::decay_t<decltype(value)>;
+            if constexpr (std::is_same_v<TargetType, CppSchemaTarget>) {
+                auto paths{value.sources};
+                paths.push_back(value.types);
+                return paths;
+            } else if constexpr (std::is_same_v<TargetType, MaterialTarget>) {
+                return {value.source};
+            } else {
+                return value.sources;
+            }
+        },
+        target);
+}
+
 auto load_project(std::filesystem::path const& path) -> Project {
     auto const project_path{std::filesystem::absolute(path).lexically_normal()};
     auto const forms{codegen::sexpr::read_forms(project_path.string(), read_file(project_path))};
@@ -604,49 +621,23 @@ auto EditableProjectDocument::apply_internal(ProjectEditCommand const& command)
                     auto const destination_key{codegen::output_path_key(destination)};
                     auto const original_key{codegen::output_path_key(original)};
                     for (auto const& [name, candidate_target] : project_.targets) {
-                        if (auto const* schema{std::get_if<CppSchemaTarget>(&candidate_target)}) {
-                            if (codegen::output_path_key(schema->types) ==
-                                codegen::output_path_key(original)) {
-                                throw std::invalid_argument{
-                                    "A types registry cannot be renamed as a schema source"};
-                            }
-                            for (auto const& registered : schema->sources) {
-                                if (name != edit.target_name &&
-                                    codegen::output_path_key(registered) == original_key) {
-                                    throw std::invalid_argument{
-                                        "Source is shared by another target and cannot be renamed "
-                                        "here"};
-                                }
-                                if (registered != source &&
-                                    codegen::output_path_key(registered) == destination_key) {
-                                    throw std::invalid_argument{
-                                        "C++ schema source destination is already registered: " +
-                                        destination.generic_string()};
-                                }
-                            }
-                        } else if (auto const* slate{std::get_if<SlateTarget>(&candidate_target)}) {
-                            if (std::ranges::any_of(slate->sources, [&](auto const& registered) {
-                                    return codegen::output_path_key(registered) == original_key;
-                                })) {
+                        if (auto const* schema{std::get_if<CppSchemaTarget>(&candidate_target)};
+                            schema != nullptr &&
+                            codegen::output_path_key(schema->types) == original_key) {
+                            throw std::invalid_argument{
+                                "A types registry cannot be renamed as a schema source"};
+                        }
+                        for (auto const& registered : source_files(candidate_target)) {
+                            auto const key{codegen::output_path_key(registered)};
+                            if (name != edit.target_name && key == original_key) {
                                 throw std::invalid_argument{
                                     "Source is shared by another target and cannot be renamed "
                                     "here"};
                             }
-                        } else if (auto const* kernel{
-                                       std::get_if<KernelTarget>(&candidate_target)}) {
-                            if (std::ranges::any_of(kernel->sources, [&](auto const& registered) {
-                                    return codegen::output_path_key(registered) == original_key;
-                                })) {
+                            if (key == destination_key && registered != source) {
                                 throw std::invalid_argument{
-                                    "Source is shared by another target and cannot be renamed "
-                                    "here"};
-                            }
-                        } else if (auto const* material{
-                                       std::get_if<MaterialTarget>(&candidate_target)}) {
-                            if (codegen::output_path_key(material->source) == original_key) {
-                                throw std::invalid_argument{
-                                    "Source is shared by another target and cannot be renamed "
-                                    "here"};
+                                    "C++ schema source destination is already registered: " +
+                                    destination.generic_string()};
                             }
                         }
                     }

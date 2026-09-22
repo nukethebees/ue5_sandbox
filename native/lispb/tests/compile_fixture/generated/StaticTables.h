@@ -82,5 +82,4 @@ struct FStaticGroupFixture {
     TStaticArray<float, num_rows> max_ys{};
     TStaticArray<float, num_rows> max_zs{};
 };
-
 } // namespace codegen_compile_fixture

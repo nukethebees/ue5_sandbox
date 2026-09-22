@@ -1,4 +1,4 @@
-(soa-module fighters_soa
+(module fighters_soa
   :header "native/simulation/include/ioj/sim/fighter_entity_data.h"
   :backend standard-library
   :namespace ioj::sim
@@ -51,7 +51,7 @@
     (member target_radii array float)
     (single-allocation SingleAllocationFighterEntityData)))
 
-(soa-module capital_ships_soa
+(module capital_ships_soa
   :header "native/simulation/include/ioj/sim/capital_entity_data.h"
   :backend standard-library
   :namespace ioj::sim
@@ -79,7 +79,7 @@
     (member target_ids array @native_unique_id)
     (single-allocation SingleAllocationCapitalEntityData)))
 
-(soa-module lasers_soa
+(module lasers_soa
   :header "native/simulation/include/ioj/sim/laser_soa.h"
   :backend standard-library
   :namespace ioj::sim::lasers
@@ -121,7 +121,7 @@
     (member spawn_times array float)
     (single-allocation SingleAllocationLaserEntities)))
 
-(soa-module fighter_spawn_queue_soa
+(module fighter_spawn_queue_soa
   :header "native/simulation/include/ioj/sim/fighter_spawn_queue.h"
   :backend standard-library
   :namespace ioj::sim
@@ -145,7 +145,7 @@
     (member targets array @native_unique_id)
     (single-allocation SingleAllocationFighterSpawnQueue)))
 
-(soa-module turrets_soa
+(module turrets_soa
   :header "native/simulation/include/ioj/sim/turret_entity_data.h"
   :backend standard-library
   :namespace ioj::sim
@@ -178,7 +178,7 @@
     (member health_indices array @native_health_index)
     (single-allocation SingleAllocationTurretEntityData)))
 
-(soa-module spinners_soa
+(module spinners_soa
   :header "native/simulation/include/ioj/sim/spinner_entity_data.h"
   :backend standard-library
   :namespace ioj::sim
@@ -202,7 +202,7 @@
     (member next_fire_point_indices array int32)
     (single-allocation SingleAllocationSpinnerEntityData)))
 
-(soa-module capital_spawn_data
+(module capital_spawn_data
   :header "native/simulation/include/ioj/sim/capital_spawn_data.h"
   :backend standard-library
   :namespace ioj::sim
@@ -228,7 +228,7 @@
     (member spawn_cooldowns array float)
     (single-allocation SingleAllocationCapitalSpawnData)))
 
-(soa-module turret_spawn_data
+(module turret_spawn_data
   :header "native/simulation/include/ioj/sim/turret_spawn_data.h"
   :backend standard-library
   :namespace ioj::sim
@@ -245,7 +245,7 @@
     (member healths array @native_health)
     (member laser_damages array int32)))
 
-(soa-module laser_hit_details
+(module laser_hit_details
   :header "native/simulation/include/ioj/sim/laser_hit_details.h"
   :backend standard-library
   :namespace ioj::sim

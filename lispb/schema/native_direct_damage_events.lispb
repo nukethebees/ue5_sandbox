@@ -1,4 +1,4 @@
-(soa-module native_direct_damage_events
+(module native_direct_damage_events
   :header "native/simulation/include/ioj/sim/direct_damage_events.h"
   :backend standard-library
   :namespace ioj::sim

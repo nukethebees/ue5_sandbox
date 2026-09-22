@@ -47,30 +47,44 @@ auto form_range(Form const& form, std::size_t const source_file_index) -> Source
             .column = form.token.span.column};
 }
 
+void add_soa_generated_type_names(std::set<std::string>& names, codegen::SoaSchema const& schema) {
+    names.insert(schema.name);
+    names.insert(schema.view_name.value_or(schema.name + "View"));
+    names.insert(schema.const_view_name.value_or(schema.name + "ConstView"));
+    if (schema.field_mask_name.has_value()) {
+        names.insert(*schema.field_mask_name);
+        names.insert(*schema.field_enum_name);
+    }
+    if (schema.single_allocation.has_value()) {
+        names.insert(*schema.single_allocation);
+        names.insert(*schema.single_allocation + "Storage");
+        names.insert(schema.name + "SingleLayout");
+        names.insert(schema.name + "SingleView");
+        names.insert(schema.name + "SingleConstView");
+        for (auto const& variant : schema.single_allocation_variants) {
+            names.insert(variant.name);
+            names.insert(variant.name + "Storage");
+        }
+    }
+    if (schema.fixed.has_value()) {
+        names.insert(schema.fixed->storage_name);
+        names.insert(schema.fixed->containers.begin(), schema.fixed->containers.end());
+    }
+}
+
 auto soa_generated_type_names(codegen::SoaModuleSchema const& module) -> std::set<std::string> {
     auto names{std::set<std::string>{}};
     for (auto const& schema : module.structs) {
-        names.insert(schema.name);
-        names.insert(schema.view_name.value_or(schema.name + "View"));
-        names.insert(schema.const_view_name.value_or(schema.name + "ConstView"));
-        if (schema.field_mask_name.has_value()) {
-            names.insert(*schema.field_mask_name);
-            names.insert(*schema.field_enum_name);
-        }
-        if (schema.single_allocation.has_value()) {
-            names.insert(*schema.single_allocation);
-            names.insert(*schema.single_allocation + "Storage");
-            names.insert(schema.name + "SingleLayout");
-            names.insert(schema.name + "SingleView");
-            names.insert(schema.name + "SingleConstView");
-            for (auto const& variant : schema.single_allocation_variants) {
-                names.insert(variant.name);
-                names.insert(variant.name + "Storage");
-            }
-        }
-        if (schema.fixed.has_value()) {
-            names.insert(schema.fixed->storage_name);
-            names.insert(schema.fixed->containers.begin(), schema.fixed->containers.end());
+        add_soa_generated_type_names(names, schema);
+    }
+    return names;
+}
+
+auto soa_generated_type_names(codegen::NormalModuleSchema const& module) -> std::set<std::string> {
+    auto names{std::set<std::string>{}};
+    for (auto const& declaration : module.declarations) {
+        if (auto const* schema{std::get_if<codegen::SoaSchema>(&declaration)}) {
+            add_soa_generated_type_names(names, *schema);
         }
     }
     return names;
@@ -2345,12 +2359,152 @@ auto render_soa(codegen::SoaSchema const& schema) -> std::string {
     return output.str();
 }
 
+auto render_vector_soa(codegen::VectorSoaSchema const& schema) -> std::string {
+    std::ostringstream output;
+    output << "(vector-soa " << schema.name << "\n    :value-type "
+           << render_type_ref(schema.value_type) << "\n    :components ";
+    render_quoted_list(output, schema.components);
+    if (!schema.equivalent_members.empty()) {
+        output << "\n    :equivalent-members ";
+        render_quoted_list(output, schema.equivalent_members);
+    }
+    if (schema.equivalent_constructor.has_value()) {
+        output << "\n    :equivalent-constructor " << *schema.equivalent_constructor;
+    }
+    output << "\n    :equivalent-type " << render_type_ref(schema.equivalent_type);
+    if (schema.export_specifier.has_value()) {
+        output << "\n    :export-specifier " << *schema.export_specifier;
+    }
+    if (schema.fixed.has_value()) {
+        output << "\n    (fixed " << schema.fixed->storage_name;
+        if (!schema.fixed->containers.empty()) {
+            output << " :containers ";
+            render_quoted_list(output, schema.fixed->containers);
+        }
+        output << ')';
+    }
+    output << ')';
+    return output.str();
+}
+
+auto render_homogeneous_layout(codegen::HomogeneousLayoutSchema const& schema) -> std::string {
+    std::ostringstream output;
+    output << "(layout " << schema.name << "\n    :components ";
+    render_quoted_list(output, schema.components);
+    if (!schema.input_members.empty()) {
+        output << "\n    :input-members ";
+        render_quoted_list(output, schema.input_members);
+    }
+    if (schema.export_specifier.has_value()) {
+        output << "\n    :export-specifier " << *schema.export_specifier;
+    }
+    for (auto const& value : schema.value_types) {
+        output << "\n    (value-type " << render_type_ref(value.type) << ' ' << value.suffix;
+        if (value.equivalent_type.has_value()) {
+            output << "\n      :equivalent-type " << render_type_ref(*value.equivalent_type);
+        }
+        if (!value.input_types.empty()) {
+            output << "\n      :input-types (";
+            for (std::size_t index{}; index < value.input_types.size(); ++index) {
+                output << (index == 0 ? "" : " ") << render_type_ref(value.input_types[index]);
+            }
+            output << ')';
+        }
+        output << ')';
+    }
+    output << ')';
+    return output.str();
+}
+
+auto render_static_table(codegen::StaticTableSchema const& schema) -> std::string {
+    std::ostringstream output;
+    output << "(table " << schema.name;
+    if (schema.export_specifier.has_value()) {
+        output << "\n    :export-specifier " << *schema.export_specifier;
+    }
+    for (auto const& row : schema.rows) {
+        output << "\n    (row " << row.name << ')';
+    }
+    for (auto const& column : schema.columns) {
+        output << "\n    (column " << column.name << ' ' << render_type_ref(column.type) << ')';
+    }
+    for (auto const& group : schema.groups) {
+        output << "\n    (group " << group.name << ' ' << render_type_ref(group.type)
+               << " :columns ";
+        render_quoted_list(output, group.columns);
+        output << ')';
+    }
+    output << ')';
+    return output.str();
+}
+
+auto render_facade(codegen::FacadeSchema const& schema) -> std::string {
+    std::ostringstream output;
+    output << "(facade " << schema.name << ' ' << render_type_ref(schema.target_type) << ' '
+           << schema.target_member_name;
+    if (!schema.validation_lines.empty()) {
+        output << "\n    :validation ";
+        render_quoted_list(output, schema.validation_lines);
+    }
+    if (!schema.validation_dependencies.empty()) {
+        output << "\n    :validation-dependencies ";
+        render_quoted_list(output, schema.validation_dependencies);
+    }
+    if (schema.export_specifier.has_value()) {
+        output << "\n    :export-specifier " << *schema.export_specifier;
+    }
+    if (schema.bind_access != "public") {
+        output << "\n    :bind-access " << schema.bind_access;
+    }
+    if (schema.method_access != "public") {
+        output << "\n    :method-access " << schema.method_access;
+    }
+    if (!schema.friends.empty()) {
+        output << "\n    :friends ";
+        render_quoted_list(output, schema.friends);
+    }
+    if (schema.friend_kind != "class") {
+        output << "\n    :friend-kind " << schema.friend_kind;
+    }
+    if (schema.definitions_in_source) {
+        output << "\n    :definitions-in-source true";
+    }
+    if (schema.reference_target) {
+        output << "\n    :target-storage reference";
+    }
+    for (auto const& method : schema.methods) {
+        output << "\n    (method " << method.name << ' ' << render_type_ref(method.return_type);
+        if (method.is_const) {
+            output << "\n      :const true";
+        }
+        if (method.is_noexcept) {
+            output << "\n      :noexcept true";
+        }
+        if (method.target_name.has_value()) {
+            output << "\n      :target-name " << *method.target_name;
+        }
+        for (auto const& parameter : method.parameters) {
+            output << "\n      (parameter " << parameter.name << ' '
+                   << render_type_ref(parameter.type);
+            if (parameter.default_value.has_value()) {
+                output << " :default " << quote(*parameter.default_value);
+            }
+            output << ')';
+        }
+        output << ')';
+    }
+    output << ')';
+    return output.str();
+}
+
 auto render_editable_module(codegen::ModuleSchema const& schema) -> std::optional<std::string> {
     return std::visit(
         [](auto const& module) -> std::optional<std::string> {
             using Module = std::decay_t<decltype(module)>;
             std::string_view head;
-            if constexpr (std::is_same_v<Module, codegen::EnumModuleSchema>) {
+            if constexpr (std::is_same_v<Module, codegen::NormalModuleSchema>) {
+                head = "module";
+            } else if constexpr (std::is_same_v<Module, codegen::EnumModuleSchema>) {
                 head = "enum-module";
             } else if constexpr (std::is_same_v<Module, codegen::PackedValueModuleSchema>) {
                 head = "packed-value-module";
@@ -2389,7 +2543,18 @@ auto render_editable_module(codegen::ModuleSchema const& schema) -> std::optiona
                 output << "\n  :prelude ";
                 render_quoted_list(output, settings.prelude_lines);
             }
-            if constexpr (std::is_same_v<Module, codegen::EnumModuleSchema>) {
+            if constexpr (std::is_same_v<Module, codegen::NormalModuleSchema>) {
+                if (module.enum_helper_namespace.has_value()) {
+                    output << "\n  :helper-namespace " << *module.enum_helper_namespace;
+                }
+                if (module.soa_backend == codegen::SoaBackend::standard_library) {
+                    output << "\n  :backend standard-library";
+                }
+                for (auto const& allocator : module.soa_array_allocators) {
+                    output << "\n  (array-allocator " << allocator.prefix << ' '
+                           << render_type_ref(allocator.allocator) << ')';
+                }
+            } else if constexpr (std::is_same_v<Module, codegen::EnumModuleSchema>) {
                 if (module.helper_namespace.has_value()) {
                     output << "\n  :helper-namespace " << *module.helper_namespace;
                 }
@@ -2404,7 +2569,61 @@ auto render_editable_module(codegen::ModuleSchema const& schema) -> std::optiona
             }
 
             auto append = [&](std::string const& declaration) { output << "\n  " << declaration; };
-            if constexpr (std::is_same_v<Module, codegen::EnumModuleSchema>) {
+            if constexpr (std::is_same_v<Module, codegen::NormalModuleSchema>) {
+                for (auto const& declaration : module.declarations) {
+                    auto rendered{std::visit(
+                        [](auto const& value) -> std::optional<std::string> {
+                            using T = std::decay_t<decltype(value)>;
+                            if constexpr (std::is_same_v<T, codegen::EnumSchema>) {
+                                return render_enum(value);
+                            } else if constexpr (std::is_same_v<T, codegen::IntegerScalarSchema>) {
+                                return render_integer_scalar(value);
+                            } else if constexpr (std::is_same_v<T,
+                                                                codegen::LinearQuantizedSchema>) {
+                                return render_linear_quantized(value);
+                            } else if constexpr (std::is_same_v<T, codegen::IntegerVarintSchema>) {
+                                return render_integer_varint(value);
+                            } else if constexpr (std::is_same_v<T, codegen::FixedPointSchema>) {
+                                return render_fixed_point(value);
+                            } else if constexpr (std::is_same_v<T,
+                                                                codegen::OptionalSentinelSchema>) {
+                                return render_optional_sentinel(value);
+                            } else if constexpr (std::is_same_v<
+                                                     T,
+                                                     codegen::OptionalPresenceBitSchema>) {
+                                return render_optional_presence_bit(value);
+                            } else if constexpr (std::is_same_v<T, codegen::MiniFloatSchema>) {
+                                return render_mini_float(value);
+                            } else if constexpr (std::is_same_v<T, codegen::PackedValueSchema>) {
+                                return render_packed_value(value);
+                            } else if constexpr (std::is_same_v<T, codegen::RecordSchema>) {
+                                return render_record(value);
+                            } else if constexpr (std::is_same_v<T, codegen::UnionSchema>) {
+                                return render_union(value);
+                            } else if constexpr (std::is_same_v<T, codegen::TaggedUnionSchema>) {
+                                return render_tagged_union(value);
+                            } else if constexpr (std::is_same_v<T, codegen::SoaSchema>) {
+                                return render_soa(value);
+                            } else if constexpr (std::is_same_v<T, codegen::VectorSoaSchema>) {
+                                return render_vector_soa(value);
+                            } else if constexpr (std::is_same_v<T,
+                                                                codegen::HomogeneousLayoutSchema>) {
+                                return render_homogeneous_layout(value);
+                            } else if constexpr (std::is_same_v<T, codegen::StaticTableSchema>) {
+                                return render_static_table(value);
+                            } else if constexpr (std::is_same_v<T, codegen::FacadeSchema>) {
+                                return render_facade(value);
+                            } else {
+                                return std::nullopt;
+                            }
+                        },
+                        declaration)};
+                    if (!rendered.has_value()) {
+                        return std::nullopt;
+                    }
+                    append(*rendered);
+                }
+            } else if constexpr (std::is_same_v<Module, codegen::EnumModuleSchema>) {
                 for (auto const& declaration : module.enums) {
                     append(render_enum(declaration));
                 }
@@ -3966,129 +4185,25 @@ void replace_file(std::filesystem::path const& source, std::filesystem::path con
 #endif
 }
 
-auto declaration_head(codegen::ModuleSchema const& module) -> std::string_view {
-    return std::visit(
-        [](auto const& value) -> std::string_view {
-            using Module = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<Module, codegen::EnumModuleSchema>) {
-                return "enum";
-            } else if constexpr (std::is_same_v<Module, codegen::PackedValueModuleSchema>) {
-                return "packed-value";
-            } else if constexpr (std::is_same_v<Module, codegen::ScalarModuleSchema>) {
-                return "integer-scalar";
-            } else if constexpr (std::is_same_v<Module, codegen::RepresentationModuleSchema>) {
-                return "linear-quantized";
-            } else if constexpr (std::is_same_v<Module, codegen::RecordModuleSchema>) {
-                return "record";
-            } else if constexpr (std::is_same_v<Module, codegen::UnionModuleSchema>) {
-                return "union";
-            } else if constexpr (std::is_same_v<Module, codegen::SoaModuleSchema>) {
-                return "struct";
-            }
-            return {};
-        },
-        module);
-}
-
 auto declaration_count(codegen::ModuleSchema const& module) -> std::size_t {
-    return std::visit(
-        [](auto const& value) -> std::size_t {
-            using Module = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<Module, codegen::EnumModuleSchema>) {
-                return value.enums.size();
-            } else if constexpr (std::is_same_v<Module, codegen::PackedValueModuleSchema>) {
-                return value.values.size();
-            } else if constexpr (std::is_same_v<Module, codegen::ScalarModuleSchema>) {
-                return value.scalars.size();
-            } else if constexpr (std::is_same_v<Module, codegen::RepresentationModuleSchema>) {
-                return value.linear_quantized.size() + value.integer_varints.size() +
-                       value.fixed_points.size() + value.optional_sentinels.size() +
-                       value.optional_presence_bits.size() + value.mini_floats.size();
-            } else if constexpr (std::is_same_v<Module, codegen::RecordModuleSchema>) {
-                return value.records.size();
-            } else if constexpr (std::is_same_v<Module, codegen::UnionModuleSchema>) {
-                return value.unions.size() + value.tagged_unions.size();
-            } else if constexpr (std::is_same_v<Module, codegen::SoaModuleSchema>) {
-                return value.structs.size();
-            } else if constexpr (std::is_same_v<Module, codegen::VectorModuleSchema>) {
-                return 1;
-            }
-            return 0;
-        },
-        module);
+    auto const* normal{std::get_if<codegen::NormalModuleSchema>(&module)};
+    return normal == nullptr ? 0 : normal->declarations.size();
 }
 
 template <typename Function>
 void for_each_declaration(codegen::Manifest const& manifest, Function&& function) {
     for (std::size_t module_index{}; module_index < manifest.modules.size(); ++module_index) {
-        auto const& module{manifest.modules[module_index]};
-        std::visit(
-            [&](auto const& value) {
-                using Module = std::decay_t<decltype(value)>;
-                auto const add{[&](std::size_t const declaration_index, std::string const& name) {
-                    function(module_index, declaration_index, value.settings, name);
-                }};
-                if constexpr (std::is_same_v<Module, codegen::EnumModuleSchema>) {
-                    for (std::size_t index{}; index < value.enums.size(); ++index) {
-                        add(index, value.enums[index].name);
-                    }
-                } else if constexpr (std::is_same_v<Module, codegen::PackedValueModuleSchema>) {
-                    for (std::size_t index{}; index < value.values.size(); ++index) {
-                        add(index, value.values[index].name);
-                    }
-                } else if constexpr (std::is_same_v<Module, codegen::ScalarModuleSchema>) {
-                    for (std::size_t index{}; index < value.scalars.size(); ++index) {
-                        add(index, value.scalars[index].name);
-                    }
-                } else if constexpr (std::is_same_v<Module, codegen::RepresentationModuleSchema>) {
-                    for (std::size_t index{}; index < value.linear_quantized.size(); ++index) {
-                        add(index, value.linear_quantized[index].name);
-                    }
-                    for (std::size_t index{}; index < value.integer_varints.size(); ++index) {
-                        add(value.linear_quantized.size() + index,
-                            value.integer_varints[index].name);
-                    }
-                    for (std::size_t index{}; index < value.fixed_points.size(); ++index) {
-                        add(value.linear_quantized.size() + value.integer_varints.size() + index,
-                            value.fixed_points[index].name);
-                    }
-                    for (std::size_t index{}; index < value.optional_sentinels.size(); ++index) {
-                        add(value.linear_quantized.size() + value.integer_varints.size() +
-                                value.fixed_points.size() + index,
-                            value.optional_sentinels[index].name);
-                    }
-                    for (std::size_t index{}; index < value.optional_presence_bits.size();
-                         ++index) {
-                        add(value.linear_quantized.size() + value.integer_varints.size() +
-                                value.fixed_points.size() + value.optional_sentinels.size() + index,
-                            value.optional_presence_bits[index].name);
-                    }
-                    for (std::size_t index{}; index < value.mini_floats.size(); ++index) {
-                        add(value.linear_quantized.size() + value.integer_varints.size() +
-                                value.fixed_points.size() + value.optional_sentinels.size() +
-                                value.optional_presence_bits.size() + index,
-                            value.mini_floats[index].name);
-                    }
-                } else if constexpr (std::is_same_v<Module, codegen::RecordModuleSchema>) {
-                    for (std::size_t index{}; index < value.records.size(); ++index) {
-                        add(index, value.records[index].name);
-                    }
-                } else if constexpr (std::is_same_v<Module, codegen::UnionModuleSchema>) {
-                    for (std::size_t index{}; index < value.unions.size(); ++index) {
-                        add(index, value.unions[index].name);
-                    }
-                    for (std::size_t index{}; index < value.tagged_unions.size(); ++index) {
-                        add(value.unions.size() + index, value.tagged_unions[index].name);
-                    }
-                } else if constexpr (std::is_same_v<Module, codegen::SoaModuleSchema>) {
-                    for (std::size_t index{}; index < value.structs.size(); ++index) {
-                        add(index, value.structs[index].name);
-                    }
-                } else if constexpr (std::is_same_v<Module, codegen::VectorModuleSchema>) {
-                    add(0, value.storage_name);
-                }
-            },
-            module);
+        auto const* module{
+            std::get_if<codegen::NormalModuleSchema>(&manifest.modules[module_index])};
+        if (module == nullptr) {
+            continue;
+        }
+        for (std::size_t index{}; index < module->declarations.size(); ++index) {
+            function(module_index,
+                     index,
+                     module->settings,
+                     codegen::declaration_name(module->declarations[index]));
+        }
     }
 }
 
@@ -4111,11 +4226,13 @@ void refresh_declaration_locations(codegen::Manifest const& manifest,
                 throw std::logic_error{"Cannot reconcile declaration locations after module move"};
             }
             auto const type{types.find_declared(settings.name, name)};
-            if (!type.has_value()) {
-                throw std::logic_error{"Resolved graph omitted moved declaration '" +
-                                       settings.name + ":" + name + "'"};
-            }
-            declaration->identity = types.type(*type).identity;
+            declaration->identity =
+                type.has_value()
+                    ? types.type(*type).identity
+                    : TypeIdentity{.origin = TypeOrigin::declaration,
+                                   .module_name = settings.name,
+                                   .namespace_name = settings.namespace_name.value_or(""),
+                                   .name = name};
             declaration->declaration_index = declaration_index;
         });
     if (located.size() != declarations.size()) {
@@ -4153,132 +4270,148 @@ void repair_semantic_references(codegen::Manifest& manifest,
         }
         auto const& definition{types.type(*user_type).definition};
         auto& module{manifest.modules[user_info.module_index]};
-        if (auto const* resolved{std::get_if<EnumType>(&definition)}) {
-            auto& schema{
-                std::get<codegen::EnumModuleSchema>(module).enums[user_info.declaration_index]};
-            if (schema.underlying_type.has_value() && resolved->underlying_type.has_value()) {
-                repair_ref(*schema.underlying_type, resolved->underlying_type->type);
-            }
-        } else if (auto const* resolved{std::get_if<IntegerScalarType>(&definition)}) {
-            auto& scalar{
-                std::get<codegen::ScalarModuleSchema>(module).scalars[user_info.declaration_index]};
-            if (scalar.relationship.has_value() && resolved->relationship.has_value()) {
-                repair_ref(scalar.relationship->target, resolved->relationship->target.type);
-            }
-        } else if (auto const* resolved{std::get_if<LinearQuantizedType>(&definition)}) {
-            auto& representations{std::get<codegen::RepresentationModuleSchema>(module)};
-            repair_ref(representations.linear_quantized[user_info.declaration_index].source,
-                       resolved->source.type);
-        } else if (auto const* resolved{std::get_if<IntegerVarintType>(&definition)}) {
-            auto& representations{std::get<codegen::RepresentationModuleSchema>(module)};
-            auto const index{user_info.declaration_index - representations.linear_quantized.size()};
-            repair_ref(representations.integer_varints[index].source, resolved->source.type);
-        } else if (auto const* resolved{std::get_if<OptionalSentinelType>(&definition)}) {
-            auto& representations{std::get<codegen::RepresentationModuleSchema>(module)};
-            auto const index{user_info.declaration_index - representations.linear_quantized.size() -
-                             representations.integer_varints.size() -
-                             representations.fixed_points.size()};
-            repair_ref(representations.optional_sentinels[index].source, resolved->source.type);
-        } else if (auto const* resolved{std::get_if<OptionalPresenceBitType>(&definition)}) {
-            auto& representations{std::get<codegen::RepresentationModuleSchema>(module)};
-            auto const index{user_info.declaration_index - representations.linear_quantized.size() -
-                             representations.integer_varints.size() -
-                             representations.fixed_points.size() -
-                             representations.optional_sentinels.size()};
-            repair_ref(representations.optional_presence_bits[index].source, resolved->source.type);
-        } else if (auto const* resolved{std::get_if<PackedType>(&definition)}) {
-            auto& schema{std::get<codegen::PackedValueModuleSchema>(module)
-                             .values[user_info.declaration_index]};
-            repair_ref(schema.storage_type, resolved->storage_type.type);
-            for (std::size_t index{}; index < schema.segments.size(); ++index) {
-                auto* source_field{
-                    std::get_if<codegen::PackedFieldSchema>(&schema.segments[index])};
-                auto const* resolved_field{std::get_if<PackedField>(&resolved->segments[index])};
-                if (source_field == nullptr || resolved_field == nullptr) {
-                    continue;
-                }
-                repair_ref(source_field->type, resolved_field->semantic_type.type);
-                if (source_field->relationship.has_value() &&
-                    resolved_field->relationship.has_value()) {
-                    repair_ref(source_field->relationship->target,
-                               resolved_field->relationship->target.type);
-                }
-            }
-        } else if (auto const* resolved{std::get_if<RecordType>(&definition)}) {
-            auto& schema{
-                std::get<codegen::RecordModuleSchema>(module).records[user_info.declaration_index]};
-            for (std::size_t index{}; index < schema.members.size(); ++index) {
-                repair_ref(schema.members[index].type, resolved->members[index].semantic_type.type);
-                if (schema.members[index].relationship.has_value() &&
-                    resolved->members[index].relationship.has_value()) {
-                    repair_ref(schema.members[index].relationship->target,
-                               resolved->members[index].relationship->target.type);
-                }
-            }
-        } else if (auto const* resolved{std::get_if<UnionType>(&definition)}) {
-            auto& schema{
-                std::get<codegen::UnionModuleSchema>(module).unions[user_info.declaration_index]};
-            for (std::size_t index{}; index < schema.alternatives.size(); ++index) {
-                repair_ref(schema.alternatives[index].type,
-                           resolved->alternatives[index].semantic_type.type);
-            }
-        } else if (auto const* resolved{std::get_if<TaggedUnionType>(&definition)}) {
-            auto& union_module{std::get<codegen::UnionModuleSchema>(module)};
-            auto const tagged_index{user_info.declaration_index - union_module.unions.size()};
-            auto& schema{union_module.tagged_unions[tagged_index]};
-            repair_ref(schema.discriminant, resolved->discriminant.type);
-            for (std::size_t index{}; index < schema.alternatives.size(); ++index) {
-                repair_ref(schema.alternatives[index].type,
-                           resolved->alternatives[index].semantic_type.type);
-            }
-        } else if (auto const* resolved{std::get_if<SoaType>(&definition)}) {
-            auto* soa_module{std::get_if<codegen::SoaModuleSchema>(&module)};
-            if (soa_module == nullptr) {
-                auto* vector_module{std::get_if<codegen::VectorModuleSchema>(&module)};
-                if (vector_module != nullptr) {
-                    if (!resolved->columns.empty()) {
-                        repair_ref(vector_module->value_type,
-                                   resolved->columns.front().semantic_type.type);
+        if (auto* normal{std::get_if<codegen::NormalModuleSchema>(&module)}) {
+            auto& declaration{normal->declarations.at(user_info.declaration_index)};
+            std::visit(
+                [&](auto& schema) {
+                    using T = std::decay_t<decltype(schema)>;
+                    if constexpr (std::is_same_v<T, codegen::EnumSchema>) {
+                        auto const& resolved{std::get<EnumType>(definition)};
+                        if (schema.underlying_type.has_value() &&
+                            resolved.underlying_type.has_value()) {
+                            repair_ref(*schema.underlying_type, resolved.underlying_type->type);
+                        }
+                    } else if constexpr (std::is_same_v<T, codegen::IntegerScalarSchema>) {
+                        auto const& resolved{std::get<IntegerScalarType>(definition)};
+                        if (schema.relationship.has_value() && resolved.relationship.has_value()) {
+                            repair_ref(schema.relationship->target,
+                                       resolved.relationship->target.type);
+                        }
+                    } else if constexpr (std::is_same_v<T, codegen::LinearQuantizedSchema>) {
+                        repair_ref(schema.source,
+                                   std::get<LinearQuantizedType>(definition).source.type);
+                    } else if constexpr (std::is_same_v<T, codegen::IntegerVarintSchema>) {
+                        repair_ref(schema.source,
+                                   std::get<IntegerVarintType>(definition).source.type);
+                    } else if constexpr (std::is_same_v<T, codegen::OptionalSentinelSchema>) {
+                        repair_ref(schema.source,
+                                   std::get<OptionalSentinelType>(definition).source.type);
+                    } else if constexpr (std::is_same_v<T, codegen::OptionalPresenceBitSchema>) {
+                        repair_ref(schema.source,
+                                   std::get<OptionalPresenceBitType>(definition).source.type);
+                    } else if constexpr (std::is_same_v<T, codegen::PackedValueSchema>) {
+                        auto const& resolved{std::get<PackedType>(definition)};
+                        repair_ref(schema.storage_type, resolved.storage_type.type);
+                        for (std::size_t index{}; index < schema.segments.size(); ++index) {
+                            auto* field{
+                                std::get_if<codegen::PackedFieldSchema>(&schema.segments[index])};
+                            auto const* resolved_field{
+                                std::get_if<PackedField>(&resolved.segments[index])};
+                            if (field == nullptr || resolved_field == nullptr) {
+                                continue;
+                            }
+                            repair_ref(field->type, resolved_field->semantic_type.type);
+                            if (field->relationship.has_value() &&
+                                resolved_field->relationship.has_value()) {
+                                repair_ref(field->relationship->target,
+                                           resolved_field->relationship->target.type);
+                            }
+                        }
+                    } else if constexpr (std::is_same_v<T, codegen::RecordSchema>) {
+                        auto const& resolved{std::get<RecordType>(definition)};
+                        for (std::size_t index{}; index < schema.members.size(); ++index) {
+                            repair_ref(schema.members[index].type,
+                                       resolved.members[index].semantic_type.type);
+                            if (schema.members[index].relationship.has_value() &&
+                                resolved.members[index].relationship.has_value()) {
+                                repair_ref(schema.members[index].relationship->target,
+                                           resolved.members[index].relationship->target.type);
+                            }
+                        }
+                    } else if constexpr (std::is_same_v<T, codegen::UnionSchema>) {
+                        auto const& resolved{std::get<UnionType>(definition)};
+                        for (std::size_t index{}; index < schema.alternatives.size(); ++index) {
+                            repair_ref(schema.alternatives[index].type,
+                                       resolved.alternatives[index].semantic_type.type);
+                        }
+                    } else if constexpr (std::is_same_v<T, codegen::TaggedUnionSchema>) {
+                        auto const& resolved{std::get<TaggedUnionType>(definition)};
+                        repair_ref(schema.discriminant, resolved.discriminant.type);
+                        for (std::size_t index{}; index < schema.alternatives.size(); ++index) {
+                            repair_ref(schema.alternatives[index].type,
+                                       resolved.alternatives[index].semantic_type.type);
+                        }
+                    } else if constexpr (std::is_same_v<T, codegen::VectorSoaSchema>) {
+                        auto const& resolved{std::get<SoaType>(definition)};
+                        if (!resolved.columns.empty()) {
+                            repair_ref(schema.value_type,
+                                       resolved.columns.front().semantic_type.type);
+                        }
+                        if (resolved.equivalent_type.has_value()) {
+                            repair_ref(schema.equivalent_type, resolved.equivalent_type->type);
+                        }
+                    } else if constexpr (std::is_same_v<T, codegen::SoaSchema>) {
+                        auto const& resolved{std::get<SoaType>(definition)};
+                        for (std::size_t index{}; index < schema.members.size(); ++index) {
+                            auto& member{schema.members[index]};
+                            repair_ref(member.type, resolved.columns[index].semantic_type.type);
+                            if (member.relationship.has_value() &&
+                                resolved.columns[index].relationship.has_value()) {
+                                repair_ref(member.relationship->target,
+                                           resolved.columns[index].relationship->target.type);
+                            }
+                            auto const nested_reference{
+                                target_is_soa && resolved.columns[index].nested_type == target &&
+                                member.nested_schema.has_value()};
+                            auto const fixed_reference{
+                                target_is_soa && user_info.module_index == target_module_index &&
+                                member.fixed_schema == old_name};
+                            if ((nested_reference || fixed_reference) &&
+                                local_soa_policy == LocalSoaReferencePolicy::reject) {
+                                throw std::invalid_argument{"Cannot move SoA '" +
+                                                            std::string{old_name} +
+                                                            "' across modules while module-local "
+                                                            "nested/fixed schema references exist"};
+                            }
+                            if (nested_reference &&
+                                local_soa_policy == LocalSoaReferencePolicy::rename) {
+                                member.nested_schema = new_local_name;
+                            }
+                            if (fixed_reference &&
+                                local_soa_policy == LocalSoaReferencePolicy::rename) {
+                                member.fixed_schema = new_local_name;
+                            }
+                        }
+                        if (schema.equivalent_type.has_value() &&
+                            resolved.equivalent_type.has_value()) {
+                            repair_ref(*schema.equivalent_type, resolved.equivalent_type->type);
+                        }
                     }
-                    if (resolved->equivalent_type.has_value()) {
-                        repair_ref(vector_module->equivalent_type, resolved->equivalent_type->type);
-                    }
-                }
-                continue;
-            }
-            auto& schema{soa_module->structs[user_info.declaration_index]};
-            for (std::size_t index{}; index < schema.members.size(); ++index) {
-                auto& source_member{schema.members[index]};
-                repair_ref(source_member.type, resolved->columns[index].semantic_type.type);
-                if (source_member.relationship.has_value() &&
-                    resolved->columns[index].relationship.has_value()) {
-                    repair_ref(source_member.relationship->target,
-                               resolved->columns[index].relationship->target.type);
-                }
-                auto const nested_reference{target_is_soa &&
-                                            resolved->columns[index].nested_type == target &&
-                                            source_member.nested_schema.has_value()};
-                auto const fixed_reference{target_is_soa &&
-                                           user_info.module_index == target_module_index &&
-                                           source_member.fixed_schema == old_name};
-                if ((nested_reference || fixed_reference) &&
-                    local_soa_policy == LocalSoaReferencePolicy::reject) {
-                    throw std::invalid_argument{
-                        "Cannot move SoA '" + std::string{old_name} +
-                        "' across modules while module-local nested/fixed schema references exist"};
-                }
-                if (nested_reference && local_soa_policy == LocalSoaReferencePolicy::rename) {
-                    source_member.nested_schema = new_local_name;
-                }
-                if (fixed_reference && local_soa_policy == LocalSoaReferencePolicy::rename) {
-                    source_member.fixed_schema = new_local_name;
-                }
-            }
-            if (schema.equivalent_type.has_value() && resolved->equivalent_type.has_value()) {
-                repair_ref(*schema.equivalent_type, resolved->equivalent_type->type);
-            }
+                },
+                declaration);
+            continue;
         }
     }
+}
+
+template <typename Schema>
+auto normal_schema_at(codegen::Manifest const& manifest, DeclarationInfo const& info)
+    -> Schema const* {
+    auto const* module{
+        std::get_if<codegen::NormalModuleSchema>(&manifest.modules[info.module_index])};
+    if (module == nullptr || info.declaration_index >= module->declarations.size()) {
+        return nullptr;
+    }
+    return std::get_if<Schema>(&module->declarations[info.declaration_index]);
+}
+
+template <typename Schema>
+auto normal_schema_at(codegen::Manifest& manifest, DeclarationInfo const& info) -> Schema* {
+    auto* module{std::get_if<codegen::NormalModuleSchema>(&manifest.modules[info.module_index])};
+    if (module == nullptr || info.declaration_index >= module->declarations.size()) {
+        return nullptr;
+    }
+    return std::get_if<Schema>(&module->declarations[info.declaration_index]);
 }
 
 } // namespace
@@ -4287,7 +4420,7 @@ EditableSchemaDocument::EditableSchemaDocument(codegen::Manifest manifest,
                                                std::vector<SchemaSourceFile> source_files,
                                                std::filesystem::path types_path,
                                                std::vector<std::filesystem::path> module_paths)
-    : manifest_{std::move(manifest)}
+    : manifest_{codegen::canonical_manifest(manifest)}
     , types_{resolve_type_graph(manifest_)}
     , source_files_{std::move(source_files)}
     , types_path_{std::move(types_path)}
@@ -4329,203 +4462,87 @@ auto EditableSchemaDocument::find_declaration(TypeIdentity const& identity) cons
 auto EditableSchemaDocument::enum_schema(DeclarationId const declaration_id) const
     -> codegen::EnumSchema const* {
     auto const* info{declaration(declaration_id)};
-    if (info == nullptr) {
-        return nullptr;
-    }
-    auto const* module{
-        std::get_if<codegen::EnumModuleSchema>(&manifest_.modules[info->module_index])};
-    return module == nullptr || info->declaration_index >= module->enums.size()
-             ? nullptr
-             : &module->enums[info->declaration_index];
+    return info == nullptr ? nullptr : normal_schema_at<codegen::EnumSchema>(manifest_, *info);
 }
 
 auto EditableSchemaDocument::packed_value_schema(DeclarationId const declaration_id) const
     -> codegen::PackedValueSchema const* {
     auto const* info{declaration(declaration_id)};
-    if (info == nullptr) {
-        return nullptr;
-    }
-    auto const* module{
-        std::get_if<codegen::PackedValueModuleSchema>(&manifest_.modules[info->module_index])};
-    return module == nullptr || info->declaration_index >= module->values.size()
-             ? nullptr
-             : &module->values[info->declaration_index];
+    return info == nullptr ? nullptr
+                           : normal_schema_at<codegen::PackedValueSchema>(manifest_, *info);
 }
 
 auto EditableSchemaDocument::integer_scalar_schema(DeclarationId const declaration_id) const
     -> codegen::IntegerScalarSchema const* {
     auto const* info{declaration(declaration_id)};
-    if (info == nullptr) {
-        return nullptr;
-    }
-    auto const* module{
-        std::get_if<codegen::ScalarModuleSchema>(&manifest_.modules[info->module_index])};
-    return module == nullptr || info->declaration_index >= module->scalars.size()
-             ? nullptr
-             : &module->scalars[info->declaration_index];
+    return info == nullptr ? nullptr
+                           : normal_schema_at<codegen::IntegerScalarSchema>(manifest_, *info);
 }
 
 auto EditableSchemaDocument::linear_quantized_schema(DeclarationId const declaration_id) const
     -> codegen::LinearQuantizedSchema const* {
     auto const* info{declaration(declaration_id)};
-    if (info == nullptr) {
-        return nullptr;
-    }
-    auto const* module{
-        std::get_if<codegen::RepresentationModuleSchema>(&manifest_.modules[info->module_index])};
-    return module == nullptr || info->declaration_index >= module->linear_quantized.size()
-             ? nullptr
-             : &module->linear_quantized[info->declaration_index];
+    return info == nullptr ? nullptr
+                           : normal_schema_at<codegen::LinearQuantizedSchema>(manifest_, *info);
 }
 
 auto EditableSchemaDocument::integer_varint_schema(DeclarationId const declaration_id) const
     -> codegen::IntegerVarintSchema const* {
     auto const* info{declaration(declaration_id)};
-    if (info == nullptr) {
-        return nullptr;
-    }
-    auto const* module{
-        std::get_if<codegen::RepresentationModuleSchema>(&manifest_.modules[info->module_index])};
-    if (module == nullptr || info->declaration_index < module->linear_quantized.size()) {
-        return nullptr;
-    }
-    auto const index{info->declaration_index - module->linear_quantized.size()};
-    return index < module->integer_varints.size() ? &module->integer_varints[index] : nullptr;
+    return info == nullptr ? nullptr
+                           : normal_schema_at<codegen::IntegerVarintSchema>(manifest_, *info);
 }
 
 auto EditableSchemaDocument::fixed_point_schema(DeclarationId const declaration_id) const
     -> codegen::FixedPointSchema const* {
     auto const* info{declaration(declaration_id)};
-    if (info == nullptr) {
-        return nullptr;
-    }
-    auto const* module{
-        std::get_if<codegen::RepresentationModuleSchema>(&manifest_.modules[info->module_index])};
-    if (module == nullptr) {
-        return nullptr;
-    }
-    auto const first_index{module->linear_quantized.size() + module->integer_varints.size()};
-    if (info->declaration_index < first_index) {
-        return nullptr;
-    }
-    auto const index{info->declaration_index - first_index};
-    return index < module->fixed_points.size() ? &module->fixed_points[index] : nullptr;
+    return info == nullptr ? nullptr
+                           : normal_schema_at<codegen::FixedPointSchema>(manifest_, *info);
 }
 
 auto EditableSchemaDocument::optional_sentinel_schema(DeclarationId const declaration_id) const
     -> codegen::OptionalSentinelSchema const* {
     auto const* info{declaration(declaration_id)};
-    if (info == nullptr) {
-        return nullptr;
-    }
-    auto const* module{
-        std::get_if<codegen::RepresentationModuleSchema>(&manifest_.modules[info->module_index])};
-    if (module == nullptr) {
-        return nullptr;
-    }
-    auto const first_index{module->linear_quantized.size() + module->integer_varints.size() +
-                           module->fixed_points.size()};
-    if (info->declaration_index < first_index) {
-        return nullptr;
-    }
-    auto const index{info->declaration_index - first_index};
-    return index < module->optional_sentinels.size() ? &module->optional_sentinels[index] : nullptr;
+    return info == nullptr ? nullptr
+                           : normal_schema_at<codegen::OptionalSentinelSchema>(manifest_, *info);
 }
 
 auto EditableSchemaDocument::optional_presence_bit_schema(DeclarationId const declaration_id) const
     -> codegen::OptionalPresenceBitSchema const* {
     auto const* info{declaration(declaration_id)};
-    if (info == nullptr) {
-        return nullptr;
-    }
-    auto const* module{
-        std::get_if<codegen::RepresentationModuleSchema>(&manifest_.modules[info->module_index])};
-    if (module == nullptr) {
-        return nullptr;
-    }
-    auto const first_index{module->linear_quantized.size() + module->integer_varints.size() +
-                           module->fixed_points.size() + module->optional_sentinels.size()};
-    if (info->declaration_index < first_index) {
-        return nullptr;
-    }
-    auto const index{info->declaration_index - first_index};
-    return index < module->optional_presence_bits.size() ? &module->optional_presence_bits[index]
-                                                         : nullptr;
+    return info == nullptr ? nullptr
+                           : normal_schema_at<codegen::OptionalPresenceBitSchema>(manifest_, *info);
 }
 
 auto EditableSchemaDocument::mini_float_schema(DeclarationId const declaration_id) const
     -> codegen::MiniFloatSchema const* {
     auto const* info{declaration(declaration_id)};
-    if (info == nullptr) {
-        return nullptr;
-    }
-    auto const* module{
-        std::get_if<codegen::RepresentationModuleSchema>(&manifest_.modules[info->module_index])};
-    if (module == nullptr) {
-        return nullptr;
-    }
-    auto const first_index{module->linear_quantized.size() + module->integer_varints.size() +
-                           module->fixed_points.size() + module->optional_sentinels.size() +
-                           module->optional_presence_bits.size()};
-    if (info->declaration_index < first_index) {
-        return nullptr;
-    }
-    auto const index{info->declaration_index - first_index};
-    return index < module->mini_floats.size() ? &module->mini_floats[index] : nullptr;
+    return info == nullptr ? nullptr : normal_schema_at<codegen::MiniFloatSchema>(manifest_, *info);
 }
 
 auto EditableSchemaDocument::record_schema(DeclarationId const declaration_id) const
     -> codegen::RecordSchema const* {
     auto const* info{declaration(declaration_id)};
-    if (info == nullptr) {
-        return nullptr;
-    }
-    auto const* module{
-        std::get_if<codegen::RecordModuleSchema>(&manifest_.modules[info->module_index])};
-    return module == nullptr || info->declaration_index >= module->records.size()
-             ? nullptr
-             : &module->records[info->declaration_index];
+    return info == nullptr ? nullptr : normal_schema_at<codegen::RecordSchema>(manifest_, *info);
 }
 
 auto EditableSchemaDocument::union_schema(DeclarationId const declaration_id) const
     -> codegen::UnionSchema const* {
     auto const* info{declaration(declaration_id)};
-    if (info == nullptr) {
-        return nullptr;
-    }
-    auto const* module{
-        std::get_if<codegen::UnionModuleSchema>(&manifest_.modules[info->module_index])};
-    return module == nullptr || info->declaration_index >= module->unions.size()
-             ? nullptr
-             : &module->unions[info->declaration_index];
+    return info == nullptr ? nullptr : normal_schema_at<codegen::UnionSchema>(manifest_, *info);
 }
 
 auto EditableSchemaDocument::tagged_union_schema(DeclarationId const declaration_id) const
     -> codegen::TaggedUnionSchema const* {
     auto const* info{declaration(declaration_id)};
-    if (info == nullptr) {
-        return nullptr;
-    }
-    auto const* module{
-        std::get_if<codegen::UnionModuleSchema>(&manifest_.modules[info->module_index])};
-    if (module == nullptr || info->declaration_index < module->unions.size()) {
-        return nullptr;
-    }
-    auto const index{info->declaration_index - module->unions.size()};
-    return index < module->tagged_unions.size() ? &module->tagged_unions[index] : nullptr;
+    return info == nullptr ? nullptr
+                           : normal_schema_at<codegen::TaggedUnionSchema>(manifest_, *info);
 }
 
 auto EditableSchemaDocument::soa_schema(DeclarationId const declaration_id) const
     -> codegen::SoaSchema const* {
     auto const* info{declaration(declaration_id)};
-    if (info == nullptr) {
-        return nullptr;
-    }
-    auto const* module{
-        std::get_if<codegen::SoaModuleSchema>(&manifest_.modules[info->module_index])};
-    return module == nullptr || info->declaration_index >= module->structs.size()
-             ? nullptr
-             : &module->structs[info->declaration_index];
+    return info == nullptr ? nullptr : normal_schema_at<codegen::SoaSchema>(manifest_, *info);
 }
 
 auto EditableSchemaDocument::unique_soa_generated_type_name(DeclarationId const declaration_id,
@@ -4535,13 +4552,17 @@ auto EditableSchemaDocument::unique_soa_generated_type_name(DeclarationId const 
     if (info == nullptr || soa_schema(declaration_id) == nullptr) {
         return std::unexpected{SchemaEditError{"Unknown SoA declaration"}};
     }
-    auto const* module{
-        std::get_if<codegen::SoaModuleSchema>(&manifest_.modules[info->module_index])};
-    if (module == nullptr) {
-        return std::unexpected{SchemaEditError{"SoA declaration has an invalid source module"}};
-    }
-
-    auto const occupied{soa_generated_type_names(*module)};
+    auto const occupied{std::visit(
+        [](auto const& module) -> std::set<std::string> {
+            using T = std::decay_t<decltype(module)>;
+            if constexpr (std::is_same_v<T, codegen::NormalModuleSchema> ||
+                          std::is_same_v<T, codegen::SoaModuleSchema>) {
+                return soa_generated_type_names(module);
+            } else {
+                return {};
+            }
+        },
+        manifest_.modules[info->module_index])};
     auto candidate{base};
     for (auto suffix{std::size_t{2}}; occupied.contains(candidate); ++suffix) {
         candidate = base + std::to_string(suffix);
@@ -4556,13 +4577,17 @@ auto EditableSchemaDocument::unique_soa_storage_owner_name(DeclarationId const d
     if (info == nullptr || soa_schema(declaration_id) == nullptr) {
         return std::unexpected{SchemaEditError{"Unknown SoA declaration"}};
     }
-    auto const* module{
-        std::get_if<codegen::SoaModuleSchema>(&manifest_.modules[info->module_index])};
-    if (module == nullptr) {
-        return std::unexpected{SchemaEditError{"SoA declaration has an invalid source module"}};
-    }
-
-    auto const occupied{soa_generated_type_names(*module)};
+    auto const occupied{std::visit(
+        [](auto const& module) -> std::set<std::string> {
+            using T = std::decay_t<decltype(module)>;
+            if constexpr (std::is_same_v<T, codegen::NormalModuleSchema> ||
+                          std::is_same_v<T, codegen::SoaModuleSchema>) {
+                return soa_generated_type_names(module);
+            } else {
+                return {};
+            }
+        },
+        manifest_.modules[info->module_index])};
     auto candidate{base};
     for (auto suffix{std::size_t{2}};
          occupied.contains(candidate) || occupied.contains(candidate + "Storage");
@@ -4579,13 +4604,17 @@ auto EditableSchemaDocument::prepare_soa_duplicate(DeclarationId const declarati
     if (info == nullptr || source == nullptr) {
         return std::unexpected{SchemaEditError{"Unknown SoA declaration"}};
     }
-    auto const* module{
-        std::get_if<codegen::SoaModuleSchema>(&manifest_.modules[info->module_index])};
-    if (module == nullptr) {
-        return std::unexpected{SchemaEditError{"SoA declaration has an invalid source module"}};
-    }
-
-    auto occupied{soa_generated_type_names(*module)};
+    auto occupied{std::visit(
+        [](auto const& module) -> std::set<std::string> {
+            using T = std::decay_t<decltype(module)>;
+            if constexpr (std::is_same_v<T, codegen::NormalModuleSchema> ||
+                          std::is_same_v<T, codegen::SoaModuleSchema>) {
+                return soa_generated_type_names(module);
+            } else {
+                return {};
+            }
+        },
+        manifest_.modules[info->module_index])};
 
     auto const numbered_candidate = [](std::string const& base, std::size_t const suffix) {
         return suffix == 1 ? base : base + std::to_string(suffix);
@@ -4705,6 +4734,55 @@ auto EditableSchemaDocument::allocate_declaration_id() -> DeclarationId {
 
 auto EditableSchemaDocument::apply(SchemaEditCommand command)
     -> std::expected<bool, SchemaEditError> {
+    std::optional<SchemaEditCommand> normalized;
+    std::visit(
+        [&](auto const& edit) {
+            using Edit = std::decay_t<decltype(edit)>;
+            if constexpr (std::is_same_v<Edit, CreateModule>) {
+                normalized = CreateModule{.source_file_index = edit.source_file_index,
+                                          .schema = codegen::canonical_module(edit.schema)};
+            } else if constexpr (requires {
+                                     edit.schema;
+                                     edit.declaration;
+                                 }) {
+                using Schema = std::decay_t<decltype(edit.schema)>;
+                if constexpr (std::is_constructible_v<codegen::DeclarationSchema, Schema> &&
+                              !std::is_same_v<Schema, codegen::DeclarationSchema>) {
+                    if constexpr (requires {
+                                      edit.module_index;
+                                      edit.insertion_index;
+                                  }) {
+                        if (edit.module_index < manifest_.modules.size() &&
+                            std::holds_alternative<codegen::NormalModuleSchema>(
+                                manifest_.modules[edit.module_index])) {
+                            normalized = CreateDeclaration{.declaration = edit.declaration,
+                                                           .module_index = edit.module_index,
+                                                           .schema = edit.schema,
+                                                           .insertion_index = edit.insertion_index};
+                        }
+                    } else {
+                        auto const* info{declaration(edit.declaration)};
+                        if (info != nullptr && std::holds_alternative<codegen::NormalModuleSchema>(
+                                                   manifest_.modules[info->module_index])) {
+                            normalized = ReplaceDeclaration{.declaration = edit.declaration,
+                                                            .schema = edit.schema};
+                        }
+                    }
+                }
+            } else if constexpr (
+                requires { edit.declaration; } && !requires { edit.module_index; } &&
+                !requires { edit.new_name; } && !std::is_same_v<Edit, DeleteDeclaration>) {
+                auto const* info{declaration(edit.declaration)};
+                if (info != nullptr && std::holds_alternative<codegen::NormalModuleSchema>(
+                                           manifest_.modules[info->module_index])) {
+                    normalized = DeleteDeclaration{edit.declaration};
+                }
+            }
+        },
+        command);
+    if (normalized.has_value()) {
+        command = std::move(*normalized);
+    }
     auto inverse{execute(command)};
     if (!inverse.has_value()) {
         return std::unexpected{std::move(inverse.error())};
@@ -5150,26 +5228,28 @@ void EditableSchemaDocument::initialize_declarations(
     declarations_.clear();
     auto source_index{std::size_t{}};
     auto next_id{std::uint64_t{1}};
-    for_each_declaration(manifest_,
-                         [&](std::size_t const module_index,
-                             std::size_t const declaration_index,
-                             codegen::ModuleSettings const& settings,
-                             std::string const& name) {
-                             auto const type{types_.find_declared(settings.name, name)};
-                             if (!type.has_value()) {
-                                 throw std::logic_error{"Resolved graph omitted declaration '" +
-                                                        settings.name + ":" + name + "'"};
-                             }
-                             auto source{source_index < source_ranges.size()
-                                             ? source_ranges[source_index]
-                                             : std::nullopt};
-                             declarations_.push_back({.id = DeclarationId{next_id++},
-                                                      .identity = types_.type(*type).identity,
-                                                      .module_index = module_index,
-                                                      .declaration_index = declaration_index,
-                                                      .source = std::move(source)});
-                             ++source_index;
-                         });
+    for_each_declaration(
+        manifest_,
+        [&](std::size_t const module_index,
+            std::size_t const declaration_index,
+            codegen::ModuleSettings const& settings,
+            std::string const& name) {
+            auto const type{types_.find_declared(settings.name, name)};
+            auto identity{type.has_value()
+                              ? types_.type(*type).identity
+                              : TypeIdentity{.origin = TypeOrigin::declaration,
+                                             .module_name = settings.name,
+                                             .namespace_name = settings.namespace_name.value_or(""),
+                                             .name = name}};
+            auto source{source_index < source_ranges.size() ? source_ranges[source_index]
+                                                            : std::nullopt};
+            declarations_.push_back({.id = DeclarationId{next_id++},
+                                     .identity = std::move(identity),
+                                     .module_index = module_index,
+                                     .declaration_index = declaration_index,
+                                     .source = std::move(source)});
+            ++source_index;
+        });
     if (!source_ranges.empty() && source_index != source_ranges.size()) {
         throw std::logic_error{"Source declaration count does not match resolved schema"};
     }
@@ -5219,7 +5299,134 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
     return std::visit(
         [&](auto const& edit) -> std::expected<std::optional<SchemaEditCommand>, SchemaEditError> {
             using Edit = std::decay_t<decltype(edit)>;
-            if constexpr (std::is_same_v<Edit, CreateModule>) {
+            if constexpr (std::is_same_v<Edit, CreateDeclaration>) {
+                if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
+                    return std::unexpected{SchemaEditError{"New declaration requires a unique id"}};
+                }
+                if (edit.module_index >= manifest_.modules.size()) {
+                    return std::unexpected{SchemaEditError{"Unknown module index"}};
+                }
+                auto candidate{manifest_};
+                auto* module{std::get_if<codegen::NormalModuleSchema>(
+                    &candidate.modules[edit.module_index])};
+                if (module == nullptr) {
+                    return std::unexpected{SchemaEditError{"Declarations require a normal module"}};
+                }
+                auto const insertion{edit.insertion_index.value_or(module->declarations.size())};
+                if (insertion > module->declarations.size()) {
+                    return std::unexpected{SchemaEditError{"Invalid declaration insertion index"}};
+                }
+                module->declarations.insert(module->declarations.begin() +
+                                                static_cast<std::ptrdiff_t>(insertion),
+                                            edit.schema);
+                TypeGraph candidate_types;
+                try {
+                    codegen::validate_manifest(candidate);
+                    candidate_types = resolve_type_graph(candidate);
+                } catch (std::exception const& error) {
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+                auto const& name{codegen::declaration_name(edit.schema)};
+                auto const found{candidate_types.find_declared(module->settings.name, name)};
+                auto const identity{
+                    found.has_value()
+                        ? candidate_types.type(*found).identity
+                        : TypeIdentity{.origin = TypeOrigin::declaration,
+                                       .module_name = module->settings.name,
+                                       .namespace_name =
+                                           module->settings.namespace_name.value_or(""),
+                                       .name = name}};
+                for (auto& info : declarations_) {
+                    if (info.module_index == edit.module_index &&
+                        info.declaration_index >= insertion) {
+                        ++info.declaration_index;
+                    }
+                }
+                declarations_.push_back({.id = edit.declaration,
+                                         .identity = identity,
+                                         .module_index = edit.module_index,
+                                         .declaration_index = insertion,
+                                         .source = creation_source(edit.declaration)});
+                manifest_ = std::move(candidate);
+                types_ = std::move(candidate_types);
+                return SchemaEditCommand{DeleteDeclaration{edit.declaration}};
+            } else if constexpr (std::is_same_v<Edit, ReplaceDeclaration>) {
+                auto const* info{declaration(edit.declaration)};
+                if (info == nullptr) {
+                    return std::unexpected{SchemaEditError{"Unknown declaration"}};
+                }
+                auto candidate{manifest_};
+                auto* module{std::get_if<codegen::NormalModuleSchema>(
+                    &candidate.modules[info->module_index])};
+                if (module == nullptr || info->declaration_index >= module->declarations.size()) {
+                    return std::unexpected{
+                        SchemaEditError{"Declaration is not in a normal module"}};
+                }
+                auto& current{module->declarations[info->declaration_index]};
+                if (current.index() != edit.schema.index()) {
+                    return std::unexpected{SchemaEditError{"Replacement declaration kind differs"}};
+                }
+                if (codegen::declaration_name(current) != codegen::declaration_name(edit.schema)) {
+                    return std::unexpected{
+                        SchemaEditError{"Use RenameDeclaration to change a name"}};
+                }
+                auto previous{current};
+                current = edit.schema;
+                TypeGraph candidate_types;
+                try {
+                    codegen::validate_manifest(candidate);
+                    candidate_types = resolve_type_graph(candidate);
+                } catch (std::exception const& error) {
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+                manifest_ = std::move(candidate);
+                types_ = std::move(candidate_types);
+                return SchemaEditCommand{ReplaceDeclaration{edit.declaration, std::move(previous)}};
+            } else if constexpr (std::is_same_v<Edit, DeleteDeclaration>) {
+                auto const* found{declaration(edit.declaration)};
+                if (found == nullptr) {
+                    return std::unexpected{SchemaEditError{"Unknown declaration"}};
+                }
+                if (types_.find(found->identity).has_value()) {
+                    if (auto const blocker{deletion_blocker(*found)}; blocker.has_value()) {
+                        return std::unexpected{*blocker};
+                    }
+                }
+                auto const info{*found};
+                auto candidate{manifest_};
+                auto* module{std::get_if<codegen::NormalModuleSchema>(
+                    &candidate.modules[info.module_index])};
+                if (module == nullptr || info.declaration_index >= module->declarations.size()) {
+                    return std::unexpected{
+                        SchemaEditError{"Declaration is not in a normal module"}};
+                }
+                auto schema{module->declarations[info.declaration_index]};
+                module->declarations.erase(module->declarations.begin() +
+                                           static_cast<std::ptrdiff_t>(info.declaration_index));
+                TypeGraph candidate_types;
+                try {
+                    codegen::validate_manifest(candidate);
+                    candidate_types = resolve_type_graph(candidate);
+                } catch (std::exception const& error) {
+                    return std::unexpected{SchemaEditError{error.what()}};
+                }
+                remember_source_tombstone(info);
+                declarations_.erase(
+                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id));
+                for (auto& existing : declarations_) {
+                    if (existing.module_index == info.module_index &&
+                        existing.declaration_index > info.declaration_index) {
+                        --existing.declaration_index;
+                    }
+                }
+                manifest_ = std::move(candidate);
+                types_ = std::move(candidate_types);
+                return SchemaEditCommand{
+                    CreateDeclaration{.declaration = edit.declaration,
+                                      .module_index = info.module_index,
+                                      .schema = std::move(schema),
+                                      .insertion_index = info.declaration_index}};
+            } else if constexpr (std::is_same_v<Edit, CreateModule>) {
                 if (edit.source_file_index == 0 || edit.source_file_index >= source_files_.size() ||
                     std::ranges::find(module_paths_, source_files_[edit.source_file_index].path) ==
                         module_paths_.end()) {
@@ -5273,6 +5480,13 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                     }
                     auto const type{types_.find(info.identity)};
                     if (!type.has_value()) {
+                        auto const* normal{std::get_if<codegen::NormalModuleSchema>(
+                            &manifest_.modules[edit.module_index])};
+                        if (normal != nullptr &&
+                            !codegen::contributes_semantic_type(
+                                normal->declarations[info.declaration_index])) {
+                            continue;
+                        }
                         return std::unexpected{
                             SchemaEditError{"Module declaration is missing from the type graph"}};
                     }
@@ -5451,12 +5665,18 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                 auto const original_info{*declaration_it};
                 auto const target{types_.find(original_info.identity)};
                 if (!target.has_value()) {
-                    return std::unexpected{
-                        SchemaEditError{"Declaration is missing from the type graph"}};
+                    auto const* normal{std::get_if<codegen::NormalModuleSchema>(
+                        &manifest_.modules[original_info.module_index])};
+                    if (normal == nullptr ||
+                        codegen::contributes_semantic_type(
+                            normal->declarations[original_info.declaration_index])) {
+                        return std::unexpected{
+                            SchemaEditError{"Declaration is missing from the type graph"}};
+                    }
                 }
                 auto const namespace_changed{source_settings.namespace_name !=
                                              destination_settings.namespace_name};
-                if (namespace_changed) {
+                if (namespace_changed && target.has_value()) {
                     for (auto const& [registered_name, cpp_type] : manifest_.types) {
                         static_cast<void>(cpp_type);
                         if (types_.find_registered(registered_name) == target) {
@@ -5467,7 +5687,7 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                         }
                     }
                 }
-                if (namespace_changed) {
+                if (namespace_changed && target.has_value()) {
                     auto const new_spelling{destination_settings.namespace_name.has_value()
                                                 ? *destination_settings.namespace_name +
                                                       "::" + original_info.identity.name
@@ -5511,125 +5731,13 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                     std::unexpected{SchemaEditError{"Destination module is incompatible"}}}};
                 auto& source_module{manifest_.modules[original_info.module_index]};
                 auto& destination_module{manifest_.modules[edit.module_index]};
-                if (enum_schema(edit.declaration) != nullptr) {
-                    auto* source{std::get_if<codegen::EnumModuleSchema>(&source_module)};
-                    auto* destination{std::get_if<codegen::EnumModuleSchema>(&destination_module)};
-                    if (source != nullptr && destination != nullptr) {
-                        moved = move_schema(
-                            source->enums, original_info.declaration_index, destination->enums);
-                    }
-                } else if (packed_value_schema(edit.declaration) != nullptr) {
-                    auto* source{std::get_if<codegen::PackedValueModuleSchema>(&source_module)};
+                if (auto* source{std::get_if<codegen::NormalModuleSchema>(&source_module)}) {
                     auto* destination{
-                        std::get_if<codegen::PackedValueModuleSchema>(&destination_module)};
-                    if (source != nullptr && destination != nullptr) {
-                        moved = move_schema(
-                            source->values, original_info.declaration_index, destination->values);
-                    }
-                } else if (integer_scalar_schema(edit.declaration) != nullptr) {
-                    auto* source{std::get_if<codegen::ScalarModuleSchema>(&source_module)};
-                    auto* destination{
-                        std::get_if<codegen::ScalarModuleSchema>(&destination_module)};
-                    if (source != nullptr && destination != nullptr) {
-                        moved = move_schema(
-                            source->scalars, original_info.declaration_index, destination->scalars);
-                    }
-                } else if (linear_quantized_schema(edit.declaration) != nullptr) {
-                    auto* source{std::get_if<codegen::RepresentationModuleSchema>(&source_module)};
-                    auto* destination{
-                        std::get_if<codegen::RepresentationModuleSchema>(&destination_module)};
-                    if (source != nullptr && destination != nullptr) {
-                        moved = move_schema(source->linear_quantized,
+                        std::get_if<codegen::NormalModuleSchema>(&destination_module)};
+                    if (destination != nullptr) {
+                        moved = move_schema(source->declarations,
                                             original_info.declaration_index,
-                                            destination->linear_quantized);
-                    }
-                } else if (integer_varint_schema(edit.declaration) != nullptr) {
-                    auto* source{std::get_if<codegen::RepresentationModuleSchema>(&source_module)};
-                    auto* destination{
-                        std::get_if<codegen::RepresentationModuleSchema>(&destination_module)};
-                    if (source != nullptr && destination != nullptr) {
-                        moved = move_schema(source->integer_varints,
-                                            original_info.declaration_index -
-                                                source->linear_quantized.size(),
-                                            destination->integer_varints);
-                    }
-                } else if (fixed_point_schema(edit.declaration) != nullptr) {
-                    auto* source{std::get_if<codegen::RepresentationModuleSchema>(&source_module)};
-                    auto* destination{
-                        std::get_if<codegen::RepresentationModuleSchema>(&destination_module)};
-                    if (source != nullptr && destination != nullptr) {
-                        auto const offset{source->linear_quantized.size() +
-                                          source->integer_varints.size()};
-                        moved = move_schema(source->fixed_points,
-                                            original_info.declaration_index - offset,
-                                            destination->fixed_points);
-                    }
-                } else if (optional_sentinel_schema(edit.declaration) != nullptr) {
-                    auto* source{std::get_if<codegen::RepresentationModuleSchema>(&source_module)};
-                    auto* destination{
-                        std::get_if<codegen::RepresentationModuleSchema>(&destination_module)};
-                    if (source != nullptr && destination != nullptr) {
-                        auto const offset{source->linear_quantized.size() +
-                                          source->integer_varints.size() +
-                                          source->fixed_points.size()};
-                        moved = move_schema(source->optional_sentinels,
-                                            original_info.declaration_index - offset,
-                                            destination->optional_sentinels);
-                    }
-                } else if (optional_presence_bit_schema(edit.declaration) != nullptr) {
-                    auto* source{std::get_if<codegen::RepresentationModuleSchema>(&source_module)};
-                    auto* destination{
-                        std::get_if<codegen::RepresentationModuleSchema>(&destination_module)};
-                    if (source != nullptr && destination != nullptr) {
-                        auto const offset{
-                            source->linear_quantized.size() + source->integer_varints.size() +
-                            source->fixed_points.size() + source->optional_sentinels.size()};
-                        moved = move_schema(source->optional_presence_bits,
-                                            original_info.declaration_index - offset,
-                                            destination->optional_presence_bits);
-                    }
-                } else if (mini_float_schema(edit.declaration) != nullptr) {
-                    auto* source{std::get_if<codegen::RepresentationModuleSchema>(&source_module)};
-                    auto* destination{
-                        std::get_if<codegen::RepresentationModuleSchema>(&destination_module)};
-                    if (source != nullptr && destination != nullptr) {
-                        auto const offset{
-                            source->linear_quantized.size() + source->integer_varints.size() +
-                            source->fixed_points.size() + source->optional_sentinels.size() +
-                            source->optional_presence_bits.size()};
-                        moved = move_schema(source->mini_floats,
-                                            original_info.declaration_index - offset,
-                                            destination->mini_floats);
-                    }
-                } else if (record_schema(edit.declaration) != nullptr) {
-                    auto* source{std::get_if<codegen::RecordModuleSchema>(&source_module)};
-                    auto* destination{
-                        std::get_if<codegen::RecordModuleSchema>(&destination_module)};
-                    if (source != nullptr && destination != nullptr) {
-                        moved = move_schema(
-                            source->records, original_info.declaration_index, destination->records);
-                    }
-                } else if (union_schema(edit.declaration) != nullptr) {
-                    auto* source{std::get_if<codegen::UnionModuleSchema>(&source_module)};
-                    auto* destination{std::get_if<codegen::UnionModuleSchema>(&destination_module)};
-                    if (source != nullptr && destination != nullptr) {
-                        moved = move_schema(
-                            source->unions, original_info.declaration_index, destination->unions);
-                    }
-                } else if (tagged_union_schema(edit.declaration) != nullptr) {
-                    auto* source{std::get_if<codegen::UnionModuleSchema>(&source_module)};
-                    auto* destination{std::get_if<codegen::UnionModuleSchema>(&destination_module)};
-                    if (source != nullptr && destination != nullptr) {
-                        moved = move_schema(source->tagged_unions,
-                                            original_info.declaration_index - source->unions.size(),
-                                            destination->tagged_unions);
-                    }
-                } else if (soa_schema(edit.declaration) != nullptr) {
-                    auto* source{std::get_if<codegen::SoaModuleSchema>(&source_module)};
-                    auto* destination{std::get_if<codegen::SoaModuleSchema>(&destination_module)};
-                    if (source != nullptr && destination != nullptr) {
-                        moved = move_schema(
-                            source->structs, original_info.declaration_index, destination->structs);
+                                            destination->declarations);
                     }
                 }
                 if (!moved.has_value()) {
@@ -5661,17 +5769,22 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                 if (info == nullptr) {
                     return std::unexpected{SchemaEditError{"Unknown declaration id"}};
                 }
-                auto* module{
-                    std::get_if<codegen::EnumModuleSchema>(&manifest_.modules[info->module_index])};
-                if (module == nullptr || info->declaration_index >= module->enums.size()) {
+                auto* schema{normal_schema_at<codegen::EnumSchema>(manifest_, *info)};
+                if (schema == nullptr) {
+                    auto* module{std::get_if<codegen::EnumModuleSchema>(
+                        &manifest_.modules[info->module_index])};
+                    if (module != nullptr && info->declaration_index < module->enums.size()) {
+                        schema = &module->enums[info->declaration_index];
+                    }
+                }
+                if (schema == nullptr) {
                     return std::unexpected{
                         SchemaEditError{"Display names can only be edited on enum declarations"}};
                 }
-                auto& schema{module->enums[info->declaration_index]};
                 auto value{std::ranges::find(
-                    schema.values, edit.enumerator_name, &codegen::EnumeratorSchema::name)};
-                if (value == schema.values.end()) {
-                    return std::unexpected{SchemaEditError{"Enum '" + schema.name +
+                    schema->values, edit.enumerator_name, &codegen::EnumeratorSchema::name)};
+                if (value == schema->values.end()) {
+                    return std::unexpected{SchemaEditError{"Enum '" + schema->name +
                                                            "' has no enumerator named '" +
                                                            edit.enumerator_name + "'"}};
                 }
@@ -5697,17 +5810,22 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                 if (info == nullptr) {
                     return std::unexpected{SchemaEditError{"Unknown declaration id"}};
                 }
-                auto* module{
-                    std::get_if<codegen::EnumModuleSchema>(&manifest_.modules[info->module_index])};
-                if (module == nullptr || info->declaration_index >= module->enums.size()) {
+                auto* schema{normal_schema_at<codegen::EnumSchema>(manifest_, *info)};
+                if (schema == nullptr) {
+                    auto* module{std::get_if<codegen::EnumModuleSchema>(
+                        &manifest_.modules[info->module_index])};
+                    if (module != nullptr && info->declaration_index < module->enums.size()) {
+                        schema = &module->enums[info->declaration_index];
+                    }
+                }
+                if (schema == nullptr) {
                     return std::unexpected{
                         SchemaEditError{"Enumerator names can only be edited on enums"}};
                 }
-                auto& schema{module->enums[info->declaration_index]};
                 auto value{std::ranges::find(
-                    schema.values, edit.current_name, &codegen::EnumeratorSchema::name)};
-                if (value == schema.values.end()) {
-                    return std::unexpected{SchemaEditError{"Enum '" + schema.name +
+                    schema->values, edit.current_name, &codegen::EnumeratorSchema::name)};
+                if (value == schema->values.end()) {
+                    return std::unexpected{SchemaEditError{"Enum '" + schema->name +
                                                            "' has no enumerator named '" +
                                                            edit.current_name + "'"}};
                 }
@@ -5715,337 +5833,23 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                     return std::nullopt;
                 }
 
-                auto const previous_count{schema.count};
+                auto const previous_count{schema->count};
                 value->name = edit.new_name;
-                if (schema.count == edit.current_name) {
-                    schema.count = edit.new_name;
+                if (schema->count == edit.current_name) {
+                    schema->count = edit.new_name;
                 }
                 try {
                     auto resolved{resolve_type_graph(manifest_)};
                     types_ = std::move(resolved);
                 } catch (std::exception const& error) {
                     value->name = edit.current_name;
-                    schema.count = previous_count;
+                    schema->count = previous_count;
                     return std::unexpected{SchemaEditError{error.what()}};
                 }
                 return SchemaEditCommand{
                     SetEnumeratorName{.enum_declaration = edit.enum_declaration,
                                       .current_name = edit.new_name,
                                       .new_name = edit.current_name}};
-            } else if constexpr (std::is_same_v<Edit, CreateEnum>) {
-                if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"New enum requires a unique declaration id"}};
-                }
-                if (edit.module_index >= manifest_.modules.size()) {
-                    return std::unexpected{SchemaEditError{"Unknown enum module index"}};
-                }
-                auto* module{
-                    std::get_if<codegen::EnumModuleSchema>(&manifest_.modules[edit.module_index])};
-                if (module == nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"New enums can only be added to enum modules"}};
-                }
-                auto const insertion_index{edit.insertion_index.value_or(module->enums.size())};
-                if (insertion_index > module->enums.size()) {
-                    return std::unexpected{SchemaEditError{"Invalid enum insertion index"}};
-                }
-
-                module->enums.insert(module->enums.begin() +
-                                         static_cast<std::ptrdiff_t>(insertion_index),
-                                     edit.schema);
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == edit.module_index &&
-                        existing.declaration_index >= insertion_index) {
-                        ++existing.declaration_index;
-                    }
-                }
-                auto const namespace_name{module->settings.namespace_name.value_or("")};
-                declarations_.push_back(
-                    {.id = edit.declaration,
-                     .identity = TypeIdentity{.origin = TypeOrigin::declaration,
-                                              .module_name = module->settings.name,
-                                              .namespace_name = namespace_name,
-                                              .name = edit.schema.name},
-                     .module_index = edit.module_index,
-                     .declaration_index = insertion_index,
-                     .source = creation_source(edit.declaration)});
-                try {
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    declarations_.pop_back();
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == edit.module_index &&
-                            existing.declaration_index > insertion_index) {
-                            --existing.declaration_index;
-                        }
-                    }
-                    module->enums.erase(module->enums.begin() +
-                                        static_cast<std::ptrdiff_t>(insertion_index));
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{DeleteEnum{.declaration = edit.declaration}};
-            } else if constexpr (std::is_same_v<Edit, ReplaceEnum>) {
-                auto const* info{declaration(edit.declaration)};
-                auto const* current{enum_schema(edit.declaration)};
-                if (info == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown enum declaration"}};
-                }
-                if (edit.schema.name != current->name) {
-                    return std::unexpected{SchemaEditError{
-                        "ReplaceEnum cannot rename a declaration; use a rename command"}};
-                }
-                auto* module{
-                    std::get_if<codegen::EnumModuleSchema>(&manifest_.modules[info->module_index])};
-                auto previous{module->enums[info->declaration_index]};
-                module->enums[info->declaration_index] = edit.schema;
-                try {
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->enums[info->declaration_index] = std::move(previous);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{
-                    ReplaceEnum{.declaration = edit.declaration, .schema = std::move(previous)}};
-            } else if constexpr (std::is_same_v<Edit, DeleteEnum>) {
-                auto const* found{declaration(edit.declaration)};
-                auto const* current{enum_schema(edit.declaration)};
-                if (found == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown enum declaration"}};
-                }
-                if (auto const blocker{deletion_blocker(*found)}; blocker.has_value()) {
-                    return std::unexpected{*blocker};
-                }
-                auto const info{*found};
-                auto schema{*current};
-                auto* module{
-                    std::get_if<codegen::EnumModuleSchema>(&manifest_.modules[info.module_index])};
-                module->enums.erase(module->enums.begin() +
-                                    static_cast<std::ptrdiff_t>(info.declaration_index));
-                declarations_.erase(
-                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id));
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == info.module_index &&
-                        existing.declaration_index > info.declaration_index) {
-                        --existing.declaration_index;
-                    }
-                }
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->enums.insert(module->enums.begin() +
-                                             static_cast<std::ptrdiff_t>(info.declaration_index),
-                                         schema);
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == info.module_index &&
-                            existing.declaration_index >= info.declaration_index) {
-                            ++existing.declaration_index;
-                        }
-                    }
-                    declarations_.push_back(info);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                remember_source_tombstone(info);
-                return SchemaEditCommand{CreateEnum{.declaration = edit.declaration,
-                                                    .module_index = info.module_index,
-                                                    .schema = std::move(schema),
-                                                    .insertion_index = info.declaration_index}};
-            } else if constexpr (std::is_same_v<Edit, CreatePackedValue>) {
-                if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"New packed value requires a unique declaration id"}};
-                }
-                if (edit.module_index >= manifest_.modules.size()) {
-                    return std::unexpected{SchemaEditError{"Unknown packed-value module index"}};
-                }
-                auto* module{std::get_if<codegen::PackedValueModuleSchema>(
-                    &manifest_.modules[edit.module_index])};
-                if (module == nullptr) {
-                    return std::unexpected{SchemaEditError{
-                        "New packed values can only be added to packed-value modules"}};
-                }
-                auto const insertion_index{edit.insertion_index.value_or(module->values.size())};
-                if (insertion_index > module->values.size()) {
-                    return std::unexpected{SchemaEditError{"Invalid packed-value insertion index"}};
-                }
-
-                module->values.insert(module->values.begin() +
-                                          static_cast<std::ptrdiff_t>(insertion_index),
-                                      edit.schema);
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == edit.module_index &&
-                        existing.declaration_index >= insertion_index) {
-                        ++existing.declaration_index;
-                    }
-                }
-                auto const namespace_name{module->settings.namespace_name.value_or("")};
-                declarations_.push_back(
-                    {.id = edit.declaration,
-                     .identity = TypeIdentity{.origin = TypeOrigin::declaration,
-                                              .module_name = module->settings.name,
-                                              .namespace_name = namespace_name,
-                                              .name = edit.schema.name},
-                     .module_index = edit.module_index,
-                     .declaration_index = insertion_index,
-                     .source = creation_source(edit.declaration)});
-                try {
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    declarations_.pop_back();
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == edit.module_index &&
-                            existing.declaration_index > insertion_index) {
-                            --existing.declaration_index;
-                        }
-                    }
-                    module->values.erase(module->values.begin() +
-                                         static_cast<std::ptrdiff_t>(insertion_index));
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{DeletePackedValue{.declaration = edit.declaration}};
-            } else if constexpr (std::is_same_v<Edit, ReplacePackedValue>) {
-                auto const* info{declaration(edit.declaration)};
-                auto const* current{packed_value_schema(edit.declaration)};
-                if (info == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown packed-value declaration"}};
-                }
-                if (edit.schema.name != current->name) {
-                    return std::unexpected{SchemaEditError{
-                        "ReplacePackedValue cannot rename a declaration; use a rename command"}};
-                }
-                auto* module{std::get_if<codegen::PackedValueModuleSchema>(
-                    &manifest_.modules[info->module_index])};
-                auto previous{module->values[info->declaration_index]};
-                module->values[info->declaration_index] = edit.schema;
-                try {
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->values[info->declaration_index] = std::move(previous);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{ReplacePackedValue{.declaration = edit.declaration,
-                                                            .schema = std::move(previous)}};
-            } else if constexpr (std::is_same_v<Edit, DeletePackedValue>) {
-                auto const* found{declaration(edit.declaration)};
-                auto const* current{packed_value_schema(edit.declaration)};
-                if (found == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown packed-value declaration"}};
-                }
-                if (auto const blocker{deletion_blocker(*found)}; blocker.has_value()) {
-                    return std::unexpected{*blocker};
-                }
-                auto const info{*found};
-                auto schema{*current};
-                auto* module{std::get_if<codegen::PackedValueModuleSchema>(
-                    &manifest_.modules[info.module_index])};
-                module->values.erase(module->values.begin() +
-                                     static_cast<std::ptrdiff_t>(info.declaration_index));
-                declarations_.erase(
-                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id));
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == info.module_index &&
-                        existing.declaration_index > info.declaration_index) {
-                        --existing.declaration_index;
-                    }
-                }
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->values.insert(module->values.begin() +
-                                              static_cast<std::ptrdiff_t>(info.declaration_index),
-                                          schema);
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == info.module_index &&
-                            existing.declaration_index >= info.declaration_index) {
-                            ++existing.declaration_index;
-                        }
-                    }
-                    declarations_.push_back(info);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                remember_source_tombstone(info);
-                return SchemaEditCommand{
-                    CreatePackedValue{.declaration = edit.declaration,
-                                      .module_index = info.module_index,
-                                      .schema = std::move(schema),
-                                      .insertion_index = info.declaration_index}};
-            } else if constexpr (std::is_same_v<Edit, CreateIntegerScalar>) {
-                if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"New integer scalar requires a unique declaration id"}};
-                }
-                if (edit.module_index >= manifest_.modules.size()) {
-                    return std::unexpected{SchemaEditError{"Unknown scalar module index"}};
-                }
-                auto* module{std::get_if<codegen::ScalarModuleSchema>(
-                    &manifest_.modules[edit.module_index])};
-                if (module == nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"New integer scalars can only be added to scalar modules"}};
-                }
-                auto const insertion_index{edit.insertion_index.value_or(module->scalars.size())};
-                if (insertion_index > module->scalars.size()) {
-                    return std::unexpected{SchemaEditError{"Invalid scalar insertion index"}};
-                }
-
-                module->scalars.insert(module->scalars.begin() +
-                                           static_cast<std::ptrdiff_t>(insertion_index),
-                                       edit.schema);
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == edit.module_index &&
-                        existing.declaration_index >= insertion_index) {
-                        ++existing.declaration_index;
-                    }
-                }
-                auto const namespace_name{module->settings.namespace_name.value_or("")};
-                declarations_.push_back(
-                    {.id = edit.declaration,
-                     .identity = TypeIdentity{.origin = TypeOrigin::declaration,
-                                              .module_name = module->settings.name,
-                                              .namespace_name = namespace_name,
-                                              .name = edit.schema.name},
-                     .module_index = edit.module_index,
-                     .declaration_index = insertion_index,
-                     .source = creation_source(edit.declaration)});
-                try {
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    declarations_.pop_back();
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == edit.module_index &&
-                            existing.declaration_index > insertion_index) {
-                            --existing.declaration_index;
-                        }
-                    }
-                    module->scalars.erase(module->scalars.begin() +
-                                          static_cast<std::ptrdiff_t>(insertion_index));
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{DeleteIntegerScalar{.declaration = edit.declaration}};
-            } else if constexpr (std::is_same_v<Edit, ReplaceIntegerScalar>) {
-                auto const* info{declaration(edit.declaration)};
-                auto const* current{integer_scalar_schema(edit.declaration)};
-                if (info == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown integer-scalar declaration"}};
-                }
-                if (edit.schema.name != current->name) {
-                    return std::unexpected{SchemaEditError{
-                        "ReplaceIntegerScalar cannot rename a declaration; use a rename command"}};
-                }
-                auto* module{std::get_if<codegen::ScalarModuleSchema>(
-                    &manifest_.modules[info->module_index])};
-                auto previous{module->scalars[info->declaration_index]};
-                module->scalars[info->declaration_index] = edit.schema;
-                try {
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->scalars[info->declaration_index] = std::move(previous);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{ReplaceIntegerScalar{.declaration = edit.declaration,
-                                                              .schema = std::move(previous)}};
             } else if constexpr (std::is_same_v<Edit, RenameDeclaration>) {
                 auto const declaration_it{
                     std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id)};
@@ -6098,81 +5902,9 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                                                LocalSoaReferencePolicy::rename,
                                                edit.new_name);
                     auto& target_module{manifest_.modules[declaration_it->module_index]};
-                    if (std::holds_alternative<EnumType>(target_definition)) {
-                        std::get<codegen::EnumModuleSchema>(target_module)
-                            .enums[declaration_it->declaration_index]
-                            .name = edit.new_name;
-                    } else if (std::holds_alternative<IntegerScalarType>(target_definition)) {
-                        std::get<codegen::ScalarModuleSchema>(target_module)
-                            .scalars[declaration_it->declaration_index]
-                            .name = edit.new_name;
-                    } else if (std::holds_alternative<LinearQuantizedType>(target_definition)) {
-                        std::get<codegen::RepresentationModuleSchema>(target_module)
-                            .linear_quantized[declaration_it->declaration_index]
-                            .name = edit.new_name;
-                    } else if (std::holds_alternative<IntegerVarintType>(target_definition)) {
-                        auto& representations{
-                            std::get<codegen::RepresentationModuleSchema>(target_module)};
-                        auto const index{declaration_it->declaration_index -
-                                         representations.linear_quantized.size()};
-                        representations.integer_varints[index].name = edit.new_name;
-                    } else if (std::holds_alternative<FixedPointType>(target_definition)) {
-                        auto& representations{
-                            std::get<codegen::RepresentationModuleSchema>(target_module)};
-                        auto const index{declaration_it->declaration_index -
-                                         representations.linear_quantized.size() -
-                                         representations.integer_varints.size()};
-                        representations.fixed_points[index].name = edit.new_name;
-                    } else if (std::holds_alternative<OptionalSentinelType>(target_definition)) {
-                        auto& representations{
-                            std::get<codegen::RepresentationModuleSchema>(target_module)};
-                        auto const index{declaration_it->declaration_index -
-                                         representations.linear_quantized.size() -
-                                         representations.integer_varints.size() -
-                                         representations.fixed_points.size()};
-                        representations.optional_sentinels[index].name = edit.new_name;
-                    } else if (std::holds_alternative<OptionalPresenceBitType>(target_definition)) {
-                        auto& representations{
-                            std::get<codegen::RepresentationModuleSchema>(target_module)};
-                        auto const index{declaration_it->declaration_index -
-                                         representations.linear_quantized.size() -
-                                         representations.integer_varints.size() -
-                                         representations.fixed_points.size() -
-                                         representations.optional_sentinels.size()};
-                        representations.optional_presence_bits[index].name = edit.new_name;
-                    } else if (std::holds_alternative<MiniFloatType>(target_definition)) {
-                        auto& representations{
-                            std::get<codegen::RepresentationModuleSchema>(target_module)};
-                        auto const index{declaration_it->declaration_index -
-                                         representations.linear_quantized.size() -
-                                         representations.integer_varints.size() -
-                                         representations.fixed_points.size() -
-                                         representations.optional_sentinels.size() -
-                                         representations.optional_presence_bits.size()};
-                        representations.mini_floats[index].name = edit.new_name;
-                    } else if (std::holds_alternative<PackedType>(target_definition)) {
-                        std::get<codegen::PackedValueModuleSchema>(target_module)
-                            .values[declaration_it->declaration_index]
-                            .name = edit.new_name;
-                    } else if (std::holds_alternative<RecordType>(target_definition)) {
-                        std::get<codegen::RecordModuleSchema>(target_module)
-                            .records[declaration_it->declaration_index]
-                            .name = edit.new_name;
-                    } else if (std::holds_alternative<UnionType>(target_definition)) {
-                        std::get<codegen::UnionModuleSchema>(target_module)
-                            .unions[declaration_it->declaration_index]
-                            .name = edit.new_name;
-                    } else if (std::holds_alternative<TaggedUnionType>(target_definition)) {
-                        auto& unions{std::get<codegen::UnionModuleSchema>(target_module)};
-                        auto const index{declaration_it->declaration_index - unions.unions.size()};
-                        unions.tagged_unions[index].name = edit.new_name;
-                    } else if (std::holds_alternative<SoaType>(target_definition)) {
-                        std::get<codegen::SoaModuleSchema>(target_module)
-                            .structs[declaration_it->declaration_index]
-                            .name = edit.new_name;
-                    } else {
-                        throw std::invalid_argument{"Declaration kind cannot be renamed"};
-                    }
+                    auto& normal{std::get<codegen::NormalModuleSchema>(target_module)};
+                    auto& schema{normal.declarations.at(declaration_it->declaration_index)};
+                    std::visit([&](auto& value) { value.name = edit.new_name; }, schema);
                     declaration_it->identity.name = edit.new_name;
                     codegen::validate_manifest(manifest_);
                     types_ = resolve_type_graph(manifest_);
@@ -6183,1309 +5915,9 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                 }
                 return SchemaEditCommand{
                     RenameDeclaration{.declaration = edit.declaration, .new_name = old_name}};
-            } else if constexpr (std::is_same_v<Edit, DeleteIntegerScalar>) {
-                auto const* found{declaration(edit.declaration)};
-                auto const* current{integer_scalar_schema(edit.declaration)};
-                if (found == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown integer-scalar declaration"}};
-                }
-                if (auto const blocker{deletion_blocker(*found)}; blocker.has_value()) {
-                    return std::unexpected{*blocker};
-                }
-                auto const info{*found};
-                auto schema{*current};
-                auto* module{std::get_if<codegen::ScalarModuleSchema>(
-                    &manifest_.modules[info.module_index])};
-                module->scalars.erase(module->scalars.begin() +
-                                      static_cast<std::ptrdiff_t>(info.declaration_index));
-                declarations_.erase(
-                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id));
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == info.module_index &&
-                        existing.declaration_index > info.declaration_index) {
-                        --existing.declaration_index;
-                    }
-                }
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->scalars.insert(module->scalars.begin() +
-                                               static_cast<std::ptrdiff_t>(info.declaration_index),
-                                           schema);
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == info.module_index &&
-                            existing.declaration_index >= info.declaration_index) {
-                            ++existing.declaration_index;
-                        }
-                    }
-                    declarations_.push_back(info);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                remember_source_tombstone(info);
-                return SchemaEditCommand{
-                    CreateIntegerScalar{.declaration = edit.declaration,
-                                        .module_index = info.module_index,
-                                        .schema = std::move(schema),
-                                        .insertion_index = info.declaration_index}};
-            } else if constexpr (std::is_same_v<Edit, CreateLinearQuantized>) {
-                if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
-                    return std::unexpected{SchemaEditError{
-                        "New linear quantization requires a unique declaration id"}};
-                }
-                if (edit.module_index >= manifest_.modules.size()) {
-                    return std::unexpected{SchemaEditError{"Unknown representation module index"}};
-                }
-                auto* module{std::get_if<codegen::RepresentationModuleSchema>(
-                    &manifest_.modules[edit.module_index])};
-                if (module == nullptr) {
-                    return std::unexpected{SchemaEditError{
-                        "New linear quantizations can only be added to representation modules"}};
-                }
-                auto const insertion_index{
-                    edit.insertion_index.value_or(module->linear_quantized.size())};
-                if (insertion_index > module->linear_quantized.size()) {
-                    return std::unexpected{
-                        SchemaEditError{"Invalid linear quantization insertion index"}};
-                }
-
-                module->linear_quantized.insert(module->linear_quantized.begin() +
-                                                    static_cast<std::ptrdiff_t>(insertion_index),
-                                                edit.schema);
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == edit.module_index &&
-                        existing.declaration_index >= insertion_index) {
-                        ++existing.declaration_index;
-                    }
-                }
-                auto const namespace_name{module->settings.namespace_name.value_or("")};
-                declarations_.push_back(
-                    {.id = edit.declaration,
-                     .identity = TypeIdentity{.origin = TypeOrigin::declaration,
-                                              .module_name = module->settings.name,
-                                              .namespace_name = namespace_name,
-                                              .name = edit.schema.name},
-                     .module_index = edit.module_index,
-                     .declaration_index = insertion_index,
-                     .source = creation_source(edit.declaration)});
-                try {
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    declarations_.pop_back();
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == edit.module_index &&
-                            existing.declaration_index > insertion_index) {
-                            --existing.declaration_index;
-                        }
-                    }
-                    module->linear_quantized.erase(module->linear_quantized.begin() +
-                                                   static_cast<std::ptrdiff_t>(insertion_index));
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{DeleteLinearQuantized{.declaration = edit.declaration}};
-            } else if constexpr (std::is_same_v<Edit, ReplaceLinearQuantized>) {
-                auto const* info{declaration(edit.declaration)};
-                auto const* current{linear_quantized_schema(edit.declaration)};
-                if (info == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown linear-quantized declaration"}};
-                }
-                if (edit.schema.name != current->name) {
-                    return std::unexpected{SchemaEditError{"ReplaceLinearQuantized cannot rename a "
-                                                           "declaration; use a rename command"}};
-                }
-                auto* module{std::get_if<codegen::RepresentationModuleSchema>(
-                    &manifest_.modules[info->module_index])};
-                auto previous{module->linear_quantized[info->declaration_index]};
-                module->linear_quantized[info->declaration_index] = edit.schema;
-                try {
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->linear_quantized[info->declaration_index] = std::move(previous);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{ReplaceLinearQuantized{.declaration = edit.declaration,
-                                                                .schema = std::move(previous)}};
-            } else if constexpr (std::is_same_v<Edit, DeleteLinearQuantized>) {
-                auto const* found{declaration(edit.declaration)};
-                auto const* current{linear_quantized_schema(edit.declaration)};
-                if (found == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown linear-quantized declaration"}};
-                }
-                if (auto const blocker{deletion_blocker(*found)}; blocker.has_value()) {
-                    return std::unexpected{*blocker};
-                }
-                auto const info{*found};
-                auto schema{*current};
-                auto* module{std::get_if<codegen::RepresentationModuleSchema>(
-                    &manifest_.modules[info.module_index])};
-                module->linear_quantized.erase(module->linear_quantized.begin() +
-                                               static_cast<std::ptrdiff_t>(info.declaration_index));
-                declarations_.erase(
-                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id));
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == info.module_index &&
-                        existing.declaration_index > info.declaration_index) {
-                        --existing.declaration_index;
-                    }
-                }
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->linear_quantized.insert(
-                        module->linear_quantized.begin() +
-                            static_cast<std::ptrdiff_t>(info.declaration_index),
-                        schema);
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == info.module_index &&
-                            existing.declaration_index >= info.declaration_index) {
-                            ++existing.declaration_index;
-                        }
-                    }
-                    declarations_.push_back(info);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                remember_source_tombstone(info);
-                return SchemaEditCommand{
-                    CreateLinearQuantized{.declaration = edit.declaration,
-                                          .module_index = info.module_index,
-                                          .schema = std::move(schema),
-                                          .insertion_index = info.declaration_index}};
-            } else if constexpr (std::is_same_v<Edit, CreateIntegerVarint>) {
-                if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"New integer varint requires a unique declaration id"}};
-                }
-                if (edit.module_index >= manifest_.modules.size()) {
-                    return std::unexpected{SchemaEditError{"Unknown representation module index"}};
-                }
-                auto* module{std::get_if<codegen::RepresentationModuleSchema>(
-                    &manifest_.modules[edit.module_index])};
-                if (module == nullptr) {
-                    return std::unexpected{SchemaEditError{
-                        "New integer varints can only be added to representation modules"}};
-                }
-                auto const insertion_index{
-                    edit.insertion_index.value_or(module->integer_varints.size())};
-                if (insertion_index > module->integer_varints.size()) {
-                    return std::unexpected{
-                        SchemaEditError{"Invalid integer varint insertion index"}};
-                }
-                auto const declaration_index{module->linear_quantized.size() + insertion_index};
-
-                module->integer_varints.insert(module->integer_varints.begin() +
-                                                   static_cast<std::ptrdiff_t>(insertion_index),
-                                               edit.schema);
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == edit.module_index &&
-                        existing.declaration_index >= declaration_index) {
-                        ++existing.declaration_index;
-                    }
-                }
-                auto const namespace_name{module->settings.namespace_name.value_or("")};
-                declarations_.push_back(
-                    {.id = edit.declaration,
-                     .identity = TypeIdentity{.origin = TypeOrigin::declaration,
-                                              .module_name = module->settings.name,
-                                              .namespace_name = namespace_name,
-                                              .name = edit.schema.name},
-                     .module_index = edit.module_index,
-                     .declaration_index = declaration_index,
-                     .source = creation_source(edit.declaration)});
-                try {
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    declarations_.pop_back();
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == edit.module_index &&
-                            existing.declaration_index > declaration_index) {
-                            --existing.declaration_index;
-                        }
-                    }
-                    module->integer_varints.erase(module->integer_varints.begin() +
-                                                  static_cast<std::ptrdiff_t>(insertion_index));
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{DeleteIntegerVarint{.declaration = edit.declaration}};
-            } else if constexpr (std::is_same_v<Edit, ReplaceIntegerVarint>) {
-                auto const* info{declaration(edit.declaration)};
-                auto const* current{integer_varint_schema(edit.declaration)};
-                if (info == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown integer-varint declaration"}};
-                }
-                if (edit.schema.name != current->name) {
-                    return std::unexpected{SchemaEditError{"ReplaceIntegerVarint cannot rename a "
-                                                           "declaration; use a rename command"}};
-                }
-                auto* module{std::get_if<codegen::RepresentationModuleSchema>(
-                    &manifest_.modules[info->module_index])};
-                auto const index{info->declaration_index - module->linear_quantized.size()};
-                auto previous{module->integer_varints[index]};
-                module->integer_varints[index] = edit.schema;
-                try {
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->integer_varints[index] = std::move(previous);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{ReplaceIntegerVarint{.declaration = edit.declaration,
-                                                              .schema = std::move(previous)}};
-            } else if constexpr (std::is_same_v<Edit, DeleteIntegerVarint>) {
-                auto const* found{declaration(edit.declaration)};
-                auto const* current{integer_varint_schema(edit.declaration)};
-                if (found == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown integer-varint declaration"}};
-                }
-                if (auto const blocker{deletion_blocker(*found)}; blocker.has_value()) {
-                    return std::unexpected{*blocker};
-                }
-                auto const info{*found};
-                auto schema{*current};
-                auto* module{std::get_if<codegen::RepresentationModuleSchema>(
-                    &manifest_.modules[info.module_index])};
-                auto const index{info.declaration_index - module->linear_quantized.size()};
-                module->integer_varints.erase(module->integer_varints.begin() +
-                                              static_cast<std::ptrdiff_t>(index));
-                declarations_.erase(
-                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id));
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == info.module_index &&
-                        existing.declaration_index > info.declaration_index) {
-                        --existing.declaration_index;
-                    }
-                }
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->integer_varints.insert(module->integer_varints.begin() +
-                                                       static_cast<std::ptrdiff_t>(index),
-                                                   schema);
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == info.module_index &&
-                            existing.declaration_index >= info.declaration_index) {
-                            ++existing.declaration_index;
-                        }
-                    }
-                    declarations_.push_back(info);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                remember_source_tombstone(info);
-                return SchemaEditCommand{CreateIntegerVarint{.declaration = edit.declaration,
-                                                             .module_index = info.module_index,
-                                                             .schema = std::move(schema),
-                                                             .insertion_index = index}};
-            } else if constexpr (std::is_same_v<Edit, CreateFixedPoint>) {
-                if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"New fixed point requires a unique declaration id"}};
-                }
-                if (edit.module_index >= manifest_.modules.size()) {
-                    return std::unexpected{SchemaEditError{"Unknown representation module index"}};
-                }
-                auto* module{std::get_if<codegen::RepresentationModuleSchema>(
-                    &manifest_.modules[edit.module_index])};
-                if (module == nullptr) {
-                    return std::unexpected{SchemaEditError{
-                        "New fixed points can only be added to representation modules"}};
-                }
-                auto const insertion_index{
-                    edit.insertion_index.value_or(module->fixed_points.size())};
-                if (insertion_index > module->fixed_points.size()) {
-                    return std::unexpected{SchemaEditError{"Invalid fixed-point insertion index"}};
-                }
-                auto const declaration_index{module->linear_quantized.size() +
-                                             module->integer_varints.size() + insertion_index};
-                module->fixed_points.insert(module->fixed_points.begin() +
-                                                static_cast<std::ptrdiff_t>(insertion_index),
-                                            edit.schema);
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == edit.module_index &&
-                        existing.declaration_index >= declaration_index) {
-                        ++existing.declaration_index;
-                    }
-                }
-                auto const namespace_name{module->settings.namespace_name.value_or("")};
-                declarations_.push_back(
-                    {.id = edit.declaration,
-                     .identity = TypeIdentity{.origin = TypeOrigin::declaration,
-                                              .module_name = module->settings.name,
-                                              .namespace_name = namespace_name,
-                                              .name = edit.schema.name},
-                     .module_index = edit.module_index,
-                     .declaration_index = declaration_index,
-                     .source = creation_source(edit.declaration)});
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    declarations_.pop_back();
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == edit.module_index &&
-                            existing.declaration_index > declaration_index) {
-                            --existing.declaration_index;
-                        }
-                    }
-                    module->fixed_points.erase(module->fixed_points.begin() +
-                                               static_cast<std::ptrdiff_t>(insertion_index));
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{DeleteFixedPoint{.declaration = edit.declaration}};
-            } else if constexpr (std::is_same_v<Edit, ReplaceFixedPoint>) {
-                auto const* info{declaration(edit.declaration)};
-                auto const* current{fixed_point_schema(edit.declaration)};
-                if (info == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown fixed-point declaration"}};
-                }
-                if (edit.schema.name != current->name) {
-                    return std::unexpected{SchemaEditError{
-                        "ReplaceFixedPoint cannot rename a declaration; use a rename command"}};
-                }
-                auto* module{std::get_if<codegen::RepresentationModuleSchema>(
-                    &manifest_.modules[info->module_index])};
-                auto const index{info->declaration_index - module->linear_quantized.size() -
-                                 module->integer_varints.size()};
-                auto previous{module->fixed_points[index]};
-                module->fixed_points[index] = edit.schema;
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->fixed_points[index] = std::move(previous);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{ReplaceFixedPoint{.declaration = edit.declaration,
-                                                           .schema = std::move(previous)}};
-            } else if constexpr (std::is_same_v<Edit, DeleteFixedPoint>) {
-                auto const* found{declaration(edit.declaration)};
-                auto const* current{fixed_point_schema(edit.declaration)};
-                if (found == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown fixed-point declaration"}};
-                }
-                if (auto const blocker{deletion_blocker(*found)}; blocker.has_value()) {
-                    return std::unexpected{*blocker};
-                }
-                auto const info{*found};
-                auto schema{*current};
-                auto* module{std::get_if<codegen::RepresentationModuleSchema>(
-                    &manifest_.modules[info.module_index])};
-                auto const index{info.declaration_index - module->linear_quantized.size() -
-                                 module->integer_varints.size()};
-                module->fixed_points.erase(module->fixed_points.begin() +
-                                           static_cast<std::ptrdiff_t>(index));
-                declarations_.erase(
-                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id));
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == info.module_index &&
-                        existing.declaration_index > info.declaration_index) {
-                        --existing.declaration_index;
-                    }
-                }
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->fixed_points.insert(
-                        module->fixed_points.begin() + static_cast<std::ptrdiff_t>(index), schema);
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == info.module_index &&
-                            existing.declaration_index >= info.declaration_index) {
-                            ++existing.declaration_index;
-                        }
-                    }
-                    declarations_.push_back(info);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                remember_source_tombstone(info);
-                return SchemaEditCommand{CreateFixedPoint{.declaration = edit.declaration,
-                                                          .module_index = info.module_index,
-                                                          .schema = std::move(schema),
-                                                          .insertion_index = index}};
-            } else if constexpr (std::is_same_v<Edit, CreateOptionalSentinel>) {
-                if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"New optional sentinel requires a unique declaration id"}};
-                }
-                if (edit.module_index >= manifest_.modules.size()) {
-                    return std::unexpected{SchemaEditError{"Unknown representation module index"}};
-                }
-                auto* module{std::get_if<codegen::RepresentationModuleSchema>(
-                    &manifest_.modules[edit.module_index])};
-                if (module == nullptr) {
-                    return std::unexpected{SchemaEditError{
-                        "New optional sentinels can only be added to representation modules"}};
-                }
-                auto const insertion_index{
-                    edit.insertion_index.value_or(module->optional_sentinels.size())};
-                if (insertion_index > module->optional_sentinels.size()) {
-                    return std::unexpected{
-                        SchemaEditError{"Invalid optional-sentinel insertion index"}};
-                }
-                auto const declaration_index{module->linear_quantized.size() +
-                                             module->integer_varints.size() +
-                                             module->fixed_points.size() + insertion_index};
-                module->optional_sentinels.insert(module->optional_sentinels.begin() +
-                                                      static_cast<std::ptrdiff_t>(insertion_index),
-                                                  edit.schema);
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == edit.module_index &&
-                        existing.declaration_index >= declaration_index) {
-                        ++existing.declaration_index;
-                    }
-                }
-                auto const namespace_name{module->settings.namespace_name.value_or("")};
-                declarations_.push_back(
-                    {.id = edit.declaration,
-                     .identity = TypeIdentity{.origin = TypeOrigin::declaration,
-                                              .module_name = module->settings.name,
-                                              .namespace_name = namespace_name,
-                                              .name = edit.schema.name},
-                     .module_index = edit.module_index,
-                     .declaration_index = declaration_index,
-                     .source = creation_source(edit.declaration)});
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    declarations_.pop_back();
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == edit.module_index &&
-                            existing.declaration_index > declaration_index) {
-                            --existing.declaration_index;
-                        }
-                    }
-                    module->optional_sentinels.erase(module->optional_sentinels.begin() +
-                                                     static_cast<std::ptrdiff_t>(insertion_index));
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{DeleteOptionalSentinel{.declaration = edit.declaration}};
-            } else if constexpr (std::is_same_v<Edit, ReplaceOptionalSentinel>) {
-                auto const* info{declaration(edit.declaration)};
-                auto const* current{optional_sentinel_schema(edit.declaration)};
-                if (info == nullptr || current == nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"Unknown optional-sentinel declaration"}};
-                }
-                if (edit.schema.name != current->name) {
-                    return std::unexpected{SchemaEditError{"ReplaceOptionalSentinel cannot rename "
-                                                           "a declaration; use a rename command"}};
-                }
-                auto* module{std::get_if<codegen::RepresentationModuleSchema>(
-                    &manifest_.modules[info->module_index])};
-                auto const index{info->declaration_index - module->linear_quantized.size() -
-                                 module->integer_varints.size() - module->fixed_points.size()};
-                auto previous{module->optional_sentinels[index]};
-                module->optional_sentinels[index] = edit.schema;
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->optional_sentinels[index] = std::move(previous);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{ReplaceOptionalSentinel{.declaration = edit.declaration,
-                                                                 .schema = std::move(previous)}};
-            } else if constexpr (std::is_same_v<Edit, DeleteOptionalSentinel>) {
-                auto const* found{declaration(edit.declaration)};
-                auto const* current{optional_sentinel_schema(edit.declaration)};
-                if (found == nullptr || current == nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"Unknown optional-sentinel declaration"}};
-                }
-                if (auto const blocker{deletion_blocker(*found)}; blocker.has_value()) {
-                    return std::unexpected{*blocker};
-                }
-                auto const info{*found};
-                auto schema{*current};
-                auto* module{std::get_if<codegen::RepresentationModuleSchema>(
-                    &manifest_.modules[info.module_index])};
-                auto const index{info.declaration_index - module->linear_quantized.size() -
-                                 module->integer_varints.size() - module->fixed_points.size()};
-                module->optional_sentinels.erase(module->optional_sentinels.begin() +
-                                                 static_cast<std::ptrdiff_t>(index));
-                declarations_.erase(
-                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id));
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == info.module_index &&
-                        existing.declaration_index > info.declaration_index) {
-                        --existing.declaration_index;
-                    }
-                }
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->optional_sentinels.insert(module->optional_sentinels.begin() +
-                                                          static_cast<std::ptrdiff_t>(index),
-                                                      schema);
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == info.module_index &&
-                            existing.declaration_index >= info.declaration_index) {
-                            ++existing.declaration_index;
-                        }
-                    }
-                    declarations_.push_back(info);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                remember_source_tombstone(info);
-                return SchemaEditCommand{CreateOptionalSentinel{.declaration = edit.declaration,
-                                                                .module_index = info.module_index,
-                                                                .schema = std::move(schema),
-                                                                .insertion_index = index}};
-            } else if constexpr (std::is_same_v<Edit, CreateOptionalPresenceBit>) {
-                if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
-                    return std::unexpected{SchemaEditError{
-                        "New optional presence bit requires a unique declaration id"}};
-                }
-                if (edit.module_index >= manifest_.modules.size()) {
-                    return std::unexpected{SchemaEditError{"Unknown representation module index"}};
-                }
-                auto* module{std::get_if<codegen::RepresentationModuleSchema>(
-                    &manifest_.modules[edit.module_index])};
-                if (module == nullptr) {
-                    return std::unexpected{SchemaEditError{
-                        "New optional presence bits can only be added to representation modules"}};
-                }
-                auto const insertion_index{
-                    edit.insertion_index.value_or(module->optional_presence_bits.size())};
-                if (insertion_index > module->optional_presence_bits.size()) {
-                    return std::unexpected{
-                        SchemaEditError{"Invalid optional-presence-bit insertion index"}};
-                }
-                auto const declaration_index{module->linear_quantized.size() +
-                                             module->integer_varints.size() +
-                                             module->fixed_points.size() +
-                                             module->optional_sentinels.size() + insertion_index};
-                module->optional_presence_bits.insert(
-                    module->optional_presence_bits.begin() +
-                        static_cast<std::ptrdiff_t>(insertion_index),
-                    edit.schema);
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == edit.module_index &&
-                        existing.declaration_index >= declaration_index) {
-                        ++existing.declaration_index;
-                    }
-                }
-                auto const namespace_name{module->settings.namespace_name.value_or("")};
-                declarations_.push_back(
-                    {.id = edit.declaration,
-                     .identity = TypeIdentity{.origin = TypeOrigin::declaration,
-                                              .module_name = module->settings.name,
-                                              .namespace_name = namespace_name,
-                                              .name = edit.schema.name},
-                     .module_index = edit.module_index,
-                     .declaration_index = declaration_index,
-                     .source = creation_source(edit.declaration)});
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    declarations_.pop_back();
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == edit.module_index &&
-                            existing.declaration_index > declaration_index) {
-                            --existing.declaration_index;
-                        }
-                    }
-                    module->optional_presence_bits.erase(
-                        module->optional_presence_bits.begin() +
-                        static_cast<std::ptrdiff_t>(insertion_index));
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{
-                    DeleteOptionalPresenceBit{.declaration = edit.declaration}};
-            } else if constexpr (std::is_same_v<Edit, ReplaceOptionalPresenceBit>) {
-                auto const* info{declaration(edit.declaration)};
-                auto const* current{optional_presence_bit_schema(edit.declaration)};
-                if (info == nullptr || current == nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"Unknown optional-presence-bit declaration"}};
-                }
-                if (edit.schema.name != current->name) {
-                    return std::unexpected{SchemaEditError{
-                        "ReplaceOptionalPresenceBit cannot rename a declaration; use a rename "
-                        "command"}};
-                }
-                auto* module{std::get_if<codegen::RepresentationModuleSchema>(
-                    &manifest_.modules[info->module_index])};
-                auto const index{info->declaration_index - module->linear_quantized.size() -
-                                 module->integer_varints.size() - module->fixed_points.size() -
-                                 module->optional_sentinels.size()};
-                auto previous{module->optional_presence_bits[index]};
-                module->optional_presence_bits[index] = edit.schema;
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->optional_presence_bits[index] = std::move(previous);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{ReplaceOptionalPresenceBit{.declaration = edit.declaration,
-                                                                    .schema = std::move(previous)}};
-            } else if constexpr (std::is_same_v<Edit, DeleteOptionalPresenceBit>) {
-                auto const* found{declaration(edit.declaration)};
-                auto const* current{optional_presence_bit_schema(edit.declaration)};
-                if (found == nullptr || current == nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"Unknown optional-presence-bit declaration"}};
-                }
-                if (auto const blocker{deletion_blocker(*found)}; blocker.has_value()) {
-                    return std::unexpected{*blocker};
-                }
-                auto const info{*found};
-                auto schema{*current};
-                auto* module{std::get_if<codegen::RepresentationModuleSchema>(
-                    &manifest_.modules[info.module_index])};
-                auto const index{info.declaration_index - module->linear_quantized.size() -
-                                 module->integer_varints.size() - module->fixed_points.size() -
-                                 module->optional_sentinels.size()};
-                module->optional_presence_bits.erase(module->optional_presence_bits.begin() +
-                                                     static_cast<std::ptrdiff_t>(index));
-                declarations_.erase(
-                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id));
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == info.module_index &&
-                        existing.declaration_index > info.declaration_index) {
-                        --existing.declaration_index;
-                    }
-                }
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->optional_presence_bits.insert(module->optional_presence_bits.begin() +
-                                                              static_cast<std::ptrdiff_t>(index),
-                                                          schema);
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == info.module_index &&
-                            existing.declaration_index >= info.declaration_index) {
-                            ++existing.declaration_index;
-                        }
-                    }
-                    declarations_.push_back(info);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                remember_source_tombstone(info);
-                return SchemaEditCommand{
-                    CreateOptionalPresenceBit{.declaration = edit.declaration,
-                                              .module_index = info.module_index,
-                                              .schema = std::move(schema),
-                                              .insertion_index = index}};
-            } else if constexpr (std::is_same_v<Edit, CreateMiniFloat>) {
-                if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"New mini-float requires a unique declaration id"}};
-                }
-                if (edit.module_index >= manifest_.modules.size()) {
-                    return std::unexpected{SchemaEditError{"Unknown representation module index"}};
-                }
-                auto* module{std::get_if<codegen::RepresentationModuleSchema>(
-                    &manifest_.modules[edit.module_index])};
-                if (module == nullptr) {
-                    return std::unexpected{SchemaEditError{
-                        "New mini-floats can only be added to representation modules"}};
-                }
-                auto const insertion_index{
-                    edit.insertion_index.value_or(module->mini_floats.size())};
-                if (insertion_index > module->mini_floats.size()) {
-                    return std::unexpected{SchemaEditError{"Invalid mini-float insertion index"}};
-                }
-                auto const declaration_index{
-                    module->linear_quantized.size() + module->integer_varints.size() +
-                    module->fixed_points.size() + module->optional_sentinels.size() +
-                    module->optional_presence_bits.size() + insertion_index};
-                module->mini_floats.insert(module->mini_floats.begin() +
-                                               static_cast<std::ptrdiff_t>(insertion_index),
-                                           edit.schema);
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == edit.module_index &&
-                        existing.declaration_index >= declaration_index) {
-                        ++existing.declaration_index;
-                    }
-                }
-                auto const namespace_name{module->settings.namespace_name.value_or("")};
-                declarations_.push_back(
-                    {.id = edit.declaration,
-                     .identity = TypeIdentity{.origin = TypeOrigin::declaration,
-                                              .module_name = module->settings.name,
-                                              .namespace_name = namespace_name,
-                                              .name = edit.schema.name},
-                     .module_index = edit.module_index,
-                     .declaration_index = declaration_index,
-                     .source = creation_source(edit.declaration)});
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    declarations_.pop_back();
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == edit.module_index &&
-                            existing.declaration_index > declaration_index) {
-                            --existing.declaration_index;
-                        }
-                    }
-                    module->mini_floats.erase(module->mini_floats.begin() +
-                                              static_cast<std::ptrdiff_t>(insertion_index));
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{DeleteMiniFloat{.declaration = edit.declaration}};
-            } else if constexpr (std::is_same_v<Edit, ReplaceMiniFloat>) {
-                auto const* info{declaration(edit.declaration)};
-                auto const* current{mini_float_schema(edit.declaration)};
-                if (info == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown mini-float declaration"}};
-                }
-                if (edit.schema.name != current->name) {
-                    return std::unexpected{SchemaEditError{
-                        "ReplaceMiniFloat cannot rename a declaration; use a rename command"}};
-                }
-                auto* module{std::get_if<codegen::RepresentationModuleSchema>(
-                    &manifest_.modules[info->module_index])};
-                auto const index{info->declaration_index - module->linear_quantized.size() -
-                                 module->integer_varints.size() - module->fixed_points.size() -
-                                 module->optional_sentinels.size() -
-                                 module->optional_presence_bits.size()};
-                auto previous{module->mini_floats[index]};
-                module->mini_floats[index] = edit.schema;
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->mini_floats[index] = std::move(previous);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{ReplaceMiniFloat{.declaration = edit.declaration,
-                                                          .schema = std::move(previous)}};
-            } else if constexpr (std::is_same_v<Edit, DeleteMiniFloat>) {
-                auto const* found{declaration(edit.declaration)};
-                auto const* current{mini_float_schema(edit.declaration)};
-                if (found == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown mini-float declaration"}};
-                }
-                if (auto const blocker{deletion_blocker(*found)}; blocker.has_value()) {
-                    return std::unexpected{*blocker};
-                }
-                auto const info{*found};
-                auto schema{*current};
-                auto* module{std::get_if<codegen::RepresentationModuleSchema>(
-                    &manifest_.modules[info.module_index])};
-                auto const index{info.declaration_index - module->linear_quantized.size() -
-                                 module->integer_varints.size() - module->fixed_points.size() -
-                                 module->optional_sentinels.size() -
-                                 module->optional_presence_bits.size()};
-                module->mini_floats.erase(module->mini_floats.begin() +
-                                          static_cast<std::ptrdiff_t>(index));
-                declarations_.erase(
-                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id));
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == info.module_index &&
-                        existing.declaration_index > info.declaration_index) {
-                        --existing.declaration_index;
-                    }
-                }
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->mini_floats.insert(
-                        module->mini_floats.begin() + static_cast<std::ptrdiff_t>(index), schema);
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == info.module_index &&
-                            existing.declaration_index >= info.declaration_index) {
-                            ++existing.declaration_index;
-                        }
-                    }
-                    declarations_.push_back(info);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                remember_source_tombstone(info);
-                return SchemaEditCommand{CreateMiniFloat{.declaration = edit.declaration,
-                                                         .module_index = info.module_index,
-                                                         .schema = std::move(schema),
-                                                         .insertion_index = index}};
-            } else if constexpr (std::is_same_v<Edit, CreateRecord>) {
-                if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"New record requires a unique declaration id"}};
-                }
-                if (edit.module_index >= manifest_.modules.size()) {
-                    return std::unexpected{SchemaEditError{"Unknown record module index"}};
-                }
-                auto* module{std::get_if<codegen::RecordModuleSchema>(
-                    &manifest_.modules[edit.module_index])};
-                if (module == nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"New records can only be added to record modules"}};
-                }
-                auto const insertion_index{edit.insertion_index.value_or(module->records.size())};
-                if (insertion_index > module->records.size()) {
-                    return std::unexpected{SchemaEditError{"Invalid record insertion index"}};
-                }
-
-                module->records.insert(module->records.begin() +
-                                           static_cast<std::ptrdiff_t>(insertion_index),
-                                       edit.schema);
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == edit.module_index &&
-                        existing.declaration_index >= insertion_index) {
-                        ++existing.declaration_index;
-                    }
-                }
-                auto const namespace_name{module->settings.namespace_name.value_or("")};
-                declarations_.push_back(
-                    {.id = edit.declaration,
-                     .identity = TypeIdentity{.origin = TypeOrigin::declaration,
-                                              .module_name = module->settings.name,
-                                              .namespace_name = namespace_name,
-                                              .name = edit.schema.name},
-                     .module_index = edit.module_index,
-                     .declaration_index = insertion_index,
-                     .source = creation_source(edit.declaration)});
-                try {
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    declarations_.pop_back();
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == edit.module_index &&
-                            existing.declaration_index > insertion_index) {
-                            --existing.declaration_index;
-                        }
-                    }
-                    module->records.erase(module->records.begin() +
-                                          static_cast<std::ptrdiff_t>(insertion_index));
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{DeleteRecord{.declaration = edit.declaration}};
-            } else if constexpr (std::is_same_v<Edit, ReplaceRecord>) {
-                auto const* info{declaration(edit.declaration)};
-                auto const* current{record_schema(edit.declaration)};
-                if (info == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown record declaration"}};
-                }
-                if (edit.schema.name != current->name) {
-                    return std::unexpected{SchemaEditError{
-                        "ReplaceRecord cannot rename a declaration; use a rename command"}};
-                }
-                auto* module{std::get_if<codegen::RecordModuleSchema>(
-                    &manifest_.modules[info->module_index])};
-                auto previous{module->records[info->declaration_index]};
-                module->records[info->declaration_index] = edit.schema;
-                try {
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->records[info->declaration_index] = std::move(previous);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{
-                    ReplaceRecord{.declaration = edit.declaration, .schema = std::move(previous)}};
-            } else if constexpr (std::is_same_v<Edit, DeleteRecord>) {
-                auto const* found{declaration(edit.declaration)};
-                auto const* current{record_schema(edit.declaration)};
-                if (found == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown record declaration"}};
-                }
-                if (auto const blocker{deletion_blocker(*found)}; blocker.has_value()) {
-                    return std::unexpected{*blocker};
-                }
-                auto const info{*found};
-                auto schema{*current};
-                auto* module{std::get_if<codegen::RecordModuleSchema>(
-                    &manifest_.modules[info.module_index])};
-                module->records.erase(module->records.begin() +
-                                      static_cast<std::ptrdiff_t>(info.declaration_index));
-                declarations_.erase(
-                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id));
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == info.module_index &&
-                        existing.declaration_index > info.declaration_index) {
-                        --existing.declaration_index;
-                    }
-                }
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->records.insert(module->records.begin() +
-                                               static_cast<std::ptrdiff_t>(info.declaration_index),
-                                           schema);
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == info.module_index &&
-                            existing.declaration_index >= info.declaration_index) {
-                            ++existing.declaration_index;
-                        }
-                    }
-                    declarations_.push_back(info);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                remember_source_tombstone(info);
-                return SchemaEditCommand{CreateRecord{.declaration = edit.declaration,
-                                                      .module_index = info.module_index,
-                                                      .schema = std::move(schema),
-                                                      .insertion_index = info.declaration_index}};
-            } else if constexpr (std::is_same_v<Edit, CreateUnion>) {
-                if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"New union requires a unique declaration id"}};
-                }
-                if (edit.module_index >= manifest_.modules.size()) {
-                    return std::unexpected{SchemaEditError{"Unknown union module index"}};
-                }
-                auto* module{
-                    std::get_if<codegen::UnionModuleSchema>(&manifest_.modules[edit.module_index])};
-                if (module == nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"New unions can only be added to union modules"}};
-                }
-                auto const insertion_index{edit.insertion_index.value_or(module->unions.size())};
-                if (insertion_index > module->unions.size()) {
-                    return std::unexpected{SchemaEditError{"Invalid union insertion index"}};
-                }
-
-                module->unions.insert(module->unions.begin() +
-                                          static_cast<std::ptrdiff_t>(insertion_index),
-                                      edit.schema);
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == edit.module_index &&
-                        existing.declaration_index >= insertion_index) {
-                        ++existing.declaration_index;
-                    }
-                }
-                auto const namespace_name{module->settings.namespace_name.value_or("")};
-                declarations_.push_back(
-                    {.id = edit.declaration,
-                     .identity = TypeIdentity{.origin = TypeOrigin::declaration,
-                                              .module_name = module->settings.name,
-                                              .namespace_name = namespace_name,
-                                              .name = edit.schema.name},
-                     .module_index = edit.module_index,
-                     .declaration_index = insertion_index,
-                     .source = creation_source(edit.declaration)});
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    declarations_.pop_back();
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == edit.module_index &&
-                            existing.declaration_index > insertion_index) {
-                            --existing.declaration_index;
-                        }
-                    }
-                    module->unions.erase(module->unions.begin() +
-                                         static_cast<std::ptrdiff_t>(insertion_index));
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{DeleteUnion{.declaration = edit.declaration}};
-            } else if constexpr (std::is_same_v<Edit, ReplaceUnion>) {
-                auto const* info{declaration(edit.declaration)};
-                auto const* current{union_schema(edit.declaration)};
-                if (info == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown union declaration"}};
-                }
-                if (edit.schema.name != current->name) {
-                    return std::unexpected{SchemaEditError{
-                        "ReplaceUnion cannot rename a declaration; use a rename command"}};
-                }
-                auto* module{std::get_if<codegen::UnionModuleSchema>(
-                    &manifest_.modules[info->module_index])};
-                auto previous{module->unions[info->declaration_index]};
-                module->unions[info->declaration_index] = edit.schema;
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->unions[info->declaration_index] = std::move(previous);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{
-                    ReplaceUnion{.declaration = edit.declaration, .schema = std::move(previous)}};
-            } else if constexpr (std::is_same_v<Edit, DeleteUnion>) {
-                auto const* found{declaration(edit.declaration)};
-                auto const* current{union_schema(edit.declaration)};
-                if (found == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown union declaration"}};
-                }
-                if (auto const blocker{deletion_blocker(*found)}; blocker.has_value()) {
-                    return std::unexpected{*blocker};
-                }
-                auto const info{*found};
-                auto schema{*current};
-                auto* module{
-                    std::get_if<codegen::UnionModuleSchema>(&manifest_.modules[info.module_index])};
-                module->unions.erase(module->unions.begin() +
-                                     static_cast<std::ptrdiff_t>(info.declaration_index));
-                declarations_.erase(
-                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id));
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == info.module_index &&
-                        existing.declaration_index > info.declaration_index) {
-                        --existing.declaration_index;
-                    }
-                }
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->unions.insert(module->unions.begin() +
-                                              static_cast<std::ptrdiff_t>(info.declaration_index),
-                                          schema);
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == info.module_index &&
-                            existing.declaration_index >= info.declaration_index) {
-                            ++existing.declaration_index;
-                        }
-                    }
-                    declarations_.push_back(info);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                remember_source_tombstone(info);
-                return SchemaEditCommand{CreateUnion{.declaration = edit.declaration,
-                                                     .module_index = info.module_index,
-                                                     .schema = std::move(schema),
-                                                     .insertion_index = info.declaration_index}};
-            } else if constexpr (std::is_same_v<Edit, CreateTaggedUnion>) {
-                if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"New tagged union requires a unique declaration id"}};
-                }
-                if (edit.module_index >= manifest_.modules.size()) {
-                    return std::unexpected{SchemaEditError{"Unknown union module index"}};
-                }
-                auto* module{
-                    std::get_if<codegen::UnionModuleSchema>(&manifest_.modules[edit.module_index])};
-                if (module == nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"New tagged unions can only be added to union modules"}};
-                }
-                auto const insertion_index{
-                    edit.insertion_index.value_or(module->tagged_unions.size())};
-                if (insertion_index > module->tagged_unions.size()) {
-                    return std::unexpected{SchemaEditError{"Invalid tagged-union insertion index"}};
-                }
-                auto const declaration_index{module->unions.size() + insertion_index};
-
-                module->tagged_unions.insert(module->tagged_unions.begin() +
-                                                 static_cast<std::ptrdiff_t>(insertion_index),
-                                             edit.schema);
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == edit.module_index &&
-                        existing.declaration_index >= declaration_index) {
-                        ++existing.declaration_index;
-                    }
-                }
-                auto const namespace_name{module->settings.namespace_name.value_or("")};
-                declarations_.push_back(
-                    {.id = edit.declaration,
-                     .identity = TypeIdentity{.origin = TypeOrigin::declaration,
-                                              .module_name = module->settings.name,
-                                              .namespace_name = namespace_name,
-                                              .name = edit.schema.name},
-                     .module_index = edit.module_index,
-                     .declaration_index = declaration_index,
-                     .source = creation_source(edit.declaration)});
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    declarations_.pop_back();
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == edit.module_index &&
-                            existing.declaration_index > declaration_index) {
-                            --existing.declaration_index;
-                        }
-                    }
-                    module->tagged_unions.erase(module->tagged_unions.begin() +
-                                                static_cast<std::ptrdiff_t>(insertion_index));
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{DeleteTaggedUnion{.declaration = edit.declaration}};
-            } else if constexpr (std::is_same_v<Edit, ReplaceTaggedUnion>) {
-                auto const* info{declaration(edit.declaration)};
-                auto const* current{tagged_union_schema(edit.declaration)};
-                if (info == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown tagged-union declaration"}};
-                }
-                if (edit.schema.name != current->name) {
-                    return std::unexpected{SchemaEditError{
-                        "ReplaceTaggedUnion cannot rename a declaration; use a rename command"}};
-                }
-                auto* module{std::get_if<codegen::UnionModuleSchema>(
-                    &manifest_.modules[info->module_index])};
-                auto const index{info->declaration_index - module->unions.size()};
-                auto previous{module->tagged_unions[index]};
-                module->tagged_unions[index] = edit.schema;
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->tagged_unions[index] = std::move(previous);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{ReplaceTaggedUnion{.declaration = edit.declaration,
-                                                            .schema = std::move(previous)}};
-            } else if constexpr (std::is_same_v<Edit, DeleteTaggedUnion>) {
-                auto const* found{declaration(edit.declaration)};
-                auto const* current{tagged_union_schema(edit.declaration)};
-                if (found == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown tagged-union declaration"}};
-                }
-                if (auto const blocker{deletion_blocker(*found)}; blocker.has_value()) {
-                    return std::unexpected{*blocker};
-                }
-                auto const info{*found};
-                auto schema{*current};
-                auto* module{
-                    std::get_if<codegen::UnionModuleSchema>(&manifest_.modules[info.module_index])};
-                auto const index{info.declaration_index - module->unions.size()};
-                module->tagged_unions.erase(module->tagged_unions.begin() +
-                                            static_cast<std::ptrdiff_t>(index));
-                declarations_.erase(
-                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id));
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == info.module_index &&
-                        existing.declaration_index > info.declaration_index) {
-                        --existing.declaration_index;
-                    }
-                }
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->tagged_unions.insert(
-                        module->tagged_unions.begin() + static_cast<std::ptrdiff_t>(index), schema);
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == info.module_index &&
-                            existing.declaration_index >= info.declaration_index) {
-                            ++existing.declaration_index;
-                        }
-                    }
-                    declarations_.push_back(info);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                remember_source_tombstone(info);
-                return SchemaEditCommand{CreateTaggedUnion{.declaration = edit.declaration,
-                                                           .module_index = info.module_index,
-                                                           .schema = std::move(schema),
-                                                           .insertion_index = index}};
-            } else if constexpr (std::is_same_v<Edit, CreateSoa>) {
-                if (!edit.declaration.valid() || declaration(edit.declaration) != nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"New SoA requires a unique declaration id"}};
-                }
-                if (edit.module_index >= manifest_.modules.size()) {
-                    return std::unexpected{SchemaEditError{"Unknown SoA module index"}};
-                }
-                auto* module{
-                    std::get_if<codegen::SoaModuleSchema>(&manifest_.modules[edit.module_index])};
-                if (module == nullptr) {
-                    return std::unexpected{
-                        SchemaEditError{"New SoAs can only be added to SoA modules"}};
-                }
-                auto const insertion_index{edit.insertion_index.value_or(module->structs.size())};
-                if (insertion_index > module->structs.size()) {
-                    return std::unexpected{SchemaEditError{"Invalid SoA insertion index"}};
-                }
-
-                module->structs.insert(module->structs.begin() +
-                                           static_cast<std::ptrdiff_t>(insertion_index),
-                                       edit.schema);
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == edit.module_index &&
-                        existing.declaration_index >= insertion_index) {
-                        ++existing.declaration_index;
-                    }
-                }
-                auto const namespace_name{module->settings.namespace_name.value_or("")};
-                declarations_.push_back(
-                    {.id = edit.declaration,
-                     .identity = TypeIdentity{.origin = TypeOrigin::declaration,
-                                              .module_name = module->settings.name,
-                                              .namespace_name = namespace_name,
-                                              .name = edit.schema.name},
-                     .module_index = edit.module_index,
-                     .declaration_index = insertion_index,
-                     .source = creation_source(edit.declaration)});
-                try {
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    declarations_.pop_back();
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == edit.module_index &&
-                            existing.declaration_index > insertion_index) {
-                            --existing.declaration_index;
-                        }
-                    }
-                    module->structs.erase(module->structs.begin() +
-                                          static_cast<std::ptrdiff_t>(insertion_index));
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{DeleteSoa{.declaration = edit.declaration}};
-            } else if constexpr (std::is_same_v<Edit, ReplaceSoa>) {
-                auto const* info{declaration(edit.declaration)};
-                auto const* current{soa_schema(edit.declaration)};
-                if (info == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown SoA declaration"}};
-                }
-                if (edit.schema.name != current->name) {
-                    return std::unexpected{SchemaEditError{
-                        "ReplaceSoa cannot rename a declaration; use a rename command"}};
-                }
-                auto* module{
-                    std::get_if<codegen::SoaModuleSchema>(&manifest_.modules[info->module_index])};
-                auto previous{module->structs[info->declaration_index]};
-                module->structs[info->declaration_index] = edit.schema;
-                try {
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->structs[info->declaration_index] = std::move(previous);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                return SchemaEditCommand{
-                    ReplaceSoa{.declaration = edit.declaration, .schema = std::move(previous)}};
-            } else if constexpr (std::is_same_v<Edit, DeleteSoa>) {
-                auto const* found{declaration(edit.declaration)};
-                auto const* current{soa_schema(edit.declaration)};
-                if (found == nullptr || current == nullptr) {
-                    return std::unexpected{SchemaEditError{"Unknown SoA declaration"}};
-                }
-                if (auto const blocker{deletion_blocker(*found)}; blocker.has_value()) {
-                    return std::unexpected{*blocker};
-                }
-                auto const info{*found};
-                auto schema{*current};
-                auto* module{
-                    std::get_if<codegen::SoaModuleSchema>(&manifest_.modules[info.module_index])};
-                module->structs.erase(module->structs.begin() +
-                                      static_cast<std::ptrdiff_t>(info.declaration_index));
-                declarations_.erase(
-                    std::ranges::find(declarations_, edit.declaration, &DeclarationInfo::id));
-                for (auto& existing : declarations_) {
-                    if (existing.module_index == info.module_index &&
-                        existing.declaration_index > info.declaration_index) {
-                        --existing.declaration_index;
-                    }
-                }
-                try {
-                    codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
-                } catch (std::exception const& error) {
-                    module->structs.insert(module->structs.begin() +
-                                               static_cast<std::ptrdiff_t>(info.declaration_index),
-                                           schema);
-                    for (auto& existing : declarations_) {
-                        if (existing.module_index == info.module_index &&
-                            existing.declaration_index >= info.declaration_index) {
-                            ++existing.declaration_index;
-                        }
-                    }
-                    declarations_.push_back(info);
-                    return std::unexpected{SchemaEditError{error.what()}};
-                }
-                remember_source_tombstone(info);
-                return SchemaEditCommand{CreateSoa{.declaration = edit.declaration,
-                                                   .module_index = info.module_index,
-                                                   .schema = std::move(schema),
-                                                   .insertion_index = info.declaration_index}};
+            } else {
+                return std::unexpected{
+                    SchemaEditError{"Declaration command requires a normal module"}};
             }
         },
         command);
@@ -7516,74 +5948,50 @@ auto load_editable_schema_document(std::filesystem::path const& types_path,
             if (expected_count == 0) {
                 continue;
             }
-            if (std::holds_alternative<codegen::VectorModuleSchema>(module)) {
-                declaration_ranges.push_back(form_range(form, source_file_index));
-                continue;
-            }
-            if (auto const* representations{
-                    std::get_if<codegen::RepresentationModuleSchema>(&module)}) {
-                auto append_range = [&](std::string_view const head, std::string const& name) {
-                    auto const found{std::ranges::find_if(form.children, [&](Form const& child) {
-                        return child.head() == head && child.children.size() >= 2 &&
-                               child.children[1].token.text == name;
-                    })};
-                    if (found == form.children.end()) {
-                        throw std::logic_error{"Source declaration does not match loaded module: " +
-                                               name};
+            if (auto const* normal{std::get_if<codegen::NormalModuleSchema>(&module)}) {
+                if (form.head() == "vector-soa-module") {
+                    declaration_ranges.push_back(form_range(form, source_file_index));
+                    continue;
+                }
+                if (form.head() != "module") {
+                    for (auto const& declaration : normal->declarations) {
+                        auto const found{
+                            std::ranges::find_if(form.children, [&](Form const& child) {
+                                return child.head() == codegen::declaration_head(declaration) &&
+                                       child.children.size() >= 2 &&
+                                       child.children[1].token.text ==
+                                           codegen::declaration_name(declaration);
+                            })};
+                        if (found == form.children.end()) {
+                            throw std::logic_error{
+                                "Source declaration count does not match loaded module"};
+                        }
+                        declaration_ranges.push_back(form_range(*found, source_file_index));
                     }
-                    declaration_ranges.push_back(form_range(*found, source_file_index));
-                };
-                for (auto const& representation : representations->linear_quantized) {
-                    append_range("linear-quantized", representation.name);
+                    continue;
                 }
-                for (auto const& representation : representations->integer_varints) {
-                    append_range("integer-varint", representation.name);
-                }
-                for (auto const& representation : representations->fixed_points) {
-                    append_range("fixed-point", representation.name);
-                }
-                for (auto const& representation : representations->optional_sentinels) {
-                    append_range("optional-sentinel", representation.name);
-                }
-                for (auto const& representation : representations->optional_presence_bits) {
-                    append_range("optional-presence-bit", representation.name);
-                }
-                for (auto const& representation : representations->mini_floats) {
-                    append_range("mini-float", representation.name);
-                }
-                continue;
-            }
-            if (auto const* unions{std::get_if<codegen::UnionModuleSchema>(&module)}) {
-                auto append_range = [&](std::string_view const head, std::string const& name) {
-                    auto const found{std::ranges::find_if(form.children, [&](Form const& child) {
-                        return child.head() == head && child.children.size() >= 2 &&
-                               child.children[1].token.text == name;
-                    })};
-                    if (found == form.children.end()) {
-                        throw std::logic_error{"Source declaration does not match loaded module: " +
-                                               name};
+                auto declaration_index{std::size_t{}};
+                for (auto const& child : form.children) {
+                    if (declaration_index == normal->declarations.size()) {
+                        break;
                     }
-                    declaration_ranges.push_back(form_range(*found, source_file_index));
-                };
-                for (auto const& schema : unions->unions) {
-                    append_range("union", schema.name);
-                }
-                for (auto const& schema : unions->tagged_unions) {
-                    append_range("tagged-union", schema.name);
-                }
-                continue;
-            }
-            auto const head{declaration_head(module)};
-            auto found_count{std::size_t{}};
-            for (auto const& child : form.children) {
-                if (child.head() == head) {
+                    auto const& expected{normal->declarations[declaration_index]};
+                    if (child.head() != codegen::declaration_head(expected)) {
+                        continue;
+                    }
+                    if (child.children.size() < 2 ||
+                        child.children[1].token.text != codegen::declaration_name(expected)) {
+                        throw std::logic_error{"Source declaration does not match loaded module"};
+                    }
                     declaration_ranges.push_back(form_range(child, source_file_index));
-                    ++found_count;
+                    ++declaration_index;
                 }
+                if (declaration_index != expected_count) {
+                    throw std::logic_error{"Source declaration count does not match loaded module"};
+                }
+                continue;
             }
-            if (found_count != expected_count) {
-                throw std::logic_error{"Source declaration count does not match loaded module"};
-            }
+            throw std::logic_error{"Noncanonical module has declarations"};
         }
     }
     if (module_index != manifest.modules.size()) {

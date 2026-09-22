@@ -3,6 +3,8 @@
 #include <codegen/schema/enum_module_schema.h>
 #include <codegen/schema/facade_module_schema.h>
 #include <codegen/schema/homogeneous_module_schema.h>
+#include <codegen/schema/module_settings.h>
+#include <codegen/schema/normal_module_schema.h>
 #include <codegen/schema/packed_value_module_schema.h>
 #include <codegen/schema/record_module_schema.h>
 #include <codegen/schema/representation_module_schema.h>
@@ -14,11 +16,14 @@
 #include <codegen/schema/union_module_schema.h>
 #include <codegen/schema/vector_module_schema.h>
 
+#include <optional>
 #include <variant>
+#include <vector>
 
 namespace codegen {
 
-using ModuleSchema = std::variant<EnumModuleSchema,
+using ModuleSchema = std::variant<NormalModuleSchema,
+                                  EnumModuleSchema,
                                   SoaModuleSchema,
                                   StaticTableModuleSchema,
                                   HomogeneousModuleSchema,

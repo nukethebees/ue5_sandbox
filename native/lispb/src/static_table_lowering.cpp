@@ -94,37 +94,19 @@ auto table_node(StaticTableSchema const& table, std::map<std::string, CppType> c
 
 } // namespace
 
+auto lower_static_table(StaticTableSchema const& schema,
+                        std::map<std::string, CppType> const& types) -> DeclarationEmission {
+    return {.header = {table_node(schema, types)}};
+}
+
 auto lower_static_table_module(StaticTableModuleSchema const& module,
                                std::map<std::string, CppType> const& types) -> Module {
-    NodeListBuilder definitions;
-    for (std::size_t index{0}; index < module.tables.size(); ++index) {
-        definitions.add(table_node(module.tables[index], types),
-                        index + 1 < module.tables.size() ? 2 : 1);
+    std::vector<DeclarationEmission> emissions;
+    emissions.reserve(module.tables.size());
+    for (auto const& table : module.tables) {
+        emissions.push_back(lower_static_table(table, types));
     }
-
-    auto definition_nodes{definitions.build()};
-    if (module.settings.namespace_name.has_value()) {
-        definition_nodes = {
-            Namespace{*module.settings.namespace_name, std::move(definition_nodes)}};
-    }
-
-    NodeListBuilder header_nodes;
-    header_nodes.add(IncludeDependencies{}, 2);
-    if (!module.settings.prelude_lines.empty()) {
-        header_nodes.add(raw(join_lines(module.settings.prelude_lines)), 2);
-    }
-    header_nodes.append(std::move(definition_nodes));
-
-    return Module{
-        .name = module.settings.name,
-        .header =
-            CppFile{
-                .path = module.settings.header,
-                .nodes = header_nodes.build(),
-                .clang_format_off = true,
-                .include_order = module.settings.include_order,
-            },
-    };
+    return assemble_module(module.settings, emissions).front();
 }
 
 } // namespace codegen::detail

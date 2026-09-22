@@ -4074,7 +4074,7 @@ TEST(EditableSchemaDocument, CreatesModuleThenDeclarationAndReloadsWithoutSource
     ASSERT_TRUE(preview.has_value()) << preview.error().message;
     ASSERT_EQ(preview->size(), 1U);
     EXPECT_TRUE(preview->front().updated.starts_with(original_source));
-    EXPECT_NE(preview->front().updated.find("(scalar-module planner_scalars"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(module planner_scalars"), std::string::npos);
     EXPECT_NE(preview->front().updated.find(":header \"PlannerScalars.h\""), std::string::npos);
     EXPECT_NE(preview->front().updated.find(":namespace planner"), std::string::npos);
     EXPECT_NE(preview->front().updated.find("(integer-scalar StatusCode"), std::string::npos);
@@ -4095,17 +4095,18 @@ TEST(EditableSchemaDocument, CreatesModuleThenDeclarationAndReloadsWithoutSource
     auto reloaded{files.load()};
     ASSERT_EQ(reloaded.manifest().modules.size(), original_module_count + 1);
     auto const* module{
-        std::get_if<codegen::ScalarModuleSchema>(&reloaded.manifest().modules.back())};
+        std::get_if<codegen::NormalModuleSchema>(&reloaded.manifest().modules.back())};
     ASSERT_NE(module, nullptr);
     EXPECT_EQ(module->settings.name, "planner_scalars");
     EXPECT_EQ(module->settings.header, "PlannerScalars.h");
     EXPECT_EQ(module->settings.namespace_name, "planner");
-    ASSERT_EQ(module->scalars.size(), 1U);
-    EXPECT_EQ(module->scalars.front().name, "StatusCode");
+    ASSERT_EQ(module->declarations.size(), 1U);
+    EXPECT_EQ(std::get<codegen::IntegerScalarSchema>(module->declarations.front()).name,
+              "StatusCode");
     EXPECT_TRUE(reloaded.types().find_declared("planner_scalars", "StatusCode").has_value());
 }
 
-TEST(EditableSchemaDocument, CreatesAndReloadsEveryEditableEmptyModuleKind) {
+TEST(EditableSchemaDocument, NormalizesLegacyEmptyModuleKindsOnCreation) {
     TemporarySchema files;
     auto document{files.load()};
     auto const original_module_count{document.manifest().modules.size()};
@@ -4151,13 +4152,13 @@ TEST(EditableSchemaDocument, CreatesAndReloadsEveryEditableEmptyModuleKind) {
     auto preview{document.preview_source_updates()};
     ASSERT_TRUE(preview.has_value()) << preview.error().message;
     ASSERT_EQ(preview->size(), 1U);
-    for (auto const head : {"enum-module new_enums",
-                            "packed-value-module new_packed",
-                            "scalar-module new_scalars",
-                            "representation-module new_representations",
-                            "record-module new_records",
-                            "union-module new_unions",
-                            "soa-module new_soas"}) {
+    for (auto const head : {"module new_enums",
+                            "module new_packed",
+                            "module new_scalars",
+                            "module new_representations",
+                            "module new_records",
+                            "module new_unions",
+                            "module new_soas"}) {
         EXPECT_NE(preview->front().updated.find(head), std::string::npos) << head;
     }
     EXPECT_NE(preview->front().updated.find(":backend standard-library"), std::string::npos);
@@ -4166,20 +4167,10 @@ TEST(EditableSchemaDocument, CreatesAndReloadsEveryEditableEmptyModuleKind) {
     ASSERT_TRUE(saved.has_value()) << saved.error().message;
     auto reloaded{files.load()};
     ASSERT_EQ(reloaded.manifest().modules.size(), original_module_count + 7);
-    EXPECT_TRUE(std::holds_alternative<codegen::EnumModuleSchema>(
-        reloaded.manifest().modules[original_module_count]));
-    EXPECT_TRUE(std::holds_alternative<codegen::PackedValueModuleSchema>(
-        reloaded.manifest().modules[original_module_count + 1]));
-    EXPECT_TRUE(std::holds_alternative<codegen::ScalarModuleSchema>(
-        reloaded.manifest().modules[original_module_count + 2]));
-    EXPECT_TRUE(std::holds_alternative<codegen::RepresentationModuleSchema>(
-        reloaded.manifest().modules[original_module_count + 3]));
-    EXPECT_TRUE(std::holds_alternative<codegen::RecordModuleSchema>(
-        reloaded.manifest().modules[original_module_count + 4]));
-    EXPECT_TRUE(std::holds_alternative<codegen::UnionModuleSchema>(
-        reloaded.manifest().modules[original_module_count + 5]));
-    EXPECT_TRUE(std::holds_alternative<codegen::SoaModuleSchema>(
-        reloaded.manifest().modules[original_module_count + 6]));
+    for (std::size_t index{}; index < 7; ++index) {
+        EXPECT_TRUE(std::holds_alternative<codegen::NormalModuleSchema>(
+            reloaded.manifest().modules[original_module_count + index]));
+    }
 }
 
 TEST(EditableSchemaDocument, DeletesSourceBackedMiddleModuleAndRestoresExactIdentity) {
@@ -4248,9 +4239,9 @@ TEST(EditableSchemaDocument, DeletesSourceBackedMiddleModuleAndRestoresExactIden
     EXPECT_GT(document.revision(), original_revision);
     ASSERT_EQ(document.manifest().modules.size(), 2U);
     EXPECT_EQ(document.declarations().size(), 2U);
-    EXPECT_EQ(std::get<codegen::ScalarModuleSchema>(document.manifest().modules[0]).settings.name,
+    EXPECT_EQ(std::get<codegen::NormalModuleSchema>(document.manifest().modules[0]).settings.name,
               "first");
-    EXPECT_EQ(std::get<codegen::ScalarModuleSchema>(document.manifest().modules[1]).settings.name,
+    EXPECT_EQ(std::get<codegen::NormalModuleSchema>(document.manifest().modules[1]).settings.name,
               "last");
     EXPECT_EQ(document.declaration(first), nullptr);
     EXPECT_EQ(document.declaration(second), nullptr);
@@ -4275,7 +4266,7 @@ TEST(EditableSchemaDocument, DeletesSourceBackedMiddleModuleAndRestoresExactIden
 
     ASSERT_TRUE(document.undo().value());
     ASSERT_EQ(document.manifest().modules.size(), 3U);
-    EXPECT_EQ(std::get<codegen::ScalarModuleSchema>(document.manifest().modules[1]).settings.name,
+    EXPECT_EQ(std::get<codegen::NormalModuleSchema>(document.manifest().modules[1]).settings.name,
               "middle");
     expect_declaration(document.declaration(first), first_info);
     expect_declaration(document.declaration(second), second_info);
@@ -4515,7 +4506,7 @@ TEST(EditableSchemaDocument, RestoresPendingModuleOwnershipAcrossIndexShifts) {
     ASSERT_TRUE(preview.has_value()) << preview.error().message;
     ASSERT_EQ(preview->size(), 1U);
     EXPECT_EQ(preview->front().path, files.path("other.lispb"));
-    EXPECT_NE(preview->front().updated.find("(scalar-module pending"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(module pending"), std::string::npos);
     EXPECT_NE(preview->front().updated.find("(integer-scalar Pending"), std::string::npos);
 
     auto deleted_middle{document.apply(DeleteModule{.module_index = 1})};
@@ -4730,25 +4721,27 @@ TEST(EditableSchemaDocument, MovesDeclarationsAcrossCompatibleModuleSources) {
     auto const destination_unions{find_module("destination_unions")};
 
     auto const original_revision{document.revision()};
-    auto rejected{document.apply(MoveDeclaration{.declaration = scalar,
-                                                 .module_index = destination_unions,
-                                                 .insertion_index = std::nullopt})};
-    ASSERT_FALSE(rejected.has_value());
-    EXPECT_NE(rejected.error().message.find("incompatible"), std::string::npos);
-    EXPECT_EQ(document.revision(), original_revision);
+    auto cross_kind{document.apply(MoveDeclaration{.declaration = scalar,
+                                                   .module_index = destination_unions,
+                                                   .insertion_index = std::nullopt})};
+    ASSERT_TRUE(cross_kind.has_value()) << cross_kind.error().message;
+    EXPECT_EQ(document.declaration(scalar)->identity.module_name, "destination_unions");
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.revision(), original_revision + 2);
     EXPECT_EQ(document.declaration(scalar)->identity.module_name, "authored_scalars");
 
-    rejected = document.apply(MoveDeclaration{.declaration = signed_scalar,
-                                              .module_index = destination_scalars,
-                                              .insertion_index = std::nullopt});
+    auto const before_rejection{document.revision()};
+    auto rejected = document.apply(MoveDeclaration{.declaration = signed_scalar,
+                                                   .module_index = destination_scalars,
+                                                   .insertion_index = std::nullopt});
     ASSERT_FALSE(rejected.has_value());
-    EXPECT_NE(rejected.error().message.find("duplicate scalar"), std::string::npos);
-    EXPECT_EQ(document.revision(), original_revision);
+    EXPECT_NE(rejected.error().message.find("Duplicate declaration name"), std::string::npos);
+    EXPECT_EQ(document.revision(), before_rejection);
     EXPECT_EQ(document.declaration(signed_scalar)->identity.module_name, "authored_scalars");
-    auto const* unchanged_destination{std::get_if<codegen::ScalarModuleSchema>(
+    auto const* unchanged_destination{std::get_if<codegen::NormalModuleSchema>(
         &document.manifest().modules[destination_scalars])};
     ASSERT_NE(unchanged_destination, nullptr);
-    EXPECT_EQ(unchanged_destination->scalars.size(), 2U);
+    EXPECT_EQ(unchanged_destination->declarations.size(), 2U);
 
     auto moved_scalar{document.apply(MoveDeclaration{
         .declaration = scalar, .module_index = destination_scalars, .insertion_index = 0})};
@@ -4794,9 +4787,9 @@ TEST(EditableSchemaDocument, MovesDeclarationsAcrossCompatibleModuleSources) {
     ASSERT_TRUE(moved_tagged.has_value()) << moved_tagged.error().message;
     ASSERT_TRUE(*moved_tagged);
     EXPECT_EQ(document.declaration(varint)->identity.module_name, "destination_representations");
-    EXPECT_EQ(document.declaration(varint)->declaration_index, 1U);
+    EXPECT_EQ(document.declaration(varint)->declaration_index, 0U);
     EXPECT_EQ(document.declaration(tagged)->identity.module_name, "destination_unions");
-    EXPECT_EQ(document.declaration(tagged)->declaration_index, 1U);
+    EXPECT_EQ(document.declaration(tagged)->declaration_index, 0U);
     EXPECT_EQ(integer_varint_type(document, varint).encoding,
               codegen::IntegerVarintEncoding::unsigned_varint);
     EXPECT_FALSE(tagged_union_type(document, tagged).alternatives.empty());
@@ -4998,7 +4991,7 @@ TEST(EditableSchemaDocument, RenamesIntegerScalarAndRepairsResolvedUsers) {
     auto duplicate{
         document.apply(RenameDeclaration{.declaration = *declaration, .new_name = "OtherScalar"})};
     ASSERT_FALSE(duplicate.has_value());
-    EXPECT_NE(duplicate.error().message.find("duplicate scalar"), std::string::npos);
+    EXPECT_NE(duplicate.error().message.find("Duplicate declaration name"), std::string::npos);
     EXPECT_EQ(document.declaration(*declaration)->identity.name, "ExistingScalar");
     EXPECT_FALSE(document.dirty());
 
@@ -5228,8 +5221,7 @@ TEST(EditableSchemaDocument, RenamesSoaAndRepairsDirectAndNestedUsers) {
     auto collision{document.apply(
         RenameDeclaration{.declaration = declaration, .new_name = "NestedFlagsView"})};
     ASSERT_FALSE(collision.has_value());
-    EXPECT_NE(collision.error().message.find("Duplicate generated SOA type name"),
-              std::string::npos);
+    EXPECT_NE(collision.error().message.find("Generated C++ name collision"), std::string::npos);
     EXPECT_EQ(document.revision(), revision_before_collision);
     EXPECT_EQ(document.declaration(declaration)->identity.name, "ExistingSoa");
     EXPECT_EQ(document.soa_schema(nested)->members[0].type.name, "authored::ExistingSoa");
@@ -8665,6 +8657,261 @@ TEST(EditableSchemaDocument, EnablesAndDisablesSoaFieldMaskAsCoordinatedEdits) {
     EXPECT_EQ(final_schema->members.size(), 2U);
     EXPECT_TRUE(std::ranges::none_of(final_schema->members,
                                      [](auto const& member) { return member.mask_field; }));
+}
+
+TEST(EditableDocument, SourceBackedMixedModuleMovesAndRestores) {
+    TemporarySchema files;
+    files.write_source("mixed.lispb", R"(
+; Keep the module note.
+(module mixed_one
+  :header "MixedOne.h"
+  :namespace mixed
+  (enum State std::uint8_t
+    (value Alive)
+    (value Dead))
+  ; Keep the scalar note.
+  (integer-scalar Health :signed false :minimum 0 :maximum 100 :bit-width auto)
+  (record Snapshot
+    (member state State)
+    (member health Health)))
+
+(module mixed_two
+  :header "MixedTwo.h"
+  :namespace other
+  (enum State std::uint8_t
+    (value Ready)))
+)");
+    auto document{files.load_with_module_source("mixed.lispb")};
+    auto const first_module{document.manifest().modules.size() - 2};
+    auto const second_module{first_module + 1};
+    auto const health{declaration_id(document, "mixed_one", "Health", "mixed")};
+    auto const state{declaration_id(document, "mixed_one", "State", "mixed")};
+    auto const snapshot{declaration_id(document, "mixed_one", "Snapshot", "mixed")};
+    auto const revision{document.revision()};
+
+    auto moved{document.apply(MoveDeclaration{
+        .declaration = health, .module_index = second_module, .insertion_index = 0})};
+    ASSERT_TRUE(moved.has_value()) << moved.error().message;
+    ASSERT_TRUE(*moved);
+    EXPECT_EQ(document.declaration(health)->id, health);
+    EXPECT_EQ(document.declaration(health)->declaration_index, 0U);
+    EXPECT_EQ(document.declaration(health)->identity.module_name, "mixed_two");
+    EXPECT_EQ(document.declaration(health)->identity.namespace_name, "other");
+    EXPECT_TRUE(document.types().find_declared("mixed_two", "Health").has_value());
+    ASSERT_NE(document.record_schema(snapshot), nullptr);
+    EXPECT_EQ(document.record_schema(snapshot)->members[1].type.name, "other::Health");
+    auto const before_rejection{document.revision()};
+    auto rejected{
+        document.apply(MoveDeclaration{.declaration = state, .module_index = second_module})};
+    ASSERT_FALSE(rejected.has_value());
+    EXPECT_EQ(document.revision(), before_rejection);
+    EXPECT_EQ(document.declaration(state)->identity.module_name, "mixed_one");
+    EXPECT_TRUE(document.types().find_declared("mixed_one", "State").has_value());
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_NE(preview->front().updated.find("; Keep the scalar note."), std::string::npos);
+
+    auto deleted{document.apply(DeleteModule{.module_index = first_module})};
+    ASSERT_TRUE(deleted.has_value()) << deleted.error().message;
+    ASSERT_TRUE(*deleted);
+    EXPECT_EQ(document.declaration(state), nullptr);
+    EXPECT_EQ(document.declaration(snapshot), nullptr);
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_NE(document.declaration(state), nullptr);
+    ASSERT_NE(document.declaration(snapshot), nullptr);
+    EXPECT_EQ(document.declaration(state)->id, state);
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.revision(), revision + 6);
+    EXPECT_FALSE(document.dirty());
+    EXPECT_EQ(document.declaration(health)->identity.module_name, "mixed_one");
+    EXPECT_TRUE(document.declaration(health)->source.has_value());
+}
+
+TEST(EditableDocument, SourceBackedMixedModuleSaveAndReloadPreservesUnchangedText) {
+    TemporarySchema files;
+    files.write_source("mixed_save.lispb", R"(
+; Keep this file note.
+(module first
+  :header "First.h"
+  :namespace one
+  ; Keep this declaration note.
+  (enum State std::uint8_t
+    (value Alive))
+  (record Snapshot
+    (member state State)))
+
+(module second
+  :header "Second.h"
+  :namespace two
+  (integer-scalar Health :signed false :minimum 0 :maximum 100 :bit-width auto))
+)");
+    auto document{files.load_with_module_source("mixed_save.lispb")};
+    auto const state{declaration_id(document, "first", "State", "one")};
+    auto const snapshot{declaration_id(document, "first", "Snapshot", "one")};
+    auto const second{document.manifest().modules.size() - 1};
+    auto moved{document.apply(MoveDeclaration{.declaration = state, .module_index = second})};
+    ASSERT_TRUE(moved.has_value()) << moved.error().message;
+    ASSERT_TRUE(*moved);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load_with_module_source("mixed_save.lispb")};
+    EXPECT_TRUE(reloaded.types().find_declared("second", "State").has_value());
+    auto const reloaded_snapshot{declaration_id(reloaded, "first", "Snapshot", "one")};
+    ASSERT_NE(reloaded.record_schema(reloaded_snapshot), nullptr);
+    EXPECT_EQ(reloaded.record_schema(reloaded_snapshot)->members.front().type.name, "two::State");
+    auto const source{std::ranges::find_if(reloaded.source_files(), [](auto const& file) {
+        return file.path.filename() == "mixed_save.lispb";
+    })};
+    ASSERT_NE(source, reloaded.source_files().end());
+    EXPECT_NE(source->text.find("; Keep this file note."), std::string::npos);
+    EXPECT_NE(source->text.find("; Keep this declaration note."), std::string::npos);
+    EXPECT_EQ(document.declaration(state)->id, state);
+    EXPECT_EQ(document.declaration(snapshot)->id, snapshot);
+}
+
+TEST(EditableDocument, NormalModuleTypedEditsShareOneDeclarationSequence) {
+    TemporarySchema files;
+    files.write_source("typed_mixed.lispb", R"(
+(module mixed
+  :header "Mixed.h"
+  :namespace example
+  (enum State std::uint8_t
+    (value Alive))
+  (record Snapshot
+    (member state State)))
+)");
+    auto document{files.load_with_module_source("typed_mixed.lispb")};
+    auto const module_index{document.manifest().modules.size() - 1};
+    auto const state{declaration_id(document, "mixed", "State", "example")};
+    auto const snapshot{declaration_id(document, "mixed", "Snapshot", "example")};
+
+    auto changed{document.apply(SetEnumeratorDisplayName{
+        .enum_declaration = state, .enumerator_name = "Alive", .display_name = "Living"})};
+    ASSERT_TRUE(changed.has_value()) << changed.error().message;
+    auto replacement{*document.record_schema(snapshot)};
+    replacement.members.push_back({.name = "previous", .type = codegen::TypeRef{"State"}});
+    changed = document.apply(ReplaceRecord{.declaration = snapshot, .schema = replacement});
+    ASSERT_TRUE(changed.has_value()) << changed.error().message;
+    ASSERT_EQ(document.record_schema(snapshot)->members.size(), 2U);
+
+    auto const created{document.allocate_declaration_id()};
+    changed = document.apply(CreateRecord{
+        .declaration = created,
+        .module_index = module_index,
+        .schema = codegen::RecordSchema{.name = "History",
+                                        .members = {{.name = "state",
+                                                     .type = codegen::TypeRef{"State"}}}},
+        .insertion_index = 1});
+    ASSERT_TRUE(changed.has_value()) << changed.error().message;
+    ASSERT_EQ(document.declaration(created)->declaration_index, 1U);
+    EXPECT_EQ(document.declaration(snapshot)->declaration_index, 2U);
+    changed = document.apply(DeleteRecord{created});
+    ASSERT_TRUE(changed.has_value()) << changed.error().message;
+    EXPECT_EQ(document.declaration(created), nullptr);
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.declaration(created)->id, created);
+    EXPECT_EQ(document.declaration(snapshot)->id, snapshot);
+}
+
+TEST(EditableDocument, PendingNormalModuleCreatesMixedDeclarationsAndReloads) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const module_index{document.manifest().modules.size()};
+    auto created{document.apply(
+        CreateModule{.source_file_index = 1,
+                     .schema = codegen::NormalModuleSchema{
+                         .settings = codegen::ModuleSettings{.name = "pending_mixed",
+                                                             .header = "PendingMixed.h",
+                                                             .namespace_name = "pending"}}})};
+    ASSERT_TRUE(created.has_value()) << created.error().message;
+    auto const state{document.allocate_declaration_id()};
+    created = document.apply(CreateEnum{
+        .declaration = state,
+        .module_index = module_index,
+        .schema = codegen::EnumSchema{.name = "State",
+                                      .underlying_type = codegen::TypeRef{"std::uint8_t"},
+                                      .values = {{.name = "Alive"}}}});
+    ASSERT_TRUE(created.has_value()) << created.error().message;
+    auto const snapshot{document.allocate_declaration_id()};
+    created = document.apply(
+        CreateRecord{.declaration = snapshot,
+                     .module_index = module_index,
+                     .schema = codegen::RecordSchema{
+                         .name = "Snapshot",
+                         .members = {{.name = "state", .type = codegen::TypeRef{"State"}}}}});
+    ASSERT_TRUE(created.has_value()) << created.error().message;
+    ASSERT_EQ(document.declaration(snapshot)->declaration_index, 1U);
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load()};
+    auto const reloaded_state{declaration_id(reloaded, "pending_mixed", "State", "pending")};
+    auto const reloaded_snapshot{declaration_id(reloaded, "pending_mixed", "Snapshot", "pending")};
+    EXPECT_NE(reloaded.enum_schema(reloaded_state), nullptr);
+    EXPECT_NE(reloaded.record_schema(reloaded_snapshot), nullptr);
+}
+
+TEST(EditableDocument, PendingNormalModuleSerializesSpecializedDeclarations) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const first_index{document.manifest().modules.size()};
+    auto created{document.apply(
+        CreateModule{.source_file_index = 1,
+                     .schema = codegen::NormalModuleSchema{
+                         .settings = codegen::ModuleSettings{.name = "pending_specialized",
+                                                             .header = "PendingSpecialized.h"}}})};
+    ASSERT_TRUE(created.has_value()) << created.error().message;
+    created = document.apply(
+        CreateModule{.source_file_index = 1,
+                     .schema = codegen::NormalModuleSchema{
+                         .settings = codegen::ModuleSettings{.name = "pending_vectors",
+                                                             .header = "PendingVectors.h",
+                                                             .source = "PendingVectors.cpp"}}});
+    ASSERT_TRUE(created.has_value()) << created.error().message;
+
+    auto add = [&](std::size_t const module_index, codegen::DeclarationSchema schema) {
+        auto changed{
+            document.apply(CreateDeclaration{.declaration = document.allocate_declaration_id(),
+                                             .module_index = module_index,
+                                             .schema = std::move(schema)})};
+        ASSERT_TRUE(changed.has_value()) << changed.error().message;
+    };
+    add(first_index,
+        codegen::StaticTableSchema{.name = "Lookup",
+                                   .rows = {{"first"}},
+                                   .columns = {{"value", codegen::TypeRef{"int32"}}}});
+    add(first_index,
+        codegen::FacadeSchema{
+            .name = "Access",
+            .target_type = codegen::TypeRef{"@helper"},
+            .target_member_name = "target",
+            .methods = {{.name = "read", .return_type = codegen::TypeRef{"void"}}}});
+    add(first_index + 1,
+        codegen::VectorSoaSchema{.name = "Vectors",
+                                 .value_type = codegen::TypeRef{"float"},
+                                 .components = {"xs", "ys"},
+                                 .equivalent_type = codegen::TypeRef{"@helper"}});
+    add(first_index + 1,
+        codegen::HomogeneousLayoutSchema{
+            .name = "Pairs",
+            .components = {"xs", "ys"},
+            .value_types = {{.type = codegen::TypeRef{"float"}, .suffix = "f"}}});
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto const reloaded{files.load()};
+    auto const& table_module{std::get<codegen::NormalModuleSchema>(
+        reloaded.manifest().modules.at(reloaded.manifest().modules.size() - 2))};
+    auto const& vector_module{
+        std::get<codegen::NormalModuleSchema>(reloaded.manifest().modules.back())};
+    ASSERT_EQ(table_module.declarations.size(), 2U);
+    ASSERT_EQ(vector_module.declarations.size(), 2U);
+    EXPECT_TRUE(std::holds_alternative<codegen::StaticTableSchema>(table_module.declarations[0]));
+    EXPECT_TRUE(std::holds_alternative<codegen::FacadeSchema>(table_module.declarations[1]));
+    EXPECT_TRUE(std::holds_alternative<codegen::VectorSoaSchema>(vector_module.declarations[0]));
+    EXPECT_TRUE(
+        std::holds_alternative<codegen::HomogeneousLayoutSchema>(vector_module.declarations[1]));
 }
 
 } // namespace

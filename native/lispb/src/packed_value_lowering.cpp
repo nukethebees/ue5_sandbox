@@ -882,46 +882,27 @@ auto packed_value_text(PackedValueSchema const& source_schema,
 
 } // namespace
 
+auto lower_packed_value(PackedValueSchema const& schema,
+                        std::map<std::string, CppType> const& types,
+                        lispb::schema::TypeGraph const& type_graph,
+                        std::string const& module_name) -> DeclarationEmission {
+    auto const type_id{type_graph.find_declared(module_name, schema.name)};
+    if (!type_id.has_value()) {
+        throw std::invalid_argument{"Missing semantic packed type '" + schema.name + "'"};
+    }
+    auto const& packed{std::get<lispb::schema::PackedType>(type_graph.type(*type_id).definition)};
+    return {.header = {packed_value_text(schema, types, packed, type_graph)}};
+}
+
 auto lower_packed_value_module(PackedValueModuleSchema const& module,
                                std::map<std::string, CppType> const& types,
                                lispb::schema::TypeGraph const& type_graph) -> Module {
-    NodeListBuilder definitions;
-    for (std::size_t index{}; index < module.values.size(); ++index) {
-        auto const type_id{
-            type_graph.find_declared(module.settings.name, module.values[index].name)};
-        if (!type_id.has_value()) {
-            throw std::invalid_argument{"Missing semantic packed type '" +
-                                        module.values[index].name + "'"};
-        }
-        auto const& packed{
-            std::get<lispb::schema::PackedType>(type_graph.type(*type_id).definition)};
-        definitions.add(packed_value_text(module.values[index], types, packed, type_graph),
-                        index + 1 < module.values.size() ? 2 : 1);
+    std::vector<DeclarationEmission> emissions;
+    emissions.reserve(module.values.size());
+    for (auto const& value : module.values) {
+        emissions.push_back(lower_packed_value(value, types, type_graph, module.settings.name));
     }
-
-    auto definition_nodes{definitions.build()};
-    if (module.settings.namespace_name.has_value()) {
-        definition_nodes = {
-            Namespace{*module.settings.namespace_name, std::move(definition_nodes)}};
-    }
-
-    NodeListBuilder header_nodes;
-    header_nodes.add(IncludeDependencies{}, 2);
-    if (!module.settings.prelude_lines.empty()) {
-        header_nodes.add(raw(join_lines(module.settings.prelude_lines)), 2);
-    }
-    header_nodes.append(std::move(definition_nodes));
-
-    return Module{
-        .name = module.settings.name,
-        .header =
-            CppFile{
-                .path = module.settings.header,
-                .nodes = header_nodes.build(),
-                .include_order = module.settings.include_order,
-                .format_generated = true,
-            },
-    };
+    return assemble_module(module.settings, emissions).front();
 }
 
 } // namespace codegen::detail

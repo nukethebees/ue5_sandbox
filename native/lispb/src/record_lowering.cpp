@@ -73,34 +73,20 @@ auto record_emission_order(RecordModuleSchema const& module) -> std::vector<std:
 
 } // namespace
 
+auto lower_record(RecordSchema const& schema, std::map<std::string, CppType> const& types)
+    -> DeclarationEmission {
+    return {.header = {record_node(schema, types)}};
+}
+
 auto lower_record_module(RecordModuleSchema const& module,
                          std::map<std::string, CppType> const& types) -> Module {
-    NodeListBuilder definitions;
+    std::vector<DeclarationEmission> emissions;
     auto const order{record_emission_order(module)};
-    for (std::size_t position{}; position < order.size(); ++position) {
-        definitions.add(record_node(module.records[order[position]], types),
-                        position + 1 < order.size() ? 2 : 1);
+    emissions.reserve(order.size());
+    for (auto const index : order) {
+        emissions.push_back(lower_record(module.records[index], types));
     }
-    auto definition_nodes{definitions.build()};
-    if (module.settings.namespace_name.has_value()) {
-        definition_nodes = {
-            Namespace{*module.settings.namespace_name, std::move(definition_nodes)}};
-    }
-
-    NodeListBuilder header_nodes;
-    header_nodes.add(IncludeDependencies{}, 2);
-    if (!module.settings.prelude_lines.empty()) {
-        header_nodes.add(raw(join_lines(module.settings.prelude_lines)), 2);
-    }
-    header_nodes.append(std::move(definition_nodes));
-
-    return Module{
-        .name = module.settings.name,
-        .header = CppFile{.path = module.settings.header,
-                          .nodes = header_nodes.build(),
-                          .clang_format_off = true,
-                          .include_order = module.settings.include_order},
-    };
+    return assemble_module(module.settings, emissions).front();
 }
 
 } // namespace codegen::detail

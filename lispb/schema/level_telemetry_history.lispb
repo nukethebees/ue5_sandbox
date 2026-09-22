@@ -1,4 +1,4 @@
-(soa-module level_telemetry_history
+(module level_telemetry_history
   :header "native/simulation/include/ioj/sim/telemetry/level_telemetry_history.h"
   :backend standard-library
   :namespace ioj::sim::telemetry

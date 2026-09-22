@@ -30,6 +30,7 @@ target_link_libraries(lispb-project PRIVATE lispb-schema lispb-syntax sandbox::n
 add_library(lispb-schema)
 target_sources(lispb-schema PRIVATE
   src/cpp_type.cpp
+  src/declaration_schema.cpp
   src/editable_document.cpp
   src/enum_domain.cpp
   src/packed_value_internal.cpp
@@ -61,6 +62,7 @@ target_sources(codegen-lib PRIVATE
   src/homogeneous_storage_lowering.cpp
   src/homogeneous_view_lowering.cpp
   src/lowering_utils.cpp
+  src/module_assembly.cpp
   src/settings_lowering.cpp
   src/soa_lowering.cpp
   src/soa_member_resolution.cpp
@@ -87,17 +89,25 @@ target_link_libraries(codegen-lib
     sandbox::native_codegen_defaults
 )
 
-add_executable(lispb
-  src/main.cpp
+add_library(lispb-target-compiler
+  src/target_compiler.cpp
   material/compiler.cpp
 )
-target_compile_features(lispb PRIVATE cxx_std_23)
-target_link_libraries(lispb PRIVATE
+target_compile_features(lispb-target-compiler PUBLIC cxx_std_23)
+target_include_directories(lispb-target-compiler PUBLIC include)
+target_link_libraries(lispb-target-compiler PUBLIC
   codegen-lib
   kernel-codegen-lib
   lispb-project
   material-gen
   slate-codegen-lib
+  sandbox::native_codegen_defaults
+)
+
+add_executable(lispb src/main.cpp)
+target_compile_features(lispb PRIVATE cxx_std_23)
+target_link_libraries(lispb PRIVATE
+  lispb-target-compiler
   sandbox::native_codegen_defaults
 )
 

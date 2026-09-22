@@ -1,4 +1,4 @@
-(soa-module sandbox_ismc_instance_data
+(module sandbox_ismc_instance_data
   :header "Plugins/SandboxISMC/Source/SandboxISMC/Public/SandboxISMCInstanceData.h"
   :source "Plugins/SandboxISMC/Source/SandboxISMC/Private/SandboxISMCInstanceData.cpp"
   :header-include "SandboxISMCInstanceData.h"
