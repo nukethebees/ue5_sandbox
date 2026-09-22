@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <iterator>
+#include <span>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -291,6 +292,171 @@ auto graph_matches(TypeNode const& node, std::string_view const lowercase_query)
     return haystack.find(lowercase_query) != std::string::npos;
 }
 
+auto graph_detail(TypeNode const& node) -> std::string {
+    return std::string{graph_kind(node.definition)} + " · " +
+           (node.identity.module_name.empty() ? std::string{"external"}
+                                              : node.identity.module_name);
+}
+
+auto graph_display_text(std::string_view const text, float const available_width) -> std::string {
+    auto result{std::string{text}};
+    if (ImGui::CalcTextSize(result.c_str()).x <= available_width) {
+        return result;
+    }
+
+    constexpr std::string_view ellipsis{"…"};
+    auto const ellipsis_width{ImGui::CalcTextSize(ellipsis.data()).x};
+    while (!result.empty() &&
+           ImGui::CalcTextSize(result.c_str()).x + ellipsis_width > available_width) {
+        auto first_byte{result.size() - 1};
+        while (first_byte > 0 &&
+               (static_cast<unsigned char>(result[first_byte]) & 0xc0U) == 0x80U) {
+            --first_byte;
+        }
+        result.resize(first_byte);
+    }
+    result += ellipsis;
+    return result;
+}
+
+auto automatic_graph_positions(std::span<TypeNode const> const types,
+                               std::span<ImVec2 const> const node_sizes) -> std::vector<ImVec2> {
+    auto const count{types.size()};
+    std::vector<std::vector<std::size_t>> related(count);
+    std::vector<std::vector<std::size_t>> external_users(count);
+    for (std::size_t user{}; user < count; ++user) {
+        if (std::holds_alternative<ExternalType>(types[user].definition)) {
+            continue;
+        }
+        for (auto const dependency : types[user].dependencies) {
+            auto const target{static_cast<std::size_t>(dependency.value)};
+            if (target >= count) {
+                continue;
+            }
+            if (std::holds_alternative<ExternalType>(types[target].definition)) {
+                external_users[target].push_back(user);
+            } else {
+                related[user].push_back(target);
+                related[target].push_back(user);
+            }
+        }
+    }
+
+    std::vector<int> group_of(count, -1);
+    std::vector<std::vector<std::size_t>> groups;
+    std::vector<std::size_t> group_rank;
+    for (std::size_t index{}; index < count; ++index) {
+        if (group_of[index] != -1 ||
+            std::holds_alternative<ExternalType>(types[index].definition)) {
+            continue;
+        }
+        auto const group{groups.size()};
+        groups.emplace_back();
+        group_rank.push_back(0);
+        std::vector<std::size_t> pending{index};
+        group_of[index] = static_cast<int>(group);
+        while (!pending.empty()) {
+            auto const current{pending.back()};
+            pending.pop_back();
+            groups[group].push_back(current);
+            group_rank[group] =
+                std::max(group_rank[group], graph_column(types[current].definition));
+            for (auto const neighbor : related[current]) {
+                if (group_of[neighbor] == -1) {
+                    group_of[neighbor] = static_cast<int>(group);
+                    pending.push_back(neighbor);
+                }
+            }
+        }
+    }
+
+    std::vector<std::size_t> orphan_externals;
+    for (std::size_t index{}; index < count; ++index) {
+        if (!std::holds_alternative<ExternalType>(types[index].definition)) {
+            continue;
+        }
+        std::vector<std::size_t> references(groups.size());
+        for (auto const user : external_users[index]) {
+            ++references[static_cast<std::size_t>(group_of[user])];
+        }
+        auto best_group{groups.size()};
+        for (std::size_t group{}; group < groups.size(); ++group) {
+            if (references[group] == 0) {
+                continue;
+            }
+            if (best_group == groups.size() || references[group] > references[best_group] ||
+                (references[group] == references[best_group] &&
+                 group_rank[group] > group_rank[best_group])) {
+                best_group = group;
+            }
+        }
+        if (best_group == groups.size()) {
+            orphan_externals.push_back(index);
+        } else {
+            groups[best_group].push_back(index);
+        }
+    }
+    if (!orphan_externals.empty()) {
+        groups.push_back(std::move(orphan_externals));
+        group_rank.push_back(0);
+    }
+
+    std::array<float, 5> column_widths{};
+    for (std::size_t index{}; index < count; ++index) {
+        auto const column{graph_column(types[index].definition)};
+        column_widths[column] = std::max(column_widths[column], node_sizes[index].x);
+    }
+    std::array<float, 5> column_x{};
+    auto next_x{32.0F};
+    for (std::size_t column{}; column < column_x.size(); ++column) {
+        if (column_widths[column] == 0.0F) {
+            continue;
+        }
+        column_x[column] = next_x;
+        next_x += column_widths[column] + 70.0F;
+    }
+
+    std::vector<std::size_t> group_order(groups.size());
+    for (std::size_t index{}; index < group_order.size(); ++index) {
+        group_order[index] = index;
+    }
+    std::stable_sort(
+        group_order.begin(), group_order.end(), [&](auto const left, auto const right) {
+            return group_rank[left] > group_rank[right];
+        });
+
+    auto const row_height{node_sizes.empty() ? 58.0F : node_sizes.front().y};
+    auto const row_step{row_height + 34.0F};
+    auto next_y{36.0F};
+    std::vector<ImVec2> positions(count);
+    for (auto const group : group_order) {
+        std::array<std::vector<std::size_t>, 5> columns;
+        for (auto const index : groups[group]) {
+            columns[graph_column(types[index].definition)].push_back(index);
+        }
+        auto rows{std::size_t{0}};
+        for (auto& column : columns) {
+            std::sort(column.begin(), column.end());
+            rows = std::max(rows, column.size());
+        }
+        auto const height{row_height + static_cast<float>(rows - 1) * row_step};
+        for (std::size_t column{}; column < columns.size(); ++column) {
+            auto const column_rows{columns[column].size()};
+            if (column_rows == 0) {
+                continue;
+            }
+            auto const column_height{row_height + static_cast<float>(column_rows - 1) * row_step};
+            auto const first_y{next_y + (height - column_height) * 0.5F};
+            for (std::size_t row{}; row < column_rows; ++row) {
+                positions[columns[column][row]] = {column_x[column],
+                                                   first_y + static_cast<float>(row) * row_step};
+            }
+        }
+        next_y += height + 88.0F;
+    }
+    return positions;
+}
+
 } // namespace
 
 void PlannerUi::draw_graph_panel() {
@@ -341,7 +507,7 @@ void PlannerUi::draw_graph_panel() {
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
-    ImGui::TextDisabled("Left-drag nodes, middle-drag to pan, wheel to zoom (%.0f%%)",
+    ImGui::TextDisabled("Left-drag nodes, right/middle-drag to pan, wheel to zoom (%.0f%%)",
                         graph_zoom_ * 100.0F);
 
     ImGui::SetNextItemWidth(280.0F);
@@ -427,9 +593,12 @@ void PlannerUi::draw_graph_panel() {
 
         auto const hovered{ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem)};
         auto const& io{ImGui::GetIO()};
-        if (hovered && ImGui::IsMouseDragging(ImGuiMouseButton_Middle, 0.0F)) {
+        auto const panning{hovered && (ImGui::IsMouseDragging(ImGuiMouseButton_Right, 0.0F) ||
+                                       ImGui::IsMouseDragging(ImGuiMouseButton_Middle, 0.0F))};
+        if (panning) {
             graph_pan_x_ += io.MouseDelta.x;
             graph_pan_y_ += io.MouseDelta.y;
+            ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
         }
         if (hovered && io.MouseWheel != 0.0F) {
             auto const old_zoom{graph_zoom_};
@@ -442,15 +611,31 @@ void PlannerUi::draw_graph_panel() {
             graph_zoom_ = new_zoom;
         }
 
-        constexpr ImVec2 node_size{190.0F, 58.0F};
-        constexpr float column_spacing{260.0F};
-        constexpr float row_spacing{92.0F};
-        std::vector<ImVec2> positions(types.size());
-        std::array<std::size_t, 5> rows{};
+        auto const font_size{ImGui::GetFontSize()};
+        auto const minimum_width{std::max(190.0F, font_size * 10.0F)};
+        auto const maximum_width{std::max(320.0F, font_size * 16.0F)};
+        auto const node_height{std::max(58.0F, font_size * 2.0F + 20.0F)};
+        std::vector<ImVec2> node_sizes;
+        std::vector<std::string> node_details;
+        std::vector<std::string> visible_names;
+        std::vector<std::string> visible_details;
+        node_sizes.reserve(types.size());
+        node_details.reserve(types.size());
+        visible_names.reserve(types.size());
+        visible_details.reserve(types.size());
+        for (auto const& node : types) {
+            auto const detail{graph_detail(node)};
+            auto const text_width{std::max(ImGui::CalcTextSize(node.identity.name.c_str()).x,
+                                           ImGui::CalcTextSize(detail.c_str()).x)};
+            auto const width{std::clamp(text_width + 16.0F, minimum_width, maximum_width)};
+            node_sizes.push_back({width, node_height});
+            visible_names.push_back(graph_display_text(node.identity.name, width - 16.0F));
+            visible_details.push_back(graph_display_text(detail, width - 16.0F));
+            node_details.push_back(detail);
+        }
+
+        auto positions{automatic_graph_positions(types, node_sizes)};
         for (std::size_t index{}; index < types.size(); ++index) {
-            auto const column{graph_column(types[index].definition)};
-            positions[index] = {32.0F + static_cast<float>(column) * column_spacing,
-                                36.0F + static_cast<float>(rows[column]++) * row_spacing};
             if (auto const manual{graph_node_positions_.find(types[index].identity)};
                 manual != graph_node_positions_.end()) {
                 positions[index] = {manual->second[0], manual->second[1]};
@@ -460,12 +645,13 @@ void PlannerUi::draw_graph_panel() {
         if (graph_fit_all_) {
             if (!positions.empty()) {
                 auto minimum{positions.front()};
-                auto maximum{add(positions.front(), node_size)};
-                for (auto const position : positions) {
+                auto maximum{add(positions.front(), node_sizes.front())};
+                for (std::size_t index{}; index < positions.size(); ++index) {
+                    auto const position{positions[index]};
                     minimum.x = std::min(minimum.x, position.x);
                     minimum.y = std::min(minimum.y, position.y);
-                    maximum.x = std::max(maximum.x, position.x + node_size.x);
-                    maximum.y = std::max(maximum.y, position.y + node_size.y);
+                    maximum.x = std::max(maximum.x, position.x + node_sizes[index].x);
+                    maximum.y = std::max(maximum.y, position.y + node_sizes[index].y);
                 }
                 auto const extent{subtract(maximum, minimum)};
                 constexpr float margin{32.0F};
@@ -484,7 +670,8 @@ void PlannerUi::draw_graph_panel() {
 
         if (graph_focus_selected_ && selected_type_.has_value() &&
             selected_type_->value < positions.size()) {
-            auto const center{add(positions[selected_type_->value], multiply(node_size, 0.5F))};
+            auto const center{add(positions[selected_type_->value],
+                                  multiply(node_sizes[selected_type_->value], 0.5F))};
             graph_pan_x_ = canvas_size.x * 0.5F - center.x * graph_zoom_;
             graph_pan_y_ = canvas_size.y * 0.5F - center.y * graph_zoom_;
             graph_focus_selected_ = false;
@@ -494,12 +681,13 @@ void PlannerUi::draw_graph_panel() {
             return ImVec2{canvas_position.x + graph_pan_x_ + world.x * graph_zoom_,
                           canvas_position.y + graph_pan_y_ + world.y * graph_zoom_};
         }};
-        auto const mouse_over_node{std::ranges::any_of(positions, [&](ImVec2 const position) {
-            auto const minimum{screen_position(position)};
-            auto const maximum{add(minimum, multiply(node_size, graph_zoom_))};
-            return io.MousePos.x >= minimum.x && io.MousePos.x <= maximum.x &&
-                   io.MousePos.y >= minimum.y && io.MousePos.y <= maximum.y;
-        })};
+        auto mouse_over_node{false};
+        for (std::size_t index{}; index < positions.size(); ++index) {
+            auto const minimum{screen_position(positions[index])};
+            auto const maximum{add(minimum, multiply(node_sizes[index], graph_zoom_))};
+            mouse_over_node |= io.MousePos.x >= minimum.x && io.MousePos.x <= maximum.x &&
+                               io.MousePos.y >= minimum.y && io.MousePos.y <= maximum.y;
+        }
         auto edge_hover_claimed{false};
         auto const neighborhood_active{selected_type_.has_value() &&
                                        selected_type_->value < types.size()};
@@ -523,19 +711,21 @@ void PlannerUi::draw_graph_panel() {
                 if (dependency.value >= positions.size()) {
                     continue;
                 }
-                auto const user_center{add(positions[user_index], multiply(node_size, 0.5F))};
+                auto const& user_size{node_sizes[user_index]};
+                auto const& dependency_size{node_sizes[dependency.value]};
+                auto const user_center{add(positions[user_index], multiply(user_size, 0.5F))};
                 auto const dependency_center{
-                    add(positions[dependency.value], multiply(node_size, 0.5F))};
+                    add(positions[dependency.value], multiply(dependency_size, 0.5F))};
                 auto start{user_center};
                 auto end{dependency_center};
                 if (std::abs(end.x - start.x) >= std::abs(end.y - start.y)) {
                     auto const direction{end.x >= start.x ? 1.0F : -1.0F};
-                    start.x += direction * node_size.x * 0.5F;
-                    end.x -= direction * node_size.x * 0.5F;
+                    start.x += direction * user_size.x * 0.5F;
+                    end.x -= direction * dependency_size.x * 0.5F;
                 } else {
                     auto const direction{end.y >= start.y ? 1.0F : -1.0F};
-                    start.y += direction * node_size.y * 0.5F;
-                    end.y -= direction * node_size.y * 0.5F;
+                    start.y += direction * user_size.y * 0.5F;
+                    end.y -= direction * dependency_size.y * 0.5F;
                 }
                 auto const screen_start{screen_position(start)};
                 auto const screen_end{screen_position(end)};
@@ -574,7 +764,7 @@ void PlannerUi::draw_graph_panel() {
                 auto const label_minimum{subtract(label_position, label_padding)};
                 auto const label_maximum{add(add(label_position, label_size), label_padding)};
                 auto const label_hovered{
-                    hovered && !mouse_over_node && !edge_hover_claimed &&
+                    hovered && !panning && !mouse_over_node && !edge_hover_claimed &&
                     io.MousePos.x >= label_minimum.x && io.MousePos.x <= label_maximum.x &&
                     io.MousePos.y >= label_minimum.y && io.MousePos.y <= label_maximum.y};
                 draw_list->AddRectFilled(label_minimum,
@@ -620,7 +810,7 @@ void PlannerUi::draw_graph_panel() {
         for (std::size_t index{}; index < types.size(); ++index) {
             auto const id{TypeId{static_cast<std::uint32_t>(index)}};
             auto minimum{screen_position(positions[index])};
-            auto maximum{add(minimum, multiply(node_size, graph_zoom_))};
+            auto maximum{add(minimum, multiply(node_sizes[index], graph_zoom_))};
             ImGui::SetCursorScreenPos(minimum);
             ImGui::PushID(static_cast<int>(index));
             if (ImGui::InvisibleButton("node", subtract(maximum, minimum))) {
@@ -645,10 +835,12 @@ void PlannerUi::draw_graph_panel() {
                     ImGui::MarkIniSettingsDirty();
                 }
                 minimum = screen_position(positions[index]);
-                maximum = add(minimum, multiply(node_size, graph_zoom_));
+                maximum = add(minimum, multiply(node_sizes[index], graph_zoom_));
                 ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
-            } else if (ImGui::IsItemHovered()) {
+            } else if (!panning && ImGui::IsItemHovered()) {
                 ImGui::SetMouseCursor(ImGuiMouseCursor_Hand);
+                ImGui::SetItemTooltip(
+                    "%s\n%s", types[index].identity.name.c_str(), node_details[index].c_str());
             }
             auto const selected{selected_type_ == id};
             draw_list->AddRectFilled(
@@ -673,18 +865,14 @@ void PlannerUi::draw_graph_panel() {
                                neighborhood_active && !selected && !dependency && !user
                                    ? IM_COL32(178, 183, 191, 130)
                                    : IM_COL32(245, 247, 250, 255),
-                               types[index].identity.name.c_str());
-            auto const detail{std::string{graph_kind(types[index].definition)} + " · " +
-                              (types[index].identity.module_name.empty()
-                                   ? std::string{"external"}
-                                   : types[index].identity.module_name)};
+                               visible_names[index].c_str());
             draw_list->AddText(ImGui::GetFont(),
                                ImGui::GetFontSize() * graph_zoom_,
-                               add(title_position, {0.0F, 22.0F * graph_zoom_}),
+                               add(title_position, {0.0F, (font_size + 4.0F) * graph_zoom_}),
                                neighborhood_active && !selected && !dependency && !user
                                    ? IM_COL32(150, 156, 165, 110)
                                    : IM_COL32(205, 211, 220, 255),
-                               detail.c_str());
+                               visible_details[index].c_str());
             ImGui::PopID();
         }
     }

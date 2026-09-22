@@ -200,8 +200,10 @@ arrangement.
    They report present values, other reserved sentinel codes, unused code space, derived width, and
    selected-count payload bits without treating code-space roles as allocated byte waste.
 6. Graph shows the resolved semantic types and their labeled underlying/storage/field/column
-   dependencies. Left-drag nodes for a project-scoped persisted manual arrangement, middle-drag to pan, use
-   the wheel to zoom, use **Fit all** for an overview, and click a node to navigate to it.
+   dependencies. Automatic layout groups related declarations without treating a shared external
+   type as a declaration-to-declaration relationship; hover a shortened node label to see it in full.
+   Left-drag nodes for a project-scoped persisted manual arrangement, right- or middle-drag to pan,
+   use the wheel to zoom, use **Fit all** for an overview, and click a node to navigate to it.
    **Automatic layout** discards manual positions. Search by type, module, namespace, or kind, then press Enter or
    use **Next match** to cycle through and focus matching nodes without hiding the rest of the graph.
    For the selected node, outgoing dependencies are green, incoming users are orange, and nodes in
