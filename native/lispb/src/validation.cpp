@@ -1292,7 +1292,8 @@ void validate_representations(RepresentationModuleSchema const& module,
                                         " has duplicate representation: " + representation.name};
         }
         validate_type(representation.source, types, context + " source");
-        auto const* source{find_integer_scalar(representation.source, types, modules)};
+        auto const* source{
+            find_integer_scalar(representation.source, types, modules, module.settings.name)};
         if (source == nullptr) {
             throw std::invalid_argument{context +
                                         " source must resolve to an integer-scalar declaration"};
@@ -1321,7 +1322,8 @@ void validate_representations(RepresentationModuleSchema const& module,
                                         " has duplicate representation: " + representation.name};
         }
         validate_type(representation.source, types, context + " source");
-        auto const* source{find_integer_scalar(representation.source, types, modules)};
+        auto const* source{
+            find_integer_scalar(representation.source, types, modules, module.settings.name)};
         if (source == nullptr) {
             throw std::invalid_argument{context +
                                         " source must resolve to an integer-scalar declaration"};
@@ -1389,7 +1391,8 @@ void validate_representations(RepresentationModuleSchema const& module,
                                         " has duplicate representation: " + representation.name};
         }
         validate_type(representation.source, types, context + " source");
-        auto const* source{find_integer_scalar(representation.source, types, modules)};
+        auto const* source{
+            find_integer_scalar(representation.source, types, modules, module.settings.name)};
         if (source == nullptr) {
             throw std::invalid_argument{context +
                                         " source must resolve to an integer-scalar declaration"};
@@ -1418,7 +1421,8 @@ void validate_representations(RepresentationModuleSchema const& module,
                                         " has duplicate representation: " + representation.name};
         }
         validate_type(representation.source, types, context + " source");
-        if (find_integer_scalar(representation.source, types, modules) == nullptr) {
+        if (find_integer_scalar(representation.source, types, modules, module.settings.name) ==
+            nullptr) {
             throw std::invalid_argument{context +
                                         " source must resolve to an integer-scalar declaration"};
         }
@@ -2109,6 +2113,151 @@ void validate_settings_module(SettingsModuleSchema const& module,
     }
 }
 
+void validate_normal_module(NormalModuleSchema const& module, Manifest const& manifest) {
+    auto header_only{module.settings};
+    header_only.source.reset();
+    EnumModuleSchema enums{module.settings, module.enum_helper_namespace, {}};
+    ScalarModuleSchema scalars{header_only, {}};
+    RepresentationModuleSchema representations{.settings = header_only};
+    PackedValueModuleSchema packed{header_only, {}};
+    RecordModuleSchema records{header_only, {}};
+    UnionModuleSchema unions{.settings = header_only};
+    SoaModuleSchema soa{module.settings, {}, module.soa_backend, module.soa_array_allocators};
+    StaticTableModuleSchema tables{header_only, {}};
+    HomogeneousModuleSchema homogeneous{module.settings, {}};
+    std::set<std::string> names;
+    std::set<std::string> generated_names;
+    auto add_generated_name = [&](std::string const& name) {
+        if (!generated_names.insert(name).second) {
+            throw std::invalid_argument{"Generated C++ name collision in module '" +
+                                        module.settings.name + "': " + name};
+        }
+    };
+    for (auto const& declaration : module.declarations) {
+        auto const& name{declaration_name(declaration)};
+        if (!names.insert(name).second) {
+            throw std::invalid_argument{"Duplicate declaration name in module '" +
+                                        module.settings.name + "': " + name};
+        }
+        std::visit(
+            [&](auto const& value) {
+                using T = std::decay_t<decltype(value)>;
+                if constexpr (std::is_same_v<T, SoaSchema>) {
+                    add_generated_name(value.name);
+                    add_generated_name(value.view_name.value_or(value.name + "View"));
+                    add_generated_name(value.const_view_name.value_or(value.name + "ConstView"));
+                    if (value.field_mask_name.has_value()) {
+                        add_generated_name(*value.field_mask_name);
+                    }
+                    if (value.field_enum_name.has_value()) {
+                        add_generated_name(*value.field_enum_name);
+                    }
+                    if (value.single_allocation.has_value()) {
+                        add_generated_name(*value.single_allocation);
+                        add_generated_name(value.name + "SingleLayout");
+                        add_generated_name(value.name + "SingleView");
+                        add_generated_name(value.name + "SingleConstView");
+                        add_generated_name(value.name + "SingleViewImpl");
+                    }
+                    for (auto const& variant : value.single_allocation_variants) {
+                        add_generated_name(variant.name);
+                    }
+                } else if constexpr (std::is_same_v<T, HomogeneousLayoutSchema>) {
+                    for (auto const& item : value.value_types) {
+                        add_generated_name("F" + value.name + item.suffix);
+                    }
+                } else if constexpr (std::is_same_v<T, IntegerScalarSchema>) {
+                    if (value.cpp_emission != IntegerScalarCppEmission::none) {
+                        for (auto const& code : value.named_codes) {
+                            add_generated_name(value.name + "_" + code.name);
+                        }
+                        if (value.cpp_emission == IntegerScalarCppEmission::constants_with_names) {
+                            add_generated_name(value.name + "_name");
+                        }
+                    }
+                } else if constexpr (!std::is_same_v<T, LinearQuantizedSchema> &&
+                                     !std::is_same_v<T, IntegerVarintSchema> &&
+                                     !std::is_same_v<T, FixedPointSchema> &&
+                                     !std::is_same_v<T, MiniFloatSchema> &&
+                                     !std::is_same_v<T, OptionalSentinelSchema> &&
+                                     !std::is_same_v<T, OptionalPresenceBitSchema> &&
+                                     !std::is_same_v<T, HomogeneousLayoutSchema>) {
+                    add_generated_name(name);
+                }
+            },
+            declaration);
+        std::visit(
+            [&](auto const& value) {
+                using T = std::decay_t<decltype(value)>;
+                if constexpr (std::is_same_v<T, EnumSchema>)
+                    enums.enums.push_back(value);
+                else if constexpr (std::is_same_v<T, IntegerScalarSchema>)
+                    scalars.scalars.push_back(value);
+                else if constexpr (std::is_same_v<T, LinearQuantizedSchema>)
+                    representations.linear_quantized.push_back(value);
+                else if constexpr (std::is_same_v<T, IntegerVarintSchema>)
+                    representations.integer_varints.push_back(value);
+                else if constexpr (std::is_same_v<T, FixedPointSchema>)
+                    representations.fixed_points.push_back(value);
+                else if constexpr (std::is_same_v<T, MiniFloatSchema>)
+                    representations.mini_floats.push_back(value);
+                else if constexpr (std::is_same_v<T, OptionalSentinelSchema>)
+                    representations.optional_sentinels.push_back(value);
+                else if constexpr (std::is_same_v<T, OptionalPresenceBitSchema>)
+                    representations.optional_presence_bits.push_back(value);
+                else if constexpr (std::is_same_v<T, PackedValueSchema>)
+                    packed.values.push_back(value);
+                else if constexpr (std::is_same_v<T, RecordSchema>)
+                    records.records.push_back(value);
+                else if constexpr (std::is_same_v<T, UnionSchema>)
+                    unions.unions.push_back(value);
+                else if constexpr (std::is_same_v<T, TaggedUnionSchema>)
+                    unions.tagged_unions.push_back(value);
+                else if constexpr (std::is_same_v<T, SoaSchema>)
+                    soa.structs.push_back(value);
+                else if constexpr (std::is_same_v<T, HomogeneousLayoutSchema>)
+                    homogeneous.layouts.push_back(value);
+                else if constexpr (std::is_same_v<T, StaticTableSchema>)
+                    tables.tables.push_back(value);
+                else if constexpr (std::is_same_v<T, VectorSoaSchema>) {
+                    VectorModuleSchema vector{.settings = module.settings,
+                                              .backend = module.soa_backend,
+                                              .storage_name = value.name,
+                                              .value_type = value.value_type,
+                                              .components = value.components,
+                                              .equivalent_members = value.equivalent_members,
+                                              .equivalent_constructor =
+                                                  value.equivalent_constructor,
+                                              .equivalent_type = value.equivalent_type,
+                                              .export_specifier = value.export_specifier,
+                                              .fixed = value.fixed};
+                    if (vector.backend == SoaBackend::standard_library) {
+                        vector.settings.source.reset();
+                    }
+                    validate_vector(vector, manifest.types);
+                } else if constexpr (std::is_same_v<T, FacadeSchema>) {
+                    validate_facade(FacadeModuleSchema{module.settings, value}, manifest.types);
+                }
+            },
+            declaration);
+    }
+    if (!enums.enums.empty()) validate_enum(enums, manifest.types);
+    if (!scalars.scalars.empty()) validate_integer_scalars(scalars, manifest.types);
+    if (!representations.linear_quantized.empty() || !representations.integer_varints.empty() ||
+        !representations.fixed_points.empty() || !representations.mini_floats.empty() ||
+        !representations.optional_sentinels.empty() ||
+        !representations.optional_presence_bits.empty()) {
+        validate_representations(representations, manifest.types, manifest.modules);
+    }
+    if (!packed.values.empty()) validate_packed_values(packed, manifest.types, manifest.modules);
+    if (!records.records.empty()) validate_records(records, manifest.types);
+    if (!unions.unions.empty() || !unions.tagged_unions.empty())
+        validate_unions(unions, manifest.types);
+    if (!soa.structs.empty()) validate_soa(soa, manifest.types);
+    if (!tables.tables.empty()) validate_static_table(tables, manifest.types);
+    if (!homogeneous.layouts.empty()) validate_homogeneous(homogeneous, manifest.types);
+}
+
 } // namespace
 
 void validate_manifest(Manifest const& manifest) {
@@ -2148,7 +2297,9 @@ void validate_manifest(Manifest const& manifest) {
                     }
                 }
                 using T = std::decay_t<decltype(module)>;
-                if constexpr (std::is_same_v<T, EnumModuleSchema>) {
+                if constexpr (std::is_same_v<T, NormalModuleSchema>) {
+                    validate_normal_module(module, manifest);
+                } else if constexpr (std::is_same_v<T, EnumModuleSchema>) {
                     validate_enum(module, manifest.types);
                 } else if constexpr (std::is_same_v<T, PackedValueModuleSchema>) {
                     validate_packed_values(module, manifest.types, manifest.modules);

@@ -1,4 +1,4 @@
-(enum-module native_team
+(module native_team
   :header "native/simulation/include/ioj/sim/team.h"
   :namespace ioj::sim
   (enum Team @native_uint8
@@ -18,7 +18,7 @@
     (value Yellow :value "5" :serialized-name "yellow")
     (value COUNT :value "6" :hidden true :display-name "Count" :serialized-name "count")))
 
-(enum-module native_mission_mode
+(module native_mission_mode
   :header "native/simulation/include/ioj/sim/missions/mission_mode.h"
   :namespace ioj::sim
   (enum MissionMode @native_uint8
@@ -34,7 +34,7 @@
     (value KillEnemies :value "2" :display-name "Kill Enemies" :serialized-name "kill_enemies")
     (value KillEnemiesWithinTime :value "3" :display-name "Kill Enemies Within Time" :serialized-name "kill_enemies_within_time")))
 
-(enum-module native_mission_state
+(module native_mission_state
   :header "native/simulation/include/ioj/sim/missions/mission_state.h"
   :namespace ioj::sim
   (enum MissionState @native_uint8
@@ -51,7 +51,7 @@
     (value Failed :value "3" :display-name "Failed" :serialized-name "failed")
     (value Disabled :value "4" :serialized-name "disabled")))
 
-(enum-module native_mission_fail_reason
+(module native_mission_fail_reason
   :header "native/simulation/include/ioj/sim/missions/mission_fail_reason.h"
   :namespace ioj::sim
   (enum MissionFailReason @native_uint8
@@ -67,7 +67,7 @@
     (value TimeElapsed :value "2" :serialized-name "time_elapsed")
     (value DefenceObjectiveFailed :value "3" :serialized-name "defence_objective_failed")))
 
-(enum-module native_boost_brake_state
+(module native_boost_brake_state
   :header "native/simulation/include/ioj/sim/player/space_ship_common.h"
   :namespace ioj::sim::player
   (enum BoostBrakeState @native_uint8
@@ -76,7 +76,7 @@
     (value Boost :value "1")
     (value Brake :value "2")))
 
-(enum-module native_ship_laser_mode
+(module native_ship_laser_mode
   :header "native/simulation/include/ioj/sim/player/ship_laser_mode.h"
   :namespace ioj::sim
   (enum ShipLaserMode @native_uint8
@@ -91,7 +91,7 @@
     (value Double :value "1" :display-name "Double" :serialized-name "double")
     (value Hyper :value "2" :display-name "Hyper" :serialized-name "hyper")))
 
-(enum-module native_laser_firing_state
+(module native_laser_firing_state
   :header "native/simulation/include/ioj/sim/player/laser_firing_state.h"
   :namespace ioj::sim
   (enum LaserFiringState @native_uint8
@@ -102,7 +102,7 @@
     (value lock_on_searching :value "3")
     (value lock_on_acquired :value "4")))
 
-(enum-module native_ship_fire_rate
+(module native_ship_fire_rate
   :header "native/simulation/include/ioj/sim/player/fire_rate.h"
   :namespace ioj::sim
   (enum ShipFireRate @native_uint8
@@ -119,7 +119,7 @@
     (value FullAuto :value "2" :display-name "Full Auto" :serialized-name "full_auto")
     (value COUNT :value "3" :hidden true :display-name "Count" :serialized-name "count")))
 
-(enum-module native_space_ship_flight_mode
+(module native_space_ship_flight_mode
   :header "native/simulation/include/ioj/sim/player/flight_mode.h"
   :namespace ioj::sim
   (enum SpaceShipFlightMode @native_uint8
@@ -133,7 +133,7 @@
     (value ForwardSpeed :value "0" :display-name "Forward Speed" :serialized-name "forward_speed")
     (value PlanarVelocity :value "1" :display-name "Planar Velocity" :serialized-name "planar_velocity")))
 
-(enum-module native_space_ship_control_mode
+(module native_space_ship_control_mode
   :header "native/simulation/include/ioj/sim/player/control_mode.h"
   :namespace ioj::sim
   (enum SpaceShipControlMode @native_uint8
@@ -149,7 +149,7 @@
     (value Power :value "1" :display-name "Power" :serialized-name "power")
     (value COUNT :value "2" :hidden true :display-name "Count" :serialized-name "count")))
 
-(enum-module native_level_telemetry_run_end_reason
+(module native_level_telemetry_run_end_reason
   :header "native/simulation/include/ioj/sim/telemetry/level_telemetry_run_end_reason.h"
   :namespace ioj::sim
   (enum LevelTelemetryRunEndReason @native_uint8

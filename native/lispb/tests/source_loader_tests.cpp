@@ -1,7 +1,9 @@
+#include <codegen/generator.h>
 #include <codegen/source_loader.h>
 
 #include <codegen/manifest_error.h>
 #include <codegen/validation.h>
+#include <lispb/schema/type_graph.h>
 
 #include <gtest/gtest.h>
 
@@ -46,6 +48,78 @@ class TemporaryManifest {
     std::filesystem::path directory_;
 };
 
+template <typename Schema>
+auto schema_at(Manifest const& manifest,
+               std::size_t const module_index,
+               std::size_t const declaration_index = 0) -> Schema const& {
+    auto const& module{std::get<NormalModuleSchema>(manifest.modules.at(module_index))};
+    return std::get<Schema>(module.declarations.at(declaration_index));
+}
+
+TEST(SourceLoader, NormalModuleKeepsMixedDeclarationOrderAndResolvesTypes) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(module mixed
+  :header "Mixed.h"
+  :namespace example
+  (enum State uint8
+    (value Alive)
+    (value Dead))
+  (integer-scalar Health
+    :signed false
+    :minimum 0
+    :maximum 100
+    :bit-width auto)
+  (linear-quantized HealthQ7
+    :source Health
+    :bits 7
+    :reserved-codes 1
+    :clipping clamp)
+  (record Snapshot
+    (member state State)
+    (member health Health)))
+)");
+
+    auto const manifest{files.load()};
+    validate_manifest(manifest);
+    auto const& module{std::get<NormalModuleSchema>(manifest.modules.front())};
+    ASSERT_EQ(module.declarations.size(), 4);
+    EXPECT_EQ(declaration_name(module.declarations[0]), "State");
+    EXPECT_EQ(declaration_name(module.declarations[1]), "Health");
+    EXPECT_EQ(declaration_name(module.declarations[2]), "HealthQ7");
+    EXPECT_EQ(declaration_name(module.declarations[3]), "Snapshot");
+
+    auto const graph{lispb::schema::resolve_type_graph(manifest)};
+    auto const snapshot{graph.find_declared("mixed", "Snapshot")};
+    ASSERT_TRUE(snapshot.has_value());
+    auto const& record{std::get<lispb::schema::RecordType>(graph.type(*snapshot).definition)};
+    ASSERT_EQ(record.members.size(), 2);
+    EXPECT_EQ(graph.type(record.members[0].semantic_type.type).identity.name, "State");
+    EXPECT_EQ(graph.type(record.members[1].semantic_type.type).identity.name, "Health");
+
+    auto const generated{render_modules(lower_modules(manifest))};
+    ASSERT_EQ(generated.size(), 1);
+    auto const enum_position{generated.front().content.find("enum class State")};
+    auto const record_position{generated.front().content.find("struct Snapshot")};
+    EXPECT_NE(enum_position, std::string::npos);
+    EXPECT_NE(record_position, std::string::npos);
+    EXPECT_LT(enum_position, record_position);
+}
+
+TEST(SourceLoader, NormalModuleRejectsCrossKindGeneratedCppNameCollision) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(module mixed
+  :header "Mixed.h"
+  (enum FDataView uint8
+    (value One))
+  (struct FData
+    (member items array int32)))
+)");
+
+    EXPECT_THROW(validate_manifest(files.load()), std::invalid_argument);
+}
+
 TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
     TemporaryManifest files;
     files.write("types.lispb", R"(
@@ -72,9 +146,9 @@ TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
     EXPECT_EQ(manifest.types.at("handle").spelling, "FHandle");
     EXPECT_EQ(manifest.types.at("handle").operation(TypeOperation::add_element), "add");
     ASSERT_EQ(manifest.modules.size(), 1);
-    auto const& module{std::get<SoaModuleSchema>(manifest.modules.front())};
-    EXPECT_EQ(module.structs.front().operations, all_storage_operations());
-    auto const& member{module.structs.front().members.front()};
+    auto const& schema{schema_at<SoaSchema>(manifest, 0)};
+    EXPECT_EQ(schema.operations, all_storage_operations());
+    auto const& member{schema.members.front()};
     EXPECT_EQ(resolve_type(member.type, manifest.types).spelling, "FHandle");
     ASSERT_TRUE(member.relationship.has_value());
     EXPECT_EQ(member.relationship->kind, SemanticRelationKind::offset_into);
@@ -94,8 +168,8 @@ TEST(SourceLoader, ReadsStandardLibrarySoaBackend) {
 )");
 
     auto const manifest{files.load()};
-    auto const& module{std::get<SoaModuleSchema>(manifest.modules.front())};
-    EXPECT_EQ(module.backend, SoaBackend::standard_library);
+    auto const& module{std::get<NormalModuleSchema>(manifest.modules.front())};
+    EXPECT_EQ(module.soa_backend, SoaBackend::standard_library);
     EXPECT_FALSE(module.settings.source.has_value());
 }
 
@@ -127,7 +201,7 @@ TEST(SourceLoader, ReadsSoaFieldMaskMetadata) {
 )");
 
     auto const manifest{files.load()};
-    auto const& schema{std::get<SoaModuleSchema>(manifest.modules.front()).structs.front()};
+    auto const& schema{schema_at<SoaSchema>(manifest, 0)};
     ASSERT_TRUE(schema.field_mask_name.has_value());
     EXPECT_EQ(*schema.field_mask_name, "FFieldMask");
     ASSERT_TRUE(schema.field_enum_name.has_value());
@@ -162,9 +236,9 @@ TEST(SourceLoader, ReadsPackedValueModule) {
 )");
 
     auto const manifest{files.load()};
-    auto const& module{std::get<PackedValueModuleSchema>(manifest.modules.front())};
-    ASSERT_EQ(module.values.size(), 1);
-    auto const& value{module.values.front()};
+    auto const& module{std::get<NormalModuleSchema>(manifest.modules.front())};
+    ASSERT_EQ(module.declarations.size(), 1);
+    auto const& value{schema_at<PackedValueSchema>(manifest, 0)};
     EXPECT_EQ(value.name, "FighterState");
     EXPECT_EQ(value.storage_type.name, "std::uint32_t");
     EXPECT_EQ(value.byte_order, PackedByteOrder::big_endian);
@@ -210,7 +284,7 @@ TEST(SourceLoader, ReadsSignedArbitraryWidthPackedField) {
 )");
 
     auto const manifest{files.load()};
-    auto const& value{std::get<PackedValueModuleSchema>(manifest.modules.front()).values.front()};
+    auto const& value{schema_at<PackedValueSchema>(manifest, 0)};
     EXPECT_FALSE(value.byte_order.has_value());
     EXPECT_FALSE(value.bit_order.has_value());
     auto const& delta{std::get<PackedFieldSchema>(value.segments.front())};
@@ -254,8 +328,8 @@ TEST(SourceLoader, ReadsLinearQuantizedPackedField) {
 )");
 
     auto const manifest{files.load()};
-    auto const& module{std::get<PackedValueModuleSchema>(manifest.modules.back())};
-    auto const& health{std::get<PackedFieldSchema>(module.values.front().segments.front())};
+    auto const& value{schema_at<PackedValueSchema>(manifest, manifest.modules.size() - 1)};
+    auto const& health{std::get<PackedFieldSchema>(value.segments.front())};
     EXPECT_EQ(health.type.name, "project::HealthQ8");
     EXPECT_FALSE(health.bits.has_value());
     EXPECT_EQ(health.kind, PackedFieldKind::linear_quantized);
@@ -282,8 +356,8 @@ TEST(SourceLoader, ReadsFixedPointPackedField) {
 )");
 
     auto const manifest{files.load()};
-    auto const& module{std::get<PackedValueModuleSchema>(manifest.modules.back())};
-    auto const& velocity{std::get<PackedFieldSchema>(module.values.front().segments.front())};
+    auto const& value{schema_at<PackedValueSchema>(manifest, manifest.modules.size() - 1)};
+    auto const& velocity{std::get<PackedFieldSchema>(value.segments.front())};
     EXPECT_EQ(velocity.type.name, "project::VelocityQ12_4");
     EXPECT_FALSE(velocity.bits.has_value());
     EXPECT_EQ(velocity.kind, PackedFieldKind::fixed_point);
@@ -310,8 +384,8 @@ TEST(SourceLoader, ReadsMiniFloatPackedField) {
 )");
 
     auto const manifest{files.load()};
-    auto const& module{std::get<PackedValueModuleSchema>(manifest.modules.back())};
-    auto const& component{std::get<PackedFieldSchema>(module.values.front().segments.front())};
+    auto const& value{schema_at<PackedValueSchema>(manifest, manifest.modules.size() - 1)};
+    auto const& component{std::get<PackedFieldSchema>(value.segments.front())};
     EXPECT_EQ(component.type.name, "project::PositionF12");
     EXPECT_FALSE(component.bits.has_value());
     EXPECT_EQ(component.kind, PackedFieldKind::mini_float);
@@ -370,9 +444,9 @@ TEST(SourceLoader, ReadsStandaloneIntegerScalarDomain) {
 )");
 
     auto const manifest{files.load()};
-    auto const& module{std::get<ScalarModuleSchema>(manifest.modules.front())};
-    ASSERT_EQ(module.scalars.size(), 3U);
-    auto const& scalar{module.scalars.front()};
+    auto const& module{std::get<NormalModuleSchema>(manifest.modules.front())};
+    ASSERT_EQ(module.declarations.size(), 3U);
+    auto const& scalar{schema_at<IntegerScalarSchema>(manifest, 0)};
     EXPECT_EQ(scalar.name, "DamageReason");
     EXPECT_FALSE(scalar.signedness);
     EXPECT_EQ(scalar.minimum_value, PackedIntegerValue{0});
@@ -388,9 +462,10 @@ TEST(SourceLoader, ReadsStandaloneIntegerScalarDomain) {
     EXPECT_EQ(scalar.relationship->kind, SemanticRelationKind::index_into);
     EXPECT_EQ(scalar.relationship->target.name, "EntityTable");
     EXPECT_FALSE(scalar.relationship->unit.has_value());
-    ASSERT_TRUE(module.scalars[2].relationship.has_value());
-    EXPECT_EQ(module.scalars[2].relationship->kind, SemanticRelationKind::offset_into);
-    EXPECT_EQ(module.scalars[2].relationship->unit, SemanticRelationUnit::bytes);
+    auto const& offset{schema_at<IntegerScalarSchema>(manifest, 0, 2)};
+    ASSERT_TRUE(offset.relationship.has_value());
+    EXPECT_EQ(offset.relationship->kind, SemanticRelationKind::offset_into);
+    EXPECT_EQ(offset.relationship->unit, SemanticRelationUnit::bytes);
 }
 
 TEST(SourceLoader, ReadsPhysicalRepresentations) {
@@ -435,40 +510,35 @@ TEST(SourceLoader, ReadsPhysicalRepresentations) {
 
     auto const manifest{files.load()};
     ASSERT_EQ(manifest.modules.size(), 2U);
-    auto const& module{std::get<RepresentationModuleSchema>(manifest.modules[1])};
-    ASSERT_EQ(module.linear_quantized.size(), 1U);
-    auto const& representation{module.linear_quantized.front()};
+    auto const& module{std::get<NormalModuleSchema>(manifest.modules[1])};
+    ASSERT_EQ(module.declarations.size(), 6U);
+    auto const& representation{schema_at<LinearQuantizedSchema>(manifest, 1, 0)};
     EXPECT_EQ(representation.name, "HealthQ8");
     EXPECT_EQ(representation.source.name, "project::Health");
     EXPECT_EQ(representation.bit_width, 8U);
     EXPECT_EQ(representation.reserved_codes, 1U);
     EXPECT_EQ(representation.clipping, QuantizationClipping::clamp);
-    ASSERT_EQ(module.integer_varints.size(), 1U);
-    auto const& varint{module.integer_varints.front()};
+    auto const& varint{schema_at<IntegerVarintSchema>(manifest, 1, 1)};
     EXPECT_EQ(varint.name, "HealthVarint");
     EXPECT_EQ(varint.source.name, "project::Health");
     EXPECT_EQ(varint.encoding, IntegerVarintEncoding::unsigned_varint);
-    ASSERT_EQ(module.fixed_points.size(), 1U);
-    auto const& fixed_point{module.fixed_points.front()};
+    auto const& fixed_point{schema_at<FixedPointSchema>(manifest, 1, 2)};
     EXPECT_EQ(fixed_point.name, "VelocityQ12_4");
     EXPECT_TRUE(fixed_point.signedness);
     EXPECT_EQ(fixed_point.total_bits, 16U);
     EXPECT_EQ(fixed_point.fractional_bits, 4U);
     EXPECT_EQ(fixed_point.rounding, FixedPointRounding::toward_zero);
-    ASSERT_EQ(module.mini_floats.size(), 1U);
-    auto const& mini_float{module.mini_floats.front()};
+    auto const& mini_float{schema_at<MiniFloatSchema>(manifest, 1, 5)};
     EXPECT_EQ(mini_float.name, "CompactFloat");
     EXPECT_EQ(mini_float.sign_bits, 1U);
     EXPECT_EQ(mini_float.exponent_bits, 5U);
     EXPECT_EQ(mini_float.significand_bits, 10U);
     EXPECT_EQ(mini_float.exponent_bias, 15);
-    ASSERT_EQ(module.optional_sentinels.size(), 1U);
-    auto const& optional{module.optional_sentinels.front()};
+    auto const& optional{schema_at<OptionalSentinelSchema>(manifest, 1, 3)};
     EXPECT_EQ(optional.name, "OptionalHealth");
     EXPECT_EQ(optional.source.name, "project::Health");
     EXPECT_EQ(optional.sentinel, "Invalid");
-    ASSERT_EQ(module.optional_presence_bits.size(), 1U);
-    auto const& presence{module.optional_presence_bits.front()};
+    auto const& presence{schema_at<OptionalPresenceBitSchema>(manifest, 1, 4)};
     EXPECT_EQ(presence.name, "PresentHealth");
     EXPECT_EQ(presence.source.name, "project::Health");
 }
@@ -508,7 +578,7 @@ TEST(SourceLoader, ReadsExplicitEnumBitWidth) {
 )");
 
     auto const manifest{files.load()};
-    auto const& schema{std::get<EnumModuleSchema>(manifest.modules.front()).enums.front()};
+    auto const& schema{schema_at<EnumSchema>(manifest, 0)};
     EXPECT_EQ(schema.bit_width, 3);
     EXPECT_EQ(schema.signedness, false);
 }
@@ -526,7 +596,7 @@ TEST(SourceLoader, ReadsEnumWithoutCppBackingType) {
 )");
 
     auto const manifest{files.load()};
-    auto const& schema{std::get<EnumModuleSchema>(manifest.modules.front()).enums.front()};
+    auto const& schema{schema_at<EnumSchema>(manifest, 0)};
     EXPECT_FALSE(schema.underlying_type.has_value());
     EXPECT_EQ(schema.bit_width, 3);
     EXPECT_EQ(schema.signedness, false);
@@ -544,7 +614,7 @@ TEST(SourceLoader, ReadsExplicitSignedEnumDomain) {
 )");
 
     auto const manifest{files.load()};
-    auto const& schema{std::get<EnumModuleSchema>(manifest.modules.front()).enums.front()};
+    auto const& schema{schema_at<EnumSchema>(manifest, 0)};
     EXPECT_EQ(schema.signedness, true);
     EXPECT_FALSE(schema.bit_width.has_value());
 }
@@ -561,7 +631,7 @@ TEST(SourceLoader, ReadsNamedEnumSentinels) {
 )");
 
     auto const manifest{files.load()};
-    auto const& values{std::get<EnumModuleSchema>(manifest.modules.front()).enums.front().values};
+    auto const& values{schema_at<EnumSchema>(manifest, 0).values};
     ASSERT_EQ(values.size(), 3U);
     EXPECT_FALSE(values[0].sentinel);
     EXPECT_TRUE(values[1].sentinel);
@@ -592,7 +662,7 @@ TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
 )schema");
 
     auto const manifest{files.load()};
-    auto const& values{std::get<EnumModuleSchema>(manifest.modules.front()).enums.front().values};
+    auto const& values{schema_at<EnumSchema>(manifest, 0).values};
     ASSERT_EQ(values.size(), 2);
     EXPECT_EQ(values[0].initializer, "0");
     EXPECT_EQ(values[1].initializer, "0x7f");
@@ -604,8 +674,7 @@ TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
     (value Invalid :value -1)))
 )schema");
     auto const negative_manifest{files.load()};
-    auto const& negative_values{
-        std::get<EnumModuleSchema>(negative_manifest.modules.front()).enums.front().values};
+    auto const& negative_values{schema_at<EnumSchema>(negative_manifest, 0).values};
     EXPECT_EQ(negative_values.front().initializer, "-1");
 
     files.write_root(R"schema(
@@ -615,8 +684,7 @@ TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
     (value Invalid :value "static_cast<uint8>(1)")))
 )schema");
     auto const opaque_manifest{files.load()};
-    auto const& opaque_values{
-        std::get<EnumModuleSchema>(opaque_manifest.modules.front()).enums.front().values};
+    auto const& opaque_values{schema_at<EnumSchema>(opaque_manifest, 0).values};
     EXPECT_EQ(opaque_values.front().initializer, "static_cast<uint8>(1)");
 }
 
@@ -636,17 +704,19 @@ TEST(SourceLoader, ReadsRecordModuleAndFixedArrays) {
 )");
 
     auto const manifest{files.load()};
-    auto const& module{std::get<RecordModuleSchema>(manifest.modules.front())};
-    ASSERT_EQ(module.records.size(), 2U);
-    EXPECT_EQ(module.records[0].name, "Position");
-    ASSERT_EQ(module.records[0].members.size(), 2U);
-    EXPECT_EQ(module.records[0].members[0].type.name, "float");
-    EXPECT_FALSE(module.records[0].members[0].count.has_value());
-    EXPECT_EQ(module.records[1].export_specifier, "PROJECT_API");
-    EXPECT_EQ(module.records[1].members[0].count, 4);
-    ASSERT_TRUE(module.records[1].members[0].relationship.has_value());
-    EXPECT_EQ(module.records[1].members[0].relationship->kind, SemanticRelationKind::contains);
-    EXPECT_EQ(module.records[1].members[0].relationship->target.name, "Position");
+    auto const& module{std::get<NormalModuleSchema>(manifest.modules.front())};
+    ASSERT_EQ(module.declarations.size(), 2U);
+    auto const& position{schema_at<RecordSchema>(manifest, 0, 0)};
+    auto const& trail{schema_at<RecordSchema>(manifest, 0, 1)};
+    EXPECT_EQ(position.name, "Position");
+    ASSERT_EQ(position.members.size(), 2U);
+    EXPECT_EQ(position.members[0].type.name, "float");
+    EXPECT_FALSE(position.members[0].count.has_value());
+    EXPECT_EQ(trail.export_specifier, "PROJECT_API");
+    EXPECT_EQ(trail.members[0].count, 4);
+    ASSERT_TRUE(trail.members[0].relationship.has_value());
+    EXPECT_EQ(trail.members[0].relationship->kind, SemanticRelationKind::contains);
+    EXPECT_EQ(trail.members[0].relationship->target.name, "Position");
 }
 
 TEST(SourceLoader, ReadsRawUnionModuleAndFixedArrayAlternatives) {
@@ -662,15 +732,16 @@ TEST(SourceLoader, ReadsRawUnionModuleAndFixedArrayAlternatives) {
 )");
 
     auto const manifest{files.load()};
-    auto const& module{std::get<UnionModuleSchema>(manifest.modules.front())};
-    ASSERT_EQ(module.unions.size(), 1U);
-    EXPECT_EQ(module.unions[0].name, "Payload");
-    EXPECT_EQ(module.unions[0].export_specifier, "PROJECT_API");
-    ASSERT_EQ(module.unions[0].alternatives.size(), 2U);
-    EXPECT_EQ(module.unions[0].alternatives[0].name, "identifier");
-    EXPECT_FALSE(module.unions[0].alternatives[0].count.has_value());
-    EXPECT_EQ(module.unions[0].alternatives[1].type.name, "std::uint8_t");
-    EXPECT_EQ(module.unions[0].alternatives[1].count, 12);
+    auto const& module{std::get<NormalModuleSchema>(manifest.modules.front())};
+    ASSERT_EQ(module.declarations.size(), 1U);
+    auto const& payload{schema_at<UnionSchema>(manifest, 0)};
+    EXPECT_EQ(payload.name, "Payload");
+    EXPECT_EQ(payload.export_specifier, "PROJECT_API");
+    ASSERT_EQ(payload.alternatives.size(), 2U);
+    EXPECT_EQ(payload.alternatives[0].name, "identifier");
+    EXPECT_FALSE(payload.alternatives[0].count.has_value());
+    EXPECT_EQ(payload.alternatives[1].type.name, "std::uint8_t");
+    EXPECT_EQ(payload.alternatives[1].count, 12);
 }
 
 TEST(SourceLoader, RejectsInvalidRawUnionAlternatives) {
@@ -712,9 +783,9 @@ TEST(SourceLoader, ReadsTaggedUnionDiscriminantAndSymbolicMappings) {
 )");
 
     auto const manifest{files.load()};
-    auto const& module{std::get<UnionModuleSchema>(manifest.modules[1])};
-    ASSERT_EQ(module.tagged_unions.size(), 1U);
-    auto const& tagged{module.tagged_unions.front()};
+    auto const& module{std::get<NormalModuleSchema>(manifest.modules[1])};
+    ASSERT_EQ(module.declarations.size(), 1U);
+    auto const& tagged{schema_at<TaggedUnionSchema>(manifest, 1)};
     EXPECT_EQ(tagged.name, "Event");
     EXPECT_EQ(tagged.discriminant.name, "events::EventKind");
     EXPECT_EQ(tagged.export_specifier, "PROJECT_API");
@@ -831,7 +902,7 @@ TEST(SourceLoader, LoadsStructuredTypeReferencesAndFacadeStorage) {
 )");
 
     auto const manifest{files.load()};
-    auto const& facade{std::get<FacadeModuleSchema>(manifest.modules.front()).facade};
+    auto const& facade{schema_at<FacadeSchema>(manifest, 0)};
     EXPECT_TRUE(facade.reference_target);
     EXPECT_TRUE(facade.definitions_in_source);
     EXPECT_EQ(facade.methods.front().return_type.suffix, " const&");
@@ -870,18 +941,19 @@ TEST(SourceLoader, LoadsOpaqueCppBlocksAndKeepsQuotedBodiesCompatible) {
     auto const newline{std::string{"\n"}};
 #endif
 
-    auto const& soa{std::get<SoaModuleSchema>(manifest.modules[0])};
+    auto const& soa{std::get<NormalModuleSchema>(manifest.modules[0])};
     ASSERT_EQ(soa.settings.prelude_lines.size(), 1);
     EXPECT_EQ(soa.settings.prelude_lines[0],
               "class FForward;" + newline + "#define GENERATED_PATH \"C:\\\\generated\"");
-    ASSERT_EQ(soa.structs[0].functions.size(), 2);
-    ASSERT_EQ(soa.structs[0].functions[0].body_lines.size(), 1);
-    EXPECT_EQ(soa.structs[0].functions[0].body_lines[0],
+    auto const& data{schema_at<SoaSchema>(manifest, 0)};
+    ASSERT_EQ(data.functions.size(), 2);
+    ASSERT_EQ(data.functions[0].body_lines.size(), 1);
+    EXPECT_EQ(data.functions[0].body_lines[0],
               "if (dt <= 0.0f) {" + newline + "    return;" + newline + "}" + newline + newline +
                   "values[0] += dt;");
-    EXPECT_EQ(soa.structs[0].functions[1].body_lines, (std::vector<std::string>{"values[0] = 0;"}));
+    EXPECT_EQ(data.functions[1].body_lines, (std::vector<std::string>{"values[0] = 0;"}));
 
-    auto const& facade{std::get<FacadeModuleSchema>(manifest.modules[1]).facade};
+    auto const& facade{schema_at<FacadeSchema>(manifest, 1)};
     EXPECT_EQ(facade.validation_lines,
               (std::vector<std::string>{"checkf(target != nullptr, TEXT(\"missing target\"));"}));
 }
@@ -895,7 +967,7 @@ TEST(SourceLoader, AcceptsEmptyCppBodyAndRejectsWrongRawTag) {
     (function empty void :body #cpp{}cpp#)))
 )");
     auto const manifest{files.load()};
-    auto const& function{std::get<SoaModuleSchema>(manifest.modules[0]).structs[0].functions[0]};
+    auto const& function{schema_at<SoaSchema>(manifest, 0).functions[0]};
     EXPECT_TRUE(function.body_lines.empty());
 
     files.write_root(R"(

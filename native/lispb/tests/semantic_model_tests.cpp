@@ -460,11 +460,11 @@ TEST(SemanticTypeGraph, RejectsVectorComponentsThatDisagreeWithDeclaredEquivalen
     }
     auto manifest{codegen::load_sources(project.root / target.types, sources)};
     for (auto& module : manifest.modules) {
-        auto* soa{std::get_if<codegen::SoaModuleSchema>(&module)};
+        auto* soa{std::get_if<codegen::NormalModuleSchema>(&module)};
         if (soa == nullptr || soa->settings.name != "lasers_soa") {
             continue;
         }
-        auto& vectors{soa->structs.front()};
+        auto& vectors{std::get<codegen::SoaSchema>(soa->declarations.front())};
         for (auto& member : vectors.members) {
             member.type = codegen::TypeRef{"double"};
         }

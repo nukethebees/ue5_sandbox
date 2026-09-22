@@ -4,6 +4,12 @@ LispB S-expressions are the canonical editable and persisted schema. `load_sourc
 into the validated `codegen::Manifest`; `lispb::schema::resolve_type_graph` then resolves the
 declarations once into a consumer-neutral `TypeGraph`.
 
+Normal modules expose one ordered `DeclarationSchema` sequence. The graph visits that sequence
+directly, so a semantic node's declaration index is the index in its source module, including
+when different declaration kinds are interleaved. Presentation-only declarations may occupy an
+index without contributing a graph node. Settings and umbrella output constructs are exceptional
+modules rather than semantic declaration containers.
+
 Each node has a stable `TypeIdentity` made from its origin, module, namespace, and declared name.
 References inside one resolved graph use compact `TypeId` indices; these are handles for that graph,
 not persistent identifiers. Registered native types which match a declaration resolve to that

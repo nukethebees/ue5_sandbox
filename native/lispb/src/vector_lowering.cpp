@@ -6,18 +6,19 @@
 
 namespace codegen::detail {
 
-auto lower_vector_module(VectorModuleSchema const& module,
-                         std::map<std::string, CppType> const& types) -> Module {
-    if (module.backend == SoaBackend::standard_library) {
+auto lower_vector(VectorSoaSchema const& vector,
+                  SoaBackend const backend,
+                  std::map<std::string, CppType> const& types) -> DeclarationEmission {
+    if (backend == SoaBackend::standard_library) {
         std::vector<SoaMemberSchema> members;
-        for (auto const& component : module.components) {
-            members.push_back(SoaMemberSchema{component, SoaMemberKind::array, module.value_type});
+        for (auto const& component : vector.components) {
+            members.push_back(SoaMemberSchema{component, SoaMemberKind::array, vector.value_type});
         }
         SoaSchema schema{
-            .name = module.storage_name,
+            .name = vector.name,
             .members = std::move(members),
             .operations = all_storage_operations(),
-            .equivalent_type = module.equivalent_type,
+            .equivalent_type = vector.equivalent_type,
             .copy_element_memberwise = true,
         };
         std::map<std::string, SoaSchema const*> const schemas{{schema.name, &schema}};
@@ -25,65 +26,46 @@ auto lower_vector_module(VectorModuleSchema const& module,
                                       schemas,
                                       types,
                                       true,
-                                      module.equivalent_members,
-                                      module.equivalent_constructor.value_or(""))};
-        auto definitions{std::move(lowered.header)};
-        if (module.settings.namespace_name.has_value()) {
-            definitions = {Namespace{*module.settings.namespace_name, std::move(definitions)}};
-        }
-        NodeListBuilder header;
-        header.add(IncludeDependencies{}, 2);
-        if (!module.settings.prelude_lines.empty()) {
-            header.add(raw(join_lines(module.settings.prelude_lines)), 2);
-        }
-        header.append(std::move(definitions));
-        return Module{
-            .name = module.settings.name,
-            .header =
-                CppFile{
-                    .path = module.settings.header,
-                    .nodes = header.build(),
-                    .include_order = module.settings.include_order,
-                    .format_generated = true,
-                },
-        };
+                                      vector.equivalent_members,
+                                      vector.equivalent_constructor.value_or(""))};
+        return {.header = std::move(lowered.header), .format_generated = true};
     }
 
-    auto const value_type{resolve_type(module.value_type, types)};
+    auto const value_type{resolve_type(vector.value_type, types)};
     std::vector<SoaMemberSchema> members;
-    for (auto const& component : module.components) {
-        members.push_back(SoaMemberSchema{component, SoaMemberKind::array, module.value_type});
+    for (auto const& component : vector.components) {
+        members.push_back(SoaMemberSchema{component, SoaMemberKind::array, vector.value_type});
     }
     std::vector<ParameterSchema> add_parameters;
     std::vector<ParameterSchema> view_set_parameters{ParameterSchema{TypeRef{"int32 const"}, "i"}};
-    for (auto const& component : module.components) {
+    for (auto const& component : vector.components) {
         add_parameters.push_back(ParameterSchema{
             TypeRef{.name = "value_type", .suffix = " const"},
             std::string(1, component.front()),
         });
-        auto component_type{module.value_type};
+        auto component_type{vector.value_type};
         component_type.suffix += " const";
         view_set_parameters.push_back(
             ParameterSchema{std::move(component_type), std::string(1, component.front())});
     }
-    std::vector<std::string> add_body{"auto const index{" + module.components.front() + ".Add(" +
-                                      std::string(1, module.components.front().front()) + ")};"};
-    for (std::size_t index{1}; index < module.components.size(); ++index) {
-        add_body.push_back(module.components[index] + ".Add(" +
-                           std::string(1, module.components[index].front()) + ");");
+    std::vector<std::string> add_body{"auto const index{" + vector.components.front() + ".Add(" +
+                                      std::string(1, vector.components.front().front()) + ")};"};
+    for (std::size_t index{1}; index < vector.components.size(); ++index) {
+        add_body.push_back(vector.components[index] + ".Add(" +
+                           std::string(1, vector.components[index].front()) + ");");
     }
     add_body.emplace_back("return index;");
     std::vector<std::string> equivalent_arguments;
     std::vector<std::string> set_body;
     std::vector<std::string> data_pointers;
     static std::vector<std::string> const axes{"X", "Y", "Z"};
-    auto const& equivalent_members{module.equivalent_members.empty() ? axes
-                                                                     : module.equivalent_members};
-    for (std::size_t index{0}; index < module.components.size(); ++index) {
+    auto const& equivalent_members{vector.equivalent_members.empty() ? axes
+                                                                     : vector.equivalent_members};
+    for (std::size_t index{0}; index < vector.components.size(); ++index) {
         equivalent_arguments.push_back("value." + equivalent_members[index]);
-        set_body.push_back(module.components[index] +
-                           "[i] = " + std::string(1, module.components[index].front()) + ";");
-        data_pointers.push_back(module.components[index] + ".GetData()");
+        set_body.push_back(vector.components[index] +
+                           "[i] = " + std::string(1, vector.components[index].front()) + ";");
+        data_pointers.push_back(vector.components[index] + ".GetData()");
     }
     auto const joined_data_pointers{join(data_pointers, ", ")};
     std::vector<FunctionSchema> functions{
@@ -108,7 +90,7 @@ auto lower_vector_module(VectorModuleSchema const& module,
             .name = "add",
             .return_type = TypeRef{"auto"},
             .parameters = {ParameterSchema{
-                TypeRef{.name = module.equivalent_type.name, .suffix = " const&"}, "value"}},
+                TypeRef{.name = vector.equivalent_type.name, .suffix = " const&"}, "value"}},
             .body_lines = {"return add(" + join(equivalent_arguments, ", ") + ");"},
             .trailing_return_type = TypeRef{"size_type"},
             .is_inline = true},
@@ -127,13 +109,13 @@ auto lower_vector_module(VectorModuleSchema const& module,
         FunctionSchema{.name = "set",
                        .return_type = TypeRef{"void"},
                        .parameters = {ParameterSchema{TypeRef{"int32 const"}, "i"},
-                                      ParameterSchema{TypeRef{.name = module.equivalent_type.name,
+                                      ParameterSchema{TypeRef{.name = vector.equivalent_type.name,
                                                               .suffix = " const"},
                                                       "value"}},
                        .body_lines = {"set(i, " + join(equivalent_arguments, ", ") + ");"},
                        .is_inline = true},
     };
-    auto view_equivalent_type{module.equivalent_type};
+    auto view_equivalent_type{vector.equivalent_type};
     view_equivalent_type.suffix += " const";
     std::vector<FunctionSchema> mutable_view_functions{
         FunctionSchema{
@@ -159,7 +141,7 @@ auto lower_vector_module(VectorModuleSchema const& module,
              {"set_num_uninitialised", "SetNumUninitialized(count)"},
              {"add_zeroed", "AddZeroed(count)"}}) {
         std::vector<std::string> body;
-        for (auto const& component : module.components) {
+        for (auto const& component : vector.components) {
             body.push_back(component + "." + method + ";");
         }
         functions.push_back(FunctionSchema{
@@ -174,21 +156,21 @@ auto lower_vector_module(VectorModuleSchema const& module,
         });
     }
     SoaSchema schema{
-        .name = module.storage_name,
+        .name = vector.name,
         .members = std::move(members),
         .operations = all_storage_operations(),
-        .export_specifier = module.export_specifier,
+        .export_specifier = vector.export_specifier,
         .functions = std::move(functions),
         .mutable_view_functions = std::move(mutable_view_functions),
         .using_declarations = {"value_type = " + value_type.spelling,
                                "size_type = TArray<value_type>::SizeType"},
-        .equivalent_type = module.equivalent_type,
+        .equivalent_type = vector.equivalent_type,
         .copy_element_memberwise = true,
-        .fixed = module.fixed,
+        .fixed = vector.fixed,
     };
     auto pointer_struct = [&](std::string name, std::string const& pointer_suffix) {
         NodeListBuilder members;
-        for (auto const& component : module.components) {
+        for (auto const& component : vector.components) {
             members.add(Member{CppType{value_type.spelling + pointer_suffix}, component});
         }
         return Struct{.name = std::move(name), .children = members.build()};
@@ -205,39 +187,22 @@ auto lower_vector_module(VectorModuleSchema const& module,
             .append(lower_fixed_nodes(schema, schemas, types));
         lowered.header = header.build();
     }
-    auto header_definitions{std::move(lowered.header)};
-    auto source_definitions{std::move(lowered.source)};
-    if (module.settings.namespace_name.has_value()) {
-        header_definitions = {
-            Namespace{*module.settings.namespace_name, std::move(header_definitions)}};
-        source_definitions = {
-            Namespace{*module.settings.namespace_name, std::move(source_definitions)}};
-    }
-    NodeListBuilder header_nodes;
-    header_nodes.add(IncludeDependencies{}, 2);
-    if (!module.settings.prelude_lines.empty()) {
-        header_nodes.add(raw(join_lines(module.settings.prelude_lines)), 2);
-    }
-    header_nodes.append(std::move(header_definitions));
-    NodeListBuilder source_nodes;
-    source_nodes.add(Include{source_include(module.settings), false}, 2)
-        .add(IncludeDependencies{}, 2)
-        .append(std::move(source_definitions));
-    return Module{
-        .name = module.settings.name,
-        .header = CppFile{.path = module.settings.header,
-                          .nodes = header_nodes.build(),
-                          .clang_format_off = true,
-                          .include_order = module.settings.include_order},
-        .source =
-            module.settings.source.has_value()
-                ? std::optional<CppFile>{CppFile{.path = *module.settings.source,
-                                                 .nodes = source_nodes.build(),
-                                                 .pragma_once = false,
-                                                 .clang_format_off = true,
-                                                 .include_order = module.settings.include_order}}
-                : std::nullopt,
-    };
+    return {.header = std::move(lowered.header), .source = std::move(lowered.source)};
+}
+
+auto lower_vector_module(VectorModuleSchema const& module,
+                         std::map<std::string, CppType> const& types) -> Module {
+    auto vector{VectorSoaSchema{.name = module.storage_name,
+                                .value_type = module.value_type,
+                                .components = module.components,
+                                .equivalent_members = module.equivalent_members,
+                                .equivalent_constructor = module.equivalent_constructor,
+                                .equivalent_type = module.equivalent_type,
+                                .export_specifier = module.export_specifier,
+                                .fixed = module.fixed}};
+    std::vector<DeclarationEmission> emissions;
+    emissions.push_back(lower_vector(vector, module.backend, types));
+    return assemble_module(module.settings, emissions).front();
 }
 
 } // namespace codegen::detail

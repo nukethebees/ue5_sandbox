@@ -164,6 +164,7 @@ class EditableProjectDocument {
 
 auto load_project(std::filesystem::path const& path) -> Project;
 auto load_editable_project_document(std::filesystem::path const& path) -> EditableProjectDocument;
+auto source_files(Target const& target) -> std::vector<std::filesystem::path>;
 auto resolve(RootedPath const& path,
              std::filesystem::path const& project_root,
              std::filesystem::path const& build_root) -> std::filesystem::path;

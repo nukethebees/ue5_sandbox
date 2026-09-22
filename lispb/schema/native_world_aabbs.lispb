@@ -1,4 +1,4 @@
-(soa-module native_world_aabbs
+(module native_world_aabbs
   :header "native/simulation/include/ioj/sim/world_aabbs.h"
   :backend standard-library
   :namespace ioj::sim::collision

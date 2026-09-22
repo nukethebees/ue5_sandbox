@@ -1,30 +1,30 @@
-(vector-soa-module soa_vectors_2f
+(module soa_vectors_2f
   :header "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_2f.h"
   :source "Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_2f.cpp"
   :header-include "SandboxCore/soa_vectors_2f.h"
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  :storage-name FVectors2f
-  :value-type float
-  :components (xs ys)
-  :equivalent-type @vector_2f
-  :export-specifier SANDBOXCORE_API)
+  (vector-soa FVectors2f
+    :value-type float
+    :components (xs ys)
+    :equivalent-type @vector_2f
+    :export-specifier SANDBOXCORE_API))
 
-(vector-soa-module soa_vectors_3d
+(module soa_vectors_3d
   :header "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors_3d.h"
   :source "Plugins/SandboxCore/Source/SandboxCore/Private/soa_vectors_3d.cpp"
   :header-include "SandboxCore/soa_vectors_3d.h"
   :include-order ("SpaceGame/" "Sandbox/" "SandboxCore/")
-  :storage-name FVectors3d
-  :value-type double
-  :components (xs ys zs)
-  :equivalent-type @vector_3d
-  :export-specifier SANDBOXCORE_API)
+  (vector-soa FVectors3d
+    :value-type double
+    :components (xs ys zs)
+    :equivalent-type @vector_3d
+    :export-specifier SANDBOXCORE_API))
 
 (umbrella-module sandbox_core_soa_vectors
   :header "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_vectors.h"
   :headers ("SandboxCore/soa_vectors_2f.h" "SandboxCore/soa_vectors_3d.h"))
 
-(homogeneous-soa-module sandbox_core_soa_rotators
+(module sandbox_core_soa_rotators
   :header "Plugins/SandboxCore/Source/SandboxCore/Public/SandboxCore/soa_rotators.h"
   :source "Plugins/SandboxCore/Source/SandboxCore/Private/soa_rotators.cpp"
   :header-include "SandboxCore/soa_rotators.h"

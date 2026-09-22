@@ -401,14 +401,15 @@ TEST(SingleAllocationSoa, BenchmarkSchemaTracksFighterLeafOrderAndWidths) {
     auto find_struct = [&](std::string_view const module_name,
                            std::string_view const struct_name) -> SoaSchema const& {
         for (auto const& module : manifest.modules) {
-            auto const* soa{std::get_if<SoaModuleSchema>(&module)};
+            auto const* soa{std::get_if<NormalModuleSchema>(&module)};
             if (soa == nullptr || soa->settings.name != module_name) {
                 continue;
             }
-            auto const found{std::ranges::find_if(
-                soa->structs, [&](SoaSchema const& schema) { return schema.name == struct_name; })};
-            if (found != soa->structs.end()) {
-                return *found;
+            for (auto const& declaration : soa->declarations) {
+                auto const* schema{std::get_if<SoaSchema>(&declaration)};
+                if (schema != nullptr && schema->name == struct_name) {
+                    return *schema;
+                }
             }
         }
         throw std::runtime_error{"Missing " + std::string{struct_name} + " schema in module " +

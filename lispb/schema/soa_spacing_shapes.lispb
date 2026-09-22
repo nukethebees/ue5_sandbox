@@ -1,4 +1,4 @@
-(soa-module soa_spacing_shapes
+(module soa_spacing_shapes
   :header "Plugins/SandboxCore/Source/SbxCoreExperiments/Public/SbxCoreExperiments/soa_spacing_shapes.h"
   :source "Plugins/SandboxCore/Source/SbxCoreExperiments/Private/soa_spacing_shapes.cpp"
   :header-include "SbxCoreExperiments/soa_spacing_shapes.h"

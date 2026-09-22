@@ -1213,8 +1213,141 @@ auto parse_optional_presence_bit(Form const& form) -> OptionalPresenceBitSchema 
             .source = parse_type_ref(fields.required("source"))};
 }
 
+auto parse_layout(Form const& form) -> HomogeneousLayoutSchema {
+    Fields const layout{form, "layout", 1};
+    layout.validate({"components", "input-members", "export-specifier"}, {"value-type"});
+    std::vector<HomogeneousValueSchema> value_types;
+    for (auto const* value_declaration : layout.declarations()) {
+        Fields const value{*value_declaration, "value-type", 2};
+        value.validate({"equivalent-type", "input-types"});
+        std::optional<TypeRef> equivalent;
+        if (auto const* equivalent_value{value.optional("equivalent-type")}) {
+            equivalent = parse_type_ref(*equivalent_value);
+        }
+        std::vector<TypeRef> inputs;
+        if (auto const* input_values{value.optional("input-types")}) {
+            inputs = type_ref_list(*input_values, "input types");
+        }
+        value_types.push_back(HomogeneousValueSchema{
+            .type = parse_type_ref(value.positional(0)),
+            .suffix = text(value.positional(1), "homogeneous type suffix"),
+            .equivalent_type = std::move(equivalent),
+            .input_types = std::move(inputs),
+        });
+    }
+    return HomogeneousLayoutSchema{
+        .name = text(layout.positional(0), "homogeneous layout name"),
+        .components = text_list(layout.required("components"), "layout components"),
+        .input_members = text_list_or(layout, "input-members"),
+        .value_types = std::move(value_types),
+        .export_specifier = optional_text(layout, "export-specifier"),
+    };
+}
+
+auto parse_vector_soa(Form const& form) -> VectorSoaSchema {
+    Fields const fields{form, "vector-soa", 1};
+    fields.validate({"value-type",
+                     "components",
+                     "equivalent-members",
+                     "equivalent-constructor",
+                     "equivalent-type",
+                     "export-specifier"},
+                    {"fixed"});
+    std::optional<FixedSoaSchema> fixed;
+    if (!fields.declarations().empty()) {
+        if (fields.declarations().size() != 1) {
+            fail(form.token.span, "vector SOA accepts at most one fixed declaration");
+        }
+        fixed = parse_fixed(*fields.declarations().front());
+    }
+    return VectorSoaSchema{
+        .name = text(fields.positional(0), "vector storage name"),
+        .value_type = parse_type_ref(fields.required("value-type")),
+        .components = text_list(fields.required("components"), "vector components"),
+        .equivalent_members = text_list_or(fields, "equivalent-members"),
+        .equivalent_constructor = optional_text(fields, "equivalent-constructor"),
+        .equivalent_type = parse_type_ref(fields.required("equivalent-type")),
+        .export_specifier = optional_text(fields, "export-specifier"),
+        .fixed = std::move(fixed),
+    };
+}
+
+auto parse_normal_declaration(Form const& form) -> DeclarationSchema {
+    auto const head{form.head()};
+    if (head == "enum") return parse_enum(form);
+    if (head == "integer-scalar") return parse_integer_scalar(form);
+    if (head == "linear-quantized") return parse_linear_quantized(form);
+    if (head == "integer-varint") return parse_integer_varint(form);
+    if (head == "fixed-point") return parse_fixed_point(form);
+    if (head == "mini-float") return parse_mini_float(form);
+    if (head == "optional-sentinel") return parse_optional_sentinel(form);
+    if (head == "optional-presence-bit") return parse_optional_presence_bit(form);
+    if (head == "packed-value") return parse_packed_value(form);
+    if (head == "record") return parse_record(form);
+    if (head == "union") return parse_union(form);
+    if (head == "tagged-union") return parse_tagged_union(form);
+    if (head == "struct") return parse_soa(form);
+    if (head == "vector-soa") return parse_vector_soa(form);
+    if (head == "layout") return parse_layout(form);
+    if (head == "table") return parse_table(form);
+    if (head == "facade") return parse_facade(form);
+    fail(form.token.span, "unknown normal module declaration '" + std::string{head} + "'");
+}
+
 auto parse_module(Form const& form) -> ModuleSchema {
     auto const head{form.head()};
+    if (head == "module") {
+        Fields const fields{form, head, 1};
+        fields.validate({"header",
+                         "source",
+                         "header-include",
+                         "namespace",
+                         "include-order",
+                         "prelude",
+                         "helper-namespace",
+                         "backend"},
+                        {"enum",
+                         "integer-scalar",
+                         "linear-quantized",
+                         "integer-varint",
+                         "fixed-point",
+                         "mini-float",
+                         "optional-sentinel",
+                         "optional-presence-bit",
+                         "packed-value",
+                         "record",
+                         "union",
+                         "tagged-union",
+                         "struct",
+                         "vector-soa",
+                         "layout",
+                         "table",
+                         "facade",
+                         "array-allocator"});
+        NormalModuleSchema module{.settings = parse_module_settings(fields),
+                                  .enum_helper_namespace =
+                                      optional_text(fields, "helper-namespace")};
+        if (auto const backend{optional_text(fields, "backend")}) {
+            if (*backend == "standard-library") {
+                module.soa_backend = SoaBackend::standard_library;
+            } else if (*backend != "unreal") {
+                fail(fields.required("backend").token.span,
+                     "SOA backend must be unreal or standard-library");
+            }
+        }
+        for (auto const* declaration : fields.declarations()) {
+            if (declaration->head() == "array-allocator") {
+                Fields const allocator{*declaration, "array-allocator", 2};
+                allocator.validate({});
+                module.soa_array_allocators.push_back(
+                    {text(allocator.positional(0), "allocator prefix"),
+                     parse_type_ref(allocator.positional(1))});
+            } else {
+                module.declarations.push_back(parse_normal_declaration(*declaration));
+            }
+        }
+        return module;
+    }
     if (head == "representation-module") {
         Fields const fields{form, head, 1};
         fields.validate(
@@ -1583,7 +1716,7 @@ auto load_sources(std::filesystem::path const& types_path,
     std::vector<ModuleSchema> modules;
     for (auto const& module_path : module_paths) {
         for (auto const& form : read_document(module_path)) {
-            modules.push_back(parse_module(form));
+            modules.push_back(canonical_module(parse_module(form)));
         }
     }
     return Manifest{manifest_schema_version, std::move(types), std::move(modules)};

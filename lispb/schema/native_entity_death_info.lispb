@@ -1,4 +1,4 @@
-(soa-module native_entity_death_info
+(module native_entity_death_info
   :header "native/simulation/include/ioj/sim/entity_death_info.h"
   :backend standard-library
   :namespace ioj::sim

@@ -308,8 +308,7 @@ TEST(EditableProjectDocument, CreatesValidatesPreviewsAndPublishesNewCppSchemaSo
     ASSERT_TRUE(module_preview.has_value()) << module_preview.error().message;
     ASSERT_EQ(module_preview->size(), 1U);
     EXPECT_EQ(module_preview->front().path, files.path("authored.lispb"));
-    EXPECT_NE(module_preview->front().updated.find("(scalar-module authored_scalars"),
-              std::string::npos);
+    EXPECT_NE(module_preview->front().updated.find("(module authored_scalars"), std::string::npos);
 }
 
 TEST(EditableProjectDocument, ValidatesMultiplePendingSourcesAndCleansFailedPublication) {

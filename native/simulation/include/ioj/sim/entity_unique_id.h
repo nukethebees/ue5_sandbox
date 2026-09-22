@@ -82,5 +82,4 @@ struct EntityUniqueId {
 static_assert(sizeof(EntityUniqueId) == sizeof(EntityUniqueId::storage_type));
 static_assert(std::is_trivially_copyable_v<EntityUniqueId>);
 static_assert(std::is_standard_layout_v<EntityUniqueId>);
-
 } // namespace ioj::sim

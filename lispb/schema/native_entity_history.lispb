@@ -1,4 +1,4 @@
-(soa-module native_entity_history
+(module native_entity_history
   :header "native/simulation/include/ioj/sim/entity_history.h"
   :backend standard-library
   :namespace ioj::sim
