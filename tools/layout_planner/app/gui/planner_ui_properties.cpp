@@ -230,6 +230,17 @@ void draw_override_note(bool const overridden) {
     }
 }
 
+void separator_text_with_tooltip(char const* title, char const* description) {
+    ImGui::SeparatorText(title);
+    ImGui::SetItemTooltip("%s", description);
+}
+
+void text_disabled_wrapped(char const* text) {
+    ImGui::PushTextWrapPos(0.0F);
+    ImGui::TextDisabled("%s", text);
+    ImGui::PopTextWrapPos();
+}
+
 template <std::size_t Size>
 void set_buffer(std::array<char, Size>& buffer, std::optional<std::string> const& value) {
     std::snprintf(buffer.data(), buffer.size(), "%s", value.value_or("").c_str());
@@ -547,6 +558,7 @@ auto PlannerUi::draw_type_picker(std::string_view const module_name, TypeIdentit
         type_picker_filter_.fill('\0');
         ImGui::OpenPopup("semantic-type-picker");
     }
+    ImGui::SetItemTooltip("Choose a semantic or physical type.");
     if (!ImGui::BeginPopup("semantic-type-picker")) {
         return std::nullopt;
     }
@@ -915,7 +927,9 @@ void PlannerUi::draw_properties_panel() {
             return;
         }
     } else if (auto const* scalar{std::get_if<IntegerScalarType>(&node.definition)}) {
-        ImGui::SeparatorText("Semantic integer domain");
+        separator_text_with_tooltip(
+            "Semantic integer domain",
+            "The allowed values and named codes of this integer type, independent of storage.");
         if (integer_scalar_analysis_.has_value()) {
             auto const& analysis{*integer_scalar_analysis_};
             auto const minimum{codegen::format_packed_integer(analysis.minimum_value)};
@@ -2778,10 +2792,12 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
             }
         }
     }
-    ImGui::TextDisabled(
+    text_disabled_wrapped(
         "This is a semantic domain. A packed field or future representation chooses storage.");
 
-    ImGui::SeparatorText("C++ output policy");
+    separator_text_with_tooltip(
+        "C++ output policy",
+        "Choose whether this semantic type emits C++ constants and a name lookup.");
     auto emit_cpp_constants{schema->cpp_emission != codegen::IntegerScalarCppEmission::none};
     if (ImGui::Checkbox("Emit named constants", &emit_cpp_constants)) {
         auto replacement{*schema};
@@ -2833,13 +2849,16 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
                 return true;
             }
         }
-        ImGui::TextDisabled("Named codes emit as <Scalar>_<Code>; lookup returns an empty view for "
-                            "unnamed values.");
+        text_disabled_wrapped("Named codes emit as <Scalar>_<Code>; lookup returns an empty view "
+                              "for unnamed values.");
     } else {
-        ImGui::TextDisabled("No C++ scalar type or constants are emitted for this domain.");
+        text_disabled_wrapped("No C++ scalar type or constants are emitted for this domain.");
     }
 
-    ImGui::SeparatorText("Semantic relationship");
+    separator_text_with_tooltip(
+        "Semantic relationship",
+        "Describe what this value refers to, such as an index, count, or offset into another "
+        "type. This does not choose physical storage.");
     auto const current_kind{semantic_relationship_kinds[static_cast<std::size_t>(
         std::clamp(integer_scalar_relationship_kind_,
                    0,
@@ -2848,8 +2867,12 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
         std::clamp(integer_scalar_relationship_unit_,
                    0,
                    static_cast<int>(semantic_relationship_units.size() - 1)))]};
-    ImGui::SetNextItemWidth(180.0F);
-    if (ImGui::BeginCombo("Kind", codegen::semantic_relation_kind_name(current_kind).data())) {
+    ImGui::TextUnformatted("Kind");
+    ImGui::SetItemTooltip(
+        "Whether this value is an index, count, offset, or another semantic link.");
+    ImGui::SetNextItemWidth(-1.0F);
+    if (ImGui::BeginCombo("##relationship-kind",
+                          codegen::semantic_relation_kind_name(current_kind).data())) {
         for (std::size_t kind_index{}; kind_index < semantic_relationship_kinds.size();
              ++kind_index) {
             auto const kind{semantic_relationship_kinds[kind_index]};
@@ -2875,8 +2898,11 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
         ImGui::EndCombo();
     }
     if (current_kind == codegen::SemanticRelationKind::offset_into) {
-        ImGui::SetNextItemWidth(180.0F);
-        if (ImGui::BeginCombo("Unit", codegen::semantic_relation_unit_name(current_unit).data())) {
+        ImGui::TextUnformatted("Unit");
+        ImGui::SetItemTooltip("The unit used to measure an offset.");
+        ImGui::SetNextItemWidth(-1.0F);
+        if (ImGui::BeginCombo("##relationship-unit",
+                              codegen::semantic_relation_unit_name(current_unit).data())) {
             for (std::size_t unit_index{}; unit_index < semantic_relationship_units.size();
                  ++unit_index) {
                 auto const unit{semantic_relationship_units[unit_index]};
@@ -2900,8 +2926,10 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
         }
     }
 
-    ImGui::SetNextItemWidth(std::max(80.0F, ImGui::GetContentRegionAvail().x - 132.0F));
-    auto const target_submitted{ImGui::InputText("Target",
+    ImGui::TextUnformatted("Target");
+    ImGui::SetItemTooltip("The semantic type this scalar refers to.");
+    ImGui::SetNextItemWidth(-1.0F);
+    auto const target_submitted{ImGui::InputText("##relationship-target",
                                                  integer_scalar_relationship_target_.data(),
                                                  integer_scalar_relationship_target_.size(),
                                                  ImGuiInputTextFlags_EnterReturnsTrue)};
@@ -2919,7 +2947,6 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
             }
         }
     }
-    ImGui::SameLine();
     ImGui::PushID("integer-scalar-relationship-target");
     auto picked_relationship_target{draw_type_picker(node.identity.module_name, node.identity)};
     ImGui::PopID();
@@ -2945,7 +2972,9 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
     }
     ImGui::SameLine();
     if (schema->relationship.has_value()) {
-        if (ImGui::SmallButton("Clear")) {
+        auto const clear_clicked{ImGui::SmallButton("Clear")};
+        ImGui::SetItemTooltip("Remove this semantic relationship.");
+        if (clear_clicked) {
             auto replacement{*schema};
             replacement.relationship.reset();
             if (apply_document_edit(ReplaceIntegerScalar{.declaration = *declaration,
@@ -2960,9 +2989,14 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
             selected_field_.clear();
             return true;
         }
+        if (scalar.relationship.has_value()) {
+            ImGui::SetItemTooltip("Open the relationship target.");
+        }
     } else {
         ImGui::BeginDisabled(integer_scalar_relationship_target_.front() == '\0');
-        if (ImGui::SmallButton("Add")) {
+        auto const add_clicked{ImGui::SmallButton("Add")};
+        ImGui::SetItemTooltip("Add a relationship using this kind and target.");
+        if (add_clicked) {
             auto replacement{*schema};
             replacement.relationship = codegen::SemanticRelationSchema{
                 .kind = current_kind,
@@ -2980,7 +3014,7 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
         }
         ImGui::EndDisabled();
     }
-    ImGui::TextDisabled(
+    text_disabled_wrapped(
         "The relationship is durable semantic metadata; session capacity does not rewrite this "
         "domain or bit width.");
     if (integer_scalar_analysis_.has_value() &&
@@ -2990,7 +3024,10 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
         auto const term{detail::relationship_extent_term(kind)};
         auto const unit{detail::relationship_extent_unit(kind, analysis.relationship_unit)};
         auto const heading{"Session " + std::string{term} + " requirement"};
-        ImGui::SeparatorText(heading.c_str());
+        separator_text_with_tooltip(
+            heading.c_str(),
+            "Shows how the current target extent affects the required integer range and width.");
+        ImGui::PushTextWrapPos(0.0F);
         ImGui::Text("Target %s: %llu %s",
                     term.data(),
                     static_cast<unsigned long long>(*analysis.relationship_target_extent),
@@ -3029,22 +3066,24 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
             term.data(),
             detail::format_number(analysis.relationship_effective_capacity_headroom).c_str());
         if (kind == codegen::SemanticRelationKind::count_of) {
-            ImGui::TextDisabled(
+            text_disabled_wrapped(
                 "Live counts include 0 through capacity; named sentinels add code states.");
         } else if (kind == codegen::SemanticRelationKind::offset_into) {
-            ImGui::TextDisabled(
+            text_disabled_wrapped(
                 "Live offsets span 0 through extent-1 in the declared unit; named sentinels add "
                 "code states.");
         } else {
-            ImGui::TextDisabled(
+            text_disabled_wrapped(
                 "Live indices span 0 through capacity-1; named sentinels add code states.");
         }
+        ImGui::PopTextWrapPos();
     }
 
     auto const code_width{schema->bit_width.value_or(64)};
     auto const named_value{first_available_scalar_code(*schema, code_width, false)};
     auto const sentinel_value{first_available_scalar_code(*schema, code_width, true)};
-    ImGui::SeparatorText("Named codes");
+    separator_text_with_tooltip("Named codes",
+                                "Give specific integer values names or reserve them as sentinels.");
     ImGui::BeginDisabled(!named_value.has_value());
     if (ImGui::Button("+ Named code")) {
         auto replacement{*schema};
@@ -5025,7 +5064,9 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             ImGui::TextDisabled("Creates a shared floating-like encoding for this width.");
         }
 
-        ImGui::SeparatorText("Semantic relationship");
+        separator_text_with_tooltip(
+            "Semantic relationship",
+            "Describe how the selected field relates to another semantic type.");
         if (selected_linear_quantized != nullptr) {
             ImGui::TextDisabled(
                 "This placement inherits semantic meaning through the quantizer's source scalar.");
@@ -6666,7 +6707,9 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
             std::clamp(record_relationship_unit_,
                        0,
                        static_cast<int>(semantic_relationship_units.size() - 1)))]};
-        ImGui::SeparatorText("Selected member relationship");
+        separator_text_with_tooltip(
+            "Selected member relationship",
+            "Describe how this record member relates to another semantic type.");
         ImGui::SetNextItemWidth(180.0F);
         if (ImGui::BeginCombo("Kind", codegen::semantic_relation_kind_name(current_kind).data())) {
             for (std::size_t kind_index{}; kind_index < semantic_relationship_kinds.size();
@@ -7479,7 +7522,9 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                 std::clamp(soa_relationship_unit_,
                            0,
                            static_cast<int>(semantic_relationship_units.size() - 1)))]};
-            ImGui::SeparatorText("Selected column relationship");
+            separator_text_with_tooltip(
+                "Selected column relationship",
+                "Describe how this SoA column relates to another semantic type.");
             ImGui::SetNextItemWidth(180.0F);
             if (ImGui::BeginCombo("Kind##soa-column-relationship",
                                   codegen::semantic_relation_kind_name(current_kind).data())) {
