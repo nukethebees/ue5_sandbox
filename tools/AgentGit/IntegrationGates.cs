@@ -133,6 +133,10 @@ internal sealed class IntegrationGatePlanner
         if (include_tool_tests)
         {
             Add("explicit-tool-tests", [IntegrationGate.ToolTests], "requested with --tool-tests");
+            gates.Remove(IntegrationGate.AgentGitTests);
+            gates.Remove(IntegrationGate.CSharpToolsTests);
+            reasons.Remove(IntegrationGate.AgentGitTests);
+            reasons.Remove(IntegrationGate.CSharpToolsTests);
         }
 
         return new IntegrationGatePlan(

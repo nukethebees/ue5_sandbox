@@ -43,6 +43,28 @@ public sealed class IntegrationTransactionTests
                 "dotnet test tools/AgentGit.Tests/AgentGit.Tests.csproj --nologo",
             },
             runner.Commands);
+
+        var combined_identity = new PatchIdentity(
+            "combined-candidate", "combined-tree", ["tools/AgentGit/Program.cs", "CMakeLists.txt"]);
+        var combined_plan = new IntegrationGatePlanner().Plan(combined_identity.ChangedPaths);
+        var combined = await validator.ValidateAsync(
+            fixture.RepositoryRoot,
+            "base",
+            combined_identity,
+            combined_plan,
+            store,
+            TextWriter.Null,
+            TextWriter.Null,
+            default);
+
+        Assert.AreEqual(0, combined.ExitCode);
+        CollectionAssert.Contains(
+            runner.Commands,
+            "dotnet test tools/Tools.slnx --nologo --filter FullyQualifiedName!~AgentGit.Tests");
+        Assert.AreEqual(
+            2,
+            runner.Commands.Count(command =>
+                command == "dotnet test tools/AgentGit.Tests/AgentGit.Tests.csproj --nologo"));
     }
 
     [TestMethod]
@@ -70,7 +92,6 @@ public sealed class IntegrationTransactionTests
         CollectionAssert.AreEqual(
             new[]
             {
-                "dotnet test tools/AgentGit.Tests/AgentGit.Tests.csproj --nologo",
                 "cmake --workflow --preset tool-tests",
             },
             runner.Commands);

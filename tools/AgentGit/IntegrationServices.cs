@@ -218,7 +218,11 @@ internal sealed class IntegrationGateValidator : IIntegrationValidator
             output.WriteLine();
             output.WriteLine($"Integration gate: {gate_name}");
             output.WriteLine($"Reason: {plan.Reasons[gate]}");
-            foreach (var command in Commands(gate, identity.ChangedPaths, worktree))
+            foreach (var command in Commands(
+                gate,
+                identity.ChangedPaths,
+                worktree,
+                plan.Gates.Contains(IntegrationGate.AgentGitTests)))
             {
                 output.WriteLine($"Running: {command.Executable} {string.Join(' ', command.Arguments)}");
                 var exit_code = await command_runner.RunAsync(
@@ -253,7 +257,8 @@ internal sealed class IntegrationGateValidator : IIntegrationValidator
     private static IReadOnlyList<IntegrationCommand> Commands(
         IntegrationGate gate,
         IReadOnlyList<string> changed_paths,
-        string worktree) => gate switch
+        string worktree,
+        bool agent_git_tests_selected) => gate switch
         {
             IntegrationGate.AgentGitTests =>
                 [new("dotnet", ["test", "tools/AgentGit.Tests/AgentGit.Tests.csproj", "--nologo"])],
@@ -263,7 +268,8 @@ internal sealed class IntegrationGateValidator : IIntegrationValidator
             new("cmake", ["--build", "--preset", "native", "--target", "jobserver-tests"]),
             new("ctest", ["--test-dir", "out/build/native", "-L", "^jobserver$", "--output-on-failure"]),
         ],
-            IntegrationGate.CSharpToolsTests => CSharpCommands(changed_paths, worktree),
+            IntegrationGate.CSharpToolsTests => CSharpCommands(
+                changed_paths, worktree, agent_git_tests_selected),
             IntegrationGate.ToolTests =>
                 [new("cmake", ["--workflow", "--preset", "tool-tests"])],
             IntegrationGate.PowerShellChecks =>
@@ -297,7 +303,8 @@ internal sealed class IntegrationGateValidator : IIntegrationValidator
 
     private static IReadOnlyList<IntegrationCommand> CSharpCommands(
         IReadOnlyList<string> changed_paths,
-        string worktree)
+        string worktree,
+        bool agent_git_tests_selected)
     {
         var projects = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var raw_path in changed_paths)
@@ -311,6 +318,12 @@ internal sealed class IntegrationGateValidator : IIntegrationValidator
             var component = parts[1].EndsWith(".Tests", StringComparison.OrdinalIgnoreCase)
                 ? parts[1][..^".Tests".Length]
                 : parts[1];
+            if (agent_git_tests_selected &&
+                string.Equals(component, "AgentGit", StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             if (string.Equals(component, "GitSupport", StringComparison.OrdinalIgnoreCase))
             {
                 projects.Add("tools/GitTools.Tests/GitTools.Tests.csproj");
@@ -329,7 +342,11 @@ internal sealed class IntegrationGateValidator : IIntegrationValidator
             projects.Add("tools/Tools.slnx");
         }
         return projects
-            .Select(project => new IntegrationCommand("dotnet", ["test", project, "--nologo"]))
+            .Select(project => new IntegrationCommand(
+                "dotnet",
+                project == "tools/Tools.slnx" && agent_git_tests_selected
+                    ? ["test", project, "--nologo", "--filter", "FullyQualifiedName!~AgentGit.Tests"]
+                    : ["test", project, "--nologo"]))
             .ToArray();
     }
 

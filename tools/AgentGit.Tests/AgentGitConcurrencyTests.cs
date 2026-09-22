@@ -3,6 +3,7 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 namespace AgentGit.Tests;
 
 [TestClass]
+[DoNotParallelize]
 public sealed class AgentGitConcurrencyTests
 {
     [TestMethod]

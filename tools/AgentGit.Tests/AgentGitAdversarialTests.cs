@@ -7,6 +7,7 @@ namespace AgentGit.Tests;
 public sealed class AgentGitAdversarialTests
 {
     [TestMethod]
+    [DoNotParallelize]
     public async Task Inherited_git_directory_cannot_redirect_operation_to_another_repository()
     {
         using var fixture = new TemporaryAgentGitRepository();
