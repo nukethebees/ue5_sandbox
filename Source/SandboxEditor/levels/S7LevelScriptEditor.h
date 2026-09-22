@@ -42,6 +42,6 @@ class SS7LevelScriptEditor final : public SCompoundWidget {
     FDelegateHandle mode_changed_handle_{};
     TSharedPtr<SMultiLineEditableTextBox> source_{};
     TSharedPtr<STextBlock> state_{};
-    TSharedPtr<STextBlock> status_{};
+    TSharedPtr<SMultiLineEditableTextBox> status_{};
     float refresh_elapsed_seconds_{};
 };
