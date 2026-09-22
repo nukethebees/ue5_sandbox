@@ -19,6 +19,7 @@ public class SandboxCoreEngineTests : ModuleRules
             "UnrealEd",
             "SandboxCore",
             "SandboxCoreEngine",
+            "SbxCoreExperiments",
         });
     }
 }

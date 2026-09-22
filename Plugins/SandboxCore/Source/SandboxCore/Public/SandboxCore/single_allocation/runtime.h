@@ -21,7 +21,6 @@ using single_allocation_layout::ColumnLayoutStart;
 using single_allocation_layout::layout_align;
 using single_allocation_layout::LayoutCursor;
 using single_allocation_layout::LayoutPolicy;
-using single_allocation_layout::maximum_alignment;
 using single_allocation_layout::maximum_capacity;
 using single_allocation_layout::supported_leaf;
 using single_allocation_layout::try_allocation_bytes;

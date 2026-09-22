@@ -10,7 +10,7 @@ The runtime is part of SandboxCore, and production simulation storage uses gener
 
 ## Ownership and layout
 
-An owner stores one allocation pointer, one `int32` size and one `int32` capacity: 16 bytes on Win64. Each flattened leaf occupies a contiguous column in the allocation. Nested schemas flatten in depth-first declaration order using the fixed-SoA traversal.
+An owner stores one allocation pointer, one `int32` size and one `int32` capacity: 16 bytes on Win64. Each flattened leaf occupies a contiguous column in the allocation. Nested schemas flatten in depth-first declaration order from the resolved type graph.
 
 Capacity is a multiple of 64. Each column is aligned to `max(64, alignof(T))`, followed by its capacity elements and a **fixed 192-byte gap** before aligning the next column. There is no trailing gap. Stronger alignment can increase the effective gap. The allocation uses the maximum leaf alignment. This policy applies to both backends and every single-owner allocator variant, with no capacity-dependent exceptions.
 
@@ -37,11 +37,11 @@ auto selected = rows.slice(32, 64);
 auto readonly = selected.get_const_view();
 ```
 
-Views capture a range, not a growing count. A top-level compact handle re-resolves columns through owner state, so it can survive growth while its owner and captured range remain valid. Extracted spans, ordinary views and vector views retain allocation pointers and become stale after growth. Moving or destroying the owner invalidates handles pointing at its state. Shrinking/removal can invalidate a range or change which entities it denotes; views are not stable entity references.
+Views capture a range, not a growing count. A top-level compact handle re-resolves columns through owner state, so it can survive growth while its owner stays in place and its captured range remains valid. Extracted spans, ordinary views and vector views retain allocation pointers and become stale after growth. Do not use outstanding views across either owner move or after destruction. Move construction leaves handles referring to the moved-from state; move assignment replaces the destination's state, so its old handles can silently observe the moved-in allocation and even pass validation. This invalidation is a logical API contract, not runtime-tracked. Shrinking/removal can invalidate a range or change which entities it denotes; views are not stable entity references.
 
 Owner borrowing functions require an lvalue, preventing accidental views from temporary owners. Temporary non-owning views can still be sliced. Explicit pointer-based view construction remains the caller's responsibility: the owner and backing storage must outlive every use.
 
-Nested schemas consisting of matching scalar `xs`/`ys` or `xs`/`ys`/`zs` columns use shared compact vector views. Their Unreal names are `ml::soa::Vector2View<T>`, `Vector2ConstView<T>`, `Vector3View<T>` and `Vector3ConstView<T>` (available through `SandboxCore/single_allocation/vector_views.h`). The native backend exposes the corresponding names in `ml::native_soa`. Both use the same implementation; Unreal component accessors return TArrayViews and native accessors return standard spans.
+The explicit `:vector-components (xs ys)` or `(xs ys zs)` annotation marks the special Cartesian compact-vector shape; it requires exactly those ordered scalar arrays. The generator does not infer vector meaning from member names. Their Unreal names are `ml::soa::Vector2View<T>`, `Vector2ConstView<T>`, `Vector3View<T>` and `Vector3ConstView<T>` (available through `SandboxCore/single_allocation/vector_views.h`). The native backend exposes the corresponding names in `ml::native_soa`. Both use the same implementation; Unreal component accessors return TArrayViews and native accessors return standard spans.
 
 Each vector view is 16 bytes: a first-component pointer, a 32-bit byte stride, and a 32-bit row count. The generated layout guarantees equally spaced component columns. `slice`, `left` and `right` advance the first pointer while retaining the component stride, including for empty end slices. Mutable views convert to const views, but not the reverse. The vector view has no owner pointer or field-specific layout type.
 

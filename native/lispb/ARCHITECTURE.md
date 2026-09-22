@@ -41,8 +41,12 @@ views are thin wrappers over one `FooSingleViewImpl<Const>` accessor implementat
 stable pointer to owner state plus offset/count, resolve pointers lazily, and remain 16-byte
 trivially copyable handles. A retained compact handle survives allocation growth while the owner
 stays in place and its range remains valid; materialized spans and vector views do not. Moving an
-owner does not retarget outstanding handles. Owner borrowing methods constrain explicit-object
-parameters to lvalues, including const lvalues; temporary owners cannot yield views.
+owner is outside the view lifetime contract: move construction leaves handles referring to the
+moved-from state, while move assignment replaces the destination's state and can make its old
+handles observe the moved-in allocation without failing validation. Do not use outstanding views
+across either move or after destruction; this is a logical contract, not runtime-tracked
+invalidation. Owner borrowing methods constrain explicit-object parameters to lvalues, including
+const lvalues; temporary owners cannot yield views.
 
 Per-column generated code is intentional and inspectable. Do not replace it with a universal
 storage template or variadic copy mechanism. Native and Unreal retain their distinct allocation

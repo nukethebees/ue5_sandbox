@@ -3,8 +3,10 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <concepts>
 #include <limits>
 #include <span>
+#include <type_traits>
 #include <utility>
 #include <variant>
 
@@ -27,10 +29,23 @@ template <typename T>
 concept BorrowsOwner = requires(T&& owner) { std::forward<T>(owner).get_view(); };
 
 template <typename T>
+concept BorrowsOwnerRange = requires(T&& owner) { std::forward<T>(owner).get_view(0, 0); };
+
+template <typename T>
 concept BorrowsConstOwner = requires(T&& owner) { std::forward<T>(owner).get_const_view(); };
 
 template <typename T>
+concept BorrowsConstOwnerRange =
+    requires(T&& owner) { std::forward<T>(owner).get_const_view(0, 0); };
+
+template <typename T>
 concept SlicesOwner = requires(T&& owner) { std::forward<T>(owner).slice(0, 0); };
+
+template <typename T>
+concept BorrowsOwnerLeft = requires(T&& owner) { std::forward<T>(owner).left(0); };
+
+template <typename T>
+concept BorrowsOwnerRight = requires(T&& owner) { std::forward<T>(owner).right(0); };
 
 struct FSettingsAccessFixture : TSettingsAccess<FSettingsAccessFixture> {
     auto settings_state() const -> FSettingsState const& { return state; }
@@ -47,9 +62,34 @@ TEST(GeneratedSingleAllocationSoa, Ownership) {
     using Owner = CountedParents;
     static_assert(BorrowsOwner<Owner&> && BorrowsOwner<Owner const&>);
     static_assert(!BorrowsOwner<Owner> && !BorrowsOwner<Owner const>);
+    static_assert(!BorrowsOwnerRange<Owner> && !BorrowsOwnerRange<Owner const>);
     static_assert(!BorrowsConstOwner<Owner> && !BorrowsConstOwner<Owner const>);
+    static_assert(!BorrowsConstOwnerRange<Owner> && !BorrowsConstOwnerRange<Owner const>);
     static_assert(!SlicesOwner<Owner> && !SlicesOwner<Owner const>);
+    static_assert(!BorrowsOwnerLeft<Owner> && !BorrowsOwnerLeft<Owner const>);
+    static_assert(!BorrowsOwnerRight<Owner> && !BorrowsOwnerRight<Owner const>);
     static_assert(SlicesOwner<Owner::View> && SlicesOwner<Owner::ConstView>);
+    static_assert(std::same_as<decltype(std::declval<Owner&>().get_view()), Owner::View>);
+    static_assert(
+        std::same_as<decltype(std::declval<Owner const&>().get_view()), Owner::ConstView>);
+    static_assert(std::same_as<decltype(std::declval<Owner&>().get_view(0, 0)), Owner::View>);
+    static_assert(
+        std::same_as<decltype(std::declval<Owner const&>().get_view(0, 0)), Owner::ConstView>);
+    static_assert(std::same_as<decltype(std::declval<Owner&>().slice(0, 0)), Owner::View>);
+    static_assert(
+        std::same_as<decltype(std::declval<Owner const&>().slice(0, 0)), Owner::ConstView>);
+    static_assert(std::same_as<decltype(std::declval<Owner&>().left(0)), Owner::View>);
+    static_assert(std::same_as<decltype(std::declval<Owner const&>().left(0)), Owner::ConstView>);
+    static_assert(std::same_as<decltype(std::declval<Owner&>().right(0)), Owner::View>);
+    static_assert(std::same_as<decltype(std::declval<Owner const&>().right(0)), Owner::ConstView>);
+    static_assert(
+        std::same_as<decltype(std::declval<Owner&>().get_const_view()), Owner::ConstView>);
+    static_assert(
+        std::same_as<decltype(std::declval<Owner const&>().get_const_view()), Owner::ConstView>);
+    static_assert(
+        std::same_as<decltype(std::declval<Owner&>().get_const_view(0, 0)), Owner::ConstView>);
+    static_assert(std::same_as<decltype(std::declval<Owner const&>().get_const_view(0, 0)),
+                               Owner::ConstView>);
     static_assert(std::is_nothrow_move_constructible_v<Owner>);
     static_assert(std::is_nothrow_move_assignable_v<Owner>);
     static_assert(!std::is_copy_assignable_v<Owner>);
@@ -150,6 +190,15 @@ TEST(GeneratedSingleAllocationSoa, BulkMutationAndAliasing) {
         EXPECT_EQ(removed.get_view().view_children().values[i],
                   expected[static_cast<std::size_t>(i)] * 10);
     }
+}
+
+TEST(GeneratedSingleAllocationSoa, RejectsAliasedOrdinaryViewBeforeGrowth) {
+    SingleParents rows;
+    rows.set_num(SingleParents::capacity_granularity);
+    auto const source{rows.get_view().columns().get_const_view().left(1)};
+    ASSERT_EQ(rows.num(), rows.capacity());
+
+    EXPECT_DEATH({ rows.append_from(source); }, "");
 }
 
 TEST(GeneratedHomogeneousStorage, Operations) {

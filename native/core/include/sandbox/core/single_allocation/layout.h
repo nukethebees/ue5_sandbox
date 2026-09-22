@@ -154,13 +154,6 @@ constexpr auto capacity_block_bound(ColumnLayoutBase const& last) noexcept -> st
     return aligned_end + gaps * per_gap;
 }
 
-template <typename... Columns>
-constexpr auto maximum_alignment(Columns const&... columns) noexcept -> std::size_t {
-    std::size_t result{1};
-    ((result = result < columns.alignment ? columns.alignment : result), ...);
-    return result;
-}
-
 constexpr auto maximum_capacity(std::size_t const block_bytes) noexcept -> std::int32_t {
     if (block_bytes == 0) {
         return 0;
