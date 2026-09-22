@@ -1,6 +1,4 @@
 using UnrealBuildTool;
-using System;
-using System.IO;
 
 public class SandboxEditor : ModuleRules
 {
@@ -10,39 +8,6 @@ public class SandboxEditor : ModuleRules
         CppStandard = CppStandardVersion.Latest;
         MinCpuArchX64 = MinimumCpuArchitectureX64.AVX2;
         PublicIncludePaths.Add(ModuleDirectory);
-
-        if (Target.Platform != UnrealTargetPlatform.Win64 ||
-            Target.Architecture != UnrealArch.X64 ||
-            Target.bUseStaticCRT ||
-            (Target.Configuration == UnrealTargetConfiguration.Debug &&
-             Target.bDebugBuildsActuallyUseDebugCRT))
-        {
-            throw new BuildException(
-                "MaterialGen requires Win64 x64 with the dynamic release CRT.");
-        }
-
-        string repositoryRoot = Path.GetFullPath(Path.Combine(ModuleDirectory, "..", ".."));
-        string nativeToolchain = Environment.GetEnvironmentVariable("SANDBOX_NATIVE_TOOLCHAIN") ?? "clang-cl";
-        string nativeMaterialGenRoot = Path.Combine(repositoryRoot, "native", "lispb", "material");
-        string nativeMaterialGenLibrary = Path.Combine(
-            repositoryRoot,
-            "Binaries",
-            "Native",
-            "MaterialGen",
-            nativeToolchain,
-            Target.Platform.ToString(),
-            Target.Configuration.ToString(),
-            "sandbox_material_gen.lib");
-        PublicSystemIncludePaths.Add(Path.Combine(nativeMaterialGenRoot, "lib", "include"));
-        if (File.Exists(nativeMaterialGenLibrary))
-        {
-            PublicAdditionalLibraries.Add(nativeMaterialGenLibrary);
-        }
-        else
-        {
-            PublicSystemLibraryPaths.Add(Path.GetDirectoryName(nativeMaterialGenLibrary)!);
-            PublicSystemLibraries.Add(Path.GetFileName(nativeMaterialGenLibrary));
-        }
 
         // Core dependencies
         PublicDependencyModuleNames.AddRange(new string[]
@@ -75,7 +40,6 @@ public class SandboxEditor : ModuleRules
             "EngineSettings", // Engine configuration access
             "GraphEditor",
             "GenLab",
-            "MaterialEditor",
             "PropertyEditor",
             "RenderCore", // Often needed for material nodes
             "RHI",

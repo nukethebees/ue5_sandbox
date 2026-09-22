@@ -1,4 +1,4 @@
-#include "SandboxEditor/material/MaterialEmitter.h"
+#include "MaterialEmitter.h"
 
 #include <material_gen/CompiledMaterial.h>
 #include <material_gen/SourceHash.h>
@@ -58,7 +58,7 @@ auto package_bytes(UMaterial const& material) -> TArray<uint8> {
 
 }
 
-TEST_CLASS(MaterialSynth, "SandboxEditor.MaterialSynth")
+TEST_CLASS(MaterialSynth, "SandboxMaterialSynthesis.MaterialSynth")
 {
     TEST_METHOD(ComputesSha256)
     {

@@ -1,6 +1,6 @@
-#include "SandboxEditor/Commandlets/MaterialSynthCommandlet.h"
+#include "MaterialSynthCommandlet.h"
 
-#include "SandboxEditor/material/MaterialEmitter.h"
+#include "MaterialEmitter.h"
 
 #include <material_gen/CompiledMaterial.h>
 

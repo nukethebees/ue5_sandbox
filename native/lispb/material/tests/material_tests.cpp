@@ -277,7 +277,8 @@ TEST(MaterialFrontend, LowersMigratedMaterialsToNativeScaffoldingAndTypedShaderL
                       "EnergyShield.lispb",
         source_root / "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/"
                       "SpaceEnergyFieldDisplay.lispb",
-        source_root / "Source/Sandbox/materials/GlowingCross.lispb",
+        source_root / "Plugins/SandboxMaterialExprs/Source/SandboxMaterialSynthesisEditor/Private/"
+                      "materials/GlowingCross.lispb",
         source_root / "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/"
                       "VertexRipple.lispb",
         source_root / "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/"

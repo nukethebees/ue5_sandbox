@@ -21,8 +21,8 @@ struct EmitResult {
     TArray<FString> errors;
 };
 
-SANDBOXEDITOR_API auto emit(MaterialIR const& material,
-                            FString const& source_filename,
-                            FString const& source_hash) -> EmitResult;
+SANDBOXMATERIALSYNTHESISEDITOR_API auto emit(MaterialIR const& material,
+                                             FString const& source_filename,
+                                             FString const& source_hash) -> EmitResult;
 
 }

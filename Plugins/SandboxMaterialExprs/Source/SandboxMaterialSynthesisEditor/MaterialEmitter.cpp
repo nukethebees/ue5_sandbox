@@ -1,4 +1,4 @@
-#include "SandboxEditor/material/MaterialEmitter.h"
+#include "MaterialEmitter.h"
 
 #include "AssetRegistry/AssetRegistryModule.h"
 #include "Engine/Texture.h"

@@ -24,6 +24,11 @@
 			"Name": "SandboxMaterialExprsEd",
 			"Type": "Editor",
 			"LoadingPhase": "Default"
+		},
+		{
+			"Name": "SandboxMaterialSynthesisEditor",
+			"Type": "Editor",
+			"LoadingPhase": "Default"
 		}
 	]
 }

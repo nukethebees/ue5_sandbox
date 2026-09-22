@@ -51,7 +51,8 @@ add_material_ir("energy shield" energy-shield-material
 add_material_ir("space energy field" space-energy-field-material
   "${SHADER_MATERIAL_SOURCE_ROOT}/SpaceEnergyFieldDisplay.lispb" SpaceEnergyField MIGRATED_MATERIAL_ARTIFACTS)
 add_material_ir("glowing cross" glowing-cross-material
-  "Source/Sandbox/materials/GlowingCross.lispb" GlowingCross MIGRATED_MATERIAL_ARTIFACTS)
+  "Plugins/SandboxMaterialExprs/Source/SandboxMaterialSynthesisEditor/Private/materials/GlowingCross.lispb"
+  GlowingCross MIGRATED_MATERIAL_ARTIFACTS)
 add_material_ir("vertex ripple" vertex-ripple-material
   "${SHADER_MATERIAL_SOURCE_ROOT}/VertexRipple.lispb" VertexRipple MIGRATED_MATERIAL_ARTIFACTS)
 add_material_ir("construction spawn" construction-spawn-material

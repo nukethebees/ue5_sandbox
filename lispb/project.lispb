@@ -119,7 +119,7 @@
     :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/SpaceEnergyFieldDisplay.lispb"
     :artifact (project-path "Intermediate/MaterialGen/SpaceEnergyField.smat"))
   (material glowing-cross-material
-    :source "Source/Sandbox/materials/GlowingCross.lispb"
+    :source "Plugins/SandboxMaterialExprs/Source/SandboxMaterialSynthesisEditor/Private/materials/GlowingCross.lispb"
     :artifact (project-path "Intermediate/MaterialGen/GlowingCross.smat"))
   (material vertex-ripple-material
     :source "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/VertexRipple.lispb"

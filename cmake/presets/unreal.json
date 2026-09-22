@@ -458,7 +458,7 @@
           "label": "^all$"
         },
         "exclude": {
-          "name": "^(SandboxISMC\\.RenderTests|Sandbox\\.SparkRenderTests|SandboxShaders\\.MaterialCompilation|SandboxEditor\\.MaterialSynth)$"
+          "name": "^(SandboxISMC\\.RenderTests|Sandbox\\.SparkRenderTests|SandboxShaders\\.MaterialCompilation|SandboxMaterialSynthesis\\.MaterialSynth)$"
         }
       }
     },
@@ -491,7 +491,7 @@
           "label": "^all$"
         },
         "exclude": {
-          "name": "^(SandboxISMC\\.RenderTests|Sandbox\\.SparkRenderTests|SandboxShaders\\.MaterialCompilation|SandboxEditor\\.MaterialSynth)$"
+          "name": "^(SandboxISMC\\.RenderTests|Sandbox\\.SparkRenderTests|SandboxShaders\\.MaterialCompilation|SandboxMaterialSynthesis\\.MaterialSynth)$"
         }
       }
     },

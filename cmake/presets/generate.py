@@ -534,7 +534,7 @@ def make_unreal_document() -> dict[str, Any]:
                 "filter": {
                     "include": {"label": "^all$"},
                     "exclude": {
-                        "name": "^(SandboxISMC\\.RenderTests|Sandbox\\.SparkRenderTests|SandboxShaders\\.MaterialCompilation|SandboxEditor\\.MaterialSynth)$"
+                        "name": "^(SandboxISMC\\.RenderTests|Sandbox\\.SparkRenderTests|SandboxShaders\\.MaterialCompilation|SandboxMaterialSynthesis\\.MaterialSynth)$"
                     },
                 },
             },
@@ -564,7 +564,7 @@ def make_unreal_document() -> dict[str, Any]:
                     "filter": {
                         "include": {"label": "^all$"},
                         "exclude": {
-                            "name": "^(SandboxISMC\\.RenderTests|Sandbox\\.SparkRenderTests|SandboxShaders\\.MaterialCompilation|SandboxEditor\\.MaterialSynth)$"
+                            "name": "^(SandboxISMC\\.RenderTests|Sandbox\\.SparkRenderTests|SandboxShaders\\.MaterialCompilation|SandboxMaterialSynthesis\\.MaterialSynth)$"
                         },
                     },
                 },
