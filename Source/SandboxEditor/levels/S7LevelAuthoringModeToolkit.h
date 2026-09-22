@@ -24,6 +24,7 @@ class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
     auto assign_selected_must_survive() -> FReply;
     auto assign_selected_required_kills() -> FReply;
     auto clear_selected_objectives() -> FReply;
+    auto import_orchestrator_mission() -> FReply;
     auto load_s7() -> FReply;
     auto open_script_editor() -> FReply;
     auto preview_apply() -> FReply;

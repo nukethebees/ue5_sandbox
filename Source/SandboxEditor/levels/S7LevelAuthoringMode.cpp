@@ -5,6 +5,7 @@
 #include "SandboxEditor/levels/S7LevelAuthoringModeToolkit.h"
 #include "SandboxEditor/levels/S7LevelObserverCamera.h"
 
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameS7/LevelDefinitionReader.h>
 #include <SpaceGameS7/LevelDefinitionWriter.h>
 #include <SpaceGameS7/LevelScriptCatalog.h>
@@ -586,6 +587,93 @@ void US7LevelAuthoringMode::assign_selected_objective(int32 const role) {
     }
     set_status(FText::Format(LOCTEXT("AssignedObjectives", "Updated objectives for {0} entities."),
                              selected.Num()));
+    changed_.Broadcast();
+}
+
+void US7LevelAuthoringMode::import_orchestrator_mission() {
+    auto* const level{current_level()};
+    if (!IsValid(level) || !document_.IsValid()) {
+        set_status(LOCTEXT("NoDocumentForMissionImport",
+                           "Open a level with an S7 authoring document first."));
+        changed_.Broadcast();
+        return;
+    }
+
+    ATestBatchOrchestrator* orchestrator{};
+    for (auto const actor : level->Actors) {
+        auto* const candidate{Cast<ATestBatchOrchestrator>(actor.Get())};
+        if (!IsValid(candidate)) {
+            continue;
+        }
+        if (orchestrator) {
+            set_status(LOCTEXT("MultipleMissionOrchestrators",
+                               "The current level contains multiple batch orchestrators."));
+            changed_.Broadcast();
+            return;
+        }
+        orchestrator = candidate;
+    }
+    if (!orchestrator) {
+        set_status(LOCTEXT("NoMissionOrchestrator",
+                           "The current level has no batch orchestrator to import from."));
+        changed_.Broadcast();
+        return;
+    }
+
+    auto const& mission{orchestrator->get_mission_definition()};
+    auto const timed{mission.mission_mode == ETestMissionMode::SurviveTime ||
+                     mission.mission_mode == ETestMissionMode::KillEnemiesWithinTime};
+    auto const kills{mission.mission_mode == ETestMissionMode::KillEnemies ||
+                     mission.mission_mode == ETestMissionMode::KillEnemiesWithinTime};
+    if ((timed && (!FMath::IsFinite(mission.target_time) || mission.target_time <= 0.0f)) ||
+        (kills && mission.kill_target < 1)) {
+        set_status(LOCTEXT("InvalidOrchestratorMission",
+                           "The orchestrator has an invalid mission time or kill target."));
+        changed_.Broadcast();
+        return;
+    }
+
+    TSet<AActor const*> bound_actors;
+    for (auto const& binding : document_->entities) {
+        if (IsValid(binding.actor)) {
+            bound_actors.Add(binding.actor);
+        }
+    }
+    auto const references_are_bound = [&bound_actors](TArray<TObjectPtr<AActor>> const& actors) {
+        for (auto const actor : actors) {
+            if (!IsValid(actor) || !bound_actors.Contains(actor)) {
+                return false;
+            }
+        }
+        return true;
+    };
+    auto const& startup{mission.startup_data};
+    if (!references_are_bound(startup.hero_entities) ||
+        !references_are_bound(startup.entities_must_survive) ||
+        !references_are_bound(startup.entities_required_to_kill)) {
+        set_status(LOCTEXT("UnboundMissionActors",
+                           "Mission objectives reference actors that are not adopted S7 entities. "
+                           "Use Repair / Adopt Actors, then import again."));
+        changed_.Broadcast();
+        return;
+    }
+
+    FScopedTransaction transaction{
+        LOCTEXT("ImportOrchestratorMissionTransaction", "Import Batch Orchestrator Mission")};
+    document_->Modify();
+    document_->mission.mode = mission.mission_mode;
+    document_->mission.time_limit_seconds = mission.target_time;
+    document_->mission.use_explicit_kill_count = kills;
+    document_->mission.kill_count = mission.kill_target;
+    document_->mission.heroes = startup.hero_entities;
+    document_->mission.must_survive = startup.entities_must_survive;
+    document_->mission.required_kills = startup.entities_required_to_kill;
+    if (preview_.IsSet()) {
+        preview_.Reset();
+        preview_stale_ = true;
+    }
+    set_status(LOCTEXT("ImportedOrchestratorMission",
+                       "Imported the batch orchestrator mission into the S7 document."));
     changed_.Broadcast();
 }
 

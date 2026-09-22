@@ -90,6 +90,11 @@ void FS7LevelAuthoringModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_
                       [SNew(SButton)
                            .Text(LOCTEXT("OpenScriptEditor", "Open Script Editor"))
                            .OnClicked(this, &FS7LevelAuthoringModeToolkit::open_script_editor)] +
+                  SUniformGridPanel::Slot(1, 6)
+                      [SNew(SButton)
+                           .Text(LOCTEXT("ImportMission", "Import Orchestrator Mission"))
+                           .OnClicked(this,
+                                      &FS7LevelAuthoringModeToolkit::import_orchestrator_mission)] +
                   SUniformGridPanel::Slot(
                       0, 7)[SAssignNew(entity_id_, SEditableTextBox)
                                 .HintText(LOCTEXT("EntityIdHint", "Selected entity ID"))] +
@@ -142,6 +147,7 @@ FORWARD_ACTION(assign_selected_heroes)
 FORWARD_ACTION(assign_selected_must_survive)
 FORWARD_ACTION(assign_selected_required_kills)
 FORWARD_ACTION(clear_selected_objectives)
+FORWARD_ACTION(import_orchestrator_mission)
 FORWARD_ACTION(load_s7)
 auto FS7LevelAuthoringModeToolkit::rename_selected_entity() -> FReply {
     if (mode_.IsValid() && entity_id_.IsValid()) {
