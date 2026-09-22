@@ -185,6 +185,10 @@ class TemporarySchema {
     void write_source(std::string const& name, std::string_view const text) const {
         write(name, text);
     }
+    auto read_source(std::string const& name) const -> std::string {
+        std::ifstream input{path(name), std::ios::binary};
+        return {std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
+    }
     void replace_module_text(std::string_view const old_text,
                              std::string_view const new_text) const {
         std::ifstream input{path("modules.lispb"), std::ios::binary};
@@ -4176,6 +4180,483 @@ TEST(EditableSchemaDocument, CreatesAndReloadsEveryEditableEmptyModuleKind) {
         reloaded.manifest().modules[original_module_count + 5]));
     EXPECT_TRUE(std::holds_alternative<codegen::SoaModuleSchema>(
         reloaded.manifest().modules[original_module_count + 6]));
+}
+
+TEST(EditableSchemaDocument, DeletesSourceBackedMiddleModuleAndRestoresExactIdentity) {
+    TemporarySchema files;
+    files.write_source("types.lispb", "; No registered aliases.\n");
+    auto const deleted_form{std::string{R"((scalar-module middle
+  :header "Middle.h"
+  :namespace demo
+  (integer-scalar First :signed false :minimum 0 :maximum 3 :bit-width auto)
+  (integer-scalar Second :signed false :minimum 0 :maximum 7 :bit-width auto)))"}};
+    auto const original{std::string{R"(; Preserve this file-level introduction.
+(scalar-module first
+  :header "First.h"
+  :namespace demo
+  (integer-scalar Before :signed false :minimum 0 :maximum 1 :bit-width auto))
+
+; Keep this unusual inter-module comment and spacing.
+
+)"} + deleted_form + R"(
+
+(scalar-module last
+  :header "Last.h"
+  :namespace demo
+  (integer-scalar After :signed false :minimum 0 :maximum 15 :bit-width auto))
+; Preserve the trailing comment.
+)"};
+    files.write_source("modules.lispb", original);
+    auto expected{original};
+    expected.erase(expected.find(deleted_form), deleted_form.size());
+
+    auto document{files.load()};
+    ASSERT_EQ(document.manifest().modules.size(), 3U);
+    ASSERT_EQ(document.source_files().size(), 2U);
+    auto const source_path{document.source_files()[1].path};
+    auto const before{declaration_id(document, "first", "Before", "demo")};
+    auto const first{declaration_id(document, "middle", "First", "demo")};
+    auto const second{declaration_id(document, "middle", "Second", "demo")};
+    auto const after{declaration_id(document, "last", "After", "demo")};
+    ASSERT_NE(document.declaration(before), nullptr);
+    ASSERT_NE(document.declaration(first), nullptr);
+    ASSERT_NE(document.declaration(second), nullptr);
+    ASSERT_NE(document.declaration(after), nullptr);
+    auto const first_info{*document.declaration(first)};
+    auto const second_info{*document.declaration(second)};
+    auto const after_info{*document.declaration(after)};
+    auto expect_declaration = [](DeclarationInfo const* actual, DeclarationInfo const& expected) {
+        ASSERT_NE(actual, nullptr);
+        EXPECT_EQ(actual->id, expected.id);
+        EXPECT_EQ(actual->identity, expected.identity);
+        EXPECT_EQ(actual->module_index, expected.module_index);
+        EXPECT_EQ(actual->declaration_index, expected.declaration_index);
+        EXPECT_EQ(actual->source, expected.source);
+    };
+    ASSERT_TRUE(first_info.source.has_value());
+    ASSERT_TRUE(second_info.source.has_value());
+    EXPECT_EQ(first_info.module_index, 1U);
+    EXPECT_EQ(first_info.declaration_index, 0U);
+    EXPECT_EQ(second_info.declaration_index, 1U);
+    auto const original_revision{document.revision()};
+
+    auto deleted{document.apply(DeleteModule{.module_index = 1})};
+    ASSERT_TRUE(deleted.has_value()) << deleted.error().message;
+    ASSERT_TRUE(*deleted);
+    EXPECT_TRUE(document.dirty());
+    EXPECT_TRUE(document.can_undo());
+    EXPECT_GT(document.revision(), original_revision);
+    ASSERT_EQ(document.manifest().modules.size(), 2U);
+    EXPECT_EQ(document.declarations().size(), 2U);
+    EXPECT_EQ(std::get<codegen::ScalarModuleSchema>(document.manifest().modules[0]).settings.name,
+              "first");
+    EXPECT_EQ(std::get<codegen::ScalarModuleSchema>(document.manifest().modules[1]).settings.name,
+              "last");
+    EXPECT_EQ(document.declaration(first), nullptr);
+    EXPECT_EQ(document.declaration(second), nullptr);
+    EXPECT_FALSE(document.types().find_declared("middle", "First").has_value());
+    EXPECT_FALSE(document.types().find_declared("middle", "Second").has_value());
+    ASSERT_NE(document.declaration(before), nullptr);
+    ASSERT_NE(document.declaration(after), nullptr);
+    EXPECT_EQ(document.declaration(before)->module_index, 0U);
+    EXPECT_EQ(document.declaration(after)->module_index, 1U);
+    EXPECT_EQ(document.declaration(after)->id, after);
+    EXPECT_TRUE(document.types().find_declared("first", "Before").has_value());
+    EXPECT_TRUE(document.types().find_declared("last", "After").has_value());
+    EXPECT_EQ(document.source_files().size(), 2U);
+    EXPECT_EQ(document.source_files()[1].path, source_path);
+    EXPECT_TRUE(std::filesystem::exists(source_path));
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().path, source_path);
+    EXPECT_EQ(preview->front().original, original);
+    EXPECT_EQ(preview->front().updated, expected);
+
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_EQ(document.manifest().modules.size(), 3U);
+    EXPECT_EQ(std::get<codegen::ScalarModuleSchema>(document.manifest().modules[1]).settings.name,
+              "middle");
+    expect_declaration(document.declaration(first), first_info);
+    expect_declaration(document.declaration(second), second_info);
+    expect_declaration(document.declaration(after), after_info);
+    EXPECT_TRUE(document.types().find_declared("middle", "First").has_value());
+    EXPECT_TRUE(document.types().find_declared("middle", "Second").has_value());
+    EXPECT_FALSE(document.dirty());
+    EXPECT_TRUE(document.can_redo());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+
+    ASSERT_TRUE(document.redo().value());
+    EXPECT_TRUE(document.dirty());
+    ASSERT_EQ(document.manifest().modules.size(), 2U);
+    EXPECT_EQ(document.declaration(first), nullptr);
+    EXPECT_EQ(document.declaration(second), nullptr);
+    ASSERT_NE(document.declaration(after), nullptr);
+    EXPECT_EQ(document.declaration(after)->module_index, 1U);
+    EXPECT_EQ(document.declaration(after)->id, after);
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated, expected);
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    ASSERT_EQ(saved->size(), 1U);
+    EXPECT_EQ(saved->front(), source_path);
+    EXPECT_FALSE(document.dirty());
+    EXPECT_TRUE(std::filesystem::exists(source_path));
+    EXPECT_EQ(files.read_source("modules.lispb"), expected);
+    EXPECT_EQ(files.read_source("types.lispb"), "; No registered aliases.\n");
+    auto reloaded{files.load()};
+    ASSERT_EQ(reloaded.manifest().modules.size(), 2U);
+    EXPECT_FALSE(reloaded.types().find_declared("middle", "First").has_value());
+    EXPECT_FALSE(reloaded.types().find_declared("middle", "Second").has_value());
+    EXPECT_TRUE(reloaded.types().find_declared("first", "Before").has_value());
+    EXPECT_TRUE(reloaded.types().find_declared("last", "After").has_value());
+    EXPECT_TRUE(reloaded.find_declaration(after_info.identity).has_value());
+    EXPECT_EQ(reloaded.source_files()[1].path, source_path);
+}
+
+TEST(EditableSchemaDocument, RejectsDeletionOfTheLastModuleWithoutChangingDraft) {
+    TemporarySchema files;
+    files.write_source("types.lispb", "");
+    files.write_source("modules.lispb", R"((scalar-module only
+  :header "Only.h"
+  :namespace demo
+  (integer-scalar Value :signed false :minimum 0 :maximum 3 :bit-width auto))
+)");
+    auto document{files.load()};
+    auto const declaration{declaration_id(document, "only", "Value", "demo")};
+    auto const revision{document.revision()};
+    auto const type_count{document.types().types().size()};
+
+    auto deleted{document.apply(DeleteModule{.module_index = 0})};
+    ASSERT_FALSE(deleted.has_value());
+    EXPECT_NE(deleted.error().message.find("retain at least one module"), std::string::npos);
+    ASSERT_EQ(document.manifest().modules.size(), 1U);
+    ASSERT_EQ(document.declarations().size(), 1U);
+    EXPECT_EQ(document.declarations().front().id, declaration);
+    EXPECT_TRUE(document.types().find_declared("only", "Value").has_value());
+    EXPECT_EQ(document.types().types().size(), type_count);
+    EXPECT_EQ(document.revision(), revision);
+    EXPECT_FALSE(document.dirty());
+    EXPECT_FALSE(document.can_undo());
+    EXPECT_FALSE(document.can_redo());
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+}
+
+TEST(EditableSchemaDocument, RejectsDeletionWhenAnotherModuleUsesADeclaration) {
+    TemporarySchema files;
+    files.write_source("types.lispb", "");
+    files.write_source("modules.lispb", R"((scalar-module targets
+  :header "Targets.h"
+  :namespace demo
+  (integer-scalar Target :signed false :minimum 0 :maximum 3 :bit-width auto))
+
+(record-module consumers
+  :header "Consumers.h"
+  :namespace demo
+  (record Consumer
+    (member value demo::Target)))
+)");
+    auto document{files.load()};
+    auto const target{declaration_id(document, "targets", "Target", "demo")};
+    auto const consumer{declaration_id(document, "consumers", "Consumer", "demo")};
+    auto const revision{document.revision()};
+    auto const type_count{document.types().types().size()};
+
+    auto deleted{document.apply(DeleteModule{.module_index = 0})};
+    ASSERT_FALSE(deleted.has_value());
+    EXPECT_NE(deleted.error().message.find("Consumer"), std::string::npos);
+    ASSERT_EQ(document.manifest().modules.size(), 2U);
+    ASSERT_EQ(document.declarations().size(), 2U);
+    ASSERT_NE(document.declaration(target), nullptr);
+    ASSERT_NE(document.declaration(consumer), nullptr);
+    EXPECT_EQ(document.declaration(target)->module_index, 0U);
+    EXPECT_EQ(document.declaration(consumer)->module_index, 1U);
+    EXPECT_TRUE(document.types().find_declared("targets", "Target").has_value());
+    EXPECT_TRUE(document.types().find_declared("consumers", "Consumer").has_value());
+    EXPECT_EQ(document.types().types().size(), type_count);
+    EXPECT_EQ(document.revision(), revision);
+    EXPECT_FALSE(document.dirty());
+    EXPECT_FALSE(document.can_undo());
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+}
+
+TEST(EditableSchemaDocument, AllowsDeletionOfEntireModuleWithInternalDependencies) {
+    TemporarySchema files;
+    files.write_source("types.lispb", "");
+    files.write_source("modules.lispb", R"((record-module related
+  :header "Related.h"
+  :namespace demo
+  (record Foo (member value std::uint8_t))
+  (record Bar (member foo demo::Foo)))
+
+(scalar-module survivor
+  :header "Survivor.h"
+  :namespace demo
+  (integer-scalar Keep :signed false :minimum 0 :maximum 1 :bit-width auto))
+)");
+    auto document{files.load()};
+    auto const foo{declaration_id(document, "related", "Foo", "demo")};
+    auto const bar{declaration_id(document, "related", "Bar", "demo")};
+    auto const keep{declaration_id(document, "survivor", "Keep", "demo")};
+
+    auto deleted{document.apply(DeleteModule{.module_index = 0})};
+    ASSERT_TRUE(deleted.has_value()) << deleted.error().message;
+    ASSERT_TRUE(*deleted);
+    EXPECT_EQ(document.declaration(foo), nullptr);
+    EXPECT_EQ(document.declaration(bar), nullptr);
+    ASSERT_NE(document.declaration(keep), nullptr);
+    EXPECT_EQ(document.declaration(keep)->module_index, 0U);
+    EXPECT_FALSE(document.types().find_declared("related", "Foo").has_value());
+    EXPECT_FALSE(document.types().find_declared("related", "Bar").has_value());
+    EXPECT_TRUE(document.types().find_declared("survivor", "Keep").has_value());
+}
+
+TEST(EditableSchemaDocument, RejectsDeletionOfRegisteredDeclarationWithoutChangingDraft) {
+    TemporarySchema files;
+    files.write_source("types.lispb", R"((type target
+  :spelling "demo::Target"
+  :header "Targets.h")
+)");
+    files.write_source("modules.lispb", R"((scalar-module targets
+  :header "Targets.h"
+  :namespace demo
+  (integer-scalar Target :signed false :minimum 0 :maximum 3 :bit-width auto))
+
+(scalar-module survivor
+  :header "Survivor.h"
+  :namespace demo
+  (integer-scalar Keep :signed false :minimum 0 :maximum 1 :bit-width auto))
+)");
+    auto document{files.load()};
+    auto const target{declaration_id(document, "targets", "Target", "demo")};
+    auto const revision{document.revision()};
+    auto const type_count{document.types().types().size()};
+
+    auto deleted{document.apply(DeleteModule{.module_index = 0})};
+    ASSERT_FALSE(deleted.has_value());
+    EXPECT_NE(deleted.error().message.find("registered as '@target'"), std::string::npos);
+    ASSERT_EQ(document.manifest().modules.size(), 2U);
+    ASSERT_EQ(document.declarations().size(), 2U);
+    EXPECT_EQ(document.declarations().front().id, target);
+    EXPECT_TRUE(document.types().find_declared("targets", "Target").has_value());
+    EXPECT_TRUE(document.types().find_registered("target").has_value());
+    EXPECT_EQ(document.types().types().size(), type_count);
+    EXPECT_EQ(document.revision(), revision);
+    EXPECT_FALSE(document.dirty());
+    EXPECT_FALSE(document.can_undo());
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+}
+
+TEST(EditableSchemaDocument, RestoresPendingModuleOwnershipAcrossIndexShifts) {
+    TemporarySchema files;
+    files.write_source("types.lispb", "");
+    files.write_source("modules.lispb", R"((scalar-module first
+  :header "First.h"
+  :namespace demo
+  (integer-scalar First :signed false :minimum 0 :maximum 1 :bit-width auto))
+
+(scalar-module middle
+  :header "Middle.h"
+  :namespace demo
+  (integer-scalar Middle :signed false :minimum 0 :maximum 3 :bit-width auto))
+)");
+    files.write_source("other.lispb", R"((scalar-module other
+  :header "Other.h"
+  :namespace demo
+  (integer-scalar Other :signed false :minimum 0 :maximum 7 :bit-width auto))
+)");
+    auto document{files.load_with_module_source("other.lispb")};
+    ASSERT_EQ(document.manifest().modules.size(), 3U);
+    ASSERT_EQ(document.source_files().size(), 3U);
+    auto const middle{declaration_id(document, "middle", "Middle", "demo")};
+    auto const other{declaration_id(document, "other", "Other", "demo")};
+    auto created_module{document.apply(
+        CreateModule{.source_file_index = 2,
+                     .schema = codegen::ScalarModuleSchema{
+                         .settings = codegen::ModuleSettings{.name = "pending",
+                                                             .header = "Pending.h",
+                                                             .namespace_name = "demo"},
+                         .scalars = {}}})};
+    ASSERT_TRUE(created_module.has_value()) << created_module.error().message;
+    ASSERT_TRUE(*created_module);
+
+    auto const pending{document.allocate_declaration_id()};
+    auto created_declaration{document.apply(CreateIntegerScalar{
+        .declaration = pending,
+        .module_index = 3,
+        .schema =
+            codegen::IntegerScalarSchema{.name = "Pending",
+                                         .signedness = false,
+                                         .minimum_value = 0,
+                                         .maximum_value = 3,
+                                         .bit_width = 2,
+                                         .named_codes = {},
+                                         .relationship = std::nullopt,
+                                         .cpp_emission = codegen::IntegerScalarCppEmission::none,
+                                         .cpp_type = std::nullopt},
+        .insertion_index = std::nullopt})};
+    ASSERT_TRUE(created_declaration.has_value()) << created_declaration.error().message;
+    ASSERT_TRUE(*created_declaration);
+    ASSERT_NE(document.declaration(pending), nullptr);
+    EXPECT_EQ(document.declaration(pending)->module_index, 3U);
+    EXPECT_FALSE(document.declaration(pending)->source.has_value());
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().path, files.path("other.lispb"));
+    EXPECT_NE(preview->front().updated.find("(scalar-module pending"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(integer-scalar Pending"), std::string::npos);
+
+    auto deleted_middle{document.apply(DeleteModule{.module_index = 1})};
+    ASSERT_TRUE(deleted_middle.has_value()) << deleted_middle.error().message;
+    ASSERT_TRUE(*deleted_middle);
+    ASSERT_EQ(document.manifest().modules.size(), 3U);
+    EXPECT_EQ(document.declaration(middle), nullptr);
+    ASSERT_NE(document.declaration(other), nullptr);
+    ASSERT_NE(document.declaration(pending), nullptr);
+    EXPECT_EQ(document.declaration(other)->module_index, 1U);
+    EXPECT_EQ(document.declaration(pending)->module_index, 2U);
+    EXPECT_FALSE(document.declaration(pending)->source.has_value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 2U);
+    EXPECT_EQ((*preview)[0].path, files.path("modules.lispb"));
+    EXPECT_EQ((*preview)[1].path, files.path("other.lispb"));
+    EXPECT_NE((*preview)[1].updated.find("(integer-scalar Pending"), std::string::npos);
+
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_NE(document.declaration(middle), nullptr);
+    ASSERT_NE(document.declaration(other), nullptr);
+    ASSERT_NE(document.declaration(pending), nullptr);
+    EXPECT_EQ(document.declaration(middle)->module_index, 1U);
+    EXPECT_EQ(document.declaration(other)->module_index, 2U);
+    EXPECT_EQ(document.declaration(pending)->module_index, 3U);
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().path, files.path("other.lispb"));
+
+    auto deleted_pending{document.apply(DeleteModule{.module_index = 3})};
+    ASSERT_TRUE(deleted_pending.has_value()) << deleted_pending.error().message;
+    ASSERT_TRUE(*deleted_pending);
+    EXPECT_EQ(document.declaration(pending), nullptr);
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_NE(document.declaration(pending), nullptr);
+    EXPECT_EQ(document.declaration(pending)->id, pending);
+    EXPECT_EQ(document.declaration(pending)->module_index, 3U);
+    EXPECT_FALSE(document.declaration(pending)->source.has_value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().path, files.path("other.lispb"));
+    EXPECT_NE(preview->front().updated.find("(integer-scalar Pending"), std::string::npos);
+
+    ASSERT_TRUE(document.redo().value());
+    EXPECT_EQ(document.declaration(pending), nullptr);
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+}
+
+TEST(EditableSchemaDocument, PreservesDeclarationTombstonesAcrossModuleDeletionHistory) {
+    TemporarySchema files;
+    files.write_source("types.lispb", "");
+    auto const doomed_form{std::string{
+        "(scalar-module doomed\n"
+        "  :header \"Doomed.h\"\n"
+        "  :namespace demo\n"
+        "  (integer-scalar Alpha :signed false :minimum 0 :maximum 1 :bit-width auto)\n"
+        "  (integer-scalar Beta :signed false :minimum 0 :maximum 3 :bit-width auto))"}};
+    auto const beta_form{
+        std::string{"(integer-scalar Beta :signed false :minimum 0 :maximum 3 :bit-width auto)"}};
+    auto const original{doomed_form + R"(
+
+(scalar-module survivor
+  :header "Survivor.h"
+  :namespace demo
+  (integer-scalar Keep :signed false :minimum 0 :maximum 7 :bit-width auto))
+)"};
+    files.write_source("modules.lispb", original);
+    auto after_declaration_delete{original};
+    after_declaration_delete.erase(after_declaration_delete.find(beta_form), beta_form.size());
+    auto after_module_delete{original};
+    after_module_delete.erase(after_module_delete.find(doomed_form), doomed_form.size());
+
+    auto document{files.load()};
+    auto const alpha{declaration_id(document, "doomed", "Alpha", "demo")};
+    auto const beta{declaration_id(document, "doomed", "Beta", "demo")};
+    auto const keep{declaration_id(document, "survivor", "Keep", "demo")};
+    ASSERT_NE(document.declaration(beta), nullptr);
+    auto const beta_info{*document.declaration(beta)};
+
+    auto deleted_declaration{document.apply(DeleteIntegerScalar{.declaration = beta})};
+    ASSERT_TRUE(deleted_declaration.has_value()) << deleted_declaration.error().message;
+    ASSERT_TRUE(*deleted_declaration);
+    EXPECT_EQ(document.declaration(beta), nullptr);
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated, after_declaration_delete);
+
+    auto deleted_module{document.apply(DeleteModule{.module_index = 0})};
+    ASSERT_TRUE(deleted_module.has_value()) << deleted_module.error().message;
+    ASSERT_TRUE(*deleted_module);
+    EXPECT_EQ(document.declaration(alpha), nullptr);
+    EXPECT_EQ(document.declaration(beta), nullptr);
+    ASSERT_NE(document.declaration(keep), nullptr);
+    EXPECT_EQ(document.declaration(keep)->module_index, 0U);
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated, after_module_delete);
+
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_NE(document.declaration(alpha), nullptr);
+    EXPECT_EQ(document.declaration(alpha)->id, alpha);
+    EXPECT_EQ(document.declaration(beta), nullptr);
+    ASSERT_NE(document.declaration(keep), nullptr);
+    EXPECT_EQ(document.declaration(keep)->module_index, 1U);
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated, after_declaration_delete);
+
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_NE(document.declaration(beta), nullptr);
+    EXPECT_EQ(document.declaration(beta)->id, beta_info.id);
+    EXPECT_EQ(document.declaration(beta)->module_index, beta_info.module_index);
+    EXPECT_EQ(document.declaration(beta)->declaration_index, beta_info.declaration_index);
+    EXPECT_EQ(document.declaration(beta)->source, beta_info.source);
+    EXPECT_FALSE(document.dirty());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_TRUE(preview->empty());
+
+    ASSERT_TRUE(document.redo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated, after_declaration_delete);
+    ASSERT_TRUE(document.redo().value());
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_EQ(preview->front().updated, after_module_delete);
 }
 
 TEST(EditableSchemaDocument, MovesDeclarationsAcrossCompatibleModuleSources) {
