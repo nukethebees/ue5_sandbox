@@ -1,4 +1,5 @@
 #include <codegen/generator.h>
+#include <codegen/validation.h>
 
 #include <gtest/gtest.h>
 
@@ -1909,6 +1910,20 @@ TEST(Validation, NormalModuleMatchesSoaAllocatorVariantRestrictions) {
     auto const files{render_modules(lower_modules(manifest_with(std::move(module))))};
     ASSERT_EQ(files.size(), 2U);
     EXPECT_NE(files.front().content.find("struct CustomData"), std::string::npos);
+}
+
+TEST(Validation, FieldMaskSoaCannotUseArrayAllocatorVariants) {
+    auto const allocator{SoaAllocatorVariant{"Custom", TypeRef{"FAllocator"}}};
+    auto const masked{valid_mask_soa_module().structs.front()};
+    auto normal{normal_soa_module(masked, {allocator})};
+    auto normal_manifest{manifest_with(std::move(normal))};
+    EXPECT_THROW(validate_manifest(normal_manifest), std::invalid_argument);
+    EXPECT_THROW(lower_modules(std::move(normal_manifest)), std::invalid_argument);
+
+    auto legacy{valid_mask_soa_module()};
+    legacy.array_allocators = {allocator};
+    auto legacy_manifest{manifest_with(std::move(legacy))};
+    EXPECT_THROW(validate_manifest(legacy_manifest), std::invalid_argument);
 }
 
 TEST(Validation, NormalModuleReservesFixedSoaStorageAndContainerNames) {

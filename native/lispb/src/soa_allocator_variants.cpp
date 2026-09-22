@@ -55,7 +55,8 @@ void validate_soa_allocator_variants(SoaBackend const backend,
             throw std::invalid_argument{"Invalid SoA allocator variant prefix: " + variant.prefix};
         }
         for (auto const& schema : schemas) {
-            if (schema.fixed.has_value() || schema.equivalent_type.has_value() ||
+            if (schema.fixed.has_value() || schema.field_mask_name.has_value() ||
+                schema.field_enum_name.has_value() || schema.equivalent_type.has_value() ||
                 !schema.functions.empty() || !schema.mutable_view_functions.empty() ||
                 !schema.using_declarations.empty()) {
                 throw std::invalid_argument{"SoA allocator variants require plain dynamic schemas"};
