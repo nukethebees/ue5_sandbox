@@ -21,7 +21,7 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
     auto const relationship_targets_for{[this](Variant const& variant) {
         return Analyzer::derive_relationship_target_facts(inputs.workspace.types(),
                                                           variant,
-                                                          inputs.abi,
+                                                          primary_abi_,
                                                           inputs.workspace.default_capacity(),
                                                           inputs.soa_allocation_strategy);
     }};
@@ -38,14 +38,14 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
             results_.enum_domain = std::move(previous.enum_domain);
         } else {
             results_.enum_domain = Analyzer::analyze_enum(
-                inputs.workspace.types(), *inputs.selection.type, inputs.abi, element_count);
+                inputs.workspace.types(), *inputs.selection.type, primary_abi_, element_count);
         }
         auto comparison_domain{reuse_comparison_target &&
                                        previous.enum_target_comparison.has_value()
                                    ? std::move(previous.enum_target_comparison->second)
                                    : Analyzer::analyze_enum(inputs.workspace.types(),
                                                             *inputs.selection.type,
-                                                            inputs.comparison_abi,
+                                                            comparison_abi_,
                                                             element_count)};
         results_.enum_target_comparison =
             Analyzer::compare_enum_targets(*results_.enum_domain, comparison_domain);
@@ -77,14 +77,14 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
     } else if (std::holds_alternative<IntegerVarintType>(definition)) {
         results_.integer_varint_analysis = Analyzer::analyze_integer_varint(
             inputs.workspace.types(), *inputs.selection.type, element_count);
-        if (inputs.varint_distribution_source ==
+        if (varint_distribution_source_ ==
             inputs.workspace.types()
                 .type(std::get<IntegerVarintType>(definition).source.type)
                 .identity) {
             results_.integer_varint_distribution =
                 Analyzer::analyze_integer_varint_distribution(inputs.workspace.types(),
                                                               *inputs.selection.type,
-                                                              inputs.varint_distribution_entries,
+                                                              varint_distribution_entries_,
                                                               element_count);
         }
         if (inputs.varint_comparison_type.has_value()) {
@@ -96,15 +96,14 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
                                                      *inputs.selection.type,
                                                      *comparison_type,
                                                      element_count);
-                if (inputs.varint_distribution_rows_present &&
+                if (varint_distribution_rows_present_ &&
                     results_.integer_varint_distribution.has_value()) {
                     results_.integer_varint_distribution_comparison =
-                        Analyzer::compare_integer_varint_distribution(
-                            inputs.workspace.types(),
-                            *inputs.selection.type,
-                            *comparison_type,
-                            inputs.varint_distribution_entries,
-                            element_count);
+                        Analyzer::compare_integer_varint_distribution(inputs.workspace.types(),
+                                                                      *inputs.selection.type,
+                                                                      *comparison_type,
+                                                                      varint_distribution_entries_,
+                                                                      element_count);
                 }
             }
         }
@@ -147,14 +146,14 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
             results_.record_analysis = std::move(previous.record_analysis);
         } else {
             results_.record_analysis = Analyzer::analyze_record(
-                inputs.workspace.types(), *inputs.selection.type, inputs.abi, element_count);
+                inputs.workspace.types(), *inputs.selection.type, primary_abi_, element_count);
         }
         auto comparison_record{reuse_comparison_target &&
                                        previous.record_target_comparison.has_value()
                                    ? std::move(previous.record_target_comparison->second)
                                    : Analyzer::analyze_record(inputs.workspace.types(),
                                                               *inputs.selection.type,
-                                                              inputs.comparison_abi,
+                                                              comparison_abi_,
                                                               element_count)};
         results_.record_target_comparison =
             Analyzer::compare_record_targets(*results_.record_analysis, comparison_record);
@@ -169,13 +168,13 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
                 {.name = inputs.selection.field, .operation = inputs.access_operation});
         }
         if (!access_members.empty()) {
-            results_.record_access_analysis = Analyzer::analyze_record_access(
-                *results_.record_analysis, access_members, inputs.abi, inputs.access_multiplicity);
-            auto const comparison_access{
-                Analyzer::analyze_record_access(comparison_record,
+            results_.record_access_analysis =
+                Analyzer::analyze_record_access(*results_.record_analysis,
                                                 access_members,
-                                                inputs.comparison_abi,
-                                                inputs.access_multiplicity)};
+                                                primary_abi_,
+                                                inputs.access_multiplicity);
+            auto const comparison_access{Analyzer::analyze_record_access(
+                comparison_record, access_members, comparison_abi_, inputs.access_multiplicity)};
             results_.record_target_access_comparison = Analyzer::compare_record_access(
                 *results_.record_access_analysis, comparison_access);
         }
@@ -184,14 +183,14 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
             results_.union_analysis = std::move(previous.union_analysis);
         } else {
             results_.union_analysis = Analyzer::analyze_union(
-                inputs.workspace.types(), *inputs.selection.type, inputs.abi, element_count);
+                inputs.workspace.types(), *inputs.selection.type, primary_abi_, element_count);
         }
         auto comparison_target_union{reuse_comparison_target &&
                                              previous.union_target_comparison.has_value()
                                          ? std::move(previous.union_target_comparison->second)
                                          : Analyzer::analyze_union(inputs.workspace.types(),
                                                                    *inputs.selection.type,
-                                                                   inputs.comparison_abi,
+                                                                   comparison_abi_,
                                                                    element_count)};
         results_.union_target_comparison =
             Analyzer::compare_union_targets(*results_.union_analysis, comparison_target_union);
@@ -200,9 +199,9 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
                 ? document->find_declaration(
                       inputs.workspace.types().type(*inputs.selection.type).identity)
                 : std::optional<DeclarationId>{}};
-        auto const found{declaration.has_value() ? inputs.union_distributions.find(*declaration)
-                                                 : inputs.union_distributions.end()};
-        if (found != inputs.union_distributions.end()) {
+        auto const found{declaration.has_value() ? union_distributions_.find(*declaration)
+                                                 : union_distributions_.end()};
+        if (found != union_distributions_.end()) {
             std::vector<UnionDistributionEntry> entries;
             for (auto const& [alternative_name, weight] : found->second) {
                 if (weight != 0) {
@@ -224,14 +223,14 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
             results_.tagged_union_analysis = std::move(previous.tagged_union_analysis);
         } else {
             results_.tagged_union_analysis = Analyzer::analyze_tagged_union(
-                inputs.workspace.types(), *inputs.selection.type, inputs.abi, element_count);
+                inputs.workspace.types(), *inputs.selection.type, primary_abi_, element_count);
         }
         auto comparison_target_tagged{
             reuse_comparison_target && previous.tagged_union_target_comparison.has_value()
                 ? std::move(previous.tagged_union_target_comparison->second)
                 : Analyzer::analyze_tagged_union(inputs.workspace.types(),
                                                  *inputs.selection.type,
-                                                 inputs.comparison_abi,
+                                                 comparison_abi_,
                                                  element_count)};
         results_.tagged_union_target_comparison = Analyzer::compare_tagged_union_targets(
             *results_.tagged_union_analysis, comparison_target_tagged);
@@ -240,10 +239,9 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
                 ? document->find_declaration(
                       inputs.workspace.types().type(*inputs.selection.type).identity)
                 : std::optional<DeclarationId>{}};
-        auto const found{declaration.has_value()
-                             ? inputs.tagged_union_distributions.find(*declaration)
-                             : inputs.tagged_union_distributions.end()};
-        if (found != inputs.tagged_union_distributions.end()) {
+        auto const found{declaration.has_value() ? tagged_union_distributions_.find(*declaration)
+                                                 : tagged_union_distributions_.end()};
+        if (found != tagged_union_distributions_.end()) {
             std::vector<TaggedUnionDistributionEntry> entries;
             for (auto const& [tag, weight] : found->second) {
                 if (weight != 0) {
@@ -274,13 +272,13 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
             results_.baseline_packed = Analyzer::analyze_packed(inputs.workspace.types(),
                                                                 *inputs.selection.type,
                                                                 baseline,
-                                                                inputs.abi,
+                                                                primary_abi_,
                                                                 element_count,
                                                                 baseline_targets);
             results_.active_packed = Analyzer::analyze_packed(inputs.workspace.types(),
                                                               *inputs.selection.type,
                                                               active,
-                                                              inputs.abi,
+                                                              primary_abi_,
                                                               element_count,
                                                               active_targets);
         }
@@ -291,9 +289,9 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
                       inputs.workspace.types(),
                       *inputs.selection.type,
                       active,
-                      inputs.comparison_abi,
+                      comparison_abi_,
                       element_count,
-                      relationship_targets_for_profile(active, inputs.comparison_abi))};
+                      relationship_targets_for_profile(active, comparison_abi_))};
         results_.packed_target_comparison =
             Analyzer::compare_packed_targets(*results_.active_packed, comparison_target_packed);
         std::vector<AccessIntent> access_fields;
@@ -313,11 +311,11 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
         }
         if (!access_fields.empty()) {
             results_.packed_access_analysis = Analyzer::analyze_packed_access(
-                *results_.active_packed, access_fields, inputs.abi, inputs.access_multiplicity);
+                *results_.active_packed, access_fields, primary_abi_, inputs.access_multiplicity);
             auto const comparison_target_access{
                 Analyzer::analyze_packed_access(comparison_target_packed,
                                                 access_fields,
-                                                inputs.comparison_abi,
+                                                comparison_abi_,
                                                 inputs.access_multiplicity)};
             results_.packed_target_access_comparison = Analyzer::compare_packed_access(
                 *results_.packed_access_analysis, comparison_target_access);
@@ -333,7 +331,7 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
                         Analyzer::analyze_packed(inputs.workspace.types(),
                                                  *inputs.selection.type,
                                                  variant,
-                                                 inputs.abi,
+                                                 primary_abi_,
                                                  element_count,
                                                  targets));
                 }
@@ -348,14 +346,14 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
                 Analyzer::analyze_packed(inputs.workspace.types(),
                                          *inputs.selection.type,
                                          comparison_a,
-                                         inputs.abi,
+                                         primary_abi_,
                                          element_count,
                                          relationship_targets_for(comparison_a));
             results_.comparison_b_packed =
                 Analyzer::analyze_packed(inputs.workspace.types(),
                                          *inputs.selection.type,
                                          comparison_b,
-                                         inputs.abi,
+                                         primary_abi_,
                                          element_count,
                                          relationship_targets_for(comparison_b));
         }
@@ -363,12 +361,12 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
             auto const comparison_a_access{
                 Analyzer::analyze_packed_access(*results_.comparison_a_packed,
                                                 access_fields,
-                                                inputs.abi,
+                                                primary_abi_,
                                                 inputs.access_multiplicity)};
             auto const comparison_b_access{
                 Analyzer::analyze_packed_access(*results_.comparison_b_packed,
                                                 access_fields,
-                                                inputs.abi,
+                                                primary_abi_,
                                                 inputs.access_multiplicity)};
             results_.packed_access_comparison =
                 Analyzer::compare_packed_access(comparison_a_access, comparison_b_access);
@@ -382,13 +380,13 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
             results_.baseline_soa = Analyzer::analyze_soa(inputs.workspace.types(),
                                                           *inputs.selection.type,
                                                           baseline,
-                                                          inputs.abi,
+                                                          primary_abi_,
                                                           inputs.workspace.default_capacity(),
                                                           inputs.soa_allocation_strategy);
             results_.active_soa = Analyzer::analyze_soa(inputs.workspace.types(),
                                                         *inputs.selection.type,
                                                         active,
-                                                        inputs.abi,
+                                                        primary_abi_,
                                                         inputs.workspace.default_capacity(),
                                                         inputs.soa_allocation_strategy);
         }
@@ -398,7 +396,7 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
                                        : Analyzer::analyze_soa(inputs.workspace.types(),
                                                                *inputs.selection.type,
                                                                active,
-                                                               inputs.comparison_abi,
+                                                               comparison_abi_,
                                                                inputs.workspace.default_capacity(),
                                                                inputs.soa_allocation_strategy)};
         results_.soa_target_comparison =
@@ -417,13 +415,13 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
             results_.soa_access_analysis =
                 Analyzer::analyze_soa_access(*results_.active_soa,
                                              access_columns,
-                                             inputs.abi,
+                                             primary_abi_,
                                              inputs.workspace.element_count(),
                                              inputs.access_multiplicity);
             auto const comparison_target_access{
                 Analyzer::analyze_soa_access(comparison_target_soa,
                                              access_columns,
-                                             inputs.comparison_abi,
+                                             comparison_abi_,
                                              inputs.workspace.element_count(),
                                              inputs.access_multiplicity)};
             results_.soa_target_access_comparison = Analyzer::compare_soa_access(
@@ -434,10 +432,10 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
                 auto const equivalent_record{
                     Analyzer::analyze_record(inputs.workspace.types(),
                                              soa->equivalent_type->type,
-                                             inputs.abi,
+                                             primary_abi_,
                                              inputs.workspace.element_count())};
                 auto const record_access{Analyzer::analyze_record_access(
-                    equivalent_record, access_columns, inputs.abi, inputs.access_multiplicity)};
+                    equivalent_record, access_columns, primary_abi_, inputs.access_multiplicity)};
                 results_.record_soa_access_comparison = Analyzer::compare_record_soa_access(
                     record_access, *results_.soa_access_analysis);
             }
@@ -452,7 +450,7 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
                         Analyzer::analyze_soa(inputs.workspace.types(),
                                               *inputs.selection.type,
                                               variant,
-                                              inputs.abi,
+                                              primary_abi_,
                                               inputs.workspace.default_capacity(),
                                               inputs.soa_allocation_strategy));
                 }
@@ -466,25 +464,25 @@ void PlannerAnalysisSession::analyze_selected(EditableSchemaDocument const* docu
             results_.comparison_a_soa = Analyzer::analyze_soa(inputs.workspace.types(),
                                                               *inputs.selection.type,
                                                               comparison_a,
-                                                              inputs.abi,
+                                                              primary_abi_,
                                                               inputs.workspace.default_capacity(),
                                                               inputs.soa_allocation_strategy);
             results_.comparison_b_soa = Analyzer::analyze_soa(inputs.workspace.types(),
                                                               *inputs.selection.type,
                                                               comparison_b,
-                                                              inputs.abi,
+                                                              primary_abi_,
                                                               inputs.workspace.default_capacity(),
                                                               inputs.soa_allocation_strategy);
         }
         if (!access_columns.empty()) {
             auto const first_access{Analyzer::analyze_soa_access(*results_.comparison_a_soa,
                                                                  access_columns,
-                                                                 inputs.abi,
+                                                                 primary_abi_,
                                                                  inputs.workspace.element_count(),
                                                                  inputs.access_multiplicity)};
             auto const second_access{Analyzer::analyze_soa_access(*results_.comparison_b_soa,
                                                                   access_columns,
-                                                                  inputs.abi,
+                                                                  primary_abi_,
                                                                   inputs.workspace.element_count(),
                                                                   inputs.access_multiplicity)};
             results_.soa_access_comparison =

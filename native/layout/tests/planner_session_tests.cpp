@@ -166,7 +166,7 @@ TEST(PlannerSession, SelectionChangeDropsAccessAnalysisAndRepairsGraphIds) {
     EXPECT_TRUE(session.results().record_access_analysis.has_value());
 }
 
-TEST(PlannerSession, TargetAndVariantRevisionsRefreshComparisonsWithoutGuessingFacts) {
+TEST(PlannerSession, TargetAndVariantChangesRefreshComparisonsWithoutGuessingFacts) {
     PlannerAnalysisSession session{lispb::schema::resolve_type_graph(session_manifest())};
     auto const packet{*session.inputs.workspace.types().find_declared("packed", "Packet")};
     session.inputs.selection.select_type(session.inputs.workspace.types(), packet);
@@ -174,12 +174,13 @@ TEST(PlannerSession, TargetAndVariantRevisionsRefreshComparisonsWithoutGuessingF
     ASSERT_TRUE(session.results().packed_target_comparison.has_value());
     EXPECT_TRUE(session.results().packed_target_comparison->second.storage_facts.has_value());
 
-    session.inputs.comparison_abi = AbiProfile{"unknown"};
-    ++session.inputs.comparison_target_profile_revision;
+    EXPECT_TRUE(session.set_comparison_abi(AbiProfile{"unknown"}));
     session.refresh(nullptr);
     ASSERT_TRUE(session.results().packed_target_comparison.has_value());
     EXPECT_FALSE(session.results().packed_target_comparison->second.storage_facts.has_value());
     EXPECT_EQ(session.status(packet), LayoutStatus::available);
+    EXPECT_FALSE(session.set_comparison_abi(AbiProfile{"unknown"}));
+    EXPECT_FALSE(session.refresh(nullptr));
 
     auto const variant{session.inputs.workspace.create_variant("alternative")};
     ASSERT_TRUE(session.inputs.workspace.set_packed_field_width(packet, "bits", 4));
@@ -200,20 +201,20 @@ TEST(PlannerSession, TargetAndVariantRevisionsRefreshComparisonsWithoutGuessingF
     EXPECT_EQ(session.inputs.comparison_a_variant_id, LayoutWorkspace::baseline_variant_id);
     EXPECT_EQ(session.inputs.comparison_b_variant_id, LayoutWorkspace::baseline_variant_id);
 
-    session.inputs.abi = AbiProfile{"unknown primary"};
-    ++session.inputs.target_profile_revision;
+    EXPECT_TRUE(session.set_primary_abi(AbiProfile{"unknown primary"}));
     session.refresh(nullptr);
     ASSERT_TRUE(session.results().active_packed.has_value());
     EXPECT_FALSE(session.results().active_packed->storage_facts.has_value());
     EXPECT_EQ(session.status(packet), LayoutStatus::unknown);
+    EXPECT_FALSE(session.set_primary_abi(AbiProfile{"unknown primary"}));
+    EXPECT_FALSE(session.refresh(nullptr));
 }
 
 TEST(PlannerSession, UnknownPrimaryTargetFactsRemainUnknown) {
     PlannerAnalysisSession session{lispb::schema::resolve_type_graph(session_manifest())};
     auto const record{*session.inputs.workspace.types().find_declared("records", "Record")};
     session.inputs.selection.select_type(session.inputs.workspace.types(), record);
-    session.inputs.abi = AbiProfile{"unknown"};
-    ++session.inputs.target_profile_revision;
+    EXPECT_TRUE(session.set_primary_abi(AbiProfile{"unknown"}));
     session.refresh(nullptr);
     ASSERT_TRUE(session.results().record_analysis.has_value());
     EXPECT_FALSE(session.results().record_analysis->size_bytes.has_value());
@@ -227,7 +228,7 @@ TEST(PlannerSession, IrrelevantControlsDoNotInvalidateRecordAnalysis) {
     session.inputs.selection.select_type(session.inputs.workspace.types(), record);
     EXPECT_TRUE(session.refresh(nullptr));
     EXPECT_FALSE(session.refresh(nullptr));
-    session.inputs.union_distribution_revision++;
+    EXPECT_TRUE(session.set_varint_distribution(std::nullopt, {{.value = 1, .weight = 1}}, true));
     session.inputs.comparison_a_variant_id = variant;
     EXPECT_FALSE(session.refresh(nullptr));
     session.inputs.selection.field = "value";
@@ -235,7 +236,7 @@ TEST(PlannerSession, IrrelevantControlsDoNotInvalidateRecordAnalysis) {
     EXPECT_TRUE(session.results().record_access_analysis.has_value());
 }
 
-TEST(PlannerSession, UnionAndTaggedDistributionRevisionsRefreshAnalysis) {
+TEST(PlannerSession, UnionAndTaggedDistributionChangesRefreshAnalysis) {
     auto document{lispb::schema::EditableSchemaDocument::from_manifest(distribution_manifest())};
     PlannerAnalysisSession session{document.types()};
     auto const& types{session.inputs.workspace.types()};
@@ -245,26 +246,37 @@ TEST(PlannerSession, UnionAndTaggedDistributionRevisionsRefreshAnalysis) {
     auto const tagged_declaration{*document.find_declaration(types.type(tagged).identity)};
 
     session.inputs.selection.select_type(types, raw);
-    session.inputs.union_distributions[raw_declaration]["small"] = 1;
-    ++session.inputs.union_distribution_revision;
+    EXPECT_TRUE(session.set_union_distribution_weight(raw_declaration, "small", 1));
     session.refresh(&document);
     ASSERT_TRUE(session.results().union_distribution_analysis.has_value());
     EXPECT_EQ(session.results().union_distribution_analysis->total_weight, 1);
-    session.inputs.union_distributions[raw_declaration]["small"] = 3;
-    ++session.inputs.union_distribution_revision;
+    EXPECT_TRUE(session.set_union_distribution_weight(raw_declaration, "small", 3));
     session.refresh(&document);
     EXPECT_EQ(session.results().union_distribution_analysis->total_weight, 3);
+    EXPECT_FALSE(session.set_union_distribution_weight(raw_declaration, "small", 3));
+    EXPECT_FALSE(session.refresh(&document));
 
     session.inputs.selection.select_type(types, tagged);
-    session.inputs.tagged_union_distributions[tagged_declaration]["Small"] = 2;
-    ++session.inputs.tagged_distribution_revision;
+    EXPECT_TRUE(session.set_tagged_union_distribution_weight(tagged_declaration, "Small", 2));
     session.refresh(&document);
     ASSERT_TRUE(session.results().tagged_union_distribution_analysis.has_value());
     EXPECT_EQ(session.results().tagged_union_distribution_analysis->total_weight, 2);
-    session.inputs.tagged_union_distributions[tagged_declaration]["Small"] = 5;
-    ++session.inputs.tagged_distribution_revision;
+    EXPECT_TRUE(session.set_tagged_union_distribution_weight(tagged_declaration, "Small", 5));
     session.refresh(&document);
     EXPECT_EQ(session.results().tagged_union_distribution_analysis->total_weight, 5);
+    EXPECT_FALSE(session.set_tagged_union_distribution_weight(tagged_declaration, "Small", 5));
+    EXPECT_FALSE(session.refresh(&document));
+    EXPECT_TRUE(session.clear_tagged_union_distribution(tagged_declaration));
+    EXPECT_TRUE(session.refresh(&document));
+    EXPECT_FALSE(session.results().tagged_union_distribution_analysis.has_value());
+    EXPECT_FALSE(session.clear_tagged_union_distribution(tagged_declaration));
+
+    session.inputs.selection.select_type(types, raw);
+    session.refresh(&document);
+    EXPECT_TRUE(session.clear_union_distribution(raw_declaration));
+    EXPECT_TRUE(session.refresh(&document));
+    EXPECT_FALSE(session.results().union_distribution_analysis.has_value());
+    EXPECT_FALSE(session.clear_union_distribution(raw_declaration));
 }
 
 TEST(PlannerSession, VarintDistributionsAndComparisonReferencesFollowGraphChanges) {
@@ -275,23 +287,27 @@ TEST(PlannerSession, VarintDistributionsAndComparisonReferencesFollowGraphChange
     auto const first_identity{types.type(first).identity};
     session.inputs.selection.select_type(types, first);
     session.inputs.varint_comparison_type = types.type(second).identity;
-    session.inputs.varint_distribution_source =
+    auto const source_identity{
         types
             .type(std::get<lispb::schema::IntegerVarintType>(types.type(first).definition)
                       .source.type)
-            .identity;
-    session.inputs.varint_distribution_entries.push_back({.value = 5, .weight = 2});
-    session.inputs.varint_distribution_rows_present = true;
-    ++session.inputs.varint_distribution_revision;
+            .identity};
+    EXPECT_TRUE(
+        session.set_varint_distribution(source_identity, {{.value = 5, .weight = 2}}, true));
     session.refresh(nullptr);
     ASSERT_TRUE(session.results().integer_varint_distribution.has_value());
     ASSERT_TRUE(session.results().integer_varint_distribution_comparison.has_value());
     EXPECT_EQ(session.results().integer_varint_distribution->total_weight, 2);
 
-    session.inputs.varint_distribution_entries.front().weight = 7;
-    ++session.inputs.varint_distribution_revision;
+    EXPECT_TRUE(
+        session.set_varint_distribution(source_identity, {{.value = 5, .weight = 7}}, true));
     session.refresh(nullptr);
     EXPECT_EQ(session.results().integer_varint_distribution->total_weight, 7);
+    ASSERT_TRUE(session.results().integer_varint_distribution_comparison.has_value());
+    EXPECT_EQ(session.results().integer_varint_distribution_comparison->second.total_weight, 7);
+    EXPECT_FALSE(
+        session.set_varint_distribution(source_identity, {{.value = 5, .weight = 7}}, true));
+    EXPECT_FALSE(session.refresh(nullptr));
 
     session.inputs.workspace.replace_types(
         lispb::schema::resolve_type_graph(varint_manifest(false)));
@@ -311,8 +327,8 @@ TEST(PlannerSession, GraphEditsAndUndoRedoReconcileDistributionRows) {
     auto const tagged_declaration{
         *document.find_declaration(document.types().type(tagged).identity)};
     session.inputs.selection.select_type(session.inputs.workspace.types(), raw);
-    session.inputs.union_distributions[raw_declaration]["small"] = 3;
-    session.inputs.tagged_union_distributions[tagged_declaration]["Small"] = 2;
+    EXPECT_TRUE(session.set_union_distribution_weight(raw_declaration, "small", 3));
+    EXPECT_TRUE(session.set_tagged_union_distribution_weight(tagged_declaration, "Small", 2));
 
     auto renamed{*document.union_schema(raw_declaration)};
     renamed.alternatives.front().name = "renamed";
@@ -327,19 +343,16 @@ TEST(PlannerSession, GraphEditsAndUndoRedoReconcileDistributionRows) {
                                                              .schema = std::move(reduced)})
                     .value());
     session.replace_types(document, raw_identity);
-    EXPECT_EQ(session.inputs.union_distributions.at(raw_declaration).at("renamed"), 3);
-    EXPECT_FALSE(session.inputs.union_distributions.at(raw_declaration).contains("small"));
-    EXPECT_FALSE(
-        session.inputs.tagged_union_distributions.at(tagged_declaration).contains("Small"));
+    EXPECT_EQ(session.union_distributions().at(raw_declaration).at("renamed"), 3);
+    EXPECT_FALSE(session.union_distributions().at(raw_declaration).contains("small"));
+    EXPECT_FALSE(session.tagged_union_distributions().at(tagged_declaration).contains("Small"));
 
     ASSERT_TRUE(document.undo().value());
     session.replace_types(document, raw_identity);
-    EXPECT_FALSE(
-        session.inputs.tagged_union_distributions.at(tagged_declaration).contains("Small"));
+    EXPECT_FALSE(session.tagged_union_distributions().at(tagged_declaration).contains("Small"));
     ASSERT_TRUE(document.redo().value());
     session.replace_types(document, raw_identity);
-    EXPECT_FALSE(
-        session.inputs.tagged_union_distributions.at(tagged_declaration).contains("Small"));
+    EXPECT_FALSE(session.tagged_union_distributions().at(tagged_declaration).contains("Small"));
 }
 
 } // namespace

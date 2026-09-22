@@ -1,3 +1,6 @@
+#include "analyzer_test_fixtures.hpp"
+
+#include <ioj/layout/planner_session.hpp>
 #include <ioj/layout/planner_type.hpp>
 #include <ioj/layout/schema_loader.hpp>
 
@@ -5,6 +8,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <filesystem>
 
 namespace ioj::layout {
@@ -30,13 +34,11 @@ TEST(PlannerType, ClassifiesVisibleAndPhysicalDeclarations) {
     EXPECT_FALSE(enum_capabilities.supports_variants);
     auto const packed_capabilities{declaration_capabilities(types.type(*packed))};
     EXPECT_EQ(packed_capabilities.kind, DeclarationKind::packed);
-    EXPECT_TRUE(packed_capabilities.editable);
     EXPECT_TRUE(packed_capabilities.supports_variants);
-    EXPECT_TRUE(packed_capabilities.supports_access);
     auto const soa_capabilities{declaration_capabilities(types.type(*soa))};
     EXPECT_EQ(soa_capabilities.kind, DeclarationKind::soa);
     EXPECT_TRUE(soa_capabilities.visible);
-    EXPECT_TRUE(soa_capabilities.supports_access);
+    EXPECT_TRUE(soa_capabilities.supports_variants);
 }
 
 TEST(PlannerType, DistinguishesUnknownTargetFactsFromErrors) {
@@ -50,6 +52,13 @@ TEST(PlannerType, DistinguishesUnknownTargetFactsFromErrors) {
 
     EXPECT_EQ(declaration_status(types, *packed, Variant{}, AbiProfile{"unknown"}, 64),
               LayoutStatus::unknown);
+    auto const unknown_packed{
+        Analyzer::analyze_packed(types, *packed, Variant{}, AbiProfile{"unknown"})};
+    EXPECT_FALSE(unknown_packed.storage_facts.has_value());
+    EXPECT_TRUE(std::ranges::any_of(unknown_packed.diagnostics, [](Diagnostic const& diagnostic) {
+        return diagnostic.severity == DiagnosticSeverity::warning &&
+               diagnostic.message.contains("Unknown physical facts for packed storage");
+    }));
     EXPECT_EQ(declaration_status(types, *packed, Variant{}, AbiProfile::host_common(), 64),
               LayoutStatus::available);
 
@@ -112,6 +121,68 @@ TEST(PlannerType, TaggedUnionsNeedRealTargetFactsWhileSemanticScalarsDoNot) {
               LayoutStatus::available);
     EXPECT_EQ(declaration_status(types, semantic_type, Variant{}, AbiProfile{"unknown"}, 1),
               LayoutStatus::available);
+}
+
+TEST(PlannerType, RelationshipCapacityErrorsMatchSelectedPackedAndScalarAnalysis) {
+    for (auto const kind :
+         {codegen::SemanticRelationKind::index_into, codegen::SemanticRelationKind::count_of}) {
+        auto const fixture{relationship_capacity_type(kind, 8)};
+        PlannerAnalysisSession session{fixture.types};
+        session.inputs.selection.select_type(session.inputs.workspace.types(), fixture.packed);
+        ASSERT_TRUE(session.refresh(nullptr));
+        ASSERT_TRUE(session.results().active_packed.has_value());
+        EXPECT_TRUE(std::ranges::any_of(session.results().active_packed->diagnostics,
+                                        [](Diagnostic const& diagnostic) {
+                                            return diagnostic.severity == DiagnosticSeverity::error;
+                                        }));
+        EXPECT_EQ(session.status(fixture.packed), LayoutStatus::error);
+    }
+
+    auto const scalar_fixture{
+        relationship_capacity_scalar_type(codegen::SemanticRelationKind::index_into, 8, 255)};
+    PlannerAnalysisSession scalar_session{scalar_fixture.types};
+    scalar_session.inputs.selection.select_type(scalar_session.inputs.workspace.types(),
+                                                scalar_fixture.packed);
+    ASSERT_TRUE(scalar_session.refresh(nullptr));
+    ASSERT_TRUE(scalar_session.results().integer_scalar_analysis.has_value());
+    EXPECT_TRUE(std::ranges::any_of(scalar_session.results().integer_scalar_analysis->diagnostics,
+                                    [](Diagnostic const& diagnostic) {
+                                        return diagnostic.severity == DiagnosticSeverity::error;
+                                    }));
+    EXPECT_EQ(scalar_session.status(scalar_fixture.packed), LayoutStatus::error);
+}
+
+TEST(PlannerType, UnknownSoaColumnFactsRemainUnknown) {
+    auto const fixture{soa_type({{"opaque", "UnknownColumnType"}})};
+    auto const analysis{Analyzer::analyze_soa(
+        fixture.types, fixture.type, Variant{}, AbiProfile::host_common(), 64)};
+    ASSERT_EQ(analysis.columns.size(), 1);
+    EXPECT_FALSE(analysis.columns.front().type_facts.has_value());
+    EXPECT_FALSE(analysis.total_payload_bytes.has_value());
+    EXPECT_TRUE(std::ranges::any_of(analysis.diagnostics, [](Diagnostic const& diagnostic) {
+        return diagnostic.severity == DiagnosticSeverity::warning &&
+               diagnostic.message.contains("Unknown physical facts for SoA column");
+    }));
+    EXPECT_EQ(
+        declaration_status(fixture.types, fixture.type, Variant{}, AbiProfile::host_common(), 64),
+        LayoutStatus::unknown);
+}
+
+TEST(PlannerType, StatusTracksActiveVariantRelationshipOverrides) {
+    auto const fixture{relationship_capacity_type(codegen::SemanticRelationKind::index_into, 17)};
+    PlannerAnalysisSession session{fixture.types};
+    EXPECT_EQ(session.status(fixture.packed), LayoutStatus::available);
+
+    session.inputs.workspace.create_variant("narrow");
+    ASSERT_TRUE(session.inputs.workspace.set_packed_field_width(fixture.packed, "value", 8));
+    session.inputs.selection.select_type(session.inputs.workspace.types(), fixture.packed);
+    ASSERT_TRUE(session.refresh(nullptr));
+    EXPECT_EQ(session.status(fixture.packed), LayoutStatus::error);
+    ASSERT_TRUE(session.results().active_packed.has_value());
+    EXPECT_TRUE(std::ranges::any_of(session.results().active_packed->diagnostics,
+                                    [](Diagnostic const& diagnostic) {
+                                        return diagnostic.severity == DiagnosticSeverity::error;
+                                    }));
 }
 
 } // namespace

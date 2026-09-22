@@ -19,10 +19,6 @@ namespace ioj::layout {
 struct PlannerAnalysisInputs {
     LayoutWorkspace workspace;
     PlannerSelection selection;
-    AbiProfile abi{AbiProfile::host_common()};
-    AbiProfile comparison_abi{AbiProfile::host_common()};
-    std::uint64_t target_profile_revision{};
-    std::uint64_t comparison_target_profile_revision{};
     AccessOperation access_operation{AccessOperation::read};
     std::uint64_t access_multiplicity{1};
     SoaAllocationStrategy soa_allocation_strategy{SoaAllocationStrategy::separate_columns};
@@ -31,17 +27,7 @@ struct PlannerAnalysisInputs {
     bool comparison_b_follows_active{true};
     std::optional<lispb::schema::TypeIdentity> quantized_comparison_type;
     std::optional<lispb::schema::TypeIdentity> varint_comparison_type;
-    std::optional<lispb::schema::TypeIdentity> varint_distribution_source;
-    std::vector<IntegerVarintDistributionEntry> varint_distribution_entries;
-    bool varint_distribution_rows_present{};
-    std::uint64_t varint_distribution_revision{};
     std::optional<lispb::schema::TypeIdentity> optional_comparison_type;
-    std::map<lispb::schema::DeclarationId, std::map<std::string, std::uint64_t>>
-        union_distributions;
-    std::uint64_t union_distribution_revision{};
-    std::map<lispb::schema::DeclarationId, std::map<std::string, std::uint64_t>>
-        tagged_union_distributions;
-    std::uint64_t tagged_distribution_revision{};
 };
 
 struct PlannerAnalysisResults {
@@ -95,9 +81,34 @@ struct PlannerAnalysisResults {
 
 class PlannerAnalysisSession {
   public:
+    using DistributionWeights = std::map<std::string, std::uint64_t>;
+    using DistributionTable = std::map<lispb::schema::DeclarationId, DistributionWeights>;
+
     explicit PlannerAnalysisSession(lispb::schema::TypeGraph types = {});
 
     PlannerAnalysisInputs inputs;
+    auto primary_abi() const -> AbiProfile const&;
+    auto comparison_abi() const -> AbiProfile const&;
+    auto set_primary_abi(AbiProfile abi) -> bool;
+    auto set_comparison_abi(AbiProfile abi) -> bool;
+    auto union_distributions() const -> DistributionTable const&;
+    auto tagged_union_distributions() const -> DistributionTable const&;
+    auto union_distribution(lispb::schema::DeclarationId declaration) const
+        -> DistributionWeights const*;
+    auto tagged_union_distribution(lispb::schema::DeclarationId declaration) const
+        -> DistributionWeights const*;
+    auto set_union_distribution_weight(lispb::schema::DeclarationId declaration,
+                                       std::string name,
+                                       std::uint64_t weight) -> bool;
+    auto set_tagged_union_distribution_weight(lispb::schema::DeclarationId declaration,
+                                              std::string name,
+                                              std::uint64_t weight) -> bool;
+    auto clear_union_distribution(lispb::schema::DeclarationId declaration) -> bool;
+    auto clear_tagged_union_distribution(lispb::schema::DeclarationId declaration) -> bool;
+    void clear_distributions();
+    auto set_varint_distribution(std::optional<lispb::schema::TypeIdentity> source,
+                                 std::vector<IntegerVarintDistributionEntry> entries,
+                                 bool rows_present) -> bool;
     auto results() const -> PlannerAnalysisResults const&;
     auto status(lispb::schema::TypeId type) -> LayoutStatus;
     void replace_types(lispb::schema::EditableSchemaDocument const& document,
@@ -111,9 +122,23 @@ class PlannerAnalysisSession {
                           bool reuse_comparison_target,
                           bool reuse_variant_comparison);
     PlannerAnalysisResults results_;
+    AbiProfile primary_abi_{AbiProfile::host_common()};
+    AbiProfile comparison_abi_{AbiProfile::host_common()};
+    std::uint64_t target_profile_revision_{};
+    std::uint64_t comparison_target_profile_revision_{};
+    std::optional<lispb::schema::TypeIdentity> varint_distribution_source_;
+    std::vector<IntegerVarintDistributionEntry> varint_distribution_entries_;
+    bool varint_distribution_rows_present_{};
+    std::uint64_t varint_distribution_revision_{};
+    DistributionTable union_distributions_;
+    std::uint64_t union_distribution_revision_{};
+    DistributionTable tagged_union_distributions_;
+    std::uint64_t tagged_distribution_revision_{};
     std::map<std::uint32_t, LayoutStatus> status_cache_;
+    std::vector<RelationshipTargetFacts> status_relationship_targets_;
     std::uint64_t status_revision_{std::numeric_limits<std::uint64_t>::max()};
     std::uint64_t status_profile_revision_{std::numeric_limits<std::uint64_t>::max()};
+    SoaAllocationStrategy status_allocation_strategy_{SoaAllocationStrategy::separate_columns};
     std::uint64_t cached_revision_{std::numeric_limits<std::uint64_t>::max()};
     std::uint64_t cached_target_profile_revision_{std::numeric_limits<std::uint64_t>::max()};
     std::uint64_t cached_comparison_target_profile_revision_{

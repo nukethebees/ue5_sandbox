@@ -9,7 +9,7 @@ void PlannerUi::draw_comparison_panel() {
     auto const was_open{comparison_view_open_};
     ImGui::Begin("Comparison", &comparison_view_open_);
     persist_view_visibility(was_open, comparison_view_open_);
-    ImGui::TextDisabled("ABI profile: %s", analysis_session_.inputs.abi.name().c_str());
+    ImGui::TextDisabled("ABI profile: %s", analysis_session_.primary_abi().name().c_str());
 
     if (analysis_session_.inputs.selection.type.has_value()) {
         auto const& selected_node{analysis_session_.inputs.workspace.types().type(
@@ -23,7 +23,7 @@ void PlannerUi::draw_comparison_panel() {
         if (std::holds_alternative<RecordType>(selected_node.definition)) {
             ImGui::TextWrapped(
                 "Compare one semantic record under two explicit physical target profiles. Target "
-                "A uses the shared Target Profile; target B is session-only.");
+                "A follows the Layout view; target B is session-only.");
             if (draw_comparison_target_profile_picker()) {
                 refresh_analysis();
             }
@@ -49,34 +49,34 @@ void PlannerUi::draw_comparison_panel() {
                                   ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                       ImGuiTableFlags_Resizable)) {
                 ImGui::TableSetupColumn("Physical fact");
-                ImGui::TableSetupColumn(analysis_session_.inputs.abi.name().c_str());
-                ImGui::TableSetupColumn(analysis_session_.inputs.comparison_abi.name().c_str());
+                ImGui::TableSetupColumn(analysis_session_.primary_abi().name().c_str());
+                ImGui::TableSetupColumn(analysis_session_.comparison_abi().name().c_str());
                 ImGui::TableSetupColumn("Difference (B - A)");
                 ImGui::TableHeadersRow();
                 comparison_row("Profile",
-                               analysis_session_.inputs.abi.name(),
-                               analysis_session_.inputs.comparison_abi.name());
-                comparison_row("Platform",
-                               analysis_session_.inputs.abi.identity().platform.value_or("Unknown"),
-                               analysis_session_.inputs.comparison_abi.identity().platform.value_or(
-                                   "Unknown"));
+                               analysis_session_.primary_abi().name(),
+                               analysis_session_.comparison_abi().name());
+                comparison_row(
+                    "Platform",
+                    analysis_session_.primary_abi().identity().platform.value_or("Unknown"),
+                    analysis_session_.comparison_abi().identity().platform.value_or("Unknown"));
                 comparison_row(
                     "Architecture",
-                    analysis_session_.inputs.abi.identity().architecture.value_or("Unknown"),
-                    analysis_session_.inputs.comparison_abi.identity().architecture.value_or(
-                        "Unknown"));
+                    analysis_session_.primary_abi().identity().architecture.value_or("Unknown"),
+                    analysis_session_.comparison_abi().identity().architecture.value_or("Unknown"));
                 comparison_row(
                     "ABI",
-                    analysis_session_.inputs.abi.identity().abi.value_or("Unknown"),
-                    analysis_session_.inputs.comparison_abi.identity().abi.value_or("Unknown"));
-                comparison_row("Compiler",
-                               analysis_session_.inputs.abi.identity().compiler.value_or("Unknown"),
-                               analysis_session_.inputs.comparison_abi.identity().compiler.value_or(
-                                   "Unknown"));
+                    analysis_session_.primary_abi().identity().abi.value_or("Unknown"),
+                    analysis_session_.comparison_abi().identity().abi.value_or("Unknown"));
+                comparison_row(
+                    "Compiler",
+                    analysis_session_.primary_abi().identity().compiler.value_or("Unknown"),
+                    analysis_session_.comparison_abi().identity().compiler.value_or("Unknown"));
                 comparison_row(
                     "Build configuration",
-                    analysis_session_.inputs.abi.identity().build_configuration.value_or("Unknown"),
-                    analysis_session_.inputs.comparison_abi.identity().build_configuration.value_or(
+                    analysis_session_.primary_abi().identity().build_configuration.value_or(
+                        "Unknown"),
+                    analysis_session_.comparison_abi().identity().build_configuration.value_or(
                         "Unknown"));
                 comparison_row("Element count",
                                std::to_string(first_aggregate.element_count),
@@ -177,9 +177,8 @@ void PlannerUi::draw_comparison_panel() {
                                           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                               ImGuiTableFlags_Resizable)) {
                         ImGui::TableSetupColumn("Physical fact");
-                        ImGui::TableSetupColumn(analysis_session_.inputs.abi.name().c_str());
-                        ImGui::TableSetupColumn(
-                            analysis_session_.inputs.comparison_abi.name().c_str());
+                        ImGui::TableSetupColumn(analysis_session_.primary_abi().name().c_str());
+                        ImGui::TableSetupColumn(analysis_session_.comparison_abi().name().c_str());
                         ImGui::TableSetupColumn("Difference (B - A)");
                         ImGui::TableHeadersRow();
                         comparison_row("Semantic type",
@@ -245,8 +244,8 @@ void PlannerUi::draw_comparison_panel() {
                                       ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                           ImGuiTableFlags_Resizable)) {
                     ImGui::TableSetupColumn("Workload fact");
-                    ImGui::TableSetupColumn(analysis_session_.inputs.abi.name().c_str());
-                    ImGui::TableSetupColumn(analysis_session_.inputs.comparison_abi.name().c_str());
+                    ImGui::TableSetupColumn(analysis_session_.primary_abi().name().c_str());
+                    ImGui::TableSetupColumn(analysis_session_.comparison_abi().name().c_str());
                     ImGui::TableSetupColumn("Difference (B - A)");
                     ImGui::TableHeadersRow();
                     comparison_row("Element count",
@@ -388,8 +387,7 @@ void PlannerUi::draw_comparison_panel() {
             ImGui::SeparatorText("Target-profile comparison");
             ImGui::TextWrapped(
                 "Compare the active physical variant of this packed value under two explicit "
-                "target profiles. Target A uses the shared Target Profile; target B is "
-                "session-only.");
+                "target profiles. Target A follows Layout; target B is session-only.");
             ImGui::Text("Held physical variant: %s",
                         analysis_session_.inputs.workspace.active_variant().name.c_str());
             if (draw_comparison_target_profile_picker()) {
@@ -431,17 +429,17 @@ void PlannerUi::draw_comparison_panel() {
                                       ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                           ImGuiTableFlags_Resizable)) {
                     ImGui::TableSetupColumn("Physical fact");
-                    ImGui::TableSetupColumn(analysis_session_.inputs.abi.name().c_str());
-                    ImGui::TableSetupColumn(analysis_session_.inputs.comparison_abi.name().c_str());
+                    ImGui::TableSetupColumn(analysis_session_.primary_abi().name().c_str());
+                    ImGui::TableSetupColumn(analysis_session_.comparison_abi().name().c_str());
                     ImGui::TableSetupColumn("Difference (B - A)");
                     ImGui::TableHeadersRow();
                     comparison_row("Profile",
-                                   analysis_session_.inputs.abi.name(),
-                                   analysis_session_.inputs.comparison_abi.name());
+                                   analysis_session_.primary_abi().name(),
+                                   analysis_session_.comparison_abi().name());
                     comparison_row(
                         "Architecture",
-                        analysis_session_.inputs.abi.identity().architecture.value_or("Unknown"),
-                        analysis_session_.inputs.comparison_abi.identity().architecture.value_or(
+                        analysis_session_.primary_abi().identity().architecture.value_or("Unknown"),
+                        analysis_session_.comparison_abi().identity().architecture.value_or(
                             "Unknown"));
                     comparison_row("Element count",
                                    std::to_string(first_aggregate.element_count),
@@ -559,9 +557,9 @@ void PlannerUi::draw_comparison_panel() {
                                               ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                                   ImGuiTableFlags_Resizable)) {
                             ImGui::TableSetupColumn("Physical fact");
-                            ImGui::TableSetupColumn(analysis_session_.inputs.abi.name().c_str());
+                            ImGui::TableSetupColumn(analysis_session_.primary_abi().name().c_str());
                             ImGui::TableSetupColumn(
-                                analysis_session_.inputs.comparison_abi.name().c_str());
+                                analysis_session_.comparison_abi().name().c_str());
                             ImGui::TableSetupColumn("Difference (B - A)");
                             ImGui::TableHeadersRow();
                             comparison_row("Role",
@@ -652,9 +650,8 @@ void PlannerUi::draw_comparison_panel() {
                                           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                               ImGuiTableFlags_Resizable)) {
                         ImGui::TableSetupColumn("Workload fact");
-                        ImGui::TableSetupColumn(analysis_session_.inputs.abi.name().c_str());
-                        ImGui::TableSetupColumn(
-                            analysis_session_.inputs.comparison_abi.name().c_str());
+                        ImGui::TableSetupColumn(analysis_session_.primary_abi().name().c_str());
+                        ImGui::TableSetupColumn(analysis_session_.comparison_abi().name().c_str());
                         ImGui::TableSetupColumn("Difference (B - A)");
                         ImGui::TableHeadersRow();
                         comparison_row("Element count",

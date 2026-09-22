@@ -81,7 +81,7 @@ auto PlannerUi::draw_type_picker(std::string_view const module_name, TypeIdentit
         }
     }
     ImGui::SeparatorText("Target physical types");
-    for (auto const& [spelling, facts] : analysis_session_.inputs.abi.types()) {
+    for (auto const& [spelling, facts] : analysis_session_.primary_abi().types()) {
         static_cast<void>(facts);
         draw_candidate(spelling, "target ABI type");
     }
@@ -770,7 +770,6 @@ void PlannerUi::draw_properties_panel() {
         ImGui::Text("Tail padding: %s", detail::format_bytes(analysis.tail_padding_bytes).c_str());
         if (selected_declaration.has_value()) {
             ImGui::SeparatorText("Session alternative workload");
-            auto& weights{analysis_session_.inputs.union_distributions[*selected_declaration]};
             if (ImGui::BeginTable("raw-union-workload-weights",
                                   2,
                                   ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
@@ -784,18 +783,26 @@ void PlannerUi::draw_properties_panel() {
                     ImGui::TableNextColumn();
                     ImGui::TextUnformatted(alternative.name.c_str());
                     ImGui::TableNextColumn();
-                    auto& weight{weights[alternative.name]};
+                    auto weight{std::uint64_t{0}};
+                    if (auto const* weights{
+                            analysis_session_.union_distribution(*selected_declaration)};
+                        weights != nullptr) {
+                        if (auto const found{weights->find(alternative.name)};
+                            found != weights->end()) {
+                            weight = found->second;
+                        }
+                    }
                     ImGui::SetNextItemWidth(-1.0F);
                     if (ImGui::InputScalar("##weight", ImGuiDataType_U64, &weight)) {
-                        ++analysis_session_.inputs.union_distribution_revision;
+                        analysis_session_.set_union_distribution_weight(
+                            *selected_declaration, alternative.name, weight);
                     }
                     ImGui::PopID();
                 }
                 ImGui::EndTable();
             }
             if (ImGui::SmallButton("Clear alternative workload")) {
-                weights.clear();
-                ++analysis_session_.inputs.union_distribution_revision;
+                analysis_session_.clear_union_distribution(*selected_declaration);
             }
             if (analysis_session_.results().union_distribution_analysis.has_value()) {
                 auto const& distribution{*analysis_session_.results().union_distribution_analysis};
@@ -914,8 +921,6 @@ void PlannerUi::draw_properties_panel() {
         }
         if (selected_declaration.has_value()) {
             ImGui::SeparatorText("Session tag workload");
-            auto& weights{
-                analysis_session_.inputs.tagged_union_distributions[*selected_declaration]};
             if (ImGui::BeginTable("tagged-union-workload-weights",
                                   3,
                                   ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
@@ -932,18 +937,26 @@ void PlannerUi::draw_properties_panel() {
                     ImGui::TableNextColumn();
                     ImGui::TextUnformatted(alternative.name.c_str());
                     ImGui::TableNextColumn();
-                    auto& weight{weights[alternative.tag]};
+                    auto weight{std::uint64_t{0}};
+                    if (auto const* weights{
+                            analysis_session_.tagged_union_distribution(*selected_declaration)};
+                        weights != nullptr) {
+                        if (auto const found{weights->find(alternative.tag)};
+                            found != weights->end()) {
+                            weight = found->second;
+                        }
+                    }
                     ImGui::SetNextItemWidth(-1.0F);
                     if (ImGui::InputScalar("##weight", ImGuiDataType_U64, &weight)) {
-                        ++analysis_session_.inputs.tagged_distribution_revision;
+                        analysis_session_.set_tagged_union_distribution_weight(
+                            *selected_declaration, alternative.tag, weight);
                     }
                     ImGui::PopID();
                 }
                 ImGui::EndTable();
             }
             if (ImGui::SmallButton("Clear tag workload")) {
-                weights.clear();
-                ++analysis_session_.inputs.tagged_distribution_revision;
+                analysis_session_.clear_tagged_union_distribution(*selected_declaration);
             }
             if (analysis_session_.results().tagged_union_distribution_analysis.has_value()) {
                 auto const& distribution{
@@ -1043,8 +1056,7 @@ void PlannerUi::draw_properties_panel() {
                             LayoutWorkspace::baseline_variant_id};
         if (!editable) {
             ImGui::SeparatorText("Baseline");
-            if (std::holds_alternative<PackedType>(node.definition) ||
-                std::holds_alternative<SoaType>(node.definition)) {
+            if (declaration_capabilities(node).supports_variants) {
                 ImGui::TextDisabled("Planning overrides are read only on the baseline.");
                 ImGui::TextWrapped("Edit the LispB declaration above, or create an experiment for "
                                    "session-only physical overrides.");
@@ -1076,7 +1088,7 @@ void PlannerUi::draw_properties_panel() {
                     analysis_session_.inputs.workspace.set_packed_storage_type(selected,
                                                                                std::nullopt);
                 }
-                for (auto const& [type, facts] : analysis_session_.inputs.abi.types()) {
+                for (auto const& [type, facts] : analysis_session_.primary_abi().types()) {
                     if (facts.unsigned_value_bits.has_value() &&
                         ImGui::Selectable(type.c_str(), analysis.storage_type == type)) {
                         analysis_session_.inputs.workspace.set_packed_storage_type(selected, type);
@@ -1195,7 +1207,7 @@ void PlannerUi::draw_properties_panel() {
                             analysis_session_.inputs.workspace.set_soa_column_type(
                                 selected, column.name, std::nullopt);
                         }
-                        for (auto const& [type, facts] : analysis_session_.inputs.abi.types()) {
+                        for (auto const& [type, facts] : analysis_session_.primary_abi().types()) {
                             static_cast<void>(facts);
                             if (ImGui::Selectable(type.c_str(), column.physical_type == type)) {
                                 analysis_session_.inputs.workspace.set_soa_column_type(

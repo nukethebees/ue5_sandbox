@@ -994,9 +994,9 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
                             static_cast<unsigned long long>(*scale_analysis.storage_bits));
     }
     ImGui::TextDisabled("Target memory facts: %s",
-                        analysis_session_.inputs.abi.memory_facts().provenance.empty()
+                        analysis_session_.primary_abi().memory_facts().provenance.empty()
                             ? "Unknown"
-                            : analysis_session_.inputs.abi.memory_facts().provenance.c_str());
+                            : analysis_session_.primary_abi().memory_facts().provenance.c_str());
     ImGui::TextDisabled("Boundary crossing assumes a contiguous packed-value array whose base is "
                         "cache-line/page aligned.");
 
@@ -1320,9 +1320,9 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
                             static_cast<unsigned long long>(*analysis.size_bytes));
     }
     ImGui::TextDisabled("Target memory facts: %s",
-                        analysis_session_.inputs.abi.memory_facts().provenance.empty()
+                        analysis_session_.primary_abi().memory_facts().provenance.empty()
                             ? "Unknown"
-                            : analysis_session_.inputs.abi.memory_facts().provenance.c_str());
+                            : analysis_session_.primary_abi().memory_facts().provenance.c_str());
     ImGui::TextDisabled(
         "Boundary crossing assumes a contiguous array whose base is cache-line/page aligned.");
 

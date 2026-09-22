@@ -53,13 +53,10 @@ auto declaration_capabilities(lispb::schema::TypeNode const& node) -> Declaratio
                 return {.kind = DeclarationKind::packed,
                         .visible = true,
                         .has_physical_layout = true,
-                        .supports_variants = true,
-                        .supports_access = true};
+                        .supports_variants = true};
             } else if constexpr (std::is_same_v<Type, lispb::schema::RecordType>) {
-                return {.kind = DeclarationKind::record,
-                        .visible = true,
-                        .has_physical_layout = true,
-                        .supports_access = true};
+                return {
+                    .kind = DeclarationKind::record, .visible = true, .has_physical_layout = true};
             } else if constexpr (std::is_same_v<Type, lispb::schema::UnionType>) {
                 return {
                     .kind = DeclarationKind::union_, .visible = true, .has_physical_layout = true};
@@ -72,13 +69,10 @@ auto declaration_capabilities(lispb::schema::TypeNode const& node) -> Declaratio
                 return {.kind = DeclarationKind::soa,
                         .visible = supported,
                         .has_physical_layout = supported,
-                        .supports_variants = supported,
-                        .supports_access = supported};
+                        .supports_variants = supported};
             }
         },
         node.definition)};
-    result.editable =
-        result.visible && node.identity.origin == lispb::schema::TypeOrigin::declaration;
     return result;
 }
 
@@ -118,45 +112,69 @@ auto declaration_kind_label(DeclarationKind const kind) -> char const* {
 
 auto declaration_status(lispb::schema::TypeGraph const& types,
                         lispb::schema::TypeId const type,
-                        Variant const& baseline,
+                        Variant const& variant,
                         AbiProfile const& abi,
                         std::uint64_t const default_capacity) -> LayoutStatus {
+    auto const targets{
+        Analyzer::derive_relationship_target_facts(types, variant, abi, default_capacity)};
+    return declaration_status(types,
+                              type,
+                              variant,
+                              abi,
+                              default_capacity,
+                              1,
+                              SoaAllocationStrategy::separate_columns,
+                              targets);
+}
+
+auto declaration_status(lispb::schema::TypeGraph const& types,
+                        lispb::schema::TypeId const type,
+                        Variant const& variant,
+                        AbiProfile const& abi,
+                        std::uint64_t const default_capacity,
+                        std::uint64_t const element_count,
+                        SoaAllocationStrategy const allocation_strategy,
+                        std::span<RelationshipTargetFacts const> relationship_targets)
+    -> LayoutStatus {
     if (!type.valid() || type.value >= types.types().size()) {
         return LayoutStatus::error;
     }
     auto const& definition{types.type(type).definition};
     if (std::holds_alternative<lispb::schema::EnumType>(definition)) {
-        auto const analysis{Analyzer::analyze_enum(types, type, abi)};
+        auto const analysis{Analyzer::analyze_enum(types, type, abi, element_count)};
         return status(analysis.diagnostics, analysis.backing_facts.has_value());
     }
     if (std::holds_alternative<lispb::schema::PackedType>(definition)) {
-        auto const analysis{Analyzer::analyze_packed(types, type, baseline, abi)};
+        auto const analysis{Analyzer::analyze_packed(
+            types, type, variant, abi, element_count, relationship_targets)};
         return status(analysis.diagnostics, analysis.storage_facts.has_value());
     }
     if (std::holds_alternative<lispb::schema::RecordType>(definition)) {
-        auto const analysis{Analyzer::analyze_record(types, type, abi)};
+        auto const analysis{Analyzer::analyze_record(types, type, abi, element_count)};
         return status(analysis.diagnostics, analysis.size_bytes.has_value());
     }
     if (std::holds_alternative<lispb::schema::UnionType>(definition)) {
-        auto const analysis{Analyzer::analyze_union(types, type, abi)};
+        auto const analysis{Analyzer::analyze_union(types, type, abi, element_count)};
         return status(analysis.diagnostics, analysis.size_bytes.has_value());
     }
     if (std::holds_alternative<lispb::schema::TaggedUnionType>(definition)) {
-        auto const analysis{Analyzer::analyze_tagged_union(types, type, abi)};
+        auto const analysis{Analyzer::analyze_tagged_union(types, type, abi, element_count)};
         return status(analysis.diagnostics, analysis.size_bytes.has_value());
     }
     if (auto const* soa{std::get_if<lispb::schema::SoaType>(&definition)}) {
         if (soa->backend != codegen::SoaBackend::standard_library) {
             return LayoutStatus::unknown;
         }
-        auto const analysis{Analyzer::analyze_soa(types, type, baseline, abi, default_capacity)};
+        auto const analysis{Analyzer::analyze_soa(
+            types, type, variant, abi, default_capacity, allocation_strategy)};
         return status(analysis.diagnostics, analysis.total_payload_bytes.has_value());
     }
     if (std::holds_alternative<lispb::schema::ExternalType>(definition)) {
         return LayoutStatus::unknown;
     }
     if (std::holds_alternative<lispb::schema::IntegerScalarType>(definition)) {
-        return status(Analyzer::analyze_integer_scalar(types, type).diagnostics, true);
+        return status(
+            Analyzer::analyze_integer_scalar(types, type, relationship_targets).diagnostics, true);
     }
     if (std::holds_alternative<lispb::schema::LinearQuantizedType>(definition)) {
         return LayoutStatus::available;

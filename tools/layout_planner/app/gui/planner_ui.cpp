@@ -30,7 +30,6 @@ using namespace lispb::schema;
 void draw_docked_panel_outlines() {
     constexpr std::array names{"Project / Schema",
                                "Layout",
-                               "Target Profile",
                                "Properties",
                                "Variants",
                                "Comparison",
@@ -365,7 +364,7 @@ PlannerUi::PlannerUi(SchemaLoadResult loaded)
     , document_{std::move(loaded.document)}
     , analysis_session_{document_.has_value() ? document_->types() : TypeGraph{}}
     , load_diagnostics_{std::move(loaded.diagnostics)} {
-    target_memory_fact_defaults_ = analysis_session_.inputs.abi.memory_facts();
+    target_memory_fact_defaults_ = analysis_session_.primary_abi().memory_facts();
     sync_target_memory_fact_inputs();
     auto const types{analysis_session_.inputs.workspace.types().types()};
     auto const found{std::ranges::find_if(
@@ -388,7 +387,7 @@ void PlannerUi::sync_target_memory_fact_inputs() {
             *end = '\0';
         }
     };
-    auto const& memory{analysis_session_.inputs.abi.memory_facts()};
+    auto const& memory{analysis_session_.primary_abi().memory_facts()};
     write_value(target_cache_line_bytes_, memory.cache_line_bytes);
     write_value(target_page_bytes_, memory.page_bytes);
     write_value(target_l1_data_cache_bytes_, memory.l1_data_cache_bytes);
@@ -415,11 +414,10 @@ auto PlannerUi::load_target_profile(std::filesystem::path const& path, bool cons
     }
     auto const path_text{stored_path.string()};
     set_text_buffer(target_profile_path_, path_text);
-    analysis_session_.inputs.abi = std::move(*loaded);
-    target_memory_fact_defaults_ = analysis_session_.inputs.abi.memory_facts();
+    analysis_session_.set_primary_abi(std::move(*loaded));
+    target_memory_fact_defaults_ = analysis_session_.primary_abi().memory_facts();
     sync_target_memory_fact_inputs();
     target_profile_load_error_.clear();
-    ++analysis_session_.inputs.target_profile_revision;
 
     if (persist && !project_path_.empty()) {
         persisted_target_profile_paths_.insert_or_assign(graph_project_key(project_path_),
@@ -430,12 +428,11 @@ auto PlannerUi::load_target_profile(std::filesystem::path const& path, bool cons
 }
 
 void PlannerUi::use_builtin_target_profile(bool const clear_persisted) {
-    analysis_session_.inputs.abi = AbiProfile::host_common();
-    target_memory_fact_defaults_ = analysis_session_.inputs.abi.memory_facts();
+    analysis_session_.set_primary_abi(AbiProfile::host_common());
+    target_memory_fact_defaults_ = analysis_session_.primary_abi().memory_facts();
     sync_target_memory_fact_inputs();
     target_profile_load_error_.clear();
     target_profile_path_.fill('\0');
-    ++analysis_session_.inputs.target_profile_revision;
 
     if (clear_persisted && !project_path_.empty() &&
         persisted_target_profile_paths_.erase(graph_project_key(project_path_)) != 0) {
@@ -460,21 +457,22 @@ auto PlannerUi::load_comparison_target_profile(std::filesystem::path const& path
         stored_path = absolute_path.lexically_normal();
     }
     set_text_buffer(comparison_target_profile_path_, stored_path.string());
-    analysis_session_.inputs.comparison_abi = std::move(*loaded);
+    analysis_session_.set_comparison_abi(std::move(*loaded));
     comparison_target_profile_error_.clear();
-    ++analysis_session_.inputs.comparison_target_profile_revision;
     return true;
 }
 
 void PlannerUi::use_builtin_comparison_target_profile() {
-    analysis_session_.inputs.comparison_abi = AbiProfile::host_common();
+    analysis_session_.set_comparison_abi(AbiProfile::host_common());
     comparison_target_profile_path_.fill('\0');
     comparison_target_profile_error_.clear();
-    ++analysis_session_.inputs.comparison_target_profile_revision;
 }
 
 auto PlannerUi::draw_target_profile() -> bool {
-    draw_target_profile_summary(analysis_session_.inputs.abi);
+    if (!ImGui::CollapsingHeader("Target profile", ImGuiTreeNodeFlags_DefaultOpen)) {
+        return false;
+    }
+    draw_target_profile_summary(analysis_session_.primary_abi());
 
     ImGui::SeparatorText("Generated target profile");
     ImGui::TextDisabled(
@@ -574,9 +572,10 @@ auto PlannerUi::draw_target_profile() -> bool {
                 candidate.l3_cache_bytes == target_memory_fact_defaults_.l3_cache_bytes};
             candidate.provenance =
                 matches_defaults ? target_memory_fact_defaults_.provenance : "Session override";
-            if (candidate != analysis_session_.inputs.abi.memory_facts()) {
-                analysis_session_.inputs.abi.set_memory_facts(std::move(candidate));
-                ++analysis_session_.inputs.target_profile_revision;
+            if (candidate != analysis_session_.primary_abi().memory_facts()) {
+                auto profile{analysis_session_.primary_abi()};
+                profile.set_memory_facts(std::move(candidate));
+                analysis_session_.set_primary_abi(std::move(profile));
                 changed = true;
             }
             target_memory_fact_error_.clear();
@@ -584,9 +583,10 @@ auto PlannerUi::draw_target_profile() -> bool {
     }
     ImGui::SameLine();
     if (ImGui::Button("Restore profile facts")) {
-        if (analysis_session_.inputs.abi.memory_facts() != target_memory_fact_defaults_) {
-            analysis_session_.inputs.abi.set_memory_facts(target_memory_fact_defaults_);
-            ++analysis_session_.inputs.target_profile_revision;
+        if (analysis_session_.primary_abi().memory_facts() != target_memory_fact_defaults_) {
+            auto profile{analysis_session_.primary_abi()};
+            profile.set_memory_facts(target_memory_fact_defaults_);
+            analysis_session_.set_primary_abi(std::move(profile));
             changed = true;
         }
         sync_target_memory_fact_inputs();
@@ -718,11 +718,6 @@ void PlannerUi::settings_read_line(ImGuiContext*,
         ui->layout_view_open_ = value.substr(layout_open_prefix.size()) != "0";
         return;
     }
-    constexpr std::string_view target_profile_open_prefix{"TargetProfileOpen="};
-    if (value.starts_with(target_profile_open_prefix)) {
-        ui->target_profile_view_open_ = value.substr(target_profile_open_prefix.size()) != "0";
-        return;
-    }
     constexpr std::string_view properties_open_prefix{"PropertiesOpen="};
     if (value.starts_with(properties_open_prefix)) {
         ui->properties_view_open_ = value.substr(properties_open_prefix.size()) != "0";
@@ -806,7 +801,6 @@ void PlannerUi::settings_write_all(ImGuiContext*,
     }
     output->appendf("ProjectOpen=%d\n", ui->project_view_open_ ? 1 : 0);
     output->appendf("LayoutOpen=%d\n", ui->layout_view_open_ ? 1 : 0);
-    output->appendf("TargetProfileOpen=%d\n", ui->target_profile_view_open_ ? 1 : 0);
     output->appendf("PropertiesOpen=%d\n", ui->properties_view_open_ ? 1 : 0);
     output->appendf("VariantsOpen=%d\n", ui->variants_view_open_ ? 1 : 0);
     output->appendf("ComparisonOpen=%d\n", ui->comparison_view_open_ ? 1 : 0);
@@ -868,7 +862,6 @@ auto PlannerUi::draw() -> bool {
     refresh_analysis();
     draw_properties_panel();
     draw_variants_panel();
-    draw_target_profile_panel();
     refresh_analysis();
     draw_comparison_panel();
     draw_graph_panel();
@@ -1021,7 +1014,6 @@ auto PlannerUi::draw_view_menu() -> bool {
             reset_dock_layout_requested_ = true;
             project_view_open_ = true;
             layout_view_open_ = true;
-            target_profile_view_open_ = true;
             properties_view_open_ = true;
             variants_view_open_ = true;
             comparison_view_open_ = true;
@@ -1040,7 +1032,6 @@ auto PlannerUi::draw_view_menu() -> bool {
         };
         toggle_view("Project / Schema", project_view_open_);
         toggle_view("Layout", layout_view_open_);
-        toggle_view("Target Profile", target_profile_view_open_);
         toggle_view("Properties", properties_view_open_);
         toggle_view("Variants", variants_view_open_);
         toggle_view("Comparison", comparison_view_open_);
@@ -1722,6 +1713,17 @@ void PlannerUi::sync_document_graph(std::optional<TypeIdentity> selection) {
                                         document_->types().type(*type).definition);
     });
     analysis_session_.replace_types(*document_, selection);
+    invalidate_type_editor_state();
+    rename_editor_declaration_.reset();
+    delete_declaration_.reset();
+    delete_declaration_name_.clear();
+    inline_record_rename_.reset();
+    focus_inline_record_rename_ = false;
+    open_record_module_.reset();
+}
+
+void PlannerUi::invalidate_type_editor_state() {
+    selected_enumerator_.clear();
     enum_editor_declaration_.reset();
     enum_editor_value_.clear();
     packed_editor_declaration_.reset();
@@ -1730,6 +1732,12 @@ void PlannerUi::sync_document_graph(std::optional<TypeIdentity> selection) {
     packed_code_editor_field_.clear();
     packed_code_editor_name_.clear();
     selected_packed_code_.clear();
+    integer_scalar_editor_declaration_.reset();
+    integer_scalar_editor_code_.clear();
+    selected_integer_scalar_code_.clear();
+    linear_quantized_editor_declaration_.reset();
+    integer_varint_editor_declaration_.reset();
+    fixed_point_editor_declaration_.reset();
     record_editor_declaration_.reset();
     record_editor_member_.clear();
     union_editor_declaration_.reset();
@@ -1744,6 +1752,9 @@ void PlannerUi::sync_document_graph(std::optional<TypeIdentity> selection) {
     packed_dragged_variant_id_.reset();
     packed_dragged_left_width_.reset();
     packed_dragged_right_width_.reset();
+    new_varint_distribution_value_.fill('\0');
+    new_varint_distribution_value_[0] = '0';
+    new_varint_distribution_weight_ = 1;
 }
 
 auto PlannerUi::load_project(std::filesystem::path const& path,
@@ -1839,10 +1850,7 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     analysis_session_.inputs.selection.soa_access_columns.clear();
     varint_distributions_.clear();
     analysis_session_.inputs.selection.packed_access_set_explicit = false;
-    analysis_session_.inputs.union_distributions.clear();
-    ++analysis_session_.inputs.union_distribution_revision;
-    analysis_session_.inputs.tagged_union_distributions.clear();
-    ++analysis_session_.inputs.tagged_distribution_revision;
+    analysis_session_.clear_distributions();
     new_varint_distribution_value_.fill('\0');
     new_varint_distribution_value_[0] = '0';
     new_varint_distribution_weight_ = 1;
@@ -1939,7 +1947,6 @@ void PlannerUi::setup_default_dock_layout(unsigned int const dockspace_id) {
     ImGui::DockBuilderDockWindow("Project / Schema", left_top_id);
     ImGui::DockBuilderDockWindow("Variants", variants_id);
     ImGui::DockBuilderDockWindow("Graph", center_id);
-    ImGui::DockBuilderDockWindow("Target Profile", center_id);
     ImGui::DockBuilderDockWindow("Layout", center_id);
     ImGui::DockBuilderDockWindow("Properties", right_id);
     ImGui::DockBuilderDockWindow("Comparison", comparison_id);
@@ -1971,17 +1978,8 @@ void PlannerUi::refresh_analysis() {
             }
         }
     }
-    auto const unchanged_entries{std::ranges::equal(
-        inputs.varint_distribution_entries, entries, [](auto const& first, auto const& second) {
-            return first.value == second.value && first.weight == second.weight;
-        })};
-    if (source_identity != inputs.varint_distribution_source || !unchanged_entries ||
-        rows_present != inputs.varint_distribution_rows_present) {
-        inputs.varint_distribution_source = std::move(source_identity);
-        inputs.varint_distribution_entries = std::move(entries);
-        inputs.varint_distribution_rows_present = rows_present;
-        ++inputs.varint_distribution_revision;
-    }
+    analysis_session_.set_varint_distribution(
+        std::move(source_identity), std::move(entries), rows_present);
     analysis_session_.refresh(document_.has_value() ? &*document_ : nullptr);
 }
 
@@ -1990,60 +1988,7 @@ void PlannerUi::select_type(std::optional<TypeId> type) {
                                                         type)) {
         return;
     }
-    selected_enumerator_.clear();
-    enum_editor_declaration_.reset();
-    enum_editor_value_.clear();
-    packed_editor_declaration_.reset();
-    packed_editor_field_.clear();
-    packed_code_editor_declaration_.reset();
-    packed_code_editor_field_.clear();
-    packed_code_editor_name_.clear();
-    selected_packed_code_.clear();
-    integer_scalar_editor_declaration_.reset();
-    integer_scalar_editor_code_.clear();
-    selected_integer_scalar_code_.clear();
-    linear_quantized_editor_declaration_.reset();
-    integer_varint_editor_declaration_.reset();
-    fixed_point_editor_declaration_.reset();
-    optional_sentinel_editor_declaration_.reset();
-    optional_presence_bit_editor_declaration_.reset();
-    record_editor_declaration_.reset();
-    record_editor_member_.clear();
-    union_editor_declaration_.reset();
-    union_editor_alternative_.clear();
-    tagged_union_editor_declaration_.reset();
-    tagged_union_editor_alternative_.clear();
-    soa_editor_declaration_.reset();
-    soa_editor_member_.clear();
-    new_varint_distribution_value_.fill('\0');
-    new_varint_distribution_value_[0] = '0';
-    new_varint_distribution_weight_ = 1;
-    packed_dragged_divider_.reset();
-    packed_dragged_variant_id_.reset();
-    packed_dragged_left_width_.reset();
-    packed_dragged_right_width_.reset();
-}
-
-void PlannerUi::draw_target_profile_panel() {
-    if (!target_profile_view_open_) {
-        return;
-    }
-    if (auto* layout_window{ImGui::FindWindowByName("Layout")};
-        layout_window != nullptr && layout_window->DockId != 0) {
-        ImGui::SetNextWindowDockID(layout_window->DockId, ImGuiCond_FirstUseEver);
-    }
-    if (std::exchange(focus_target_profile_view_, false)) {
-        ImGui::SetNextWindowFocus();
-    }
-
-    auto const was_open{target_profile_view_open_};
-    if (ImGui::Begin("Target Profile", &target_profile_view_open_)) {
-        if (draw_target_profile()) {
-            refresh_analysis();
-        }
-    }
-    persist_view_visibility(was_open, target_profile_view_open_);
-    ImGui::End();
+    invalidate_type_editor_state();
 }
 
 void PlannerUi::draw_layout_panel() {
@@ -2053,11 +1998,8 @@ void PlannerUi::draw_layout_panel() {
     auto const was_open{layout_view_open_};
     ImGui::Begin("Layout", &layout_view_open_);
     persist_view_visibility(was_open, layout_view_open_);
-    ImGui::TextWrapped("Target: %s", known_or_unknown(analysis_session_.inputs.abi.name()));
-    if (ImGui::SmallButton("Profile settings...")) {
-        target_profile_view_open_ = true;
-        focus_target_profile_view_ = true;
-        ImGui::MarkIniSettingsDirty();
+    if (draw_target_profile()) {
+        refresh_analysis();
     }
     ImGui::Separator();
     if (ImGui::Button("+ Add variant")) {
