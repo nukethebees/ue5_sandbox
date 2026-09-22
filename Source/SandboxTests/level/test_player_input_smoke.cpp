@@ -131,6 +131,15 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                        TEXT("Simulation-bound player input contexts become active"));
     }
 
+    void select_flight_model_slot(::ioj::sim::player::FlightModelSlot const slot) {
+        auto* const controller{controller_.Get()};
+        auto* const ship{IsValid(controller) ? Cast<ATestSpaceShip>(controller->GetPawn())
+                                             : nullptr};
+        if (checks.is_valid(ship, TEXT("Player ship accepts a flight model selection"))) {
+            ship->select_flight_model_slot(slot);
+        }
+    }
+
     void restore_profile() {
         auto* const settings{input_settings_.Get()};
         auto* const subsystem{input_subsystem_.Get()};
@@ -302,6 +311,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 checks.is_true(has_ship_mapping(default_profile, ship_input.forward_move, EKeys::W),
                                TEXT("Default profile maps W to forward movement"));
                 checks.is_true(ship_axes_are_clear(), TEXT("Ship input starts neutral"));
+                select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Left);
                 press_key(EKeys::W);
                 release_wait_ticks_ = 0;
             })
@@ -464,6 +474,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 if (!setup(default_profile)) {
                     return;
                 }
+                select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Left);
             })
             .Until([this] { return !checks.all_passed || input_is_ready(); }, timeout)
             .Then([this, default_profile] {
@@ -629,6 +640,8 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 auto const& ship_input{FPlayerControllerTestAccess::ship_input(*controller_)};
                 checks.is_true(has_ship_mapping(profile, ship_input.move, EKeys::Gamepad_Right2D),
                                TEXT("Gamepad profile maps the right stick to movement"));
+                checks.is_true(has_ship_mapping(profile, ship_input.turn, EKeys::Gamepad_Left2D),
+                               TEXT("Gamepad profile maps the left stick to turning"));
                 checks.is_true(has_ship_mapping(
                                    profile, ship_input.fire_laser, EKeys::Gamepad_RightTriggerAxis),
                                TEXT("Gamepad profile maps the right trigger to fire"));
@@ -639,24 +652,26 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                     has_ship_mapping(profile, ship_input.brake, EKeys::Gamepad_LeftShoulder),
                     TEXT("Gamepad profile maps the left shoulder to braking"));
                 press_key(EKeys::Gamepad_Right2D, FVector{0.65, 0.8, 0.0});
+                release_wait_ticks_ = 0;
             })
             .Until(
                 [this] {
-                    auto const movement{snapshot().movement};
-                    return !checks.all_passed || (movement.X > 0.0 && movement.Y > 0.0);
+                    ++release_wait_ticks_;
+                    return !checks.all_passed || release_wait_ticks_ > 1;
                 },
                 timeout)
             .Then([this] {
-                auto const movement{snapshot().movement};
-                checks.is_true(movement.X > 0.0 && movement.Y > 0.0,
-                               TEXT("Gamepad stick reaches movement state"));
+                checks.is_true(snapshot().movement.IsNearlyZero(),
+                               TEXT("Starfox ignores the right-stick movement action"));
                 release_key(EKeys::Gamepad_Right2D);
+                press_key(EKeys::Gamepad_Left2D, FVector{0.65, 0.8, 0.0});
             })
-            .Until([this] { return !checks.all_passed || snapshot().movement.IsNearlyZero(); },
+            .Until([this] { return !checks.all_passed || !snapshot().turn.IsNearlyZero(); },
                    timeout)
             .Then([this] {
-                checks.is_true(snapshot().movement.IsNearlyZero(),
-                               TEXT("Gamepad stick release clears movement"));
+                checks.is_true(!snapshot().turn.IsNearlyZero(),
+                               TEXT("Starfox records the left-stick turn input"));
+                release_key(EKeys::Gamepad_Left2D);
                 press_key(EKeys::Gamepad_RightTriggerAxis);
             })
             .Until([this] { return !checks.all_passed || fire_is_active(true); }, timeout)
