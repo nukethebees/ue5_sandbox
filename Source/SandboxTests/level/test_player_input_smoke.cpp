@@ -234,6 +234,13 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
         return IsValid(controller) ? controller->get_input_snapshot() : FPlayerInputSnapshot{};
     }
 
+    auto ship_velocity() const -> FVector {
+        auto const* const controller{controller_.Get()};
+        auto const* const ship{IsValid(controller) ? Cast<ATestSpaceShip>(controller->GetPawn())
+                                                   : nullptr};
+        return IsValid(ship) ? ship->get_velocity() : FVector::ZeroVector;
+    }
+
     auto keyboard_forward_is_active() const -> bool {
         auto const state{snapshot()};
         return FMath::IsNearlyZero(state.movement.X) && state.movement.Y > 0.0 &&
@@ -642,6 +649,14 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                                TEXT("Gamepad profile maps the right stick to movement"));
                 checks.is_true(has_ship_mapping(profile, ship_input.turn, EKeys::Gamepad_Left2D),
                                TEXT("Gamepad profile maps the left stick to turning"));
+                checks.is_true(
+                    has_ship_mapping(
+                        profile, ship_input.vertical_move, EKeys::Gamepad_FaceButton_Bottom),
+                    TEXT("Gamepad profile maps the lower face button to vertical movement"));
+                checks.is_true(!has_ship_mapping(profile,
+                                                 ship_input.fire_laser,
+                                                 EKeys::Gamepad_FaceButton_Bottom),
+                               TEXT("Gamepad profile does not map the lower face button to fire"));
                 checks.is_true(has_ship_mapping(
                                    profile, ship_input.fire_laser, EKeys::Gamepad_RightTriggerAxis),
                                TEXT("Gamepad profile maps the right trigger to fire"));
@@ -672,6 +687,20 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 checks.is_true(!snapshot().turn.IsNearlyZero(),
                                TEXT("Starfox records the left-stick turn input"));
                 release_key(EKeys::Gamepad_Left2D);
+                select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Left);
+                press_key(EKeys::Gamepad_FaceButton_Bottom);
+            })
+            .Until(
+                [this] {
+                    return !checks.all_passed || fire_is_active(true) || ship_velocity().Z < 0.0;
+                },
+                timeout)
+            .Then([this] {
+                checks.is_true(ship_velocity().Z < 0.0,
+                               TEXT("Gunship lower face button produces downward movement"));
+                checks.is_true(fire_is_active(false),
+                               TEXT("Gunship lower face button does not fire"));
+                release_key(EKeys::Gamepad_FaceButton_Bottom);
                 press_key(EKeys::Gamepad_RightTriggerAxis);
             })
             .Until([this] { return !checks.all_passed || fire_is_active(true); }, timeout)
