@@ -7,7 +7,7 @@ See [architecture](ARCHITECTURE.md) for implementation and dependency details.
 See the [roadmap](ROADMAP.md) for the path from inspection and experiments to full LispB type
 authoring.
 
-## Build and executable location
+## Build and install
 
 From the repository root, initialize the optional UI dependencies and run the dedicated workflow:
 
@@ -16,25 +16,44 @@ git submodule update --init native/third_party/sdl native/third_party/imgui
 cmake --workflow --preset layout-planner
 ```
 
-The workflow builds and tests the planner. The executable is worktree-local:
+The workflow builds and tests the planner. The development executable stays in this worktree:
 
 ```text
-%REPOSITORY_ROOT%\out\build\layout-planner\tools\layout_planner\app\layout-planner.exe
+.\out\build\layout-planner\tools\layout_planner\app\layout-planner.exe
 ```
 
-`%REPOSITORY_ROOT%` is the root of the current worktree. The planner is not installed system-wide
-or added to `PATH`.
+To promote a tested build to a separate, per-user installation, run this from the repository root:
+
+```powershell
+$plannerInstallRoot = Join-Path $env:LOCALAPPDATA 'MemoryLayoutPlanner'
+cmake --install .\out\build\layout-planner --component layout-planner --prefix $plannerInstallRoot
+$plannerBin = Join-Path $plannerInstallRoot 'bin'
+& (Join-Path $plannerBin 'layout-planner.exe') --help
+```
+
+The `layout-planner` component installs only the planner executable to
+`%LOCALAPPDATA%\MemoryLayoutPlanner\bin`; it does not install unrelated project or third-party
+targets. Add that `bin` directory to your user `PATH` in Windows Environment Variables, then open
+a new terminal to run `layout-planner` by name. To use it in the current PowerShell session without
+changing your user `PATH`, run `$env:PATH = "$plannerBin;$env:PATH"`.
+
+Building or editing another worktree does not change the installed executable. Run the install
+command again only after you have built and tested the version you want to use as your stable copy;
+installing again replaces the previous executable at that prefix. Close the installed planner before
+reinstalling it on Windows.
 
 ## Run
 
-Run the planner with the repository root as its working directory:
+Run the worktree build with the repository root as its working directory, or use
+`layout-planner` if you added the installed `bin` directory to `PATH`:
 
 ```powershell
 .\out\build\layout-planner\tools\layout_planner\app\layout-planner.exe
 ```
 
-The default invocation loads `lispb/project.lispb` and its `sandbox-code` target. Override either
-selection when inspecting another manifest or target:
+The default invocation loads `lispb/project.lispb` relative to the current working directory and
+uses its `sandbox-code` target. From elsewhere, pass `--project` to select the manifest. Override
+either selection when inspecting another manifest or target:
 
 ```powershell
 .\out\build\layout-planner\tools\layout_planner\app\layout-planner.exe `
