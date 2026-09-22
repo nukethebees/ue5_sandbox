@@ -4,6 +4,45 @@ option(SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK "Register the native frame-memory le
 option(SANDBOX_KERNEL_BENCHMARK_PLOTS "Generate native kernel benchmark plots" OFF)
 option(SANDBOX_LAYOUT_PLANNER "Build the standalone memory layout planner" OFF)
 
+set(SANDBOX_NATIVE_THIRD_PARTY_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
+set(SANDBOX_NATIVE_RTTI_EXCLUDED_TARGETS
+  sandbox-s7-third-party
+  sbx-mimalloc-prefix-probe
+  sbx-mimalloc-implementation
+  TracyClientUnreal
+)
+
+if(SANDBOX_MSVC_FRONTEND)
+  set(SANDBOX_NATIVE_RTTI_DISABLED_OPTION /GR-)
+else()
+  set(SANDBOX_NATIVE_RTTI_DISABLED_OPTION -fno-rtti)
+endif()
+
+function(sandbox_disable_rtti_for_first_party_native_targets directory)
+  get_property(targets DIRECTORY "${directory}" PROPERTY BUILDSYSTEM_TARGETS)
+  foreach(target IN LISTS targets)
+    if(target IN_LIST SANDBOX_NATIVE_RTTI_EXCLUDED_TARGETS)
+      continue()
+    endif()
+
+    get_target_property(target_type ${target} TYPE)
+    if(NOT target_type STREQUAL "UTILITY" AND NOT target_type STREQUAL "INTERFACE_LIBRARY")
+      target_compile_options(${target} PRIVATE "${SANDBOX_NATIVE_RTTI_DISABLED_OPTION}")
+    endif()
+  endforeach()
+
+  get_property(subdirectories DIRECTORY "${directory}" PROPERTY SUBDIRECTORIES)
+  foreach(subdirectory IN LISTS subdirectories)
+    cmake_path(IS_PREFIX SANDBOX_NATIVE_THIRD_PARTY_DIRECTORY
+      "${subdirectory}" NORMALIZE is_third_party)
+    if(is_third_party)
+      continue()
+    endif()
+
+    sandbox_disable_rtti_for_first_party_native_targets("${subdirectory}")
+  endforeach()
+endfunction()
+
 if(SANDBOX_LAYOUT_PLANNER)
   enable_language(C)
 endif()
@@ -104,6 +143,14 @@ add_custom_target(native-tests
     check-generated-code
 )
 set_property(TARGET native-tests PROPERTY FOLDER "Sandbox/Native/Tests")
+
+sandbox_disable_rtti_for_first_party_native_targets("${CMAKE_CURRENT_SOURCE_DIR}")
+
+if(TARGET TracyClientUnreal)
+  set_property(SOURCE profiling/src/memory.cpp APPEND PROPERTY
+    COMPILE_OPTIONS "${SANDBOX_NATIVE_RTTI_DISABLED_OPTION}"
+  )
+endif()
 
 sandbox_target_precompile_common_headers(
   native-core
