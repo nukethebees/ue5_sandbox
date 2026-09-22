@@ -2974,7 +2974,7 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
             }
         }
         ImGui::SameLine();
-        if (scalar.relationship.has_value() && ImGui::SmallButton(">")) {
+        if (scalar.relationship.has_value() && detail::semantic_type_navigation_button()) {
             selected_type_ = scalar.relationship->target.type;
             selected_field_.clear();
             return true;
@@ -4446,7 +4446,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                     }
                 }
                 ImGui::SameLine();
-                if (index < packed.segments.size() && ImGui::SmallButton(">")) {
+                if (index < packed.segments.size() && detail::semantic_type_navigation_button()) {
                     if (auto const* resolved{
                             std::get_if<lispb::schema::PackedField>(&packed.segments[index])}) {
                         navigate_to = resolved->semantic_type.type;
@@ -5195,7 +5195,8 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             }
             ImGui::SameLine();
             if (selected_resolved_field != nullptr &&
-                selected_resolved_field->relationship.has_value() && ImGui::SmallButton(">")) {
+                selected_resolved_field->relationship.has_value() &&
+                detail::semantic_type_navigation_button()) {
                 selected_type_ = selected_resolved_field->relationship->target.type;
                 selected_field_.clear();
                 packed_access_fields_.clear();
@@ -5904,7 +5905,8 @@ auto PlannerUi::draw_union_editor(TypeNode const& node, UnionType const& union_t
                     pending->alternatives[index].type.name = std::move(*picked);
                 }
                 ImGui::SameLine();
-                if (index < union_type.alternatives.size() && ImGui::SmallButton(">")) {
+                if (index < union_type.alternatives.size() &&
+                    detail::semantic_type_navigation_button()) {
                     navigate_to = union_type.alternatives[index].semantic_type.type;
                 }
                 detail::editable_table_content_hint(union_alternative_type_.data(), 80.0F);
@@ -6277,7 +6279,8 @@ auto PlannerUi::draw_tagged_union_editor(TypeNode const& node, TaggedUnionType c
                     pending->alternatives[index].type.name = std::move(*picked);
                 }
                 ImGui::SameLine();
-                if (index < tagged_union.alternatives.size() && ImGui::SmallButton(">")) {
+                if (index < tagged_union.alternatives.size() &&
+                    detail::semantic_type_navigation_button()) {
                     navigate_to = tagged_union.alternatives[index].semantic_type.type;
                 }
                 detail::editable_table_content_hint(tagged_union_alternative_type_.data(), 80.0F);
@@ -6643,7 +6646,7 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
                     pending->members[index].type.name = std::move(*picked);
                 }
                 ImGui::SameLine();
-                if (index < record.members.size() && ImGui::SmallButton(">")) {
+                if (index < record.members.size() && detail::semantic_type_navigation_button()) {
                     navigate_to = record.members[index].semantic_type.type;
                 }
                 detail::editable_table_content_hint(record_member_type_.data(), 80.0F);
@@ -6815,7 +6818,7 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
             }
             ImGui::SameLine();
             if (resolved_member != nullptr && resolved_member->relationship.has_value() &&
-                ImGui::SmallButton(">")) {
+                detail::semantic_type_navigation_button()) {
                 navigate_to = resolved_member->relationship->target.type;
             }
         } else {
@@ -7355,7 +7358,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                     pending->members[index].type.name = std::move(*picked);
                 }
                 ImGui::SameLine();
-                if (index < soa.columns.size() && ImGui::SmallButton(">")) {
+                if (index < soa.columns.size() && detail::semantic_type_navigation_button()) {
                     navigate_to = soa.columns[index].semantic_type.type;
                 }
                 detail::editable_table_content_hint(soa_member_type_.data(), 80.0F);

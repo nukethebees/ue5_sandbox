@@ -32,6 +32,7 @@ void editable_table_column(char const* label,
 void editable_table_content_hint(std::string_view text, float trailing_width = 0.0F);
 auto prepare_editable_type_input() -> bool;
 auto editable_table_row_handle(bool selected) -> bool;
+auto semantic_type_navigation_button() -> bool;
 
 auto format_bytes(std::optional<std::uint64_t> bytes) -> std::string;
 auto format_number(std::optional<std::uint64_t> value) -> std::string;

@@ -95,6 +95,12 @@ auto editable_table_row_handle(bool const selected) -> bool {
     return mouse_y >= row_top && mouse_y < row_bottom;
 }
 
+auto semantic_type_navigation_button() -> bool {
+    auto const clicked{ImGui::SmallButton(">")};
+    ImGui::SetItemTooltip("Show the referenced semantic type in Properties.");
+    return clicked;
+}
+
 auto format_bytes(std::optional<std::uint64_t> const bytes) -> std::string {
     if (!bytes.has_value()) {
         return "Unknown";
