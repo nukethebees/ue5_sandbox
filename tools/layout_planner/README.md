@@ -51,6 +51,12 @@ Run the worktree build with the repository root as its working directory, or use
 .\out\build\layout-planner\tools\layout_planner\app\layout-planner.exe
 ```
 
+Use **File > Export C++** after saving to generate the selected target into its configured output
+directory. The Project panel reports the file count and destination, or the generation error.
+Targets with a build-relative output root ask for an absolute build directory. Export uses the same
+LispB compiler, formatting, and generated-file tracking as the command-line generator; it exports
+saved schemas, not session-only layout variants.
+
 The default invocation loads `lispb/project.lispb` relative to the current working directory and
 uses its `sandbox-code` target. From elsewhere, pass `--project` to select the manifest. Override
 either selection when inspecting another manifest or target:

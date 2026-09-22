@@ -161,6 +161,7 @@ class PlannerUi {
     [[nodiscard]] auto project_history_active() const -> bool;
     [[nodiscard]] auto has_dirty_changes() const -> bool;
     auto save_changes() -> bool;
+    auto export_cpp(std::filesystem::path const& build_root) -> bool;
     auto draw_type_picker(std::string_view module_name, lispb::schema::TypeIdentity const& owner)
         -> std::optional<std::string>;
     void sync_document_graph(std::optional<lispb::schema::TypeIdentity> selection);
@@ -230,6 +231,7 @@ class PlannerUi {
     std::string target_memory_fact_error_;
     std::array<char, 1024> open_project_path_{};
     std::array<char, 1024> save_as_project_path_{};
+    std::array<char, 1024> export_build_root_path_{};
     std::array<char, 512> new_project_source_path_{};
     std::array<char, 1024> rename_project_source_path_{};
     std::optional<std::filesystem::path> rename_project_source_;
@@ -483,6 +485,7 @@ class PlannerUi {
     bool open_project_dialog_{};
     bool open_new_project_dialog_{};
     bool open_save_as_dialog_{};
+    bool open_export_build_root_dialog_{};
     bool save_shortcut_pending_{};
     bool project_changed_{};
     bool open_close_confirmation_{};

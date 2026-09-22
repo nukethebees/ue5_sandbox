@@ -3,6 +3,7 @@
 #include "planner_ui_support.hpp"
 
 #include <ioj/layout/planner_type.hpp>
+#include <lispb/target_compiler.h>
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -1157,6 +1158,18 @@ auto PlannerUi::draw_file_menu() -> bool {
         open_save_as_dialog_ = true;
     }
     ImGui::EndDisabled();
+    if (ImGui::MenuItem("Export C++",
+                        nullptr,
+                        false,
+                        has_document && project_document_.has_value() && !has_dirty_changes())) {
+        static_cast<void>(export_cpp(export_build_root_path_.data()));
+    }
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+        ImGui::SetTooltip(
+            has_dirty_changes()
+                ? "Save schema and project changes before exporting C++."
+                : "Generate C++ for the saved target into its configured output directory.");
+    }
     ImGui::EndMenu();
 
     return changed;
@@ -1301,6 +1314,35 @@ void PlannerUi::draw_project_path_dialogs() {
         }
         if (!schema_edit_message_.empty()) {
             ImGui::TextWrapped("%s", schema_edit_message_.c_str());
+        }
+        ImGui::EndPopup();
+    }
+    if (std::exchange(open_export_build_root_dialog_, false)) {
+        ImGui::OpenPopup("Export build directory");
+    }
+    if (ImGui::BeginPopupModal(
+            "Export build directory", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextUnformatted("This target writes output relative to a build directory.");
+        ImGui::TextUnformatted("Build directory (absolute path)");
+        ImGui::SetNextItemWidth(560.0F);
+        ImGui::InputText(
+            "##export-build-root", export_build_root_path_.data(), export_build_root_path_.size());
+        auto const build_root{std::filesystem::path{export_build_root_path_.data()}};
+        ImGui::BeginDisabled(!build_root.is_absolute() || has_dirty_changes());
+        if (ImGui::Button("Export")) {
+            if (export_cpp(build_root)) {
+                ImGui::CloseCurrentPopup();
+            }
+        }
+        ImGui::EndDisabled();
+        ImGui::SameLine();
+        if (ImGui::Button("Cancel")) {
+            ImGui::CloseCurrentPopup();
+        }
+        if (!schema_edit_message_.empty()) {
+            ImGui::PushTextWrapPos(ImGui::GetCursorPosX() + 560.0F);
+            ImGui::TextUnformatted(schema_edit_message_.c_str());
+            ImGui::PopTextWrapPos();
         }
         ImGui::EndPopup();
     }
@@ -1642,6 +1684,49 @@ auto PlannerUi::save_changes() -> bool {
     return true;
 }
 
+auto PlannerUi::export_cpp(std::filesystem::path const& build_root) -> bool {
+    project_view_open_ = true;
+    ImGui::MarkIniSettingsDirty();
+    if (!document_.has_value() || !project_document_.has_value()) {
+        schema_edit_message_ = "Open a LispB project before exporting C++.";
+        return false;
+    }
+    if (has_dirty_changes()) {
+        schema_edit_message_ = "Save schema and project changes before exporting C++.";
+        return false;
+    }
+
+    try {
+        auto const project{lispb::load_project(project_path_)};
+        auto const target{project.targets.find(target_name_)};
+        if (target == project.targets.end() ||
+            !std::holds_alternative<lispb::CppSchemaTarget>(target->second)) {
+            schema_edit_message_ = "The saved project no longer contains C++ schema target '" +
+                                   target_name_ + "'. Reopen the project.";
+            return false;
+        }
+        auto const& schema{std::get<lispb::CppSchemaTarget>(target->second)};
+        if (schema.output_root.base == lispb::PathBase::build && !build_root.is_absolute()) {
+            schema_edit_message_ = "Choose an absolute build directory for this export.";
+            open_export_build_root_dialog_ = true;
+            return false;
+        }
+
+        auto const compiled{lispb::compile_target(target->second, project.root, build_root)};
+        if (lispb::publish(compiled.compilation, compiled.publication) != 0) {
+            schema_edit_message_ = "C++ export failed for target '" + target_name_ + "'.";
+            return false;
+        }
+        schema_edit_message_ = "Exported " + std::to_string(compiled.compilation.artifacts.size()) +
+                               " C++ file(s) for '" + target_name_ + "' to " +
+                               compiled.publication.output_root.string();
+        return true;
+    } catch (std::exception const& error) {
+        schema_edit_message_ = "C++ export failed: " + std::string{error.what()};
+        return false;
+    }
+}
+
 auto PlannerUi::apply_project_edit(lispb::ProjectEditCommand command) -> bool {
     if (!project_document_.has_value()) {
         schema_edit_message_ = "No editable LispB project manifest is loaded.";
@@ -1795,6 +1880,10 @@ auto PlannerUi::load_project(std::filesystem::path const& path,
 
 void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     schema_warning_message_.clear();
+    if (project_path_ != loaded.project_path || target_name_ != loaded.target_name) {
+        export_build_root_path_.fill('\0');
+    }
+    open_export_build_root_dialog_ = false;
     project_path_ = std::move(loaded.project_path);
     target_name_ = std::move(loaded.target_name);
     analysis_session_ = PlannerAnalysisSession{

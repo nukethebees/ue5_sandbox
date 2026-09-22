@@ -23,6 +23,7 @@ target_link_libraries(layout-planner PRIVATE
   CLI11::CLI11
   SDL3::SDL3-static
   native-layout
+  lispb-target-compiler
   sandbox-imgui
   sandbox::warnings_as_errors
 )

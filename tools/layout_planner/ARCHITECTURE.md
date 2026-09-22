@@ -18,11 +18,16 @@ tools/layout_planner/app SDL3/ImGui bootstrap, event loop, and presentation
 ## Dependencies
 
 `native-layout-tests` depends on `native-layout` and GoogleTest. `layout-planner` depends on
-`native-layout`, SDL3, and Dear ImGui. The library has no SDL3, Dear ImGui, graphics, windowing,
-or application-header dependency.
+`native-layout`, `lispb-target-compiler`, SDL3, and Dear ImGui. The library has no SDL3, Dear ImGui,
+graphics, windowing, or application-header dependency.
 
 The normal native configuration builds and tests `native-layout` while the optional planner GUI is
 disabled, which prevents UI dependencies from leaking into the library.
+
+The File menu's C++ export reloads the saved project and invokes `lispb::compile_target` followed
+by `lispb::publish` for the selected C++ schema target. Unsaved schema or project changes disable
+export. Project-relative output roots come from the target; build-relative roots require an explicit
+build directory. Generation does not apply planner variants or modify the editable document.
 
 ## State and data flow
 
