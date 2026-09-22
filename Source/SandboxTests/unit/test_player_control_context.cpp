@@ -32,6 +32,7 @@
 #include <EnhancedInputComponent.h>
 #include <InputAction.h>
 #include <InputMappingContext.h>
+#include <InputModifiers.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/Guid.h>
 #include <PlayerMappableKeySettings.h>
@@ -419,6 +420,34 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                              has_mapping(input->vertical_move, EKeys::SpaceBar));
         TestRunner->TestTrue(TEXT("Left Control has downward movement"),
                              has_mapping(input->vertical_move, EKeys::LeftControl));
+        TestRunner->TestTrue(TEXT("Gamepad face top has upward movement"),
+                             has_mapping(input->vertical_move, EKeys::Gamepad_FaceButton_Top));
+        TestRunner->TestTrue(TEXT("Gamepad face bottom has downward movement"),
+                             has_mapping(input->vertical_move, EKeys::Gamepad_FaceButton_Bottom));
+        for (auto const& profile : ml::ioj::control_profile_definitions()) {
+            auto const mappings{mapping_context->GetMappingsForProfile(profile.id)};
+            auto const has_vertical_button = [input, &mappings](FKey const key) {
+                return mappings.ContainsByPredicate([input, key](auto const& mapping) {
+                    return mapping.Action == input->vertical_move && mapping.Key == key;
+                });
+            };
+            TestRunner->TestTrue(TEXT("Every profile maps gamepad ascend"),
+                                 has_vertical_button(EKeys::Gamepad_FaceButton_Top));
+            TestRunner->TestTrue(TEXT("Every profile maps gamepad descend"),
+                                 has_vertical_button(EKeys::Gamepad_FaceButton_Bottom));
+            auto const* const descend{mappings.FindByPredicate([input](auto const& mapping) {
+                return mapping.Action == input->vertical_move &&
+                       mapping.Key == EKeys::Gamepad_FaceButton_Bottom;
+            })};
+            if (descend != nullptr) {
+                TestRunner->TestTrue(TEXT("Gamepad descend produces negative vertical input"),
+                                     descend->Modifiers.ContainsByPredicate(
+                                         [](TObjectPtr<UInputModifier> const& modifier) {
+                                             return IsValid(modifier) &&
+                                                    modifier->IsA<UInputModifierNegate>();
+                                         }));
+            }
+        }
         TestRunner->TestTrue(TEXT("A has sampled lateral control"),
                              has_mapping(input->ship_1d_control_x, EKeys::A));
         TestRunner->TestTrue(TEXT("D has sampled lateral control"),
