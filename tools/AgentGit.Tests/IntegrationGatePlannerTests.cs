@@ -68,6 +68,16 @@ public sealed class IntegrationGatePlannerTests
     }
 
     [TestMethod]
+    public void Rust_tool_uses_tool_tests_without_CSharp_or_Unreal()
+    {
+        var plan = new IntegrationGatePlanner().Plan(
+            ["tools/rust/crates/set-live-coding-disabled/src/lib.rs"]);
+
+        CollectionAssert.AreEqual(new[] { IntegrationGate.ToolTests }, plan.Gates.ToArray());
+        Assert.IsFalse(plan.RequiresUnreal);
+    }
+
+    [TestMethod]
     public async Task Planner_uses_manifest_from_pinned_base_not_feature_worktree()
     {
         using var fixture = new TemporaryAgentGitRepository();
