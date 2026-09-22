@@ -351,7 +351,7 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
                 for (auto const bounds : loop_bounds) {
                     for (auto candidate_index{bounds.begin}; candidate_index < bounds.end;
                          ++candidate_index) {
-                        auto const element{static_cast<std::size_t>(candidate_index)};
+                        auto const element{candidate_index};
                         if (has_line_of_sight[element] == 0) {
                             continue;
                         }

@@ -39,6 +39,7 @@ if(SANDBOX_MSVC_FRONTEND AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     /clang:-Wformat=2 # Enable stricter format-string validation, including non-literal formats.
     /clang:-Wheader-hygiene # Warn when headers leak using directives into includers.
     /clang:-Wimplicit-fallthrough # Warn about unannotated switch fallthrough.
+    /clang:-Wimplicit-int-conversion # Warn when an implicit integer conversion loses precision.
     /clang:-Wmissing-declarations # Warn about definitions without prior declarations.
     /clang:-Wmissing-noreturn # Warn when a function could be declared noreturn.
     /clang:-Wnon-virtual-dtor # Warn when a polymorphic type has a non-virtual destructor.

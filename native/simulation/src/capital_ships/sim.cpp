@@ -305,14 +305,14 @@ void Sim::refresh_fighter_ids(ml::FrameScratch& scratch) {
     auto const parents{fighters_interface.get_parent_ids()};
     auto const healths{fighters_interface.get_healths()};
     auto const capital_count{entities.num()};
-    auto const fighter_count{ids.size()};
+    auto const fighter_count{static_cast<std::int32_t>(ids.size())};
     ml::FrameArray<std::int32_t> counts{&scratch};
     ml::FrameArray<std::int32_t> owners{&scratch};
     counts.set_num(capital_count);
-    owners.set_num(static_cast<std::int32_t>(fighter_count));
+    owners.set_num(fighter_count);
     std::ranges::fill(owners, -1);
-    for (std::size_t index{}; index < fighter_count; ++index) {
-        if (is_dead(healths.health(static_cast<std::int32_t>(index)))) {
+    for (std::int32_t index{}; index < fighter_count; ++index) {
+        if (is_dead(healths.health(index))) {
             continue;
         }
         auto const parent{parents[index]};
@@ -333,7 +333,7 @@ void Sim::refresh_fighter_ids(ml::FrameScratch& scratch) {
         offset += count;
     }
     fighter_ids.resize(static_cast<std::size_t>(offset));
-    for (std::size_t index{}; index < fighter_count; ++index) {
+    for (std::int32_t index{}; index < fighter_count; ++index) {
         if (owners[index] >= 0) {
             fighter_ids[counts[owners[index]]++] = ids[index];
         }
