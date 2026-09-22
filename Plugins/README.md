@@ -7,7 +7,7 @@ Use this map to find the owner before following a plugin's own README or source 
 | --- | --- |
 | Core and shared game systems | `SandboxCore`, `SandboxGameShared`, `SandboxISMC`, `SandboxMesh`, `SandboxNiagara` |
 | Rendering, materials, and UI | `SandboxShaders`, `SandboxMaterialExprs`, `SandboxUI`, `USFLoader` |
-| Game and authoring | `SpaceGame`, `GameAssets`, `SandboxEditorTools`, `ShooterGame`, `SGLegacy` |
+| Game and authoring | `SpaceGame`, `SandboxEditorTools`, `ShooterGame`, `SGLegacy` |
 | Experiments and tutorials | `SandboxGpuTutorials` |
 | Third-party/editor integration | `VisualStudioTools` |
 
