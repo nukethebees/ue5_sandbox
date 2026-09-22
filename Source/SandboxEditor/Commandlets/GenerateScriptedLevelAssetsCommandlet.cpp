@@ -890,10 +890,10 @@ auto directional_binding_label(FInputBindingPresentation const& presentation,
         }
     }
     if (action_name == TEXT("IA_ship_vertical_translation")) {
-        if (key == EKeys::SpaceBar) {
+        if (key == EKeys::SpaceBar || key == EKeys::Gamepad_FaceButton_Top) {
             return INVTEXT("Translate Up");
         }
-        if (key == EKeys::LeftControl) {
+        if (key == EKeys::LeftControl || key == EKeys::Gamepad_FaceButton_Bottom) {
             return INVTEXT("Translate Down");
         }
     }
@@ -1151,25 +1151,30 @@ auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
         return {};
     }
 
-    auto configure_power_gamepad_mappings =
-        [&actions, boost, brake, fire](UInputMappingContext& mapping) {
-            mapping.Modify();
-            mapping.UnmapKey(boost, EKeys::Gamepad_LeftTriggerAxis);
-            mapping.UnmapKey(actions.throttle, EKeys::Gamepad_LeftTriggerAxis);
-            mapping.MapKey(actions.throttle, EKeys::Gamepad_LeftTriggerAxis);
-            mapping.UnmapKey(brake, EKeys::Gamepad_LeftShoulder);
-            mapping.MapKey(brake, EKeys::Gamepad_LeftShoulder);
-            mapping.UnmapKey(fire, EKeys::Gamepad_RightTriggerAxis);
-            mapping.MapKey(fire, EKeys::Gamepad_RightTriggerAxis);
-            mapping.UnmapKey(actions.select_flight_model_up, EKeys::Gamepad_DPad_Up);
-            mapping.MapKey(actions.select_flight_model_up, EKeys::Gamepad_DPad_Up);
-            mapping.UnmapKey(actions.select_flight_model_right, EKeys::Gamepad_DPad_Right);
-            mapping.MapKey(actions.select_flight_model_right, EKeys::Gamepad_DPad_Right);
-            mapping.UnmapKey(actions.select_flight_model_down, EKeys::Gamepad_DPad_Down);
-            mapping.MapKey(actions.select_flight_model_down, EKeys::Gamepad_DPad_Down);
-            mapping.UnmapKey(actions.select_flight_model_left, EKeys::Gamepad_DPad_Left);
-            mapping.MapKey(actions.select_flight_model_left, EKeys::Gamepad_DPad_Left);
-        };
+    auto configure_power_gamepad_mappings = [&actions, boost, brake, fire](
+                                                UInputMappingContext& mapping) {
+        mapping.Modify();
+        mapping.UnmapKey(boost, EKeys::Gamepad_LeftTriggerAxis);
+        mapping.UnmapKey(actions.throttle, EKeys::Gamepad_LeftTriggerAxis);
+        mapping.MapKey(actions.throttle, EKeys::Gamepad_LeftTriggerAxis);
+        mapping.UnmapKey(brake, EKeys::Gamepad_LeftShoulder);
+        mapping.MapKey(brake, EKeys::Gamepad_LeftShoulder);
+        mapping.UnmapKey(fire, EKeys::Gamepad_RightTriggerAxis);
+        mapping.MapKey(fire, EKeys::Gamepad_RightTriggerAxis);
+        mapping.UnmapKey(actions.vertical_move, EKeys::Gamepad_FaceButton_Top);
+        mapping.MapKey(actions.vertical_move, EKeys::Gamepad_FaceButton_Top);
+        mapping.UnmapKey(actions.vertical_move, EKeys::Gamepad_FaceButton_Bottom);
+        auto& move_down{mapping.MapKey(actions.vertical_move, EKeys::Gamepad_FaceButton_Bottom)};
+        move_down.Modifiers.Add(NewObject<UInputModifierNegate>(&mapping));
+        mapping.UnmapKey(actions.select_flight_model_up, EKeys::Gamepad_DPad_Up);
+        mapping.MapKey(actions.select_flight_model_up, EKeys::Gamepad_DPad_Up);
+        mapping.UnmapKey(actions.select_flight_model_right, EKeys::Gamepad_DPad_Right);
+        mapping.MapKey(actions.select_flight_model_right, EKeys::Gamepad_DPad_Right);
+        mapping.UnmapKey(actions.select_flight_model_down, EKeys::Gamepad_DPad_Down);
+        mapping.MapKey(actions.select_flight_model_down, EKeys::Gamepad_DPad_Down);
+        mapping.UnmapKey(actions.select_flight_model_left, EKeys::Gamepad_DPad_Left);
+        mapping.MapKey(actions.select_flight_model_left, EKeys::Gamepad_DPad_Left);
+    };
     configure_power_gamepad_mappings(*base);
     configure_power_gamepad_mappings(*aim_move);
     configure_power_gamepad_mappings(*move_aim);
