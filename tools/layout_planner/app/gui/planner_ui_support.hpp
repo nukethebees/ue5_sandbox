@@ -16,7 +16,7 @@ namespace ioj::layout_planner::detail {
 
 class WrappingButtonRow {
   public:
-    WrappingButtonRow();
+    explicit WrappingButtonRow(bool follow_previous_item = false);
     auto button(char const* label) -> bool;
   private:
     float right_edge_{};

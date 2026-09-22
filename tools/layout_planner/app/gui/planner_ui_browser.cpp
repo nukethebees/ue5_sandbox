@@ -417,48 +417,8 @@ void PlannerUi::draw_project_panel() {
     detail::WrappingButtonRow declaration_buttons;
     if (declaration_buttons.button("+ New module")) {
         declaration_after_new_module_.reset();
+        module_initiated_dialog_ = false;
         open_new_module_dialog_ = true;
-    }
-    if (declaration_buttons.button("+ New enum")) {
-        pending_packed_enum_binding_.reset();
-        open_new_enum_dialog_ = true;
-    }
-    if (declaration_buttons.button("+ New packed value")) {
-        open_new_packed_value_dialog_ = true;
-    }
-    if (declaration_buttons.button("+ New integer scalar")) {
-        open_new_integer_scalar_dialog_ = true;
-    }
-    if (declaration_buttons.button("+ New quantization")) {
-        open_new_linear_quantized_dialog_ = true;
-    }
-    if (declaration_buttons.button("+ New varint")) {
-        open_new_integer_varint_dialog_ = true;
-    }
-    if (declaration_buttons.button("+ New fixed point")) {
-        open_new_fixed_point_dialog_ = true;
-    }
-    if (declaration_buttons.button("+ New mini float")) {
-        open_new_mini_float_dialog_ = true;
-    }
-    if (declaration_buttons.button("+ New optional")) {
-        open_new_optional_sentinel_dialog_ = true;
-    }
-    if (declaration_buttons.button("+ New presence optional")) {
-        open_new_optional_presence_bit_dialog_ = true;
-    }
-    if (declaration_buttons.button("+ New record")) {
-        pending_soa_record_binding_.reset();
-        open_new_record_dialog_ = true;
-    }
-    if (declaration_buttons.button("+ New union")) {
-        open_new_union_dialog_ = true;
-    }
-    if (declaration_buttons.button("+ New tagged union")) {
-        open_new_tagged_union_dialog_ = true;
-    }
-    if (declaration_buttons.button("+ New SoA")) {
-        open_new_soa_dialog_ = true;
     }
     ImGui::EndDisabled();
     if (!schema_edit_message_.empty()) {
@@ -509,10 +469,63 @@ void PlannerUi::draw_project_panel() {
                                   document_->source_files()[source_index].path.string().c_str());
             }
         }
+        detail::WrappingButtonRow module_buttons{true};
+        auto add_declaration =
+            [&](char const* button_label, std::size_t& selected_module_index, bool& open_dialog) {
+                if (module_buttons.button(button_label)) {
+                    selected_module_index = module_index;
+                    module_initiated_dialog_ = true;
+                    open_dialog = true;
+                    return true;
+                }
+                return false;
+            };
+        ImGui::BeginDisabled(project_history_active());
+        auto const& module{modules[module_index]};
+        if (std::holds_alternative<codegen::EnumModuleSchema>(module)) {
+            if (add_declaration("+ Enum", new_enum_module_index_, open_new_enum_dialog_)) {
+                pending_packed_enum_binding_.reset();
+            }
+        } else if (std::holds_alternative<codegen::PackedValueModuleSchema>(module)) {
+            add_declaration(
+                "+ Packed value", new_packed_module_index_, open_new_packed_value_dialog_);
+        } else if (std::holds_alternative<codegen::ScalarModuleSchema>(module)) {
+            add_declaration("+ Integer scalar",
+                            new_integer_scalar_module_index_,
+                            open_new_integer_scalar_dialog_);
+        } else if (std::holds_alternative<codegen::RepresentationModuleSchema>(module)) {
+            add_declaration("+ Quantization",
+                            new_linear_quantized_module_index_,
+                            open_new_linear_quantized_dialog_);
+            add_declaration(
+                "+ Varint", new_integer_varint_module_index_, open_new_integer_varint_dialog_);
+            add_declaration(
+                "+ Fixed point", new_fixed_point_module_index_, open_new_fixed_point_dialog_);
+            add_declaration(
+                "+ Mini float", new_mini_float_module_index_, open_new_mini_float_dialog_);
+            add_declaration("+ Optional",
+                            new_optional_sentinel_module_index_,
+                            open_new_optional_sentinel_dialog_);
+            add_declaration("+ Presence optional",
+                            new_optional_presence_bit_module_index_,
+                            open_new_optional_presence_bit_dialog_);
+        } else if (std::holds_alternative<codegen::RecordModuleSchema>(module)) {
+            if (add_declaration("+ Record", new_record_module_index_, open_new_record_dialog_)) {
+                pending_soa_record_binding_.reset();
+            }
+        } else if (std::holds_alternative<codegen::UnionModuleSchema>(module)) {
+            add_declaration("+ Union", new_union_module_index_, open_new_union_dialog_);
+            add_declaration(
+                "+ Tagged union", new_tagged_union_module_index_, open_new_tagged_union_dialog_);
+        } else if (auto const* soa{std::get_if<codegen::SoaModuleSchema>(&module)};
+                   soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
+            add_declaration("+ SoA", new_soa_module_index_, open_new_soa_dialog_);
+        }
+        ImGui::EndDisabled();
         if (open) {
             if (declarations.empty()) {
                 ImGui::PushTextWrapPos(0.0F);
-                ImGui::TextDisabled("Empty module; choose it from a New declaration dialog.");
+                ImGui::TextDisabled("Empty module; use its + button to add a declaration.");
                 ImGui::PopTextWrapPos();
             }
             for (auto const* declaration : declarations) {
@@ -731,6 +744,7 @@ void PlannerUi::draw_new_module_dialog() {
             confirm_unchecked_module_header_ = false;
             ImGui::CloseCurrentPopup();
             if (declaration_after_new_module_.has_value()) {
+                module_initiated_dialog_ = false;
                 switch (*declaration_after_new_module_) {
                     case NewDeclarationDialog::enumeration:
                         open_new_enum_dialog_ = true;
@@ -834,7 +848,8 @@ void PlannerUi::draw_new_enum_dialog() {
         }
         auto const& selected_module{
             std::get<codegen::EnumModuleSchema>(modules[new_enum_module_index_])};
-        if (ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
+        if (!module_initiated_dialog_ &&
+            ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
                 auto const* module{std::get_if<codegen::EnumModuleSchema>(&modules[index])};
                 if (module == nullptr) {
@@ -1126,7 +1141,8 @@ void PlannerUi::draw_new_packed_value_dialog() {
         }
         auto const& selected_module{
             std::get<codegen::PackedValueModuleSchema>(modules[new_packed_module_index_])};
-        if (ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
+        if (!module_initiated_dialog_ &&
+            ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
                 auto const* module{std::get_if<codegen::PackedValueModuleSchema>(&modules[index])};
                 if (module == nullptr) {
@@ -1279,7 +1295,8 @@ void PlannerUi::draw_new_integer_scalar_dialog() {
         }
         auto const& selected_module{
             std::get<codegen::ScalarModuleSchema>(modules[new_integer_scalar_module_index_])};
-        if (ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
+        if (!module_initiated_dialog_ &&
+            ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
                 auto const* module{std::get_if<codegen::ScalarModuleSchema>(&modules[index])};
                 if (module == nullptr) {
@@ -1439,7 +1456,8 @@ void PlannerUi::draw_new_linear_quantized_dialog() {
         }
         auto const& selected_module{std::get<codegen::RepresentationModuleSchema>(
             modules[new_linear_quantized_module_index_])};
-        if (ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
+        if (!module_initiated_dialog_ &&
+            ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
                 auto const* module{
                     std::get_if<codegen::RepresentationModuleSchema>(&modules[index])};
@@ -1601,7 +1619,8 @@ void PlannerUi::draw_new_integer_varint_dialog() {
         }
         auto const& selected_module{std::get<codegen::RepresentationModuleSchema>(
             modules[new_integer_varint_module_index_])};
-        if (ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
+        if (!module_initiated_dialog_ &&
+            ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
                 auto const* module{
                     std::get_if<codegen::RepresentationModuleSchema>(&modules[index])};
@@ -1827,7 +1846,8 @@ void PlannerUi::draw_new_fixed_point_dialog() {
         }
         auto const& selected_module{
             std::get<codegen::RepresentationModuleSchema>(modules[new_fixed_point_module_index_])};
-        if (ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
+        if (!module_initiated_dialog_ &&
+            ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
                 auto const* module{
                     std::get_if<codegen::RepresentationModuleSchema>(&modules[index])};
@@ -2035,7 +2055,8 @@ void PlannerUi::draw_new_mini_float_dialog() {
         }
         auto const& selected_module{
             std::get<codegen::RepresentationModuleSchema>(modules[new_mini_float_module_index_])};
-        if (ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
+        if (!module_initiated_dialog_ &&
+            ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
                 auto const* module{
                     std::get_if<codegen::RepresentationModuleSchema>(&modules[index])};
@@ -2193,7 +2214,8 @@ void PlannerUi::draw_new_optional_sentinel_dialog() {
         }
         auto const& selected_module{std::get<codegen::RepresentationModuleSchema>(
             modules[new_optional_sentinel_module_index_])};
-        if (ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
+        if (!module_initiated_dialog_ &&
+            ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
                 auto const* module{
                     std::get_if<codegen::RepresentationModuleSchema>(&modules[index])};
@@ -2378,7 +2400,8 @@ void PlannerUi::draw_new_optional_presence_bit_dialog() {
         }
         auto const& selected_module{std::get<codegen::RepresentationModuleSchema>(
             modules[new_optional_presence_bit_module_index_])};
-        if (ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
+        if (!module_initiated_dialog_ &&
+            ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
                 auto const* module{
                     std::get_if<codegen::RepresentationModuleSchema>(&modules[index])};
@@ -2516,7 +2539,8 @@ void PlannerUi::draw_new_record_dialog() {
         }
         auto const& selected_module{
             std::get<codegen::RecordModuleSchema>(modules[new_record_module_index_])};
-        if (ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
+        if (!module_initiated_dialog_ &&
+            ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
                 auto const* module{std::get_if<codegen::RecordModuleSchema>(&modules[index])};
                 if (module == nullptr) {
@@ -2683,7 +2707,8 @@ void PlannerUi::draw_new_union_dialog() {
         }
         auto const& selected_module{
             std::get<codegen::UnionModuleSchema>(modules[new_union_module_index_])};
-        if (ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
+        if (!module_initiated_dialog_ &&
+            ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
                 auto const* module{std::get_if<codegen::UnionModuleSchema>(&modules[index])};
                 if (module != nullptr && ImGui::Selectable(module->settings.name.c_str(),
@@ -2810,7 +2835,8 @@ void PlannerUi::draw_new_tagged_union_dialog() {
         }
         auto const& selected_module{
             std::get<codegen::UnionModuleSchema>(modules[new_tagged_union_module_index_])};
-        if (ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
+        if (!module_initiated_dialog_ &&
+            ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
                 auto const* module{std::get_if<codegen::UnionModuleSchema>(&modules[index])};
                 if (module != nullptr &&
@@ -2957,7 +2983,8 @@ void PlannerUi::draw_new_soa_dialog() {
         }
         auto const& selected_module{
             std::get<codegen::SoaModuleSchema>(modules[new_soa_module_index_])};
-        if (ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
+        if (!module_initiated_dialog_ &&
+            ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
                 auto const* module{std::get_if<codegen::SoaModuleSchema>(&modules[index])};
                 if (module == nullptr || module->backend != codegen::SoaBackend::standard_library) {

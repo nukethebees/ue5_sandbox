@@ -314,6 +314,7 @@ class PlannerUi {
     int new_module_kind_{};
     std::size_t new_module_source_file_index_{1};
     std::optional<NewDeclarationDialog> declaration_after_new_module_;
+    bool module_initiated_dialog_{};
     bool confirm_unchecked_module_header_{};
     std::array<char, 128> new_enum_name_{};
     std::array<char, 128> new_enum_underlying_type_{"std::uint8_t"};

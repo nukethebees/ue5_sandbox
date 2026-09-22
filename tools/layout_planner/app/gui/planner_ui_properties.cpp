@@ -4832,6 +4832,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             new_enum_signedness_ = 1;
             pending_packed_enum_binding_ = PendingPackedEnumBinding{
                 .packed_declaration = *declaration, .field_name = selected_segment_name};
+            module_initiated_dialog_ = false;
             open_new_enum_dialog_ = true;
         }
         ImGui::EndDisabled();
@@ -4927,6 +4928,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                           maximum_text.c_str());
             pending_packed_integer_scalar_binding_ = PendingPackedIntegerScalarBinding{
                 .packed_declaration = *declaration, .field_name = selected_segment_name};
+            module_initiated_dialog_ = false;
             open_new_integer_scalar_dialog_ = true;
         }
         ImGui::EndDisabled();
@@ -5002,6 +5004,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             new_fixed_point_rounding_ = 0;
             pending_packed_fixed_point_binding_ = PendingPackedFixedPointBinding{
                 .packed_declaration = *declaration, .field_name = selected_segment_name};
+            module_initiated_dialog_ = false;
             open_new_fixed_point_dialog_ = true;
         }
         ImGui::EndDisabled();
@@ -5050,6 +5053,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 static_cast<std::int32_t>((1U << (new_mini_float_exponent_bits_ - 1)) - 1);
             pending_packed_mini_float_binding_ = PendingPackedMiniFloatBinding{
                 .packed_declaration = *declaration, .field_name = selected_segment_name};
+            module_initiated_dialog_ = false;
             open_new_mini_float_dialog_ = true;
         }
         ImGui::EndDisabled();
@@ -7497,6 +7501,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                               first_member_type.c_str());
                 pending_soa_record_binding_ = PendingSoaRecordBinding{
                     .soa_declaration = *declaration, .column_name = member.name};
+                module_initiated_dialog_ = false;
                 open_new_record_dialog_ = true;
             }
             ImGui::EndDisabled();

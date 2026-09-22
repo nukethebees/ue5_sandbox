@@ -8,9 +8,13 @@
 
 namespace ioj::layout_planner::detail {
 
-WrappingButtonRow::WrappingButtonRow() {
+WrappingButtonRow::WrappingButtonRow(bool const follow_previous_item) {
     available_width_ = std::max(1.0F, ImGui::GetContentRegionAvail().x);
     right_edge_ = ImGui::GetCursorScreenPos().x + available_width_;
+    if (follow_previous_item) {
+        last_right_ = ImGui::GetItemRectMax().x;
+        has_previous_ = true;
+    }
 }
 
 auto WrappingButtonRow::button(char const* label) -> bool {
