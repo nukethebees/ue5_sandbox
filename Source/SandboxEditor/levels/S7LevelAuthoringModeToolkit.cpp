@@ -95,11 +95,15 @@ void FS7LevelAuthoringModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_
                            .Text(LOCTEXT("ImportMission", "Import Orchestrator Mission"))
                            .OnClicked(this,
                                       &FS7LevelAuthoringModeToolkit::import_orchestrator_mission)] +
+                  SUniformGridPanel::Slot(0, 7)
+                      [SNew(SButton)
+                           .Text(LOCTEXT("SetUpPlayableLevel", "Set Up Playable Level"))
+                           .OnClicked(this, &FS7LevelAuthoringModeToolkit::set_up_playable_level)] +
                   SUniformGridPanel::Slot(
-                      0, 7)[SAssignNew(entity_id_, SEditableTextBox)
+                      0, 8)[SAssignNew(entity_id_, SEditableTextBox)
                                 .HintText(LOCTEXT("EntityIdHint", "Selected entity ID"))] +
                   SUniformGridPanel::Slot(
-                      1, 7)[SNew(SButton)
+                      1, 8)[SNew(SButton)
                                 .Text(LOCTEXT("RenameEntity", "Rename Entity ID"))
                                 .OnClicked(
                                     this, &FS7LevelAuthoringModeToolkit::rename_selected_entity)]] +
@@ -150,6 +154,7 @@ FORWARD_ACTION(assign_selected_must_survive)
 FORWARD_ACTION(assign_selected_required_kills)
 FORWARD_ACTION(clear_selected_objectives)
 FORWARD_ACTION(import_orchestrator_mission)
+FORWARD_ACTION(set_up_playable_level)
 auto FS7LevelAuthoringModeToolkit::load_s7() -> FReply {
     if (mode_.IsValid() && mode_->load_s7()) {
         mode_->apply_preview();
