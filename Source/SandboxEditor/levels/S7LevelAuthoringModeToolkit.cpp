@@ -161,7 +161,16 @@ auto FS7LevelAuthoringModeToolkit::open_script_editor() -> FReply {
 }
 FORWARD_ACTION(preview_apply)
 FORWARD_ACTION(apply_preview)
-FORWARD_ACTION(save)
+auto FS7LevelAuthoringModeToolkit::save() -> FReply {
+    if (mode_.IsValid()) {
+        if (mode_->source_session().buffer().TrimStartAndEnd().IsEmpty()) {
+            mode_->save_canonical_from_scene();
+        } else {
+            mode_->save();
+        }
+    }
+    return FReply::Handled();
+}
 FORWARD_ACTION(save_as)
 FORWARD_ACTION(save_canonical_from_scene)
 
