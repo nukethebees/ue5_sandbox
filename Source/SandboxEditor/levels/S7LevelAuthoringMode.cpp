@@ -787,10 +787,13 @@ void US7LevelAuthoringMode::preview_apply() {
             preview_->plan.count(ml::editor::ES7LevelSyncAction::Remove))};
         set_status(
             document_changes.IsEmpty()
-                ? FText::Format(LOCTEXT("PreviewEntitiesOnly", "Preview: {0}. Apply is undoable."),
+                ? FText::Format(LOCTEXT("PreviewEntitiesOnly",
+                                        "Preview: {0}. Click Apply Preview to update the scene; "
+                                        "this is undoable."),
                                 entity_summary)
                 : FText::Format(LOCTEXT("PreviewWithDocumentChanges",
-                                        "Preview: {0}; document: {1}. Apply is undoable."),
+                                        "Preview: {0}; document: {1}. Click Apply Preview to "
+                                        "update the scene; this is undoable."),
                                 entity_summary,
                                 FText::FromString(FString::Join(document_changes, TEXT(", ")))));
     }

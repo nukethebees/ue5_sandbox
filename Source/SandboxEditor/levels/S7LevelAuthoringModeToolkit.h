@@ -4,7 +4,7 @@
 
 class IDetailsView;
 class SEditableTextBox;
-class STextBlock;
+class SMultiLineEditableTextBox;
 class UEdMode;
 class US7LevelAuthoringMode;
 
@@ -36,6 +36,6 @@ class FS7LevelAuthoringModeToolkit final : public FModeToolkit {
     TWeakObjectPtr<US7LevelAuthoringMode> mode_{};
     TSharedPtr<IDetailsView> details_{};
     TSharedPtr<SEditableTextBox> entity_id_{};
-    TSharedPtr<STextBlock> status_{};
+    TSharedPtr<SMultiLineEditableTextBox> status_{};
     TSharedPtr<SWidget> content_{};
 };

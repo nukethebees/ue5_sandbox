@@ -9,9 +9,9 @@
 #include <PropertyEditorModule.h>
 #include <Widgets/Input/SButton.h>
 #include <Widgets/Input/SEditableTextBox.h>
+#include <Widgets/Input/SMultiLineEditableTextBox.h>
 #include <Widgets/Layout/SScrollBox.h>
 #include <Widgets/Layout/SUniformGridPanel.h>
-#include <Widgets/Text/STextBlock.h>
 
 #define LOCTEXT_NAMESPACE "FS7LevelAuthoringModeToolkit"
 
@@ -45,7 +45,7 @@ void FS7LevelAuthoringModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_
                                 .OnClicked(this, &FS7LevelAuthoringModeToolkit::preview_apply)] +
                   SUniformGridPanel::Slot(
                       1, 1)[SNew(SButton)
-                                .Text(LOCTEXT("Apply", "Apply"))
+                                .Text(LOCTEXT("Apply", "Apply Preview"))
                                 .OnClicked(this, &FS7LevelAuthoringModeToolkit::apply_preview)] +
                   SUniformGridPanel::Slot(0, 2)
                       [SNew(SButton)
@@ -104,7 +104,9 @@ void FS7LevelAuthoringModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_
                                 .OnClicked(
                                     this, &FS7LevelAuthoringModeToolkit::rename_selected_entity)]] +
              SVerticalBox::Slot().AutoHeight().Padding(
-                 4.0f)[SAssignNew(status_, STextBlock).AutoWrapText(true)] +
+                 4.0f)[SAssignNew(status_, SMultiLineEditableTextBox)
+                           .IsReadOnly(true)
+                           .AutoWrapText(true)] +
              SVerticalBox::Slot().AutoHeight()[details_.ToSharedRef()]];
 
     if (mode_.IsValid()) {

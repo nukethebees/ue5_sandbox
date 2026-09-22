@@ -63,7 +63,9 @@ void SS7LevelScriptEditor::Construct(FArguments const& arguments) {
                             .AutoWrapText(false)
                             .OnTextChanged(this, &SS7LevelScriptEditor::on_source_changed)] +
               SVerticalBox::Slot().AutoHeight().Padding(
-                  4.0f)[SNew(SBorder)[SAssignNew(status_, STextBlock).AutoWrapText(true)]]];
+                  4.0f)[SNew(SBorder)[SAssignNew(status_, SMultiLineEditableTextBox)
+                                          .IsReadOnly(true)
+                                          .AutoWrapText(true)]]];
 
     bind_active_mode();
     refresh();
