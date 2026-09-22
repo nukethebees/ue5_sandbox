@@ -204,14 +204,13 @@ auto analyze(AnalysisInput const input) -> Analysis {
                                           Metric::CapitalShips,
                                           Metric::CapitalShipFighters,
                                           Metric::TubeSpinners};
-        auto const type_total{
-            [](::ioj::sim::telemetry::EntityCounts const& counts, std::int32_t const type) {
-                std::int32_t total{};
-                for (auto const& team : counts) {
-                    total += team[static_cast<std::size_t>(type)];
-                }
-                return total;
-            }};
+        auto const type_total{[](EntityCounts const& counts, std::int32_t const type) {
+            std::int32_t total{};
+            for (auto const& team : counts) {
+                total += team[static_cast<std::size_t>(type)];
+            }
+            return total;
+        }};
         for (std::size_t index{1}; index < input.battle_samples.size(); ++index) {
             auto const& begin{input.battle_samples[index - 1]};
             auto const& end{input.battle_samples[index]};
