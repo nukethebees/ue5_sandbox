@@ -179,7 +179,7 @@ struct ExpectedTrace {
     char const* name;
     Vector3f start;
     Vector3f end;
-    std::uint8_t expected_hit;
+    TraceHit expected_hit;
     Vector3f expected_location{};
     std::int32_t expected_entity_index{};
 };
@@ -385,7 +385,7 @@ void CollisionUniformGridTraceRunner::test_hits_and_misses() {
     };
     auto const hits{run_traces(fixture, starts, ends)};
 
-    std::array<std::uint8_t, 5> const expected_hit_flags{1, 1, 1, 0, 1};
+    std::array<TraceHit, 5> const expected_hit_flags{1, 1, 1, 0, 1};
     std::array<Vector3f, 5> const expected_locations{
         left_face_contact,
         right_face_contact,
@@ -421,7 +421,7 @@ void CollisionUniformGridTraceRunner::test_stops_at_endpoint() {
 
     auto const hits{run_traces(fixture, starts, ends)};
 
-    EXPECT_EQ(std::uint8_t{0}, hits.hits[0]) << "AABB beyond trace endpoint is not hit";
+    EXPECT_EQ(TraceHit{0}, hits.hits[0]) << "AABB beyond trace endpoint is not hit";
 }
 
 void CollisionUniformGridTraceRunner::test_returns_nearest_hit() {
@@ -442,7 +442,7 @@ void CollisionUniformGridTraceRunner::test_returns_nearest_hit() {
 
     auto const hits{run_traces(fixture, starts, ends)};
 
-    EXPECT_EQ(std::uint8_t{1}, hits.hits[0]) << "Trace through two AABBs records a hit";
+    EXPECT_EQ(TraceHit{1}, hits.hits[0]) << "Trace through two AABBs records a hit";
     EXPECT_EQ(fixture.handles[1], hits.entities[0]) << "Trace returns nearest intersecting entity";
     EXPECT_LE(HMM_LenV3(expected_near_contact - hits.locations[0]), hit_location_tolerance)
         << "Trace returns nearest intersection location";
@@ -462,12 +462,12 @@ void CollisionUniformGridTraceRunner::test_handles_zero_length_traces() {
 
     auto const hits{run_traces(fixture, starts, starts)};
 
-    EXPECT_EQ(std::uint8_t{1}, hits.hits[0]) << "Stationary point inside AABB records a hit";
+    EXPECT_EQ(TraceHit{1}, hits.hits[0]) << "Stationary point inside AABB records a hit";
     EXPECT_EQ(fixture.handles[0], hits.entities[0])
         << "Stationary point resolves containing entity";
     EXPECT_LE(HMM_LenV3(starts[0] - hits.locations[0]), hit_location_tolerance)
         << "Stationary point hit location is the trace point";
-    EXPECT_EQ(std::uint8_t{0}, hits.hits[1])
+    EXPECT_EQ(TraceHit{0}, hits.hits[1])
         << "Stationary point outside AABB does not record a hit";
 }
 
@@ -484,7 +484,7 @@ void CollisionUniformGridTraceRunner::test_includes_negative_endpoint_boundary()
 
     auto const hits{run_traces(fixture, starts, ends)};
 
-    EXPECT_EQ(std::uint8_t{1}, hits.hits[0]) << "Trace includes AABB touched at endpoint";
+    EXPECT_EQ(TraceHit{1}, hits.hits[0]) << "Trace includes AABB touched at endpoint";
     if (hits.hits[0] == 0) {
         return;
     }
@@ -506,13 +506,13 @@ void CollisionUniformGridTraceRunner::test_applies_aabb_centre() {
     std::vector<Vector3f> const rotated_starts{{{-50.f, 150.f, 0.f}}, {{100.f, 0.f, 0.f}}};
     std::vector<Vector3f> const rotated_ends{{{50.f, 150.f, 0.f}}, {{200.f, 0.f, 0.f}}};
     auto const rotated_hits{run_traces(rotated, rotated_starts, rotated_ends)};
-    EXPECT_EQ(std::uint8_t{1}, rotated_hits.hits[0])
+    EXPECT_EQ(TraceHit{1}, rotated_hits.hits[0])
         << "Trace finds rotated box in its new grid cell";
-    EXPECT_EQ(std::uint8_t{0}, rotated_hits.hits[1]) << "Trace misses old unrotated box";
+    EXPECT_EQ(TraceHit{0}, rotated_hits.hits[1]) << "Trace misses old unrotated box";
     EXPECT_LE(HMM_LenV3(Vector3f{{-5.f, 150.f, 0.f}} - rotated_hits.locations[0]), 0.001f)
         << "Rotated box has swapped extents";
     auto const swept{run_sweeps(rotated, rotated_starts, rotated_ends, Vector3f{{2.f, 2.f, 2.f}})};
-    EXPECT_EQ(std::uint8_t{1}, swept.hits[0]) << "Sweep uses rotated cached box";
+    EXPECT_EQ(TraceHit{1}, swept.hits[0]) << "Sweep uses rotated cached box";
     EXPECT_LE(HMM_LenV3(Vector3f{{-7.f, 150.f, 0.f}} - swept.locations[0]), 0.001f)
         << "Sweep expands rotated world bounds";
     auto const cached{rotated.grid.get_entity_world_bounds()};
@@ -521,9 +521,9 @@ void CollisionUniformGridTraceRunner::test_applies_aabb_centre() {
 
     rotated.update_entities(std::vector<Vector3f>{Vector3f{}}, std::vector<std::uint8_t>{1});
     auto const updated_hits{run_traces(rotated, rotated_starts, rotated_ends)};
-    EXPECT_EQ(std::uint8_t{0}, updated_hits.hits[0])
+    EXPECT_EQ(TraceHit{0}, updated_hits.hits[0])
         << "Owner rotation update removes old rotated bounds";
-    EXPECT_EQ(std::uint8_t{1}, updated_hits.hits[1])
+    EXPECT_EQ(TraceHit{1}, updated_hits.hits[1])
         << "Owner rotation update reaches grid queries";
     rotated.update_entities(std::vector<Vector3f>{Vector3f{}}, std::vector<std::uint8_t>{0});
     auto const reused_handle{rotated.add_entity(Vector3f{})};
@@ -547,7 +547,7 @@ void CollisionUniformGridTraceRunner::test_applies_aabb_centre() {
 
     auto const hits{run_traces(fixture, starts, ends)};
 
-    EXPECT_EQ(std::uint8_t{1}, hits.hits[0]) << "Trace hits locally centred AABB";
+    EXPECT_EQ(TraceHit{1}, hits.hits[0]) << "Trace hits locally centred AABB";
     if (hits.hits[0] == 0) {
         return;
     }
@@ -605,7 +605,7 @@ void CollisionUniformGridTraceRunner::test_applies_aabb_centre() {
     auto const mixed_hits{run_traces(mixed_fixture, mixed_starts, mixed_ends)};
     for (std::int32_t i{}; i < entity_type_count; ++i) {
         SCOPED_TRACE(::testing::Message() << "index " << i);
-        EXPECT_EQ(std::uint8_t{1}, mixed_hits.hits[i]) << "Mixed entity-type trace records a hit";
+        EXPECT_EQ(TraceHit{1}, mixed_hits.hits[i]) << "Mixed entity-type trace records a hit";
         if (mixed_hits.hits[i] == 0) {
             continue;
         }
@@ -1310,7 +1310,7 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
         {{replacement_location.X + trace_offset, 0.f, 0.f}},
     };
     auto const replacement_hits{run_traces(fixture, replacement_starts, replacement_ends)};
-    EXPECT_EQ(std::uint8_t{1}, replacement_hits.hits[0])
+    EXPECT_EQ(TraceHit{1}, replacement_hits.hits[0])
         << "Replacement entity is added on rebuild";
     if (replacement_hits.hits[0] != 0) {
         EXPECT_EQ(replacement_handle, replacement_hits.entities[0])
@@ -1359,7 +1359,7 @@ void CollisionUniformGridTraceRunner::test_rebuild_lifecycle() {
     };
     auto const sparse_replacement_hits{
         run_traces(sparse_fixture, sparse_replacement_starts, sparse_replacement_ends)};
-    EXPECT_EQ(std::uint8_t{1}, sparse_replacement_hits.hits[0])
+    EXPECT_EQ(TraceHit{1}, sparse_replacement_hits.hits[0])
         << "Sparse replacement remains traceable beside surviving entities";
     if (sparse_replacement_hits.hits[0] != 0) {
         EXPECT_EQ(sparse_replacement_handle, sparse_replacement_hits.entities[0])
@@ -1432,7 +1432,7 @@ void CollisionUniformGridTraceRunner::test_deterministic_reference_sweep() {
                 }
             }
 
-            auto const expected_hit{std::uint8_t{std::isfinite(nearest_t)}};
+            auto const expected_hit{TraceHit{std::isfinite(nearest_t)}};
             expected_hit_count += expected_hit;
             auto const case_index{case_offset + i_trace};
             SCOPED_TRACE(::testing::Message() << "index " << case_index);
@@ -1612,8 +1612,8 @@ void CollisionUniformGridTraceRunner::test_empty_batches_and_output_reuse() {
     std::vector<Vector3f> const miss_starts{{{-20.f, 0.f, 0.f}}, {{0.f, -20.f, 0.f}}};
     std::vector<Vector3f> const miss_ends{{{20.f, 0.f, 0.f}}, {{0.f, 20.f, 0.f}}};
     auto const empty_grid_hits{run_traces(empty_fixture, miss_starts, miss_ends)};
-    EXPECT_EQ(std::uint8_t{0}, empty_grid_hits.hits[0]) << "Empty grid misses first trace";
-    EXPECT_EQ(std::uint8_t{0}, empty_grid_hits.hits[1]) << "Empty grid misses second trace";
+    EXPECT_EQ(TraceHit{0}, empty_grid_hits.hits[0]) << "Empty grid misses first trace";
+    EXPECT_EQ(TraceHit{0}, empty_grid_hits.hits[1]) << "Empty grid misses second trace";
 
     std::vector<Vector3f> const entity_locations{Vector3f{}};
     TraceFixture const populated_fixture{entity_locations, aabb_half_extents};
@@ -1626,16 +1626,16 @@ void CollisionUniformGridTraceRunner::test_empty_batches_and_output_reuse() {
     hit_trace.starts.add({{-20.f, 0.f, 0.f}});
     hit_trace.ends.add({{20.f, 0.f, 0.f}});
     populated_fixture.grid.trace_aabbs(hit_trace.get_const_view(), reused_hits.get_view());
-    EXPECT_EQ(std::uint8_t{1}, reused_hits.hits[0]) << "Reused output initially records hit";
+    EXPECT_EQ(TraceHit{1}, reused_hits.hits[0]) << "Reused output initially records hit";
 
     LineTraces miss_trace;
     miss_trace.starts.add({{-20.f, 20.f, 0.f}});
     miss_trace.ends.add({{20.f, 20.f, 0.f}});
     populated_fixture.grid.trace_aabbs(miss_trace.get_const_view(), reused_hits.get_view());
-    EXPECT_EQ(std::uint8_t{0}, reused_hits.hits[0]) << "Reused output clears stale hit flag";
+    EXPECT_EQ(TraceHit{0}, reused_hits.hits[0]) << "Reused output clears stale hit flag";
 
     populated_fixture.grid.trace_aabbs(hit_trace.get_const_view(), reused_hits.get_view());
-    EXPECT_EQ(std::uint8_t{1}, reused_hits.hits[0]) << "Reused output records later hit";
+    EXPECT_EQ(TraceHit{1}, reused_hits.hits[0]) << "Reused output records later hit";
     EXPECT_EQ(populated_fixture.handles[0], reused_hits.entities[0])
         << "Reused output records later entity";
 }
@@ -1749,7 +1749,7 @@ void CollisionUniformGridTraceRunner::test_static_geometry() {
 
     set_static_aabb({{-60.f, -10.f, -10.f}}, {{-40.f, 10.f, 10.f}});
     auto static_hits{run_traces(fixture, starts, ends)};
-    EXPECT_EQ(std::uint8_t{1}, static_hits.hits[0]) << "Static AABB is traceable";
+    EXPECT_EQ(TraceHit{1}, static_hits.hits[0]) << "Static AABB is traceable";
     EXPECT_TRUE(!static_hits.entities[0].is_valid()) << "Static hit has no dynamic entity";
     EXPECT_EQ(0, static_hits.static_geometry_indices[0])
         << "Static hit identifies canonical static geometry";
@@ -1761,10 +1761,10 @@ void CollisionUniformGridTraceRunner::test_static_geometry() {
     std::vector<Vector3f> const offset_starts{{{-200.f, 80.f, 0.f}}};
     std::vector<Vector3f> const offset_ends{{{200.f, 80.f, 0.f}}};
     auto const offset_hits{run_traces(fixture, offset_starts, offset_ends)};
-    EXPECT_EQ(std::uint8_t{0}, offset_hits.hits[0]) << "Offset line misses static geometry";
+    EXPECT_EQ(TraceHit{0}, offset_hits.hits[0]) << "Offset line misses static geometry";
     auto const sweep_hits{
         run_sweeps(fixture, offset_starts, offset_ends, Vector3f{{20.f, 20.f, 20.f}})};
-    EXPECT_EQ(std::uint8_t{1}, sweep_hits.hits[0]) << "AABB sweep detects static geometry";
+    EXPECT_EQ(TraceHit{1}, sweep_hits.hits[0]) << "AABB sweep detects static geometry";
     EXPECT_LE(HMM_LenV3(Vector3f{{-80.f, 80.f, 0.f}} - sweep_hits.locations[0]),
               hit_location_tolerance)
         << "AABB sweep reports expanded entry point";
@@ -1792,7 +1792,7 @@ void CollisionUniformGridTraceRunner::test_static_geometry() {
                                                Vector3f{{20.f, 20.f, 20.f}},
                                                {},
                                                collision::TraceEntityFilter::ExcludeFighters)};
-    EXPECT_EQ(std::uint8_t{1}, static_geometry_hits.hits[0])
+    EXPECT_EQ(TraceHit{1}, static_geometry_hits.hits[0])
         << "Static geometry remains after fighter exclusion";
     EXPECT_TRUE(!static_geometry_hits.entities[0].is_valid())
         << "Fighter exclusion returns the static obstacle";

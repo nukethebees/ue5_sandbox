@@ -3,7 +3,8 @@
 #include <cstddef>
 
 namespace ioj::sim::collision {
-auto AABBOverlapEventsView::get_batch(std::int32_t const index) const -> AABBOverlapEventBatchView {
+auto AABBOverlapEventsView::get_batch(AABBOverlapEventBatchIndex const index) const
+    -> AABBOverlapEventBatchView {
     auto const batch{batches[static_cast<std::size_t>(index)]};
     return {
         .overlaps =

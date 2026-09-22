@@ -9,6 +9,8 @@
 namespace ioj::sim::collision {
 using Vec3f = Vector3f;
 using CellIndex = std::int32_t;
+using GridCellCount = std::int32_t;
+using SphereInBoundsResult = std::uint8_t;
 
 inline constexpr float no_trace_hit{std::numeric_limits<float>::infinity()};
 
@@ -35,7 +37,7 @@ struct GridGeometry {
 [[nodiscard]] auto is_configured(GridGeometry geometry) noexcept -> bool;
 [[nodiscard]] auto calculate_grid_dimensions(Vector3f grid_size, Vector3f cell_size) noexcept
     -> CellCoord;
-[[nodiscard]] auto num_cells(GridGeometry geometry) noexcept -> int;
+[[nodiscard]] auto num_cells(GridGeometry geometry) noexcept -> GridCellCount;
 [[nodiscard]] auto to_index(GridGeometry geometry, CellCoord coordinate) noexcept -> CellIndex;
 [[nodiscard]] auto to_cell_coord(float value, float cell_dimension, int grid_dimension) noexcept
     -> int;
@@ -53,7 +55,7 @@ struct GridGeometry {
 void are_spheres_in_bounds(GridGeometry geometry,
                            Vectors3fConstView centres,
                            float radius,
-                           std::span<std::uint8_t> results) noexcept;
+                           std::span<SphereInBoundsResult> results) noexcept;
 
 [[nodiscard]] auto trace_aabb(Vec3f trace_start,
                               Vec3f inverse_trace_delta,

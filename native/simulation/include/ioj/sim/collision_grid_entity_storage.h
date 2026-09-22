@@ -10,14 +10,17 @@
 
 namespace ioj::sim::collision {
 struct CollisionGridEntityStorage {
-    std::vector<std::int32_t> cell_offsets;
-    std::vector<std::uint16_t> cell_counts;
+    using CellEntryOffset = std::int32_t;
+    using CellEntryCount = std::uint16_t;
+
+    std::vector<CellEntryOffset> cell_offsets;
+    std::vector<CellEntryCount> cell_counts;
     std::vector<CellIndex> non_empty_cell_indices;
     std::vector<EntityUniqueId> entities;
     WorldAABBs aabbs;
 
     // Rebuild-only scratch and intermediate entity data.
-    std::vector<std::int32_t> cell_write_indices;
+    std::vector<CellEntryOffset> cell_write_indices;
     EntityCellData rebuild_entity_data;
 };
 } // namespace ioj::sim::collision

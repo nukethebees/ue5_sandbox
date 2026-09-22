@@ -31,7 +31,7 @@ struct TraceRequest {
     std::span<ioj::sim::EntityUniqueId const> targets{};
     std::span<ioj::sim::EntityUniqueId const> ignored_entities{};
     std::span<ioj::sim::EntityUniqueId> out_entity_ids{};
-    std::span<std::uint8_t> out_flags{};
+    std::span<ioj::sim::LineQueryResult> out_flags{};
 };
 
 template <QueryMode Mode>
@@ -55,11 +55,11 @@ auto trace_impl(ioj::sim::SpatialQueryManager const& manager,
         assert(static_cast<std::size_t>(count) == request.out_flags.size());
         assert(request.ignored_entities.empty() ||
                request.ignored_entities.size() == static_cast<std::size_t>(count));
-        std::ranges::fill(request.out_flags, std::uint8_t{0});
+        std::ranges::fill(request.out_flags, ioj::sim::LineQueryResult{});
     } else if constexpr (Mode == QueryMode::TargetLineOfSight) {
         assert(static_cast<std::size_t>(count) == request.targets.size());
         assert(static_cast<std::size_t>(count) == request.out_flags.size());
-        std::ranges::fill(request.out_flags, std::uint8_t{0});
+        std::ranges::fill(request.out_flags, ioj::sim::LineQueryResult{});
     } else {
         assert(request.ignored_entities.size() == 1);
     }
@@ -116,11 +116,11 @@ auto trace_impl(ioj::sim::SpatialQueryManager const& manager,
             }
         } else if constexpr (Mode == QueryMode::ClearLine) {
             for (std::int32_t i{}; i < count; ++i) {
-                request.out_flags[i] = static_cast<std::uint8_t>(hits.hits[i] == 0);
+                request.out_flags[i] = static_cast<ioj::sim::LineQueryResult>(hits.hits[i] == 0);
             }
         } else if constexpr (Mode == QueryMode::TargetLineOfSight) {
             for (std::int32_t i{}; i < count; ++i) {
-                request.out_flags[i] = static_cast<std::uint8_t>(
+                request.out_flags[i] = static_cast<ioj::sim::LineQueryResult>(
                     hits.hits[i] == 0 || hits.entities[i] == request.targets[i]);
             }
         }
@@ -328,11 +328,11 @@ void
                                       .out_entity_ids = out_entity_ids});
 }
 
-void
-    SpatialQueryManager::has_line_of_sight_to_targets(Vector3f const& start_location,
-                                                      Vectors3fConstView const end_locations,
-                                                      std::span<EntityUniqueId const> const targets,
-                                                      std::span<std::uint8_t> const has_los) const {
+void SpatialQueryManager::has_line_of_sight_to_targets(
+    Vector3f const& start_location,
+    Vectors3fConstView const end_locations,
+    std::span<EntityUniqueId const> const targets,
+    std::span<LineQueryResult> const has_los) const {
     SANDBOX_PROFILE_SCOPE("SpatialQueryManager::has_line_of_sight_to_targets");
 
     trace_impl<QueryMode::TargetLineOfSight>(*this,
@@ -346,7 +346,7 @@ void
 void SpatialQueryManager::have_clear_lines(
     Vectors3fConstView const start_locations,
     Vectors3fConstView const end_locations,
-    std::span<std::uint8_t> const clear_lines,
+    std::span<LineQueryResult> const clear_lines,
     std::span<EntityUniqueId const> const ignored_entities) const {
     trace_impl<QueryMode::ClearLine>(*this,
                                      collision_system_.uniform_grid_,
@@ -484,9 +484,10 @@ auto SpatialQueryManager::get_any_non_team_entity(Team const team,
     return find_any_non_team_entity(agents_, team, entity_type);
 }
 
-void SpatialQueryManager::are_spheres_in_bounds(Vectors3fConstView const centres,
-                                                float const radius,
-                                                std::span<std::uint8_t> const out_results) const {
+void SpatialQueryManager::are_spheres_in_bounds(
+    Vectors3fConstView const centres,
+    float const radius,
+    std::span<collision::SphereInBoundsResult> const out_results) const {
     collision_system_.uniform_grid_.are_spheres_in_bounds(centres, radius, out_results);
 }
 

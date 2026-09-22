@@ -8,6 +8,8 @@
 #include <vector>
 
 namespace ioj::sim::collision {
+using AABBOverlapEventBatchIndex = std::int32_t;
+
 struct DetectedOverlapsView {
     EntityEntityOverlaps::ConstView entity_entity_overlaps;
     EntityStaticOverlaps::ConstView entity_static_overlaps;
@@ -27,7 +29,8 @@ struct AABBOverlapEventsView {
     EntityStaticOverlaps::ConstView entity_static_overlaps;
     std::span<AABBOverlapEventBatch const> batches;
 
-    [[nodiscard]] auto get_batch(std::int32_t index) const -> AABBOverlapEventBatchView;
+    [[nodiscard]] auto get_batch(AABBOverlapEventBatchIndex index) const
+        -> AABBOverlapEventBatchView;
 };
 
 class AABBOverlapEventStorage {

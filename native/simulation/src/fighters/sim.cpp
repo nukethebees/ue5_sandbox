@@ -1333,7 +1333,7 @@ void Sim::handle_firing(TaskView const& data, ml::FrameScratch& scratch) {
     ml::FrameArray<std::int32_t> can_fire{&scratch};
     FrameVectors3f line_of_sight_starts{scratch};
     FrameVectors3f line_of_sight_ends{scratch};
-    ml::FrameArray<std::uint8_t> line_of_sight_results{&scratch};
+    ml::FrameArray<LineQueryResult> line_of_sight_results{&scratch};
     ml::FrameArray<EntityUniqueId> firing_ignored_entities{&scratch};
     ml::FrameArray<std::int32_t> firing_position_fighter_indices{&scratch};
     FrameVectors3f firing_position_candidates{scratch};

@@ -299,7 +299,7 @@ void Sim::perform_search_on_slice(std::int32_t const job_index,
     std::array<float, 128> candidate_xs;
     std::array<float, 128> candidate_ys;
     std::array<float, 128> candidate_zs;
-    ml::FixedArray<std::uint8_t, 128> has_line_of_sight;
+    ml::FixedArray<LineQueryResult, 128> has_line_of_sight;
     auto const entities{this->entities.get_view().columns()};
 
     ml::PeriodicTickCountdownView<std::int16_t> const refresh_countdowns{

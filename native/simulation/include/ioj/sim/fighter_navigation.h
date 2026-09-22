@@ -1,5 +1,8 @@
 #pragma once
 
+#include "ioj/sim/collision_grid.h"
+#include "ioj/sim/trace_hits.h"
+
 #include "ioj/sim/entity_unique_id.h"
 #include "ioj/sim/vector_types.h"
 #include "ioj/sim/vectors3f.h"
@@ -94,11 +97,12 @@ void make_avoidance_choice_order(
                                       std::span<SeparationNeighbour const> neighbours,
                                       SeparationObservationParameters parameters) noexcept
     -> SeparationObservation;
-[[nodiscard]] auto choose_navigation_alternative(Vector3f fighter_location,
-                                                 float safe_progress_distance,
-                                                 std::span<std::int8_t const> choices,
-                                                 std::span<std::uint8_t const> in_world,
-                                                 std::span<std::uint8_t const> hits,
-                                                 Vectors3fConstView hit_locations,
-                                                 std::int8_t stop_choice) noexcept -> std::int8_t;
+[[nodiscard]] auto
+    choose_navigation_alternative(Vector3f fighter_location,
+                                  float safe_progress_distance,
+                                  std::span<std::int8_t const> choices,
+                                  std::span<collision::SphereInBoundsResult const> in_world,
+                                  std::span<TraceHit const> hits,
+                                  Vectors3fConstView hit_locations,
+                                  std::int8_t stop_choice) noexcept -> std::int8_t;
 } // namespace ioj::sim::fighters

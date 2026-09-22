@@ -18,6 +18,7 @@ namespace ioj::sim {
 class AgentAccessor;
 struct SpatialQueryManager;
 struct SpatialQueryManagerTestAccess;
+using LineQueryResult = std::uint8_t;
 }
 
 namespace ml {
@@ -70,10 +71,10 @@ struct SpatialQueryManager {
     void has_line_of_sight_to_targets(Vector3f const& start_location,
                                       Vectors3fConstView end_locations,
                                       std::span<EntityUniqueId const> targets,
-                                      std::span<std::uint8_t> has_los) const;
+                                      std::span<LineQueryResult> has_los) const;
     void have_clear_lines(Vectors3fConstView start_locations,
                           Vectors3fConstView end_locations,
-                          std::span<std::uint8_t> clear_lines,
+                          std::span<LineQueryResult> clear_lines,
                           std::span<EntityUniqueId const> ignored_entities = {}) const;
     void trace_closest_lines(Vectors3fConstView start_locations,
                              Vectors3fConstView end_locations,
@@ -113,7 +114,7 @@ struct SpatialQueryManager {
         -> EntityUniqueId;
     void are_spheres_in_bounds(Vectors3fConstView centres,
                                float radius,
-                               std::span<std::uint8_t> out_results) const;
+                               std::span<collision::SphereInBoundsResult> out_results) const;
     auto get_entity_type_radius(EntityType entity_type) const noexcept -> float;
     auto get_entity_type_radii() const noexcept -> EntityTypeRadii const&;
     void copy_entity_radii(std::span<EntityUniqueId const> ids, std::span<float> out_radii) const;

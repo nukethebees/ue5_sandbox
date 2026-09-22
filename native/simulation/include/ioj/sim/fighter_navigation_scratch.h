@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ioj/sim/collision_grid.h"
 #include "ioj/sim/frame_trace_hits.h"
 #include "ioj/sim/frame_vectors3f.h"
 #include "sandbox/core/frame_array.h"
@@ -23,7 +24,7 @@ struct NavigationScratch {
     ml::FrameArray<std::int32_t> ready_fighter_indices;
     FrameVectors3f line_of_sight_starts;
     FrameVectors3f line_of_sight_ends;
-    ml::FrameArray<std::uint8_t> line_of_sight_results;
+    ml::FrameArray<collision::SphereInBoundsResult> line_of_sight_results;
     FrameTraceHits trace_hits;
     ml::FrameArray<std::int32_t> blocked_fighter_indices;
     ml::FrameArray<std::int32_t> trace_fighter_indices;

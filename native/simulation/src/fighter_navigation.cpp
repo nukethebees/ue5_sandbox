@@ -292,8 +292,8 @@ auto observe_separation(Vector3f const fighter_location,
 auto choose_navigation_alternative(Vector3f const fighter_location,
                                    float const safe_progress_distance,
                                    std::span<std::int8_t const> const choices,
-                                   std::span<std::uint8_t const> const in_world,
-                                   std::span<std::uint8_t const> const hits,
+                                   std::span<collision::SphereInBoundsResult const> const in_world,
+                                   std::span<TraceHit const> const hits,
                                    Vectors3fConstView const hit_locations,
                                    std::int8_t const stop_choice) noexcept -> std::int8_t {
     assert(choices.size() == in_world.size());

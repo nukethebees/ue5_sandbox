@@ -40,7 +40,7 @@ struct CollisionUniformGrid {
 
     auto get_cell_dims() const noexcept -> Vector3f;
 
-    auto num_cells() const -> std::int32_t;
+    auto num_cells() const -> GridCellCount;
     auto get_cell_entities(CellCoord const cell_coord) const -> std::span<EntityUniqueId const> {
         auto const dimensions{geometry_.dimensions};
         assert(cell_coord.x >= 0 && cell_coord.x < dimensions.x && cell_coord.y >= 0 &&
@@ -66,7 +66,7 @@ struct CollisionUniformGrid {
     auto is_cell_coord_in_bounds(CellCoord min_coord, CellCoord max_coord) const -> bool;
     void are_spheres_in_bounds(Vectors3fConstView centres,
                                float radius,
-                               std::span<std::uint8_t> out_results) const;
+                               std::span<SphereInBoundsResult> out_results) const;
     static auto to_string(CellCoord value) -> std::string;
 
     void reset();

@@ -40,7 +40,7 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
     auto const row_stride{geometry.dimensions.x};
     auto const plane_stride{row_stride * geometry.dimensions.y};
     cell_range_indices_.assign(static_cast<std::size_t>(cell_count), -1);
-    std::vector<std::int32_t> cell_counts(static_cast<std::size_t>(cell_count));
+    std::vector<CellMembershipCount> cell_counts(static_cast<std::size_t>(cell_count));
 
     auto const aabbs{aabbs_.get_const_view().columns()};
     auto const aabb_count{aabbs.num()};
@@ -73,20 +73,20 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
     }
 
     // Build compact ranges for occupied cells.
-    std::int64_t membership_count{};
-    for (std::int32_t cell_index{}; cell_index < cell_count; ++cell_index) {
+    StaticGridBuildError::MembershipCount membership_count{};
+    for (CellIndex cell_index{}; cell_index < cell_count; ++cell_index) {
         auto const count{cell_counts[static_cast<std::size_t>(cell_index)]};
         if (count == 0) {
             continue;
         }
-        if (count > std::numeric_limits<std::uint16_t>::max()) {
+        if (count > std::numeric_limits<RangeCount>::max()) {
             return std::unexpected{StaticGridBuildError{
                 .code = StaticGridBuildErrorCode::CellCountOverflow,
                 .cell_index = cell_index,
                 .count = count,
             }};
         }
-        if (membership_count + count > std::numeric_limits<std::int32_t>::max()) {
+        if (membership_count + count > std::numeric_limits<CellRangeIndex>::max()) {
             return std::unexpected{StaticGridBuildError{
                 .code = StaticGridBuildErrorCode::MembershipCountOverflow,
                 .count = membership_count + count,
@@ -126,8 +126,8 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
     }
 
     // Verify every range was filled completely.
-    auto const range_count{static_cast<std::int32_t>(range_offsets_.size())};
-    for (std::int32_t range_index{}; range_index < range_count; ++range_index) {
+    auto const range_count{static_cast<CellRangeIndex>(range_offsets_.size())};
+    for (CellRangeIndex range_index{}; range_index < range_count; ++range_index) {
         auto const element{static_cast<std::size_t>(range_index)};
         if (write_indices[element] != range_offsets_[element] + range_counts_[element]) {
             return std::unexpected{StaticGridBuildError{

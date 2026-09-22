@@ -132,7 +132,7 @@ auto calculate_grid_dimensions(Vector3f const grid_size, Vector3f const cell_siz
             calculate_dimension(grid_size.Z, cell_size.Z)};
 }
 
-auto num_cells(GridGeometry const geometry) noexcept -> int {
+auto num_cells(GridGeometry const geometry) noexcept -> GridCellCount {
     return geometry.dimensions.x * geometry.dimensions.y * geometry.dimensions.z;
 }
 
@@ -207,7 +207,7 @@ auto is_cell_coord_in_bounds(GridGeometry const geometry, CellCoord const coordi
 void are_spheres_in_bounds(GridGeometry const geometry,
                            Vectors3fConstView const centres,
                            float const radius,
-                           std::span<std::uint8_t> const results) noexcept {
+                           std::span<SphereInBoundsResult> const results) noexcept {
     assert(static_cast<std::size_t>(centres.num()) == results.size());
     assert(std::isfinite(radius));
     assert(radius >= 0.0f);
@@ -225,7 +225,7 @@ void are_spheres_in_bounds(GridGeometry const geometry,
         auto const is_in_bounds{centres.xs[index] >= min_x && centres.xs[index] <= max_x &&
                                 centres.ys[index] >= min_y && centres.ys[index] <= max_y &&
                                 centres.zs[index] >= min_z && centres.zs[index] <= max_z};
-        results[index] = static_cast<std::uint8_t>(is_in_bounds);
+        results[index] = static_cast<SphereInBoundsResult>(is_in_bounds);
     }
 }
 

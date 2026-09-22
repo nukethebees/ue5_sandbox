@@ -19,10 +19,12 @@ enum class StaticGridBuildErrorCode : std::uint8_t {
 };
 
 struct StaticGridBuildError {
+    using MembershipCount = std::int64_t;
+
     StaticGridBuildErrorCode code;
     StaticGeometryIndex aabb_index{invalid_static_geometry_index};
     CellIndex cell_index{-1};
-    std::int64_t count{};
+    MembershipCount count{};
 };
 
 class CollisionGridStaticStorage {
@@ -31,6 +33,7 @@ class CollisionGridStaticStorage {
     using AabbIndex = std::uint16_t;
     using RangeOffset = std::uint32_t;
     using RangeCount = std::uint16_t;
+    using CellMembershipCount = std::int32_t;
 
     inline static constexpr AabbIndex invalid_aabb_index{std::numeric_limits<AabbIndex>::max()};
 

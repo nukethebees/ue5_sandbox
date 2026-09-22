@@ -71,7 +71,7 @@ void trace_grid_aabbs(GridGeometry const geometry,
     auto const trace_count{traces.num()};
     for (std::int32_t trace_index{}; trace_index < trace_count; ++trace_index) {
         auto const output_index{static_cast<std::size_t>(trace_index)};
-        hits.hits[output_index] = 0;
+        hits.hits[output_index] = TraceHit{};
         hits.entities[output_index] = EntityUniqueId{};
         hits.static_geometry_indices[output_index] = invalid_static_geometry_index;
 
@@ -268,7 +268,7 @@ void trace_grid_aabbs(GridGeometry const geometry,
                      start + delta * nearest_t,
                      nearest_entity,
                      nearest_static_index,
-                     std::uint8_t{1});
+                     TraceHit{1});
         }
     }
 }
@@ -440,7 +440,7 @@ auto CollisionUniformGrid::is_configured() const noexcept -> bool {
     return collision::is_configured(geometry_);
 }
 
-auto CollisionUniformGrid::num_cells() const -> std::int32_t {
+auto CollisionUniformGrid::num_cells() const -> GridCellCount {
     return collision::num_cells(geometry_);
 }
 
@@ -526,7 +526,7 @@ void CollisionUniformGrid::rebuild_entity_grid(collision::EntityAABBs const& ent
                               static_cast<std::size_t>(dimensions.y) *
                               static_cast<std::size_t>(dimensions.z)};
         if (storage.cell_counts.size() != cell_count) {
-            storage.cell_counts.assign(cell_count, std::uint16_t{});
+            storage.cell_counts.assign(cell_count, CollisionGridEntityStorage::CellEntryCount{});
         }
         storage.cell_offsets.resize(cell_count);
         storage.cell_write_indices.resize(cell_count);
@@ -586,7 +586,7 @@ void CollisionUniformGrid::rebuild_entity_grid(collision::EntityAABBs const& ent
     {
         SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::calculate_entity_cell_offsets");
 
-        std::int32_t entry_count{};
+        CollisionGridEntityStorage::CellEntryOffset entry_count{};
         for (auto const cell_index : storage.non_empty_cell_indices) {
             auto const element{static_cast<std::size_t>(cell_index)};
             storage.cell_offsets[element] = entry_count;
@@ -732,9 +732,10 @@ auto CollisionUniformGrid::is_cell_coord_in_bounds(collision::CellCoord const mi
     -> bool {
     return is_cell_coord_in_bounds(min_coord) && is_cell_coord_in_bounds(max_coord);
 }
-void CollisionUniformGrid::are_spheres_in_bounds(Vectors3fConstView const centres,
-                                                 float const radius,
-                                                 std::span<std::uint8_t> const out_results) const {
+void CollisionUniformGrid::are_spheres_in_bounds(
+    Vectors3fConstView const centres,
+    float const radius,
+    std::span<SphereInBoundsResult> const out_results) const {
     [[maybe_unused]] auto const count{centres.num()};
     assert(out_results.size() == static_cast<std::size_t>(count));
     assert(std::isfinite(radius));
