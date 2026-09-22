@@ -8,6 +8,19 @@ internal sealed class RepositoryDiscovery(GitClient git)
 {
     internal RebaseRecoveryStore RebaseRecovery { get; } = new(git);
 
+    public async Task<string> DiscoverCommonGitDirectoryAsync(
+        string start_directory,
+        CancellationToken cancellation_token = default)
+    {
+        var working_directory = Path.GetFullPath(start_directory);
+        if (!Directory.Exists(working_directory))
+        {
+            throw new RepositoryException($"Working directory does not exist: '{working_directory}'.");
+        }
+
+        return await DiscoverPathAsync(working_directory, "--git-common-dir", cancellation_token);
+    }
+
     public async Task<RepositoryContext> DiscoverAsync(
         TrustContext trust,
         string start_directory,
