@@ -110,13 +110,6 @@ auto lower_facade_impl(FacadeSchema const& facade, std::map<std::string, CppType
 
 } // namespace
 
-auto lower_facade_module(FacadeModuleSchema const& module,
-                         std::map<std::string, CppType> const& types) -> Module {
-    std::vector<DeclarationEmission> emissions;
-    emissions.push_back(lower_facade_impl(module.facade, types));
-    return assemble_module(module.settings, emissions).front();
-}
-
 auto lower_facade(FacadeSchema const& schema, std::map<std::string, CppType> const& types)
     -> DeclarationEmission {
     return lower_facade_impl(schema, types);

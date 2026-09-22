@@ -267,7 +267,7 @@ remain localized; malformed or unsupported shapes still take canonical fallback.
 `nested-schema`/`fixed-schema` identities. Explicit view, mask, fixed-storage, and allocation helper
 names remain stable; implicit generated names follow the renamed declaration, and collisions roll
 the transaction back. Registered aliases remain rejected because the types registry does not yet
-participate in source-aware edits; vector-SoA modules are not ordinary editable declarations.
+participate in source-aware edits.
 
 SoA declaration duplication is also prepared by the shared editable document rather than by ImGui.
 Preparation is non-mutating: it copies the source schema, selects a declaration name whose implicit
@@ -306,7 +306,7 @@ redo removes it again, and successful save/reload clears the tombstone. The UI u
 destructive confirmation for source-backed and newly created declarations.
 
 `MoveDeclaration` relocates an editable declaration between compatible existing modules without a
-delete/create identity break. The command requires the same module kind and moves the shared schema
+delete/create identity break. The command accepts ordinary modules and moves the shared schema
 transactionally. When the destination namespace differs, it rewrites supported graph-derived
 `TypeRef` users to the new qualified spelling before re-resolution; registered aliases and
 module-local SoA nested/fixed references that cannot cross the module boundary reject the complete
@@ -376,7 +376,7 @@ and declaration ownership rather than inventing type-kind folders.
 
 ## Supported analysis and limits
 
-Ordinary AoS semantics use `record-module` / `record` declarations rather than overloading SoA
+Ordinary AoS semantics use `record` declarations in ordinary modules rather than overloading SoA
 columns. A record member references the shared semantic type graph and may have a fixed element
 count or an optional shared semantic relationship to another declared type; C++ lowering is one
 consumer and emits an ordinary struct plus `std::array` where needed. Relationships participate in
@@ -426,7 +426,7 @@ coverage, non-selected footprint, and cache-fit consequences are exposed. The an
 the intended workload identity even when a target cannot produce offsets, so missing physical facts
 remain Unknown rather than becoming a false workload mismatch.
 
-Raw unions are separate shared `union-module` declarations with ordered semantic alternatives and
+Raw unions are shared `union` declarations in ordinary modules with ordered semantic alternatives and
 optional fixed counts. They lower to ordinary C++ unions, while one aggregate-cycle validator
 rejects direct and mixed record/union by-value recursion. Target analysis chooses the maximum
 alternative extent and alignment, rounds the object size, and reports tail padding plus each
@@ -591,7 +591,7 @@ with each supplied capacity. Fit remains Unknown when either the aggregate size 
 unknown. These are capacity comparisons, not performance predictions, and the built-in baseline
 does not guess capacities for the machine running the planner.
 
-`scalar-module` / `integer-scalar` is the first schema declaration that describes an integer value
+`integer-scalar` is the schema declaration that describes an integer value
 domain without selecting a C++ underlying type. Its shared schema and resolved `IntegerScalarType`
 store signedness, inclusive live bounds, optional explicit width (`auto` when absent), and ordered
 named live/sentinel codes. Validation derives fit across the range and code extremes; headless
@@ -615,7 +615,7 @@ smallest `std::intN_t`/`std::uintN_t` capable of holding the concrete placement 
 shared live/sentinel domain. This consumer policy does not add size, alignment, or a primitive
 dependency to the standalone scalar node.
 
-`representation-module` / `linear-quantized` is the first explicit semantic-to-physical link. A
+`linear-quantized` is an explicit semantic-to-physical link. A
 `LinearQuantizedType` resolves its `integer-scalar` source as a real graph dependency while owning
 only representation facts: encoded width, reserved-code count, and reject/clamp clipping policy.
 The initial mapping assigns the source endpoints to the first and last usable codes; reserved codes
@@ -644,7 +644,7 @@ selected element count. It deliberately does not turn those payload bits into al
 cache/page facts: doing so requires a future container placement and packing policy. The frontend
 stores the selected sibling by stable `TypeIdentity`, not a planner-owned copy of either schema.
 
-`representation-module` also supports source-backed `integer-varint` declarations with unsigned,
+`module` also supports source-backed `integer-varint` declarations with unsigned,
 signed (SLEB128-style), and ZigZag encodings. Validation binds each declaration to an
 `IntegerScalarType` and enforces encoding/source signedness. Analysis derives the exact minimum and
 maximum encoded byte counts over the live range and all named source codes, then scales both bounds
@@ -828,12 +828,11 @@ The browser obtains three-state declaration status from the same session, with c
 analysis keyed by graph and target-profile revisions. `PlannerUi` retains document editing, dialogs,
 text buffers, and rendering. Session inputs are transient and do not change LispB or saved UI formats.
 
-## Deferred heterogeneous modules
+## Heterogeneous modules
 
-LispB currently encodes declaration category in the module kind. A later branch can allow one module
-to contain mixed declarations, but should design the source and command model together. The change
-would touch the codegen schema and parser, editable-document commands and source-preserving edits,
-type-graph resolution, planner module/declaration creation and declaration moves, plus their tests.
-The current planner's `TypeIdentity`-based selection and override remapping can remain useful; checks
-that use a module variant index or assume one declaration category per module should be removed in
-that migration. No mixed-module syntax or generated C++ changes are part of this hardening work.
+Each ordinary module contains an ordered `DeclarationSchema` sequence shared by the parser,
+editable document, TypeGraph, and code generator. Creation and move destinations accept any
+declaration family, subject to the destination module's validated configuration. The new-module
+dialog chooses the SoA backend explicitly, with Unreal as the default. Standard-library SoA
+authoring selects modules with that backend. Settings and umbrella forms remain separate because
+they describe coordinated settings integration and header aggregation respectively.

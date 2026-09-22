@@ -25,6 +25,15 @@ namespace {
 
 using namespace codegen_compile_fixture;
 
+TEST(GeneratedMixedModule, ResolvesForwardPhysicalDependenciesAcrossDeclarationKinds) {
+    mixed::Event const event{
+        .tag = mixed::Kind::Data,
+        .payload = {.data = {.payload = {.position = {.x = 3.0f, .y = 4.0f}}}}};
+    EXPECT_EQ(event.tag, mixed::Kind::Data);
+    EXPECT_EQ(event.payload.data.payload.position.x, 3.0f);
+    EXPECT_EQ(event.payload.data.payload.position.y, 4.0f);
+}
+
 template <typename T>
 concept BorrowsOwner = requires(T&& owner) { std::forward<T>(owner).get_view(); };
 

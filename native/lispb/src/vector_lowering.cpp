@@ -190,19 +190,4 @@ auto lower_vector(VectorSoaSchema const& vector,
     return {.header = std::move(lowered.header), .source = std::move(lowered.source)};
 }
 
-auto lower_vector_module(VectorModuleSchema const& module,
-                         std::map<std::string, CppType> const& types) -> Module {
-    auto vector{VectorSoaSchema{.name = module.storage_name,
-                                .value_type = module.value_type,
-                                .components = module.components,
-                                .equivalent_members = module.equivalent_members,
-                                .equivalent_constructor = module.equivalent_constructor,
-                                .equivalent_type = module.equivalent_type,
-                                .export_specifier = module.export_specifier,
-                                .fixed = module.fixed}};
-    std::vector<DeclarationEmission> emissions;
-    emissions.push_back(lower_vector(vector, module.backend, types));
-    return assemble_module(module.settings, emissions).front();
-}
-
 } // namespace codegen::detail

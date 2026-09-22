@@ -76,7 +76,6 @@ struct RestoreModule {
     std::size_t module_index{};
     codegen::ModuleSchema schema;
     std::optional<SourceRange> source;
-    std::string source_head;
     std::optional<std::size_t> pending_source_file_index;
     std::vector<DeclarationInfo> declarations;
 };
@@ -449,7 +448,6 @@ class EditableSchemaDocument {
     std::filesystem::path types_path_;
     std::vector<std::filesystem::path> module_paths_;
     std::vector<std::optional<SourceRange>> module_source_ranges_;
-    std::vector<std::string> module_source_heads_;
     std::map<std::size_t, std::size_t> pending_module_sources_;
     std::vector<SourceRange> deleted_module_source_ranges_;
     std::vector<DeclarationInfo> declarations_;

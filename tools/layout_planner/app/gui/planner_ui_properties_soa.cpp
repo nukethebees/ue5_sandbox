@@ -570,7 +570,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             auto const& modules{document_->manifest().modules};
             for (std::size_t module_index{}; module_index < modules.size(); ++module_index) {
                 auto const* record_module{
-                    std::get_if<codegen::RecordModuleSchema>(&modules[module_index])};
+                    std::get_if<codegen::NormalModuleSchema>(&modules[module_index])};
                 if (record_module == nullptr) {
                     continue;
                 }
@@ -596,12 +596,12 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                 new_record_module_index_ = *record_module_index;
                 auto const suggested_name{suggested_type_name(member.name, "Record")};
                 auto& record_module{
-                    std::get<codegen::RecordModuleSchema>(modules[new_record_module_index_])};
+                    std::get<codegen::NormalModuleSchema>(modules[new_record_module_index_])};
                 auto unique_name{suggested_name};
                 auto suffix_number{std::size_t{1}};
                 while (std::ranges::find(
-                           record_module.records, unique_name, &codegen::RecordSchema::name) !=
-                       record_module.records.end()) {
+                           record_module.declarations, unique_name, codegen::declaration_name) !=
+                       record_module.declarations.end()) {
                     unique_name = suggested_name + std::to_string(suffix_number++);
                 }
                 std::snprintf(
@@ -625,7 +625,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             ImGui::EndDisabled();
             if (!record_module_index.has_value()) {
                 ImGui::SameLine();
-                ImGui::TextDisabled("No record module is available.");
+                ImGui::TextDisabled("no ordinary module is available.");
             } else if (resolved_column == nullptr) {
                 ImGui::SameLine();
                 ImGui::TextDisabled("The selected column type is unresolved.");

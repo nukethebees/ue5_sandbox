@@ -390,7 +390,7 @@ TEST(IntegerScalarAnalyzer, ReportsZeroUnusedCodesForFullSixtyFourBitDomains) {
         codegen::Manifest manifest{
             .schema_version = codegen::manifest_schema_version,
             .types = {},
-            .modules = {codegen::ScalarModuleSchema{
+            .modules = {codegen::NormalModuleSchema{
                 .settings = codegen::ModuleSettings{.name = "full_domain",
                                                     .header = "FullDomain.h",
                                                     .source = std::nullopt,
@@ -398,7 +398,7 @@ TEST(IntegerScalarAnalyzer, ReportsZeroUnusedCodesForFullSixtyFourBitDomains) {
                                                     .namespace_name = std::nullopt,
                                                     .include_order = {},
                                                     .prelude_lines = {}},
-                .scalars = {codegen::IntegerScalarSchema{
+                .declarations = {codegen::IntegerScalarSchema{
                     .name = "FullDomain",
                     .signedness = signedness,
                     .minimum_value = signedness ? codegen::PackedIntegerValue{(

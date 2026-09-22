@@ -262,18 +262,15 @@ void PlannerUi::draw_project_panel() {
             };
         ImGui::BeginDisabled(project_history_active());
         auto const& module{modules[module_index]};
-        if (std::holds_alternative<codegen::EnumModuleSchema>(module)) {
+        if (auto const* normal{std::get_if<codegen::NormalModuleSchema>(&module)}) {
             if (add_declaration("+ Enum", new_enum_module_index_, open_new_enum_dialog_)) {
                 pending_packed_enum_binding_.reset();
             }
-        } else if (std::holds_alternative<codegen::PackedValueModuleSchema>(module)) {
             add_declaration(
                 "+ Packed value", new_packed_module_index_, open_new_packed_value_dialog_);
-        } else if (std::holds_alternative<codegen::ScalarModuleSchema>(module)) {
             add_declaration("+ Integer scalar",
                             new_integer_scalar_module_index_,
                             open_new_integer_scalar_dialog_);
-        } else if (std::holds_alternative<codegen::RepresentationModuleSchema>(module)) {
             add_declaration("+ Quantization",
                             new_linear_quantized_module_index_,
                             open_new_linear_quantized_dialog_);
@@ -289,17 +286,15 @@ void PlannerUi::draw_project_panel() {
             add_declaration("+ Presence optional",
                             new_optional_presence_bit_module_index_,
                             open_new_optional_presence_bit_dialog_);
-        } else if (std::holds_alternative<codegen::RecordModuleSchema>(module)) {
             if (module_buttons.button("+ Record")) {
                 create_record_in_module = module_index;
             }
-        } else if (std::holds_alternative<codegen::UnionModuleSchema>(module)) {
             add_declaration("+ Union", new_union_module_index_, open_new_union_dialog_);
             add_declaration(
                 "+ Tagged union", new_tagged_union_module_index_, open_new_tagged_union_dialog_);
-        } else if (auto const* soa{std::get_if<codegen::SoaModuleSchema>(&module)};
-                   soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
-            add_declaration("+ SoA", new_soa_module_index_, open_new_soa_dialog_);
+            if (normal->soa_backend == codegen::SoaBackend::standard_library) {
+                add_declaration("+ SoA", new_soa_module_index_, open_new_soa_dialog_);
+            }
         }
         ImGui::BeginDisabled(modules.size() == 1);
         if (module_buttons.button("Delete module")) {
@@ -429,11 +424,11 @@ void PlannerUi::draw_project_panel() {
 
     if (create_record_in_module.has_value()) {
         auto const& module{
-            std::get<codegen::RecordModuleSchema>(modules[*create_record_in_module])};
+            std::get<codegen::NormalModuleSchema>(modules[*create_record_in_module])};
         auto name{std::string{"Record"}};
         auto suffix{2};
-        while (std::ranges::find(module.records, name, &codegen::RecordSchema::name) !=
-               module.records.end()) {
+        while (std::ranges::find(module.declarations, name, codegen::declaration_name) !=
+               module.declarations.end()) {
             name = "Record" + std::to_string(suffix++);
         }
         auto const identity{
@@ -497,11 +492,9 @@ void PlannerUi::draw_new_module_dialog() {
         return;
     }
 
-    constexpr std::array kinds{
-        "Enum", "Packed value", "Integer scalar", "Representation", "Record", "Union", "SoA"};
-    ImGui::BeginDisabled(declaration_after_new_module_.has_value());
-    ImGui::Combo("Kind", &new_module_kind_, kinds.data(), static_cast<int>(kinds.size()));
-    ImGui::EndDisabled();
+    constexpr std::array backends{"Unreal", "Standard library"};
+    ImGui::Combo(
+        "SoA backend", &new_module_backend_, backends.data(), static_cast<int>(backends.size()));
     if (ImGui::InputText("Module name", new_module_name_.data(), new_module_name_.size()) &&
         new_module_header_.front() == '\0') {
         confirm_unchecked_module_header_ = false;
@@ -605,9 +598,9 @@ void PlannerUi::draw_new_module_dialog() {
         ImGui::TextColored(ImVec4{1.0F, 0.85F, 0.2F, 1.0F}, "%s", conflict.c_str());
     }
 
-    auto const ready{conflict.empty() &&
-                     (output_location_known || confirm_unchecked_module_header_) &&
-                     new_module_kind_ >= 0 && new_module_kind_ < static_cast<int>(kinds.size())};
+    auto const ready{
+        conflict.empty() && (output_location_known || confirm_unchecked_module_header_) &&
+        new_module_backend_ >= 0 && new_module_backend_ < static_cast<int>(backends.size())};
     ImGui::BeginDisabled(!ready);
     if (ImGui::Button("Create")) {
         auto const settings{codegen::ModuleSettings{
@@ -620,36 +613,10 @@ void PlannerUi::draw_new_module_dialog() {
                                 : std::optional<std::string>{new_module_namespace_.data()},
             .include_order = {},
             .prelude_lines = {}}};
-        auto module = [&]() -> codegen::ModuleSchema {
-            switch (new_module_kind_) {
-                case 0:
-                    return codegen::EnumModuleSchema{
-                        .settings = settings, .helper_namespace = std::nullopt, .enums = {}};
-                case 1:
-                    return codegen::PackedValueModuleSchema{.settings = settings, .values = {}};
-                case 2:
-                    return codegen::ScalarModuleSchema{.settings = settings, .scalars = {}};
-                case 3:
-                    return codegen::RepresentationModuleSchema{.settings = settings,
-                                                               .linear_quantized = {},
-                                                               .integer_varints = {},
-                                                               .fixed_points = {},
-                                                               .optional_sentinels = {},
-                                                               .optional_presence_bits = {},
-                                                               .mini_floats = {}};
-                case 4:
-                    return codegen::RecordModuleSchema{.settings = settings, .records = {}};
-                case 5:
-                    return codegen::UnionModuleSchema{
-                        .settings = settings, .unions = {}, .tagged_unions = {}};
-                default:
-                    return codegen::SoaModuleSchema{.settings = settings,
-                                                    .structs = {},
-                                                    .backend =
-                                                        codegen::SoaBackend::standard_library,
-                                                    .array_allocators = {}};
-            }
-        }();
+        auto module{codegen::NormalModuleSchema{
+            .settings = settings,
+            .soa_backend = new_module_backend_ == 0 ? codegen::SoaBackend::unreal
+                                                    : codegen::SoaBackend::standard_library}};
         if (apply_document_edit(CreateModule{.source_file_index = new_module_source_file_index_,
                                              .schema = std::move(module)})) {
             schema_warning_message_.clear();

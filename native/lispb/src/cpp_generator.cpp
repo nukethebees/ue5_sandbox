@@ -21,6 +21,62 @@ namespace {
 template <typename>
 inline constexpr bool unlowered_declaration_schema{false};
 
+auto declaration_emission_order(NormalModuleSchema const& module,
+                                lispb::schema::TypeGraph const& graph) -> std::vector<std::size_t> {
+    std::map<lispb::schema::TypeId, std::size_t> declarations;
+    auto const count{module.declarations.size()};
+    for (std::size_t index{}; index < count; ++index) {
+        auto const type{graph.find_declared(module.settings.name,
+                                            declaration_name(module.declarations[index]))};
+        if (type.has_value()) {
+            declarations.emplace(*type, index);
+        }
+    }
+
+    std::vector<std::size_t> order;
+    std::vector<bool> emitted(count);
+    order.reserve(count);
+    auto visit = [&](auto&& self, std::size_t const index) -> void {
+        if (emitted[index]) {
+            return;
+        }
+        emitted[index] = true;
+        auto const type{graph.find_declared(module.settings.name,
+                                            declaration_name(module.declarations[index]))};
+        if (type.has_value()) {
+            auto dependency = [&](lispb::schema::ResolvedTypeRef const& reference) {
+                if (auto const found{declarations.find(reference.type)};
+                    found != declarations.end()) {
+                    self(self, found->second);
+                }
+            };
+            std::visit(
+                [&](auto const& value) {
+                    using T = std::decay_t<decltype(value)>;
+                    if constexpr (std::is_same_v<T, lispb::schema::RecordType>) {
+                        for (auto const& member : value.members) {
+                            dependency(member.semantic_type);
+                        }
+                    } else if constexpr (std::is_same_v<T, lispb::schema::UnionType> ||
+                                         std::is_same_v<T, lispb::schema::TaggedUnionType>) {
+                        if constexpr (std::is_same_v<T, lispb::schema::TaggedUnionType>) {
+                            dependency(value.discriminant);
+                        }
+                        for (auto const& alternative : value.alternatives) {
+                            dependency(alternative.semantic_type);
+                        }
+                    }
+                },
+                graph.type(*type).definition);
+        }
+        order.push_back(index);
+    };
+    for (std::size_t index{}; index < count; ++index) {
+        visit(visit, index);
+    }
+    return order;
+}
+
 auto lower_umbrella(UmbrellaModuleSchema const& module) -> Module {
     NodeListBuilder nodes;
     for (auto const& header : module.headers) {
@@ -38,20 +94,6 @@ auto lower_umbrella(UmbrellaModuleSchema const& module) -> Module {
                 .clang_format_off = true,
                 .include_order = module.settings.include_order,
             },
-    };
-}
-
-auto lower_semantic_module(ModuleSettings const& settings) -> Module {
-    NodeListBuilder nodes;
-    if (!settings.prelude_lines.empty()) {
-        nodes.add(raw(detail::join_lines(settings.prelude_lines)));
-    }
-    return Module{
-        .name = settings.name,
-        .header = CppFile{.path = settings.header,
-                          .nodes = nodes.build(),
-                          .clang_format_off = true,
-                          .include_order = settings.include_order},
     };
 }
 
@@ -123,34 +165,6 @@ auto lower_scalar(IntegerScalarSchema const& scalar, std::map<std::string, CppTy
     return {.header = declarations.build()};
 }
 
-auto lower_scalar_module(ScalarModuleSchema const& module,
-                         std::map<std::string, CppType> const& types) -> Module {
-    NodeListBuilder declarations;
-    for (auto const& scalar : module.scalars) {
-        declarations.append(lower_scalar(scalar, types).header);
-    }
-    auto declaration_nodes{declarations.build()};
-    NodeListBuilder header_nodes;
-    if (!declaration_nodes.empty()) {
-        header_nodes.add(IncludeDependencies{}, 2);
-    }
-    if (!module.settings.prelude_lines.empty()) {
-        header_nodes.add(raw(detail::join_lines(module.settings.prelude_lines)), 2);
-    }
-    if (module.settings.namespace_name.has_value() && !declaration_nodes.empty()) {
-        header_nodes.add(Namespace{*module.settings.namespace_name, std::move(declaration_nodes)});
-    } else {
-        header_nodes.append(std::move(declaration_nodes));
-    }
-    return Module{
-        .name = module.settings.name,
-        .header = CppFile{.path = module.settings.header,
-                          .nodes = header_nodes.build(),
-                          .clang_format_off = true,
-                          .include_order = module.settings.include_order},
-    };
-}
-
 } // namespace
 
 auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
@@ -163,7 +177,8 @@ auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
                 if constexpr (std::is_same_v<T, NormalModuleSchema>) {
                     std::vector<detail::DeclarationEmission> emissions;
                     emissions.reserve(module.declarations.size());
-                    for (auto const& declaration : module.declarations) {
+                    for (auto const index : declaration_emission_order(module, type_graph)) {
+                        auto const& declaration{module.declarations[index]};
                         emissions.push_back(std::visit(
                             [&](auto const& value) -> detail::DeclarationEmission {
                                 using D = std::decay_t<decltype(value)>;
@@ -220,34 +235,8 @@ auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
                     result.insert(result.end(),
                                   std::make_move_iterator(lowered.begin()),
                                   std::make_move_iterator(lowered.end()));
-                } else if constexpr (std::is_same_v<T, EnumModuleSchema>) {
-                    auto lowered{detail::lower_enum_module(module, manifest.types)};
-                    result.insert(result.end(),
-                                  std::make_move_iterator(lowered.begin()),
-                                  std::make_move_iterator(lowered.end()));
-                } else if constexpr (std::is_same_v<T, PackedValueModuleSchema>) {
-                    result.push_back(
-                        detail::lower_packed_value_module(module, manifest.types, type_graph));
-                } else if constexpr (std::is_same_v<T, ScalarModuleSchema>) {
-                    result.push_back(lower_scalar_module(module, manifest.types));
-                } else if constexpr (std::is_same_v<T, RepresentationModuleSchema>) {
-                    result.push_back(lower_semantic_module(module.settings));
-                } else if constexpr (std::is_same_v<T, RecordModuleSchema>) {
-                    result.push_back(detail::lower_record_module(module, manifest.types));
-                } else if constexpr (std::is_same_v<T, UnionModuleSchema>) {
-                    result.push_back(detail::lower_union_module(module, manifest.types));
-                } else if constexpr (std::is_same_v<T, SoaModuleSchema>) {
-                    result.push_back(detail::lower_soa_module(module, manifest.types, type_graph));
-                } else if constexpr (std::is_same_v<T, StaticTableModuleSchema>) {
-                    result.push_back(detail::lower_static_table_module(module, manifest.types));
-                } else if constexpr (std::is_same_v<T, FacadeModuleSchema>) {
-                    result.push_back(detail::lower_facade_module(module, manifest.types));
                 } else if constexpr (std::is_same_v<T, SettingsModuleSchema>) {
                     result.push_back(detail::lower_settings_module(module, manifest.types));
-                } else if constexpr (std::is_same_v<T, HomogeneousModuleSchema>) {
-                    result.push_back(detail::lower_homogeneous_module(module, manifest.types));
-                } else if constexpr (std::is_same_v<T, VectorModuleSchema>) {
-                    result.push_back(detail::lower_vector_module(module, manifest.types));
                 } else if constexpr (std::is_same_v<T, UmbrellaModuleSchema>) {
                     result.push_back(lower_umbrella(module));
                 }

@@ -47,13 +47,13 @@ class TemporaryProject {
 TEST(EditableProjectDocument, AddsValidatesPreviewsAndSavesCppSchemaSources) {
     TemporaryProject files;
     files.write("types.lispb", "");
-    files.write("base.lispb", R"((enum-module base
+    files.write("base.lispb", R"((module base
   :header "Base.h"
   :namespace test
   (enum Base
     (value First :value 0)))
 )");
-    files.write("extra.lispb", R"((scalar-module extra
+    files.write("extra.lispb", R"((module extra
   :header "Extra.h"
   :namespace test
   (integer-scalar Extra
@@ -173,7 +173,7 @@ TEST(EditableProjectDocument, AddsValidatesPreviewsAndSavesCppSchemaSources) {
 TEST(EditableProjectDocument, CreatesValidatesPreviewsAndPublishesNewCppSchemaSource) {
     TemporaryProject files;
     files.write("types.lispb", "");
-    files.write("base.lispb", R"((enum-module base
+    files.write("base.lispb", R"((module base
   :header "Base.h"
   :namespace test
   (enum Base
@@ -206,7 +206,7 @@ TEST(EditableProjectDocument, CreatesValidatesPreviewsAndPublishesNewCppSchemaSo
     EXPECT_FALSE(std::filesystem::exists(files.path("invalid.lispb")));
 
     rejected = document.apply(CreateCppSchemaSource{
-        .target_name = "test-schema", .source = "collision.lispb", .contents = R"((enum-module base
+        .target_name = "test-schema", .source = "collision.lispb", .contents = R"((module base
   :header "Collision.h"
   :namespace test
   (enum Base
@@ -297,11 +297,10 @@ TEST(EditableProjectDocument, CreatesValidatesPreviewsAndPublishesNewCppSchemaSo
         static_cast<std::size_t>(authored_source - schema_document.source_files().begin())};
     auto module_created{schema_document.apply(
         schema::CreateModule{.source_file_index = source_index,
-                             .schema = codegen::ScalarModuleSchema{
+                             .schema = codegen::NormalModuleSchema{
                                  .settings = codegen::ModuleSettings{.name = "authored_scalars",
                                                                      .header = "AuthoredScalars.h",
-                                                                     .namespace_name = "test"},
-                                 .scalars = {}}})};
+                                                                     .namespace_name = "test"}}})};
     ASSERT_TRUE(module_created.has_value()) << module_created.error().message;
     ASSERT_TRUE(*module_created);
     auto module_preview{schema_document.preview_source_updates()};
@@ -314,7 +313,7 @@ TEST(EditableProjectDocument, CreatesValidatesPreviewsAndPublishesNewCppSchemaSo
 TEST(EditableProjectDocument, ValidatesMultiplePendingSourcesAndCleansFailedPublication) {
     TemporaryProject files;
     files.write("types.lispb", "");
-    files.write("base.lispb", R"((enum-module base
+    files.write("base.lispb", R"((module base
   :header "Base.h"
   (enum Base
     (value First :value 0)))
@@ -335,7 +334,7 @@ TEST(EditableProjectDocument, ValidatesMultiplePendingSourcesAndCleansFailedPubl
                         .target_name = "test-schema", .source = "first.lispb", .contents = ""})
                     .has_value());
     auto second{document.apply(CreateCppSchemaSource{
-        .target_name = "test-schema", .source = "second.lispb", .contents = R"((scalar-module values
+        .target_name = "test-schema", .source = "second.lispb", .contents = R"((module values
   :header "Values.h"
   (integer-scalar Value
     :signed false
@@ -372,7 +371,7 @@ TEST(EditableProjectDocument, ValidatesMultiplePendingSourcesAndCleansFailedPubl
     ASSERT_TRUE(*saved);
     EXPECT_FALSE(document.dirty());
     EXPECT_TRUE(std::filesystem::is_regular_file(files.path("first.lispb")));
-    EXPECT_NE(files.read("second.lispb").find("(scalar-module values"), std::string::npos);
+    EXPECT_NE(files.read("second.lispb").find("(module values"), std::string::npos);
 
     auto const project{load_project(files.path("project.lispb"))};
     auto const& target{std::get<CppSchemaTarget>(project.targets.at("test-schema"))};
@@ -388,7 +387,7 @@ TEST(EditableProjectDocument, ValidatesMultiplePendingSourcesAndCleansFailedPubl
 TEST(EditableProjectDocument, UnregistersOriginalSourceWithoutDeletingIt) {
     TemporaryProject files;
     files.write("types.lispb", "");
-    files.write("base.lispb", R"((scalar-module base
+    files.write("base.lispb", R"((module base
   :header "Base.h"
   :namespace test
   (integer-scalar EntityTable
@@ -397,7 +396,7 @@ TEST(EditableProjectDocument, UnregistersOriginalSourceWithoutDeletingIt) {
     :maximum 1023
     :bit-width 10))
 )");
-    files.write("dependent.lispb", R"((scalar-module dependent
+    files.write("dependent.lispb", R"((module dependent
   :header "Dependent.h"
   :namespace test
   (integer-scalar EntityIndex

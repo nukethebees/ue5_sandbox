@@ -46,26 +46,6 @@ auto find_normal(std::string const& spelling,
     return nullptr;
 }
 
-auto qualified_enum_name(EnumModuleSchema const& module, EnumSchema const& schema) -> std::string {
-    return module.settings.namespace_name.has_value()
-             ? *module.settings.namespace_name + "::" + schema.name
-             : schema.name;
-}
-
-auto qualified_scalar_name(ScalarModuleSchema const& module, IntegerScalarSchema const& schema)
-    -> std::string {
-    return module.settings.namespace_name.has_value()
-             ? *module.settings.namespace_name + "::" + schema.name
-             : schema.name;
-}
-
-auto qualified_representation_name(RepresentationModuleSchema const& module,
-                                   std::string const& name) -> std::string {
-    return module.settings.namespace_name.has_value()
-             ? *module.settings.namespace_name + "::" + name
-             : name;
-}
-
 } // namespace
 
 auto packed_unsigned_width(std::string_view const spelling) -> std::optional<int> {
@@ -101,108 +81,34 @@ auto packed_signed_width(std::string_view const spelling) -> std::optional<int> 
 auto find_packed_enum(TypeRef const& type,
                       std::map<std::string, CppType> const& types,
                       std::vector<ModuleSchema> const& modules) -> EnumSchema const* {
-    auto const spelling{resolve_type(type, types).spelling};
-    if (auto const* schema{find_normal<EnumSchema>(spelling, modules)}) {
-        return schema;
-    }
-    for (auto const& candidate : modules) {
-        auto const* enum_module{std::get_if<EnumModuleSchema>(&candidate)};
-        if (enum_module == nullptr) {
-            continue;
-        }
-        for (auto const& schema : enum_module->enums) {
-            if (qualified_enum_name(*enum_module, schema) == spelling) {
-                return &schema;
-            }
-        }
-    }
-    return nullptr;
+    return find_normal<EnumSchema>(resolve_type(type, types).spelling, modules);
 }
 
 auto find_integer_scalar(TypeRef const& type,
                          std::map<std::string, CppType> const& types,
                          std::vector<ModuleSchema> const& modules,
                          std::string_view const module_name) -> IntegerScalarSchema const* {
-    auto const spelling{resolve_type(type, types).spelling};
-    if (auto const* schema{find_normal<IntegerScalarSchema>(spelling, modules, module_name)}) {
-        return schema;
-    }
-    for (auto const& candidate : modules) {
-        auto const* scalar_module{std::get_if<ScalarModuleSchema>(&candidate)};
-        if (scalar_module == nullptr) {
-            continue;
-        }
-        for (auto const& schema : scalar_module->scalars) {
-            if (qualified_scalar_name(*scalar_module, schema) == spelling) {
-                return &schema;
-            }
-        }
-    }
-    return nullptr;
+    return find_normal<IntegerScalarSchema>(
+        resolve_type(type, types).spelling, modules, module_name);
 }
 
 auto find_linear_quantized(TypeRef const& type,
                            std::map<std::string, CppType> const& types,
                            std::vector<ModuleSchema> const& modules)
     -> LinearQuantizedSchema const* {
-    auto const spelling{resolve_type(type, types).spelling};
-    if (auto const* schema{find_normal<LinearQuantizedSchema>(spelling, modules)}) {
-        return schema;
-    }
-    for (auto const& candidate : modules) {
-        auto const* representation_module{std::get_if<RepresentationModuleSchema>(&candidate)};
-        if (representation_module == nullptr) {
-            continue;
-        }
-        for (auto const& schema : representation_module->linear_quantized) {
-            if (qualified_representation_name(*representation_module, schema.name) == spelling) {
-                return &schema;
-            }
-        }
-    }
-    return nullptr;
+    return find_normal<LinearQuantizedSchema>(resolve_type(type, types).spelling, modules);
 }
 
 auto find_fixed_point(TypeRef const& type,
                       std::map<std::string, CppType> const& types,
                       std::vector<ModuleSchema> const& modules) -> FixedPointSchema const* {
-    auto const spelling{resolve_type(type, types).spelling};
-    if (auto const* schema{find_normal<FixedPointSchema>(spelling, modules)}) {
-        return schema;
-    }
-    for (auto const& candidate : modules) {
-        auto const* representation_module{std::get_if<RepresentationModuleSchema>(&candidate)};
-        if (representation_module == nullptr) {
-            continue;
-        }
-        for (auto const& schema : representation_module->fixed_points) {
-            if (qualified_representation_name(*representation_module, schema.name) == spelling) {
-                return &schema;
-            }
-        }
-    }
-    return nullptr;
+    return find_normal<FixedPointSchema>(resolve_type(type, types).spelling, modules);
 }
 
 auto find_mini_float(TypeRef const& type,
                      std::map<std::string, CppType> const& types,
                      std::vector<ModuleSchema> const& modules) -> MiniFloatSchema const* {
-    auto const spelling{resolve_type(type, types).spelling};
-    if (auto const* schema{find_normal<MiniFloatSchema>(spelling, modules)}) {
-        return schema;
-    }
-    for (auto const& candidate : modules) {
-        auto const* representation_module{std::get_if<RepresentationModuleSchema>(&candidate)};
-        if (representation_module == nullptr) {
-            continue;
-        }
-        for (auto const& schema : representation_module->mini_floats) {
-            if (qualified_representation_name(*representation_module, schema.name) == spelling) {
-                return &schema;
-            }
-        }
-    }
-    return nullptr;
+    return find_normal<MiniFloatSchema>(resolve_type(type, types).spelling, modules);
 }
 
 auto derive_integer_scalar_width(IntegerScalarSchema const& scalar) -> std::optional<int> {

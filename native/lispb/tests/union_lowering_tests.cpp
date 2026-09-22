@@ -11,10 +11,10 @@ TEST(UnionLowering, GeneratesRawAlternativesAndFixedArrays) {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
         .types = {{"value", CppType{"Value", "Project/Value.h"}}},
-        .modules = {UnionModuleSchema{
+        .modules = {NormalModuleSchema{
             .settings =
                 ModuleSettings{.name = "unions", .header = "Unions.h", .namespace_name = "project"},
-            .unions = {UnionSchema{
+            .declarations = {UnionSchema{
                 .name = "Payload",
                 .alternatives = {{.name = "identifier", .type = TypeRef{"std::uint32_t"}},
                                  {.name = "values", .type = TypeRef{"@value"}, .count = 3}},
@@ -35,9 +35,9 @@ TEST(UnionLowering, GeneratesRawAlternativesAndFixedArrays) {
 TEST(UnionLowering, EmitsByValueDependenciesBeforeTheirUsers) {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
-        .modules = {UnionModuleSchema{
+        .modules = {NormalModuleSchema{
             .settings = ModuleSettings{.name = "unions", .header = "Unions.h"},
-            .unions = {
+            .declarations = {
                 UnionSchema{.name = "Outer",
                             .alternatives = {{.name = "inner", .type = TypeRef{"Inner"}}}},
                 UnionSchema{.name = "Inner",
@@ -52,29 +52,28 @@ TEST(UnionLowering, GeneratesTaggedAggregateWithExplicitPayloadUnion) {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
         .types = {{"event_kind", CppType{"events::EventKind", "Events.h"}}},
-        .modules = {
-            EnumModuleSchema{.settings = ModuleSettings{.name = "events",
-                                                        .header = "Events.h",
-                                                        .namespace_name = "events"},
-                             .enums = {EnumSchema{.name = "EventKind",
-                                                  .underlying_type = TypeRef{"std::uint8_t"},
-                                                  .values = {EnumeratorSchema{"Spawn"},
-                                                             EnumeratorSchema{"Damage"}}}}},
-            UnionModuleSchema{.settings = ModuleSettings{.name = "unions",
-                                                         .header = "Unions.h",
-                                                         .namespace_name = "events"},
-                              .unions = {},
-                              .tagged_unions = {TaggedUnionSchema{
-                                  .name = "Event",
-                                  .discriminant = TypeRef{"@event_kind"},
-                                  .alternatives = {{.name = "spawn",
-                                                    .type = TypeRef{"std::uint32_t"},
-                                                    .tag = "Spawn"},
-                                                   {.name = "damage",
-                                                    .type = TypeRef{"std::uint16_t"},
-                                                    .count = 4,
-                                                    .tag = "Damage"}},
-                                  .export_specifier = "PROJECT_API"}}}}};
+        .modules = {NormalModuleSchema{
+                        .settings = ModuleSettings{.name = "events",
+                                                   .header = "Events.h",
+                                                   .namespace_name = "events"},
+                        .declarations = {EnumSchema{
+                            .name = "EventKind",
+                            .underlying_type = TypeRef{"std::uint8_t"},
+                            .values = {EnumeratorSchema{"Spawn"}, EnumeratorSchema{"Damage"}}}}},
+                    NormalModuleSchema{.settings = ModuleSettings{.name = "unions",
+                                                                  .header = "Unions.h",
+                                                                  .namespace_name = "events"},
+                                       .declarations = {TaggedUnionSchema{
+                                           .name = "Event",
+                                           .discriminant = TypeRef{"@event_kind"},
+                                           .alternatives = {{.name = "spawn",
+                                                             .type = TypeRef{"std::uint32_t"},
+                                                             .tag = "Spawn"},
+                                                            {.name = "damage",
+                                                             .type = TypeRef{"std::uint16_t"},
+                                                             .count = 4,
+                                                             .tag = "Damage"}},
+                                           .export_specifier = "PROJECT_API"}}}}};
 
     auto const files{render_modules(lower_modules(manifest))};
 

@@ -334,7 +334,7 @@ TEST(UnionAnalyzer, ReportsSelectedCountOverflowWithoutLosingPerObjectLayout) {
 }
 
 TEST(UnionAnalyzer, HandlesNestedAggregatesAndUnknownOrOverflowedAlternatives) {
-    codegen::RecordModuleSchema records{
+    codegen::NormalModuleSchema records{
         .settings = codegen::ModuleSettings{.name = "records",
                                             .header = "Records.h",
                                             .source = std::nullopt,
@@ -342,11 +342,11 @@ TEST(UnionAnalyzer, HandlesNestedAggregatesAndUnknownOrOverflowedAlternatives) {
                                             .namespace_name = "records",
                                             .include_order = {},
                                             .prelude_lines = {}},
-        .records = {codegen::RecordSchema{.name = "Record",
-                                          .members = {record_member("small", "std::uint8_t"),
-                                                      record_member("wide", "std::uint32_t")},
-                                          .export_specifier = std::nullopt}}};
-    codegen::UnionModuleSchema unions{
+        .declarations = {codegen::RecordSchema{.name = "Record",
+                                               .members = {record_member("small", "std::uint8_t"),
+                                                           record_member("wide", "std::uint32_t")},
+                                               .export_specifier = std::nullopt}}};
+    codegen::NormalModuleSchema unions{
         .settings = codegen::ModuleSettings{.name = "unions",
                                             .header = "Unions.h",
                                             .source = std::nullopt,
@@ -354,12 +354,11 @@ TEST(UnionAnalyzer, HandlesNestedAggregatesAndUnknownOrOverflowedAlternatives) {
                                             .namespace_name = "unions",
                                             .include_order = {},
                                             .prelude_lines = {}},
-        .unions = {codegen::UnionSchema{
-            .name = "Payload",
-            .alternatives = {union_alternative("record", "records::Record"),
-                             union_alternative("words", "std::uint16_t", 6)},
-            .export_specifier = std::nullopt}},
-        .tagged_unions = {}};
+        .declarations = {
+            codegen::UnionSchema{.name = "Payload",
+                                 .alternatives = {union_alternative("record", "records::Record"),
+                                                  union_alternative("words", "std::uint16_t", 6)},
+                                 .export_specifier = std::nullopt}}};
     codegen::Manifest manifest{.schema_version = codegen::manifest_schema_version,
                                .types = {},
                                .modules = {std::move(records), std::move(unions)}};
@@ -540,7 +539,7 @@ TEST(UnionAnalyzer, ComparesExplicitAlternativeDistributionAcrossTargetProfiles)
 }
 
 TEST(TaggedUnionAnalyzer, LaysOutDiscriminantBeforeAlignedPayloadUnion) {
-    codegen::EnumModuleSchema enums{};
+    codegen::NormalModuleSchema enums{};
     enums.settings.name = "events";
     enums.settings.header = "Events.h";
     enums.settings.namespace_name = "events";
@@ -565,9 +564,9 @@ TEST(TaggedUnionAnalyzer, LaysOutDiscriminantBeforeAlignedPayloadUnion) {
                    std::move(invalid_tag),
                    std::move(count_tag)};
     kind.count = "COUNT";
-    enums.enums.push_back(std::move(kind));
+    enums.declarations.push_back(std::move(kind));
 
-    codegen::UnionModuleSchema unions{};
+    codegen::NormalModuleSchema unions{};
     unions.settings.name = "payloads";
     unions.settings.header = "Payloads.h";
     unions.settings.namespace_name = "payloads";
@@ -584,15 +583,16 @@ TEST(TaggedUnionAnalyzer, LaysOutDiscriminantBeforeAlignedPayloadUnion) {
     bytes.count = 6;
     bytes.tag = "Bytes";
     event_schema.alternatives = {std::move(small), std::move(bytes)};
-    unions.tagged_unions.push_back(std::move(event_schema));
+    unions.declarations.push_back(std::move(event_schema));
 
-    codegen::RecordModuleSchema records{};
+    codegen::NormalModuleSchema records{};
     records.settings.name = "records";
     records.settings.header = "Records.h";
-    records.records = {codegen::RecordSchema{.name = "Envelope",
-                                             .members = {record_member("event", "payloads::Event"),
-                                                         record_member("suffix", "std::uint8_t")},
-                                             .export_specifier = std::nullopt}};
+    records.declarations = {
+        codegen::RecordSchema{.name = "Envelope",
+                              .members = {record_member("event", "payloads::Event"),
+                                          record_member("suffix", "std::uint8_t")},
+                              .export_specifier = std::nullopt}};
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;
     manifest.modules = {std::move(enums), std::move(unions), std::move(records)};

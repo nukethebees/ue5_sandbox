@@ -19,11 +19,12 @@ TEST(SingleAllocationSoa, StdlibBackendReusesLayoutWithoutUnrealDependencies) {
                      {"nested", SoaMemberKind::nested, TypeRef{"Child"}, {}, "Child"}},
          .single_allocation = "SingleRows",
          .single_allocation_variants = {{"CustomSingleRows", TypeRef{"CustomAllocator"}}}}};
-    auto const files{render_modules(lower_modules(
-        Manifest{.schema_version = manifest_schema_version,
-                 .modules = {SoaModuleSchema{.settings = {.name = "native", .header = "Native.h"},
-                                             .structs = std::move(structs),
-                                             .backend = SoaBackend::standard_library}}}))};
+    auto const files{render_modules(lower_modules(Manifest{
+        .schema_version = manifest_schema_version,
+        .modules = {NormalModuleSchema{.settings = {.name = "native", .header = "Native.h"},
+                                       .declarations = {std::make_move_iterator(structs.begin()),
+                                                        std::make_move_iterator(structs.end())},
+                                       .soa_backend = SoaBackend::standard_library}}}))};
     auto const& output{files.front().content};
     EXPECT_NE(output.find("ml::native_soa::Vector<std::int32_t> ids"), std::string::npos);
     EXPECT_NE(output.find("ColLayout<std::int32_t> IdsColumn"), std::string::npos);
@@ -68,11 +69,12 @@ TEST(SingleAllocationSoa, StdlibRowOperationsUseNestedEquivalentValues) {
         {.name = "Rows",
          .members = {{"ids", SoaMemberKind::array, TypeRef{"std::int32_t"}},
                      {"points", SoaMemberKind::nested, TypeRef{"Points"}, {}, "Points"}}}};
-    auto const files{render_modules(lower_modules(
-        Manifest{.schema_version = manifest_schema_version,
-                 .modules = {SoaModuleSchema{.settings = {.name = "native", .header = "Native.h"},
-                                             .structs = std::move(structs),
-                                             .backend = SoaBackend::standard_library}}}))};
+    auto const files{render_modules(lower_modules(Manifest{
+        .schema_version = manifest_schema_version,
+        .modules = {NormalModuleSchema{.settings = {.name = "native", .header = "Native.h"},
+                                       .declarations = {std::make_move_iterator(structs.begin()),
+                                                        std::make_move_iterator(structs.end())},
+                                       .soa_backend = SoaBackend::standard_library}}}))};
     auto const& output{files.front().content};
     EXPECT_NE(output.find("void set(size_type const index, std::int32_t const new_ids, Point const "
                           "new_points) const"),
@@ -101,9 +103,10 @@ auto schemas() -> std::vector<SoaSchema> {
 auto render(std::vector<SoaSchema> structs) -> std::string {
     auto const files{render_modules(lower_modules(
         Manifest{.schema_version = manifest_schema_version,
-                 .modules = {SoaModuleSchema{
+                 .modules = {NormalModuleSchema{
                      .settings = {.name = "test", .header = "Test.h", .source = "Test.cpp"},
-                     .structs = std::move(structs)}}}))};
+                     .declarations = {std::make_move_iterator(structs.begin()),
+                                      std::make_move_iterator(structs.end())}}}}))};
     return files.front().content;
 }
 
@@ -169,11 +172,15 @@ TEST(SingleAllocationSoa, EmitsDirectOrdinaryConstViewAppend) {
 }
 
 TEST(SingleAllocationSoa, AllocatorVariantsApplyToNestedColumns) {
-    auto module{
-        SoaModuleSchema{.settings = {.name = "test", .header = "Test.h", .source = "Test.cpp"},
-                        .structs = schemas(),
-                        .array_allocators = {{"Malloc", TypeRef{"MallocAllocator"}},
-                                             {"Realloc", TypeRef{"ReallocAllocator"}}}}};
+    auto module{NormalModuleSchema{
+        .settings = {.name = "test", .header = "Test.h", .source = "Test.cpp"},
+        .declarations =
+            [] {
+                auto values{schemas()};
+                return std::vector<DeclarationSchema>{values.begin(), values.end()};
+            }(),
+        .soa_array_allocators = {{"Malloc", TypeRef{"MallocAllocator"}},
+                                 {"Realloc", TypeRef{"ReallocAllocator"}}}}};
     auto const files{render_modules(
         lower_modules(Manifest{.schema_version = manifest_schema_version, .modules = {module}}))};
     auto const& output{files.front().content};
@@ -184,7 +191,7 @@ TEST(SingleAllocationSoa, AllocatorVariantsApplyToNestedColumns) {
     EXPECT_NE(output.find("ReallocChild nested;"), std::string::npos);
     EXPECT_NE(output.find("TArray<uint8> small;"), std::string::npos);
     EXPECT_EQ(output.find("MallocSingleRows"), std::string::npos);
-    module.array_allocators.push_back({"Malloc", TypeRef{"ReallocAllocator"}});
+    module.soa_array_allocators.push_back({"Malloc", TypeRef{"ReallocAllocator"}});
     EXPECT_THROW(
         lower_modules(Manifest{.schema_version = manifest_schema_version, .modules = {module}}),
         std::invalid_argument);

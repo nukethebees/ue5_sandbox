@@ -106,6 +106,55 @@ TEST(SourceLoader, NormalModuleKeepsMixedDeclarationOrderAndResolvesTypes) {
     EXPECT_LT(enum_position, record_position);
 }
 
+TEST(SourceLoader, RejectsRetiredDeclarationModuleHeads) {
+    TemporaryManifest files;
+    for (auto const* head : {"enum-module",
+                             "soa-module",
+                             "static-table-module",
+                             "homogeneous-soa-module",
+                             "packed-value-module",
+                             "scalar-module",
+                             "representation-module",
+                             "record-module",
+                             "union-module",
+                             "vector-soa-module",
+                             "facade-module"}) {
+        SCOPED_TRACE(head);
+        files.write_root("(" + std::string{head} + " retired :header \"Retired.h\")");
+        try {
+            static_cast<void>(files.load());
+            FAIL() << "Retired module head was accepted";
+        } catch (ManifestError const& error) {
+            EXPECT_NE(std::string{error.what()}.find("unknown module declaration"),
+                      std::string::npos);
+        }
+    }
+}
+
+TEST(SourceLoader, OrdersPhysicalDependenciesWithoutChangingDeclarationIndices) {
+    TemporaryManifest files;
+    files.write_root(R"(
+(module mixed
+  :header "Mixed.h"
+  (record Outer (member payload Payload))
+  (integer-scalar Index :signed false :minimum 0 :maximum 255)
+  (union Payload (alternative inner Inner))
+  (record Inner (member value float (relation references Outer))))
+)");
+    auto const manifest{files.load()};
+    auto const graph{lispb::schema::resolve_type_graph(manifest)};
+    ASSERT_TRUE(graph.find_declared("mixed", "Inner").has_value());
+    auto const files_out{render_modules(lower_modules(manifest))};
+    auto const& header{files_out.front().content};
+    EXPECT_LT(header.find("struct Inner"), header.find("union Payload"));
+    EXPECT_LT(header.find("union Payload"), header.find("struct Outer"));
+    auto const& declarations{std::get<NormalModuleSchema>(manifest.modules.front()).declarations};
+    EXPECT_EQ(declaration_name(declarations[0]), "Outer");
+    EXPECT_EQ(declaration_name(declarations[1]), "Index");
+    EXPECT_EQ(declaration_name(declarations[2]), "Payload");
+    EXPECT_EQ(declaration_name(declarations[3]), "Inner");
+}
+
 TEST(SourceLoader, NormalModuleRejectsCrossKindGeneratedCppNameCollision) {
     TemporaryManifest files;
     files.write_root(R"(
@@ -133,7 +182,7 @@ TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
   (operation set-element set :pass-by value))
 )");
     files.write("modules.lispb", R"(
-(soa-module example
+(module example
   :header "Generated.h"
   (struct FData
     :operations (all)
@@ -159,7 +208,7 @@ TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
 TEST(SourceLoader, ReadsStandardLibrarySoaBackend) {
     TemporaryManifest files;
     files.write_root(R"(
-(soa-module native_data
+(module native_data
   :header "NativeData.h"
   :backend standard-library
   (struct Data
@@ -176,7 +225,7 @@ TEST(SourceLoader, ReadsStandardLibrarySoaBackend) {
 TEST(SourceLoader, RejectsUnknownSoaBackend) {
     TemporaryManifest files;
     files.write_root(R"(
-(soa-module native_data
+(module native_data
   :header "NativeData.h"
   :backend portable
   (struct Data
@@ -189,7 +238,7 @@ TEST(SourceLoader, RejectsUnknownSoaBackend) {
 TEST(SourceLoader, ReadsSoaFieldMaskMetadata) {
     TemporaryManifest files;
     files.write_root(R"(
-(soa-module example
+(module example
   :header "Generated.h"
   (struct FData
     :field-mask-name FFieldMask
@@ -218,7 +267,7 @@ TEST(SourceLoader, ReadsSoaFieldMaskMetadata) {
 TEST(SourceLoader, ReadsPackedValueModule) {
     TemporaryManifest files;
     files.write_root(R"(
-(packed-value-module packed
+(module packed
   :header "Packed.h"
   :namespace project
   (packed-value FighterState
@@ -273,7 +322,7 @@ TEST(SourceLoader, ReadsPackedValueModule) {
 TEST(SourceLoader, ReadsSignedArbitraryWidthPackedField) {
     TemporaryManifest files;
     files.write_root(R"(
-(packed-value-module packed
+(module packed
   :header "Packed.h"
   (packed-value SignedDelta
     :storage std::uint32_t
@@ -302,7 +351,7 @@ TEST(SourceLoader, ReadsSignedArbitraryWidthPackedField) {
 TEST(SourceLoader, ReadsLinearQuantizedPackedField) {
     TemporaryManifest files;
     files.write_root(R"(
-(scalar-module scalars
+(module scalars
   :header "Scalars.h"
   :namespace project
   (integer-scalar Health
@@ -310,7 +359,7 @@ TEST(SourceLoader, ReadsLinearQuantizedPackedField) {
     :minimum 0
     :maximum 1000
     :bit-width auto))
-(representation-module representations
+(module representations
   :header "Representations.h"
   :namespace project
   (linear-quantized HealthQ8
@@ -318,7 +367,7 @@ TEST(SourceLoader, ReadsLinearQuantizedPackedField) {
     :bits 8
     :reserved-codes 2
     :clipping clamp))
-(packed-value-module packed
+(module packed
   :header "Packed.h"
   :namespace project
   (packed-value Vitals
@@ -338,7 +387,7 @@ TEST(SourceLoader, ReadsLinearQuantizedPackedField) {
 TEST(SourceLoader, ReadsFixedPointPackedField) {
     TemporaryManifest files;
     files.write_root(R"(
-(representation-module representations
+(module representations
   :header "Representations.h"
   :namespace project
   (fixed-point VelocityQ12_4
@@ -346,7 +395,7 @@ TEST(SourceLoader, ReadsFixedPointPackedField) {
     :total-bits 16
     :fractional-bits 4
     :rounding toward-zero))
-(packed-value-module packed
+(module packed
   :header "Packed.h"
   :namespace project
   (packed-value Motion
@@ -366,7 +415,7 @@ TEST(SourceLoader, ReadsFixedPointPackedField) {
 TEST(SourceLoader, ReadsMiniFloatPackedField) {
     TemporaryManifest files;
     files.write_root(R"(
-(representation-module representations
+(module representations
   :header "Representations.h"
   :namespace project
   (mini-float PositionF12
@@ -374,7 +423,7 @@ TEST(SourceLoader, ReadsMiniFloatPackedField) {
     :exponent-bits 5
     :significand-bits 6
     :bias 15))
-(packed-value-module packed
+(module packed
   :header "Packed.h"
   :namespace project
   (packed-value Position
@@ -394,7 +443,7 @@ TEST(SourceLoader, ReadsMiniFloatPackedField) {
 TEST(SourceLoader, RejectsUnknownPackedPhysicalOrdering) {
     TemporaryManifest files;
     files.write_root(R"(
-(packed-value-module packed
+(module packed
   :header "Packed.h"
   (packed-value Value
     :storage std::uint32_t
@@ -404,7 +453,7 @@ TEST(SourceLoader, RejectsUnknownPackedPhysicalOrdering) {
     EXPECT_THROW(static_cast<void>(files.load()), ManifestError);
 
     files.write_root(R"(
-(packed-value-module packed
+(module packed
   :header "Packed.h"
   (packed-value Value
     :storage std::uint32_t
@@ -417,7 +466,7 @@ TEST(SourceLoader, RejectsUnknownPackedPhysicalOrdering) {
 TEST(SourceLoader, ReadsStandaloneIntegerScalarDomain) {
     TemporaryManifest files;
     files.write_root(R"(
-(scalar-module semantic_values
+(module semantic_values
   :header "SemanticValues.h"
   :namespace project
   (integer-scalar DamageReason
@@ -471,7 +520,7 @@ TEST(SourceLoader, ReadsStandaloneIntegerScalarDomain) {
 TEST(SourceLoader, ReadsPhysicalRepresentations) {
     TemporaryManifest files;
     files.write_root(R"(
-(scalar-module semantic_values
+(module semantic_values
   :header "SemanticValues.h"
   :namespace project
   (integer-scalar Health
@@ -480,7 +529,7 @@ TEST(SourceLoader, ReadsPhysicalRepresentations) {
     :maximum 1000
     :bit-width auto
     (code Invalid :value 1023 :sentinel true)))
-(representation-module representations
+(module representations
   :header "Representations.h"
   :namespace project
   (linear-quantized HealthQ8
@@ -528,17 +577,17 @@ TEST(SourceLoader, ReadsPhysicalRepresentations) {
     EXPECT_EQ(fixed_point.total_bits, 16U);
     EXPECT_EQ(fixed_point.fractional_bits, 4U);
     EXPECT_EQ(fixed_point.rounding, FixedPointRounding::toward_zero);
-    auto const& mini_float{schema_at<MiniFloatSchema>(manifest, 1, 5)};
+    auto const& mini_float{schema_at<MiniFloatSchema>(manifest, 1, 3)};
     EXPECT_EQ(mini_float.name, "CompactFloat");
     EXPECT_EQ(mini_float.sign_bits, 1U);
     EXPECT_EQ(mini_float.exponent_bits, 5U);
     EXPECT_EQ(mini_float.significand_bits, 10U);
     EXPECT_EQ(mini_float.exponent_bias, 15);
-    auto const& optional{schema_at<OptionalSentinelSchema>(manifest, 1, 3)};
+    auto const& optional{schema_at<OptionalSentinelSchema>(manifest, 1, 4)};
     EXPECT_EQ(optional.name, "OptionalHealth");
     EXPECT_EQ(optional.source.name, "project::Health");
     EXPECT_EQ(optional.sentinel, "Invalid");
-    auto const& presence{schema_at<OptionalPresenceBitSchema>(manifest, 1, 4)};
+    auto const& presence{schema_at<OptionalPresenceBitSchema>(manifest, 1, 5)};
     EXPECT_EQ(presence.name, "PresentHealth");
     EXPECT_EQ(presence.source.name, "project::Health");
 }
@@ -546,7 +595,7 @@ TEST(SourceLoader, ReadsPhysicalRepresentations) {
 TEST(SourceLoader, RejectsInvalidMiniFloatWidthsAndBias) {
     auto load_mini_float = [](std::string const& properties) {
         TemporaryManifest files;
-        files.write_root("(representation-module representations\n"
+        files.write_root("(module representations\n"
                          "  :header \"Representations.h\"\n"
                          "  (mini-float Invalid " +
                          properties + "))\n");
@@ -568,7 +617,7 @@ TEST(SourceLoader, RejectsInvalidMiniFloatWidthsAndBias) {
 TEST(SourceLoader, ReadsExplicitEnumBitWidth) {
     TemporaryManifest files;
     files.write_root(R"(
-(enum-module states
+(module states
   :header "States.h"
   (enum State std::uint8_t
     :bit-width 3
@@ -586,7 +635,7 @@ TEST(SourceLoader, ReadsExplicitEnumBitWidth) {
 TEST(SourceLoader, ReadsEnumWithoutCppBackingType) {
     TemporaryManifest files;
     files.write_root(R"(
-(enum-module states
+(module states
   :header "States.h"
   (enum State
     :bit-width 3
@@ -605,7 +654,7 @@ TEST(SourceLoader, ReadsEnumWithoutCppBackingType) {
 TEST(SourceLoader, ReadsExplicitSignedEnumDomain) {
     TemporaryManifest files;
     files.write_root(R"(
-(enum-module states
+(module states
   :header "States.h"
   (enum Delta std::int8_t
     :signed true
@@ -622,7 +671,7 @@ TEST(SourceLoader, ReadsExplicitSignedEnumDomain) {
 TEST(SourceLoader, ReadsNamedEnumSentinels) {
     TemporaryManifest files;
     files.write_root(R"(
-(enum-module states
+(module states
   :header "States.h"
   (enum State std::uint8_t
     (value Ready :value "0")
@@ -641,7 +690,7 @@ TEST(SourceLoader, ReadsNamedEnumSentinels) {
 TEST(SourceLoader, RejectsEnumBitWidthOutsideNativeAnalysisRange) {
     TemporaryManifest files;
     files.write_root(R"(
-(enum-module states
+(module states
   :header "States.h"
   (enum State std::uint8_t
     :bit-width 65
@@ -654,7 +703,7 @@ TEST(SourceLoader, RejectsEnumBitWidthOutsideNativeAnalysisRange) {
 TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
     TemporaryManifest files;
     files.write_root(R"schema(
-(enum-module enums
+(module enums
   :header "Enums.h"
   (enum State uint8
     (value Zero :value 0)
@@ -668,7 +717,7 @@ TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
     EXPECT_EQ(values[1].initializer, "0x7f");
 
     files.write_root(R"schema(
-(enum-module enums
+(module enums
   :header "Enums.h"
   (enum State uint8
     (value Invalid :value -1)))
@@ -678,7 +727,7 @@ TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
     EXPECT_EQ(negative_values.front().initializer, "-1");
 
     files.write_root(R"schema(
-(enum-module enums
+(module enums
   :header "Enums.h"
   (enum State uint8
     (value Invalid :value "static_cast<uint8>(1)")))
@@ -691,7 +740,7 @@ TEST(SourceLoader, PreservesNumericAndOpaqueEnumInitializers) {
 TEST(SourceLoader, ReadsRecordModuleAndFixedArrays) {
     TemporaryManifest files;
     files.write_root(R"(
-(record-module data
+(module data
   :header "Data.h"
   :namespace project
   (record Position
@@ -722,7 +771,7 @@ TEST(SourceLoader, ReadsRecordModuleAndFixedArrays) {
 TEST(SourceLoader, ReadsRawUnionModuleAndFixedArrayAlternatives) {
     TemporaryManifest files;
     files.write_root(R"(
-(union-module payloads
+(module payloads
   :header "Payloads.h"
   :namespace project
   (union Payload
@@ -747,7 +796,7 @@ TEST(SourceLoader, ReadsRawUnionModuleAndFixedArrayAlternatives) {
 TEST(SourceLoader, RejectsInvalidRawUnionAlternatives) {
     TemporaryManifest files;
     files.write_root(R"(
-(union-module payloads
+(module payloads
   :header "Payloads.h"
   (union Payload
     (alternative value std::uint32_t :count 0)))
@@ -755,7 +804,7 @@ TEST(SourceLoader, RejectsInvalidRawUnionAlternatives) {
     EXPECT_THROW(validate_manifest(files.load()), std::invalid_argument);
 
     files.write_root(R"(
-(union-module payloads
+(module payloads
   :header "Payloads.h"
   (union Payload
     (alternative value std::uint32_t)
@@ -767,13 +816,13 @@ TEST(SourceLoader, RejectsInvalidRawUnionAlternatives) {
 TEST(SourceLoader, ReadsTaggedUnionDiscriminantAndSymbolicMappings) {
     TemporaryManifest files;
     files.write_root(R"(
-(enum-module events
+(module events
   :header "Events.h"
   (enum EventKind std::uint8_t
     (value Spawn)
     (value Damage)
     (value Invalid :sentinel true)))
-(union-module payloads
+(module payloads
   :header "Payloads.h"
   (tagged-union Event
     :discriminant events::EventKind
@@ -799,7 +848,7 @@ TEST(SourceLoader, ReadsTaggedUnionDiscriminantAndSymbolicMappings) {
 TEST(SourceLoader, RejectsDuplicateTaggedUnionNamesAndTags) {
     TemporaryManifest files;
     files.write_root(R"(
-(union-module payloads
+(module payloads
   :header "Payloads.h"
   (tagged-union Event
     :discriminant std::uint8_t
@@ -809,7 +858,7 @@ TEST(SourceLoader, RejectsDuplicateTaggedUnionNamesAndTags) {
     EXPECT_THROW(validate_manifest(files.load()), std::invalid_argument);
 
     files.write_root(R"(
-(union-module payloads
+(module payloads
   :header "Payloads.h"
   (tagged-union Event
     :discriminant std::uint8_t
@@ -822,7 +871,7 @@ TEST(SourceLoader, RejectsDuplicateTaggedUnionNamesAndTags) {
 TEST(SourceLoader, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {
     TemporaryManifest files;
     files.write_root(R"(
-(packed-value-module packed
+(module packed
   :header "Packed.h"
   (packed-value Value
     :storage uint8
@@ -842,7 +891,7 @@ TEST(SourceLoader, RejectsNonIntegerPackedFieldWidthWithSourceLocation) {
 TEST(SourceLoader, RejectsNegativePackedInvalidValue) {
     TemporaryManifest files;
     files.write_root(R"(
-(packed-value-module packed
+(module packed
   :header "Packed.h"
   (packed-value Value
     :storage uint8
@@ -876,7 +925,7 @@ TEST(SourceLoader, RejectsUnknownModuleDeclarations) {
 TEST(SourceLoader, RejectsAllCombinedWithSpecificOperations) {
     TemporaryManifest files;
     files.write_root(R"(
-(soa-module bad
+(module bad
   :header "Bad.h"
   (struct FData
     :operations (all reset)
@@ -888,7 +937,7 @@ TEST(SourceLoader, RejectsAllCombinedWithSpecificOperations) {
 TEST(SourceLoader, LoadsStructuredTypeReferencesAndFacadeStorage) {
     TemporaryManifest files;
     files.write_root(R"(
-(facade-module facade
+(module facade
   :header "Facade.h"
   :source "Facade.cpp"
   :namespace project
@@ -913,7 +962,7 @@ TEST(SourceLoader, LoadsStructuredTypeReferencesAndFacadeStorage) {
 TEST(SourceLoader, LoadsOpaqueCppBlocksAndKeepsQuotedBodiesCompatible) {
     TemporaryManifest files;
     files.write_root(
-        "(soa-module example\n"
+        "(module example\n"
         "  :header \"Generated.h\"\n"
         "  :prelude #cpp{class FForward;\n"
         "#define GENERATED_PATH \"C:\\\\generated\"}cpp#\n"
@@ -928,7 +977,7 @@ TEST(SourceLoader, LoadsOpaqueCppBlocksAndKeepsQuotedBodiesCompatible) {
         "      (parameter dt float))\n"
         "    (function reset void\n"
         "      :body (\"values[0] = 0;\"))))\n"
-        "(facade-module facade\n"
+        "(module facade\n"
         "  :header \"Facade.h\"\n"
         "  (facade FFacade Target target\n"
         "    :validation #cpp{checkf(target != nullptr, TEXT(\"missing target\"));}cpp#))");
@@ -961,7 +1010,7 @@ TEST(SourceLoader, LoadsOpaqueCppBlocksAndKeepsQuotedBodiesCompatible) {
 TEST(SourceLoader, AcceptsEmptyCppBodyAndRejectsWrongRawTag) {
     TemporaryManifest files;
     files.write_root(R"(
-(soa-module example
+(module example
   :header "Generated.h"
   (struct FData
     (function empty void :body #cpp{}cpp#)))
@@ -971,7 +1020,7 @@ TEST(SourceLoader, AcceptsEmptyCppBodyAndRejectsWrongRawTag) {
     EXPECT_TRUE(function.body_lines.empty());
 
     files.write_root(R"(
-(soa-module example
+(module example
   :header "Generated.h"
   (struct FData
     (function wrong void :body #hlsl{return 0;}hlsl#)))

@@ -1,9 +1,9 @@
-(vector-soa-module native_rotators_3f
+(module native_rotators_3f
   :backend standard-library
   :header "native/simulation/include/ioj/sim/rotators3f.h"
   :namespace ioj::sim
-  :storage-name Rotators3f
-  :value-type float
-  :components (pitches yaws rolls)
-  :equivalent-members (pitch yaw roll)
-  :equivalent-type @native_rotator_3f)
+  (vector-soa Rotators3f
+    :value-type float
+    :components (pitches yaws rolls)
+    :equivalent-members (pitch yaw roll)
+    :equivalent-type @native_rotator_3f))

@@ -21,7 +21,7 @@ auto example_manifest() -> Manifest {
         .types = {{"handle", std::move(handle)}},
         .modules =
             {
-                SoaModuleSchema{
+                NormalModuleSchema{
                     .settings =
                         ModuleSettings{
                             .name = "example",
@@ -31,25 +31,19 @@ auto example_manifest() -> Manifest {
                             .namespace_name = "example",
                             .include_order = {"Project/", "SandboxCore/"},
                         },
-                    .structs =
-                        {
-                            SoaSchema{
-                                .name = "FData",
-                                .members =
-                                    {
-                                        SoaMemberSchema{
-                                            "handles", SoaMemberKind::array, TypeRef{"@handle"}},
-                                        SoaMemberSchema{
-                                            "weights", SoaMemberKind::array, TypeRef{"float"}},
-                                        SoaMemberSchema{"nested_handles",
-                                                        SoaMemberKind::nested,
-                                                        TypeRef{"@handle"}},
-                                    },
-                                .operations = all_storage_operations(),
-                                .export_specifier = "EXAMPLE_API",
+                    .declarations = {SoaSchema{
+                        .name = "FData",
+                        .members =
+                            {
+                                SoaMemberSchema{
+                                    "handles", SoaMemberKind::array, TypeRef{"@handle"}},
+                                SoaMemberSchema{"weights", SoaMemberKind::array, TypeRef{"float"}},
+                                SoaMemberSchema{
+                                    "nested_handles", SoaMemberKind::nested, TypeRef{"@handle"}},
                             },
-                        },
-                },
+                        .operations = all_storage_operations(),
+                        .export_specifier = "EXAMPLE_API",
+                    }}},
             },
     };
 }
@@ -79,36 +73,38 @@ TEST(Generator, LowersDynamicSoaIntoTypedHeaderAndSource) {
 }
 
 TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
-    Manifest const manifest{
-        .schema_version = manifest_schema_version,
-        .modules = {SoaModuleSchema{
-            .settings = ModuleSettings{.name = "mask", .header = "Mask.h", .source = "Mask.cpp"},
-            .structs = {SoaSchema{
-                .name = "FRows",
-                .members =
-                    {
-                        SoaMemberSchema{"masks", SoaMemberKind::array, TypeRef{"FFieldMask"}},
-                        SoaMemberSchema{.name = "first",
-                                        .kind = SoaMemberKind::array,
-                                        .type = TypeRef{"int32"},
-                                        .mask_field = true},
-                        SoaMemberSchema{
-                            .name = "matrix",
-                            .kind = SoaMemberKind::array,
-                            .type = TypeRef{"int32"},
-                            .mask_field = true,
-                            .mask_dimensions = {{"row_index", "2"}, {"column_index", "3"}},
-                            .relationship = std::nullopt},
-                        SoaMemberSchema{.name = "last",
-                                        .kind = SoaMemberKind::array,
-                                        .type = TypeRef{"int32"},
-                                        .mask_field = true},
-                    },
-                .field_mask_name = "FFieldMask",
-                .field_enum_name = "EField",
-            }},
-        }},
-    };
+    Manifest const
+        manifest{
+            .schema_version = manifest_schema_version,
+            .modules =
+                {NormalModuleSchema{.settings = ModuleSettings{.name = "mask",
+                                                               .header = "Mask.h",
+                                                               .source = "Mask.cpp"},
+                                    .declarations =
+                                        {
+                                            SoaSchema{
+                                                .name = "FRows",
+                                                .members =
+                                                    {
+                                                        SoaMemberSchema{"masks",
+                                                                        SoaMemberKind::array,
+                                                                        TypeRef{"FFieldMask"}},
+                                                        SoaMemberSchema{.name = "first",
+                                                                        .kind =
+                                                                            SoaMemberKind::array,
+                                                                        .type = TypeRef{"int32"},
+                                                                        .mask_field = true},
+                                                        SoaMemberSchema{.name = "matrix", .kind = SoaMemberKind::array, .type = TypeRef{"int32"}, .mask_field = true, .mask_dimensions = {{"row_index", "2"}, {"column_index", "3"}}, .relationship = std::nullopt},
+                                                        SoaMemberSchema{.name = "last",
+                                                                        .kind = SoaMemberKind::
+                                                                            array,
+                                                                        .type = TypeRef{"int32"},
+                                                                        .mask_field = true},
+                                                    },
+                                                .field_mask_name = "FFieldMask",
+                                                .field_enum_name = "EField",
+                                            }}}},
+        };
 
     auto const header{render_modules(lower_modules(manifest)).front().content};
     EXPECT_NE(header.find("enum class EField : uint8"), std::string::npos);
@@ -121,8 +117,8 @@ TEST(Generator, LowersSoaFieldMaskFromAnnotatedMembers) {
     EXPECT_NE(header.find("TArray<FFieldMask> masks;"), std::string::npos);
 
     auto native_manifest{manifest};
-    auto& native_module{std::get<SoaModuleSchema>(native_manifest.modules.front())};
-    native_module.backend = SoaBackend::standard_library;
+    auto& native_module{std::get<NormalModuleSchema>(native_manifest.modules.front())};
+    native_module.soa_backend = SoaBackend::standard_library;
     native_module.settings.source.reset();
     auto const native_header{render_modules(lower_modules(native_manifest)).front().content};
     EXPECT_NE(native_header.find("enum class EField : std::uint8_t"), std::string::npos);
@@ -163,13 +159,12 @@ TEST(Generator, RejectsCaseInsensitiveDuplicateOutputPaths) {
 TEST(Generator, RejectsInvalidVectorDimensions) {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
-        .modules = {VectorModuleSchema{
+        .modules = {NormalModuleSchema{
             .settings = ModuleSettings{.name = "vectors", .header = "Vectors.h"},
-            .storage_name = "FVectors",
-            .value_type = TypeRef{"float"},
-            .components = {},
-            .equivalent_type = TypeRef{"FVector"},
-        }},
+            .declarations = {codegen::VectorSoaSchema{.name = "FVectors",
+                                                      .value_type = TypeRef{"float"},
+                                                      .components = {},
+                                                      .equivalent_type = TypeRef{"FVector"}}}}},
     };
 
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
@@ -177,8 +172,9 @@ TEST(Generator, RejectsInvalidVectorDimensions) {
 
 TEST(Generator, RejectsDuplicateStorageOperations) {
     auto manifest{example_manifest()};
-    auto& module{std::get<SoaModuleSchema>(manifest.modules.front())};
-    module.structs.front().operations.push_back(StorageOperation::reset);
+    auto& module{std::get<NormalModuleSchema>(manifest.modules.front())};
+    std::get<codegen::SoaSchema>(module.declarations.front())
+        .operations.push_back(StorageOperation::reset);
 
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 }
@@ -186,10 +182,10 @@ TEST(Generator, RejectsDuplicateStorageOperations) {
 TEST(Generator, RejectsPartiallyEquivalentHomogeneousLayouts) {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
-        .modules = {HomogeneousModuleSchema{
+        .modules = {NormalModuleSchema{
             .settings =
                 ModuleSettings{.name = "vectors", .header = "Vectors.h", .source = "Vectors.cpp"},
-            .layouts = {HomogeneousLayoutSchema{
+            .declarations = {HomogeneousLayoutSchema{
                 .name = "Vectors",
                 .components = {"xs", "ys"},
                 .value_types =
@@ -204,8 +200,7 @@ TEST(Generator, RejectsPartiallyEquivalentHomogeneousLayouts) {
                             .suffix = "d",
                         },
                     },
-            }},
-        }},
+            }}}},
     };
 
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
@@ -372,7 +367,7 @@ TEST(Generator, LowersFacadeWithPrivateBindingAndSourceDefinitions) {
     auto manifest{Manifest{
         .schema_version = manifest_schema_version,
         .types = {{"target", CppType{"FTarget", "Project/Target.h"}}},
-        .modules = {FacadeModuleSchema{
+        .modules = {NormalModuleSchema{
             .settings =
                 ModuleSettings{
                     .name = "facade",
@@ -380,23 +375,21 @@ TEST(Generator, LowersFacadeWithPrivateBindingAndSourceDefinitions) {
                     .source = "Facade.cpp",
                     .header_include = "Project/Facade.h",
                 },
-            .facade =
-                FacadeSchema{
-                    .name = "FFacade",
-                    .target_type = TypeRef{"@target"},
-                    .target_member_name = "target",
-                    .methods = {FacadeMethodSchema{
-                        .name = "get",
-                        .return_type = TypeRef{"int32"},
-                        .parameters = {ParameterSchema{TypeRef{"int32"}, "index"}},
-                    }},
-                    .validation_lines = {"check(target != nullptr);"},
-                    .validation_dependencies = {"check"},
-                    .bind_access = "private",
-                    .friends = {"FOwner"},
-                    .definitions_in_source = true,
-                },
-        }},
+            .declarations = {FacadeSchema{
+                .name = "FFacade",
+                .target_type = TypeRef{"@target"},
+                .target_member_name = "target",
+                .methods = {FacadeMethodSchema{
+                    .name = "get",
+                    .return_type = TypeRef{"int32"},
+                    .parameters = {ParameterSchema{TypeRef{"int32"}, "index"}},
+                }},
+                .validation_lines = {"check(target != nullptr);"},
+                .validation_dependencies = {"check"},
+                .bind_access = "private",
+                .friends = {"FOwner"},
+                .definitions_in_source = true,
+            }}}},
     }};
     manifest.types.emplace("check", CppType{"check", "CoreMinimal.h"});
 
@@ -407,7 +400,9 @@ TEST(Generator, LowersFacadeWithPrivateBindingAndSourceDefinitions) {
     EXPECT_NE(files[1].content.find("void FFacade::bind(FTarget& new_target)"), std::string::npos);
     EXPECT_NE(files[1].content.find("return target->get(index);"), std::string::npos);
 
-    std::get<FacadeModuleSchema>(manifest.modules.front()).facade.friend_kind = "struct";
+    std::get<codegen::FacadeSchema>(
+        std::get<NormalModuleSchema>(manifest.modules.front()).declarations.front())
+        .friend_kind = "struct";
     auto const struct_files{render_modules(lower_modules(manifest))};
     EXPECT_NE(struct_files[0].content.find("friend struct FOwner;"), std::string::npos);
 }
@@ -416,17 +411,15 @@ TEST(Generator, LowersFacadeWithReferenceTarget) {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
         .types = {{"target", CppType{"FTarget", "Project/Target.h"}}},
-        .modules = {FacadeModuleSchema{
+        .modules = {NormalModuleSchema{
             .settings = ModuleSettings{.name = "facade", .header = "Facade.h"},
-            .facade =
-                FacadeSchema{
-                    .name = "FFacade",
-                    .target_type = TypeRef{"@target"},
-                    .target_member_name = "target",
-                    .methods = {FacadeMethodSchema{.name = "get", .return_type = TypeRef{"int32"}}},
-                    .reference_target = true,
-                },
-        }},
+            .declarations = {FacadeSchema{
+                .name = "FFacade",
+                .target_type = TypeRef{"@target"},
+                .target_member_name = "target",
+                .methods = {FacadeMethodSchema{.name = "get", .return_type = TypeRef{"int32"}}},
+                .reference_target = true,
+            }}}},
     };
 
     auto const files{render_modules(lower_modules(manifest))};
@@ -441,17 +434,16 @@ TEST(Generator, LowersFacadeWithReferenceTarget) {
 TEST(Generator, LowersHomogeneousLayouts) {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
-        .modules = {HomogeneousModuleSchema{
+        .modules = {NormalModuleSchema{
             .settings = ModuleSettings{.name = "rotators",
                                        .header = "Rotators.h",
                                        .source = "Rotators.cpp"},
-            .layouts = {HomogeneousLayoutSchema{
+            .declarations = {HomogeneousLayoutSchema{
                 .name = "Rotators",
                 .components = {"pitches", "yaws", "rolls"},
                 .value_types = {HomogeneousValueSchema{TypeRef{"float"}, "f"}},
                 .export_specifier = "EXAMPLE_API",
-            }},
-        }},
+            }}}},
     };
 
     auto const files{render_modules(lower_modules(manifest))};
@@ -466,15 +458,14 @@ TEST(Generator, LowersVectorLayoutsThroughDynamicSoa) {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
         .types = {{"vector", CppType{"FVector3f", "CoreMinimal.h"}}},
-        .modules = {VectorModuleSchema{
+        .modules = {NormalModuleSchema{
             .settings =
                 ModuleSettings{.name = "vectors", .header = "Vectors.h", .source = "Vectors.cpp"},
-            .storage_name = "FVectors3f",
-            .value_type = TypeRef{"float"},
-            .components = {"xs", "ys", "zs"},
-            .equivalent_type = TypeRef{"@vector"},
-            .export_specifier = "EXAMPLE_API",
-        }},
+            .declarations = {codegen::VectorSoaSchema{.name = "FVectors3f",
+                                                      .value_type = TypeRef{"float"},
+                                                      .components = {"xs", "ys", "zs"},
+                                                      .equivalent_type = TypeRef{"@vector"},
+                                                      .export_specifier = "EXAMPLE_API"}}}},
     };
 
     auto const files{render_modules(lower_modules(manifest))};
@@ -505,7 +496,7 @@ TEST(Generator, LowersVectorLayoutsThroughDynamicSoa) {
 TEST(Generator, AppliesVectorNamespaceAndPreludeSettings) {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
-        .modules = {VectorModuleSchema{
+        .modules = {NormalModuleSchema{
             .settings =
                 ModuleSettings{
                     .name = "vectors",
@@ -514,11 +505,10 @@ TEST(Generator, AppliesVectorNamespaceAndPreludeSettings) {
                     .namespace_name = "project::vectors",
                     .prelude_lines = {"class FVectorForward;"},
                 },
-            .storage_name = "FVectors",
-            .value_type = TypeRef{"float"},
-            .components = {"xs", "ys"},
-            .equivalent_type = TypeRef{"FVector2f"},
-        }},
+            .declarations = {codegen::VectorSoaSchema{.name = "FVectors",
+                                                      .value_type = TypeRef{"float"},
+                                                      .components = {"xs", "ys"},
+                                                      .equivalent_type = TypeRef{"FVector2f"}}}}},
     };
 
     auto const files{render_modules(lower_modules(manifest))};
@@ -531,24 +521,21 @@ TEST(Generator, AppliesVectorNamespaceAndPreludeSettings) {
 TEST(Generator, AppliesFacadePreludeSettings) {
     auto manifest{Manifest{
         .schema_version = manifest_schema_version,
-        .modules = {FacadeModuleSchema{
-            .settings =
-                ModuleSettings{
-                    .name = "facade",
-                    .header = "Facade.h",
-                    .prelude_lines = {"class FFacadeForward;"},
-                },
-            .facade =
-                FacadeSchema{
-                    .name = "FFacade",
-                    .target_type = TypeRef{"FTarget"},
-                    .target_member_name = "target",
-                    .methods = {FacadeMethodSchema{
-                        .name = "reset",
-                        .return_type = TypeRef{"void"},
-                    }},
-                },
-        }},
+        .modules = {NormalModuleSchema{.settings =
+                                           ModuleSettings{
+                                               .name = "facade",
+                                               .header = "Facade.h",
+                                               .prelude_lines = {"class FFacadeForward;"},
+                                           },
+                                       .declarations = {FacadeSchema{
+                                           .name = "FFacade",
+                                           .target_type = TypeRef{"FTarget"},
+                                           .target_member_name = "target",
+                                           .methods = {FacadeMethodSchema{
+                                               .name = "reset",
+                                               .return_type = TypeRef{"void"},
+                                           }},
+                                       }}}},
     }};
 
     auto const files{render_modules(lower_modules(manifest))};
@@ -582,30 +569,26 @@ TEST(Generator, LowersFlatAndNestedFixedSoaLayouts) {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
         .types = {{"child", std::move(child_type)}},
-        .modules = {SoaModuleSchema{
+        .modules = {NormalModuleSchema{
             .settings = ModuleSettings{.name = "fixed", .header = "Fixed.h", .source = "Fixed.cpp"},
-            .structs =
-                {
-                    SoaSchema{
-                        .name = "FChild",
-                        .members = {SoaMemberSchema{
-                            "values", SoaMemberKind::array, TypeRef{"float"}}},
-                        .operations = all_storage_operations(),
-                        .fixed = FixedSoaSchema{"TChildStorage", {}},
-                    },
-                    SoaSchema{
-                        .name = "FRows",
-                        .members =
-                            {
-                                SoaMemberSchema{"ids", SoaMemberKind::array, TypeRef{"int32"}},
-                                SoaMemberSchema{
-                                    "children", SoaMemberKind::nested, TypeRef{"@child"}, "FChild"},
-                            },
-                        .operations = all_storage_operations(),
-                        .fixed = FixedSoaSchema{"TRowsStorage", {"TFixedRows"}},
-                    },
-                },
-        }},
+            .declarations =
+                {SoaSchema{
+                     .name = "FChild",
+                     .members = {SoaMemberSchema{"values", SoaMemberKind::array, TypeRef{"float"}}},
+                     .operations = all_storage_operations(),
+                     .fixed = FixedSoaSchema{"TChildStorage", {}},
+                 },
+                 SoaSchema{
+                     .name = "FRows",
+                     .members =
+                         {
+                             SoaMemberSchema{"ids", SoaMemberKind::array, TypeRef{"int32"}},
+                             SoaMemberSchema{
+                                 "children", SoaMemberKind::nested, TypeRef{"@child"}, "FChild"},
+                         },
+                     .operations = all_storage_operations(),
+                     .fixed = FixedSoaSchema{"TRowsStorage", {"TFixedRows"}},
+                 }}}},
     };
 
     auto const files{render_modules(lower_modules(manifest))};

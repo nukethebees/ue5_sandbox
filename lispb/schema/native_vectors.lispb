@@ -1,10 +1,10 @@
-(vector-soa-module native_vectors_3f
+(module native_vectors_3f
   :header "native/simulation/include/ioj/sim/vectors3f.h"
   :backend standard-library
   :namespace ioj::sim
-  :storage-name Vectors3f
-  :value-type float
-  :components (xs ys zs)
-  :equivalent-members (X Y Z)
-  :equivalent-constructor "HMM_V3"
-  :equivalent-type @native_vector_3f)
+  (vector-soa Vectors3f
+    :value-type float
+    :components (xs ys zs)
+    :equivalent-members (X Y Z)
+    :equivalent-constructor "HMM_V3"
+    :equivalent-type @native_vector_3f))

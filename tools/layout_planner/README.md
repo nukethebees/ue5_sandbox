@@ -201,7 +201,7 @@ arrangement.
    roles, bias and normal exponent range, finite extrema, subnormal/normal thresholds, resolution,
    relative rounding error, and selected-count payload bits. They deliberately do not imply native
    compiler arithmetic, byte order, alignment, or an ABI `sizeof`. Create them in an existing
-   representation module and edit all four encoding properties inline with ordinary undo/redo,
+   module and edit all four encoding properties inline with ordinary undo/redo,
    source preview, and validated save/reload.
    Sentinel-encoded optionals select one named sentinel from an integer scalar as the absence state.
    They report present values, other reserved sentinel codes, unused code space, derived width, and
@@ -290,7 +290,7 @@ source ownership and the destination used when new types are authored.
 Enum authoring is available as an inline table:
 
 1. Select **+ New enum** in Project / Schema.
-2. Choose an existing enum module, enter the declared name, choose derived or explicit C++ backing,
+2. Choose an existing module, enter the declared name, choose derived or explicit C++ backing,
    and choose auto/explicit semantic width plus auto/signed/unsigned semantic signedness.
 3. In Properties, switch C++ backing and semantic width independently; edit reflection,
    enum-array, native-API, export, and generated-conversion policy inline; then add, duplicate,
@@ -376,7 +376,7 @@ field...** workflow. It prefills the field's live range, signedness, width polic
 field's physical placement width and relationship. Creation and binding remain separate Undo/Redo
 steps, with the new scalar rolled back if binding fails.
 
-Standalone integer-scalar authoring uses **+ New integer scalar** and an existing `scalar-module`.
+Standalone integer-scalar authoring uses **+ New integer scalar** and an existing `module`.
 The declaration records a signed or unsigned inclusive live range, auto or explicit 1-64-bit
 semantic width, and ordered named ordinary/sentinel codes. Its Properties grid supports inline
 range, width, name, value, and role edits plus add, duplicate, delete, button reorder, and drag
@@ -404,7 +404,7 @@ the smallest conventional fixed-width integer that can hold the placement withou
 standalone ABI size to the scalar. Choosing a scalar in the field type picker updates kind and
 clears competing field-local domain metadata atomically.
 
-Linear quantization authoring uses **+ New quantization** and an existing `representation-module`.
+Linear quantization authoring uses **+ New quantization** and an existing `module`.
 Choose an `integer-scalar` source, encoded width, reserved-code count, and reject/clamp clipping
 policy. The declaration remains linked to the source domain in the semantic graph; it does not copy
 the source range. Properties and Layout report exact usable capacity where representable, source
@@ -421,7 +421,7 @@ the same source (for example Q8 and Q10) to compare them directly. The selected-
 totals are exact and overflow-checked; allocated bytes, stride, cache lines, and pages remain
 Unspecified until a packed or other container placement policy exists.
 
-Variable-length integer authoring uses **+ New varint** in the same representation module. Unsigned
+Variable-length integer authoring uses **+ New varint** in the same module. Unsigned
 varint requires an unsigned integer-scalar source; signed varint and ZigZag+unsigned-varint require
 a signed source. Properties and Layout report the exact minimum/maximum encoded bytes across the
 live range and named sentinel codes, plus overflow-safe selected-count bounds. They intentionally
@@ -497,7 +497,7 @@ column through a separate ordinary `ReplaceSoa` history step without changing co
 generation metadata. A rejected binding rolls the record creation back instead of leaving an
 orphan declaration.
 
-Raw unions use **+ New union** and an existing `union-module`. Alternatives and the optional export
+Raw unions use **+ New union** and an existing `module`. Alternatives and the optional export
 specifier are edited inline with
 the shared semantic type picker and may be scalars or positive fixed arrays. Add, duplicate,
 delete, rename, change type/count, button reorder, and drag reorder all use ordinary undoable LispB
@@ -514,13 +514,13 @@ runtime alternative tag. A weight follows an inline alternative rename, stale ke
 deletion, and ordinary reorder/type/count edits leave the workload intact, including through the
 same document graph synchronization used by undo/redo. Raw unions do not declare a discriminant.
 
-Tagged unions are distinct `tagged-union` declarations in the same module kind. Each names an enum
+Tagged unions are distinct `tagged-union` declarations in ordinary modules. Each names an enum
 discriminant and maps every payload alternative to one non-sentinel enumerator. The graph shows the
 `discriminates` edge and labeled payload dependencies. Layout derives the discriminant storage,
 alignment gap, shared payload-union size/alignment, tail padding, total object facts, and conditional
 payload slack from the target profile, and visualizes the tag/padding/payload byte regions. The
 initial source and target model lowers to an explicit tag member followed by a nested payload union;
-**+ New tagged union** chooses an existing union module, enum discriminant, initial non-sentinel tag,
+**+ New tagged union** chooses an existing module, enum discriminant, initial non-sentinel tag,
 and payload type. Properties then edits the discriminant and alternatives inline. Add, duplicate,
 delete, rename, change tag/type/count, navigate, button reorder, and drag reorder all use the shared
 undoable editable-document path; tag choices exclude sentinels and tags already assigned elsewhere

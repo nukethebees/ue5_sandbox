@@ -16,10 +16,10 @@ auto render_fixed(std::vector<SoaSchema> schemas, std::map<std::string, CppType>
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
         .types = std::move(types),
-        .modules = {SoaModuleSchema{
+        .modules = {NormalModuleSchema{
             .settings = ModuleSettings{.name = "fixed", .header = "Fixed.h", .source = "Fixed.cpp"},
-            .structs = std::move(schemas),
-        }},
+            .declarations = {std::make_move_iterator(schemas.begin()),
+                             std::make_move_iterator(schemas.end())}}},
     }))};
     EXPECT_EQ(files.size(), 2);
     return files.front().content;

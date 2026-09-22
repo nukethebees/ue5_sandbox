@@ -13,7 +13,7 @@ auto selection_graph(bool const insert_before,
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;
     if (insert_before) {
-        codegen::EnumModuleSchema enums{};
+        codegen::NormalModuleSchema enums{};
         enums.settings.name = "enums";
         enums.settings.header = "Enums.h";
         codegen::EnumSchema enumeration{};
@@ -25,10 +25,10 @@ auto selection_graph(bool const insert_before,
                                                                .display_name = std::nullopt,
                                                                .hidden = false,
                                                                .serialized_name = std::nullopt});
-        enums.enums.push_back(std::move(enumeration));
+        enums.declarations.push_back(std::move(enumeration));
         manifest.modules.emplace_back(std::move(enums));
     }
-    codegen::PackedValueModuleSchema packed_module{};
+    codegen::NormalModuleSchema packed_module{};
     packed_module.settings.name = "packed";
     packed_module.settings.header = "Packed.h";
     codegen::PackedValueSchema packed{};
@@ -39,11 +39,11 @@ auto selection_graph(bool const insert_before,
     field.type.name = "std::uint8_t";
     field.bits = 8;
     packed.segments.emplace_back(std::move(field));
-    packed_module.values.push_back(std::move(packed));
+    packed_module.declarations.push_back(std::move(packed));
     manifest.modules.emplace_back(std::move(packed_module));
 
     if (record_as_packed) {
-        codegen::PackedValueModuleSchema replacement{};
+        codegen::NormalModuleSchema replacement{};
         replacement.settings.name = "records";
         replacement.settings.header = "Records.h";
         codegen::PackedValueSchema value{};
@@ -54,10 +54,10 @@ auto selection_graph(bool const insert_before,
         field.type.name = "std::uint32_t";
         field.bits = 32;
         value.segments.emplace_back(std::move(field));
-        replacement.values.push_back(std::move(value));
+        replacement.declarations.push_back(std::move(value));
         manifest.modules.emplace_back(std::move(replacement));
     } else {
-        codegen::RecordModuleSchema record_module{};
+        codegen::NormalModuleSchema record_module{};
         record_module.settings.name = "records";
         record_module.settings.header = "Records.h";
         codegen::RecordSchema record{};
@@ -67,14 +67,14 @@ auto selection_graph(bool const insert_before,
             .type = {.name = "std::uint32_t", .suffix = {}, .nested = std::nullopt},
             .count = std::nullopt,
             .relationship = std::nullopt});
-        record_module.records.push_back(std::move(record));
+        record_module.declarations.push_back(std::move(record));
         manifest.modules.emplace_back(std::move(record_module));
     }
 
-    codegen::SoaModuleSchema soa_module{};
+    codegen::NormalModuleSchema soa_module{};
     soa_module.settings.name = "soa";
     soa_module.settings.header = "Soa.h";
-    soa_module.backend = codegen::SoaBackend::standard_library;
+    soa_module.soa_backend = codegen::SoaBackend::standard_library;
     codegen::SoaSchema soa{};
     soa.name = "Columns";
     soa.members.push_back(codegen::SoaMemberSchema{
@@ -86,7 +86,7 @@ auto selection_graph(bool const insert_before,
         .mask_field = false,
         .mask_dimensions = {},
         .relationship = std::nullopt});
-    soa_module.structs.push_back(std::move(soa));
+    soa_module.declarations.push_back(std::move(soa));
     manifest.modules.emplace_back(std::move(soa_module));
     return lispb::schema::resolve_type_graph(manifest);
 }

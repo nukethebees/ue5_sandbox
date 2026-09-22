@@ -47,46 +47,50 @@ auto soa_generated_cpp_names(SoaSchema const& schema,
     return result;
 }
 
-} // namespace
+struct DeclarationMetadata {
+    DeclarationKind kind;
+    std::string_view head;
+    bool semantic_type;
+};
 
-auto declaration_kind(DeclarationSchema const& declaration) -> DeclarationKind {
+auto declaration_metadata(DeclarationSchema const& declaration) -> DeclarationMetadata {
     return std::visit(
-        [](auto const& value) {
+        [](auto const& value) -> DeclarationMetadata {
             using T = std::decay_t<decltype(value)>;
             if constexpr (std::is_same_v<T, EnumSchema>) {
-                return DeclarationKind::enumeration;
+                return {DeclarationKind::enumeration, "enum", true};
             } else if constexpr (std::is_same_v<T, IntegerScalarSchema>) {
-                return DeclarationKind::integer_scalar;
+                return {DeclarationKind::integer_scalar, "integer-scalar", true};
             } else if constexpr (std::is_same_v<T, LinearQuantizedSchema>) {
-                return DeclarationKind::linear_quantized;
+                return {DeclarationKind::linear_quantized, "linear-quantized", true};
             } else if constexpr (std::is_same_v<T, IntegerVarintSchema>) {
-                return DeclarationKind::integer_varint;
+                return {DeclarationKind::integer_varint, "integer-varint", true};
             } else if constexpr (std::is_same_v<T, FixedPointSchema>) {
-                return DeclarationKind::fixed_point;
+                return {DeclarationKind::fixed_point, "fixed-point", true};
             } else if constexpr (std::is_same_v<T, MiniFloatSchema>) {
-                return DeclarationKind::mini_float;
+                return {DeclarationKind::mini_float, "mini-float", true};
             } else if constexpr (std::is_same_v<T, OptionalSentinelSchema>) {
-                return DeclarationKind::optional_sentinel;
+                return {DeclarationKind::optional_sentinel, "optional-sentinel", true};
             } else if constexpr (std::is_same_v<T, OptionalPresenceBitSchema>) {
-                return DeclarationKind::optional_presence_bit;
+                return {DeclarationKind::optional_presence_bit, "optional-presence-bit", true};
             } else if constexpr (std::is_same_v<T, PackedValueSchema>) {
-                return DeclarationKind::packed_value;
+                return {DeclarationKind::packed_value, "packed-value", true};
             } else if constexpr (std::is_same_v<T, RecordSchema>) {
-                return DeclarationKind::record;
+                return {DeclarationKind::record, "record", true};
             } else if constexpr (std::is_same_v<T, UnionSchema>) {
-                return DeclarationKind::union_type;
+                return {DeclarationKind::union_type, "union", true};
             } else if constexpr (std::is_same_v<T, TaggedUnionSchema>) {
-                return DeclarationKind::tagged_union;
+                return {DeclarationKind::tagged_union, "tagged-union", true};
             } else if constexpr (std::is_same_v<T, SoaSchema>) {
-                return DeclarationKind::soa;
+                return {DeclarationKind::soa, "struct", true};
             } else if constexpr (std::is_same_v<T, VectorSoaSchema>) {
-                return DeclarationKind::vector_soa;
+                return {DeclarationKind::vector_soa, "vector-soa", true};
             } else if constexpr (std::is_same_v<T, HomogeneousLayoutSchema>) {
-                return DeclarationKind::homogeneous_layout;
+                return {DeclarationKind::homogeneous_layout, "layout", false};
             } else if constexpr (std::is_same_v<T, StaticTableSchema>) {
-                return DeclarationKind::static_table;
+                return {DeclarationKind::static_table, "table", false};
             } else if constexpr (std::is_same_v<T, FacadeSchema>) {
-                return DeclarationKind::facade;
+                return {DeclarationKind::facade, "facade", false};
             } else {
                 static_assert(unhandled_declaration_schema<T>);
             }
@@ -94,75 +98,23 @@ auto declaration_kind(DeclarationSchema const& declaration) -> DeclarationKind {
         declaration);
 }
 
+} // namespace
+
+auto declaration_kind(DeclarationSchema const& declaration) -> DeclarationKind {
+    return declaration_metadata(declaration).kind;
+}
+
 auto declaration_head(DeclarationSchema const& declaration) -> std::string_view {
-    switch (declaration_kind(declaration)) {
-        case DeclarationKind::enumeration:
-            return "enum";
-        case DeclarationKind::integer_scalar:
-            return "integer-scalar";
-        case DeclarationKind::linear_quantized:
-            return "linear-quantized";
-        case DeclarationKind::integer_varint:
-            return "integer-varint";
-        case DeclarationKind::fixed_point:
-            return "fixed-point";
-        case DeclarationKind::mini_float:
-            return "mini-float";
-        case DeclarationKind::optional_sentinel:
-            return "optional-sentinel";
-        case DeclarationKind::optional_presence_bit:
-            return "optional-presence-bit";
-        case DeclarationKind::packed_value:
-            return "packed-value";
-        case DeclarationKind::record:
-            return "record";
-        case DeclarationKind::union_type:
-            return "union";
-        case DeclarationKind::tagged_union:
-            return "tagged-union";
-        case DeclarationKind::soa:
-            return "struct";
-        case DeclarationKind::vector_soa:
-            return "vector-soa";
-        case DeclarationKind::homogeneous_layout:
-            return "layout";
-        case DeclarationKind::static_table:
-            return "table";
-        case DeclarationKind::facade:
-            return "facade";
-    }
-    return {};
+    return declaration_metadata(declaration).head;
+}
+
+auto contributes_semantic_type(DeclarationSchema const& declaration) -> bool {
+    return declaration_metadata(declaration).semantic_type;
 }
 
 auto declaration_name(DeclarationSchema const& declaration) -> std::string const& {
     return std::visit([](auto const& value) -> std::string const& { return value.name; },
                       declaration);
-}
-
-auto contributes_semantic_type(DeclarationSchema const& declaration) -> bool {
-    return std::visit(
-        [](auto const& value) {
-            using T = std::decay_t<decltype(value)>;
-            if constexpr (std::is_same_v<T, EnumSchema> || std::is_same_v<T, IntegerScalarSchema> ||
-                          std::is_same_v<T, LinearQuantizedSchema> ||
-                          std::is_same_v<T, IntegerVarintSchema> ||
-                          std::is_same_v<T, FixedPointSchema> ||
-                          std::is_same_v<T, MiniFloatSchema> ||
-                          std::is_same_v<T, OptionalSentinelSchema> ||
-                          std::is_same_v<T, OptionalPresenceBitSchema> ||
-                          std::is_same_v<T, PackedValueSchema> || std::is_same_v<T, RecordSchema> ||
-                          std::is_same_v<T, UnionSchema> || std::is_same_v<T, TaggedUnionSchema> ||
-                          std::is_same_v<T, SoaSchema> || std::is_same_v<T, VectorSoaSchema>) {
-                return true;
-            } else if constexpr (std::is_same_v<T, HomogeneousLayoutSchema> ||
-                                 std::is_same_v<T, StaticTableSchema> ||
-                                 std::is_same_v<T, FacadeSchema>) {
-                return false;
-            } else {
-                static_assert(unhandled_declaration_schema<T>);
-            }
-        },
-        declaration);
 }
 
 auto generated_cpp_names(DeclarationSchema const& declaration, NormalModuleSchema const& module)

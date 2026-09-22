@@ -170,7 +170,7 @@ auto create_blank_lispb_schema(std::filesystem::path const& destination_project_
         source_directory_created = true;
         write_file(source_directory / "types.lispb", "");
         write_file(source_directory / "source.lispb",
-                   "(scalar-module starter\n"
+                   "(module starter\n"
                    "  :header \"Starter.h\")\n");
 
         auto const relative_directory{source_directory.filename()};

@@ -49,18 +49,20 @@ auto graph(bool const insert_before_target,
                                      .prelude_lines = {}};
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;
-    manifest.modules.emplace_back(codegen::EnumModuleSchema{.settings = std::move(settings),
-                                                            .helper_namespace = std::nullopt,
-                                                            .enums = std::move(enums)});
+    manifest.modules.emplace_back(
+        codegen::NormalModuleSchema{.settings = std::move(settings),
+                                    .declarations = {std::make_move_iterator(enums.begin()),
+                                                     std::make_move_iterator(enums.end())},
+                                    .enum_helper_namespace = std::nullopt});
 
     codegen::ModuleSettings packed_settings{};
     packed_settings.name = "packed";
     packed_settings.header = "Packed.h";
     if (change_packed_kind) {
         manifest.modules.emplace_back(
-            codegen::EnumModuleSchema{.settings = std::move(packed_settings),
-                                      .helper_namespace = std::nullopt,
-                                      .enums = {enumeration("Packet")}});
+            codegen::NormalModuleSchema{.settings = std::move(packed_settings),
+                                        .declarations = {enumeration("Packet")},
+                                        .enum_helper_namespace = std::nullopt});
     } else {
         codegen::PackedValueSchema packed{};
         packed.name = "Packet";
@@ -73,17 +75,18 @@ auto graph(bool const insert_before_target,
         field.type.name = "std::uint8_t";
         field.bits = 8;
         packed.segments.emplace_back(std::move(field));
-        manifest.modules.emplace_back(codegen::PackedValueModuleSchema{
-            .settings = std::move(packed_settings), .values = {std::move(packed)}});
+        manifest.modules.emplace_back(codegen::NormalModuleSchema{
+            .settings = std::move(packed_settings), .declarations = {std::move(packed)}});
     }
 
     codegen::ModuleSettings soa_settings{};
     soa_settings.name = "soa";
     soa_settings.header = "Soa.h";
     if (change_soa_kind) {
-        manifest.modules.emplace_back(codegen::EnumModuleSchema{.settings = std::move(soa_settings),
-                                                                .helper_namespace = std::nullopt,
-                                                                .enums = {enumeration("Columns")}});
+        manifest.modules.emplace_back(
+            codegen::NormalModuleSchema{.settings = std::move(soa_settings),
+                                        .declarations = {enumeration("Columns")},
+                                        .enum_helper_namespace = std::nullopt});
     } else {
         codegen::SoaSchema soa{};
         soa.name = "Columns";
@@ -100,10 +103,10 @@ auto graph(bool const insert_before_target,
             .mask_dimensions = {},
             .relationship = std::nullopt});
         manifest.modules.emplace_back(
-            codegen::SoaModuleSchema{.settings = std::move(soa_settings),
-                                     .structs = {std::move(soa)},
-                                     .backend = codegen::SoaBackend::standard_library,
-                                     .array_allocators = {}});
+            codegen::NormalModuleSchema{.settings = std::move(soa_settings),
+                                        .declarations = {std::move(soa)},
+                                        .soa_backend = codegen::SoaBackend::standard_library,
+                                        .soa_array_allocators = {}});
     }
     return lispb::schema::resolve_type_graph(manifest);
 }
