@@ -253,8 +253,9 @@ void Sim::refresh_effective_action(PlayerSimulationState& state) noexcept {
     } else if (flight_intent_.brake_held && model.brake.available &&
                has_energy(model.brake.energy_drain_per_second)) {
         action = BoostBrakeState::Brake;
-    } else if (flight_intent_.boost_held && model.boost.available &&
-               has_energy(model.boost.energy_drain_per_second)) {
+    } else if ((flight_intent_.boost_held ||
+                (model.boost.accelerator_activates_boost && flight_intent_.accelerator > 0.f)) &&
+               model.boost.available && has_energy(model.boost.energy_drain_per_second)) {
         action = BoostBrakeState::Boost;
     }
 

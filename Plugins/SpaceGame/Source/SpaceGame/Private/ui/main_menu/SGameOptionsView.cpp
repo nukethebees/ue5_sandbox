@@ -1470,6 +1470,15 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
         [](FlightConfig const& config) { return config.boost.available; },
         [](FlightConfig& config, bool const value) { config.boost.available = value; });
     if (current_config.boost.available) {
+        add_flight_toggle(
+            NSLOCTEXT("OptionsMenu", "AcceleratorActivatesBoost", "Accelerator Activates Boost"),
+            NSLOCTEXT("OptionsMenu",
+                      "AcceleratorActivatesBoostTip",
+                      "Treat non-zero accelerator input as held boost intent for this model."),
+            [](FlightConfig const& config) { return config.boost.accelerator_activates_boost; },
+            [](FlightConfig& config, bool const value) {
+                config.boost.accelerator_activates_boost = value;
+            });
         add_flight_slider(
             NSLOCTEXT("OptionsMenu", "BoostEnergyDrain", "Boost Energy Drain"),
             NSLOCTEXT("OptionsMenu",

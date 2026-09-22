@@ -287,8 +287,21 @@ auto ATestSpaceShip::get_persistent_forward_target_speed() const -> float {
 }
 
 auto ATestSpaceShip::get_move_input() const -> FVector2D {
-    auto const& input{simulation().get_flight_intent().translation};
-    return {input.y, input.x};
+    using ::ioj::sim::player::TranslationInputSource;
+    using ::ioj::sim::player::TranslationSemantic;
+
+    auto const& simulation_ref{simulation()};
+    auto const& input{simulation_ref.get_flight_intent().translation};
+    auto const& translation{simulation_ref.get_active_flight_model_config().translation};
+    auto const consumes_axis_input = [](auto const& channel) {
+        return channel.input_source == TranslationInputSource::Axis &&
+               (channel.semantic == TranslationSemantic::TargetVelocity ||
+                channel.semantic == TranslationSemantic::Acceleration);
+    };
+    return {
+        consumes_axis_input(translation.right.manual) ? input.y : 0.0,
+        consumes_axis_input(translation.forward.manual) ? input.x : 0.0,
+    };
 }
 
 auto ATestSpaceShip::get_sampled_target_speed_scale() const -> FVector2D {

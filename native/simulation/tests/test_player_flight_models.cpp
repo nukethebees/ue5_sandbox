@@ -92,16 +92,25 @@ using namespace player_flight_model_tests;
 TEST(NativeSimulationFlightModels, StarfoxConvergesToCruiseAndSupportsBoostAndBrake) {
     LevelSim simulation{make_data(player::FlightModelPreset::Starfox)};
     start(simulation);
+    simulation.get_player_ship_commands()->set_move_input({1.0, -1.0});
+    simulation.get_player_ship_commands()->set_vertical_move_input(1.f);
     advance_ticks(simulation, 600);
     auto const cruise_speed{velocity(simulation).size()};
     EXPECT_NEAR(cruise_speed, 12000.0, 2.0);
+    EXPECT_NEAR(velocity(simulation).y, 0.0, 1.e-6);
+    EXPECT_NEAR(velocity(simulation).z, 0.0, 1.e-6);
 
-    simulation.get_player_ship_commands()->start_boost();
+    simulation.get_player_ship_commands()->set_throttle(1.f);
+    EXPECT_EQ(player_sim(simulation).get_controller_state().effective_action,
+              player::BoostBrakeState::None);
     advance_ticks(simulation, 180);
+    EXPECT_EQ(player_sim(simulation).get_controller_state().effective_action,
+              player::BoostBrakeState::Boost);
     EXPECT_GT(velocity(simulation).size(), cruise_speed);
     EXPECT_LT(player_sim(simulation).get_energy(), 1.f);
 
-    simulation.get_player_ship_commands()->stop_boost();
+    simulation.get_player_ship_commands()->set_throttle(0.f);
+    advance_ticks(simulation, 1);
     auto const energy_before_brake{player_sim(simulation).get_energy()};
     simulation.get_player_ship_commands()->start_brake();
     advance_ticks(simulation, 180);
@@ -321,7 +330,7 @@ TEST(NativeSimulationFlightModels, DirectSlotSelectionPreservesPhysicalStateAtBo
     EXPECT_FLOAT_EQ(sim_player.get_flight_intent().accelerator, 1.f);
     EXPECT_DOUBLE_EQ(sim_player.get_flight_intent().rotation.x, -0.5);
     EXPECT_DOUBLE_EQ(sim_player.get_flight_intent().rotation.y, 0.25);
-    EXPECT_EQ(sim_player.get_controller_state().effective_action, player::BoostBrakeState::None);
+    EXPECT_EQ(sim_player.get_controller_state().effective_action, player::BoostBrakeState::Boost);
 }
 
 TEST(NativeSimulationFlightModels, SwitchingClearsPersistentTargetsAndSamplingState) {

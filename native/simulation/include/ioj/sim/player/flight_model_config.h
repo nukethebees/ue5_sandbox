@@ -157,6 +157,7 @@ struct FacingVelocityConfig {
 
 struct BoostConfig {
     bool available{};
+    bool accelerator_activates_boost{};
     float energy_drain_per_second{};
     ResponseConfig response{};
 
