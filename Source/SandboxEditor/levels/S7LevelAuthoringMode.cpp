@@ -4,6 +4,7 @@
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringModeToolkit.h"
 #include "SandboxEditor/levels/S7LevelObserverCamera.h"
+#include "SandboxEditor/levels/S7LevelPlayableSetup.h"
 
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameS7/LevelDefinitionReader.h>
@@ -674,6 +675,18 @@ void US7LevelAuthoringMode::import_orchestrator_mission() {
     }
     set_status(LOCTEXT("ImportedOrchestratorMission",
                        "Imported the batch orchestrator mission into the S7 document."));
+    changed_.Broadcast();
+}
+
+void US7LevelAuthoringMode::set_up_playable_level() {
+    auto* const level{current_level()};
+    if (!IsValid(level) || !document_.IsValid()) {
+        set_status(LOCTEXT("NoLevelForPlayableSetup", "Open an S7 level before setting up play."));
+        changed_.Broadcast();
+        return;
+    }
+    auto const setup{ml::editor::set_up_playable_s7_level(*level, *document_)};
+    set_status(FText::FromString(setup ? *setup : setup.error()));
     changed_.Broadcast();
 }
 
