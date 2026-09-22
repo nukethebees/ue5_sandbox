@@ -6,10 +6,10 @@
 #include <Sandbox/environment/effects/ShipPostProcessing.h>
 #include <SandboxShaders/GpuStarfield/GpuStarfieldActor.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/simulation/LevelSimulationBuilder.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 
-#include <AssetRegistry/AssetRegistryModule.h>
 #include <Editor.h>
 #include <Engine/Level.h>
 #include <GameFramework/GameModeBase.h>
@@ -20,34 +20,6 @@ namespace ml::editor {
 namespace s7_level_playable_setup_detail {
 inline constexpr TCHAR game_mode_class_path[]{
     TEXT("/Game/GameModes/BP_SpaceShipGameMode.BP_SpaceShipGameMode_C")};
-inline constexpr TCHAR default_config_path[]{
-    TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig.DA_GameRuntimeLevelConfig")};
-
-auto level_config_for(AS7LevelAuthoringDocument const& document) -> USpaceGameLevelConfig* {
-    auto* const current{document.level_config.Get()};
-    if (IsValid(current) && current->GetPathName() != default_config_path) {
-        return current;
-    }
-
-    auto level_name{document.level_id.ToString()};
-    level_name.ReplaceInline(TEXT("-"), TEXT("_"));
-    auto const asset_name{FName{FString::Printf(TEXT("DA_%s_LevelConfig"), *level_name)}};
-    TArray<FAssetData> assets;
-    FAssetRegistryModule::GetRegistry().GetAssetsByClass(
-        USpaceGameLevelConfig::StaticClass()->GetClassPathName(), assets);
-    FAssetData const* match{};
-    for (auto const& asset : assets) {
-        if (asset.AssetName == asset_name) {
-            if (match) {
-                return current;
-            }
-            match = &asset;
-        }
-    }
-    auto* const matched_config{match ? Cast<USpaceGameLevelConfig>(match->GetAsset()) : nullptr};
-    return IsValid(matched_config) ? matched_config : current;
-}
-
 auto find_player(AS7LevelAuthoringDocument const& document)
     -> std::expected<ATestSpaceShip*, FString> {
     ATestSpaceShip* player{};
@@ -70,6 +42,51 @@ auto find_player(AS7LevelAuthoringDocument const& document)
 
 }
 
+auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
+    -> std::expected<FString, FString> {
+    auto* const world{level.OwningWorld.Get()};
+    auto* const config{document.level_config.Get()};
+    if (!IsValid(world) || document.GetLevel() != &level) {
+        return std::unexpected{TEXT("The current editor level is unavailable.")};
+    }
+    if (!IsValid(config) || !config->is_valid(true)) {
+        return std::unexpected{TEXT("Assign a valid level configuration to the S7 document.")};
+    }
+    auto const definition{collect_s7_editor_level(level, document)};
+    if (!definition) {
+        return std::unexpected{definition.error()};
+    }
+    auto const player{s7_level_playable_setup_detail::find_player(document)};
+    if (!player) {
+        return std::unexpected{player.error()};
+    }
+
+    ::FLevelMissionDefinition mission;
+    mission.mission_mode = document.mission.mode;
+    mission.target_time = document.mission.time_limit_seconds;
+    mission.kill_target =
+        document.mission.use_explicit_kill_count ? document.mission.kill_count : 0;
+    mission.startup_data.hero_entities = document.mission.heroes;
+    mission.startup_data.entities_must_survive = document.mission.must_survive;
+    mission.startup_data.entities_required_to_kill = document.mission.required_kills;
+    mission.set_level_identity(document.level_id, document.title);
+
+    TOptional<::ioj::sim::player::PlayerSpawnData> player_spawn;
+    UStaticMesh const* player_mesh{};
+    if (*player) {
+        player_spawn.Emplace((*player)->make_spawn_data());
+        player_mesh = (*player)->get_collision_mesh();
+    }
+    auto const build{make_proxy_level_simulation_init_data(
+        *config, {}, *world, mission, MoveTemp(player_spawn), *player, player_mesh)};
+    if (!build) {
+        return std::unexpected{build.error().format()};
+    }
+    return FString::Printf(
+        TEXT("Entity, fighter spawn, and collision grid checks passed using %s."),
+        *config->GetName());
+}
+
 auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
     -> std::expected<FString, FString> {
     auto* const world{level.OwningWorld.Get()};
@@ -78,13 +95,9 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
         !IsValid(world_settings) || document.GetLevel() != &level) {
         return std::unexpected{TEXT("The current editor level is unavailable.")};
     }
-    auto* const level_config{s7_level_playable_setup_detail::level_config_for(document)};
-    if (!IsValid(level_config) || !level_config->is_valid(true)) {
-        return std::unexpected{TEXT("Assign a valid level configuration to the S7 document.")};
-    }
-    auto const definition{collect_s7_editor_level(level, document)};
-    if (!definition) {
-        return std::unexpected{definition.error()};
+    auto const validation{validate_playable_s7_level(level, document)};
+    if (!validation) {
+        return std::unexpected{validation.error()};
     }
     auto const player{s7_level_playable_setup_detail::find_player(document)};
     if (!player) {
@@ -176,10 +189,6 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
 
     world_settings->Modify();
     world_settings->DefaultGameMode = game_mode_class;
-    if (document.level_config != level_config) {
-        document.Modify();
-        document.level_config = level_config;
-    }
     new_orchestrator->Modify();
     new_orchestrator->set_start_mode(EOrchestratorStartMode::Automatic);
     new_orchestrator->set_presentation_enabled(true);
@@ -193,7 +202,7 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
     for (auto const& binding : document.entities) {
         binding.actor->Modify();
     }
-    new_orchestrator->set_level_config(*level_config);
+    new_orchestrator->set_level_config(*document.level_config);
 
     auto& mission{new_orchestrator->get_mission_definition()};
     mission = {};
@@ -210,6 +219,6 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
         TEXT("Playable level ready: game mode, orchestrator, GPU starfield, post-processing, "
              "player control, and mission configured (%d entities) using %s. Save the map."),
         document.entities.Num(),
-        *level_config->GetName());
+        *document.level_config->GetName());
 }
 }

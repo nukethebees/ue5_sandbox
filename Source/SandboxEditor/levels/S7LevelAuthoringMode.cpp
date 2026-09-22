@@ -6,6 +6,7 @@
 #include "SandboxEditor/levels/S7LevelObserverCamera.h"
 #include "SandboxEditor/levels/S7LevelPlayableSetup.h"
 
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameS7/LevelDefinitionReader.h>
 #include <SpaceGameS7/LevelDefinitionWriter.h>
@@ -26,6 +27,7 @@
 #include <SceneView.h>
 #include <ScopedTransaction.h>
 #include <Styling/AppStyle.h>
+#include <Subsystems/AssetEditorSubsystem.h>
 #include <UnrealClient.h>
 
 #define LOCTEXT_NAMESPACE "US7LevelAuthoringMode"
@@ -678,6 +680,31 @@ void US7LevelAuthoringMode::import_orchestrator_mission() {
     changed_.Broadcast();
 }
 
+void US7LevelAuthoringMode::open_level_config() {
+    auto* const config{document_.IsValid() ? document_->level_config.Get() : nullptr};
+    auto* const assets{GEditor ? GEditor->GetEditorSubsystem<UAssetEditorSubsystem>() : nullptr};
+    if (!IsValid(config) || !IsValid(assets) || !assets->OpenEditorForAsset(config)) {
+        set_status(
+            LOCTEXT("OpenLevelConfigFailed", "Assign a level config in the document first."));
+    } else {
+        set_status(LOCTEXT("OpenLevelConfig",
+                           "Edit Collision Grid > Grid Size in the level config asset. "
+                           "This asset may be shared by other levels."));
+    }
+    changed_.Broadcast();
+}
+
+void US7LevelAuthoringMode::validate_playable_level() {
+    auto* const level{current_level()};
+    if (!IsValid(level) || !document_.IsValid()) {
+        set_status(LOCTEXT("NoLevelForValidation", "Open an S7 level before validating it."));
+    } else {
+        auto const result{ml::editor::validate_playable_s7_level(*level, *document_)};
+        set_status(FText::FromString(result ? *result : result.error()));
+    }
+    changed_.Broadcast();
+}
+
 void US7LevelAuthoringMode::set_up_playable_level() {
     auto* const level{current_level()};
     if (!IsValid(level) || !document_.IsValid()) {
@@ -843,7 +870,12 @@ void US7LevelAuthoringMode::apply_preview() {
         preview_.Reset();
         preview_stale_ = false;
         scene_dirty_ = false;
-        set_status(LOCTEXT("Applied", "The scene now matches the S7 source."));
+        auto const validation{ml::editor::validate_playable_s7_level(*level, *document_)};
+        set_status(FText::FromString(
+            validation ? FString::Printf(TEXT("The scene matches the S7 source. %s"), **validation)
+                       : FString::Printf(TEXT("The scene matches the S7 source. Play validation: "
+                                              "%s"),
+                                         *validation.error())));
     }
     changed_.Broadcast();
 }

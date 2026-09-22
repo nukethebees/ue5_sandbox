@@ -61,6 +61,8 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     void assign_selected_required_kills();
     void clear_selected_objectives();
     void import_orchestrator_mission();
+    void open_level_config();
+    void validate_playable_level();
     void set_up_playable_level();
     auto load_s7() -> bool;
     void reload_s7();
