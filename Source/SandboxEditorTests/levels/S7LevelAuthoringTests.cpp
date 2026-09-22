@@ -17,6 +17,7 @@
 #include <CQTest.h>
 #include <Editor.h>
 #include <EditorModeManager.h>
+#include <Engine/Level.h>
 #include <Engine/World.h>
 #include <Framework/Docking/TabManager.h>
 #include <HAL/FileManager.h>
@@ -50,15 +51,16 @@ struct FPreviewFixture {
     AS7LevelAuthoringDocument* document{};
     USpaceGameLevelConfig* level_config{};
     ATestSpaceShip* player{};
+    ATestCapitalShipProxy* ally{};
     ATestCapitalShipProxy* enemy{};
 
     auto is_valid() const -> bool {
-        return IsValid(world) && IsValid(document) && IsValid(level_config) && IsValid(player) &&
-               IsValid(enemy);
+        return IsValid(world) && IsValid(document) && IsValid(level_config) &&
+               (IsValid(player) || IsValid(ally)) && IsValid(enemy);
     }
 };
 
-auto make_preview_fixture() -> FPreviewFixture {
+auto make_preview_fixture(bool const observer_camera = false) -> FPreviewFixture {
     FPreviewFixture result;
     result.world = FAutomationEditorCommonUtils::CreateNewMap();
     if (!IsValid(result.world)) {
@@ -71,23 +73,57 @@ auto make_preview_fixture() -> FPreviewFixture {
         !IsValid(result.level_config->classes.capital_ship_proxy_class.Get())) {
         return result;
     }
-    result.player = spawn<ATestSpaceShip>(
-        *result.world, TEXT("player"), result.level_config->classes.player_ship_class.Get());
+    if (observer_camera) {
+        result.ally = spawn<ATestCapitalShipProxy>(
+            *result.world,
+            TEXT("ally"),
+            result.level_config->classes.capital_ship_proxy_class.Get());
+    } else {
+        result.player = spawn<ATestSpaceShip>(
+            *result.world, TEXT("player"), result.level_config->classes.player_ship_class.Get());
+    }
     result.enemy = spawn<ATestCapitalShipProxy>(
         *result.world, TEXT("enemy"), result.level_config->classes.capital_ship_proxy_class.Get());
-    if (!IsValid(result.player) || !IsValid(result.enemy)) {
+    if ((!IsValid(result.player) && !IsValid(result.ally)) || !IsValid(result.enemy)) {
         return result;
     }
 
-    result.player->set_team(ETestTeam::Blue);
+    if (observer_camera) {
+        result.ally->set_team(ETestTeam::Blue);
+    } else {
+        result.player->set_team(ETestTeam::Blue);
+    }
     result.enemy->set_team(ETestTeam::Red);
     result.document->level_config = result.level_config;
     result.document->level_id = TEXT("preview-level");
     result.document->title = TEXT("Preview Level");
     result.document->description = TEXT("Before");
-    result.document->entities = {{.id = TEXT("player"), .actor = result.player},
-                                 {.id = TEXT("enemy"), .actor = result.enemy}};
+    result.document->entities =
+        observer_camera
+            ? TArray<FS7LevelEntityBinding>{{.id = TEXT("ally"), .actor = result.ally},
+                                            {.id = TEXT("enemy"), .actor = result.enemy}}
+            : TArray<FS7LevelEntityBinding>{{.id = TEXT("player"), .actor = result.player},
+                                            {.id = TEXT("enemy"), .actor = result.enemy}};
+    if (observer_camera) {
+        result.document->use_observer_camera = true;
+        result.document->camera.targets = {result.ally};
+        result.document->camera.offset_direction = FVector{-1.0, 0.0, 0.0};
+        result.document->camera.distance = 1000.0;
+    }
     return result;
+}
+
+template <typename TTestRunner>
+auto assert_valid_definition(TTestRunner& test_runner, ml::FLevelDefinition const& definition)
+    -> bool {
+    auto const validation{ml::validate_level(definition)};
+    if (test_runner.TestTrue(TEXT("Fixture definition is valid"), static_cast<bool>(validation))) {
+        return true;
+    }
+    for (auto const& error : validation.errors) {
+        test_runner.AddError(error.message);
+    }
+    return false;
 }
 
 auto bound_binding(AS7LevelAuthoringDocument const& document, FName const id)
@@ -468,12 +504,12 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             TestRunner->AddError(level_preview.error());
             return;
         }
-        auto* const other_world{FAutomationEditorCommonUtils::CreateNewMap()};
-        if (!TestRunner->TestNotNull(TEXT("Other world"), other_world)) {
+        auto* const other_level{NewObject<ULevel>(fixture.world)};
+        if (!TestRunner->TestNotNull(TEXT("Other level"), other_level)) {
             return;
         }
         auto const applied{ml::editor::apply_s7_level_authoring_preview(
-            *other_world->GetCurrentLevel(), *fixture.document, source_session, *level_preview)};
+            *other_level, *fixture.document, source_session, *level_preview)};
         TestRunner->TestFalse(TEXT("Different level is rejected"), applied.has_value());
         TestRunner->TestEqual(TEXT("Different level preserves original document title"),
                               fixture.document->title,
@@ -702,14 +738,10 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
 
     TEST_METHOD(PreviewReportsObserverCameraOnlyChange)
     {
-        auto const fixture{make_preview_fixture()};
+        auto const fixture{make_preview_fixture(true)};
         if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
             return;
         }
-        fixture.document->use_observer_camera = true;
-        fixture.document->camera.targets = {fixture.player};
-        fixture.document->camera.offset_direction = FVector{-1.0, 0.0, 0.0};
-        fixture.document->camera.distance = 1000.0;
         auto definition{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
                                                             *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Baseline collects"), definition.has_value())) {
@@ -717,6 +749,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             return;
         }
         definition->camera->target_entity_ids = {ml::FLevelEntityId{TEXT("enemy")}};
+        if (!assert_valid_definition(*TestRunner, *definition)) {
+            return;
+        }
 
         auto const plan{ml::editor::make_s7_level_sync_plan(
             *fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
@@ -764,6 +799,11 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             .offset_direction = FVector{-1.0, 0.0, 0.0},
             .distance = 1000.0,
         };
+        definition->entities.remove_at_swap(0, 1, EAllowShrinking::No);
+        definition->teams.Remove(ml::level_teams::blue);
+        if (!assert_valid_definition(*TestRunner, *definition)) {
+            return;
+        }
 
         auto const plan{ml::editor::make_s7_level_sync_plan(
             *fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
@@ -774,7 +814,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Metadata is unchanged"), plan->metadata_changed);
         TestRunner->TestTrue(TEXT("Viewpoint change is reported"), plan->viewpoint_changed);
         TestRunner->TestFalse(TEXT("Mission is unchanged"), plan->mission_changed);
-        TestRunner->TestEqual(TEXT("Entities are unchanged"), plan->changes.Num(), 0);
+        TestRunner->TestEqual(TEXT("Player actor is removed"),
+                              plan->count(ml::editor::ES7LevelSyncAction::Remove),
+                              1);
 
         auto const applied{ml::editor::apply_s7_level_sync_plan(
             *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
@@ -791,22 +833,21 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestFalse(TEXT("Player viewpoint is cleared"),
                               collected->player_entity_id.is_set());
         TestRunner->TestTrue(TEXT("Camera viewpoint is applied"), collected->camera.IsSet());
+        TestRunner->TestNull(TEXT("Player actor is removed"),
+                             bound_actor(*fixture.document, TEXT("player")));
     }
 
     TEST_METHOD(EquivalentDefinitionReportsNoChanges)
     {
-        auto const fixture{make_preview_fixture()};
+        auto const fixture{make_preview_fixture(true)};
         if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
             return;
         }
-        fixture.document->use_observer_camera = true;
-        fixture.document->camera.targets = {fixture.player, fixture.enemy};
-        fixture.document->camera.offset_direction = FVector{-1.0, 0.0, 0.0};
-        fixture.document->camera.distance = 1000.0;
+        fixture.document->camera.targets = {fixture.ally, fixture.enemy};
         fixture.document->mission.mode = ETestMissionMode::KillEnemies;
         fixture.document->mission.use_explicit_kill_count = true;
         fixture.document->mission.kill_count = 1;
-        fixture.document->mission.heroes = {fixture.player, fixture.enemy};
+        fixture.document->mission.heroes = {fixture.ally, fixture.enemy};
         auto definition{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
                                                             *fixture.document)};
         if (!TestRunner->TestTrue(TEXT("Baseline collects"), definition.has_value())) {
@@ -815,6 +856,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         definition->camera->target_entity_ids.Swap(0, 1);
         definition->mission->hero_entity_ids.Swap(0, 1);
+        if (!assert_valid_definition(*TestRunner, *definition)) {
+            return;
+        }
 
         auto const plan{ml::editor::make_s7_level_sync_plan(
             *fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
@@ -1227,7 +1271,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         level_config->classes.capital_ship_proxy_class = ATestCapitalShipProxy::StaticClass();
         level_config->classes.static_turret_proxy_class = ATestStaticTurretsProxy::StaticClass();
 
-        auto* const updated{spawn<ATestCapitalShipProxy>(*world, TEXT("old-update-label"))};
+        auto* const updated{spawn<ATestCapitalShipProxy>(*world, TEXT("CapitalShip_Red"))};
         auto* const replaced{spawn<ATestCapitalShipProxy>(*world, TEXT("replace"))};
         auto* const removed{spawn<ATestStaticTurretsProxy>(*world, TEXT("remove"))};
         if (!TestRunner->TestNotNull(TEXT("Updated actor"), updated) ||
@@ -1249,13 +1293,21 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         document->entities = {{.id = TEXT("update"), .actor = updated, .spawn_time_seconds = 7.0},
                               {.id = TEXT("replace"), .actor = replaced},
                               {.id = TEXT("remove"), .actor = removed}};
-        document->use_observer_camera = false;
+        document->use_observer_camera = true;
         document->camera.targets = {removed};
         document->camera.offset_direction = FVector{0.0, 1.0, 0.0};
         document->camera.distance = 2500.0;
         document->mission.mode = ETestMissionMode::SurviveTime;
         document->mission.time_limit_seconds = 12.0f;
-        document->mission.must_survive = {updated};
+        document->mission.must_survive = {removed};
+
+        auto const baseline{
+            ml::editor::collect_s7_editor_level(*world->GetCurrentLevel(), *document)};
+        if (!TestRunner->TestTrue(TEXT("Undo baseline is valid"), baseline.has_value())) {
+            TestRunner->AddError(baseline.error());
+            return;
+        }
+        auto const original_label{updated->GetActorLabel()};
 
         ml::FLevelBuilder builder;
         builder.set_metadata({.id = ml::FLevelId{TEXT("after")},
@@ -1263,12 +1315,12 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                               .description = TEXT("After description")});
         builder.add_team(ml::level_teams::blue);
         builder.add_team(ml::level_teams::red);
-        builder.set_camera({.target_entity_ids = {ml::FLevelEntityId{TEXT("update")}},
+        builder.set_camera({.target_entity_ids = {ml::FLevelEntityId{TEXT("add")}},
                             .offset_direction = FVector{-1.0, 0.0, 0.0},
                             .distance = 1000.0});
         builder.set_mission({.mode = ::ioj::sim::levels::LevelMissionMode::KillEnemies,
                              .kill_count = 1,
-                             .hero_entity_ids = {ml::FLevelEntityId{TEXT("update")}},
+                             .hero_entity_ids = {ml::FLevelEntityId{TEXT("add")}},
                              .required_kill_entity_ids = {ml::FLevelEntityId{TEXT("replace")}}});
         builder.add_entity({.id = ml::FLevelEntityId{TEXT("update")},
                             .archetype = ml::level_archetypes::capital_ship,
@@ -1282,10 +1334,14 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                             .position = FVector{400.0, 500.0, 600.0}});
         builder.add_entity({.id = ml::FLevelEntityId{TEXT("add")},
                             .archetype = ml::level_archetypes::capital_ship,
-                            .team = ml::level_teams::red,
+                            .team = ml::level_teams::blue,
                             .position = FVector{700.0, 800.0, 900.0}});
-        auto const plan{ml::editor::make_s7_level_sync_plan(
-            *world->GetCurrentLevel(), *document, builder.finish())};
+        auto const definition{builder.finish()};
+        if (!assert_valid_definition(*TestRunner, definition)) {
+            return;
+        }
+        auto const plan{
+            ml::editor::make_s7_level_sync_plan(*world->GetCurrentLevel(), *document, definition)};
         if (!TestRunner->TestTrue(TEXT("Mixed preview builds"), plan.has_value())) {
             TestRunner->AddError(plan.error());
             return;
@@ -1319,6 +1375,9 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestEqual(
             TEXT("Metadata is published"), document->level_id, FName{TEXT("after")});
         TestRunner->TestTrue(TEXT("Viewpoint is published"), document->use_observer_camera);
+        TestRunner->TestTrue(TEXT("Camera target is published"),
+                             document->camera.targets.Num() == 1 &&
+                                 document->camera.targets[0] == added);
         TestRunner->TestEqual(
             TEXT("Mission is published"), document->mission.mode, ETestMissionMode::KillEnemies);
         TestRunner->TestEqual(TEXT("Spawn time is published"),
@@ -1341,9 +1400,8 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                              updated->GetActorTransform().Equals(original_transform));
         TestRunner->TestEqual(
             TEXT("Updated team is restored"), updated->get_team(), ETestTeam::Red);
-        TestRunner->TestEqual(TEXT("Updated label is restored"),
-                              updated->GetActorLabel(),
-                              FString{TEXT("old-update-label")});
+        TestRunner->TestEqual(
+            TEXT("Updated label is restored"), updated->GetActorLabel(), original_label);
         TestRunner->TestEqual(TEXT("Spawn time is restored"),
                               bound_binding(*document, TEXT("update"))->spawn_time_seconds,
                               7.0);
@@ -1353,7 +1411,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Description is restored"),
                               document->description,
                               FString{TEXT("Before description")});
-        TestRunner->TestFalse(TEXT("Viewpoint is restored"), document->use_observer_camera);
+        TestRunner->TestTrue(TEXT("Viewpoint is restored"), document->use_observer_camera);
         if (TestRunner->TestEqual(
                 TEXT("Camera target count is restored"), document->camera.targets.Num(), 1)) {
             TestRunner->TestEqual(TEXT("Camera target is restored"),
@@ -1370,7 +1428,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
                                   1)) {
             TestRunner->TestEqual(TEXT("Mission survivor is restored"),
                                   document->mission.must_survive[0].Get(),
-                                  static_cast<AActor*>(updated));
+                                  static_cast<AActor*>(removed));
         }
     }
 
