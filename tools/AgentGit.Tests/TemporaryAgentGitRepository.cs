@@ -162,7 +162,18 @@ internal sealed class TemporaryAgentGitRepository : IDisposable
             File.SetAttributes(file_path, FileAttributes.Normal);
         }
 
-        Directory.Delete(root, recursive: true);
+        for (var attempt = 0; attempt < 5; ++attempt)
+        {
+            try
+            {
+                Directory.Delete(root, recursive: true);
+                return;
+            }
+            catch (IOException) when (attempt < 4)
+            {
+                Thread.Sleep(100);
+            }
+        }
     }
 
     private static string FindExecutable(string name)
