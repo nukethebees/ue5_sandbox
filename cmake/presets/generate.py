@@ -823,7 +823,12 @@ def make_native_benchmark_document() -> dict[str, Any]:
         {
             "name": "tracy-tools",
             "configurePreset": "tracy-tools",
-            "targets": ["tracy-capture", "tracy-csvexport"],
+            "targets": [
+                "tracy-capture",
+                "tracy-csvexport",
+                "tracy-benchmark-compare",
+                "tracy-benchmark-compare-tests",
+            ],
         },
         {
             "name": "kernel-benchmark",
@@ -891,6 +896,12 @@ def make_native_benchmark_document() -> dict[str, Any]:
         },
     ]
     document["testPresets"] = [
+        {
+            "name": "tracy-benchmark-compare",
+            "inherits": "test-base",
+            "configurePreset": "tracy-tools",
+            "filter": {"include": {"label": "^perf$"}},
+        },
         {
             "name": "kernel-benchmark-tests",
             "inherits": "test-base",

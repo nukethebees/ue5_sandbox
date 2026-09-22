@@ -205,6 +205,10 @@ internal sealed class IntegrationGatePlanner
         {
             return [IntegrationGate.ToolTests];
         }
+        if (path.StartsWith("tools/perf/", StringComparison.OrdinalIgnoreCase))
+        {
+            return [IntegrationGate.BenchmarkBuild];
+        }
         if (path.StartsWith("tools/", StringComparison.OrdinalIgnoreCase))
         {
             return [IntegrationGate.CSharpToolsTests];
@@ -228,8 +232,7 @@ internal sealed class IntegrationGatePlanner
                     ? [IntegrationGate.CMakeChecks, IntegrationGate.UnrealTests, IntegrationGate.DevelopmentBuild]
                     : build_global_gates;
         }
-        if (path.StartsWith("native/simulation_benchmark/", StringComparison.OrdinalIgnoreCase) ||
-            path.StartsWith("tools/perf/", StringComparison.OrdinalIgnoreCase))
+        if (path.StartsWith("native/simulation_benchmark/", StringComparison.OrdinalIgnoreCase))
         {
             return [IntegrationGate.BenchmarkBuild];
         }
