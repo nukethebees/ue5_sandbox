@@ -80,29 +80,6 @@ auto confirm_replace_source(FStringView const path) -> bool {
                    FText::FromString(FString{path}))) == EAppReturnType::Yes;
 }
 
-auto level_config_path(AS7LevelAuthoringDocument const& document) -> FString {
-    return IsValid(document.level_config) ? document.level_config->GetPathName() : FString{};
-}
-
-auto resolve_level_config(ml::s7::FLevelDefinitionReadResult const& read,
-                          AS7LevelAuthoringDocument const& document)
-    -> std::expected<USpaceGameLevelConfig*, FString> {
-    if (read.level_config.IsEmpty()) {
-        if (IsValid(document.level_config)) {
-            return document.level_config.Get();
-        }
-        return std::unexpected{TEXT("Assign a level configuration to the S7 document.")};
-    }
-
-    auto* const config{LoadObject<USpaceGameLevelConfig>(nullptr, *read.level_config)};
-    if (!IsValid(config)) {
-        return std::unexpected{FString::Printf(
-            TEXT("The S7 source references an unavailable level configuration: %s"),
-            *read.level_config)};
-    }
-    return config;
-}
-
 auto selected_bound_entity(AS7LevelAuthoringDocument& document)
     -> std::expected<FS7LevelEntityBinding*, FString> {
     if (!GEditor) {
@@ -234,7 +211,7 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
                                   : std::expected<ml::FLevelDefinition, FString>{std::unexpected{
                                         TEXT("The current level is unavailable.")}}};
         auto const generated{
-            definition ? ml::s7::emit_editor_level_source(*definition, level_config_path(*document_))
+            definition ? ml::s7::emit_editor_level_source(*definition)
                        : std::expected<FString, FString>{std::unexpected{definition.error()}}};
         if (!generated || document_->synchronized_scene_hash !=
                               ml::editor::FS7LevelSourceSession::source_digest(*generated)) {
@@ -422,6 +399,13 @@ void US7LevelAuthoringMode::refresh_document() {
     if (!document_.IsValid()) {
         create_document();
         return;
+    }
+    if (IsValid(document_->level_config) &&
+        (document_->level_size == FVector3f::ZeroVector ||
+         document_->grid_cell_size == FVector3f::ZeroVector)) {
+        document_->Modify();
+        document_->level_size = document_->level_config->collision_grid.grid_size;
+        document_->grid_cell_size = document_->level_config->collision_grid.cell_size;
     }
     auto const attached{source_session_.attach(*document_)};
     if (!attached) {
@@ -810,16 +794,7 @@ void US7LevelAuthoringMode::preview_apply() {
         changed_.Broadcast();
         return;
     }
-    auto const level_config{resolve_level_config(read, *document_)};
-    if (!level_config) {
-        set_status(FText::FromString(level_config.error()));
-        preview_.Reset();
-        preview_stale_ = false;
-        changed_.Broadcast();
-        return;
-    }
-    auto plan{ml::editor::make_s7_level_sync_plan(
-        *level, *document_, read.definition.GetValue(), **level_config)};
+    auto plan{ml::editor::make_s7_level_sync_plan(*level, *document_, read.definition.GetValue())};
     if (!plan) {
         set_status(FText::FromString(plan.error()));
         preview_.Reset();
@@ -845,8 +820,8 @@ void US7LevelAuthoringMode::preview_apply() {
         if (preview_->plan.metadata_changed) {
             document_changes.Add(TEXT("metadata"));
         }
-        if (preview_->plan.level_config_changed) {
-            document_changes.Add(TEXT("level config"));
+        if (preview_->plan.collision_grid_changed) {
+            document_changes.Add(TEXT("collision grid"));
         }
         if (preview_->plan.viewpoint_changed) {
             document_changes.Add(TEXT("viewpoint"));
@@ -896,7 +871,7 @@ void US7LevelAuthoringMode::apply_preview() {
             ml::editor::FS7LevelSourceSession::source_digest(source_session_.buffer());
         auto const definition{ml::editor::collect_s7_editor_level(*level, *document_)};
         auto const generated{
-            definition ? ml::s7::emit_editor_level_source(*definition, level_config_path(*document_))
+            definition ? ml::s7::emit_editor_level_source(*definition)
                        : std::expected<FString, FString>{std::unexpected{definition.error()}}};
         if (generated) {
             document_->synchronized_scene_hash =
@@ -986,8 +961,7 @@ void US7LevelAuthoringMode::save_canonical_from_scene() {
         changed_.Broadcast();
         return;
     }
-    auto const source{
-        ml::s7::emit_editor_level_source(*definition, level_config_path(*document_))};
+    auto const source{ml::s7::emit_editor_level_source(*definition)};
     if (!source) {
         set_status(FText::FromString(source.error()));
         changed_.Broadcast();

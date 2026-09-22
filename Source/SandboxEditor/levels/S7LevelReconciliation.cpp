@@ -216,8 +216,7 @@ auto validation_error(FLevelDefinition const& definition) -> FString {
 
 auto prepare_sync_plan(ULevel const& level,
                        AS7LevelAuthoringDocument const& document,
-                       FLevelDefinition const& definition,
-                       USpaceGameLevelConfig& level_config)
+                       FLevelDefinition const& definition)
     -> std::expected<FPreparedSyncPlan, FString> {
     if (!GEditor) {
         return std::unexpected{TEXT("GEditor is unavailable.")};
@@ -236,6 +235,9 @@ auto prepare_sync_plan(ULevel const& level,
     if (!IsValid(&document) || document.GetLevel() != &level) {
         return std::unexpected{
             TEXT("The authoring document does not belong to the current level.")};
+    }
+    if (!IsValid(document.level_config)) {
+        return std::unexpected{TEXT("The authoring document has no level configuration.")};
     }
     if (auto const error{validation_error(definition)}; !error.IsEmpty()) {
         return std::unexpected{error};
@@ -285,7 +287,7 @@ auto prepare_sync_plan(ULevel const& level,
         auto const archetype{resolve_level_archetype(entities.archetypes[index])};
         auto const team{resolve_level_team(entities.teams[index])};
         auto* const type{
-            archetype.IsSet() ? s7_level_actor_class(*archetype, level_config) : nullptr};
+            archetype.IsSet() ? s7_level_actor_class(*archetype, *document.level_config) : nullptr};
         if (!archetype.IsSet() || !team.IsSet() || !IsValid(type) ||
             type->HasAnyClassFlags(CLASS_Abstract | CLASS_NotPlaceable | CLASS_Transient)) {
             return std::unexpected{
@@ -361,7 +363,7 @@ auto FS7LevelSyncPlan::count(ES7LevelSyncAction const action) const -> int32 {
 }
 
 auto FS7LevelSyncPlan::has_changes() const -> bool {
-    return !changes.IsEmpty() || level_config_changed || metadata_changed || viewpoint_changed ||
+    return !changes.IsEmpty() || collision_grid_changed || metadata_changed || viewpoint_changed ||
            mission_changed;
 }
 
@@ -369,24 +371,16 @@ auto make_s7_level_sync_plan(ULevel const& level,
                              AS7LevelAuthoringDocument const& document,
                              FLevelDefinition const& definition)
     -> std::expected<FS7LevelSyncPlan, FString> {
-    if (!IsValid(document.level_config)) {
-        return std::unexpected{TEXT("The authoring document has no level configuration.")};
-    }
-    return make_s7_level_sync_plan(level, document, definition, *document.level_config);
-}
-auto make_s7_level_sync_plan(ULevel const& level,
-                             AS7LevelAuthoringDocument const& document,
-                             FLevelDefinition const& definition,
-                             USpaceGameLevelConfig& level_config)
-    -> std::expected<FS7LevelSyncPlan, FString> {
-    auto prepared{prepare_sync_plan(level, document, definition, level_config)};
+    auto prepared{prepare_sync_plan(level, document, definition)};
     if (!prepared) {
         return std::unexpected{prepared.error()};
     }
     return FS7LevelSyncPlan{.definition = definition,
-                            .level_config = &level_config,
                             .changes = MoveTemp(prepared->changes),
-                            .level_config_changed = document.level_config != &level_config,
+                            .collision_grid_changed =
+                                definition.collision_grid.IsSet() &&
+                                (document.level_size != definition.collision_grid->level_size ||
+                                 document.grid_cell_size != definition.collision_grid->cell_size),
                             .metadata_changed = prepared->metadata_changed,
                             .viewpoint_changed = prepared->viewpoint_changed,
                             .mission_changed = prepared->mission_changed};
@@ -395,11 +389,7 @@ auto make_s7_level_sync_plan(ULevel const& level,
 auto apply_s7_level_sync_plan(ULevel& level,
                               AS7LevelAuthoringDocument& document,
                               FS7LevelSyncPlan const& plan) -> std::expected<void, FString> {
-    auto* const level_config{plan.level_config.Get()};
-    if (!IsValid(level_config)) {
-        return std::unexpected{TEXT("The level configuration referenced by the source is unavailable.")};
-    }
-    auto prepared{prepare_sync_plan(level, document, plan.definition, *level_config)};
+    auto prepared{prepare_sync_plan(level, document, plan.definition)};
     if (!prepared) {
         return std::unexpected{prepared.error()};
     }
@@ -434,7 +424,7 @@ auto apply_s7_level_sync_plan(ULevel& level,
         configure_s7_level_actor(actor,
                                  entity.archetype,
                                  entity.team,
-                                 *level_config,
+                                 *document.level_config,
                                  entity.transform,
                                  entity.id.value);
     }
@@ -446,7 +436,10 @@ auto apply_s7_level_sync_plan(ULevel& level,
     }
 
     document.Modify();
-    document.level_config = level_config;
+    if (plan.definition.collision_grid.IsSet()) {
+        document.level_size = plan.definition.collision_grid->level_size;
+        document.grid_cell_size = plan.definition.collision_grid->cell_size;
+    }
     auto const entities{plan.definition.entities.get_const_view()};
     auto const entity_count{entities.num()};
     document.level_id = plan.definition.metadata.id.value;

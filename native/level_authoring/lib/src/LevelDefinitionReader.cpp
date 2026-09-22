@@ -19,7 +19,10 @@ inline constexpr std::string_view level_prelude{R"(
 (define (id value) (list 'id value))
 (define (title value) (list 'title value))
 (define (description value) (list 'description value))
-(define (level-config value) (list 'level-config value))
+(define (collision-grid level-size-value cell-size-value)
+  (list 'collision-grid level-size-value cell-size-value))
+(define (level-size x y z) (list 'level-size x y z))
+(define (cell-size x y z) (list 'cell-size x y z))
 (define (par-time seconds) (list 'par-time seconds))
 (define (unlock . criteria) (cons 'unlock criteria))
 (define (level-completed level-id) (list 'level-completed level-id))
@@ -69,7 +72,7 @@ class DefinitionDecoder final {
         bool has_id{};
         bool has_title{};
         bool has_description{};
-        bool has_level_config{};
+        bool has_collision_grid{};
         bool has_par_time{};
         bool has_unlock{};
         bool has_teams{};
@@ -116,13 +119,13 @@ class DefinitionDecoder final {
                 }
                 has_description = true;
                 read_text_clause(clause, path, definition_.metadata.description);
-            } else if (tag == "level-config") {
-                if (has_level_config) {
-                    add_error(path, "Duplicate level-config clause");
+            } else if (tag == "collision-grid") {
+                if (has_collision_grid) {
+                    add_error(path, "Duplicate collision-grid clause");
                     continue;
                 }
-                has_level_config = true;
-                read_text_clause(clause, path, level_config_);
+                has_collision_grid = true;
+                read_collision_grid(clause, path);
             } else if (tag == "par-time") {
                 if (has_par_time) {
                     add_error(path, "Duplicate par-time clause");
@@ -198,7 +201,7 @@ class DefinitionDecoder final {
         if (!validation) {
             return {.validation_errors = std::move(validation.errors)};
         }
-        return {.definition = std::move(definition_), .level_config = std::move(level_config_)};
+        return {.definition = std::move(definition_)};
     }
   private:
     auto list_length(s7::Value const value) const -> std::int64_t {
@@ -653,10 +656,27 @@ class DefinitionDecoder final {
         }
     }
 
+    void read_collision_grid(s7::Value const clause, std::string const& path) {
+        if (!expect_length(clause, 3, path)) {
+            return;
+        }
+        double level_size[3]{};
+        double cell_size[3]{};
+        auto valid{read_vector(
+            list_value(clause, 1), "level-size", path + ".level-size", level_size)};
+        valid = read_vector(list_value(clause, 2), "cell-size", path + ".cell-size", cell_size) &&
+                valid;
+        if (valid) {
+            definition_.collision_grid = {
+                .level_size = {level_size[0], level_size[1], level_size[2]},
+                .cell_size = {cell_size[0], cell_size[1], cell_size[2]},
+            };
+        }
+    }
+
     s7::Scheme& scheme_;
     s7::Value root_{};
     ::ioj::sim::levels::LevelDefinition definition_{};
-    std::string level_config_{};
     std::vector<LevelDefinitionDecodeError> errors_{};
 };
 } // namespace

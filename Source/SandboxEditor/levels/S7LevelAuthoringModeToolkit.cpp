@@ -126,8 +126,11 @@ void FS7LevelAuthoringModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_
                  if (!IsValid(config)) {
                      return LOCTEXT("NoActiveConfig", "Level config: none");
                  }
-                 auto const dimensions{config->collision_grid.calculate_grid_dimensions()};
-                 auto const cell_size{config->collision_grid.cell_size};
+                 FCollisionGridConfig collision_grid{config->collision_grid};
+                 collision_grid.grid_size = document->level_size;
+                 collision_grid.cell_size = document->grid_cell_size;
+                 auto const dimensions{collision_grid.calculate_grid_dimensions()};
+                 auto const cell_size{collision_grid.cell_size};
                  auto const half_bounds{FVector3f{dimensions.X * cell_size.X * 0.5f,
                                                   dimensions.Y * cell_size.Y * 0.5f,
                                                   dimensions.Z * cell_size.Z * 0.5f}};

@@ -56,6 +56,14 @@ auto to_native(FLevelDefinition const& definition) -> ::ioj::sim::levels::LevelD
     }
     result.player_entity_id = to_utf8(definition.player_entity_id.value);
 
+    if (definition.collision_grid.IsSet()) {
+        auto const& grid{definition.collision_grid.GetValue()};
+        result.collision_grid = {
+            .level_size = {grid.level_size.X, grid.level_size.Y, grid.level_size.Z},
+            .cell_size = {grid.cell_size.X, grid.cell_size.Y, grid.cell_size.Z},
+        };
+    }
+
     if (definition.camera.IsSet()) {
         auto const& camera{definition.camera.GetValue()};
         result.camera = {
@@ -125,6 +133,18 @@ auto to_unreal(::ioj::sim::levels::LevelDefinition definition) -> FLevelDefiniti
         metadata.par_time_seconds = *definition.metadata.par_time_seconds;
     }
     builder.set_metadata(metadata);
+
+    if (definition.collision_grid) {
+        auto const& grid{*definition.collision_grid};
+        builder.set_collision_grid({
+            .level_size = FVector3f{static_cast<float>(grid.level_size.x),
+                                    static_cast<float>(grid.level_size.y),
+                                    static_cast<float>(grid.level_size.z)},
+            .cell_size = FVector3f{static_cast<float>(grid.cell_size.x),
+                                   static_cast<float>(grid.cell_size.y),
+                                   static_cast<float>(grid.cell_size.z)},
+        });
+    }
 
     for (auto const& level_id : definition.unlock_level_ids) {
         builder.add_unlock_criterion(FLevelUnlockCriterion{

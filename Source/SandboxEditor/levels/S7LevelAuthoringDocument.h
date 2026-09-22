@@ -112,6 +112,12 @@ class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
     UPROPERTY(EditAnywhere, Category = "Level")
     TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
 
+    UPROPERTY(EditAnywhere, Category = "Level", meta = (Units = "cm"))
+    FVector3f level_size{FVector3f::ZeroVector};
+
+    UPROPERTY(EditAnywhere, Category = "Level", meta = (Units = "cm"))
+    FVector3f grid_cell_size{FVector3f::ZeroVector};
+
     UPROPERTY(EditAnywhere, EditFixedSize, Category = "Entities", meta = (TitleProperty = "id"))
     TArray<FS7LevelEntityBinding> entities{};
 

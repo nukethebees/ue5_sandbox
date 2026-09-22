@@ -42,6 +42,11 @@ struct LevelCameraDefinition {
     double distance{};
 };
 
+struct LevelCollisionGridDefinition {
+    Vector3d level_size{};
+    Vector3d cell_size{};
+};
+
 struct LevelMissionDefinition {
     LevelMissionMode mode{LevelMissionMode::Unspecified};
     std::optional<float> time_limit_seconds{};
@@ -63,6 +68,7 @@ struct LevelDefinition {
     std::vector<std::string> unlock_level_ids{};
     std::string player_entity_id{};
     std::optional<LevelCameraDefinition> camera{};
+    std::optional<LevelCollisionGridDefinition> collision_grid{};
     std::optional<LevelMissionDefinition> mission{};
     std::vector<LevelMissionObjectiveEvent> mission_events{};
     std::vector<std::string> teams{};
@@ -94,6 +100,9 @@ enum class LevelValidationErrorCode : std::uint8_t {
     CameraTargetNotFound,
     InvalidCameraDistance,
     InvalidCameraOffsetDirection,
+    InvalidLevelSize,
+    InvalidGridCellSize,
+    InvalidGridDimensions,
     MissingMissionMode,
     UnsupportedMissionMode,
     InvalidMissionTimeLimit,
