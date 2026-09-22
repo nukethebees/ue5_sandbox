@@ -1,14 +1,53 @@
 option(SANDBOX_TRACY_TOOLS "Build the vendored Tracy command-line tools" OFF)
 
-add_test(NAME perf-comparison-python-tests
-  COMMAND "${Python3_EXECUTABLE}" -m unittest discover
-    -s "${CMAKE_CURRENT_SOURCE_DIR}/tests"
-    -p "test_*.py"
+add_library(tracy-benchmark-comparison-lib STATIC)
+target_sources(tracy-benchmark-comparison-lib PRIVATE
+  lib/include/sandbox/perf/benchmark_comparison.hpp
+  lib/src/benchmark_comparison.cpp
 )
-set_tests_properties(perf-comparison-python-tests PROPERTIES LABELS "unit;all;perf")
-set_tests_properties(perf-comparison-python-tests PROPERTIES
-  WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
+target_compile_features(tracy-benchmark-comparison-lib PUBLIC cxx_std_23)
+target_include_directories(tracy-benchmark-comparison-lib PUBLIC lib/include)
+target_link_libraries(tracy-benchmark-comparison-lib
+  PUBLIC jobserver::client nlohmann_json::nlohmann_json
+  PRIVATE CLI11::CLI11 sandbox::native_defaults ws2_32
 )
+target_compile_definitions(tracy-benchmark-comparison-lib PRIVATE
+  WIN32_LEAN_AND_MEAN
+  NOMINMAX
+)
+
+add_executable(tracy-benchmark-compare cli/main.cpp)
+target_compile_features(tracy-benchmark-compare PRIVATE cxx_std_23)
+target_link_libraries(tracy-benchmark-compare PRIVATE
+  tracy-benchmark-comparison-lib
+  sandbox::native_defaults
+)
+set_target_properties(tracy-benchmark-compare PROPERTIES
+  RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin"
+)
+install(TARGETS tracy-benchmark-compare
+  RUNTIME DESTINATION bin
+  COMPONENT tracy-benchmark-compare
+)
+
+add_executable(tracy-benchmark-compare-tests tests/benchmark_comparison_tests.cpp)
+target_compile_features(tracy-benchmark-compare-tests PRIVATE cxx_std_23)
+target_link_libraries(tracy-benchmark-compare-tests PRIVATE
+  tracy-benchmark-comparison-lib
+  GTest::gtest_main
+  sandbox::native_defaults
+)
+target_compile_definitions(tracy-benchmark-compare-tests PRIVATE
+  SANDBOX_PERF_TEST_HELPER_PATH="$<TARGET_FILE:tracy-benchmark-compare-test-helper>"
+)
+
+add_executable(tracy-benchmark-compare-test-helper tests/process_test_helper.cpp)
+target_compile_features(tracy-benchmark-compare-test-helper PRIVATE cxx_std_23)
+target_link_libraries(tracy-benchmark-compare-test-helper PRIVATE sandbox::native_defaults)
+add_dependencies(tracy-benchmark-compare-tests tracy-benchmark-compare-test-helper)
+
+add_test(NAME tracy-benchmark-compare-tests COMMAND tracy-benchmark-compare-tests)
+set_tests_properties(tracy-benchmark-compare-tests PROPERTIES LABELS "unit;all;perf")
 
 if(NOT SANDBOX_TRACY_TOOLS)
   return()

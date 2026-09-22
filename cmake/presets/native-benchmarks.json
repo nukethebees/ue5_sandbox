@@ -69,7 +69,9 @@
       "configurePreset": "tracy-tools",
       "targets": [
         "tracy-capture",
-        "tracy-csvexport"
+        "tracy-csvexport",
+        "tracy-benchmark-compare",
+        "tracy-benchmark-compare-tests"
       ]
     },
     {
@@ -151,6 +153,16 @@
     }
   ],
   "testPresets": [
+    {
+      "name": "tracy-benchmark-compare",
+      "inherits": "test-base",
+      "configurePreset": "tracy-tools",
+      "filter": {
+        "include": {
+          "label": "^perf$"
+        }
+      }
+    },
     {
       "name": "kernel-benchmark-tests",
       "inherits": "test-base",

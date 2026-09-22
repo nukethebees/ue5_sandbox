@@ -288,9 +288,10 @@ internal sealed class IntegrationGateValidator : IIntegrationValidator
                 [new("cmake", ["--workflow", "--preset", "development"])],
             IntegrationGate.BenchmarkBuild =>
             [
-                new("cmake", ["--preset", "benchmark"]),
-            new("cmake", ["--build", "--preset", "benchmark", "--target", "benchmarks"]),
-        ],
+                new("cmake", ["--preset", "tracy-tools"]),
+                new("cmake", ["--build", "--preset", "tracy-tools", "--target", "tracy-benchmark-compare-tests"]),
+                new("ctest", ["--test-dir", "out/build/tracy-tools", "-L", "^perf$", "--output-on-failure"]),
+            ],
             _ => throw new ArgumentOutOfRangeException(nameof(gate), gate, "Unknown integration gate."),
         };
 
