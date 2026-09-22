@@ -4,44 +4,12 @@ option(SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK "Register the native frame-memory le
 option(SANDBOX_KERNEL_BENCHMARK_PLOTS "Generate native kernel benchmark plots" OFF)
 option(SANDBOX_LAYOUT_PLANNER "Build the standalone memory layout planner" OFF)
 
-set(SANDBOX_NATIVE_THIRD_PARTY_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/third_party")
-set(SANDBOX_NATIVE_RTTI_EXCLUDED_TARGETS
-  sandbox-s7-third-party
-  sbx-mimalloc-prefix-probe
-  sbx-mimalloc-implementation
-  TracyClientUnreal
+add_library(sandbox_native_no_rtti INTERFACE)
+add_library(sandbox::native_no_rtti ALIAS sandbox_native_no_rtti)
+target_compile_options(sandbox_native_no_rtti INTERFACE
+  "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:/GR->"
+  "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:-fno-rtti>"
 )
-
-if(SANDBOX_MSVC_FRONTEND)
-  set(SANDBOX_NATIVE_RTTI_DISABLED_OPTION /GR-)
-else()
-  set(SANDBOX_NATIVE_RTTI_DISABLED_OPTION -fno-rtti)
-endif()
-
-function(sandbox_disable_rtti_for_first_party_native_targets directory)
-  get_property(targets DIRECTORY "${directory}" PROPERTY BUILDSYSTEM_TARGETS)
-  foreach(target IN LISTS targets)
-    if(target IN_LIST SANDBOX_NATIVE_RTTI_EXCLUDED_TARGETS)
-      continue()
-    endif()
-
-    get_target_property(target_type ${target} TYPE)
-    if(NOT target_type STREQUAL "UTILITY" AND NOT target_type STREQUAL "INTERFACE_LIBRARY")
-      target_compile_options(${target} PRIVATE "${SANDBOX_NATIVE_RTTI_DISABLED_OPTION}")
-    endif()
-  endforeach()
-
-  get_property(subdirectories DIRECTORY "${directory}" PROPERTY SUBDIRECTORIES)
-  foreach(subdirectory IN LISTS subdirectories)
-    cmake_path(IS_PREFIX SANDBOX_NATIVE_THIRD_PARTY_DIRECTORY
-      "${subdirectory}" NORMALIZE is_third_party)
-    if(is_third_party)
-      continue()
-    endif()
-
-    sandbox_disable_rtti_for_first_party_native_targets("${subdirectory}")
-  endforeach()
-endfunction()
 
 if(SANDBOX_LAYOUT_PLANNER)
   enable_language(C)
@@ -144,11 +112,79 @@ add_custom_target(native-tests
 )
 set_property(TARGET native-tests PROPERTY FOLDER "Sandbox/Native/Tests")
 
-sandbox_disable_rtti_for_first_party_native_targets("${CMAKE_CURRENT_SOURCE_DIR}")
+set(SANDBOX_NATIVE_RTTI_TARGETS
+  codegen-generated-compile-fixture
+  codegen-generated-tests
+  codegen-lib
+  codegen-reject-single-COPY
+  codegen-reject-single-DEFAULT
+  codegen-reject-single-DESTRUCTOR
+  codegen-tests
+  kernel-codegen-lib
+  kernel-codegen-tests
+  kernel-generated-compile-tests
+  kernel-generated-standard-tests
+  kernel-native-benchmarks
+  kernel-native-dot-relaxed-avx2
+  kernel-native-dot-relaxed-avx512
+  kernel-native-simd-avx2
+  kernel-native-simd-avx512
+  kernel-native-simd-tests
+  layout-profile-probe
+  lispb
+  lispb-output
+  lispb-project
+  lispb-schema
+  lispb-syntax
+  lispb-syntax-tests
+  material-gen
+  material-gen-tests
+  mesh-gen
+  mesh-gen-tests
+  native-core
+  native-core-benchmarks
+  native-core-static-string-view-reject-automatic
+  native-core-tests
+  native-layout
+  native-layout-tests
+  native-level-authoring
+  native-level-authoring-tests
+  native-memory
+  native-memory-tests
+  native-profiling
+  native-simulation
+  native-simulation-benchmark
+  native-simulation-benchmark-lib
+  native-simulation-benchmark-tests
+  native-simulation-tests
+  native-simulation-unreal
+  native-soa-benchmarks
+  native-soa-generate
+  native-soa-reserve-matrix
+  native-soa-reserve-matrix-mimalloc
+  native-soa-tests
+  native-soa-tests-mimalloc
+  sandbox-image
+  sandbox-image-tests
+  sandbox-material-gen
+  sandbox-mesh-gen
+  sandbox-s7
+  sandbox-s7-tests
+  sbx-mimalloc
+  sbx-mimalloc-tests
+  slate-codegen-lib
+  slate-codegen-tests
+  slate-generated-compile-tests
+)
+foreach(target IN LISTS SANDBOX_NATIVE_RTTI_TARGETS)
+  if(TARGET ${target})
+    target_link_libraries(${target} PRIVATE sandbox::native_no_rtti)
+  endif()
+endforeach()
 
 if(TARGET TracyClientUnreal)
   set_property(SOURCE profiling/src/memory.cpp APPEND PROPERTY
-    COMPILE_OPTIONS "${SANDBOX_NATIVE_RTTI_DISABLED_OPTION}"
+    COMPILE_OPTIONS "$<TARGET_PROPERTY:sandbox_native_no_rtti,INTERFACE_COMPILE_OPTIONS>"
   )
 endif()
 
