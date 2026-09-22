@@ -20,7 +20,7 @@ void PlannerUi::draw_project_panel() {
         ImGui::TextDisabled("Target: %s", target_name_.c_str());
         ImGui::PopTextWrapPos();
         std::optional<std::filesystem::path> unregister_source;
-        auto open_rename_source{false};
+        std::optional<lispb::RenameCppSchemaSource> rename_source;
         auto const target_found{project_document_->project().targets.find(target_name_)};
         auto const* project_target{
             target_found == project_document_->project().targets.end()
@@ -39,34 +39,70 @@ void PlannerUi::draw_project_panel() {
                     source_display +=
                         " (rename pending from " + renamed_from->generic_string() + ")";
                 }
-                ImGui::Bullet();
-                ImGui::SameLine();
-                ImGui::TextWrapped("%s", source_display.c_str());
-                detail::WrappingButtonRow source_buttons;
                 auto const schema_dirty{document_.has_value() && document_->dirty()};
                 ImGui::BeginDisabled(pending || renamed_from.has_value() || schema_dirty);
-                if (source_buttons.button("Unregister")) {
+                if (ImGui::SmallButton("-")) {
                     unregister_source = source;
                 }
                 ImGui::EndDisabled();
-                if (renamed_from.has_value() &&
-                    ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-                    ImGui::SetTooltip("Undo the staged rename before unregistering this source.");
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                    ImGui::SetTooltip(
+                        "%s",
+                        pending ? "Undo the pending creation to remove this unpublished file."
+                        : renamed_from.has_value()
+                            ? "Undo the staged rename before unregistering this file."
+                        : schema_dirty
+                            ? "Save or discard schema edits before unregistering this file."
+                            : "Unregister this file. The file remains on disk.");
                 }
+                ImGui::SameLine();
                 ImGui::BeginDisabled(pending || schema_dirty);
-                if (source_buttons.button("Rename")) {
-                    rename_project_source_ = source;
-                    std::snprintf(rename_project_source_path_.data(),
-                                  rename_project_source_path_.size(),
-                                  "%s",
-                                  source_label.c_str());
-                    schema_edit_message_.clear();
-                    open_rename_source = true;
+                if (rename_project_source_ == source) {
+                    if (focus_rename_project_source_) {
+                        ImGui::SetKeyboardFocusHere();
+                        focus_rename_project_source_ = false;
+                    }
+                    ImGui::SetNextItemWidth(-1.0F);
+                    auto const submitted{ImGui::InputText("##source-name",
+                                                          rename_project_source_path_.data(),
+                                                          rename_project_source_path_.size(),
+                                                          ImGuiInputTextFlags_EnterReturnsTrue |
+                                                              ImGuiInputTextFlags_AutoSelectAll)};
+                    auto const deactivated{ImGui::IsItemDeactivated()};
+                    if ((ImGui::IsItemActive() || deactivated) &&
+                        ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+                        rename_project_source_.reset();
+                    } else if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                        if (rename_project_source_path_.front() == '\0') {
+                            schema_edit_message_ = "Source path cannot be empty.";
+                            focus_rename_project_source_ = true;
+                        } else if (std::filesystem::path{rename_project_source_path_.data()} ==
+                                   source) {
+                            rename_project_source_.reset();
+                        } else {
+                            rename_source = {.target_name = target_name_,
+                                             .source = source,
+                                             .destination = rename_project_source_path_.data()};
+                        }
+                    } else if (deactivated) {
+                        rename_project_source_.reset();
+                    }
+                } else {
+                    ImGui::TextWrapped("%s", source_display.c_str());
+                    if (ImGui::IsItemHovered()) {
+                        ImGui::SetTooltip("Double-click to rename. Enter applies; Escape cancels.");
+                        if (ImGui::IsMouseDoubleClicked(ImGuiMouseButton_Left)) {
+                            rename_project_source_ = source;
+                            std::snprintf(rename_project_source_path_.data(),
+                                          rename_project_source_path_.size(),
+                                          "%s",
+                                          source_label.c_str());
+                            schema_edit_message_.clear();
+                            focus_rename_project_source_ = true;
+                        }
+                    }
                 }
                 ImGui::EndDisabled();
-                if (pending && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-                    ImGui::SetTooltip("Undo the pending creation to remove this unpublished file.");
-                }
                 ImGui::PopID();
             }
         }
@@ -76,49 +112,18 @@ void PlannerUi::draw_project_panel() {
             schema_edit_message_ =
                 "Staged source unregistration. The source file will remain on disk after Save.";
         }
-        if (open_rename_source) {
-            ImGui::OpenPopup("Rename LispB source");
-        }
-        if (ImGui::BeginPopupModal(
-                "Rename LispB source", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::TextDisabled("Current: %s",
-                                rename_project_source_.has_value()
-                                    ? rename_project_source_->generic_string().c_str()
-                                    : "");
-            ImGui::SetNextItemWidth(400.0F);
-            ImGui::InputText("New relative path",
-                             rename_project_source_path_.data(),
-                             rename_project_source_path_.size());
-            ImGui::TextDisabled("The file moves and the project source list updates on Save.");
-            auto const ready{rename_project_source_.has_value() &&
-                             rename_project_source_path_.front() != '\0' &&
-                             std::filesystem::path{rename_project_source_path_.data()} !=
-                                 *rename_project_source_};
-            ImGui::BeginDisabled(!ready);
-            if (ImGui::Button("Stage rename")) {
-                if (apply_project_edit(lispb::RenameCppSchemaSource{
-                        .target_name = target_name_,
-                        .source = *rename_project_source_,
-                        .destination = rename_project_source_path_.data()})) {
+        if (unregister_source.has_value()) {
+            rename_project_source_.reset();
+        } else if (rename_source.has_value()) {
+            if (apply_project_edit(*rename_source)) {
+                if (rename_project_source_ == rename_source->source) {
                     rename_project_source_.reset();
                     rename_project_source_path_.fill('\0');
-                    schema_edit_message_ =
-                        "Staged source rename. Use Preview LispB changes to inspect it, then "
-                        "Save to move the file and reload.";
-                    ImGui::CloseCurrentPopup();
                 }
+                schema_edit_message_ = "Staged source rename. Save to move the file and reload.";
+            } else {
+                focus_rename_project_source_ = true;
             }
-            ImGui::EndDisabled();
-            ImGui::SameLine();
-            if (ImGui::Button("Cancel")) {
-                rename_project_source_.reset();
-                rename_project_source_path_.fill('\0');
-                ImGui::CloseCurrentPopup();
-            }
-            if (!schema_edit_message_.empty()) {
-                ImGui::TextWrapped("%s", schema_edit_message_.c_str());
-            }
-            ImGui::EndPopup();
         }
         ImGui::SetNextItemWidth(-1.0F);
         ImGui::InputTextWithHint("##new-project-source",

@@ -1844,6 +1844,7 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     new_project_source_path_.fill('\0');
     rename_project_source_path_.fill('\0');
     rename_project_source_.reset();
+    focus_rename_project_source_ = false;
     analysis_session_.inputs.selection.record_access_set_explicit = false;
     analysis_session_.inputs.selection.soa_access_set_explicit = false;
     rename_editor_declaration_.reset();

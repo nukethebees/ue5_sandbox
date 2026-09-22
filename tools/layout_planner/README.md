@@ -572,7 +572,9 @@ creates an empty record immediately; click its list entry to rename it. The shar
 also register or unregister an existing valid schema source, or stage a brand-new relative source, with undo/redo,
 target-wide validation, exact manifest-plus-file preview, coordinated publication, failure cleanup,
 and save/reload. After an empty new source is published, its first module uses the ordinary shared
-module command. The Project view lists registered sources with inline unregistration and exposes
+module command. Double-click a source path in the Project view to rename it inline; Enter or leaving
+the field stages the rename, and Escape cancels. The inline **-** button unregisters that source.
+The Project view exposes
 existing-source registration plus empty-source creation through a nonmodal relative-path field.
 Unregistering never deletes the source file. While its source-list draft is active, global Undo/Redo,
 persistent Source preview, Save, project switching, and
