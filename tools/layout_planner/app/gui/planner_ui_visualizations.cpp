@@ -1365,7 +1365,7 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
         }};
         draw_stat("Physical storage", detail::format_bytes(aggregate.total_storage_bytes));
         draw_stat("Member extents", detail::format_bytes(aggregate.total_payload_bytes));
-        draw_stat("Internal padding", detail::format_bytes(aggregate.total_internal_padding_bytes));
+        draw_stat("Padding", detail::format_bytes(aggregate.total_internal_padding_bytes));
         draw_stat("Tail padding", detail::format_bytes(aggregate.total_tail_padding_bytes));
         draw_stat("Total padding", detail::format_bytes(aggregate.total_padding_bytes));
         draw_stat("Minimum cache lines", detail::format_number(aggregate.minimum_cache_lines));
@@ -1491,7 +1491,7 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
     ImGui::Text("Size: %s B    Alignment: %s B",
                 detail::format_number(analysis.size_bytes).c_str(),
                 detail::format_number(analysis.alignment_bytes).c_str());
-    ImGui::Text("Member extents: %s B    Internal padding: %s B    Tail padding: %s B",
+    ImGui::Text("Member extents: %s B    Padding: %s B    Tail padding: %s B",
                 detail::format_number(analysis.payload_bytes).c_str(),
                 detail::format_number(analysis.internal_padding_bytes).c_str(),
                 detail::format_number(analysis.tail_padding_bytes).c_str());
@@ -1517,7 +1517,7 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
             auto next_byte{std::uint64_t{0}};
             for (auto const& member : analysis.members) {
                 if (*member.offset_bytes > next_byte) {
-                    gaps.push_back({next_byte, *member.offset_bytes, "Internal padding"});
+                    gaps.push_back({next_byte, *member.offset_bytes, "Padding"});
                 }
                 next_byte = std::max(next_byte, *member.offset_bytes + *member.extent_bytes);
             }

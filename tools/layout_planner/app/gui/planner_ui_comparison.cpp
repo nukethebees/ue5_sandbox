@@ -85,7 +85,7 @@ void PlannerUi::draw_comparison_panel() {
                                detail::format_bytes(first.payload_bytes),
                                detail::format_bytes(second.payload_bytes),
                                detail::format_delta_bytes(comparison.payload_delta));
-                comparison_row("Internal padding per object",
+                comparison_row("Padding per object",
                                detail::format_bytes(first.internal_padding_bytes),
                                detail::format_bytes(second.internal_padding_bytes),
                                detail::format_delta_bytes(comparison.internal_padding_delta));
@@ -109,7 +109,7 @@ void PlannerUi::draw_comparison_panel() {
                                detail::format_bytes(first_aggregate.total_payload_bytes),
                                detail::format_bytes(second_aggregate.total_payload_bytes),
                                detail::format_delta_bytes(comparison.total_payload_delta));
-                comparison_row("Aggregate internal padding",
+                comparison_row("Aggregate padding",
                                detail::format_bytes(first_aggregate.total_internal_padding_bytes),
                                detail::format_bytes(second_aggregate.total_internal_padding_bytes),
                                detail::format_delta_bytes(comparison.total_internal_padding_delta));

@@ -934,7 +934,7 @@ void PlannerUi::draw_tagged_union_target_comparison() {
                        detail::format_bytes(first.payload_offset_bytes),
                        detail::format_bytes(second.payload_offset_bytes),
                        detail::format_delta_bytes(comparison.payload_offset_delta));
-        comparison_row("Internal padding per object",
+        comparison_row("Padding per object",
                        detail::format_bytes(first.internal_padding_bytes),
                        detail::format_bytes(second.internal_padding_bytes),
                        detail::format_delta_bytes(comparison.internal_padding_delta));
@@ -962,7 +962,7 @@ void PlannerUi::draw_tagged_union_target_comparison() {
                        detail::format_bytes(first_aggregate.total_payload_bytes),
                        detail::format_bytes(second_aggregate.total_payload_bytes),
                        detail::format_delta_bytes(comparison.total_payload_delta));
-        comparison_row("Aggregate internal padding",
+        comparison_row("Aggregate padding",
                        detail::format_bytes(first_aggregate.total_internal_padding_bytes),
                        detail::format_bytes(second_aggregate.total_internal_padding_bytes),
                        detail::format_delta_bytes(comparison.total_internal_padding_delta));
@@ -970,7 +970,7 @@ void PlannerUi::draw_tagged_union_target_comparison() {
                        detail::format_bytes(first_aggregate.total_tail_padding_bytes),
                        detail::format_bytes(second_aggregate.total_tail_padding_bytes),
                        detail::format_delta_bytes(comparison.total_tail_padding_delta));
-        comparison_row("Aggregate padding",
+        comparison_row("Aggregate total padding",
                        detail::format_bytes(first_aggregate.total_padding_bytes),
                        detail::format_bytes(second_aggregate.total_padding_bytes),
                        detail::format_delta_bytes(comparison.total_padding_delta));

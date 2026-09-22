@@ -124,7 +124,7 @@ arrangement.
    representation alias, and provenance. The editor also accepts session-only cache-line, page,
    and cache-capacity facts in bytes, with empty fields remaining Unknown; these inputs immediately
    refresh analysis but never modify LispB or semantic dirty history.
-   Record maps derive member offsets, fixed-array extents, alignment, internal padding, and tail
+   Record maps derive member offsets, fixed-array extents, alignment, padding, and tail
    padding from the active target profile. The shared element-count control scales record storage,
    member extents, padding, minimum cache lines, and minimum pages with overflow-safe arithmetic.
    It also counts elements crossing cache-line and page boundaries for a contiguous array with an

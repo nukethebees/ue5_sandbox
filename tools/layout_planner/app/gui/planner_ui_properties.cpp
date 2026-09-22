@@ -881,8 +881,7 @@ void PlannerUi::draw_properties_panel() {
         ImGui::Text("Alignment: %s", detail::format_bytes(analysis.alignment_bytes).c_str());
         ImGui::Text("Payload offset: %s",
                     detail::format_bytes(analysis.payload_offset_bytes).c_str());
-        ImGui::Text("Internal padding: %s",
-                    detail::format_bytes(analysis.internal_padding_bytes).c_str());
+        ImGui::Text("Padding: %s", detail::format_bytes(analysis.internal_padding_bytes).c_str());
         ImGui::Text("Tail padding: %s", detail::format_bytes(analysis.tail_padding_bytes).c_str());
         ImGui::Text("Tag coverage: %llu mapped, %llu unmapped, %llu named sentinel%s",
                     static_cast<unsigned long long>(analysis.mapped_live_tags.size()),

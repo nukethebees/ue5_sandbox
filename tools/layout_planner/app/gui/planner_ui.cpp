@@ -2372,8 +2372,7 @@ void PlannerUi::draw_layout_panel() {
             draw_stat("Discriminant storage",
                       detail::format_bytes(aggregate.total_discriminant_bytes));
             draw_stat("Payload-union storage", detail::format_bytes(aggregate.total_payload_bytes));
-            draw_stat("Internal padding",
-                      detail::format_bytes(aggregate.total_internal_padding_bytes));
+            draw_stat("Padding", detail::format_bytes(aggregate.total_internal_padding_bytes));
             draw_stat("Tail padding", detail::format_bytes(aggregate.total_tail_padding_bytes));
             draw_stat("Total padding", detail::format_bytes(aggregate.total_padding_bytes));
             draw_stat("Minimum cache lines", detail::format_number(aggregate.minimum_cache_lines));
@@ -2411,7 +2410,7 @@ void PlannerUi::draw_layout_panel() {
                           : "Unknown");
             draw_stat("Payload offset", detail::format_bytes(analysis.payload_offset_bytes));
             draw_stat("Payload storage", detail::format_bytes(analysis.payload_size_bytes));
-            draw_stat("Internal padding", detail::format_bytes(analysis.internal_padding_bytes));
+            draw_stat("Padding", detail::format_bytes(analysis.internal_padding_bytes));
             draw_stat("Tail padding", detail::format_bytes(analysis.tail_padding_bytes));
             draw_stat("Object size", detail::format_bytes(analysis.size_bytes));
             draw_stat("Object alignment", detail::format_bytes(analysis.alignment_bytes));
