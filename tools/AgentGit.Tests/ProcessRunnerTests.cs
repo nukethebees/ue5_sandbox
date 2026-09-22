@@ -106,7 +106,7 @@ public sealed class ProcessRunnerTests
             TimeSpan.FromSeconds(10),
             MaximumCapturedStreamBytes: 1);
 
-        var exception = await Assert.ThrowsExceptionAsync<RepositoryStateException>(
+        var exception = await Assert.ThrowsExceptionAsync<ProcessOutputLimitException>(
             async () => await new ProcessRunner().RunAsync(request, CancellationToken.None));
 
         StringAssert.Contains(exception.Message, "1 byte diagnostic output limit");

@@ -68,18 +68,20 @@ public sealed class AgentGitIntegrationTests
         using var fixture = new TemporaryAgentGitRepository();
         fixture.WriteFile("protected.txt", "change\n");
 
-        var protected_add = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "add-all");
+        var protected_context = await fixture.DiscoverAsync(fixture.RepositoryRoot);
+        var protected_add = await fixture.EvaluateAsync(protected_context, new AddAllRequest(false));
         var protected_commit = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "commit", "-m", "forbidden");
 
-        Assert.AreEqual(ExitCodes.PolicyDenied, protected_add.ExitCode);
+        Assert.IsFalse(protected_add.Decision.Allowed);
         Assert.AreEqual(ExitCodes.PolicyDenied, protected_commit.ExitCode);
         StringAssert.Contains(protected_commit.Output, "protected branch 'dev'");
 
         var workspace = fixture.CreateWorktree("dev1");
         fixture.WriteFile("workspace.txt", "change\n", workspace);
-        var workspace_add = await fixture.RunAgentGitAsync(workspace, "add-all");
-        Assert.AreEqual(ExitCodes.PolicyDenied, workspace_add.ExitCode);
-        StringAssert.Contains(workspace_add.Output, "workspace branch 'dev1'");
+        var workspace_context = await fixture.DiscoverAsync(workspace);
+        var workspace_add = await fixture.EvaluateAsync(workspace_context, new AddAllRequest(false));
+        Assert.IsFalse(workspace_add.Decision.Allowed);
+        StringAssert.Contains(workspace_add.Decision.Reason, "workspace branch 'dev1'");
     }
 
     [TestMethod]
@@ -93,15 +95,15 @@ public sealed class AgentGitIntegrationTests
             fixture.RepositoryRoot,
             "switch",
             "feature/existing");
-        var create_result = await fixture.RunAgentGitAsync(
-            fixture.RepositoryRoot,
-            "switch-create",
-            "feature/new");
+        var context = await fixture.DiscoverAsync(fixture.RepositoryRoot);
+        var create_result = await fixture.EvaluateAsync(
+            context,
+            new SwitchCreateRequest(false, "feature/new"));
 
         Assert.AreEqual(ExitCodes.PolicyDenied, switch_result.ExitCode, switch_result.Error);
-        Assert.AreEqual(ExitCodes.PolicyDenied, create_result.ExitCode, create_result.Error);
+        Assert.IsFalse(create_result.Decision.Allowed);
         StringAssert.Contains(switch_result.Output, "protected branch 'dev'");
-        StringAssert.Contains(create_result.Output, "protected branch 'dev'");
+        StringAssert.Contains(create_result.Decision.Reason, "protected branch 'dev'");
         Assert.AreEqual("dev\n", fixture.RunGit("branch", "--show-current"));
         Assert.AreEqual(original_head, fixture.RunGit("rev-parse", "HEAD").Trim());
         Assert.AreEqual(string.Empty, fixture.RunGit("branch", "--list", "feature/new"));

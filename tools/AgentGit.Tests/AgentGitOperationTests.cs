@@ -265,27 +265,40 @@ public sealed class AgentGitOperationTests
         fixture.RunGit("branch", "dev1", "dev");
         var worktree = fixture.CreateWorktree("feature/owned", "dev1");
 
-        var owned = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "branch-delete", "feature/owned");
-        var protected_result = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "branch-delete", "dev");
-        var workspace_result = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "branch-delete", "dev1");
+        var protected_context = await fixture.DiscoverAsync(fixture.RepositoryRoot);
+        var owned = await fixture.EvaluateAsync(
+            protected_context,
+            new BranchDeleteRequest(false, "feature/owned"));
+        var protected_result = await fixture.EvaluateAsync(
+            protected_context,
+            new BranchDeleteRequest(false, "dev"));
+        var workspace_result = await fixture.EvaluateAsync(
+            protected_context,
+            new BranchDeleteRequest(false, "dev1"));
 
-        Assert.AreEqual(ExitCodes.PolicyDenied, owned.ExitCode);
-        StringAssert.Contains(owned.Output, "checked out in worktree");
-        Assert.AreEqual(ExitCodes.PolicyDenied, protected_result.ExitCode);
-        Assert.AreEqual(ExitCodes.PolicyDenied, workspace_result.ExitCode);
+        Assert.IsFalse(owned.Decision.Allowed);
+        StringAssert.Contains(owned.Decision.Reason, "checked out in worktree");
+        Assert.IsFalse(protected_result.Decision.Allowed);
+        Assert.IsFalse(workspace_result.Decision.Allowed);
 
         fixture.WriteFile("unmerged.txt", "change\n", worktree);
         fixture.RunGitAt(worktree, "add", "unmerged.txt");
         fixture.RunGitAt(worktree, "commit", "-qm", "unmerged");
-        var current = await fixture.RunAgentGitAsync(worktree, "branch-delete", "feature/owned");
-        Assert.AreEqual(ExitCodes.PolicyDenied, current.ExitCode);
-        StringAssert.Contains(current.Output, "Current branch");
+        var current_context = await fixture.DiscoverAsync(worktree);
+        var current = await fixture.EvaluateAsync(
+            current_context,
+            new BranchDeleteRequest(false, "feature/owned"));
+        Assert.IsFalse(current.Decision.Allowed);
+        StringAssert.Contains(current.Decision.Reason, "Current branch");
 
         var switch_result = await fixture.RunAgentGitAsync(worktree, "switch", "dev1");
         Assert.AreEqual(ExitCodes.Success, switch_result.ExitCode, switch_result.Error);
-        var unmerged = await fixture.RunAgentGitAsync(worktree, "branch-delete", "feature/owned");
-        Assert.AreEqual(ExitCodes.PolicyDenied, unmerged.ExitCode);
-        StringAssert.Contains(unmerged.Output, "not fully merged");
+        var workspace_context = await fixture.DiscoverAsync(worktree);
+        var unmerged = await fixture.EvaluateAsync(
+            workspace_context,
+            new BranchDeleteRequest(false, "feature/owned"));
+        Assert.IsFalse(unmerged.Decision.Allowed);
+        StringAssert.Contains(unmerged.Decision.Reason, "not fully merged");
     }
 
     [TestMethod]
@@ -309,9 +322,12 @@ public sealed class AgentGitOperationTests
         using var fixture = new TemporaryAgentGitRepository();
         fixture.RunGit("switch", "-qc", "feature/current");
 
-        var missing = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "switch", "feature/missing");
-        Assert.AreEqual(ExitCodes.PolicyDenied, missing.ExitCode, missing.Error);
-        StringAssert.Contains(missing.Output, "does not exist");
+        var initial_context = await fixture.DiscoverAsync(fixture.RepositoryRoot);
+        var missing = await fixture.EvaluateAsync(
+            initial_context,
+            new SwitchRequest(false, "feature/missing"));
+        Assert.IsFalse(missing.Decision.Allowed);
+        StringAssert.Contains(missing.Decision.Reason, "does not exist");
 
         var create = await fixture.RunAgentGitAsync(
             fixture.RepositoryRoot,
@@ -320,12 +336,12 @@ public sealed class AgentGitOperationTests
         Assert.AreEqual(ExitCodes.Success, create.ExitCode, create.Error);
         Assert.AreEqual("feature/literal&branch\n", fixture.RunGit("branch", "--show-current"));
 
-        var existing = await fixture.RunAgentGitAsync(
-            fixture.RepositoryRoot,
-            "switch-create",
-            "feature/literal&branch");
-        Assert.AreEqual(ExitCodes.PolicyDenied, existing.ExitCode, existing.Error);
-        StringAssert.Contains(existing.Output, "already exists");
+        var created_context = await fixture.DiscoverAsync(fixture.RepositoryRoot);
+        var existing = await fixture.EvaluateAsync(
+            created_context,
+            new SwitchCreateRequest(false, "feature/literal&branch"));
+        Assert.IsFalse(existing.Decision.Allowed);
+        StringAssert.Contains(existing.Decision.Reason, "already exists");
 
         var invalid = await fixture.RunAgentGitAsync(
             fixture.RepositoryRoot,
@@ -334,12 +350,11 @@ public sealed class AgentGitOperationTests
         Assert.AreEqual(ExitCodes.StateFailure, invalid.ExitCode, invalid.Error);
         StringAssert.Contains(invalid.Error, "Invalid local branch name");
 
-        var pseudo_ref = await fixture.RunAgentGitAsync(
-            fixture.RepositoryRoot,
-            "switch-create",
-            "HEAD");
-        Assert.AreEqual(ExitCodes.StateFailure, pseudo_ref.ExitCode, pseudo_ref.Error);
-        StringAssert.Contains(pseudo_ref.Error, "Invalid local branch name");
+        var pseudo_ref = await Assert.ThrowsExceptionAsync<RepositoryStateException>(
+            async () => await fixture.EvaluateAsync(
+                created_context,
+                new SwitchCreateRequest(false, "HEAD")));
+        StringAssert.Contains(pseudo_ref.Message, "Invalid local branch name");
     }
 
     [TestMethod]
@@ -373,13 +388,16 @@ public sealed class AgentGitOperationTests
         Assert.AreEqual(ExitCodes.Success, from_workspace.ExitCode, from_workspace.Error);
         Assert.AreEqual("feature/first\n", fixture.RunGitAt(workspace, "branch", "--show-current"));
 
-        var between_features = await fixture.RunAgentGitAsync(workspace, "switch", "feature/second");
-        Assert.AreEqual(ExitCodes.Success, between_features.ExitCode, between_features.Error);
-        Assert.AreEqual("feature/second\n", fixture.RunGitAt(workspace, "branch", "--show-current"));
+        var feature_context = await fixture.DiscoverAsync(workspace);
+        var between_features = await fixture.EvaluateAsync(
+            feature_context,
+            new SwitchRequest(false, "feature/second"));
+        var return_home = await fixture.EvaluateAsync(
+            feature_context,
+            new SwitchRequest(false, "dev1"));
 
-        var return_home = await fixture.RunAgentGitAsync(workspace, "switch", "dev1");
-        Assert.AreEqual(ExitCodes.Success, return_home.ExitCode, return_home.Error);
-        Assert.AreEqual("dev1\n", fixture.RunGitAt(workspace, "branch", "--show-current"));
+        Assert.IsTrue(between_features.Decision.Allowed, between_features.Decision.Reason);
+        Assert.IsTrue(return_home.Decision.Allowed, return_home.Decision.Reason);
     }
 
     [TestMethod]

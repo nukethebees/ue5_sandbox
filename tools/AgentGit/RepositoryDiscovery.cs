@@ -32,9 +32,10 @@ internal sealed class RepositoryDiscovery(GitClient git)
             throw new RepositoryException($"Working directory does not exist: '{working_directory}'.");
         }
 
-        var root = await DiscoverPathAsync(working_directory, "--show-toplevel", cancellation_token);
-        var git_directory = await DiscoverPathAsync(working_directory, "--git-dir", cancellation_token);
-        var common_git_directory = await DiscoverPathAsync(working_directory, "--git-common-dir", cancellation_token);
+        var paths = await DiscoverPathsAsync(working_directory, cancellation_token);
+        var root = paths.WorktreeRoot;
+        var git_directory = paths.GitDirectory;
+        var common_git_directory = paths.CommonGitDirectory;
         if (IsReparseDirectory(root))
         {
             throw new RepositoryException($"Worktree root '{root}' is a linked directory, which is not supported.");
@@ -47,14 +48,10 @@ internal sealed class RepositoryDiscovery(GitClient git)
         }
 
         var registration = trust.FindRegistration(common_git_directory);
-        await ValidateRepositoryConfigurationAsync(
+        var origin_url = await ValidateRepositoryConfigurationAsync(
             working_directory,
             git_directory,
             common_git_directory,
-            cancellation_token);
-        var origin_url = await git.RequireTextAsync(
-            root,
-            ["config", "--local", "--get", "remote.origin.url"],
             cancellation_token);
         if (!string.Equals(origin_url, registration.OriginUrl, StringComparison.Ordinal))
         {
@@ -62,29 +59,31 @@ internal sealed class RepositoryDiscovery(GitClient git)
         }
 
         await ValidateIndexFlagsAsync(root, cancellation_token);
-        await ValidateDirectRefAsync(root, registration.PolicyRef, cancellation_token);
+        var local_branches = await DiscoverLocalBranchesAsync(root, cancellation_token);
+        if (!local_branches.ContainsKey(registration.PolicyRef))
+        {
+            throw new PolicyConfigurationException(
+                $"Unable to load policy because ref '{registration.PolicyRef}' does not exist.");
+        }
+
+        var policy_branch = RequireDirectBranch(local_branches, registration.PolicyRef);
         string policy_commit;
         string policy_json;
         try
         {
-            policy_commit = await git.RequireTextAsync(
-                root,
-                ["rev-parse", "--verify", $"{registration.PolicyRef}^{{commit}}"],
-                cancellation_token);
-            var policy_size_text = await git.RequireTextAsync(
-                root,
-                ["cat-file", "-s", $"{registration.PolicyRef}:{registration.PolicyPath}"],
-                cancellation_token);
-            if (!long.TryParse(policy_size_text, out var policy_size) || policy_size is < 0 or > 64 * 1024)
-            {
-                throw new PolicyConfigurationException(
-                    $"Policy document has invalid size '{policy_size_text}' or exceeds the 64 KiB safety limit.");
-            }
-
-            policy_json = await git.RequireTextAsync(
+            policy_commit = policy_branch.Commit;
+            var policy_result = await git.RunAsync(
                 root,
                 ["cat-file", "blob", $"{registration.PolicyRef}:{registration.PolicyPath}"],
-                cancellation_token);
+                cancellation_token: cancellation_token,
+                maximum_captured_stream_bytes: 64 * 1024);
+            GitClient.EnsureSuccess(policy_result, ["cat-file"]);
+            policy_json = Encoding.UTF8.GetString(policy_result.StandardOutput).TrimEnd('\r', '\n', '\0');
+        }
+        catch (ProcessOutputLimitException exception)
+        {
+            throw new PolicyConfigurationException(
+                "Policy document exceeds the 64 KiB safety limit.", exception);
         }
         catch (GitCommandException exception)
         {
@@ -126,15 +125,15 @@ internal sealed class RepositoryDiscovery(GitClient git)
         if (current_branch is not null)
         {
             await ValidateBranchNameAsync(root, current_branch, cancellation_token);
-            await ValidateDirectRefAsync(root, $"refs/heads/{current_branch}", cancellation_token);
+            var current_ref = RequireDirectBranch(local_branches, $"refs/heads/{current_branch}");
+            if (!string.Equals(current_ref.Commit, head, StringComparison.Ordinal))
+            {
+                throw new RepositoryStateException("HEAD changed during repository discovery.");
+            }
         }
         BranchClassification? classification = current_branch is null ? null : policy.Classify(current_branch);
 
-        await ValidateDirectRefAsync(root, $"refs/heads/{policy.BaseBranch}", cancellation_token);
-        var base_commit = await git.RequireTextAsync(
-            root,
-            ["rev-parse", "--verify", $"refs/heads/{policy.BaseBranch}^{{commit}}"],
-            cancellation_token);
+        var base_commit = policy_commit;
         var status_snapshot = await DiscoverStatusSnapshotAsync(root, cancellation_token);
         var worktrees = await DiscoverWorktreesAsync(root, cancellation_token);
         var current_worktree = worktrees.SingleOrDefault(worktree => PathsEqual(worktree.Path, root));
@@ -143,7 +142,7 @@ internal sealed class RepositoryDiscovery(GitClient git)
             throw new RepositoryException($"Git worktree registry does not contain current worktree '{root}'.");
         }
 
-        var home_branch = await FindHomeBranchAsync(root, policy, cancellation_token);
+        var home_branch = FindHomeBranch(root, policy, local_branches);
         var operation_state = DiscoverOperationState(git_directory);
         var rebase_recovery = await RebaseRecovery.DiscoverAsync(
             registration,
@@ -168,35 +167,33 @@ internal sealed class RepositoryDiscovery(GitClient git)
             operation_state,
             rebase_recovery,
             worktrees,
+            local_branches,
             home_branch);
         return new RepositoryContext(registration, policy, state);
     }
 
-    public async Task RevalidateMutationSnapshotAsync(
+    public async Task<IReadOnlyDictionary<string, LocalBranchRef>> RevalidateMutationSnapshotAsync(
         RepositoryContext context,
         CancellationToken cancellation_token = default)
     {
         var state = context.State;
-        await ValidateRepositoryConfigurationAsync(
+        var origin_url = await ValidateRepositoryConfigurationAsync(
             state.WorktreeRoot,
             state.GitDirectory,
             state.CommonGitDirectory,
             cancellation_token);
+        if (!string.Equals(origin_url, context.Registration.OriginUrl, StringComparison.Ordinal))
+        {
+            throw new RepositoryStateException(
+                "Repository origin changed after policy evaluation; no mutation was executed.");
+        }
         await ValidateIndexFlagsAsync(state.WorktreeRoot, cancellation_token);
-        await ValidateDirectRefAsync(
-            state.WorktreeRoot,
-            context.Registration.PolicyRef,
-            cancellation_token);
-        await ValidateDirectRefAsync(
-            state.WorktreeRoot,
-            $"refs/heads/{context.Policy.BaseBranch}",
-            cancellation_token);
+        var local_branches = await DiscoverLocalBranchesAsync(state.WorktreeRoot, cancellation_token);
+        RequireDirectBranch(local_branches, context.Registration.PolicyRef);
+        RequireDirectBranch(local_branches, $"refs/heads/{context.Policy.BaseBranch}");
         if (state.CurrentBranch is not null)
         {
-            await ValidateDirectRefAsync(
-                state.WorktreeRoot,
-                $"refs/heads/{state.CurrentBranch}",
-                cancellation_token);
+            RequireDirectBranch(local_branches, $"refs/heads/{state.CurrentBranch}");
         }
 
         var snapshot = await DiscoverStatusSnapshotAsync(state.WorktreeRoot, cancellation_token);
@@ -226,15 +223,8 @@ internal sealed class RepositoryDiscovery(GitClient git)
                     "AgentGit rebase recovery metadata changed after policy evaluation; no mutation was executed.");
             }
         }
-    }
 
-    public async Task RevalidateDirectBranchAsync(
-        string worktree_root,
-        string branch,
-        CancellationToken cancellation_token = default)
-    {
-        await ValidateBranchNameAsync(worktree_root, branch, cancellation_token);
-        await ValidateDirectRefAsync(worktree_root, $"refs/heads/{branch}", cancellation_token);
+        return local_branches;
     }
 
     public async Task RevalidateWorktreeAsync(
@@ -246,9 +236,10 @@ internal sealed class RepositoryDiscovery(GitClient git)
     {
         try
         {
-            var root = await DiscoverPathAsync(worktree.Path, "--show-toplevel", cancellation_token);
-            var git_directory = await DiscoverPathAsync(worktree.Path, "--git-dir", cancellation_token);
-            var common_git_directory = await DiscoverPathAsync(worktree.Path, "--git-common-dir", cancellation_token);
+            var paths = await DiscoverPathsAsync(worktree.Path, cancellation_token);
+            var root = paths.WorktreeRoot;
+            var git_directory = paths.GitDirectory;
+            var common_git_directory = paths.CommonGitDirectory;
             if (!PathsEqual(root, worktree.Path) || IsReparseDirectory(root) ||
                 !PathsEqual(common_git_directory, context.State.CommonGitDirectory))
             {
@@ -256,11 +247,16 @@ internal sealed class RepositoryDiscovery(GitClient git)
                     $"Worktree '{worktree.Path}' no longer belongs to the evaluated repository.");
             }
 
-            await ValidateRepositoryConfigurationAsync(
+            var origin_url = await ValidateRepositoryConfigurationAsync(
                 root,
                 git_directory,
                 common_git_directory,
                 cancellation_token);
+            if (!string.Equals(origin_url, context.Registration.OriginUrl, StringComparison.Ordinal))
+            {
+                throw new RepositoryStateException(
+                    $"Worktree '{worktree.Path}' repository origin changed after policy evaluation.");
+            }
             var branch = await git.RequireTextAsync(
                 root,
                 ["symbolic-ref", "--quiet", "--short", "--no-recurse", "HEAD"],
@@ -291,25 +287,15 @@ internal sealed class RepositoryDiscovery(GitClient git)
     {
         await ValidateBranchNameAsync(context.State.WorktreeRoot, branch, cancellation_token);
         var reference = $"refs/heads/{branch}";
-        var exists = await git.RunAsync(
-            context.State.WorktreeRoot,
-            ["show-ref", "--verify", "--quiet", reference],
-            cancellation_token: cancellation_token);
-        if (exists.ExitCode == 1)
+        if (!context.State.LocalBranches.TryGetValue(reference, out var local_branch))
         {
             return null;
         }
 
-        GitClient.EnsureSuccess(exists, ["show-ref"]);
-        await ValidateDirectRefAsync(context.State.WorktreeRoot, reference, cancellation_token);
-
-        var commit = await git.RequireTextAsync(
-            context.State.WorktreeRoot,
-            ["rev-parse", "--verify", $"{reference}^{{commit}}"],
-            cancellation_token);
+        RequireDirectBranch(context.State.LocalBranches, reference);
         var owning_worktree = context.State.Worktrees.SingleOrDefault(worktree =>
             string.Equals(worktree.Branch, branch, StringComparison.OrdinalIgnoreCase));
-        return new TargetBranchState(branch, commit, context.Policy.Classify(branch), owning_worktree);
+        return new TargetBranchState(branch, local_branch.Commit, context.Policy.Classify(branch), owning_worktree);
     }
 
     public async Task ValidateBranchNameAsync(
@@ -474,7 +460,38 @@ internal sealed class RepositoryDiscovery(GitClient git)
         return Path.GetFullPath(path);
     }
 
-    private async Task ValidateRepositoryConfigurationAsync(
+    private async Task<RepositoryPaths> DiscoverPathsAsync(
+        string working_directory,
+        CancellationToken cancellation_token)
+    {
+        var result = await git.RunAsync(
+            working_directory,
+            ["rev-parse", "--path-format=absolute", "--show-toplevel", "--git-dir", "--git-common-dir"],
+            cancellation_token: cancellation_token);
+        if (result.ExitCode != 0)
+        {
+            var diagnostic = string.IsNullOrWhiteSpace(result.StandardError)
+                ? "Git did not identify a repository."
+                : result.StandardError.Trim();
+            throw new RepositoryException($"Repository discovery failed: {diagnostic}");
+        }
+
+        var records = Encoding.UTF8.GetString(result.StandardOutput)
+            .Replace("\r\n", "\n", StringComparison.Ordinal)
+            .TrimEnd('\n', '\0')
+            .Split('\n');
+        if (records.Length != 3 || records.Any(string.IsNullOrWhiteSpace))
+        {
+            throw new RepositoryException("Repository discovery returned malformed path output.");
+        }
+
+        return new RepositoryPaths(
+            Path.GetFullPath(records[0]),
+            Path.GetFullPath(records[1]),
+            Path.GetFullPath(records[2]));
+    }
+
+    private async Task<string> ValidateRepositoryConfigurationAsync(
         string worktree_root,
         string git_directory,
         string common_git_directory,
@@ -489,17 +506,25 @@ internal sealed class RepositoryDiscovery(GitClient git)
         }
 
         ValidateAdministrativeLayout(worktree_root, git_directory, common_git_directory);
-        var common_config_path = Path.Combine(common_git_directory, "config");
-        var scopes = new List<string> { "--local" };
-        var worktree_config = await git.RunAsync(
+        var local_result = await git.RunAsync(
             worktree_root,
-            ["config", "--local", "--bool", "--get", "extensions.worktreeConfig"],
+            ["config", "--local", "--null", "--list"],
             cancellation_token: cancellation_token);
-        if (worktree_config.ExitCode == 0 &&
-            string.Equals(
-                Encoding.UTF8.GetString(worktree_config.StandardOutput).Trim(),
-                "true",
-                StringComparison.OrdinalIgnoreCase))
+        GitClient.EnsureSuccess(local_result, ["config"]);
+        var local_entries = GitOutputParsers.ParseConfigEntries(local_result.StandardOutput);
+        ValidateConfigurationNames(local_entries.Select(entry => entry.Name));
+
+        var origin_url = RequireSingleConfigurationValue(local_entries, "remote.origin.url");
+        var worktree_config_values = ConfigurationValues(local_entries, "extensions.worktreeConfig");
+        if (worktree_config_values.Count > 1)
+        {
+            throw new RepositoryStateException(
+                "Repository Git configuration contains duplicate extensions.worktreeConfig values.");
+        }
+
+        var worktree_config_enabled = worktree_config_values.Count == 1 &&
+            ParseGitBoolean("extensions.worktreeConfig", worktree_config_values[0]);
+        if (worktree_config_enabled)
         {
             var worktree_config_path = await git.RequireTextAsync(
                 worktree_root,
@@ -520,28 +545,13 @@ internal sealed class RepositoryDiscovery(GitClient git)
                         $"'{worktree_config_path}'.");
                 }
 
-                scopes.Add("--worktree");
-            }
-        }
-        else if (worktree_config.ExitCode is not (0 or 1))
-        {
-            GitClient.EnsureSuccess(worktree_config, ["config"]);
-        }
-
-        foreach (var scope in scopes)
-        {
-            var result = await git.RunAsync(
-                worktree_root,
-                ["config", scope, "--null", "--name-only", "--list"],
-                cancellation_token: cancellation_token);
-            GitClient.EnsureSuccess(result, ["config"]);
-            var names = GitOutputParsers.ParseConfigNames(result.StandardOutput);
-            var unknown = names.Where(name =>
-                IsUnsupportedExecutableConfiguration(name, git.HasTrustedGitLfs)).ToArray();
-            if (unknown.Length > 0)
-            {
-                throw new RepositoryStateException(
-                    $"Repository Git configuration contains unsupported executable settings: {string.Join(", ", unknown)}.");
+                var worktree_result = await git.RunAsync(
+                    worktree_root,
+                    ["config", "--worktree", "--null", "--list"],
+                    cancellation_token: cancellation_token);
+                GitClient.EnsureSuccess(worktree_result, ["config"]);
+                var worktree_entries = GitOutputParsers.ParseConfigEntries(worktree_result.StandardOutput);
+                ValidateConfigurationNames(worktree_entries.Select(entry => entry.Name));
             }
         }
 
@@ -557,6 +567,60 @@ internal sealed class RepositoryDiscovery(GitClient git)
         {
             throw new RepositoryStateException("Git graft files are not supported by agent-git.");
         }
+
+        return origin_url;
+    }
+
+    private void ValidateConfigurationNames(IEnumerable<string> names)
+    {
+        var unknown = names.Where(name =>
+            IsUnsupportedExecutableConfiguration(name, git.HasTrustedGitLfs)).ToArray();
+        if (unknown.Length > 0)
+        {
+            throw new RepositoryStateException(
+                $"Repository Git configuration contains unsupported executable settings: {string.Join(", ", unknown)}.");
+        }
+    }
+
+    private static string RequireSingleConfigurationValue(
+        IReadOnlyList<GitConfigEntry> entries,
+        string name)
+    {
+        var values = ConfigurationValues(entries, name);
+        if (values.Count != 1)
+        {
+            throw new RepositoryStateException(
+                $"Repository Git configuration must contain exactly one {name} value.");
+        }
+
+        return values[0];
+    }
+
+    private static IReadOnlyList<string> ConfigurationValues(
+        IReadOnlyList<GitConfigEntry> entries,
+        string name) => entries
+        .Where(entry => string.Equals(entry.Name, name, StringComparison.OrdinalIgnoreCase))
+        .Select(entry => entry.Value)
+        .ToArray();
+
+    private static bool ParseGitBoolean(string name, string value)
+    {
+        if (value.Length == 0 || value.Equals("true", StringComparison.OrdinalIgnoreCase) ||
+            value.Equals("yes", StringComparison.OrdinalIgnoreCase) ||
+            value.Equals("on", StringComparison.OrdinalIgnoreCase) || value == "1")
+        {
+            return true;
+        }
+
+        if (value.Equals("false", StringComparison.OrdinalIgnoreCase) ||
+            value.Equals("no", StringComparison.OrdinalIgnoreCase) ||
+            value.Equals("off", StringComparison.OrdinalIgnoreCase) || value == "0")
+        {
+            return false;
+        }
+
+        throw new RepositoryStateException(
+            $"Repository Git configuration contains invalid boolean value '{value}' for {name}.");
     }
 
     private static void ValidateAdministrativeLayout(
@@ -712,25 +776,48 @@ internal sealed class RepositoryDiscovery(GitClient git)
         }
     }
 
-    private async Task ValidateDirectRefAsync(
+    private async Task<IReadOnlyDictionary<string, LocalBranchRef>> DiscoverLocalBranchesAsync(
         string worktree_root,
-        string reference,
         CancellationToken cancellation_token)
     {
-        var symref = await git.RunAsync(
+        var result = await git.RunAsync(
             worktree_root,
-            ["symbolic-ref", "--quiet", reference],
+            [
+                "for-each-ref",
+                "--format=%(refname)%00%(objectname)%00%(objecttype)%00%(symref)%00%(*objectname)%00%(*objecttype)%00",
+                "refs/heads",
+            ],
             cancellation_token: cancellation_token);
-        if (symref.ExitCode == 0)
+        GitClient.EnsureSuccess(result, ["for-each-ref"]);
+
+        var branches = GitOutputParsers.ParseLocalBranchRefs(result.StandardOutput);
+        try
+        {
+            return branches.ToDictionary(branch => branch.Reference, StringComparer.Ordinal);
+        }
+        catch (ArgumentException exception)
+        {
+            throw new RepositoryStateException(
+                "Git for-each-ref returned duplicate local branch records.", exception);
+        }
+    }
+
+    internal static LocalBranchRef RequireDirectBranch(
+        IReadOnlyDictionary<string, LocalBranchRef> local_branches,
+        string reference)
+    {
+        if (!local_branches.TryGetValue(reference, out var branch))
+        {
+            throw new RepositoryStateException($"Branch ref '{reference}' does not exist.");
+        }
+
+        if (branch.IsSymbolic)
         {
             throw new RepositoryStateException(
                 $"Branch ref '{reference}' is symbolic and is not safe for agent-git.");
         }
 
-        if (symref.ExitCode != 1)
-        {
-            GitClient.EnsureSuccess(symref, ["symbolic-ref"]);
-        }
+        return branch;
     }
 
     private async Task<StatusSnapshot> DiscoverStatusSnapshotAsync(
@@ -759,6 +846,11 @@ internal sealed class RepositoryDiscovery(GitClient git)
 
     private sealed record StatusSnapshot(WorkingTreeStatus Status, string Fingerprint);
 
+    private sealed record RepositoryPaths(
+        string WorktreeRoot,
+        string GitDirectory,
+        string CommonGitDirectory);
+
     private async Task<IReadOnlyList<Worktree>> DiscoverWorktreesAsync(
         string worktree_root,
         CancellationToken cancellation_token)
@@ -778,10 +870,10 @@ internal sealed class RepositoryDiscovery(GitClient git)
         }
     }
 
-    private async Task<string?> FindHomeBranchAsync(
+    private static string? FindHomeBranch(
         string root,
         GitPolicy policy,
-        CancellationToken cancellation_token)
+        IReadOnlyDictionary<string, LocalBranchRef> local_branches)
     {
         var directory_name = Path.GetFileName(root.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
         if (string.IsNullOrWhiteSpace(directory_name) || policy.Classify(directory_name) != BranchClassification.Workspace)
@@ -789,16 +881,13 @@ internal sealed class RepositoryDiscovery(GitClient git)
             return null;
         }
 
-        var exists = await git.RunAsync(
-            root,
-            ["show-ref", "--verify", "--quiet", $"refs/heads/{directory_name}"],
-            cancellation_token: cancellation_token);
-        if (exists.ExitCode == 1)
+        var reference = $"refs/heads/{directory_name}";
+        if (!local_branches.ContainsKey(reference))
         {
             return null;
         }
 
-        GitClient.EnsureSuccess(exists, ["show-ref"]);
+        RequireDirectBranch(local_branches, reference);
         return directory_name;
     }
 

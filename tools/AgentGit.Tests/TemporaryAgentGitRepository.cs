@@ -155,6 +155,24 @@ internal sealed class TemporaryAgentGitRepository : IDisposable
         return new ApplicationResult(exit_code, output.ToString(), error.ToString());
     }
 
+    public async Task<RepositoryContext> DiscoverAsync(string working_directory)
+    {
+        var git = new GitClient(Trust, new ProcessRunner());
+        return await new RepositoryDiscovery(git).DiscoverAsync(Trust, working_directory);
+    }
+
+    public async Task<EvaluatedOperation> EvaluateAsync(
+        RepositoryContext context,
+        MutationRequest request)
+    {
+        var discovery = new RepositoryDiscovery(new GitClient(Trust, new ProcessRunner()));
+        return await new PolicyEvaluator(discovery).EvaluateAsync(
+            request,
+            context,
+            context.State.WorktreeRoot,
+            CancellationToken.None);
+    }
+
     public void Dispose()
     {
         foreach (var file_path in Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories))

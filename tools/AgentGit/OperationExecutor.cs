@@ -220,7 +220,7 @@ internal sealed class OperationExecutor(GitClient git, RepositoryDiscovery disco
         var root = state.WorktreeRoot;
         try
         {
-            await discovery.RevalidateMutationSnapshotAsync(context, cancellation_token);
+            var local_branches = await discovery.RevalidateMutationSnapshotAsync(context, cancellation_token);
             var head = await git.RequireTextAsync(
                 root,
                 ["rev-parse", "--verify", "HEAD^{commit}"],
@@ -242,10 +242,9 @@ internal sealed class OperationExecutor(GitClient git, RepositoryDiscovery disco
                 }
 
                 branch = null;
-                await discovery.RevalidateDirectBranchAsync(
-                    root,
-                    state.RebaseRecovery.Marker!.OriginalBranch,
-                    cancellation_token);
+                RepositoryDiscovery.RequireDirectBranch(
+                    local_branches,
+                    $"refs/heads/{state.RebaseRecovery.Marker!.OriginalBranch}");
             }
             else
             {
@@ -257,14 +256,12 @@ internal sealed class OperationExecutor(GitClient git, RepositoryDiscovery disco
                 branch = Encoding.UTF8.GetString(branch_result.StandardOutput).TrimEnd('\r', '\n', '\0');
             }
 
-            var policy_commit = await git.RequireTextAsync(
-                root,
-                ["rev-parse", "--verify", $"{context.Registration.PolicyRef}^{{commit}}"],
-                cancellation_token);
-            var base_commit = await git.RequireTextAsync(
-                root,
-                ["rev-parse", "--verify", $"refs/heads/{context.Policy.BaseBranch}^{{commit}}"],
-                cancellation_token);
+            var policy_commit = RepositoryDiscovery.RequireDirectBranch(
+                local_branches,
+                context.Registration.PolicyRef).Commit;
+            var base_commit = RepositoryDiscovery.RequireDirectBranch(
+                local_branches,
+                $"refs/heads/{context.Policy.BaseBranch}").Commit;
 
             if (!string.Equals(head, state.HeadCommit, StringComparison.Ordinal) ||
                 !string.Equals(branch, state.CurrentBranch, StringComparison.Ordinal) ||
@@ -277,14 +274,9 @@ internal sealed class OperationExecutor(GitClient git, RepositoryDiscovery disco
 
             if (operation.TargetBranch is not null)
             {
-                await discovery.RevalidateDirectBranchAsync(
-                    root,
-                    operation.TargetBranch.Name,
-                    cancellation_token);
-                var target_commit = await git.RequireTextAsync(
-                    root,
-                    ["rev-parse", "--verify", $"refs/heads/{operation.TargetBranch.Name}^{{commit}}"],
-                    cancellation_token);
+                var target_commit = RepositoryDiscovery.RequireDirectBranch(
+                    local_branches,
+                    $"refs/heads/{operation.TargetBranch.Name}").Commit;
                 if (!string.Equals(target_commit, operation.TargetBranch.Commit, StringComparison.Ordinal))
                 {
                     throw new RepositoryStateException(

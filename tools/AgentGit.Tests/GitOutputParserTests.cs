@@ -114,6 +114,68 @@ public sealed class GitOutputParserTests
         Assert.AreEqual(0, GitOutputParsers.ParseConfigNames([]).Count);
     }
 
+    [TestMethod]
+    public void Config_entry_parser_preserves_empty_and_multiline_values()
+    {
+        var entries = ParseConfigEntries(
+            "remote.origin.url\nhttps://example.invalid/repository.git\0" +
+            "extensions.worktreeconfig\n\0" +
+            "test.multiline\nfirst\nsecond\0");
+
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                new GitConfigEntry("remote.origin.url", "https://example.invalid/repository.git"),
+                new GitConfigEntry("extensions.worktreeconfig", string.Empty),
+                new GitConfigEntry("test.multiline", "first\nsecond"),
+            },
+            entries.ToArray());
+    }
+
+    [TestMethod]
+    public void Config_entry_parser_rejects_malformed_records()
+    {
+        Assert.ThrowsException<RepositoryStateException>(() => ParseConfigEntries("core.filemode\0"));
+        Assert.ThrowsException<RepositoryStateException>(() => ParseConfigEntries("\ntrue\0"));
+        Assert.ThrowsException<RepositoryStateException>(() => ParseConfigEntries(" core.filemode\ntrue\0"));
+        Assert.ThrowsException<RepositoryStateException>(() => ParseConfigEntries("core.filemode\ntrue"));
+        Assert.ThrowsException<RepositoryStateException>(() =>
+            GitOutputParsers.ParseConfigEntries([0xff, 0x00]));
+    }
+
+    [TestMethod]
+    public void Local_branch_parser_reads_direct_symbolic_and_peeled_refs()
+    {
+        var branches = ParseLocalBranches(
+            $"refs/heads/dev\0{object_id_1}\0commit\0\0\0\0\n" +
+            $"refs/heads/alias\0{object_id_1}\0commit\0refs/heads/dev\0\0\0\n" +
+            $"refs/heads/tagged\0{object_id_2}\0tag\0\0{object_id_3}\0commit\0\n");
+
+        CollectionAssert.AreEqual(
+            new[]
+            {
+                new LocalBranchRef("refs/heads/dev", object_id_1, false),
+                new LocalBranchRef("refs/heads/alias", object_id_1, true),
+                new LocalBranchRef("refs/heads/tagged", object_id_3, false),
+            },
+            branches.ToArray());
+    }
+
+    [TestMethod]
+    public void Local_branch_parser_rejects_malformed_or_non_commit_refs()
+    {
+        Assert.ThrowsException<RepositoryStateException>(() => ParseLocalBranches(
+            $"refs/tags/dev\0{object_id_1}\0commit\0\0\0\0\n"));
+        Assert.ThrowsException<RepositoryStateException>(() => ParseLocalBranches(
+            $"refs/heads/dev\0bad-id\0commit\0\0\0\0\n"));
+        Assert.ThrowsException<RepositoryStateException>(() => ParseLocalBranches(
+            $"refs/heads/dev\0{object_id_1}\0blob\0\0\0\0\n"));
+        Assert.ThrowsException<RepositoryStateException>(() => ParseLocalBranches(
+            $"refs/heads/dev\0{object_id_1}\0commit\0\0\0\0"));
+        Assert.ThrowsException<RepositoryStateException>(() =>
+            GitOutputParsers.ParseLocalBranchRefs([0xff, 0x0a]));
+    }
+
     private static WorkingTreeStatus ParseStatus(string value)
     {
         return GitOutputParsers.ParseStatus(Encoding.UTF8.GetBytes(value));
@@ -122,5 +184,15 @@ public sealed class GitOutputParserTests
     private static IReadOnlyList<string> ParseConfig(string value)
     {
         return GitOutputParsers.ParseConfigNames(Encoding.UTF8.GetBytes(value));
+    }
+
+    private static IReadOnlyList<GitConfigEntry> ParseConfigEntries(string value)
+    {
+        return GitOutputParsers.ParseConfigEntries(Encoding.UTF8.GetBytes(value));
+    }
+
+    private static IReadOnlyList<LocalBranchRef> ParseLocalBranches(string value)
+    {
+        return GitOutputParsers.ParseLocalBranchRefs(Encoding.UTF8.GetBytes(value));
     }
 }

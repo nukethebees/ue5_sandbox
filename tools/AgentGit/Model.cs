@@ -137,6 +137,7 @@ internal sealed record RepositoryState(
     RepositoryOperationState OperationState,
     RebaseRecoveryState RebaseRecovery,
     IReadOnlyList<Worktree> Worktrees,
+    IReadOnlyDictionary<string, LocalBranchRef> LocalBranches,
     string? HomeBranch);
 
 internal sealed record RepositoryContext(
@@ -149,6 +150,8 @@ internal sealed record TargetBranchState(
     string Commit,
     BranchClassification Classification,
     Worktree? Worktree);
+
+internal sealed record LocalBranchRef(string Reference, string Commit, bool IsSymbolic);
 
 internal sealed record PolicyDecision(bool Allowed, string Reason)
 {
@@ -200,3 +203,6 @@ internal sealed class GitCommandException(string message, int git_exit_code, str
 
 internal sealed class RepositoryStateException(string message, Exception? inner_exception = null)
     : AgentGitException(message, ExitCodes.StateFailure, inner_exception);
+
+internal sealed class ProcessOutputLimitException(string message)
+    : AgentGitException(message, ExitCodes.StateFailure);

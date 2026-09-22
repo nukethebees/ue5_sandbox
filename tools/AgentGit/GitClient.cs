@@ -24,7 +24,8 @@ internal sealed class GitClient
         IReadOnlyList<string> arguments,
         TimeSpan? timeout = null,
         CancellationToken cancellation_token = default,
-        IReadOnlyDictionary<string, string>? environment_override = null)
+        IReadOnlyDictionary<string, string>? environment_override = null,
+        int maximum_captured_stream_bytes = 64 * 1024 * 1024)
     {
         var full_arguments = new List<string>
         {
@@ -64,7 +65,8 @@ internal sealed class GitClient
                 full_arguments,
                 Path.GetFullPath(working_directory),
                 environment_override ?? environment,
-                timeout ?? query_timeout),
+                timeout ?? query_timeout,
+                maximum_captured_stream_bytes),
             cancellation_token);
     }
 

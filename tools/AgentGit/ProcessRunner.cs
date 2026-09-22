@@ -75,7 +75,7 @@ internal sealed class ProcessRunner : IProcessRunner
         var error = await error_task;
         if (output.ExceededLimit || error.ExceededLimit)
         {
-            throw new RepositoryStateException(
+            throw new ProcessOutputLimitException(
                 $"Trusted process '{request.FileName}' exceeded its " +
                 $"{request.MaximumCapturedStreamBytes} byte diagnostic output limit.");
         }

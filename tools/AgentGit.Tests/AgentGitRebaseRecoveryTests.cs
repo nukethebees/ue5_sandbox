@@ -228,15 +228,15 @@ public sealed class AgentGitRebaseRecoveryTests
         var setup = CreateConflictingRebase(fixture, "feature/stale", conflict_count: 1);
         File.WriteAllText(MarkerPath(fixture, setup.Worktree), "{ stale marker }");
 
-        var stale_status = await fixture.RunAgentGitAsync(setup.Worktree, "status");
-        var stale_abort = await fixture.RunAgentGitAsync(setup.Worktree, "rebase-abort");
+        var stale_context = await fixture.DiscoverAsync(setup.Worktree);
+        var stale_abort = await fixture.EvaluateAsync(stale_context, new RebaseAbortRequest(false));
         var start = await fixture.RunAgentGitAsync(setup.Worktree, "rebase-base");
-        var status = await fixture.RunAgentGitAsync(setup.Worktree, "status");
+        var active_context = await fixture.DiscoverAsync(setup.Worktree);
 
-        StringAssert.Contains(stale_status.Output, "AgentGit rebase recovery: unavailable (stale metadata)");
-        Assert.AreEqual(ExitCodes.PolicyDenied, stale_abort.ExitCode, stale_abort.Error);
+        Assert.AreEqual(RebaseRecoveryAvailability.Stale, stale_context.State.RebaseRecovery.Availability);
+        Assert.IsFalse(stale_abort.Decision.Allowed);
         Assert.AreEqual(ExitCodes.GitFailure, start.ExitCode, start.Error);
-        StringAssert.Contains(status.Output, "AgentGit rebase recovery: available");
+        Assert.AreEqual(RebaseRecoveryAvailability.Available, active_context.State.RebaseRecovery.Availability);
         Assert.AreEqual(
             ExitCodes.Success,
             (await fixture.RunAgentGitAsync(setup.Worktree, "rebase-abort")).ExitCode);
@@ -252,18 +252,24 @@ public sealed class AgentGitRebaseRecoveryTests
             ExitCodes.GitFailure,
             (await fixture.RunAgentGitAsync(setup.Worktree, "rebase-base")).ExitCode);
 
-        foreach (var command in new[]
-                 {
-                     new[] { "commit", "-m", "forbidden" },
-                     new[] { "switch", "feature/other" },
-                     new[] { "switch-create", "feature/new" },
-                     new[] { "branch-delete", "feature/other" },
-                     new[] { "rebase-base" },
-                 })
+        var context = await fixture.DiscoverAsync(setup.Worktree);
+        var denied = new MutationRequest[]
         {
-            var result = await fixture.RunAgentGitAsync(setup.Worktree, command);
-            Assert.AreEqual(ExitCodes.PolicyDenied, result.ExitCode, string.Join(' ', command) + result.Error);
+            new CommitRequest(false, "forbidden"),
+            new SwitchRequest(false, "feature/other"),
+            new SwitchCreateRequest(false, "feature/new"),
+            new BranchDeleteRequest(false, "feature/other"),
+            new RebaseBaseRequest(false),
+        };
+        foreach (var request in denied)
+        {
+            var evaluated = await fixture.EvaluateAsync(context, request);
+            Assert.IsFalse(evaluated.Decision.Allowed, request.Operation.ToString());
         }
+
+        Assert.IsTrue((await fixture.EvaluateAsync(context, new AddAllRequest(false))).Decision.Allowed);
+        Assert.IsTrue((await fixture.EvaluateAsync(context, new RebaseContinueRequest(false))).Decision.Allowed);
+        Assert.IsTrue((await fixture.EvaluateAsync(context, new RebaseAbortRequest(false))).Decision.Allowed);
 
         Assert.AreEqual(
             ExitCodes.Success,
@@ -310,15 +316,18 @@ public sealed class AgentGitRebaseRecoveryTests
         fixture.RunGit("add", ".agent-git.json");
         fixture.RunGit("commit", "-qm", "restrict rebase policy during conflict");
 
-        var status = await fixture.RunAgentGitAsync(setup.Worktree, "status");
-        var add = await fixture.RunAgentGitAsync(setup.Worktree, "add-all");
-        var resume = await fixture.RunAgentGitAsync(setup.Worktree, "rebase-continue");
-        var abort = await fixture.RunAgentGitAsync(setup.Worktree, "rebase-abort");
+        var context = await fixture.DiscoverAsync(setup.Worktree);
+        var add = await fixture.EvaluateAsync(context, new AddAllRequest(false));
+        var resume = await fixture.EvaluateAsync(context, new RebaseContinueRequest(false));
+        var abort = await fixture.EvaluateAsync(context, new RebaseAbortRequest(false));
 
-        StringAssert.Contains(status.Output, "AgentGit rebase recovery: abort only");
-        Assert.AreEqual(ExitCodes.PolicyDenied, add.ExitCode, add.Error);
-        Assert.AreEqual(ExitCodes.PolicyDenied, resume.ExitCode, resume.Error);
-        Assert.AreEqual(ExitCodes.Success, abort.ExitCode, abort.Error);
+        Assert.AreEqual(RebaseRecoveryAvailability.AbortOnly, context.State.RebaseRecovery.Availability);
+        Assert.IsFalse(add.Decision.Allowed);
+        Assert.IsFalse(resume.Decision.Allowed);
+        Assert.IsTrue(abort.Decision.Allowed);
+        Assert.AreEqual(
+            ExitCodes.Success,
+            (await fixture.RunAgentGitAsync(setup.Worktree, "rebase-abort")).ExitCode);
         Assert.AreEqual(setup.OriginalHead, fixture.RunGitAt(setup.Worktree, "rev-parse", "HEAD").Trim());
     }
 

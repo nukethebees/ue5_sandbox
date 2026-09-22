@@ -132,6 +132,7 @@ public sealed class AgentGitAdversarialTests
     [TestMethod]
     public async Task Executable_alias_diff_and_submodule_configuration_fail_closed()
     {
+        using var fixture = new TemporaryAgentGitRepository();
         foreach (var setting in new[]
                  {
                      (Name: "alias.status", Value: "!arbitrary-command"),
@@ -146,15 +147,21 @@ public sealed class AgentGitAdversarialTests
                      (Name: "submodule.example.update", Value: "!arbitrary-command"),
                  })
         {
-            using var fixture = new TemporaryAgentGitRepository();
             fixture.RunGit("config", setting.Name, setting.Value);
 
-            var result = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "status");
+            try
+            {
+                var result = await fixture.RunAgentGitAsync(fixture.RepositoryRoot, "status");
 
-            Assert.AreEqual(ExitCodes.StateFailure, result.ExitCode, result.Error);
-            Assert.IsTrue(
-                result.Error.Contains(setting.Name, StringComparison.OrdinalIgnoreCase),
-                result.Error);
+                Assert.AreEqual(ExitCodes.StateFailure, result.ExitCode, result.Error);
+                Assert.IsTrue(
+                    result.Error.Contains(setting.Name, StringComparison.OrdinalIgnoreCase),
+                    result.Error);
+            }
+            finally
+            {
+                fixture.RunGit("config", "--unset-all", setting.Name);
+            }
         }
     }
 

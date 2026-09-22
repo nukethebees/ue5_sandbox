@@ -60,17 +60,104 @@ internal static class GitOutputParsers
         var names = ParseNullDelimited(output, "Git config");
         foreach (var name in names)
         {
-            var separator = name.IndexOf('.');
-            if (separator <= 0 || separator == name.Length - 1 ||
-                char.IsWhiteSpace(name[0]) || char.IsWhiteSpace(name[^1]) ||
-                name.Any(character => char.IsControl(character)))
-            {
-                throw new RepositoryStateException(
-                    $"Git config returned a malformed configuration name '{name}'.");
-            }
+            ValidateConfigName(name);
         }
 
         return names;
+    }
+
+    public static IReadOnlyList<GitConfigEntry> ParseConfigEntries(byte[] output)
+    {
+        var records = ParseNullDelimited(output, "Git config");
+        var entries = new List<GitConfigEntry>(records.Count);
+        foreach (var record in records)
+        {
+            var separator = record.IndexOf('\n');
+            if (separator <= 0)
+            {
+                throw new RepositoryStateException("Git config returned a malformed name/value record.");
+            }
+
+            var name = record[..separator];
+            ValidateConfigName(name);
+            entries.Add(new GitConfigEntry(name, record[(separator + 1)..]));
+        }
+
+        return entries;
+    }
+
+    public static IReadOnlyList<LocalBranchRef> ParseLocalBranchRefs(byte[] output)
+    {
+        if (output.Length == 0)
+        {
+            return [];
+        }
+
+        string text;
+        try
+        {
+            text = strict_utf8.GetString(output);
+        }
+        catch (DecoderFallbackException exception)
+        {
+            throw new RepositoryStateException("Git for-each-ref returned invalid UTF-8 output.", exception);
+        }
+
+        if (text[^1] != '\n')
+        {
+            throw new RepositoryStateException("Git for-each-ref returned an unterminated record.");
+        }
+
+        var records = text.Split('\n');
+        if (records[^1].Length != 0 || records[..^1].Any(record => record.Length == 0))
+        {
+            throw new RepositoryStateException("Git for-each-ref returned an empty record.");
+        }
+
+        var branches = new List<LocalBranchRef>(records.Length - 1);
+        foreach (var record in records[..^1])
+        {
+            var fields = record.Split('\0');
+            if (fields.Length != 7 || fields[^1].Length != 0 ||
+                !fields[0].StartsWith("refs/heads/", StringComparison.Ordinal) ||
+                fields[0].Length == "refs/heads/".Length ||
+                !IsObjectId(fields[1]) ||
+                fields[3].Length > 0 && !fields[3].StartsWith("refs/", StringComparison.Ordinal))
+            {
+                throw new RepositoryStateException("Git for-each-ref returned a malformed branch record.");
+            }
+
+            string commit;
+            if (fields[2] == "commit" && fields[4].Length == 0 && fields[5].Length == 0)
+            {
+                commit = fields[1];
+            }
+            else if (fields[2] == "tag" && IsObjectId(fields[4]) && fields[5] == "commit")
+            {
+                commit = fields[4];
+            }
+            else
+            {
+                throw new RepositoryStateException(
+                    $"Local branch ref '{fields[0]}' does not resolve to a commit.");
+            }
+
+            branches.Add(new LocalBranchRef(fields[0], commit, fields[3].Length > 0));
+        }
+
+        return branches;
+    }
+
+    private static void ValidateConfigName(string name)
+    {
+        var separator = name.IndexOf('.');
+        if (separator <= 0 || separator == name.Length - 1 ||
+            char.IsWhiteSpace(name[0]) || char.IsWhiteSpace(name[^1]) ||
+            name.Any(character => char.IsControl(character)))
+        {
+            throw new RepositoryStateException(
+                $"Git config returned a malformed configuration name '{name}'.");
+        }
     }
 
     private static IReadOnlyList<string> ParseNullDelimited(byte[] output, string source)
@@ -197,3 +284,5 @@ internal static class GitOutputParsers
             int.TryParse(value[1..], out var score) && score is >= 0 and <= 100;
     }
 }
+
+internal sealed record GitConfigEntry(string Name, string Value);
