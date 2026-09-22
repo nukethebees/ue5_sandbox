@@ -18,6 +18,9 @@
 namespace codegen {
 namespace {
 
+template <typename>
+inline constexpr bool unlowered_declaration_schema{false};
+
 auto lower_umbrella(UmbrellaModuleSchema const& module) -> Module {
     NodeListBuilder nodes;
     for (auto const& header : module.headers) {
@@ -192,8 +195,15 @@ auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
                                 } else if constexpr (std::is_same_v<D, VectorSoaSchema>) {
                                     return detail::lower_vector(
                                         value, module.soa_backend, manifest.types);
-                                } else {
+                                } else if constexpr (std::is_same_v<D, LinearQuantizedSchema> ||
+                                                     std::is_same_v<D, IntegerVarintSchema> ||
+                                                     std::is_same_v<D, FixedPointSchema> ||
+                                                     std::is_same_v<D, MiniFloatSchema> ||
+                                                     std::is_same_v<D, OptionalSentinelSchema> ||
+                                                     std::is_same_v<D, OptionalPresenceBitSchema>) {
                                     return {};
+                                } else {
+                                    static_assert(unlowered_declaration_schema<D>);
                                 }
                             },
                             declaration));

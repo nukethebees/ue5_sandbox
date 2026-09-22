@@ -387,7 +387,9 @@ auto enum_code_fits(lispb::schema::EnumCode const code, EnumStorageDomain const 
     return code.negative ? code.magnitude <= sign_magnitude : code.magnitude < sign_magnitude;
 }
 
-void validate_enum(EnumModuleSchema const& module, std::map<std::string, CppType> const& types) {
+void validate_enum(EnumModuleSchema const& module,
+                   std::map<std::string, CppType> const& types,
+                   bool const allow_mixed_apis = false) {
     if (module.helper_namespace.has_value()) {
         require_qualified_identifier(*module.helper_namespace,
                                      "Enum module '" + module.settings.name + "' helper namespace");
@@ -395,7 +397,7 @@ void validate_enum(EnumModuleSchema const& module, std::map<std::string, CppType
     std::optional<bool> native_api;
     std::set<std::string> enum_names;
     for (auto const& schema : module.enums) {
-        if (native_api.has_value() && schema.native_api != *native_api) {
+        if (!allow_mixed_apis && native_api.has_value() && schema.native_api != *native_api) {
             throw std::invalid_argument{"Enum module '" + module.settings.name +
                                         "' cannot mix native and Unreal enum APIs"};
         }
@@ -1948,7 +1950,8 @@ void validate_vector(VectorModuleSchema const& module,
 }
 
 void validate_facade(FacadeModuleSchema const& module,
-                     std::map<std::string, CppType> const& types) {
+                     std::map<std::string, CppType> const& types,
+                     bool const allow_unused_source = false) {
     auto const& facade{module.facade};
     require_identifier(facade.name, "Facade name");
     require_identifier(facade.target_member_name, "Facade '" + facade.name + "' target member");
@@ -1956,9 +1959,14 @@ void validate_facade(FacadeModuleSchema const& module,
     if (facade.methods.empty()) {
         throw std::invalid_argument{"Facade '" + facade.name + "' must have methods"};
     }
-    if (facade.definitions_in_source != module.settings.source.has_value()) {
+    if (facade.definitions_in_source && !module.settings.source.has_value()) {
         throw std::invalid_argument{"Facade '" + facade.name +
-                                    "' source output must match definitions_in_source"};
+                                    "' definitions in source require a source output"};
+    }
+    if (!allow_unused_source && !facade.definitions_in_source &&
+        module.settings.source.has_value()) {
+        throw std::invalid_argument{"Facade '" + facade.name +
+                                    "' does not emit source definitions"};
     }
     for (auto const* access : {&facade.bind_access, &facade.method_access}) {
         if (*access != "public" && *access != "private") {
@@ -2127,65 +2135,18 @@ void validate_normal_module(NormalModuleSchema const& module, Manifest const& ma
     HomogeneousModuleSchema homogeneous{module.settings, {}};
     std::set<std::string> names;
     std::set<std::string> generated_names;
-    auto add_generated_name = [&](std::string const& name) {
-        if (!generated_names.insert(name).second) {
-            throw std::invalid_argument{"Generated C++ name collision in module '" +
-                                        module.settings.name + "': " + name};
-        }
-    };
     for (auto const& declaration : module.declarations) {
         auto const& name{declaration_name(declaration)};
         if (!names.insert(name).second) {
             throw std::invalid_argument{"Duplicate declaration name in module '" +
                                         module.settings.name + "': " + name};
         }
-        std::visit(
-            [&](auto const& value) {
-                using T = std::decay_t<decltype(value)>;
-                if constexpr (std::is_same_v<T, SoaSchema>) {
-                    add_generated_name(value.name);
-                    add_generated_name(value.view_name.value_or(value.name + "View"));
-                    add_generated_name(value.const_view_name.value_or(value.name + "ConstView"));
-                    if (value.field_mask_name.has_value()) {
-                        add_generated_name(*value.field_mask_name);
-                    }
-                    if (value.field_enum_name.has_value()) {
-                        add_generated_name(*value.field_enum_name);
-                    }
-                    if (value.single_allocation.has_value()) {
-                        add_generated_name(*value.single_allocation);
-                        add_generated_name(value.name + "SingleLayout");
-                        add_generated_name(value.name + "SingleView");
-                        add_generated_name(value.name + "SingleConstView");
-                        add_generated_name(value.name + "SingleViewImpl");
-                    }
-                    for (auto const& variant : value.single_allocation_variants) {
-                        add_generated_name(variant.name);
-                    }
-                } else if constexpr (std::is_same_v<T, HomogeneousLayoutSchema>) {
-                    for (auto const& item : value.value_types) {
-                        add_generated_name("F" + value.name + item.suffix);
-                    }
-                } else if constexpr (std::is_same_v<T, IntegerScalarSchema>) {
-                    if (value.cpp_emission != IntegerScalarCppEmission::none) {
-                        for (auto const& code : value.named_codes) {
-                            add_generated_name(value.name + "_" + code.name);
-                        }
-                        if (value.cpp_emission == IntegerScalarCppEmission::constants_with_names) {
-                            add_generated_name(value.name + "_name");
-                        }
-                    }
-                } else if constexpr (!std::is_same_v<T, LinearQuantizedSchema> &&
-                                     !std::is_same_v<T, IntegerVarintSchema> &&
-                                     !std::is_same_v<T, FixedPointSchema> &&
-                                     !std::is_same_v<T, MiniFloatSchema> &&
-                                     !std::is_same_v<T, OptionalSentinelSchema> &&
-                                     !std::is_same_v<T, OptionalPresenceBitSchema> &&
-                                     !std::is_same_v<T, HomogeneousLayoutSchema>) {
-                    add_generated_name(name);
-                }
-            },
-            declaration);
+        for (auto const& generated_name : generated_cpp_names(declaration, module)) {
+            if (!generated_names.insert(generated_name).second) {
+                throw std::invalid_argument{"Generated C++ name collision in module '" +
+                                            module.settings.name + "': " + generated_name};
+            }
+        }
         std::visit(
             [&](auto const& value) {
                 using T = std::decay_t<decltype(value)>;
@@ -2236,12 +2197,13 @@ void validate_normal_module(NormalModuleSchema const& module, Manifest const& ma
                     }
                     validate_vector(vector, manifest.types);
                 } else if constexpr (std::is_same_v<T, FacadeSchema>) {
-                    validate_facade(FacadeModuleSchema{module.settings, value}, manifest.types);
+                    validate_facade(
+                        FacadeModuleSchema{module.settings, value}, manifest.types, true);
                 }
             },
             declaration);
     }
-    if (!enums.enums.empty()) validate_enum(enums, manifest.types);
+    if (!enums.enums.empty()) validate_enum(enums, manifest.types, true);
     if (!scalars.scalars.empty()) validate_integer_scalars(scalars, manifest.types);
     if (!representations.linear_quantized.empty() || !representations.integer_varints.empty() ||
         !representations.fixed_points.empty() || !representations.mini_floats.empty() ||

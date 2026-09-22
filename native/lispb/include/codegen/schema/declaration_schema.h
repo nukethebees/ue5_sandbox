@@ -22,8 +22,11 @@
 #include <string>
 #include <string_view>
 #include <variant>
+#include <vector>
 
 namespace codegen {
+
+struct NormalModuleSchema;
 
 using DeclarationSchema = std::variant<EnumSchema,
                                        IntegerScalarSchema,
@@ -67,6 +70,8 @@ auto declaration_kind(DeclarationSchema const& declaration) -> DeclarationKind;
 auto declaration_head(DeclarationSchema const& declaration) -> std::string_view;
 auto declaration_name(DeclarationSchema const& declaration) -> std::string const&;
 auto contributes_semantic_type(DeclarationSchema const& declaration) -> bool;
+auto generated_cpp_names(DeclarationSchema const& declaration, NormalModuleSchema const& module)
+    -> std::vector<std::string>;
 
 template <typename Schema>
 auto declaration_if(DeclarationSchema* declaration) -> Schema* {
