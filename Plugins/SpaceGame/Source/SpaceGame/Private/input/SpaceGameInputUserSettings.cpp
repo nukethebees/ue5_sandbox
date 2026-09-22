@@ -117,6 +117,51 @@ auto USpaceGameInputUserSettings::delete_custom_key_profile(FString const& profi
     return true;
 }
 
+auto USpaceGameInputUserSettings::migrate_legacy_gamepad_bindings() -> bool {
+    constexpr int32 current_schema_version{1};
+    if (gamepad_binding_schema_version_ >= current_schema_version ||
+        RegisteredMappingContexts.IsEmpty()) {
+        return false;
+    }
+
+    FName const fire_action_name{TEXT("IA_ship_fire")};
+    FName const cycle_profile_action_name{TEXT("IA_cycle_input_mapping_context")};
+    for (auto const& profile_pair : SavedKeyProfilesMap) {
+        auto* const profile{profile_pair.Value.Get()};
+        if (!IsValid(profile)) {
+            continue;
+        }
+
+        TArray<FName> mapping_names;
+        for (auto const& row : profile->GetPlayerMappingRows()) {
+            mapping_names.Add(row.Key);
+        }
+        for (auto const mapping_name : mapping_names) {
+            auto* const row{profile->FindKeyMappingRowMutable(mapping_name)};
+            if (row == nullptr) {
+                continue;
+            }
+            for (auto& mapping : row->Mappings) {
+                auto const* const action{mapping.GetAssociatedInputAction()};
+                if (!IsValid(action)) {
+                    continue;
+                }
+                auto const current_key{mapping.GetCurrentKey()};
+                if ((action->GetFName() == fire_action_name &&
+                     current_key == EKeys::Gamepad_FaceButton_Bottom) ||
+                    (action->GetFName() == cycle_profile_action_name &&
+                     current_key == EKeys::Gamepad_LeftTriggerAxis)) {
+                    mapping.ResetToDefault();
+                }
+            }
+        }
+    }
+
+    gamepad_binding_schema_version_ = current_schema_version;
+    OnSettingsChanged.Broadcast(this);
+    return true;
+}
+
 auto USpaceGameInputUserSettings::custom_key_profile_source_id(FString const& profile_id) const
     -> FString {
     if (auto const* const source_id{custom_profile_source_ids_.Find(profile_id)}) {

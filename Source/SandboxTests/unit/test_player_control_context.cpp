@@ -442,6 +442,11 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
                                       return mapping.Action == input->fire_laser &&
                                              mapping.Key == EKeys::Gamepad_FaceButton_Bottom;
                                   }));
+            TestRunner->TestFalse(TEXT("No profile maps left trigger to control-profile cycling"),
+                                  mappings.ContainsByPredicate([input](auto const& mapping) {
+                                      return mapping.Action == input->cycle_input_mapping_context &&
+                                             mapping.Key == EKeys::Gamepad_LeftTriggerAxis;
+                                  }));
             auto const* const descend{mappings.FindByPredicate([input](auto const& mapping) {
                 return mapping.Action == input->vertical_move &&
                        mapping.Key == EKeys::Gamepad_FaceButton_Bottom;
@@ -501,6 +506,9 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
             has_named_mapping(TEXT("IA_Ship_EngagePointerTurn"), EKeys::RightMouseButton));
         TestRunner->TestTrue(TEXT("Left trigger provides analog throttle"),
                              has_mapping(input->throttle, EKeys::Gamepad_LeftTriggerAxis));
+        TestRunner->TestFalse(
+            TEXT("Left trigger does not cycle control profiles"),
+            has_mapping(input->cycle_input_mapping_context, EKeys::Gamepad_LeftTriggerAxis));
         TestRunner->TestTrue(TEXT("Left shoulder provides braking"),
                              has_mapping(input->brake, EKeys::Gamepad_LeftShoulder));
         TestRunner->TestTrue(TEXT("Right trigger fires lasers"),
@@ -625,6 +633,75 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         settings->Initialize(local_player);
         TestRunner->TestTrue(TEXT("All control profiles register"),
                              ml::ioj::register_control_profiles(*settings, *mapping_context));
+
+        auto map_legacy_gamepad_binding = [settings](FString const& profile_id,
+                                                     UInputAction const* const action,
+                                                     FKey const key) {
+            auto* const profile{settings->GetKeyProfileWithId(profile_id)};
+            if (!IsValid(profile) || !IsValid(action)) {
+                return false;
+            }
+            for (auto const& row : profile->GetPlayerMappingRows()) {
+                auto contains_action{false};
+                for (auto const& mapping : row.Value.Mappings) {
+                    if (mapping.GetAssociatedInputAction() == action) {
+                        contains_action = true;
+                        break;
+                    }
+                }
+                if (!contains_action) {
+                    continue;
+                }
+
+                FMapPlayerKeyArgs arguments{};
+                arguments.MappingName = row.Key;
+                arguments.Slot = EPlayerMappableKeySlot::First;
+                arguments.NewKey = key;
+                arguments.HardwareDeviceId =
+                    FHardwareDeviceIdentifier::DefaultGamepad.HardwareDeviceIdentifier;
+                arguments.ProfileIdString = profile_id;
+                arguments.bCreateMatchingSlotIfNeeded = true;
+                FGameplayTagContainer failure_reason;
+                settings->MapPlayerKey(arguments, failure_reason);
+                return failure_reason.IsEmpty();
+            }
+            return false;
+        };
+        auto const default_profile_id{ml::ioj::control_profile_definitions()[0].id};
+        TestRunner->TestTrue(TEXT("Legacy face-button fire binding is reproduced"),
+                             map_legacy_gamepad_binding(default_profile_id,
+                                                        input->fire_laser,
+                                                        EKeys::Gamepad_FaceButton_Bottom));
+        TestRunner->TestTrue(TEXT("Legacy left-trigger profile binding is reproduced"),
+                             map_legacy_gamepad_binding(default_profile_id,
+                                                        input->cycle_input_mapping_context,
+                                                        EKeys::Gamepad_LeftTriggerAxis));
+        TestRunner->TestTrue(TEXT("Legacy gamepad bindings migrate"),
+                             settings->migrate_legacy_gamepad_bindings());
+        TestRunner->TestFalse(TEXT("Legacy gamepad binding migration only runs once"),
+                              settings->migrate_legacy_gamepad_bindings());
+        auto const profile_has_current_key =
+            [settings, &default_profile_id](UInputAction const* const action, FKey const key) {
+                auto const* const profile{settings->GetKeyProfileWithId(default_profile_id)};
+                if (!IsValid(profile)) {
+                    return false;
+                }
+                for (auto const& row : profile->GetPlayerMappingRows()) {
+                    for (auto const& mapping : row.Value.Mappings) {
+                        if (mapping.GetAssociatedInputAction() == action &&
+                            mapping.GetCurrentKey() == key) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            };
+        TestRunner->TestFalse(
+            TEXT("Migration removes face-button fire"),
+            profile_has_current_key(input->fire_laser, EKeys::Gamepad_FaceButton_Bottom));
+        TestRunner->TestFalse(TEXT("Migration removes left-trigger profile cycling"),
+                              profile_has_current_key(input->cycle_input_mapping_context,
+                                                      EKeys::Gamepad_LeftTriggerAxis));
 
         auto const profiles{ml::ioj::control_profile_definitions()};
         TestRunner->TestTrue(TEXT("Control profiles are configured"), !profiles.IsEmpty());
