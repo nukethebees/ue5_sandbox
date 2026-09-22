@@ -205,11 +205,10 @@ void PlannerUi::draw_project_panel() {
     }
     ImGui::SetNextItemWidth(-1.0F);
     ImGui::InputTextWithHint(
-        "##schema-filter", "Filter semantic types", schema_filter_.data(), schema_filter_.size());
+        "##schema-filter", "Filter declarations", schema_filter_.data(), schema_filter_.size());
 
-    auto const types{analysis_session_.inputs.workspace.types().types()};
-    if (types.empty() || !document_.has_value()) {
-        ImGui::TextDisabled("No semantic types loaded.");
+    if (!document_.has_value()) {
+        ImGui::TextDisabled("No schema loaded.");
     }
 
     auto const filter{std::string_view{schema_filter_.data()}};
@@ -219,33 +218,120 @@ void PlannerUi::draw_project_panel() {
     std::optional<std::size_t> requested_delete_module;
     std::optional<std::pair<DeclarationId, std::string>> rename_record;
     for (std::size_t module_index{}; module_index < modules.size(); ++module_index) {
+        auto const& module{modules[module_index]};
+        auto const* normal{std::get_if<codegen::NormalModuleSchema>(&module)};
+        if (normal == nullptr) {
+            continue;
+        }
         std::vector<DeclarationInfo const*> declarations;
         for (auto const& declaration : document_->declarations()) {
             if (declaration.module_index != module_index) {
                 continue;
             }
             auto const type{analysis_session_.inputs.workspace.types().find(declaration.identity)};
-            if (!type.has_value()) {
-                continue;
-            }
-            auto const& node{analysis_session_.inputs.workspace.types().type(*type)};
-            if (declaration_capabilities(node).visible && matches_filter(node, filter)) {
-                declarations.push_back(&declaration);
+            if (type.has_value()) {
+                auto const& node{analysis_session_.inputs.workspace.types().type(*type)};
+                if (matches_filter(node, filter)) {
+                    declarations.push_back(&declaration);
+                }
+            } else {
+                auto const& schema{normal->declarations[declaration.declaration_index]};
+                auto const search_text{declaration.identity.module_name + " " +
+                                       declaration.identity.namespace_name + " " +
+                                       declaration.identity.name + " " +
+                                       std::string{codegen::declaration_head(schema)}};
+                if (lowercase(search_text).find(lowercase(filter)) != std::string::npos) {
+                    declarations.push_back(&declaration);
+                }
             }
         }
-        if (declarations.empty() &&
-            (!filter.empty() || !is_editable_module_destination(modules[module_index]))) {
+        if (declarations.empty() && !filter.empty()) {
             continue;
         }
         std::ranges::sort(declarations, {}, &DeclarationInfo::declaration_index);
 
         auto const label{module_label(modules[module_index])};
         ImGui::PushID(static_cast<int>(module_index));
+        ImGui::BeginDisabled(project_history_active());
+        if (ImGui::SmallButton("+")) {
+            ImGui::OpenPopup("add-declaration");
+        }
+        auto const add_menu_position{ImVec2{ImGui::GetItemRectMin().x, ImGui::GetItemRectMax().y}};
+        ImGui::EndDisabled();
+        if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+            ImGui::SetTooltip(
+                project_history_active()
+                    ? "Save or discard project source changes before adding declarations."
+                    : "Add declaration");
+        }
+        auto add_declaration =
+            [&](char const* item_label, std::size_t& selected_module_index, bool& open_dialog) {
+                if (ImGui::MenuItem(item_label)) {
+                    selected_module_index = module_index;
+                    module_initiated_dialog_ = true;
+                    open_dialog = true;
+                    return true;
+                }
+                return false;
+            };
+        ImGui::SetNextWindowPos(add_menu_position, ImGuiCond_Appearing);
+        if (ImGui::BeginPopup("add-declaration")) {
+            ImGui::BeginDisabled(project_history_active());
+            if (add_declaration("Enum", new_enum_module_index_, open_new_enum_dialog_)) {
+                pending_packed_enum_binding_.reset();
+            }
+            add_declaration(
+                "Packed value", new_packed_module_index_, open_new_packed_value_dialog_);
+            add_declaration("Integer scalar",
+                            new_integer_scalar_module_index_,
+                            open_new_integer_scalar_dialog_);
+            add_declaration("Quantization",
+                            new_linear_quantized_module_index_,
+                            open_new_linear_quantized_dialog_);
+            add_declaration(
+                "Varint", new_integer_varint_module_index_, open_new_integer_varint_dialog_);
+            add_declaration(
+                "Fixed point", new_fixed_point_module_index_, open_new_fixed_point_dialog_);
+            add_declaration(
+                "Mini float", new_mini_float_module_index_, open_new_mini_float_dialog_);
+            add_declaration("Optional",
+                            new_optional_sentinel_module_index_,
+                            open_new_optional_sentinel_dialog_);
+            add_declaration("Presence optional",
+                            new_optional_presence_bit_module_index_,
+                            open_new_optional_presence_bit_dialog_);
+            if (ImGui::MenuItem("Record")) {
+                create_record_in_module = module_index;
+            }
+            add_declaration("Union", new_union_module_index_, open_new_union_dialog_);
+            add_declaration(
+                "Tagged union", new_tagged_union_module_index_, open_new_tagged_union_dialog_);
+            auto const supports_soa{normal->soa_backend == codegen::SoaBackend::standard_library};
+            ImGui::BeginDisabled(!supports_soa);
+            add_declaration("SoA", new_soa_module_index_, open_new_soa_dialog_);
+            ImGui::EndDisabled();
+            if (!supports_soa && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                ImGui::SetTooltip("SoA authoring requires a standard-library backend module.");
+            }
+            ImGui::Separator();
+            for (auto const* kind :
+                 {"Vector SoA", "Homogeneous layout", "Static table", "Facade"}) {
+                ImGui::MenuItem(kind, nullptr, false, false);
+                if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                    ImGui::SetTooltip("Create this declaration in the LispB source; planner "
+                                      "authoring is not yet available.");
+                }
+            }
+            ImGui::EndDisabled();
+            ImGui::EndPopup();
+        }
+        ImGui::SameLine();
         if (open_record_module_ == module_index) {
             ImGui::SetNextItemOpen(true, ImGuiCond_Always);
             open_record_module_.reset();
         }
-        auto const open{ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_DefaultOpen)};
+        auto const open{ImGui::TreeNodeEx(
+            label.c_str(), ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_NoTreePushOnOpen)};
         if (ImGui::IsItemHovered() && !declarations.empty() &&
             declarations.front()->source.has_value()) {
             auto const source_index{declarations.front()->source->source_file_index};
@@ -254,75 +340,60 @@ void PlannerUi::draw_project_panel() {
                                   document_->source_files()[source_index].path.string().c_str());
             }
         }
-        detail::WrappingButtonRow module_buttons{true};
-        auto add_declaration =
-            [&](char const* button_label, std::size_t& selected_module_index, bool& open_dialog) {
-                if (module_buttons.button(button_label)) {
-                    selected_module_index = module_index;
-                    module_initiated_dialog_ = true;
-                    open_dialog = true;
-                    return true;
+        ImGui::SameLine();
+        if (ImGui::SmallButton("...")) {
+            ImGui::OpenPopup("module-actions");
+        }
+        auto const actions_menu_position{
+            ImVec2{ImGui::GetItemRectMin().x, ImGui::GetItemRectMax().y}};
+        ImGui::SetItemTooltip("Module actions");
+        ImGui::SetNextWindowPos(actions_menu_position, ImGuiCond_Appearing);
+        if (ImGui::BeginPopup("module-actions")) {
+            if (ImGui::MenuItem("Delete module",
+                                nullptr,
+                                false,
+                                !project_history_active() && modules.size() > 1)) {
+                requested_delete_module = module_index;
+            }
+            if (ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
+                if (modules.size() == 1) {
+                    ImGui::SetTooltip("A LispB project must contain at least one module.");
+                } else if (project_history_active()) {
+                    ImGui::SetTooltip(
+                        "Save or discard project source changes before deleting modules.");
                 }
-                return false;
-            };
-        ImGui::BeginDisabled(project_history_active());
-        auto const& module{modules[module_index]};
-        if (auto const* normal{std::get_if<codegen::NormalModuleSchema>(&module)}) {
-            if (add_declaration("+ Enum", new_enum_module_index_, open_new_enum_dialog_)) {
-                pending_packed_enum_binding_.reset();
             }
-            add_declaration(
-                "+ Packed value", new_packed_module_index_, open_new_packed_value_dialog_);
-            add_declaration("+ Integer scalar",
-                            new_integer_scalar_module_index_,
-                            open_new_integer_scalar_dialog_);
-            add_declaration("+ Quantization",
-                            new_linear_quantized_module_index_,
-                            open_new_linear_quantized_dialog_);
-            add_declaration(
-                "+ Varint", new_integer_varint_module_index_, open_new_integer_varint_dialog_);
-            add_declaration(
-                "+ Fixed point", new_fixed_point_module_index_, open_new_fixed_point_dialog_);
-            add_declaration(
-                "+ Mini float", new_mini_float_module_index_, open_new_mini_float_dialog_);
-            add_declaration("+ Optional",
-                            new_optional_sentinel_module_index_,
-                            open_new_optional_sentinel_dialog_);
-            add_declaration("+ Presence optional",
-                            new_optional_presence_bit_module_index_,
-                            open_new_optional_presence_bit_dialog_);
-            if (module_buttons.button("+ Record")) {
-                create_record_in_module = module_index;
-            }
-            add_declaration("+ Union", new_union_module_index_, open_new_union_dialog_);
-            add_declaration(
-                "+ Tagged union", new_tagged_union_module_index_, open_new_tagged_union_dialog_);
-            if (normal->soa_backend == codegen::SoaBackend::standard_library) {
-                add_declaration("+ SoA", new_soa_module_index_, open_new_soa_dialog_);
-            }
+            ImGui::EndPopup();
         }
-        ImGui::BeginDisabled(modules.size() == 1);
-        if (module_buttons.button("Delete module")) {
-            requested_delete_module = module_index;
-        }
-        ImGui::EndDisabled();
-        if (modules.size() == 1 && ImGui::IsItemHovered(ImGuiHoveredFlags_AllowWhenDisabled)) {
-            ImGui::SetTooltip("A LispB project must contain at least one module.");
-        }
-        ImGui::EndDisabled();
         if (open) {
+            ImGui::TreePush("declarations");
             if (declarations.empty()) {
                 ImGui::PushTextWrapPos(0.0F);
                 ImGui::TextDisabled("Empty module; use its + button to add a declaration.");
                 ImGui::PopTextWrapPos();
             }
             for (auto const* declaration : declarations) {
-                auto const type{
-                    *analysis_session_.inputs.workspace.types().find(declaration->identity)};
+                auto const resolved_type{
+                    analysis_session_.inputs.workspace.types().find(declaration->identity)};
+                auto const& schema{normal->declarations[declaration->declaration_index]};
+                if (!resolved_type.has_value() ||
+                    !declaration_capabilities(
+                         analysis_session_.inputs.workspace.types().type(*resolved_type))
+                         .visible) {
+                    ImGui::TextDisabled("%s  [%s, read-only]",
+                                        declaration->identity.name.c_str(),
+                                        std::string{codegen::declaration_head(schema)}.c_str());
+                    ImGui::SetItemTooltip("Planner editing is not available for this declaration. "
+                                          "Edit it in the LispB source.");
+                    continue;
+                }
+                auto const type{*resolved_type};
                 auto const& node{analysis_session_.inputs.workspace.types().type(type)};
-                auto const item_label{node.identity.name + "  [" +
-                                      declaration_kind_label(declaration_capabilities(node).kind) +
-                                      "]"};
+                auto const* kind_label{
+                    std::holds_alternative<codegen::VectorSoaSchema>(schema)
+                        ? "vector-soa, read-only"
+                        : declaration_kind_label(declaration_capabilities(node).kind)};
+                auto const item_label{node.identity.name + "  [" + kind_label + "]"};
                 auto const selected{analysis_session_.inputs.selection.type.has_value() &&
                                     *analysis_session_.inputs.selection.type == type};
                 ImGui::PushID(static_cast<int>(declaration->id.value));

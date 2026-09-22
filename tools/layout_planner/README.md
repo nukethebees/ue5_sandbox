@@ -564,10 +564,13 @@ comments, custom whitespace, and stable child blocks survive the rename alongsid
 Declarations bound through the separate registered-types file are rejected until that file has the
 same source-aware editing path.
 
-**+ New module** creates an empty enum, packed-value, integer-scalar, representation, record, union,
-or standard-library SoA destination inside an existing loaded LispB source. It participates in
+**+ New module** creates an ordinary module with an explicit SoA backend inside an existing loaded
+LispB source. It can contain mixed declaration kinds and participates in
 undo/redo, preview, atomic save, and reload; empty editable modules are valid generated-header
-destinations. Each module offers its compatible declaration actions beside its name. **+ Record**
+destinations. The **+** beside each module opens an anchored dropdown of declaration kinds;
+unavailable actions explain their restrictions in tooltips. The **...** menu contains module
+deletion. Declarations without planner editing support remain visible as read-only entries.
+Choosing **Record** from the dropdown
 creates an empty record immediately; click its list entry to rename it. The shared project layer can
 also register or unregister an existing valid schema source, or stage a brand-new relative source, with undo/redo,
 target-wide validation, exact manifest-plus-file preview, coordinated publication, failure cleanup,
