@@ -256,6 +256,7 @@ void configure_common_actions(FlightModelConfig& config) {
     forward.boosted.negative_speed_limit = 0.f;
 
     result.facing_velocity.mode = FacingVelocityCoupling::LockedToFacing;
+    result.boost.accelerator_activates_boost = true;
     result.boost.response = make_second_order_response();
     result.brake.target_speed = 1000.f;
     result.brake.deceleration = 14000.f;

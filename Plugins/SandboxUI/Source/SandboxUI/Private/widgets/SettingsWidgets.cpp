@@ -58,6 +58,8 @@ void SSettingsRow::Construct(FArguments const& args) {
     auto label{SNew(STextBlock)
                    .Text(args._Label)
                    .TextStyle(&style.label_text)
+                   .AutoWrapText(true)
+                   .WrapTextAt(style.label_width)
                    .ColorAndOpacity_Lambda(MoveTemp(label_colour))
                    .ToolTipText(args._ToolTipText)};
     auto control{SNew(SBox)
