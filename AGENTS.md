@@ -17,6 +17,8 @@ Unreal Engine 5.8 project.
   while Git provides index/ref locking. Do not treat `agent-git` as a repository-global mutex or
   inspect or modify another agent's worktree.
 * `dev` is the integration branch
+* When starting a new task, clear the old build directories and start fresh
+* Run code/asset generators before starting the task and re-run as needed
 * Perform feature work on dedicated feature branches
 * Use the CMake workflows and jobserver described in [Builds](#builds). Do not bypass them
 * Do not interfere with agents in other worktrees
@@ -66,7 +68,6 @@ Unreal Engine 5.8 project.
   `ctools` as a workflow preflight. Native mimalloc validation likewise builds its configuration-
   local `NativeBinaryTools` host dependency on demand.
 * For final integration, only build and test what your work has affected
-* Run code/asset generators needed for the task
 * Keep benchmarks short; Not more than 3 minutes total
 * Standalone developer-tool tests are not part of the default validation path. Run
   `cmake --workflow --preset tool-tests` only when the change can affect a tool or its tests, a
