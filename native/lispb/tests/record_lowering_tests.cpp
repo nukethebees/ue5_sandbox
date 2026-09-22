@@ -42,7 +42,7 @@ TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
     EXPECT_NE(output.find("std::array<Value, 3> values;"), std::string::npos);
 }
 
-TEST(RecordLowering, RejectsEmptyDuplicateAndZeroCountMembers) {
+TEST(RecordLowering, AllowsEmptyAndRejectsDuplicateAndZeroCountMembers) {
     auto module{RecordModuleSchema{
         .settings = ModuleSettings{.name = "records", .header = "Records.h"},
         .records = {RecordSchema{.name = "Record",
@@ -52,7 +52,9 @@ TEST(RecordLowering, RejectsEmptyDuplicateAndZeroCountMembers) {
     EXPECT_NO_THROW(static_cast<void>(lower_modules(manifest)));
 
     std::get<RecordModuleSchema>(manifest.modules.front()).records.front().members.clear();
-    EXPECT_THROW(static_cast<void>(lower_modules(manifest)), std::invalid_argument);
+    auto const files{render_modules(lower_modules(manifest))};
+    ASSERT_EQ(files.size(), 1U);
+    EXPECT_NE(files.front().content.find("struct Record"), std::string::npos);
 
     auto& members{std::get<RecordModuleSchema>(manifest.modules.front()).records.front().members};
     members = {{.name = "value", .type = TypeRef{"float"}},

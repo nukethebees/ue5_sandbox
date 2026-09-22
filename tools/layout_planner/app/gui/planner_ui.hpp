@@ -457,6 +457,10 @@ class PlannerUi {
     bool soa_access_set_explicit_{};
     std::optional<lispb::schema::DeclarationId> rename_editor_declaration_;
     std::array<char, 128> declaration_name_{};
+    std::optional<lispb::schema::DeclarationId> inline_record_rename_;
+    std::array<char, 128> inline_record_name_{};
+    bool focus_inline_record_rename_{};
+    std::optional<std::size_t> open_record_module_;
     std::optional<lispb::schema::DeclarationId> delete_declaration_;
     std::string delete_declaration_name_;
     std::optional<lispb::schema::DeclarationId> enum_editor_declaration_;

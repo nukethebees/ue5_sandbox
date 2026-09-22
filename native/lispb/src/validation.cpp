@@ -1060,9 +1060,6 @@ void validate_records(RecordModuleSchema const& module,
         require_identifier(record.name, "Record name");
         validate_export_specifier(record.export_specifier,
                                   "Record '" + record.name + "' export specifier");
-        if (record.members.empty()) {
-            throw std::invalid_argument{"Record '" + record.name + "' must have members"};
-        }
         record_names.push_back(record.name);
         std::vector<std::string> member_names;
         member_names.reserve(record.members.size());

@@ -538,8 +538,9 @@ same source-aware editing path.
 **+ New module** creates an empty enum, packed-value, integer-scalar, representation, record, union,
 or standard-library SoA destination inside an existing loaded LispB source. It participates in
 undo/redo, preview, atomic save, and reload; empty editable modules are valid generated-header
-destinations. Ordinary **+ New ...** controls can then target it. The shared project layer can also
-register or unregister an existing valid schema source, or stage a brand-new relative source, with undo/redo,
+destinations. Each module offers its compatible declaration actions beside its name. **+ Record**
+creates an empty record immediately; click its list entry to rename it. The shared project layer can
+also register or unregister an existing valid schema source, or stage a brand-new relative source, with undo/redo,
 target-wide validation, exact manifest-plus-file preview, coordinated publication, failure cleanup,
 and save/reload. After an empty new source is published, its first module uses the ordinary shared
 module command. The Project view lists registered sources with inline unregistration and exposes

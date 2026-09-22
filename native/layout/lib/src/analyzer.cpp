@@ -889,16 +889,24 @@ class AggregateLayoutAnalyzer {
         }
 
         if (complete) {
-            auto const size{align_up(offset, record_alignment)};
-            if (!size.has_value()) {
-                result.diagnostics.push_back(
-                    {DiagnosticSeverity::error, "Record tail alignment overflows uint64."});
+            if (record->members.empty()) {
+                result.payload_bytes = 0;
+                result.internal_padding_bytes = 0;
+                result.tail_padding_bytes = 0;
+                result.size_bytes = 1;
+                result.alignment_bytes = 1;
             } else {
-                result.payload_bytes = payload;
-                result.internal_padding_bytes = internal_padding;
-                result.tail_padding_bytes = *size - offset;
-                result.size_bytes = *size;
-                result.alignment_bytes = record_alignment;
+                auto const size{align_up(offset, record_alignment)};
+                if (!size.has_value()) {
+                    result.diagnostics.push_back(
+                        {DiagnosticSeverity::error, "Record tail alignment overflows uint64."});
+                } else {
+                    result.payload_bytes = payload;
+                    result.internal_padding_bytes = internal_padding;
+                    result.tail_padding_bytes = *size - offset;
+                    result.size_bytes = *size;
+                    result.alignment_bytes = record_alignment;
+                }
             }
         }
         active.pop_back();

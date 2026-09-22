@@ -6501,14 +6501,17 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
     }
     ImGui::EndDisabled();
     ImGui::SameLine();
-    ImGui::BeginDisabled(!selected_index.has_value() || schema->members.size() == 1);
+    ImGui::BeginDisabled(!selected_index.has_value());
     if (ImGui::Button("Delete")) {
         auto replacement{*schema};
         auto const deleted_name{replacement.members[*selected_index].name};
         replacement.members.erase(replacement.members.begin() +
                                   static_cast<std::ptrdiff_t>(*selected_index));
-        auto const next_index{std::min(*selected_index, replacement.members.size() - 1)};
-        auto const next_name{replacement.members[next_index].name};
+        auto const next_name{
+            replacement.members.empty()
+                ? std::string{}
+                : replacement.members[std::min(*selected_index, replacement.members.size() - 1)]
+                      .name};
         if (apply_document_edit(
                 ReplaceRecord{.declaration = *declaration, .schema = std::move(replacement)})) {
             record_access_members_.erase(deleted_name);

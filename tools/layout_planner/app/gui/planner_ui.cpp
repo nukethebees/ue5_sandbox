@@ -1828,6 +1828,9 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     load_diagnostics_ = std::move(loaded.diagnostics);
     workspace_ = LayoutWorkspace{document_.has_value() ? document_->types() : TypeGraph{}};
     selected_type_.reset();
+    inline_record_rename_.reset();
+    focus_inline_record_rename_ = false;
+    open_record_module_.reset();
     graph_node_positions_.clear();
     auto const types{workspace_.types().types()};
     if (auto const saved{persisted_graph_node_positions_.find(graph_project_key(project_path_))};

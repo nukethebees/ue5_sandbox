@@ -437,6 +437,8 @@ void PlannerUi::draw_project_panel() {
     auto const& baseline{*workspace_.variant(LayoutWorkspace::baseline_variant_id)};
     auto const modules{document_.has_value() ? std::span{document_->manifest().modules}
                                              : std::span<codegen::ModuleSchema const>{}};
+    std::optional<std::size_t> create_record_in_module;
+    std::optional<std::pair<DeclarationId, std::string>> rename_record;
     for (std::size_t module_index{}; module_index < modules.size(); ++module_index) {
         std::vector<DeclarationInfo const*> declarations;
         for (auto const& declaration : document_->declarations()) {
@@ -460,6 +462,10 @@ void PlannerUi::draw_project_panel() {
 
         auto const label{module_label(modules[module_index])};
         ImGui::PushID(static_cast<int>(module_index));
+        if (open_record_module_ == module_index) {
+            ImGui::SetNextItemOpen(true, ImGuiCond_Always);
+            open_record_module_.reset();
+        }
         auto const open{ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_DefaultOpen)};
         if (ImGui::IsItemHovered() && !declarations.empty() &&
             declarations.front()->source.has_value()) {
@@ -510,8 +516,8 @@ void PlannerUi::draw_project_panel() {
                             new_optional_presence_bit_module_index_,
                             open_new_optional_presence_bit_dialog_);
         } else if (std::holds_alternative<codegen::RecordModuleSchema>(module)) {
-            if (add_declaration("+ Record", new_record_module_index_, open_new_record_dialog_)) {
-                pending_soa_record_binding_.reset();
+            if (module_buttons.button("+ Record")) {
+                create_record_in_module = module_index;
             }
         } else if (std::holds_alternative<codegen::UnionModuleSchema>(module)) {
             add_declaration("+ Union", new_union_module_index_, open_new_union_dialog_);
@@ -534,7 +540,29 @@ void PlannerUi::draw_project_panel() {
                 auto const item_label{node.identity.name + "  [" + type_kind(node) + "]"};
                 auto const selected{selected_type_.has_value() && *selected_type_ == type};
                 ImGui::PushID(static_cast<int>(declaration->id.value));
-                if (ImGui::Selectable(item_label.c_str(), selected)) {
+                auto const editing_record{inline_record_rename_ == declaration->id};
+                if (editing_record) {
+                    if (focus_inline_record_rename_) {
+                        ImGui::SetKeyboardFocusHere();
+                        focus_inline_record_rename_ = false;
+                    }
+                    ImGui::SetNextItemWidth(-1.0F);
+                    auto const submitted{ImGui::InputText("##record-name",
+                                                          inline_record_name_.data(),
+                                                          inline_record_name_.size(),
+                                                          ImGuiInputTextFlags_EnterReturnsTrue)};
+                    if (ImGui::IsItemFocused() && ImGui::IsKeyPressed(ImGuiKey_Escape)) {
+                        inline_record_rename_.reset();
+                    } else if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                        if (inline_record_name_.front() == '\0') {
+                            schema_edit_message_ = "Record name cannot be empty.";
+                        } else if (node.identity.name == inline_record_name_.data()) {
+                            inline_record_rename_.reset();
+                        } else {
+                            rename_record = {declaration->id, inline_record_name_.data()};
+                        }
+                    }
+                } else if (ImGui::Selectable(item_label.c_str(), selected)) {
                     selected_type_ = type;
                     selected_field_.clear();
                     packed_access_fields_.clear();
@@ -543,6 +571,16 @@ void PlannerUi::draw_project_panel() {
                     record_access_set_explicit_ = false;
                     packed_dragged_divider_.reset();
                     packed_dragged_variant_id_.reset();
+                    if (std::holds_alternative<RecordType>(node.definition)) {
+                        inline_record_rename_ = declaration->id;
+                        std::snprintf(inline_record_name_.data(),
+                                      inline_record_name_.size(),
+                                      "%s",
+                                      node.identity.name.c_str());
+                        focus_inline_record_rename_ = true;
+                    } else {
+                        inline_record_rename_.reset();
+                    }
                 }
                 auto const* status{
                     complete(
@@ -555,6 +593,51 @@ void PlannerUi::draw_project_panel() {
             ImGui::TreePop();
         }
         ImGui::PopID();
+    }
+
+    if (create_record_in_module.has_value()) {
+        auto const& module{
+            std::get<codegen::RecordModuleSchema>(modules[*create_record_in_module])};
+        auto name{std::string{"Record"}};
+        auto suffix{2};
+        while (std::ranges::find(module.records, name, &codegen::RecordSchema::name) !=
+               module.records.end()) {
+            name = "Record" + std::to_string(suffix++);
+        }
+        auto const identity{
+            TypeIdentity{.origin = TypeOrigin::declaration,
+                         .module_name = module.settings.name,
+                         .namespace_name = module.settings.namespace_name.value_or(""),
+                         .name = name}};
+        auto const id{document_->allocate_declaration_id()};
+        if (apply_document_edit(
+                CreateRecord{.declaration = id,
+                             .module_index = *create_record_in_module,
+                             .schema = codegen::RecordSchema{.name = name,
+                                                             .members = {},
+                                                             .export_specifier = std::nullopt},
+                             .insertion_index = std::nullopt},
+                identity)) {
+            schema_filter_.fill('\0');
+            selected_field_.clear();
+            inline_record_rename_ = id;
+            open_record_module_ = *create_record_in_module;
+            std::snprintf(
+                inline_record_name_.data(), inline_record_name_.size(), "%s", name.c_str());
+            focus_inline_record_rename_ = true;
+        }
+    } else if (rename_record.has_value()) {
+        auto const* declaration{document_->declaration(rename_record->first)};
+        if (declaration != nullptr) {
+            auto identity{declaration->identity};
+            identity.name = rename_record->second;
+            if (apply_document_edit(RenameDeclaration{.declaration = rename_record->first,
+                                                      .new_name = rename_record->second},
+                                    identity)) {
+                inline_record_rename_.reset();
+                rename_editor_declaration_.reset();
+            }
+        }
     }
 
     if (!load_diagnostics_.empty()) {
