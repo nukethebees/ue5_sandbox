@@ -1,5 +1,6 @@
 #include "SpaceGame/simulation/LevelSimulationBuilder.h"
 #include <ioj/sim/entity_types.h>
+#include <ioj/sim/entity_world_bounds.h>
 #include <ioj/sim/laser_source.h>
 #include <ioj/sim/levels/fighter_spawn_slot_validation.h>
 #include <ioj/sim/levels/level_initialisation_data.h>
@@ -108,6 +109,42 @@ void destroy_proxy_actors(TArray<TProxy*> const& proxies) {
         check(IsValid(proxy));
         check(proxy->Destroy());
     }
+}
+
+auto proxy_fits_collision_grid(AActor const& actor,
+                               ::ioj::sim::EntityType const type,
+                               ::ioj::sim::LevelSimInitData const& data,
+                               USpaceGameLevelConfig const& config,
+                               FLevelStartErrors& errors) -> bool {
+    auto const transform{actor.GetActorTransform()};
+    auto const bounds{::ioj::sim::collision::make_entity_world_bounds(
+        data.entity_bounds,
+        type,
+        ml::to_native(FVector3f{transform.GetLocation()}),
+        ::ioj::sim::to_quaternion(ml::to_native(FRotator3f{transform.Rotator()})))};
+    auto const coordinates{
+        ::ioj::sim::collision::to_cell_coord_bounds(data.grid_geometry, bounds.min, bounds.max)};
+    if (::ioj::sim::collision::is_cell_coord_in_bounds(data.grid_geometry, coordinates.min) &&
+        ::ioj::sim::collision::is_cell_coord_in_bounds(data.grid_geometry, coordinates.max)) {
+        return true;
+    }
+
+    auto const& grid{data.grid_geometry};
+    auto const half_size{FVector3f{grid.dimensions.x * grid.cell_dimensions.X * 0.5f,
+                                   grid.dimensions.y * grid.cell_dimensions.Y * 0.5f,
+                                   grid.dimensions.z * grid.cell_dimensions.Z * 0.5f}};
+    auto const min{ml::to_unreal(bounds.min)};
+    auto const max{ml::to_unreal(bounds.max)};
+    errors.add(FString::Printf(
+        TEXT("Actor '%s' has collision bounds %s to %s outside the grid (%s to %s) in '%s'. "
+             "Increase collision_grid.grid_size or move the actor."),
+        *actor.GetName(),
+        *min.ToString(),
+        *max.ToString(),
+        *(-half_size).ToString(),
+        *half_size.ToString(),
+        *config.GetPathName()));
+    return false;
 }
 
 void append_fighter_spawn_slot_errors(
@@ -399,6 +436,30 @@ auto make_proxy_level_simulation_init_data(USpaceGameLevelConfig const& config,
     }
     initialisation.mission =
         level_simulation_builder::compile_proxy_mission(mission_definition, entity_indices);
+
+    FLevelStartErrors bounds_errors;
+    auto const fits{[&](AActor const& actor, ::ioj::sim::EntityType const type) {
+        return level_simulation_builder::proxy_fits_collision_grid(
+            actor, type, build.data, config, bounds_errors);
+    }};
+    if (build.data.player.has_value() && !fits(*player_actor, ::ioj::sim::EntityType::PlayerShip)) {
+        return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(bounds_errors)};
+    }
+    for (auto const* const proxy : build.capital_proxies) {
+        if (!fits(*proxy, ::ioj::sim::EntityType::CapitalShip)) {
+            return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(bounds_errors)};
+        }
+    }
+    for (auto const* const proxy : build.turret_proxies) {
+        if (!fits(*proxy, ::ioj::sim::EntityType::Turret)) {
+            return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(bounds_errors)};
+        }
+    }
+    for (auto const* const proxy : build.spinner_proxies) {
+        if (!fits(*proxy, ::ioj::sim::EntityType::TubeSpinner)) {
+            return FProxyLevelSimBuildResult{std::unexpect, MoveTemp(bounds_errors)};
+        }
+    }
 
     return result;
 }
