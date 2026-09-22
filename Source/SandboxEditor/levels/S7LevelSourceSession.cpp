@@ -114,6 +114,11 @@ auto FS7LevelSourceSession::read() const -> ml::s7::FLevelDefinitionReadResult {
     if (!is_attached()) {
         return {.script_error = TEXT("The source buffer is not attached to the current level.")};
     }
+    if (buffer_.TrimStartAndEnd().IsEmpty()) {
+        return {.script_error =
+                    TEXT("The S7 source buffer is empty. Use Save Canonical from Scene to create "
+                         "a script from the current level.")};
+    }
     auto const source_directory{path_.IsEmpty() ? ml::s7::default_level_script_directory()
                                                 : FPaths::GetPath(path_)};
     auto const library_root{FPaths::Combine(source_directory, TEXT("Libraries"))};
@@ -249,6 +254,11 @@ auto FS7LevelSourceSession::write(FString const& source,
                                   FStringView const target_path,
                                   ES7SourceOverwritePolicy const overwrite,
                                   bool const replace_buffer) -> std::expected<void, FString> {
+    if (source.TrimStartAndEnd().IsEmpty()) {
+        return std::unexpected{
+            TEXT("The S7 source buffer is empty. Use Save Canonical from Scene to create a "
+                 "script from the current level.")};
+    }
     auto const normalized_path{normalize_path(target_path)};
     if (normalized_path.IsEmpty()) {
         return std::unexpected{TEXT("The source path is empty.")};

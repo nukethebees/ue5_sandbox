@@ -198,6 +198,7 @@ auto SS7LevelScriptEditor::can_apply_preview() const -> bool {
 auto SS7LevelScriptEditor::can_save_buffer() const -> bool {
     auto* const mode{active_mode()};
     return IsValid(mode) && mode->source_session().is_attached() &&
+           !mode->source_session().buffer().TrimStartAndEnd().IsEmpty() &&
            !mode->source_session().has_external_conflict();
 }
 

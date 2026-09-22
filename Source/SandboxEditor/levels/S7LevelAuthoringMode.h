@@ -35,6 +35,7 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     void Enter() override;
     void Exit() override;
     void CreateToolkit() override;
+    bool RequiresLegacyViewportInteractions() const override { return false; }
     void Tick(FEditorViewportClient* viewport_client, float delta_time) override;
     void Render(FSceneView const* view,
                 FViewport* viewport,
