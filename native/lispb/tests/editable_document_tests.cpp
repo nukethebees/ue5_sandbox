@@ -8914,5 +8914,121 @@ TEST(EditableDocument, PendingNormalModuleSerializesSpecializedDeclarations) {
         std::holds_alternative<codegen::HomogeneousLayoutSchema>(vector_module.declarations[1]));
 }
 
+TEST(EditableDocument, SourceBackedSpecialDeclarationsMoveWithCanonicalFallbacks) {
+    TemporarySchema files;
+    files.write_source("special_moves.lispb", R"(
+(module source
+  :header "Source.h"
+  :source "Source.cpp"
+  (vector-soa Vectors
+    :value-type float
+    :components (xs ys)
+    :equivalent-type int32)
+  (layout Pairs
+    :components (xs ys)
+    (value-type float f))
+  (table Lookup
+    (row first)
+    (column value int32))
+  (facade Access int32 target
+    (method reset void)))
+
+(module destination
+  :header "Destination.h"
+  :source "Destination.cpp")
+)");
+    auto document{files.load_with_module_source("special_moves.lispb")};
+    auto const source_index{document.manifest().modules.size() - 2};
+    auto const destination_index{source_index + 1};
+    std::array declarations{
+        declaration_id(document, "source", "Vectors", ""),
+        declaration_id(document, "source", "Pairs", ""),
+        declaration_id(document, "source", "Lookup", ""),
+        declaration_id(document, "source", "Access", ""),
+    };
+
+    for (auto const id : declarations) {
+        auto moved{
+            document.apply(MoveDeclaration{.declaration = id, .module_index = destination_index})};
+        ASSERT_TRUE(moved.has_value()) << moved.error().message;
+        ASSERT_TRUE(*moved);
+        EXPECT_EQ(document.declaration(id)->id, id);
+    }
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    for (auto const name : {"Vectors", "Pairs", "Lookup", "Access"}) {
+        EXPECT_NE(preview->front().updated.find(name), std::string::npos);
+    }
+
+    for (std::size_t index{}; index < declarations.size(); ++index) {
+        ASSERT_TRUE(document.undo().value());
+    }
+    for (std::size_t index{}; index < declarations.size(); ++index) {
+        ASSERT_TRUE(document.redo().value());
+    }
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load_with_module_source("special_moves.lispb")};
+    auto const& destination{
+        std::get<codegen::NormalModuleSchema>(reloaded.manifest().modules.at(destination_index))};
+    ASSERT_EQ(destination.declarations.size(), declarations.size());
+    EXPECT_TRUE(std::holds_alternative<codegen::VectorSoaSchema>(destination.declarations[0]));
+    EXPECT_TRUE(
+        std::holds_alternative<codegen::HomogeneousLayoutSchema>(destination.declarations[1]));
+    EXPECT_TRUE(std::holds_alternative<codegen::StaticTableSchema>(destination.declarations[2]));
+    EXPECT_TRUE(std::holds_alternative<codegen::FacadeSchema>(destination.declarations[3]));
+}
+
+TEST(EditableDocument, HeterogeneousEditPromotesLegacyModuleToCanonicalSource) {
+    TemporarySchema files;
+    files.write_source("legacy_promotion.lispb", R"(
+; Keep this outer comment.
+(scalar-module scalars
+  :header "Scalars.h"
+  :namespace legacy
+  ; Keep this declaration comment.
+  (integer-scalar Health :signed false :minimum 0 :maximum 100 :bit-width auto))
+
+(enum-module enums
+  :header "Enums.h"
+  :namespace legacy
+  (enum State std::uint8_t
+    (value Alive)))
+)");
+    auto document{files.load_with_module_source("legacy_promotion.lispb")};
+    auto const scalar_index{document.manifest().modules.size() - 2};
+    auto const health{declaration_id(document, "scalars", "Health", "legacy")};
+    auto const state{declaration_id(document, "enums", "State", "legacy")};
+
+    auto preserved{
+        document.apply(RenameDeclaration{.declaration = health, .new_name = "HealthValue"})};
+    ASSERT_TRUE(preserved.has_value()) << preserved.error().message;
+    auto preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_NE(preview->front().updated.find("(scalar-module scalars"), std::string::npos);
+
+    auto moved{document.apply(MoveDeclaration{.declaration = state, .module_index = scalar_index})};
+    ASSERT_TRUE(moved.has_value()) << moved.error().message;
+    ASSERT_TRUE(*moved);
+    preview = document.preview_source_updates();
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    EXPECT_NE(preview->front().updated.find("(module scalars"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("; Keep this declaration comment."), std::string::npos);
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_TRUE(document.redo().value());
+
+    auto saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    auto reloaded{files.load_with_module_source("legacy_promotion.lispb")};
+    auto const& module{
+        std::get<codegen::NormalModuleSchema>(reloaded.manifest().modules.at(scalar_index))};
+    ASSERT_EQ(module.declarations.size(), 2U);
+    EXPECT_TRUE(std::holds_alternative<codegen::IntegerScalarSchema>(module.declarations[0]));
+    EXPECT_TRUE(std::holds_alternative<codegen::EnumSchema>(module.declarations[1]));
+    EXPECT_EQ(document.declaration(state)->id, state);
+}
+
 } // namespace
 } // namespace lispb::schema

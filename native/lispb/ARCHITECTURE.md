@@ -25,6 +25,11 @@ remain special because they aggregate existing outputs.
 
 The parser accepts older family-specific module heads as compatibility input and normalizes them
 to `NormalModuleSchema` before validation or graph resolution. Repository schemas use `(module)`.
+`EditableSchemaDocument` records the original persisted module head with its source range. An edit
+that remains representable by that legacy head preserves it; an edit that introduces another
+declaration family upgrades just that source module to canonical `(module ...)` before save.
+This prevents a valid in-memory heterogeneous module from becoming invalid persisted input while
+preserving unrelated source text whenever a head-only rewrite is sufficient.
 Older C++ module structs remain temporarily accepted by the programmatic `Manifest` API; they
 are not emitted by the source loader. Removing that programmatic compatibility surface and its
 legacy validation/lowering paths is a follow-up boundary, not an alternative persisted model.
@@ -40,6 +45,11 @@ include requirements in a `DeclarationEmission`; a common assembler applies the 
 include order, prelude, namespace, and output envelopes. Explicit declaration-specific C++
 operations remain visible in their lowerers. The CLI calls the target compiler library to
 compile and publish targets; compiler selection is not embedded in argument parsing.
+
+Declaration metadata is exhaustive: semantic-TypeGraph contribution, canonical source rendering,
+and generated C++ names are each derived by visiting `DeclarationSchema`. Generated-name ownership
+includes public helper types such as SoA views and homogeneous storage/view traits, so validation
+can reject cross-declaration collisions before lowering a heterogeneous output module.
 
 `EditableSchemaDocument` owns the manifest draft, source-file and declaration ranges, stable
 `DeclarationId` values, tombstones, undo/redo, and the last valid resolved graph. Normal-module

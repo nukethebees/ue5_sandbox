@@ -1,8 +1,51 @@
 #include <codegen/schema/declaration_schema.h>
+#include <codegen/schema/normal_module_schema.h>
 
 #include <type_traits>
 
 namespace codegen {
+namespace {
+
+template <typename>
+inline constexpr bool unhandled_declaration_schema{false};
+
+auto soa_generated_cpp_names(SoaSchema const& schema,
+                             NormalModuleSchema const& module,
+                             bool const includes_allocator_variants) -> std::vector<std::string> {
+    std::vector<std::string> result{schema.name,
+                                    schema.view_name.value_or(schema.name + "View"),
+                                    schema.const_view_name.value_or(schema.name + "ConstView")};
+    if (schema.field_mask_name.has_value()) {
+        result.push_back(*schema.field_mask_name);
+    }
+    if (schema.field_enum_name.has_value()) {
+        result.push_back(*schema.field_enum_name);
+    }
+    if (schema.single_allocation.has_value()) {
+        result.push_back(*schema.single_allocation);
+        result.push_back(schema.name + "SingleLayout");
+        result.push_back(schema.name + "SingleView");
+        result.push_back(schema.name + "SingleConstView");
+        result.push_back(schema.name + "SingleViewImpl");
+    }
+    for (auto const& variant : schema.single_allocation_variants) {
+        result.push_back(variant.name);
+    }
+    if (schema.fixed.has_value()) {
+        result.push_back(schema.fixed->storage_name);
+    }
+    if (includes_allocator_variants) {
+        for (auto const& allocator : module.soa_array_allocators) {
+            result.push_back(allocator.prefix + schema.name);
+            result.push_back(allocator.prefix + schema.view_name.value_or(schema.name + "View"));
+            result.push_back(allocator.prefix +
+                             schema.const_view_name.value_or(schema.name + "ConstView"));
+        }
+    }
+    return result;
+}
+
+} // namespace
 
 auto declaration_kind(DeclarationSchema const& declaration) -> DeclarationKind {
     return std::visit(
@@ -40,8 +83,10 @@ auto declaration_kind(DeclarationSchema const& declaration) -> DeclarationKind {
                 return DeclarationKind::homogeneous_layout;
             } else if constexpr (std::is_same_v<T, StaticTableSchema>) {
                 return DeclarationKind::static_table;
-            } else {
+            } else if constexpr (std::is_same_v<T, FacadeSchema>) {
                 return DeclarationKind::facade;
+            } else {
+                static_assert(unhandled_declaration_schema<T>);
             }
         },
         declaration);
@@ -93,7 +138,79 @@ auto declaration_name(DeclarationSchema const& declaration) -> std::string const
 }
 
 auto contributes_semantic_type(DeclarationSchema const& declaration) -> bool {
-    return declaration_kind(declaration) < DeclarationKind::homogeneous_layout;
+    return std::visit(
+        [](auto const& value) {
+            using T = std::decay_t<decltype(value)>;
+            if constexpr (std::is_same_v<T, EnumSchema> || std::is_same_v<T, IntegerScalarSchema> ||
+                          std::is_same_v<T, LinearQuantizedSchema> ||
+                          std::is_same_v<T, IntegerVarintSchema> ||
+                          std::is_same_v<T, FixedPointSchema> ||
+                          std::is_same_v<T, MiniFloatSchema> ||
+                          std::is_same_v<T, OptionalSentinelSchema> ||
+                          std::is_same_v<T, OptionalPresenceBitSchema> ||
+                          std::is_same_v<T, PackedValueSchema> || std::is_same_v<T, RecordSchema> ||
+                          std::is_same_v<T, UnionSchema> || std::is_same_v<T, TaggedUnionSchema> ||
+                          std::is_same_v<T, SoaSchema> || std::is_same_v<T, VectorSoaSchema>) {
+                return true;
+            } else if constexpr (std::is_same_v<T, HomogeneousLayoutSchema> ||
+                                 std::is_same_v<T, StaticTableSchema> ||
+                                 std::is_same_v<T, FacadeSchema>) {
+                return false;
+            } else {
+                static_assert(unhandled_declaration_schema<T>);
+            }
+        },
+        declaration);
+}
+
+auto generated_cpp_names(DeclarationSchema const& declaration, NormalModuleSchema const& module)
+    -> std::vector<std::string> {
+    return std::visit(
+        [&](auto const& value) -> std::vector<std::string> {
+            using T = std::decay_t<decltype(value)>;
+            if constexpr (std::is_same_v<T, EnumSchema> || std::is_same_v<T, PackedValueSchema> ||
+                          std::is_same_v<T, RecordSchema> || std::is_same_v<T, UnionSchema> ||
+                          std::is_same_v<T, TaggedUnionSchema> ||
+                          std::is_same_v<T, StaticTableSchema> || std::is_same_v<T, FacadeSchema>) {
+                return {value.name};
+            } else if constexpr (std::is_same_v<T, IntegerScalarSchema>) {
+                std::vector<std::string> result;
+                if (value.cpp_emission != IntegerScalarCppEmission::none) {
+                    for (auto const& code : value.named_codes) {
+                        result.push_back(value.name + "_" + code.name);
+                    }
+                    if (value.cpp_emission == IntegerScalarCppEmission::constants_with_names) {
+                        result.push_back(value.name + "_name");
+                    }
+                }
+                return result;
+            } else if constexpr (std::is_same_v<T, SoaSchema>) {
+                return soa_generated_cpp_names(value, module, true);
+            } else if constexpr (std::is_same_v<T, VectorSoaSchema>) {
+                SoaSchema as_soa{.name = value.name, .fixed = value.fixed};
+                return soa_generated_cpp_names(as_soa, module, false);
+            } else if constexpr (std::is_same_v<T, HomogeneousLayoutSchema>) {
+                std::vector<std::string> result{"T" + value.name + "View"};
+                if (!value.value_types.empty() &&
+                    value.value_types.front().equivalent_type.has_value()) {
+                    result.push_back("T" + value.name + "EquivalentType");
+                }
+                for (auto const& item : value.value_types) {
+                    result.push_back("F" + value.name + item.suffix);
+                }
+                return result;
+            } else if constexpr (std::is_same_v<T, LinearQuantizedSchema> ||
+                                 std::is_same_v<T, IntegerVarintSchema> ||
+                                 std::is_same_v<T, FixedPointSchema> ||
+                                 std::is_same_v<T, MiniFloatSchema> ||
+                                 std::is_same_v<T, OptionalSentinelSchema> ||
+                                 std::is_same_v<T, OptionalPresenceBitSchema>) {
+                return {};
+            } else {
+                static_assert(unhandled_declaration_schema<T>);
+            }
+        },
+        declaration);
 }
 
 } // namespace codegen

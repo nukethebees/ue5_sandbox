@@ -2,7 +2,9 @@
 
 #include <gtest/gtest.h>
 
+#include <filesystem>
 #include <map>
+#include <optional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -83,6 +85,16 @@ auto valid_homogeneous_module() -> HomogeneousModuleSchema {
             .components = {"xs", "ys"},
             .value_types = {HomogeneousValueSchema{TypeRef{"float"}, "f"}},
         }},
+    };
+}
+
+auto normal_module(std::vector<DeclarationSchema> declarations,
+                   std::optional<std::filesystem::path> source = std::nullopt)
+    -> NormalModuleSchema {
+    return NormalModuleSchema{
+        .settings =
+            ModuleSettings{.name = "mixed", .header = "Mixed.h", .source = std::move(source)},
+        .declarations = std::move(declarations),
     };
 }
 
@@ -1731,6 +1743,100 @@ TEST(Validation, RejectsInvalidSettingsDefinitions) {
 
     module.settings_list.front().control.kind = SettingControlKind::custom;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
+TEST(Validation, NormalModuleReservesGeneratedNamesAcrossDeclarationKinds) {
+    auto vector = VectorSoaSchema{.name = "Foo",
+                                  .value_type = TypeRef{"float"},
+                                  .components = {"xs", "ys"},
+                                  .equivalent_type = TypeRef{"int32"}};
+    auto module = normal_module({vector,
+                                 EnumSchema{.name = "FooView",
+                                            .underlying_type = TypeRef{"uint8"},
+                                            .values = {{.name = "One"}}}},
+                                "Mixed.cpp");
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = normal_module({std::move(vector),
+                            RecordSchema{.name = "FooConstView",
+                                         .members = {{.name = "value", .type = TypeRef{"int32"}}}}},
+                           "Mixed.cpp");
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    auto layout = HomogeneousLayoutSchema{
+        .name = "Values",
+        .components = {"xs", "ys"},
+        .value_types = {{.type = TypeRef{"float"},
+                         .suffix = "f",
+                         .equivalent_type = TypeRef{"int32"}}},
+    };
+    module = normal_module({std::move(layout),
+                            RecordSchema{.name = "TValuesView",
+                                         .members = {{.name = "value", .type = TypeRef{"int32"}}}}},
+                           "Mixed.cpp");
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    layout = HomogeneousLayoutSchema{
+        .name = "Values",
+        .components = {"xs", "ys"},
+        .value_types = {{.type = TypeRef{"float"},
+                         .suffix = "f",
+                         .equivalent_type = TypeRef{"int32"}}},
+    };
+    module = normal_module({std::move(layout),
+                            RecordSchema{.name = "TValuesEquivalentType",
+                                         .members = {{.name = "value", .type = TypeRef{"int32"}}}}},
+                           "Mixed.cpp");
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    auto soa = SoaSchema{
+        .name = "Data",
+        .members = {{.name = "values", .kind = SoaMemberKind::array, .type = TypeRef{"int32"}}}};
+    module = normal_module({std::move(soa),
+                            EnumSchema{.name = "DataView",
+                                       .underlying_type = TypeRef{"uint8"},
+                                       .values = {{.name = "One"}}}},
+                           "Mixed.cpp");
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    module = normal_module(
+        {EnumSchema{
+             .name = "State", .underlying_type = TypeRef{"uint8"}, .values = {{.name = "One"}}},
+         RecordSchema{.name = "Snapshot",
+                      .members = {{.name = "value", .type = TypeRef{"int32"}}}}});
+    EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
+}
+
+TEST(Validation, NormalModuleAppliesSourceRequirementsPerDeclaration) {
+    auto facade = FacadeSchema{.name = "InlineFacade",
+                               .target_type = TypeRef{"int32"},
+                               .target_member_name = "target",
+                               .methods = {{.name = "reset", .return_type = TypeRef{"void"}}}};
+    auto layout =
+        HomogeneousLayoutSchema{.name = "Values",
+                                .components = {"xs", "ys"},
+                                .value_types = {{.type = TypeRef{"float"}, .suffix = "f"}}};
+    auto module = normal_module({facade, layout}, "Mixed.cpp");
+    EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
+
+    module = normal_module({std::move(layout)});
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+
+    auto source_facade = facade;
+    source_facade.definitions_in_source = true;
+    module = normal_module({std::move(source_facade)});
+    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+}
+
+TEST(Validation, NormalModuleCanMixIndependentEnumApis) {
+    auto module = normal_module({EnumSchema{.name = "NativeMode",
+                                            .underlying_type = TypeRef{"uint8"},
+                                            .values = {{.name = "One"}},
+                                            .native_api = true},
+                                 EnumSchema{.name = "UnrealMode",
+                                            .underlying_type = TypeRef{"uint8"},
+                                            .values = {{.name = "One"}}}});
+    EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
 }
 
 } // namespace
