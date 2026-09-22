@@ -27,8 +27,7 @@ auto slot_for(player::FlightModelPreset const preset) -> player::FlightModelSlot
 
 auto make_data(player::FlightModelPreset const preset) -> LevelSimInitData {
     LevelSimInitData data;
-    data.grid_dimensions = {16, 16, 4};
-    data.cell_size = {{100000.f, 100000.f, 100000.f}};
+    data.grid_geometry = {{16, 16, 4}, {{100000.f, 100000.f, 100000.f}}};
     data.lasers.n_preallocated_instances = 16;
     data.capital_ships.fighter_spawn_slots = 0;
     data.clock_settings.tick_rate = 60.0;
