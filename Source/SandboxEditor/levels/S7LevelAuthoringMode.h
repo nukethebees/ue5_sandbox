@@ -59,6 +59,7 @@ class SANDBOXEDITOR_API US7LevelAuthoringMode final : public UBaseLegacyWidgetEd
     void assign_selected_must_survive();
     void assign_selected_required_kills();
     void clear_selected_objectives();
+    void import_orchestrator_mission();
     void load_s7();
     void reload_s7();
     void set_source_buffer(FString source);
