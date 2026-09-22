@@ -116,28 +116,6 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
         }
     }
 
-    TEST_METHOD(RotatedCapitalSpawnClearance)
-    {
-        ::ioj::sim::LevelSimInitData data;
-        data.entity_bounds.set_half_extents(::ioj::sim::EntityType::CapitalShip,
-                                            {{100.f, 20.f, 10.f}});
-        data.entity_bounds.set_half_extents(::ioj::sim::EntityType::Fighter, {{5.f, 0.f, 0.f}});
-        data.fighters.avoidance_clearance_buffer = 1.f;
-        data.capital_ships.fighter_spawn_slots_relative_transforms = {
-            {.location = {0.0, 40.0, 0.0}}};
-        auto& capitals{data.level_events.initial_spawns.capital_spawns};
-        capitals.add_defaulted(1);
-        ml::FLevelStartErrors clear_errors;
-        ml::validate_world_fighter_spawn_slots(data, clear_errors);
-        TestRunner->TestFalse(TEXT("Unrotated slot clears capital"), clear_errors.has_errors());
-        capitals.get_view().view_rotations().set(0, {0.f, 45.f, 0.f});
-        ml::FLevelStartErrors rotated_errors;
-        ml::validate_world_fighter_spawn_slots(data, rotated_errors);
-        TestRunner->TestTrue(
-            TEXT("Rotation can place valid local slot inside conservative world AABB"),
-            rotated_errors.has_errors());
-    }
-
     TEST_METHOD(CollisionGridDefaultsAndValidation)
     {
         FCollisionGridConfig const defaults{};

@@ -3,6 +3,7 @@
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
 #include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 
+#include <Sandbox/environment/effects/ShipPostProcessing.h>
 #include <SandboxShaders/GpuStarfield/GpuStarfieldActor.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -68,6 +69,7 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
 
     ATestBatchOrchestrator* orchestrator{};
     AGpuStarfieldActor* starfield{};
+    AShipPostProcessing* post_processing{};
     for (auto const actor_ptr : level.Actors) {
         auto* const actor{actor_ptr.Get()};
         if (!IsValid(actor)) {
@@ -84,6 +86,13 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
                 return std::unexpected{TEXT("The level contains multiple GPU starfields.")};
             }
             starfield = candidate;
+        }
+        if (auto* const candidate{Cast<AShipPostProcessing>(actor)}) {
+            if (post_processing) {
+                return std::unexpected{
+                    TEXT("The level contains multiple ship post-processing actors.")};
+            }
+            post_processing = candidate;
         }
     }
 
@@ -103,17 +112,37 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
             return std::unexpected{TEXT("Could not create the batch orchestrator.")};
         }
     }
-    if (!starfield && !IsValid(GEditor->AddActor(&level,
-                                                 AGpuStarfieldActor::StaticClass(),
-                                                 FTransform::Identity,
-                                                 true,
-                                                 RF_Transactional,
-                                                 false))) {
+    auto* new_starfield{starfield};
+    if (!new_starfield) {
+        new_starfield =
+            Cast<AGpuStarfieldActor>(GEditor->AddActor(&level,
+                                                       AGpuStarfieldActor::StaticClass(),
+                                                       FTransform::Identity,
+                                                       true,
+                                                       RF_Transactional,
+                                                       false));
+    }
+    if (!IsValid(new_starfield)) {
         if (!orchestrator) {
             new_orchestrator->Destroy();
         }
         transaction.Cancel();
         return std::unexpected{TEXT("Could not create the GPU starfield.")};
+    }
+    if (!post_processing && !IsValid(GEditor->AddActor(&level,
+                                                       AShipPostProcessing::StaticClass(),
+                                                       FTransform::Identity,
+                                                       true,
+                                                       RF_Transactional,
+                                                       false))) {
+        if (!starfield) {
+            new_starfield->Destroy();
+        }
+        if (!orchestrator) {
+            new_orchestrator->Destroy();
+        }
+        transaction.Cancel();
+        return std::unexpected{TEXT("Could not create ship post-processing.")};
     }
 
     world_settings->Modify();
@@ -145,7 +174,7 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
     mission.set_level_identity(document.level_id, document.title);
 
     return FString::Printf(
-        TEXT("Playable level ready: game mode, orchestrator, GPU starfield, "
+        TEXT("Playable level ready: game mode, orchestrator, GPU starfield, post-processing, "
              "player control, and mission configured (%d entities). Save the map."),
         document.entities.Num());
 }

@@ -32,9 +32,6 @@ struct FProxyLevelSimBuild {
 
 using FProxyLevelSimBuildResult = std::expected<FProxyLevelSimBuild, FLevelStartErrors>;
 
-SPACEGAME_API void validate_world_fighter_spawn_slots(::ioj::sim::LevelSimInitData const& data,
-                                                      FLevelStartErrors& errors);
-
 SPACEGAME_API auto
     make_level_simulation_init_data(USpaceGameLevelConfig const& config,
                                     ::ioj::sim::FixedTickLoop const& clock_settings = {},
