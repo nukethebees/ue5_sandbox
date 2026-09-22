@@ -2,6 +2,7 @@
 
 This Cargo workspace holds small native developer-tool experiments. It does not establish Rust as
 the replacement for every C#, Python, or C++ tool.
+Rustup selects the pinned toolchain from `rust-toolchain.toml` when commands run in this directory.
 
 `set-live-coding-disabled` is the first experiment. Build and test it with:
 
@@ -29,4 +30,5 @@ directory as shared per-user state.
 
 A future jobserver installation barrier can admit this installer only after tool users have drained,
 then stage, validate, and activate the replacement before allowing queued work to resume. This
-experiment does not implement that barrier.
+experiment does not implement that barrier. The installed executable currently has an existence
+check only; a future barrier must also account for worktrees expecting different tool versions.

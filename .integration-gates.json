@@ -32,6 +32,12 @@
       "affects": []
     },
     {
+      "name": "rust-tools",
+      "paths": ["tools/rust/"],
+      "gates": ["tool-tests"],
+      "affects": []
+    },
+    {
       "name": "csharp-tools",
       "paths": ["tools/"],
       "gates": ["csharp-tools-tests"],

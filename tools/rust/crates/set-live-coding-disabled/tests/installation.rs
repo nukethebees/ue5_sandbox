@@ -65,7 +65,7 @@ fn run_installer(source: &std::path::Path, root: &std::path::Path) {
 #[test]
 fn install_and_update_activate_the_staged_executable_safely() {
     let directory = TemporaryDirectory::new();
-    let root = directory.path.join("NukeTheBees");
+    let root = directory.path.join("Nuke The Bees");
     let source = PathBuf::from(env!("CARGO_BIN_EXE_set-live-coding-disabled"));
     let source_bytes = fs::read(&source).expect("source executable should be read");
 

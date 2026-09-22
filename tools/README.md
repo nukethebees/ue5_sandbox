@@ -66,10 +66,11 @@ and native validation does not run this suite.
 `Directory.Build.props` applies the shared target framework, nullable, implicit-using, warning,
 analysis, and warnings-as-errors policy to every .NET project below `tools/`.
 
-New standalone C# tools should use their own project and test project under this directory. C# owns
-developer-tool validation, subprocess execution, filesystem work, jobserver integration, and
-benchmark/report orchestration; PowerShell remains the interactive shell façade and Python remains
-appropriate for plotting or scientific analysis.
+New standalone C# tools should use their own project and test project under this directory. C# is
+the established stack for developer-tool validation, subprocess and filesystem work, jobserver
+integration, and benchmark/report orchestration. Focused native tools may use the Rust workspace;
+PowerShell remains the interactive shell façade, and Python remains appropriate for plotting and
+scientific analysis.
 Executable command projects that are safe to invoke from shared build output opt into staging with
 `IsStandaloneTool=true`; their normal Debug and Release output remains project-local, while the
 post-build target copies the complete runtime output tree for the most recently built configuration

@@ -201,6 +201,10 @@ internal sealed class IntegrationGatePlanner
         {
             return [IntegrationGate.JobserverTests];
         }
+        if (path.StartsWith("tools/rust/", StringComparison.OrdinalIgnoreCase))
+        {
+            return [IntegrationGate.ToolTests];
+        }
         if (path.StartsWith("tools/", StringComparison.OrdinalIgnoreCase))
         {
             return [IntegrationGate.CSharpToolsTests];
@@ -257,6 +261,7 @@ internal sealed class IntegrationGatePlanner
         new("agent-git", ["tools/AgentGit/", "tools/AgentGit.Tests/"], [IntegrationGate.AgentGitTests], []),
         new("git-support", ["tools/GitSupport/"], [], ["agent-git", "csharp-tools"]),
         new("jobserver", ["tools/jobserver/"], [IntegrationGate.JobserverTests], []),
+        new("rust-tools", ["tools/rust/"], [IntegrationGate.ToolTests], []),
         new("csharp-tools", ["tools/"], [IntegrationGate.CSharpToolsTests], []),
         new("powershell", ["dev.ps1", "PowerShell/"], [IntegrationGate.PowerShellChecks], []),
         new("python", ["Scripts/"], [IntegrationGate.PythonChecks], []),
