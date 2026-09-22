@@ -230,10 +230,6 @@ void draw_override_note(bool const overridden) {
     }
 }
 
-void draw_optional_text(std::optional<std::string> const& value) {
-    ImGui::TextUnformatted(value.has_value() ? value->c_str() : "-");
-}
-
 template <std::size_t Size>
 void set_buffer(std::array<char, Size>& buffer, std::optional<std::string> const& value) {
     std::snprintf(buffer.data(), buffer.size(), "%s", value.value_or("").c_str());
@@ -2438,9 +2434,17 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
             auto const& value{schema->values[index]};
             auto const row_selected{selected_enumerator_ == value.name};
             ImGui::PushID(static_cast<int>(index));
+            auto select_cell = [&](char const* id, char const* text) {
+                ImGui::PushID(id);
+                if (ImGui::Selectable(text)) {
+                    selected_enumerator_ = value.name;
+                    enum_editor_declaration_.reset();
+                }
+                ImGui::PopID();
+            };
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+            if (ImGui::Selectable("::", row_selected)) {
                 selected_enumerator_ = value.name;
                 enum_editor_declaration_.reset();
             }
@@ -2479,7 +2483,7 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
                     selected_after_edit = edited.name;
                 }
             } else {
-                ImGui::TextUnformatted(value.name.c_str());
+                select_cell("name", value.name.c_str());
             }
 
             auto draw_optional_editor = [&](char const* label,
@@ -2497,7 +2501,8 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
                         pending->values[index].*member = optional_text(buffer);
                     }
                 } else {
-                    draw_optional_text(value.*member);
+                    auto const& text{value.*member};
+                    select_cell(label, text.has_value() ? text->c_str() : "-");
                 }
             };
             draw_optional_editor(
@@ -2507,9 +2512,17 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
                 enum_domain_->enumerators[index].code.has_value()) {
                 auto const code{
                     lispb::schema::format_enum_code(*enum_domain_->enumerators[index].code)};
-                ImGui::TextUnformatted(code.c_str());
+                if (row_selected) {
+                    ImGui::TextUnformatted(code.c_str());
+                } else {
+                    select_cell("derived_code", code.c_str());
+                }
             } else {
-                ImGui::TextDisabled("Unknown");
+                if (row_selected) {
+                    ImGui::TextDisabled("Unknown");
+                } else {
+                    select_cell("derived_code", "Unknown");
+                }
             }
             draw_optional_editor(
                 "##display", enum_value_display_name_, &codegen::EnumeratorSchema::display_name);
@@ -2525,7 +2538,7 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
                     pending->values[index].hidden = hidden;
                 }
             } else {
-                ImGui::TextUnformatted(hidden ? "yes" : "-");
+                select_cell("hidden", hidden ? "yes" : "-");
             }
 
             ImGui::TableNextColumn();
@@ -2536,7 +2549,7 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
                     pending->values[index].sentinel = sentinel;
                 }
             } else {
-                ImGui::TextUnformatted(sentinel ? "yes" : "-");
+                select_cell("sentinel", sentinel ? "yes" : "-");
             }
 
             ImGui::TableNextColumn();
@@ -2551,7 +2564,7 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
                     }
                 }
             } else {
-                ImGui::TextUnformatted(count_sentinel ? "yes" : "-");
+                select_cell("count", count_sentinel ? "yes" : "-");
             }
             ImGui::PopID();
         }
