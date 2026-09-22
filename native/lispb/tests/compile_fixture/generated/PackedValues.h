@@ -25,6 +25,9 @@ struct FighterState {
     inline static constexpr storage_type entity_index_mask{storage_type{0xffffff}};
     using state_type = codegen_compile_fixture::PackedState;
     using state_underlying_type = std::underlying_type_t<codegen_compile_fixture::PackedState>;
+    static_assert(std::is_enum_v<codegen_compile_fixture::PackedState>);
+    static_assert(std::is_unsigned_v<state_underlying_type>);
+    static_assert(std::numeric_limits<state_underlying_type>::digits >= 8);
 
     inline static constexpr int state_offset{24};
     inline static constexpr int state_bits{8};
@@ -763,6 +766,9 @@ struct PackedTinyState {
     static_assert(std::numeric_limits<storage_type>::digits == 8);
     using state_type = codegen_compile_fixture::TinyState;
     using state_underlying_type = std::underlying_type_t<codegen_compile_fixture::TinyState>;
+    static_assert(std::is_enum_v<codegen_compile_fixture::TinyState>);
+    static_assert(std::is_unsigned_v<state_underlying_type>);
+    static_assert(std::numeric_limits<state_underlying_type>::digits >= 2);
 
     inline static constexpr int state_offset{0};
     inline static constexpr int state_bits{2};
@@ -875,6 +881,9 @@ struct PackedOpaqueState {
     static_assert(std::numeric_limits<storage_type>::digits == 8);
     using state_type = codegen_compile_fixture::OpaqueState;
     using state_underlying_type = std::underlying_type_t<codegen_compile_fixture::OpaqueState>;
+    static_assert(std::is_enum_v<codegen_compile_fixture::OpaqueState>);
+    static_assert(std::is_unsigned_v<state_underlying_type>);
+    static_assert(std::numeric_limits<state_underlying_type>::digits >= 8);
 
     inline static constexpr int state_offset{0};
     inline static constexpr int state_bits{8};
@@ -965,6 +974,9 @@ struct CheckedValue {
     inline static constexpr storage_type serial_mask{storage_type{0xffffff}};
     using state_type = codegen_compile_fixture::DomainState;
     using state_underlying_type = std::underlying_type_t<codegen_compile_fixture::DomainState>;
+    static_assert(std::is_enum_v<codegen_compile_fixture::DomainState>);
+    static_assert(std::is_unsigned_v<state_underlying_type>);
+    static_assert(std::numeric_limits<state_underlying_type>::digits >= 8);
 
     inline static constexpr int state_offset{24};
     inline static constexpr int state_bits{8};
