@@ -37,7 +37,7 @@ void FS7LevelAuthoringModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_
                                 .OnClicked(this, &FS7LevelAuthoringModeToolkit::create_document)] +
                   SUniformGridPanel::Slot(
                       1, 0)[SNew(SButton)
-                                .Text(LOCTEXT("Load", "Load S7"))
+                                .Text(LOCTEXT("Load", "Load & Apply S7"))
                                 .OnClicked(this, &FS7LevelAuthoringModeToolkit::load_s7)] +
                   SUniformGridPanel::Slot(
                       0, 1)[SNew(SButton)
@@ -150,7 +150,12 @@ FORWARD_ACTION(assign_selected_must_survive)
 FORWARD_ACTION(assign_selected_required_kills)
 FORWARD_ACTION(clear_selected_objectives)
 FORWARD_ACTION(import_orchestrator_mission)
-FORWARD_ACTION(load_s7)
+auto FS7LevelAuthoringModeToolkit::load_s7() -> FReply {
+    if (mode_.IsValid() && mode_->load_s7()) {
+        mode_->apply_preview();
+    }
+    return FReply::Handled();
+}
 auto FS7LevelAuthoringModeToolkit::rename_selected_entity() -> FReply {
     if (mode_.IsValid() && entity_id_.IsValid()) {
         mode_->rename_selected_entity(entity_id_->GetText().ToString());
