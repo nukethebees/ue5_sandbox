@@ -35,6 +35,45 @@ auto WrappingButtonRow::button(char const* label) -> bool {
     return clicked;
 }
 
+auto begin_editable_table(char const* id, int const columns, std::size_t const rows) -> bool {
+    auto const height{ImGui::GetFrameHeightWithSpacing() * static_cast<float>(rows + 1) +
+                      ImGui::GetStyle().ScrollbarSize + 2.0F * ImGui::GetStyle().WindowPadding.y};
+    if (!ImGui::BeginTable(id,
+                           columns,
+                           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                               ImGuiTableFlags_Resizable | ImGuiTableFlags_ScrollX |
+                               ImGuiTableFlags_ScrollY | ImGuiTableFlags_SizingFixedFit,
+                           {0.0F, height})) {
+        return false;
+    }
+    ImGui::TableSetupScrollFreeze(0, 1);
+    return true;
+}
+
+void editable_table_column(char const* label, ImGuiTableColumnFlags const flags) {
+    auto const natural_width{ImGui::CalcTextSize(label).x +
+                             2.0F * ImGui::GetStyle().FramePadding.x};
+    auto const width{(flags & ImGuiTableColumnFlags_WidthFixed) != 0
+                         ? std::max(32.0F, natural_width)
+                         : std::max(140.0F, natural_width)};
+    ImGui::TableSetupColumn(label, flags | ImGuiTableColumnFlags_WidthFixed, width);
+}
+
+auto editable_table_row_handle(bool const selected) -> bool {
+    auto const handle_clicked{ImGui::Selectable("::", selected)};
+    if (handle_clicked || selected || !ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        return handle_clicked;
+    }
+    auto const hovered_column{ImGui::TableGetHoveredColumn()};
+    if (hovered_column < 0 || hovered_column >= ImGui::TableGetColumnCount()) {
+        return false;
+    }
+    auto const mouse_y{ImGui::GetIO().MousePos.y};
+    auto const row_top{ImGui::GetItemRectMin().y};
+    auto const row_bottom{std::max(ImGui::GetItemRectMax().y, row_top + ImGui::GetFrameHeight())};
+    return mouse_y >= row_top && mouse_y < row_bottom;
+}
+
 auto format_bytes(std::optional<std::uint64_t> const bytes) -> std::string {
     if (!bytes.has_value()) {
         return "Unknown";

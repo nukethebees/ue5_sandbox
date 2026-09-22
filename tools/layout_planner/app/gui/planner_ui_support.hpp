@@ -6,6 +6,7 @@
 
 #include <imgui.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <optional>
 #include <span>
@@ -24,6 +25,11 @@ class WrappingButtonRow {
     float last_right_{};
     bool has_previous_{};
 };
+
+auto begin_editable_table(char const* id, int columns, std::size_t rows) -> bool;
+void editable_table_column(char const* label,
+                           ImGuiTableColumnFlags flags = ImGuiTableColumnFlags_None);
+auto editable_table_row_handle(bool selected) -> bool;
 
 auto format_bytes(std::optional<std::uint64_t> bytes) -> std::string;
 auto format_number(std::optional<std::uint64_t> value) -> std::string;

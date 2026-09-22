@@ -1640,15 +1640,11 @@ void PlannerUi::draw_properties_panel() {
                     packed->segments.front());
             }
             ImGui::SeparatorText("Fields");
-            if (ImGui::BeginTable("packed-fields",
-                                  4,
-                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                      ImGuiTableFlags_Resizable |
-                                      ImGuiTableFlags_SizingStretchProp)) {
-                ImGui::TableSetupColumn("Field");
-                ImGui::TableSetupColumn("Semantic type");
-                ImGui::TableSetupColumn("Schema");
-                ImGui::TableSetupColumn("Planning");
+            if (detail::begin_editable_table("packed-fields", 4, analysis.fields.size())) {
+                detail::editable_table_column("Field");
+                detail::editable_table_column("Semantic type");
+                detail::editable_table_column("Schema");
+                detail::editable_table_column("Planning");
                 ImGui::TableHeadersRow();
                 for (auto const& field : analysis.fields) {
                     ImGui::PushID(field.name.c_str());
@@ -1712,14 +1708,11 @@ void PlannerUi::draw_properties_panel() {
                 selected_field_ = soa->columns.front().name;
             }
             ImGui::SeparatorText("Columns");
-            if (ImGui::BeginTable("soa-columns-properties",
-                                  3,
-                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                      ImGuiTableFlags_Resizable |
-                                      ImGuiTableFlags_SizingStretchProp)) {
-                ImGui::TableSetupColumn("Column");
-                ImGui::TableSetupColumn("Semantic type");
-                ImGui::TableSetupColumn("Planning");
+            if (detail::begin_editable_table(
+                    "soa-columns-properties", 3, analysis.columns.size())) {
+                detail::editable_table_column("Column");
+                detail::editable_table_column("Semantic type");
+                detail::editable_table_column("Planning");
                 ImGui::TableHeadersRow();
                 for (auto const& column : analysis.columns) {
                     ImGui::PushID(column.name.c_str());
@@ -2443,19 +2436,16 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
 
     std::optional<codegen::EnumSchema> pending;
     auto selected_after_edit{selected_enumerator_};
-    if (ImGui::BeginTable("enumerators",
-                          9,
-                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                              ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
-        ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Name");
-        ImGui::TableSetupColumn("Initializer");
-        ImGui::TableSetupColumn("Derived code");
-        ImGui::TableSetupColumn("Display");
-        ImGui::TableSetupColumn("Serialized");
-        ImGui::TableSetupColumn("Hidden", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Sentinel", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Count", ImGuiTableColumnFlags_WidthFixed);
+    if (detail::begin_editable_table("enumerators", 9, schema->values.size())) {
+        detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Name");
+        detail::editable_table_column("Initializer");
+        detail::editable_table_column("Derived code");
+        detail::editable_table_column("Display");
+        detail::editable_table_column("Serialized");
+        detail::editable_table_column("Hidden", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Sentinel", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Count", ImGuiTableColumnFlags_WidthFixed);
         constexpr std::array<char const*, 9> header_tooltips{
             "Select an enumerator or drag it to change its order.",
             "C++ identifier for this enumerator.",
@@ -2493,7 +2483,7 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
             };
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            if (ImGui::Selectable("::", row_selected)) {
+            if (detail::editable_table_row_handle(row_selected)) {
                 selected_enumerator_ = value.name;
                 enum_editor_declaration_.reset();
             }
@@ -3185,14 +3175,11 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
 
     std::optional<codegen::IntegerScalarSchema> pending;
     auto selected_after_edit{selected_integer_scalar_code_};
-    if (ImGui::BeginTable("integer-scalar-codes",
-                          4,
-                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                              ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
-        ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Name");
-        ImGui::TableSetupColumn("Value");
-        ImGui::TableSetupColumn("Sentinel", ImGuiTableColumnFlags_WidthFixed);
+    if (detail::begin_editable_table("integer-scalar-codes", 4, schema->named_codes.size())) {
+        detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Name");
+        detail::editable_table_column("Value");
+        detail::editable_table_column("Sentinel", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableHeadersRow();
         for (std::size_t index{}; index < schema->named_codes.size(); ++index) {
             auto const& code{schema->named_codes[index]};
@@ -3200,7 +3187,7 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
             ImGui::PushID(static_cast<int>(index));
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+            if (detail::editable_table_row_handle(row_selected)) {
                 selected_integer_scalar_code_ = code.name;
                 integer_scalar_editor_code_.clear();
             }
@@ -4217,21 +4204,18 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
     std::optional<TypeId> navigate_to;
     std::optional<std::pair<std::string, std::string>> renamed_field;
     auto selected_after_edit{selected_field_};
-    if (ImGui::BeginTable("packed-schema-fields",
-                          11,
-                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                              ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
-        ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Access", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Operation", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Name");
-        ImGui::TableSetupColumn("Semantic type");
-        ImGui::TableSetupColumn("Bits", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Auto", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Kind");
-        ImGui::TableSetupColumn("Range", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Semantic range");
-        ImGui::TableSetupColumn("Representable");
+    if (detail::begin_editable_table("packed-schema-fields", 11, schema->segments.size())) {
+        detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Access", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Operation", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Name");
+        detail::editable_table_column("Semantic type");
+        detail::editable_table_column("Bits", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Auto", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Kind");
+        detail::editable_table_column("Range", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Semantic range");
+        detail::editable_table_column("Representable");
         ImGui::TableHeadersRow();
         for (std::size_t index{}; index < schema->segments.size(); ++index) {
             auto const& segment{schema->segments[index]};
@@ -4283,7 +4267,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             ImGui::PushID(static_cast<int>(index));
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+            if (detail::editable_table_row_handle(row_selected)) {
                 selected_field_ = segment_name;
                 packed_editor_declaration_.reset();
             }
@@ -5565,14 +5549,12 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             ImGui::TextDisabled("No unused code outside the live range fits this field width.");
         }
 
-        if (ImGui::BeginTable("packed-named-codes",
-                              4,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
-            ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
-            ImGui::TableSetupColumn("Name");
-            ImGui::TableSetupColumn("Value");
-            ImGui::TableSetupColumn("Sentinel", ImGuiTableColumnFlags_WidthFixed);
+        if (detail::begin_editable_table(
+                "packed-named-codes", 4, selected_schema_field->named_codes.size())) {
+            detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+            detail::editable_table_column("Name");
+            detail::editable_table_column("Value");
+            detail::editable_table_column("Sentinel", ImGuiTableColumnFlags_WidthFixed);
             ImGui::TableHeadersRow();
             for (std::size_t code_index{}; code_index < selected_schema_field->named_codes.size();
                  ++code_index) {
@@ -5581,7 +5563,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 ImGui::PushID(static_cast<int>(code_index));
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
-                if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+                if (detail::editable_table_row_handle(row_selected)) {
                     selected_packed_code_ = code.name;
                     packed_code_editor_declaration_.reset();
                 }
@@ -5850,15 +5832,12 @@ auto PlannerUi::draw_union_editor(TypeNode const& node, UnionType const& union_t
     std::optional<codegen::UnionSchema> pending;
     std::optional<TypeId> navigate_to;
     auto selected_after_edit{selected_field_};
-    if (ImGui::BeginTable("union-schema-alternatives",
-                          5,
-                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                              ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
-        ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Name");
-        ImGui::TableSetupColumn("Semantic type");
-        ImGui::TableSetupColumn("Fixed array", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Count", ImGuiTableColumnFlags_WidthFixed);
+    if (detail::begin_editable_table("union-schema-alternatives", 5, schema->alternatives.size())) {
+        detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Name");
+        detail::editable_table_column("Semantic type");
+        detail::editable_table_column("Fixed array", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Count", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableHeadersRow();
         for (std::size_t index{}; index < schema->alternatives.size(); ++index) {
             auto const& alternative{schema->alternatives[index]};
@@ -5866,7 +5845,7 @@ auto PlannerUi::draw_union_editor(TypeNode const& node, UnionType const& union_t
             ImGui::PushID(static_cast<int>(index));
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+            if (detail::editable_table_row_handle(row_selected)) {
                 selected_field_ = alternative.name;
                 union_editor_declaration_.reset();
             }
@@ -6202,16 +6181,14 @@ auto PlannerUi::draw_tagged_union_editor(TypeNode const& node, TaggedUnionType c
     ImGui::EndDisabled();
     ImGui::EndDisabled();
 
-    if (ImGui::BeginTable("tagged-union-schema-alternatives",
-                          6,
-                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                              ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
-        ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Tag");
-        ImGui::TableSetupColumn("Name");
-        ImGui::TableSetupColumn("Semantic type");
-        ImGui::TableSetupColumn("Fixed array", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Count", ImGuiTableColumnFlags_WidthFixed);
+    if (detail::begin_editable_table(
+            "tagged-union-schema-alternatives", 6, schema->alternatives.size())) {
+        detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Tag");
+        detail::editable_table_column("Name");
+        detail::editable_table_column("Semantic type");
+        detail::editable_table_column("Fixed array", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Count", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableHeadersRow();
         for (std::size_t index{}; index < schema->alternatives.size(); ++index) {
             auto const& alternative{schema->alternatives[index]};
@@ -6219,7 +6196,7 @@ auto PlannerUi::draw_tagged_union_editor(TypeNode const& node, TaggedUnionType c
             ImGui::PushID(static_cast<int>(index));
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+            if (detail::editable_table_row_handle(row_selected)) {
                 selected_field_ = alternative.name;
                 tagged_union_editor_declaration_.reset();
             }
@@ -6539,17 +6516,14 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
     std::optional<TypeId> navigate_to;
     std::optional<std::pair<std::string, std::string>> renamed_member;
     auto selected_after_edit{selected_field_};
-    if (ImGui::BeginTable("record-schema-members",
-                          7,
-                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                              ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
-        ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Access", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Operation", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Name");
-        ImGui::TableSetupColumn("Semantic type");
-        ImGui::TableSetupColumn("Fixed array", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Count", ImGuiTableColumnFlags_WidthFixed);
+    if (detail::begin_editable_table("record-schema-members", 7, schema->members.size())) {
+        detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Access", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Operation", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Name");
+        detail::editable_table_column("Semantic type");
+        detail::editable_table_column("Fixed array", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Count", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableHeadersRow();
         for (std::size_t index{}; index < schema->members.size(); ++index) {
             auto const& member{schema->members[index]};
@@ -6557,7 +6531,7 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
             ImGui::PushID(static_cast<int>(index));
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+            if (detail::editable_table_row_handle(row_selected)) {
                 selected_field_ = member.name;
                 record_editor_declaration_.reset();
             }
@@ -7250,16 +7224,13 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
     std::optional<TypeId> navigate_to;
     std::optional<std::pair<std::string, std::string>> renamed_member;
     auto selected_after_edit{selected_field_};
-    if (ImGui::BeginTable("soa-schema-members",
-                          6,
-                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                              ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
-        ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Access", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Operation", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Name");
-        ImGui::TableSetupColumn("Semantic type");
-        ImGui::TableSetupColumn("Kind");
+    if (detail::begin_editable_table("soa-schema-members", 6, schema->members.size())) {
+        detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Access", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Operation", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Name");
+        detail::editable_table_column("Semantic type");
+        detail::editable_table_column("Kind");
         ImGui::TableHeadersRow();
         for (std::size_t index{}; index < schema->members.size(); ++index) {
             auto const& member{schema->members[index]};
@@ -7267,7 +7238,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             ImGui::PushID(static_cast<int>(index));
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+            if (detail::editable_table_row_handle(row_selected)) {
                 selected_field_ = member.name;
                 soa_editor_declaration_.reset();
             }
@@ -7851,22 +7822,18 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
 
             if (soa_mask_dimension_names_.size() == member.mask_dimensions.size() &&
                 soa_mask_dimension_extents_.size() == member.mask_dimensions.size() &&
-                ImGui::BeginTable("soa-mask-dimensions",
-                                  3,
-                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                      ImGuiTableFlags_Resizable |
-                                      ImGuiTableFlags_SizingStretchProp)) {
-                ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
-                ImGui::TableSetupColumn("Index name");
-                ImGui::TableSetupColumn("Extent");
+                detail::begin_editable_table(
+                    "soa-mask-dimensions", 3, member.mask_dimensions.size())) {
+                detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+                detail::editable_table_column("Index name");
+                detail::editable_table_column("Extent");
                 ImGui::TableHeadersRow();
                 for (std::size_t index{}; index < member.mask_dimensions.size(); ++index) {
                     ImGui::PushID(static_cast<int>(index));
                     ImGui::TableNextRow();
                     ImGui::TableNextColumn();
                     auto const row_selected{soa_mask_dimension_index_ == index};
-                    if (ImGui::Selectable(
-                            "::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+                    if (detail::editable_table_row_handle(row_selected)) {
                         soa_mask_dimension_index_ = index;
                     }
                     if (ImGui::BeginDragDropSource()) {
@@ -8144,19 +8111,17 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
 
     ImGui::BeginDisabled(pending.has_value());
     if (soa_using_declarations_.size() == schema->using_declarations.size() &&
-        ImGui::BeginTable("soa-using-declarations",
-                          2,
-                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                              ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
-        ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Declaration after 'using'");
+        detail::begin_editable_table(
+            "soa-using-declarations", 2, schema->using_declarations.size())) {
+        detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Declaration after 'using'");
         ImGui::TableHeadersRow();
         for (std::size_t index{}; index < schema->using_declarations.size(); ++index) {
             ImGui::PushID(static_cast<int>(index));
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             auto const row_selected{soa_using_declaration_index_ == index};
-            if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+            if (detail::editable_table_row_handle(row_selected)) {
                 soa_using_declaration_index_ = index;
             }
             if (ImGui::BeginDragDropSource()) {
@@ -8290,18 +8255,15 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
     ImGui::BeginDisabled(pending.has_value());
     if (soa_function_names_.size() == schema->functions.size() &&
         soa_function_return_types_.size() == schema->functions.size() &&
-        ImGui::BeginTable("soa-functions",
-                          8,
-                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                              ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
-        ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("Name");
-        ImGui::TableSetupColumn("Return");
-        ImGui::TableSetupColumn("const", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("noexcept", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("static", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("inline", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableSetupColumn("source", ImGuiTableColumnFlags_WidthFixed);
+        detail::begin_editable_table("soa-functions", 8, schema->functions.size())) {
+        detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("Name");
+        detail::editable_table_column("Return");
+        detail::editable_table_column("const", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("noexcept", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("static", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("inline", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("source", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableHeadersRow();
         for (std::size_t index{}; index < schema->functions.size(); ++index) {
             auto const& function{schema->functions[index]};
@@ -8309,7 +8271,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             auto const row_selected{soa_function_index_ == index};
-            if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+            if (detail::editable_table_row_handle(row_selected)) {
                 soa_function_index_ = index;
                 soa_editor_declaration_.reset();
             }
@@ -8506,15 +8468,13 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
         if (soa_parameter_names_.size() == function.parameters.size() &&
             soa_parameter_types_.size() == function.parameters.size() &&
             soa_parameter_defaults_.size() == function.parameters.size() &&
-            ImGui::BeginTable("soa-function-parameters",
-                              5,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
-            ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
-            ImGui::TableSetupColumn("Name");
-            ImGui::TableSetupColumn("Type");
-            ImGui::TableSetupColumn("Pick", ImGuiTableColumnFlags_WidthFixed);
-            ImGui::TableSetupColumn("Default");
+            detail::begin_editable_table(
+                "soa-function-parameters", 5, function.parameters.size())) {
+            detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+            detail::editable_table_column("Name");
+            detail::editable_table_column("Type");
+            detail::editable_table_column("Pick", ImGuiTableColumnFlags_WidthFixed);
+            detail::editable_table_column("Default");
             ImGui::TableHeadersRow();
             for (std::size_t index{}; index < function.parameters.size(); ++index) {
                 auto const& parameter{function.parameters[index]};
@@ -8522,7 +8482,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
                 auto const row_selected{soa_parameter_index_ == index};
-                if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+                if (detail::editable_table_row_handle(row_selected)) {
                     soa_parameter_index_ = index;
                 }
                 if (ImGui::BeginDragDropSource()) {
@@ -8708,19 +8668,16 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
 
         ImGui::BeginDisabled(pending.has_value());
         if (soa_function_body_lines_.size() == function.body_lines.size() &&
-            ImGui::BeginTable("function-body-lines",
-                              2,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
-            ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
-            ImGui::TableSetupColumn("C++ fragment");
+            detail::begin_editable_table("function-body-lines", 2, function.body_lines.size())) {
+            detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+            detail::editable_table_column("C++ fragment");
             ImGui::TableHeadersRow();
             for (std::size_t index{}; index < function.body_lines.size(); ++index) {
                 ImGui::PushID(static_cast<int>(index));
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
                 auto const row_selected{soa_function_body_index_ == index};
-                if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+                if (detail::editable_table_row_handle(row_selected)) {
                     soa_function_body_index_ = index;
                 }
                 if (ImGui::BeginDragDropSource()) {
@@ -8863,19 +8820,17 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
 
         ImGui::BeginDisabled(pending.has_value());
         if (soa_function_dependencies_.size() == function.dependencies.size() &&
-            ImGui::BeginTable("function-dependencies",
-                              2,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
-            ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
-            ImGui::TableSetupColumn("Registered dependency key");
+            detail::begin_editable_table(
+                "function-dependencies", 2, function.dependencies.size())) {
+            detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+            detail::editable_table_column("Registered dependency key");
             ImGui::TableHeadersRow();
             for (std::size_t index{}; index < function.dependencies.size(); ++index) {
                 ImGui::PushID(static_cast<int>(index));
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
                 auto const row_selected{soa_function_dependency_index_ == index};
-                if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+                if (detail::editable_table_row_handle(row_selected)) {
                     soa_function_dependency_index_ = index;
                 }
                 if (ImGui::BeginDragDropSource()) {
@@ -9236,19 +9191,17 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
         }
 
         if (soa_fixed_container_names_.size() == schema->fixed->containers.size() &&
-            ImGui::BeginTable("soa-fixed-containers",
-                              2,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
-            ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
-            ImGui::TableSetupColumn("Container type");
+            detail::begin_editable_table(
+                "soa-fixed-containers", 2, schema->fixed->containers.size())) {
+            detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+            detail::editable_table_column("Container type");
             ImGui::TableHeadersRow();
             for (std::size_t index{}; index < schema->fixed->containers.size(); ++index) {
                 ImGui::PushID(static_cast<int>(index));
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
                 auto const row_selected{soa_fixed_container_index_ == index};
-                if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+                if (detail::editable_table_row_handle(row_selected)) {
                     soa_fixed_container_index_ = index;
                 }
                 if (ImGui::BeginDragDropSource()) {
@@ -9440,20 +9393,18 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                 schema->single_allocation_variants.size() &&
             soa_single_allocation_variant_allocators_.size() ==
                 schema->single_allocation_variants.size() &&
-            ImGui::BeginTable("soa-single-allocation-variants",
-                              3,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_Resizable | ImGuiTableFlags_SizingStretchProp)) {
-            ImGui::TableSetupColumn("Edit", ImGuiTableColumnFlags_WidthFixed);
-            ImGui::TableSetupColumn("Owner type");
-            ImGui::TableSetupColumn("Allocator type");
+            detail::begin_editable_table(
+                "soa-single-allocation-variants", 3, schema->single_allocation_variants.size())) {
+            detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+            detail::editable_table_column("Owner type");
+            detail::editable_table_column("Allocator type");
             ImGui::TableHeadersRow();
             for (std::size_t index{}; index < schema->single_allocation_variants.size(); ++index) {
                 ImGui::PushID(static_cast<int>(index));
                 ImGui::TableNextRow();
                 ImGui::TableNextColumn();
                 auto const row_selected{soa_single_allocation_variant_index_ == index};
-                if (ImGui::Selectable("::", row_selected, ImGuiSelectableFlags_SpanAllColumns)) {
+                if (detail::editable_table_row_handle(row_selected)) {
                     soa_single_allocation_variant_index_ = index;
                 }
                 if (ImGui::BeginDragDropSource()) {

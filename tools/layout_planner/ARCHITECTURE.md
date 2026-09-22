@@ -803,3 +803,9 @@ rows, let inputs use the available width, and wrap prose. The Project / Schema v
 width stays inside the pane and exposes its full label on hover. For content that cannot sensibly wrap,
 provide an explicit scrollable region rather than silently clipping it. Review new and changed
 views at narrow dock widths as well as their default size.
+
+New interactive tables use `begin_editable_table`, `editable_table_column`, and
+`editable_table_row_handle`. Fixed-width columns and horizontal scrolling keep neighbours from
+shrinking when a column is widened; long tables also scroll vertically. The row handle selects from
+any cell in an unselected row without placing a hit target over editable controls in the selected
+row.
