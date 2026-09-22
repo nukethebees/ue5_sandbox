@@ -64,10 +64,12 @@ ordinary ImGui settings dirty, so no separate planner project format is introduc
 ## Target profiles
 
 `AbiProfile` is an analysis input, not semantic schema. The built-in profile uses `sizeof` and
-`alignof` in `native-layout` compiled by the current CMake compiler/configuration. The
-`layout-profile-probe` executable serializes those exact facts into a deterministic versioned text
-profile; running a probe built for another target produces an explicit file the planner can load for
-the session. Loading never edits LispB or document history.
+`alignof` in `native-layout` compiled by the current CMake compiler/configuration. The dedicated
+Target Profile dock panel owns the primary profile controls and session memory overrides; Layout
+only identifies the active profile, while Comparison uses it as target A and owns its session-only
+target B picker. The `layout-profile-probe` executable serializes those exact facts into a
+deterministic versioned text profile; running a probe built for another target produces an explicit
+file the planner can load for the session. Loading never edits LispB or document history.
 
 The version-one format is line-oriented so generated facts stay inspectable and diffable:
 

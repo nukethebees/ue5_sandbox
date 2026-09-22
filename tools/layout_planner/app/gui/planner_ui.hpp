@@ -172,6 +172,7 @@ class PlannerUi {
     void refresh_analysis();
     void draw_project_panel();
     void draw_layout_panel();
+    void draw_target_profile_panel();
     auto draw_target_profile() -> bool;
     void draw_properties_panel();
     void draw_variants_panel();
@@ -579,6 +580,8 @@ class PlannerUi {
     bool close_confirmed_{};
     bool project_view_open_{true};
     bool layout_view_open_{true};
+    bool target_profile_view_open_{true};
+    bool focus_target_profile_view_{};
     bool properties_view_open_{true};
     bool variants_view_open_{true};
     bool comparison_view_open_{true};

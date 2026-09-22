@@ -106,9 +106,11 @@ arrangement.
    packed field width/storage type or a SoA capacity/column type without modifying LispB. Schema
    values, planning values, and active overrides are shown separately.
 5. Layout shows linked packed-bit, record byte maps, aggregate column-payload, and cache-line views.
-   Its Target profile table reports platform, architecture, ABI, compiler, and build configuration
-   independently, showing Unknown for any identity fact the profile does not supply. Primitive and
-   memory fact provenance are reported separately from that identity. Optional L1-data/L2/L3
+   The separate **Target Profile** tab sets the shared analysis target; Layout shows the active
+   profile name and has a shortcut back to its settings. The profile table reports platform,
+   architecture, ABI, compiler, and build configuration independently, showing Unknown for any
+   identity fact the profile does not supply. Primitive and memory fact provenance are reported
+   separately from that identity. Optional L1-data/L2/L3
    capacity facts drive factual whole-working-set fit rows; the built-in baseline leaves those
    machine-specific capacities Unknown. Build and run `layout-profile-probe` with the compiler and
    configuration you want to inspect, save its stdout as a profile, then load that file from the
