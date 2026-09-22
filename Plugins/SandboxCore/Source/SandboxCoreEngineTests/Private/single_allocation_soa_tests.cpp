@@ -91,18 +91,21 @@ TEST_CLASS(SingleAllocationSoa, "SandboxCoreEngine.UnitTests")
                                  owner.get_view().view_nested().xs()[4] == 22.0f);
     }
 
-    TEST_METHOD(DetectsAliasedOrdinaryViewBeforeRelocation)
+    TEST_METHOD(DetectsAliasedOrdinaryNestedColumnsBeforeGrowth)
     {
         Owner owner;
         owner.set_num(1);
         owner.set_num(owner.capacity());
         auto const source{owner.get_view().columns().get_const_view().left(1)};
+        auto const nested_xs{static_cast<void const*>(source.nested.xs.GetData())};
         auto const begin{reinterpret_cast<std::uintptr_t>(owner.get_view().bytes().GetData())};
         auto const end{begin + owner.allocated_bytes()};
-        auto const aliases{ml::soa_storage::any_column(source, [begin, end](auto const* pointer) {
-            auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
-            return address >= begin && address < end;
-        })};
+        auto const aliases{
+            ml::soa_storage::any_column(source, [begin, end, nested_xs](auto const* pointer) {
+                auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
+                return static_cast<void const*>(pointer) == nested_xs && address >= begin &&
+                       address < end;
+            })};
 
         TestRunner->TestTrue(TEXT("Ordinary source aliases owner storage"), aliases);
         TestRunner->TestTrue(TEXT("Appending it would require relocation"),

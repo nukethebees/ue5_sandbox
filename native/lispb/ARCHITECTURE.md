@@ -15,9 +15,11 @@ See [README.md](README.md) for entry points.
 
 The LispB `soa-module` schema is validated before lowering. A single-allocation owner is a
 declaration on a normal SoA; nested schemas and flattened column names are checked during semantic
-validation. A Cartesian nested view requires explicit `:vector-components (xs ys)` or
-`(xs ys zs)`. The resolved `TypeGraph` records that meaning and checks a declared vector
-equivalent's components and element type when one exists. The single-allocation planner walks
+validation. The explicit `:vector-components (xs ys)` or `(xs ys zs)` annotation requires
+exactly those ordered arrays with a common resolved element type. The generated compact vector
+view additionally compiler-checks that the C++ element type is arithmetic and non-volatile.
+The resolved `TypeGraph` records the vector meaning and checks a declared vector equivalent's
+components and element type when one exists. The single-allocation planner walks
 resolved graph columns for physical order and C++ types; emission receives those typed columns
 and does not infer vector semantics. C++ ABI facts such as `sizeof`, `alignof`, trivial
 copyability, and default construction remain compiler-checked.
