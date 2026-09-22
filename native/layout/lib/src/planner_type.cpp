@@ -180,18 +180,21 @@ auto declaration_status(lispb::schema::TypeGraph const& types,
         return LayoutStatus::available;
     }
     if (std::holds_alternative<lispb::schema::IntegerVarintType>(definition)) {
-        return status(Analyzer::analyze_integer_varint(types, type, 1).diagnostics, true);
+        return status(Analyzer::analyze_integer_varint(types, type, element_count).diagnostics,
+                      true);
     }
     if (std::holds_alternative<lispb::schema::FixedPointType>(definition)) {
-        return status(Analyzer::analyze_fixed_point(types, type, 1).diagnostics, true);
+        return status(Analyzer::analyze_fixed_point(types, type, element_count).diagnostics, true);
     }
     if (std::holds_alternative<lispb::schema::MiniFloatType>(definition)) {
-        return status(Analyzer::analyze_mini_float(types, type, 1).diagnostics, true);
+        return status(Analyzer::analyze_mini_float(types, type, element_count).diagnostics, true);
     }
     if (std::holds_alternative<lispb::schema::OptionalSentinelType>(definition)) {
-        return status(Analyzer::analyze_optional_sentinel(types, type, 1).diagnostics, true);
+        return status(Analyzer::analyze_optional_sentinel(types, type, element_count).diagnostics,
+                      true);
     }
-    return status(Analyzer::analyze_optional_presence_bit(types, type, 1).diagnostics, true);
+    return status(Analyzer::analyze_optional_presence_bit(types, type, element_count).diagnostics,
+                  true);
 }
 
 } // namespace ioj::layout

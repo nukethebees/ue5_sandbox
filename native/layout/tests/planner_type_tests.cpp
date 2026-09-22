@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <filesystem>
+#include <limits>
 
 namespace ioj::layout {
 namespace {
@@ -183,6 +184,42 @@ TEST(PlannerType, StatusTracksActiveVariantRelationshipOverrides) {
                                     [](Diagnostic const& diagnostic) {
                                         return diagnostic.severity == DiagnosticSeverity::error;
                                     }));
+}
+
+TEST(PlannerType, VarintStatusUsesSelectedElementCount) {
+    auto const fixture{
+        integer_varint_type(false, 0, 16'384, codegen::IntegerVarintEncoding::unsigned_varint)};
+    auto const large_count{(std::numeric_limits<std::uint64_t>::max)()};
+    auto const analysis{Analyzer::analyze_integer_varint(fixture.types, fixture.type, large_count)};
+    EXPECT_FALSE(analysis.maximum_total_bytes.has_value());
+    EXPECT_TRUE(std::ranges::any_of(analysis.diagnostics, [](Diagnostic const& diagnostic) {
+        return diagnostic.severity == DiagnosticSeverity::error;
+    }));
+
+    auto const abi{AbiProfile::host_common()};
+    EXPECT_EQ(declaration_status(fixture.types,
+                                 fixture.type,
+                                 Variant{},
+                                 abi,
+                                 64,
+                                 large_count,
+                                 SoaAllocationStrategy::separate_columns,
+                                 {}),
+              LayoutStatus::error);
+    EXPECT_EQ(declaration_status(fixture.types,
+                                 fixture.type,
+                                 Variant{},
+                                 abi,
+                                 64,
+                                 1,
+                                 SoaAllocationStrategy::separate_columns,
+                                 {}),
+              LayoutStatus::available);
+
+    PlannerAnalysisSession session{fixture.types};
+    EXPECT_EQ(session.status(fixture.type), LayoutStatus::available);
+    ASSERT_TRUE(session.inputs.workspace.set_element_count(large_count));
+    EXPECT_EQ(session.status(fixture.type), LayoutStatus::error);
 }
 
 } // namespace

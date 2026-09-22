@@ -23,7 +23,7 @@ void PlannerUi::draw_comparison_panel() {
         if (std::holds_alternative<RecordType>(selected_node.definition)) {
             ImGui::TextWrapped(
                 "Compare one semantic record under two explicit physical target profiles. Target "
-                "A follows the Layout view; target B is session-only.");
+                "A uses the shared Target Profile; target B is session-only.");
             if (draw_comparison_target_profile_picker()) {
                 refresh_analysis();
             }
@@ -387,7 +387,8 @@ void PlannerUi::draw_comparison_panel() {
             ImGui::SeparatorText("Target-profile comparison");
             ImGui::TextWrapped(
                 "Compare the active physical variant of this packed value under two explicit "
-                "target profiles. Target A follows Layout; target B is session-only.");
+                "target profiles. Target A uses the shared Target Profile; target B is "
+                "session-only.");
             ImGui::Text("Held physical variant: %s",
                         analysis_session_.inputs.workspace.active_variant().name.c_str());
             if (draw_comparison_target_profile_picker()) {

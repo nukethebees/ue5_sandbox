@@ -30,6 +30,7 @@ using namespace lispb::schema;
 void draw_docked_panel_outlines() {
     constexpr std::array names{"Project / Schema",
                                "Layout",
+                               "Target Profile",
                                "Properties",
                                "Variants",
                                "Comparison",
@@ -469,9 +470,6 @@ void PlannerUi::use_builtin_comparison_target_profile() {
 }
 
 auto PlannerUi::draw_target_profile() -> bool {
-    if (!ImGui::CollapsingHeader("Target profile", ImGuiTreeNodeFlags_DefaultOpen)) {
-        return false;
-    }
     draw_target_profile_summary(analysis_session_.primary_abi());
 
     ImGui::SeparatorText("Generated target profile");
@@ -718,6 +716,11 @@ void PlannerUi::settings_read_line(ImGuiContext*,
         ui->layout_view_open_ = value.substr(layout_open_prefix.size()) != "0";
         return;
     }
+    constexpr std::string_view target_profile_open_prefix{"TargetProfileOpen="};
+    if (value.starts_with(target_profile_open_prefix)) {
+        ui->target_profile_view_open_ = value.substr(target_profile_open_prefix.size()) != "0";
+        return;
+    }
     constexpr std::string_view properties_open_prefix{"PropertiesOpen="};
     if (value.starts_with(properties_open_prefix)) {
         ui->properties_view_open_ = value.substr(properties_open_prefix.size()) != "0";
@@ -801,6 +804,7 @@ void PlannerUi::settings_write_all(ImGuiContext*,
     }
     output->appendf("ProjectOpen=%d\n", ui->project_view_open_ ? 1 : 0);
     output->appendf("LayoutOpen=%d\n", ui->layout_view_open_ ? 1 : 0);
+    output->appendf("TargetProfileOpen=%d\n", ui->target_profile_view_open_ ? 1 : 0);
     output->appendf("PropertiesOpen=%d\n", ui->properties_view_open_ ? 1 : 0);
     output->appendf("VariantsOpen=%d\n", ui->variants_view_open_ ? 1 : 0);
     output->appendf("ComparisonOpen=%d\n", ui->comparison_view_open_ ? 1 : 0);
@@ -862,6 +866,7 @@ auto PlannerUi::draw() -> bool {
     refresh_analysis();
     draw_properties_panel();
     draw_variants_panel();
+    draw_target_profile_panel();
     refresh_analysis();
     draw_comparison_panel();
     draw_graph_panel();
@@ -1014,6 +1019,7 @@ auto PlannerUi::draw_view_menu() -> bool {
             reset_dock_layout_requested_ = true;
             project_view_open_ = true;
             layout_view_open_ = true;
+            target_profile_view_open_ = true;
             properties_view_open_ = true;
             variants_view_open_ = true;
             comparison_view_open_ = true;
@@ -1032,6 +1038,7 @@ auto PlannerUi::draw_view_menu() -> bool {
         };
         toggle_view("Project / Schema", project_view_open_);
         toggle_view("Layout", layout_view_open_);
+        toggle_view("Target Profile", target_profile_view_open_);
         toggle_view("Properties", properties_view_open_);
         toggle_view("Variants", variants_view_open_);
         toggle_view("Comparison", comparison_view_open_);
@@ -1947,6 +1954,7 @@ void PlannerUi::setup_default_dock_layout(unsigned int const dockspace_id) {
     ImGui::DockBuilderDockWindow("Project / Schema", left_top_id);
     ImGui::DockBuilderDockWindow("Variants", variants_id);
     ImGui::DockBuilderDockWindow("Graph", center_id);
+    ImGui::DockBuilderDockWindow("Target Profile", center_id);
     ImGui::DockBuilderDockWindow("Layout", center_id);
     ImGui::DockBuilderDockWindow("Properties", right_id);
     ImGui::DockBuilderDockWindow("Comparison", comparison_id);
@@ -1991,6 +1999,28 @@ void PlannerUi::select_type(std::optional<TypeId> type) {
     invalidate_type_editor_state();
 }
 
+void PlannerUi::draw_target_profile_panel() {
+    if (!target_profile_view_open_) {
+        return;
+    }
+    if (auto* layout_window{ImGui::FindWindowByName("Layout")};
+        layout_window != nullptr && layout_window->DockId != 0) {
+        ImGui::SetNextWindowDockID(layout_window->DockId, ImGuiCond_FirstUseEver);
+    }
+    if (std::exchange(focus_target_profile_view_, false)) {
+        ImGui::SetNextWindowFocus();
+    }
+
+    auto const was_open{target_profile_view_open_};
+    if (ImGui::Begin("Target Profile", &target_profile_view_open_)) {
+        if (draw_target_profile()) {
+            refresh_analysis();
+        }
+    }
+    persist_view_visibility(was_open, target_profile_view_open_);
+    ImGui::End();
+}
+
 void PlannerUi::draw_layout_panel() {
     if (!layout_view_open_) {
         return;
@@ -1998,8 +2028,11 @@ void PlannerUi::draw_layout_panel() {
     auto const was_open{layout_view_open_};
     ImGui::Begin("Layout", &layout_view_open_);
     persist_view_visibility(was_open, layout_view_open_);
-    if (draw_target_profile()) {
-        refresh_analysis();
+    ImGui::TextWrapped("Target: %s", known_or_unknown(analysis_session_.primary_abi().name()));
+    if (ImGui::SmallButton("Profile settings...")) {
+        target_profile_view_open_ = true;
+        focus_target_profile_view_ = true;
+        ImGui::MarkIniSettingsDirty();
     }
     ImGui::Separator();
     if (ImGui::Button("+ Add variant")) {

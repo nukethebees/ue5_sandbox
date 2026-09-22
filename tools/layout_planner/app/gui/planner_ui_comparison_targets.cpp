@@ -35,7 +35,7 @@ void PlannerUi::draw_enum_target_comparison() {
     ImGui::SeparatorText("Target-profile comparison");
     ImGui::TextWrapped(
         "Compare one semantic enum domain and C++ backing choice under two explicit target "
-        "profiles. Target A follows Layout; target B is session-only.");
+        "profiles. Target A uses the shared Target Profile; target B is session-only.");
     if (draw_comparison_target_profile_picker()) {
         refresh_analysis();
     }
@@ -217,7 +217,7 @@ auto PlannerUi::draw_soa_target_comparison() -> bool {
     ImGui::TextWrapped(
         "Compare the active physical SoA variant under two explicit target profiles. Capacity, "
         "allocation strategy, selected workload, and multiplicity are held fixed. Target A "
-        "follows Layout; target B is session-only.");
+        "uses the shared Target Profile; target B is session-only.");
     ImGui::Text("Held physical variant: %s",
                 analysis_session_.inputs.workspace.active_variant().name.c_str());
     if (draw_comparison_target_profile_picker()) {
@@ -606,7 +606,7 @@ auto PlannerUi::draw_soa_target_comparison() -> bool {
 void PlannerUi::draw_union_target_comparison() {
     ImGui::TextWrapped(
         "Compare one semantic raw union under two explicit physical target profiles. Target A "
-        "follows Layout; target B is session-only.");
+        "uses the shared Target Profile; target B is session-only.");
     if (draw_comparison_target_profile_picker()) {
         refresh_analysis();
     }
@@ -865,7 +865,7 @@ void PlannerUi::draw_tagged_union_target_comparison() {
     ImGui::TextWrapped(
         "Compare one semantic tagged union under two explicit physical target profiles. The "
         "discriminant, tag roles, alternatives, and selected count are held fixed. Target A "
-        "follows Layout; target B is session-only.");
+        "uses the shared Target Profile; target B is session-only.");
     if (draw_comparison_target_profile_picker()) {
         refresh_analysis();
     }

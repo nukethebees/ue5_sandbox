@@ -27,3 +27,8 @@ target_link_libraries(layout-planner PRIVATE
   sandbox::warnings_as_errors
 )
 target_compile_definitions(layout-planner PRIVATE SDL_MAIN_HANDLED)
+
+install(TARGETS layout-planner
+  RUNTIME DESTINATION bin
+  COMPONENT layout-planner
+)
