@@ -677,26 +677,27 @@ void US7LevelAuthoringMode::import_orchestrator_mission() {
     changed_.Broadcast();
 }
 
-void US7LevelAuthoringMode::load_s7() {
+auto US7LevelAuthoringMode::load_s7() -> bool {
     auto const path{select_source_path(false, TEXT(""))};
     if (!path.IsSet()) {
-        return;
+        return false;
     }
     if (!document_.IsValid()) {
         create_document();
     }
     if (!document_.IsValid()) {
-        return;
+        return false;
     }
     auto const loaded{source_session_.load(*document_, path.GetValue())};
     if (!loaded) {
         set_status(FText::FromString(loaded.error()));
         changed_.Broadcast();
-        return;
+        return false;
     }
     document_->Modify();
     document_->source_path = source_session_.path();
     preview_apply();
+    return preview_.IsSet() && !preview_stale_;
 }
 
 void US7LevelAuthoringMode::reload_s7() {
