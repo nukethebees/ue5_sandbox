@@ -278,7 +278,6 @@ set(SANDBOX_UNIT_AUTOMATION_FILTERS
   SandboxShaders.UnitTests
   SandboxCoreEngine.UnitTests
   SandboxGpuTutorials.UnitTests
-  SandboxImages.UnitTests
   SandboxISMC.UnitTests
   SandboxMesh.UnitTests
 )

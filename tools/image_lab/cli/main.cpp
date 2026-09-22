@@ -54,6 +54,33 @@ auto run_generate_all(std::filesystem::path const& output_directory) -> int {
     return 0;
 }
 
+auto run_dump_preset(std::string const& preset, std::filesystem::path const& output_path) -> int {
+    auto const request{sandbox::image_lab::find_default_request(preset)};
+    if (!request) {
+        return print_error("Unknown Image Lab preset: " + preset);
+    }
+    auto const written{sandbox::image_lab::write_request_json(*request, output_path)};
+    if (!written) {
+        return print_error(written.error());
+    }
+    std::cout << output_path.string() << '\n';
+    return 0;
+}
+
+auto run_generate_request(std::filesystem::path const& request_path,
+                          std::filesystem::path const& output_directory) -> int {
+    auto const request{sandbox::image_lab::load_request_json(request_path)};
+    if (!request) {
+        return print_error(request.error());
+    }
+    auto const output_path{sandbox::image_lab::generate_to_png(*request, output_directory)};
+    if (!output_path) {
+        return print_error(output_path.error());
+    }
+    std::cout << output_path->string() << '\n';
+    return 0;
+}
+
 } // namespace
 
 auto main(int const argument_count, char** arguments) -> int {
@@ -77,6 +104,20 @@ auto main(int const argument_count, char** arguments) -> int {
     generate_all->add_option("--output", generate_all_output_directory, "PNG output directory")
         ->required();
 
+    std::string dump_preset_name;
+    std::filesystem::path dump_preset_output_path;
+    auto* const dump_preset{app.add_subcommand("dump-preset", "Write a default preset as JSON")};
+    dump_preset->add_option("preset", dump_preset_name, "Preset output name")->required();
+    dump_preset->add_option("--output", dump_preset_output_path, "JSON request path")->required();
+
+    std::filesystem::path request_path;
+    std::filesystem::path request_output_directory;
+    auto* const generate_request{
+        app.add_subcommand("generate-request", "Generate a PNG from a JSON request")};
+    generate_request->add_option("request", request_path, "JSON request path")->required();
+    generate_request->add_option("--output", request_output_directory, "PNG output directory")
+        ->required();
+
     CLI11_PARSE(app, argument_count, arguments);
     if (*list) {
         return run_list();
@@ -86,6 +127,12 @@ auto main(int const argument_count, char** arguments) -> int {
     }
     if (*generate) {
         return run_generate(generate_preset, generate_output_directory);
+    }
+    if (*dump_preset) {
+        return run_dump_preset(dump_preset_name, dump_preset_output_path);
+    }
+    if (*generate_request) {
+        return run_generate_request(request_path, request_output_directory);
     }
     return run_generate_all(generate_all_output_directory);
 }

@@ -7,8 +7,7 @@ target_include_directories(image-lab PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(image-lab PRIVATE
   SDL3::SDL3-static
   image-lab-workflow
-  sandbox-image
-  sandbox-imgui-sdlrenderer
+  sandbox-imgui
   sandbox::native_defaults
 )
 target_compile_definitions(image-lab PRIVATE

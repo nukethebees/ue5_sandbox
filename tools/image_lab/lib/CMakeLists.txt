@@ -4,7 +4,12 @@ target_sources(image-lab-workflow PRIVATE
 )
 target_compile_features(image-lab-workflow PUBLIC cxx_std_23)
 target_include_directories(image-lab-workflow PUBLIC include)
-target_link_libraries(image-lab-workflow PUBLIC sandbox-image PRIVATE sandbox::native_defaults)
+target_link_libraries(image-lab-workflow
+  PUBLIC sandbox-image
+  PRIVATE
+    nlohmann_json::nlohmann_json
+    sandbox::native_defaults
+)
 
 add_executable(image-lab-tests
   tests/workflow_tests.cpp

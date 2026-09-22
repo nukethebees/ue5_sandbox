@@ -21,7 +21,6 @@ set_property(TARGET unreal-native-dependencies PROPERTY FOLDER "Sandbox/Unreal/D
 
 add_custom_target(unreal-generated-inputs
   DEPENDS
-    sandbox-image
     sandbox-mesh-gen
     check-space-game-layers
     check-generated-code
@@ -76,7 +75,6 @@ add_custom_target(worktree-dependencies
   DEPENDS
     set-live-coding-disabled-host
     unreal-native-dependencies
-    sandbox-image
     sandbox-material-gen
     sandbox-mesh-gen
     check-generated-code

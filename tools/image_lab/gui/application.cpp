@@ -6,13 +6,15 @@
 
 #include <imgui.h>
 #include <imgui_impl_sdl3.h>
-#include <imgui_impl_sdlrenderer3.h>
+#include <imgui_impl_sdlgpu3.h>
 #include <misc/cpp/imgui_stdlib.h>
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cstdint>
 #include <cstdio>
+#include <cstring>
 #include <filesystem>
 #include <string>
 #include <utility>
@@ -22,6 +24,46 @@ namespace sandbox::image_lab::gui {
 namespace detail {
 
 constexpr std::int32_t maximum_preview_dimension{512};
+
+enum class FramePacingMode { interactive, idle, background, suspended };
+
+struct FramePacingState {
+    bool focused{true};
+    bool minimized{};
+    bool explicit_refresh{};
+    bool dragging{};
+    std::chrono::steady_clock::time_point last_interaction{};
+};
+
+[[nodiscard]] auto frame_pacing_mode(FramePacingState const& state,
+                                     std::chrono::steady_clock::time_point const now)
+    -> FramePacingMode {
+    if (state.minimized) {
+        return FramePacingMode::suspended;
+    }
+    if (!state.focused) {
+        return FramePacingMode::background;
+    }
+    if (state.explicit_refresh || state.dragging ||
+        now - state.last_interaction <= std::chrono::milliseconds{750}) {
+        return FramePacingMode::interactive;
+    }
+    return FramePacingMode::idle;
+}
+
+[[nodiscard]] auto frame_wait_timeout(FramePacingMode const mode) -> std::chrono::milliseconds {
+    switch (mode) {
+        case FramePacingMode::interactive:
+            return std::chrono::milliseconds{0};
+        case FramePacingMode::idle:
+            return std::chrono::milliseconds{83};
+        case FramePacingMode::background:
+            return std::chrono::milliseconds{500};
+        case FramePacingMode::suspended:
+            return std::chrono::milliseconds{-1};
+    }
+    return std::chrono::milliseconds{0};
+}
 
 [[nodiscard]] auto generator_name(image::GeneratorType const generator) -> char const* {
     switch (generator) {
@@ -97,8 +139,10 @@ class Application {
     auto initialize() -> bool;
     auto run() -> int;
   private:
-    auto process_events() -> void;
+    auto process_event(SDL_Event const& event) -> void;
+    auto wait_for_events() -> void;
     auto render_frame() -> bool;
+    [[nodiscard]] static auto is_interaction_event(Uint32 type) -> bool;
     auto draw_interface() -> bool;
     auto draw_preset_selector() -> bool;
     auto draw_request_editor() -> bool;
@@ -124,18 +168,33 @@ class Application {
     bool imgui_platform_initialized_{};
     bool imgui_renderer_initialized_{};
     SDL_Window* window_{};
-    SDL_Renderer* renderer_{};
-    SDL_Texture* preview_texture_{};
+    SDL_GPUDevice* gpu_device_{};
+    SDL_GPUTexture* preview_texture_{};
+    SDL_GPUTransferBuffer* preview_transfer_buffer_{};
+    std::size_t preview_transfer_buffer_size_{};
     image::GeneratedImage preview_{};
     std::string status_;
+    FramePacingState pacing_state_{
+        .focused = true,
+        .minimized = false,
+        .explicit_refresh = true,
+        .dragging = false,
+        .last_interaction = std::chrono::steady_clock::now(),
+    };
 };
 
 Application::~Application() {
+    if (gpu_device_ != nullptr) {
+        SDL_WaitForGPUIdle(gpu_device_);
+    }
     if (preview_texture_ != nullptr) {
-        SDL_DestroyTexture(preview_texture_);
+        SDL_ReleaseGPUTexture(gpu_device_, preview_texture_);
+    }
+    if (preview_transfer_buffer_ != nullptr) {
+        SDL_ReleaseGPUTransferBuffer(gpu_device_, preview_transfer_buffer_);
     }
     if (imgui_renderer_initialized_) {
-        ImGui_ImplSDLRenderer3_Shutdown();
+        ImGui_ImplSDLGPU3_Shutdown();
     }
     if (imgui_platform_initialized_) {
         ImGui_ImplSDL3_Shutdown();
@@ -143,8 +202,11 @@ Application::~Application() {
     if (imgui_context_initialized_) {
         ImGui::DestroyContext();
     }
-    if (renderer_ != nullptr) {
-        SDL_DestroyRenderer(renderer_);
+    if (gpu_device_ != nullptr && window_ != nullptr) {
+        SDL_ReleaseWindowFromGPUDevice(gpu_device_, window_);
+    }
+    if (gpu_device_ != nullptr) {
+        SDL_DestroyGPUDevice(gpu_device_);
     }
     if (window_ != nullptr) {
         SDL_DestroyWindow(window_);
@@ -162,42 +224,79 @@ auto Application::initialize() -> bool {
     }
     sdl_initialized_ = true;
 
-    window_ = SDL_CreateWindow(
-        "Image Lab", 1440, 900, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
-    if (window_ == nullptr) {
-        std::fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
-        return false;
-    }
-    renderer_ = SDL_CreateRenderer(window_, nullptr);
-    if (renderer_ == nullptr) {
-        std::fprintf(stderr, "SDL_CreateRenderer failed: %s\n", SDL_GetError());
-        return false;
-    }
-
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     imgui_context_initialized_ = true;
     auto& io{ImGui::GetIO()};
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigDpiScaleFonts = true;
     ImGui::StyleColorsDark();
-    if (!ImGui_ImplSDL3_InitForSDLRenderer(window_, renderer_)) {
+    auto const primary_display{SDL_GetPrimaryDisplay()};
+    auto const scale{SDL_GetDisplayContentScale(primary_display)};
+    auto& style{ImGui::GetStyle()};
+    style.ScaleAllSizes(scale);
+    style.FontScaleDpi = scale;
+    io.Fonts->AddFontDefaultVector();
+
+    auto const flags{SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN | SDL_WINDOW_HIGH_PIXEL_DENSITY};
+    window_ = SDL_CreateWindow(
+        "Image Lab", static_cast<int>(1440.0F * scale), static_cast<int>(900.0F * scale), flags);
+    if (window_ == nullptr) {
+        std::fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
+        return false;
+    }
+
+    constexpr auto shader_formats{SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL |
+                                  SDL_GPU_SHADERFORMAT_MSL | SDL_GPU_SHADERFORMAT_METALLIB};
+    gpu_device_ = SDL_CreateGPUDevice(shader_formats, true, nullptr);
+    if (gpu_device_ == nullptr) {
+        std::fprintf(stderr, "SDL_CreateGPUDevice failed: %s\n", SDL_GetError());
+        return false;
+    }
+    if (!SDL_ClaimWindowForGPUDevice(gpu_device_, window_)) {
+        std::fprintf(stderr, "SDL_ClaimWindowForGPUDevice failed: %s\n", SDL_GetError());
+        return false;
+    }
+    if (!SDL_SetGPUSwapchainParameters(
+            gpu_device_, window_, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, SDL_GPU_PRESENTMODE_VSYNC)) {
+        std::fprintf(stderr, "SDL_SetGPUSwapchainParameters failed: %s\n", SDL_GetError());
+        return false;
+    }
+
+    if (!ImGui_ImplSDL3_InitForSDLGPU(window_)) {
         std::fprintf(stderr, "ImGui SDL3 initialization failed.\n");
         return false;
     }
     imgui_platform_initialized_ = true;
-    if (!ImGui_ImplSDLRenderer3_Init(renderer_)) {
-        std::fprintf(stderr, "ImGui SDL renderer initialization failed.\n");
+    ImGui_ImplSDLGPU3_InitInfo renderer_info{};
+    renderer_info.Device = gpu_device_;
+    renderer_info.ColorTargetFormat = SDL_GetGPUSwapchainTextureFormat(gpu_device_, window_);
+    renderer_info.MSAASamples = SDL_GPU_SAMPLECOUNT_1;
+    renderer_info.SwapchainComposition = SDL_GPU_SWAPCHAINCOMPOSITION_SDR;
+    renderer_info.PresentMode = SDL_GPU_PRESENTMODE_VSYNC;
+    if (!ImGui_ImplSDLGPU3_Init(&renderer_info)) {
+        std::fprintf(stderr, "ImGui SDL_GPU initialization failed.\n");
         return false;
     }
     imgui_renderer_initialized_ = true;
 
     refresh_preview();
+    SDL_ShowWindow(window_);
     return true;
 }
 
 auto Application::run() -> int {
     while (!done_) {
-        process_events();
+        wait_for_events();
+        if (done_) {
+            break;
+        }
+        auto const flags{SDL_GetWindowFlags(window_)};
+        pacing_state_.focused = (flags & SDL_WINDOW_INPUT_FOCUS) != 0;
+        pacing_state_.minimized = (flags & SDL_WINDOW_MINIMIZED) != 0;
+        if (pacing_state_.minimized) {
+            continue;
+        }
         if (!render_frame()) {
             return 1;
         }
@@ -205,31 +304,79 @@ auto Application::run() -> int {
     return 0;
 }
 
-auto Application::process_events() -> void {
+auto Application::process_event(SDL_Event const& event) -> void {
+    ImGui_ImplSDL3_ProcessEvent(&event);
+    if (event.type == SDL_EVENT_QUIT || (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
+                                         event.window.windowID == SDL_GetWindowID(window_))) {
+        done_ = true;
+    }
+    if (is_interaction_event(event.type)) {
+        pacing_state_.last_interaction = std::chrono::steady_clock::now();
+        pacing_state_.explicit_refresh = true;
+    }
+}
+
+auto Application::wait_for_events() -> void {
     SDL_Event event{};
-    while (SDL_PollEvent(&event)) {
-        ImGui_ImplSDL3_ProcessEvent(&event);
-        if (event.type == SDL_EVENT_QUIT || (event.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
-                                             event.window.windowID == SDL_GetWindowID(window_))) {
-            done_ = true;
+    auto const mode{frame_pacing_mode(pacing_state_, std::chrono::steady_clock::now())};
+    if (mode == FramePacingMode::suspended) {
+        if (SDL_WaitEvent(&event)) {
+            process_event(event);
         }
+    } else {
+        auto const timeout{frame_wait_timeout(mode)};
+        if (timeout.count() > 0 &&
+            SDL_WaitEventTimeout(&event, static_cast<Sint32>(timeout.count()))) {
+            process_event(event);
+        }
+    }
+    while (SDL_PollEvent(&event)) {
+        process_event(event);
     }
 }
 
 auto Application::render_frame() -> bool {
-    ImGui_ImplSDLRenderer3_NewFrame();
+    ImGui_ImplSDLGPU3_NewFrame();
     ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
-    draw_interface();
+    auto const changed{draw_interface()};
+    pacing_state_.dragging = ImGui::IsMouseDragging(ImGuiMouseButton_Left) ||
+                             ImGui::IsMouseDragging(ImGuiMouseButton_Right) ||
+                             ImGui::IsMouseDragging(ImGuiMouseButton_Middle);
+    pacing_state_.explicit_refresh = changed;
     ImGui::Render();
-
-    if (!SDL_SetRenderDrawColor(renderer_, 14u, 17u, 22u, 255u) || !SDL_RenderClear(renderer_)) {
-        std::fprintf(stderr, "SDL render clear failed: %s\n", SDL_GetError());
+    auto* draw_data{ImGui::GetDrawData()};
+    auto* command_buffer{SDL_AcquireGPUCommandBuffer(gpu_device_)};
+    if (command_buffer == nullptr) {
+        std::fprintf(stderr, "SDL_AcquireGPUCommandBuffer failed: %s\n", SDL_GetError());
         return false;
     }
-    ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), renderer_);
-    if (!SDL_RenderPresent(renderer_)) {
-        std::fprintf(stderr, "SDL_RenderPresent failed: %s\n", SDL_GetError());
+    SDL_GPUTexture* swapchain_texture{};
+    if (!SDL_WaitAndAcquireGPUSwapchainTexture(
+            command_buffer, window_, &swapchain_texture, nullptr, nullptr)) {
+        std::fprintf(stderr, "SDL_WaitAndAcquireGPUSwapchainTexture failed: %s\n", SDL_GetError());
+        SDL_CancelGPUCommandBuffer(command_buffer);
+        return false;
+    }
+    if (swapchain_texture != nullptr && draw_data->DisplaySize.x > 0.0F &&
+        draw_data->DisplaySize.y > 0.0F) {
+        ImGui_ImplSDLGPU3_PrepareDrawData(draw_data, command_buffer);
+        SDL_GPUColorTargetInfo target_info{};
+        target_info.texture = swapchain_texture;
+        target_info.clear_color = {0.055F, 0.065F, 0.08F, 1.0F};
+        target_info.load_op = SDL_GPU_LOADOP_CLEAR;
+        target_info.store_op = SDL_GPU_STOREOP_STORE;
+        auto* render_pass{SDL_BeginGPURenderPass(command_buffer, &target_info, 1, nullptr)};
+        if (render_pass == nullptr) {
+            std::fprintf(stderr, "SDL_BeginGPURenderPass failed: %s\n", SDL_GetError());
+            SDL_CancelGPUCommandBuffer(command_buffer);
+            return false;
+        }
+        ImGui_ImplSDLGPU3_RenderDrawData(draw_data, command_buffer, render_pass);
+        SDL_EndGPURenderPass(render_pass);
+    }
+    if (!SDL_SubmitGPUCommandBuffer(command_buffer)) {
+        std::fprintf(stderr, "SDL_SubmitGPUCommandBuffer failed: %s\n", SDL_GetError());
         return false;
     }
     return true;
@@ -562,7 +709,7 @@ auto Application::refresh_preview() -> void {
     if (!generated.is_valid()) {
         status_ = generated.error;
         if (preview_texture_ != nullptr) {
-            SDL_DestroyTexture(preview_texture_);
+            SDL_ReleaseGPUTexture(gpu_device_, preview_texture_);
             preview_texture_ = nullptr;
         }
         return;
@@ -580,25 +727,98 @@ auto Application::refresh_preview() -> void {
 
 auto Application::update_preview_texture(image::GeneratedImage const& preview) -> bool {
     if (preview_texture_ != nullptr) {
-        SDL_DestroyTexture(preview_texture_);
+        SDL_ReleaseGPUTexture(gpu_device_, preview_texture_);
         preview_texture_ = nullptr;
     }
-    preview_texture_ = SDL_CreateTexture(
-        renderer_, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, preview.width, preview.height);
+    SDL_GPUTextureCreateInfo texture_info{};
+    texture_info.type = SDL_GPU_TEXTURETYPE_2D;
+    texture_info.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
+    texture_info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+    texture_info.width = static_cast<Uint32>(preview.width);
+    texture_info.height = static_cast<Uint32>(preview.height);
+    texture_info.layer_count_or_depth = 1u;
+    texture_info.num_levels = 1u;
+    texture_info.sample_count = SDL_GPU_SAMPLECOUNT_1;
+    preview_texture_ = SDL_CreateGPUTexture(gpu_device_, &texture_info);
     if (preview_texture_ == nullptr) {
         return false;
     }
-    if (!SDL_SetTextureBlendMode(preview_texture_, SDL_BLENDMODE_BLEND) ||
-        !SDL_SetTextureScaleMode(preview_texture_, SDL_SCALEMODE_NEAREST) ||
-        !SDL_UpdateTexture(preview_texture_,
-                           nullptr,
-                           preview.pixels.data(),
-                           preview.width * static_cast<std::int32_t>(sizeof(image::Pixel)))) {
-        SDL_DestroyTexture(preview_texture_);
+
+    auto const byte_count{preview.pixels.size() * sizeof(image::Pixel)};
+    if (preview_transfer_buffer_size_ < byte_count) {
+        if (preview_transfer_buffer_ != nullptr) {
+            SDL_ReleaseGPUTransferBuffer(gpu_device_, preview_transfer_buffer_);
+        }
+        SDL_GPUTransferBufferCreateInfo transfer_info{};
+        transfer_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+        transfer_info.size = static_cast<Uint32>(byte_count);
+        preview_transfer_buffer_ = SDL_CreateGPUTransferBuffer(gpu_device_, &transfer_info);
+        if (preview_transfer_buffer_ == nullptr) {
+            SDL_ReleaseGPUTexture(gpu_device_, preview_texture_);
+            preview_texture_ = nullptr;
+            return false;
+        }
+        preview_transfer_buffer_size_ = byte_count;
+    }
+
+    auto* const mapped{SDL_MapGPUTransferBuffer(gpu_device_, preview_transfer_buffer_, true)};
+    if (mapped == nullptr) {
+        SDL_ReleaseGPUTexture(gpu_device_, preview_texture_);
+        preview_texture_ = nullptr;
+        return false;
+    }
+    std::memcpy(mapped, preview.pixels.data(), byte_count);
+    SDL_UnmapGPUTransferBuffer(gpu_device_, preview_transfer_buffer_);
+
+    auto* const command_buffer{SDL_AcquireGPUCommandBuffer(gpu_device_)};
+    if (command_buffer == nullptr) {
+        SDL_ReleaseGPUTexture(gpu_device_, preview_texture_);
+        preview_texture_ = nullptr;
+        return false;
+    }
+    auto* const copy_pass{SDL_BeginGPUCopyPass(command_buffer)};
+    SDL_GPUTextureTransferInfo transfer_info{};
+    transfer_info.transfer_buffer = preview_transfer_buffer_;
+    transfer_info.pixels_per_row = static_cast<Uint32>(preview.width);
+    transfer_info.rows_per_layer = static_cast<Uint32>(preview.height);
+    SDL_GPUTextureRegion destination{};
+    destination.texture = preview_texture_;
+    destination.w = static_cast<Uint32>(preview.width);
+    destination.h = static_cast<Uint32>(preview.height);
+    destination.d = 1u;
+    SDL_UploadToGPUTexture(copy_pass, &transfer_info, &destination, false);
+    SDL_EndGPUCopyPass(copy_pass);
+    if (!SDL_SubmitGPUCommandBuffer(command_buffer)) {
+        SDL_ReleaseGPUTexture(gpu_device_, preview_texture_);
         preview_texture_ = nullptr;
         return false;
     }
     return true;
+}
+
+auto Application::is_interaction_event(Uint32 const type) -> bool {
+    switch (type) {
+        case SDL_EVENT_KEY_DOWN:
+        case SDL_EVENT_KEY_UP:
+        case SDL_EVENT_TEXT_EDITING:
+        case SDL_EVENT_TEXT_INPUT:
+        case SDL_EVENT_MOUSE_MOTION:
+        case SDL_EVENT_MOUSE_BUTTON_DOWN:
+        case SDL_EVENT_MOUSE_BUTTON_UP:
+        case SDL_EVENT_MOUSE_WHEEL:
+        case SDL_EVENT_FINGER_DOWN:
+        case SDL_EVENT_FINGER_UP:
+        case SDL_EVENT_FINGER_MOTION:
+        case SDL_EVENT_WINDOW_RESIZED:
+        case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+        case SDL_EVENT_WINDOW_MINIMIZED:
+        case SDL_EVENT_WINDOW_RESTORED:
+        case SDL_EVENT_WINDOW_FOCUS_GAINED:
+        case SDL_EVENT_WINDOW_FOCUS_LOST:
+            return true;
+        default:
+            return false;
+    }
 }
 
 auto Application::reset_generator(image::GeneratorType const generator) -> void {

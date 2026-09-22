@@ -59,9 +59,9 @@ installed system-wide or added to `PATH`. Run it from the repository root to loa
 [memory layout planner guide](../tools/layout_planner/README.md) for usage, supported analysis, and
 V1 limitations.
 
-Image Lab is the standalone GUI and CLI for the deterministic image generators. It uses SDL3 and
-Dear ImGui through the SDL renderer backend, with no SDL GPU or DXC backend. Initialize the same
-SDL3 and ImGui submodules, then run `cmake --workflow --preset image-lab`; see the
+Image Lab is the standalone GUI and CLI for the deterministic image generators. Its interface uses
+SDL3, SDL_GPU, and Dear ImGui for presentation; image generation remains CPU-native. Initialize
+the same SDL3 and ImGui submodules, then run `cmake --workflow --preset image-lab`; see the
 [Image Lab guide](../tools/image_lab/README.md).
 
 Simulation tests live in `simulation/tests/`. Asset/configuration conversion and presentation remain

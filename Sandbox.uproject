@@ -469,10 +469,6 @@
 			"Enabled": true
 		},
 		{
-			"Name": "SandboxImages",
-			"Enabled": true
-		},
-		{
 			"Name": "SandboxMesh",
 			"Enabled": true
 		},

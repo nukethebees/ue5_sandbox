@@ -15,36 +15,6 @@ target_link_libraries(sandbox-image PRIVATE sandbox::native_defaults)
 set_target_properties(sandbox-image PROPERTIES
   OUTPUT_NAME sandbox_image
 )
-if(SANDBOX_WITH_UNREAL)
-  target_link_libraries(sandbox-image PRIVATE sandbox::unreal_avx2)
-  foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
-    file(MAKE_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/Image/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${configuration}"
-    )
-  endforeach()
-
-  set_target_properties(sandbox-image PROPERTIES
-    ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/Image/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
-  )
-endif()
-
-if(WIN32)
-  if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" AND
-     NOT CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC")
-    message(FATAL_ERROR "sandbox-image requires an MSVC-compatible ABI on Windows.")
-  endif()
-
-  set_target_properties(sandbox-image PROPERTIES
-    MSVC_RUNTIME_LIBRARY MultiThreadedDLL
-  )
-  target_compile_definitions(sandbox-image PRIVATE NDEBUG _ITERATOR_DEBUG_LEVEL=0)
-  if(CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
-    target_compile_options(sandbox-image PRIVATE /U_DEBUG)
-  else()
-    target_compile_options(sandbox-image PRIVATE -U_DEBUG)
-  endif()
-endif()
 
 add_executable(sandbox-image-tests
   ${SANDBOX_IMAGE_SOURCES}

@@ -17,6 +17,15 @@ namespace sandbox::image_lab {
 [[nodiscard]] auto describe_default_preset(std::string_view output_name)
     -> std::expected<std::string, std::string>;
 
+[[nodiscard]] auto serialize_request_json(image::GenerationRequest const& request) -> std::string;
+[[nodiscard]] auto deserialize_request_json(std::string_view json_text)
+    -> std::expected<image::GenerationRequest, std::string>;
+[[nodiscard]] auto write_request_json(image::GenerationRequest const& request,
+                                      std::filesystem::path const& path)
+    -> std::expected<void, std::string>;
+[[nodiscard]] auto load_request_json(std::filesystem::path const& path)
+    -> std::expected<image::GenerationRequest, std::string>;
+
 [[nodiscard]] auto generate_to_png(image::GenerationRequest const& request,
                                    std::filesystem::path const& output_directory)
     -> std::expected<std::filesystem::path, std::string>;
