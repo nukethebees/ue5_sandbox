@@ -2,12 +2,14 @@
 
 #include "SandboxEditor/levels/S7LevelAuthoringActors.h"
 #include "SandboxEditor/levels/S7LevelAuthoringDocument.h"
+#include "SandboxEditor/levels/S7LevelAuthoringSession.h"
 #include "SandboxEditor/levels/S7LevelSourceSession.h"
 
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGameS7/LevelDefinitionWriter.h>
 
 #include <Engine/Level.h>
-#include <Serialization/ObjectWriter.h>
+#include <UObject/UnrealType.h>
 
 namespace ml::editor {
 namespace s7_level_authoring_preview_detail {
@@ -16,29 +18,36 @@ auto level_config_digest(USpaceGameLevelConfig const* const level_config) -> FSt
         return {};
     }
 
-    TArray<uint8> serialized;
-    FObjectWriter{const_cast<USpaceGameLevelConfig*>(level_config), serialized};
-    return FS7LevelSourceSession::source_digest(BytesToHex(serialized.GetData(), serialized.Num()));
+    FString signature;
+    for (TFieldIterator<FProperty> property{USpaceGameLevelConfig::StaticClass(),
+                                            EFieldIteratorFlags::ExcludeSuper};
+         property;
+         ++property) {
+        FString value;
+        property->ExportText_InContainer(0,
+                                         value,
+                                         level_config,
+                                         level_config,
+                                         const_cast<USpaceGameLevelConfig*>(level_config),
+                                         0);
+        signature += property->GetName();
+        signature.AppendChar(TEXT('='));
+        signature += FS7LevelSourceSession::source_digest(value);
+        signature.AppendChar(TEXT('|'));
+    }
+    return FS7LevelSourceSession::source_digest(signature);
 }
 
 auto scene_digest(ULevel const& level, AS7LevelAuthoringDocument const& document) -> FString {
-    TArray<uint8> serialized_document;
-    FObjectWriter{const_cast<AS7LevelAuthoringDocument*>(&document), serialized_document};
-    auto signature{BytesToHex(serialized_document.GetData(), serialized_document.Num())};
-    for (auto const actor_ptr : level.Actors) {
-        auto const* const actor{actor_ptr.Get()};
-        auto const resolved{IsValid(actor) ? resolve_s7_level_actor(*actor) : NullOpt};
-        if (!resolved.IsSet()) {
-            continue;
-        }
-        signature += FString::Printf(TEXT("|%u|%s|%s|%s|%s"),
-                                     actor->GetUniqueID(),
-                                     *actor->GetClass()->GetPathName(),
-                                     *actor->GetActorLabel(),
-                                     *resolved->team.value.ToString(),
-                                     *actor->GetActorTransform().ToString());
+    auto const definition{collect_s7_editor_level(level, document)};
+    if (!definition) {
+        return FS7LevelSourceSession::source_digest(TEXT("invalid:") + definition.error());
     }
-    return FS7LevelSourceSession::source_digest(signature);
+    auto const source{s7::emit_editor_level_source(*definition)};
+    if (!source) {
+        return FS7LevelSourceSession::source_digest(TEXT("invalid:") + source.error());
+    }
+    return FS7LevelSourceSession::source_digest(*source);
 }
 
 auto bindings(AS7LevelAuthoringDocument const& document) -> TArray<FS7LevelPreviewBindingSnapshot> {
