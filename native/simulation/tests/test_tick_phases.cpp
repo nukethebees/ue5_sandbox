@@ -169,7 +169,7 @@ TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
     simulation.advance(simulation.get_clock().get_tick_period());
 
     auto const* const player{simulation.get_player_ship_simulation()};
-    EXPECT_NEAR(player->get_movement_state().transform.location.y, 100.0, 0.001);
+    EXPECT_NEAR(player->get_physical_state().transform.location.y, 100.0, 0.001);
     EXPECT_EQ(simulation.get_spatial_query_manager()
                   .get_aabb_overlap_events()
                   .entity_entity_overlaps.num(),
