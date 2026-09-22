@@ -15,7 +15,7 @@ target_compile_features(native-level-authoring PUBLIC cxx_std_23)
 target_include_directories(native-level-authoring PUBLIC include)
 target_link_libraries(native-level-authoring
   PUBLIC native-simulation
-  PRIVATE sandbox-s7 sandbox::warnings_as_errors
+  PRIVATE sandbox-s7 sandbox::native_defaults
 )
 configure_sandbox_s7_abi(native-level-authoring)
 

@@ -11,7 +11,7 @@ target_include_directories(sandbox-image
   PUBLIC include
   PRIVATE src
 )
-target_link_libraries(sandbox-image PRIVATE sandbox::warnings_as_errors)
+target_link_libraries(sandbox-image PRIVATE sandbox::native_defaults)
 set_target_properties(sandbox-image PROPERTIES
   OUTPUT_NAME sandbox_image
 )
@@ -53,7 +53,7 @@ add_executable(sandbox-image-tests
 target_compile_features(sandbox-image-tests PRIVATE cxx_std_23)
 target_include_directories(sandbox-image-tests PRIVATE include src tests)
 target_link_libraries(sandbox-image-tests PRIVATE
-  sandbox::warnings_as_errors
+  sandbox::native_defaults
   GTest::gtest_main
 )
 

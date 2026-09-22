@@ -9,7 +9,7 @@ target_compile_features(native-simulation-benchmark-lib PUBLIC cxx_std_23)
 target_include_directories(native-simulation-benchmark-lib PUBLIC include)
 target_link_libraries(native-simulation-benchmark-lib
   PUBLIC native-simulation
-  PRIVATE native-level-authoring CLI11::CLI11 sandbox::warnings_as_errors
+  PRIVATE native-level-authoring CLI11::CLI11 sandbox::native_defaults
 )
 target_compile_definitions(native-simulation-benchmark-lib PRIVATE
   SANDBOX_BENCHMARK_COMPILER_ID="${CMAKE_CXX_COMPILER_ID}"

@@ -16,7 +16,7 @@ target_link_libraries(kernel-codegen-lib
   PUBLIC lispb-output
   PRIVATE
   lispb-syntax
-  sandbox::codegen_warnings
+  sandbox::native_codegen_defaults
 )
 
 add_executable(kernel-codegen-tests
@@ -30,7 +30,7 @@ target_link_libraries(kernel-codegen-tests PRIVATE
   kernel-codegen-lib
   lispb-syntax
   GTest::gtest_main
-  sandbox::codegen_warnings
+  sandbox::native_codegen_defaults
 )
 
 add_test(NAME kernel-codegen-tests COMMAND kernel-codegen-tests)
@@ -65,7 +65,7 @@ target_include_directories(kernel-generated-compile-tests PRIVATE
   "${KERNEL_COMPILE_OUTPUT}"
   "${CMAKE_SOURCE_DIR}/native/lispb/tests/compile_fixture/stubs"
 )
-target_link_libraries(kernel-generated-compile-tests PRIVATE sandbox::codegen_warnings)
+target_link_libraries(kernel-generated-compile-tests PRIVATE sandbox::native_codegen_defaults)
 add_dependencies(kernel-codegen-tests kernel-generated-compile-tests)
 add_test(NAME KernelGeneratedCompileSmoke COMMAND kernel-generated-compile-tests)
 set_tests_properties(KernelGeneratedCompileSmoke PROPERTIES LABELS "unit;all;native;codegen")
@@ -124,7 +124,7 @@ target_include_directories(kernel-generated-standard-tests PRIVATE
 )
 target_link_libraries(kernel-generated-standard-tests PRIVATE
   GTest::gtest_main
-  sandbox::codegen_warnings
+  sandbox::native_codegen_defaults
 )
 add_test(NAME kernel-generated-standard-tests COMMAND kernel-generated-standard-tests)
 set_tests_properties(kernel-generated-standard-tests PROPERTIES LABELS "unit;all;native;codegen")
@@ -293,7 +293,7 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     set_target_properties(${TARGET} PROPERTIES UNITY_BUILD OFF)
     target_compile_features(${TARGET} PRIVATE cxx_std_23)
     target_include_directories(${TARGET} PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
-    target_link_libraries(${TARGET} PRIVATE sandbox::codegen_warnings)
+    target_link_libraries(${TARGET} PRIVATE sandbox::native_codegen_defaults)
   endforeach()
   target_link_libraries(kernel-native-simd-avx2 PRIVATE
     sandbox::arch_avx2
@@ -329,7 +329,7 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     CpuFeatures::cpu_features
     GTest::gtest_main
     sandbox::arch_avx2
-    sandbox::codegen_warnings
+    sandbox::native_codegen_defaults
     sandbox::fp_strict
   )
   add_test(NAME kernel-native-simd-tests COMMAND kernel-native-simd-tests)
@@ -352,7 +352,7 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     benchmark::benchmark_main
     CpuFeatures::cpu_features
     sandbox::arch_avx2
-    sandbox::codegen_warnings
+    sandbox::native_codegen_defaults
     sandbox::fp_strict
   )
   add_test(

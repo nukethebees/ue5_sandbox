@@ -48,7 +48,7 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
   )
 endif()
 target_link_libraries(sandbox-s7 PRIVATE
-  sandbox::warnings_as_errors
+  sandbox::native_defaults
   sandbox-s7-warning-exceptions
 )
 configure_sandbox_s7_abi(sandbox-s7)

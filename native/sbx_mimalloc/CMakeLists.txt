@@ -93,7 +93,7 @@ target_include_directories(sbx-mimalloc
 target_include_directories(sbx-mimalloc SYSTEM PRIVATE "${SBX_MIMALLOC_ROOT}/include")
 target_link_libraries(sbx-mimalloc
   PUBLIC sandbox::cxx_standard psapi shell32 user32 advapi32 bcrypt
-  PRIVATE sandbox::warnings_as_errors
+  PRIVATE sandbox::native_defaults
 )
 if(SANDBOX_WITH_TRACY)
   target_compile_definitions(sbx-mimalloc PRIVATE SANDBOX_WITH_TRACY)
@@ -119,7 +119,7 @@ endif()
 add_executable(sbx-mimalloc-tests tests/memory_tests.cpp)
 target_link_libraries(sbx-mimalloc-tests PRIVATE
   sandbox::mimalloc
-  sandbox::warnings_as_errors
+  sandbox::native_defaults
 )
 set_property(TARGET sbx-mimalloc-tests PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
 target_compile_definitions(sbx-mimalloc-tests PRIVATE _ITERATOR_DEBUG_LEVEL=0)

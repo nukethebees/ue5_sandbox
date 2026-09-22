@@ -11,6 +11,20 @@ target_compile_options(sandbox_native_no_rtti INTERFACE
   "$<$<AND:$<COMPILE_LANGUAGE:CXX>,$<NOT:$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>>:-fno-rtti>"
 )
 
+add_library(sandbox_native_defaults INTERFACE)
+add_library(sandbox::native_defaults ALIAS sandbox_native_defaults)
+target_link_libraries(sandbox_native_defaults INTERFACE
+  sandbox::native_no_rtti
+  sandbox::warnings_as_errors
+)
+
+add_library(sandbox_native_codegen_defaults INTERFACE)
+add_library(sandbox::native_codegen_defaults ALIAS sandbox_native_codegen_defaults)
+target_link_libraries(sandbox_native_codegen_defaults INTERFACE
+  sandbox::native_no_rtti
+  sandbox::codegen_warnings
+)
+
 if(SANDBOX_LAYOUT_PLANNER)
   enable_language(C)
 endif()
@@ -111,76 +125,6 @@ add_custom_target(native-tests
     check-generated-code
 )
 set_property(TARGET native-tests PROPERTY FOLDER "Sandbox/Native/Tests")
-
-set(SANDBOX_NATIVE_RTTI_TARGETS
-  codegen-generated-compile-fixture
-  codegen-generated-tests
-  codegen-lib
-  codegen-reject-single-COPY
-  codegen-reject-single-DEFAULT
-  codegen-reject-single-DESTRUCTOR
-  codegen-tests
-  kernel-codegen-lib
-  kernel-codegen-tests
-  kernel-generated-compile-tests
-  kernel-generated-standard-tests
-  kernel-native-benchmarks
-  kernel-native-dot-relaxed-avx2
-  kernel-native-dot-relaxed-avx512
-  kernel-native-simd-avx2
-  kernel-native-simd-avx512
-  kernel-native-simd-tests
-  layout-profile-probe
-  lispb
-  lispb-output
-  lispb-project
-  lispb-schema
-  lispb-syntax
-  lispb-syntax-tests
-  material-gen
-  material-gen-tests
-  mesh-gen
-  mesh-gen-tests
-  native-core
-  native-core-benchmarks
-  native-core-static-string-view-reject-automatic
-  native-core-tests
-  native-layout
-  native-layout-tests
-  native-level-authoring
-  native-level-authoring-tests
-  native-memory
-  native-memory-tests
-  native-profiling
-  native-simulation
-  native-simulation-benchmark
-  native-simulation-benchmark-lib
-  native-simulation-benchmark-tests
-  native-simulation-tests
-  native-simulation-unreal
-  native-soa-benchmarks
-  native-soa-generate
-  native-soa-reserve-matrix
-  native-soa-reserve-matrix-mimalloc
-  native-soa-tests
-  native-soa-tests-mimalloc
-  sandbox-image
-  sandbox-image-tests
-  sandbox-material-gen
-  sandbox-mesh-gen
-  sandbox-s7
-  sandbox-s7-tests
-  sbx-mimalloc
-  sbx-mimalloc-tests
-  slate-codegen-lib
-  slate-codegen-tests
-  slate-generated-compile-tests
-)
-foreach(target IN LISTS SANDBOX_NATIVE_RTTI_TARGETS)
-  if(TARGET ${target})
-    target_link_libraries(${target} PRIVATE sandbox::native_no_rtti)
-  endif()
-endforeach()
 
 if(TARGET TracyClientUnreal)
   set_property(SOURCE profiling/src/memory.cpp APPEND PROPERTY

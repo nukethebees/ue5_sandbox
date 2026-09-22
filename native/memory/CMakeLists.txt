@@ -6,7 +6,7 @@ target_sources(native-memory PRIVATE
 )
 target_compile_features(native-memory PUBLIC cxx_std_23)
 target_include_directories(native-memory PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
-target_link_libraries(native-memory PRIVATE sandbox::warnings_as_errors)
+target_link_libraries(native-memory PRIVATE sandbox::native_defaults)
 if(SANDBOX_WITH_TRACY)
   target_compile_definitions(native-memory PRIVATE SANDBOX_WITH_TRACY)
   target_link_libraries(native-memory PRIVATE sandbox::profiling)
@@ -27,7 +27,7 @@ add_executable(native-memory-tests)
 target_sources(native-memory-tests PRIVATE tests/root_arena_tests.cpp)
 target_link_libraries(native-memory-tests PRIVATE
   native-memory
-  sandbox::warnings_as_errors
+  sandbox::native_defaults
 )
 add_test(NAME native-memory-tests COMMAND native-memory-tests)
 set_tests_properties(native-memory-tests PROPERTIES LABELS "unit;all;native;native-memory")

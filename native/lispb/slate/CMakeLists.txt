@@ -10,7 +10,7 @@ target_link_libraries(slate-codegen-lib
   PUBLIC lispb-output
   PRIVATE
   lispb-syntax
-  sandbox::codegen_warnings
+  sandbox::native_codegen_defaults
 )
 
 add_executable(slate-codegen-tests
@@ -22,7 +22,7 @@ target_link_libraries(slate-codegen-tests PRIVATE
   slate-codegen-lib
   lispb-syntax
   GTest::gtest_main
-  sandbox::codegen_warnings
+  sandbox::native_codegen_defaults
 )
 
 add_test(NAME slate-codegen-tests COMMAND slate-codegen-tests)
@@ -53,7 +53,7 @@ add_executable(slate-generated-compile-tests
 set_target_properties(slate-generated-compile-tests PROPERTIES UNITY_BUILD OFF)
 target_compile_features(slate-generated-compile-tests PRIVATE cxx_std_23)
 target_include_directories(slate-generated-compile-tests PRIVATE "${SLATE_COMPILE_OUTPUT}")
-target_link_libraries(slate-generated-compile-tests PRIVATE sandbox::codegen_warnings)
+target_link_libraries(slate-generated-compile-tests PRIVATE sandbox::native_codegen_defaults)
 add_dependencies(slate-codegen-tests slate-generated-compile-tests)
 add_test(NAME SlateGeneratedCompileSmoke COMMAND slate-generated-compile-tests)
 set_tests_properties(SlateGeneratedCompileSmoke PROPERTIES LABELS "unit;all;native;codegen")

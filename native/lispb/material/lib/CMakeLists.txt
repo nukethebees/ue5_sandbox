@@ -10,7 +10,7 @@ target_include_directories(material-gen PUBLIC include)
 target_link_libraries(material-gen
   PRIVATE
     lispb-syntax
-    sandbox::codegen_warnings
+    sandbox::native_codegen_defaults
 )
 
 if(SANDBOX_WITH_UNREAL)
@@ -29,7 +29,7 @@ if(SANDBOX_WITH_UNREAL)
   target_compile_features(sandbox-material-gen PUBLIC cxx_std_23)
   target_include_directories(sandbox-material-gen PUBLIC include)
   target_link_libraries(sandbox-material-gen PRIVATE
-    sandbox::codegen_warnings
+    sandbox::native_codegen_defaults
     sandbox::unreal_avx2
   )
   set_target_properties(sandbox-material-gen PROPERTIES

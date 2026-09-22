@@ -42,7 +42,7 @@ target_compile_features(native-core PUBLIC cxx_std_23)
 target_include_directories(native-core PUBLIC include)
 target_link_libraries(native-core
   PUBLIC sandbox::handmade_math
-  PRIVATE sandbox::warnings_as_errors
+  PRIVATE sandbox::native_defaults
 )
 if(SANDBOX_WITH_TRACY)
   target_compile_definitions(native-core PRIVATE SANDBOX_WITH_TRACY)
@@ -95,7 +95,7 @@ target_sources(native-core-tests PRIVATE
   tests/vector_math_tests.cpp
 )
 target_compile_features(native-core-tests PRIVATE cxx_std_23)
-target_link_libraries(native-core-tests PRIVATE native-core sandbox::warnings_as_errors)
+target_link_libraries(native-core-tests PRIVATE native-core sandbox::native_defaults)
 
 target_link_libraries(native-core-tests PRIVATE GTest::gtest_main)
 
@@ -113,7 +113,7 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     native-core
     benchmark::benchmark
     benchmark::benchmark_main
-    sandbox::warnings_as_errors
+    sandbox::native_defaults
   )
 
   sandbox_jobserver_command(native_core_vector_lerp_benchmark_command BENCHMARK benchmark
@@ -142,7 +142,7 @@ target_sources(native-core-static-string-view-reject-automatic PRIVATE
 target_compile_features(native-core-static-string-view-reject-automatic PRIVATE cxx_std_23)
 target_link_libraries(native-core-static-string-view-reject-automatic PRIVATE
   native-core
-  sandbox::warnings_as_errors
+  sandbox::native_defaults
 )
 add_test(NAME StaticStringViewRejectsAutomaticStorage
   COMMAND "${CMAKE_COMMAND}" --build "${CMAKE_BINARY_DIR}"

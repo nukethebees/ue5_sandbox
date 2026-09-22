@@ -48,7 +48,7 @@ target_sources(native-simulation-tests PRIVATE
 target_compile_features(native-simulation-tests PRIVATE cxx_std_23)
 target_link_libraries(native-simulation-tests PRIVATE
   native-simulation
-  sandbox::warnings_as_errors
+  sandbox::native_defaults
 )
 
 target_link_libraries(native-simulation-tests PRIVATE GTest::gtest_main)

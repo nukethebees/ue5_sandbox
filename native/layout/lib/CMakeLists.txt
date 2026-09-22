@@ -19,5 +19,5 @@ target_link_libraries(native-layout
     lispb-schema
   PRIVATE
     lispb-project
-    sandbox::warnings_as_errors
+    sandbox::native_defaults
 )

@@ -4,7 +4,7 @@ target_compile_features(native-level-authoring-tests PRIVATE cxx_std_23)
 target_link_libraries(native-level-authoring-tests PRIVATE
   native-level-authoring
   GTest::gtest_main
-  sandbox::warnings_as_errors
+  sandbox::native_defaults
 )
 configure_sandbox_s7_abi(native-level-authoring-tests)
 

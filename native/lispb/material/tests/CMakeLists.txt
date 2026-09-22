@@ -3,7 +3,7 @@ target_sources(material-gen-tests PRIVATE material_tests.cpp)
 target_link_libraries(material-gen-tests PRIVATE
   material-gen
   GTest::gtest_main
-  sandbox::codegen_warnings
+  sandbox::native_codegen_defaults
 )
 target_compile_definitions(material-gen-tests PRIVATE
   SANDBOX_PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}"

@@ -9,7 +9,7 @@ target_compile_features(native-layout-tests PRIVATE cxx_std_23)
 target_link_libraries(native-layout-tests PRIVATE
   native-layout
   GTest::gtest_main
-  sandbox::warnings_as_errors
+  sandbox::native_defaults
 )
 target_compile_definitions(native-layout-tests PRIVATE
   SANDBOX_SOURCE_DIR="${PROJECT_SOURCE_DIR}"

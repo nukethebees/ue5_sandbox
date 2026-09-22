@@ -21,7 +21,7 @@ foreach(native_simulation_target IN LISTS native_simulation_targets)
   )
   target_link_libraries(${native_simulation_target}
     PUBLIC sandbox::handmade_math native-memory native-core
-    PRIVATE sandbox::warnings_as_errors
+    PRIVATE sandbox::native_defaults
   )
   if(SANDBOX_WITH_TRACY)
     target_compile_definitions(${native_simulation_target} PRIVATE SANDBOX_WITH_TRACY)

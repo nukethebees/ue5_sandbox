@@ -11,7 +11,7 @@ if(SANDBOX_WITH_TRACY)
   target_compile_features(native-profiling PUBLIC cxx_std_23)
   target_link_libraries(native-profiling
     PUBLIC native-profiling-api
-    PRIVATE Tracy::TracyClient sandbox::warnings_as_errors
+    PRIVATE Tracy::TracyClient sandbox::native_defaults
   )
   set_property(TARGET native-profiling PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
 endif()

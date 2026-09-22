@@ -1,5 +1,5 @@
 add_executable(native-soa-generate generate.cpp)
-target_link_libraries(native-soa-generate PRIVATE codegen-lib sandbox::warnings_as_errors)
+target_link_libraries(native-soa-generate PRIVATE codegen-lib sandbox::native_defaults)
 set(NATIVE_SOA_GENERATED "${CMAKE_CURRENT_BINARY_DIR}/generated")
 add_custom_command(
   OUTPUT "${NATIVE_SOA_GENERATED}/native_soa_types.h"
@@ -13,7 +13,7 @@ target_compile_features(native-soa INTERFACE cxx_std_23)
 target_include_directories(native-soa INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include" "${NATIVE_SOA_GENERATED}")
 target_include_directories(native-soa INTERFACE "${PROJECT_SOURCE_DIR}/native/core/include")
 target_sources(native-soa INTERFACE "${NATIVE_SOA_GENERATED}/native_soa_types.h")
-target_link_libraries(native-soa INTERFACE sandbox::handmade_math sandbox::warnings_as_errors)
+target_link_libraries(native-soa INTERFACE sandbox::handmade_math sandbox::native_defaults)
 
 add_executable(native-soa-tests tests.cpp)
 target_link_libraries(native-soa-tests PRIVATE native-soa GTest::gtest_main)

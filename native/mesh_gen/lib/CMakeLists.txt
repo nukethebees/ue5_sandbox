@@ -9,7 +9,7 @@ target_include_directories(mesh-gen
   PUBLIC include
   PRIVATE src
 )
-target_link_libraries(mesh-gen PRIVATE sandbox::warnings_as_errors)
+target_link_libraries(mesh-gen PRIVATE sandbox::native_defaults)
 
 if(SANDBOX_WITH_UNREAL)
   foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
@@ -24,7 +24,7 @@ if(SANDBOX_WITH_UNREAL)
     PUBLIC include
     PRIVATE src
   )
-  target_link_libraries(sandbox-mesh-gen PRIVATE sandbox::warnings_as_errors)
+  target_link_libraries(sandbox-mesh-gen PRIVATE sandbox::native_defaults)
   target_link_libraries(sandbox-mesh-gen PRIVATE sandbox::unreal_avx2)
   set_target_properties(sandbox-mesh-gen PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
