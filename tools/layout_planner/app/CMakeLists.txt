@@ -3,9 +3,16 @@ target_sources(layout-planner PRIVATE
   application.cpp
   gui/planner_ui.cpp
   gui/planner_ui_browser.cpp
+  gui/planner_ui_browser_representations.cpp
+  gui/planner_ui_browser_aggregates.cpp
   gui/planner_ui_comparison.cpp
+  gui/planner_ui_comparison_targets.cpp
   gui/planner_ui_graph.cpp
   gui/planner_ui_properties.cpp
+  gui/planner_ui_properties_scalar.cpp
+  gui/planner_ui_properties_packed.cpp
+  gui/planner_ui_properties_aggregate.cpp
+  gui/planner_ui_properties_soa.cpp
   gui/planner_ui_support.cpp
   gui/planner_ui_visualizations.cpp
   main.cpp

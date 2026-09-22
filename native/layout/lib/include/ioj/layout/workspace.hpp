@@ -49,6 +49,7 @@ class LayoutWorkspace {
     auto active_variant() const -> Variant const&;
     auto active_variant_id() const -> std::uint64_t;
     auto revision() const -> std::uint64_t;
+    auto graph_revision() const -> std::uint64_t;
     void replace_types(lispb::schema::TypeGraph types);
 
     auto select_variant(std::uint64_t id) -> bool;
@@ -80,6 +81,7 @@ class LayoutWorkspace {
     std::uint64_t active_variant_id_{baseline_variant_id};
     std::uint64_t next_variant_id_{1};
     std::uint64_t revision_{1};
+    std::uint64_t graph_revision_{1};
 };
 
 } // namespace ioj::layout

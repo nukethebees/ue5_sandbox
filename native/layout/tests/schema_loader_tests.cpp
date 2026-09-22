@@ -1,6 +1,8 @@
 #include <ioj/layout/analyzer.hpp>
 #include <ioj/layout/schema_loader.hpp>
 
+#include "../lib/src/schema_loader_transaction.hpp"
+
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -174,6 +176,121 @@ TEST(SchemaLoader, ReportsMissingProjectsWithoutThrowing) {
     auto const loaded{load_lispb_schema("missing/project.lispb", "sandbox-code")};
     EXPECT_FALSE(loaded.loaded);
     EXPECT_FALSE(loaded.diagnostics.empty());
+}
+
+TEST(SchemaLoader, CreatesBlankProjectAndReopensCleanDocument) {
+    TemporarySchemaProject files;
+    auto created{create_blank_lispb_schema(files.path("blank.lispb"), "blank-schema")};
+    ASSERT_TRUE(created.loaded) << diagnostic_text(created);
+    ASSERT_TRUE(created.document.has_value());
+    EXPECT_FALSE(created.document->dirty());
+    EXPECT_TRUE(std::filesystem::exists(files.path("blank_schema/types.lispb")));
+    EXPECT_TRUE(std::filesystem::exists(files.path("blank_schema/source.lispb")));
+    EXPECT_FALSE(std::filesystem::exists(files.path("blank.lispb.layout-planner.tmp")));
+
+    auto reopened{load_lispb_schema(files.path("blank.lispb"), "blank-schema")};
+    ASSERT_TRUE(reopened.loaded) << diagnostic_text(reopened);
+    ASSERT_TRUE(reopened.document.has_value());
+    EXPECT_FALSE(reopened.document->dirty());
+}
+
+TEST(SchemaLoader, RejectsInvalidBlankDestinationsWithoutPublishingFiles) {
+    TemporarySchemaProject files;
+    auto check_failure = [&](std::filesystem::path const& destination, std::string const& target) {
+        auto created{create_blank_lispb_schema(destination, target)};
+        EXPECT_FALSE(created.loaded);
+        EXPECT_FALSE(created.diagnostics.empty());
+    };
+
+    check_failure(files.path("bad.txt"), "blank-schema");
+    check_failure(files.path("blank.lispb"), "bad target");
+    check_failure(files.path("missing/blank.lispb"), "blank-schema");
+    EXPECT_FALSE(std::filesystem::exists(files.path("bad_schema")));
+    EXPECT_FALSE(std::filesystem::exists(files.path("blank_schema")));
+    EXPECT_FALSE(std::filesystem::exists(files.path("missing")));
+
+    check_failure(files.path("project.lispb"), "blank-schema");
+    EXPECT_TRUE(std::filesystem::exists(files.path("project.lispb")));
+    std::filesystem::create_directory(files.path("blank_schema"));
+    check_failure(files.path("blank.lispb"), "blank-schema");
+    EXPECT_TRUE(std::filesystem::is_directory(files.path("blank_schema")));
+    std::filesystem::remove(files.path("blank_schema"));
+    {
+        std::ofstream temporary{files.path("blank.lispb.layout-planner.tmp")};
+        temporary << "owned elsewhere";
+    }
+    check_failure(files.path("blank.lispb"), "blank-schema");
+    EXPECT_FALSE(std::filesystem::exists(files.path("blank_schema")));
+    EXPECT_FALSE(std::filesystem::exists(files.path("blank.lispb")));
+    EXPECT_EQ(files.read("blank.lispb.layout-planner.tmp"), "owned elsewhere");
+}
+
+TEST(SchemaLoader, CloneUsesTheSameDestinationValidationAsBlankCreation) {
+    TemporarySchemaProject files;
+    auto loaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
+    ASSERT_TRUE(loaded.document.has_value());
+
+    for (auto const& destination : {files.path("bad.txt"), files.path("missing/copy.lispb")}) {
+        auto cloned{clone_lispb_schema(*loaded.document, destination, "test-schema")};
+        EXPECT_FALSE(cloned.loaded);
+        EXPECT_FALSE(cloned.diagnostics.empty());
+    }
+    auto invalid_target{
+        clone_lispb_schema(*loaded.document, files.path("copy.lispb"), "bad target")};
+    EXPECT_FALSE(invalid_target.loaded);
+    EXPECT_FALSE(std::filesystem::exists(files.path("copy_schema")));
+    EXPECT_FALSE(std::filesystem::exists(files.path("copy.lispb")));
+}
+
+TEST(SchemaLoader, CloneRollsBackPublishedFilesIfFinalReopenFails) {
+    TemporarySchemaProject files;
+    auto loaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
+    ASSERT_TRUE(loaded.document.has_value());
+    int open_count{};
+    auto const cloned{detail::clone_lispb_schema_with_opener(
+        *loaded.document,
+        files.path("failed.lispb"),
+        "test-schema",
+        [&](std::filesystem::path const& path, std::string const& target) {
+            ++open_count;
+            if (open_count == 2) {
+                SchemaLoadResult failure;
+                failure.diagnostics.push_back(
+                    {DiagnosticSeverity::error, "forced final reopen failure"});
+                return failure;
+            }
+            return load_lispb_schema(path, target);
+        })};
+    EXPECT_EQ(open_count, 2);
+    EXPECT_FALSE(cloned.loaded);
+    EXPECT_FALSE(std::filesystem::exists(files.path("failed.lispb")));
+    EXPECT_FALSE(std::filesystem::exists(files.path("failed_schema")));
+    EXPECT_FALSE(std::filesystem::exists(files.path("failed.lispb.layout-planner.tmp")));
+}
+
+TEST(SchemaLoader, DanglingSymlinkDestinationsAreTreatedAsOccupied) {
+    TemporarySchemaProject files;
+    std::error_code error;
+    std::filesystem::create_symlink(files.path("missing-target"), files.path("blank.lispb"), error);
+    if (error) {
+        GTEST_SKIP() << "Creating symlinks is unavailable: " << error.message();
+    }
+    auto const blank{create_blank_lispb_schema(files.path("blank.lispb"), "test-schema")};
+    EXPECT_FALSE(blank.loaded);
+    EXPECT_FALSE(std::filesystem::exists(files.path("blank_schema")));
+    EXPECT_TRUE(
+        std::filesystem::is_symlink(std::filesystem::symlink_status(files.path("blank.lispb"))));
+
+    auto loaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
+    auto const cloned{
+        clone_lispb_schema(*loaded.document, files.path("blank.lispb"), "test-schema")};
+    EXPECT_FALSE(cloned.loaded);
+    EXPECT_FALSE(std::filesystem::exists(files.path("blank_schema")));
+    EXPECT_TRUE(
+        std::filesystem::is_symlink(std::filesystem::symlink_status(files.path("blank.lispb"))));
 }
 
 TEST(SchemaLoader, ClonesCurrentDraftAndLoadsIndependentProject) {

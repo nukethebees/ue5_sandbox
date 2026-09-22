@@ -2,8 +2,8 @@
 
 #include <ioj/layout/abi_profile.hpp>
 #include <ioj/layout/analyzer.hpp>
+#include <ioj/layout/planner_session.hpp>
 #include <ioj/layout/schema_loader.hpp>
-#include <ioj/layout/workspace.hpp>
 
 #include <array>
 #include <cstddef>
@@ -170,6 +170,7 @@ class PlannerUi {
     void adopt_loaded_schema(layout::SchemaLoadResult loaded);
     void remember_recent_project(std::filesystem::path const& path);
     void refresh_analysis();
+    void select_type(std::optional<lispb::schema::TypeId> type);
     void draw_project_panel();
     void draw_layout_panel();
     void draw_target_profile_panel();
@@ -206,90 +207,12 @@ class PlannerUi {
     std::map<std::string, std::string, std::less<>> recent_project_targets_;
     std::optional<lispb::EditableProjectDocument> project_document_;
     std::optional<lispb::schema::EditableSchemaDocument> document_;
-    layout::LayoutWorkspace workspace_;
-    layout::AbiProfile abi_{layout::AbiProfile::host_common()};
-    layout::AbiProfile comparison_abi_{layout::AbiProfile::host_common()};
+    layout::PlannerAnalysisSession analysis_session_;
     layout::MemoryFacts target_memory_fact_defaults_;
     std::vector<layout::Diagnostic> load_diagnostics_;
-    std::optional<lispb::schema::TypeId> selected_type_;
-    std::string selected_field_;
-    layout::AccessOperation access_operation_{layout::AccessOperation::read};
-    std::uint64_t access_multiplicity_{1};
     bool access_multiplicity_error_{};
-    layout::SoaAllocationStrategy soa_allocation_strategy_{
-        layout::SoaAllocationStrategy::separate_columns};
     bool soa_region_map_pages_{};
     float soa_region_pixels_{64.0F};
-
-    std::uint64_t cached_revision_{};
-    std::uint64_t target_profile_revision_{};
-    std::uint64_t cached_target_profile_revision_{};
-    std::uint64_t comparison_target_profile_revision_{};
-    std::uint64_t cached_comparison_target_profile_revision_{};
-    layout::AccessOperation cached_access_operation_{layout::AccessOperation::read};
-    std::uint64_t cached_access_multiplicity_{1};
-    layout::SoaAllocationStrategy cached_soa_allocation_strategy_{
-        layout::SoaAllocationStrategy::separate_columns};
-    std::optional<lispb::schema::TypeId> cached_type_;
-    std::string cached_selected_field_;
-    std::map<std::string, layout::AccessOperation, std::less<>> cached_packed_access_fields_;
-    bool cached_packed_access_set_explicit_{};
-    std::map<std::string, layout::AccessOperation, std::less<>> cached_record_access_members_;
-    bool cached_record_access_set_explicit_{};
-    std::map<std::string, layout::AccessOperation, std::less<>> cached_soa_access_columns_;
-    bool cached_soa_access_set_explicit_{};
-    std::uint64_t cached_comparison_a_variant_id_{std::numeric_limits<std::uint64_t>::max()};
-    std::uint64_t cached_comparison_b_variant_id_{std::numeric_limits<std::uint64_t>::max()};
-    std::optional<lispb::schema::TypeIdentity> cached_quantized_comparison_type_;
-    std::optional<lispb::schema::TypeIdentity> cached_varint_comparison_type_;
-    std::optional<lispb::schema::TypeIdentity> cached_optional_comparison_type_;
-    std::uint64_t cached_union_distribution_revision_{std::numeric_limits<std::uint64_t>::max()};
-    std::uint64_t cached_tagged_distribution_revision_{std::numeric_limits<std::uint64_t>::max()};
-    std::optional<layout::EnumDomainAnalysis> enum_domain_;
-    std::optional<layout::EnumTargetComparison> enum_target_comparison_;
-    std::optional<layout::IntegerScalarAnalysis> integer_scalar_analysis_;
-    std::optional<layout::IntegerScalarCapacityComparison> integer_scalar_capacity_comparison_;
-    std::optional<layout::LinearQuantizedAnalysis> linear_quantized_analysis_;
-    std::optional<layout::LinearQuantizedComparison> linear_quantized_comparison_;
-    std::optional<layout::IntegerVarintAnalysis> integer_varint_analysis_;
-    std::optional<layout::IntegerVarintComparison> integer_varint_comparison_;
-    std::optional<layout::FixedPointAnalysis> fixed_point_analysis_;
-    std::optional<layout::MiniFloatAnalysis> mini_float_analysis_;
-    std::optional<layout::OptionalSentinelAnalysis> optional_sentinel_analysis_;
-    std::optional<layout::OptionalPresenceBitAnalysis> optional_presence_bit_analysis_;
-    std::optional<layout::OptionalEncodingComparison> optional_encoding_comparison_;
-    std::optional<layout::PackedAnalysis> baseline_packed_;
-    std::optional<layout::PackedAnalysis> active_packed_;
-    std::optional<layout::PackedTargetComparison> packed_target_comparison_;
-    std::optional<layout::PackedAccessAnalysis> packed_access_analysis_;
-    std::optional<layout::PackedAccessComparison> packed_target_access_comparison_;
-    std::optional<layout::PackedAccessComparison> packed_access_comparison_;
-    std::vector<std::pair<std::uint64_t, layout::PackedAnalysis>> packed_variants_;
-    std::optional<layout::SoaAnalysis> baseline_soa_;
-    std::optional<layout::SoaAnalysis> active_soa_;
-    std::optional<layout::SoaTargetComparison> soa_target_comparison_;
-    std::optional<layout::SoaAccessAnalysis> soa_access_analysis_;
-    std::optional<layout::SoaAccessComparison> soa_target_access_comparison_;
-    std::optional<layout::RecordSoaAccessComparison> record_soa_access_comparison_;
-    std::optional<layout::SoaAccessComparison> soa_access_comparison_;
-    std::vector<std::pair<std::uint64_t, layout::SoaAnalysis>> soa_variants_;
-    std::optional<layout::PackedAnalysis> comparison_a_packed_;
-    std::optional<layout::PackedAnalysis> comparison_b_packed_;
-    std::optional<layout::RecordAnalysis> record_analysis_;
-    std::optional<layout::RecordTargetComparison> record_target_comparison_;
-    std::optional<layout::RecordAccessAnalysis> record_access_analysis_;
-    std::optional<layout::RecordAccessComparison> record_target_access_comparison_;
-    std::optional<layout::UnionAnalysis> union_analysis_;
-    std::optional<layout::UnionTargetComparison> union_target_comparison_;
-    std::optional<layout::UnionDistributionAnalysis> union_distribution_analysis_;
-    std::optional<layout::UnionDistributionComparison> union_target_distribution_comparison_;
-    std::optional<layout::TaggedUnionAnalysis> tagged_union_analysis_;
-    std::optional<layout::TaggedUnionTargetComparison> tagged_union_target_comparison_;
-    std::optional<layout::TaggedUnionDistributionAnalysis> tagged_union_distribution_analysis_;
-    std::optional<layout::TaggedUnionDistributionComparison>
-        tagged_union_target_distribution_comparison_;
-    std::optional<layout::SoaAnalysis> comparison_a_soa_;
-    std::optional<layout::SoaAnalysis> comparison_b_soa_;
 
     std::array<char, 128> variant_name_{};
     std::array<char, 128> schema_filter_{};
@@ -441,21 +364,9 @@ class PlannerUi {
     std::vector<std::array<char, 128>> soa_mask_dimension_extents_;
     std::optional<std::size_t> soa_mask_dimension_index_;
     std::string selected_enumerator_;
-    std::map<std::string, layout::AccessOperation, std::less<>> packed_access_fields_;
-    std::map<std::string, layout::AccessOperation, std::less<>> record_access_members_;
-    std::map<std::string, layout::AccessOperation, std::less<>> soa_access_columns_;
     std::map<lispb::schema::TypeIdentity, std::vector<VarintDistributionRow>> varint_distributions_;
-    std::map<lispb::schema::DeclarationId, std::map<std::string, std::uint64_t>>
-        union_distributions_;
-    std::uint64_t union_distribution_revision_{};
-    std::map<lispb::schema::DeclarationId, std::map<std::string, std::uint64_t>>
-        tagged_union_distributions_;
-    std::uint64_t tagged_distribution_revision_{};
     std::array<char, 32> new_varint_distribution_value_{"0"};
     std::uint64_t new_varint_distribution_weight_{1};
-    bool record_access_set_explicit_{};
-    bool packed_access_set_explicit_{};
-    bool soa_access_set_explicit_{};
     std::optional<lispb::schema::DeclarationId> rename_editor_declaration_;
     std::array<char, 128> declaration_name_{};
     std::optional<lispb::schema::DeclarationId> inline_record_rename_;
@@ -527,11 +438,6 @@ class PlannerUi {
     std::optional<std::uint32_t> packed_dragged_right_width_;
     std::uint64_t variant_name_id_{std::numeric_limits<std::uint64_t>::max()};
     std::uint64_t next_variant_number_{1};
-    std::uint64_t comparison_a_variant_id_{layout::LayoutWorkspace::baseline_variant_id};
-    std::uint64_t comparison_b_variant_id_{layout::LayoutWorkspace::baseline_variant_id};
-    std::optional<lispb::schema::TypeIdentity> quantized_comparison_type_;
-    std::optional<lispb::schema::TypeIdentity> varint_comparison_type_;
-    std::optional<lispb::schema::TypeIdentity> optional_comparison_type_;
     float text_scale_{1.0F};
     float graph_pan_x_{32.0F};
     float graph_pan_y_{32.0F};
@@ -547,7 +453,6 @@ class PlannerUi {
     std::optional<int> window_height_;
     bool dock_layout_initialized_{};
     bool reset_dock_layout_requested_{};
-    bool comparison_b_follows_active_{true};
     bool open_new_module_dialog_{};
     bool open_new_enum_dialog_{};
     std::optional<PendingPackedEnumBinding> pending_packed_enum_binding_;

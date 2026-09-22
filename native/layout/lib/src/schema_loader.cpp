@@ -1,5 +1,7 @@
 #include <ioj/layout/schema_loader.hpp>
 
+#include "schema_loader_transaction.hpp"
+
 #include <lispb/project.h>
 #include <lispb/schema/editable_document.h>
 
@@ -45,6 +47,64 @@ void write_file(std::filesystem::path const& path, std::string const& text) {
     output.close();
     if (!output) {
         throw std::runtime_error{"Cannot write LispB file: " + path.string()};
+    }
+}
+
+void validate_new_project_destination(std::filesystem::path const& destination,
+                                      std::filesystem::path const& source_directory,
+                                      std::filesystem::path const& temporary_project,
+                                      std::string const& target_name) {
+    if (destination.extension() != ".lispb" || destination.stem().empty()) {
+        throw std::invalid_argument{"New project path must end in .lispb"};
+    }
+    if (target_name.empty() || !std::ranges::all_of(target_name, [](unsigned char const character) {
+            return std::isalnum(character) != 0 || character == '_' || character == '-';
+        })) {
+        throw std::invalid_argument{
+            "C++ schema target name must contain only letters, digits, '_' or '-'"};
+    }
+    if (!std::filesystem::is_directory(destination.parent_path())) {
+        throw std::invalid_argument{"New project parent directory does not exist: " +
+                                    destination.parent_path().string()};
+    }
+    for (auto const& path : {destination, source_directory, temporary_project}) {
+        std::error_code error;
+        auto const status{std::filesystem::symlink_status(path, error)};
+        if (error && error != std::errc::no_such_file_or_directory) {
+            throw std::filesystem::filesystem_error{
+                "Cannot inspect new project destination", path, error};
+        }
+        if (error != std::errc::no_such_file_or_directory &&
+            status.type() != std::filesystem::file_type::not_found) {
+            throw std::invalid_argument{"New project destination already exists: " + path.string()};
+        }
+    }
+}
+
+auto publish_project(std::filesystem::path const& temporary_project,
+                     std::filesystem::path const& destination,
+                     std::string const& target_name,
+                     detail::SchemaOpener const& opener) -> SchemaLoadResult {
+    auto validated{opener(temporary_project, target_name)};
+    if (!validated.loaded) {
+        throw std::runtime_error{validated.diagnostics.empty()
+                                     ? "LispB project failed validation"
+                                     : validated.diagnostics.front().message};
+    }
+
+    std::filesystem::rename(temporary_project, destination);
+    try {
+        auto opened{opener(destination, target_name)};
+        if (!opened.loaded) {
+            throw std::runtime_error{opened.diagnostics.empty()
+                                         ? "Published LispB project could not be reopened"
+                                         : opened.diagnostics.front().message};
+        }
+        return opened;
+    } catch (...) {
+        std::error_code ignored;
+        std::filesystem::remove(destination, ignored);
+        throw;
     }
 }
 
@@ -100,39 +160,13 @@ auto create_blank_lispb_schema(std::filesystem::path const& destination_project_
     temporary_project += ".layout-planner.tmp";
     bool source_directory_created{};
     bool temporary_project_created{};
-    bool project_published{};
     try {
-        if (destination.extension() != ".lispb" || destination.stem().empty()) {
-            throw std::invalid_argument{"New project path must end in .lispb"};
-        }
-        if (target_name.empty() ||
-            !std::ranges::all_of(target_name, [](unsigned char const character) {
-                return std::isalnum(character) != 0 || character == '_' || character == '-';
-            })) {
-            throw std::invalid_argument{
-                "C++ schema target name must contain only letters, digits, '_' or '-'"};
-        }
-        if (!std::filesystem::is_directory(destination.parent_path())) {
-            throw std::invalid_argument{"New project parent directory does not exist: " +
-                                        destination.parent_path().string()};
-        }
-        for (auto const& path : {destination, source_directory, temporary_project}) {
-            std::error_code error;
-            auto const status{std::filesystem::symlink_status(path, error)};
-            if (error && error != std::errc::no_such_file_or_directory) {
-                throw std::filesystem::filesystem_error{
-                    "Cannot inspect new project destination", path, error};
-            }
-            if (error == std::errc::no_such_file_or_directory) {
-                continue;
-            }
-            if (status.type() != std::filesystem::file_type::not_found) {
-                throw std::invalid_argument{"New project destination already exists: " +
-                                            path.string()};
-            }
-        }
+        validate_new_project_destination(
+            destination, source_directory, temporary_project, target_name);
 
-        std::filesystem::create_directory(source_directory);
+        if (!std::filesystem::create_directory(source_directory)) {
+            throw std::runtime_error{"New project source directory already exists"};
+        }
         source_directory_created = true;
         write_file(source_directory / "types.lispb", "");
         write_file(source_directory / "source.lispb",
@@ -152,27 +186,9 @@ auto create_blank_lispb_schema(std::filesystem::path const& destination_project_
                 << "    :output-root (project-path \"generated\")))\n";
         temporary_project_created = true;
         write_file(temporary_project, project.str());
-
-        auto validated{load_lispb_schema(temporary_project, target_name)};
-        if (!validated.loaded) {
-            throw std::runtime_error{validated.diagnostics.empty()
-                                         ? "New LispB project failed validation"
-                                         : validated.diagnostics.front().message};
-        }
-        std::filesystem::rename(temporary_project, destination);
-        project_published = true;
-        auto opened{load_lispb_schema(destination, target_name)};
-        if (!opened.loaded) {
-            throw std::runtime_error{opened.diagnostics.empty()
-                                         ? "New LispB project could not be reopened"
-                                         : opened.diagnostics.front().message};
-        }
-        return opened;
+        return publish_project(temporary_project, destination, target_name, load_lispb_schema);
     } catch (std::exception const& error) {
         std::error_code ignored;
-        if (project_published) {
-            std::filesystem::remove(destination, ignored);
-        }
         if (temporary_project_created) {
             std::filesystem::remove(temporary_project, ignored);
         }
@@ -184,9 +200,10 @@ auto create_blank_lispb_schema(std::filesystem::path const& destination_project_
     }
 }
 
-auto clone_lispb_schema(lispb::schema::EditableSchemaDocument const& document,
-                        std::filesystem::path const& destination_project_path,
-                        std::string const& target_name) -> SchemaLoadResult {
+auto detail::clone_lispb_schema_with_opener(lispb::schema::EditableSchemaDocument const& document,
+                                            std::filesystem::path const& destination_project_path,
+                                            std::string const& target_name,
+                                            SchemaOpener const& opener) -> SchemaLoadResult {
     auto const destination{normalized_path(destination_project_path)};
     SchemaLoadResult result;
     result.project_path = destination;
@@ -197,14 +214,8 @@ auto clone_lispb_schema(lispb::schema::EditableSchemaDocument const& document,
     bool source_directory_created{};
     bool temporary_project_created{};
     try {
-        if (target_name.empty()) {
-            throw std::runtime_error{"Save As requires a LispB target name"};
-        }
-        if (std::filesystem::exists(destination) || std::filesystem::exists(source_directory) ||
-            std::filesystem::exists(temporary_project)) {
-            throw std::runtime_error{
-                "Save As destination already exists; choose a new project name"};
-        }
+        validate_new_project_destination(
+            destination, source_directory, temporary_project, target_name);
         auto const sources{document.source_files()};
         if (sources.empty()) {
             throw std::runtime_error{"The editable document has no source files to clone"};
@@ -214,7 +225,9 @@ auto clone_lispb_schema(lispb::schema::EditableSchemaDocument const& document,
             throw std::runtime_error{updates.error().message};
         }
 
-        std::filesystem::create_directories(source_directory);
+        if (!std::filesystem::create_directory(source_directory)) {
+            throw std::runtime_error{"Clone source directory already exists"};
+        }
         source_directory_created = true;
         auto source_text{[&](lispb::schema::SchemaSourceFile const& source) -> std::string const& {
             auto const update{
@@ -249,16 +262,7 @@ auto clone_lispb_schema(lispb::schema::EditableSchemaDocument const& document,
                 << "    :output-root (project-path \"generated\")))\n";
         temporary_project_created = true;
         write_file(temporary_project, project.str());
-
-        auto validated{load_lispb_schema(temporary_project, target_name)};
-        if (!validated.loaded) {
-            auto const message{validated.diagnostics.empty()
-                                   ? std::string{"Cloned LispB project failed validation"}
-                                   : validated.diagnostics.front().message};
-            throw std::runtime_error{message};
-        }
-        std::filesystem::rename(temporary_project, destination);
-        return load_lispb_schema(destination, target_name);
+        return publish_project(temporary_project, destination, target_name, opener);
     } catch (std::exception const& error) {
         std::error_code ignored;
         if (temporary_project_created) {
@@ -270,6 +274,13 @@ auto clone_lispb_schema(lispb::schema::EditableSchemaDocument const& document,
         result.diagnostics.push_back({DiagnosticSeverity::error, error.what()});
         return result;
     }
+}
+
+auto clone_lispb_schema(lispb::schema::EditableSchemaDocument const& document,
+                        std::filesystem::path const& destination_project_path,
+                        std::string const& target_name) -> SchemaLoadResult {
+    return detail::clone_lispb_schema_with_opener(
+        document, destination_project_path, target_name, load_lispb_schema);
 }
 
 } // namespace ioj::layout

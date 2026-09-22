@@ -1,1287 +1,6 @@
-#include "planner_ui.hpp"
-
-#include "planner_ui_support.hpp"
-
-#include <imgui.h>
-
-#include <algorithm>
-#include <array>
-#include <cstdio>
-#include <string>
-#include <utility>
-#include <vector>
+#include "planner_ui_comparison_common.hpp"
 
 namespace ioj::layout_planner {
-namespace {
-
-using namespace layout;
-using namespace lispb::schema;
-
-inline constexpr ImVec4 changed_color{0.4F, 0.75F, 0.95F, 1.0F};
-
-void comparison_row(char const* const label,
-                    std::string const& baseline,
-                    std::string const& variant,
-                    std::string const& difference = {}) {
-    auto const changed{baseline != variant};
-    ImGui::TableNextRow();
-    ImGui::TableNextColumn();
-    ImGui::TextUnformatted(label);
-    ImGui::TableNextColumn();
-    ImGui::TextUnformatted(baseline.c_str());
-    ImGui::TableNextColumn();
-    if (changed) {
-        ImGui::PushStyleColor(ImGuiCol_Text, changed_color);
-    }
-    ImGui::TextUnformatted(variant.c_str());
-    if (changed) {
-        ImGui::PopStyleColor();
-    }
-    ImGui::TableNextColumn();
-    ImGui::TextUnformatted(difference.empty() ? (changed ? "Changed" : "—") : difference.c_str());
-}
-
-auto field_by_name(layout::PackedAnalysis const& analysis, std::string const& name)
-    -> layout::PackedFieldAnalysis const* {
-    auto const found{std::ranges::find(analysis.fields, name, &layout::PackedFieldAnalysis::name)};
-    return found == analysis.fields.end() ? nullptr : &*found;
-}
-
-auto column_by_name(layout::SoaAnalysis const& analysis, std::string const& name)
-    -> layout::SoaColumnAnalysis const* {
-    auto const found{std::ranges::find(analysis.columns, name, &layout::SoaColumnAnalysis::name)};
-    return found == analysis.columns.end() ? nullptr : &*found;
-}
-
-auto format_decimal(long double const value) -> std::string {
-    std::array<char, 64> buffer{};
-    std::snprintf(buffer.data(), buffer.size(), "%.12g", static_cast<double>(value));
-    return buffer.data();
-}
-
-auto format_decimal_delta(std::optional<long double> const value) -> std::string {
-    if (!value.has_value()) {
-        return "Unknown";
-    }
-    if (*value == 0.0L) {
-        return "0";
-    }
-    std::array<char, 64> buffer{};
-    std::snprintf(buffer.data(), buffer.size(), "%+.12g", static_cast<double>(*value));
-    return buffer.data();
-}
-
-auto format_optional_decimal(std::optional<long double> const value) -> std::string {
-    return value.has_value() ? format_decimal(*value) : "Unknown";
-}
-
-auto type_label(lispb::schema::TypeNode const& node) -> std::string {
-    return node.identity.module_name.empty()
-             ? node.identity.name
-             : node.identity.module_name + "::" + node.identity.name;
-}
-
-auto optional_source(TypeDefinition const& definition) -> std::optional<TypeId> {
-    if (auto const* sentinel{std::get_if<OptionalSentinelType>(&definition)}) {
-        return sentinel->source.type;
-    }
-    if (auto const* presence{std::get_if<OptionalPresenceBitType>(&definition)}) {
-        return presence->source.type;
-    }
-    return std::nullopt;
-}
-
-auto optional_encoding_label(OptionalEncodingKind const kind) -> char const* {
-    return kind == OptionalEncodingKind::sentinel ? "sentinel" : "presence bit";
-}
-
-auto format_enum_code(std::optional<EnumCodeValue> const& code) -> std::string {
-    return code.has_value() ? lispb::schema::format_enum_code(*code) : "Unknown";
-}
-
-auto format_signedness(std::optional<bool> const signedness) -> std::string {
-    if (!signedness.has_value()) {
-        return "Unknown";
-    }
-    return *signedness ? "Signed" : "Unsigned";
-}
-
-auto as_uint64(std::optional<std::uint32_t> const value) -> std::optional<std::uint64_t> {
-    return value.transform(
-        [](std::uint32_t const known) { return static_cast<std::uint64_t>(known); });
-}
-
-} // namespace
-
-auto PlannerUi::draw_comparison_target_profile_picker() -> bool {
-    ImGui::Text("A: %s", abi_.name().c_str());
-    ImGui::Text("B: %s", comparison_abi_.name().c_str());
-    ImGui::SetNextItemWidth(-1.0F);
-    ImGui::InputText("B profile path",
-                     comparison_target_profile_path_.data(),
-                     comparison_target_profile_path_.size());
-
-    bool changed{};
-    if (ImGui::Button("Load B profile")) {
-        auto const path{std::filesystem::path{comparison_target_profile_path_.data()}};
-        if (path.empty()) {
-            comparison_target_profile_error_ = "Comparison profile path is required.";
-        } else if (load_comparison_target_profile(path)) {
-            changed = true;
-        }
-    }
-    ImGui::SameLine();
-    if (ImGui::Button("Use built-in B profile")) {
-        use_builtin_comparison_target_profile();
-        changed = true;
-    }
-    if (!comparison_target_profile_error_.empty()) {
-        ImGui::TextColored(
-            ImVec4{0.95F, 0.45F, 0.35F, 1.0F}, "%s", comparison_target_profile_error_.c_str());
-    }
-    return changed;
-}
-
-void PlannerUi::draw_enum_target_comparison() {
-    ImGui::SeparatorText("Target-profile comparison");
-    ImGui::TextWrapped(
-        "Compare one semantic enum domain and C++ backing choice under two explicit target "
-        "profiles. Target A uses the shared Target Profile; target B is session-only.");
-    if (draw_comparison_target_profile_picker()) {
-        refresh_analysis();
-    }
-    ImGui::SeparatorText("Standalone backing scale");
-    if (draw_element_count()) {
-        return;
-    }
-    if (!enum_target_comparison_.has_value()) {
-        ImGui::TextDisabled("No enum target comparison is available.");
-        return;
-    }
-
-    auto const& comparison{*enum_target_comparison_};
-    auto const& first{comparison.first};
-    auto const& second{comparison.second};
-    auto const first_size{
-        first.backing_facts.transform([](TypeFacts const& facts) { return facts.size_bytes; })};
-    auto const second_size{
-        second.backing_facts.transform([](TypeFacts const& facts) { return facts.size_bytes; })};
-    auto const first_alignment{first.backing_facts.transform(
-        [](TypeFacts const& facts) { return facts.alignment_bytes; })};
-    auto const second_alignment{second.backing_facts.transform(
-        [](TypeFacts const& facts) { return facts.alignment_bytes; })};
-    auto const first_value_bits{first.backing_facts.and_then(
-        [](TypeFacts const& facts) { return as_uint64(facts.unsigned_value_bits); })};
-    auto const second_value_bits{second.backing_facts.and_then(
-        [](TypeFacts const& facts) { return as_uint64(facts.unsigned_value_bits); })};
-    auto const first_backing_signedness{
-        first.backing_facts.and_then([](TypeFacts const& facts) { return facts.integer_signed; })};
-    auto const second_backing_signedness{
-        second.backing_facts.and_then([](TypeFacts const& facts) { return facts.integer_signed; })};
-    auto const declared_width{[](EnumDomainAnalysis const& analysis) {
-        return analysis.declared_bit_width.has_value()
-                 ? std::to_string(*analysis.declared_bit_width) + " bits"
-                 : std::string{"Auto"};
-    }};
-    auto const domain_range{[](EnumDomainAnalysis const& analysis) {
-        return format_enum_code(analysis.minimum_value) + " .. " +
-               format_enum_code(analysis.maximum_value);
-    }};
-
-    if (ImGui::BeginTable("enum-target-comparison",
-                          4,
-                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                              ImGuiTableFlags_Resizable)) {
-        ImGui::TableSetupColumn("Fact");
-        ImGui::TableSetupColumn(abi_.name().c_str());
-        ImGui::TableSetupColumn(comparison_abi_.name().c_str());
-        ImGui::TableSetupColumn("Difference (B - A)");
-        ImGui::TableHeadersRow();
-        comparison_row("Profile", abi_.name(), comparison_abi_.name());
-        comparison_row("Platform",
-                       abi_.identity().platform.value_or("Unknown"),
-                       comparison_abi_.identity().platform.value_or("Unknown"));
-        comparison_row("Architecture",
-                       abi_.identity().architecture.value_or("Unknown"),
-                       comparison_abi_.identity().architecture.value_or("Unknown"));
-        comparison_row("ABI",
-                       abi_.identity().abi.value_or("Unknown"),
-                       comparison_abi_.identity().abi.value_or("Unknown"));
-        comparison_row("C++ backing spelling", first.backing_type, second.backing_type);
-        comparison_row("Live semantic values",
-                       std::to_string(first.live_value_count),
-                       std::to_string(second.live_value_count));
-        comparison_row("Reserved semantic values",
-                       std::to_string(first.reserved_value_count),
-                       std::to_string(second.reserved_value_count));
-        comparison_row("Semantic value range", domain_range(first), domain_range(second));
-        comparison_row("Declared semantic signedness",
-                       format_signedness(first.declared_signedness),
-                       format_signedness(second.declared_signedness));
-        comparison_row("Resolved semantic signedness",
-                       format_signedness(first.signed_domain),
-                       format_signedness(second.signed_domain));
-        comparison_row("Minimum semantic width",
-                       detail::format_number(as_uint64(first.minimum_required_bits)),
-                       detail::format_number(as_uint64(second.minimum_required_bits)));
-        comparison_row("Declared semantic width", declared_width(first), declared_width(second));
-        comparison_row("Effective semantic width",
-                       detail::format_number(as_uint64(first.effective_bit_width)),
-                       detail::format_number(as_uint64(second.effective_bit_width)));
-        comparison_row("Semantic width fits domain",
-                       detail::format_fit(first.semantic_width_can_represent_domain),
-                       detail::format_fit(second.semantic_width_can_represent_domain));
-        comparison_row("Unused semantic codes",
-                       detail::format_number(first.unused_semantic_codes),
-                       detail::format_number(second.unused_semantic_codes));
-        comparison_row("Backing physical signedness",
-                       format_signedness(first_backing_signedness),
-                       format_signedness(second_backing_signedness));
-        comparison_row("Backing storage size",
-                       detail::format_bytes(first_size),
-                       detail::format_bytes(second_size),
-                       detail::format_delta_bytes(comparison.backing_size_delta));
-        comparison_row("Backing alignment",
-                       detail::format_bytes(first_alignment),
-                       detail::format_bytes(second_alignment),
-                       detail::format_delta_bytes(comparison.backing_alignment_delta));
-        comparison_row("Backing storage bits",
-                       detail::format_number(first.backing_bits),
-                       detail::format_number(second.backing_bits),
-                       detail::format_delta_number(comparison.backing_bit_delta));
-        comparison_row("Unsigned backing value bits",
-                       detail::format_number(first_value_bits),
-                       detail::format_number(second_value_bits),
-                       detail::format_delta_number(comparison.backing_value_bit_delta));
-        comparison_row("Backing represents domain",
-                       detail::format_fit(first.backing_can_represent_domain),
-                       detail::format_fit(second.backing_can_represent_domain));
-        comparison_row("Unused backing codes",
-                       detail::format_number(first.unused_backing_codes),
-                       detail::format_number(second.unused_backing_codes),
-                       detail::format_delta_number(comparison.unused_backing_code_delta));
-        comparison_row("Standalone value count",
-                       std::to_string(first.aggregate.element_count),
-                       std::to_string(second.aggregate.element_count));
-        comparison_row("Standalone backing storage",
-                       detail::format_bytes(first.aggregate.total_storage_bytes),
-                       detail::format_bytes(second.aggregate.total_storage_bytes),
-                       detail::format_delta_bytes(comparison.total_storage_delta));
-        comparison_row("Cache-line size",
-                       detail::format_bytes(first.aggregate.cache_line_bytes),
-                       detail::format_bytes(second.aggregate.cache_line_bytes),
-                       detail::format_delta_bytes(comparison.cache_line_size_delta));
-        comparison_row("Minimum cache lines",
-                       detail::format_number(first.aggregate.minimum_cache_lines),
-                       detail::format_number(second.aggregate.minimum_cache_lines),
-                       detail::format_delta_number(comparison.minimum_cache_line_delta));
-        comparison_row(
-            "Complete standalone values / cache line",
-            detail::format_number(first.aggregate.complete_elements_per_cache_line),
-            detail::format_number(second.aggregate.complete_elements_per_cache_line),
-            detail::format_delta_number(comparison.complete_elements_per_cache_line_delta));
-        comparison_row("Cache-line-straddling values",
-                       detail::format_number(first.aggregate.cache_line_straddling_elements),
-                       detail::format_number(second.aggregate.cache_line_straddling_elements),
-                       detail::format_delta_number(comparison.cache_line_straddling_delta));
-        comparison_row("Standalone footprint <= L1 data cache",
-                       detail::format_fit(first.aggregate.cache_capacity.fits_l1_data),
-                       detail::format_fit(second.aggregate.cache_capacity.fits_l1_data));
-        comparison_row("Standalone footprint <= L2 cache",
-                       detail::format_fit(first.aggregate.cache_capacity.fits_l2),
-                       detail::format_fit(second.aggregate.cache_capacity.fits_l2));
-        comparison_row("Standalone footprint <= L3 cache",
-                       detail::format_fit(first.aggregate.cache_capacity.fits_l3),
-                       detail::format_fit(second.aggregate.cache_capacity.fits_l3));
-        comparison_row("Page size",
-                       detail::format_bytes(first.aggregate.page_bytes),
-                       detail::format_bytes(second.aggregate.page_bytes),
-                       detail::format_delta_bytes(comparison.page_size_delta));
-        comparison_row("Minimum pages",
-                       detail::format_number(first.aggregate.minimum_pages),
-                       detail::format_number(second.aggregate.minimum_pages),
-                       detail::format_delta_number(comparison.minimum_page_delta));
-        comparison_row("Complete standalone values / page",
-                       detail::format_number(first.aggregate.complete_elements_per_page),
-                       detail::format_number(second.aggregate.complete_elements_per_page),
-                       detail::format_delta_number(comparison.complete_elements_per_page_delta));
-        comparison_row("Page-straddling values",
-                       detail::format_number(first.aggregate.page_straddling_elements),
-                       detail::format_number(second.aggregate.page_straddling_elements),
-                       detail::format_delta_number(comparison.page_straddling_delta));
-        ImGui::EndTable();
-    }
-
-    ImGui::TextDisabled(
-        "Semantic width and unused semantic codes describe the value domain, not a standalone "
-        "sizeof. Aggregate rows model a contiguous array of the generated standalone C++ backing "
-        "at a cache-line/page-aligned origin; they do not imply bit-packed enum storage. Unused "
-        "codes are code-space capacity, not allocated-byte waste or a performance prediction.");
-    draw_diagnostics(comparison.diagnostics);
-}
-
-auto PlannerUi::draw_soa_target_comparison() -> bool {
-    ImGui::SeparatorText("Target-profile comparison");
-    ImGui::TextWrapped(
-        "Compare the active physical SoA variant under two explicit target profiles. Capacity, "
-        "allocation strategy, selected workload, and multiplicity are held fixed. Target A "
-        "uses the shared Target Profile; target B is session-only.");
-    ImGui::Text("Held physical variant: %s", workspace_.active_variant().name.c_str());
-    if (draw_comparison_target_profile_picker()) {
-        refresh_analysis();
-    }
-    ImGui::SeparatorText("Selected workload scale");
-    if (draw_element_count()) {
-        return true;
-    }
-
-    if (!soa_target_comparison_.has_value()) {
-        ImGui::TextDisabled("No SoA target comparison is available.");
-        ImGui::SeparatorText("Physical-variant comparison under target A");
-        return false;
-    }
-
-    auto const& comparison{*soa_target_comparison_};
-    auto const& first{comparison.first};
-    auto const& second{comparison.second};
-    auto const allocation_strategy_name = [](SoaAllocationStrategy const strategy) {
-        return strategy == SoaAllocationStrategy::aligned_contiguous ? "Aligned contiguous block"
-                                                                     : "Separate columns";
-    };
-    if (ImGui::BeginTable("soa-target-comparison",
-                          4,
-                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                              ImGuiTableFlags_Resizable)) {
-        ImGui::TableSetupColumn("Physical fact");
-        ImGui::TableSetupColumn(abi_.name().c_str());
-        ImGui::TableSetupColumn(comparison_abi_.name().c_str());
-        ImGui::TableSetupColumn("Difference (B - A)");
-        ImGui::TableHeadersRow();
-        comparison_row("Profile", abi_.name(), comparison_abi_.name());
-        comparison_row("Architecture",
-                       abi_.identity().architecture.value_or("Unknown"),
-                       comparison_abi_.identity().architecture.value_or("Unknown"));
-        comparison_row("Capacity", std::to_string(first.capacity), std::to_string(second.capacity));
-        comparison_row("Capacity source",
-                       first.capacity_overridden ? "Active variant override" : "Session default",
-                       second.capacity_overridden ? "Active variant override" : "Session default");
-        comparison_row("Allocation strategy",
-                       allocation_strategy_name(first.allocation_strategy),
-                       allocation_strategy_name(second.allocation_strategy));
-        comparison_row("Allocation count",
-                       std::to_string(first.allocation_count),
-                       std::to_string(second.allocation_count),
-                       detail::format_delta_number(comparison.allocation_count_delta));
-        comparison_row("Bytes / logical entity",
-                       detail::format_bytes(first.bytes_per_logical_element),
-                       detail::format_bytes(second.bytes_per_logical_element),
-                       detail::format_delta_bytes(comparison.bytes_per_logical_element_delta));
-        comparison_row("Payload at capacity",
-                       detail::format_bytes(first.total_payload_bytes),
-                       detail::format_bytes(second.total_payload_bytes),
-                       detail::format_delta_bytes(comparison.total_payload_delta));
-        comparison_row("Allocated bytes",
-                       detail::format_bytes(first.total_allocation_bytes),
-                       detail::format_bytes(second.total_allocation_bytes),
-                       detail::format_delta_bytes(comparison.total_allocation_delta));
-        comparison_row("Alignment padding",
-                       detail::format_bytes(first.total_alignment_padding_bytes),
-                       detail::format_bytes(second.total_alignment_padding_bytes),
-                       detail::format_delta_bytes(comparison.total_alignment_padding_delta));
-        comparison_row("Block alignment",
-                       detail::format_bytes(first.allocation_alignment_bytes),
-                       detail::format_bytes(second.allocation_alignment_bytes),
-                       detail::format_delta_bytes(comparison.allocation_alignment_delta));
-        comparison_row("Cache-line size",
-                       detail::format_bytes(first.cache_line_bytes),
-                       detail::format_bytes(second.cache_line_bytes),
-                       detail::format_delta_bytes(comparison.cache_line_size_delta));
-        comparison_row("Page size",
-                       detail::format_bytes(first.page_bytes),
-                       detail::format_bytes(second.page_bytes),
-                       detail::format_delta_bytes(comparison.page_size_delta));
-        comparison_row("Minimum pages at capacity",
-                       detail::format_number(first.minimum_pages),
-                       detail::format_number(second.minimum_pages),
-                       detail::format_delta_number(comparison.minimum_page_delta));
-        comparison_row("Allocated footprint <= L1 data cache",
-                       detail::format_fit(first.cache_capacity.fits_l1_data),
-                       detail::format_fit(second.cache_capacity.fits_l1_data));
-        comparison_row("Allocated footprint <= L2 cache",
-                       detail::format_fit(first.cache_capacity.fits_l2),
-                       detail::format_fit(second.cache_capacity.fits_l2));
-        comparison_row("Allocated footprint <= L3 cache",
-                       detail::format_fit(first.cache_capacity.fits_l3),
-                       detail::format_fit(second.cache_capacity.fits_l3));
-        ImGui::EndTable();
-    }
-
-    if (!comparison.columns.empty() &&
-        ImGui::TreeNodeEx("Column layout", ImGuiTreeNodeFlags_SpanAvailWidth)) {
-        for (auto const& column : comparison.columns) {
-            ImGui::PushID(column.name.c_str());
-            ImGui::SeparatorText(column.name.c_str());
-            auto const first_size{column.first.type_facts.transform(
-                [](TypeFacts const& facts) { return facts.size_bytes; })};
-            auto const second_size{column.second.type_facts.transform(
-                [](TypeFacts const& facts) { return facts.size_bytes; })};
-            auto const first_alignment{column.first.type_facts.transform(
-                [](TypeFacts const& facts) { return facts.alignment_bytes; })};
-            auto const second_alignment{column.second.type_facts.transform(
-                [](TypeFacts const& facts) { return facts.alignment_bytes; })};
-            if (ImGui::BeginTable("soa-column-target-comparison",
-                                  4,
-                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                      ImGuiTableFlags_Resizable)) {
-                ImGui::TableSetupColumn("Physical fact");
-                ImGui::TableSetupColumn(abi_.name().c_str());
-                ImGui::TableSetupColumn(comparison_abi_.name().c_str());
-                ImGui::TableSetupColumn("Difference (B - A)");
-                ImGui::TableHeadersRow();
-                comparison_row("Semantic type",
-                               type_label(workspace_.types().type(column.first.semantic_type)),
-                               type_label(workspace_.types().type(column.second.semantic_type)));
-                comparison_row(
-                    "Physical type", column.first.physical_type, column.second.physical_type);
-                comparison_row("Element size",
-                               detail::format_bytes(first_size),
-                               detail::format_bytes(second_size),
-                               detail::format_delta_bytes(column.element_size_delta));
-                comparison_row("Element alignment",
-                               detail::format_bytes(first_alignment),
-                               detail::format_bytes(second_alignment),
-                               detail::format_delta_bytes(column.element_alignment_delta));
-                comparison_row("Payload at capacity",
-                               detail::format_bytes(column.first.total_bytes),
-                               detail::format_bytes(column.second.total_bytes),
-                               detail::format_delta_bytes(column.total_byte_delta));
-                comparison_row("Block offset",
-                               detail::format_bytes(column.first.allocation_offset_bytes),
-                               detail::format_bytes(column.second.allocation_offset_bytes),
-                               detail::format_delta_bytes(column.allocation_offset_delta));
-                comparison_row("Padding before",
-                               detail::format_bytes(column.first.padding_before_bytes),
-                               detail::format_bytes(column.second.padding_before_bytes),
-                               detail::format_delta_bytes(column.padding_before_delta));
-                comparison_row("Minimum cache lines at capacity",
-                               detail::format_number(column.first.minimum_cache_lines),
-                               detail::format_number(column.second.minimum_cache_lines),
-                               detail::format_delta_number(column.minimum_cache_line_delta));
-                comparison_row("Complete elements per cache line",
-                               detail::format_number(column.first.elements_per_cache_line),
-                               detail::format_number(column.second.elements_per_cache_line),
-                               detail::format_delta_number(column.elements_per_cache_line_delta));
-                comparison_row("Minimum pages at capacity",
-                               detail::format_number(column.first.minimum_pages),
-                               detail::format_number(column.second.minimum_pages),
-                               detail::format_delta_number(column.minimum_page_delta));
-                comparison_row(
-                    "Complete elements per page",
-                    detail::format_number(column.first.complete_elements_per_page),
-                    detail::format_number(column.second.complete_elements_per_page),
-                    detail::format_delta_number(column.complete_elements_per_page_delta));
-                ImGui::EndTable();
-            }
-            ImGui::PopID();
-        }
-        ImGui::TreePop();
-    }
-
-    if (soa_target_access_comparison_.has_value()) {
-        auto const& access{*soa_target_access_comparison_};
-        std::string selected_columns;
-        for (auto const& column_name : access.column_names) {
-            if (!selected_columns.empty()) {
-                selected_columns += ", ";
-            }
-            selected_columns += column_name;
-        }
-        ImGui::SeparatorText("Selected workload across targets");
-        ImGui::Text("Columns: %s", selected_columns.c_str());
-        ImGui::Text("Elements: %llu   Multiplicity: %llu",
-                    static_cast<unsigned long long>(access.element_count),
-                    static_cast<unsigned long long>(access.multiplicity));
-        auto const* const footprint_qualifier{access.footprint_exact ? "Exact" : "Minimum"};
-        if (ImGui::BeginTable("soa-target-access-comparison",
-                              4,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_Resizable)) {
-            ImGui::TableSetupColumn("Workload fact");
-            ImGui::TableSetupColumn(abi_.name().c_str());
-            ImGui::TableSetupColumn(comparison_abi_.name().c_str());
-            ImGui::TableSetupColumn("Difference (B - A)");
-            ImGui::TableHeadersRow();
-            comparison_row("Useful payload",
-                           detail::format_bytes(access.first.useful_bytes),
-                           detail::format_bytes(access.second.useful_bytes),
-                           detail::format_delta_bytes(access.useful_byte_delta));
-            comparison_row("Classified read useful payload",
-                           detail::format_bytes(access.first.read_useful_bytes),
-                           detail::format_bytes(access.second.read_useful_bytes),
-                           detail::format_delta_bytes(access.read_useful_byte_delta));
-            comparison_row("Classified write useful payload",
-                           detail::format_bytes(access.first.write_useful_bytes),
-                           detail::format_bytes(access.second.write_useful_bytes),
-                           detail::format_delta_bytes(access.write_useful_byte_delta));
-            comparison_row("Logical read useful payload",
-                           detail::format_bytes(access.first.logical_read_useful_bytes),
-                           detail::format_bytes(access.second.logical_read_useful_bytes),
-                           detail::format_delta_bytes(access.logical_read_useful_byte_delta));
-            comparison_row("Logical write useful payload",
-                           detail::format_bytes(access.first.logical_write_useful_bytes),
-                           detail::format_bytes(access.second.logical_write_useful_bytes),
-                           detail::format_delta_bytes(access.logical_write_useful_byte_delta));
-            comparison_row("Complete workload payload",
-                           detail::format_bytes(access.first_full_logical_payload_bytes),
-                           detail::format_bytes(access.second_full_logical_payload_bytes),
-                           detail::format_delta_bytes(access.full_logical_payload_delta));
-            comparison_row("Unselected workload payload",
-                           detail::format_bytes(access.first_unselected_payload_bytes),
-                           detail::format_bytes(access.second_unselected_payload_bytes),
-                           detail::format_delta_bytes(access.unselected_payload_delta));
-            comparison_row("Allocated payload at capacity",
-                           detail::format_bytes(access.first_allocated_capacity_payload_bytes),
-                           detail::format_bytes(access.second_allocated_capacity_payload_bytes),
-                           detail::format_delta_bytes(access.allocated_capacity_payload_delta));
-            comparison_row("Unused allocated capacity payload",
-                           detail::format_bytes(access.first_capacity_slack_payload_bytes),
-                           detail::format_bytes(access.second_capacity_slack_payload_bytes),
-                           detail::format_delta_bytes(access.capacity_slack_payload_delta));
-            comparison_row("Total allocation",
-                           detail::format_bytes(access.first_total_allocation_bytes),
-                           detail::format_bytes(access.second_total_allocation_bytes),
-                           detail::format_delta_bytes(access.total_allocation_byte_delta));
-            comparison_row("Alignment padding",
-                           detail::format_bytes(access.first_alignment_padding_bytes),
-                           detail::format_bytes(access.second_alignment_padding_bytes),
-                           detail::format_delta_bytes(access.alignment_padding_byte_delta));
-            comparison_row((std::string{footprint_qualifier} + " cache-line footprint").c_str(),
-                           detail::format_bytes(access.first.cache_bytes),
-                           detail::format_bytes(access.second.cache_bytes),
-                           detail::format_delta_bytes(access.cache_byte_delta));
-            comparison_row((std::string{footprint_qualifier} + " cache lines").c_str(),
-                           detail::format_number(access.first.cache_lines),
-                           detail::format_number(access.second.cache_lines),
-                           detail::format_delta_number(access.cache_line_delta));
-            comparison_row((std::string{footprint_qualifier} + " read cache coverage").c_str(),
-                           detail::format_bytes(access.first.read_cache_bytes),
-                           detail::format_bytes(access.second.read_cache_bytes),
-                           detail::format_delta_bytes(access.read_cache_byte_delta));
-            comparison_row((std::string{footprint_qualifier} + " write cache coverage").c_str(),
-                           detail::format_bytes(access.first.write_cache_bytes),
-                           detail::format_bytes(access.second.write_cache_bytes),
-                           detail::format_delta_bytes(access.write_cache_byte_delta));
-            comparison_row("Non-payload bytes in cache footprint",
-                           detail::format_bytes(access.first_non_payload_cache_bytes),
-                           detail::format_bytes(access.second_non_payload_cache_bytes),
-                           detail::format_delta_bytes(access.non_payload_cache_byte_delta));
-            comparison_row((std::string{footprint_qualifier} + " page footprint").c_str(),
-                           detail::format_bytes(access.first.page_bytes),
-                           detail::format_bytes(access.second.page_bytes),
-                           detail::format_delta_bytes(access.page_byte_delta));
-            comparison_row((std::string{footprint_qualifier} + " pages").c_str(),
-                           detail::format_number(access.first.pages),
-                           detail::format_number(access.second.pages),
-                           detail::format_delta_number(access.page_delta));
-            comparison_row((std::string{footprint_qualifier} + " read page coverage").c_str(),
-                           detail::format_bytes(access.first.read_page_bytes),
-                           detail::format_bytes(access.second.read_page_bytes),
-                           detail::format_delta_bytes(access.read_page_byte_delta));
-            comparison_row((std::string{footprint_qualifier} + " write page coverage").c_str(),
-                           detail::format_bytes(access.first.write_page_bytes),
-                           detail::format_bytes(access.second.write_page_bytes),
-                           detail::format_delta_bytes(access.write_page_byte_delta));
-            comparison_row("Non-payload bytes in page footprint",
-                           detail::format_bytes(access.first_non_payload_page_bytes),
-                           detail::format_bytes(access.second_non_payload_page_bytes),
-                           detail::format_delta_bytes(access.non_payload_page_byte_delta));
-            comparison_row(
-                "Cache footprint <= L1 data cache",
-                detail::format_fit(access.first_minimum_cache_footprint_capacity.fits_l1_data),
-                detail::format_fit(access.second_minimum_cache_footprint_capacity.fits_l1_data));
-            comparison_row(
-                "Cache footprint <= L2 cache",
-                detail::format_fit(access.first_minimum_cache_footprint_capacity.fits_l2),
-                detail::format_fit(access.second_minimum_cache_footprint_capacity.fits_l2));
-            comparison_row(
-                "Cache footprint <= L3 cache",
-                detail::format_fit(access.first_minimum_cache_footprint_capacity.fits_l3),
-                detail::format_fit(access.second_minimum_cache_footprint_capacity.fits_l3));
-            ImGui::EndTable();
-        }
-
-        if (!access.columns.empty() && ImGui::TreeNode("Per-column workload contributions")) {
-            for (auto const& column : access.columns) {
-                ImGui::PushID(column.name.c_str());
-                ImGui::SeparatorText(column.name.c_str());
-                if (ImGui::BeginTable("soa-target-access-column-comparison",
-                                      4,
-                                      ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                          ImGuiTableFlags_Resizable)) {
-                    ImGui::TableSetupColumn("Workload fact");
-                    ImGui::TableSetupColumn(abi_.name().c_str());
-                    ImGui::TableSetupColumn(comparison_abi_.name().c_str());
-                    ImGui::TableSetupColumn("Difference (B - A)");
-                    ImGui::TableHeadersRow();
-                    comparison_row(
-                        "Physical type", column.first.physical_type, column.second.physical_type);
-                    comparison_row("Operation",
-                                   detail::access_operation_name(column.first.operation),
-                                   detail::access_operation_name(column.second.operation));
-                    comparison_row("Element bytes",
-                                   detail::format_bytes(column.first.element_bytes),
-                                   detail::format_bytes(column.second.element_bytes),
-                                   detail::format_delta_bytes(column.element_byte_delta));
-                    comparison_row("Useful workload payload",
-                                   detail::format_bytes(column.first.useful_bytes),
-                                   detail::format_bytes(column.second.useful_bytes),
-                                   detail::format_delta_bytes(column.useful_byte_delta));
-                    comparison_row(
-                        "Logical read useful payload",
-                        detail::format_bytes(column.first.logical_read_useful_bytes),
-                        detail::format_bytes(column.second.logical_read_useful_bytes),
-                        detail::format_delta_bytes(column.logical_read_useful_byte_delta));
-                    comparison_row(
-                        "Logical write useful payload",
-                        detail::format_bytes(column.first.logical_write_useful_bytes),
-                        detail::format_bytes(column.second.logical_write_useful_bytes),
-                        detail::format_delta_bytes(column.logical_write_useful_byte_delta));
-                    comparison_row("Minimum cache-line footprint",
-                                   detail::format_bytes(column.first.minimum_cache_bytes),
-                                   detail::format_bytes(column.second.minimum_cache_bytes),
-                                   detail::format_delta_bytes(column.cache_byte_delta));
-                    comparison_row("Non-payload bytes in cache footprint",
-                                   detail::format_bytes(column.first.non_payload_cache_bytes),
-                                   detail::format_bytes(column.second.non_payload_cache_bytes),
-                                   detail::format_delta_bytes(column.non_payload_cache_byte_delta));
-                    comparison_row(
-                        access.footprint_exact ? "Block-offset cache-line-straddling elements"
-                                               : "Aligned-base cache-line-straddling elements",
-                        detail::format_number(column.first.aligned_cache_line_straddling_elements),
-                        detail::format_number(column.second.aligned_cache_line_straddling_elements),
-                        detail::format_delta_number(
-                            column.aligned_cache_line_straddling_element_delta));
-                    comparison_row("Minimum page footprint",
-                                   detail::format_bytes(column.first.minimum_page_bytes),
-                                   detail::format_bytes(column.second.minimum_page_bytes),
-                                   detail::format_delta_bytes(column.page_byte_delta));
-                    comparison_row("Non-payload bytes in page footprint",
-                                   detail::format_bytes(column.first.non_payload_page_bytes),
-                                   detail::format_bytes(column.second.non_payload_page_bytes),
-                                   detail::format_delta_bytes(column.non_payload_page_byte_delta));
-                    comparison_row(
-                        access.footprint_exact ? "Block-offset page-straddling elements"
-                                               : "Aligned-base page-straddling elements",
-                        detail::format_number(column.first.aligned_page_straddling_elements),
-                        detail::format_number(column.second.aligned_page_straddling_elements),
-                        detail::format_delta_number(column.aligned_page_straddling_element_delta));
-                    comparison_row(
-                        "Allocated payload at capacity",
-                        detail::format_bytes(column.first.allocated_capacity_payload_bytes),
-                        detail::format_bytes(column.second.allocated_capacity_payload_bytes),
-                        detail::format_delta_bytes(column.allocated_capacity_payload_delta));
-                    comparison_row("Unused allocated capacity payload",
-                                   detail::format_bytes(column.first.capacity_slack_payload_bytes),
-                                   detail::format_bytes(column.second.capacity_slack_payload_bytes),
-                                   detail::format_delta_bytes(column.capacity_slack_payload_delta));
-                    ImGui::EndTable();
-                }
-                ImGui::PopID();
-            }
-            ImGui::TreePop();
-        }
-        draw_diagnostics(access.diagnostics);
-    } else {
-        ImGui::TextDisabled(
-            "Select one or more SoA columns in Layout to compare a workload across targets.");
-    }
-
-    ImGui::TextDisabled(
-        "Target comparison holds semantic data, active physical variant, capacity, allocation, "
-        "and workload fixed. Cache/page values are deterministic coverage facts under the stated "
-        "allocation model, not measured traffic or a performance prediction.");
-    draw_diagnostics(comparison.diagnostics);
-    ImGui::SeparatorText("Physical-variant comparison under target A");
-    return false;
-}
-
-void PlannerUi::draw_union_target_comparison() {
-    ImGui::TextWrapped(
-        "Compare one semantic raw union under two explicit physical target profiles. Target A "
-        "uses the shared Target Profile; target B is session-only.");
-    if (draw_comparison_target_profile_picker()) {
-        refresh_analysis();
-    }
-    ImGui::SeparatorText("Analysis scale");
-    if (draw_element_count()) {
-        return;
-    }
-    if (!union_target_comparison_.has_value()) {
-        ImGui::TextDisabled("No raw-union target comparison is available.");
-        return;
-    }
-
-    auto const& comparison{*union_target_comparison_};
-    auto const& first{comparison.first};
-    auto const& second{comparison.second};
-    auto const& first_aggregate{first.aggregate};
-    auto const& second_aggregate{second.aggregate};
-    if (ImGui::BeginTable("union-target-comparison",
-                          4,
-                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                              ImGuiTableFlags_Resizable)) {
-        ImGui::TableSetupColumn("Physical fact");
-        ImGui::TableSetupColumn(abi_.name().c_str());
-        ImGui::TableSetupColumn(comparison_abi_.name().c_str());
-        ImGui::TableSetupColumn("Difference (B - A)");
-        ImGui::TableHeadersRow();
-        comparison_row("Profile", abi_.name(), comparison_abi_.name());
-        comparison_row("Architecture",
-                       abi_.identity().architecture.value_or("Unknown"),
-                       comparison_abi_.identity().architecture.value_or("Unknown"));
-        comparison_row("Element count",
-                       std::to_string(first_aggregate.element_count),
-                       std::to_string(second_aggregate.element_count));
-        comparison_row("Largest alternative extent",
-                       detail::format_bytes(first.largest_alternative_bytes),
-                       detail::format_bytes(second.largest_alternative_bytes),
-                       detail::format_delta_bytes(comparison.largest_alternative_delta));
-        comparison_row("Tail padding per object",
-                       detail::format_bytes(first.tail_padding_bytes),
-                       detail::format_bytes(second.tail_padding_bytes),
-                       detail::format_delta_bytes(comparison.tail_padding_delta));
-        comparison_row("Object size",
-                       detail::format_bytes(first.size_bytes),
-                       detail::format_bytes(second.size_bytes),
-                       detail::format_delta_bytes(comparison.size_delta));
-        comparison_row("Object alignment",
-                       detail::format_bytes(first.alignment_bytes),
-                       detail::format_bytes(second.alignment_bytes),
-                       detail::format_delta_bytes(comparison.alignment_delta));
-        comparison_row("Aggregate storage",
-                       detail::format_bytes(first_aggregate.total_storage_bytes),
-                       detail::format_bytes(second_aggregate.total_storage_bytes),
-                       detail::format_delta_bytes(comparison.total_storage_delta));
-        comparison_row("Aggregate tail padding",
-                       detail::format_bytes(first_aggregate.total_tail_padding_bytes),
-                       detail::format_bytes(second_aggregate.total_tail_padding_bytes),
-                       detail::format_delta_bytes(comparison.total_tail_padding_delta));
-        comparison_row("Cache-line size",
-                       detail::format_bytes(first_aggregate.cache_line_bytes),
-                       detail::format_bytes(second_aggregate.cache_line_bytes),
-                       detail::format_delta_bytes(comparison.cache_line_size_delta));
-        comparison_row("Minimum cache lines",
-                       detail::format_number(first_aggregate.minimum_cache_lines),
-                       detail::format_number(second_aggregate.minimum_cache_lines),
-                       detail::format_delta_number(comparison.minimum_cache_line_delta));
-        comparison_row(
-            "Complete elements per cache line",
-            detail::format_number(first_aggregate.complete_elements_per_cache_line),
-            detail::format_number(second_aggregate.complete_elements_per_cache_line),
-            detail::format_delta_number(comparison.complete_elements_per_cache_line_delta));
-        comparison_row("Cache-line-straddling elements",
-                       detail::format_number(first_aggregate.cache_line_straddling_elements),
-                       detail::format_number(second_aggregate.cache_line_straddling_elements),
-                       detail::format_delta_number(comparison.cache_line_straddling_delta));
-        comparison_row("Page size",
-                       detail::format_bytes(first_aggregate.page_bytes),
-                       detail::format_bytes(second_aggregate.page_bytes),
-                       detail::format_delta_bytes(comparison.page_size_delta));
-        comparison_row("Minimum pages",
-                       detail::format_number(first_aggregate.minimum_pages),
-                       detail::format_number(second_aggregate.minimum_pages),
-                       detail::format_delta_number(comparison.minimum_page_delta));
-        comparison_row("Complete elements per page",
-                       detail::format_number(first_aggregate.complete_elements_per_page),
-                       detail::format_number(second_aggregate.complete_elements_per_page),
-                       detail::format_delta_number(comparison.complete_elements_per_page_delta));
-        comparison_row("Page-straddling elements",
-                       detail::format_number(first_aggregate.page_straddling_elements),
-                       detail::format_number(second_aggregate.page_straddling_elements),
-                       detail::format_delta_number(comparison.page_straddling_delta));
-        comparison_row("Fits L1 data cache",
-                       detail::format_fit(first_aggregate.cache_capacity.fits_l1_data),
-                       detail::format_fit(second_aggregate.cache_capacity.fits_l1_data));
-        comparison_row("Fits L2 cache",
-                       detail::format_fit(first_aggregate.cache_capacity.fits_l2),
-                       detail::format_fit(second_aggregate.cache_capacity.fits_l2));
-        comparison_row("Fits L3 cache",
-                       detail::format_fit(first_aggregate.cache_capacity.fits_l3),
-                       detail::format_fit(second_aggregate.cache_capacity.fits_l3));
-        ImGui::EndTable();
-    }
-
-    if (!comparison.alternatives.empty() &&
-        ImGui::TreeNodeEx("Alternative layout", ImGuiTreeNodeFlags_SpanAvailWidth)) {
-        for (auto const& alternative : comparison.alternatives) {
-            ImGui::PushID(alternative.name.c_str());
-            ImGui::SeparatorText(alternative.name.c_str());
-            auto const first_size{alternative.first.element_facts.transform(
-                [](TypeFacts const& facts) { return facts.size_bytes; })};
-            auto const second_size{alternative.second.element_facts.transform(
-                [](TypeFacts const& facts) { return facts.size_bytes; })};
-            auto const first_alignment{alternative.first.element_facts.transform(
-                [](TypeFacts const& facts) { return facts.alignment_bytes; })};
-            auto const second_alignment{alternative.second.element_facts.transform(
-                [](TypeFacts const& facts) { return facts.alignment_bytes; })};
-            if (ImGui::BeginTable("union-alternative-target-comparison",
-                                  4,
-                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                      ImGuiTableFlags_Resizable)) {
-                ImGui::TableSetupColumn("Physical fact");
-                ImGui::TableSetupColumn(abi_.name().c_str());
-                ImGui::TableSetupColumn(comparison_abi_.name().c_str());
-                ImGui::TableSetupColumn("Difference (B - A)");
-                ImGui::TableHeadersRow();
-                comparison_row(
-                    "Semantic type",
-                    type_label(workspace_.types().type(alternative.first.semantic_type)),
-                    type_label(workspace_.types().type(alternative.second.semantic_type)));
-                comparison_row("Element count",
-                               std::to_string(alternative.first.element_count),
-                               std::to_string(alternative.second.element_count));
-                comparison_row("Element size",
-                               detail::format_bytes(first_size),
-                               detail::format_bytes(second_size),
-                               detail::format_delta_bytes(alternative.element_size_delta));
-                comparison_row("Element alignment",
-                               detail::format_bytes(first_alignment),
-                               detail::format_bytes(second_alignment),
-                               detail::format_delta_bytes(alternative.element_alignment_delta));
-                comparison_row("Alternative extent",
-                               detail::format_bytes(alternative.first.extent_bytes),
-                               detail::format_bytes(alternative.second.extent_bytes),
-                               detail::format_delta_bytes(alternative.extent_delta));
-                comparison_row("Conditional slack per object",
-                               detail::format_bytes(alternative.first.slack_bytes),
-                               detail::format_bytes(alternative.second.slack_bytes),
-                               detail::format_delta_bytes(alternative.slack_delta));
-                comparison_row("Conditional slack at selected count",
-                               detail::format_bytes(alternative.first.total_slack_bytes),
-                               detail::format_bytes(alternative.second.total_slack_bytes),
-                               detail::format_delta_bytes(alternative.total_slack_delta));
-                ImGui::EndTable();
-            }
-            ImGui::PopID();
-        }
-        ImGui::TreePop();
-    }
-    if (union_target_distribution_comparison_.has_value()) {
-        auto const& distribution{*union_target_distribution_comparison_};
-        ImGui::SeparatorText("Explicit workload across targets");
-        if (ImGui::BeginTable("raw-union-distribution-target-comparison",
-                              4,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_Resizable)) {
-            ImGui::TableSetupColumn("Distribution fact");
-            ImGui::TableSetupColumn(abi_.name().c_str());
-            ImGui::TableSetupColumn(comparison_abi_.name().c_str());
-            ImGui::TableSetupColumn("Difference (B - A)");
-            ImGui::TableHeadersRow();
-            comparison_row("Total weight",
-                           detail::format_number(distribution.first.total_weight),
-                           detail::format_number(distribution.second.total_weight),
-                           detail::format_delta_number(distribution.total_weight_delta));
-            comparison_row("Weighted active extent",
-                           detail::format_bytes(distribution.first.total_extent_bytes),
-                           detail::format_bytes(distribution.second.total_extent_bytes),
-                           detail::format_delta_bytes(distribution.total_extent_delta));
-            comparison_row("Weighted conditional slack",
-                           detail::format_bytes(distribution.first.total_slack_bytes),
-                           detail::format_bytes(distribution.second.total_slack_bytes),
-                           detail::format_delta_bytes(distribution.total_slack_delta));
-            comparison_row(
-                "Expected active extent / value",
-                format_optional_decimal(distribution.first.expected_extent_bytes_per_value),
-                format_optional_decimal(distribution.second.expected_extent_bytes_per_value),
-                format_decimal_delta(distribution.expected_extent_per_value_delta));
-            comparison_row(
-                "Expected conditional slack / value",
-                format_optional_decimal(distribution.first.expected_slack_bytes_per_value),
-                format_optional_decimal(distribution.second.expected_slack_bytes_per_value),
-                format_decimal_delta(distribution.expected_slack_per_value_delta));
-            comparison_row(
-                "Expected active extent at selected count",
-                format_optional_decimal(distribution.first.expected_selected_extent_bytes),
-                format_optional_decimal(distribution.second.expected_selected_extent_bytes),
-                format_decimal_delta(distribution.expected_selected_extent_delta));
-            comparison_row(
-                "Expected conditional slack at selected count",
-                format_optional_decimal(distribution.first.expected_selected_slack_bytes),
-                format_optional_decimal(distribution.second.expected_selected_slack_bytes),
-                format_decimal_delta(distribution.expected_selected_slack_delta));
-            ImGui::EndTable();
-        }
-        if (!distribution.entries.empty() && ImGui::TreeNode("Workload alternatives")) {
-            for (auto const& entry : distribution.entries) {
-                ImGui::PushID(entry.alternative_name.c_str());
-                ImGui::SeparatorText(entry.alternative_name.c_str());
-                if (ImGui::BeginTable("raw-union-distribution-entry-target-comparison",
-                                      4,
-                                      ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                          ImGuiTableFlags_Resizable)) {
-                    ImGui::TableSetupColumn("Distribution fact");
-                    ImGui::TableSetupColumn(abi_.name().c_str());
-                    ImGui::TableSetupColumn(comparison_abi_.name().c_str());
-                    ImGui::TableSetupColumn("Difference (B - A)");
-                    ImGui::TableHeadersRow();
-                    comparison_row("Weight",
-                                   std::to_string(entry.first.weight),
-                                   std::to_string(entry.second.weight));
-                    comparison_row("Active extent",
-                                   detail::format_bytes(entry.first.extent_bytes),
-                                   detail::format_bytes(entry.second.extent_bytes),
-                                   detail::format_delta_bytes(entry.extent_delta));
-                    comparison_row("Conditional slack",
-                                   detail::format_bytes(entry.first.slack_bytes),
-                                   detail::format_bytes(entry.second.slack_bytes),
-                                   detail::format_delta_bytes(entry.slack_delta));
-                    comparison_row("Weighted active extent",
-                                   detail::format_bytes(entry.first.weighted_extent_bytes),
-                                   detail::format_bytes(entry.second.weighted_extent_bytes),
-                                   detail::format_delta_bytes(entry.weighted_extent_delta));
-                    comparison_row("Weighted conditional slack",
-                                   detail::format_bytes(entry.first.weighted_slack_bytes),
-                                   detail::format_bytes(entry.second.weighted_slack_bytes),
-                                   detail::format_delta_bytes(entry.weighted_slack_delta));
-                    ImGui::EndTable();
-                }
-                ImGui::PopID();
-            }
-            ImGui::TreePop();
-        }
-        draw_diagnostics(distribution.diagnostics);
-    }
-    ImGui::TextDisabled(
-        "Alternative slack without a workload assumes every object uses that alternative. The "
-        "optional session workload is conditional, stores no discriminant, and is not a "
-        "performance prediction or an ABI-compatibility verdict.");
-    draw_diagnostics(comparison.diagnostics);
-}
-
-void PlannerUi::draw_tagged_union_target_comparison() {
-    ImGui::TextWrapped(
-        "Compare one semantic tagged union under two explicit physical target profiles. The "
-        "discriminant, tag roles, alternatives, and selected count are held fixed. Target A "
-        "uses the shared Target Profile; target B is session-only.");
-    if (draw_comparison_target_profile_picker()) {
-        refresh_analysis();
-    }
-    ImGui::SeparatorText("Analysis scale");
-    if (draw_element_count()) {
-        return;
-    }
-    if (!tagged_union_target_comparison_.has_value()) {
-        ImGui::TextDisabled("No tagged-union target comparison is available.");
-        return;
-    }
-
-    auto const& comparison{*tagged_union_target_comparison_};
-    auto const& first{comparison.first};
-    auto const& second{comparison.second};
-    auto const& first_aggregate{first.aggregate};
-    auto const& second_aggregate{second.aggregate};
-    auto const first_discriminant_size{first.discriminant_facts.transform(
-        [](TypeFacts const& facts) { return facts.size_bytes; })};
-    auto const second_discriminant_size{second.discriminant_facts.transform(
-        [](TypeFacts const& facts) { return facts.size_bytes; })};
-    auto const first_discriminant_alignment{first.discriminant_facts.transform(
-        [](TypeFacts const& facts) { return facts.alignment_bytes; })};
-    auto const second_discriminant_alignment{second.discriminant_facts.transform(
-        [](TypeFacts const& facts) { return facts.alignment_bytes; })};
-    if (ImGui::BeginTable("tagged-union-target-comparison",
-                          4,
-                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                              ImGuiTableFlags_Resizable)) {
-        ImGui::TableSetupColumn("Physical fact");
-        ImGui::TableSetupColumn(abi_.name().c_str());
-        ImGui::TableSetupColumn(comparison_abi_.name().c_str());
-        ImGui::TableSetupColumn("Difference (B - A)");
-        ImGui::TableHeadersRow();
-        comparison_row("Profile", abi_.name(), comparison_abi_.name());
-        comparison_row("Element count",
-                       std::to_string(first_aggregate.element_count),
-                       std::to_string(second_aggregate.element_count));
-        comparison_row("Discriminant semantic type",
-                       type_label(workspace_.types().type(first.discriminant_type)),
-                       type_label(workspace_.types().type(second.discriminant_type)));
-        comparison_row("Discriminant size",
-                       detail::format_bytes(first_discriminant_size),
-                       detail::format_bytes(second_discriminant_size),
-                       detail::format_delta_bytes(comparison.discriminant_size_delta));
-        comparison_row("Discriminant alignment",
-                       detail::format_bytes(first_discriminant_alignment),
-                       detail::format_bytes(second_discriminant_alignment),
-                       detail::format_delta_bytes(comparison.discriminant_alignment_delta));
-        comparison_row("Largest alternative extent",
-                       detail::format_bytes(first.largest_alternative_bytes),
-                       detail::format_bytes(second.largest_alternative_bytes),
-                       detail::format_delta_bytes(comparison.largest_alternative_delta));
-        comparison_row("Payload union size",
-                       detail::format_bytes(first.payload_size_bytes),
-                       detail::format_bytes(second.payload_size_bytes),
-                       detail::format_delta_bytes(comparison.payload_size_delta));
-        comparison_row("Payload alignment",
-                       detail::format_bytes(first.payload_alignment_bytes),
-                       detail::format_bytes(second.payload_alignment_bytes),
-                       detail::format_delta_bytes(comparison.payload_alignment_delta));
-        comparison_row("Payload offset",
-                       detail::format_bytes(first.payload_offset_bytes),
-                       detail::format_bytes(second.payload_offset_bytes),
-                       detail::format_delta_bytes(comparison.payload_offset_delta));
-        comparison_row("Internal padding per object",
-                       detail::format_bytes(first.internal_padding_bytes),
-                       detail::format_bytes(second.internal_padding_bytes),
-                       detail::format_delta_bytes(comparison.internal_padding_delta));
-        comparison_row("Tail padding per object",
-                       detail::format_bytes(first.tail_padding_bytes),
-                       detail::format_bytes(second.tail_padding_bytes),
-                       detail::format_delta_bytes(comparison.tail_padding_delta));
-        comparison_row("Object size",
-                       detail::format_bytes(first.size_bytes),
-                       detail::format_bytes(second.size_bytes),
-                       detail::format_delta_bytes(comparison.size_delta));
-        comparison_row("Object alignment",
-                       detail::format_bytes(first.alignment_bytes),
-                       detail::format_bytes(second.alignment_bytes),
-                       detail::format_delta_bytes(comparison.alignment_delta));
-        comparison_row("Aggregate storage",
-                       detail::format_bytes(first_aggregate.total_storage_bytes),
-                       detail::format_bytes(second_aggregate.total_storage_bytes),
-                       detail::format_delta_bytes(comparison.total_storage_delta));
-        comparison_row("Aggregate discriminant bytes",
-                       detail::format_bytes(first_aggregate.total_discriminant_bytes),
-                       detail::format_bytes(second_aggregate.total_discriminant_bytes),
-                       detail::format_delta_bytes(comparison.total_discriminant_delta));
-        comparison_row("Aggregate payload bytes",
-                       detail::format_bytes(first_aggregate.total_payload_bytes),
-                       detail::format_bytes(second_aggregate.total_payload_bytes),
-                       detail::format_delta_bytes(comparison.total_payload_delta));
-        comparison_row("Aggregate internal padding",
-                       detail::format_bytes(first_aggregate.total_internal_padding_bytes),
-                       detail::format_bytes(second_aggregate.total_internal_padding_bytes),
-                       detail::format_delta_bytes(comparison.total_internal_padding_delta));
-        comparison_row("Aggregate tail padding",
-                       detail::format_bytes(first_aggregate.total_tail_padding_bytes),
-                       detail::format_bytes(second_aggregate.total_tail_padding_bytes),
-                       detail::format_delta_bytes(comparison.total_tail_padding_delta));
-        comparison_row("Aggregate padding",
-                       detail::format_bytes(first_aggregate.total_padding_bytes),
-                       detail::format_bytes(second_aggregate.total_padding_bytes),
-                       detail::format_delta_bytes(comparison.total_padding_delta));
-        comparison_row("Cache-line size",
-                       detail::format_bytes(first_aggregate.cache_line_bytes),
-                       detail::format_bytes(second_aggregate.cache_line_bytes),
-                       detail::format_delta_bytes(comparison.cache_line_size_delta));
-        comparison_row("Minimum cache lines",
-                       detail::format_number(first_aggregate.minimum_cache_lines),
-                       detail::format_number(second_aggregate.minimum_cache_lines),
-                       detail::format_delta_number(comparison.minimum_cache_line_delta));
-        comparison_row(
-            "Complete elements per cache line",
-            detail::format_number(first_aggregate.complete_elements_per_cache_line),
-            detail::format_number(second_aggregate.complete_elements_per_cache_line),
-            detail::format_delta_number(comparison.complete_elements_per_cache_line_delta));
-        comparison_row("Cache-line-straddling elements",
-                       detail::format_number(first_aggregate.cache_line_straddling_elements),
-                       detail::format_number(second_aggregate.cache_line_straddling_elements),
-                       detail::format_delta_number(comparison.cache_line_straddling_delta));
-        comparison_row("Page size",
-                       detail::format_bytes(first_aggregate.page_bytes),
-                       detail::format_bytes(second_aggregate.page_bytes),
-                       detail::format_delta_bytes(comparison.page_size_delta));
-        comparison_row("Minimum pages",
-                       detail::format_number(first_aggregate.minimum_pages),
-                       detail::format_number(second_aggregate.minimum_pages),
-                       detail::format_delta_number(comparison.minimum_page_delta));
-        comparison_row("Complete elements per page",
-                       detail::format_number(first_aggregate.complete_elements_per_page),
-                       detail::format_number(second_aggregate.complete_elements_per_page),
-                       detail::format_delta_number(comparison.complete_elements_per_page_delta));
-        comparison_row("Page-straddling elements",
-                       detail::format_number(first_aggregate.page_straddling_elements),
-                       detail::format_number(second_aggregate.page_straddling_elements),
-                       detail::format_delta_number(comparison.page_straddling_delta));
-        comparison_row("Fits L1 data cache",
-                       detail::format_fit(first_aggregate.cache_capacity.fits_l1_data),
-                       detail::format_fit(second_aggregate.cache_capacity.fits_l1_data));
-        comparison_row("Fits L2 cache",
-                       detail::format_fit(first_aggregate.cache_capacity.fits_l2),
-                       detail::format_fit(second_aggregate.cache_capacity.fits_l2));
-        comparison_row("Fits L3 cache",
-                       detail::format_fit(first_aggregate.cache_capacity.fits_l3),
-                       detail::format_fit(second_aggregate.cache_capacity.fits_l3));
-        ImGui::EndTable();
-    }
-
-    ImGui::SeparatorText("Semantic tag coverage (held fixed)");
-    auto join_tags = [](std::vector<std::string> const& tags) {
-        std::string joined;
-        for (auto const& tag : tags) {
-            if (!joined.empty()) {
-                joined += ", ";
-            }
-            joined += tag;
-        }
-        return joined.empty() ? std::string{"None"} : joined;
-    };
-    ImGui::TextWrapped("Mapped live: %s", join_tags(first.mapped_live_tags).c_str());
-    ImGui::TextWrapped("Unmapped live: %s", join_tags(first.unmapped_live_tags).c_str());
-    ImGui::TextWrapped("Sentinels: %s", join_tags(first.sentinel_tags).c_str());
-    ImGui::Text("Count sentinel: %s",
-                first.count_sentinel_tag.has_value() ? first.count_sentinel_tag->c_str() : "None");
-
-    if (!comparison.alternatives.empty() &&
-        ImGui::TreeNodeEx("Alternative payload layout", ImGuiTreeNodeFlags_SpanAvailWidth)) {
-        for (auto const& alternative : comparison.alternatives) {
-            ImGui::PushID(alternative.name.c_str());
-            ImGui::SeparatorText(alternative.name.c_str());
-            auto const first_size{alternative.first.element_facts.transform(
-                [](TypeFacts const& facts) { return facts.size_bytes; })};
-            auto const second_size{alternative.second.element_facts.transform(
-                [](TypeFacts const& facts) { return facts.size_bytes; })};
-            auto const first_alignment{alternative.first.element_facts.transform(
-                [](TypeFacts const& facts) { return facts.alignment_bytes; })};
-            auto const second_alignment{alternative.second.element_facts.transform(
-                [](TypeFacts const& facts) { return facts.alignment_bytes; })};
-            if (ImGui::BeginTable("tagged-alternative-target-comparison",
-                                  4,
-                                  ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                      ImGuiTableFlags_Resizable)) {
-                ImGui::TableSetupColumn("Physical fact");
-                ImGui::TableSetupColumn(abi_.name().c_str());
-                ImGui::TableSetupColumn(comparison_abi_.name().c_str());
-                ImGui::TableSetupColumn("Difference (B - A)");
-                ImGui::TableHeadersRow();
-                comparison_row("Tag", alternative.first.tag, alternative.second.tag);
-                comparison_row(
-                    "Semantic type",
-                    type_label(workspace_.types().type(alternative.first.semantic_type)),
-                    type_label(workspace_.types().type(alternative.second.semantic_type)));
-                comparison_row("Element count",
-                               std::to_string(alternative.first.element_count),
-                               std::to_string(alternative.second.element_count));
-                comparison_row("Element size",
-                               detail::format_bytes(first_size),
-                               detail::format_bytes(second_size),
-                               detail::format_delta_bytes(alternative.element_size_delta));
-                comparison_row("Element alignment",
-                               detail::format_bytes(first_alignment),
-                               detail::format_bytes(second_alignment),
-                               detail::format_delta_bytes(alternative.element_alignment_delta));
-                comparison_row("Alternative extent",
-                               detail::format_bytes(alternative.first.extent_bytes),
-                               detail::format_bytes(alternative.second.extent_bytes),
-                               detail::format_delta_bytes(alternative.extent_delta));
-                comparison_row("Conditional payload slack per object",
-                               detail::format_bytes(alternative.first.payload_slack_bytes),
-                               detail::format_bytes(alternative.second.payload_slack_bytes),
-                               detail::format_delta_bytes(alternative.payload_slack_delta));
-                comparison_row("Conditional payload slack at selected count",
-                               detail::format_bytes(alternative.first.total_payload_slack_bytes),
-                               detail::format_bytes(alternative.second.total_payload_slack_bytes),
-                               detail::format_delta_bytes(alternative.total_payload_slack_delta));
-                ImGui::EndTable();
-            }
-            ImGui::PopID();
-        }
-        ImGui::TreePop();
-    }
-    if (tagged_union_target_distribution_comparison_.has_value()) {
-        auto const& distribution{*tagged_union_target_distribution_comparison_};
-        ImGui::SeparatorText("Explicit distribution across targets");
-        if (ImGui::BeginTable("tagged-distribution-target-comparison",
-                              4,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_Resizable)) {
-            ImGui::TableSetupColumn("Distribution fact");
-            ImGui::TableSetupColumn(abi_.name().c_str());
-            ImGui::TableSetupColumn(comparison_abi_.name().c_str());
-            ImGui::TableSetupColumn("Difference (B - A)");
-            ImGui::TableHeadersRow();
-            comparison_row("Total weight",
-                           detail::format_number(distribution.first.total_weight),
-                           detail::format_number(distribution.second.total_weight),
-                           detail::format_delta_number(distribution.total_weight_delta));
-            comparison_row("Weighted payload extent",
-                           detail::format_bytes(distribution.first.total_payload_extent_bytes),
-                           detail::format_bytes(distribution.second.total_payload_extent_bytes),
-                           detail::format_delta_bytes(distribution.total_payload_extent_delta));
-            comparison_row("Weighted payload slack",
-                           detail::format_bytes(distribution.first.total_payload_slack_bytes),
-                           detail::format_bytes(distribution.second.total_payload_slack_bytes),
-                           detail::format_delta_bytes(distribution.total_payload_slack_delta));
-            comparison_row(
-                "Expected payload extent / value",
-                format_optional_decimal(distribution.first.expected_payload_extent_bytes_per_value),
-                format_optional_decimal(
-                    distribution.second.expected_payload_extent_bytes_per_value),
-                format_decimal_delta(distribution.expected_payload_extent_per_value_delta));
-            comparison_row(
-                "Expected payload slack / value",
-                format_optional_decimal(distribution.first.expected_payload_slack_bytes_per_value),
-                format_optional_decimal(distribution.second.expected_payload_slack_bytes_per_value),
-                format_decimal_delta(distribution.expected_payload_slack_per_value_delta));
-            comparison_row(
-                "Expected payload extent at selected count",
-                format_optional_decimal(distribution.first.expected_selected_payload_extent_bytes),
-                format_optional_decimal(distribution.second.expected_selected_payload_extent_bytes),
-                format_decimal_delta(distribution.expected_selected_payload_extent_delta));
-            comparison_row(
-                "Expected payload slack at selected count",
-                format_optional_decimal(distribution.first.expected_selected_payload_slack_bytes),
-                format_optional_decimal(distribution.second.expected_selected_payload_slack_bytes),
-                format_decimal_delta(distribution.expected_selected_payload_slack_delta));
-            ImGui::EndTable();
-        }
-        if (!distribution.entries.empty() && ImGui::TreeNode("Distribution entries")) {
-            for (auto const& entry : distribution.entries) {
-                ImGui::PushID(entry.tag.c_str());
-                ImGui::SeparatorText(entry.tag.c_str());
-                if (ImGui::BeginTable("tagged-distribution-entry-target-comparison",
-                                      4,
-                                      ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                          ImGuiTableFlags_Resizable)) {
-                    ImGui::TableSetupColumn("Distribution fact");
-                    ImGui::TableSetupColumn(abi_.name().c_str());
-                    ImGui::TableSetupColumn(comparison_abi_.name().c_str());
-                    ImGui::TableSetupColumn("Difference (B - A)");
-                    ImGui::TableHeadersRow();
-                    comparison_row(
-                        "Alternative", entry.first.alternative_name, entry.second.alternative_name);
-                    comparison_row("Weight",
-                                   std::to_string(entry.first.weight),
-                                   std::to_string(entry.second.weight));
-                    comparison_row("Payload extent",
-                                   detail::format_bytes(entry.first.payload_extent_bytes),
-                                   detail::format_bytes(entry.second.payload_extent_bytes),
-                                   detail::format_delta_bytes(entry.payload_extent_delta));
-                    comparison_row("Payload slack",
-                                   detail::format_bytes(entry.first.payload_slack_bytes),
-                                   detail::format_bytes(entry.second.payload_slack_bytes),
-                                   detail::format_delta_bytes(entry.payload_slack_delta));
-                    comparison_row("Weighted payload extent",
-                                   detail::format_bytes(entry.first.weighted_payload_extent_bytes),
-                                   detail::format_bytes(entry.second.weighted_payload_extent_bytes),
-                                   detail::format_delta_bytes(entry.weighted_payload_extent_delta));
-                    comparison_row("Weighted payload slack",
-                                   detail::format_bytes(entry.first.weighted_payload_slack_bytes),
-                                   detail::format_bytes(entry.second.weighted_payload_slack_bytes),
-                                   detail::format_delta_bytes(entry.weighted_payload_slack_delta));
-                    ImGui::EndTable();
-                }
-                ImGui::PopID();
-            }
-            ImGui::TreePop();
-        }
-        draw_diagnostics(distribution.diagnostics);
-    }
-    ImGui::TextDisabled(
-        "Tag coverage is semantic and unchanged by target selection. Layout and conditional slack "
-        "are deterministic physical facts, not a performance prediction or ABI-compatibility "
-        "verdict. The optional session workload distribution remains a separate analysis.");
-    draw_diagnostics(comparison.diagnostics);
-}
 
 void PlannerUi::draw_comparison_panel() {
     if (!comparison_view_open_) {
@@ -1290,10 +9,11 @@ void PlannerUi::draw_comparison_panel() {
     auto const was_open{comparison_view_open_};
     ImGui::Begin("Comparison", &comparison_view_open_);
     persist_view_visibility(was_open, comparison_view_open_);
-    ImGui::TextDisabled("ABI profile: %s", abi_.name().c_str());
+    ImGui::TextDisabled("ABI profile: %s", analysis_session_.inputs.abi.name().c_str());
 
-    if (selected_type_.has_value()) {
-        auto const& selected_node{workspace_.types().type(*selected_type_)};
+    if (analysis_session_.inputs.selection.type.has_value()) {
+        auto const& selected_node{analysis_session_.inputs.workspace.types().type(
+            *analysis_session_.inputs.selection.type)};
         if (std::holds_alternative<EnumType>(selected_node.definition)) {
             draw_enum_target_comparison();
             ImGui::End();
@@ -1313,13 +33,13 @@ void PlannerUi::draw_comparison_panel() {
                 ImGui::End();
                 return;
             }
-            if (!record_target_comparison_.has_value()) {
+            if (!analysis_session_.results().record_target_comparison.has_value()) {
                 ImGui::TextDisabled("No record target comparison is available.");
                 ImGui::End();
                 return;
             }
 
-            auto const& comparison{*record_target_comparison_};
+            auto const& comparison{*analysis_session_.results().record_target_comparison};
             auto const& first{comparison.first};
             auto const& second{comparison.second};
             auto const& first_aggregate{first.aggregate};
@@ -1329,26 +49,35 @@ void PlannerUi::draw_comparison_panel() {
                                   ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                       ImGuiTableFlags_Resizable)) {
                 ImGui::TableSetupColumn("Physical fact");
-                ImGui::TableSetupColumn(abi_.name().c_str());
-                ImGui::TableSetupColumn(comparison_abi_.name().c_str());
+                ImGui::TableSetupColumn(analysis_session_.inputs.abi.name().c_str());
+                ImGui::TableSetupColumn(analysis_session_.inputs.comparison_abi.name().c_str());
                 ImGui::TableSetupColumn("Difference (B - A)");
                 ImGui::TableHeadersRow();
-                comparison_row("Profile", abi_.name(), comparison_abi_.name());
+                comparison_row("Profile",
+                               analysis_session_.inputs.abi.name(),
+                               analysis_session_.inputs.comparison_abi.name());
                 comparison_row("Platform",
-                               abi_.identity().platform.value_or("Unknown"),
-                               comparison_abi_.identity().platform.value_or("Unknown"));
-                comparison_row("Architecture",
-                               abi_.identity().architecture.value_or("Unknown"),
-                               comparison_abi_.identity().architecture.value_or("Unknown"));
-                comparison_row("ABI",
-                               abi_.identity().abi.value_or("Unknown"),
-                               comparison_abi_.identity().abi.value_or("Unknown"));
+                               analysis_session_.inputs.abi.identity().platform.value_or("Unknown"),
+                               analysis_session_.inputs.comparison_abi.identity().platform.value_or(
+                                   "Unknown"));
+                comparison_row(
+                    "Architecture",
+                    analysis_session_.inputs.abi.identity().architecture.value_or("Unknown"),
+                    analysis_session_.inputs.comparison_abi.identity().architecture.value_or(
+                        "Unknown"));
+                comparison_row(
+                    "ABI",
+                    analysis_session_.inputs.abi.identity().abi.value_or("Unknown"),
+                    analysis_session_.inputs.comparison_abi.identity().abi.value_or("Unknown"));
                 comparison_row("Compiler",
-                               abi_.identity().compiler.value_or("Unknown"),
-                               comparison_abi_.identity().compiler.value_or("Unknown"));
-                comparison_row("Build configuration",
-                               abi_.identity().build_configuration.value_or("Unknown"),
-                               comparison_abi_.identity().build_configuration.value_or("Unknown"));
+                               analysis_session_.inputs.abi.identity().compiler.value_or("Unknown"),
+                               analysis_session_.inputs.comparison_abi.identity().compiler.value_or(
+                                   "Unknown"));
+                comparison_row(
+                    "Build configuration",
+                    analysis_session_.inputs.abi.identity().build_configuration.value_or("Unknown"),
+                    analysis_session_.inputs.comparison_abi.identity().build_configuration.value_or(
+                        "Unknown"));
                 comparison_row("Element count",
                                std::to_string(first_aggregate.element_count),
                                std::to_string(second_aggregate.element_count));
@@ -1448,14 +177,16 @@ void PlannerUi::draw_comparison_panel() {
                                           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                               ImGuiTableFlags_Resizable)) {
                         ImGui::TableSetupColumn("Physical fact");
-                        ImGui::TableSetupColumn(abi_.name().c_str());
-                        ImGui::TableSetupColumn(comparison_abi_.name().c_str());
+                        ImGui::TableSetupColumn(analysis_session_.inputs.abi.name().c_str());
+                        ImGui::TableSetupColumn(
+                            analysis_session_.inputs.comparison_abi.name().c_str());
                         ImGui::TableSetupColumn("Difference (B - A)");
                         ImGui::TableHeadersRow();
-                        comparison_row(
-                            "Semantic type",
-                            type_label(workspace_.types().type(member.first.semantic_type)),
-                            type_label(workspace_.types().type(member.second.semantic_type)));
+                        comparison_row("Semantic type",
+                                       type_label(analysis_session_.inputs.workspace.types().type(
+                                           member.first.semantic_type)),
+                                       type_label(analysis_session_.inputs.workspace.types().type(
+                                           member.second.semantic_type)));
                         comparison_row("Element count",
                                        std::to_string(member.first.element_count),
                                        std::to_string(member.second.element_count));
@@ -1491,8 +222,8 @@ void PlannerUi::draw_comparison_panel() {
                 }
                 ImGui::TreePop();
             }
-            if (record_target_access_comparison_.has_value()) {
-                auto const& access{*record_target_access_comparison_};
+            if (analysis_session_.results().record_target_access_comparison.has_value()) {
+                auto const& access{*analysis_session_.results().record_target_access_comparison};
                 auto const& first_access{access.first};
                 auto const& second_access{access.second};
                 std::string member_names;
@@ -1514,8 +245,8 @@ void PlannerUi::draw_comparison_panel() {
                                       ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                           ImGuiTableFlags_Resizable)) {
                     ImGui::TableSetupColumn("Workload fact");
-                    ImGui::TableSetupColumn(abi_.name().c_str());
-                    ImGui::TableSetupColumn(comparison_abi_.name().c_str());
+                    ImGui::TableSetupColumn(analysis_session_.inputs.abi.name().c_str());
+                    ImGui::TableSetupColumn(analysis_session_.inputs.comparison_abi.name().c_str());
                     ImGui::TableSetupColumn("Difference (B - A)");
                     ImGui::TableHeadersRow();
                     comparison_row("Element count",
@@ -1659,7 +390,8 @@ void PlannerUi::draw_comparison_panel() {
                 "Compare the active physical variant of this packed value under two explicit "
                 "target profiles. Target A uses the shared Target Profile; target B is "
                 "session-only.");
-            ImGui::Text("Held physical variant: %s", workspace_.active_variant().name.c_str());
+            ImGui::Text("Held physical variant: %s",
+                        analysis_session_.inputs.workspace.active_variant().name.c_str());
             if (draw_comparison_target_profile_picker()) {
                 refresh_analysis();
             }
@@ -1669,8 +401,8 @@ void PlannerUi::draw_comparison_panel() {
                 return;
             }
 
-            if (packed_target_comparison_.has_value()) {
-                auto const& comparison{*packed_target_comparison_};
+            if (analysis_session_.results().packed_target_comparison.has_value()) {
+                auto const& comparison{*analysis_session_.results().packed_target_comparison};
                 auto const& first{comparison.first};
                 auto const& second{comparison.second};
                 auto const& first_aggregate{first.aggregate};
@@ -1699,14 +431,18 @@ void PlannerUi::draw_comparison_panel() {
                                       ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                           ImGuiTableFlags_Resizable)) {
                     ImGui::TableSetupColumn("Physical fact");
-                    ImGui::TableSetupColumn(abi_.name().c_str());
-                    ImGui::TableSetupColumn(comparison_abi_.name().c_str());
+                    ImGui::TableSetupColumn(analysis_session_.inputs.abi.name().c_str());
+                    ImGui::TableSetupColumn(analysis_session_.inputs.comparison_abi.name().c_str());
                     ImGui::TableSetupColumn("Difference (B - A)");
                     ImGui::TableHeadersRow();
-                    comparison_row("Profile", abi_.name(), comparison_abi_.name());
-                    comparison_row("Architecture",
-                                   abi_.identity().architecture.value_or("Unknown"),
-                                   comparison_abi_.identity().architecture.value_or("Unknown"));
+                    comparison_row("Profile",
+                                   analysis_session_.inputs.abi.name(),
+                                   analysis_session_.inputs.comparison_abi.name());
+                    comparison_row(
+                        "Architecture",
+                        analysis_session_.inputs.abi.identity().architecture.value_or("Unknown"),
+                        analysis_session_.inputs.comparison_abi.identity().architecture.value_or(
+                            "Unknown"));
                     comparison_row("Element count",
                                    std::to_string(first_aggregate.element_count),
                                    std::to_string(second_aggregate.element_count));
@@ -1823,8 +559,9 @@ void PlannerUi::draw_comparison_panel() {
                                               ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                                   ImGuiTableFlags_Resizable)) {
                             ImGui::TableSetupColumn("Physical fact");
-                            ImGui::TableSetupColumn(abi_.name().c_str());
-                            ImGui::TableSetupColumn(comparison_abi_.name().c_str());
+                            ImGui::TableSetupColumn(analysis_session_.inputs.abi.name().c_str());
+                            ImGui::TableSetupColumn(
+                                analysis_session_.inputs.comparison_abi.name().c_str());
                             ImGui::TableSetupColumn("Difference (B - A)");
                             ImGui::TableHeadersRow();
                             comparison_row("Role",
@@ -1891,8 +628,9 @@ void PlannerUi::draw_comparison_panel() {
                     }
                     ImGui::TreePop();
                 }
-                if (packed_target_access_comparison_.has_value()) {
-                    auto const& access{*packed_target_access_comparison_};
+                if (analysis_session_.results().packed_target_access_comparison.has_value()) {
+                    auto const& access{
+                        *analysis_session_.results().packed_target_access_comparison};
                     auto const& first_access{access.first};
                     auto const& second_access{access.second};
                     std::string field_names;
@@ -1914,8 +652,9 @@ void PlannerUi::draw_comparison_panel() {
                                           ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
                                               ImGuiTableFlags_Resizable)) {
                         ImGui::TableSetupColumn("Workload fact");
-                        ImGui::TableSetupColumn(abi_.name().c_str());
-                        ImGui::TableSetupColumn(comparison_abi_.name().c_str());
+                        ImGui::TableSetupColumn(analysis_session_.inputs.abi.name().c_str());
+                        ImGui::TableSetupColumn(
+                            analysis_session_.inputs.comparison_abi.name().c_str());
                         ImGui::TableSetupColumn("Difference (B - A)");
                         ImGui::TableHeadersRow();
                         comparison_row("Element count",
@@ -2078,28 +817,31 @@ void PlannerUi::draw_comparison_panel() {
 
         auto const* selected_quantized{std::get_if<LinearQuantizedType>(&selected_node.definition)};
         if (selected_quantized != nullptr) {
-            auto comparison_type{quantized_comparison_type_.has_value()
-                                     ? workspace_.types().find(*quantized_comparison_type_)
+            auto comparison_type{analysis_session_.inputs.quantized_comparison_type.has_value()
+                                     ? analysis_session_.inputs.workspace.types().find(
+                                           *analysis_session_.inputs.quantized_comparison_type)
                                      : std::nullopt};
-            auto const comparison_label{comparison_type.has_value()
-                                            ? type_label(workspace_.types().type(*comparison_type))
-                                            : std::string{"No same-source representation"}};
+            auto const comparison_label{
+                comparison_type.has_value()
+                    ? type_label(analysis_session_.inputs.workspace.types().type(*comparison_type))
+                    : std::string{"No same-source representation"}};
             ImGui::Text("A: %s", type_label(selected_node).c_str());
             ImGui::SetNextItemWidth(-1.0F);
             if (ImGui::BeginCombo("B##quantized-comparison", comparison_label.c_str())) {
-                auto const types{workspace_.types().types()};
+                auto const types{analysis_session_.inputs.workspace.types().types()};
                 for (std::size_t index{}; index < types.size(); ++index) {
                     auto const candidate{TypeId{static_cast<std::uint32_t>(index)}};
                     auto const* quantized{
                         std::get_if<LinearQuantizedType>(&types[index].definition)};
-                    if (candidate == *selected_type_ || quantized == nullptr ||
+                    if (candidate == *analysis_session_.inputs.selection.type ||
+                        quantized == nullptr ||
                         quantized->source.type != selected_quantized->source.type) {
                         continue;
                     }
                     auto const is_selected{comparison_type == candidate};
                     auto const label{type_label(types[index])};
                     if (ImGui::Selectable(label.c_str(), is_selected)) {
-                        quantized_comparison_type_ = types[index].identity;
+                        analysis_session_.inputs.quantized_comparison_type = types[index].identity;
                         refresh_analysis();
                         comparison_type = candidate;
                     }
@@ -2110,7 +852,7 @@ void PlannerUi::draw_comparison_panel() {
                 ImGui::EndCombo();
             }
 
-            if (!linear_quantized_comparison_.has_value()) {
+            if (!analysis_session_.results().linear_quantized_comparison.has_value()) {
                 ImGui::TextDisabled(
                     "Declare another linear quantized representation of the same semantic source "
                     "to compare precision and encoded payload cost.");
@@ -2124,8 +866,9 @@ void PlannerUi::draw_comparison_panel() {
                 return;
             }
 
-            auto const& comparison{*linear_quantized_comparison_};
-            auto const& second_node{workspace_.types().type(comparison.second.type)};
+            auto const& comparison{*analysis_session_.results().linear_quantized_comparison};
+            auto const& second_node{
+                analysis_session_.inputs.workspace.types().type(comparison.second.type)};
             if (ImGui::BeginTable("linear-quantized-comparison",
                                   4,
                                   ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
@@ -2135,10 +878,13 @@ void PlannerUi::draw_comparison_panel() {
                 ImGui::TableSetupColumn(second_node.identity.name.c_str());
                 ImGui::TableSetupColumn("Difference (B - A)");
                 ImGui::TableHeadersRow();
-                comparison_row(
-                    "Semantic source",
-                    workspace_.types().type(comparison.first.source_type).identity.name,
-                    workspace_.types().type(comparison.second.source_type).identity.name);
+                comparison_row("Semantic source",
+                               analysis_session_.inputs.workspace.types()
+                                   .type(comparison.first.source_type)
+                                   .identity.name,
+                               analysis_session_.inputs.workspace.types()
+                                   .type(comparison.second.source_type)
+                                   .identity.name);
                 comparison_row("Encoded width",
                                std::to_string(comparison.first.encoded_storage_bits) + " bits",
                                std::to_string(comparison.second.encoded_storage_bits) + " bits",
@@ -2189,15 +935,15 @@ void PlannerUi::draw_comparison_panel() {
             draw_diagnostics(comparison.diagnostics);
 
             if (ImGui::Button("Select B representation") && comparison_type.has_value()) {
-                selected_type_ = comparison_type;
-                selected_field_.clear();
+                select_type(comparison_type);
+                analysis_session_.inputs.selection.field.clear();
                 graph_focus_selected_ = true;
                 refresh_analysis();
             }
             ImGui::SameLine();
             if (ImGui::Button("Select semantic source")) {
-                selected_type_ = comparison.first.source_type;
-                selected_field_.clear();
+                select_type(comparison.first.source_type);
+                analysis_session_.inputs.selection.field.clear();
                 graph_focus_selected_ = true;
                 refresh_analysis();
             }
@@ -2207,27 +953,29 @@ void PlannerUi::draw_comparison_panel() {
 
         auto const selected_optional_source{optional_source(selected_node.definition)};
         if (selected_optional_source.has_value()) {
-            auto comparison_type{optional_comparison_type_.has_value()
-                                     ? workspace_.types().find(*optional_comparison_type_)
+            auto comparison_type{analysis_session_.inputs.optional_comparison_type.has_value()
+                                     ? analysis_session_.inputs.workspace.types().find(
+                                           *analysis_session_.inputs.optional_comparison_type)
                                      : std::nullopt};
-            auto const comparison_label{comparison_type.has_value()
-                                            ? type_label(workspace_.types().type(*comparison_type))
-                                            : std::string{"No same-source representation"}};
+            auto const comparison_label{
+                comparison_type.has_value()
+                    ? type_label(analysis_session_.inputs.workspace.types().type(*comparison_type))
+                    : std::string{"No same-source representation"}};
             ImGui::Text("A: %s", type_label(selected_node).c_str());
             ImGui::SetNextItemWidth(-1.0F);
             if (ImGui::BeginCombo("B##optional-comparison", comparison_label.c_str())) {
-                auto const types{workspace_.types().types()};
+                auto const types{analysis_session_.inputs.workspace.types().types()};
                 for (std::size_t index{}; index < types.size(); ++index) {
                     auto const candidate{TypeId{static_cast<std::uint32_t>(index)}};
                     auto const candidate_source{optional_source(types[index].definition)};
-                    if (candidate == *selected_type_ ||
+                    if (candidate == *analysis_session_.inputs.selection.type ||
                         candidate_source != selected_optional_source) {
                         continue;
                     }
                     auto const is_selected{comparison_type == candidate};
                     auto const label{type_label(types[index])};
                     if (ImGui::Selectable(label.c_str(), is_selected)) {
-                        optional_comparison_type_ = types[index].identity;
+                        analysis_session_.inputs.optional_comparison_type = types[index].identity;
                         refresh_analysis();
                         comparison_type = candidate;
                     }
@@ -2238,7 +986,7 @@ void PlannerUi::draw_comparison_panel() {
                 ImGui::EndCombo();
             }
 
-            if (!optional_encoding_comparison_.has_value()) {
+            if (!analysis_session_.results().optional_encoding_comparison.has_value()) {
                 ImGui::TextDisabled(
                     "Declare another sentinel or presence-bit optional representation of the "
                     "same semantic source to compare encoding consequences.");
@@ -2252,8 +1000,9 @@ void PlannerUi::draw_comparison_panel() {
                 return;
             }
 
-            auto const& comparison{*optional_encoding_comparison_};
-            auto const& second_node{workspace_.types().type(comparison.second.type)};
+            auto const& comparison{*analysis_session_.results().optional_encoding_comparison};
+            auto const& second_node{
+                analysis_session_.inputs.workspace.types().type(comparison.second.type)};
             if (ImGui::BeginTable("optional-encoding-comparison",
                                   4,
                                   ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
@@ -2263,10 +1012,13 @@ void PlannerUi::draw_comparison_panel() {
                 ImGui::TableSetupColumn(second_node.identity.name.c_str());
                 ImGui::TableSetupColumn("Difference (B - A)");
                 ImGui::TableHeadersRow();
-                comparison_row(
-                    "Semantic source",
-                    workspace_.types().type(comparison.first.source_type).identity.name,
-                    workspace_.types().type(comparison.second.source_type).identity.name);
+                comparison_row("Semantic source",
+                               analysis_session_.inputs.workspace.types()
+                                   .type(comparison.first.source_type)
+                                   .identity.name,
+                               analysis_session_.inputs.workspace.types()
+                                   .type(comparison.second.source_type)
+                                   .identity.name);
                 comparison_row("Encoding policy",
                                optional_encoding_label(comparison.first.kind),
                                optional_encoding_label(comparison.second.kind));
@@ -2318,15 +1070,15 @@ void PlannerUi::draw_comparison_panel() {
             draw_diagnostics(comparison.diagnostics);
 
             if (ImGui::Button("Select B representation") && comparison_type.has_value()) {
-                selected_type_ = comparison_type;
-                selected_field_.clear();
+                select_type(comparison_type);
+                analysis_session_.inputs.selection.field.clear();
                 graph_focus_selected_ = true;
                 refresh_analysis();
             }
             ImGui::SameLine();
             if (ImGui::Button("Select semantic source")) {
-                selected_type_ = comparison.first.source_type;
-                selected_field_.clear();
+                select_type(comparison.first.source_type);
+                analysis_session_.inputs.selection.field.clear();
                 graph_focus_selected_ = true;
                 refresh_analysis();
             }
@@ -2336,27 +1088,29 @@ void PlannerUi::draw_comparison_panel() {
 
         auto const* selected_varint{std::get_if<IntegerVarintType>(&selected_node.definition)};
         if (selected_varint != nullptr) {
-            auto comparison_type{varint_comparison_type_.has_value()
-                                     ? workspace_.types().find(*varint_comparison_type_)
+            auto comparison_type{analysis_session_.inputs.varint_comparison_type.has_value()
+                                     ? analysis_session_.inputs.workspace.types().find(
+                                           *analysis_session_.inputs.varint_comparison_type)
                                      : std::nullopt};
-            auto const comparison_label{comparison_type.has_value()
-                                            ? type_label(workspace_.types().type(*comparison_type))
-                                            : std::string{"No same-source representation"}};
+            auto const comparison_label{
+                comparison_type.has_value()
+                    ? type_label(analysis_session_.inputs.workspace.types().type(*comparison_type))
+                    : std::string{"No same-source representation"}};
             ImGui::Text("A: %s", type_label(selected_node).c_str());
             ImGui::SetNextItemWidth(-1.0F);
             if (ImGui::BeginCombo("B##varint-comparison", comparison_label.c_str())) {
-                auto const types{workspace_.types().types()};
+                auto const types{analysis_session_.inputs.workspace.types().types()};
                 for (std::size_t index{}; index < types.size(); ++index) {
                     auto const candidate{TypeId{static_cast<std::uint32_t>(index)}};
                     auto const* varint{std::get_if<IntegerVarintType>(&types[index].definition)};
-                    if (candidate == *selected_type_ || varint == nullptr ||
-                        varint->source.type != selected_varint->source.type) {
+                    if (candidate == *analysis_session_.inputs.selection.type ||
+                        varint == nullptr || varint->source.type != selected_varint->source.type) {
                         continue;
                     }
                     auto const is_selected{comparison_type == candidate};
                     auto const label{type_label(types[index])};
                     if (ImGui::Selectable(label.c_str(), is_selected)) {
-                        varint_comparison_type_ = types[index].identity;
+                        analysis_session_.inputs.varint_comparison_type = types[index].identity;
                         refresh_analysis();
                         comparison_type = candidate;
                     }
@@ -2367,7 +1121,7 @@ void PlannerUi::draw_comparison_panel() {
                 ImGui::EndCombo();
             }
 
-            if (!integer_varint_comparison_.has_value()) {
+            if (!analysis_session_.results().integer_varint_comparison.has_value()) {
                 ImGui::TextDisabled(
                     "Declare another integer varint representation of the same semantic source "
                     "to compare encoded-size bounds.");
@@ -2381,28 +1135,21 @@ void PlannerUi::draw_comparison_panel() {
                 return;
             }
 
-            auto const& comparison{*integer_varint_comparison_};
-            auto const& second_node{workspace_.types().type(comparison.second.type)};
-            auto const& source_node{workspace_.types().type(comparison.first.source_type)};
-            std::optional<IntegerVarintDistributionComparison> distribution_comparison;
+            auto const& comparison{*analysis_session_.results().integer_varint_comparison};
+            auto const& second_node{
+                analysis_session_.inputs.workspace.types().type(comparison.second.type)};
+            auto const& source_node{
+                analysis_session_.inputs.workspace.types().type(comparison.first.source_type)};
+            auto const& distribution_comparison{
+                analysis_session_.results().integer_varint_distribution_comparison};
             auto invalid_distribution_literals{std::size_t{}};
             if (auto const rows{varint_distributions_.find(source_node.identity)};
                 rows != varint_distributions_.end() && !rows->second.empty()) {
-                std::vector<IntegerVarintDistributionEntry> entries;
-                entries.reserve(rows->second.size());
                 for (auto const& row : rows->second) {
-                    if (auto const value{detail::parse_packed_integer(row.value.data())}) {
-                        entries.push_back({.value = *value, .weight = row.weight});
-                    } else {
+                    if (!detail::parse_packed_integer(row.value.data()).has_value()) {
                         ++invalid_distribution_literals;
                     }
                 }
-                distribution_comparison =
-                    Analyzer::compare_integer_varint_distribution(workspace_.types(),
-                                                                  comparison.first.type,
-                                                                  comparison.second.type,
-                                                                  entries,
-                                                                  workspace_.element_count());
             }
             if (ImGui::BeginTable("integer-varint-comparison",
                                   4,
@@ -2413,10 +1160,13 @@ void PlannerUi::draw_comparison_panel() {
                 ImGui::TableSetupColumn(second_node.identity.name.c_str());
                 ImGui::TableSetupColumn("Difference (B - A)");
                 ImGui::TableHeadersRow();
-                comparison_row(
-                    "Semantic source",
-                    workspace_.types().type(comparison.first.source_type).identity.name,
-                    workspace_.types().type(comparison.second.source_type).identity.name);
+                comparison_row("Semantic source",
+                               analysis_session_.inputs.workspace.types()
+                                   .type(comparison.first.source_type)
+                                   .identity.name,
+                               analysis_session_.inputs.workspace.types()
+                                   .type(comparison.second.source_type)
+                                   .identity.name);
                 comparison_row(
                     "Encoding",
                     std::string{codegen::integer_varint_encoding_name(comparison.first.encoding)},
@@ -2518,15 +1268,15 @@ void PlannerUi::draw_comparison_panel() {
             }
 
             if (ImGui::Button("Select B representation") && comparison_type.has_value()) {
-                selected_type_ = comparison_type;
-                selected_field_.clear();
+                select_type(comparison_type);
+                analysis_session_.inputs.selection.field.clear();
                 graph_focus_selected_ = true;
                 refresh_analysis();
             }
             ImGui::SameLine();
             if (ImGui::Button("Select semantic source")) {
-                selected_type_ = comparison.first.source_type;
-                selected_field_.clear();
+                select_type(comparison.first.source_type);
+                analysis_session_.inputs.selection.field.clear();
                 graph_focus_selected_ = true;
                 refresh_analysis();
             }
@@ -2537,11 +1287,11 @@ void PlannerUi::draw_comparison_panel() {
 
     auto draw_variant_selector = [&](char const* id, std::uint64_t& selected_id) {
         auto changed{false};
-        auto const* selected{workspace_.variant(selected_id)};
+        auto const* selected{analysis_session_.inputs.workspace.variant(selected_id)};
         ImGui::SetNextItemWidth(-1.0F);
         ImGui::PushID(id);
         if (ImGui::BeginCombo("##variant", selected->name.c_str())) {
-            for (auto const& variant : workspace_.variants()) {
+            for (auto const& variant : analysis_session_.inputs.workspace.variants()) {
                 auto const is_selected{variant.id == selected_id};
                 if (ImGui::Selectable(variant.name.c_str(), is_selected)) {
                     selected_id = variant.id;
@@ -2563,42 +1313,49 @@ void PlannerUi::draw_comparison_panel() {
                           ImGuiTableFlags_SizingStretchSame | ImGuiTableFlags_NoSavedSettings)) {
         ImGui::TableNextColumn();
         ImGui::TextUnformatted("A");
-        selection_changed |= draw_variant_selector("comparison-a", comparison_a_variant_id_);
+        selection_changed |=
+            draw_variant_selector("comparison-a", analysis_session_.inputs.comparison_a_variant_id);
         ImGui::TableNextColumn();
         ImGui::TextUnformatted("B");
-        if (draw_variant_selector("comparison-b", comparison_b_variant_id_)) {
-            comparison_b_follows_active_ = false;
+        if (draw_variant_selector("comparison-b",
+                                  analysis_session_.inputs.comparison_b_variant_id)) {
+            analysis_session_.inputs.comparison_b_follows_active = false;
             selection_changed = true;
         }
         ImGui::TableNextColumn();
         if (ImGui::Button("Swap A / B", {-1.0F, 0.0F})) {
-            std::swap(comparison_a_variant_id_, comparison_b_variant_id_);
-            comparison_b_follows_active_ = false;
+            std::swap(analysis_session_.inputs.comparison_a_variant_id,
+                      analysis_session_.inputs.comparison_b_variant_id);
+            analysis_session_.inputs.comparison_b_follows_active = false;
             selection_changed = true;
         }
         ImGui::TableNextColumn();
-        ImGui::BeginDisabled(comparison_b_follows_active_ &&
-                             comparison_b_variant_id_ == workspace_.active_variant_id());
+        ImGui::BeginDisabled(analysis_session_.inputs.comparison_b_follows_active &&
+                             analysis_session_.inputs.comparison_b_variant_id ==
+                                 analysis_session_.inputs.workspace.active_variant_id());
         if (ImGui::Button("Use active variant for B", {-1.0F, 0.0F})) {
-            comparison_b_variant_id_ = workspace_.active_variant_id();
-            comparison_b_follows_active_ = true;
+            analysis_session_.inputs.comparison_b_variant_id =
+                analysis_session_.inputs.workspace.active_variant_id();
+            analysis_session_.inputs.comparison_b_follows_active = true;
             selection_changed = true;
         }
         ImGui::EndDisabled();
         ImGui::EndTable();
     }
-    if (comparison_b_follows_active_) {
+    if (analysis_session_.inputs.comparison_b_follows_active) {
         ImGui::TextDisabled("B follows the active editing variant.");
     }
     if (selection_changed) {
         refresh_analysis();
     }
 
-    auto const& comparison_a{*workspace_.variant(comparison_a_variant_id_)};
-    auto const& comparison_b{*workspace_.variant(comparison_b_variant_id_)};
+    auto const& comparison_a{*analysis_session_.inputs.workspace.variant(
+        analysis_session_.inputs.comparison_a_variant_id)};
+    auto const& comparison_b{*analysis_session_.inputs.workspace.variant(
+        analysis_session_.inputs.comparison_b_variant_id)};
 
-    if (integer_scalar_capacity_comparison_.has_value()) {
-        auto const& comparison{*integer_scalar_capacity_comparison_};
+    if (analysis_session_.results().integer_scalar_capacity_comparison.has_value()) {
+        auto const& comparison{*analysis_session_.results().integer_scalar_capacity_comparison};
         auto const& first{comparison.first};
         auto const& second{comparison.second};
         auto const format_relationship{[](IntegerScalarAnalysis const& analysis) {
@@ -2742,7 +1499,8 @@ void PlannerUi::draw_comparison_panel() {
             ImGui::SeparatorText("B diagnostics");
             draw_diagnostics(second.diagnostics);
         }
-    } else if (comparison_a_packed_.has_value() && comparison_b_packed_.has_value()) {
+    } else if (analysis_session_.results().comparison_a_packed.has_value() &&
+               analysis_session_.results().comparison_b_packed.has_value()) {
         if (ImGui::BeginTable("packed-comparison",
                               4,
                               ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
@@ -2753,94 +1511,136 @@ void PlannerUi::draw_comparison_panel() {
             ImGui::TableSetupColumn("Difference");
             ImGui::TableHeadersRow();
             comparison_row("Storage type",
-                           comparison_a_packed_->storage_type,
-                           comparison_b_packed_->storage_type);
+                           analysis_session_.results().comparison_a_packed->storage_type,
+                           analysis_session_.results().comparison_b_packed->storage_type);
             comparison_row(
                 "Storage bytes",
-                detail::format_bytes(comparison_a_packed_->storage_facts.transform(
-                    [](layout::TypeFacts const& facts) { return facts.size_bytes; })),
-                detail::format_bytes(comparison_b_packed_->storage_facts.transform(
-                    [](layout::TypeFacts const& facts) { return facts.size_bytes; })),
+                detail::format_bytes(
+                    analysis_session_.results().comparison_a_packed->storage_facts.transform(
+                        [](layout::TypeFacts const& facts) { return facts.size_bytes; })),
+                detail::format_bytes(
+                    analysis_session_.results().comparison_b_packed->storage_facts.transform(
+                        [](layout::TypeFacts const& facts) { return facts.size_bytes; })),
                 detail::format_delta_bytes(layout::numeric_delta(
-                    comparison_a_packed_->storage_facts.transform(
+                    analysis_session_.results().comparison_a_packed->storage_facts.transform(
                         [](layout::TypeFacts const& facts) { return facts.size_bytes; }),
-                    comparison_b_packed_->storage_facts.transform(
+                    analysis_session_.results().comparison_b_packed->storage_facts.transform(
                         [](layout::TypeFacts const& facts) { return facts.size_bytes; }))));
-            comparison_row(
-                "Storage bits",
-                detail::format_number(comparison_a_packed_->storage_bits),
-                detail::format_number(comparison_b_packed_->storage_bits),
-                detail::format_delta_number(layout::numeric_delta(
-                    comparison_a_packed_->storage_bits, comparison_b_packed_->storage_bits)));
-            comparison_row("Bits used",
-                           detail::format_number(comparison_a_packed_->bits_used),
-                           detail::format_number(comparison_b_packed_->bits_used),
+            comparison_row("Storage bits",
+                           detail::format_number(
+                               analysis_session_.results().comparison_a_packed->storage_bits),
+                           detail::format_number(
+                               analysis_session_.results().comparison_b_packed->storage_bits),
                            detail::format_delta_number(layout::numeric_delta(
-                               comparison_a_packed_->bits_used, comparison_b_packed_->bits_used)));
-            comparison_row("Unused bits",
-                           detail::format_number(comparison_a_packed_->unused_bits),
-                           detail::format_number(comparison_b_packed_->unused_bits));
+                               analysis_session_.results().comparison_a_packed->storage_bits,
+                               analysis_session_.results().comparison_b_packed->storage_bits)));
+            comparison_row(
+                "Bits used",
+                detail::format_number(analysis_session_.results().comparison_a_packed->bits_used),
+                detail::format_number(analysis_session_.results().comparison_b_packed->bits_used),
+                detail::format_delta_number(layout::numeric_delta(
+                    analysis_session_.results().comparison_a_packed->bits_used,
+                    analysis_session_.results().comparison_b_packed->bits_used)));
+            comparison_row(
+                "Unused bits",
+                detail::format_number(analysis_session_.results().comparison_a_packed->unused_bits),
+                detail::format_number(
+                    analysis_session_.results().comparison_b_packed->unused_bits));
             comparison_row("Overflow bits",
-                           detail::format_number(comparison_a_packed_->overflow_bits),
-                           detail::format_number(comparison_b_packed_->overflow_bits));
+                           detail::format_number(
+                               analysis_session_.results().comparison_a_packed->overflow_bits),
+                           detail::format_number(
+                               analysis_session_.results().comparison_b_packed->overflow_bits));
             comparison_row(
                 "Scaled storage",
-                detail::format_bytes(comparison_a_packed_->aggregate.total_storage_bytes),
-                detail::format_bytes(comparison_b_packed_->aggregate.total_storage_bytes),
-                detail::format_delta_bytes(
-                    layout::numeric_delta(comparison_a_packed_->aggregate.total_storage_bytes,
-                                          comparison_b_packed_->aggregate.total_storage_bytes)));
-            comparison_row("Scaled unused bits",
-                           detail::format_number(comparison_a_packed_->aggregate.total_unused_bits),
-                           detail::format_number(comparison_b_packed_->aggregate.total_unused_bits),
-                           detail::format_delta_number(layout::numeric_delta(
-                               comparison_a_packed_->aggregate.total_unused_bits,
-                               comparison_b_packed_->aggregate.total_unused_bits)));
+                detail::format_bytes(
+                    analysis_session_.results().comparison_a_packed->aggregate.total_storage_bytes),
+                detail::format_bytes(
+                    analysis_session_.results().comparison_b_packed->aggregate.total_storage_bytes),
+                detail::format_delta_bytes(layout::numeric_delta(
+                    analysis_session_.results().comparison_a_packed->aggregate.total_storage_bytes,
+                    analysis_session_.results()
+                        .comparison_b_packed->aggregate.total_storage_bytes)));
+            comparison_row(
+                "Scaled unused bits",
+                detail::format_number(
+                    analysis_session_.results().comparison_a_packed->aggregate.total_unused_bits),
+                detail::format_number(
+                    analysis_session_.results().comparison_b_packed->aggregate.total_unused_bits),
+                detail::format_delta_number(layout::numeric_delta(
+                    analysis_session_.results().comparison_a_packed->aggregate.total_unused_bits,
+                    analysis_session_.results().comparison_b_packed->aggregate.total_unused_bits)));
             comparison_row(
                 "Minimum cache lines",
-                detail::format_number(comparison_a_packed_->aggregate.minimum_cache_lines),
-                detail::format_number(comparison_b_packed_->aggregate.minimum_cache_lines),
-                detail::format_delta_number(
-                    layout::numeric_delta(comparison_a_packed_->aggregate.minimum_cache_lines,
-                                          comparison_b_packed_->aggregate.minimum_cache_lines)));
-            comparison_row("Complete elements / cache line",
-                           detail::format_number(
-                               comparison_a_packed_->aggregate.complete_elements_per_cache_line),
-                           detail::format_number(
-                               comparison_b_packed_->aggregate.complete_elements_per_cache_line),
-                           detail::format_delta_number(layout::numeric_delta(
-                               comparison_a_packed_->aggregate.complete_elements_per_cache_line,
-                               comparison_b_packed_->aggregate.complete_elements_per_cache_line)));
-            comparison_row("Cache-line-straddling elements",
-                           detail::format_number(
-                               comparison_a_packed_->aggregate.cache_line_straddling_elements),
-                           detail::format_number(
-                               comparison_b_packed_->aggregate.cache_line_straddling_elements),
-                           detail::format_delta_number(layout::numeric_delta(
-                               comparison_a_packed_->aggregate.cache_line_straddling_elements,
-                               comparison_b_packed_->aggregate.cache_line_straddling_elements)));
-            comparison_row("Minimum pages",
-                           detail::format_number(comparison_a_packed_->aggregate.minimum_pages),
-                           detail::format_number(comparison_b_packed_->aggregate.minimum_pages),
-                           detail::format_delta_number(layout::numeric_delta(
-                               comparison_a_packed_->aggregate.minimum_pages,
-                               comparison_b_packed_->aggregate.minimum_pages)));
-            comparison_row(
-                "Complete elements / page",
-                detail::format_number(comparison_a_packed_->aggregate.complete_elements_per_page),
-                detail::format_number(comparison_b_packed_->aggregate.complete_elements_per_page),
+                detail::format_number(
+                    analysis_session_.results().comparison_a_packed->aggregate.minimum_cache_lines),
+                detail::format_number(
+                    analysis_session_.results().comparison_b_packed->aggregate.minimum_cache_lines),
                 detail::format_delta_number(layout::numeric_delta(
-                    comparison_a_packed_->aggregate.complete_elements_per_page,
-                    comparison_b_packed_->aggregate.complete_elements_per_page)));
+                    analysis_session_.results().comparison_a_packed->aggregate.minimum_cache_lines,
+                    analysis_session_.results()
+                        .comparison_b_packed->aggregate.minimum_cache_lines)));
+            comparison_row(
+                "Complete elements / cache line",
+                detail::format_number(
+                    analysis_session_.results()
+                        .comparison_a_packed->aggregate.complete_elements_per_cache_line),
+                detail::format_number(
+                    analysis_session_.results()
+                        .comparison_b_packed->aggregate.complete_elements_per_cache_line),
+                detail::format_delta_number(layout::numeric_delta(
+                    analysis_session_.results()
+                        .comparison_a_packed->aggregate.complete_elements_per_cache_line,
+                    analysis_session_.results()
+                        .comparison_b_packed->aggregate.complete_elements_per_cache_line)));
+            comparison_row(
+                "Cache-line-straddling elements",
+                detail::format_number(
+                    analysis_session_.results()
+                        .comparison_a_packed->aggregate.cache_line_straddling_elements),
+                detail::format_number(
+                    analysis_session_.results()
+                        .comparison_b_packed->aggregate.cache_line_straddling_elements),
+                detail::format_delta_number(layout::numeric_delta(
+                    analysis_session_.results()
+                        .comparison_a_packed->aggregate.cache_line_straddling_elements,
+                    analysis_session_.results()
+                        .comparison_b_packed->aggregate.cache_line_straddling_elements)));
+            comparison_row(
+                "Minimum pages",
+                detail::format_number(
+                    analysis_session_.results().comparison_a_packed->aggregate.minimum_pages),
+                detail::format_number(
+                    analysis_session_.results().comparison_b_packed->aggregate.minimum_pages),
+                detail::format_delta_number(layout::numeric_delta(
+                    analysis_session_.results().comparison_a_packed->aggregate.minimum_pages,
+                    analysis_session_.results().comparison_b_packed->aggregate.minimum_pages)));
+            comparison_row("Complete elements / page",
+                           detail::format_number(
+                               analysis_session_.results()
+                                   .comparison_a_packed->aggregate.complete_elements_per_page),
+                           detail::format_number(
+                               analysis_session_.results()
+                                   .comparison_b_packed->aggregate.complete_elements_per_page),
+                           detail::format_delta_number(layout::numeric_delta(
+                               analysis_session_.results()
+                                   .comparison_a_packed->aggregate.complete_elements_per_page,
+                               analysis_session_.results()
+                                   .comparison_b_packed->aggregate.complete_elements_per_page)));
             comparison_row(
                 "Page-straddling elements",
-                detail::format_number(comparison_a_packed_->aggregate.page_straddling_elements),
-                detail::format_number(comparison_b_packed_->aggregate.page_straddling_elements),
+                detail::format_number(analysis_session_.results()
+                                          .comparison_a_packed->aggregate.page_straddling_elements),
+                detail::format_number(analysis_session_.results()
+                                          .comparison_b_packed->aggregate.page_straddling_elements),
                 detail::format_delta_number(layout::numeric_delta(
-                    comparison_a_packed_->aggregate.page_straddling_elements,
-                    comparison_b_packed_->aggregate.page_straddling_elements)));
-            for (auto const& baseline : comparison_a_packed_->fields) {
-                auto const* active{field_by_name(*comparison_b_packed_, baseline.name)};
+                    analysis_session_.results()
+                        .comparison_a_packed->aggregate.page_straddling_elements,
+                    analysis_session_.results()
+                        .comparison_b_packed->aggregate.page_straddling_elements)));
+            for (auto const& baseline : analysis_session_.results().comparison_a_packed->fields) {
+                auto const* active{
+                    field_by_name(*analysis_session_.results().comparison_b_packed, baseline.name)};
                 if (active == nullptr) {
                     continue;
                 }
@@ -2970,8 +1770,8 @@ void PlannerUi::draw_comparison_panel() {
         ImGui::TextDisabled(
             "Packed boundary crossings assume contiguous arrays with cache-line/page-aligned "
             "origins; the counts are physical layout facts, not measured traffic or performance.");
-        if (packed_access_comparison_.has_value()) {
-            auto const& access{*packed_access_comparison_};
+        if (analysis_session_.results().packed_access_comparison.has_value()) {
+            auto const& access{*analysis_session_.results().packed_access_comparison};
             std::string field_names;
             for (auto const& field_name : access.field_names) {
                 if (!field_names.empty()) {
@@ -3142,8 +1942,9 @@ void PlannerUi::draw_comparison_panel() {
                 "containing packed-word array; this is not a sub-word fetch estimate.");
             draw_diagnostics(access.diagnostics);
         }
-        draw_diagnostics(comparison_b_packed_->diagnostics);
-    } else if (comparison_a_soa_.has_value() && comparison_b_soa_.has_value()) {
+        draw_diagnostics(analysis_session_.results().comparison_b_packed->diagnostics);
+    } else if (analysis_session_.results().comparison_a_soa.has_value() &&
+               analysis_session_.results().comparison_b_soa.has_value()) {
         if (ImGui::BeginTable("soa-comparison",
                               4,
                               ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
@@ -3154,24 +1955,31 @@ void PlannerUi::draw_comparison_panel() {
             ImGui::TableSetupColumn("Difference");
             ImGui::TableHeadersRow();
             comparison_row("Capacity",
-                           std::to_string(comparison_a_soa_->capacity),
-                           std::to_string(comparison_b_soa_->capacity),
+                           std::to_string(analysis_session_.results().comparison_a_soa->capacity),
+                           std::to_string(analysis_session_.results().comparison_b_soa->capacity),
                            detail::format_delta_number(layout::numeric_delta(
-                               comparison_a_soa_->capacity, comparison_b_soa_->capacity)));
-            comparison_row("Bytes / logical entity",
-                           detail::format_bytes(comparison_a_soa_->bytes_per_logical_element),
-                           detail::format_bytes(comparison_b_soa_->bytes_per_logical_element),
-                           detail::format_delta_bytes(layout::numeric_delta(
-                               comparison_a_soa_->bytes_per_logical_element,
-                               comparison_b_soa_->bytes_per_logical_element)));
+                               analysis_session_.results().comparison_a_soa->capacity,
+                               analysis_session_.results().comparison_b_soa->capacity)));
+            comparison_row(
+                "Bytes / logical entity",
+                detail::format_bytes(
+                    analysis_session_.results().comparison_a_soa->bytes_per_logical_element),
+                detail::format_bytes(
+                    analysis_session_.results().comparison_b_soa->bytes_per_logical_element),
+                detail::format_delta_bytes(layout::numeric_delta(
+                    analysis_session_.results().comparison_a_soa->bytes_per_logical_element,
+                    analysis_session_.results().comparison_b_soa->bytes_per_logical_element)));
             comparison_row("Total payload",
-                           detail::format_bytes(comparison_a_soa_->total_payload_bytes),
-                           detail::format_bytes(comparison_b_soa_->total_payload_bytes),
-                           detail::format_delta_bytes(
-                               layout::numeric_delta(comparison_a_soa_->total_payload_bytes,
-                                                     comparison_b_soa_->total_payload_bytes)));
-            for (auto const& baseline : comparison_a_soa_->columns) {
-                auto const* active{column_by_name(*comparison_b_soa_, baseline.name)};
+                           detail::format_bytes(
+                               analysis_session_.results().comparison_a_soa->total_payload_bytes),
+                           detail::format_bytes(
+                               analysis_session_.results().comparison_b_soa->total_payload_bytes),
+                           detail::format_delta_bytes(layout::numeric_delta(
+                               analysis_session_.results().comparison_a_soa->total_payload_bytes,
+                               analysis_session_.results().comparison_b_soa->total_payload_bytes)));
+            for (auto const& baseline : analysis_session_.results().comparison_a_soa->columns) {
+                auto const* active{
+                    column_by_name(*analysis_session_.results().comparison_b_soa, baseline.name)};
                 if (active == nullptr) {
                     continue;
                 }
@@ -3203,8 +2011,8 @@ void PlannerUi::draw_comparison_panel() {
             }
             ImGui::EndTable();
         }
-        if (soa_access_comparison_.has_value()) {
-            auto const& access{*soa_access_comparison_};
+        if (analysis_session_.results().soa_access_comparison.has_value()) {
+            auto const& access{*analysis_session_.results().soa_access_comparison};
             std::string column_names;
             for (auto const& column_name : access.column_names) {
                 if (!column_names.empty()) {
@@ -3457,13 +2265,14 @@ void PlannerUi::draw_comparison_panel() {
                       "useful totals scale by multiplicity only.");
             draw_diagnostics(access.diagnostics);
         }
-        ImGui::TextDisabled(soa_access_comparison_.has_value() &&
-                                    soa_access_comparison_->footprint_exact
-                                ? "Cache-line counts are exact for the stated aligned contiguous "
-                                  "block, not allocator traffic or a performance estimate."
-                                : "Cache-line counts are minimum payload coverage, not allocator "
-                                  "traffic or a performance estimate.");
-        draw_diagnostics(comparison_b_soa_->diagnostics);
+        ImGui::TextDisabled(
+            analysis_session_.results().soa_access_comparison.has_value() &&
+                    analysis_session_.results().soa_access_comparison->footprint_exact
+                ? "Cache-line counts are exact for the stated aligned contiguous "
+                  "block, not allocator traffic or a performance estimate."
+                : "Cache-line counts are minimum payload coverage, not allocator "
+                  "traffic or a performance estimate.");
+        draw_diagnostics(analysis_session_.results().comparison_b_soa->diagnostics);
     }
     ImGui::End();
 }

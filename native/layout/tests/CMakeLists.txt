@@ -1,7 +1,14 @@
 add_executable(native-layout-tests)
 target_sources(native-layout-tests PRIVATE
   analyzer_tests.cpp
+  analyzer_aggregate_tests.cpp
+  analyzer_packed_tests.cpp
+  analyzer_soa_tests.cpp
+  analyzer_common_tests.cpp
   frame_pacer_tests.cpp
+  planner_type_tests.cpp
+  planner_selection_tests.cpp
+  planner_session_tests.cpp
   schema_loader_tests.cpp
   workspace_tests.cpp
 )

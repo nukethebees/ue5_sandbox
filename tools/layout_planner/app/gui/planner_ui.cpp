@@ -2,6 +2,8 @@
 
 #include "planner_ui_support.hpp"
 
+#include <ioj/layout/planner_type.hpp>
+
 #include <imgui.h>
 #include <imgui_internal.h>
 
@@ -88,32 +90,6 @@ auto percent_encode(std::string_view const value) -> std::string {
         }
     }
     return result;
-}
-
-auto reconcile_weight_keys(std::map<std::string, std::uint64_t>& weights,
-                           std::vector<std::string> const& previous_keys,
-                           std::vector<std::string> const& current_keys) -> bool {
-    std::set<std::string, std::less<>> previous{previous_keys.begin(), previous_keys.end()};
-    std::set<std::string, std::less<>> current{current_keys.begin(), current_keys.end()};
-    std::vector<std::string> removed;
-    std::vector<std::string> added;
-    std::ranges::set_difference(previous, current, std::back_inserter(removed));
-    std::ranges::set_difference(current, previous, std::back_inserter(added));
-
-    auto changed{false};
-    if (removed.size() == 1 && added.size() == 1) {
-        auto const previous_weight{weights.find(removed.front())};
-        if (previous_weight != weights.end()) {
-            auto const weight{previous_weight->second};
-            weights.erase(previous_weight);
-            weights.insert_or_assign(added.front(), weight);
-            changed = true;
-        }
-    }
-
-    auto const previous_size{weights.size()};
-    std::erase_if(weights, [&](auto const& entry) { return !current.contains(entry.first); });
-    return changed || weights.size() != previous_size;
 }
 
 auto percent_decode(std::string_view const value) -> std::optional<std::string> {
@@ -387,31 +363,15 @@ PlannerUi::PlannerUi(SchemaLoadResult loaded)
     , target_name_{std::move(loaded.target_name)}
     , project_document_{std::move(loaded.project_document)}
     , document_{std::move(loaded.document)}
-    , workspace_{document_.has_value() ? document_->types() : TypeGraph{}}
+    , analysis_session_{document_.has_value() ? document_->types() : TypeGraph{}}
     , load_diagnostics_{std::move(loaded.diagnostics)} {
-    target_memory_fact_defaults_ = abi_.memory_facts();
+    target_memory_fact_defaults_ = analysis_session_.inputs.abi.memory_facts();
     sync_target_memory_fact_inputs();
-    auto const types{workspace_.types().types()};
-    auto const found{std::ranges::find_if(types, [](auto const& type) {
-        if (std::holds_alternative<EnumType>(type.definition) ||
-            std::holds_alternative<IntegerScalarType>(type.definition) ||
-            std::holds_alternative<LinearQuantizedType>(type.definition) ||
-            std::holds_alternative<IntegerVarintType>(type.definition) ||
-            std::holds_alternative<FixedPointType>(type.definition) ||
-            std::holds_alternative<MiniFloatType>(type.definition) ||
-            std::holds_alternative<OptionalSentinelType>(type.definition) ||
-            std::holds_alternative<OptionalPresenceBitType>(type.definition) ||
-            std::holds_alternative<PackedType>(type.definition) ||
-            std::holds_alternative<RecordType>(type.definition) ||
-            std::holds_alternative<UnionType>(type.definition) ||
-            std::holds_alternative<TaggedUnionType>(type.definition)) {
-            return true;
-        }
-        auto const* soa{std::get_if<SoaType>(&type.definition)};
-        return soa != nullptr && soa->backend == codegen::SoaBackend::standard_library;
-    })};
+    auto const types{analysis_session_.inputs.workspace.types().types()};
+    auto const found{std::ranges::find_if(
+        types, [](auto const& type) { return declaration_capabilities(type).visible; })};
     if (found != types.end()) {
-        selected_type_ = TypeId{static_cast<std::uint32_t>(found - types.begin())};
+        select_type(TypeId{static_cast<std::uint32_t>(found - types.begin())});
     }
     sync_variant_name();
 }
@@ -428,7 +388,7 @@ void PlannerUi::sync_target_memory_fact_inputs() {
             *end = '\0';
         }
     };
-    auto const& memory{abi_.memory_facts()};
+    auto const& memory{analysis_session_.inputs.abi.memory_facts()};
     write_value(target_cache_line_bytes_, memory.cache_line_bytes);
     write_value(target_page_bytes_, memory.page_bytes);
     write_value(target_l1_data_cache_bytes_, memory.l1_data_cache_bytes);
@@ -455,11 +415,11 @@ auto PlannerUi::load_target_profile(std::filesystem::path const& path, bool cons
     }
     auto const path_text{stored_path.string()};
     set_text_buffer(target_profile_path_, path_text);
-    abi_ = std::move(*loaded);
-    target_memory_fact_defaults_ = abi_.memory_facts();
+    analysis_session_.inputs.abi = std::move(*loaded);
+    target_memory_fact_defaults_ = analysis_session_.inputs.abi.memory_facts();
     sync_target_memory_fact_inputs();
     target_profile_load_error_.clear();
-    ++target_profile_revision_;
+    ++analysis_session_.inputs.target_profile_revision;
 
     if (persist && !project_path_.empty()) {
         persisted_target_profile_paths_.insert_or_assign(graph_project_key(project_path_),
@@ -470,12 +430,12 @@ auto PlannerUi::load_target_profile(std::filesystem::path const& path, bool cons
 }
 
 void PlannerUi::use_builtin_target_profile(bool const clear_persisted) {
-    abi_ = AbiProfile::host_common();
-    target_memory_fact_defaults_ = abi_.memory_facts();
+    analysis_session_.inputs.abi = AbiProfile::host_common();
+    target_memory_fact_defaults_ = analysis_session_.inputs.abi.memory_facts();
     sync_target_memory_fact_inputs();
     target_profile_load_error_.clear();
     target_profile_path_.fill('\0');
-    ++target_profile_revision_;
+    ++analysis_session_.inputs.target_profile_revision;
 
     if (clear_persisted && !project_path_.empty() &&
         persisted_target_profile_paths_.erase(graph_project_key(project_path_)) != 0) {
@@ -500,21 +460,21 @@ auto PlannerUi::load_comparison_target_profile(std::filesystem::path const& path
         stored_path = absolute_path.lexically_normal();
     }
     set_text_buffer(comparison_target_profile_path_, stored_path.string());
-    comparison_abi_ = std::move(*loaded);
+    analysis_session_.inputs.comparison_abi = std::move(*loaded);
     comparison_target_profile_error_.clear();
-    ++comparison_target_profile_revision_;
+    ++analysis_session_.inputs.comparison_target_profile_revision;
     return true;
 }
 
 void PlannerUi::use_builtin_comparison_target_profile() {
-    comparison_abi_ = AbiProfile::host_common();
+    analysis_session_.inputs.comparison_abi = AbiProfile::host_common();
     comparison_target_profile_path_.fill('\0');
     comparison_target_profile_error_.clear();
-    ++comparison_target_profile_revision_;
+    ++analysis_session_.inputs.comparison_target_profile_revision;
 }
 
 auto PlannerUi::draw_target_profile() -> bool {
-    draw_target_profile_summary(abi_);
+    draw_target_profile_summary(analysis_session_.inputs.abi);
 
     ImGui::SeparatorText("Generated target profile");
     ImGui::TextDisabled(
@@ -614,9 +574,9 @@ auto PlannerUi::draw_target_profile() -> bool {
                 candidate.l3_cache_bytes == target_memory_fact_defaults_.l3_cache_bytes};
             candidate.provenance =
                 matches_defaults ? target_memory_fact_defaults_.provenance : "Session override";
-            if (candidate != abi_.memory_facts()) {
-                abi_.set_memory_facts(std::move(candidate));
-                ++target_profile_revision_;
+            if (candidate != analysis_session_.inputs.abi.memory_facts()) {
+                analysis_session_.inputs.abi.set_memory_facts(std::move(candidate));
+                ++analysis_session_.inputs.target_profile_revision;
                 changed = true;
             }
             target_memory_fact_error_.clear();
@@ -624,9 +584,9 @@ auto PlannerUi::draw_target_profile() -> bool {
     }
     ImGui::SameLine();
     if (ImGui::Button("Restore profile facts")) {
-        if (abi_.memory_facts() != target_memory_fact_defaults_) {
-            abi_.set_memory_facts(target_memory_fact_defaults_);
-            ++target_profile_revision_;
+        if (analysis_session_.inputs.abi.memory_facts() != target_memory_fact_defaults_) {
+            analysis_session_.inputs.abi.set_memory_facts(target_memory_fact_defaults_);
+            ++analysis_session_.inputs.target_profile_revision;
             changed = true;
         }
         sync_target_memory_fact_inputs();
@@ -702,14 +662,7 @@ auto PlannerUi::take_close_confirmation() -> bool {
 }
 
 void PlannerUi::validate_comparison_variants() {
-    if (workspace_.variant(comparison_a_variant_id_) == nullptr) {
-        comparison_a_variant_id_ = LayoutWorkspace::baseline_variant_id;
-    }
-    if (comparison_b_follows_active_) {
-        comparison_b_variant_id_ = workspace_.active_variant_id();
-    } else if (workspace_.variant(comparison_b_variant_id_) == nullptr) {
-        comparison_b_variant_id_ = LayoutWorkspace::baseline_variant_id;
-    }
+    analysis_session_.validate_comparison_variants();
 }
 
 void PlannerUi::persist_view_visibility(bool const previous, bool const current) {
@@ -819,7 +772,7 @@ void PlannerUi::settings_read_line(ImGuiContext*,
         auto const& [project, identity, position]{*parsed};
         ui->persisted_graph_node_positions_[project][identity] = position;
         if (project == graph_project_key(ui->project_path_)) {
-            auto const types{ui->workspace_.types().types()};
+            auto const types{ui->analysis_session_.inputs.workspace.types().types()};
             if (std::ranges::find(types, identity, &TypeNode::identity) != types.end()) {
                 ui->graph_node_positions_[identity] = position;
             }
@@ -908,7 +861,7 @@ auto PlannerUi::draw() -> bool {
     }
     refresh_analysis();
 
-    auto const revision_before{workspace_.revision()};
+    auto const revision_before{analysis_session_.inputs.workspace.revision()};
     draw_project_panel();
     refresh_analysis();
     draw_layout_panel();
@@ -940,7 +893,7 @@ auto PlannerUi::draw() -> bool {
     draw_close_confirmation();
     draw_project_path_dialogs();
     auto const saved{save_shortcut_now && has_dirty_changes() && save_changes()};
-    return view_changed || revision_before != workspace_.revision() ||
+    return view_changed || revision_before != analysis_session_.inputs.workspace.revision() ||
            std::exchange(project_changed_, false) || saved;
 }
 
@@ -1162,8 +1115,10 @@ auto PlannerUi::draw_file_menu() -> bool {
                 schema_edit_message_ = result.error().message;
             }
         } else {
-            auto const selection{selected_type_.transform(
-                [&](TypeId const type) { return workspace_.types().type(type).identity; })};
+            auto const selection{
+                analysis_session_.inputs.selection.type.transform([&](TypeId const type) {
+                    return analysis_session_.inputs.workspace.types().type(type).identity;
+                })};
             auto result{document_->undo()};
             if (result.has_value() && *result) {
                 sync_document_graph(selection);
@@ -1185,8 +1140,10 @@ auto PlannerUi::draw_file_menu() -> bool {
                 schema_edit_message_ = result.error().message;
             }
         } else {
-            auto const selection{selected_type_.transform(
-                [&](TypeId const type) { return workspace_.types().type(type).identity; })};
+            auto const selection{
+                analysis_session_.inputs.selection.type.transform([&](TypeId const type) {
+                    return analysis_session_.inputs.workspace.types().type(type).identity;
+                })};
             auto result{document_->redo()};
             if (result.has_value() && *result) {
                 sync_document_graph(selection);
@@ -1542,36 +1499,46 @@ void PlannerUi::draw_diagnostics_panel() {
     append_message("Target profile", target_profile_load_error_);
     append_message("Target profile", target_memory_fact_error_);
     append_message("Comparison target profile", comparison_target_profile_error_);
-    append_analysis("Semantic domain", enum_domain_);
-    append_analysis("Enum target comparison", enum_target_comparison_);
-    append_analysis("Integer scalar", integer_scalar_analysis_);
-    append_analysis("Varint", integer_varint_analysis_);
-    append_analysis("Fixed point", fixed_point_analysis_);
-    append_analysis("Mini-float", mini_float_analysis_);
-    append_analysis("Sentinel optional", optional_sentinel_analysis_);
-    append_analysis("Presence-bit optional", optional_presence_bit_analysis_);
-    append_analysis("Packed layout", active_packed_);
-    append_analysis("Packed target comparison", packed_target_comparison_);
-    append_analysis("Packed access", packed_access_analysis_);
-    append_analysis("Packed target access comparison", packed_target_access_comparison_);
-    append_analysis("Packed access comparison", packed_access_comparison_);
-    append_analysis("Record layout", record_analysis_);
-    append_analysis("Record target comparison", record_target_comparison_);
-    append_analysis("Record access", record_access_analysis_);
-    append_analysis("Record target access comparison", record_target_access_comparison_);
-    append_analysis("Union layout", union_analysis_);
-    append_analysis("Union target comparison", union_target_comparison_);
-    append_analysis("Raw-union workload", union_distribution_analysis_);
-    append_analysis("Raw-union target workload comparison", union_target_distribution_comparison_);
-    append_analysis("Tagged-union layout", tagged_union_analysis_);
-    append_analysis("Tagged-union target comparison", tagged_union_target_comparison_);
-    append_analysis("Tagged-union workload", tagged_union_distribution_analysis_);
+    append_analysis("Semantic domain", analysis_session_.results().enum_domain);
+    append_analysis("Enum target comparison", analysis_session_.results().enum_target_comparison);
+    append_analysis("Integer scalar", analysis_session_.results().integer_scalar_analysis);
+    append_analysis("Varint", analysis_session_.results().integer_varint_analysis);
+    append_analysis("Fixed point", analysis_session_.results().fixed_point_analysis);
+    append_analysis("Mini-float", analysis_session_.results().mini_float_analysis);
+    append_analysis("Sentinel optional", analysis_session_.results().optional_sentinel_analysis);
+    append_analysis("Presence-bit optional",
+                    analysis_session_.results().optional_presence_bit_analysis);
+    append_analysis("Packed layout", analysis_session_.results().active_packed);
+    append_analysis("Packed target comparison",
+                    analysis_session_.results().packed_target_comparison);
+    append_analysis("Packed access", analysis_session_.results().packed_access_analysis);
+    append_analysis("Packed target access comparison",
+                    analysis_session_.results().packed_target_access_comparison);
+    append_analysis("Packed access comparison",
+                    analysis_session_.results().packed_access_comparison);
+    append_analysis("Record layout", analysis_session_.results().record_analysis);
+    append_analysis("Record target comparison",
+                    analysis_session_.results().record_target_comparison);
+    append_analysis("Record access", analysis_session_.results().record_access_analysis);
+    append_analysis("Record target access comparison",
+                    analysis_session_.results().record_target_access_comparison);
+    append_analysis("Union layout", analysis_session_.results().union_analysis);
+    append_analysis("Union target comparison", analysis_session_.results().union_target_comparison);
+    append_analysis("Raw-union workload", analysis_session_.results().union_distribution_analysis);
+    append_analysis("Raw-union target workload comparison",
+                    analysis_session_.results().union_target_distribution_comparison);
+    append_analysis("Tagged-union layout", analysis_session_.results().tagged_union_analysis);
+    append_analysis("Tagged-union target comparison",
+                    analysis_session_.results().tagged_union_target_comparison);
+    append_analysis("Tagged-union workload",
+                    analysis_session_.results().tagged_union_distribution_analysis);
     append_analysis("Tagged-union target workload comparison",
-                    tagged_union_target_distribution_comparison_);
-    append_analysis("SoA layout", active_soa_);
-    append_analysis("SoA target comparison", soa_target_comparison_);
-    append_analysis("SoA access", soa_access_analysis_);
-    append_analysis("SoA target access comparison", soa_target_access_comparison_);
+                    analysis_session_.results().tagged_union_target_distribution_comparison);
+    append_analysis("SoA layout", analysis_session_.results().active_soa);
+    append_analysis("SoA target comparison", analysis_session_.results().soa_target_comparison);
+    append_analysis("SoA access", analysis_session_.results().soa_access_analysis);
+    append_analysis("SoA target access comparison",
+                    analysis_session_.results().soa_target_access_comparison);
     if (content.empty() && schema_warning_message_.empty()) {
         ImGui::TextDisabled("No current diagnostics.");
     } else {
@@ -1683,8 +1650,9 @@ auto PlannerUi::save_changes() -> bool {
         return false;
     }
 
-    auto const selection{selected_type_.transform(
-        [&](TypeId const type) { return workspace_.types().type(type).identity; })};
+    auto const selection{analysis_session_.inputs.selection.type.transform([&](TypeId const type) {
+        return analysis_session_.inputs.workspace.types().type(type).identity;
+    })};
     auto result{document_->save()};
     if (!result.has_value()) {
         schema_edit_message_ = result.error().message;
@@ -1729,8 +1697,10 @@ auto PlannerUi::apply_document_edit(SchemaEditCommand command,
                                "editing schema declarations.";
         return false;
     }
-    if (!selection.has_value() && selected_type_.has_value()) {
-        selection = workspace_.types().type(*selected_type_).identity;
+    if (!selection.has_value() && analysis_session_.inputs.selection.type.has_value()) {
+        selection = analysis_session_.inputs.workspace.types()
+                        .type(*analysis_session_.inputs.selection.type)
+                        .identity;
     }
     auto result{document_->apply(std::move(command))};
     if (!result.has_value()) {
@@ -1746,81 +1716,12 @@ auto PlannerUi::apply_document_edit(SchemaEditCommand command,
 }
 
 void PlannerUi::sync_document_graph(std::optional<TypeIdentity> selection) {
-    auto raw_weights_changed{false};
-    for (auto entry = union_distributions_.begin(); entry != union_distributions_.end();) {
-        auto const* declaration{document_->declaration(entry->first)};
-        auto const* schema{document_->union_schema(entry->first)};
-        if (declaration == nullptr || schema == nullptr) {
-            entry = union_distributions_.erase(entry);
-            raw_weights_changed = true;
-            continue;
-        }
-
-        std::vector<std::string> previous_keys;
-        if (auto const previous_type{workspace_.types().find(declaration->identity)};
-            previous_type.has_value()) {
-            auto const* previous_union{
-                std::get_if<UnionType>(&workspace_.types().type(*previous_type).definition)};
-            if (previous_union != nullptr) {
-                previous_keys.reserve(previous_union->alternatives.size());
-                for (auto const& alternative : previous_union->alternatives) {
-                    previous_keys.push_back(alternative.name);
-                }
-            }
-        }
-        std::vector<std::string> current_keys;
-        current_keys.reserve(schema->alternatives.size());
-        for (auto const& alternative : schema->alternatives) {
-            current_keys.push_back(alternative.name);
-        }
-        raw_weights_changed |= reconcile_weight_keys(entry->second, previous_keys, current_keys);
-        ++entry;
-    }
-    if (raw_weights_changed) {
-        ++union_distribution_revision_;
-    }
-
-    auto tagged_weights_changed{false};
-    for (auto entry = tagged_union_distributions_.begin();
-         entry != tagged_union_distributions_.end();) {
-        auto const* declaration{document_->declaration(entry->first)};
-        auto const* schema{document_->tagged_union_schema(entry->first)};
-        if (declaration == nullptr || schema == nullptr) {
-            entry = tagged_union_distributions_.erase(entry);
-            tagged_weights_changed = true;
-            continue;
-        }
-
-        std::vector<std::string> previous_keys;
-        if (auto const previous_type{workspace_.types().find(declaration->identity)};
-            previous_type.has_value()) {
-            auto const* previous_union{
-                std::get_if<TaggedUnionType>(&workspace_.types().type(*previous_type).definition)};
-            if (previous_union != nullptr) {
-                previous_keys.reserve(previous_union->alternatives.size());
-                for (auto const& alternative : previous_union->alternatives) {
-                    previous_keys.push_back(alternative.tag);
-                }
-            }
-        }
-        std::vector<std::string> current_keys;
-        current_keys.reserve(schema->alternatives.size());
-        for (auto const& alternative : schema->alternatives) {
-            current_keys.push_back(alternative.tag);
-        }
-        tagged_weights_changed |= reconcile_weight_keys(entry->second, previous_keys, current_keys);
-        ++entry;
-    }
-    if (tagged_weights_changed) {
-        ++tagged_distribution_revision_;
-    }
-
-    workspace_.replace_types(document_->types());
-    selected_type_.reset();
-    if (selection.has_value()) {
-        selected_type_ = workspace_.types().find(*selection);
-    }
-    selected_field_.clear();
+    std::erase_if(varint_distributions_, [&](auto const& entry) {
+        auto const type{document_->types().find(entry.first)};
+        return !type.has_value() || !std::holds_alternative<IntegerScalarType>(
+                                        document_->types().type(*type).definition);
+    });
+    analysis_session_.replace_types(*document_, selection);
     enum_editor_declaration_.reset();
     enum_editor_value_.clear();
     packed_editor_declaration_.reset();
@@ -1898,6 +1799,8 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     schema_warning_message_.clear();
     project_path_ = std::move(loaded.project_path);
     target_name_ = std::move(loaded.target_name);
+    analysis_session_ = PlannerAnalysisSession{
+        loaded.document.has_value() ? loaded.document->types() : TypeGraph{}};
     use_builtin_target_profile(false);
     use_builtin_comparison_target_profile();
     if (auto const saved_profile{
@@ -1909,13 +1812,12 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     project_document_ = std::move(loaded.project_document);
     document_ = std::move(loaded.document);
     load_diagnostics_ = std::move(loaded.diagnostics);
-    workspace_ = LayoutWorkspace{document_.has_value() ? document_->types() : TypeGraph{}};
-    selected_type_.reset();
+    select_type(std::nullopt);
     inline_record_rename_.reset();
     focus_inline_record_rename_ = false;
     open_record_module_.reset();
     graph_node_positions_.clear();
-    auto const types{workspace_.types().types()};
+    auto const types{analysis_session_.inputs.workspace.types().types()};
     if (auto const saved{persisted_graph_node_positions_.find(graph_project_key(project_path_))};
         saved != persisted_graph_node_positions_.end()) {
         for (auto const& [identity, position] : saved->second) {
@@ -1925,44 +1827,30 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
         }
     }
     for (std::size_t index{}; index < types.size(); ++index) {
-        auto const& definition{types[index].definition};
-        auto const* soa{std::get_if<SoaType>(&definition)};
-        if (std::holds_alternative<EnumType>(definition) ||
-            std::holds_alternative<IntegerScalarType>(definition) ||
-            std::holds_alternative<LinearQuantizedType>(definition) ||
-            std::holds_alternative<IntegerVarintType>(definition) ||
-            std::holds_alternative<FixedPointType>(definition) ||
-            std::holds_alternative<MiniFloatType>(definition) ||
-            std::holds_alternative<OptionalSentinelType>(definition) ||
-            std::holds_alternative<OptionalPresenceBitType>(definition) ||
-            std::holds_alternative<PackedType>(definition) ||
-            std::holds_alternative<RecordType>(definition) ||
-            std::holds_alternative<UnionType>(definition) ||
-            std::holds_alternative<TaggedUnionType>(definition) ||
-            (soa != nullptr && soa->backend == codegen::SoaBackend::standard_library)) {
-            selected_type_ = TypeId{static_cast<std::uint32_t>(index)};
+        if (declaration_capabilities(types[index]).visible) {
+            select_type(TypeId{static_cast<std::uint32_t>(index)});
             break;
         }
     }
-    selected_field_.clear();
+    analysis_session_.inputs.selection.field.clear();
     selected_enumerator_.clear();
-    packed_access_fields_.clear();
-    record_access_members_.clear();
-    soa_access_columns_.clear();
+    analysis_session_.inputs.selection.packed_access_fields.clear();
+    analysis_session_.inputs.selection.record_access_members.clear();
+    analysis_session_.inputs.selection.soa_access_columns.clear();
     varint_distributions_.clear();
-    packed_access_set_explicit_ = false;
-    union_distributions_.clear();
-    ++union_distribution_revision_;
-    tagged_union_distributions_.clear();
-    ++tagged_distribution_revision_;
+    analysis_session_.inputs.selection.packed_access_set_explicit = false;
+    analysis_session_.inputs.union_distributions.clear();
+    ++analysis_session_.inputs.union_distribution_revision;
+    analysis_session_.inputs.tagged_union_distributions.clear();
+    ++analysis_session_.inputs.tagged_distribution_revision;
     new_varint_distribution_value_.fill('\0');
     new_varint_distribution_value_[0] = '0';
     new_varint_distribution_weight_ = 1;
     new_project_source_path_.fill('\0');
     rename_project_source_path_.fill('\0');
     rename_project_source_.reset();
-    record_access_set_explicit_ = false;
-    soa_access_set_explicit_ = false;
+    analysis_session_.inputs.selection.record_access_set_explicit = false;
+    analysis_session_.inputs.selection.soa_access_set_explicit = false;
     rename_editor_declaration_.reset();
     declaration_name_.fill('\0');
     delete_declaration_.reset();
@@ -1999,14 +1887,12 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
     graph_pan_y_ = 32.0F;
     graph_zoom_ = 1.0F;
     graph_focus_selected_ = false;
-    cached_type_.reset();
-    cached_revision_ = std::numeric_limits<std::uint64_t>::max();
-    quantized_comparison_type_.reset();
-    varint_comparison_type_.reset();
-    optional_comparison_type_.reset();
-    comparison_a_variant_id_ = LayoutWorkspace::baseline_variant_id;
-    comparison_b_variant_id_ = LayoutWorkspace::baseline_variant_id;
-    comparison_b_follows_active_ = true;
+    analysis_session_.inputs.quantized_comparison_type.reset();
+    analysis_session_.inputs.varint_comparison_type.reset();
+    analysis_session_.inputs.optional_comparison_type.reset();
+    analysis_session_.inputs.comparison_a_variant_id = LayoutWorkspace::baseline_variant_id;
+    analysis_session_.inputs.comparison_b_variant_id = LayoutWorkspace::baseline_variant_id;
+    analysis_session_.inputs.comparison_b_follows_active = true;
     project_changed_ = true;
     sync_variant_name();
     remember_recent_project(project_path_);
@@ -2065,558 +1951,77 @@ void PlannerUi::setup_default_dock_layout(unsigned int const dockspace_id) {
 }
 
 void PlannerUi::refresh_analysis() {
-    validate_comparison_variants();
-
-    if (cached_type_ != selected_type_) {
-        soa_access_columns_.clear();
-        soa_access_set_explicit_ = false;
-    }
-    if (selected_type_.has_value()) {
-        auto const* selected_soa{
-            std::get_if<SoaType>(&workspace_.types().type(*selected_type_).definition)};
-        if (selected_soa != nullptr &&
-            selected_soa->backend == codegen::SoaBackend::standard_library) {
-            std::erase_if(soa_access_columns_, [&](auto const& entry) {
-                auto const& name{entry.first};
-                return std::ranges::none_of(
-                    selected_soa->columns, [&](auto const& column) { return column.name == name; });
-            });
-        }
-    }
-
-    if (selected_type_.has_value()) {
-        auto const* selected_quantized{
-            std::get_if<LinearQuantizedType>(&workspace_.types().type(*selected_type_).definition)};
-        if (selected_quantized != nullptr) {
-            auto valid_comparison_type = [&](TypeId const candidate) {
-                if (candidate == *selected_type_) {
-                    return false;
-                }
-                auto const* candidate_quantized{std::get_if<LinearQuantizedType>(
-                    &workspace_.types().type(candidate).definition)};
-                return candidate_quantized != nullptr &&
-                       candidate_quantized->source.type == selected_quantized->source.type;
-            };
-
-            std::optional<TypeId> comparison_id;
-            if (quantized_comparison_type_.has_value()) {
-                comparison_id = workspace_.types().find(*quantized_comparison_type_);
-            }
-            if (!comparison_id.has_value() || !valid_comparison_type(*comparison_id)) {
-                quantized_comparison_type_.reset();
-                auto const types{workspace_.types().types()};
-                for (std::size_t index{}; index < types.size(); ++index) {
-                    auto const candidate{TypeId{static_cast<std::uint32_t>(index)}};
-                    if (valid_comparison_type(candidate)) {
-                        quantized_comparison_type_ = types[index].identity;
-                        break;
+    auto& inputs{analysis_session_.inputs};
+    std::optional<TypeIdentity> source_identity;
+    std::vector<IntegerVarintDistributionEntry> entries;
+    bool rows_present{};
+    if (inputs.selection.type.has_value()) {
+        auto const& definition{inputs.workspace.types().type(*inputs.selection.type).definition};
+        if (auto const* varint{std::get_if<IntegerVarintType>(&definition)}) {
+            source_identity = inputs.workspace.types().type(varint->source.type).identity;
+            if (auto const found{varint_distributions_.find(*source_identity)};
+                found != varint_distributions_.end()) {
+                rows_present = !found->second.empty();
+                entries.reserve(found->second.size());
+                for (auto const& row : found->second) {
+                    if (auto const value{detail::parse_packed_integer(row.value.data())}) {
+                        entries.push_back({.value = *value, .weight = row.weight});
                     }
                 }
             }
-        } else {
-            quantized_comparison_type_.reset();
         }
-    } else {
-        quantized_comparison_type_.reset();
     }
-
-    if (selected_type_.has_value()) {
-        auto const* selected_varint{
-            std::get_if<IntegerVarintType>(&workspace_.types().type(*selected_type_).definition)};
-        if (selected_varint != nullptr) {
-            auto valid_comparison_type = [&](TypeId const candidate) {
-                if (candidate == *selected_type_) {
-                    return false;
-                }
-                auto const* candidate_varint{
-                    std::get_if<IntegerVarintType>(&workspace_.types().type(candidate).definition)};
-                return candidate_varint != nullptr &&
-                       candidate_varint->source.type == selected_varint->source.type;
-            };
-
-            std::optional<TypeId> comparison_id;
-            if (varint_comparison_type_.has_value()) {
-                comparison_id = workspace_.types().find(*varint_comparison_type_);
-            }
-            if (!comparison_id.has_value() || !valid_comparison_type(*comparison_id)) {
-                varint_comparison_type_.reset();
-                auto const types{workspace_.types().types()};
-                for (std::size_t index{}; index < types.size(); ++index) {
-                    auto const candidate{TypeId{static_cast<std::uint32_t>(index)}};
-                    if (valid_comparison_type(candidate)) {
-                        varint_comparison_type_ = types[index].identity;
-                        break;
-                    }
-                }
-            }
-        } else {
-            varint_comparison_type_.reset();
-        }
-    } else {
-        varint_comparison_type_.reset();
+    auto const unchanged_entries{std::ranges::equal(
+        inputs.varint_distribution_entries, entries, [](auto const& first, auto const& second) {
+            return first.value == second.value && first.weight == second.weight;
+        })};
+    if (source_identity != inputs.varint_distribution_source || !unchanged_entries ||
+        rows_present != inputs.varint_distribution_rows_present) {
+        inputs.varint_distribution_source = std::move(source_identity);
+        inputs.varint_distribution_entries = std::move(entries);
+        inputs.varint_distribution_rows_present = rows_present;
+        ++inputs.varint_distribution_revision;
     }
+    analysis_session_.refresh(document_.has_value() ? &*document_ : nullptr);
+}
 
-    auto optional_source = [&](TypeId const type) -> std::optional<TypeId> {
-        auto const& definition{workspace_.types().type(type).definition};
-        if (auto const* sentinel{std::get_if<OptionalSentinelType>(&definition)}) {
-            return sentinel->source.type;
-        }
-        if (auto const* presence{std::get_if<OptionalPresenceBitType>(&definition)}) {
-            return presence->source.type;
-        }
-        return std::nullopt;
-    };
-    if (selected_type_.has_value()) {
-        auto const selected_source{optional_source(*selected_type_)};
-        if (selected_source.has_value()) {
-            auto valid_comparison_type = [&](TypeId const candidate) {
-                return candidate != *selected_type_ &&
-                       optional_source(candidate) == selected_source;
-            };
-
-            std::optional<TypeId> comparison_id;
-            if (optional_comparison_type_.has_value()) {
-                comparison_id = workspace_.types().find(*optional_comparison_type_);
-            }
-            if (!comparison_id.has_value() || !valid_comparison_type(*comparison_id)) {
-                optional_comparison_type_.reset();
-                auto const types{workspace_.types().types()};
-                for (std::size_t index{}; index < types.size(); ++index) {
-                    auto const candidate{TypeId{static_cast<std::uint32_t>(index)}};
-                    if (valid_comparison_type(candidate)) {
-                        optional_comparison_type_ = types[index].identity;
-                        break;
-                    }
-                }
-            }
-        } else {
-            optional_comparison_type_.reset();
-        }
-    } else {
-        optional_comparison_type_.reset();
-    }
-
-    if (cached_revision_ == workspace_.revision() && cached_type_ == selected_type_ &&
-        cached_target_profile_revision_ == target_profile_revision_ &&
-        cached_comparison_target_profile_revision_ == comparison_target_profile_revision_ &&
-        cached_access_operation_ == access_operation_ &&
-        cached_access_multiplicity_ == access_multiplicity_ &&
-        cached_soa_allocation_strategy_ == soa_allocation_strategy_ &&
-        cached_selected_field_ == selected_field_ &&
-        cached_packed_access_fields_ == packed_access_fields_ &&
-        cached_packed_access_set_explicit_ == packed_access_set_explicit_ &&
-        cached_record_access_members_ == record_access_members_ &&
-        cached_record_access_set_explicit_ == record_access_set_explicit_ &&
-        cached_soa_access_columns_ == soa_access_columns_ &&
-        cached_soa_access_set_explicit_ == soa_access_set_explicit_ &&
-        cached_comparison_a_variant_id_ == comparison_a_variant_id_ &&
-        cached_comparison_b_variant_id_ == comparison_b_variant_id_ &&
-        cached_quantized_comparison_type_ == quantized_comparison_type_ &&
-        cached_varint_comparison_type_ == varint_comparison_type_ &&
-        cached_optional_comparison_type_ == optional_comparison_type_ &&
-        cached_union_distribution_revision_ == union_distribution_revision_ &&
-        cached_tagged_distribution_revision_ == tagged_distribution_revision_) {
+void PlannerUi::select_type(std::optional<TypeId> type) {
+    if (!analysis_session_.inputs.selection.select_type(analysis_session_.inputs.workspace.types(),
+                                                        type)) {
         return;
     }
-    enum_domain_.reset();
-    enum_target_comparison_.reset();
-    integer_scalar_analysis_.reset();
-    integer_scalar_capacity_comparison_.reset();
-    linear_quantized_analysis_.reset();
-    linear_quantized_comparison_.reset();
-    integer_varint_analysis_.reset();
-    integer_varint_comparison_.reset();
-    fixed_point_analysis_.reset();
-    mini_float_analysis_.reset();
-    optional_sentinel_analysis_.reset();
-    optional_presence_bit_analysis_.reset();
-    optional_encoding_comparison_.reset();
-    baseline_packed_.reset();
-    active_packed_.reset();
-    packed_target_comparison_.reset();
-    packed_access_analysis_.reset();
-    packed_target_access_comparison_.reset();
-    packed_access_comparison_.reset();
-    packed_variants_.clear();
-    baseline_soa_.reset();
-    active_soa_.reset();
-    soa_target_comparison_.reset();
-    soa_access_analysis_.reset();
-    soa_target_access_comparison_.reset();
-    record_soa_access_comparison_.reset();
-    soa_access_comparison_.reset();
-    soa_variants_.clear();
-    comparison_a_packed_.reset();
-    comparison_b_packed_.reset();
-    comparison_a_soa_.reset();
-    comparison_b_soa_.reset();
-    record_analysis_.reset();
-    record_target_comparison_.reset();
-    record_access_analysis_.reset();
-    record_target_access_comparison_.reset();
-    union_analysis_.reset();
-    union_target_comparison_.reset();
-    union_distribution_analysis_.reset();
-    union_target_distribution_comparison_.reset();
-    tagged_union_analysis_.reset();
-    tagged_union_target_comparison_.reset();
-    tagged_union_distribution_analysis_.reset();
-    tagged_union_target_distribution_comparison_.reset();
-    cached_revision_ = workspace_.revision();
-    cached_target_profile_revision_ = target_profile_revision_;
-    cached_comparison_target_profile_revision_ = comparison_target_profile_revision_;
-    cached_access_operation_ = access_operation_;
-    cached_access_multiplicity_ = access_multiplicity_;
-    cached_soa_allocation_strategy_ = soa_allocation_strategy_;
-    cached_type_ = selected_type_;
-    cached_selected_field_ = selected_field_;
-    cached_packed_access_fields_ = packed_access_fields_;
-    cached_packed_access_set_explicit_ = packed_access_set_explicit_;
-    cached_record_access_members_ = record_access_members_;
-    cached_record_access_set_explicit_ = record_access_set_explicit_;
-    cached_soa_access_columns_ = soa_access_columns_;
-    cached_soa_access_set_explicit_ = soa_access_set_explicit_;
-    cached_comparison_a_variant_id_ = comparison_a_variant_id_;
-    cached_comparison_b_variant_id_ = comparison_b_variant_id_;
-    cached_quantized_comparison_type_ = quantized_comparison_type_;
-    cached_varint_comparison_type_ = varint_comparison_type_;
-    cached_optional_comparison_type_ = optional_comparison_type_;
-    cached_union_distribution_revision_ = union_distribution_revision_;
-    cached_tagged_distribution_revision_ = tagged_distribution_revision_;
-    if (!selected_type_.has_value()) {
-        return;
-    }
-    auto const& definition{workspace_.types().type(*selected_type_).definition};
-    auto const& baseline{*workspace_.variant(LayoutWorkspace::baseline_variant_id)};
-    auto const& active{workspace_.active_variant()};
-    auto const& comparison_a{*workspace_.variant(comparison_a_variant_id_)};
-    auto const& comparison_b{*workspace_.variant(comparison_b_variant_id_)};
-    auto const element_count{workspace_.element_count()};
-    auto const relationship_targets_for{[this](Variant const& variant) {
-        return Analyzer::derive_relationship_target_facts(workspace_.types(),
-                                                          variant,
-                                                          abi_,
-                                                          workspace_.default_capacity(),
-                                                          soa_allocation_strategy_);
-    }};
-    auto const relationship_targets_for_profile{
-        [this](Variant const& variant, AbiProfile const& abi) {
-            return Analyzer::derive_relationship_target_facts(workspace_.types(),
-                                                              variant,
-                                                              abi,
-                                                              workspace_.default_capacity(),
-                                                              soa_allocation_strategy_);
-        }};
-    if (std::holds_alternative<EnumType>(definition)) {
-        enum_domain_ =
-            Analyzer::analyze_enum(workspace_.types(), *selected_type_, abi_, element_count);
-        auto const comparison_domain{Analyzer::analyze_enum(
-            workspace_.types(), *selected_type_, comparison_abi_, element_count)};
-        enum_target_comparison_ = Analyzer::compare_enum_targets(*enum_domain_, comparison_domain);
-    } else if (std::holds_alternative<IntegerScalarType>(definition)) {
-        auto const active_targets{relationship_targets_for(active)};
-        integer_scalar_analysis_ =
-            Analyzer::analyze_integer_scalar(workspace_.types(), *selected_type_, active_targets);
-        auto const comparison_a_targets{relationship_targets_for(comparison_a)};
-        auto const comparison_b_targets{relationship_targets_for(comparison_b)};
-        integer_scalar_capacity_comparison_ = Analyzer::compare_integer_scalar_capacity(
-            workspace_.types(), *selected_type_, comparison_a_targets, comparison_b_targets);
-    } else if (std::holds_alternative<LinearQuantizedType>(definition)) {
-        linear_quantized_analysis_ =
-            Analyzer::analyze_linear_quantized(workspace_.types(), *selected_type_);
-        if (quantized_comparison_type_.has_value()) {
-            auto const comparison_type{workspace_.types().find(*quantized_comparison_type_)};
-            if (comparison_type.has_value()) {
-                linear_quantized_comparison_ = Analyzer::compare_linear_quantized(
-                    workspace_.types(), *selected_type_, *comparison_type, element_count);
-            }
-        }
-    } else if (std::holds_alternative<IntegerVarintType>(definition)) {
-        integer_varint_analysis_ =
-            Analyzer::analyze_integer_varint(workspace_.types(), *selected_type_, element_count);
-        if (varint_comparison_type_.has_value()) {
-            auto const comparison_type{workspace_.types().find(*varint_comparison_type_)};
-            if (comparison_type.has_value()) {
-                integer_varint_comparison_ = Analyzer::compare_integer_varint(
-                    workspace_.types(), *selected_type_, *comparison_type, element_count);
-            }
-        }
-    } else if (std::holds_alternative<FixedPointType>(definition)) {
-        fixed_point_analysis_ =
-            Analyzer::analyze_fixed_point(workspace_.types(), *selected_type_, element_count);
-    } else if (std::holds_alternative<MiniFloatType>(definition)) {
-        mini_float_analysis_ =
-            Analyzer::analyze_mini_float(workspace_.types(), *selected_type_, element_count);
-    } else if (std::holds_alternative<OptionalSentinelType>(definition)) {
-        optional_sentinel_analysis_ =
-            Analyzer::analyze_optional_sentinel(workspace_.types(), *selected_type_, element_count);
-        if (optional_comparison_type_.has_value()) {
-            auto const comparison_type{workspace_.types().find(*optional_comparison_type_)};
-            if (comparison_type.has_value()) {
-                optional_encoding_comparison_ = Analyzer::compare_optional_encodings(
-                    workspace_.types(), *selected_type_, *comparison_type, element_count);
-            }
-        }
-    } else if (std::holds_alternative<OptionalPresenceBitType>(definition)) {
-        optional_presence_bit_analysis_ = Analyzer::analyze_optional_presence_bit(
-            workspace_.types(), *selected_type_, element_count);
-        if (optional_comparison_type_.has_value()) {
-            auto const comparison_type{workspace_.types().find(*optional_comparison_type_)};
-            if (comparison_type.has_value()) {
-                optional_encoding_comparison_ = Analyzer::compare_optional_encodings(
-                    workspace_.types(), *selected_type_, *comparison_type, element_count);
-            }
-        }
-    } else if (std::holds_alternative<RecordType>(definition)) {
-        record_analysis_ =
-            Analyzer::analyze_record(workspace_.types(), *selected_type_, abi_, element_count);
-        auto const comparison_record{Analyzer::analyze_record(
-            workspace_.types(), *selected_type_, comparison_abi_, element_count)};
-        record_target_comparison_ =
-            Analyzer::compare_record_targets(*record_analysis_, comparison_record);
-        std::vector<AccessIntent> access_members;
-        access_members.reserve(record_access_members_.size());
-        for (auto const& [name, operation] : record_access_members_) {
-            access_members.push_back({.name = name, .operation = operation});
-        }
-        if (!record_access_set_explicit_ && !selected_field_.empty()) {
-            access_members.clear();
-            access_members.push_back({.name = selected_field_, .operation = access_operation_});
-        }
-        if (!access_members.empty()) {
-            record_access_analysis_ = Analyzer::analyze_record_access(
-                *record_analysis_, access_members, abi_, access_multiplicity_);
-            auto const comparison_access{Analyzer::analyze_record_access(
-                comparison_record, access_members, comparison_abi_, access_multiplicity_)};
-            record_target_access_comparison_ =
-                Analyzer::compare_record_access(*record_access_analysis_, comparison_access);
-        }
-    } else if (std::holds_alternative<UnionType>(definition)) {
-        union_analysis_ =
-            Analyzer::analyze_union(workspace_.types(), *selected_type_, abi_, element_count);
-        auto const comparison_target_union{Analyzer::analyze_union(
-            workspace_.types(), *selected_type_, comparison_abi_, element_count)};
-        union_target_comparison_ =
-            Analyzer::compare_union_targets(*union_analysis_, comparison_target_union);
-        auto const declaration{
-            document_.has_value()
-                ? document_->find_declaration(workspace_.types().type(*selected_type_).identity)
-                : std::optional<DeclarationId>{}};
-        auto const found{declaration.has_value() ? union_distributions_.find(*declaration)
-                                                 : union_distributions_.end()};
-        if (found != union_distributions_.end()) {
-            std::vector<UnionDistributionEntry> entries;
-            for (auto const& [alternative_name, weight] : found->second) {
-                if (weight != 0) {
-                    entries.push_back({.alternative_name = alternative_name, .weight = weight});
-                }
-            }
-            if (!entries.empty()) {
-                union_distribution_analysis_ =
-                    Analyzer::analyze_union_distribution(*union_analysis_, entries, element_count);
-                auto const comparison_target_distribution{Analyzer::analyze_union_distribution(
-                    comparison_target_union, entries, element_count)};
-                union_target_distribution_comparison_ = Analyzer::compare_union_distributions(
-                    *union_distribution_analysis_, comparison_target_distribution);
-            }
-        }
-    } else if (std::holds_alternative<TaggedUnionType>(definition)) {
-        tagged_union_analysis_ = Analyzer::analyze_tagged_union(
-            workspace_.types(), *selected_type_, abi_, element_count);
-        auto const comparison_target_tagged{Analyzer::analyze_tagged_union(
-            workspace_.types(), *selected_type_, comparison_abi_, element_count)};
-        tagged_union_target_comparison_ = Analyzer::compare_tagged_union_targets(
-            *tagged_union_analysis_, comparison_target_tagged);
-        auto const declaration{
-            document_.has_value()
-                ? document_->find_declaration(workspace_.types().type(*selected_type_).identity)
-                : std::optional<DeclarationId>{}};
-        auto const found{declaration.has_value() ? tagged_union_distributions_.find(*declaration)
-                                                 : tagged_union_distributions_.end()};
-        if (found != tagged_union_distributions_.end()) {
-            std::vector<TaggedUnionDistributionEntry> entries;
-            for (auto const& [tag, weight] : found->second) {
-                if (weight != 0) {
-                    entries.push_back({.tag = tag, .weight = weight});
-                }
-            }
-            if (!entries.empty()) {
-                tagged_union_distribution_analysis_ = Analyzer::analyze_tagged_union_distribution(
-                    *tagged_union_analysis_, entries, element_count);
-                auto const comparison_target_distribution{
-                    Analyzer::analyze_tagged_union_distribution(
-                        comparison_target_tagged, entries, element_count)};
-                tagged_union_target_distribution_comparison_ =
-                    Analyzer::compare_tagged_union_distributions(
-                        *tagged_union_distribution_analysis_, comparison_target_distribution);
-            }
-        }
-    } else if (std::holds_alternative<PackedType>(definition)) {
-        auto const baseline_targets{relationship_targets_for(baseline)};
-        auto const active_targets{relationship_targets_for(active)};
-        baseline_packed_ = Analyzer::analyze_packed(
-            workspace_.types(), *selected_type_, baseline, abi_, element_count, baseline_targets);
-        active_packed_ = Analyzer::analyze_packed(
-            workspace_.types(), *selected_type_, active, abi_, element_count, active_targets);
-        auto const comparison_target_facts{
-            relationship_targets_for_profile(active, comparison_abi_)};
-        auto const comparison_target_packed{Analyzer::analyze_packed(workspace_.types(),
-                                                                     *selected_type_,
-                                                                     active,
-                                                                     comparison_abi_,
-                                                                     element_count,
-                                                                     comparison_target_facts)};
-        packed_target_comparison_ =
-            Analyzer::compare_packed_targets(*active_packed_, comparison_target_packed);
-        std::vector<AccessIntent> access_fields;
-        access_fields.reserve(packed_access_fields_.size());
-        for (auto const& [name, operation] : packed_access_fields_) {
-            access_fields.push_back({.name = name, .operation = operation});
-        }
-        if (!packed_access_set_explicit_ && !selected_field_.empty()) {
-            access_fields.clear();
-            auto const selected{std::ranges::find(
-                active_packed_->fields, selected_field_, &PackedFieldAnalysis::name)};
-            if (selected != active_packed_->fields.end() && !selected->reserved) {
-                access_fields.push_back({.name = selected_field_, .operation = access_operation_});
-            }
-        }
-        if (!access_fields.empty()) {
-            packed_access_analysis_ = Analyzer::analyze_packed_access(
-                *active_packed_, access_fields, abi_, access_multiplicity_);
-            auto const comparison_target_access{Analyzer::analyze_packed_access(
-                comparison_target_packed, access_fields, comparison_abi_, access_multiplicity_)};
-            packed_target_access_comparison_ =
-                Analyzer::compare_packed_access(*packed_access_analysis_, comparison_target_access);
-        }
-        for (auto const& variant : workspace_.variants()) {
-            if (variant.id != LayoutWorkspace::baseline_variant_id) {
-                auto const targets{relationship_targets_for(variant)};
-                packed_variants_.emplace_back(variant.id,
-                                              Analyzer::analyze_packed(workspace_.types(),
-                                                                       *selected_type_,
-                                                                       variant,
-                                                                       abi_,
-                                                                       element_count,
-                                                                       targets));
-            }
-        }
-        auto const comparison_a_targets{relationship_targets_for(comparison_a)};
-        auto const comparison_b_targets{relationship_targets_for(comparison_b)};
-        comparison_a_packed_ = Analyzer::analyze_packed(workspace_.types(),
-                                                        *selected_type_,
-                                                        comparison_a,
-                                                        abi_,
-                                                        element_count,
-                                                        comparison_a_targets);
-        comparison_b_packed_ = Analyzer::analyze_packed(workspace_.types(),
-                                                        *selected_type_,
-                                                        comparison_b,
-                                                        abi_,
-                                                        element_count,
-                                                        comparison_b_targets);
-        if (!access_fields.empty()) {
-            auto const comparison_a_access{Analyzer::analyze_packed_access(
-                *comparison_a_packed_, access_fields, abi_, access_multiplicity_)};
-            auto const comparison_b_access{Analyzer::analyze_packed_access(
-                *comparison_b_packed_, access_fields, abi_, access_multiplicity_)};
-            packed_access_comparison_ =
-                Analyzer::compare_packed_access(comparison_a_access, comparison_b_access);
-        }
-    } else if (auto const* soa{std::get_if<SoaType>(&definition)};
-               soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
-        baseline_soa_ = Analyzer::analyze_soa(workspace_.types(),
-                                              *selected_type_,
-                                              baseline,
-                                              abi_,
-                                              workspace_.default_capacity(),
-                                              soa_allocation_strategy_);
-        active_soa_ = Analyzer::analyze_soa(workspace_.types(),
-                                            *selected_type_,
-                                            active,
-                                            abi_,
-                                            workspace_.default_capacity(),
-                                            soa_allocation_strategy_);
-        auto const comparison_target_soa{Analyzer::analyze_soa(workspace_.types(),
-                                                               *selected_type_,
-                                                               active,
-                                                               comparison_abi_,
-                                                               workspace_.default_capacity(),
-                                                               soa_allocation_strategy_)};
-        soa_target_comparison_ = Analyzer::compare_soa_targets(*active_soa_, comparison_target_soa);
-        std::vector<AccessIntent> access_columns;
-        access_columns.reserve(soa_access_columns_.size());
-        for (auto const& [name, operation] : soa_access_columns_) {
-            access_columns.push_back({.name = name, .operation = operation});
-        }
-        if (!soa_access_set_explicit_ && !selected_field_.empty()) {
-            access_columns.clear();
-            access_columns.push_back({.name = selected_field_, .operation = access_operation_});
-        }
-        if (!access_columns.empty()) {
-            soa_access_analysis_ = Analyzer::analyze_soa_access(*active_soa_,
-                                                                access_columns,
-                                                                abi_,
-                                                                workspace_.element_count(),
-                                                                access_multiplicity_);
-            auto const comparison_target_access{
-                Analyzer::analyze_soa_access(comparison_target_soa,
-                                             access_columns,
-                                             comparison_abi_,
-                                             workspace_.element_count(),
-                                             access_multiplicity_)};
-            soa_target_access_comparison_ =
-                Analyzer::compare_soa_access(*soa_access_analysis_, comparison_target_access);
-            if (soa->equivalent_type.has_value() &&
-                std::holds_alternative<RecordType>(
-                    workspace_.types().type(soa->equivalent_type->type).definition)) {
-                auto const equivalent_record{Analyzer::analyze_record(workspace_.types(),
-                                                                      soa->equivalent_type->type,
-                                                                      abi_,
-                                                                      workspace_.element_count())};
-                auto const record_access{Analyzer::analyze_record_access(
-                    equivalent_record, access_columns, abi_, access_multiplicity_)};
-                record_soa_access_comparison_ =
-                    Analyzer::compare_record_soa_access(record_access, *soa_access_analysis_);
-            }
-        }
-        for (auto const& variant : workspace_.variants()) {
-            if (variant.id != LayoutWorkspace::baseline_variant_id) {
-                soa_variants_.emplace_back(variant.id,
-                                           Analyzer::analyze_soa(workspace_.types(),
-                                                                 *selected_type_,
-                                                                 variant,
-                                                                 abi_,
-                                                                 workspace_.default_capacity(),
-                                                                 soa_allocation_strategy_));
-            }
-        }
-        comparison_a_soa_ = Analyzer::analyze_soa(workspace_.types(),
-                                                  *selected_type_,
-                                                  comparison_a,
-                                                  abi_,
-                                                  workspace_.default_capacity(),
-                                                  soa_allocation_strategy_);
-        comparison_b_soa_ = Analyzer::analyze_soa(workspace_.types(),
-                                                  *selected_type_,
-                                                  comparison_b,
-                                                  abi_,
-                                                  workspace_.default_capacity(),
-                                                  soa_allocation_strategy_);
-        if (!access_columns.empty()) {
-            auto const first_access{Analyzer::analyze_soa_access(*comparison_a_soa_,
-                                                                 access_columns,
-                                                                 abi_,
-                                                                 workspace_.element_count(),
-                                                                 access_multiplicity_)};
-            auto const second_access{Analyzer::analyze_soa_access(*comparison_b_soa_,
-                                                                  access_columns,
-                                                                  abi_,
-                                                                  workspace_.element_count(),
-                                                                  access_multiplicity_)};
-            soa_access_comparison_ = Analyzer::compare_soa_access(first_access, second_access);
-        }
-    }
+    selected_enumerator_.clear();
+    enum_editor_declaration_.reset();
+    enum_editor_value_.clear();
+    packed_editor_declaration_.reset();
+    packed_editor_field_.clear();
+    packed_code_editor_declaration_.reset();
+    packed_code_editor_field_.clear();
+    packed_code_editor_name_.clear();
+    selected_packed_code_.clear();
+    integer_scalar_editor_declaration_.reset();
+    integer_scalar_editor_code_.clear();
+    selected_integer_scalar_code_.clear();
+    linear_quantized_editor_declaration_.reset();
+    integer_varint_editor_declaration_.reset();
+    fixed_point_editor_declaration_.reset();
+    optional_sentinel_editor_declaration_.reset();
+    optional_presence_bit_editor_declaration_.reset();
+    record_editor_declaration_.reset();
+    record_editor_member_.clear();
+    union_editor_declaration_.reset();
+    union_editor_alternative_.clear();
+    tagged_union_editor_declaration_.reset();
+    tagged_union_editor_alternative_.clear();
+    soa_editor_declaration_.reset();
+    soa_editor_member_.clear();
+    new_varint_distribution_value_.fill('\0');
+    new_varint_distribution_value_[0] = '0';
+    new_varint_distribution_weight_ = 1;
+    packed_dragged_divider_.reset();
+    packed_dragged_variant_id_.reset();
+    packed_dragged_left_width_.reset();
+    packed_dragged_right_width_.reset();
 }
 
 void PlannerUi::draw_target_profile_panel() {
@@ -2648,7 +2053,7 @@ void PlannerUi::draw_layout_panel() {
     auto const was_open{layout_view_open_};
     ImGui::Begin("Layout", &layout_view_open_);
     persist_view_visibility(was_open, layout_view_open_);
-    ImGui::TextWrapped("Target: %s", known_or_unknown(abi_.name()));
+    ImGui::TextWrapped("Target: %s", known_or_unknown(analysis_session_.inputs.abi.name()));
     if (ImGui::SmallButton("Profile settings...")) {
         target_profile_view_open_ = true;
         focus_target_profile_view_ = true;
@@ -2659,11 +2064,13 @@ void PlannerUi::draw_layout_panel() {
         create_variant_for_selected_schema();
     }
     ImGui::Separator();
-    if (!selected_type_.has_value()) {
+    if (!analysis_session_.inputs.selection.type.has_value()) {
         ImGui::TextDisabled("Select a supported schema.");
-    } else if (auto const& definition{workspace_.types().type(*selected_type_).definition};
+    } else if (auto const& definition{analysis_session_.inputs.workspace.types()
+                                          .type(*analysis_session_.inputs.selection.type)
+                                          .definition};
                std::holds_alternative<EnumType>(definition)) {
-        auto const& analysis{*enum_domain_};
+        auto const& analysis{*analysis_session_.results().enum_domain};
         auto const& aggregate{analysis.aggregate};
         ImGui::SeparatorText("Standalone C++ backing scale");
         if (draw_element_count()) {
@@ -2709,14 +2116,14 @@ void PlannerUi::draw_layout_panel() {
             "included.");
         draw_diagnostics(analysis.diagnostics);
     } else if (auto const* packed = std::get_if<PackedType>(&definition)) {
-        draw_packed_layout(*packed, *baseline_packed_);
+        draw_packed_layout(*packed, *analysis_session_.results().baseline_packed);
     } else if (auto const* soa{std::get_if<SoaType>(&definition)};
                soa != nullptr && soa->backend == codegen::SoaBackend::standard_library) {
-        draw_soa_layout(*soa, *baseline_soa_);
+        draw_soa_layout(*soa, *analysis_session_.results().baseline_soa);
     } else if (std::holds_alternative<RecordType>(definition)) {
-        draw_record_layout(*record_analysis_);
+        draw_record_layout(*analysis_session_.results().record_analysis);
     } else if (std::holds_alternative<UnionType>(definition)) {
-        auto const& analysis{*union_analysis_};
+        auto const& analysis{*analysis_session_.results().union_analysis};
         ImGui::SeparatorText("Analysis scale");
         if (draw_element_count()) {
             ImGui::End();
@@ -2778,7 +2185,7 @@ void PlannerUi::draw_layout_panel() {
                                          3.0F);
                 auto const extent_width{width * static_cast<float>(*alternative.extent_bytes) /
                                         static_cast<float>(*analysis.size_bytes)};
-                auto const selected{selected_field_ == alternative.name};
+                auto const selected{analysis_session_.inputs.selection.field == alternative.name};
                 auto const extent_color{selected ? ImVec4{0.24F, 0.65F, 0.90F, 1.0F}
                                                  : ImVec4{0.62F, 0.39F, 0.20F, 1.0F}};
                 draw_list->AddRectFilled(origin,
@@ -2795,7 +2202,7 @@ void PlannerUi::draw_layout_panel() {
                                    extent_label.c_str());
                 ImGui::InvisibleButton("##union-alternative-map", {width, bar_height});
                 if (ImGui::IsItemClicked()) {
-                    selected_field_ = alternative.name;
+                    analysis_session_.inputs.selection.field = alternative.name;
                 }
                 if (ImGui::IsItemHovered()) {
                     ImGui::SetTooltip("%s: %s extent, %s slack in each %s object",
@@ -2834,8 +2241,8 @@ void PlannerUi::draw_layout_panel() {
             }
             ImGui::EndTable();
         }
-        if (union_distribution_analysis_.has_value()) {
-            auto const& distribution{*union_distribution_analysis_};
+        if (analysis_session_.results().union_distribution_analysis.has_value()) {
+            auto const& distribution{*analysis_session_.results().union_distribution_analysis};
             ImGui::SeparatorText("Explicit session workload");
             if (ImGui::BeginTable("union-distribution-summary",
                                   2,
@@ -2912,16 +2319,20 @@ void PlannerUi::draw_layout_panel() {
             "distribution is implied.");
         draw_diagnostics(analysis.diagnostics);
     } else if (auto const* tagged{std::get_if<TaggedUnionType>(&definition)}) {
-        auto const& analysis{*tagged_union_analysis_};
+        auto const& analysis{*analysis_session_.results().tagged_union_analysis};
         ImGui::SeparatorText("Analysis scale");
         if (draw_element_count()) {
             ImGui::End();
             return;
         }
         ImGui::Text("Tagged union: %s",
-                    workspace_.types().type(*selected_type_).identity.name.c_str());
+                    analysis_session_.inputs.workspace.types()
+                        .type(*analysis_session_.inputs.selection.type)
+                        .identity.name.c_str());
         ImGui::Text("Discriminant: %s",
-                    workspace_.types().type(tagged->discriminant.type).identity.name.c_str());
+                    analysis_session_.inputs.workspace.types()
+                        .type(tagged->discriminant.type)
+                        .identity.name.c_str());
         ImGui::SeparatorText("Discriminant coverage");
         ImGui::Text("Mapped live tags: %llu",
                     static_cast<unsigned long long>(analysis.mapped_live_tags.size()));
@@ -3072,8 +2483,9 @@ void PlannerUi::draw_layout_panel() {
                 ImGui::TableNextColumn();
                 ImGui::TextUnformatted(alternative.name.c_str());
                 ImGui::TableNextColumn();
-                ImGui::TextUnformatted(
-                    workspace_.types().type(alternative.semantic_type).cpp_spelling.c_str());
+                ImGui::TextUnformatted(analysis_session_.inputs.workspace.types()
+                                           .type(alternative.semantic_type)
+                                           .cpp_spelling.c_str());
                 ImGui::TableNextColumn();
                 ImGui::Text("%llu", static_cast<unsigned long long>(alternative.element_count));
                 ImGui::TableNextColumn();
@@ -3093,7 +2505,7 @@ void PlannerUi::draw_layout_panel() {
     } else if (std::holds_alternative<EnumType>(definition)) {
         ImGui::TextDisabled("Enums have semantic metadata but no standalone aggregate layout.");
     } else if (std::holds_alternative<IntegerScalarType>(definition)) {
-        auto const& analysis{*integer_scalar_analysis_};
+        auto const& analysis{*analysis_session_.results().integer_scalar_analysis};
         if (analysis.relationship_kind.has_value() && analysis.relationship_target.has_value()) {
             ImGui::Text(
                 "Relationship: %s -> %s",
@@ -3155,7 +2567,7 @@ void PlannerUi::draw_layout_panel() {
             "the domain requirement but do not create an ABI sizeof or mutate LispB.");
         draw_diagnostics(analysis.diagnostics);
     } else if (std::holds_alternative<LinearQuantizedType>(definition)) {
-        auto const& analysis{*linear_quantized_analysis_};
+        auto const& analysis{*analysis_session_.results().linear_quantized_analysis};
         ImGui::Text("Encoded width: %u bits", analysis.encoded_storage_bits);
         ImGui::Text("Usable codes: %s",
                     detail::format_code_count(analysis.usable_code_count).c_str());
@@ -3170,7 +2582,7 @@ void PlannerUi::draw_layout_panel() {
             ImGui::End();
             return;
         }
-        auto const& analysis{*integer_varint_analysis_};
+        auto const& analysis{*analysis_session_.results().integer_varint_analysis};
         ImGui::Text("Encoded size: %u .. %u bytes/value",
                     analysis.minimum_encoded_bytes,
                     analysis.maximum_encoded_bytes);
@@ -3186,7 +2598,7 @@ void PlannerUi::draw_layout_panel() {
             ImGui::End();
             return;
         }
-        auto const& analysis{*fixed_point_analysis_};
+        auto const& analysis{*analysis_session_.results().fixed_point_analysis};
         ImGui::Text("Encoded width: %u bits/value", analysis.total_bits);
         ImGui::Text("At %llu values: %s bits",
                     static_cast<unsigned long long>(analysis.element_count),
@@ -3204,7 +2616,7 @@ void PlannerUi::draw_layout_panel() {
             ImGui::End();
             return;
         }
-        auto const& analysis{*mini_float_analysis_};
+        auto const& analysis{*analysis_session_.results().mini_float_analysis};
         ImGui::Text("Encoded width: %u bits/value", analysis.total_bits);
         ImGui::Text("At %llu values: %s bits",
                     static_cast<unsigned long long>(analysis.element_count),
@@ -3232,7 +2644,7 @@ void PlannerUi::draw_layout_panel() {
             ImGui::End();
             return;
         }
-        auto const& analysis{*optional_sentinel_analysis_};
+        auto const& analysis{*analysis_session_.results().optional_sentinel_analysis};
         ImGui::Text("Encoded width: %u bits/value", analysis.encoded_storage_bits);
         ImGui::Text("Present values: %s",
                     detail::format_number(analysis.present_value_count).c_str());
@@ -3253,7 +2665,7 @@ void PlannerUi::draw_layout_panel() {
             ImGui::End();
             return;
         }
-        auto const& analysis{*optional_presence_bit_analysis_};
+        auto const& analysis{*analysis_session_.results().optional_presence_bit_analysis};
         ImGui::Text("Encoded width: %u bits/value (%u presence + %u payload)",
                     analysis.encoded_storage_bits,
                     analysis.presence_bits,
@@ -3292,17 +2704,19 @@ void PlannerUi::draw_diagnostics(std::vector<Diagnostic> const& diagnostics) con
 }
 
 void PlannerUi::sync_variant_name() {
-    auto const& name{workspace_.active_variant().name};
+    auto const& name{analysis_session_.inputs.workspace.active_variant().name};
     std::snprintf(variant_name_.data(), variant_name_.size(), "%s", name.c_str());
-    variant_name_id_ = workspace_.active_variant_id();
+    variant_name_id_ = analysis_session_.inputs.workspace.active_variant_id();
 }
 
 void PlannerUi::create_variant_for_selected_schema() {
-    auto const name{selected_type_.has_value()
-                        ? workspace_.types().type(*selected_type_).identity.name + " experiment " +
-                              std::to_string(next_variant_number_++)
+    auto const name{analysis_session_.inputs.selection.type.has_value()
+                        ? analysis_session_.inputs.workspace.types()
+                                  .type(*analysis_session_.inputs.selection.type)
+                                  .identity.name +
+                              " experiment " + std::to_string(next_variant_number_++)
                         : "Experiment " + std::to_string(next_variant_number_++)};
-    workspace_.create_variant(name);
+    analysis_session_.inputs.workspace.create_variant(name);
     sync_variant_name();
     refresh_analysis();
 }

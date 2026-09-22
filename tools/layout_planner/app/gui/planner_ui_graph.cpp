@@ -476,7 +476,7 @@ void PlannerUi::draw_graph_panel() {
         ImGui::MarkIniSettingsDirty();
     }
 
-    auto const types{workspace_.types().types()};
+    auto const types{analysis_session_.inputs.workspace.types().types()};
 
     if (ImGui::Button("Reset view")) {
         graph_pan_x_ = 32.0F;
@@ -501,7 +501,7 @@ void PlannerUi::draw_graph_panel() {
         graph_fit_all_ = true;
     }
     ImGui::SameLine();
-    ImGui::BeginDisabled(!selected_type_.has_value());
+    ImGui::BeginDisabled(!analysis_session_.inputs.selection.type.has_value());
     if (ImGui::Button("Focus selection")) {
         graph_focus_selected_ = true;
     }
@@ -540,9 +540,10 @@ void PlannerUi::draw_graph_panel() {
 
     if ((search_submitted || next_match_requested) && !search_matches.empty()) {
         auto match{search_matches.begin()};
-        if (selected_type_.has_value()) {
-            auto const current{
-                std::find(search_matches.begin(), search_matches.end(), *selected_type_)};
+        if (analysis_session_.inputs.selection.type.has_value()) {
+            auto const current{std::find(search_matches.begin(),
+                                         search_matches.end(),
+                                         *analysis_session_.inputs.selection.type)};
             if (current != search_matches.end()) {
                 match = std::next(current);
                 if (match == search_matches.end()) {
@@ -551,16 +552,12 @@ void PlannerUi::draw_graph_panel() {
             }
         }
 
-        selected_type_ = *match;
-        selected_field_.clear();
-        packed_access_fields_.clear();
-        packed_access_set_explicit_ = false;
-        record_access_members_.clear();
-        record_access_set_explicit_ = false;
+        select_type(*match);
         graph_focus_selected_ = true;
     }
 
-    if (selected_type_.has_value() && selected_type_->value < types.size()) {
+    if (analysis_session_.inputs.selection.type.has_value() &&
+        analysis_session_.inputs.selection.type->value < types.size()) {
         ImGui::ColorButton("graph-dependency-color",
                            ImVec4{0.21F, 0.51F, 0.41F, 1.0F},
                            ImGuiColorEditFlags_NoTooltip,
@@ -668,10 +665,11 @@ void PlannerUi::draw_graph_panel() {
             graph_fit_all_ = false;
         }
 
-        if (graph_focus_selected_ && selected_type_.has_value() &&
-            selected_type_->value < positions.size()) {
-            auto const center{add(positions[selected_type_->value],
-                                  multiply(node_sizes[selected_type_->value], 0.5F))};
+        if (graph_focus_selected_ && analysis_session_.inputs.selection.type.has_value() &&
+            analysis_session_.inputs.selection.type->value < positions.size()) {
+            auto const center{
+                add(positions[analysis_session_.inputs.selection.type->value],
+                    multiply(node_sizes[analysis_session_.inputs.selection.type->value], 0.5F))};
             graph_pan_x_ = canvas_size.x * 0.5F - center.x * graph_zoom_;
             graph_pan_y_ = canvas_size.y * 0.5F - center.y * graph_zoom_;
             graph_focus_selected_ = false;
@@ -689,17 +687,20 @@ void PlannerUi::draw_graph_panel() {
                                io.MousePos.y >= minimum.y && io.MousePos.y <= maximum.y;
         }
         auto edge_hover_claimed{false};
-        auto const neighborhood_active{selected_type_.has_value() &&
-                                       selected_type_->value < types.size()};
+        auto const neighborhood_active{analysis_session_.inputs.selection.type.has_value() &&
+                                       analysis_session_.inputs.selection.type->value <
+                                           types.size()};
         std::vector<bool> dependency_nodes(types.size());
         std::vector<bool> user_nodes(types.size());
         if (neighborhood_active) {
-            for (auto const dependency : workspace_.types().dependencies_of(*selected_type_)) {
+            for (auto const dependency : analysis_session_.inputs.workspace.types().dependencies_of(
+                     *analysis_session_.inputs.selection.type)) {
                 if (dependency.value < dependency_nodes.size()) {
                     dependency_nodes[dependency.value] = true;
                 }
             }
-            for (auto const user : workspace_.types().users_of(*selected_type_)) {
+            for (auto const user : analysis_session_.inputs.workspace.types().users_of(
+                     *analysis_session_.inputs.selection.type)) {
                 if (user.value < user_nodes.size()) {
                     user_nodes[user.value] = true;
                 }
@@ -730,9 +731,10 @@ void PlannerUi::draw_graph_panel() {
                 auto const screen_start{screen_position(start)};
                 auto const screen_end{screen_position(end)};
                 auto const selected_is_user{neighborhood_active &&
-                                            selected_type_->value == user_index};
-                auto const selected_is_dependency{neighborhood_active &&
-                                                  *selected_type_ == dependency};
+                                            analysis_session_.inputs.selection.type->value ==
+                                                user_index};
+                auto const selected_is_dependency{
+                    neighborhood_active && *analysis_session_.inputs.selection.type == dependency};
                 auto const edge_color{selected_is_user && selected_is_dependency
                                           ? IM_COL32(184, 126, 232, 255)
                                       : selected_is_user       ? IM_COL32(91, 202, 161, 255)
@@ -755,7 +757,8 @@ void PlannerUi::draw_graph_panel() {
                         subtract(arrow_base, multiply(normal, arrow_width)),
                         edge_color);
                 }
-                auto const label{edge_label(workspace_.types(), user, dependency)};
+                auto const label{
+                    edge_label(analysis_session_.inputs.workspace.types(), user, dependency)};
                 auto const midpoint{multiply(add(screen_start, screen_end), 0.5F)};
                 auto const label_position{add(midpoint, multiply({4.0F, -14.0F}, graph_zoom_))};
                 auto const unscaled_label_size{ImGui::CalcTextSize(label.c_str())};
@@ -796,12 +799,7 @@ void PlannerUi::draw_graph_panel() {
                     ImGui::TextUnformatted("Click to navigate to the target type.");
                     ImGui::EndTooltip();
                     if (ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
-                        selected_type_ = dependency;
-                        selected_field_.clear();
-                        packed_access_fields_.clear();
-                        packed_access_set_explicit_ = false;
-                        record_access_members_.clear();
-                        record_access_set_explicit_ = false;
+                        select_type(dependency);
                     }
                 }
             }
@@ -814,12 +812,7 @@ void PlannerUi::draw_graph_panel() {
             ImGui::SetCursorScreenPos(minimum);
             ImGui::PushID(static_cast<int>(index));
             if (ImGui::InvisibleButton("node", subtract(maximum, minimum))) {
-                selected_type_ = id;
-                selected_field_.clear();
-                packed_access_fields_.clear();
-                packed_access_set_explicit_ = false;
-                record_access_members_.clear();
-                record_access_set_explicit_ = false;
+                select_type(id);
             }
             auto const dependency{dependency_nodes[index]};
             auto const user{user_nodes[index]};
@@ -842,7 +835,7 @@ void PlannerUi::draw_graph_panel() {
                 ImGui::SetItemTooltip(
                     "%s\n%s", types[index].identity.name.c_str(), node_details[index].c_str());
             }
-            auto const selected{selected_type_ == id};
+            auto const selected{analysis_session_.inputs.selection.type == id};
             draw_list->AddRectFilled(
                 minimum,
                 maximum,

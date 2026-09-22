@@ -882,46 +882,46 @@ auto PlannerUi::draw_element_count() -> bool {
     for (auto const& preset : count_presets) {
         ImGui::PushID(preset.label);
         if (ImGui::SmallButton(preset.label)) {
-            changed = workspace_.set_element_count(preset.count) || changed;
+            changed = analysis_session_.inputs.workspace.set_element_count(preset.count) || changed;
         }
         ImGui::PopID();
         ImGui::SameLine();
     }
-    auto custom_count{workspace_.element_count()};
+    auto custom_count{analysis_session_.inputs.workspace.element_count()};
     ImGui::SetNextItemWidth(150.0F);
     if (ImGui::InputScalar("Elements", ImGuiDataType_U64, &custom_count) && custom_count != 0) {
-        changed = workspace_.set_element_count(custom_count) || changed;
+        changed = analysis_session_.inputs.workspace.set_element_count(custom_count) || changed;
     }
     return changed;
 }
 
 auto PlannerUi::draw_access_operation() -> bool {
     bool changed{};
-    auto operation_index{static_cast<int>(access_operation_)};
+    auto operation_index{static_cast<int>(analysis_session_.inputs.access_operation)};
     ImGui::SetNextItemWidth(180.0F);
     if (ImGui::Combo("Default / all", &operation_index, "Read\0Write\0Read + write\0")) {
-        access_operation_ = static_cast<AccessOperation>(operation_index);
-        for (auto& [name, operation] : packed_access_fields_) {
+        analysis_session_.inputs.access_operation = static_cast<AccessOperation>(operation_index);
+        for (auto& [name, operation] : analysis_session_.inputs.selection.packed_access_fields) {
             static_cast<void>(name);
-            operation = access_operation_;
+            operation = analysis_session_.inputs.access_operation;
         }
-        for (auto& [name, operation] : record_access_members_) {
+        for (auto& [name, operation] : analysis_session_.inputs.selection.record_access_members) {
             static_cast<void>(name);
-            operation = access_operation_;
+            operation = analysis_session_.inputs.access_operation;
         }
-        for (auto& [name, operation] : soa_access_columns_) {
+        for (auto& [name, operation] : analysis_session_.inputs.selection.soa_access_columns) {
             static_cast<void>(name);
-            operation = access_operation_;
+            operation = analysis_session_.inputs.access_operation;
         }
         changed = true;
     }
-    auto multiplicity{access_multiplicity_};
+    auto multiplicity{analysis_session_.inputs.access_multiplicity};
     ImGui::SetNextItemWidth(180.0F);
     if (ImGui::InputScalar("Accesses / element", ImGuiDataType_U64, &multiplicity)) {
         if (multiplicity == 0) {
             access_multiplicity_error_ = true;
         } else {
-            access_multiplicity_ = multiplicity;
+            analysis_session_.inputs.access_multiplicity = multiplicity;
             access_multiplicity_error_ = false;
             changed = true;
         }
@@ -934,7 +934,7 @@ auto PlannerUi::draw_access_operation() -> bool {
 }
 
 void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis const& baseline) {
-    auto const& identity{workspace_.types().type(baseline.type).identity};
+    auto const& identity{analysis_session_.inputs.workspace.types().type(baseline.type).identity};
     ImGui::Text("%s", identity.name.c_str());
     ImGui::TextDisabled("%s", identity.module_name.c_str());
 
@@ -943,7 +943,7 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
         return;
     }
 
-    auto const& scale_analysis{*active_packed_};
+    auto const& scale_analysis{*analysis_session_.results().active_packed};
     auto const& aggregate{scale_analysis.aggregate};
     auto const byte_order{
         scale_analysis.byte_order.has_value()
@@ -994,9 +994,9 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
                             static_cast<unsigned long long>(*scale_analysis.storage_bits));
     }
     ImGui::TextDisabled("Target memory facts: %s",
-                        abi_.memory_facts().provenance.empty()
+                        analysis_session_.inputs.abi.memory_facts().provenance.empty()
                             ? "Unknown"
-                            : abi_.memory_facts().provenance.c_str());
+                            : analysis_session_.inputs.abi.memory_facts().provenance.c_str());
     ImGui::TextDisabled("Boundary crossing assumes a contiguous packed-value array whose base is "
                         "cache-line/page aligned.");
 
@@ -1004,8 +1004,8 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
     if (draw_access_operation()) {
         refresh_analysis();
     }
-    if (packed_access_analysis_.has_value()) {
-        auto const& access{*packed_access_analysis_};
+    if (analysis_session_.results().packed_access_analysis.has_value()) {
+        auto const& access{*analysis_session_.results().packed_access_analysis};
         std::string field_names;
         for (auto const& field_name : access.field_names) {
             if (!field_names.empty()) {
@@ -1073,13 +1073,14 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
 
     ImGui::SeparatorText("Bit layout");
     std::map<std::string, AccessOperation, std::less<>> effective_access_fields;
-    if (packed_access_set_explicit_) {
-        effective_access_fields = packed_access_fields_;
-    } else if (!selected_field_.empty()) {
-        auto const selected{
-            std::ranges::find(baseline.fields, selected_field_, &PackedFieldAnalysis::name)};
+    if (analysis_session_.inputs.selection.packed_access_set_explicit) {
+        effective_access_fields = analysis_session_.inputs.selection.packed_access_fields;
+    } else if (!analysis_session_.inputs.selection.field.empty()) {
+        auto const selected{std::ranges::find(
+            baseline.fields, analysis_session_.inputs.selection.field, &PackedFieldAnalysis::name)};
         if (selected != baseline.fields.end() && !selected->reserved) {
-            effective_access_fields.emplace(selected_field_, access_operation_);
+            effective_access_fields.emplace(analysis_session_.inputs.selection.field,
+                                            analysis_session_.inputs.access_operation);
         }
     }
     if (!effective_access_fields.empty()) {
@@ -1106,7 +1107,7 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
     }
     auto common_bits{std::max(
         {baseline.storage_bits.value_or(0), baseline.bits_used.value_or(0), std::uint64_t{1}})};
-    for (auto const& [variant_id, analysis] : packed_variants_) {
+    for (auto const& [variant_id, analysis] : analysis_session_.results().packed_variants) {
         static_cast<void>(variant_id);
         common_bits = std::max(
             {common_bits, analysis.storage_bits.value_or(0), analysis.bits_used.value_or(0)});
@@ -1127,7 +1128,7 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
     bool activated{};
     draw_packed_bar(baseline,
                     nullptr,
-                    selected_field_,
+                    analysis_session_.inputs.selection.field,
                     effective_access_fields,
                     "Baseline",
                     common_bits,
@@ -1159,10 +1160,10 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
                         segment.bits = static_cast<int>(*packed_dragged_right_width_);
                     },
                     replacement.segments[divider + 1]);
-                auto const selected_field{selected_field_};
+                auto const selected_field{analysis_session_.inputs.selection.field};
                 if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
                                                            .schema = std::move(replacement)})) {
-                    selected_field_ = selected_field;
+                    analysis_session_.inputs.selection.field = selected_field;
                 }
             }
         }
@@ -1186,13 +1187,15 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
                            static_cast<unsigned long long>(*baseline.overflow_bits),
                            *baseline.overflow_bits == 1 ? "" : "s");
     }
-    for (auto const& [variant_id, analysis] : packed_variants_) {
-        auto const* variant{workspace_.variant(variant_id)};
+    for (auto const& [variant_id, analysis] : analysis_session_.results().packed_variants) {
+        auto const* variant{analysis_session_.inputs.workspace.variant(variant_id)};
         if (variant == nullptr) {
             continue;
         }
         auto const label{variant->name +
-                         (variant_id == workspace_.active_variant_id() ? " (editing)" : "")};
+                         (variant_id == analysis_session_.inputs.workspace.active_variant_id()
+                              ? " (editing)"
+                              : "")};
         adjustment.reset();
         activated = false;
         std::optional<std::size_t> inactive_divider;
@@ -1203,7 +1206,7 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
         ImGui::PushID(static_cast<int>(variant_id));
         draw_packed_bar(analysis,
                         &baseline,
-                        selected_field_,
+                        analysis_session_.inputs.selection.field,
                         effective_access_fields,
                         label.c_str(),
                         common_bits,
@@ -1219,13 +1222,13 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
                    !packed_dragged_divider_.has_value()) {
             packed_dragged_variant_id_.reset();
         }
-        if (activated && workspace_.active_variant_id() != variant_id) {
-            workspace_.select_variant(variant_id);
+        if (activated && analysis_session_.inputs.workspace.active_variant_id() != variant_id) {
+            analysis_session_.inputs.workspace.select_variant(variant_id);
             sync_variant_name();
         }
         if (adjustment.has_value() && adjustment->left_field_index + 1 < packed.segments.size()) {
-            if (workspace_.active_variant_id() != variant_id) {
-                workspace_.select_variant(variant_id);
+            if (analysis_session_.inputs.workspace.active_variant_id() != variant_id) {
+                analysis_session_.inputs.workspace.select_variant(variant_id);
                 sync_variant_name();
             }
             auto const* left_field{
@@ -1235,13 +1238,13 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
             if (left_field == nullptr || right_field == nullptr) {
                 continue;
             }
-            workspace_.set_packed_field_width(
+            analysis_session_.inputs.workspace.set_packed_field_width(
                 analysis.type,
                 left_field->name,
                 adjustment->left_width == left_field->bit_width
                     ? std::optional<std::uint32_t>{}
                     : std::optional<std::uint32_t>{adjustment->left_width});
-            workspace_.set_packed_field_width(
+            analysis_session_.inputs.workspace.set_packed_field_width(
                 analysis.type,
                 right_field->name,
                 adjustment->right_width == right_field->bit_width
@@ -1260,13 +1263,13 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
                                *analysis.overflow_bits == 1 ? "" : "s");
         }
     }
-    if (!packed_variants_.empty()) {
+    if (!analysis_session_.results().packed_variants.empty()) {
         ImGui::TextDisabled("Click a variant to edit it. Drag a divider to transfer whole bits.");
     }
 }
 
 void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
-    auto const& node{workspace_.types().type(analysis.type)};
+    auto const& node{analysis_session_.inputs.workspace.types().type(analysis.type)};
     ImGui::Text("%s", node.identity.name.c_str());
     ImGui::TextDisabled("%s", node.identity.module_name.c_str());
 
@@ -1317,9 +1320,9 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
                             static_cast<unsigned long long>(*analysis.size_bytes));
     }
     ImGui::TextDisabled("Target memory facts: %s",
-                        abi_.memory_facts().provenance.empty()
+                        analysis_session_.inputs.abi.memory_facts().provenance.empty()
                             ? "Unknown"
-                            : abi_.memory_facts().provenance.c_str());
+                            : analysis_session_.inputs.abi.memory_facts().provenance.c_str());
     ImGui::TextDisabled(
         "Boundary crossing assumes a contiguous array whose base is cache-line/page aligned.");
 
@@ -1327,8 +1330,8 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
     if (draw_access_operation()) {
         refresh_analysis();
     }
-    if (record_access_analysis_.has_value()) {
-        auto const& access{*record_access_analysis_};
+    if (analysis_session_.results().record_access_analysis.has_value()) {
+        auto const& access{*analysis_session_.results().record_access_analysis};
         std::string member_names;
         for (auto const& member_name : access.member_names) {
             if (!member_names.empty()) {
@@ -1435,7 +1438,7 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
                                            static_cast<float>(*analysis.size_bytes)};
             auto const member_width{width * static_cast<float>(*member.extent_bytes) /
                                     static_cast<float>(*analysis.size_bytes)};
-            auto const selected{selected_field_ == member.name};
+            auto const selected{analysis_session_.inputs.selection.field == member.name};
             auto const color{
                 selected
                     ? selected_color
@@ -1483,13 +1486,14 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
             if (ImGui::Selectable(member.name.c_str(),
-                                  selected_field_ == member.name,
+                                  analysis_session_.inputs.selection.field == member.name,
                                   ImGuiSelectableFlags_None)) {
-                selected_field_ = member.name;
+                analysis_session_.inputs.selection.field = member.name;
             }
             ImGui::TableNextColumn();
-            ImGui::TextUnformatted(
-                workspace_.types().type(member.semantic_type).cpp_spelling.c_str());
+            ImGui::TextUnformatted(analysis_session_.inputs.workspace.types()
+                                       .type(member.semantic_type)
+                                       .cpp_spelling.c_str());
             ImGui::TableNextColumn();
             ImGui::Text("%llu", static_cast<unsigned long long>(member.element_count));
             ImGui::TableNextColumn();
@@ -1510,8 +1514,8 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
 }
 
 void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline) {
-    auto const& active{*active_soa_};
-    auto const& identity{workspace_.types().type(baseline.type).identity};
+    auto const& active{*analysis_session_.results().active_soa};
+    auto const& identity{analysis_session_.inputs.workspace.types().type(baseline.type).identity};
     ImGui::Text("%s", identity.name.c_str());
     ImGui::TextDisabled("%s", identity.module_name.c_str());
     if (soa.related_storage_name.has_value()) {
@@ -1522,17 +1526,18 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
     if (draw_element_count()) {
         return;
     }
-    auto strategy_index{static_cast<int>(soa_allocation_strategy_)};
+    auto strategy_index{static_cast<int>(analysis_session_.inputs.soa_allocation_strategy)};
     ImGui::SetNextItemWidth(240.0F);
     if (ImGui::Combo("Allocation strategy",
                      &strategy_index,
                      "Separate columns\0Aligned contiguous block\0")) {
-        soa_allocation_strategy_ = static_cast<SoaAllocationStrategy>(strategy_index);
+        analysis_session_.inputs.soa_allocation_strategy =
+            static_cast<SoaAllocationStrategy>(strategy_index);
         refresh_analysis();
         return;
     }
     ImGui::TextDisabled(
-        soa_allocation_strategy_ == SoaAllocationStrategy::separate_columns
+        analysis_session_.inputs.soa_allocation_strategy == SoaAllocationStrategy::separate_columns
             ? "Each column is a separate allocation; region footprints are lower bounds."
             : "Columns occupy one alignment-aware block; region coverage assumes a region-aligned "
               "block origin.");
@@ -1555,10 +1560,10 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
         for (auto const& column : active.columns) {
             ImGui::TableNextRow();
             ImGui::TableNextColumn();
-            auto const selected{selected_field_ == column.name};
+            auto const selected{analysis_session_.inputs.selection.field == column.name};
             if (ImGui::Selectable(
                     column.name.c_str(), selected, ImGuiSelectableFlags_SpanAllColumns)) {
-                selected_field_ = column.name;
+                analysis_session_.inputs.selection.field = column.name;
             }
             ImGui::TableNextColumn();
             ImGui::TextUnformatted(column.schema_type.c_str());
@@ -1589,14 +1594,15 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
     }
 
     auto common_total{baseline.total_allocation_bytes.value_or(0)};
-    for (auto const& [variant_id, analysis] : soa_variants_) {
+    for (auto const& [variant_id, analysis] : analysis_session_.results().soa_variants) {
         static_cast<void>(variant_id);
         common_total = std::max(common_total, analysis.total_allocation_bytes.value_or(0));
     }
     ImGui::SeparatorText("Allocation");
     ImGui::Text("Modeled allocations: %llu",
                 static_cast<unsigned long long>(active.allocation_count));
-    if (soa_allocation_strategy_ == SoaAllocationStrategy::separate_columns) {
+    if (analysis_session_.inputs.soa_allocation_strategy ==
+        SoaAllocationStrategy::separate_columns) {
         ImGui::Text("Payload / minimum allocation bytes: %s",
                     detail::format_bytes(active.total_payload_bytes).c_str());
     } else {
@@ -1607,7 +1613,8 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
     }
     ImGui::Text("Allocation alignment: %s",
                 detail::format_bytes(active.allocation_alignment_bytes).c_str());
-    ImGui::Text(soa_allocation_strategy_ == SoaAllocationStrategy::separate_columns
+    ImGui::Text(analysis_session_.inputs.soa_allocation_strategy ==
+                        SoaAllocationStrategy::separate_columns
                     ? "Minimum allocation pages: %s"
                     : "Contiguous block pages: %s",
                 detail::format_number(active.minimum_pages).c_str());
@@ -1620,8 +1627,8 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
     if (draw_access_operation()) {
         refresh_analysis();
     }
-    if (soa_access_analysis_.has_value()) {
-        auto const& access{*soa_access_analysis_};
+    if (analysis_session_.results().soa_access_analysis.has_value()) {
+        auto const& access{*analysis_session_.results().soa_access_analysis};
         std::string column_names;
         for (auto const& column_name : access.column_names) {
             if (!column_names.empty()) {
@@ -1768,7 +1775,8 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
     }
 
     ImGui::SeparatorText("Cache-line / page block map");
-    if (soa_allocation_strategy_ == SoaAllocationStrategy::separate_columns) {
+    if (analysis_session_.inputs.soa_allocation_strategy ==
+        SoaAllocationStrategy::separate_columns) {
         ImGui::TextDisabled(
             "A single address map is unavailable because separate allocation origins are Unknown."
             " Select the aligned contiguous strategy to inspect one region-aligned block.");
@@ -1786,10 +1794,13 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
                            "%.0f px / region",
                            ImGuiSliderFlags_Logarithmic);
         draw_soa_region_map(active,
-                            soa_access_analysis_.has_value() ? &*soa_access_analysis_ : nullptr,
+                            analysis_session_.results().soa_access_analysis.has_value()
+                                ? &*analysis_session_.results().soa_access_analysis
+                                : nullptr,
                             soa_region_map_pages_,
                             soa_region_pixels_);
-        if (soa_access_analysis_.has_value() && !soa_access_analysis_->footprint_exact) {
+        if (analysis_session_.results().soa_access_analysis.has_value() &&
+            !analysis_session_.results().soa_access_analysis->footprint_exact) {
             ImGui::TextDisabled(
                 "The selected-prefix overlay is unavailable because the access count exceeds "
                 "capacity or the contiguous allocation is Unknown.");
@@ -1799,9 +1810,11 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
             "prefixes show addresses only; they are not cache traffic or a performance estimate.");
     }
 
-    if (record_soa_access_comparison_.has_value() && soa.equivalent_type.has_value()) {
-        auto const& comparison{*record_soa_access_comparison_};
-        auto const& record_identity{workspace_.types().type(soa.equivalent_type->type).identity};
+    if (analysis_session_.results().record_soa_access_comparison.has_value() &&
+        soa.equivalent_type.has_value()) {
+        auto const& comparison{*analysis_session_.results().record_soa_access_comparison};
+        auto const& record_identity{
+            analysis_session_.inputs.workspace.types().type(soa.equivalent_type->type).identity};
         ImGui::SeparatorText("Equivalent AoS / SoA access");
         ImGui::Text("Equivalent record: %s", record_identity.name.c_str());
         if (ImGui::BeginTable("record-soa-access-comparison",
@@ -1936,30 +1949,42 @@ void PlannerUi::draw_soa_layout(SoaType const& soa, SoaAnalysis const& baseline)
     }
 
     bool activated{};
-    draw_payload_regions(baseline, nullptr, selected_field_, "Baseline", common_total, activated);
-    for (auto const& [variant_id, analysis] : soa_variants_) {
-        auto const* variant{workspace_.variant(variant_id)};
+    draw_payload_regions(baseline,
+                         nullptr,
+                         analysis_session_.inputs.selection.field,
+                         "Baseline",
+                         common_total,
+                         activated);
+    for (auto const& [variant_id, analysis] : analysis_session_.results().soa_variants) {
+        auto const* variant{analysis_session_.inputs.workspace.variant(variant_id)};
         if (variant == nullptr) {
             continue;
         }
         auto const label{variant->name +
-                         (variant_id == workspace_.active_variant_id() ? " (editing)" : "")};
+                         (variant_id == analysis_session_.inputs.workspace.active_variant_id()
+                              ? " (editing)"
+                              : "")};
         activated = false;
         ImGui::PushID(static_cast<int>(variant_id));
-        draw_payload_regions(
-            analysis, &baseline, selected_field_, label.c_str(), common_total, activated);
+        draw_payload_regions(analysis,
+                             &baseline,
+                             analysis_session_.inputs.selection.field,
+                             label.c_str(),
+                             common_total,
+                             activated);
         ImGui::PopID();
-        if (activated && workspace_.active_variant_id() != variant_id) {
-            workspace_.select_variant(variant_id);
+        if (activated && analysis_session_.inputs.workspace.active_variant_id() != variant_id) {
+            analysis_session_.inputs.workspace.select_variant(variant_id);
             sync_variant_name();
         }
     }
     ImGui::TextDisabled(
-        soa_allocation_strategy_ == SoaAllocationStrategy::separate_columns
+        analysis_session_.inputs.soa_allocation_strategy == SoaAllocationStrategy::separate_columns
             ? "Regions compare aggregate payload across separate standard-library allocations."
             : "Regions compare one alignment-aware contiguous column allocation, including gaps.");
 
-    auto const found{std::ranges::find(active.columns, selected_field_, &SoaColumnAnalysis::name)};
+    auto const found{std::ranges::find(
+        active.columns, analysis_session_.inputs.selection.field, &SoaColumnAnalysis::name)};
     if (found != active.columns.end() && found->cache_line_tiling.has_value()) {
         draw_cache_line(*found->cache_line_tiling);
     }

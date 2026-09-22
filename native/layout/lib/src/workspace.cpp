@@ -4,6 +4,54 @@
 #include <utility>
 
 namespace ioj::layout {
+namespace {
+
+auto valid_type(lispb::schema::TypeGraph const& types, lispb::schema::TypeId const type) -> bool {
+    return type.valid() && type.value < types.types().size();
+}
+
+auto packed_type(lispb::schema::TypeGraph const& types, lispb::schema::TypeId const type)
+    -> lispb::schema::PackedType const* {
+    return valid_type(types, type)
+             ? std::get_if<lispb::schema::PackedType>(&types.type(type).definition)
+             : nullptr;
+}
+
+auto overrideable_packed_field(lispb::schema::TypeGraph const& types,
+                               lispb::schema::TypeId const type,
+                               std::string const& name) -> bool {
+    auto const* packed{packed_type(types, type)};
+    if (packed == nullptr) {
+        return false;
+    }
+    return std::ranges::any_of(packed->segments, [&](auto const& segment) {
+        auto const* field{std::get_if<lispb::schema::PackedField>(&segment)};
+        return field != nullptr && field->name == name &&
+               field->kind != codegen::PackedFieldKind::linear_quantized &&
+               field->kind != codegen::PackedFieldKind::fixed_point &&
+               field->kind != codegen::PackedFieldKind::mini_float;
+    });
+}
+
+auto supported_soa(lispb::schema::TypeGraph const& types, lispb::schema::TypeId const type)
+    -> lispb::schema::SoaType const* {
+    if (!valid_type(types, type)) {
+        return nullptr;
+    }
+    auto const* soa{std::get_if<lispb::schema::SoaType>(&types.type(type).definition)};
+    return soa != nullptr && soa->backend == codegen::SoaBackend::standard_library ? soa : nullptr;
+}
+
+auto supported_soa_column(lispb::schema::TypeGraph const& types,
+                          lispb::schema::TypeId const type,
+                          std::string const& name) -> bool {
+    auto const* soa{supported_soa(types, type)};
+    return soa != nullptr && std::ranges::any_of(soa->columns, [&](auto const& column) {
+               return column.name == name;
+           });
+}
+
+} // namespace
 
 LayoutWorkspace::LayoutWorkspace(lispb::schema::TypeGraph types,
                                  std::uint64_t const default_capacity)
@@ -46,6 +94,10 @@ auto LayoutWorkspace::revision() const -> std::uint64_t {
     return revision_;
 }
 
+auto LayoutWorkspace::graph_revision() const -> std::uint64_t {
+    return graph_revision_;
+}
+
 void LayoutWorkspace::replace_types(lispb::schema::TypeGraph types) {
     auto remap_type{
         [&](lispb::schema::TypeId const old_type) -> std::optional<lispb::schema::TypeId> {
@@ -57,25 +109,31 @@ void LayoutWorkspace::replace_types(lispb::schema::TypeGraph types) {
     for (auto& variant : variants_) {
         VariantOverrides remapped;
         for (auto const& [type, spelling] : variant.overrides.packed_storage_types) {
-            if (auto const replacement{remap_type(type)}) {
+            if (auto const replacement{remap_type(type)};
+                replacement.has_value() && packed_type(types, *replacement) != nullptr) {
                 remapped.packed_storage_types.emplace(*replacement, spelling);
             }
         }
         for (auto const& [field, width] : variant.overrides.packed_field_widths) {
-            if (auto const replacement{remap_type(field.type)}) {
+            if (auto const replacement{remap_type(field.type)};
+                replacement.has_value() &&
+                overrideable_packed_field(types, *replacement, field.field_name)) {
                 remapped.packed_field_widths.emplace(
                     FieldOverrideId{.type = *replacement, .field_name = field.field_name}, width);
             }
         }
         for (auto const& [field, spelling] : variant.overrides.soa_column_types) {
-            if (auto const replacement{remap_type(field.type)}) {
+            if (auto const replacement{remap_type(field.type)};
+                replacement.has_value() &&
+                supported_soa_column(types, *replacement, field.field_name)) {
                 remapped.soa_column_types.emplace(
                     FieldOverrideId{.type = *replacement, .field_name = field.field_name},
                     spelling);
             }
         }
         for (auto const& [type, capacity] : variant.overrides.capacities) {
-            if (auto const replacement{remap_type(type)}) {
+            if (auto const replacement{remap_type(type)};
+                replacement.has_value() && supported_soa(types, *replacement) != nullptr) {
                 remapped.capacities.emplace(*replacement, capacity);
             }
         }
@@ -83,6 +141,7 @@ void LayoutWorkspace::replace_types(lispb::schema::TypeGraph types) {
     }
     types_ = std::move(types);
     ++revision_;
+    ++graph_revision_;
 }
 
 auto LayoutWorkspace::select_variant(std::uint64_t const id) -> bool {
@@ -166,6 +225,9 @@ auto LayoutWorkspace::set_packed_storage_type(lispb::schema::TypeId const type,
     }
     auto& values{selected->overrides.packed_storage_types};
     if (spelling.has_value()) {
+        if (packed_type(types_, type) == nullptr) {
+            return false;
+        }
         auto const found{values.find(type)};
         if (found != values.end() && found->second == *spelling) {
             return false;
@@ -188,6 +250,9 @@ auto LayoutWorkspace::set_packed_field_width(lispb::schema::TypeId const type,
     auto& values{selected->overrides.packed_field_widths};
     FieldOverrideId const key{.type = type, .field_name = std::move(field_name)};
     if (width.has_value()) {
+        if (!overrideable_packed_field(types_, type, key.field_name)) {
+            return false;
+        }
         auto const found{values.find(key)};
         if (found != values.end() && found->second == *width) {
             return false;
@@ -210,6 +275,9 @@ auto LayoutWorkspace::set_soa_column_type(lispb::schema::TypeId const type,
     auto& values{selected->overrides.soa_column_types};
     FieldOverrideId const key{.type = type, .field_name = std::move(column_name)};
     if (spelling.has_value()) {
+        if (!supported_soa_column(types_, type, key.field_name)) {
+            return false;
+        }
         auto const found{values.find(key)};
         if (found != values.end() && found->second == *spelling) {
             return false;
@@ -230,6 +298,9 @@ auto LayoutWorkspace::set_capacity(lispb::schema::TypeId const type,
     }
     auto& values{selected->overrides.capacities};
     if (capacity.has_value()) {
+        if (supported_soa(types_, type) == nullptr) {
+            return false;
+        }
         auto const found{values.find(type)};
         if (found != values.end() && found->second == *capacity) {
             return false;

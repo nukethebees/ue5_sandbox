@@ -811,3 +811,22 @@ New interactive tables use `begin_editable_table`, `editable_table_column`, and
 shrinking when a column is widened; long tables also scroll vertically. The row handle selects from
 any cell in an unselected row without placing a hit target over editable controls in the selected
 row.
+
+## Headless planning state
+
+`PlannerAnalysisSession` owns the workspace, type and member selection, access workloads, profile
+and comparison inputs, distributions, and cached analyzer results. `PlannerSelection` clears local
+workloads on a type switch and reconciles names through stable identities after graph replacement.
+The browser obtains three-state declaration status from the same session, with cached physical
+analysis keyed by graph and target-profile revisions. `PlannerUi` retains document editing, dialogs,
+text buffers, and rendering. Session inputs are transient and do not change LispB or saved UI formats.
+
+## Deferred heterogeneous modules
+
+LispB currently encodes declaration category in the module kind. A later branch can allow one module
+to contain mixed declarations, but should design the source and command model together. The change
+would touch the codegen schema and parser, editable-document commands and source-preserving edits,
+type-graph resolution, planner module/declaration creation and declaration moves, plus their tests.
+The current planner's `TypeIdentity`-based selection and override remapping can remain useful; checks
+that use a module variant index or assume one declaration category per module should be removed in
+that migration. No mixed-module syntax or generated C++ changes are part of this hardening work.
