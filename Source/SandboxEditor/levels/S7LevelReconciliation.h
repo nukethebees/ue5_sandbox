@@ -3,13 +3,11 @@
 #include <SpaceGame/levels/LevelDefinition.h>
 
 #include <CoreMinimal.h>
-#include <UObject/WeakObjectPtr.h>
 
 #include <expected>
 
 class AS7LevelAuthoringDocument;
 class ULevel;
-class USpaceGameLevelConfig;
 
 namespace ml::editor {
 enum class ES7LevelSyncAction : uint8 {
@@ -26,9 +24,8 @@ struct FS7LevelSyncChange {
 
 struct SANDBOXEDITOR_API FS7LevelSyncPlan {
     FLevelDefinition definition{};
-    TWeakObjectPtr<USpaceGameLevelConfig> level_config{};
     TArray<FS7LevelSyncChange> changes{};
-    bool level_config_changed{};
+    bool collision_grid_changed{};
     bool metadata_changed{};
     bool viewpoint_changed{};
     bool mission_changed{};
@@ -40,11 +37,6 @@ struct SANDBOXEDITOR_API FS7LevelSyncPlan {
 SANDBOXEDITOR_API auto make_s7_level_sync_plan(ULevel const& level,
                                                AS7LevelAuthoringDocument const& document,
                                                FLevelDefinition const& definition)
-    -> std::expected<FS7LevelSyncPlan, FString>;
-SANDBOXEDITOR_API auto make_s7_level_sync_plan(ULevel const& level,
-                                               AS7LevelAuthoringDocument const& document,
-                                               FLevelDefinition const& definition,
-                                               USpaceGameLevelConfig& level_config)
     -> std::expected<FS7LevelSyncPlan, FString>;
 SANDBOXEDITOR_API auto apply_s7_level_sync_plan(ULevel& level,
                                                 AS7LevelAuthoringDocument& document,

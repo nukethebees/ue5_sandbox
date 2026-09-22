@@ -68,7 +68,15 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     }
     void set_start_mode(EOrchestratorStartMode mode);
     void set_presentation_enabled(bool enabled);
+    void set_collision_grid_override(FVector3f level_size, FVector3f cell_size);
+    void clear_collision_grid_override();
     void set_level_definition(ml::FLevelDefinition definition) {
+        if (definition.collision_grid.IsSet()) {
+            set_collision_grid_override(definition.collision_grid->level_size,
+                                        definition.collision_grid->cell_size);
+        } else {
+            clear_collision_grid_override();
+        }
         level_definition_ = MoveTemp(definition);
     }
     auto is_presentation_enabled() const noexcept -> bool { return presentation_enabled; }
@@ -229,6 +237,15 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
 
     UPROPERTY(EditAnywhere, Category = "Sandbox|Assets")
     TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Collision")
+    bool use_collision_grid_override{};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Collision", meta = (EditCondition = "use_collision_grid_override", Units = "cm"))
+    FVector3f level_size_override{FVector3f::ZeroVector};
+
+    UPROPERTY(EditAnywhere, Category = "Sandbox|Collision", meta = (EditCondition = "use_collision_grid_override", Units = "cm"))
+    FVector3f grid_cell_size_override{FVector3f::ZeroVector};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Collision")
     TObjectPtr<UCollisionGridVisualizationComponent> collision_grid_visualization{nullptr};

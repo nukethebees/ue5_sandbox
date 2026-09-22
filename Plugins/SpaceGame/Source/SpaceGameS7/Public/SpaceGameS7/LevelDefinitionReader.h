@@ -10,7 +10,6 @@ struct SPACEGAMES7_API FLevelDefinitionDecodeError {
 
 struct SPACEGAMES7_API FLevelDefinitionReadResult {
     TOptional<FLevelDefinition> definition{};
-    FString level_config{};
     FString script_error{};
     TArray<FLevelDefinitionDecodeError> decode_errors{};
     TArray<FLevelValidationError> validation_errors{};

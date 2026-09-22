@@ -369,6 +369,19 @@ void ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) {
         set_actor_config_on_all<ATestTubeSpinnerProxy>(*world, &config.tube_spinners);
     }
 }
+void ATestBatchOrchestrator::set_collision_grid_override(FVector3f const level_size,
+                                                         FVector3f const cell_size) {
+    use_collision_grid_override = true;
+    level_size_override = level_size;
+    grid_cell_size_override = cell_size;
+    refresh_collision_grid_visualization();
+}
+void ATestBatchOrchestrator::clear_collision_grid_override() {
+    use_collision_grid_override = false;
+    level_size_override = FVector3f::ZeroVector;
+    grid_cell_size_override = FVector3f::ZeroVector;
+    refresh_collision_grid_visualization();
+}
 void ATestBatchOrchestrator::set_start_mode(EOrchestratorStartMode const mode) {
     if (get_state() != ::ioj::sim::OrchestratorState::Uninitialised) {
         UE_LOG(LogSandbox,
@@ -533,6 +546,18 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     if (!IsValid(level_config)) {
         handle_level_start_failure(TEXT("Cannot start level: level configuration is invalid"));
         return false;
+    }
+
+    if (use_collision_grid_override) {
+        auto* const runtime_config{DuplicateObject<USpaceGameLevelConfig>(level_config, this)};
+        if (!IsValid(runtime_config)) {
+            handle_level_start_failure(
+                TEXT("Cannot start level: collision-grid override could not be applied"));
+            return false;
+        }
+        runtime_config->collision_grid.grid_size = level_size_override;
+        runtime_config->collision_grid.cell_size = grid_cell_size_override;
+        level_config = runtime_config;
     }
 
     ml::FLevelStartErrors config_errors;
@@ -749,12 +774,17 @@ void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
 
     TOptional<FCollisionGridVisualizationSettings> settings;
     if (presentation_enabled && IsValid(level_config)) {
+        auto collision_grid{level_config->collision_grid};
+        if (use_collision_grid_override) {
+            collision_grid.grid_size = level_size_override;
+            collision_grid.cell_size = grid_cell_size_override;
+        }
         settings.Emplace(FCollisionGridVisualizationSettings{
-            .dimensions = level_config->collision_grid.calculate_grid_dimensions(),
-            .cell_size = level_config->collision_grid.cell_size,
-            .line_colour = level_config->collision_grid.line_colour,
-            .line_thickness = level_config->collision_grid.line_thickness,
-            .show_grid = level_config->collision_grid.show_grid,
+            .dimensions = collision_grid.calculate_grid_dimensions(),
+            .cell_size = collision_grid.cell_size,
+            .line_colour = collision_grid.line_colour,
+            .line_thickness = collision_grid.line_thickness,
+            .show_grid = collision_grid.show_grid,
         });
     }
 

@@ -8,6 +8,7 @@
 #include <SpaceGame/levels/LevelEntityResolution.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameS7/LevelDefinitionWriter.h>
 #include <SpaceGameS7/LevelScriptCatalog.h>
@@ -35,21 +36,21 @@ struct FExportCandidate {
     FLevelEntityId id{};
 };
 
-auto level_config_path(ULevel const& level) -> FString {
+auto find_level_config(ULevel const& level) -> USpaceGameLevelConfig const* {
     for (auto const actor_ptr : level.Actors) {
         auto const* const document{Cast<AS7LevelAuthoringDocument>(actor_ptr.Get())};
         if (IsValid(document) && IsValid(document->level_config)) {
-            return document->level_config->GetPathName();
+            return document->level_config;
         }
     }
     for (auto const actor_ptr : level.Actors) {
         auto const* const orchestrator{Cast<ATestBatchOrchestrator>(actor_ptr.Get())};
         auto const* const config{IsValid(orchestrator) ? orchestrator->get_level_config() : nullptr};
         if (IsValid(config)) {
-            return config->GetPathName();
+            return config;
         }
     }
-    return {};
+    return nullptr;
 }
 
 auto is_ascii_alpha(TCHAR const value) -> bool {
@@ -355,6 +356,12 @@ auto collect_s7_initial_state(ULevel const& level, FLevelMetadata const& metadat
 
     FLevelBuilder builder;
     builder.set_metadata(metadata);
+    if (auto const* const config{find_level_config(level)}; IsValid(config)) {
+        builder.set_collision_grid({
+            .level_size = config->collision_grid.grid_size,
+            .cell_size = config->collision_grid.cell_size,
+        });
+    }
     TSet<FLevelTeamId> used_teams;
     for (auto const& candidate : candidates) {
         used_teams.Add(candidate.team);
@@ -447,8 +454,7 @@ void execute_s7_initial_state_export() {
         log_export_error(plan.error());
         return;
     }
-    auto const source{
-        s7::emit_editor_level_source(plan->definition, level_config_path(*level))};
+    auto const source{s7::emit_editor_level_source(plan->definition)};
     if (!source) {
         log_export_error(source.error());
         return;

@@ -32,6 +32,11 @@ struct SPACEGAME_API FLevelCameraDefinition {
     double distance{0.0};
 };
 
+struct SPACEGAME_API FLevelCollisionGridDefinition {
+    FVector3f level_size{FVector3f::ZeroVector};
+    FVector3f cell_size{FVector3f::ZeroVector};
+};
+
 struct SPACEGAME_API FLevelMissionDefinition {
     ::ioj::sim::levels::LevelMissionMode mode{::ioj::sim::levels::LevelMissionMode::Unspecified};
     TOptional<float> time_limit_seconds{NullOpt};
@@ -61,6 +66,7 @@ struct SPACEGAME_API FLevelDefinition {
     TArray<FLevelUnlockCriterion> unlock_criteria{};
     FLevelEntityId player_entity_id{};
     TOptional<FLevelCameraDefinition> camera{NullOpt};
+    TOptional<FLevelCollisionGridDefinition> collision_grid{NullOpt};
     TOptional<FLevelMissionDefinition> mission{NullOpt};
     TArray<FLevelMissionObjectiveEvent> mission_events{};
     TArray<FLevelTeamId> teams{};
@@ -72,6 +78,7 @@ class SPACEGAME_API FLevelBuilder {
     void set_metadata(FLevelMetadata const& metadata);
     void set_player_entity(FLevelEntityId id);
     void set_camera(FLevelCameraDefinition const& camera);
+    void set_collision_grid(FLevelCollisionGridDefinition const& collision_grid);
     void set_mission(FLevelMissionDefinition const& mission);
     void add_unlock_criterion(FLevelUnlockCriterion criterion);
     void add_mission_event(FLevelMissionObjectiveEvent const& event);

@@ -15,6 +15,7 @@
 #include <GameFramework/GameModeBase.h>
 #include <GameFramework/WorldSettings.h>
 #include <ScopedTransaction.h>
+#include <UObject/StrongObjectPtr.h>
 
 namespace ml::editor {
 namespace s7_level_playable_setup_detail {
@@ -77,8 +78,18 @@ auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& docume
         player_spawn.Emplace((*player)->make_spawn_data());
         player_mesh = (*player)->get_collision_mesh();
     }
+    TStrongObjectPtr<USpaceGameLevelConfig> effective_config{
+        DuplicateObject<USpaceGameLevelConfig>(config, GetTransientPackage())};
+    if (!effective_config.IsValid()) {
+        return std::unexpected{TEXT("Could not prepare the authored collision-grid settings.")};
+    }
+    effective_config->collision_grid.grid_size = document.level_size;
+    effective_config->collision_grid.cell_size = document.grid_cell_size;
+    if (!effective_config->is_valid(true)) {
+        return std::unexpected{TEXT("The authored collision-grid settings are invalid.")};
+    }
     auto const build{make_proxy_level_simulation_init_data(
-        *config, {}, *world, mission, MoveTemp(player_spawn), *player, player_mesh)};
+        *effective_config, {}, *world, mission, MoveTemp(player_spawn), *player, player_mesh)};
     if (!build) {
         return std::unexpected{build.error().format()};
     }
@@ -203,6 +214,7 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
         binding.actor->Modify();
     }
     new_orchestrator->set_level_config(*document.level_config);
+    new_orchestrator->set_collision_grid_override(document.level_size, document.grid_cell_size);
 
     auto& mission{new_orchestrator->get_mission_definition()};
     mission = {};

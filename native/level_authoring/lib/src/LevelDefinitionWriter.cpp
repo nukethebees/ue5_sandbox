@@ -174,8 +174,7 @@ void append_id_clause(std::string& source,
 }
 } // namespace
 
-auto emit_editor_level_source(::ioj::sim::levels::LevelDefinition const& definition,
-                              std::string_view const level_config)
+auto emit_editor_level_source(::ioj::sim::levels::LevelDefinition const& definition)
     -> std::expected<std::string, std::string> {
     auto const errors{collect_errors(definition)};
     if (!errors.empty()) {
@@ -190,8 +189,15 @@ auto emit_editor_level_source(::ioj::sim::levels::LevelDefinition const& definit
     if (!definition.metadata.description.empty()) {
         source += "  (description \"" + escape_string(definition.metadata.description) + "\")\n";
     }
-    if (!level_config.empty()) {
-        source += "  (level-config \"" + escape_string(level_config) + "\")\n";
+    if (definition.collision_grid) {
+        auto const& grid{*definition.collision_grid};
+        source += "  (collision-grid\n";
+        source += "    (level-size " + format_number(grid.level_size.x) + " " +
+                  format_number(grid.level_size.y) + " " + format_number(grid.level_size.z) +
+                  ")\n";
+        source += "    (cell-size " + format_number(grid.cell_size.x) + " " +
+                  format_number(grid.cell_size.y) + " " + format_number(grid.cell_size.z) +
+                  "))\n";
     }
 
     auto teams{definition.teams};
