@@ -134,8 +134,8 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
     }
     if (schema->bit_width.has_value()) {
         auto bit_width{*schema->bit_width};
-        ImGui::SetNextItemWidth(140.0F);
-        auto const submitted{ImGui::InputScalar("Semantic width",
+        detail::prepare_property_input("Semantic width");
+        auto const submitted{ImGui::InputScalar("##Semantic width",
                                                 ImGuiDataType_U32,
                                                 &bit_width,
                                                 nullptr,
@@ -156,8 +156,8 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
     }
     auto signedness_mode{schema->signedness.has_value() ? (*schema->signedness ? 2 : 1) : 0};
     constexpr std::array signedness_labels{"Auto / inferred", "Unsigned", "Signed"};
-    ImGui::SetNextItemWidth(180.0F);
-    if (ImGui::Combo("Semantic signedness",
+    detail::prepare_property_input("Semantic signedness");
+    if (ImGui::Combo("##Semantic signedness",
                      &signedness_mode,
                      signedness_labels.data(),
                      static_cast<int>(signedness_labels.size()))) {
@@ -169,8 +169,10 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
             ReplaceEnum{.declaration = *declaration, .schema = std::move(replacement)}));
         return;
     }
+    ImGui::PushTextWrapPos(0.0F);
     ImGui::TextDisabled("Semantic width describes the value domain; C++ backing storage is a "
                         "separate lowering choice.");
+    ImGui::PopTextWrapPos();
 
     ImGui::SeparatorText("Generation policy");
     auto reflection_index{static_cast<int>(std::ranges::find(enum_reflections, schema->reflection) -
@@ -178,8 +180,8 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
     if (reflection_index < 0 || reflection_index >= static_cast<int>(enum_reflections.size())) {
         reflection_index = 0;
     }
-    ImGui::SetNextItemWidth(180.0F);
-    if (ImGui::BeginCombo("Reflection",
+    detail::prepare_property_input("Reflection");
+    if (ImGui::BeginCombo("##Reflection",
                           codegen::enum_reflection_name(
                               enum_reflections[static_cast<std::size_t>(reflection_index)])
                               .data())) {
@@ -228,8 +230,8 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
             "export specifier.");
     }
 
-    ImGui::SetNextItemWidth(-1.0F);
-    auto const export_submitted{ImGui::InputText("Export specifier (optional)##enum",
+    detail::prepare_property_input("Export specifier (optional)");
+    auto const export_submitted{ImGui::InputText("##Export specifier (optional)##enum",
                                                  enum_export_specifier_.data(),
                                                  enum_export_specifier_.size(),
                                                  ImGuiInputTextFlags_EnterReturnsTrue)};
@@ -248,9 +250,10 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
     std::optional<codegen::EnumSchema> projection_edit;
     auto const projection_exists{schema->unreal_projection.has_value()};
     auto edit_projection_text = [&](char const* label, auto& buffer, auto&& assign) {
-        ImGui::SetNextItemWidth(-1.0F);
+        detail::prepare_property_input(label);
+        auto const input_id{"##" + std::string{label}};
         auto const submitted{ImGui::InputText(
-            label, buffer.data(), buffer.size(), ImGuiInputTextFlags_EnterReturnsTrue)};
+            input_id.c_str(), buffer.data(), buffer.size(), ImGuiInputTextFlags_EnterReturnsTrue)};
         if (projection_exists && (submitted || ImGui::IsItemDeactivatedAfterEdit())) {
             if (!projection_edit.has_value()) {
                 projection_edit = *schema;
@@ -283,8 +286,8 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
         enum_projection_reflection_, 0, static_cast<int>(enum_projection_reflections.size() - 1));
     auto const selected_projection_reflection{
         enum_projection_reflections[static_cast<std::size_t>(enum_projection_reflection_)]};
-    ImGui::SetNextItemWidth(180.0F);
-    if (ImGui::BeginCombo("Projection reflection",
+    detail::prepare_property_input("Projection reflection");
+    if (ImGui::BeginCombo("##Projection reflection",
                           codegen::enum_reflection_name(selected_projection_reflection).data())) {
         for (std::size_t index{}; index < enum_projection_reflections.size(); ++index) {
             auto const reflection{enum_projection_reflections[index]};
@@ -346,8 +349,10 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
             ImGui::TextDisabled("Fill every projection field before adding it.");
         }
     }
+    ImGui::PushTextWrapPos(0.0F);
     ImGui::TextDisabled("Projection files are generated consumer outputs; semantic enum width and "
                         "target layout remain unchanged.");
+    ImGui::PopTextWrapPos();
 
     ImGui::SeparatorText("Generated conversions");
     if (ImGui::BeginTable("enum-conversions", 2, ImGuiTableFlags_SizingStretchSame)) {

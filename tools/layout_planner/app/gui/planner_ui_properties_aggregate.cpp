@@ -52,8 +52,8 @@ auto PlannerUi::draw_union_editor(TypeNode const& node, UnionType const& union_t
         }
     }
 
-    ImGui::SetNextItemWidth(-1.0F);
-    auto const export_submitted{ImGui::InputText("Export specifier (optional)##union",
+    detail::prepare_property_input("Export specifier (optional)");
+    auto const export_submitted{ImGui::InputText("##Export specifier (optional)##union",
                                                  union_export_specifier_.data(),
                                                  union_export_specifier_.size(),
                                                  ImGuiInputTextFlags_EnterReturnsTrue)};
@@ -341,8 +341,8 @@ auto PlannerUi::draw_tagged_union_editor(TypeNode const& node, TaggedUnionType c
         }
     }
 
-    ImGui::SetNextItemWidth(-1.0F);
-    auto const export_submitted{ImGui::InputText("Export specifier (optional)##tagged-union",
+    detail::prepare_property_input("Export specifier (optional)");
+    auto const export_submitted{ImGui::InputText("##Export specifier (optional)##tagged-union",
                                                  tagged_union_export_specifier_.data(),
                                                  tagged_union_export_specifier_.size(),
                                                  ImGuiInputTextFlags_EnterReturnsTrue)};
@@ -732,8 +732,8 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
         }
     }
 
-    ImGui::SetNextItemWidth(-1.0F);
-    auto const export_submitted{ImGui::InputText("Export specifier (optional)##record",
+    detail::prepare_property_input("Export specifier (optional)");
+    auto const export_submitted{ImGui::InputText("##Export specifier (optional)##record",
                                                  record_export_specifier_.data(),
                                                  record_export_specifier_.size(),
                                                  ImGuiInputTextFlags_EnterReturnsTrue)};

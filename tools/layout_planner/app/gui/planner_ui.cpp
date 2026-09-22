@@ -37,7 +37,7 @@ void draw_docked_panel_outlines() {
                                "Graph",
                                "Source",
                                "Diagnostics"};
-    auto const thickness{std::max(1.0F, ImGui::GetStyle().WindowBorderSize)};
+    auto const thickness{std::max(2.0F, ImGui::GetStyle().WindowBorderSize)};
     for (auto const* name : names) {
         auto* window{ImGui::FindWindowByName(name)};
         if (window == nullptr || window->LastFrameActive != ImGui::GetFrameCount() ||
@@ -50,8 +50,8 @@ void draw_docked_panel_outlines() {
         auto const minimum{ImVec2{node.Pos.x + inset, node.Pos.y + inset}};
         auto const maximum{
             ImVec2{node.Pos.x + node.Size.x - inset, node.Pos.y + node.Size.y - inset}};
-        auto const color{node.IsFocused ? IM_COL32(106, 148, 190, 255)
-                                        : IM_COL32(72, 88, 106, 255)};
+        auto const color{node.IsFocused ? IM_COL32(130, 186, 238, 255)
+                                        : IM_COL32(113, 137, 163, 255)};
         window->DrawList->PushClipRect(
             node.Pos, {node.Pos.x + node.Size.x, node.Pos.y + node.Size.y}, false);
         window->DrawList->AddRect(minimum, maximum, color, 0.0F, ImDrawFlags_None, thickness);

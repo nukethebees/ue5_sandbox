@@ -127,8 +127,11 @@ auto Application::initialize() -> bool {
     ui_.finish_startup(reopen_recent_project_);
     ImGui::StyleColorsDark();
     auto& style{ImGui::GetStyle()};
+    style.WindowBorderSize = 2.0F;
+    style.DockingSeparatorSize = 5.0F;
     style.ScaleAllSizes(scale);
     style.FontScaleDpi = scale;
+    style.Colors[ImGuiCol_Border] = {0.44F, 0.54F, 0.64F, 1.0F};
     style.Colors[ImGuiCol_TitleBg] = {0.12F, 0.16F, 0.21F, 1.0F};
     style.Colors[ImGuiCol_TitleBgActive] = {0.16F, 0.22F, 0.30F, 1.0F};
     style.Colors[ImGuiCol_TabSelected] = {0.20F, 0.31F, 0.43F, 1.0F};

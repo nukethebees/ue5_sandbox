@@ -80,6 +80,25 @@ auto prepare_editable_type_input() -> bool {
     return controls_inline;
 }
 
+void prepare_property_input(char const* label) {
+    auto const available{ImGui::GetContentRegionAvail().x};
+    auto const font_size{ImGui::GetFontSize()};
+    if (available >= 28.0F * font_size) {
+        auto const left{ImGui::GetCursorPosX()};
+        auto const label_width{std::min(18.0F * font_size, available * 0.42F)};
+        ImGui::AlignTextToFramePadding();
+        ImGui::PushTextWrapPos(left + label_width);
+        ImGui::TextUnformatted(label);
+        ImGui::PopTextWrapPos();
+        ImGui::SameLine(left + label_width + ImGui::GetStyle().ItemInnerSpacing.x);
+    } else {
+        ImGui::PushTextWrapPos(0.0F);
+        ImGui::TextUnformatted(label);
+        ImGui::PopTextWrapPos();
+    }
+    ImGui::SetNextItemWidth(-1.0F);
+}
+
 auto editable_table_row_handle(bool const selected) -> bool {
     auto const handle_clicked{ImGui::Selectable("::", selected)};
     if (handle_clicked || selected || !ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {

@@ -527,8 +527,8 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             *selected_index < soa.columns.size() ? &soa.columns[*selected_index] : nullptr};
         ImGui::SeparatorText("Selected column details");
         if (member.kind == codegen::SoaMemberKind::nested) {
-            ImGui::SetNextItemWidth(-1.0F);
-            auto const fixed_submitted{ImGui::InputText("Fixed schema (optional)",
+            detail::prepare_property_input("Fixed schema (optional)");
+            auto const fixed_submitted{ImGui::InputText("##Fixed schema (optional)",
                                                         soa_member_fixed_schema_.data(),
                                                         soa_member_fixed_schema_.size(),
                                                         ImGuiInputTextFlags_EnterReturnsTrue)};
@@ -544,8 +544,8 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                 }
             }
 
-            ImGui::SetNextItemWidth(-1.0F);
-            auto const nested_submitted{ImGui::InputText("Nested schema (optional)",
+            detail::prepare_property_input("Nested schema (optional)");
+            auto const nested_submitted{ImGui::InputText("##Nested schema (optional)",
                                                          soa_member_nested_schema_.data(),
                                                          soa_member_nested_schema_.size(),
                                                          ImGuiInputTextFlags_EnterReturnsTrue)};
@@ -1097,8 +1097,8 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
     }
 
     ImGui::SeparatorText("Generation policy");
-    ImGui::SetNextItemWidth(-1.0F);
-    auto const export_submitted{ImGui::InputText("Export specifier (optional)",
+    detail::prepare_property_input("Export specifier (optional)");
+    auto const export_submitted{ImGui::InputText("##Export specifier (optional)",
                                                  soa_export_specifier_.data(),
                                                  soa_export_specifier_.size(),
                                                  ImGuiInputTextFlags_EnterReturnsTrue)};
@@ -2138,8 +2138,8 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
         }
     }
     if (schema->view_name.has_value()) {
-        ImGui::SetNextItemWidth(-1.0F);
-        auto const submitted{ImGui::InputText("Mutable view type",
+        detail::prepare_property_input("Mutable view type");
+        auto const submitted{ImGui::InputText("##Mutable view type",
                                               soa_view_name_.data(),
                                               soa_view_name_.size(),
                                               ImGuiInputTextFlags_EnterReturnsTrue)};
@@ -2173,8 +2173,8 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
         }
     }
     if (schema->const_view_name.has_value()) {
-        ImGui::SetNextItemWidth(-1.0F);
-        auto const submitted{ImGui::InputText("Const view type",
+        detail::prepare_property_input("Const view type");
+        auto const submitted{ImGui::InputText("##Const view type",
                                               soa_const_view_name_.data(),
                                               soa_const_view_name_.size(),
                                               ImGuiInputTextFlags_EnterReturnsTrue)};
@@ -2215,8 +2215,8 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             }
         }
     } else {
-        ImGui::SetNextItemWidth(-1.0F);
-        auto const storage_submitted{ImGui::InputText("Storage type",
+        detail::prepare_property_input("Storage type");
+        auto const storage_submitted{ImGui::InputText("##Storage type",
                                                       soa_fixed_storage_name_.data(),
                                                       soa_fixed_storage_name_.size(),
                                                       ImGuiInputTextFlags_EnterReturnsTrue)};
@@ -2402,8 +2402,8 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             }
         }
     } else {
-        ImGui::SetNextItemWidth(-1.0F);
-        auto const submitted{ImGui::InputText("Owner type",
+        detail::prepare_property_input("Owner type");
+        auto const submitted{ImGui::InputText("##Owner type",
                                               soa_single_allocation_name_.data(),
                                               soa_single_allocation_name_.size(),
                                               ImGuiInputTextFlags_EnterReturnsTrue)};

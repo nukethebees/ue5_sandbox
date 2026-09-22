@@ -183,8 +183,8 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         }
     }
 
-    ImGui::SetNextItemWidth(-1.0F);
-    auto const export_submitted{ImGui::InputText("Export specifier (optional)##packed",
+    detail::prepare_property_input("Export specifier (optional)");
+    auto const export_submitted{ImGui::InputText("##Export specifier (optional)##packed",
                                                  packed_export_specifier_.data(),
                                                  packed_export_specifier_.size(),
                                                  ImGuiInputTextFlags_EnterReturnsTrue)};
@@ -217,8 +217,8 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             "packed bit layout or semantic value domain.");
     }
 
-    ImGui::SetNextItemWidth(-1.0F);
-    auto const storage_submitted{ImGui::InputText("Storage type",
+    detail::prepare_property_input("Storage type");
+    auto const storage_submitted{ImGui::InputText("##Storage type",
                                                   packed_storage_type_.data(),
                                                   packed_storage_type_.size(),
                                                   ImGuiInputTextFlags_EnterReturnsTrue)};
@@ -283,8 +283,8 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
     ImGui::TextDisabled(
         "Byte order describes serialized bytes; segment order controls numeric bit offsets.");
 
-    ImGui::SetNextItemWidth(-1.0F);
-    auto const invalid_submitted{ImGui::InputText("Invalid raw value",
+    detail::prepare_property_input("Invalid raw value");
+    auto const invalid_submitted{ImGui::InputText("##Invalid raw value",
                                                   packed_invalid_value_.data(),
                                                   packed_invalid_value_.size(),
                                                   ImGuiInputTextFlags_EnterReturnsTrue)};
