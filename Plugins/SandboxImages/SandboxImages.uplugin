@@ -14,16 +14,6 @@
 			"Name": "SandboxImages",
 			"Type": "Runtime",
 			"LoadingPhase": "Default"
-		},
-		{
-			"Name": "GenLab",
-			"Type": "Editor",
-			"LoadingPhase": "Default"
-		},
-		{
-			"Name": "GenLabTests",
-			"Type": "Editor",
-			"LoadingPhase": "Default"
 		}
 	]
 }

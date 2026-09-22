@@ -3,6 +3,7 @@ option(SANDBOX_NATIVE_SOA_BENCHMARKS "Build standalone experimental SoA benchmar
 option(SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK "Register the native frame-memory level benchmark" OFF)
 option(SANDBOX_KERNEL_BENCHMARK_PLOTS "Generate native kernel benchmark plots" OFF)
 option(SANDBOX_LAYOUT_PLANNER "Build the standalone memory layout planner" OFF)
+option(SANDBOX_IMAGE_LAB "Build the standalone Image Lab" OFF)
 
 add_library(sandbox_native_no_rtti INTERFACE)
 add_library(sandbox::native_no_rtti ALIAS sandbox_native_no_rtti)

@@ -202,11 +202,6 @@ include("${PROJECT_SOURCE_DIR}/cmake/unreal_packaging.cmake")
 add_subdirectory(maintenance)
 add_subdirectory(build)
 
-add_unreal_commandlet_target(generate-lab-images
-  COMMANDLET GenerateSandboxImages
-  COMMENT "Regenerating SandboxImages Lab PNGs"
-)
-
 add_unreal_commandlet_target(generate-slate-dsl-smoke-asset
   COMMANDLET GenerateSlateDslSmokeAsset
   COMMENT "Generating the Slate DSL smoke Editor Utility Widget asset"

@@ -18,6 +18,7 @@
         "SANDBOX_WITH_UNREAL": false,
         "SANDBOX_WITH_ASAN": false,
         "SANDBOX_LAYOUT_PLANNER": false,
+        "SANDBOX_IMAGE_LAB": false,
         "CMAKE_UNITY_BUILD": false
       }
     },
@@ -189,6 +190,18 @@
       "inherits": "win-x64-clangcl-debug-unity"
     },
     {
+      "name": "image-lab",
+      "displayName": "Image Lab (clang-cl Debug)",
+      "inherits": [
+        "windows-clang-cl",
+        "native-common",
+        "native-config-debug"
+      ],
+      "cacheVariables": {
+        "SANDBOX_IMAGE_LAB": true
+      }
+    },
+    {
       "name": "win-x64-clangcl-debug-tidy",
       "displayName": "Native Windows x64 clang-cl Debug + clang-tidy",
       "inherits": "win-x64-clangcl-debug",
@@ -219,6 +232,15 @@
       "configurePreset": "native",
       "targets": [
         "native-tests"
+      ]
+    },
+    {
+      "name": "image-lab",
+      "configurePreset": "image-lab",
+      "targets": [
+        "image-lab",
+        "image-lab-cli",
+        "image-lab-tests"
       ]
     },
     {
@@ -506,6 +528,16 @@
       "filter": {
         "include": {
           "label": "layout"
+        }
+      }
+    },
+    {
+      "name": "image-lab",
+      "inherits": "test-base",
+      "configurePreset": "image-lab",
+      "filter": {
+        "include": {
+          "label": "image-lab"
         }
       }
     }
@@ -838,6 +870,23 @@
         {
           "type": "test",
           "name": "layout-planner"
+        }
+      ]
+    },
+    {
+      "name": "image-lab",
+      "steps": [
+        {
+          "type": "configure",
+          "name": "image-lab"
+        },
+        {
+          "type": "build",
+          "name": "image-lab"
+        },
+        {
+          "type": "test",
+          "name": "image-lab"
         }
       ]
     }

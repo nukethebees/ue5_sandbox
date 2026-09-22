@@ -32,6 +32,7 @@ CODEGEN_CONFIGURATION = DEFAULT_NATIVE_CONFIGURATION
 BENCHMARK_CONFIGURATION = "win-x64-clangcl-release-unity"
 CLANG_TIDY_CONFIGURATION = "win-x64-clangcl-debug-tidy"
 LAYOUT_PLANNER_CONFIGURATION = "layout-planner"
+IMAGE_LAB_CONFIGURATION = "image-lab"
 
 
 def generated_header() -> dict[str, Any]:
@@ -98,6 +99,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
                 "SANDBOX_WITH_UNREAL": False,
                 "SANDBOX_WITH_ASAN": False,
                 "SANDBOX_LAYOUT_PLANNER": False,
+                "SANDBOX_IMAGE_LAB": False,
                 "CMAKE_UNITY_BUILD": False,
             },
         }
@@ -140,6 +142,18 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
     )
     configure_presets.append(
         {
+            "name": IMAGE_LAB_CONFIGURATION,
+            "displayName": "Image Lab (clang-cl Debug)",
+            "inherits": [
+                "windows-clang-cl",
+                "native-common",
+                "native-config-debug",
+            ],
+            "cacheVariables": {"SANDBOX_IMAGE_LAB": True},
+        }
+    )
+    configure_presets.append(
+        {
             "name": CLANG_TIDY_CONFIGURATION,
             "displayName": "Native Windows x64 clang-cl Debug + clang-tidy",
             "inherits": "win-x64-clangcl-debug",
@@ -171,6 +185,11 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             "name": "native",
             "configurePreset": DEFAULT_NATIVE_CONFIGURATION,
             "targets": ["native-tests"],
+        },
+        {
+            "name": IMAGE_LAB_CONFIGURATION,
+            "configurePreset": IMAGE_LAB_CONFIGURATION,
+            "targets": ["image-lab", "image-lab-cli", "image-lab-tests"],
         },
         *(
             {
@@ -256,6 +275,12 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             "configurePreset": LAYOUT_PLANNER_CONFIGURATION,
             "filter": {"include": {"label": "layout"}},
         },
+        {
+            "name": IMAGE_LAB_CONFIGURATION,
+            "inherits": "test-base",
+            "configurePreset": IMAGE_LAB_CONFIGURATION,
+            "filter": {"include": {"label": "image-lab"}},
+        },
     ]
     document["workflowPresets"] = [
         {
@@ -325,6 +350,14 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
                 {"type": "configure", "name": LAYOUT_PLANNER_CONFIGURATION},
                 {"type": "build", "name": LAYOUT_PLANNER_CONFIGURATION},
                 {"type": "test", "name": LAYOUT_PLANNER_CONFIGURATION},
+            ],
+        },
+        {
+            "name": IMAGE_LAB_CONFIGURATION,
+            "steps": [
+                {"type": "configure", "name": IMAGE_LAB_CONFIGURATION},
+                {"type": "build", "name": IMAGE_LAB_CONFIGURATION},
+                {"type": "test", "name": IMAGE_LAB_CONFIGURATION},
             ],
         },
     ]

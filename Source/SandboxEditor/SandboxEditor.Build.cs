@@ -74,7 +74,6 @@ public class SandboxEditor : ModuleRules
             "EnhancedInput",
             "EngineSettings", // Engine configuration access
             "GraphEditor",
-            "GenLab",
             "MaterialEditor",
             "PropertyEditor",
             "RenderCore", // Often needed for material nodes

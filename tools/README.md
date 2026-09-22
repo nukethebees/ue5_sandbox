@@ -15,6 +15,8 @@ and native validation does not run this suite.
 - `layout_planner/` is the standalone SDL3/ImGui workbench for analysing packed values and
   standard-library SoAs from LispB schemas. Its [guide](layout_planner/README.md) documents the
   build-output location, launch options, and supported V1 workflow.
+- `image_lab/` is the standalone GUI and CLI for deterministic native image generation. Build it
+  with `cmake --workflow --preset image-lab`; see its [guide](image_lab/README.md).
 - `perf/` contains performance tooling integrated into the root CMake project.
 - `GitTools/` is a small C# executable for Git worktree discovery. Build the complete C# tooling
   workspace with `dotnet build tools/Tools.slnx` or `ctools` after loading `dev.ps1`.

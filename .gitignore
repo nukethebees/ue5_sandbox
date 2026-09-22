@@ -101,9 +101,6 @@ Content/Fab
 # Functional test result exports
 /Content/test_results/
 
-# Disposable procedural image Lab output
-/Plugins/SandboxImages/Content/Lab/Images/
-
 # Disposable procedural mesh Lab output
 /Plugins/SandboxMesh/Content/MeshGenLab/Generated/
 

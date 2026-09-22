@@ -36,3 +36,7 @@ add_subdirectory(perf)
 if(SANDBOX_LAYOUT_PLANNER)
   add_subdirectory(layout_planner)
 endif()
+
+if(SANDBOX_IMAGE_LAB)
+  add_subdirectory(image_lab)
+endif()
