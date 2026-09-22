@@ -7,8 +7,6 @@
 #include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/native_soa/vector_storage_ops.h"
 
-#include <cstring>
-#include <memory>
 #include <utility>
 
 namespace ioj::sim::collision {
@@ -350,71 +348,165 @@ struct WorldAABBsColumnsSingleLayout {
     using size_type = std::int32_t;
     using byte_size_type = std::size_t;
 
-    inline static constexpr byte_size_type max_allocation_size{
-        std::numeric_limits<byte_size_type>::max()};
-    inline static constexpr size_type capacity_granularity{64};
-    inline static constexpr byte_size_type column_gap{192};
+    inline static constexpr size_type capacity_granularity{
+        ml::native_soa::LayoutPolicy::capacity_granularity};
+    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
     template <typename T>
     using ColLayout = ml::native_soa::ColumnLayout<T>;
-    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{
-        capacity_granularity, column_gap, 64};
+    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
 
-    inline static constexpr ColLayout<float> MinXs{LayoutStart};
-    inline static constexpr ColLayout<float> MinYs{MinXs};
-    inline static constexpr ColLayout<float> MinZs{MinYs};
-    inline static constexpr ColLayout<float> MaxXs{MinZs};
-    inline static constexpr ColLayout<float> MaxYs{MaxXs};
-    inline static constexpr ColLayout<float> MaxZs{MaxYs};
+    inline static constexpr ColLayout<float> MinXsColumn{LayoutStart};
+    inline static constexpr ColLayout<float> MinYsColumn{MinXsColumn};
+    inline static constexpr ColLayout<float> MinZsColumn{MinYsColumn};
+    inline static constexpr ColLayout<float> MaxXsColumn{MinZsColumn};
+    inline static constexpr ColLayout<float> MaxYsColumn{MaxXsColumn};
+    inline static constexpr ColLayout<float> MaxZsColumn{MaxYsColumn};
 
-    inline static constexpr byte_size_type allocation_alignment{
-        ml::native_soa::maximum_alignment(MinXs, MinYs, MinZs, MaxXs, MaxYs, MaxZs)};
+    inline static constexpr byte_size_type allocation_alignment{MaxZsColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::layout_align(MaxZs.block_end, allocation_alignment) +
-        5 * (column_gap + allocation_alignment - 1)};
+        ml::native_soa::capacity_block_bound(MaxZsColumn)};
     inline static constexpr size_type max_capacity{
         ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : MaxZs.data_end(blocks);
+        return blocks == 0 ? 0 : MaxZsColumn.data_end(blocks);
     }
-  private:
-    inline static constexpr auto validate_layout = []() consteval -> bool {
-        static_assert(
-            ml::native_soa::supported_leaf<float>,
-            "Single-allocation leaf min_xs requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-
-        static_assert(
-            allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
-            "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - MinXs.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - MinYs.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - MinZs.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - MaxXs.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - MaxYs.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - MaxZs.block_offset) / capacity_granularity);
-        static_assert(5 <= (max_allocation_size -
-                            ml::native_soa::layout_align(MaxZs.block_end, allocation_alignment)) /
-                               (column_gap + allocation_alignment - 1));
-        static_assert(max_capacity >= capacity_granularity);
-        return true;
-    };
-    static_assert(validate_layout());
+    static_assert(
+        allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
+        "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
+    static_assert(max_capacity >= capacity_granularity);
 };
 
-struct WorldAABBsStorage
-    : WorldAABBsColumnsSingleLayout
-    , protected ml::native_soa::StorageState
+template <bool Const>
+struct WorldAABBsColumnsSingleViewImpl : ml::native_soa::CompactViewState<Const> {
+    using Base = ml::native_soa::CompactViewState<Const>;
+    using Base::Base;
+    using Base::validate;
+    using size_type = typename Base::size_type;
+    template <typename T>
+    using Element = typename Base::template Element<T>;
+    using View = WorldAABBsColumnsSingleView;
+    using ConstView = WorldAABBsColumnsSingleConstView;
+    WorldAABBsColumnsSingleViewImpl() = default;
+    template <bool Enabled = Const>
+    WorldAABBsColumnsSingleViewImpl(WorldAABBsColumnsSingleViewImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+  protected:
+    using Base::capacity_blocks;
+    using Base::column_data;
+    using Base::column_data_unchecked;
+    using Base::count_;
+    using Base::state_;
+  public:
+    auto min_xs() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    WorldAABBsColumnsSingleLayout::MinXsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto min_ys() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    WorldAABBsColumnsSingleLayout::MinYsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto min_zs() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    WorldAABBsColumnsSingleLayout::MinZsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto max_xs() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    WorldAABBsColumnsSingleLayout::MaxXsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto max_ys() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    WorldAABBsColumnsSingleLayout::MaxYsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto max_zs() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    WorldAABBsColumnsSingleLayout::MaxZsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto columns() const
+        -> std::conditional_t<Const, WorldAABBsColumnsConstView, WorldAABBsColumnsView> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return std::conditional_t<Const, WorldAABBsColumnsConstView, WorldAABBsColumnsView>{
+            {this->template column_data_unchecked<float>(
+                 WorldAABBsColumnsSingleLayout::MinXsColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<float>(
+                 WorldAABBsColumnsSingleLayout::MinYsColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<float>(
+                 WorldAABBsColumnsSingleLayout::MinZsColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<float>(
+                 WorldAABBsColumnsSingleLayout::MaxXsColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<float>(
+                 WorldAABBsColumnsSingleLayout::MaxYsColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<float>(
+                 WorldAABBsColumnsSingleLayout::MaxZsColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)}};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        columns().each_column(std::forward<Func>(func));
+    }
+};
+struct WorldAABBsColumnsSingleConstView : WorldAABBsColumnsSingleViewImpl<true> {
+    using Base = WorldAABBsColumnsSingleViewImpl<true>;
+    using Base::Base;
+    using View = WorldAABBsColumnsSingleView;
+    using ConstView = WorldAABBsColumnsSingleConstView;
+    WorldAABBsColumnsSingleConstView() = default;
+    WorldAABBsColumnsSingleConstView(WorldAABBsColumnsSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(sizeof(WorldAABBsColumnsSingleConstView) == 16);
+static_assert(std::is_trivially_copyable_v<WorldAABBsColumnsSingleConstView>);
+struct WorldAABBsColumnsSingleView : WorldAABBsColumnsSingleViewImpl<false> {
+    using Base = WorldAABBsColumnsSingleViewImpl<false>;
+    using Base::Base;
+    using View = WorldAABBsColumnsSingleView;
+    using ConstView = WorldAABBsColumnsSingleConstView;
+    WorldAABBsColumnsSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(sizeof(WorldAABBsColumnsSingleView) == 16);
+static_assert(std::is_trivially_copyable_v<WorldAABBsColumnsSingleView>);
+inline WorldAABBsColumnsSingleConstView::WorldAABBsColumnsSingleConstView(
+    WorldAABBsColumnsSingleView const& other)
+    : Base{other} {}
+struct WorldAABBs
+    : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {
+    using Layout = WorldAABBsColumnsSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
     using View = WorldAABBsColumnsSingleView;
     using ConstView = WorldAABBsColumnsSingleConstView;
     using SchemaConstView = WorldAABBsColumnsConstView;
@@ -439,15 +531,15 @@ struct WorldAABBsStorage
     /* **************************************** */
     // Lifetime
     /* **************************************** */
-    WorldAABBsStorage() noexcept = default;
-    ~WorldAABBsStorage() { ml::native_soa::free(data_, allocation_alignment); }
-    WorldAABBsStorage(WorldAABBsStorage const&) = delete;
-    auto operator=(WorldAABBsStorage const&) -> WorldAABBsStorage& = delete;
-    WorldAABBsStorage(WorldAABBsStorage&& other) noexcept
+    WorldAABBs() noexcept = default;
+    ~WorldAABBs() { ml::native_soa::free(data_, allocation_alignment); }
+    WorldAABBs(WorldAABBs const&) = delete;
+    auto operator=(WorldAABBs const&) -> WorldAABBs& = delete;
+    WorldAABBs(WorldAABBs&& other) noexcept
         : StorageState{std::exchange(other.data_, nullptr),
                        std::exchange(other.num_, 0),
                        std::exchange(other.capacity_, 0)} {}
-    auto operator=(WorldAABBsStorage&& other) noexcept -> WorldAABBsStorage& {
+    auto operator=(WorldAABBs&& other) noexcept -> WorldAABBs& {
         if (this != &other) {
             ml::native_soa::free(data_, allocation_alignment);
             data_ = std::exchange(other.data_, nullptr);
@@ -499,6 +591,7 @@ struct WorldAABBsStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
+        ml::native_soa::LayoutCursor cursor{blocks};
         auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
             using Column = std::remove_cvref_t<decltype(column)>;
             using Pointer = std::conditional_t<std::is_const_v<Byte>,
@@ -506,28 +599,12 @@ struct WorldAABBsStorage
                                                typename Column::pointer>;
             return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        auto const min_xs_offset{byte_size_type{}};
-        auto const min_ys_offset{ml::native_soa::layout_align(
-            min_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            MinYs.alignment)};
-        auto const min_zs_offset{ml::native_soa::layout_align(
-            min_ys_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            MinZs.alignment)};
-        auto const max_xs_offset{ml::native_soa::layout_align(
-            min_zs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            MaxXs.alignment)};
-        auto const max_ys_offset{ml::native_soa::layout_align(
-            max_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            MaxYs.alignment)};
-        auto const max_zs_offset{ml::native_soa::layout_align(
-            max_ys_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            MaxZs.alignment)};
-        return {pointer_at(MinXs, min_xs_offset),
-                pointer_at(MinYs, min_ys_offset),
-                pointer_at(MinZs, min_zs_offset),
-                pointer_at(MaxXs, max_xs_offset),
-                pointer_at(MaxYs, max_ys_offset),
-                pointer_at(MaxZs, max_zs_offset)};
+        return {pointer_at(Layout::MinXsColumn, cursor.advance(Layout::MinXsColumn)),
+                pointer_at(Layout::MinYsColumn, cursor.advance(Layout::MinYsColumn)),
+                pointer_at(Layout::MinZsColumn, cursor.advance(Layout::MinZsColumn)),
+                pointer_at(Layout::MaxXsColumn, cursor.advance(Layout::MaxXsColumn)),
+                pointer_at(Layout::MaxYsColumn, cursor.advance(Layout::MaxYsColumn)),
+                pointer_at(Layout::MaxZsColumn, cursor.advance(Layout::MaxZsColumn))};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -538,12 +615,12 @@ struct WorldAABBsStorage
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        std::uninitialized_value_construct_n<float*>(columns.min_xs, count);
-        std::uninitialized_value_construct_n<float*>(columns.min_ys, count);
-        std::uninitialized_value_construct_n<float*>(columns.min_zs, count);
-        std::uninitialized_value_construct_n<float*>(columns.max_xs, count);
-        std::uninitialized_value_construct_n<float*>(columns.max_ys, count);
-        std::uninitialized_value_construct_n<float*>(columns.max_zs, count);
+        ml::native_soa::default_construct_n(columns.min_xs, count);
+        ml::native_soa::default_construct_n(columns.min_ys, count);
+        ml::native_soa::default_construct_n(columns.min_zs, count);
+        ml::native_soa::default_construct_n(columns.max_xs, count);
+        ml::native_soa::default_construct_n(columns.max_ys, count);
+        ml::native_soa::default_construct_n(columns.max_zs, count);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -554,14 +631,12 @@ struct WorldAABBsStorage
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        auto const elements_to_move{static_cast<byte_size_type>(move_count)};
-        auto const min_xs_bytes{elements_to_move * sizeof(float)};
-        std::memcpy(columns.min_xs + index, columns.min_xs + source, min_xs_bytes);
-        std::memcpy(columns.min_ys + index, columns.min_ys + source, min_xs_bytes);
-        std::memcpy(columns.min_zs + index, columns.min_zs + source, min_xs_bytes);
-        std::memcpy(columns.max_xs + index, columns.max_xs + source, min_xs_bytes);
-        std::memcpy(columns.max_ys + index, columns.max_ys + source, min_xs_bytes);
-        std::memcpy(columns.max_zs + index, columns.max_zs + source, min_xs_bytes);
+        ml::native_soa::copy_n(columns.min_xs + index, columns.min_xs + source, move_count);
+        ml::native_soa::copy_n(columns.min_ys + index, columns.min_ys + source, move_count);
+        ml::native_soa::copy_n(columns.min_zs + index, columns.min_zs + source, move_count);
+        ml::native_soa::copy_n(columns.max_xs + index, columns.max_xs + source, move_count);
+        ml::native_soa::copy_n(columns.max_ys + index, columns.max_ys + source, move_count);
+        ml::native_soa::copy_n(columns.max_zs + index, columns.max_zs + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -584,21 +659,23 @@ struct WorldAABBsStorage
             auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
             return address >= allocation_begin && address < allocation_end;
         };
-        return aliases(source.min_xs.data()) || aliases(source.min_ys.data()) ||
-               aliases(source.min_zs.data()) || aliases(source.max_xs.data()) ||
-               aliases(source.max_ys.data()) || aliases(source.max_zs.data());
+        return ml::native_soa::any_column(source, aliases);
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {
         auto const destination{get_data(first)};
-        auto const elements_to_copy{static_cast<byte_size_type>(count)};
-        auto const min_xs_bytes{elements_to_copy * sizeof(float)};
-        std::memcpy(destination.min_xs, source.min_xs.data(), min_xs_bytes);
-        std::memcpy(destination.min_ys, source.min_ys.data(), min_xs_bytes);
-        std::memcpy(destination.min_zs, source.min_zs.data(), min_xs_bytes);
-        std::memcpy(destination.max_xs, source.max_xs.data(), min_xs_bytes);
-        std::memcpy(destination.max_ys, source.max_ys.data(), min_xs_bytes);
-        std::memcpy(destination.max_zs, source.max_zs.data(), min_xs_bytes);
+        ml::native_soa::copy_n(
+            destination.min_xs, ml::native_soa::source_data(source.min_xs), count);
+        ml::native_soa::copy_n(
+            destination.min_ys, ml::native_soa::source_data(source.min_ys), count);
+        ml::native_soa::copy_n(
+            destination.min_zs, ml::native_soa::source_data(source.min_zs), count);
+        ml::native_soa::copy_n(
+            destination.max_xs, ml::native_soa::source_data(source.max_xs), count);
+        ml::native_soa::copy_n(
+            destination.max_ys, ml::native_soa::source_data(source.max_ys), count);
+        ml::native_soa::copy_n(
+            destination.max_zs, ml::native_soa::source_data(source.max_zs), count);
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(
@@ -610,182 +687,62 @@ struct WorldAABBsStorage
             auto const source{
                 make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
             auto const destination{make_data_unchecked(new_data, new_blocks)};
-            auto const live_count{static_cast<byte_size_type>(num_)};
-            auto const min_xs_bytes{live_count * sizeof(float)};
-            std::memcpy(destination.min_xs, source.min_xs, min_xs_bytes);
-            std::memcpy(destination.min_ys, source.min_ys, min_xs_bytes);
-            std::memcpy(destination.min_zs, source.min_zs, min_xs_bytes);
-            std::memcpy(destination.max_xs, source.max_xs, min_xs_bytes);
-            std::memcpy(destination.max_ys, source.max_ys, min_xs_bytes);
-            std::memcpy(destination.max_zs, source.max_zs, min_xs_bytes);
+            ml::native_soa::copy_n(destination.min_xs, source.min_xs, num_);
+            ml::native_soa::copy_n(destination.min_ys, source.min_ys, num_);
+            ml::native_soa::copy_n(destination.min_zs, source.min_zs, num_);
+            ml::native_soa::copy_n(destination.max_xs, source.max_xs, num_);
+            ml::native_soa::copy_n(destination.max_ys, source.max_ys, num_);
+            ml::native_soa::copy_n(destination.max_zs, source.max_zs, num_);
         }
         ml::native_soa::free(data_, allocation_alignment);
         data_ = new_data;
         capacity_ = new_capacity;
     }
-};
-
-struct WorldAABBsColumnsSingleConstView : ml::native_soa::CompactViewState<true> {
-    using Base = ml::native_soa::CompactViewState<true>;
-    using Base::Base;
-    using View = WorldAABBsColumnsSingleView;
-    using ConstView = WorldAABBsColumnsSingleConstView;
-    WorldAABBsColumnsSingleConstView() = default;
-    WorldAABBsColumnsSingleConstView(WorldAABBsColumnsSingleView const& other);
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
+  public:
+    template <typename Self>
+    using ViewFor =
+        std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, ConstView, View>;
+    template <typename Self>
+    auto get_view(this Self&& self) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, 0, self.num()};
     }
-    auto min_xs() const -> std::span<float const> {
-        return {column_data<float>(WorldAABBsColumnsSingleLayout::MinXs.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto get_view(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, offset, count};
     }
-    auto min_ys() const -> std::span<float const> {
-        return {column_data<float>(WorldAABBsColumnsSingleLayout::MinYs.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto slice(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view(offset, count);
     }
-    auto min_zs() const -> std::span<float const> {
-        return {column_data<float>(WorldAABBsColumnsSingleLayout::MinZs.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto left(this Self&& self, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view().left(count);
     }
-    auto max_xs() const -> std::span<float const> {
-        return {column_data<float>(WorldAABBsColumnsSingleLayout::MaxXs.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto right(this Self&& self, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view().right(count);
     }
-    auto max_ys() const -> std::span<float const> {
-        return {column_data<float>(WorldAABBsColumnsSingleLayout::MaxYs.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto get_const_view(this Self&& self) -> ConstView
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, 0, self.num()};
     }
-    auto max_zs() const -> std::span<float const> {
-        return {column_data<float>(WorldAABBsColumnsSingleLayout::MaxZs.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto get_const_view(this Self&& self, size_type offset, size_type count) -> ConstView
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, offset, count};
     }
-    auto columns() const -> WorldAABBsColumnsConstView {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return WorldAABBsColumnsConstView{
-            {column_data_unchecked<float>(WorldAABBsColumnsSingleLayout::MinXs.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(WorldAABBsColumnsSingleLayout::MinYs.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(WorldAABBsColumnsSingleLayout::MinZs.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(WorldAABBsColumnsSingleLayout::MaxXs.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(WorldAABBsColumnsSingleLayout::MaxYs.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(WorldAABBsColumnsSingleLayout::MaxZs.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        columns().each_column(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(WorldAABBsColumnsSingleConstView) == 16);
-static_assert(std::is_trivially_copyable_v<WorldAABBsColumnsSingleConstView>);
-struct WorldAABBsColumnsSingleView : ml::native_soa::CompactViewState<false> {
-    using Base = ml::native_soa::CompactViewState<false>;
-    using Base::Base;
-    using View = WorldAABBsColumnsSingleView;
-    using ConstView = WorldAABBsColumnsSingleConstView;
-    WorldAABBsColumnsSingleView() = default;
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
-    auto min_xs() const -> std::span<float> {
-        return {column_data<float>(WorldAABBsColumnsSingleLayout::MinXs.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto min_ys() const -> std::span<float> {
-        return {column_data<float>(WorldAABBsColumnsSingleLayout::MinYs.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto min_zs() const -> std::span<float> {
-        return {column_data<float>(WorldAABBsColumnsSingleLayout::MinZs.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto max_xs() const -> std::span<float> {
-        return {column_data<float>(WorldAABBsColumnsSingleLayout::MaxXs.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto max_ys() const -> std::span<float> {
-        return {column_data<float>(WorldAABBsColumnsSingleLayout::MaxYs.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto max_zs() const -> std::span<float> {
-        return {column_data<float>(WorldAABBsColumnsSingleLayout::MaxZs.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto columns() const -> WorldAABBsColumnsView {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return WorldAABBsColumnsView{
-            {column_data_unchecked<float>(WorldAABBsColumnsSingleLayout::MinXs.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(WorldAABBsColumnsSingleLayout::MinYs.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(WorldAABBsColumnsSingleLayout::MinZs.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(WorldAABBsColumnsSingleLayout::MaxXs.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(WorldAABBsColumnsSingleLayout::MaxYs.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(WorldAABBsColumnsSingleLayout::MaxZs.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        columns().each_column(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(WorldAABBsColumnsSingleView) == 16);
-static_assert(std::is_trivially_copyable_v<WorldAABBsColumnsSingleView>);
-inline WorldAABBsColumnsSingleConstView::WorldAABBsColumnsSingleConstView(
-    WorldAABBsColumnsSingleView const& other)
-    : Base{other} {}
-struct WorldAABBs : WorldAABBsStorage {
-    WorldAABBs() noexcept = default;
-    WorldAABBs(WorldAABBs const&) = delete;
-    auto operator=(WorldAABBs const&) -> WorldAABBs& = delete;
-    WorldAABBs(WorldAABBs&&) noexcept = default;
-    auto operator=(WorldAABBs&&) noexcept -> WorldAABBs& = default;
-    auto get_view() & -> View { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) & -> View { return {this, offset, count}; }
-    auto slice(size_type offset, size_type count) & -> View { return get_view(offset, count); }
-    auto left(size_type count) & -> View { return get_view().left(count); }
-    auto right(size_type count) & -> View { return get_view().right(count); }
-    auto get_view() && -> View = delete;
-    auto get_view(size_type, size_type) && -> View = delete;
-    auto slice(size_type, size_type) && -> View = delete;
-    auto left(size_type) && -> View = delete;
-    auto right(size_type) && -> View = delete;
-    auto get_view() const& -> ConstView { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) const& -> ConstView {
-        return {this, offset, count};
-    }
-    auto slice(size_type offset, size_type count) const& -> ConstView {
-        return get_view(offset, count);
-    }
-    auto left(size_type count) const& -> ConstView { return get_view().left(count); }
-    auto right(size_type count) const& -> ConstView { return get_view().right(count); }
-    auto get_view() const&& -> ConstView = delete;
-    auto get_view(size_type, size_type) const&& -> ConstView = delete;
-    auto slice(size_type, size_type) const&& -> ConstView = delete;
-    auto left(size_type) const&& -> ConstView = delete;
-    auto right(size_type) const&& -> ConstView = delete;
-    auto get_const_view() const& -> ConstView { return get_view(); }
-    auto get_const_view(size_type offset, size_type count) const& -> ConstView {
-        return get_view(offset, count);
-    }
-    auto get_const_view() const&& -> ConstView = delete;
-    auto get_const_view(size_type, size_type) const&& -> ConstView = delete;
 };
 } // namespace ioj::sim::collision

@@ -358,6 +358,7 @@ auto parse_soa(Form const& form) -> SoaSchema {
                      "export-specifier",
                      "using-declarations",
                      "equivalent-type",
+                     "vector-components",
                      "copy-element-memberwise",
                      "layout-only",
                      "field-mask-name",
@@ -413,6 +414,7 @@ auto parse_soa(Form const& form) -> SoaSchema {
         .single_allocation_variants = std::move(variants),
         .field_mask_name = optional_text(fields, "field-mask-name"),
         .field_enum_name = optional_text(fields, "field-enum-name"),
+        .vector_components = text_list_or(fields, "vector-components"),
     };
 }
 

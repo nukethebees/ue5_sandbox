@@ -3,6 +3,8 @@
 #include "lowered_soa.h"
 #include "resolved_member.h"
 
+#include <lispb/schema/type_graph.h>
+
 #include <span>
 #include <string>
 #include <string_view>
@@ -50,7 +52,9 @@ auto lower_fixed_nodes(SoaSchema const& schema,
 auto lower_single_allocation_nodes(SoaSchema const& schema,
                                    std::map<std::string, SoaSchema const*> const& schemas,
                                    std::map<std::string, CppType> const& types,
-                                   bool native = false) -> Nodes;
+                                   lispb::schema::TypeGraph const& type_graph,
+                                   std::string const& module_name,
+                                   SoaBackend backend) -> Nodes;
 
 auto lower_native_soa(SoaSchema const& schema,
                       std::map<std::string, SoaSchema const*> const& schemas,

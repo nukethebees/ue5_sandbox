@@ -9,6 +9,7 @@
   (struct Vectors
     :operations (all)
     :export-specifier SBXCOREEXPERIMENTS_API
+    :vector-components (xs ys zs)
     (member xs array float)
     (member ys array float)
     (member zs array float))

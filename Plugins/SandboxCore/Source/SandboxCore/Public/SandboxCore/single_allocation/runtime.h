@@ -3,23 +3,30 @@
 #include <sandbox/core/single_allocation/layout.h>
 #include <sandbox/core/single_allocation/view.h>
 
+#include <Containers/ArrayView.h>
 #include <Containers/ContainerAllocationPolicies.h>
+#include <HAL/UnrealMemory.h>
 #include <Misc/AssertionMacros.h>
+#include <Templates/MemoryOps.h>
 
 #include <cstddef>
 #include <cstdlib>
 
 namespace ml::soa_storage {
 
+using single_allocation_layout::capacity_block_bound;
 using single_allocation_layout::capacity_granularity;
 using single_allocation_layout::ColumnLayout;
 using single_allocation_layout::ColumnLayoutStart;
 using single_allocation_layout::layout_align;
+using single_allocation_layout::LayoutCursor;
+using single_allocation_layout::LayoutPolicy;
 using single_allocation_layout::maximum_alignment;
 using single_allocation_layout::maximum_capacity;
 using single_allocation_layout::supported_leaf;
 using single_allocation_layout::try_allocation_bytes;
 using single_allocation_layout::try_round_capacity;
+using soa_storage_detail::source_data;
 
 [[noreturn]] inline void invalid_size() {
     LowLevelFatalError(TEXT("Single-allocation SoA: invalid size, range, or allocation overflow."));
@@ -30,6 +37,35 @@ inline void require(bool const condition) {
     if (!condition) {
         invalid_size();
     }
+}
+
+template <typename T>
+void copy_n(T* const destination, T const* const source, int32 const count) noexcept {
+    if (count == 0) {
+        return;
+    }
+    FMemory::Memcpy(destination, source, static_cast<SIZE_T>(count) * sizeof(T));
+}
+
+template <typename T>
+void default_construct_n(T* const destination, int32 const count) {
+    DefaultConstructItems<T>(destination, count);
+}
+
+template <typename Column, typename Predicate>
+auto any_column_value(Column const& column, Predicate const& predicate) -> bool {
+    if constexpr (requires { source_data(column); }) {
+        return predicate(source_data(column));
+    } else {
+        return column.apply_arrays(
+            [&](auto const&... nested) { return (any_column_value(nested, predicate) || ...); });
+    }
+}
+
+template <typename View, typename Predicate>
+auto any_column(View const& view, Predicate predicate) -> bool {
+    return view.apply_arrays(
+        [&](auto const&... columns) { return (any_column_value(columns, predicate) || ...); });
 }
 
 using soa_storage_detail::StorageState;

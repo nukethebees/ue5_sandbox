@@ -60,15 +60,19 @@ template <typename T>
 using Vector = std::vector<T>;
 #endif
 
+using single_allocation_layout::capacity_block_bound;
 using single_allocation_layout::capacity_granularity;
 using single_allocation_layout::ColumnLayout;
 using single_allocation_layout::ColumnLayoutStart;
 using single_allocation_layout::layout_align;
+using single_allocation_layout::LayoutCursor;
+using single_allocation_layout::LayoutPolicy;
 using single_allocation_layout::maximum_alignment;
 using single_allocation_layout::maximum_capacity;
 using single_allocation_layout::supported_leaf;
 using single_allocation_layout::try_allocation_bytes;
 using single_allocation_layout::try_round_capacity;
+using soa_storage_detail::source_data;
 [[noreturn]] inline void invalid_size() {
     std::fputs("Native SoA: invalid size, range or allocation overflow.\n", stderr);
     std::abort();
@@ -78,6 +82,27 @@ inline void require(bool const condition) {
     if (!condition) {
         invalid_size();
     }
+}
+
+template <typename T>
+void copy_n(T* const destination, T const* const source, std::int32_t const count) noexcept {
+    if (count == 0) {
+        return;
+    }
+    std::memcpy(destination, source, static_cast<std::size_t>(count) * sizeof(T));
+}
+
+template <typename T>
+void default_construct_n(T* const destination, std::int32_t const count) {
+    std::uninitialized_value_construct_n(destination, count);
+}
+
+template <typename View, typename Predicate>
+auto any_column(View const& view, Predicate predicate) -> bool {
+    bool result{};
+    view.each_column(
+        [&](auto const& column) { result = result || predicate(source_data(column)); });
+    return result;
 }
 
 using soa_storage_detail::StorageState;

@@ -13,8 +13,6 @@
 #include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/native_soa/vector_storage_ops.h"
 
-#include <cstring>
-#include <memory>
 #include <utility>
 
 namespace ioj::sim::lasers {
@@ -503,120 +501,235 @@ struct SpawnRequestsSingleLayout {
     using size_type = std::int32_t;
     using byte_size_type = std::size_t;
 
-    inline static constexpr byte_size_type max_allocation_size{
-        std::numeric_limits<byte_size_type>::max()};
-    inline static constexpr size_type capacity_granularity{64};
-    inline static constexpr byte_size_type column_gap{192};
+    inline static constexpr size_type capacity_granularity{
+        ml::native_soa::LayoutPolicy::capacity_granularity};
+    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
     template <typename T>
     using ColLayout = ml::native_soa::ColumnLayout<T>;
-    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{
-        capacity_granularity, column_gap, 64};
+    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
 
-    inline static constexpr ColLayout<float> LocationsXs{LayoutStart};
-    inline static constexpr ColLayout<float> LocationsYs{LocationsXs};
-    inline static constexpr ColLayout<float> LocationsZs{LocationsYs};
-    inline static constexpr ColLayout<float> RotationsPitches{LocationsZs};
-    inline static constexpr ColLayout<float> RotationsYaws{RotationsPitches};
-    inline static constexpr ColLayout<float> RotationsRolls{RotationsYaws};
-    inline static constexpr ColLayout<float> BaseVelocitiesXs{RotationsRolls};
-    inline static constexpr ColLayout<float> BaseVelocitiesYs{BaseVelocitiesXs};
-    inline static constexpr ColLayout<float> BaseVelocitiesZs{BaseVelocitiesYs};
-    inline static constexpr ColLayout<std::int32_t> Damages{BaseVelocitiesZs};
-    inline static constexpr ColLayout<float> Speeds{Damages};
-    inline static constexpr ColLayout<float> MaxDistances{Speeds};
-    inline static constexpr ColLayout<EntityUniqueId> InstigatorIds{MaxDistances};
-    inline static constexpr ColLayout<LaserSource> Sources{InstigatorIds};
+    inline static constexpr ColLayout<float> LocationsXsColumn{LayoutStart};
+    inline static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
+    inline static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
+    inline static constexpr ColLayout<float> RotationsPitchesColumn{LocationsZsColumn};
+    inline static constexpr ColLayout<float> RotationsYawsColumn{RotationsPitchesColumn};
+    inline static constexpr ColLayout<float> RotationsRollsColumn{RotationsYawsColumn};
+    inline static constexpr ColLayout<float> BaseVelocitiesXsColumn{RotationsRollsColumn};
+    inline static constexpr ColLayout<float> BaseVelocitiesYsColumn{BaseVelocitiesXsColumn};
+    inline static constexpr ColLayout<float> BaseVelocitiesZsColumn{BaseVelocitiesYsColumn};
+    inline static constexpr ColLayout<std::int32_t> DamagesColumn{BaseVelocitiesZsColumn};
+    inline static constexpr ColLayout<float> SpeedsColumn{DamagesColumn};
+    inline static constexpr ColLayout<float> MaxDistancesColumn{SpeedsColumn};
+    inline static constexpr ColLayout<EntityUniqueId> InstigatorIdsColumn{MaxDistancesColumn};
+    inline static constexpr ColLayout<LaserSource> SourcesColumn{InstigatorIdsColumn};
 
-    inline static constexpr byte_size_type allocation_alignment{
-        ml::native_soa::maximum_alignment(LocationsXs,
-                                          LocationsYs,
-                                          LocationsZs,
-                                          RotationsPitches,
-                                          RotationsYaws,
-                                          RotationsRolls,
-                                          BaseVelocitiesXs,
-                                          BaseVelocitiesYs,
-                                          BaseVelocitiesZs,
-                                          Damages,
-                                          Speeds,
-                                          MaxDistances,
-                                          InstigatorIds,
-                                          Sources)};
+    inline static constexpr byte_size_type allocation_alignment{SourcesColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::layout_align(Sources.block_end, allocation_alignment) +
-        13 * (column_gap + allocation_alignment - 1)};
+        ml::native_soa::capacity_block_bound(SourcesColumn)};
     inline static constexpr size_type max_capacity{
         ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : Sources.data_end(blocks);
+        return blocks == 0 ? 0 : SourcesColumn.data_end(blocks);
     }
-  private:
-    inline static constexpr auto validate_layout = []() consteval -> bool {
-        static_assert(
-            ml::native_soa::supported_leaf<float>,
-            "Single-allocation leaf locations.xs requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::native_soa::supported_leaf<std::int32_t>,
-            "Single-allocation leaf damages requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::native_soa::supported_leaf<EntityUniqueId>,
-            "Single-allocation leaf instigator_ids requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::native_soa::supported_leaf<LaserSource>,
-            "Single-allocation leaf sources requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-
-        static_assert(
-            allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
-            "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - LocationsXs.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - LocationsYs.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - LocationsZs.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - RotationsPitches.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - RotationsYaws.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - RotationsRolls.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - BaseVelocitiesXs.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - BaseVelocitiesYs.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - BaseVelocitiesZs.block_offset) / capacity_granularity);
-        static_assert(sizeof(std::int32_t) <=
-                      (max_allocation_size - Damages.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - Speeds.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - MaxDistances.block_offset) / capacity_granularity);
-        static_assert(sizeof(EntityUniqueId) <=
-                      (max_allocation_size - InstigatorIds.block_offset) / capacity_granularity);
-        static_assert(sizeof(LaserSource) <=
-                      (max_allocation_size - Sources.block_offset) / capacity_granularity);
-        static_assert(13 <= (max_allocation_size - ml::native_soa::layout_align(
-                                                       Sources.block_end, allocation_alignment)) /
-                                (column_gap + allocation_alignment - 1));
-        static_assert(max_capacity >= capacity_granularity);
-        return true;
-    };
-    static_assert(validate_layout());
+    static_assert(
+        allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
+        "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
+    static_assert(max_capacity >= capacity_granularity);
 };
 
-struct SingleAllocationLaserSpawnRequestsStorage
-    : SpawnRequestsSingleLayout
-    , protected ml::native_soa::StorageState
+template <bool Const>
+struct SpawnRequestsSingleViewImpl : ml::native_soa::CompactViewState<Const> {
+    using Base = ml::native_soa::CompactViewState<Const>;
+    using Base::Base;
+    using Base::validate;
+    using size_type = typename Base::size_type;
+    template <typename T>
+    using Element = typename Base::template Element<T>;
+    using View = SpawnRequestsSingleView;
+    using ConstView = SpawnRequestsSingleConstView;
+    SpawnRequestsSingleViewImpl() = default;
+    template <bool Enabled = Const>
+    SpawnRequestsSingleViewImpl(SpawnRequestsSingleViewImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+  protected:
+    using Base::capacity_blocks;
+    using Base::column_data;
+    using Base::column_data_unchecked;
+    using Base::count_;
+    using Base::state_;
+  public:
+    auto view_locations() const -> std::conditional_t<Const,
+                                                      ml::native_soa::Vector3ConstView<float>,
+                                                      ml::native_soa::Vector3View<float>> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{SpawnRequestsSingleLayout::LocationsXsColumn.offset(blocks)};
+        auto const stride{SpawnRequestsSingleLayout::LocationsYsColumn.offset(blocks) - first};
+        return {this->template column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_rotations() const -> std::conditional_t<Const, Rotators3fConstView, Rotators3fView> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return std::conditional_t<Const, Rotators3fConstView, Rotators3fView>{
+            {this->template column_data_unchecked<float>(
+                 SpawnRequestsSingleLayout::RotationsPitchesColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<float>(
+                 SpawnRequestsSingleLayout::RotationsYawsColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<float>(
+                 SpawnRequestsSingleLayout::RotationsRollsColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)}};
+    }
+    auto view_base_velocities() const -> std::conditional_t<Const,
+                                                            ml::native_soa::Vector3ConstView<float>,
+                                                            ml::native_soa::Vector3View<float>> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{SpawnRequestsSingleLayout::BaseVelocitiesXsColumn.offset(blocks)};
+        auto const stride{SpawnRequestsSingleLayout::BaseVelocitiesYsColumn.offset(blocks) - first};
+        return {this->template column_data_unchecked<float>(first), stride, count_};
+    }
+    auto damages() const -> std::span<Element<std::int32_t>> {
+        return {this->template column_data<std::int32_t>(
+                    SpawnRequestsSingleLayout::DamagesColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto speeds() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    SpawnRequestsSingleLayout::SpeedsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto max_distances() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    SpawnRequestsSingleLayout::MaxDistancesColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto instigator_ids() const -> std::span<Element<EntityUniqueId>> {
+        return {this->template column_data<EntityUniqueId>(
+                    SpawnRequestsSingleLayout::InstigatorIdsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto sources() const -> std::span<Element<LaserSource>> {
+        return {this->template column_data<LaserSource>(
+                    SpawnRequestsSingleLayout::SourcesColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto columns() const -> std::conditional_t<Const, SpawnRequestsConstView, SpawnRequestsView> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return std::conditional_t<Const, SpawnRequestsConstView, SpawnRequestsView>{
+            std::conditional_t<Const, Vectors3fConstView, Vectors3fView>{
+                {this->template column_data_unchecked<float>(
+                     SpawnRequestsSingleLayout::LocationsXsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {this->template column_data_unchecked<float>(
+                     SpawnRequestsSingleLayout::LocationsYsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {this->template column_data_unchecked<float>(
+                     SpawnRequestsSingleLayout::LocationsZsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            std::conditional_t<Const, Rotators3fConstView, Rotators3fView>{
+                {this->template column_data_unchecked<float>(
+                     SpawnRequestsSingleLayout::RotationsPitchesColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {this->template column_data_unchecked<float>(
+                     SpawnRequestsSingleLayout::RotationsYawsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {this->template column_data_unchecked<float>(
+                     SpawnRequestsSingleLayout::RotationsRollsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            std::conditional_t<Const, Vectors3fConstView, Vectors3fView>{
+                {this->template column_data_unchecked<float>(
+                     SpawnRequestsSingleLayout::BaseVelocitiesXsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {this->template column_data_unchecked<float>(
+                     SpawnRequestsSingleLayout::BaseVelocitiesYsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {this->template column_data_unchecked<float>(
+                     SpawnRequestsSingleLayout::BaseVelocitiesZsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            {this->template column_data_unchecked<std::int32_t>(
+                 SpawnRequestsSingleLayout::DamagesColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<float>(
+                 SpawnRequestsSingleLayout::SpeedsColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<float>(
+                 SpawnRequestsSingleLayout::MaxDistancesColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<EntityUniqueId>(
+                 SpawnRequestsSingleLayout::InstigatorIdsColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<LaserSource>(
+                 SpawnRequestsSingleLayout::SourcesColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)}};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        columns().each_column(std::forward<Func>(func));
+    }
+};
+struct SpawnRequestsSingleConstView : SpawnRequestsSingleViewImpl<true> {
+    using Base = SpawnRequestsSingleViewImpl<true>;
+    using Base::Base;
+    using View = SpawnRequestsSingleView;
+    using ConstView = SpawnRequestsSingleConstView;
+    SpawnRequestsSingleConstView() = default;
+    SpawnRequestsSingleConstView(SpawnRequestsSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(sizeof(SpawnRequestsSingleConstView) == 16);
+static_assert(std::is_trivially_copyable_v<SpawnRequestsSingleConstView>);
+struct SpawnRequestsSingleView : SpawnRequestsSingleViewImpl<false> {
+    using Base = SpawnRequestsSingleViewImpl<false>;
+    using Base::Base;
+    using View = SpawnRequestsSingleView;
+    using ConstView = SpawnRequestsSingleConstView;
+    SpawnRequestsSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(sizeof(SpawnRequestsSingleView) == 16);
+static_assert(std::is_trivially_copyable_v<SpawnRequestsSingleView>);
+inline SpawnRequestsSingleConstView::SpawnRequestsSingleConstView(
+    SpawnRequestsSingleView const& other)
+    : Base{other} {}
+struct SingleAllocationLaserSpawnRequests
+    : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {
+    using Layout = SpawnRequestsSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
     using View = SpawnRequestsSingleView;
     using ConstView = SpawnRequestsSingleConstView;
     using SchemaConstView = SpawnRequestsConstView;
@@ -641,21 +754,17 @@ struct SingleAllocationLaserSpawnRequestsStorage
     /* **************************************** */
     // Lifetime
     /* **************************************** */
-    SingleAllocationLaserSpawnRequestsStorage() noexcept = default;
-    ~SingleAllocationLaserSpawnRequestsStorage() {
-        ml::native_soa::free(data_, allocation_alignment);
-    }
-    SingleAllocationLaserSpawnRequestsStorage(SingleAllocationLaserSpawnRequestsStorage const&) =
-        delete;
-    auto operator=(SingleAllocationLaserSpawnRequestsStorage const&)
-        -> SingleAllocationLaserSpawnRequestsStorage& = delete;
-    SingleAllocationLaserSpawnRequestsStorage(
-        SingleAllocationLaserSpawnRequestsStorage&& other) noexcept
+    SingleAllocationLaserSpawnRequests() noexcept = default;
+    ~SingleAllocationLaserSpawnRequests() { ml::native_soa::free(data_, allocation_alignment); }
+    SingleAllocationLaserSpawnRequests(SingleAllocationLaserSpawnRequests const&) = delete;
+    auto operator=(SingleAllocationLaserSpawnRequests const&)
+        -> SingleAllocationLaserSpawnRequests& = delete;
+    SingleAllocationLaserSpawnRequests(SingleAllocationLaserSpawnRequests&& other) noexcept
         : StorageState{std::exchange(other.data_, nullptr),
                        std::exchange(other.num_, 0),
                        std::exchange(other.capacity_, 0)} {}
-    auto operator=(SingleAllocationLaserSpawnRequestsStorage&& other) noexcept
-        -> SingleAllocationLaserSpawnRequestsStorage& {
+    auto operator=(SingleAllocationLaserSpawnRequests&& other) noexcept
+        -> SingleAllocationLaserSpawnRequests& {
         if (this != &other) {
             ml::native_soa::free(data_, allocation_alignment);
             data_ = std::exchange(other.data_, nullptr);
@@ -723,6 +832,7 @@ struct SingleAllocationLaserSpawnRequestsStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
+        ml::native_soa::LayoutCursor cursor{blocks};
         auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
             using Column = std::remove_cvref_t<decltype(column)>;
             using Pointer = std::conditional_t<std::is_const_v<Byte>,
@@ -730,61 +840,25 @@ struct SingleAllocationLaserSpawnRequestsStorage
                                                typename Column::pointer>;
             return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        auto const locations_xs_offset{byte_size_type{}};
-        auto const locations_ys_offset{ml::native_soa::layout_align(
-            locations_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            LocationsYs.alignment)};
-        auto const locations_zs_offset{ml::native_soa::layout_align(
-            locations_ys_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            LocationsZs.alignment)};
-        auto const rotations_pitches_offset{ml::native_soa::layout_align(
-            locations_zs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            RotationsPitches.alignment)};
-        auto const rotations_yaws_offset{ml::native_soa::layout_align(
-            rotations_pitches_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            RotationsYaws.alignment)};
-        auto const rotations_rolls_offset{ml::native_soa::layout_align(
-            rotations_yaws_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            RotationsRolls.alignment)};
-        auto const base_velocities_xs_offset{ml::native_soa::layout_align(
-            rotations_rolls_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            BaseVelocitiesXs.alignment)};
-        auto const base_velocities_ys_offset{ml::native_soa::layout_align(
-            base_velocities_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            BaseVelocitiesYs.alignment)};
-        auto const base_velocities_zs_offset{ml::native_soa::layout_align(
-            base_velocities_ys_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            BaseVelocitiesZs.alignment)};
-        auto const damages_offset{ml::native_soa::layout_align(
-            base_velocities_zs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            Damages.alignment)};
-        auto const speeds_offset{ml::native_soa::layout_align(
-            damages_offset + blocks * capacity_granularity * sizeof(std::int32_t) + column_gap,
-            Speeds.alignment)};
-        auto const max_distances_offset{ml::native_soa::layout_align(
-            speeds_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            MaxDistances.alignment)};
-        auto const instigator_ids_offset{ml::native_soa::layout_align(
-            max_distances_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            InstigatorIds.alignment)};
-        auto const sources_offset{ml::native_soa::layout_align(
-            instigator_ids_offset + blocks * capacity_granularity * sizeof(EntityUniqueId) +
-                column_gap,
-            Sources.alignment)};
-        return {pointer_at(LocationsXs, locations_xs_offset),
-                pointer_at(LocationsYs, locations_ys_offset),
-                pointer_at(LocationsZs, locations_zs_offset),
-                pointer_at(RotationsPitches, rotations_pitches_offset),
-                pointer_at(RotationsYaws, rotations_yaws_offset),
-                pointer_at(RotationsRolls, rotations_rolls_offset),
-                pointer_at(BaseVelocitiesXs, base_velocities_xs_offset),
-                pointer_at(BaseVelocitiesYs, base_velocities_ys_offset),
-                pointer_at(BaseVelocitiesZs, base_velocities_zs_offset),
-                pointer_at(Damages, damages_offset),
-                pointer_at(Speeds, speeds_offset),
-                pointer_at(MaxDistances, max_distances_offset),
-                pointer_at(InstigatorIds, instigator_ids_offset),
-                pointer_at(Sources, sources_offset)};
+        return {
+            pointer_at(Layout::LocationsXsColumn, cursor.advance(Layout::LocationsXsColumn)),
+            pointer_at(Layout::LocationsYsColumn, cursor.advance(Layout::LocationsYsColumn)),
+            pointer_at(Layout::LocationsZsColumn, cursor.advance(Layout::LocationsZsColumn)),
+            pointer_at(Layout::RotationsPitchesColumn,
+                       cursor.advance(Layout::RotationsPitchesColumn)),
+            pointer_at(Layout::RotationsYawsColumn, cursor.advance(Layout::RotationsYawsColumn)),
+            pointer_at(Layout::RotationsRollsColumn, cursor.advance(Layout::RotationsRollsColumn)),
+            pointer_at(Layout::BaseVelocitiesXsColumn,
+                       cursor.advance(Layout::BaseVelocitiesXsColumn)),
+            pointer_at(Layout::BaseVelocitiesYsColumn,
+                       cursor.advance(Layout::BaseVelocitiesYsColumn)),
+            pointer_at(Layout::BaseVelocitiesZsColumn,
+                       cursor.advance(Layout::BaseVelocitiesZsColumn)),
+            pointer_at(Layout::DamagesColumn, cursor.advance(Layout::DamagesColumn)),
+            pointer_at(Layout::SpeedsColumn, cursor.advance(Layout::SpeedsColumn)),
+            pointer_at(Layout::MaxDistancesColumn, cursor.advance(Layout::MaxDistancesColumn)),
+            pointer_at(Layout::InstigatorIdsColumn, cursor.advance(Layout::InstigatorIdsColumn)),
+            pointer_at(Layout::SourcesColumn, cursor.advance(Layout::SourcesColumn))};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -795,20 +869,20 @@ struct SingleAllocationLaserSpawnRequestsStorage
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        std::uninitialized_value_construct_n<float*>(columns.locations_xs, count);
-        std::uninitialized_value_construct_n<float*>(columns.locations_ys, count);
-        std::uninitialized_value_construct_n<float*>(columns.locations_zs, count);
-        std::uninitialized_value_construct_n<float*>(columns.rotations_pitches, count);
-        std::uninitialized_value_construct_n<float*>(columns.rotations_yaws, count);
-        std::uninitialized_value_construct_n<float*>(columns.rotations_rolls, count);
-        std::uninitialized_value_construct_n<float*>(columns.base_velocities_xs, count);
-        std::uninitialized_value_construct_n<float*>(columns.base_velocities_ys, count);
-        std::uninitialized_value_construct_n<float*>(columns.base_velocities_zs, count);
-        std::uninitialized_value_construct_n<std::int32_t*>(columns.damages, count);
-        std::uninitialized_value_construct_n<float*>(columns.speeds, count);
-        std::uninitialized_value_construct_n<float*>(columns.max_distances, count);
-        std::uninitialized_value_construct_n<EntityUniqueId*>(columns.instigator_ids, count);
-        std::uninitialized_value_construct_n<LaserSource*>(columns.sources, count);
+        ml::native_soa::default_construct_n(columns.locations_xs, count);
+        ml::native_soa::default_construct_n(columns.locations_ys, count);
+        ml::native_soa::default_construct_n(columns.locations_zs, count);
+        ml::native_soa::default_construct_n(columns.rotations_pitches, count);
+        ml::native_soa::default_construct_n(columns.rotations_yaws, count);
+        ml::native_soa::default_construct_n(columns.rotations_rolls, count);
+        ml::native_soa::default_construct_n(columns.base_velocities_xs, count);
+        ml::native_soa::default_construct_n(columns.base_velocities_ys, count);
+        ml::native_soa::default_construct_n(columns.base_velocities_zs, count);
+        ml::native_soa::default_construct_n(columns.damages, count);
+        ml::native_soa::default_construct_n(columns.speeds, count);
+        ml::native_soa::default_construct_n(columns.max_distances, count);
+        ml::native_soa::default_construct_n(columns.instigator_ids, count);
+        ml::native_soa::default_construct_n(columns.sources, count);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -819,40 +893,31 @@ struct SingleAllocationLaserSpawnRequestsStorage
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        auto const elements_to_move{static_cast<byte_size_type>(move_count)};
-        auto const locations_xs_bytes{elements_to_move * sizeof(float)};
-        auto const damages_bytes{elements_to_move * sizeof(std::int32_t)};
-        auto const instigator_ids_bytes{elements_to_move * sizeof(EntityUniqueId)};
-        auto const sources_bytes{elements_to_move * sizeof(LaserSource)};
-        std::memcpy(
-            columns.locations_xs + index, columns.locations_xs + source, locations_xs_bytes);
-        std::memcpy(
-            columns.locations_ys + index, columns.locations_ys + source, locations_xs_bytes);
-        std::memcpy(
-            columns.locations_zs + index, columns.locations_zs + source, locations_xs_bytes);
-        std::memcpy(columns.rotations_pitches + index,
-                    columns.rotations_pitches + source,
-                    locations_xs_bytes);
-        std::memcpy(
-            columns.rotations_yaws + index, columns.rotations_yaws + source, locations_xs_bytes);
-        std::memcpy(
-            columns.rotations_rolls + index, columns.rotations_rolls + source, locations_xs_bytes);
-        std::memcpy(columns.base_velocities_xs + index,
-                    columns.base_velocities_xs + source,
-                    locations_xs_bytes);
-        std::memcpy(columns.base_velocities_ys + index,
-                    columns.base_velocities_ys + source,
-                    locations_xs_bytes);
-        std::memcpy(columns.base_velocities_zs + index,
-                    columns.base_velocities_zs + source,
-                    locations_xs_bytes);
-        std::memcpy(columns.damages + index, columns.damages + source, damages_bytes);
-        std::memcpy(columns.speeds + index, columns.speeds + source, locations_xs_bytes);
-        std::memcpy(
-            columns.max_distances + index, columns.max_distances + source, locations_xs_bytes);
-        std::memcpy(
-            columns.instigator_ids + index, columns.instigator_ids + source, instigator_ids_bytes);
-        std::memcpy(columns.sources + index, columns.sources + source, sources_bytes);
+        ml::native_soa::copy_n(
+            columns.locations_xs + index, columns.locations_xs + source, move_count);
+        ml::native_soa::copy_n(
+            columns.locations_ys + index, columns.locations_ys + source, move_count);
+        ml::native_soa::copy_n(
+            columns.locations_zs + index, columns.locations_zs + source, move_count);
+        ml::native_soa::copy_n(
+            columns.rotations_pitches + index, columns.rotations_pitches + source, move_count);
+        ml::native_soa::copy_n(
+            columns.rotations_yaws + index, columns.rotations_yaws + source, move_count);
+        ml::native_soa::copy_n(
+            columns.rotations_rolls + index, columns.rotations_rolls + source, move_count);
+        ml::native_soa::copy_n(
+            columns.base_velocities_xs + index, columns.base_velocities_xs + source, move_count);
+        ml::native_soa::copy_n(
+            columns.base_velocities_ys + index, columns.base_velocities_ys + source, move_count);
+        ml::native_soa::copy_n(
+            columns.base_velocities_zs + index, columns.base_velocities_zs + source, move_count);
+        ml::native_soa::copy_n(columns.damages + index, columns.damages + source, move_count);
+        ml::native_soa::copy_n(columns.speeds + index, columns.speeds + source, move_count);
+        ml::native_soa::copy_n(
+            columns.max_distances + index, columns.max_distances + source, move_count);
+        ml::native_soa::copy_n(
+            columns.instigator_ids + index, columns.instigator_ids + source, move_count);
+        ml::native_soa::copy_n(columns.sources + index, columns.sources + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -875,37 +940,44 @@ struct SingleAllocationLaserSpawnRequestsStorage
             auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
             return address >= allocation_begin && address < allocation_end;
         };
-        return aliases(source.locations.xs) || aliases(source.locations.ys) ||
-               aliases(source.locations.zs) || aliases(source.rotations.pitches.data()) ||
-               aliases(source.rotations.yaws.data()) || aliases(source.rotations.rolls.data()) ||
-               aliases(source.base_velocities.xs) || aliases(source.base_velocities.ys) ||
-               aliases(source.base_velocities.zs) || aliases(source.damages.data()) ||
-               aliases(source.speeds.data()) || aliases(source.max_distances.data()) ||
-               aliases(source.instigator_ids.data()) || aliases(source.sources.data());
+        return ml::native_soa::any_column(source, aliases);
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {
         auto const destination{get_data(first)};
-        auto const elements_to_copy{static_cast<byte_size_type>(count)};
-        auto const locations_xs_bytes{elements_to_copy * sizeof(float)};
-        auto const damages_bytes{elements_to_copy * sizeof(std::int32_t)};
-        auto const instigator_ids_bytes{elements_to_copy * sizeof(EntityUniqueId)};
-        auto const sources_bytes{elements_to_copy * sizeof(LaserSource)};
-        std::memcpy(destination.locations_xs, source.locations.xs, locations_xs_bytes);
-        std::memcpy(destination.locations_ys, source.locations.ys, locations_xs_bytes);
-        std::memcpy(destination.locations_zs, source.locations.zs, locations_xs_bytes);
-        std::memcpy(
-            destination.rotations_pitches, source.rotations.pitches.data(), locations_xs_bytes);
-        std::memcpy(destination.rotations_yaws, source.rotations.yaws.data(), locations_xs_bytes);
-        std::memcpy(destination.rotations_rolls, source.rotations.rolls.data(), locations_xs_bytes);
-        std::memcpy(destination.base_velocities_xs, source.base_velocities.xs, locations_xs_bytes);
-        std::memcpy(destination.base_velocities_ys, source.base_velocities.ys, locations_xs_bytes);
-        std::memcpy(destination.base_velocities_zs, source.base_velocities.zs, locations_xs_bytes);
-        std::memcpy(destination.damages, source.damages.data(), damages_bytes);
-        std::memcpy(destination.speeds, source.speeds.data(), locations_xs_bytes);
-        std::memcpy(destination.max_distances, source.max_distances.data(), locations_xs_bytes);
-        std::memcpy(destination.instigator_ids, source.instigator_ids.data(), instigator_ids_bytes);
-        std::memcpy(destination.sources, source.sources.data(), sources_bytes);
+        ml::native_soa::copy_n(
+            destination.locations_xs, ml::native_soa::source_data(source.locations.xs), count);
+        ml::native_soa::copy_n(
+            destination.locations_ys, ml::native_soa::source_data(source.locations.ys), count);
+        ml::native_soa::copy_n(
+            destination.locations_zs, ml::native_soa::source_data(source.locations.zs), count);
+        ml::native_soa::copy_n(destination.rotations_pitches,
+                               ml::native_soa::source_data(source.rotations.pitches),
+                               count);
+        ml::native_soa::copy_n(
+            destination.rotations_yaws, ml::native_soa::source_data(source.rotations.yaws), count);
+        ml::native_soa::copy_n(destination.rotations_rolls,
+                               ml::native_soa::source_data(source.rotations.rolls),
+                               count);
+        ml::native_soa::copy_n(destination.base_velocities_xs,
+                               ml::native_soa::source_data(source.base_velocities.xs),
+                               count);
+        ml::native_soa::copy_n(destination.base_velocities_ys,
+                               ml::native_soa::source_data(source.base_velocities.ys),
+                               count);
+        ml::native_soa::copy_n(destination.base_velocities_zs,
+                               ml::native_soa::source_data(source.base_velocities.zs),
+                               count);
+        ml::native_soa::copy_n(
+            destination.damages, ml::native_soa::source_data(source.damages), count);
+        ml::native_soa::copy_n(
+            destination.speeds, ml::native_soa::source_data(source.speeds), count);
+        ml::native_soa::copy_n(
+            destination.max_distances, ml::native_soa::source_data(source.max_distances), count);
+        ml::native_soa::copy_n(
+            destination.instigator_ids, ml::native_soa::source_data(source.instigator_ids), count);
+        ml::native_soa::copy_n(
+            destination.sources, ml::native_soa::source_data(source.sources), count);
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(
@@ -917,322 +989,71 @@ struct SingleAllocationLaserSpawnRequestsStorage
             auto const source{
                 make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
             auto const destination{make_data_unchecked(new_data, new_blocks)};
-            auto const live_count{static_cast<byte_size_type>(num_)};
-            auto const locations_xs_bytes{live_count * sizeof(float)};
-            auto const damages_bytes{live_count * sizeof(std::int32_t)};
-            auto const instigator_ids_bytes{live_count * sizeof(EntityUniqueId)};
-            auto const sources_bytes{live_count * sizeof(LaserSource)};
-            std::memcpy(destination.locations_xs, source.locations_xs, locations_xs_bytes);
-            std::memcpy(destination.locations_ys, source.locations_ys, locations_xs_bytes);
-            std::memcpy(destination.locations_zs, source.locations_zs, locations_xs_bytes);
-            std::memcpy(
-                destination.rotations_pitches, source.rotations_pitches, locations_xs_bytes);
-            std::memcpy(destination.rotations_yaws, source.rotations_yaws, locations_xs_bytes);
-            std::memcpy(destination.rotations_rolls, source.rotations_rolls, locations_xs_bytes);
-            std::memcpy(
-                destination.base_velocities_xs, source.base_velocities_xs, locations_xs_bytes);
-            std::memcpy(
-                destination.base_velocities_ys, source.base_velocities_ys, locations_xs_bytes);
-            std::memcpy(
-                destination.base_velocities_zs, source.base_velocities_zs, locations_xs_bytes);
-            std::memcpy(destination.damages, source.damages, damages_bytes);
-            std::memcpy(destination.speeds, source.speeds, locations_xs_bytes);
-            std::memcpy(destination.max_distances, source.max_distances, locations_xs_bytes);
-            std::memcpy(destination.instigator_ids, source.instigator_ids, instigator_ids_bytes);
-            std::memcpy(destination.sources, source.sources, sources_bytes);
+            ml::native_soa::copy_n(destination.locations_xs, source.locations_xs, num_);
+            ml::native_soa::copy_n(destination.locations_ys, source.locations_ys, num_);
+            ml::native_soa::copy_n(destination.locations_zs, source.locations_zs, num_);
+            ml::native_soa::copy_n(destination.rotations_pitches, source.rotations_pitches, num_);
+            ml::native_soa::copy_n(destination.rotations_yaws, source.rotations_yaws, num_);
+            ml::native_soa::copy_n(destination.rotations_rolls, source.rotations_rolls, num_);
+            ml::native_soa::copy_n(destination.base_velocities_xs, source.base_velocities_xs, num_);
+            ml::native_soa::copy_n(destination.base_velocities_ys, source.base_velocities_ys, num_);
+            ml::native_soa::copy_n(destination.base_velocities_zs, source.base_velocities_zs, num_);
+            ml::native_soa::copy_n(destination.damages, source.damages, num_);
+            ml::native_soa::copy_n(destination.speeds, source.speeds, num_);
+            ml::native_soa::copy_n(destination.max_distances, source.max_distances, num_);
+            ml::native_soa::copy_n(destination.instigator_ids, source.instigator_ids, num_);
+            ml::native_soa::copy_n(destination.sources, source.sources, num_);
         }
         ml::native_soa::free(data_, allocation_alignment);
         data_ = new_data;
         capacity_ = new_capacity;
     }
-};
-
-struct SpawnRequestsSingleConstView : ml::native_soa::CompactViewState<true> {
-    using Base = ml::native_soa::CompactViewState<true>;
-    using Base::Base;
-    using View = SpawnRequestsSingleView;
-    using ConstView = SpawnRequestsSingleConstView;
-    SpawnRequestsSingleConstView() = default;
-    SpawnRequestsSingleConstView(SpawnRequestsSingleView const& other);
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
+  public:
+    template <typename Self>
+    using ViewFor =
+        std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, ConstView, View>;
+    template <typename Self>
+    auto get_view(this Self&& self) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, 0, self.num()};
     }
-    auto view_locations() const -> ml::native_soa::Vector3ConstView<float> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        auto const first{SpawnRequestsSingleLayout::LocationsXs.offset(blocks)};
-        auto const stride{SpawnRequestsSingleLayout::LocationsYs.offset(blocks) - first};
-        return {column_data_unchecked<float>(first), stride, count_};
+    template <typename Self>
+    auto get_view(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, offset, count};
     }
-    auto view_rotations() const -> Rotators3fConstView {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return Rotators3fConstView{
-            {column_data_unchecked<float>(
-                 SpawnRequestsSingleLayout::RotationsPitches.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(SpawnRequestsSingleLayout::RotationsYaws.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(SpawnRequestsSingleLayout::RotationsRolls.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
+    template <typename Self>
+    auto slice(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view(offset, count);
     }
-    auto view_base_velocities() const -> ml::native_soa::Vector3ConstView<float> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        auto const first{SpawnRequestsSingleLayout::BaseVelocitiesXs.offset(blocks)};
-        auto const stride{SpawnRequestsSingleLayout::BaseVelocitiesYs.offset(blocks) - first};
-        return {column_data_unchecked<float>(first), stride, count_};
+    template <typename Self>
+    auto left(this Self&& self, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view().left(count);
     }
-    auto damages() const -> std::span<std::int32_t const> {
-        return {
-            column_data<std::int32_t>(SpawnRequestsSingleLayout::Damages.offset(capacity_blocks())),
-            static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto right(this Self&& self, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view().right(count);
     }
-    auto speeds() const -> std::span<float const> {
-        return {column_data<float>(SpawnRequestsSingleLayout::Speeds.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto get_const_view(this Self&& self) -> ConstView
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, 0, self.num()};
     }
-    auto max_distances() const -> std::span<float const> {
-        return {
-            column_data<float>(SpawnRequestsSingleLayout::MaxDistances.offset(capacity_blocks())),
-            static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto get_const_view(this Self&& self, size_type offset, size_type count) -> ConstView
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, offset, count};
     }
-    auto instigator_ids() const -> std::span<EntityUniqueId const> {
-        return {column_data<EntityUniqueId>(
-                    SpawnRequestsSingleLayout::InstigatorIds.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto sources() const -> std::span<LaserSource const> {
-        return {
-            column_data<LaserSource>(SpawnRequestsSingleLayout::Sources.offset(capacity_blocks())),
-            static_cast<std::size_t>(count_)};
-    }
-    auto columns() const -> SpawnRequestsConstView {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return SpawnRequestsConstView{
-            Vectors3fConstView{{column_data_unchecked<float>(
-                                    SpawnRequestsSingleLayout::LocationsXs.offset(blocks)),
-                                static_cast<std::size_t>(count_)},
-                               {column_data_unchecked<float>(
-                                    SpawnRequestsSingleLayout::LocationsYs.offset(blocks)),
-                                static_cast<std::size_t>(count_)},
-                               {column_data_unchecked<float>(
-                                    SpawnRequestsSingleLayout::LocationsZs.offset(blocks)),
-                                static_cast<std::size_t>(count_)}},
-            Rotators3fConstView{{column_data_unchecked<float>(
-                                     SpawnRequestsSingleLayout::RotationsPitches.offset(blocks)),
-                                 static_cast<std::size_t>(count_)},
-                                {column_data_unchecked<float>(
-                                     SpawnRequestsSingleLayout::RotationsYaws.offset(blocks)),
-                                 static_cast<std::size_t>(count_)},
-                                {column_data_unchecked<float>(
-                                     SpawnRequestsSingleLayout::RotationsRolls.offset(blocks)),
-                                 static_cast<std::size_t>(count_)}},
-            Vectors3fConstView{{column_data_unchecked<float>(
-                                    SpawnRequestsSingleLayout::BaseVelocitiesXs.offset(blocks)),
-                                static_cast<std::size_t>(count_)},
-                               {column_data_unchecked<float>(
-                                    SpawnRequestsSingleLayout::BaseVelocitiesYs.offset(blocks)),
-                                static_cast<std::size_t>(count_)},
-                               {column_data_unchecked<float>(
-                                    SpawnRequestsSingleLayout::BaseVelocitiesZs.offset(blocks)),
-                                static_cast<std::size_t>(count_)}},
-            {column_data_unchecked<std::int32_t>(SpawnRequestsSingleLayout::Damages.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(SpawnRequestsSingleLayout::Speeds.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(SpawnRequestsSingleLayout::MaxDistances.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<EntityUniqueId>(
-                 SpawnRequestsSingleLayout::InstigatorIds.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<LaserSource>(SpawnRequestsSingleLayout::Sources.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        columns().each_column(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpawnRequestsSingleConstView) == 16);
-static_assert(std::is_trivially_copyable_v<SpawnRequestsSingleConstView>);
-struct SpawnRequestsSingleView : ml::native_soa::CompactViewState<false> {
-    using Base = ml::native_soa::CompactViewState<false>;
-    using Base::Base;
-    using View = SpawnRequestsSingleView;
-    using ConstView = SpawnRequestsSingleConstView;
-    SpawnRequestsSingleView() = default;
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
-    auto view_locations() const -> ml::native_soa::Vector3View<float> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        auto const first{SpawnRequestsSingleLayout::LocationsXs.offset(blocks)};
-        auto const stride{SpawnRequestsSingleLayout::LocationsYs.offset(blocks) - first};
-        return {column_data_unchecked<float>(first), stride, count_};
-    }
-    auto view_rotations() const -> Rotators3fView {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return Rotators3fView{
-            {column_data_unchecked<float>(
-                 SpawnRequestsSingleLayout::RotationsPitches.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(SpawnRequestsSingleLayout::RotationsYaws.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(SpawnRequestsSingleLayout::RotationsRolls.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
-    }
-    auto view_base_velocities() const -> ml::native_soa::Vector3View<float> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        auto const first{SpawnRequestsSingleLayout::BaseVelocitiesXs.offset(blocks)};
-        auto const stride{SpawnRequestsSingleLayout::BaseVelocitiesYs.offset(blocks) - first};
-        return {column_data_unchecked<float>(first), stride, count_};
-    }
-    auto damages() const -> std::span<std::int32_t> {
-        return {
-            column_data<std::int32_t>(SpawnRequestsSingleLayout::Damages.offset(capacity_blocks())),
-            static_cast<std::size_t>(count_)};
-    }
-    auto speeds() const -> std::span<float> {
-        return {column_data<float>(SpawnRequestsSingleLayout::Speeds.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto max_distances() const -> std::span<float> {
-        return {
-            column_data<float>(SpawnRequestsSingleLayout::MaxDistances.offset(capacity_blocks())),
-            static_cast<std::size_t>(count_)};
-    }
-    auto instigator_ids() const -> std::span<EntityUniqueId> {
-        return {column_data<EntityUniqueId>(
-                    SpawnRequestsSingleLayout::InstigatorIds.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto sources() const -> std::span<LaserSource> {
-        return {
-            column_data<LaserSource>(SpawnRequestsSingleLayout::Sources.offset(capacity_blocks())),
-            static_cast<std::size_t>(count_)};
-    }
-    auto columns() const -> SpawnRequestsView {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return SpawnRequestsView{
-            Vectors3fView{{column_data_unchecked<float>(
-                               SpawnRequestsSingleLayout::LocationsXs.offset(blocks)),
-                           static_cast<std::size_t>(count_)},
-                          {column_data_unchecked<float>(
-                               SpawnRequestsSingleLayout::LocationsYs.offset(blocks)),
-                           static_cast<std::size_t>(count_)},
-                          {column_data_unchecked<float>(
-                               SpawnRequestsSingleLayout::LocationsZs.offset(blocks)),
-                           static_cast<std::size_t>(count_)}},
-            Rotators3fView{{column_data_unchecked<float>(
-                                SpawnRequestsSingleLayout::RotationsPitches.offset(blocks)),
-                            static_cast<std::size_t>(count_)},
-                           {column_data_unchecked<float>(
-                                SpawnRequestsSingleLayout::RotationsYaws.offset(blocks)),
-                            static_cast<std::size_t>(count_)},
-                           {column_data_unchecked<float>(
-                                SpawnRequestsSingleLayout::RotationsRolls.offset(blocks)),
-                            static_cast<std::size_t>(count_)}},
-            Vectors3fView{{column_data_unchecked<float>(
-                               SpawnRequestsSingleLayout::BaseVelocitiesXs.offset(blocks)),
-                           static_cast<std::size_t>(count_)},
-                          {column_data_unchecked<float>(
-                               SpawnRequestsSingleLayout::BaseVelocitiesYs.offset(blocks)),
-                           static_cast<std::size_t>(count_)},
-                          {column_data_unchecked<float>(
-                               SpawnRequestsSingleLayout::BaseVelocitiesZs.offset(blocks)),
-                           static_cast<std::size_t>(count_)}},
-            {column_data_unchecked<std::int32_t>(SpawnRequestsSingleLayout::Damages.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(SpawnRequestsSingleLayout::Speeds.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(SpawnRequestsSingleLayout::MaxDistances.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<EntityUniqueId>(
-                 SpawnRequestsSingleLayout::InstigatorIds.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<LaserSource>(SpawnRequestsSingleLayout::Sources.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        columns().each_column(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(SpawnRequestsSingleView) == 16);
-static_assert(std::is_trivially_copyable_v<SpawnRequestsSingleView>);
-inline SpawnRequestsSingleConstView::SpawnRequestsSingleConstView(
-    SpawnRequestsSingleView const& other)
-    : Base{other} {}
-struct SingleAllocationLaserSpawnRequests : SingleAllocationLaserSpawnRequestsStorage {
-    SingleAllocationLaserSpawnRequests() noexcept = default;
-    SingleAllocationLaserSpawnRequests(SingleAllocationLaserSpawnRequests const&) = delete;
-    auto operator=(SingleAllocationLaserSpawnRequests const&)
-        -> SingleAllocationLaserSpawnRequests& = delete;
-    SingleAllocationLaserSpawnRequests(SingleAllocationLaserSpawnRequests&&) noexcept = default;
-    auto operator=(SingleAllocationLaserSpawnRequests&&) noexcept
-        -> SingleAllocationLaserSpawnRequests& = default;
-    auto get_view() & -> View { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) & -> View { return {this, offset, count}; }
-    auto slice(size_type offset, size_type count) & -> View { return get_view(offset, count); }
-    auto left(size_type count) & -> View { return get_view().left(count); }
-    auto right(size_type count) & -> View { return get_view().right(count); }
-    auto get_view() && -> View = delete;
-    auto get_view(size_type, size_type) && -> View = delete;
-    auto slice(size_type, size_type) && -> View = delete;
-    auto left(size_type) && -> View = delete;
-    auto right(size_type) && -> View = delete;
-    auto get_view() const& -> ConstView { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) const& -> ConstView {
-        return {this, offset, count};
-    }
-    auto slice(size_type offset, size_type count) const& -> ConstView {
-        return get_view(offset, count);
-    }
-    auto left(size_type count) const& -> ConstView { return get_view().left(count); }
-    auto right(size_type count) const& -> ConstView { return get_view().right(count); }
-    auto get_view() const&& -> ConstView = delete;
-    auto get_view(size_type, size_type) const&& -> ConstView = delete;
-    auto slice(size_type, size_type) const&& -> ConstView = delete;
-    auto left(size_type) const&& -> ConstView = delete;
-    auto right(size_type) const&& -> ConstView = delete;
-    auto get_const_view() const& -> ConstView { return get_view(); }
-    auto get_const_view(size_type offset, size_type count) const& -> ConstView {
-        return get_view(offset, count);
-    }
-    auto get_const_view() const&& -> ConstView = delete;
-    auto get_const_view(size_type, size_type) const&& -> ConstView = delete;
 };
 
 struct EntitiesView;
@@ -1776,133 +1597,253 @@ struct EntitiesSingleLayout {
     using size_type = std::int32_t;
     using byte_size_type = std::size_t;
 
-    inline static constexpr byte_size_type max_allocation_size{
-        std::numeric_limits<byte_size_type>::max()};
-    inline static constexpr size_type capacity_granularity{64};
-    inline static constexpr byte_size_type column_gap{192};
+    inline static constexpr size_type capacity_granularity{
+        ml::native_soa::LayoutPolicy::capacity_granularity};
+    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
     template <typename T>
     using ColLayout = ml::native_soa::ColumnLayout<T>;
-    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{
-        capacity_granularity, column_gap, 64};
+    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
 
-    inline static constexpr ColLayout<std::uint8_t> Active{LayoutStart};
-    inline static constexpr ColLayout<LaserSource> Sources{Active};
-    inline static constexpr ColLayout<float> LocationsXs{Sources};
-    inline static constexpr ColLayout<float> LocationsYs{LocationsXs};
-    inline static constexpr ColLayout<float> LocationsZs{LocationsYs};
-    inline static constexpr ColLayout<float> RotationsPitches{LocationsZs};
-    inline static constexpr ColLayout<float> RotationsYaws{RotationsPitches};
-    inline static constexpr ColLayout<float> RotationsRolls{RotationsYaws};
-    inline static constexpr ColLayout<float> VelocitiesXs{RotationsRolls};
-    inline static constexpr ColLayout<float> VelocitiesYs{VelocitiesXs};
-    inline static constexpr ColLayout<float> VelocitiesZs{VelocitiesYs};
-    inline static constexpr ColLayout<std::int32_t> Damages{VelocitiesZs};
-    inline static constexpr ColLayout<float> LifetimesRemaining{Damages};
-    inline static constexpr ColLayout<EntityUniqueId> InstigatorIds{LifetimesRemaining};
-    inline static constexpr ColLayout<float> InitialLifetimes{InstigatorIds};
-    inline static constexpr ColLayout<float> SpawnTimes{InitialLifetimes};
+    inline static constexpr ColLayout<std::uint8_t> ActiveColumn{LayoutStart};
+    inline static constexpr ColLayout<LaserSource> SourcesColumn{ActiveColumn};
+    inline static constexpr ColLayout<float> LocationsXsColumn{SourcesColumn};
+    inline static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
+    inline static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
+    inline static constexpr ColLayout<float> RotationsPitchesColumn{LocationsZsColumn};
+    inline static constexpr ColLayout<float> RotationsYawsColumn{RotationsPitchesColumn};
+    inline static constexpr ColLayout<float> RotationsRollsColumn{RotationsYawsColumn};
+    inline static constexpr ColLayout<float> VelocitiesXsColumn{RotationsRollsColumn};
+    inline static constexpr ColLayout<float> VelocitiesYsColumn{VelocitiesXsColumn};
+    inline static constexpr ColLayout<float> VelocitiesZsColumn{VelocitiesYsColumn};
+    inline static constexpr ColLayout<std::int32_t> DamagesColumn{VelocitiesZsColumn};
+    inline static constexpr ColLayout<float> LifetimesRemainingColumn{DamagesColumn};
+    inline static constexpr ColLayout<EntityUniqueId> InstigatorIdsColumn{LifetimesRemainingColumn};
+    inline static constexpr ColLayout<float> InitialLifetimesColumn{InstigatorIdsColumn};
+    inline static constexpr ColLayout<float> SpawnTimesColumn{InitialLifetimesColumn};
 
     inline static constexpr byte_size_type allocation_alignment{
-        ml::native_soa::maximum_alignment(Active,
-                                          Sources,
-                                          LocationsXs,
-                                          LocationsYs,
-                                          LocationsZs,
-                                          RotationsPitches,
-                                          RotationsYaws,
-                                          RotationsRolls,
-                                          VelocitiesXs,
-                                          VelocitiesYs,
-                                          VelocitiesZs,
-                                          Damages,
-                                          LifetimesRemaining,
-                                          InstigatorIds,
-                                          InitialLifetimes,
-                                          SpawnTimes)};
+        SpawnTimesColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::layout_align(SpawnTimes.block_end, allocation_alignment) +
-        15 * (column_gap + allocation_alignment - 1)};
+        ml::native_soa::capacity_block_bound(SpawnTimesColumn)};
     inline static constexpr size_type max_capacity{
         ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : SpawnTimes.data_end(blocks);
+        return blocks == 0 ? 0 : SpawnTimesColumn.data_end(blocks);
     }
-  private:
-    inline static constexpr auto validate_layout = []() consteval -> bool {
-        static_assert(
-            ml::native_soa::supported_leaf<std::uint8_t>,
-            "Single-allocation leaf active requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::native_soa::supported_leaf<LaserSource>,
-            "Single-allocation leaf sources requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::native_soa::supported_leaf<float>,
-            "Single-allocation leaf locations.xs requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::native_soa::supported_leaf<std::int32_t>,
-            "Single-allocation leaf damages requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::native_soa::supported_leaf<EntityUniqueId>,
-            "Single-allocation leaf instigator_ids requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-
-        static_assert(
-            allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
-            "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
-        static_assert(sizeof(std::uint8_t) <=
-                      (max_allocation_size - Active.block_offset) / capacity_granularity);
-        static_assert(sizeof(LaserSource) <=
-                      (max_allocation_size - Sources.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - LocationsXs.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - LocationsYs.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - LocationsZs.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - RotationsPitches.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - RotationsYaws.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - RotationsRolls.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - VelocitiesXs.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - VelocitiesYs.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - VelocitiesZs.block_offset) / capacity_granularity);
-        static_assert(sizeof(std::int32_t) <=
-                      (max_allocation_size - Damages.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - LifetimesRemaining.block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(EntityUniqueId) <=
-                      (max_allocation_size - InstigatorIds.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - InitialLifetimes.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - SpawnTimes.block_offset) / capacity_granularity);
-        static_assert(15 <=
-                      (max_allocation_size -
-                       ml::native_soa::layout_align(SpawnTimes.block_end, allocation_alignment)) /
-                          (column_gap + allocation_alignment - 1));
-        static_assert(max_capacity >= capacity_granularity);
-        return true;
-    };
-    static_assert(validate_layout());
+    static_assert(
+        allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
+        "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
+    static_assert(max_capacity >= capacity_granularity);
 };
 
-struct SingleAllocationLaserEntitiesStorage
-    : EntitiesSingleLayout
-    , protected ml::native_soa::StorageState
+template <bool Const>
+struct EntitiesSingleViewImpl : ml::native_soa::CompactViewState<Const> {
+    using Base = ml::native_soa::CompactViewState<Const>;
+    using Base::Base;
+    using Base::validate;
+    using size_type = typename Base::size_type;
+    template <typename T>
+    using Element = typename Base::template Element<T>;
+    using View = EntitiesSingleView;
+    using ConstView = EntitiesSingleConstView;
+    EntitiesSingleViewImpl() = default;
+    template <bool Enabled = Const>
+    EntitiesSingleViewImpl(EntitiesSingleViewImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+  protected:
+    using Base::capacity_blocks;
+    using Base::column_data;
+    using Base::column_data_unchecked;
+    using Base::count_;
+    using Base::state_;
+  public:
+    auto active() const -> std::span<Element<std::uint8_t>> {
+        return {this->template column_data<std::uint8_t>(
+                    EntitiesSingleLayout::ActiveColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto sources() const -> std::span<Element<LaserSource>> {
+        return {this->template column_data<LaserSource>(
+                    EntitiesSingleLayout::SourcesColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto view_locations() const -> std::conditional_t<Const,
+                                                      ml::native_soa::Vector3ConstView<float>,
+                                                      ml::native_soa::Vector3View<float>> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{EntitiesSingleLayout::LocationsXsColumn.offset(blocks)};
+        auto const stride{EntitiesSingleLayout::LocationsYsColumn.offset(blocks) - first};
+        return {this->template column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_rotations() const -> std::conditional_t<Const, Rotators3fConstView, Rotators3fView> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return std::conditional_t<Const, Rotators3fConstView, Rotators3fView>{
+            {this->template column_data_unchecked<float>(
+                 EntitiesSingleLayout::RotationsPitchesColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<float>(
+                 EntitiesSingleLayout::RotationsYawsColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<float>(
+                 EntitiesSingleLayout::RotationsRollsColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)}};
+    }
+    auto view_velocities() const -> std::conditional_t<Const,
+                                                       ml::native_soa::Vector3ConstView<float>,
+                                                       ml::native_soa::Vector3View<float>> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{EntitiesSingleLayout::VelocitiesXsColumn.offset(blocks)};
+        auto const stride{EntitiesSingleLayout::VelocitiesYsColumn.offset(blocks) - first};
+        return {this->template column_data_unchecked<float>(first), stride, count_};
+    }
+    auto damages() const -> std::span<Element<std::int32_t>> {
+        return {this->template column_data<std::int32_t>(
+                    EntitiesSingleLayout::DamagesColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto lifetimes_remaining() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    EntitiesSingleLayout::LifetimesRemainingColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto instigator_ids() const -> std::span<Element<EntityUniqueId>> {
+        return {this->template column_data<EntityUniqueId>(
+                    EntitiesSingleLayout::InstigatorIdsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto initial_lifetimes() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    EntitiesSingleLayout::InitialLifetimesColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto spawn_times() const -> std::span<Element<float>> {
+        return {this->template column_data<float>(
+                    EntitiesSingleLayout::SpawnTimesColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto columns() const -> std::conditional_t<Const, EntitiesConstView, EntitiesView> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return std::conditional_t<Const, EntitiesConstView, EntitiesView>{
+            {this->template column_data_unchecked<std::uint8_t>(
+                 EntitiesSingleLayout::ActiveColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<LaserSource>(
+                 EntitiesSingleLayout::SourcesColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            std::conditional_t<Const, Vectors3fConstView, Vectors3fView>{
+                {this->template column_data_unchecked<float>(
+                     EntitiesSingleLayout::LocationsXsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {this->template column_data_unchecked<float>(
+                     EntitiesSingleLayout::LocationsYsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {this->template column_data_unchecked<float>(
+                     EntitiesSingleLayout::LocationsZsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            std::conditional_t<Const, Rotators3fConstView, Rotators3fView>{
+                {this->template column_data_unchecked<float>(
+                     EntitiesSingleLayout::RotationsPitchesColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {this->template column_data_unchecked<float>(
+                     EntitiesSingleLayout::RotationsYawsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {this->template column_data_unchecked<float>(
+                     EntitiesSingleLayout::RotationsRollsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            std::conditional_t<Const, Vectors3fConstView, Vectors3fView>{
+                {this->template column_data_unchecked<float>(
+                     EntitiesSingleLayout::VelocitiesXsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {this->template column_data_unchecked<float>(
+                     EntitiesSingleLayout::VelocitiesYsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {this->template column_data_unchecked<float>(
+                     EntitiesSingleLayout::VelocitiesZsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            {this->template column_data_unchecked<std::int32_t>(
+                 EntitiesSingleLayout::DamagesColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<float>(
+                 EntitiesSingleLayout::LifetimesRemainingColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<EntityUniqueId>(
+                 EntitiesSingleLayout::InstigatorIdsColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<float>(
+                 EntitiesSingleLayout::InitialLifetimesColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<float>(
+                 EntitiesSingleLayout::SpawnTimesColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)}};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        columns().each_column(std::forward<Func>(func));
+    }
+};
+struct EntitiesSingleConstView : EntitiesSingleViewImpl<true> {
+    using Base = EntitiesSingleViewImpl<true>;
+    using Base::Base;
+    using View = EntitiesSingleView;
+    using ConstView = EntitiesSingleConstView;
+    EntitiesSingleConstView() = default;
+    EntitiesSingleConstView(EntitiesSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(sizeof(EntitiesSingleConstView) == 16);
+static_assert(std::is_trivially_copyable_v<EntitiesSingleConstView>);
+struct EntitiesSingleView : EntitiesSingleViewImpl<false> {
+    using Base = EntitiesSingleViewImpl<false>;
+    using Base::Base;
+    using View = EntitiesSingleView;
+    using ConstView = EntitiesSingleConstView;
+    EntitiesSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(sizeof(EntitiesSingleView) == 16);
+static_assert(std::is_trivially_copyable_v<EntitiesSingleView>);
+inline EntitiesSingleConstView::EntitiesSingleConstView(EntitiesSingleView const& other)
+    : Base{other} {}
+struct SingleAllocationLaserEntities
+    : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {
+    using Layout = EntitiesSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
     using View = EntitiesSingleView;
     using ConstView = EntitiesSingleConstView;
     using SchemaConstView = EntitiesConstView;
@@ -1927,17 +1868,16 @@ struct SingleAllocationLaserEntitiesStorage
     /* **************************************** */
     // Lifetime
     /* **************************************** */
-    SingleAllocationLaserEntitiesStorage() noexcept = default;
-    ~SingleAllocationLaserEntitiesStorage() { ml::native_soa::free(data_, allocation_alignment); }
-    SingleAllocationLaserEntitiesStorage(SingleAllocationLaserEntitiesStorage const&) = delete;
-    auto operator=(SingleAllocationLaserEntitiesStorage const&)
-        -> SingleAllocationLaserEntitiesStorage& = delete;
-    SingleAllocationLaserEntitiesStorage(SingleAllocationLaserEntitiesStorage&& other) noexcept
+    SingleAllocationLaserEntities() noexcept = default;
+    ~SingleAllocationLaserEntities() { ml::native_soa::free(data_, allocation_alignment); }
+    SingleAllocationLaserEntities(SingleAllocationLaserEntities const&) = delete;
+    auto operator=(SingleAllocationLaserEntities const&) -> SingleAllocationLaserEntities& = delete;
+    SingleAllocationLaserEntities(SingleAllocationLaserEntities&& other) noexcept
         : StorageState{std::exchange(other.data_, nullptr),
                        std::exchange(other.num_, 0),
                        std::exchange(other.capacity_, 0)} {}
-    auto operator=(SingleAllocationLaserEntitiesStorage&& other) noexcept
-        -> SingleAllocationLaserEntitiesStorage& {
+    auto operator=(SingleAllocationLaserEntities&& other) noexcept
+        -> SingleAllocationLaserEntities& {
         if (this != &other) {
             ml::native_soa::free(data_, allocation_alignment);
             data_ = std::exchange(other.data_, nullptr);
@@ -2009,6 +1949,7 @@ struct SingleAllocationLaserEntitiesStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
+        ml::native_soa::LayoutCursor cursor{blocks};
         auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
             using Column = std::remove_cvref_t<decltype(column)>;
             using Pointer = std::conditional_t<std::is_const_v<Byte>,
@@ -2016,69 +1957,26 @@ struct SingleAllocationLaserEntitiesStorage
                                                typename Column::pointer>;
             return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        auto const active_offset{byte_size_type{}};
-        auto const sources_offset{ml::native_soa::layout_align(
-            active_offset + blocks * capacity_granularity * sizeof(std::uint8_t) + column_gap,
-            Sources.alignment)};
-        auto const locations_xs_offset{ml::native_soa::layout_align(
-            sources_offset + blocks * capacity_granularity * sizeof(LaserSource) + column_gap,
-            LocationsXs.alignment)};
-        auto const locations_ys_offset{ml::native_soa::layout_align(
-            locations_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            LocationsYs.alignment)};
-        auto const locations_zs_offset{ml::native_soa::layout_align(
-            locations_ys_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            LocationsZs.alignment)};
-        auto const rotations_pitches_offset{ml::native_soa::layout_align(
-            locations_zs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            RotationsPitches.alignment)};
-        auto const rotations_yaws_offset{ml::native_soa::layout_align(
-            rotations_pitches_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            RotationsYaws.alignment)};
-        auto const rotations_rolls_offset{ml::native_soa::layout_align(
-            rotations_yaws_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            RotationsRolls.alignment)};
-        auto const velocities_xs_offset{ml::native_soa::layout_align(
-            rotations_rolls_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            VelocitiesXs.alignment)};
-        auto const velocities_ys_offset{ml::native_soa::layout_align(
-            velocities_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            VelocitiesYs.alignment)};
-        auto const velocities_zs_offset{ml::native_soa::layout_align(
-            velocities_ys_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            VelocitiesZs.alignment)};
-        auto const damages_offset{ml::native_soa::layout_align(
-            velocities_zs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            Damages.alignment)};
-        auto const lifetimes_remaining_offset{ml::native_soa::layout_align(
-            damages_offset + blocks * capacity_granularity * sizeof(std::int32_t) + column_gap,
-            LifetimesRemaining.alignment)};
-        auto const instigator_ids_offset{ml::native_soa::layout_align(
-            lifetimes_remaining_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            InstigatorIds.alignment)};
-        auto const initial_lifetimes_offset{ml::native_soa::layout_align(
-            instigator_ids_offset + blocks * capacity_granularity * sizeof(EntityUniqueId) +
-                column_gap,
-            InitialLifetimes.alignment)};
-        auto const spawn_times_offset{ml::native_soa::layout_align(
-            initial_lifetimes_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            SpawnTimes.alignment)};
-        return {pointer_at(Active, active_offset),
-                pointer_at(Sources, sources_offset),
-                pointer_at(LocationsXs, locations_xs_offset),
-                pointer_at(LocationsYs, locations_ys_offset),
-                pointer_at(LocationsZs, locations_zs_offset),
-                pointer_at(RotationsPitches, rotations_pitches_offset),
-                pointer_at(RotationsYaws, rotations_yaws_offset),
-                pointer_at(RotationsRolls, rotations_rolls_offset),
-                pointer_at(VelocitiesXs, velocities_xs_offset),
-                pointer_at(VelocitiesYs, velocities_ys_offset),
-                pointer_at(VelocitiesZs, velocities_zs_offset),
-                pointer_at(Damages, damages_offset),
-                pointer_at(LifetimesRemaining, lifetimes_remaining_offset),
-                pointer_at(InstigatorIds, instigator_ids_offset),
-                pointer_at(InitialLifetimes, initial_lifetimes_offset),
-                pointer_at(SpawnTimes, spawn_times_offset)};
+        return {
+            pointer_at(Layout::ActiveColumn, cursor.advance(Layout::ActiveColumn)),
+            pointer_at(Layout::SourcesColumn, cursor.advance(Layout::SourcesColumn)),
+            pointer_at(Layout::LocationsXsColumn, cursor.advance(Layout::LocationsXsColumn)),
+            pointer_at(Layout::LocationsYsColumn, cursor.advance(Layout::LocationsYsColumn)),
+            pointer_at(Layout::LocationsZsColumn, cursor.advance(Layout::LocationsZsColumn)),
+            pointer_at(Layout::RotationsPitchesColumn,
+                       cursor.advance(Layout::RotationsPitchesColumn)),
+            pointer_at(Layout::RotationsYawsColumn, cursor.advance(Layout::RotationsYawsColumn)),
+            pointer_at(Layout::RotationsRollsColumn, cursor.advance(Layout::RotationsRollsColumn)),
+            pointer_at(Layout::VelocitiesXsColumn, cursor.advance(Layout::VelocitiesXsColumn)),
+            pointer_at(Layout::VelocitiesYsColumn, cursor.advance(Layout::VelocitiesYsColumn)),
+            pointer_at(Layout::VelocitiesZsColumn, cursor.advance(Layout::VelocitiesZsColumn)),
+            pointer_at(Layout::DamagesColumn, cursor.advance(Layout::DamagesColumn)),
+            pointer_at(Layout::LifetimesRemainingColumn,
+                       cursor.advance(Layout::LifetimesRemainingColumn)),
+            pointer_at(Layout::InstigatorIdsColumn, cursor.advance(Layout::InstigatorIdsColumn)),
+            pointer_at(Layout::InitialLifetimesColumn,
+                       cursor.advance(Layout::InitialLifetimesColumn)),
+            pointer_at(Layout::SpawnTimesColumn, cursor.advance(Layout::SpawnTimesColumn))};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -2089,22 +1987,22 @@ struct SingleAllocationLaserEntitiesStorage
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        std::uninitialized_value_construct_n<std::uint8_t*>(columns.active, count);
-        std::uninitialized_value_construct_n<LaserSource*>(columns.sources, count);
-        std::uninitialized_value_construct_n<float*>(columns.locations_xs, count);
-        std::uninitialized_value_construct_n<float*>(columns.locations_ys, count);
-        std::uninitialized_value_construct_n<float*>(columns.locations_zs, count);
-        std::uninitialized_value_construct_n<float*>(columns.rotations_pitches, count);
-        std::uninitialized_value_construct_n<float*>(columns.rotations_yaws, count);
-        std::uninitialized_value_construct_n<float*>(columns.rotations_rolls, count);
-        std::uninitialized_value_construct_n<float*>(columns.velocities_xs, count);
-        std::uninitialized_value_construct_n<float*>(columns.velocities_ys, count);
-        std::uninitialized_value_construct_n<float*>(columns.velocities_zs, count);
-        std::uninitialized_value_construct_n<std::int32_t*>(columns.damages, count);
-        std::uninitialized_value_construct_n<float*>(columns.lifetimes_remaining, count);
-        std::uninitialized_value_construct_n<EntityUniqueId*>(columns.instigator_ids, count);
-        std::uninitialized_value_construct_n<float*>(columns.initial_lifetimes, count);
-        std::uninitialized_value_construct_n<float*>(columns.spawn_times, count);
+        ml::native_soa::default_construct_n(columns.active, count);
+        ml::native_soa::default_construct_n(columns.sources, count);
+        ml::native_soa::default_construct_n(columns.locations_xs, count);
+        ml::native_soa::default_construct_n(columns.locations_ys, count);
+        ml::native_soa::default_construct_n(columns.locations_zs, count);
+        ml::native_soa::default_construct_n(columns.rotations_pitches, count);
+        ml::native_soa::default_construct_n(columns.rotations_yaws, count);
+        ml::native_soa::default_construct_n(columns.rotations_rolls, count);
+        ml::native_soa::default_construct_n(columns.velocities_xs, count);
+        ml::native_soa::default_construct_n(columns.velocities_ys, count);
+        ml::native_soa::default_construct_n(columns.velocities_zs, count);
+        ml::native_soa::default_construct_n(columns.damages, count);
+        ml::native_soa::default_construct_n(columns.lifetimes_remaining, count);
+        ml::native_soa::default_construct_n(columns.instigator_ids, count);
+        ml::native_soa::default_construct_n(columns.initial_lifetimes, count);
+        ml::native_soa::default_construct_n(columns.spawn_times, count);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -2115,43 +2013,35 @@ struct SingleAllocationLaserEntitiesStorage
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        auto const elements_to_move{static_cast<byte_size_type>(move_count)};
-        auto const active_bytes{elements_to_move * sizeof(std::uint8_t)};
-        auto const sources_bytes{elements_to_move * sizeof(LaserSource)};
-        auto const locations_xs_bytes{elements_to_move * sizeof(float)};
-        auto const damages_bytes{elements_to_move * sizeof(std::int32_t)};
-        auto const instigator_ids_bytes{elements_to_move * sizeof(EntityUniqueId)};
-        std::memcpy(columns.active + index, columns.active + source, active_bytes);
-        std::memcpy(columns.sources + index, columns.sources + source, sources_bytes);
-        std::memcpy(
-            columns.locations_xs + index, columns.locations_xs + source, locations_xs_bytes);
-        std::memcpy(
-            columns.locations_ys + index, columns.locations_ys + source, locations_xs_bytes);
-        std::memcpy(
-            columns.locations_zs + index, columns.locations_zs + source, locations_xs_bytes);
-        std::memcpy(columns.rotations_pitches + index,
-                    columns.rotations_pitches + source,
-                    locations_xs_bytes);
-        std::memcpy(
-            columns.rotations_yaws + index, columns.rotations_yaws + source, locations_xs_bytes);
-        std::memcpy(
-            columns.rotations_rolls + index, columns.rotations_rolls + source, locations_xs_bytes);
-        std::memcpy(
-            columns.velocities_xs + index, columns.velocities_xs + source, locations_xs_bytes);
-        std::memcpy(
-            columns.velocities_ys + index, columns.velocities_ys + source, locations_xs_bytes);
-        std::memcpy(
-            columns.velocities_zs + index, columns.velocities_zs + source, locations_xs_bytes);
-        std::memcpy(columns.damages + index, columns.damages + source, damages_bytes);
-        std::memcpy(columns.lifetimes_remaining + index,
-                    columns.lifetimes_remaining + source,
-                    locations_xs_bytes);
-        std::memcpy(
-            columns.instigator_ids + index, columns.instigator_ids + source, instigator_ids_bytes);
-        std::memcpy(columns.initial_lifetimes + index,
-                    columns.initial_lifetimes + source,
-                    locations_xs_bytes);
-        std::memcpy(columns.spawn_times + index, columns.spawn_times + source, locations_xs_bytes);
+        ml::native_soa::copy_n(columns.active + index, columns.active + source, move_count);
+        ml::native_soa::copy_n(columns.sources + index, columns.sources + source, move_count);
+        ml::native_soa::copy_n(
+            columns.locations_xs + index, columns.locations_xs + source, move_count);
+        ml::native_soa::copy_n(
+            columns.locations_ys + index, columns.locations_ys + source, move_count);
+        ml::native_soa::copy_n(
+            columns.locations_zs + index, columns.locations_zs + source, move_count);
+        ml::native_soa::copy_n(
+            columns.rotations_pitches + index, columns.rotations_pitches + source, move_count);
+        ml::native_soa::copy_n(
+            columns.rotations_yaws + index, columns.rotations_yaws + source, move_count);
+        ml::native_soa::copy_n(
+            columns.rotations_rolls + index, columns.rotations_rolls + source, move_count);
+        ml::native_soa::copy_n(
+            columns.velocities_xs + index, columns.velocities_xs + source, move_count);
+        ml::native_soa::copy_n(
+            columns.velocities_ys + index, columns.velocities_ys + source, move_count);
+        ml::native_soa::copy_n(
+            columns.velocities_zs + index, columns.velocities_zs + source, move_count);
+        ml::native_soa::copy_n(columns.damages + index, columns.damages + source, move_count);
+        ml::native_soa::copy_n(
+            columns.lifetimes_remaining + index, columns.lifetimes_remaining + source, move_count);
+        ml::native_soa::copy_n(
+            columns.instigator_ids + index, columns.instigator_ids + source, move_count);
+        ml::native_soa::copy_n(
+            columns.initial_lifetimes + index, columns.initial_lifetimes + source, move_count);
+        ml::native_soa::copy_n(
+            columns.spawn_times + index, columns.spawn_times + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -2173,44 +2063,47 @@ struct SingleAllocationLaserEntitiesStorage
             auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
             return address >= allocation_begin && address < allocation_end;
         };
-        return aliases(source.active.data()) || aliases(source.sources.data()) ||
-               aliases(source.locations.xs) || aliases(source.locations.ys) ||
-               aliases(source.locations.zs) || aliases(source.rotations.pitches.data()) ||
-               aliases(source.rotations.yaws.data()) || aliases(source.rotations.rolls.data()) ||
-               aliases(source.velocities.xs) || aliases(source.velocities.ys) ||
-               aliases(source.velocities.zs) || aliases(source.damages.data()) ||
-               aliases(source.lifetimes_remaining.data()) ||
-               aliases(source.instigator_ids.data()) || aliases(source.initial_lifetimes.data()) ||
-               aliases(source.spawn_times.data());
+        return ml::native_soa::any_column(source, aliases);
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {
         auto const destination{get_data(first)};
-        auto const elements_to_copy{static_cast<byte_size_type>(count)};
-        auto const active_bytes{elements_to_copy * sizeof(std::uint8_t)};
-        auto const sources_bytes{elements_to_copy * sizeof(LaserSource)};
-        auto const locations_xs_bytes{elements_to_copy * sizeof(float)};
-        auto const damages_bytes{elements_to_copy * sizeof(std::int32_t)};
-        auto const instigator_ids_bytes{elements_to_copy * sizeof(EntityUniqueId)};
-        std::memcpy(destination.active, source.active.data(), active_bytes);
-        std::memcpy(destination.sources, source.sources.data(), sources_bytes);
-        std::memcpy(destination.locations_xs, source.locations.xs, locations_xs_bytes);
-        std::memcpy(destination.locations_ys, source.locations.ys, locations_xs_bytes);
-        std::memcpy(destination.locations_zs, source.locations.zs, locations_xs_bytes);
-        std::memcpy(
-            destination.rotations_pitches, source.rotations.pitches.data(), locations_xs_bytes);
-        std::memcpy(destination.rotations_yaws, source.rotations.yaws.data(), locations_xs_bytes);
-        std::memcpy(destination.rotations_rolls, source.rotations.rolls.data(), locations_xs_bytes);
-        std::memcpy(destination.velocities_xs, source.velocities.xs, locations_xs_bytes);
-        std::memcpy(destination.velocities_ys, source.velocities.ys, locations_xs_bytes);
-        std::memcpy(destination.velocities_zs, source.velocities.zs, locations_xs_bytes);
-        std::memcpy(destination.damages, source.damages.data(), damages_bytes);
-        std::memcpy(
-            destination.lifetimes_remaining, source.lifetimes_remaining.data(), locations_xs_bytes);
-        std::memcpy(destination.instigator_ids, source.instigator_ids.data(), instigator_ids_bytes);
-        std::memcpy(
-            destination.initial_lifetimes, source.initial_lifetimes.data(), locations_xs_bytes);
-        std::memcpy(destination.spawn_times, source.spawn_times.data(), locations_xs_bytes);
+        ml::native_soa::copy_n(
+            destination.active, ml::native_soa::source_data(source.active), count);
+        ml::native_soa::copy_n(
+            destination.sources, ml::native_soa::source_data(source.sources), count);
+        ml::native_soa::copy_n(
+            destination.locations_xs, ml::native_soa::source_data(source.locations.xs), count);
+        ml::native_soa::copy_n(
+            destination.locations_ys, ml::native_soa::source_data(source.locations.ys), count);
+        ml::native_soa::copy_n(
+            destination.locations_zs, ml::native_soa::source_data(source.locations.zs), count);
+        ml::native_soa::copy_n(destination.rotations_pitches,
+                               ml::native_soa::source_data(source.rotations.pitches),
+                               count);
+        ml::native_soa::copy_n(
+            destination.rotations_yaws, ml::native_soa::source_data(source.rotations.yaws), count);
+        ml::native_soa::copy_n(destination.rotations_rolls,
+                               ml::native_soa::source_data(source.rotations.rolls),
+                               count);
+        ml::native_soa::copy_n(
+            destination.velocities_xs, ml::native_soa::source_data(source.velocities.xs), count);
+        ml::native_soa::copy_n(
+            destination.velocities_ys, ml::native_soa::source_data(source.velocities.ys), count);
+        ml::native_soa::copy_n(
+            destination.velocities_zs, ml::native_soa::source_data(source.velocities.zs), count);
+        ml::native_soa::copy_n(
+            destination.damages, ml::native_soa::source_data(source.damages), count);
+        ml::native_soa::copy_n(destination.lifetimes_remaining,
+                               ml::native_soa::source_data(source.lifetimes_remaining),
+                               count);
+        ml::native_soa::copy_n(
+            destination.instigator_ids, ml::native_soa::source_data(source.instigator_ids), count);
+        ml::native_soa::copy_n(destination.initial_lifetimes,
+                               ml::native_soa::source_data(source.initial_lifetimes),
+                               count);
+        ml::native_soa::copy_n(
+            destination.spawn_times, ml::native_soa::source_data(source.spawn_times), count);
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(
@@ -2222,331 +2115,73 @@ struct SingleAllocationLaserEntitiesStorage
             auto const source{
                 make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
             auto const destination{make_data_unchecked(new_data, new_blocks)};
-            auto const live_count{static_cast<byte_size_type>(num_)};
-            auto const active_bytes{live_count * sizeof(std::uint8_t)};
-            auto const sources_bytes{live_count * sizeof(LaserSource)};
-            auto const locations_xs_bytes{live_count * sizeof(float)};
-            auto const damages_bytes{live_count * sizeof(std::int32_t)};
-            auto const instigator_ids_bytes{live_count * sizeof(EntityUniqueId)};
-            std::memcpy(destination.active, source.active, active_bytes);
-            std::memcpy(destination.sources, source.sources, sources_bytes);
-            std::memcpy(destination.locations_xs, source.locations_xs, locations_xs_bytes);
-            std::memcpy(destination.locations_ys, source.locations_ys, locations_xs_bytes);
-            std::memcpy(destination.locations_zs, source.locations_zs, locations_xs_bytes);
-            std::memcpy(
-                destination.rotations_pitches, source.rotations_pitches, locations_xs_bytes);
-            std::memcpy(destination.rotations_yaws, source.rotations_yaws, locations_xs_bytes);
-            std::memcpy(destination.rotations_rolls, source.rotations_rolls, locations_xs_bytes);
-            std::memcpy(destination.velocities_xs, source.velocities_xs, locations_xs_bytes);
-            std::memcpy(destination.velocities_ys, source.velocities_ys, locations_xs_bytes);
-            std::memcpy(destination.velocities_zs, source.velocities_zs, locations_xs_bytes);
-            std::memcpy(destination.damages, source.damages, damages_bytes);
-            std::memcpy(
-                destination.lifetimes_remaining, source.lifetimes_remaining, locations_xs_bytes);
-            std::memcpy(destination.instigator_ids, source.instigator_ids, instigator_ids_bytes);
-            std::memcpy(
-                destination.initial_lifetimes, source.initial_lifetimes, locations_xs_bytes);
-            std::memcpy(destination.spawn_times, source.spawn_times, locations_xs_bytes);
+            ml::native_soa::copy_n(destination.active, source.active, num_);
+            ml::native_soa::copy_n(destination.sources, source.sources, num_);
+            ml::native_soa::copy_n(destination.locations_xs, source.locations_xs, num_);
+            ml::native_soa::copy_n(destination.locations_ys, source.locations_ys, num_);
+            ml::native_soa::copy_n(destination.locations_zs, source.locations_zs, num_);
+            ml::native_soa::copy_n(destination.rotations_pitches, source.rotations_pitches, num_);
+            ml::native_soa::copy_n(destination.rotations_yaws, source.rotations_yaws, num_);
+            ml::native_soa::copy_n(destination.rotations_rolls, source.rotations_rolls, num_);
+            ml::native_soa::copy_n(destination.velocities_xs, source.velocities_xs, num_);
+            ml::native_soa::copy_n(destination.velocities_ys, source.velocities_ys, num_);
+            ml::native_soa::copy_n(destination.velocities_zs, source.velocities_zs, num_);
+            ml::native_soa::copy_n(destination.damages, source.damages, num_);
+            ml::native_soa::copy_n(
+                destination.lifetimes_remaining, source.lifetimes_remaining, num_);
+            ml::native_soa::copy_n(destination.instigator_ids, source.instigator_ids, num_);
+            ml::native_soa::copy_n(destination.initial_lifetimes, source.initial_lifetimes, num_);
+            ml::native_soa::copy_n(destination.spawn_times, source.spawn_times, num_);
         }
         ml::native_soa::free(data_, allocation_alignment);
         data_ = new_data;
         capacity_ = new_capacity;
     }
-};
-
-struct EntitiesSingleConstView : ml::native_soa::CompactViewState<true> {
-    using Base = ml::native_soa::CompactViewState<true>;
-    using Base::Base;
-    using View = EntitiesSingleView;
-    using ConstView = EntitiesSingleConstView;
-    EntitiesSingleConstView() = default;
-    EntitiesSingleConstView(EntitiesSingleView const& other);
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
+  public:
+    template <typename Self>
+    using ViewFor =
+        std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, ConstView, View>;
+    template <typename Self>
+    auto get_view(this Self&& self) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, 0, self.num()};
     }
-    auto active() const -> std::span<std::uint8_t const> {
-        return {column_data<std::uint8_t>(EntitiesSingleLayout::Active.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto get_view(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, offset, count};
     }
-    auto sources() const -> std::span<LaserSource const> {
-        return {column_data<LaserSource>(EntitiesSingleLayout::Sources.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto slice(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view(offset, count);
     }
-    auto view_locations() const -> ml::native_soa::Vector3ConstView<float> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        auto const first{EntitiesSingleLayout::LocationsXs.offset(blocks)};
-        auto const stride{EntitiesSingleLayout::LocationsYs.offset(blocks) - first};
-        return {column_data_unchecked<float>(first), stride, count_};
+    template <typename Self>
+    auto left(this Self&& self, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view().left(count);
     }
-    auto view_rotations() const -> Rotators3fConstView {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return Rotators3fConstView{
-            {column_data_unchecked<float>(EntitiesSingleLayout::RotationsPitches.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(EntitiesSingleLayout::RotationsYaws.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(EntitiesSingleLayout::RotationsRolls.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
+    template <typename Self>
+    auto right(this Self&& self, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view().right(count);
     }
-    auto view_velocities() const -> ml::native_soa::Vector3ConstView<float> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        auto const first{EntitiesSingleLayout::VelocitiesXs.offset(blocks)};
-        auto const stride{EntitiesSingleLayout::VelocitiesYs.offset(blocks) - first};
-        return {column_data_unchecked<float>(first), stride, count_};
+    template <typename Self>
+    auto get_const_view(this Self&& self) -> ConstView
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, 0, self.num()};
     }
-    auto damages() const -> std::span<std::int32_t const> {
-        return {column_data<std::int32_t>(EntitiesSingleLayout::Damages.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto get_const_view(this Self&& self, size_type offset, size_type count) -> ConstView
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, offset, count};
     }
-    auto lifetimes_remaining() const -> std::span<float const> {
-        return {
-            column_data<float>(EntitiesSingleLayout::LifetimesRemaining.offset(capacity_blocks())),
-            static_cast<std::size_t>(count_)};
-    }
-    auto instigator_ids() const -> std::span<EntityUniqueId const> {
-        return {column_data<EntityUniqueId>(
-                    EntitiesSingleLayout::InstigatorIds.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto initial_lifetimes() const -> std::span<float const> {
-        return {
-            column_data<float>(EntitiesSingleLayout::InitialLifetimes.offset(capacity_blocks())),
-            static_cast<std::size_t>(count_)};
-    }
-    auto spawn_times() const -> std::span<float const> {
-        return {column_data<float>(EntitiesSingleLayout::SpawnTimes.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto columns() const -> EntitiesConstView {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return EntitiesConstView{
-            {column_data_unchecked<std::uint8_t>(EntitiesSingleLayout::Active.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<LaserSource>(EntitiesSingleLayout::Sources.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            Vectors3fConstView{
-                {column_data_unchecked<float>(EntitiesSingleLayout::LocationsXs.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {column_data_unchecked<float>(EntitiesSingleLayout::LocationsYs.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {column_data_unchecked<float>(EntitiesSingleLayout::LocationsZs.offset(blocks)),
-                 static_cast<std::size_t>(count_)}},
-            Rotators3fConstView{
-                {column_data_unchecked<float>(
-                     EntitiesSingleLayout::RotationsPitches.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {column_data_unchecked<float>(EntitiesSingleLayout::RotationsYaws.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {column_data_unchecked<float>(EntitiesSingleLayout::RotationsRolls.offset(blocks)),
-                 static_cast<std::size_t>(count_)}},
-            Vectors3fConstView{
-                {column_data_unchecked<float>(EntitiesSingleLayout::VelocitiesXs.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {column_data_unchecked<float>(EntitiesSingleLayout::VelocitiesYs.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {column_data_unchecked<float>(EntitiesSingleLayout::VelocitiesZs.offset(blocks)),
-                 static_cast<std::size_t>(count_)}},
-            {column_data_unchecked<std::int32_t>(EntitiesSingleLayout::Damages.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(EntitiesSingleLayout::LifetimesRemaining.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<EntityUniqueId>(
-                 EntitiesSingleLayout::InstigatorIds.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(EntitiesSingleLayout::InitialLifetimes.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(EntitiesSingleLayout::SpawnTimes.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        columns().each_column(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(EntitiesSingleConstView) == 16);
-static_assert(std::is_trivially_copyable_v<EntitiesSingleConstView>);
-struct EntitiesSingleView : ml::native_soa::CompactViewState<false> {
-    using Base = ml::native_soa::CompactViewState<false>;
-    using Base::Base;
-    using View = EntitiesSingleView;
-    using ConstView = EntitiesSingleConstView;
-    EntitiesSingleView() = default;
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
-    auto active() const -> std::span<std::uint8_t> {
-        return {column_data<std::uint8_t>(EntitiesSingleLayout::Active.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto sources() const -> std::span<LaserSource> {
-        return {column_data<LaserSource>(EntitiesSingleLayout::Sources.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto view_locations() const -> ml::native_soa::Vector3View<float> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        auto const first{EntitiesSingleLayout::LocationsXs.offset(blocks)};
-        auto const stride{EntitiesSingleLayout::LocationsYs.offset(blocks) - first};
-        return {column_data_unchecked<float>(first), stride, count_};
-    }
-    auto view_rotations() const -> Rotators3fView {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return Rotators3fView{
-            {column_data_unchecked<float>(EntitiesSingleLayout::RotationsPitches.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(EntitiesSingleLayout::RotationsYaws.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(EntitiesSingleLayout::RotationsRolls.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
-    }
-    auto view_velocities() const -> ml::native_soa::Vector3View<float> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        auto const first{EntitiesSingleLayout::VelocitiesXs.offset(blocks)};
-        auto const stride{EntitiesSingleLayout::VelocitiesYs.offset(blocks) - first};
-        return {column_data_unchecked<float>(first), stride, count_};
-    }
-    auto damages() const -> std::span<std::int32_t> {
-        return {column_data<std::int32_t>(EntitiesSingleLayout::Damages.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto lifetimes_remaining() const -> std::span<float> {
-        return {
-            column_data<float>(EntitiesSingleLayout::LifetimesRemaining.offset(capacity_blocks())),
-            static_cast<std::size_t>(count_)};
-    }
-    auto instigator_ids() const -> std::span<EntityUniqueId> {
-        return {column_data<EntityUniqueId>(
-                    EntitiesSingleLayout::InstigatorIds.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto initial_lifetimes() const -> std::span<float> {
-        return {
-            column_data<float>(EntitiesSingleLayout::InitialLifetimes.offset(capacity_blocks())),
-            static_cast<std::size_t>(count_)};
-    }
-    auto spawn_times() const -> std::span<float> {
-        return {column_data<float>(EntitiesSingleLayout::SpawnTimes.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto columns() const -> EntitiesView {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return EntitiesView{
-            {column_data_unchecked<std::uint8_t>(EntitiesSingleLayout::Active.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<LaserSource>(EntitiesSingleLayout::Sources.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            Vectors3fView{
-                {column_data_unchecked<float>(EntitiesSingleLayout::LocationsXs.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {column_data_unchecked<float>(EntitiesSingleLayout::LocationsYs.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {column_data_unchecked<float>(EntitiesSingleLayout::LocationsZs.offset(blocks)),
-                 static_cast<std::size_t>(count_)}},
-            Rotators3fView{
-                {column_data_unchecked<float>(
-                     EntitiesSingleLayout::RotationsPitches.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {column_data_unchecked<float>(EntitiesSingleLayout::RotationsYaws.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {column_data_unchecked<float>(EntitiesSingleLayout::RotationsRolls.offset(blocks)),
-                 static_cast<std::size_t>(count_)}},
-            Vectors3fView{
-                {column_data_unchecked<float>(EntitiesSingleLayout::VelocitiesXs.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {column_data_unchecked<float>(EntitiesSingleLayout::VelocitiesYs.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {column_data_unchecked<float>(EntitiesSingleLayout::VelocitiesZs.offset(blocks)),
-                 static_cast<std::size_t>(count_)}},
-            {column_data_unchecked<std::int32_t>(EntitiesSingleLayout::Damages.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(EntitiesSingleLayout::LifetimesRemaining.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<EntityUniqueId>(
-                 EntitiesSingleLayout::InstigatorIds.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(EntitiesSingleLayout::InitialLifetimes.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<float>(EntitiesSingleLayout::SpawnTimes.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        columns().each_column(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(EntitiesSingleView) == 16);
-static_assert(std::is_trivially_copyable_v<EntitiesSingleView>);
-inline EntitiesSingleConstView::EntitiesSingleConstView(EntitiesSingleView const& other)
-    : Base{other} {}
-struct SingleAllocationLaserEntities : SingleAllocationLaserEntitiesStorage {
-    SingleAllocationLaserEntities() noexcept = default;
-    SingleAllocationLaserEntities(SingleAllocationLaserEntities const&) = delete;
-    auto operator=(SingleAllocationLaserEntities const&) -> SingleAllocationLaserEntities& = delete;
-    SingleAllocationLaserEntities(SingleAllocationLaserEntities&&) noexcept = default;
-    auto operator=(SingleAllocationLaserEntities&&) noexcept
-        -> SingleAllocationLaserEntities& = default;
-    auto get_view() & -> View { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) & -> View { return {this, offset, count}; }
-    auto slice(size_type offset, size_type count) & -> View { return get_view(offset, count); }
-    auto left(size_type count) & -> View { return get_view().left(count); }
-    auto right(size_type count) & -> View { return get_view().right(count); }
-    auto get_view() && -> View = delete;
-    auto get_view(size_type, size_type) && -> View = delete;
-    auto slice(size_type, size_type) && -> View = delete;
-    auto left(size_type) && -> View = delete;
-    auto right(size_type) && -> View = delete;
-    auto get_view() const& -> ConstView { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) const& -> ConstView {
-        return {this, offset, count};
-    }
-    auto slice(size_type offset, size_type count) const& -> ConstView {
-        return get_view(offset, count);
-    }
-    auto left(size_type count) const& -> ConstView { return get_view().left(count); }
-    auto right(size_type count) const& -> ConstView { return get_view().right(count); }
-    auto get_view() const&& -> ConstView = delete;
-    auto get_view(size_type, size_type) const&& -> ConstView = delete;
-    auto slice(size_type, size_type) const&& -> ConstView = delete;
-    auto left(size_type) const&& -> ConstView = delete;
-    auto right(size_type) const&& -> ConstView = delete;
-    auto get_const_view() const& -> ConstView { return get_view(); }
-    auto get_const_view(size_type offset, size_type count) const& -> ConstView {
-        return get_view(offset, count);
-    }
-    auto get_const_view() const&& -> ConstView = delete;
-    auto get_const_view(size_type, size_type) const&& -> ConstView = delete;
 };
 } // namespace ioj::sim::lasers

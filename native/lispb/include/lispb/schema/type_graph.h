@@ -200,6 +200,7 @@ struct SoaType {
     std::vector<SoaColumn> columns;
     std::optional<ResolvedTypeRef> equivalent_type;
     std::optional<std::string> related_storage_name;
+    std::vector<std::string> vector_components;
 };
 
 using TypeDefinition = std::variant<ExternalType,

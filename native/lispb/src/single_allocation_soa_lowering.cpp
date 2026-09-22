@@ -5,18 +5,18 @@ namespace codegen::detail {
 auto lower_single_allocation_nodes(SoaSchema const& schema,
                                    std::map<std::string, SoaSchema const*> const& schemas,
                                    std::map<std::string, CppType> const& types,
-                                   bool const native) -> Nodes {
-    auto model{build_single_allocation_model(schema, schemas, types, native)};
+                                   lispb::schema::TypeGraph const& type_graph,
+                                   std::string const& module_name,
+                                   SoaBackend const backend) -> Nodes {
+    auto model{
+        build_single_allocation_model(schema, schemas, types, type_graph, module_name, backend)};
     NodeListBuilder result;
 
     if (model.emit_shared_types) {
         result.append(emit_single_allocation_layout(model)).new_lines(2);
     }
-    result.add(emit_single_allocation_storage(model));
     if (model.emit_shared_types) {
-        result.new_lines(2).append(emit_single_allocation_views(model)).new_lines(1);
-    } else {
-        result.new_lines(2);
+        result.append(emit_single_allocation_views(model)).new_lines(1);
     }
     result.add(emit_single_allocation_container(model));
 

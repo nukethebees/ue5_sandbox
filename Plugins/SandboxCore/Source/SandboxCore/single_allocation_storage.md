@@ -37,7 +37,7 @@ auto selected = rows.slice(32, 64);
 auto readonly = selected.get_const_view();
 ```
 
-Views capture a range, not a growing count. Growth, moving or destroying the owner invalidates borrowed views and extracted spans. Reacquire them after those operations; the top-level handle's internal owner-state pointer is not a promise of growth-following behavior. Shrinking/removal can invalidate a range or change which entities it denotes; views are not stable entity references.
+Views capture a range, not a growing count. A top-level compact handle re-resolves columns through owner state, so it can survive growth while its owner and captured range remain valid. Extracted spans, ordinary views and vector views retain allocation pointers and become stale after growth. Moving or destroying the owner invalidates handles pointing at its state. Shrinking/removal can invalidate a range or change which entities it denotes; views are not stable entity references.
 
 Owner borrowing functions require an lvalue, preventing accidental views from temporary owners. Temporary non-owning views can still be sliced. Explicit pointer-based view construction remains the caller's responsibility: the owner and backing storage must outlive every use.
 

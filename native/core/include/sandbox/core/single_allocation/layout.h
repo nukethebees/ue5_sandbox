@@ -8,7 +8,13 @@
 
 namespace ml::single_allocation_layout {
 
-inline constexpr std::int32_t capacity_granularity{64};
+struct LayoutPolicy {
+    inline static constexpr std::int32_t capacity_granularity{64};
+    inline static constexpr std::size_t column_gap{192};
+    inline static constexpr std::size_t minimum_alignment{64};
+};
+
+inline constexpr auto capacity_granularity{LayoutPolicy::capacity_granularity};
 
 template <typename T>
 inline constexpr bool supported_leaf =
@@ -26,12 +32,10 @@ constexpr auto layout_align(std::size_t const bytes, std::size_t const alignment
 
 struct ColumnLayoutBase {
   protected:
-    constexpr ColumnLayoutBase(std::size_t const capacity_granularity,
-                               std::size_t const column_gap,
-                               std::size_t const minimum_alignment) noexcept
-        : capacity_granularity{capacity_granularity}
-        , column_gap{column_gap}
-        , minimum_alignment{minimum_alignment} {}
+    constexpr ColumnLayoutBase() noexcept
+        : capacity_granularity{LayoutPolicy::capacity_granularity}
+        , column_gap{LayoutPolicy::column_gap}
+        , minimum_alignment{LayoutPolicy::minimum_alignment} {}
 
     constexpr ColumnLayoutBase(ColumnLayoutBase const& previous,
                                std::size_t const element_size,
@@ -41,7 +45,11 @@ struct ColumnLayoutBase {
         , minimum_alignment{previous.minimum_alignment}
         , alignment{element_alignment > minimum_alignment ? element_alignment : minimum_alignment}
         , block_offset{layout_align(previous.block_end, alignment)}
-        , block_end{block_offset + capacity_granularity * element_size}
+        , block_end{checked_block_end(block_offset, capacity_granularity, element_size)}
+        , column_count{previous.column_count + 1}
+        , allocation_alignment{previous.allocation_alignment > alignment
+                                   ? previous.allocation_alignment
+                                   : alignment}
         , element_size_{element_size}
         , previous_{&previous} {}
   public:
@@ -51,30 +59,56 @@ struct ColumnLayoutBase {
     std::size_t alignment{1};
     std::size_t block_offset{};
     std::size_t block_end{};
+    std::size_t column_count{};
+    std::size_t allocation_alignment{1};
+
+    constexpr auto offset_after(std::size_t const previous_next) const noexcept -> std::size_t {
+        return layout_align(previous_next, alignment);
+    }
+
+    constexpr auto data_end_at(std::size_t const byte_offset,
+                               std::size_t const blocks) const noexcept -> std::size_t {
+        return byte_offset + blocks * capacity_granularity * element_size_;
+    }
+
+    constexpr auto next_offset_at(std::size_t const byte_offset,
+                                  std::size_t const blocks) const noexcept -> std::size_t {
+        return data_end_at(byte_offset, blocks) + column_gap;
+    }
 
     constexpr auto offset(std::size_t const blocks) const noexcept -> std::size_t {
-        return previous_ == nullptr ? 0 : layout_align(previous_->next_offset(blocks), alignment);
+        return previous_ == nullptr ? 0 : offset_after(previous_->next_offset(blocks));
     }
     constexpr auto data_end(std::size_t const blocks) const noexcept -> std::size_t {
-        return offset(blocks) + blocks * capacity_granularity * element_size_;
+        return data_end_at(offset(blocks), blocks);
     }
     constexpr auto next_offset(std::size_t const blocks) const noexcept -> std::size_t {
-        return previous_ == nullptr ? 0 : data_end(blocks) + column_gap;
+        return previous_ == nullptr ? 0 : next_offset_at(offset(blocks), blocks);
     }
   private:
+    static constexpr auto checked_block_end(std::size_t const offset,
+                                            std::size_t const granularity,
+                                            std::size_t const element_size) noexcept
+        -> std::size_t {
+        if (element_size > (std::numeric_limits<std::size_t>::max() - offset) / granularity) {
+            std::abort();
+        }
+        return offset + granularity * element_size;
+    }
+
     std::size_t element_size_{};
     ColumnLayoutBase const* previous_{};
 };
 
 struct ColumnLayoutStart : ColumnLayoutBase {
-    constexpr ColumnLayoutStart(std::size_t const capacity_granularity,
-                                std::size_t const column_gap,
-                                std::size_t const minimum_alignment) noexcept
-        : ColumnLayoutBase{capacity_granularity, column_gap, minimum_alignment} {}
+    constexpr ColumnLayoutStart() noexcept = default;
 };
 
 template <typename T>
 struct ColumnLayout : ColumnLayoutBase {
+    static_assert(supported_leaf<T>,
+                  "Single-allocation leaf requires a non-cv trivially copyable, trivially "
+                  "destructible, nothrow default-constructible object type");
     using value_type = T;
     using pointer = T*;
     using const_pointer = T const*;
@@ -91,6 +125,34 @@ struct ColumnLayout : ColumnLayoutBase {
 
     auto operator=(ColumnLayout const&) -> ColumnLayout& = delete;
 };
+
+struct LayoutCursor {
+    explicit constexpr LayoutCursor(std::size_t const blocks) noexcept
+        : blocks_{blocks} {}
+
+    constexpr auto advance(ColumnLayoutBase const& column) noexcept -> std::size_t {
+        auto const byte_offset{column.offset_after(next_offset_)};
+        next_offset_ = column.next_offset_at(byte_offset, blocks_);
+        return byte_offset;
+    }
+  private:
+    std::size_t blocks_{};
+    std::size_t next_offset_{};
+};
+
+constexpr auto capacity_block_bound(ColumnLayoutBase const& last) noexcept -> std::size_t {
+    if (last.column_count == 0) {
+        return 0;
+    }
+    auto const alignment{last.allocation_alignment};
+    auto const aligned_end{layout_align(last.block_end, alignment)};
+    auto const per_gap{last.column_gap + alignment - 1};
+    auto const gaps{last.column_count - 1};
+    if (gaps > (std::numeric_limits<std::size_t>::max() - aligned_end) / per_gap) {
+        std::abort();
+    }
+    return aligned_end + gaps * per_gap;
+}
 
 template <typename... Columns>
 constexpr auto maximum_alignment(Columns const&... columns) noexcept -> std::size_t {

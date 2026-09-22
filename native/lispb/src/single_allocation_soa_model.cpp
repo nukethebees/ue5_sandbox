@@ -1,7 +1,6 @@
 #include "lowering_utils.h"
 #include "single_allocation_soa_internal.h"
 
-#include <cctype>
 #include <set>
 #include <stdexcept>
 #include <string_view>
@@ -10,60 +9,20 @@
 namespace codegen::detail {
 namespace {
 
-auto collect_cpp_identifiers(std::string_view const spelling) -> std::set<std::string> {
-    std::set<std::string> result;
-    for (std::size_t start{}; start < spelling.size();) {
-        if (auto const character{static_cast<unsigned char>(spelling[start])};
-            !std::isalpha(character) && character != '_') {
-            ++start;
-            continue;
-        }
-        auto end{start + 1};
-        while (end < spelling.size()) {
-            auto const character{static_cast<unsigned char>(spelling[end])};
-            if (!std::isalnum(character) && character != '_') {
-                break;
-            }
-            ++end;
-        }
-        result.emplace(spelling.substr(start, end - start));
-        start = end;
-    }
-    return result;
+auto layout_column_name(std::string_view const identifier) -> std::string {
+    return title_case_identifier(identifier) + "Column";
 }
 
-auto layout_column_name(std::string_view const identifier,
-                        std::set<std::string> const& type_identifiers) -> std::string {
-    auto result{title_case_identifier(identifier)};
-    if (type_identifiers.contains(result)) {
-        result += "Column";
-    }
-    return result;
-}
-
-void validate_flattened_name(std::string const& identifier) {
-    if (identifier.find("__") != std::string::npos || identifier.back() == '_') {
-        throw std::invalid_argument{"Single-allocation leaf would generate reserved identifiers: " +
-                                    identifier};
-    }
-}
-
-auto make_dialect(bool const native) -> SingleAllocationDialect {
-    if (native) {
+auto make_dialect(SoaBackend const backend) -> SingleAllocationDialect {
+    if (backend == SoaBackend::standard_library) {
         return {
             .runtime_namespace = "ml::native_soa::",
             .vector_namespace = "ml::native_soa::",
             .size_type = "std::int32_t",
             .byte_size_type = "std::size_t",
             .alignment_argument_type = "std::uint32_t",
-            .copy_function = "std::memcpy",
-            .copy_header = "cstring",
             .span_template = "std::span",
             .span_count_requires_cast = true,
-            .source_data_member = "data",
-            .default_construct_prefix = "std::uninitialized_value_construct_n<",
-            .default_construct_type_suffix = "*>",
-            .default_construct_header = "memory",
             .default_allocate_function = "ml::native_soa::allocate",
             .default_free_function = "ml::native_soa::free",
             .default_free_requires_alignment = true,
@@ -80,13 +39,7 @@ auto make_dialect(bool const native) -> SingleAllocationDialect {
         .size_type = "int32",
         .byte_size_type = "SIZE_T",
         .alignment_argument_type = "uint32",
-        .copy_function = "FMemory::Memcpy",
-        .copy_header = "HAL/UnrealMemory.h",
         .span_template = "TArrayView",
-        .source_data_member = "GetData",
-        .default_construct_prefix = "DefaultConstructItems<",
-        .default_construct_type_suffix = ">",
-        .default_construct_header = "Templates/MemoryOps.h",
         .default_allocate_function = "ml::soa_storage::MimallocStorageAllocator::allocate",
         .default_free_function = "ml::soa_storage::MimallocStorageAllocator::free",
         .column_iteration_function = "apply_arrays",
@@ -100,58 +53,20 @@ auto make_dialect(bool const native) -> SingleAllocationDialect {
     };
 }
 
-auto recognize_compact_vector(SoaSchema const& schema,
-                              std::string const& prefix,
-                              std::map<std::string, SingleAllocationColumn const*> const& columns)
+auto recognize_compact_vector(lispb::schema::SoaType const& type, SoaBackend const backend)
     -> std::optional<CompactVectorShape> {
-    auto const dimensions{schema.members.size()};
-    if (dimensions != 2 && dimensions != 3) {
+    auto const dimensions{type.vector_components.size()};
+    if (dimensions == 0) {
         return std::nullopt;
     }
-    std::string type;
-    for (std::size_t index{}; index < dimensions; ++index) {
-        auto const& member{schema.members[index]};
-        if (member.kind != SoaMemberKind::array ||
-            member.name != std::string(1, "xyz"[index]) + "s") {
-            return std::nullopt;
-        }
-        auto const& element{columns.at(prefix + "_" + member.name)->type.spelling};
-        if (index == 0) {
-            type = element;
-        } else if (element != type) {
-            return std::nullopt;
-        }
+    auto element_type{type.columns.front().semantic_type.cpp_type.spelling};
+    if (backend == SoaBackend::standard_library) {
+        element_type = native_spelling(element_type);
     }
-    static std::set<std::string> const scalars{"float",
-                                               "double",
-                                               "int8",
-                                               "uint8",
-                                               "int16",
-                                               "uint16",
-                                               "int32",
-                                               "uint32",
-                                               "int64",
-                                               "uint64",
-                                               "std::int8_t",
-                                               "std::uint8_t",
-                                               "std::int16_t",
-                                               "std::uint16_t",
-                                               "std::int32_t",
-                                               "std::uint32_t",
-                                               "std::int64_t",
-                                               "std::uint64_t"};
-    if (!scalars.contains(type)) {
-        return std::nullopt;
-    }
-    return CompactVectorShape{type, dimensions};
+    return CompactVectorShape{std::move(element_type), dimensions};
 }
 
 } // namespace
-
-auto SingleAllocationDialect::span_type(std::string const& element_type, bool const is_const) const
-    -> std::string {
-    return span_template + "<" + element_type + (is_const ? " const" : "") + ">";
-}
 
 auto SingleAllocationDialect::span_count(Expr count) const -> Expr {
     if (!span_count_requires_cast) {
@@ -163,15 +78,15 @@ auto SingleAllocationDialect::span_count(Expr count) const -> Expr {
 auto build_single_allocation_model(SoaSchema const& schema,
                                    std::map<std::string, SoaSchema const*> const& schemas,
                                    std::map<std::string, CppType> const& types,
-                                   bool const native) -> SingleAllocationModel {
-    auto const layout{build_soa_layout(schema, schemas, types, false)};
-    auto dialect{make_dialect(native)};
+                                   lispb::schema::TypeGraph const& type_graph,
+                                   std::string const& module_name,
+                                   SoaBackend const backend) -> SingleAllocationModel {
+    auto dialect{make_dialect(backend)};
     SingleAllocationModel result{
         .schema = &schema,
         .schemas = &schemas,
         .dialect = std::move(dialect),
         .owner_name = *schema.single_allocation,
-        .storage_name = *schema.single_allocation + "Storage",
         .layout_name = schema.name + "SingleLayout",
         .view_name = schema.name + "SingleView",
         .const_view_name = schema.name + "SingleConstView",
@@ -181,7 +96,7 @@ auto build_single_allocation_model(SoaSchema const& schema,
     result.dependencies = result.dialect.dependencies;
 
     auto allocator_dependencies =
-        native
+        backend == SoaBackend::standard_library
             ? std::vector<TypeDependency>{{"single_allocation_allocator",
                                            "sandbox/core/native_soa/storage.h",
                                            {}}}
@@ -201,65 +116,55 @@ auto build_single_allocation_model(SoaSchema const& schema,
             CppType{allocator.spelling + "::allocate", allocator.dependencies};
         result.free_function = CppType{allocator.spelling + "::free", allocator.dependencies};
         result.free_requires_alignment = false;
-    } else if (!native) {
+    } else if (backend == SoaBackend::unreal) {
         result.dependencies.push_back({"single_allocation_mimalloc_allocator",
                                        "SandboxCore/mimalloc_storage_allocator.h",
                                        {}});
     }
 
-    std::set<std::string> type_identifiers;
-    for (auto const& leaf : layout.leaves) {
-        auto const spelling{native ? native_spelling(leaf.type.spelling) : leaf.type.spelling};
-        auto const identifiers{collect_cpp_identifiers(spelling)};
-        type_identifiers.insert(identifiers.begin(), identifiers.end());
+    auto const root_id{type_graph.find_declared(module_name, schema.name)};
+    if (!root_id.has_value()) {
+        throw std::invalid_argument{"Missing resolved single-allocation SOA: " + schema.name};
     }
-
-    std::set<std::string> flattened_names;
+    auto const& root_type{std::get<lispb::schema::SoaType>(type_graph.type(*root_id).definition)};
     std::set<std::string> layout_names{"ColLayout", "LayoutStart", result.layout_name};
-    std::map<std::string, std::size_t> unique_type_indices;
-    result.columns.reserve(layout.leaves.size());
-    for (auto const& leaf : layout.leaves) {
-        auto type{leaf.type};
-        if (native) {
-            type.spelling = native_spelling(type.spelling);
+    auto collect_columns = [&](auto&& self,
+                               lispb::schema::SoaType const& current,
+                               std::vector<std::string> const& prefix) -> void {
+        for (auto const& member : current.columns) {
+            auto path{prefix};
+            path.push_back(member.name);
+            if (member.kind == SoaMemberKind::nested) {
+                auto const& nested{std::get<lispb::schema::SoaType>(
+                    type_graph.type(*member.nested_type).definition)};
+                self(self, nested, path);
+                continue;
+            }
+            auto type{member.semantic_type.cpp_type};
+            if (backend == SoaBackend::standard_library) {
+                type.spelling = native_spelling(type.spelling);
+            }
+            auto const flattened{join(path, "_")};
+            auto const layout_identifier{layout_column_name(flattened)};
+            if (!layout_names.insert(layout_identifier).second) {
+                throw std::invalid_argument{"Single-allocation column name collision: " +
+                                            layout_identifier};
+            }
+            result.column_indices.emplace(flattened, result.columns.size());
+            result.columns.push_back({flattened, layout_identifier, type, path});
+            result.dependencies.insert(
+                result.dependencies.end(), type.dependencies.begin(), type.dependencies.end());
         }
-        auto const flattened{fixed_leaf_argument(leaf)};
-        validate_flattened_name(flattened);
-        if (!flattened_names.insert(flattened).second) {
-            throw std::invalid_argument{"Single-allocation flattened leaf name collision: " +
-                                        flattened};
-        }
-        auto const layout_identifier{layout_column_name(flattened, type_identifiers)};
-        if (!layout_names.insert(layout_identifier).second) {
-            throw std::invalid_argument{"Single-allocation column name collision: " +
-                                        layout_identifier};
-        }
+    };
+    collect_columns(collect_columns, root_type, {});
 
-        auto [type_position,
-              inserted]{unique_type_indices.emplace(type.spelling, result.unique_types.size())};
-        if (inserted) {
-            result.unique_types.push_back({type, leaf.path, flattened});
-        }
-        auto const& byte_count_identifier{
-            result.unique_types[type_position->second].byte_count_identifier};
-        result.column_indices.emplace(flattened, result.columns.size());
-        result.columns.push_back(
-            {flattened, layout_identifier, type, leaf.path, byte_count_identifier});
-        result.dependencies.insert(result.dependencies.end(),
-                                   leaf.type.dependencies.begin(),
-                                   leaf.type.dependencies.end());
-    }
-
-    std::map<std::string, SingleAllocationColumn const*> columns;
-    for (auto const& column : result.columns) {
-        columns.emplace(column.flattened_identifier, &column);
-    }
-    for (auto const& member : schema.members) {
+    for (auto const& member : root_type.columns) {
         if (member.kind != SoaMemberKind::nested) {
             continue;
         }
-        auto const shape{
-            recognize_compact_vector(*schemas.at(*member.nested_schema), member.name, columns)};
+        auto const& nested_type{
+            std::get<lispb::schema::SoaType>(type_graph.type(*member.nested_type).definition)};
+        auto const shape{recognize_compact_vector(nested_type, backend)};
         if (shape) {
             result.compact_vectors.emplace(member.name, *shape);
         }

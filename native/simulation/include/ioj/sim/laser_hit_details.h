@@ -9,8 +9,6 @@
 #include "sandbox/core/native_soa/storage.h"
 #include "sandbox/core/native_soa/vector_storage_ops.h"
 
-#include <cstring>
-#include <memory>
 #include <utility>
 
 namespace ioj::sim {
@@ -350,84 +348,172 @@ struct LaserHitDetailsSingleLayout {
     using size_type = std::int32_t;
     using byte_size_type = std::size_t;
 
-    inline static constexpr byte_size_type max_allocation_size{
-        std::numeric_limits<byte_size_type>::max()};
-    inline static constexpr size_type capacity_granularity{64};
-    inline static constexpr byte_size_type column_gap{192};
+    inline static constexpr size_type capacity_granularity{
+        ml::native_soa::LayoutPolicy::capacity_granularity};
+    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
     template <typename T>
     using ColLayout = ml::native_soa::ColumnLayout<T>;
-    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{
-        capacity_granularity, column_gap, 64};
+    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
 
-    inline static constexpr ColLayout<float> LocationsXs{LayoutStart};
-    inline static constexpr ColLayout<float> LocationsYs{LocationsXs};
-    inline static constexpr ColLayout<float> LocationsZs{LocationsYs};
-    inline static constexpr ColLayout<float> EmissionDirectionsXs{LocationsZs};
-    inline static constexpr ColLayout<float> EmissionDirectionsYs{EmissionDirectionsXs};
-    inline static constexpr ColLayout<float> EmissionDirectionsZs{EmissionDirectionsYs};
-    inline static constexpr ColLayout<LaserSource> Sources{EmissionDirectionsZs};
+    inline static constexpr ColLayout<float> LocationsXsColumn{LayoutStart};
+    inline static constexpr ColLayout<float> LocationsYsColumn{LocationsXsColumn};
+    inline static constexpr ColLayout<float> LocationsZsColumn{LocationsYsColumn};
+    inline static constexpr ColLayout<float> EmissionDirectionsXsColumn{LocationsZsColumn};
+    inline static constexpr ColLayout<float> EmissionDirectionsYsColumn{EmissionDirectionsXsColumn};
+    inline static constexpr ColLayout<float> EmissionDirectionsZsColumn{EmissionDirectionsYsColumn};
+    inline static constexpr ColLayout<LaserSource> SourcesColumn{EmissionDirectionsZsColumn};
 
-    inline static constexpr byte_size_type allocation_alignment{
-        ml::native_soa::maximum_alignment(LocationsXs,
-                                          LocationsYs,
-                                          LocationsZs,
-                                          EmissionDirectionsXs,
-                                          EmissionDirectionsYs,
-                                          EmissionDirectionsZs,
-                                          Sources)};
+    inline static constexpr byte_size_type allocation_alignment{SourcesColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::layout_align(Sources.block_end, allocation_alignment) +
-        6 * (column_gap + allocation_alignment - 1)};
+        ml::native_soa::capacity_block_bound(SourcesColumn)};
     inline static constexpr size_type max_capacity{
         ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : Sources.data_end(blocks);
+        return blocks == 0 ? 0 : SourcesColumn.data_end(blocks);
     }
-  private:
-    inline static constexpr auto validate_layout = []() consteval -> bool {
-        static_assert(
-            ml::native_soa::supported_leaf<float>,
-            "Single-allocation leaf locations.xs requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::native_soa::supported_leaf<LaserSource>,
-            "Single-allocation leaf sources requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-
-        static_assert(
-            allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
-            "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - LocationsXs.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - LocationsYs.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <=
-                      (max_allocation_size - LocationsZs.block_offset) / capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - EmissionDirectionsXs.block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - EmissionDirectionsYs.block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(float) <= (max_allocation_size - EmissionDirectionsZs.block_offset) /
-                                           capacity_granularity);
-        static_assert(sizeof(LaserSource) <=
-                      (max_allocation_size - Sources.block_offset) / capacity_granularity);
-        static_assert(6 <= (max_allocation_size -
-                            ml::native_soa::layout_align(Sources.block_end, allocation_alignment)) /
-                               (column_gap + allocation_alignment - 1));
-        static_assert(max_capacity >= capacity_granularity);
-        return true;
-    };
-    static_assert(validate_layout());
+    static_assert(
+        allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
+        "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
+    static_assert(max_capacity >= capacity_granularity);
 };
 
-struct SingleAllocationLaserHitDetailsStorage
-    : LaserHitDetailsSingleLayout
-    , protected ml::native_soa::StorageState
+template <bool Const>
+struct LaserHitDetailsSingleViewImpl : ml::native_soa::CompactViewState<Const> {
+    using Base = ml::native_soa::CompactViewState<Const>;
+    using Base::Base;
+    using Base::validate;
+    using size_type = typename Base::size_type;
+    template <typename T>
+    using Element = typename Base::template Element<T>;
+    using View = LaserHitDetailsSingleView;
+    using ConstView = LaserHitDetailsSingleConstView;
+    LaserHitDetailsSingleViewImpl() = default;
+    template <bool Enabled = Const>
+    LaserHitDetailsSingleViewImpl(LaserHitDetailsSingleViewImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+  protected:
+    using Base::capacity_blocks;
+    using Base::column_data;
+    using Base::column_data_unchecked;
+    using Base::count_;
+    using Base::state_;
+  public:
+    auto view_locations() const -> std::conditional_t<Const,
+                                                      ml::native_soa::Vector3ConstView<float>,
+                                                      ml::native_soa::Vector3View<float>> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{LaserHitDetailsSingleLayout::LocationsXsColumn.offset(blocks)};
+        auto const stride{LaserHitDetailsSingleLayout::LocationsYsColumn.offset(blocks) - first};
+        return {this->template column_data_unchecked<float>(first), stride, count_};
+    }
+    auto view_emission_directions() const
+        -> std::conditional_t<Const,
+                              ml::native_soa::Vector3ConstView<float>,
+                              ml::native_soa::Vector3View<float>> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        auto const first{LaserHitDetailsSingleLayout::EmissionDirectionsXsColumn.offset(blocks)};
+        auto const stride{LaserHitDetailsSingleLayout::EmissionDirectionsYsColumn.offset(blocks) -
+                          first};
+        return {this->template column_data_unchecked<float>(first), stride, count_};
+    }
+    auto sources() const -> std::span<Element<LaserSource>> {
+        return {this->template column_data<LaserSource>(
+                    LaserHitDetailsSingleLayout::SourcesColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto columns() const
+        -> std::conditional_t<Const, LaserHitDetailsConstView, LaserHitDetailsView> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return std::conditional_t<Const, LaserHitDetailsConstView, LaserHitDetailsView>{
+            std::conditional_t<Const, Vectors3fConstView, Vectors3fView>{
+                {this->template column_data_unchecked<float>(
+                     LaserHitDetailsSingleLayout::LocationsXsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {this->template column_data_unchecked<float>(
+                     LaserHitDetailsSingleLayout::LocationsYsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {this->template column_data_unchecked<float>(
+                     LaserHitDetailsSingleLayout::LocationsZsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            std::conditional_t<Const, Vectors3fConstView, Vectors3fView>{
+                {this->template column_data_unchecked<float>(
+                     LaserHitDetailsSingleLayout::EmissionDirectionsXsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {this->template column_data_unchecked<float>(
+                     LaserHitDetailsSingleLayout::EmissionDirectionsYsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)},
+                {this->template column_data_unchecked<float>(
+                     LaserHitDetailsSingleLayout::EmissionDirectionsZsColumn.offset(blocks)),
+                 static_cast<std::size_t>(count_)}},
+            {this->template column_data_unchecked<LaserSource>(
+                 LaserHitDetailsSingleLayout::SourcesColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)}};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        columns().each_column(std::forward<Func>(func));
+    }
+};
+struct LaserHitDetailsSingleConstView : LaserHitDetailsSingleViewImpl<true> {
+    using Base = LaserHitDetailsSingleViewImpl<true>;
+    using Base::Base;
+    using View = LaserHitDetailsSingleView;
+    using ConstView = LaserHitDetailsSingleConstView;
+    LaserHitDetailsSingleConstView() = default;
+    LaserHitDetailsSingleConstView(LaserHitDetailsSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(sizeof(LaserHitDetailsSingleConstView) == 16);
+static_assert(std::is_trivially_copyable_v<LaserHitDetailsSingleConstView>);
+struct LaserHitDetailsSingleView : LaserHitDetailsSingleViewImpl<false> {
+    using Base = LaserHitDetailsSingleViewImpl<false>;
+    using Base::Base;
+    using View = LaserHitDetailsSingleView;
+    using ConstView = LaserHitDetailsSingleConstView;
+    LaserHitDetailsSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(sizeof(LaserHitDetailsSingleView) == 16);
+static_assert(std::is_trivially_copyable_v<LaserHitDetailsSingleView>);
+inline LaserHitDetailsSingleConstView::LaserHitDetailsSingleConstView(
+    LaserHitDetailsSingleView const& other)
+    : Base{other} {}
+struct SingleAllocationLaserHitDetails
+    : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {
+    using Layout = LaserHitDetailsSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
     using View = LaserHitDetailsSingleView;
     using ConstView = LaserHitDetailsSingleConstView;
     using SchemaConstView = LaserHitDetailsConstView;
@@ -452,17 +538,17 @@ struct SingleAllocationLaserHitDetailsStorage
     /* **************************************** */
     // Lifetime
     /* **************************************** */
-    SingleAllocationLaserHitDetailsStorage() noexcept = default;
-    ~SingleAllocationLaserHitDetailsStorage() { ml::native_soa::free(data_, allocation_alignment); }
-    SingleAllocationLaserHitDetailsStorage(SingleAllocationLaserHitDetailsStorage const&) = delete;
-    auto operator=(SingleAllocationLaserHitDetailsStorage const&)
-        -> SingleAllocationLaserHitDetailsStorage& = delete;
-    SingleAllocationLaserHitDetailsStorage(SingleAllocationLaserHitDetailsStorage&& other) noexcept
+    SingleAllocationLaserHitDetails() noexcept = default;
+    ~SingleAllocationLaserHitDetails() { ml::native_soa::free(data_, allocation_alignment); }
+    SingleAllocationLaserHitDetails(SingleAllocationLaserHitDetails const&) = delete;
+    auto operator=(SingleAllocationLaserHitDetails const&)
+        -> SingleAllocationLaserHitDetails& = delete;
+    SingleAllocationLaserHitDetails(SingleAllocationLaserHitDetails&& other) noexcept
         : StorageState{std::exchange(other.data_, nullptr),
                        std::exchange(other.num_, 0),
                        std::exchange(other.capacity_, 0)} {}
-    auto operator=(SingleAllocationLaserHitDetailsStorage&& other) noexcept
-        -> SingleAllocationLaserHitDetailsStorage& {
+    auto operator=(SingleAllocationLaserHitDetails&& other) noexcept
+        -> SingleAllocationLaserHitDetails& {
         if (this != &other) {
             ml::native_soa::free(data_, allocation_alignment);
             data_ = std::exchange(other.data_, nullptr);
@@ -516,6 +602,7 @@ struct SingleAllocationLaserHitDetailsStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
+        ml::native_soa::LayoutCursor cursor{blocks};
         auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
             using Column = std::remove_cvref_t<decltype(column)>;
             using Pointer = std::conditional_t<std::is_const_v<Byte>,
@@ -523,35 +610,16 @@ struct SingleAllocationLaserHitDetailsStorage
                                                typename Column::pointer>;
             return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        auto const locations_xs_offset{byte_size_type{}};
-        auto const locations_ys_offset{ml::native_soa::layout_align(
-            locations_xs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            LocationsYs.alignment)};
-        auto const locations_zs_offset{ml::native_soa::layout_align(
-            locations_ys_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            LocationsZs.alignment)};
-        auto const emission_directions_xs_offset{ml::native_soa::layout_align(
-            locations_zs_offset + blocks * capacity_granularity * sizeof(float) + column_gap,
-            EmissionDirectionsXs.alignment)};
-        auto const emission_directions_ys_offset{ml::native_soa::layout_align(
-            emission_directions_xs_offset + blocks * capacity_granularity * sizeof(float) +
-                column_gap,
-            EmissionDirectionsYs.alignment)};
-        auto const emission_directions_zs_offset{ml::native_soa::layout_align(
-            emission_directions_ys_offset + blocks * capacity_granularity * sizeof(float) +
-                column_gap,
-            EmissionDirectionsZs.alignment)};
-        auto const sources_offset{ml::native_soa::layout_align(
-            emission_directions_zs_offset + blocks * capacity_granularity * sizeof(float) +
-                column_gap,
-            Sources.alignment)};
-        return {pointer_at(LocationsXs, locations_xs_offset),
-                pointer_at(LocationsYs, locations_ys_offset),
-                pointer_at(LocationsZs, locations_zs_offset),
-                pointer_at(EmissionDirectionsXs, emission_directions_xs_offset),
-                pointer_at(EmissionDirectionsYs, emission_directions_ys_offset),
-                pointer_at(EmissionDirectionsZs, emission_directions_zs_offset),
-                pointer_at(Sources, sources_offset)};
+        return {pointer_at(Layout::LocationsXsColumn, cursor.advance(Layout::LocationsXsColumn)),
+                pointer_at(Layout::LocationsYsColumn, cursor.advance(Layout::LocationsYsColumn)),
+                pointer_at(Layout::LocationsZsColumn, cursor.advance(Layout::LocationsZsColumn)),
+                pointer_at(Layout::EmissionDirectionsXsColumn,
+                           cursor.advance(Layout::EmissionDirectionsXsColumn)),
+                pointer_at(Layout::EmissionDirectionsYsColumn,
+                           cursor.advance(Layout::EmissionDirectionsYsColumn)),
+                pointer_at(Layout::EmissionDirectionsZsColumn,
+                           cursor.advance(Layout::EmissionDirectionsZsColumn)),
+                pointer_at(Layout::SourcesColumn, cursor.advance(Layout::SourcesColumn))};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -562,13 +630,13 @@ struct SingleAllocationLaserHitDetailsStorage
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        std::uninitialized_value_construct_n<float*>(columns.locations_xs, count);
-        std::uninitialized_value_construct_n<float*>(columns.locations_ys, count);
-        std::uninitialized_value_construct_n<float*>(columns.locations_zs, count);
-        std::uninitialized_value_construct_n<float*>(columns.emission_directions_xs, count);
-        std::uninitialized_value_construct_n<float*>(columns.emission_directions_ys, count);
-        std::uninitialized_value_construct_n<float*>(columns.emission_directions_zs, count);
-        std::uninitialized_value_construct_n<LaserSource*>(columns.sources, count);
+        ml::native_soa::default_construct_n(columns.locations_xs, count);
+        ml::native_soa::default_construct_n(columns.locations_ys, count);
+        ml::native_soa::default_construct_n(columns.locations_zs, count);
+        ml::native_soa::default_construct_n(columns.emission_directions_xs, count);
+        ml::native_soa::default_construct_n(columns.emission_directions_ys, count);
+        ml::native_soa::default_construct_n(columns.emission_directions_zs, count);
+        ml::native_soa::default_construct_n(columns.sources, count);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -579,25 +647,22 @@ struct SingleAllocationLaserHitDetailsStorage
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        auto const elements_to_move{static_cast<byte_size_type>(move_count)};
-        auto const locations_xs_bytes{elements_to_move * sizeof(float)};
-        auto const sources_bytes{elements_to_move * sizeof(LaserSource)};
-        std::memcpy(
-            columns.locations_xs + index, columns.locations_xs + source, locations_xs_bytes);
-        std::memcpy(
-            columns.locations_ys + index, columns.locations_ys + source, locations_xs_bytes);
-        std::memcpy(
-            columns.locations_zs + index, columns.locations_zs + source, locations_xs_bytes);
-        std::memcpy(columns.emission_directions_xs + index,
-                    columns.emission_directions_xs + source,
-                    locations_xs_bytes);
-        std::memcpy(columns.emission_directions_ys + index,
-                    columns.emission_directions_ys + source,
-                    locations_xs_bytes);
-        std::memcpy(columns.emission_directions_zs + index,
-                    columns.emission_directions_zs + source,
-                    locations_xs_bytes);
-        std::memcpy(columns.sources + index, columns.sources + source, sources_bytes);
+        ml::native_soa::copy_n(
+            columns.locations_xs + index, columns.locations_xs + source, move_count);
+        ml::native_soa::copy_n(
+            columns.locations_ys + index, columns.locations_ys + source, move_count);
+        ml::native_soa::copy_n(
+            columns.locations_zs + index, columns.locations_zs + source, move_count);
+        ml::native_soa::copy_n(columns.emission_directions_xs + index,
+                               columns.emission_directions_xs + source,
+                               move_count);
+        ml::native_soa::copy_n(columns.emission_directions_ys + index,
+                               columns.emission_directions_ys + source,
+                               move_count);
+        ml::native_soa::copy_n(columns.emission_directions_zs + index,
+                               columns.emission_directions_zs + source,
+                               move_count);
+        ml::native_soa::copy_n(columns.sources + index, columns.sources + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -620,27 +685,28 @@ struct SingleAllocationLaserHitDetailsStorage
             auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
             return address >= allocation_begin && address < allocation_end;
         };
-        return aliases(source.locations.xs) || aliases(source.locations.ys) ||
-               aliases(source.locations.zs) || aliases(source.emission_directions.xs) ||
-               aliases(source.emission_directions.ys) || aliases(source.emission_directions.zs) ||
-               aliases(source.sources.data());
+        return ml::native_soa::any_column(source, aliases);
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {
         auto const destination{get_data(first)};
-        auto const elements_to_copy{static_cast<byte_size_type>(count)};
-        auto const locations_xs_bytes{elements_to_copy * sizeof(float)};
-        auto const sources_bytes{elements_to_copy * sizeof(LaserSource)};
-        std::memcpy(destination.locations_xs, source.locations.xs, locations_xs_bytes);
-        std::memcpy(destination.locations_ys, source.locations.ys, locations_xs_bytes);
-        std::memcpy(destination.locations_zs, source.locations.zs, locations_xs_bytes);
-        std::memcpy(
-            destination.emission_directions_xs, source.emission_directions.xs, locations_xs_bytes);
-        std::memcpy(
-            destination.emission_directions_ys, source.emission_directions.ys, locations_xs_bytes);
-        std::memcpy(
-            destination.emission_directions_zs, source.emission_directions.zs, locations_xs_bytes);
-        std::memcpy(destination.sources, source.sources.data(), sources_bytes);
+        ml::native_soa::copy_n(
+            destination.locations_xs, ml::native_soa::source_data(source.locations.xs), count);
+        ml::native_soa::copy_n(
+            destination.locations_ys, ml::native_soa::source_data(source.locations.ys), count);
+        ml::native_soa::copy_n(
+            destination.locations_zs, ml::native_soa::source_data(source.locations.zs), count);
+        ml::native_soa::copy_n(destination.emission_directions_xs,
+                               ml::native_soa::source_data(source.emission_directions.xs),
+                               count);
+        ml::native_soa::copy_n(destination.emission_directions_ys,
+                               ml::native_soa::source_data(source.emission_directions.ys),
+                               count);
+        ml::native_soa::copy_n(destination.emission_directions_zs,
+                               ml::native_soa::source_data(source.emission_directions.zs),
+                               count);
+        ml::native_soa::copy_n(
+            destination.sources, ml::native_soa::source_data(source.sources), count);
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(
@@ -652,213 +718,66 @@ struct SingleAllocationLaserHitDetailsStorage
             auto const source{
                 make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
             auto const destination{make_data_unchecked(new_data, new_blocks)};
-            auto const live_count{static_cast<byte_size_type>(num_)};
-            auto const locations_xs_bytes{live_count * sizeof(float)};
-            auto const sources_bytes{live_count * sizeof(LaserSource)};
-            std::memcpy(destination.locations_xs, source.locations_xs, locations_xs_bytes);
-            std::memcpy(destination.locations_ys, source.locations_ys, locations_xs_bytes);
-            std::memcpy(destination.locations_zs, source.locations_zs, locations_xs_bytes);
-            std::memcpy(destination.emission_directions_xs,
-                        source.emission_directions_xs,
-                        locations_xs_bytes);
-            std::memcpy(destination.emission_directions_ys,
-                        source.emission_directions_ys,
-                        locations_xs_bytes);
-            std::memcpy(destination.emission_directions_zs,
-                        source.emission_directions_zs,
-                        locations_xs_bytes);
-            std::memcpy(destination.sources, source.sources, sources_bytes);
+            ml::native_soa::copy_n(destination.locations_xs, source.locations_xs, num_);
+            ml::native_soa::copy_n(destination.locations_ys, source.locations_ys, num_);
+            ml::native_soa::copy_n(destination.locations_zs, source.locations_zs, num_);
+            ml::native_soa::copy_n(
+                destination.emission_directions_xs, source.emission_directions_xs, num_);
+            ml::native_soa::copy_n(
+                destination.emission_directions_ys, source.emission_directions_ys, num_);
+            ml::native_soa::copy_n(
+                destination.emission_directions_zs, source.emission_directions_zs, num_);
+            ml::native_soa::copy_n(destination.sources, source.sources, num_);
         }
         ml::native_soa::free(data_, allocation_alignment);
         data_ = new_data;
         capacity_ = new_capacity;
     }
-};
-
-struct LaserHitDetailsSingleConstView : ml::native_soa::CompactViewState<true> {
-    using Base = ml::native_soa::CompactViewState<true>;
-    using Base::Base;
-    using View = LaserHitDetailsSingleView;
-    using ConstView = LaserHitDetailsSingleConstView;
-    LaserHitDetailsSingleConstView() = default;
-    LaserHitDetailsSingleConstView(LaserHitDetailsSingleView const& other);
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
+  public:
+    template <typename Self>
+    using ViewFor =
+        std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, ConstView, View>;
+    template <typename Self>
+    auto get_view(this Self&& self) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, 0, self.num()};
     }
-    auto view_locations() const -> ml::native_soa::Vector3ConstView<float> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        auto const first{LaserHitDetailsSingleLayout::LocationsXs.offset(blocks)};
-        auto const stride{LaserHitDetailsSingleLayout::LocationsYs.offset(blocks) - first};
-        return {column_data_unchecked<float>(first), stride, count_};
+    template <typename Self>
+    auto get_view(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, offset, count};
     }
-    auto view_emission_directions() const -> ml::native_soa::Vector3ConstView<float> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        auto const first{LaserHitDetailsSingleLayout::EmissionDirectionsXs.offset(blocks)};
-        auto const stride{LaserHitDetailsSingleLayout::EmissionDirectionsYs.offset(blocks) - first};
-        return {column_data_unchecked<float>(first), stride, count_};
+    template <typename Self>
+    auto slice(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view(offset, count);
     }
-    auto sources() const -> std::span<LaserSource const> {
-        return {column_data<LaserSource>(
-                    LaserHitDetailsSingleLayout::Sources.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto left(this Self&& self, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view().left(count);
     }
-    auto columns() const -> LaserHitDetailsConstView {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return LaserHitDetailsConstView{
-            Vectors3fConstView{{column_data_unchecked<float>(
-                                    LaserHitDetailsSingleLayout::LocationsXs.offset(blocks)),
-                                static_cast<std::size_t>(count_)},
-                               {column_data_unchecked<float>(
-                                    LaserHitDetailsSingleLayout::LocationsYs.offset(blocks)),
-                                static_cast<std::size_t>(count_)},
-                               {column_data_unchecked<float>(
-                                    LaserHitDetailsSingleLayout::LocationsZs.offset(blocks)),
-                                static_cast<std::size_t>(count_)}},
-            Vectors3fConstView{
-                {column_data_unchecked<float>(
-                     LaserHitDetailsSingleLayout::EmissionDirectionsXs.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {column_data_unchecked<float>(
-                     LaserHitDetailsSingleLayout::EmissionDirectionsYs.offset(blocks)),
-                 static_cast<std::size_t>(count_)},
-                {column_data_unchecked<float>(
-                     LaserHitDetailsSingleLayout::EmissionDirectionsZs.offset(blocks)),
-                 static_cast<std::size_t>(count_)}},
-            {column_data_unchecked<LaserSource>(
-                 LaserHitDetailsSingleLayout::Sources.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
+    template <typename Self>
+    auto right(this Self&& self, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view().right(count);
     }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        columns().each_column(std::forward<Func>(func));
+    template <typename Self>
+    auto get_const_view(this Self&& self) -> ConstView
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, 0, self.num()};
     }
-};
-static_assert(sizeof(LaserHitDetailsSingleConstView) == 16);
-static_assert(std::is_trivially_copyable_v<LaserHitDetailsSingleConstView>);
-struct LaserHitDetailsSingleView : ml::native_soa::CompactViewState<false> {
-    using Base = ml::native_soa::CompactViewState<false>;
-    using Base::Base;
-    using View = LaserHitDetailsSingleView;
-    using ConstView = LaserHitDetailsSingleConstView;
-    LaserHitDetailsSingleView() = default;
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
+    template <typename Self>
+    auto get_const_view(this Self&& self, size_type offset, size_type count) -> ConstView
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, offset, count};
     }
-    auto view_locations() const -> ml::native_soa::Vector3View<float> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        auto const first{LaserHitDetailsSingleLayout::LocationsXs.offset(blocks)};
-        auto const stride{LaserHitDetailsSingleLayout::LocationsYs.offset(blocks) - first};
-        return {column_data_unchecked<float>(first), stride, count_};
-    }
-    auto view_emission_directions() const -> ml::native_soa::Vector3View<float> {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        auto const first{LaserHitDetailsSingleLayout::EmissionDirectionsXs.offset(blocks)};
-        auto const stride{LaserHitDetailsSingleLayout::EmissionDirectionsYs.offset(blocks) - first};
-        return {column_data_unchecked<float>(first), stride, count_};
-    }
-    auto sources() const -> std::span<LaserSource> {
-        return {column_data<LaserSource>(
-                    LaserHitDetailsSingleLayout::Sources.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto columns() const -> LaserHitDetailsView {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return LaserHitDetailsView{
-            Vectors3fView{{column_data_unchecked<float>(
-                               LaserHitDetailsSingleLayout::LocationsXs.offset(blocks)),
-                           static_cast<std::size_t>(count_)},
-                          {column_data_unchecked<float>(
-                               LaserHitDetailsSingleLayout::LocationsYs.offset(blocks)),
-                           static_cast<std::size_t>(count_)},
-                          {column_data_unchecked<float>(
-                               LaserHitDetailsSingleLayout::LocationsZs.offset(blocks)),
-                           static_cast<std::size_t>(count_)}},
-            Vectors3fView{{column_data_unchecked<float>(
-                               LaserHitDetailsSingleLayout::EmissionDirectionsXs.offset(blocks)),
-                           static_cast<std::size_t>(count_)},
-                          {column_data_unchecked<float>(
-                               LaserHitDetailsSingleLayout::EmissionDirectionsYs.offset(blocks)),
-                           static_cast<std::size_t>(count_)},
-                          {column_data_unchecked<float>(
-                               LaserHitDetailsSingleLayout::EmissionDirectionsZs.offset(blocks)),
-                           static_cast<std::size_t>(count_)}},
-            {column_data_unchecked<LaserSource>(
-                 LaserHitDetailsSingleLayout::Sources.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        columns().each_column(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(LaserHitDetailsSingleView) == 16);
-static_assert(std::is_trivially_copyable_v<LaserHitDetailsSingleView>);
-inline LaserHitDetailsSingleConstView::LaserHitDetailsSingleConstView(
-    LaserHitDetailsSingleView const& other)
-    : Base{other} {}
-struct SingleAllocationLaserHitDetails : SingleAllocationLaserHitDetailsStorage {
-    SingleAllocationLaserHitDetails() noexcept = default;
-    SingleAllocationLaserHitDetails(SingleAllocationLaserHitDetails const&) = delete;
-    auto operator=(SingleAllocationLaserHitDetails const&)
-        -> SingleAllocationLaserHitDetails& = delete;
-    SingleAllocationLaserHitDetails(SingleAllocationLaserHitDetails&&) noexcept = default;
-    auto operator=(SingleAllocationLaserHitDetails&&) noexcept
-        -> SingleAllocationLaserHitDetails& = default;
-    auto get_view() & -> View { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) & -> View { return {this, offset, count}; }
-    auto slice(size_type offset, size_type count) & -> View { return get_view(offset, count); }
-    auto left(size_type count) & -> View { return get_view().left(count); }
-    auto right(size_type count) & -> View { return get_view().right(count); }
-    auto get_view() && -> View = delete;
-    auto get_view(size_type, size_type) && -> View = delete;
-    auto slice(size_type, size_type) && -> View = delete;
-    auto left(size_type) && -> View = delete;
-    auto right(size_type) && -> View = delete;
-    auto get_view() const& -> ConstView { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) const& -> ConstView {
-        return {this, offset, count};
-    }
-    auto slice(size_type offset, size_type count) const& -> ConstView {
-        return get_view(offset, count);
-    }
-    auto left(size_type count) const& -> ConstView { return get_view().left(count); }
-    auto right(size_type count) const& -> ConstView { return get_view().right(count); }
-    auto get_view() const&& -> ConstView = delete;
-    auto get_view(size_type, size_type) const&& -> ConstView = delete;
-    auto slice(size_type, size_type) const&& -> ConstView = delete;
-    auto left(size_type) const&& -> ConstView = delete;
-    auto right(size_type) const&& -> ConstView = delete;
-    auto get_const_view() const& -> ConstView { return get_view(); }
-    auto get_const_view(size_type offset, size_type count) const& -> ConstView {
-        return get_view(offset, count);
-    }
-    auto get_const_view() const&& -> ConstView = delete;
-    auto get_const_view(size_type, size_type) const&& -> ConstView = delete;
 };
 } // namespace ioj::sim

@@ -464,16 +464,16 @@ void zero_row_range(std::byte* const data,
                     int32 const first,
                     int32 const count) {
     using Layout = ::ioj::sim::telemetry::HistoryRowsSingleLayout;
-    zero_column<Layout::CompletedTicks>(data, blocks, first, count);
-    zero_column<Layout::ValidityMasks>(data, blocks, first, count);
-    zero_column<Layout::ActiveEntities>(data, blocks, first, count);
-    zero_column<Layout::ActiveEntitiesByType>(data, blocks, first, count);
-    zero_column<Layout::ActiveEntitiesByTeamAndType>(data, blocks, first, count);
-    zero_column<Layout::SpawnedEntities>(data, blocks, first, count);
-    zero_column<Layout::DestroyedEntities>(data, blocks, first, count);
-    zero_column<Layout::Kills>(data, blocks, first, count);
-    zero_column<Layout::ActiveLasers>(data, blocks, first, count);
-    zero_column<Layout::LasersFired>(data, blocks, first, count);
+    zero_column<Layout::CompletedTicksColumn>(data, blocks, first, count);
+    zero_column<Layout::ValidityMasksColumn>(data, blocks, first, count);
+    zero_column<Layout::ActiveEntitiesColumn>(data, blocks, first, count);
+    zero_column<Layout::ActiveEntitiesByTypeColumn>(data, blocks, first, count);
+    zero_column<Layout::ActiveEntitiesByTeamAndTypeColumn>(data, blocks, first, count);
+    zero_column<Layout::SpawnedEntitiesColumn>(data, blocks, first, count);
+    zero_column<Layout::DestroyedEntitiesColumn>(data, blocks, first, count);
+    zero_column<Layout::KillsColumn>(data, blocks, first, count);
+    zero_column<Layout::ActiveLasersColumn>(data, blocks, first, count);
+    zero_column<Layout::LasersFiredColumn>(data, blocks, first, count);
 }
 
 void run_chunk_zero_probe(FAutomationTestBase& token,

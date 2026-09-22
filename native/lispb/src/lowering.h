@@ -14,8 +14,9 @@ auto lower_record_module(RecordModuleSchema const& module,
                          std::map<std::string, CppType> const& types) -> Module;
 auto lower_union_module(UnionModuleSchema const& module,
                         std::map<std::string, CppType> const& types) -> Module;
-auto lower_soa_module(SoaModuleSchema const& module, std::map<std::string, CppType> const& types)
-    -> Module;
+auto lower_soa_module(SoaModuleSchema const& module,
+                      std::map<std::string, CppType> const& types,
+                      lispb::schema::TypeGraph const& type_graph) -> Module;
 auto lower_static_table_module(StaticTableModuleSchema const& module,
                                std::map<std::string, CppType> const& types) -> Module;
 auto lower_homogeneous_module(HomogeneousModuleSchema const& module,

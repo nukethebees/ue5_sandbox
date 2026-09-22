@@ -7,6 +7,6 @@ execute_process(
 if(result EQUAL 0)
   message(FATAL_ERROR "Unsupported single-allocation leaf compiled successfully")
 endif()
-if(NOT "${output}${error}" MATCHES "Single-allocation leaf restricted requires")
+if(NOT "${output}${error}" MATCHES "Single-allocation leaf requires")
   message(FATAL_ERROR "Compilation failed without the expected leaf diagnostic: ${output}${error}")
 endif()

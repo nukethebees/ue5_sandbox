@@ -218,7 +218,8 @@ auto lower_soa_impl(SoaSchema const& schema,
 }
 
 auto lower_soa_module_impl(SoaModuleSchema const& module,
-                           std::map<std::string, CppType> const& types) -> Module {
+                           std::map<std::string, CppType> const& types,
+                           lispb::schema::TypeGraph const& type_graph) -> Module {
     auto const standard_library{module.backend == SoaBackend::standard_library};
     auto const format_generated{standard_library ||
                                 std::ranges::any_of(module.structs, [](auto const& schema) {
@@ -255,13 +256,14 @@ auto lower_soa_module_impl(SoaModuleSchema const& module,
             NodeListBuilder header;
             header.append(std::move(lowered.header))
                 .new_lines(2)
-                .append(lower_single_allocation_nodes(schema, schemas, types, standard_library));
+                .append(lower_single_allocation_nodes(
+                    schema, schemas, types, type_graph, module.settings.name, module.backend));
             for (auto const& variant : schema.single_allocation_variants) {
                 auto copy{schema};
                 copy.single_allocation = variant.name;
                 copy.single_allocation_allocator = variant.allocator;
-                header.new_lines(2).append(
-                    lower_single_allocation_nodes(copy, schemas, types, standard_library));
+                header.new_lines(2).append(lower_single_allocation_nodes(
+                    copy, schemas, types, type_graph, module.settings.name, module.backend));
             }
             lowered.header = header.build();
         }
@@ -334,10 +336,11 @@ auto lower_soa(SoaSchema const& schema,
     return lower_soa_impl(schema, types, std::move(storage_prelude));
 }
 
-auto lower_soa_module(SoaModuleSchema const& module, std::map<std::string, CppType> const& types)
-    -> Module {
+auto lower_soa_module(SoaModuleSchema const& module,
+                      std::map<std::string, CppType> const& types,
+                      lispb::schema::TypeGraph const& type_graph) -> Module {
     if (module.array_allocators.empty()) {
-        return lower_soa_module_impl(module, types);
+        return lower_soa_module_impl(module, types, type_graph);
     }
     if (module.backend == SoaBackend::standard_library) {
         throw std::invalid_argument{"TArray allocator variants require the Unreal backend"};
@@ -350,11 +353,9 @@ auto lower_soa_module(SoaModuleSchema const& module, std::map<std::string, CppTy
         names.insert(schema.const_view_name.value_or(schema.name + "ConstView"));
         if (schema.single_allocation) {
             names.insert(*schema.single_allocation);
-            names.insert(*schema.single_allocation + "Storage");
         }
         for (auto const& variant : schema.single_allocation_variants) {
             names.insert(variant.name);
-            names.insert(variant.name + "Storage");
         }
     }
     for (auto const& variant : module.array_allocators) {
@@ -395,7 +396,7 @@ auto lower_soa_module(SoaModuleSchema const& module, std::map<std::string, CppTy
             expanded.structs.push_back(std::move(copy));
         }
     }
-    return lower_soa_module_impl(expanded, types);
+    return lower_soa_module_impl(expanded, types, type_graph);
 }
 
 } // namespace codegen::detail

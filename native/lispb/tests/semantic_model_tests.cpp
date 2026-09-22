@@ -438,9 +438,58 @@ TEST(SemanticTypeGraph, ResolvesStandardLibrarySoaColumns) {
     EXPECT_NE(std::ranges::find(graph.dependencies_of(*vectors), *vector_equivalent),
               graph.dependencies_of(*vectors).end());
     ASSERT_EQ(vector_type.columns.size(), 3U);
+    EXPECT_EQ(vector_type.vector_components, (std::vector<std::string>{"xs", "ys", "zs"}));
     for (auto const& column : vector_type.columns) {
         EXPECT_EQ(graph.type(column.semantic_type.type).cpp_spelling, "float");
     }
+    auto const local_vectors{graph.find_declared("lasers_soa", "Vectors3f")};
+    ASSERT_TRUE(local_vectors.has_value());
+    auto const& local{std::get<SoaType>(graph.type(*local_vectors).definition)};
+    EXPECT_EQ(local.source_kind, SoaSourceKind::structure);
+    EXPECT_EQ(local.vector_components, vector_type.vector_components);
+}
+
+TEST(SemanticTypeGraph, RejectsVectorComponentsThatDisagreeWithDeclaredEquivalent) {
+    auto const project_root{
+        std::filesystem::path{SANDBOX_CODEGEN_SOURCE_DIR}.parent_path().parent_path()};
+    auto const project{lispb::load_project(project_root / "lispb/project.lispb")};
+    auto const& target{std::get<lispb::CppSchemaTarget>(project.targets.at("sandbox-code"))};
+    std::vector<std::filesystem::path> sources;
+    for (auto const& source : target.sources) {
+        sources.push_back(project.root / source);
+    }
+    auto manifest{codegen::load_sources(project.root / target.types, sources)};
+    for (auto& module : manifest.modules) {
+        auto* soa{std::get_if<codegen::SoaModuleSchema>(&module)};
+        if (soa == nullptr || soa->settings.name != "lasers_soa") {
+            continue;
+        }
+        auto& vectors{soa->structs.front()};
+        for (auto& member : vectors.members) {
+            member.type = codegen::TypeRef{"double"};
+        }
+    }
+    EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
+}
+
+TEST(SemanticTypeGraph, RejectsNestedSoaTypeThatDisagreesWithResolvedSchema) {
+    codegen::Manifest const manifest{
+        .schema_version = codegen::manifest_schema_version,
+        .modules = {codegen::SoaModuleSchema{
+            .settings = codegen::ModuleSettings{.name = "tables", .header = "Tables.h"},
+            .structs = {codegen::SoaSchema{.name = "Child",
+                                           .members = {{.name = "values",
+                                                        .kind = codegen::SoaMemberKind::array,
+                                                        .type = codegen::TypeRef{"float"}}}},
+                        codegen::SoaSchema{.name = "Parent",
+                                           .members = {{.name = "child",
+                                                        .kind = codegen::SoaMemberKind::nested,
+                                                        .type = codegen::TypeRef{"Other"},
+                                                        .nested_schema = "Child"}},
+                                           .single_allocation = "SingleParent"}},
+        }},
+    };
+    EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
 
 TEST(SemanticTypeGraph, ResolvesSoaColumnRelationshipsAndDependencies) {

@@ -174,7 +174,7 @@ auto lower_modules(Manifest const& manifest) -> std::vector<Module> {
                 } else if constexpr (std::is_same_v<T, UnionModuleSchema>) {
                     result.push_back(detail::lower_union_module(module, manifest.types));
                 } else if constexpr (std::is_same_v<T, SoaModuleSchema>) {
-                    result.push_back(detail::lower_soa_module(module, manifest.types));
+                    result.push_back(detail::lower_soa_module(module, manifest.types, type_graph));
                 } else if constexpr (std::is_same_v<T, StaticTableModuleSchema>) {
                     result.push_back(detail::lower_static_table_module(module, manifest.types));
                 } else if constexpr (std::is_same_v<T, FacadeModuleSchema>) {

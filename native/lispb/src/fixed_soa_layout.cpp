@@ -45,10 +45,6 @@ auto build_soa_layout(SoaSchema const& schema,
             if (found == schemas.end() || (fixed && !found->second->fixed.has_value())) {
                 throw std::invalid_argument{"Unknown nested schema: " + *reference};
             }
-            if (!fixed && resolved[index].element_type.spelling != found->second->name) {
-                throw std::invalid_argument{"Nested SOA type does not match nested_schema: " +
-                                            member_schema.name};
-            }
             auto nested{
                 build_soa_layout(*found->second, schemas, types, fixed, member_path, ancestors)};
             member.leaves = nested.leaves;

@@ -10,8 +10,6 @@
 #include "sandbox/core/native_soa/vector_storage_ops.h"
 
 #include <cstdint>
-#include <cstring>
-#include <memory>
 #include <type_traits>
 #include <utility>
 
@@ -583,113 +581,204 @@ struct HistoryRowsSingleLayout {
     using size_type = std::int32_t;
     using byte_size_type = std::size_t;
 
-    inline static constexpr byte_size_type max_allocation_size{
-        std::numeric_limits<byte_size_type>::max()};
-    inline static constexpr size_type capacity_granularity{64};
-    inline static constexpr byte_size_type column_gap{192};
+    inline static constexpr size_type capacity_granularity{
+        ml::native_soa::LayoutPolicy::capacity_granularity};
+    inline static constexpr byte_size_type column_gap{ml::native_soa::LayoutPolicy::column_gap};
 
     template <typename T>
     using ColLayout = ml::native_soa::ColumnLayout<T>;
-    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{
-        capacity_granularity, column_gap, 64};
+    inline static constexpr ml::native_soa::ColumnLayoutStart LayoutStart{};
 
-    inline static constexpr ColLayout<SimTick> CompletedTicks{LayoutStart};
-    inline static constexpr ColLayout<HistoryFieldMask> ValidityMasks{CompletedTicks};
-    inline static constexpr ColLayout<std::int32_t> ActiveEntities{ValidityMasks};
-    inline static constexpr ColLayout<EntityTypeCounts> ActiveEntitiesByType{ActiveEntities};
-    inline static constexpr ColLayout<EntityCounts> ActiveEntitiesByTeamAndType{
-        ActiveEntitiesByType};
-    inline static constexpr ColLayout<std::int32_t> SpawnedEntities{ActiveEntitiesByTeamAndType};
-    inline static constexpr ColLayout<std::int32_t> DestroyedEntities{SpawnedEntities};
-    inline static constexpr ColLayout<std::int32_t> Kills{DestroyedEntities};
-    inline static constexpr ColLayout<std::int32_t> ActiveLasers{Kills};
-    inline static constexpr ColLayout<std::int32_t> LasersFired{ActiveLasers};
+    inline static constexpr ColLayout<SimTick> CompletedTicksColumn{LayoutStart};
+    inline static constexpr ColLayout<HistoryFieldMask> ValidityMasksColumn{CompletedTicksColumn};
+    inline static constexpr ColLayout<std::int32_t> ActiveEntitiesColumn{ValidityMasksColumn};
+    inline static constexpr ColLayout<EntityTypeCounts> ActiveEntitiesByTypeColumn{
+        ActiveEntitiesColumn};
+    inline static constexpr ColLayout<EntityCounts> ActiveEntitiesByTeamAndTypeColumn{
+        ActiveEntitiesByTypeColumn};
+    inline static constexpr ColLayout<std::int32_t> SpawnedEntitiesColumn{
+        ActiveEntitiesByTeamAndTypeColumn};
+    inline static constexpr ColLayout<std::int32_t> DestroyedEntitiesColumn{SpawnedEntitiesColumn};
+    inline static constexpr ColLayout<std::int32_t> KillsColumn{DestroyedEntitiesColumn};
+    inline static constexpr ColLayout<std::int32_t> ActiveLasersColumn{KillsColumn};
+    inline static constexpr ColLayout<std::int32_t> LasersFiredColumn{ActiveLasersColumn};
 
     inline static constexpr byte_size_type allocation_alignment{
-        ml::native_soa::maximum_alignment(CompletedTicks,
-                                          ValidityMasks,
-                                          ActiveEntities,
-                                          ActiveEntitiesByType,
-                                          ActiveEntitiesByTeamAndType,
-                                          SpawnedEntities,
-                                          DestroyedEntities,
-                                          Kills,
-                                          ActiveLasers,
-                                          LasersFired)};
+        LasersFiredColumn.allocation_alignment};
 
     // Conservative per-block bound for checked capacity arithmetic; gaps do not scale with
     // capacity.
     inline static constexpr byte_size_type capacity_block_bound{
-        ml::native_soa::layout_align(LasersFired.block_end, allocation_alignment) +
-        9 * (column_gap + allocation_alignment - 1)};
+        ml::native_soa::capacity_block_bound(LasersFiredColumn)};
     inline static constexpr size_type max_capacity{
         ml::native_soa::maximum_capacity(capacity_block_bound)};
     static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
-        return blocks == 0 ? 0 : LasersFired.data_end(blocks);
+        return blocks == 0 ? 0 : LasersFiredColumn.data_end(blocks);
     }
-  private:
-    inline static constexpr auto validate_layout = []() consteval -> bool {
-        static_assert(
-            ml::native_soa::supported_leaf<SimTick>,
-            "Single-allocation leaf completed_ticks requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::native_soa::supported_leaf<HistoryFieldMask>,
-            "Single-allocation leaf validity_masks requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::native_soa::supported_leaf<std::int32_t>,
-            "Single-allocation leaf active_entities requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::native_soa::supported_leaf<EntityTypeCounts>,
-            "Single-allocation leaf active_entities_by_type requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-        static_assert(
-            ml::native_soa::supported_leaf<EntityCounts>,
-            "Single-allocation leaf active_entities_by_team_and_type requires a non-cv, trivially "
-            "copyable/copy-constructible/destructible, nothrow default-constructible object type.");
-
-        static_assert(
-            allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
-            "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
-        static_assert(sizeof(SimTick) <=
-                      (max_allocation_size - CompletedTicks.block_offset) / capacity_granularity);
-        static_assert(sizeof(HistoryFieldMask) <=
-                      (max_allocation_size - ValidityMasks.block_offset) / capacity_granularity);
-        static_assert(sizeof(std::int32_t) <=
-                      (max_allocation_size - ActiveEntities.block_offset) / capacity_granularity);
-        static_assert(sizeof(EntityTypeCounts) <=
-                      (max_allocation_size - ActiveEntitiesByType.block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(EntityCounts) <=
-                      (max_allocation_size - ActiveEntitiesByTeamAndType.block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(std::int32_t) <=
-                      (max_allocation_size - SpawnedEntities.block_offset) / capacity_granularity);
-        static_assert(sizeof(std::int32_t) <=
-                      (max_allocation_size - DestroyedEntities.block_offset) /
-                          capacity_granularity);
-        static_assert(sizeof(std::int32_t) <=
-                      (max_allocation_size - Kills.block_offset) / capacity_granularity);
-        static_assert(sizeof(std::int32_t) <=
-                      (max_allocation_size - ActiveLasers.block_offset) / capacity_granularity);
-        static_assert(sizeof(std::int32_t) <=
-                      (max_allocation_size - LasersFired.block_offset) / capacity_granularity);
-        static_assert(9 <=
-                      (max_allocation_size -
-                       ml::native_soa::layout_align(LasersFired.block_end, allocation_alignment)) /
-                          (column_gap + allocation_alignment - 1));
-        static_assert(max_capacity >= capacity_granularity);
-        return true;
-    };
-    static_assert(validate_layout());
+    static_assert(
+        allocation_alignment <= std::numeric_limits<std::uint32_t>::max(),
+        "Single-allocation alignment must fit the allocator's 32-bit alignment argument.");
+    static_assert(max_capacity >= capacity_granularity);
 };
 
-struct SingleAllocationHistoryRowsStorage
-    : HistoryRowsSingleLayout
-    , protected ml::native_soa::StorageState
+template <bool Const>
+struct HistoryRowsSingleViewImpl : ml::native_soa::CompactViewState<Const> {
+    using Base = ml::native_soa::CompactViewState<Const>;
+    using Base::Base;
+    using Base::validate;
+    using size_type = typename Base::size_type;
+    template <typename T>
+    using Element = typename Base::template Element<T>;
+    using View = HistoryRowsSingleView;
+    using ConstView = HistoryRowsSingleConstView;
+    HistoryRowsSingleViewImpl() = default;
+    template <bool Enabled = Const>
+    HistoryRowsSingleViewImpl(HistoryRowsSingleViewImpl<false> const& other)
+        requires Enabled
+        : Base{other} {}
+  protected:
+    using Base::capacity_blocks;
+    using Base::column_data;
+    using Base::column_data_unchecked;
+    using Base::count_;
+    using Base::state_;
+  public:
+    auto completed_ticks() const -> std::span<Element<SimTick>> {
+        return {this->template column_data<SimTick>(
+                    HistoryRowsSingleLayout::CompletedTicksColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto validity_masks() const -> std::span<Element<HistoryFieldMask>> {
+        return {this->template column_data<HistoryFieldMask>(
+                    HistoryRowsSingleLayout::ValidityMasksColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto active_entities() const -> std::span<Element<std::int32_t>> {
+        return {this->template column_data<std::int32_t>(
+                    HistoryRowsSingleLayout::ActiveEntitiesColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto active_entities_by_type() const -> std::span<Element<EntityTypeCounts>> {
+        return {this->template column_data<EntityTypeCounts>(
+                    HistoryRowsSingleLayout::ActiveEntitiesByTypeColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto active_entities_by_team_and_type() const -> std::span<Element<EntityCounts>> {
+        return {this->template column_data<EntityCounts>(
+                    HistoryRowsSingleLayout::ActiveEntitiesByTeamAndTypeColumn.offset(
+                        capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto spawned_entities() const -> std::span<Element<std::int32_t>> {
+        return {this->template column_data<std::int32_t>(
+                    HistoryRowsSingleLayout::SpawnedEntitiesColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto destroyed_entities() const -> std::span<Element<std::int32_t>> {
+        return {this->template column_data<std::int32_t>(
+                    HistoryRowsSingleLayout::DestroyedEntitiesColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto kills() const -> std::span<Element<std::int32_t>> {
+        return {this->template column_data<std::int32_t>(
+                    HistoryRowsSingleLayout::KillsColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto active_lasers() const -> std::span<Element<std::int32_t>> {
+        return {this->template column_data<std::int32_t>(
+                    HistoryRowsSingleLayout::ActiveLasersColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto lasers_fired() const -> std::span<Element<std::int32_t>> {
+        return {this->template column_data<std::int32_t>(
+                    HistoryRowsSingleLayout::LasersFiredColumn.offset(capacity_blocks())),
+                static_cast<std::size_t>(count_)};
+    }
+    auto columns() const -> std::conditional_t<Const, HistoryRowsConstView, HistoryRowsView> {
+        validate();
+        if (!state_ || !state_->data_) {
+            return {};
+        }
+        auto const blocks{capacity_blocks()};
+        return std::conditional_t<Const, HistoryRowsConstView, HistoryRowsView>{
+            {this->template column_data_unchecked<SimTick>(
+                 HistoryRowsSingleLayout::CompletedTicksColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<HistoryFieldMask>(
+                 HistoryRowsSingleLayout::ValidityMasksColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<std::int32_t>(
+                 HistoryRowsSingleLayout::ActiveEntitiesColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<EntityTypeCounts>(
+                 HistoryRowsSingleLayout::ActiveEntitiesByTypeColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<EntityCounts>(
+                 HistoryRowsSingleLayout::ActiveEntitiesByTeamAndTypeColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<std::int32_t>(
+                 HistoryRowsSingleLayout::SpawnedEntitiesColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<std::int32_t>(
+                 HistoryRowsSingleLayout::DestroyedEntitiesColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<std::int32_t>(
+                 HistoryRowsSingleLayout::KillsColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<std::int32_t>(
+                 HistoryRowsSingleLayout::ActiveLasersColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)},
+            {this->template column_data_unchecked<std::int32_t>(
+                 HistoryRowsSingleLayout::LasersFiredColumn.offset(blocks)),
+             static_cast<std::size_t>(count_)}};
+    }
+    template <typename Func>
+    void each_column(Func&& func) const {
+        columns().each_column(std::forward<Func>(func));
+    }
+};
+struct HistoryRowsSingleConstView : HistoryRowsSingleViewImpl<true> {
+    using Base = HistoryRowsSingleViewImpl<true>;
+    using Base::Base;
+    using View = HistoryRowsSingleView;
+    using ConstView = HistoryRowsSingleConstView;
+    HistoryRowsSingleConstView() = default;
+    HistoryRowsSingleConstView(HistoryRowsSingleView const& other);
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(sizeof(HistoryRowsSingleConstView) == 16);
+static_assert(std::is_trivially_copyable_v<HistoryRowsSingleConstView>);
+struct HistoryRowsSingleView : HistoryRowsSingleViewImpl<false> {
+    using Base = HistoryRowsSingleViewImpl<false>;
+    using Base::Base;
+    using View = HistoryRowsSingleView;
+    using ConstView = HistoryRowsSingleConstView;
+    HistoryRowsSingleView() = default;
+    auto get_const_view() const -> ConstView { return *this; }
+    auto get_const_view(size_type offset, size_type count) const -> ConstView {
+        return slice(offset, count);
+    }
+};
+static_assert(sizeof(HistoryRowsSingleView) == 16);
+static_assert(std::is_trivially_copyable_v<HistoryRowsSingleView>);
+inline HistoryRowsSingleConstView::HistoryRowsSingleConstView(HistoryRowsSingleView const& other)
+    : Base{other} {}
+struct SingleAllocationHistoryRows
+    : protected ml::native_soa::StorageState
     , ml::native_soa::StorageOperations {
+    using Layout = HistoryRowsSingleLayout;
+    using size_type = Layout::size_type;
+    using byte_size_type = Layout::byte_size_type;
+    inline static constexpr auto capacity_granularity = Layout::capacity_granularity;
+    inline static constexpr auto allocation_alignment = Layout::allocation_alignment;
+    inline static constexpr auto capacity_block_bound = Layout::capacity_block_bound;
+    inline static constexpr auto max_capacity = Layout::max_capacity;
+    static constexpr auto layout_bytes(byte_size_type blocks) noexcept -> byte_size_type {
+        return Layout::layout_bytes(blocks);
+    }
     using View = HistoryRowsSingleView;
     using ConstView = HistoryRowsSingleConstView;
     using SchemaConstView = HistoryRowsConstView;
@@ -714,17 +803,15 @@ struct SingleAllocationHistoryRowsStorage
     /* **************************************** */
     // Lifetime
     /* **************************************** */
-    SingleAllocationHistoryRowsStorage() noexcept = default;
-    ~SingleAllocationHistoryRowsStorage() { ml::native_soa::free(data_, allocation_alignment); }
-    SingleAllocationHistoryRowsStorage(SingleAllocationHistoryRowsStorage const&) = delete;
-    auto operator=(SingleAllocationHistoryRowsStorage const&)
-        -> SingleAllocationHistoryRowsStorage& = delete;
-    SingleAllocationHistoryRowsStorage(SingleAllocationHistoryRowsStorage&& other) noexcept
+    SingleAllocationHistoryRows() noexcept = default;
+    ~SingleAllocationHistoryRows() { ml::native_soa::free(data_, allocation_alignment); }
+    SingleAllocationHistoryRows(SingleAllocationHistoryRows const&) = delete;
+    auto operator=(SingleAllocationHistoryRows const&) -> SingleAllocationHistoryRows& = delete;
+    SingleAllocationHistoryRows(SingleAllocationHistoryRows&& other) noexcept
         : StorageState{std::exchange(other.data_, nullptr),
                        std::exchange(other.num_, 0),
                        std::exchange(other.capacity_, 0)} {}
-    auto operator=(SingleAllocationHistoryRowsStorage&& other) noexcept
-        -> SingleAllocationHistoryRowsStorage& {
+    auto operator=(SingleAllocationHistoryRows&& other) noexcept -> SingleAllocationHistoryRows& {
         if (this != &other) {
             ml::native_soa::free(data_, allocation_alignment);
             data_ = std::exchange(other.data_, nullptr);
@@ -784,6 +871,7 @@ struct SingleAllocationHistoryRowsStorage
     template <typename Byte>
     static auto make_data_unchecked(Byte* const data, byte_size_type const blocks) noexcept
         -> DataPointers<Byte> {
+        ml::native_soa::LayoutCursor cursor{blocks};
         auto const pointer_at = [data](auto const& column, byte_size_type offset) noexcept {
             using Column = std::remove_cvref_t<decltype(column)>;
             using Pointer = std::conditional_t<std::is_const_v<Byte>,
@@ -791,51 +879,21 @@ struct SingleAllocationHistoryRowsStorage
                                                typename Column::pointer>;
             return std::launder(reinterpret_cast<Pointer>(data + offset));
         };
-        auto const completed_ticks_offset{byte_size_type{}};
-        auto const validity_masks_offset{ml::native_soa::layout_align(
-            completed_ticks_offset + blocks * capacity_granularity * sizeof(SimTick) + column_gap,
-            ValidityMasks.alignment)};
-        auto const active_entities_offset{ml::native_soa::layout_align(
-            validity_masks_offset + blocks * capacity_granularity * sizeof(HistoryFieldMask) +
-                column_gap,
-            ActiveEntities.alignment)};
-        auto const active_entities_by_type_offset{ml::native_soa::layout_align(
-            active_entities_offset + blocks * capacity_granularity * sizeof(std::int32_t) +
-                column_gap,
-            ActiveEntitiesByType.alignment)};
-        auto const active_entities_by_team_and_type_offset{ml::native_soa::layout_align(
-            active_entities_by_type_offset +
-                blocks * capacity_granularity * sizeof(EntityTypeCounts) + column_gap,
-            ActiveEntitiesByTeamAndType.alignment)};
-        auto const spawned_entities_offset{ml::native_soa::layout_align(
-            active_entities_by_team_and_type_offset +
-                blocks * capacity_granularity * sizeof(EntityCounts) + column_gap,
-            SpawnedEntities.alignment)};
-        auto const destroyed_entities_offset{ml::native_soa::layout_align(
-            spawned_entities_offset + blocks * capacity_granularity * sizeof(std::int32_t) +
-                column_gap,
-            DestroyedEntities.alignment)};
-        auto const kills_offset{ml::native_soa::layout_align(
-            destroyed_entities_offset + blocks * capacity_granularity * sizeof(std::int32_t) +
-                column_gap,
-            Kills.alignment)};
-        auto const active_lasers_offset{ml::native_soa::layout_align(
-            kills_offset + blocks * capacity_granularity * sizeof(std::int32_t) + column_gap,
-            ActiveLasers.alignment)};
-        auto const lasers_fired_offset{ml::native_soa::layout_align(
-            active_lasers_offset + blocks * capacity_granularity * sizeof(std::int32_t) +
-                column_gap,
-            LasersFired.alignment)};
-        return {pointer_at(CompletedTicks, completed_ticks_offset),
-                pointer_at(ValidityMasks, validity_masks_offset),
-                pointer_at(ActiveEntities, active_entities_offset),
-                pointer_at(ActiveEntitiesByType, active_entities_by_type_offset),
-                pointer_at(ActiveEntitiesByTeamAndType, active_entities_by_team_and_type_offset),
-                pointer_at(SpawnedEntities, spawned_entities_offset),
-                pointer_at(DestroyedEntities, destroyed_entities_offset),
-                pointer_at(Kills, kills_offset),
-                pointer_at(ActiveLasers, active_lasers_offset),
-                pointer_at(LasersFired, lasers_fired_offset)};
+        return {
+            pointer_at(Layout::CompletedTicksColumn, cursor.advance(Layout::CompletedTicksColumn)),
+            pointer_at(Layout::ValidityMasksColumn, cursor.advance(Layout::ValidityMasksColumn)),
+            pointer_at(Layout::ActiveEntitiesColumn, cursor.advance(Layout::ActiveEntitiesColumn)),
+            pointer_at(Layout::ActiveEntitiesByTypeColumn,
+                       cursor.advance(Layout::ActiveEntitiesByTypeColumn)),
+            pointer_at(Layout::ActiveEntitiesByTeamAndTypeColumn,
+                       cursor.advance(Layout::ActiveEntitiesByTeamAndTypeColumn)),
+            pointer_at(Layout::SpawnedEntitiesColumn,
+                       cursor.advance(Layout::SpawnedEntitiesColumn)),
+            pointer_at(Layout::DestroyedEntitiesColumn,
+                       cursor.advance(Layout::DestroyedEntitiesColumn)),
+            pointer_at(Layout::KillsColumn, cursor.advance(Layout::KillsColumn)),
+            pointer_at(Layout::ActiveLasersColumn, cursor.advance(Layout::ActiveLasersColumn)),
+            pointer_at(Layout::LasersFiredColumn, cursor.advance(Layout::LasersFiredColumn))};
     }
     auto capacity_blocks() const noexcept -> byte_size_type {
         return static_cast<byte_size_type>(capacity_ / capacity_granularity);
@@ -846,18 +904,16 @@ struct SingleAllocationHistoryRowsStorage
     /* **************************************** */
     void default_construct_columns(size_type const first, size_type const count) {
         auto const columns{make_data_unchecked(data_, capacity_blocks()) + first};
-        std::uninitialized_value_construct_n<SimTick*>(columns.completed_ticks, count);
-        std::uninitialized_value_construct_n<HistoryFieldMask*>(columns.validity_masks, count);
-        std::uninitialized_value_construct_n<std::int32_t*>(columns.active_entities, count);
-        std::uninitialized_value_construct_n<EntityTypeCounts*>(columns.active_entities_by_type,
-                                                                count);
-        std::uninitialized_value_construct_n<EntityCounts*>(
-            columns.active_entities_by_team_and_type, count);
-        std::uninitialized_value_construct_n<std::int32_t*>(columns.spawned_entities, count);
-        std::uninitialized_value_construct_n<std::int32_t*>(columns.destroyed_entities, count);
-        std::uninitialized_value_construct_n<std::int32_t*>(columns.kills, count);
-        std::uninitialized_value_construct_n<std::int32_t*>(columns.active_lasers, count);
-        std::uninitialized_value_construct_n<std::int32_t*>(columns.lasers_fired, count);
+        ml::native_soa::default_construct_n(columns.completed_ticks, count);
+        ml::native_soa::default_construct_n(columns.validity_masks, count);
+        ml::native_soa::default_construct_n(columns.active_entities, count);
+        ml::native_soa::default_construct_n(columns.active_entities_by_type, count);
+        ml::native_soa::default_construct_n(columns.active_entities_by_team_and_type, count);
+        ml::native_soa::default_construct_n(columns.spawned_entities, count);
+        ml::native_soa::default_construct_n(columns.destroyed_entities, count);
+        ml::native_soa::default_construct_n(columns.kills, count);
+        ml::native_soa::default_construct_n(columns.active_lasers, count);
+        ml::native_soa::default_construct_n(columns.lasers_fired, count);
     }
     void swap_remove_columns(size_type const index,
                              size_type const source,
@@ -868,37 +924,27 @@ struct SingleAllocationHistoryRowsStorage
                              size_type index,
                              size_type source,
                              size_type move_count) {
-        auto const elements_to_move{static_cast<byte_size_type>(move_count)};
-        auto const completed_ticks_bytes{elements_to_move * sizeof(SimTick)};
-        auto const validity_masks_bytes{elements_to_move * sizeof(HistoryFieldMask)};
-        auto const active_entities_bytes{elements_to_move * sizeof(std::int32_t)};
-        auto const active_entities_by_type_bytes{elements_to_move * sizeof(EntityTypeCounts)};
-        auto const active_entities_by_team_and_type_bytes{elements_to_move * sizeof(EntityCounts)};
-        std::memcpy(columns.completed_ticks + index,
-                    columns.completed_ticks + source,
-                    completed_ticks_bytes);
-        std::memcpy(
-            columns.validity_masks + index, columns.validity_masks + source, validity_masks_bytes);
-        std::memcpy(columns.active_entities + index,
-                    columns.active_entities + source,
-                    active_entities_bytes);
-        std::memcpy(columns.active_entities_by_type + index,
-                    columns.active_entities_by_type + source,
-                    active_entities_by_type_bytes);
-        std::memcpy(columns.active_entities_by_team_and_type + index,
-                    columns.active_entities_by_team_and_type + source,
-                    active_entities_by_team_and_type_bytes);
-        std::memcpy(columns.spawned_entities + index,
-                    columns.spawned_entities + source,
-                    active_entities_bytes);
-        std::memcpy(columns.destroyed_entities + index,
-                    columns.destroyed_entities + source,
-                    active_entities_bytes);
-        std::memcpy(columns.kills + index, columns.kills + source, active_entities_bytes);
-        std::memcpy(
-            columns.active_lasers + index, columns.active_lasers + source, active_entities_bytes);
-        std::memcpy(
-            columns.lasers_fired + index, columns.lasers_fired + source, active_entities_bytes);
+        ml::native_soa::copy_n(
+            columns.completed_ticks + index, columns.completed_ticks + source, move_count);
+        ml::native_soa::copy_n(
+            columns.validity_masks + index, columns.validity_masks + source, move_count);
+        ml::native_soa::copy_n(
+            columns.active_entities + index, columns.active_entities + source, move_count);
+        ml::native_soa::copy_n(columns.active_entities_by_type + index,
+                               columns.active_entities_by_type + source,
+                               move_count);
+        ml::native_soa::copy_n(columns.active_entities_by_team_and_type + index,
+                               columns.active_entities_by_team_and_type + source,
+                               move_count);
+        ml::native_soa::copy_n(
+            columns.spawned_entities + index, columns.spawned_entities + source, move_count);
+        ml::native_soa::copy_n(
+            columns.destroyed_entities + index, columns.destroyed_entities + source, move_count);
+        ml::native_soa::copy_n(columns.kills + index, columns.kills + source, move_count);
+        ml::native_soa::copy_n(
+            columns.active_lasers + index, columns.active_lasers + source, move_count);
+        ml::native_soa::copy_n(
+            columns.lasers_fired + index, columns.lasers_fired + source, move_count);
     }
     void swap_remove_indices(std::span<size_type const> indices) {
         auto const columns{get_data()};
@@ -921,42 +967,36 @@ struct SingleAllocationHistoryRowsStorage
             auto const address{reinterpret_cast<std::uintptr_t>(pointer)};
             return address >= allocation_begin && address < allocation_end;
         };
-        return aliases(source.completed_ticks.data()) || aliases(source.validity_masks.data()) ||
-               aliases(source.active_entities.data()) ||
-               aliases(source.active_entities_by_type.data()) ||
-               aliases(source.active_entities_by_team_and_type.data()) ||
-               aliases(source.spawned_entities.data()) ||
-               aliases(source.destroyed_entities.data()) || aliases(source.kills.data()) ||
-               aliases(source.active_lasers.data()) || aliases(source.lasers_fired.data());
+        return ml::native_soa::any_column(source, aliases);
     }
     template <typename Columns>
     void append_columns(Columns const& source, size_type first, size_type count) {
         auto const destination{get_data(first)};
-        auto const elements_to_copy{static_cast<byte_size_type>(count)};
-        auto const completed_ticks_bytes{elements_to_copy * sizeof(SimTick)};
-        auto const validity_masks_bytes{elements_to_copy * sizeof(HistoryFieldMask)};
-        auto const active_entities_bytes{elements_to_copy * sizeof(std::int32_t)};
-        auto const active_entities_by_type_bytes{elements_to_copy * sizeof(EntityTypeCounts)};
-        auto const active_entities_by_team_and_type_bytes{elements_to_copy * sizeof(EntityCounts)};
-        std::memcpy(
-            destination.completed_ticks, source.completed_ticks.data(), completed_ticks_bytes);
-        std::memcpy(destination.validity_masks, source.validity_masks.data(), validity_masks_bytes);
-        std::memcpy(
-            destination.active_entities, source.active_entities.data(), active_entities_bytes);
-        std::memcpy(destination.active_entities_by_type,
-                    source.active_entities_by_type.data(),
-                    active_entities_by_type_bytes);
-        std::memcpy(destination.active_entities_by_team_and_type,
-                    source.active_entities_by_team_and_type.data(),
-                    active_entities_by_team_and_type_bytes);
-        std::memcpy(
-            destination.spawned_entities, source.spawned_entities.data(), active_entities_bytes);
-        std::memcpy(destination.destroyed_entities,
-                    source.destroyed_entities.data(),
-                    active_entities_bytes);
-        std::memcpy(destination.kills, source.kills.data(), active_entities_bytes);
-        std::memcpy(destination.active_lasers, source.active_lasers.data(), active_entities_bytes);
-        std::memcpy(destination.lasers_fired, source.lasers_fired.data(), active_entities_bytes);
+        ml::native_soa::copy_n(destination.completed_ticks,
+                               ml::native_soa::source_data(source.completed_ticks),
+                               count);
+        ml::native_soa::copy_n(
+            destination.validity_masks, ml::native_soa::source_data(source.validity_masks), count);
+        ml::native_soa::copy_n(destination.active_entities,
+                               ml::native_soa::source_data(source.active_entities),
+                               count);
+        ml::native_soa::copy_n(destination.active_entities_by_type,
+                               ml::native_soa::source_data(source.active_entities_by_type),
+                               count);
+        ml::native_soa::copy_n(destination.active_entities_by_team_and_type,
+                               ml::native_soa::source_data(source.active_entities_by_team_and_type),
+                               count);
+        ml::native_soa::copy_n(destination.spawned_entities,
+                               ml::native_soa::source_data(source.spawned_entities),
+                               count);
+        ml::native_soa::copy_n(destination.destroyed_entities,
+                               ml::native_soa::source_data(source.destroyed_entities),
+                               count);
+        ml::native_soa::copy_n(destination.kills, ml::native_soa::source_data(source.kills), count);
+        ml::native_soa::copy_n(
+            destination.active_lasers, ml::native_soa::source_data(source.active_lasers), count);
+        ml::native_soa::copy_n(
+            destination.lasers_fired, ml::native_soa::source_data(source.lasers_fired), count);
     }
     void reallocate(size_type const new_capacity) {
         auto* const new_data{ml::native_soa::allocate(
@@ -968,278 +1008,69 @@ struct SingleAllocationHistoryRowsStorage
             auto const source{
                 make_data_unchecked(static_cast<std::byte const*>(data_), old_blocks)};
             auto const destination{make_data_unchecked(new_data, new_blocks)};
-            auto const live_count{static_cast<byte_size_type>(num_)};
-            auto const completed_ticks_bytes{live_count * sizeof(SimTick)};
-            auto const validity_masks_bytes{live_count * sizeof(HistoryFieldMask)};
-            auto const active_entities_bytes{live_count * sizeof(std::int32_t)};
-            auto const active_entities_by_type_bytes{live_count * sizeof(EntityTypeCounts)};
-            auto const active_entities_by_team_and_type_bytes{live_count * sizeof(EntityCounts)};
-            std::memcpy(destination.completed_ticks, source.completed_ticks, completed_ticks_bytes);
-            std::memcpy(destination.validity_masks, source.validity_masks, validity_masks_bytes);
-            std::memcpy(destination.active_entities, source.active_entities, active_entities_bytes);
-            std::memcpy(destination.active_entities_by_type,
-                        source.active_entities_by_type,
-                        active_entities_by_type_bytes);
-            std::memcpy(destination.active_entities_by_team_and_type,
-                        source.active_entities_by_team_and_type,
-                        active_entities_by_team_and_type_bytes);
-            std::memcpy(
-                destination.spawned_entities, source.spawned_entities, active_entities_bytes);
-            std::memcpy(
-                destination.destroyed_entities, source.destroyed_entities, active_entities_bytes);
-            std::memcpy(destination.kills, source.kills, active_entities_bytes);
-            std::memcpy(destination.active_lasers, source.active_lasers, active_entities_bytes);
-            std::memcpy(destination.lasers_fired, source.lasers_fired, active_entities_bytes);
+            ml::native_soa::copy_n(destination.completed_ticks, source.completed_ticks, num_);
+            ml::native_soa::copy_n(destination.validity_masks, source.validity_masks, num_);
+            ml::native_soa::copy_n(destination.active_entities, source.active_entities, num_);
+            ml::native_soa::copy_n(
+                destination.active_entities_by_type, source.active_entities_by_type, num_);
+            ml::native_soa::copy_n(destination.active_entities_by_team_and_type,
+                                   source.active_entities_by_team_and_type,
+                                   num_);
+            ml::native_soa::copy_n(destination.spawned_entities, source.spawned_entities, num_);
+            ml::native_soa::copy_n(destination.destroyed_entities, source.destroyed_entities, num_);
+            ml::native_soa::copy_n(destination.kills, source.kills, num_);
+            ml::native_soa::copy_n(destination.active_lasers, source.active_lasers, num_);
+            ml::native_soa::copy_n(destination.lasers_fired, source.lasers_fired, num_);
         }
         ml::native_soa::free(data_, allocation_alignment);
         data_ = new_data;
         capacity_ = new_capacity;
     }
-};
-
-struct HistoryRowsSingleConstView : ml::native_soa::CompactViewState<true> {
-    using Base = ml::native_soa::CompactViewState<true>;
-    using Base::Base;
-    using View = HistoryRowsSingleView;
-    using ConstView = HistoryRowsSingleConstView;
-    HistoryRowsSingleConstView() = default;
-    HistoryRowsSingleConstView(HistoryRowsSingleView const& other);
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
+  public:
+    template <typename Self>
+    using ViewFor =
+        std::conditional_t<std::is_const_v<std::remove_reference_t<Self>>, ConstView, View>;
+    template <typename Self>
+    auto get_view(this Self&& self) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, 0, self.num()};
     }
-    auto completed_ticks() const -> std::span<SimTick const> {
-        return {
-            column_data<SimTick>(HistoryRowsSingleLayout::CompletedTicks.offset(capacity_blocks())),
-            static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto get_view(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, offset, count};
     }
-    auto validity_masks() const -> std::span<HistoryFieldMask const> {
-        return {column_data<HistoryFieldMask>(
-                    HistoryRowsSingleLayout::ValidityMasks.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto slice(this Self&& self, size_type offset, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view(offset, count);
     }
-    auto active_entities() const -> std::span<std::int32_t const> {
-        return {column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::ActiveEntities.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto left(this Self&& self, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view().left(count);
     }
-    auto active_entities_by_type() const -> std::span<EntityTypeCounts const> {
-        return {column_data<EntityTypeCounts>(
-                    HistoryRowsSingleLayout::ActiveEntitiesByType.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto right(this Self&& self, size_type count) -> ViewFor<Self>
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return self.get_view().right(count);
     }
-    auto active_entities_by_team_and_type() const -> std::span<EntityCounts const> {
-        return {column_data<EntityCounts>(
-                    HistoryRowsSingleLayout::ActiveEntitiesByTeamAndType.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto get_const_view(this Self&& self) -> ConstView
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, 0, self.num()};
     }
-    auto spawned_entities() const -> std::span<std::int32_t const> {
-        return {column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::SpawnedEntities.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
+    template <typename Self>
+    auto get_const_view(this Self&& self, size_type offset, size_type count) -> ConstView
+        requires std::is_lvalue_reference_v<Self>
+    {
+        return {&self, offset, count};
     }
-    auto destroyed_entities() const -> std::span<std::int32_t const> {
-        return {column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::DestroyedEntities.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto kills() const -> std::span<std::int32_t const> {
-        return {column_data<std::int32_t>(HistoryRowsSingleLayout::Kills.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto active_lasers() const -> std::span<std::int32_t const> {
-        return {column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::ActiveLasers.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto lasers_fired() const -> std::span<std::int32_t const> {
-        return {column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::LasersFired.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto columns() const -> HistoryRowsConstView {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return HistoryRowsConstView{
-            {column_data_unchecked<SimTick>(HistoryRowsSingleLayout::CompletedTicks.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<HistoryFieldMask>(
-                 HistoryRowsSingleLayout::ValidityMasks.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::int32_t>(
-                 HistoryRowsSingleLayout::ActiveEntities.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<EntityTypeCounts>(
-                 HistoryRowsSingleLayout::ActiveEntitiesByType.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<EntityCounts>(
-                 HistoryRowsSingleLayout::ActiveEntitiesByTeamAndType.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::int32_t>(
-                 HistoryRowsSingleLayout::SpawnedEntities.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::int32_t>(
-                 HistoryRowsSingleLayout::DestroyedEntities.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::int32_t>(HistoryRowsSingleLayout::Kills.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::int32_t>(
-                 HistoryRowsSingleLayout::ActiveLasers.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::int32_t>(
-                 HistoryRowsSingleLayout::LasersFired.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        columns().each_column(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(HistoryRowsSingleConstView) == 16);
-static_assert(std::is_trivially_copyable_v<HistoryRowsSingleConstView>);
-struct HistoryRowsSingleView : ml::native_soa::CompactViewState<false> {
-    using Base = ml::native_soa::CompactViewState<false>;
-    using Base::Base;
-    using View = HistoryRowsSingleView;
-    using ConstView = HistoryRowsSingleConstView;
-    HistoryRowsSingleView() = default;
-    auto get_const_view() const -> ConstView { return *this; }
-    auto get_const_view(size_type offset, size_type count) const -> ConstView {
-        return slice(offset, count);
-    }
-    auto completed_ticks() const -> std::span<SimTick> {
-        return {
-            column_data<SimTick>(HistoryRowsSingleLayout::CompletedTicks.offset(capacity_blocks())),
-            static_cast<std::size_t>(count_)};
-    }
-    auto validity_masks() const -> std::span<HistoryFieldMask> {
-        return {column_data<HistoryFieldMask>(
-                    HistoryRowsSingleLayout::ValidityMasks.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto active_entities() const -> std::span<std::int32_t> {
-        return {column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::ActiveEntities.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto active_entities_by_type() const -> std::span<EntityTypeCounts> {
-        return {column_data<EntityTypeCounts>(
-                    HistoryRowsSingleLayout::ActiveEntitiesByType.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto active_entities_by_team_and_type() const -> std::span<EntityCounts> {
-        return {column_data<EntityCounts>(
-                    HistoryRowsSingleLayout::ActiveEntitiesByTeamAndType.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto spawned_entities() const -> std::span<std::int32_t> {
-        return {column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::SpawnedEntities.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto destroyed_entities() const -> std::span<std::int32_t> {
-        return {column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::DestroyedEntities.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto kills() const -> std::span<std::int32_t> {
-        return {column_data<std::int32_t>(HistoryRowsSingleLayout::Kills.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto active_lasers() const -> std::span<std::int32_t> {
-        return {column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::ActiveLasers.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto lasers_fired() const -> std::span<std::int32_t> {
-        return {column_data<std::int32_t>(
-                    HistoryRowsSingleLayout::LasersFired.offset(capacity_blocks())),
-                static_cast<std::size_t>(count_)};
-    }
-    auto columns() const -> HistoryRowsView {
-        validate();
-        if (!state_ || !state_->data_) {
-            return {};
-        }
-        auto const blocks{capacity_blocks()};
-        return HistoryRowsView{
-            {column_data_unchecked<SimTick>(HistoryRowsSingleLayout::CompletedTicks.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<HistoryFieldMask>(
-                 HistoryRowsSingleLayout::ValidityMasks.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::int32_t>(
-                 HistoryRowsSingleLayout::ActiveEntities.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<EntityTypeCounts>(
-                 HistoryRowsSingleLayout::ActiveEntitiesByType.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<EntityCounts>(
-                 HistoryRowsSingleLayout::ActiveEntitiesByTeamAndType.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::int32_t>(
-                 HistoryRowsSingleLayout::SpawnedEntities.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::int32_t>(
-                 HistoryRowsSingleLayout::DestroyedEntities.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::int32_t>(HistoryRowsSingleLayout::Kills.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::int32_t>(
-                 HistoryRowsSingleLayout::ActiveLasers.offset(blocks)),
-             static_cast<std::size_t>(count_)},
-            {column_data_unchecked<std::int32_t>(
-                 HistoryRowsSingleLayout::LasersFired.offset(blocks)),
-             static_cast<std::size_t>(count_)}};
-    }
-    template <typename Func>
-    void each_column(Func&& func) const {
-        columns().each_column(std::forward<Func>(func));
-    }
-};
-static_assert(sizeof(HistoryRowsSingleView) == 16);
-static_assert(std::is_trivially_copyable_v<HistoryRowsSingleView>);
-inline HistoryRowsSingleConstView::HistoryRowsSingleConstView(HistoryRowsSingleView const& other)
-    : Base{other} {}
-struct SingleAllocationHistoryRows : SingleAllocationHistoryRowsStorage {
-    SingleAllocationHistoryRows() noexcept = default;
-    SingleAllocationHistoryRows(SingleAllocationHistoryRows const&) = delete;
-    auto operator=(SingleAllocationHistoryRows const&) -> SingleAllocationHistoryRows& = delete;
-    SingleAllocationHistoryRows(SingleAllocationHistoryRows&&) noexcept = default;
-    auto operator=(SingleAllocationHistoryRows&&) noexcept
-        -> SingleAllocationHistoryRows& = default;
-    auto get_view() & -> View { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) & -> View { return {this, offset, count}; }
-    auto slice(size_type offset, size_type count) & -> View { return get_view(offset, count); }
-    auto left(size_type count) & -> View { return get_view().left(count); }
-    auto right(size_type count) & -> View { return get_view().right(count); }
-    auto get_view() && -> View = delete;
-    auto get_view(size_type, size_type) && -> View = delete;
-    auto slice(size_type, size_type) && -> View = delete;
-    auto left(size_type) && -> View = delete;
-    auto right(size_type) && -> View = delete;
-    auto get_view() const& -> ConstView { return {this, 0, num()}; }
-    auto get_view(size_type offset, size_type count) const& -> ConstView {
-        return {this, offset, count};
-    }
-    auto slice(size_type offset, size_type count) const& -> ConstView {
-        return get_view(offset, count);
-    }
-    auto left(size_type count) const& -> ConstView { return get_view().left(count); }
-    auto right(size_type count) const& -> ConstView { return get_view().right(count); }
-    auto get_view() const&& -> ConstView = delete;
-    auto get_view(size_type, size_type) const&& -> ConstView = delete;
-    auto slice(size_type, size_type) const&& -> ConstView = delete;
-    auto left(size_type) const&& -> ConstView = delete;
-    auto right(size_type) const&& -> ConstView = delete;
-    auto get_const_view() const& -> ConstView { return get_view(); }
-    auto get_const_view(size_type offset, size_type count) const& -> ConstView {
-        return get_view(offset, count);
-    }
-    auto get_const_view() const&& -> ConstView = delete;
-    auto get_const_view(size_type, size_type) const&& -> ConstView = delete;
 };
 } // namespace ioj::sim::telemetry

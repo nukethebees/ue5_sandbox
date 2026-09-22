@@ -2293,6 +2293,16 @@ auto render_soa(codegen::SoaSchema const& schema) -> std::string {
     if (schema.equivalent_type.has_value()) {
         output << "\n    :equivalent-type " << render_type_ref(*schema.equivalent_type);
     }
+    if (!schema.vector_components.empty()) {
+        output << "\n    :vector-components (";
+        for (std::size_t index{}; index < schema.vector_components.size(); ++index) {
+            if (index != 0) {
+                output << ' ';
+            }
+            output << schema.vector_components[index];
+        }
+        output << ')';
+    }
     if (schema.copy_element_memberwise) {
         output << "\n    :copy-element-memberwise true";
     }
@@ -3282,6 +3292,14 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
         std::pair{"field-mask-name", schema.field_mask_name},
         std::pair{"field-enum-name", schema.field_enum_name}}};
     if (!patch_source_properties(*parsed, 1, properties, "    ", original, replacements) ||
+        !patch_source_atom_list_property(*parsed,
+                                         1,
+                                         "vector-components",
+                                         schema.vector_components,
+                                         "    ",
+                                         "      ",
+                                         original,
+                                         replacements) ||
         (!preserve_all_operations && !patch_source_atom_list_property(*parsed,
                                                                       1,
                                                                       "operations",

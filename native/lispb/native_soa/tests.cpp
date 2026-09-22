@@ -191,6 +191,24 @@ TEST(NativeSoa, CheckedCapacityArithmetic) {
     EXPECT_LE(Storage::layout_bytes(2), 2 * Storage::capacity_block_bound);
 }
 
+TEST(NativeSoa, LayoutCursorMatchesChainedOffsets) {
+    struct alignas(256) Overaligned {
+        std::byte bytes[256];
+    };
+    single_allocation_layout::ColumnLayoutStart const start{};
+    single_allocation_layout::ColumnLayout<std::int32_t> const first{start};
+    single_allocation_layout::ColumnLayout<std::int32_t> const second{first};
+    single_allocation_layout::ColumnLayout<Overaligned> const third{second};
+
+    for (auto const blocks : {std::size_t{0}, std::size_t{1}, std::size_t{3}, std::size_t{1024}}) {
+        single_allocation_layout::LayoutCursor cursor{blocks};
+        EXPECT_EQ(cursor.advance(first), first.offset(blocks));
+        EXPECT_EQ(cursor.advance(second), second.offset(blocks));
+        EXPECT_EQ(cursor.advance(third), third.offset(blocks));
+        EXPECT_EQ(third.data_end(blocks), third.offset(blocks) + blocks * 64 * sizeof(Overaligned));
+    }
+}
+
 template <typename Owner>
 void check_layout_limits() {
     using namespace single_allocation_layout;
@@ -303,8 +321,8 @@ TEST(NativeSoa, CompactViewsAndBulkAppend) {
     }
     auto slice{view.slice(1, 64)};
     source.reserve(1024);
-    slice = source.slice(1, 64);
     EXPECT_EQ(slice.healths()[63], 64);
+    EXPECT_EQ(view.view_locations().xs()[1], 1.f);
     Owner::ConstView const_view{slice};
     EXPECT_EQ(const_view.view_locations().xs()[0], 1.f);
     Owner destination;

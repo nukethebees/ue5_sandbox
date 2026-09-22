@@ -37,6 +37,7 @@ struct SoaSchema {
     std::optional<TypeRef> single_allocation_allocator;
     std::optional<std::string> field_mask_name;
     std::optional<std::string> field_enum_name;
+    std::vector<std::string> vector_components;
 };
 
 } // namespace codegen

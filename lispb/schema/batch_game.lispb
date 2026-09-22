@@ -4,6 +4,7 @@
   :namespace ioj::sim
   (struct Vectors3f
     :layout-only true
+    :vector-components (xs ys zs)
     (member xs array float)
     (member ys array float)
     (member zs array float))
@@ -56,6 +57,7 @@
   :namespace ioj::sim
   (struct Vectors3f
     :layout-only true
+    :vector-components (xs ys zs)
     (member xs array float)
     (member ys array float)
     (member zs array float))
@@ -84,6 +86,7 @@
   (struct Vectors3f
     :layout-only true
     :equivalent-type @native_vector_3f
+    :vector-components (xs ys zs)
     (member xs array float)
     (member ys array float)
     (member zs array float))
@@ -124,6 +127,7 @@
   :namespace ioj::sim
   (struct Vectors3f
     :layout-only true
+    :vector-components (xs ys zs)
     (member xs array float)
     (member ys array float)
     (member zs array float))
@@ -147,6 +151,7 @@
   :namespace ioj::sim
   (struct Vectors3f
     :layout-only true
+    :vector-components (xs ys zs)
     (member xs array float)
     (member ys array float)
     (member zs array float))
@@ -179,6 +184,7 @@
   :namespace ioj::sim
   (struct Vectors3f
     :layout-only true
+    :vector-components (xs ys zs)
     (member xs array float)
     (member ys array float)
     (member zs array float))
@@ -202,6 +208,7 @@
   :namespace ioj::sim
   (struct Vectors3f
     :layout-only true
+    :vector-components (xs ys zs)
     (member xs array float)
     (member ys array float)
     (member zs array float))
@@ -227,6 +234,7 @@
   :namespace ioj::sim
   (struct Vectors3f
     :layout-only true
+    :vector-components (xs ys zs)
     (member xs array float)
     (member ys array float)
     (member zs array float))
@@ -243,6 +251,7 @@
   :namespace ioj::sim
   (struct Vectors3f
     :layout-only true
+    :vector-components (xs ys zs)
     (member xs array float)
     (member ys array float)
     (member zs array float))

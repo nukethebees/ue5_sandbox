@@ -9,6 +9,21 @@
 
 namespace ml::soa_storage_detail {
 
+template <typename Source>
+    requires (
+        std::is_pointer_v<std::remove_cvref_t<Source>> ||
+        requires(Source const& value) { value.data(); } ||
+        requires(Source const& value) { value.GetData(); })
+constexpr auto source_data(Source const& source) noexcept {
+    if constexpr (std::is_pointer_v<std::remove_cvref_t<Source>>) {
+        return source;
+    } else if constexpr (requires { source.data(); }) {
+        return source.data();
+    } else {
+        return source.GetData();
+    }
+}
+
 struct StorageState {
     std::byte* data_{};
     std::int32_t num_{};
@@ -50,15 +65,16 @@ struct CompactViewState {
     }
     auto slice(this auto const& self, size_type offset, size_type count) {
         self.validate();
-        Require(offset >= 0 && offset <= self.count_ && count >= 0 &&
-                count <= self.count_ - offset);
+        auto const& base{static_cast<CompactViewState const&>(self)};
+        Require(offset >= 0 && offset <= base.count_ && count >= 0 &&
+                count <= base.count_ - offset);
         using Self = std::remove_cvref_t<decltype(self)>;
-        return Self{self.state_, self.offset_ + offset, count};
+        return Self{base.state_, base.offset_ + offset, count};
     }
     auto left(this auto const& self, size_type count) { return self.slice(0, count); }
     auto right(this auto const& self, size_type count) {
-        Require(count >= 0 && count <= self.count_);
-        return self.slice(self.count_ - count, count);
+        Require(count >= 0 && count <= self.num());
+        return self.slice(self.num() - count, count);
     }
   protected:
     template <bool, auto>

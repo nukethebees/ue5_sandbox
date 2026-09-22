@@ -31,11 +31,78 @@ class TypeGraphBuilder {
         declare_types();
         bind_registered_types();
         resolve_definitions();
+        validate_nested_soa_types();
+        validate_vector_equivalents();
         validate_aggregate_cycles();
         build_edges();
         return std::move(graph_);
     }
   private:
+    void validate_nested_soa_types() const {
+        std::set<TypeId> visited;
+        auto visit = [&](auto&& self, TypeId const id) -> void {
+            if (!visited.insert(id).second) {
+                return;
+            }
+            auto const& soa{std::get<SoaType>(graph_.type(id).definition)};
+            for (auto const& column : soa.columns) {
+                if (!column.nested_type.has_value()) {
+                    continue;
+                }
+                auto const& nested{graph_.type(*column.nested_type)};
+                if (column.semantic_type.cpp_type.spelling != nested.identity.name) {
+                    throw std::invalid_argument{"Nested SOA type does not match nested_schema: " +
+                                                column.name};
+                }
+                self(self, *column.nested_type);
+            }
+        };
+        for (std::size_t index{}; index < graph_.types_.size(); ++index) {
+            auto const* soa{std::get_if<SoaType>(&graph_.types_[index].definition)};
+            if (soa != nullptr && soa->source_kind == SoaSourceKind::structure &&
+                soa->related_storage_name.has_value()) {
+                visit(visit, TypeId{static_cast<std::uint32_t>(index)});
+            }
+        }
+    }
+
+    void validate_vector_equivalents() const {
+        std::map<TypeId, SoaType const*> declared_vectors;
+        for (auto const& node : graph_.types_) {
+            auto const* soa{std::get_if<SoaType>(&node.definition)};
+            if (soa != nullptr && soa->source_kind == SoaSourceKind::vector &&
+                soa->equivalent_type.has_value()) {
+                declared_vectors.emplace(soa->equivalent_type->type, soa);
+            }
+        }
+        for (auto const& node : graph_.types_) {
+            auto const* soa{std::get_if<SoaType>(&node.definition)};
+            if (soa == nullptr || soa->source_kind != SoaSourceKind::structure ||
+                soa->vector_components.empty() || !soa->equivalent_type.has_value()) {
+                continue;
+            }
+            auto const found{declared_vectors.find(soa->equivalent_type->type)};
+            if (found == declared_vectors.end()) {
+                continue;
+            }
+            auto const& declared{*found->second};
+            if (soa->vector_components != declared.vector_components ||
+                soa->columns.size() != declared.columns.size()) {
+                throw std::invalid_argument{"SOA '" + node.identity.name +
+                                            "' vector components disagree with its equivalent "
+                                            "vector declaration"};
+            }
+            for (std::size_t index{}; index < soa->columns.size(); ++index) {
+                if (soa->columns[index].semantic_type.type !=
+                    declared.columns[index].semantic_type.type) {
+                    throw std::invalid_argument{"SOA '" + node.identity.name +
+                                                "' vector element type disagrees with its "
+                                                "equivalent vector declaration"};
+                }
+            }
+        }
+    }
+
     struct Declaration {
         TypeId id;
         std::size_t module_index{};
@@ -662,7 +729,8 @@ class TypeGraphBuilder {
                                                                     *source.equivalent_type,
                                                                     module.settings.name)}
                                                               : std::nullopt,
-                                         .related_storage_name = source.single_allocation};
+                                         .related_storage_name = source.single_allocation,
+                                         .vector_components = source.vector_components};
                             type.columns.reserve(source.members.size());
                             for (auto const& member : source.members) {
                                 std::optional<TypeId> nested;
@@ -693,12 +761,27 @@ class TypeGraphBuilder {
                                                              .target = std::move(target),
                                                              .unit = member.relationship->unit};
                                 }
+                                auto semantic_type{resolve_ref(member.type, module.settings.name)};
                                 type.columns.push_back({.name = member.name,
-                                                        .semantic_type = resolve_ref(
-                                                            member.type, module.settings.name),
+                                                        .semantic_type = std::move(semantic_type),
                                                         .kind = member.kind,
                                                         .nested_type = nested,
                                                         .relationship = std::move(relationship)});
+                            }
+                            if (!type.vector_components.empty()) {
+                                if (type.columns.empty()) {
+                                    throw std::invalid_argument{
+                                        "SOA '" + source.name +
+                                        "' vector components require columns"};
+                                }
+                                auto const element_type{type.columns.front().semantic_type.type};
+                                for (auto const& column : type.columns) {
+                                    if (column.semantic_type.type != element_type) {
+                                        throw std::invalid_argument{
+                                            "SOA '" + source.name +
+                                            "' vector components must have the same resolved type"};
+                                    }
+                                }
                             }
                             graph_.types_[declaration.id.value].definition = std::move(type);
                         } else if constexpr (std::is_same_v<Module, codegen::VectorModuleSchema>) {
@@ -707,7 +790,8 @@ class TypeGraphBuilder {
                                          .columns = {},
                                          .equivalent_type = resolve_ref(module.equivalent_type,
                                                                         module.settings.name),
-                                         .related_storage_name = std::nullopt};
+                                         .related_storage_name = std::nullopt,
+                                         .vector_components = module.components};
                             auto const value_type{
                                 resolve_ref(module.value_type, module.settings.name)};
                             type.columns.reserve(module.components.size());

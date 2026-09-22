@@ -1461,14 +1461,13 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
         if (schema.single_allocation.has_value()) {
             require_identifier(*schema.single_allocation, "Single-allocation owner");
             add_generated_type(*schema.single_allocation);
-            add_generated_type(*schema.single_allocation + "Storage");
             add_generated_type(schema.name + "SingleLayout");
             add_generated_type(schema.name + "SingleView");
             add_generated_type(schema.name + "SingleConstView");
+            add_generated_type(schema.name + "SingleViewImpl");
             for (auto const& variant : schema.single_allocation_variants) {
                 require_identifier(variant.name, "single-allocation allocator variant");
                 add_generated_type(variant.name);
-                add_generated_type(variant.name + "Storage");
                 validate_type(variant.allocator, types, "single-allocation allocator variant");
             }
         }
@@ -1544,6 +1543,27 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
                                         "' generated field mask must contain at least one field"};
         }
         require_unique_names(member_names, "SOA '" + schema.name + "' members");
+        if (!schema.vector_components.empty()) {
+            auto const dimensions{schema.vector_components.size()};
+            if (dimensions != 2 && dimensions != 3) {
+                throw std::invalid_argument{"SOA '" + schema.name +
+                                            "' vector-components requires two or three columns"};
+            }
+            if (schema.members.size() != dimensions) {
+                throw std::invalid_argument{"SOA '" + schema.name +
+                                            "' vector-components must list every member"};
+            }
+            for (std::size_t index{}; index < dimensions; ++index) {
+                auto const& member{schema.members[index]};
+                auto const expected{std::string(1, "xyz"[index]) + "s"};
+                if (schema.vector_components[index] != expected || member.name != expected ||
+                    member.kind != SoaMemberKind::array) {
+                    throw std::invalid_argument{
+                        "SOA '" + schema.name +
+                        "' vector-components must be ordered xs/ys[/zs] arrays"};
+                }
+            }
+        }
         require_unique_operations(schema.operations, "SOA '" + schema.name + "' operations");
         validate_export_specifier(schema.export_specifier,
                                   "SOA '" + schema.name + "' export specifier");
@@ -1611,12 +1631,18 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
             continue;
         }
         std::set<std::string> active;
-        auto visit = [&](auto&& self, SoaSchema const& schema) -> void {
+        std::set<std::string> flattened_names;
+        auto visit = [&](auto&& self, SoaSchema const& schema, std::string const& prefix) -> void {
             if (!active.insert(schema.name).second) {
                 throw std::invalid_argument{"Cyclic single-allocation schema: " + schema.name};
             }
             std::set<std::string> accessors;
             for (auto const& member : schema.members) {
+                auto const flattened{prefix.empty() ? member.name : prefix + "_" + member.name};
+                if (flattened.find("__") != std::string::npos || flattened.back() == '_') {
+                    throw std::invalid_argument{
+                        "Single-allocation leaf would generate reserved identifiers: " + flattened};
+                }
                 auto const accessor{member.kind == SoaMemberKind::nested ? "view_" + member.name
                                                                          : member.name};
                 if (!accessors.insert(accessor).second) {
@@ -1628,19 +1654,28 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
                     throw std::invalid_argument{"Member collides with compact view API: " +
                                                 member.name};
                 }
-                if (member.kind != SoaMemberKind::nested || !member.nested_schema) {
+                if (member.kind != SoaMemberKind::nested) {
+                    if (!flattened_names.insert(flattened).second) {
+                        throw std::invalid_argument{
+                            "Single-allocation flattened leaf name collision: " + flattened};
+                    }
                     continue;
+                }
+                if (!member.nested_schema) {
+                    throw std::invalid_argument{"Missing nested schema for single-allocation "
+                                                "member: " +
+                                                member.name};
                 }
                 auto const child{
                     std::ranges::find(module.structs, *member.nested_schema, &SoaSchema::name)};
                 if (child == module.structs.end()) {
                     throw std::invalid_argument{"Unknown nested schema: " + *member.nested_schema};
                 }
-                self(self, *child);
+                self(self, *child, flattened);
             }
             active.erase(schema.name);
         };
-        visit(visit, root);
+        visit(visit, root, {});
     }
     for (auto const& schema : module.structs) {
         if (!schema.fixed.has_value()) {
