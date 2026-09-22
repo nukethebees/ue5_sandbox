@@ -52,9 +52,9 @@ void run_worldless_player_ship_vs_capital(tests::SimulationFixture const& config
         samples.add(harness.get_time(), std::move(sample));
     };
     harness.timeline.finish_at(5.6);
-    tests::expect_true(harness.run_until_timeline_finished(6.0),
-                       "Player-versus-capital timeline completes");
-    tests::expect_true(!samples.is_empty(), "Player-versus-capital samples are recorded");
+    EXPECT_TRUE(harness.run_until_timeline_finished(6.0))
+        << "Player-versus-capital timeline completes";
+    EXPECT_TRUE(!samples.is_empty()) << "Player-versus-capital samples are recorded";
     if (samples.is_empty()) {
         return;
     }
@@ -63,45 +63,35 @@ void run_worldless_player_ship_vs_capital(tests::SimulationFixture const& config
     auto const& tracked{samples.nearest_value(0.6)};
     auto const& before_end{samples.nearest_value(5.1)};
     auto const& end{samples.nearest_value(5.6)};
-    tests::expect_distance_near(settled.player_location,
-                                settled.accessor_location,
-                                1.0,
-                                "Accessor and player locations match initially");
-    tests::expect_distance_near(tracked.player_location,
-                                tracked.accessor_location,
-                                1.0,
-                                "Accessor and player locations match after movement");
-    tests::expect_distance_not_near(
-        settled.player_location, tracked.player_location, 1.0, "Player ship moves");
-    tests::expect_greater(static_cast<std::int32_t>(tracked.fighter_target_locations.size()),
-                          std::int32_t{0},
-                          "Fighters have target locations");
-    tests::expect_equal(static_cast<std::int32_t>(tracked.fighter_target_locations.size()),
-                        static_cast<std::int32_t>(end.fighter_target_locations.size()),
-                        "Fighter target count remains stable");
-    tests::expect_equal(static_cast<std::int32_t>(end.fighter_target_locations.size()),
-                        static_cast<std::int32_t>(end.fighter_locations.size()),
-                        "Fighter and target counts match");
+    EXPECT_LE(((settled.player_location - settled.accessor_location).size()), 1.0)
+        << "Accessor and player locations match initially";
+    EXPECT_LE(((tracked.player_location - tracked.accessor_location).size()), 1.0)
+        << "Accessor and player locations match after movement";
+    EXPECT_GT(((settled.player_location - tracked.player_location).size()), 1.0)
+        << "Player ship moves";
+    EXPECT_GT(static_cast<std::int32_t>(tracked.fighter_target_locations.size()), std::int32_t{0})
+        << "Fighters have target locations";
+    EXPECT_EQ(static_cast<std::int32_t>(tracked.fighter_target_locations.size()),
+              static_cast<std::int32_t>(end.fighter_target_locations.size()))
+        << "Fighter target count remains stable";
+    EXPECT_EQ(static_cast<std::int32_t>(end.fighter_target_locations.size()),
+              static_cast<std::int32_t>(end.fighter_locations.size()))
+        << "Fighter and target counts match";
     if (::testing::Test::HasFailure()) {
         return;
     }
     auto const count{static_cast<std::int32_t>(end.fighter_locations.size())};
     for (std::int32_t i{}; i < count; ++i) {
-        tests::expect_distance_not_near(tracked.fighter_target_locations[i],
-                                        end.fighter_target_locations[i],
-                                        1.f,
-                                        "Fighter target follows player",
-                                        i);
-        tests::expect_distance_greater(before_end.fighter_locations[i],
-                                       end.fighter_locations[i],
-                                       500.f,
-                                       "Fighter moves late in simulation",
-                                       i);
-        tests::expect_distance_greater(before_end.fighter_target_locations[i],
-                                       end.fighter_target_locations[i],
-                                       500.f,
-                                       "Fighter target updates late in simulation",
-                                       i);
+        SCOPED_TRACE(::testing::Message() << "index " << i);
+        EXPECT_GT(HMM_LenV3(tracked.fighter_target_locations[i] - end.fighter_target_locations[i]),
+                  1.f)
+            << "Fighter target follows player";
+        EXPECT_GT(HMM_LenV3(before_end.fighter_locations[i] - end.fighter_locations[i]), 500.f)
+            << "Fighter moves late in simulation";
+        EXPECT_GT(
+            HMM_LenV3(before_end.fighter_target_locations[i] - end.fighter_target_locations[i]),
+            500.f)
+            << "Fighter target updates late in simulation";
     }
 }
 

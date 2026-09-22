@@ -28,16 +28,15 @@ void run_worldless_fighter_los_failure(tests::SimulationFixture const& config) {
         fighter_team_samples.push_back(std::move(teams));
     };
     harness.timeline.finish_at(30.0);
-    tests::expect_true(harness.run_until_timeline_finished(31.0),
-                       "Fighter line-of-sight failure timeline completes");
-    tests::expect_true(!fighter_team_samples.empty(), "Simulation produced samples");
+    EXPECT_TRUE(harness.run_until_timeline_finished(31.0))
+        << "Fighter line-of-sight failure timeline completes";
+    EXPECT_TRUE(!fighter_team_samples.empty()) << "Simulation produced samples";
     for (auto const& teams : fighter_team_samples) {
-        tests::expect_true(std::ranges::all_of(teams, [](auto team) { return team == Team::Blue; }),
-                           "Only the blue hero team has fighters");
+        EXPECT_TRUE(std::ranges::all_of(teams, [](auto team) { return team == Team::Blue; }))
+            << "Only the blue hero team has fighters";
     }
-    tests::expect_greater(initial_enemy_health,
-                          capitals.get_health(enemy),
-                          "Enemy capital has sustained damage by the end of the test");
+    EXPECT_GT(initial_enemy_health, capitals.get_health(enemy))
+        << "Enemy capital has sustained damage by the end of the test";
 }
 
 }

@@ -50,26 +50,23 @@ void run_worldless_turret_combat(tests::SimulationFixture const& config,
         initial_healths.push_back(initial_view.healths.health(i));
     }
     harness.timeline.finish_at(3.0);
-    tests::expect_true(harness.run_until_timeline_finished(3.5),
-                       "Turret combat timeline completes");
+    EXPECT_TRUE(harness.run_until_timeline_finished(3.5)) << "Turret combat timeline completes";
 
     if (scenario == TurretCombatScenario::KillEnemy) {
-        tests::expect_equal(1, harness.get_ledger().count_kills(), "One turret is killed");
-        tests::expect_equal(6, harness.get_ledger().count_alive(), "Hero turrets remain alive");
+        EXPECT_EQ(1, harness.get_ledger().count_kills()) << "One turret is killed";
+        EXPECT_EQ(6, harness.get_ledger().count_alive()) << "Hero turrets remain alive";
         for (auto const target : harness.get_simulation().get_turrets().get_target_ids()) {
-            tests::expect_true(!target.is_valid(), "Targets clear after the enemy dies");
+            EXPECT_TRUE(!target.is_valid()) << "Targets clear after the enemy dies";
         }
         return;
     }
 
-    tests::expect_equal(
-        initial_count, harness.get_ledger().count_alive(), "Zero-damage turrets remain alive");
+    EXPECT_EQ(initial_count, harness.get_ledger().count_alive())
+        << "Zero-damage turrets remain alive";
     auto const final_view{harness.get_simulation().get_turrets().get_read_view()};
     for (std::int32_t i{}; i < initial_count; ++i) {
-        tests::expect_equal(initial_healths[i],
-                            final_view.healths.health(i),
-                            "Zero-damage combat preserves health",
-                            i);
+        EXPECT_EQ(initial_healths[i], final_view.healths.health(i))
+            << "Zero-damage combat preserves health";
     }
 }
 
@@ -92,12 +89,12 @@ void run_worldless_turret_line_of_sight_blocking(tests::SimulationFixture const&
                                                                    {{500.f, 3000.f, 3000.f}});
             })
         .finish_at(4.0);
-    tests::expect_true(harness.run_until_timeline_finished(4.5),
-                       "Turret line-of-sight timeline completes");
-    tests::expect_greater(spawn_count_before_blocker, 0, "Turrets fire before blocking");
-    tests::expect_equal(spawn_count_before_blocker,
-                        harness.get_simulation().get_lasers().get_number_spawned(),
-                        "Turrets stop firing after line of sight is blocked");
+    EXPECT_TRUE(harness.run_until_timeline_finished(4.5))
+        << "Turret line-of-sight timeline completes";
+    EXPECT_GT(spawn_count_before_blocker, 0) << "Turrets fire before blocking";
+    EXPECT_EQ(spawn_count_before_blocker,
+              harness.get_simulation().get_lasers().get_number_spawned())
+        << "Turrets stop firing after line of sight is blocked";
 }
 
 void run_worldless_turret_search_requires_line_of_sight(tests::SimulationFixture const& config) {
@@ -113,21 +110,20 @@ void run_worldless_turret_search_requires_line_of_sight(tests::SimulationFixture
     harness.get_simulation().add_static_collision_aabb({{-100.f, -300.f, -3000.f}},
                                                        {{100.f, 300.f, 3000.f}});
     harness.timeline.finish_at(1.0);
-    tests::expect_true(harness.run_until_timeline_finished(1.5),
-                       "Turret search timeline completes");
+    EXPECT_TRUE(harness.run_until_timeline_finished(1.5)) << "Turret search timeline completes";
     auto const targets{harness.get_simulation().get_turrets().get_target_ids()};
-    tests::expect_equal(
-        3, static_cast<std::int32_t>(targets.size()), "All turret targets are available");
+    EXPECT_EQ(3, static_cast<std::int32_t>(targets.size())) << "All turret targets are available";
     if (static_cast<std::int32_t>(targets.size()) != 3) {
         return;
     }
-    tests::expect_true(targets[0].is_valid(), "Blue turret selects a visible target");
+    EXPECT_TRUE(targets[0].is_valid()) << "Blue turret selects a visible target";
     if (targets[0].is_valid()) {
-        tests::expect_distance_near(
-            Vector3f{{1000.f, 1000.f, 0.f}},
-            harness.get_simulation().get_agent_accessor().read_alive(targets[0])->location,
-            1.f,
-            "Blue turret skips the blocked enemy");
+        EXPECT_LE(
+            HMM_LenV3(
+                Vector3f{{1000.f, 1000.f, 0.f}} -
+                harness.get_simulation().get_agent_accessor().read_alive(targets[0])->location),
+            1.f)
+            << "Blue turret skips the blocked enemy";
     }
 }
 

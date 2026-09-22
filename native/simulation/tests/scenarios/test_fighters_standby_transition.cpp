@@ -55,50 +55,42 @@ void run_worldless_fighters_standby_transition(tests::SimulationFixture const& c
     harness.timeline.then_after(8.0, [&] { harness.queue_kills(std::array{enemy}); })
         .then_after(0.1, [] {})
         .finish_after(0.0);
-    tests::expect_true(harness.run_until_timeline_finished(9.0),
-                       "Standby-transition timeline completes");
-    tests::expect_true(!samples.is_empty(), "Standby-transition samples are recorded");
+    EXPECT_TRUE(harness.run_until_timeline_finished(9.0))
+        << "Standby-transition timeline completes";
+    EXPECT_TRUE(!samples.is_empty()) << "Standby-transition samples are recorded";
     if (samples.is_empty()) {
         return;
     }
 
     auto const& before{samples.nearest_value(8.0)};
     auto const& after{samples.nearest_value(8.1)};
-    tests::expect_greater(static_cast<std::int32_t>(before.velocities.size()),
-                          std::int32_t{0},
-                          "Fighters spawned before kill");
-    tests::expect_true(std::ranges::any_of(before.velocities,
-                                           [](Vector3f const velocity) {
-                                               return (std::abs(velocity.X) > 1.e-4f ||
-                                                       std::abs(velocity.Y) > 1.e-4f ||
-                                                       std::abs(velocity.Z) > 1.e-4f);
-                                           }),
-                       "At least one fighter moves before standby");
-    tests::expect_equal(1, after.capital_count, "One capital remains after kill");
-    tests::expect_equal(static_cast<std::int32_t>(after.tasks.size()),
-                        static_cast<std::int32_t>(after.velocities.size()),
-                        "Standby tasks and velocities have matching counts");
+    EXPECT_GT(static_cast<std::int32_t>(before.velocities.size()), std::int32_t{0})
+        << "Fighters spawned before kill";
+    EXPECT_TRUE(std::ranges::any_of(before.velocities, [](Vector3f const velocity) {
+        return (std::abs(velocity.X) > 1.e-4f || std::abs(velocity.Y) > 1.e-4f ||
+                std::abs(velocity.Z) > 1.e-4f);
+    })) << "At least one fighter moves before standby";
+    EXPECT_EQ(1, after.capital_count) << "One capital remains after kill";
+    EXPECT_EQ(static_cast<std::int32_t>(after.tasks.size()),
+              static_cast<std::int32_t>(after.velocities.size()))
+        << "Standby tasks and velocities have matching counts";
     std::int32_t standby_fighters{};
     std::int32_t orphaned_fighters{};
     for (std::int32_t i{}; i < static_cast<std::int32_t>(after.tasks.size()); ++i) {
         if (after.parents[i].is_valid()) {
-            tests::expect_equal(fighters::Sim::Task::Standby,
-                                after.tasks[i],
-                                "Owned fighter transitioned to standby",
-                                i);
-            tests::expect_distance_near(
-                after.velocities[i], Vector3f{}, 0.f, "Standby fighter velocity is zero", i);
+            EXPECT_EQ(fighters::Sim::Task::Standby, after.tasks[i])
+                << "Owned fighter transitioned to standby";
+            EXPECT_LE(HMM_LenV3(after.velocities[i] - Vector3f{}), 0.f)
+                << "Standby fighter velocity is zero";
             ++standby_fighters;
         } else {
-            tests::expect_equal(fighters::Sim::Task::Attack,
-                                after.tasks[i],
-                                "Orphaned fighter retains its attack task",
-                                i);
+            EXPECT_EQ(fighters::Sim::Task::Attack, after.tasks[i])
+                << "Orphaned fighter retains its attack task";
             ++orphaned_fighters;
         }
     }
-    tests::expect_greater(standby_fighters, std::int32_t{0}, "Surviving capital retains fighters");
-    tests::expect_greater(orphaned_fighters, std::int32_t{0}, "Destroyed capital leaves orphans");
+    EXPECT_GT(standby_fighters, std::int32_t{0}) << "Surviving capital retains fighters";
+    EXPECT_GT(orphaned_fighters, std::int32_t{0}) << "Destroyed capital leaves orphans";
 }
 
 }

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <gtest/gtest.h>
 #include <ioj/sim/entity_world_bounds.h>
 #include <ioj/sim/line_traces.h>
 #include <ioj/sim/rotator_math.h>
@@ -9,6 +10,5 @@
 #include <span>
 #include <vector>
 #include "simulation_fixture.h"
-#include "simulation_test_assertions.h"
 #include "simulation_test_data.h"
 #include "worldless_simulation_test.h"

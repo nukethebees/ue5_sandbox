@@ -63,34 +63,30 @@ void run_worldless_fighters_intercept_capital(tests::SimulationFixture const& co
         samples.add(harness.get_time(), std::move(sample));
     };
     harness.timeline.finish_at(20.0);
-    tests::expect_true(harness.run_until_timeline_finished(21.0),
-                       "Fighter interception timeline completes");
-    tests::expect_true(!samples.is_empty(), "Fighter interception samples are recorded");
+    EXPECT_TRUE(harness.run_until_timeline_finished(21.0))
+        << "Fighter interception timeline completes";
+    EXPECT_TRUE(!samples.is_empty()) << "Fighter interception samples are recorded";
     if (samples.is_empty()) {
         return;
     }
 
     auto const& start{samples.nearest_value(2.0 / 60.0)};
     auto const& end{samples.nearest_value(20.0)};
-    tests::expect_greater(static_cast<std::int32_t>(start.fighter_targets.size()),
-                          std::int32_t{0},
-                          "Parent has fighters");
-    tests::expect_greater(static_cast<std::int32_t>(end.fighter_targets.size()),
-                          std::int32_t{0},
-                          "Parent has fighters at end");
-    tests::expect_equal(
-        original_target, start.parent_target, "Green capital initially targets red capital");
+    EXPECT_GT(static_cast<std::int32_t>(start.fighter_targets.size()), std::int32_t{0})
+        << "Parent has fighters";
+    EXPECT_GT(static_cast<std::int32_t>(end.fighter_targets.size()), std::int32_t{0})
+        << "Parent has fighters at end";
+    EXPECT_EQ(original_target, start.parent_target)
+        << "Green capital initially targets red capital";
     for (std::int32_t i{}; i < static_cast<std::int32_t>(start.fighter_targets.size()); ++i) {
-        tests::expect_equal(original_target,
-                            start.fighter_targets[i],
-                            "Initial fighter target matches red parent target",
-                            i);
+        EXPECT_EQ(original_target, start.fighter_targets[i])
+            << "Initial fighter target matches red parent target";
     }
     auto const intercept_count{
         static_cast<std::int32_t>(std::ranges::count(end.fighter_targets, intercept_target))};
-    tests::expect_greater(
-        intercept_count, std::int32_t{0}, "At least one fighter intercepts the blue capital");
-    tests::expect_equal(hero, capitals.get_id(0), "Hero capital ID remains stable");
+    EXPECT_GT(intercept_count, std::int32_t{0})
+        << "At least one fighter intercepts the blue capital";
+    EXPECT_EQ(hero, capitals.get_id(0)) << "Hero capital ID remains stable";
 }
 
 }

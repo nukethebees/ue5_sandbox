@@ -37,35 +37,27 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
         simulation.start();
         auto const period{simulation.get_clock().get_tick_period()};
         harness.advance(period * 0.5);
-        tests::expect_equal(std::uint64_t{0},
-                            simulation.get_clock().get_completed_ticks(),
-                            "Half tick is accumulated");
+        EXPECT_EQ(std::uint64_t{0}, simulation.get_clock().get_completed_ticks())
+            << "Half tick is accumulated";
         harness.advance(period * 0.5);
-        tests::expect_equal(std::uint64_t{1},
-                            simulation.get_clock().get_completed_ticks(),
-                            "Two half ticks advance once");
-        tests::expect_equal(1, end_tick_calls, "End-tick hook executes once per completed tick");
+        EXPECT_EQ(std::uint64_t{1}, simulation.get_clock().get_completed_ticks())
+            << "Two half ticks advance once";
+        EXPECT_EQ(1, end_tick_calls) << "End-tick hook executes once per completed tick";
         harness.advance(period * 3.25);
-        tests::expect_equal(std::uint64_t{4},
-                            simulation.get_clock().get_completed_ticks(),
-                            "Large delta catches up deterministically");
-        tests::expect_equal(
-            2, end_tick_calls, "Catch-up is observed once after the completed advance");
-        tests::expect_equal(period * 4.0,
-                            simulation.get_clock().get_simulation_time(),
-                            1.e-9,
-                            "Simulation time derives from completed ticks");
+        EXPECT_EQ(std::uint64_t{4}, simulation.get_clock().get_completed_ticks())
+            << "Large delta catches up deterministically";
+        EXPECT_EQ(2, end_tick_calls) << "Catch-up is observed once after the completed advance";
+        EXPECT_NEAR(period * 4.0, simulation.get_clock().get_simulation_time(), 1.e-9)
+            << "Simulation time derives from completed ticks";
         simulation.pause();
         harness.advance(period * 10.0);
-        tests::expect_equal(std::uint64_t{4},
-                            simulation.get_clock().get_completed_ticks(),
-                            "Paused simulation ignores time");
+        EXPECT_EQ(std::uint64_t{4}, simulation.get_clock().get_completed_ticks())
+            << "Paused simulation ignores time";
         simulation.start();
         harness.advance(period * 0.75);
-        tests::expect_equal(std::uint64_t{5},
-                            simulation.get_clock().get_completed_ticks(),
-                            "Resume preserves accumulated fraction");
-        tests::expect_equal(3, end_tick_calls, "Resumed tick executes one hook");
+        EXPECT_EQ(std::uint64_t{5}, simulation.get_clock().get_completed_ticks())
+            << "Resume preserves accumulated fraction";
+        EXPECT_EQ(3, end_tick_calls) << "Resumed tick executes one hook";
         return;
     }
 
@@ -93,29 +85,26 @@ void run_worldless_simulation_core_regression(tests::SimulationFixture const& co
     harness.timeline.at(lethal_damage_time,
                         [&] { harness.queue_damage(std::array{damaged_handle}, 75); });
     harness.timeline.finish_at(damage_test_end_time);
-    tests::expect_true(harness.run_until_timeline_finished(1.0),
-                       "Damage lifecycle timeline completes");
-    tests::expect_true(!samples.is_empty(), "Damage lifecycle samples are recorded");
+    EXPECT_TRUE(harness.run_until_timeline_finished(1.0)) << "Damage lifecycle timeline completes";
+    EXPECT_TRUE(!samples.is_empty()) << "Damage lifecycle samples are recorded";
     if (samples.is_empty()) {
         return;
     }
     auto const& initial{samples.value_at(0)};
     auto const& nonlethal{samples.nearest_value(0.10)};
     auto const& lethal{samples.nearest_value(0.22)};
-    tests::expect_equal(1, initial.capital_count, "One capital starts active");
-    tests::expect_equal(initial_health, initial.health, "Capital starts at configured health");
-    tests::expect_equal(1, nonlethal.capital_count, "Nonlethal damage preserves batch entity");
-    tests::expect_equal(75, nonlethal.health, "Nonlethal damage is applied once");
-    tests::expect_equal(
-        0, lethal.capital_count, "Lethal damage removes batch entity in the same Action phase");
-    tests::expect_equal(0, lethal.ledger_alive_count, "Ledger death commits in the same tick");
-    tests::expect_equal(
-        0, lethal.telemetry_active_count, "Telemetry observes committed death before hook");
-    tests::expect_equal(0, lethal.health, "Owner retains terminal health for the dead handle");
-    tests::expect_true(!harness.get_simulation().get_agent_accessor().is_alive(damaged_handle),
-                       "Killed ID is dead");
-    tests::expect_equal(
-        0, harness.get_ledger().count_kills(), "Unattributed death does not create a kill");
+    EXPECT_EQ(1, initial.capital_count) << "One capital starts active";
+    EXPECT_EQ(initial_health, initial.health) << "Capital starts at configured health";
+    EXPECT_EQ(1, nonlethal.capital_count) << "Nonlethal damage preserves batch entity";
+    EXPECT_EQ(75, nonlethal.health) << "Nonlethal damage is applied once";
+    EXPECT_EQ(0, lethal.capital_count)
+        << "Lethal damage removes batch entity in the same Action phase";
+    EXPECT_EQ(0, lethal.ledger_alive_count) << "Ledger death commits in the same tick";
+    EXPECT_EQ(0, lethal.telemetry_active_count) << "Telemetry observes committed death before hook";
+    EXPECT_EQ(0, lethal.health) << "Owner retains terminal health for the dead handle";
+    EXPECT_TRUE(!harness.get_simulation().get_agent_accessor().is_alive(damaged_handle))
+        << "Killed ID is dead";
+    EXPECT_EQ(0, harness.get_ledger().count_kills()) << "Unattributed death does not create a kill";
 }
 
 void run_worldless_collision_damage(tests::SimulationFixture const& config) {
@@ -143,9 +132,7 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
     harness.finish_initialisation();
     auto& simulation{harness.get_simulation()};
     auto* const player{simulation.get_player_ship_simulation()};
-    if (!tests::expect_not_null(player, "Collision test player simulation is available")) {
-        return;
-    }
+    ASSERT_NE(player, nullptr) << "Collision test player simulation is available";
 
     auto const player_id{player->unique_entity_id};
     auto const capital_id{simulation.get_capital_ships().get_id(0)};
@@ -164,9 +151,8 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
                     });
     };
     harness.timeline.finish_after(collision_damage_test::duration);
-    tests::expect_true(harness.run_until_timeline_finished(2.0),
-                       "Collision damage timeline completes");
-    tests::expect_greater(samples.num(), 2, "Three collision ticks are recorded");
+    EXPECT_TRUE(harness.run_until_timeline_finished(2.0)) << "Collision damage timeline completes";
+    EXPECT_GT(samples.num(), 2) << "Three collision ticks are recorded";
     if (::testing::Test::HasFailure()) {
         return;
     }
@@ -174,38 +160,33 @@ void run_worldless_collision_damage(tests::SimulationFixture const& config) {
     auto const& first{samples.value_at(0)};
     auto const& second{samples.value_at(1)};
     auto const& third{samples.value_at(2)};
-    tests::expect_equal(1, first.dynamic_overlap_count, "First tick detects one overlap");
-    tests::expect_equal(1, second.dynamic_overlap_count, "Second tick detects one overlap");
-    tests::expect_equal(1, third.dynamic_overlap_count, "Third tick detects one overlap");
-    tests::expect_equal(collision_damage_test::player_health -
-                            collision_damage_test::overlap_damage,
-                        first.player_health,
-                        "First overlap damages the player");
-    tests::expect_equal(collision_damage_test::player_health -
-                            2 * collision_damage_test::overlap_damage,
-                        second.player_health,
-                        "Second overlap damages the player");
-    tests::expect_equal(collision_damage_test::player_health -
-                            3 * collision_damage_test::overlap_damage,
-                        third.player_health,
-                        "Third overlap damages the player");
-    tests::expect_equal(collision_damage_test::capital_health -
-                            collision_damage_test::overlap_damage,
-                        first.capital_health,
-                        "First overlap damages the capital");
-    tests::expect_equal(collision_damage_test::capital_health -
-                            2 * collision_damage_test::overlap_damage,
-                        second.capital_health,
-                        "Second overlap damages the capital");
-    tests::expect_equal(0, third.capital_health, "Third overlap kills the capital");
-    tests::expect_true(third.player_alive, "Player survives the third overlap tick");
-    tests::expect_true(!harness.get_simulation().get_agent_accessor().is_alive(capital_id),
-                       "Capital death commits in the third overlap tick");
-    tests::expect_equal(0, third.kill_count, "Collision death grants no combat kill");
-    tests::expect_true(harness.get_ledger()
-                               .get_unique_entities()
-                               .life_state[harness.get_ledger().get_history_index(capital_id)] ==
-                           LifeState::Unknown,
-                       "Collision death is environmental");
+    EXPECT_EQ(1, first.dynamic_overlap_count) << "First tick detects one overlap";
+    EXPECT_EQ(1, second.dynamic_overlap_count) << "Second tick detects one overlap";
+    EXPECT_EQ(1, third.dynamic_overlap_count) << "Third tick detects one overlap";
+    EXPECT_EQ(collision_damage_test::player_health - collision_damage_test::overlap_damage,
+              first.player_health)
+        << "First overlap damages the player";
+    EXPECT_EQ(collision_damage_test::player_health - 2 * collision_damage_test::overlap_damage,
+              second.player_health)
+        << "Second overlap damages the player";
+    EXPECT_EQ(collision_damage_test::player_health - 3 * collision_damage_test::overlap_damage,
+              third.player_health)
+        << "Third overlap damages the player";
+    EXPECT_EQ(collision_damage_test::capital_health - collision_damage_test::overlap_damage,
+              first.capital_health)
+        << "First overlap damages the capital";
+    EXPECT_EQ(collision_damage_test::capital_health - 2 * collision_damage_test::overlap_damage,
+              second.capital_health)
+        << "Second overlap damages the capital";
+    EXPECT_EQ(0, third.capital_health) << "Third overlap kills the capital";
+    EXPECT_TRUE(third.player_alive) << "Player survives the third overlap tick";
+    EXPECT_TRUE(!harness.get_simulation().get_agent_accessor().is_alive(capital_id))
+        << "Capital death commits in the third overlap tick";
+    EXPECT_EQ(0, third.kill_count) << "Collision death grants no combat kill";
+    EXPECT_TRUE(harness.get_ledger()
+                    .get_unique_entities()
+                    .life_state[harness.get_ledger().get_history_index(capital_id)] ==
+                LifeState::Unknown)
+        << "Collision death is environmental";
 }
 }

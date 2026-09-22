@@ -148,39 +148,29 @@ TEST(NativeSimulation, LevelSimTelemetryCompletionTest) {
     auto const dt{simulation.get_clock().get_tick_period()};
     simulation.advance(dt * 1.25);
     simulation.complete_telemetry_run(LevelTelemetryRunEndReason::DurationReached, Team::Green);
-    tests::expect_equal(
-        simulation.get_state(), OrchestratorState::Paused, "Completed run is paused");
-    tests::expect_equal(simulation.get_clock().get_completed_ticks(),
-                        std::uint64_t{1},
-                        "Only one simulation tick completes");
+    EXPECT_EQ(simulation.get_state(), OrchestratorState::Paused) << "Completed run is paused";
+    EXPECT_EQ(simulation.get_clock().get_completed_ticks(), std::uint64_t{1})
+        << "Only one simulation tick completes";
     auto const record{simulation.take_finalized_telemetry_run()};
-    if (tests::expect_true(record.has_value(), "Completion yields a telemetry record")) {
-        tests::expect_equal(record->completion.reason,
-                            LevelTelemetryRunEndReason::DurationReached,
-                            "Completion reason is retained");
-        tests::expect_false(record->completion.interrupted,
-                            "Explicit completion is not interruption");
-        tests::expect_true(record->completion.winning_team == std::optional{Team::Green},
-                           "Winning team is retained");
-        tests::expect_equal(record->completion.completed_ticks,
-                            std::uint64_t{1},
-                            "Completion records the current tick");
-    }
-    tests::expect_false(simulation.take_finalized_telemetry_run().has_value(),
-                        "Completion is consumed once");
+    ASSERT_TRUE(record.has_value()) << "Completion yields a telemetry record";
+    EXPECT_EQ(record->completion.reason, LevelTelemetryRunEndReason::DurationReached)
+        << "Completion reason is retained";
+    EXPECT_FALSE(record->completion.interrupted) << "Explicit completion is not interruption";
+    EXPECT_TRUE(record->completion.winning_team == std::optional{Team::Green})
+        << "Winning team is retained";
+    EXPECT_EQ(record->completion.completed_ticks, std::uint64_t{1})
+        << "Completion records the current tick";
+    EXPECT_FALSE(simulation.take_finalized_telemetry_run().has_value())
+        << "Completion is consumed once";
     simulation.advance(dt * 10.0);
-    tests::expect_equal(simulation.get_clock().get_completed_ticks(),
-                        std::uint64_t{1},
-                        "Completed simulation ignores paused time");
+    EXPECT_EQ(simulation.get_clock().get_completed_ticks(), std::uint64_t{1})
+        << "Completed simulation ignores paused time";
     simulation.start();
     simulation.advance(dt * 2.0);
-    tests::expect_equal(simulation.get_clock().get_completed_ticks(),
-                        std::uint64_t{3},
-                        "Restart continues simulation without accumulating paused time");
-    tests::expect_equal(simulation.get_read_view().interpolation_alpha(),
-                        0.25,
-                        1.e-9,
-                        "Completion and restart preserve the accumulated fractional tick");
+    EXPECT_EQ(simulation.get_clock().get_completed_ticks(), std::uint64_t{3})
+        << "Restart continues simulation without accumulating paused time";
+    EXPECT_NEAR(simulation.get_read_view().interpolation_alpha(), 0.25, 1.e-9)
+        << "Completion and restart preserve the accumulated fractional tick";
 }
 
 TEST(NativeSimulation, LevelTelemetryMissionCompletionTest) {
@@ -201,28 +191,18 @@ TEST(NativeSimulation, LevelTelemetryMissionCompletionTest) {
     simulation.advance(dt);
 
     auto const mission_result{simulation.take_mission_result()};
-    tests::expect_equal(simulation.get_state(),
-                        OrchestratorState::Running,
-                        "Taking the mission result does not pause simulation");
-    if (!tests::expect_true(mission_result.has_value(),
-                            "Simulation yields the completed mission")) {
-        return;
-    }
+    EXPECT_EQ(simulation.get_state(), OrchestratorState::Running)
+        << "Taking the mission result does not pause simulation";
+    ASSERT_TRUE(mission_result.has_value()) << "Simulation yields the completed mission";
 
     auto record{simulation.take_finalized_telemetry_run()};
-    if (!tests::expect_true(record.has_value(), "Taking the mission result finalizes telemetry")) {
-        return;
-    }
-    tests::expect_equal(record->completion.reason,
-                        LevelTelemetryRunEndReason::MissionSucceeded,
-                        "Mission success selects the telemetry completion reason");
-    tests::expect_false(record->completion.interrupted, "Mission completion is not interrupted");
-    if (tests::expect_true(record->completion.mission_state.has_value(),
-                           "Mission state is present")) {
-        tests::expect_equal(record->completion.mission_state.value(),
-                            MissionState::Succeeded,
-                            "Mission state is retained");
-    }
+    ASSERT_TRUE(record.has_value()) << "Taking the mission result finalizes telemetry";
+    EXPECT_EQ(record->completion.reason, LevelTelemetryRunEndReason::MissionSucceeded)
+        << "Mission success selects the telemetry completion reason";
+    EXPECT_FALSE(record->completion.interrupted) << "Mission completion is not interrupted";
+    ASSERT_TRUE(record->completion.mission_state.has_value()) << "Mission state is present";
+    EXPECT_EQ(record->completion.mission_state.value(), MissionState::Succeeded)
+        << "Mission state is retained";
 }
 
 TEST(NativeSimulation, LaserFrameOutputsTest) {
@@ -248,27 +228,21 @@ TEST(NativeSimulation, LaserFrameOutputsTest) {
     simulation.start();
     simulation.advance(0.425);
     auto const frame{simulation.get_read_view()};
-    tests::expect_equal(
-        frame.lasers.get_num_instances(), 0, "Impacted lasers leave authoritative storage");
-    tests::expect_equal(
-        frame.lasers.hits.num(), 2, "Both impacts survive the final empty fixed tick");
-    tests::expect_equal(
-        frame.lasers.hit_ticks.size(), std::size_t{2}, "Impact tick indices remain aligned");
+    EXPECT_EQ(frame.lasers.get_num_instances(), 0) << "Impacted lasers leave authoritative storage";
+    EXPECT_EQ(frame.lasers.hits.num(), 2) << "Both impacts survive the final empty fixed tick";
+    EXPECT_EQ(frame.lasers.hit_ticks.size(), std::size_t{2})
+        << "Impact tick indices remain aligned";
     if (frame.lasers.hit_ticks.size() == 2) {
-        tests::expect_equal(frame.lasers.hit_ticks[0],
-                            std::uint64_t{1},
-                            "First impact keeps its deterministic tick");
-        tests::expect_equal(frame.lasers.hit_ticks[1],
-                            std::uint64_t{2},
-                            "Second impact keeps its deterministic tick");
-        tests::expect_true(frame.lasers.hits.sources[0] ==
-                               LaserSource{Team::Green, EntityType::Fighter},
-                           "Neutral source is retained after removal");
+        EXPECT_EQ(frame.lasers.hit_ticks[0], std::uint64_t{1})
+            << "First impact keeps its deterministic tick";
+        EXPECT_EQ(frame.lasers.hit_ticks[1], std::uint64_t{2})
+            << "Second impact keeps its deterministic tick";
+        EXPECT_TRUE((frame.lasers.hits.sources[0] == LaserSource{Team::Green, EntityType::Fighter}))
+            << "Neutral source is retained after removal";
     }
     simulation.advance(0.0);
-    tests::expect_equal(simulation.get_read_view().lasers.hits.num(),
-                        0,
-                        "Next frame does not repeat consumed impacts");
+    EXPECT_EQ(simulation.get_read_view().lasers.hits.num(), 0)
+        << "Next frame does not repeat consumed impacts";
 }
 
 TEST(NativeSimulation, LevelSimInitialQueriesTest) {
@@ -280,16 +254,15 @@ TEST(NativeSimulation, LevelSimInitialQueriesTest) {
     simulation.finish_initialisation();
     auto const& queries{simulation.get_spatial_query_manager()};
     auto const dynamic_hit{queries.trace_closest({{-1100.f, 0.f, 0.f}}, {{-900.f, 0.f, 0.f}})};
-    tests::expect_true(dynamic_hit.hit &&
-                           dynamic_hit.entity == simulation.get_capital_ships().get_id(0),
-                       "Initial capital is queryable before the first tick");
+    EXPECT_TRUE(dynamic_hit.hit && dynamic_hit.entity == simulation.get_capital_ships().get_id(0))
+        << "Initial capital is queryable before the first tick";
     auto const static_hit{queries.trace_closest({{-100.f, 500.f, 0.f}}, {{100.f, 500.f, 0.f}})};
-    tests::expect_true(static_hit.hit && static_hit.static_geometry_index == 0,
-                       "Initial static collision is queryable before the first tick");
+    EXPECT_TRUE(static_hit.hit && static_hit.static_geometry_index == 0)
+        << "Initial static collision is queryable before the first tick";
     simulation.start();
     simulation.advance(simulation.get_clock().get_tick_period());
-    tests::expect_true(queries.trace_closest({{-100.f, 500.f, 0.f}}, {{100.f, 500.f, 0.f}}).hit,
-                       "Static collision survives the first dynamic rebuild");
+    EXPECT_TRUE(queries.trace_closest({{-100.f, 500.f, 0.f}}, {{100.f, 500.f, 0.f}}).hit)
+        << "Static collision survives the first dynamic rebuild";
 }
 
 TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
@@ -304,31 +277,28 @@ TEST(NativeSimulation, LevelSimCompiledInitialisationTest) {
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
     auto const& capitals{simulation.get_capital_ships()};
-    tests::expect_true(capitals.get_target_id(0) == capitals.get_id(1),
-                       "Compiled capital target index maps to its registered handle");
+    EXPECT_TRUE(capitals.get_target_id(0) == capitals.get_id(1))
+        << "Compiled capital target index maps to its registered handle";
     auto const* player{simulation.get_player_ship_simulation()};
-    tests::expect_true(capitals.get_target_id(1) == player->unique_entity_id,
-                       "Compiled player entity index maps to the player handle");
-    tests::expect_equal(simulation.get_entity_ledger().count_alive(),
-                        5,
-                        "Every compiled initial entity is registered");
+    EXPECT_TRUE(capitals.get_target_id(1) == player->unique_entity_id)
+        << "Compiled player entity index maps to the player handle";
+    EXPECT_EQ(simulation.get_entity_ledger().count_alive(), 5)
+        << "Every compiled initial entity is registered";
     auto const& health_table{simulation.get_entity_tables().health};
-    tests::expect_true(health_table.contains(player->get_health_index(), player->unique_entity_id),
-                       "Player health is allocated in the world health table");
+    EXPECT_TRUE(health_table.contains(player->get_health_index(), player->unique_entity_id))
+        << "Player health is allocated in the world health table";
     auto const turret_view{simulation.get_turrets().get_read_view()};
     auto const turrets{turret_view.entities};
     for (std::int32_t i{}; i < turrets.num(); ++i) {
         auto const rotated{turrets.teams[i] == Team::Green};
-        tests::expect_true(
-            health_table.contains(turret_view.healths.indices()[i], turrets.entity_ids[i]),
-            "Turret health is allocated in the world health table");
-        tests::expect_equal(
-            turret_view.healths.health(i), rotated ? 20 : 30, "Compiled turret health is retained");
-        tests::expect_equal(turrets.rotations.yaws[i],
-                            rotated ? 90.f : 0.f,
-                            "Compiled turret rotation is retained");
+        EXPECT_TRUE(health_table.contains(turret_view.healths.indices()[i], turrets.entity_ids[i]))
+            << "Turret health is allocated in the world health table";
+        EXPECT_EQ(turret_view.healths.health(i), rotated ? 20 : 30)
+            << "Compiled turret health is retained";
+        EXPECT_EQ(turrets.rotations.yaws[i], rotated ? 90.f : 0.f)
+            << "Compiled turret rotation is retained";
     }
-    tests::expect_equal(turrets.num(), 2, "Both compiled turrets are registered");
+    EXPECT_EQ(turrets.num(), 2) << "Both compiled turrets are registered";
 }
 
 TEST(NativeSimulation, PlayerPreservesPartialSpawnHealth) {
@@ -427,7 +397,7 @@ TEST(NativeSimulation, MixedWorldRemovalAndSubsequentSpawnPreserveHealthMappings
 
 TEST(NativeSimulation, LevelSimReconstructionTest) {
     std::optional<LevelSim> simulation;
-    tests::expect_false(simulation.has_value(), "Construction can be delayed");
+    EXPECT_FALSE(simulation.has_value()) << "Construction can be delayed";
     auto first_data{make_battle()};
     add_mission(first_data);
     simulation.emplace(std::move(first_data));
@@ -441,16 +411,14 @@ TEST(NativeSimulation, LevelSimReconstructionTest) {
     add_mission(second_data);
     simulation.emplace(std::move(second_data));
     simulation->finish_initialisation();
-    tests::expect_equal(simulation->get_clock().get_completed_ticks(),
-                        std::uint64_t{0},
-                        "Fresh clock starts at zero");
-    tests::expect_equal(
-        simulation->get_entity_ledger().count_alive(), 2, "Fresh ledger contains both entities");
-    tests::expect_equal(simulation->get_entity_ledger().get_num_unique_ids_issued(),
-                        2,
-                        "Fresh ledger has no prior history");
-    tests::expect_false(simulation->take_mission_result().has_value(),
-                        "No pending result survives reconstruction");
+    EXPECT_EQ(simulation->get_clock().get_completed_ticks(), std::uint64_t{0})
+        << "Fresh clock starts at zero";
+    EXPECT_EQ(simulation->get_entity_ledger().count_alive(), 2)
+        << "Fresh ledger contains both entities";
+    EXPECT_EQ(simulation->get_entity_ledger().get_num_unique_ids_issued(), 2)
+        << "Fresh ledger has no prior history";
+    EXPECT_FALSE(simulation->take_mission_result().has_value())
+        << "No pending result survives reconstruction";
 }
 
 TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
@@ -463,9 +431,7 @@ TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
     simulation.start();
 
     auto* const player{simulation.get_player_ship_simulation()};
-    if (!tests::expect_not_null(player, "Planar movement fixture has a player")) {
-        return;
-    }
+    ASSERT_NE(player, nullptr) << "Planar movement fixture has a player";
 
     auto const dt{simulation.get_clock().get_tick_period()};
     auto local_velocity = [player] {
@@ -475,28 +441,28 @@ TEST(NativeSimulation, LevelSimPlanarMovementOffsetTest) {
 
     simulation.get_player_ship_commands()->set_lateral_move_input(1.f);
     simulation.advance(dt);
-    tests::expect_true((std::abs(local_velocity().y - 3000.0) <= 0.1),
-                       "Held lateral input adds the configured local offset");
-    tests::expect_true((std::abs(player->target_local_planar_velocity_scale.x) <= 1.e-4 &&
-                        std::abs(player->target_local_planar_velocity_scale.y) <= 1.e-4),
-                       "Lateral input does not change desired planar velocity");
+    EXPECT_TRUE((std::abs(local_velocity().y - 3000.0) <= 0.1))
+        << "Held lateral input adds the configured local offset";
+    EXPECT_TRUE((std::abs(player->target_local_planar_velocity_scale.x) <= 1.e-4 &&
+                 std::abs(player->target_local_planar_velocity_scale.y) <= 1.e-4))
+        << "Lateral input does not change desired planar velocity";
 
     simulation.get_player_ship_commands()->set_lateral_move_input(0.f);
     simulation.get_player_ship_commands()->set_vertical_move_input(1.f);
     simulation.advance(dt);
-    tests::expect_true((std::abs(local_velocity().z - 3000.0) <= 0.1),
-                       "Held vertical input adds the configured local offset");
-    tests::expect_true((std::abs(local_velocity().y) <= 0.1),
-                       "Released lateral input removes its local offset");
+    EXPECT_TRUE((std::abs(local_velocity().z - 3000.0) <= 0.1))
+        << "Held vertical input adds the configured local offset";
+    EXPECT_TRUE((std::abs(local_velocity().y) <= 0.1))
+        << "Released lateral input removes its local offset";
 
     simulation.get_player_ship_commands()->set_vertical_move_input(0.f);
     simulation.advance(dt);
     auto const released_velocity{local_velocity()};
-    tests::expect_true((std::abs(released_velocity.z) <= 0.1),
-                       "Released vertical input removes its local offset");
-    tests::expect_true((std::abs(player->target_local_planar_velocity_scale.x) <= 1.e-4 &&
-                        std::abs(player->target_local_planar_velocity_scale.y) <= 1.e-4),
-                       "Movement offsets remain temporary");
+    EXPECT_TRUE((std::abs(released_velocity.z) <= 0.1))
+        << "Released vertical input removes its local offset";
+    EXPECT_TRUE((std::abs(player->target_local_planar_velocity_scale.x) <= 1.e-4 &&
+                 std::abs(player->target_local_planar_velocity_scale.y) <= 1.e-4))
+        << "Movement offsets remain temporary";
 }
 
 TEST(NativeSimulation, LevelSimOverlapResponseTest) {
@@ -505,9 +471,7 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
     simulation.start();
     auto const dt{simulation.get_clock().get_tick_period()};
     auto* player{simulation.get_player_ship_simulation()};
-    if (!tests::expect_not_null(player, "The overlap fixture has a movable low-health entity")) {
-        return;
-    }
+    ASSERT_NE(player, nullptr) << "The overlap fixture has a movable low-health entity";
 
     simulation.get_player_ship_commands()->set_lateral_move_input(1.f);
     auto const player_id{player->unique_entity_id};
@@ -517,32 +481,28 @@ TEST(NativeSimulation, LevelSimOverlapResponseTest) {
     for (std::int32_t overlap_detection{}; overlap_detection < 3; ++overlap_detection) {
         simulation.advance(dt);
         auto const events{simulation.get_spatial_query_manager().get_aabb_overlap_events()};
-        tests::expect_equal(
-            events.entity_entity_overlaps.num(), 1, "The tick captures one unique dynamic overlap");
-        tests::expect_equal(
-            events.entity_static_overlaps.num(), 0, "The tick captures no static overlap");
+        EXPECT_EQ(events.entity_entity_overlaps.num(), 1)
+            << "The tick captures one unique dynamic overlap";
+        EXPECT_EQ(events.entity_static_overlaps.num(), 0) << "The tick captures no static overlap";
 
-        tests::expect_equal(simulation.get_agent_accessor().read(capital)->health,
-                            5000 - (overlap_detection + 1) * 50,
-                            "The high-health capital receives damage in the detection tick");
+        EXPECT_EQ(simulation.get_agent_accessor().read(capital)->health,
+                  5000 - (overlap_detection + 1) * 50)
+            << "The high-health capital receives damage in the detection tick";
         if (overlap_detection < 2) {
-            tests::expect_equal(simulation.get_agent_accessor().read(player_id)->health,
-                                150 - (overlap_detection + 1) * 50,
-                                "The low-health entity receives damage in the detection tick");
+            EXPECT_EQ(simulation.get_agent_accessor().read(player_id)->health,
+                      150 - (overlap_detection + 1) * 50)
+                << "The low-health entity receives damage in the detection tick";
         }
     }
 
-    tests::expect_false(simulation.get_agent_accessor().is_alive(player_id),
-                        "The low-health entity dies after three detected overlaps");
-    tests::expect_equal(simulation.get_agent_accessor().read(capital)->health,
-                        4850,
-                        "The capital receives one contribution per detected tick");
-    tests::expect_true(
-        ledger.get_unique_entities().life_state[ledger.get_history_index(player_id)] ==
-            LifeState::Unknown,
-        "Overlap death uses the environmental death path");
-    tests::expect_equal(
-        ledger.count_kills(), 0, "Environmental overlap death gives no combat kill");
+    EXPECT_FALSE(simulation.get_agent_accessor().is_alive(player_id))
+        << "The low-health entity dies after three detected overlaps";
+    EXPECT_EQ(simulation.get_agent_accessor().read(capital)->health, 4850)
+        << "The capital receives one contribution per detected tick";
+    EXPECT_TRUE(ledger.get_unique_entities().life_state[ledger.get_history_index(player_id)] ==
+                LifeState::Unknown)
+        << "Overlap death uses the environmental death path";
+    EXPECT_EQ(ledger.count_kills(), 0) << "Environmental overlap death gives no combat kill";
 }
 
 TEST(NativeSimulation, WorldlessLevelSimulationTest) {
@@ -552,59 +512,51 @@ TEST(NativeSimulation, WorldlessLevelSimulationTest) {
     add_mission(second_data);
     LevelSim first{std::move(first_data)};
     LevelSim second{std::move(second_data)};
-    tests::expect_equal(first.get_state(),
-                        OrchestratorState::Uninitialised,
-                        "Construction leaves external setup open");
+    EXPECT_EQ(first.get_state(), OrchestratorState::Uninitialised)
+        << "Construction leaves external setup open";
     first.advance(1.0);
-    tests::expect_equal(first.get_clock().get_completed_ticks(),
-                        std::uint64_t{0},
-                        "Uninitialised simulation ignores elapsed time");
+    EXPECT_EQ(first.get_clock().get_completed_ticks(), std::uint64_t{0})
+        << "Uninitialised simulation ignores elapsed time";
     first.finish_initialisation();
     second.finish_initialisation();
-    tests::expect_equal(first.get_state(),
-                        OrchestratorState::Paused,
-                        "Finishing initialization pauses the simulation");
-    tests::expect_false(first.get_level_telemetry_manager().is_run_recording(),
-                        "No run is started without metadata");
+    EXPECT_EQ(first.get_state(), OrchestratorState::Paused)
+        << "Finishing initialization pauses the simulation";
+    EXPECT_FALSE(first.get_level_telemetry_manager().is_run_recording())
+        << "No run is started without metadata";
     first.pause();
     first.pause();
-    tests::expect_true(first.get_player_ship_simulation() == nullptr, "No player is needed");
-    tests::expect_equal(first.get_entity_ledger().count_alive(), 2, "Both capitals are registered");
+    EXPECT_TRUE(first.get_player_ship_simulation() == nullptr) << "No player is needed";
+    EXPECT_EQ(first.get_entity_ledger().count_alive(), 2) << "Both capitals are registered";
     first.start();
     second.start();
     auto const dt{first.get_clock().get_tick_period()};
     first.advance(dt);
-    tests::expect_equal(second.get_clock().get_completed_ticks(),
-                        std::uint64_t{0},
-                        "Independent clock remains at zero");
+    EXPECT_EQ(second.get_clock().get_completed_ticks(), std::uint64_t{0})
+        << "Independent clock remains at zero";
     kill_enemy(first);
     first.advance(dt);
     second.advance(dt);
-    tests::expect_equal(
-        first.get_entity_ledger().count_alive(), 1, "Death is effective before physical removal");
+    EXPECT_EQ(first.get_entity_ledger().count_alive(), 1)
+        << "Death is effective before physical removal";
     first.advance(dt);
-    tests::expect_equal(first.get_capital_ships().get_num_instances(),
-                        1,
-                        "Damage removes only the first battle's enemy");
-    tests::expect_equal(
-        second.get_capital_ships().get_num_instances(), 2, "Other battle is unaffected");
+    EXPECT_EQ(first.get_capital_ships().get_num_instances(), 1)
+        << "Damage removes only the first battle's enemy";
+    EXPECT_EQ(second.get_capital_ships().get_num_instances(), 2) << "Other battle is unaffected";
     auto result{first.take_mission_result()};
-    tests::expect_true(result.has_value(), "Worldless mission produces a result");
+    EXPECT_TRUE(result.has_value()) << "Worldless mission produces a result";
     if (result.has_value()) {
-        tests::expect_equal(result->state, MissionState::Succeeded, "Worldless battle succeeds");
-        tests::expect_equal(result->kills, 1, "Worldless battle attributes the kill");
+        EXPECT_EQ(result->state, MissionState::Succeeded) << "Worldless battle succeeds";
+        EXPECT_EQ(result->kills, 1) << "Worldless battle attributes the kill";
     }
-    tests::expect_false(first.take_mission_result().has_value(),
-                        "Mission result is delivered once");
+    EXPECT_FALSE(first.take_mission_result().has_value()) << "Mission result is delivered once";
     first.pause();
     auto const paused_ticks{first.get_clock().get_completed_ticks()};
     first.advance(dt);
-    tests::expect_equal(
-        first.get_clock().get_completed_ticks(), paused_ticks, "Paused battle does not advance");
+    EXPECT_EQ(first.get_clock().get_completed_ticks(), paused_ticks)
+        << "Paused battle does not advance";
     first.start();
     first.advance(dt);
-    tests::expect_equal(
-        first.get_clock().get_completed_ticks(), paused_ticks + 1, "Battle resumes");
+    EXPECT_EQ(first.get_clock().get_completed_ticks(), paused_ticks + 1) << "Battle resumes";
 }
 
 TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
@@ -618,38 +570,33 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
         .launched_utc = "2026-09-06T12:00:00Z",
     };
     LevelSim simulation{std::move(data)};
-    tests::expect_false(simulation.get_level_telemetry_manager().is_run_recording(),
-                        "Construction does not start telemetry recording");
+    EXPECT_FALSE(simulation.get_level_telemetry_manager().is_run_recording())
+        << "Construction does not start telemetry recording";
     simulation.finish_initialisation();
-    tests::expect_true(simulation.get_level_telemetry_manager().is_run_recording() &&
-                           simulation.get_state() == OrchestratorState::Paused,
-                       "Finishing starts telemetry while still paused");
+    EXPECT_TRUE(simulation.get_level_telemetry_manager().is_run_recording() &&
+                simulation.get_state() == OrchestratorState::Paused)
+        << "Finishing starts telemetry while still paused";
     simulation.start();
 
     auto const& telemetry{simulation.get_level_telemetry_manager()};
-    tests::expect_true(telemetry.is_run_recording(),
-                       "Simulation initialization starts telemetry recording");
+    EXPECT_TRUE(telemetry.is_run_recording())
+        << "Simulation initialization starts telemetry recording";
 
     simulation.advance(1.0);
     simulation.set_time_scale(4.0);
     simulation.advance(simulation.get_clock().get_tick_period());
     simulation.finalize_telemetry_run(LevelTelemetryRunEndReason::WorldEnd, "test");
-    tests::expect_equal(simulation.get_state(),
-                        OrchestratorState::Running,
-                        "Interrupted telemetry finalization does not pause simulation");
+    EXPECT_EQ(simulation.get_state(), OrchestratorState::Running)
+        << "Interrupted telemetry finalization does not pause simulation";
 
     auto record{simulation.take_finalized_telemetry_run()};
-    if (!tests::expect_true(record.has_value(), "Finalized manager yields one run record")) {
-        return;
-    }
-    tests::expect_false(simulation.take_finalized_telemetry_run().has_value(),
-                        "A finalized run record is yielded only once");
-    tests::expect_equal(record->completion.reason,
-                        LevelTelemetryRunEndReason::WorldEnd,
-                        "Completion preserves its end reason");
-    tests::expect_equal(record->completion.completed_ticks,
-                        simulation.get_clock().get_completed_ticks(),
-                        "Completion preserves completed ticks");
+    ASSERT_TRUE(record.has_value()) << "Finalized manager yields one run record";
+    EXPECT_FALSE(simulation.take_finalized_telemetry_run().has_value())
+        << "A finalized run record is yielded only once";
+    EXPECT_EQ(record->completion.reason, LevelTelemetryRunEndReason::WorldEnd)
+        << "Completion preserves its end reason";
+    EXPECT_EQ(record->completion.completed_ticks, simulation.get_clock().get_completed_ticks())
+        << "Completion preserves completed ticks";
     auto const& battle{record->battle_samples};
     ASSERT_GE(battle.size(), 3);
     EXPECT_EQ(battle.front().completed_tick, SimTick{0});
@@ -659,8 +606,7 @@ TEST(NativeSimulation, LevelTelemetryRunRecordTest) {
     EXPECT_DOUBLE_EQ(record->metadata.initial_requested_time_scale, 1.0);
 
     auto const& series{record->tick_series};
-    tests::expect_equal(
-        series.active_entities.num(), 1, "An unchanged entity count is only stored once");
+    EXPECT_EQ(series.active_entities.num(), 1) << "An unchanged entity count is only stored once";
 }
 
 } // namespace tests

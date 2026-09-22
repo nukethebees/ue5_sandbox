@@ -21,35 +21,32 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
         if (final_kill_tick != 0 &&
             simulation.get_clock().get_completed_ticks() == final_kill_tick + 2) {
             for (auto const task : fighters.get_tasks()) {
-                tests::expect_equal(
-                    Task::Attack, task, "Capital orders do not change effective tasks in Thinking");
+                EXPECT_EQ(Task::Attack, task)
+                    << "Capital orders do not change effective tasks in Thinking";
             }
         }
     };
     harness.timeline
         .then_after(2.0 / 60.0,
                     [&] {
-                        tests::expect_equal(first_target,
-                                            capitals.get_target_id(0),
-                                            "Capital initially retains its configured target");
-                        tests::expect_greater(
-                            static_cast<std::int32_t>(capitals.get_fighter_ids(0).size()),
-                            std::int32_t{0},
-                            "Main capital spawned fighters");
+                        EXPECT_EQ(first_target, capitals.get_target_id(0))
+                            << "Capital initially retains its configured target";
+                        EXPECT_GT(static_cast<std::int32_t>(capitals.get_fighter_ids(0).size()),
+                                  std::int32_t{0})
+                            << "Main capital spawned fighters";
                         harness.queue_kills(std::array{first_target});
                     })
         .then_after(
             3.0 / 60.0,
             [&] {
                 second_target = capitals.get_target_id(0);
-                tests::expect_true(second_target.is_valid() && second_target != first_target,
-                                   "Capital retargets after its first target dies");
+                EXPECT_TRUE(second_target.is_valid() && second_target != first_target)
+                    << "Capital retargets after its first target dies";
                 for (auto const fighter_id : capitals.get_fighter_ids(0)) {
                     auto const index{
                         harness.get_simulation().get_agent_accessor().indexes().find(fighter_id)};
-                    tests::expect_equal(second_target,
-                                        fighters.get_target_ids()[index],
-                                        "Fighter follows the replacement capital target");
+                    EXPECT_EQ(second_target, fighters.get_target_ids()[index])
+                        << "Fighter follows the replacement capital target";
                 }
                 std::vector<EntityUniqueId> enemies;
                 auto const entities{capitals.get_read_view().entities};
@@ -69,22 +66,19 @@ void run_worldless_capital_command_fighters(tests::SimulationFixture const& conf
                         auto const fighter_count{static_cast<std::int32_t>(fighter_ids.size())};
                         for (std::int32_t index{}; index < fighter_count; ++index) {
                             if (fighter_parents[index].is_valid()) {
-                                tests::expect_equal(Task::Standby,
-                                                    fighter_tasks[index],
-                                                    "Owned fighter stands by with no enemies");
+                                EXPECT_EQ(Task::Standby, fighter_tasks[index])
+                                    << "Owned fighter stands by with no enemies";
                             } else {
-                                tests::expect_equal(Task::Attack,
-                                                    fighter_tasks[index],
-                                                    "Orphaned fighter retains its attack task");
+                                EXPECT_EQ(Task::Attack, fighter_tasks[index])
+                                    << "Orphaned fighter retains its attack task";
                             }
                         }
-                        tests::expect_greater(capitals.get_num_instances(),
-                                              std::int32_t{0},
-                                              "The main capital remains alive");
+                        EXPECT_GT(capitals.get_num_instances(), std::int32_t{0})
+                            << "The main capital remains alive";
                     })
         .finish_after(0.0);
-    tests::expect_true(harness.run_until_timeline_finished(1.0),
-                       "Capital fighter-command timeline completes");
+    EXPECT_TRUE(harness.run_until_timeline_finished(1.0))
+        << "Capital fighter-command timeline completes";
 }
 
 }

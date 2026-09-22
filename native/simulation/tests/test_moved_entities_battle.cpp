@@ -98,11 +98,11 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
                 expected_moved.insert(id);
             }
         }
-        tests::expect_equal(static_cast<std::int32_t>(moved.size()),
-                            static_cast<std::int32_t>(unique_moved.size()),
-                            "Moved ID occurs only once in its tick");
-        tests::expect_true(unique_moved == expected_moved,
-                           "Owner collision dirtiness exactly matches fighter movement");
+        EXPECT_EQ(static_cast<std::int32_t>(moved.size()),
+                  static_cast<std::int32_t>(unique_moved.size()))
+            << "Moved ID occurs only once in its tick";
+        EXPECT_TRUE(unique_moved == expected_moved)
+            << "Owner collision dirtiness exactly matches fighter movement";
         observed_empty_tick = observed_empty_tick || moved.empty();
         observed_moved_fighters += static_cast<std::int32_t>(moved.size());
         ++observed_ticks;
@@ -117,15 +117,13 @@ TEST(MovedEntitiesBattle, HeadlessBattlePreservesUniquePerTickMovementAcrossLong
     }
     simulation.pause();
 
-    tests::expect_equal(observed_ticks, tick_count, "Every requested battle tick was observed");
-    tests::expect_true(observed_empty_tick, "Battle includes an initially quiet movement tick");
-    tests::expect_true(observed_moved_fighters > 100, "Battle exercises fighter movement");
-    tests::expect_equal(simulation.get_capital_ships().get_fighters_spawned(),
-                        16,
-                        "Battle spawns exactly one fighter wave");
-    tests::expect_equal(simulation.get_fighters().get_num_instances(),
-                        16,
-                        "Zero-damage battle preserves every fighter");
+    EXPECT_EQ(observed_ticks, tick_count) << "Every requested battle tick was observed";
+    EXPECT_TRUE(observed_empty_tick) << "Battle includes an initially quiet movement tick";
+    EXPECT_TRUE(observed_moved_fighters > 100) << "Battle exercises fighter movement";
+    EXPECT_EQ(simulation.get_capital_ships().get_fighters_spawned(), 16)
+        << "Battle spawns exactly one fighter wave";
+    EXPECT_EQ(simulation.get_fighters().get_num_instances(), 16)
+        << "Zero-damage battle preserves every fighter";
 }
 
 } // namespace ioj::sim::tests

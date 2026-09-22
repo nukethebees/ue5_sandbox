@@ -84,12 +84,11 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
         auto data{make_cap_battle(participants, participants, team_count * 3 + remainder, 4)};
         LevelSim simulation{std::move(data)};
         start_and_tick(simulation);
-        tests::expect_equal(simulation.get_fighters().get_num_instances(),
-                            team_count * 3,
-                            "Floor partition leaves the global remainder unused");
+        EXPECT_EQ(simulation.get_fighters().get_num_instances(), team_count * 3)
+            << "Floor partition leaves the global remainder unused";
         for (auto const team : participants) {
-            tests::expect_equal(
-                count_team(simulation, team), 3, "Each participant receives the same partition");
+            EXPECT_EQ(count_team(simulation, team), 3)
+                << "Each participant receives the same partition";
         }
     }
 
@@ -98,26 +97,23 @@ TEST(FighterLiveCap, TeamPartitionsAndRemainders) {
     auto data{make_cap_battle(one_capital, two_participants, 7, 8)};
     LevelSim simulation{std::move(data)};
     start_and_tick(simulation);
-    tests::expect_equal(simulation.get_fighters().get_num_instances(),
-                        3,
-                        "A team cannot borrow another participant's unused allocation");
+    EXPECT_EQ(simulation.get_fighters().get_num_instances(), 3)
+        << "A team cannot borrow another participant's unused allocation";
 
     std::vector<Team> const repeated_capital_teams{Team::White, Team::White, Team::Red};
     auto inferred_data{make_cap_battle(repeated_capital_teams, std::span<Team const>{}, 14, 8)};
     LevelSim inferred_simulation{std::move(inferred_data)};
     start_and_tick(inferred_simulation);
-    tests::expect_equal(inferred_simulation.get_fighters().get_num_instances(),
-                        14,
-                        "Compiled team inference deduplicates team sources");
+    EXPECT_EQ(inferred_simulation.get_fighters().get_num_instances(), 14)
+        << "Compiled team inference deduplicates team sources";
 
     LevelSim empty_simulation{
         make_cap_battle(std::span<Team const>{}, std::span<Team const>{}, 10, 0)};
     empty_simulation.finish_initialisation();
     empty_simulation.start();
     empty_simulation.advance(empty_simulation.get_clock().get_tick_period());
-    tests::expect_equal(empty_simulation.get_fighters().get_num_instances(),
-                        0,
-                        "A zero-team simulation remains empty");
+    EXPECT_EQ(empty_simulation.get_fighters().get_num_instances(), 0)
+        << "A zero-team simulation remains empty";
 }
 
 TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
@@ -127,18 +123,15 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
     auto data{make_cap_battle(capitals, participants, 6, 4)};
     LevelSim simulation{std::move(data)};
     start_and_tick(simulation);
-    tests::expect_equal(simulation.get_fighters().get_num_instances(),
-                        6,
-                        "Full and partial waves stop at the team cap");
+    EXPECT_EQ(simulation.get_fighters().get_num_instances(), 6)
+        << "Full and partial waves stop at the team cap";
 
     simulation.advance(simulation.get_clock().get_tick_period());
     auto const& capital_simulation{simulation.get_capital_ships()};
-    tests::expect_equal(static_cast<std::int32_t>(capital_simulation.get_fighter_ids(0).size()),
-                        4,
-                        "First capital owns its full accepted wave");
-    tests::expect_equal(static_cast<std::int32_t>(capital_simulation.get_fighter_ids(1).size()),
-                        2,
-                        "Second capital owns only its accepted prefix");
+    EXPECT_EQ(static_cast<std::int32_t>(capital_simulation.get_fighter_ids(0).size()), 4)
+        << "First capital owns its full accepted wave";
+    EXPECT_EQ(static_cast<std::int32_t>(capital_simulation.get_fighter_ids(1).size()), 2)
+        << "Second capital owns only its accepted prefix";
 
     auto parent_death_data{make_cap_battle(capitals, participants, 2, 1)};
     LevelSim parent_death_simulation{std::move(parent_death_data)};
@@ -155,13 +148,13 @@ TEST(FighterLiveCap, PartialWavesPreserveOwnership) {
                                                    capital_damage.get_const_view());
     parent_death_simulation.advance(parent_death_simulation.get_clock().get_tick_period());
     parent_death_simulation.advance(parent_death_simulation.get_clock().get_tick_period());
-    tests::expect_equal(static_cast<std::int32_t>(
-                            parent_death_simulation.get_capital_ships().get_fighter_ids(0).size()),
-                        2,
-                        "A pending launch from a dead parent is reassigned to its surviving team");
+    EXPECT_EQ(static_cast<std::int32_t>(
+                  parent_death_simulation.get_capital_ships().get_fighter_ids(0).size()),
+              2)
+        << "A pending launch from a dead parent is reassigned to its surviving team";
     auto const survivor{parent_death_simulation.get_capital_ships().get_id(0)};
     for (auto const parent : parent_death_simulation.get_fighters().get_parent_ids()) {
-        tests::expect_equal(parent, survivor, "Pending fighter uses the surviving capital parent");
+        EXPECT_EQ(parent, survivor) << "Pending fighter uses the surviving capital parent";
     }
 }
 
@@ -188,34 +181,30 @@ TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
             white_fighters.push_back(fighter);
         }
     }
-    tests::expect_equal(static_cast<std::int32_t>(white_fighters.size()),
-                        2,
-                        "Final capital begins with its fighter wave");
+    EXPECT_EQ(static_cast<std::int32_t>(white_fighters.size()), 2)
+        << "Final capital begins with its fighter wave";
 
     queue_damage(simulation, white_capital, 100000);
     simulation.advance(simulation.get_clock().get_tick_period());
 
-    tests::expect_true(!capital_simulation.find_first_index_on_team(Team::White).has_value(),
-                       "Final capital is removed");
+    EXPECT_TRUE(!capital_simulation.find_first_index_on_team(Team::White).has_value())
+        << "Final capital is removed";
     for (auto const fighter : white_fighters) {
         auto const index{simulation.get_agent_indexes().find(fighter)};
-        tests::expect_true(index >= 0, "Orphaned fighter remains registered");
+        EXPECT_TRUE(index >= 0) << "Orphaned fighter remains registered";
         if (index < 0) {
             continue;
         }
-        tests::expect_equal(fighter_simulation.get_teams()[index],
-                            Team::White,
-                            "Orphaned fighter retains its team");
-        tests::expect_true(!fighter_simulation.get_parent_ids()[index].is_valid(),
-                           "Orphaned fighter has no capital parent");
-        tests::expect_equal(fighter_simulation.get_target_ids()[index],
-                            red_capital,
-                            "Orphaned fighter retains its target");
-        tests::expect_equal(fighter_simulation.get_tasks()[index],
-                            FighterTask::Attack,
-                            "Orphaned fighter continues its attack task");
-        tests::expect_true(!std::ranges::contains(capital_simulation.get_fighter_ids(), fighter),
-                           "Orphaned fighter is absent from capital rosters");
+        EXPECT_EQ(fighter_simulation.get_teams()[index], Team::White)
+            << "Orphaned fighter retains its team";
+        EXPECT_TRUE(!fighter_simulation.get_parent_ids()[index].is_valid())
+            << "Orphaned fighter has no capital parent";
+        EXPECT_EQ(fighter_simulation.get_target_ids()[index], red_capital)
+            << "Orphaned fighter retains its target";
+        EXPECT_EQ(fighter_simulation.get_tasks()[index], FighterTask::Attack)
+            << "Orphaned fighter continues its attack task";
+        EXPECT_TRUE(!std::ranges::contains(capital_simulation.get_fighter_ids(), fighter))
+            << "Orphaned fighter is absent from capital rosters";
     }
 
     auto const tracked_fighter{white_fighters.front()};
@@ -225,21 +214,19 @@ TEST(FighterLiveCap, FinalCapitalDeathOrphansFighters) {
         simulation.advance(simulation.get_clock().get_tick_period());
     }
     auto const after_index{simulation.get_agent_indexes().find(tracked_fighter)};
-    tests::expect_true(after_index >= 0, "Orphaned fighter remains live while simulating");
+    EXPECT_TRUE(after_index >= 0) << "Orphaned fighter remains live while simulating";
     if (after_index >= 0) {
-        tests::expect_true(
-            location_changed(before_location, fighter_simulation.get_locations()[after_index]),
-            "Orphaned fighter continues moving");
+        EXPECT_TRUE(
+            location_changed(before_location, fighter_simulation.get_locations()[after_index]))
+            << "Orphaned fighter continues moving";
     }
 
     queue_damage(simulation, tracked_fighter, 100000);
     simulation.advance(simulation.get_clock().get_tick_period());
-    tests::expect_equal(simulation.get_agent_indexes().find(tracked_fighter),
-                        -1,
-                        "Orphaned fighter dies through normal damage resolution");
-    tests::expect_equal(count_team(simulation, Team::White),
-                        1,
-                        "Other orphaned fighters remain live after one is destroyed");
+    EXPECT_EQ(simulation.get_agent_indexes().find(tracked_fighter), -1)
+        << "Orphaned fighter dies through normal damage resolution";
+    EXPECT_EQ(count_team(simulation, Team::White), 1)
+        << "Other orphaned fighters remain live after one is destroyed";
 }
 
 TEST(FighterLiveCap, PendingLaunchSurvivesFinalCapitalDeathUnowned) {
@@ -262,20 +249,19 @@ TEST(FighterLiveCap, PendingLaunchSurvivesFinalCapitalDeathUnowned) {
 
     auto const& capital_simulation{simulation.get_capital_ships()};
     auto const& fighter_simulation{simulation.get_fighters()};
-    tests::expect_true(!capital_simulation.find_first_index_on_team(Team::White).has_value(),
-                       "Spawn parent capital is removed");
-    tests::expect_equal(count_team(simulation, Team::White),
-                        1,
-                        "Pending fighter is admitted after its final parent dies");
+    EXPECT_TRUE(!capital_simulation.find_first_index_on_team(Team::White).has_value())
+        << "Spawn parent capital is removed";
+    EXPECT_EQ(count_team(simulation, Team::White), 1)
+        << "Pending fighter is admitted after its final parent dies";
     for (auto const fighter : fighter_simulation.get_entity_ids()) {
         auto const index{simulation.get_agent_indexes().find(fighter)};
         if (fighter_simulation.get_teams()[index] != Team::White) {
             continue;
         }
-        tests::expect_true(!fighter_simulation.get_parent_ids()[index].is_valid(),
-                           "Pending fighter is admitted unowned");
-        tests::expect_true(!std::ranges::contains(capital_simulation.get_fighter_ids(), fighter),
-                           "Pending fighter is absent from capital rosters");
+        EXPECT_TRUE(!fighter_simulation.get_parent_ids()[index].is_valid())
+            << "Pending fighter is admitted unowned";
+        EXPECT_TRUE(!std::ranges::contains(capital_simulation.get_fighter_ids(), fighter))
+            << "Pending fighter is absent from capital rosters";
     }
 }
 
@@ -285,8 +271,8 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
     auto make_data{[&] { return make_cap_battle(capitals, capitals, 1, 1, 0.f); }};
     LevelSim simulation{make_data()};
     start_and_tick(simulation);
-    tests::expect_equal(
-        simulation.get_fighters().get_num_instances(), 1, "Initial fighter fills the budget");
+    EXPECT_EQ(simulation.get_fighters().get_num_instances(), 1)
+        << "Initial fighter fills the budget";
 
     DirectDamageEvents damage;
     damage.add_uninitialised(1);
@@ -296,9 +282,8 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
     damage.damage_amounts[0] = 100000;
     LevelSimTestAccess::queue_direct_damage_events(simulation, damage.get_const_view());
     simulation.advance(simulation.get_clock().get_tick_period());
-    tests::expect_equal(simulation.get_fighters().get_num_instances(),
-                        0,
-                        "Dead fighter is removed at the end of Resolution");
+    EXPECT_EQ(simulation.get_fighters().get_num_instances(), 0)
+        << "Dead fighter is removed at the end of Resolution";
     EXPECT_EQ(simulation.get_agent_indexes().find(original_id), -1);
     EXPECT_FALSE(simulation.get_agent_accessor().read(original_id));
     EXPECT_TRUE(simulation.get_capital_ships().get_fighter_ids(0).empty());
@@ -308,9 +293,8 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 0);
     simulation.advance(simulation.get_clock().get_tick_period());
-    tests::expect_equal(simulation.get_fighters().get_num_instances(),
-                        1,
-                        "Exactly one replacement uses the released slot");
+    EXPECT_EQ(simulation.get_fighters().get_num_instances(), 1)
+        << "Exactly one replacement uses the released slot";
 
     auto const replacement_id{simulation.get_read_view().fighters.entities.entity_ids[0]};
     EXPECT_NE(replacement_id, original_id);
@@ -336,9 +320,8 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
     std::optional<LevelSim> reconstructed;
     reconstructed.emplace(make_data());
     start_and_tick(*reconstructed);
-    tests::expect_equal(reconstructed->get_fighters().get_num_instances(),
-                        1,
-                        "Reconstruction starts with a fresh budget");
+    EXPECT_EQ(reconstructed->get_fighters().get_num_instances(), 1)
+        << "Reconstruction starts with a fresh budget";
 }
 
 TEST(FighterLiveCap, UnknownTeamRejected) {
@@ -348,8 +331,8 @@ TEST(FighterLiveCap, UnknownTeamRejected) {
     auto data{make_cap_battle(capitals, participants, 10, 1)};
     LevelSim simulation{std::move(data)};
     start_and_tick(simulation);
-    tests::expect_equal(
-        simulation.get_fighters().get_num_instances(), 0, "Unknown team creates no fighter");
+    EXPECT_EQ(simulation.get_fighters().get_num_instances(), 0)
+        << "Unknown team creates no fighter";
 }
 
 } // namespace tests

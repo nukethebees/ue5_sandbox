@@ -64,15 +64,14 @@ void run_worldless_fighter_obstacle_avoidance(tests::SimulationFixture const& co
                                      location.Z >= expanded_min.Z && location.Z <= expanded_max.Z);
     };
     harness.timeline.finish_at(14.0);
-    tests::expect_true(harness.run_until_timeline_finished(15.0),
-                       "Fighter obstacle-avoidance timeline completes");
+    EXPECT_TRUE(harness.run_until_timeline_finished(15.0))
+        << "Fighter obstacle-avoidance timeline completes";
 
-    tests::expect_true(fighter_spawned, "Avoidance fighter spawned");
-    tests::expect_true(!entered_expanded_obstacle,
-                       "Fighter remains outside obstacle clearance bounds");
-    tests::expect_true(maximum_lateral_distance > expanded_max.Y,
-                       "Fighter steers visibly around the obstacle");
-    tests::expect_true(maximum_x > expanded_max.X, "Fighter progresses past the obstacle");
+    EXPECT_TRUE(fighter_spawned) << "Avoidance fighter spawned";
+    EXPECT_TRUE(!entered_expanded_obstacle) << "Fighter remains outside obstacle clearance bounds";
+    EXPECT_TRUE(maximum_lateral_distance > expanded_max.Y)
+        << "Fighter steers visibly around the obstacle";
+    EXPECT_TRUE(maximum_x > expanded_max.X) << "Fighter progresses past the obstacle";
 }
 
 auto make_fighter_navigation_test_data(tests::SimulationFixture const& config,
@@ -123,11 +122,8 @@ void run_worldless_fighter_capital_obstruction(tests::SimulationFixture const& c
     data.level_events.initial_spawns.capital_spawns.get_view().view_rotations().set(
         1, obstacle_rotation);
 
-    auto const obstacle_bounds{
-        collision::make_entity_world_bounds(data.entity_bounds,
-                                            EntityType::CapitalShip,
-                                            obstacle,
-                                            to_quaternion(obstacle_rotation))};
+    auto const obstacle_bounds{collision::make_entity_world_bounds(
+        data.entity_bounds, EntityType::CapitalShip, obstacle, to_quaternion(obstacle_rotation))};
     auto const capital_half_extent{((obstacle_bounds.max - obstacle_bounds.min) * 0.5f)};
     auto const fighter_radius{
         collision::get_entity_radius(data.entity_bounds, EntityType::Fighter)};
@@ -159,13 +155,13 @@ void run_worldless_fighter_capital_obstruction(tests::SimulationFixture const& c
             saw_avoidance || fighters.get_navigation_telemetry().avoiding_fighter_count > 0;
     };
     harness.timeline.finish_at(14.0);
-    tests::expect_true(harness.run_until_timeline_finished(15.0),
-                       "Capital-obstruction timeline completes");
-    tests::expect_true(!entered_obstacle, "Fighter remains outside capital clearance bounds");
-    tests::expect_true(saw_avoidance, "Fighter selects hard avoidance around the capital");
-    tests::expect_true(maximum_lateral_distance > capital_half_extent.Y,
-                       "Fighter travels laterally around the capital");
-    tests::expect_true(maximum_x > expanded_max.X, "Fighter progresses beyond the capital");
+    EXPECT_TRUE(harness.run_until_timeline_finished(15.0))
+        << "Capital-obstruction timeline completes";
+    EXPECT_TRUE(!entered_obstacle) << "Fighter remains outside capital clearance bounds";
+    EXPECT_TRUE(saw_avoidance) << "Fighter selects hard avoidance around the capital";
+    EXPECT_TRUE(maximum_lateral_distance > capital_half_extent.Y)
+        << "Fighter travels laterally around the capital";
+    EXPECT_TRUE(maximum_x > expanded_max.X) << "Fighter progresses beyond the capital";
 }
 
 void run_worldless_fighter_clear_navigation(tests::SimulationFixture const& config) {
@@ -208,18 +204,17 @@ void run_worldless_fighter_clear_navigation(tests::SimulationFixture const& conf
         saw_avoidance = saw_avoidance || telemetry.avoiding_fighter_count > 0;
     };
     harness.timeline.finish_at(1.0);
-    tests::expect_true(harness.run_until_timeline_finished(2.0),
-                       "Clear-navigation timeline completes");
-    tests::expect_true(recorded_first, "Clear-path fighter spawned");
-    tests::expect_true(scanned_before_first_movement,
-                       "New fighter scans obstacles before its first movement");
-    tests::expect_true(last_location.X > first_location.X + 1000.f,
-                       "Clear-path fighter advances directly");
-    tests::expect_true(std::abs(last_location.Y - first_location.Y) < 1.f &&
-                           std::abs(last_location.Z - first_location.Z) < 1.f,
-                       "Clear path has no lateral steering");
-    tests::expect_true(!saw_separation, "Clear path never applies separation");
-    tests::expect_true(!saw_avoidance, "Clear path never applies hard avoidance");
+    EXPECT_TRUE(harness.run_until_timeline_finished(2.0)) << "Clear-navigation timeline completes";
+    EXPECT_TRUE(recorded_first) << "Clear-path fighter spawned";
+    EXPECT_TRUE(scanned_before_first_movement)
+        << "New fighter scans obstacles before its first movement";
+    EXPECT_TRUE(last_location.X > first_location.X + 1000.f)
+        << "Clear-path fighter advances directly";
+    EXPECT_TRUE(std::abs(last_location.Y - first_location.Y) < 1.f &&
+                std::abs(last_location.Z - first_location.Z) < 1.f)
+        << "Clear path has no lateral steering";
+    EXPECT_TRUE(!saw_separation) << "Clear path never applies separation";
+    EXPECT_TRUE(!saw_avoidance) << "Clear path never applies hard avoidance";
 }
 
 void run_worldless_fighter_separation(tests::SimulationFixture const& config) {
@@ -240,7 +235,7 @@ void run_worldless_fighter_separation(tests::SimulationFixture const& config) {
         if (locations.num() != 2) {
             return;
         }
-        final_distance = tests::distance(locations[0], locations[1]);
+        final_distance = HMM_LenV3(locations[0] - locations[1]);
         if (initial_distance == 0.f) {
             initial_distance = final_distance;
         }
@@ -248,11 +243,11 @@ void run_worldless_fighter_separation(tests::SimulationFixture const& config) {
             saw_separation || fighters.get_navigation_telemetry().separating_fighter_count == 2;
     };
     harness.timeline.finish_at(1.0);
-    tests::expect_true(harness.run_until_timeline_finished(2.0),
-                       "Fighter-separation timeline completes");
-    tests::expect_true(saw_separation, "Both close fighters apply separation");
-    tests::expect_true(final_distance > initial_distance + 500.f,
-                       "Close fighters diverge instead of remaining clustered");
+    EXPECT_TRUE(harness.run_until_timeline_finished(2.0))
+        << "Fighter-separation timeline completes";
+    EXPECT_TRUE(saw_separation) << "Both close fighters apply separation";
+    EXPECT_TRUE(final_distance > initial_distance + 500.f)
+        << "Close fighters diverge instead of remaining clustered";
 }
 
 struct FighterClusterMetrics {
@@ -285,12 +280,12 @@ auto measure_fighter_cluster(std::span<Vector3f const> const locations,
     nearest_neighbour_distances.reserve(static_cast<std::int32_t>(locations.size()));
     for (std::int32_t i{}; i < static_cast<std::int32_t>(locations.size()); ++i) {
         auto nearest_distance{std::numeric_limits<float>::max()};
-        centroid_distances.push_back(tests::distance(locations[i], centroid));
+        centroid_distances.push_back(HMM_LenV3(locations[i] - centroid));
         for (std::int32_t j{}; j < static_cast<std::int32_t>(locations.size()); ++j) {
             if (i == j) {
                 continue;
             }
-            auto const distance{tests::distance(locations[i], locations[j])};
+            auto const distance{HMM_LenV3(locations[i] - locations[j])};
             nearest_distance = std::min(nearest_distance, distance);
             if (j > i && distance < collision_distance) {
                 ++result.overlapping_pair_count;
@@ -330,8 +325,7 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
                       3600.f);
     DenseNavigationResult result;
     result.collision_distance =
-        collision::get_entity_radius(data.entity_bounds, EntityType::Fighter) *
-        2.f;
+        collision::get_entity_radius(data.entity_bounds, EntityType::Fighter) * 2.f;
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     auto const& fighters{harness.get_simulation().get_fighters()};
@@ -342,9 +336,9 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
     };
     harness.timeline.finish_at(10.0);
     result.timeline_completed = harness.run_until_timeline_finished(10.5);
-    tests::expect_equal(harness.get_ledger().get_issued_counts()[EntityType::Fighter],
-                        static_cast<std::uint32_t>(fighter_count),
-                        "Dense fixture spawns exactly one fighter wave");
+    EXPECT_EQ(harness.get_ledger().get_issued_counts()[EntityType::Fighter],
+              static_cast<std::uint32_t>(fighter_count))
+        << "Dense fixture spawns exactly one fighter wave";
     auto const locations{fighters.get_locations()};
     result.locations.reserve(locations.num());
     for (std::int32_t i{}; i < locations.num(); ++i) {
@@ -360,54 +354,47 @@ void run_worldless_fighter_dense_determinism(tests::SimulationFixture const& con
                                               EntityType::Fighter)};
     auto const forward{fighters::make_coincident_separation_direction(first_id, second_id)};
     auto const reverse{fighters::make_coincident_separation_direction(second_id, first_id)};
-    tests::expect_true(HMM_LenSqrV3(forward + reverse) < 1.e-8f,
-                       "Coincident entities receive opposite ID-based separation directions");
-    tests::expect_true(std::abs(HMM_LenSqrV3(forward) - 1.f) < 1.e-5f,
-                       "ID-based coincident separation is a unit direction");
+    EXPECT_TRUE(HMM_LenSqrV3(forward + reverse) < 1.e-8f)
+        << "Coincident entities receive opposite ID-based separation directions";
+    EXPECT_TRUE(std::abs(HMM_LenSqrV3(forward) - 1.f) < 1.e-5f)
+        << "ID-based coincident separation is a unit direction";
     auto const first_result{run_dense_navigation_fixture(config, 8)};
     auto const second_result{run_dense_navigation_fixture(config, 8)};
     auto const& first{first_result.locations};
     auto const& second{second_result.locations};
-    tests::expect_true(first_result.timeline_completed, "First dense fixture timeline completes");
-    tests::expect_true(second_result.timeline_completed, "Second dense fixture timeline completes");
-    tests::expect_equal(
-        8, static_cast<std::int32_t>(first.size()), "Dense fixture retains all fighters");
-    tests::expect_equal(static_cast<std::int32_t>(first.size()),
-                        static_cast<std::int32_t>(second.size()),
-                        "Deterministic fixtures have equal counts");
-    tests::expect_equal(first_result.collision_distance,
-                        second_result.collision_distance,
-                        "Deterministic fixtures use equal collision distances");
+    EXPECT_TRUE(first_result.timeline_completed) << "First dense fixture timeline completes";
+    EXPECT_TRUE(second_result.timeline_completed) << "Second dense fixture timeline completes";
+    EXPECT_EQ(8, static_cast<std::int32_t>(first.size())) << "Dense fixture retains all fighters";
+    EXPECT_EQ(static_cast<std::int32_t>(first.size()), static_cast<std::int32_t>(second.size()))
+        << "Deterministic fixtures have equal counts";
+    EXPECT_EQ(first_result.collision_distance, second_result.collision_distance)
+        << "Deterministic fixtures use equal collision distances";
 
     for (std::int32_t i{}; i < static_cast<std::int32_t>(first.size()); ++i) {
-        tests::expect_true(!(!std::isfinite(first[i].X) || !std::isfinite(first[i].Y) ||
-                             !std::isfinite(first[i].Z)),
-                           "Dense fighter location is finite",
-                           i);
+        EXPECT_TRUE(!(!std::isfinite(first[i].X) || !std::isfinite(first[i].Y) ||
+                      !std::isfinite(first[i].Z)))
+            << "Dense fighter location is finite";
         if ((i >= 0 && static_cast<std::size_t>(i) < second.size())) {
-            tests::expect_true((std::abs(first[i].X - second[i].X) <= 0.f &&
-                                std::abs(first[i].Y - second[i].Y) <= 0.f &&
-                                std::abs(first[i].Z - second[i].Z) <= 0.f),
-                               "Identical fixtures produce identical fighter positions",
-                               i);
+            EXPECT_TRUE((std::abs(first[i].X - second[i].X) <= 0.f &&
+                         std::abs(first[i].Y - second[i].Y) <= 0.f &&
+                         std::abs(first[i].Z - second[i].Z) <= 0.f))
+                << "Identical fixtures produce identical fighter positions";
         }
     }
     auto const metrics{measure_fighter_cluster(first, first_result.collision_distance)};
-    tests::expect_true(metrics.finite, "Every dense fighter remains finite");
-    tests::expect_less_equal(
-        metrics.overlapping_pair_count, 7, "At least three quarters of coincident pairs separate");
-    tests::expect_less_equal(
-        1, metrics.separated_fighter_count, "Dense group produces fully separated fighters");
-    tests::expect_less_equal(
-        750.f, metrics.median_centroid_distance, "The median fighter leaves the cluster core");
-    tests::expect_less_equal(first_result.collision_distance * 0.25f,
-                             metrics.median_nearest_neighbour_distance,
-                             "Dense fighters establish meaningful local spacing");
-    tests::expect_true(first_result.saw_immediate_risk && second_result.saw_immediate_risk,
-                       "Coincident groups enter the immediate-risk tier");
-    tests::expect_equal(first_result.query_count,
-                        second_result.query_count,
-                        "Identical fixtures schedule the same number of queries");
+    EXPECT_TRUE(metrics.finite) << "Every dense fighter remains finite";
+    EXPECT_LE(metrics.overlapping_pair_count, 7)
+        << "At least three quarters of coincident pairs separate";
+    EXPECT_LE(1, metrics.separated_fighter_count)
+        << "Dense group produces fully separated fighters";
+    EXPECT_LE(750.f, metrics.median_centroid_distance)
+        << "The median fighter leaves the cluster core";
+    EXPECT_LE(first_result.collision_distance * 0.25f, metrics.median_nearest_neighbour_distance)
+        << "Dense fighters establish meaningful local spacing";
+    EXPECT_TRUE(first_result.saw_immediate_risk && second_result.saw_immediate_risk)
+        << "Coincident groups enter the immediate-risk tier";
+    EXPECT_EQ(first_result.query_count, second_result.query_count)
+        << "Identical fixtures schedule the same number of queries";
 }
 
 void run_worldless_fighter_large_cluster(tests::SimulationFixture const& config) {
@@ -416,21 +403,18 @@ void run_worldless_fighter_large_cluster(tests::SimulationFixture const& config)
     auto const metrics{measure_fighter_cluster(result.locations, result.collision_distance)};
     auto const initial_pair_count{fighter_count * (fighter_count - 1) / 2};
 
-    tests::expect_true(result.timeline_completed, "Large-cluster timeline completes");
-    tests::expect_equal(fighter_count,
-                        static_cast<std::int32_t>(result.locations.size()),
-                        "Large cluster retains every fighter");
-    tests::expect_true(metrics.finite, "Large-cluster positions remain finite");
-    tests::expect_less_equal(metrics.overlapping_pair_count,
-                             initial_pair_count / 4,
-                             "Large cluster removes at least three quarters of initial overlaps");
-    tests::expect_less_equal(
-        750.f, metrics.median_centroid_distance, "Large cluster expands beyond its original core");
-    tests::expect_less_equal(result.collision_distance * 0.25f,
-                             metrics.median_nearest_neighbour_distance,
-                             "Large cluster establishes meaningful local spacing");
-    tests::expect_true(result.query_count > 0 && result.saw_immediate_risk,
-                       "Large cluster exercises immediate-risk navigation");
+    EXPECT_TRUE(result.timeline_completed) << "Large-cluster timeline completes";
+    EXPECT_EQ(fighter_count, static_cast<std::int32_t>(result.locations.size()))
+        << "Large cluster retains every fighter";
+    EXPECT_TRUE(metrics.finite) << "Large-cluster positions remain finite";
+    EXPECT_LE(metrics.overlapping_pair_count, initial_pair_count / 4)
+        << "Large cluster removes at least three quarters of initial overlaps";
+    EXPECT_LE(750.f, metrics.median_centroid_distance)
+        << "Large cluster expands beyond its original core";
+    EXPECT_LE(result.collision_distance * 0.25f, metrics.median_nearest_neighbour_distance)
+        << "Large cluster establishes meaningful local spacing";
+    EXPECT_TRUE(result.query_count > 0 && result.saw_immediate_risk)
+        << "Large cluster exercises immediate-risk navigation";
 }
 
 void run_worldless_fighter_hard_avoidance_authority(tests::SimulationFixture const& config) {
@@ -481,14 +465,12 @@ void run_worldless_fighter_hard_avoidance_authority(tests::SimulationFixture con
         }
     };
     harness.timeline.finish_at(10.0);
-    tests::expect_true(harness.run_until_timeline_finished(11.0),
-                       "Hard-authority timeline completes");
-    tests::expect_true(saw_separation, "Obstacle fixture applies soft separation");
-    tests::expect_true(saw_avoidance, "Hard avoidance overrides unsafe soft steering");
-    tests::expect_true(!entered_obstacle, "Soft steering never enters obstacle clearance");
-    tests::expect_true(maximum_x > expanded_max.X, "Fighters progress beyond the obstacle");
-    tests::expect_less_equal(
-        avoidance_transitions, 6, "Held hard steering does not flap pathologically");
+    EXPECT_TRUE(harness.run_until_timeline_finished(11.0)) << "Hard-authority timeline completes";
+    EXPECT_TRUE(saw_separation) << "Obstacle fixture applies soft separation";
+    EXPECT_TRUE(saw_avoidance) << "Hard avoidance overrides unsafe soft steering";
+    EXPECT_TRUE(!entered_obstacle) << "Soft steering never enters obstacle clearance";
+    EXPECT_TRUE(maximum_x > expanded_max.X) << "Fighters progress beyond the obstacle";
+    EXPECT_LE(avoidance_transitions, 6) << "Held hard steering does not flap pathologically";
 }
 
 void run_worldless_fighter_navigation_frequency(tests::SimulationFixture const& config) {
@@ -508,15 +490,13 @@ void run_worldless_fighter_navigation_frequency(tests::SimulationFixture const& 
         saw_clear = saw_clear || telemetry.clear_risk_count > 0;
     };
     harness.timeline.finish_at(1.5);
-    tests::expect_true(harness.run_until_timeline_finished(2.0),
-                       "Clear-frequency timeline completes");
+    EXPECT_TRUE(harness.run_until_timeline_finished(2.0)) << "Clear-frequency timeline completes";
 
     auto const dense_result{run_dense_navigation_fixture(config, 8)};
-    tests::expect_true(saw_clear, "Clear fighter demotes to the clear-risk tier");
-    tests::expect_true(dense_result.saw_immediate_risk,
-                       "Clustered fighters promote to immediate risk");
-    tests::expect_true(dense_result.query_count > clear_queries * 4,
-                       "Risky fighters are evaluated materially more frequently");
+    EXPECT_TRUE(saw_clear) << "Clear fighter demotes to the clear-risk tier";
+    EXPECT_TRUE(dense_result.saw_immediate_risk) << "Clustered fighters promote to immediate risk";
+    EXPECT_TRUE(dense_result.query_count > clear_queries * 4)
+        << "Risky fighters are evaluated materially more frequently";
 }
 
 void run_worldless_fighter_attack(tests::SimulationFixture const& config) {
@@ -544,22 +524,21 @@ void run_worldless_fighter_attack(tests::SimulationFixture const& config) {
         samples.add(harness.get_time(), std::move(sample));
     };
     harness.timeline.finish_at(11.0);
-    tests::expect_true(harness.run_until_timeline_finished(12.0),
-                       "Fighter-attack timeline completes");
-    tests::expect_true(!samples.is_empty(), "Fighter-attack samples are recorded");
+    EXPECT_TRUE(harness.run_until_timeline_finished(12.0)) << "Fighter-attack timeline completes";
+    EXPECT_TRUE(!samples.is_empty()) << "Fighter-attack samples are recorded";
     if (samples.is_empty()) {
         return;
     }
 
     auto const& before{samples.nearest_value(1.0)};
     auto const& after{samples.nearest_value(11.0)};
-    tests::expect_greater(static_cast<std::int32_t>(before.fighter_teams.size()),
-                          std::int32_t{0},
-                          "Hero fighters spawned");
+    EXPECT_GT(static_cast<std::int32_t>(before.fighter_teams.size()), std::int32_t{0})
+        << "Hero fighters spawned";
     for (std::int32_t i{}; i < static_cast<std::int32_t>(before.fighter_teams.size()); ++i) {
-        tests::expect_equal(Team::Green, before.fighter_teams[i], "Fighter is on the hero team", i);
+        SCOPED_TRACE(::testing::Message() << "index " << i);
+        EXPECT_EQ(Team::Green, before.fighter_teams[i]) << "Fighter is on the hero team";
     }
-    tests::expect_true(after.enemy_health < before.enemy_health, "Enemy lost health");
+    EXPECT_TRUE(after.enemy_health < before.enemy_health) << "Enemy lost health";
 }
 
 }

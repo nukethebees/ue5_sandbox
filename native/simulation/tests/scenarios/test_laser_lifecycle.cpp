@@ -167,9 +167,9 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
     auto const end_time{scenario == LaserLifecycleScenario::Miss ? expiry_test_end_time
                                                                  : collision_test_end_time};
     harness.timeline.finish_at(end_time);
-    tests::expect_true(harness.run_until_timeline_finished(end_time + 0.5),
-                       "Laser lifecycle timeline completes");
-    tests::expect_true(!samples.is_empty(), "Laser lifecycle samples are recorded");
+    EXPECT_TRUE(harness.run_until_timeline_finished(end_time + 0.5))
+        << "Laser lifecycle timeline completes";
+    EXPECT_TRUE(!samples.is_empty()) << "Laser lifecycle samples are recorded";
     if (samples.is_empty()) {
         return;
     }
@@ -182,25 +182,23 @@ void run_worldless_laser_lifecycle(tests::SimulationFixture const& config,
             observed_committed_projectile = true;
         }
     }
-    tests::expect_true(observed_committed_projectile,
-                       "Queued projectile is committed in Preparation");
+    EXPECT_TRUE(observed_committed_projectile) << "Queued projectile is committed in Preparation";
     auto const& final{samples.last_value()};
-    tests::expect_equal(expected_spawn_count, final.total_spawned, "Projectile count spawned");
-    tests::expect_equal(0, final.active_lasers, "No active projectiles remain");
+    EXPECT_EQ(expected_spawn_count, final.total_spawned) << "Projectile count spawned";
+    EXPECT_EQ(0, final.active_lasers) << "No active projectiles remain";
     if (scenario == LaserLifecycleScenario::Hit) {
-        tests::expect_equal(normal_target_health - projectile_damage,
-                            final.target_health,
-                            "Projectile applies damage once");
-        tests::expect_equal(2, final.alive_entities, "Nonlethal hit preserves both entities");
+        EXPECT_EQ(normal_target_health - projectile_damage, final.target_health)
+            << "Projectile applies damage once";
+        EXPECT_EQ(2, final.alive_entities) << "Nonlethal hit preserves both entities";
     } else if (scenario == LaserLifecycleScenario::SimultaneousLethalHits) {
-        tests::expect_true(final.target_health <= 0, "Simultaneous hits are lethal");
-        tests::expect_equal(1, final.alive_entities, "Target is removed once");
-        tests::expect_equal(1, final.kills, "One kill is recorded");
+        EXPECT_TRUE(final.target_health <= 0) << "Simultaneous hits are lethal";
+        EXPECT_EQ(1, final.alive_entities) << "Target is removed once";
+        EXPECT_EQ(1, final.kills) << "One kill is recorded";
     } else {
-        tests::expect_equal(
-            normal_target_health, final.target_health, "Non-entity termination preserves health");
-        tests::expect_equal(2, final.alive_entities, "Both entities remain alive");
-        tests::expect_equal(0, final.kills, "No kill is recorded");
+        EXPECT_EQ(normal_target_health, final.target_health)
+            << "Non-entity termination preserves health";
+        EXPECT_EQ(2, final.alive_entities) << "Both entities remain alive";
+        EXPECT_EQ(0, final.kills) << "No kill is recorded";
     }
 }
 

@@ -29,16 +29,15 @@ void run_worldless_turret_acquisition_regression(
     tests::WorldlessSimulationTest harness{std::move(data)};
     harness.finish_initialisation();
     harness.timeline.finish_at(0.5);
-    tests::expect_true(harness.run_until_timeline_finished(1.0),
-                       "Turret acquisition timeline completes");
+    EXPECT_TRUE(harness.run_until_timeline_finished(1.0))
+        << "Turret acquisition timeline completes";
     auto const& turrets{harness.get_simulation().get_turrets()};
-    tests::expect_equal(count, turrets.get_num_instances(), "All turrets are registered");
+    EXPECT_EQ(count, turrets.get_num_instances()) << "All turrets are registered";
     for (auto const target : turrets.get_target_ids()) {
-        tests::expect_true(!target.is_valid(), "Invalid candidate does not become a target");
+        EXPECT_TRUE(!target.is_valid()) << "Invalid candidate does not become a target";
     }
-    tests::expect_equal(0,
-                        harness.get_simulation().get_lasers().get_number_spawned(),
-                        "Turrets without valid targets do not fire");
+    EXPECT_EQ(0, harness.get_simulation().get_lasers().get_number_spawned())
+        << "Turrets without valid targets do not fire";
 }
 
 }

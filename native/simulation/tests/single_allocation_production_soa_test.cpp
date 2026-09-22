@@ -29,19 +29,19 @@ void expect_storage_lifecycle() {
     source.reserve(2);
     source.add_defaulted(1);
     source.add_uninitialised(3);
-    tests::expect_equal(source.num(), 4, "Storage grows through production add paths");
+    EXPECT_EQ(source.num(), 4) << "Storage grows through production add paths";
     source.get_const_view().columns().validate_array_sizes();
 
     Storage moved{std::move(source)};
-    tests::expect_equal(moved.num(), 4, "Move construction preserves rows");
+    EXPECT_EQ(moved.num(), 4) << "Move construction preserves rows";
     Storage assigned;
     assigned = std::move(moved);
-    tests::expect_equal(assigned.num(), 4, "Move assignment preserves rows");
+    EXPECT_EQ(assigned.num(), 4) << "Move assignment preserves rows";
 
     assigned.remove_at_swap(1, 1);
-    tests::expect_equal(assigned.num(), 3, "Swap removal removes a row");
+    EXPECT_EQ(assigned.num(), 3) << "Swap removal removes a row";
     assigned.reset();
-    tests::expect_equal(assigned.num(), 0, "Reset clears rows");
+    EXPECT_EQ(assigned.num(), 0) << "Reset clears rows";
 }
 } // namespace
 
@@ -72,8 +72,8 @@ TEST(NativeSimulation, ProductionSingleAllocationNestedViewsAndAppend) {
     SingleAllocationFighterEntityData appended;
     appended.append_from(fighters.get_const_view());
     auto const appended_columns{appended.get_const_view().columns()};
-    tests::expect_equal(appended_columns.locations[1].Z, 6.f, "Nested vectors append");
-    tests::expect_equal(appended_columns.integral_biases[1], 22u, "Scalar columns append");
+    EXPECT_EQ(appended_columns.locations[1].Z, 6.f) << "Nested vectors append";
+    EXPECT_EQ(appended_columns.integral_biases[1], 22u) << "Scalar columns append";
 
     lasers::SingleAllocationLaserEntities lasers;
     lasers.add_defaulted(2);
@@ -82,7 +82,7 @@ TEST(NativeSimulation, ProductionSingleAllocationNestedViewsAndAppend) {
     laser_columns.rotations.set(0, Rotator3f{1.f, 2.f, 3.f});
     laser_columns.damages[0] = 40;
     lasers.remove_at_swap(0, 1);
-    tests::expect_equal(lasers.num(), 1, "Laser swap removal keeps columns synchronized");
+    EXPECT_EQ(lasers.num(), 1) << "Laser swap removal keeps columns synchronized";
     lasers.get_const_view().columns().validate_array_sizes();
 }
 
@@ -100,14 +100,12 @@ TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
     appended_spinners.append_from(spinners.get_const_view());
     appended_spinners.remove_at_swap(1, 1);
     auto const appended_spinner_columns{appended_spinners.get_const_view().columns()};
-    tests::expect_equal(appended_spinner_columns.locations.xs[1],
-                        64.f,
-                        "Spinner nested locations follow swap removal");
-    tests::expect_equal(
-        appended_spinner_columns.yaws[1], 128.f, "Spinner scalar columns follow swap removal");
-    tests::expect_equal(appended_spinner_columns.next_fire_point_indices[1],
-                        64,
-                        "Spinner fire points follow swap removal");
+    EXPECT_EQ(appended_spinner_columns.locations.xs[1], 64.f)
+        << "Spinner nested locations follow swap removal";
+    EXPECT_EQ(appended_spinner_columns.yaws[1], 128.f)
+        << "Spinner scalar columns follow swap removal";
+    EXPECT_EQ(appended_spinner_columns.next_fire_point_indices[1], 64)
+        << "Spinner fire points follow swap removal";
 
     SingleAllocationLaserHitDetails hits;
     hits.add_defaulted(65);
@@ -121,11 +119,9 @@ TEST(NativeSimulation, SpinnerAndLaserHitSingleAllocationRowsStaySynchronized) {
     SingleAllocationLaserHitDetails appended_hits;
     appended_hits.append_from(hits.get_const_view());
     auto const appended_hit_columns{appended_hits.get_const_view().columns()};
-    tests::expect_equal(
-        appended_hit_columns.locations.xs[64], 64.f, "Laser hit nested locations append");
-    tests::expect_true(appended_hit_columns.sources[64] ==
-                           LaserSource{Team::Blue, EntityType::Turret},
-                       "Laser hit sources append");
+    EXPECT_EQ(appended_hit_columns.locations.xs[64], 64.f) << "Laser hit nested locations append";
+    EXPECT_TRUE((appended_hit_columns.sources[64] == LaserSource{Team::Blue, EntityType::Turret}))
+        << "Laser hit sources append";
 }
 
 TEST(NativeSimulation, LaserFrameOutputAccumulatesBatchesAndReusesStorage) {
@@ -153,24 +149,24 @@ TEST(NativeSimulation, LaserFrameOutputAccumulatesBatchesAndReusesStorage) {
     output.append_hits(second_batch.get_const_view(), 9);
 
     auto const accumulated{output.hits.get_const_view().columns()};
-    tests::expect_equal(accumulated.num(), 67, "All laser-hit batches accumulate");
-    tests::expect_equal(accumulated.locations.xs[64], 64.f, "Growth preserves earlier hits");
-    tests::expect_equal(accumulated.locations.xs[66], 101.f, "Later hits append in order");
-    tests::expect_equal(output.hit_ticks[64], SimTick{7}, "First batch tick remains aligned");
-    tests::expect_equal(output.hit_ticks[65], SimTick{9}, "Second batch tick remains aligned");
-    tests::expect_equal(output.hit_ordinals[64], 64, "First batch ordinal remains aligned");
-    tests::expect_equal(output.hit_ordinals[65], 0, "Each batch restarts hit ordinals");
+    EXPECT_EQ(accumulated.num(), 67) << "All laser-hit batches accumulate";
+    EXPECT_EQ(accumulated.locations.xs[64], 64.f) << "Growth preserves earlier hits";
+    EXPECT_EQ(accumulated.locations.xs[66], 101.f) << "Later hits append in order";
+    EXPECT_EQ(output.hit_ticks[64], SimTick{7}) << "First batch tick remains aligned";
+    EXPECT_EQ(output.hit_ticks[65], SimTick{9}) << "Second batch tick remains aligned";
+    EXPECT_EQ(output.hit_ordinals[64], 64) << "First batch ordinal remains aligned";
+    EXPECT_EQ(output.hit_ordinals[65], 0) << "Each batch restarts hit ordinals";
 
     output.reset();
-    tests::expect_equal(output.hits.num(), 0, "Reset clears accumulated hit rows");
-    tests::expect_true(output.hit_ticks.empty(), "Reset clears hit ticks");
-    tests::expect_true(output.hit_ordinals.empty(), "Reset clears hit ordinals");
+    EXPECT_EQ(output.hits.num(), 0) << "Reset clears accumulated hit rows";
+    EXPECT_TRUE(output.hit_ticks.empty()) << "Reset clears hit ticks";
+    EXPECT_TRUE(output.hit_ordinals.empty()) << "Reset clears hit ordinals";
 
     output.append_hits(second_batch.get_const_view(), 11);
     auto const reused{output.hits.get_const_view().columns()};
-    tests::expect_equal(reused.num(), 2, "Reset storage can be reused");
-    tests::expect_equal(reused.locations.xs[0], 100.f, "Reused storage receives new contents");
-    tests::expect_equal(output.hit_ticks[0], SimTick{11}, "Reused tick side array stays aligned");
+    EXPECT_EQ(reused.num(), 2) << "Reset storage can be reused";
+    EXPECT_EQ(reused.locations.xs[0], 100.f) << "Reused storage receives new contents";
+    EXPECT_EQ(output.hit_ticks[0], SimTick{11}) << "Reused tick side array stays aligned";
 }
 
 TEST(NativeSimulation, LevelEventSingleAllocationStoragePreservesOrderAcrossMoves) {
@@ -205,11 +201,11 @@ TEST(NativeSimulation, LevelEventSingleAllocationStoragePreservesOrderAcrossMove
     auto const capitals{moved.initial_spawns.capital_spawns.get_const_view().columns()};
     auto const turrets{moved.schedule.turret_spawns.get_const_view().columns()};
     auto const spinners{moved.initial_spawns.spinner_spawns.get_const_view().columns()};
-    tests::expect_equal(capitals.entity_indices[64], 64, "Capital event order survives growth");
-    tests::expect_equal(capitals.locations.xs[64], 64.f, "Capital nested values survive moves");
-    tests::expect_equal(turrets.entity_indices[64], 164, "Scheduled turret order is unchanged");
-    tests::expect_equal(turrets.laser_damages[64], 128, "Scheduled turret payloads append");
-    tests::expect_equal(spinners.entity_indices[64], 264, "Spinner event order survives growth");
-    tests::expect_equal(spinners.yaws[64], 192.f, "Spinner payloads survive moves");
+    EXPECT_EQ(capitals.entity_indices[64], 64) << "Capital event order survives growth";
+    EXPECT_EQ(capitals.locations.xs[64], 64.f) << "Capital nested values survive moves";
+    EXPECT_EQ(turrets.entity_indices[64], 164) << "Scheduled turret order is unchanged";
+    EXPECT_EQ(turrets.laser_damages[64], 128) << "Scheduled turret payloads append";
+    EXPECT_EQ(spinners.entity_indices[64], 264) << "Spinner event order survives growth";
+    EXPECT_EQ(spinners.yaws[64], 192.f) << "Spinner payloads survive moves";
 }
 } // namespace ioj::sim::tests

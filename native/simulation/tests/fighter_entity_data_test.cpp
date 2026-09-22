@@ -28,16 +28,16 @@ TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
     auto view{source.get_view(1, 2).columns()};
     static_assert(std::is_same_v<decltype(view.integral_biases), std::span<std::uint32_t>>);
     static_assert(std::is_same_v<decltype(view.float_biases), std::span<float>>);
-    tests::expect_equal(view.integral_biases[0], 200u, "Mutable view integral bias");
-    tests::expect_equal(view.float_biases[1], 0.3f, "Mutable view float bias");
+    EXPECT_EQ(view.integral_biases[0], 200u) << "Mutable view integral bias";
+    EXPECT_EQ(view.float_biases[1], 0.3f) << "Mutable view float bias";
 
     EntityData const& const_source{source};
     auto const_view{const_source.get_const_view(1, 2).columns()};
     static_assert(
         std::is_same_v<decltype(const_view.integral_biases), std::span<std::uint32_t const>>);
     static_assert(std::is_same_v<decltype(const_view.float_biases), std::span<float const>>);
-    tests::expect_equal(const_view.integral_biases[1], 300u, "Const view integral bias");
-    tests::expect_equal(const_view.float_biases[0], 0.2f, "Const view float bias");
+    EXPECT_EQ(const_view.integral_biases[1], 300u) << "Const view integral bias";
+    EXPECT_EQ(const_view.float_biases[0], 0.2f) << "Const view float bias";
 
     ml::MultiBuffer<EntityData, 2> buffers;
     buffers.current().append_from(source.get_const_view());
@@ -48,22 +48,22 @@ TEST(NativeSimulation, FighterEntityBiasPackedDataTest) {
     auto& reordered{buffers.current()};
     auto reordered_columns{reordered.get_view().columns()};
     reordered_columns.validate_array_sizes();
-    tests::expect_true(reordered_columns.entity_ids[0] == EntityUniqueId{30},
-                       "Buffered copy keeps ID paired with integral bias");
-    tests::expect_equal(reordered_columns.integral_biases[0], 300u, "Buffered copy integral bias");
-    tests::expect_equal(reordered_columns.float_biases[0], 0.3f, "Buffered copy float bias");
-    tests::expect_true(reordered_columns.health_indices[0] == HealthIndex{30},
-                       "Buffered copy keeps health index paired with ID");
+    EXPECT_TRUE(reordered_columns.entity_ids[0] == EntityUniqueId{30})
+        << "Buffered copy keeps ID paired with integral bias";
+    EXPECT_EQ(reordered_columns.integral_biases[0], 300u) << "Buffered copy integral bias";
+    EXPECT_EQ(reordered_columns.float_biases[0], 0.3f) << "Buffered copy float bias";
+    EXPECT_TRUE(reordered_columns.health_indices[0] == HealthIndex{30})
+        << "Buffered copy keeps health index paired with ID";
 
     reordered.remove_at_swap(0, 1);
     reordered_columns = reordered.get_view().columns();
     reordered_columns.validate_array_sizes();
-    tests::expect_true(reordered_columns.entity_ids[0] == EntityUniqueId{20},
-                       "Swap removal keeps ID paired with integral bias");
-    tests::expect_equal(reordered_columns.integral_biases[0], 200u, "Swap removal integral bias");
-    tests::expect_equal(reordered_columns.float_biases[0], 0.2f, "Swap removal float bias");
-    tests::expect_true(reordered_columns.health_indices[0] == HealthIndex{20},
-                       "Swap removal keeps health index paired with ID");
+    EXPECT_TRUE(reordered_columns.entity_ids[0] == EntityUniqueId{20})
+        << "Swap removal keeps ID paired with integral bias";
+    EXPECT_EQ(reordered_columns.integral_biases[0], 200u) << "Swap removal integral bias";
+    EXPECT_EQ(reordered_columns.float_biases[0], 0.2f) << "Swap removal float bias";
+    EXPECT_TRUE(reordered_columns.health_indices[0] == HealthIndex{20})
+        << "Swap removal keeps health index paired with ID";
 }
 
 } // namespace tests

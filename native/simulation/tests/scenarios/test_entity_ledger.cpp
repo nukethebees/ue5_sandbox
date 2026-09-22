@@ -43,28 +43,25 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
             type_counts = harness.get_ledger().count_alive_per_team_and_type();
         };
         harness.timeline.finish_at(0.1);
-        tests::expect_true(harness.run_until_timeline_finished(1.0),
-                           "Team-count timeline completes");
+        EXPECT_TRUE(harness.run_until_timeline_finished(1.0)) << "Team-count timeline completes";
         std::int32_t total_count{};
         for (auto const count : counts) {
             total_count += count;
         }
-        tests::expect_equal(15, total_count, "Check entity total");
+        EXPECT_EQ(15, total_count) << "Check entity total";
         for (std::int32_t team_index{};
              team_index < static_cast<std::int32_t>(expected_team_counts.size());
              ++team_index) {
             auto const team{static_cast<Team>(team_index)};
-            tests::expect_equal(expected_team_counts[team_index],
-                                counts[team_index],
-                                "Count team " + ::testing::PrintToString(team));
+            EXPECT_EQ(expected_team_counts[team_index], counts[team_index])
+                << "Count team " + ::testing::PrintToString(team);
             std::int32_t type_count{};
             constexpr auto type_count_limit{std::to_underlying(EntityType::COUNT)};
             for (std::int32_t type{}; type < type_count_limit; ++type) {
                 type_count += type_counts[team_index][type];
             }
-            tests::expect_equal(counts[team_index],
-                                type_count,
-                                "Count team/type matrix for " + ::testing::PrintToString(team));
+            EXPECT_EQ(counts[team_index], type_count)
+                << "Count team/type matrix for " + ::testing::PrintToString(team);
         }
         return;
     }
@@ -81,9 +78,8 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
             available_targets.push_back(capitals.entity_ids[index]);
         }
     }
-    tests::expect_greater(static_cast<std::int32_t>(available_targets.size()),
-                          expected_kills - 1,
-                          "Enough non-player-team targets are available");
+    EXPECT_GT(static_cast<std::int32_t>(available_targets.size()), expected_kills - 1)
+        << "Enough non-player-team targets are available";
     auto const targets{std::span<EntityUniqueId const>{available_targets}.first(
         static_cast<std::size_t>(expected_kills))};
     struct Sample {
@@ -101,28 +97,25 @@ void run_worldless_entity_ledger_scenario(tests::SimulationFixture const& config
     };
     harness.timeline.then_after(0.1, [&] { harness.queue_kills(targets, player_id); });
     harness.timeline.finish_at(0.35);
-    tests::expect_true(harness.run_until_timeline_finished(1.0), "Player-kill timeline completes");
-    tests::expect_true(!samples.is_empty(), "Kill samples recorded");
+    EXPECT_TRUE(harness.run_until_timeline_finished(1.0)) << "Player-kill timeline completes";
+    EXPECT_TRUE(!samples.is_empty()) << "Kill samples recorded";
     if (samples.is_empty()) {
         return;
     }
     auto const& before{samples.nearest_value(0.05)};
     auto const& after{samples.nearest_value(0.3)};
     auto const& final{samples.nearest_value(0.35)};
-    tests::expect_equal(0, before.player_kills, "Player kills are zero before event");
-    tests::expect_equal(0, before.total_kills, "Total kills are zero before event");
-    tests::expect_equal(
-        initial_alive_count, before.alive_count, "All entities are alive before event");
-    tests::expect_equal(expected_kills, after.player_kills, "Kills are attributed to player ship");
-    tests::expect_equal(
-        expected_kills, after.total_kills, "Total kill count matches killed entities");
-    tests::expect_equal(initial_alive_count - expected_kills,
-                        after.alive_count,
-                        "Alive count reflects killed entities");
-    tests::expect_equal(expected_kills, final.player_kills, "Player kill count remains correct");
-    tests::expect_equal(expected_kills, final.total_kills, "Total kill count remains correct");
-    tests::expect_equal(
-        initial_alive_count - expected_kills, final.alive_count, "Alive count remains correct");
+    EXPECT_EQ(0, before.player_kills) << "Player kills are zero before event";
+    EXPECT_EQ(0, before.total_kills) << "Total kills are zero before event";
+    EXPECT_EQ(initial_alive_count, before.alive_count) << "All entities are alive before event";
+    EXPECT_EQ(expected_kills, after.player_kills) << "Kills are attributed to player ship";
+    EXPECT_EQ(expected_kills, after.total_kills) << "Total kill count matches killed entities";
+    EXPECT_EQ(initial_alive_count - expected_kills, after.alive_count)
+        << "Alive count reflects killed entities";
+    EXPECT_EQ(expected_kills, final.player_kills) << "Player kill count remains correct";
+    EXPECT_EQ(expected_kills, final.total_kills) << "Total kill count remains correct";
+    EXPECT_EQ(initial_alive_count - expected_kills, final.alive_count)
+        << "Alive count remains correct";
 }
 
 }

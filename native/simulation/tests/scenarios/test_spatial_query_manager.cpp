@@ -41,9 +41,10 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
         starts.get_const_view(), ends.get_const_view(), results);
     auto const count{static_cast<std::int32_t>(locations.size())};
     for (std::int32_t i{}; i < count; ++i) {
-        tests::expect_true(!results[i].is_valid(), "Half-distance trace misses", i);
-        tests::expect_equal(expected[i], results[i + count], "Ship trace resolves ID", i);
-        tests::expect_equal(expected[i], results[i + 2 * count], "Past-ship trace resolves ID", i);
+        SCOPED_TRACE(::testing::Message() << "index " << i);
+        EXPECT_TRUE(!results[i].is_valid()) << "Half-distance trace misses";
+        EXPECT_EQ(expected[i], results[i + count]) << "Ship trace resolves ID";
+        EXPECT_EQ(expected[i], results[i + 2 * count]) << "Past-ship trace resolves ID";
     }
 
     std::vector<std::uint8_t> has_los{};
@@ -51,8 +52,8 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
     harness.get_simulation().get_spatial_query_manager().has_line_of_sight_to_targets(
         ml::make_vector3f(0.f, 0.f, 0.f), ends.get_const_view(), targets, has_los);
     for (std::int32_t i{}; i < static_cast<std::int32_t>(has_los.size()); ++i) {
-        tests::expect_equal(
-            std::uint8_t{1}, has_los[i], "Clear or target hit has line of sight", i);
+        SCOPED_TRACE(::testing::Message() << "index " << i);
+        EXPECT_EQ(std::uint8_t{1}, has_los[i]) << "Clear or target hit has line of sight";
     }
     for (std::int32_t i{}; i < count; ++i) {
         auto const other{expected[(i + 1) % count]};
@@ -62,12 +63,11 @@ void run_worldless_spatial_query_line_of_sight(tests::SimulationFixture const& c
     harness.get_simulation().get_spatial_query_manager().has_line_of_sight_to_targets(
         ml::make_vector3f(0.f, 0.f, 0.f), ends.get_const_view(), targets, has_los);
     for (std::int32_t i{}; i < count; ++i) {
-        tests::expect_equal(std::uint8_t{1}, has_los[i], "Clear line remains visible", i);
-        tests::expect_equal(std::uint8_t{0}, has_los[i + count], "Other target is blocked", i);
-        tests::expect_equal(
-            std::uint8_t{0}, has_los[i + 2 * count], "Other target past hit is blocked", i);
+        SCOPED_TRACE(::testing::Message() << "index " << i);
+        EXPECT_EQ(std::uint8_t{1}, has_los[i]) << "Clear line remains visible";
+        EXPECT_EQ(std::uint8_t{0}, has_los[i + count]) << "Other target is blocked";
+        EXPECT_EQ(std::uint8_t{0}, has_los[i + 2 * count]) << "Other target past hit is blocked";
     }
-    tests::expect_true(true, "Line-of-sight query batch completed");
 }
 
 }

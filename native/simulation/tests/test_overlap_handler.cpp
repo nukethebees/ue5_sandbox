@@ -23,26 +23,26 @@ TEST(OverlapHandler, QueuesEnvironmentalDamageForEachSupportedOverlapParticipant
     handler.handle({entity_overlaps.get_const_view(), static_overlaps.get_const_view()});
 
     auto const damage{owners.combat_events.all_events().get_const_view()};
-    tests::expect_equal(damage.num(), 5, "Every supported overlap endpoint queues damage");
+    EXPECT_EQ(damage.num(), 5) << "Every supported overlap endpoint queues damage";
     std::int32_t capital_count{};
     std::int32_t fighter_count{};
     std::int32_t turret_count{};
     for (std::int32_t index{}; index < damage.num(); ++index) {
-        tests::expect_equal(damage.damage_amounts[index], 37, "Configured overlap damage is used");
-        tests::expect_true(!damage.instigators[index].is_valid(),
-                           "Overlap damage has no combat instigator");
+        EXPECT_EQ(damage.damage_amounts[index], 37) << "Configured overlap damage is used";
+        EXPECT_TRUE(!damage.instigators[index].is_valid())
+            << "Overlap damage has no combat instigator";
         capital_count += damage.damaged_entities[index] == capital ? 1 : 0;
         fighter_count += damage.damaged_entities[index] == fighter ? 1 : 0;
         turret_count += damage.damaged_entities[index] == turret ? 1 : 0;
     }
-    tests::expect_equal(capital_count, 1, "Capital receives its pair contribution");
-    tests::expect_equal(fighter_count, 3, "Fighter receives all three contributions");
-    tests::expect_equal(turret_count, 1, "Turret receives its pair contribution");
-    tests::expect_equal(
+    EXPECT_EQ(capital_count, 1) << "Capital receives its pair contribution";
+    EXPECT_EQ(fighter_count, 3) << "Fighter receives all three contributions";
+    EXPECT_EQ(turret_count, 1) << "Turret receives its pair contribution";
+    EXPECT_EQ(
         owners.ledger.get_combat_telemetry()
             .hits[std::to_underlying(Team::Blue)][std::to_underlying(EntityType::CapitalShip)],
-        std::uint64_t{0},
-        "Environmental damage gives no combat hits");
+        std::uint64_t{0})
+        << "Environmental damage gives no combat hits";
 }
 
 TEST(OverlapHandler, SkipsUnsupportedDeadInvalidAndRetiredRecipients) {
@@ -61,10 +61,9 @@ TEST(OverlapHandler, SkipsUnsupportedDeadInvalidAndRetiredRecipients) {
     handler.handle({first_pairs.get_const_view(), {}});
 
     auto const first_damage{owners.combat_events.all_events().get_const_view()};
-    tests::expect_equal(
-        first_damage.num(), 3, "Only the live supported endpoint is damaged per pair");
+    EXPECT_EQ(first_damage.num(), 3) << "Only the live supported endpoint is damaged per pair";
     for (auto const recipient : first_damage.damaged_entities) {
-        tests::expect_true(recipient == fighter, "Skipped endpoints never enter the damage queue");
+        EXPECT_TRUE(recipient == fighter) << "Skipped endpoints never enter the damage queue";
     }
 
     owners.combat_events.reset();
@@ -75,9 +74,9 @@ TEST(OverlapHandler, SkipsUnsupportedDeadInvalidAndRetiredRecipients) {
     retired_pair.add(fighter, doomed);
     handler.handle({retired_pair.get_const_view(), {}});
     auto const second_damage{owners.combat_events.all_events().get_const_view()};
-    tests::expect_equal(second_damage.num(), 1, "Retired endpoint is skipped independently");
-    tests::expect_true(second_damage.damaged_entities[0] != replacement,
-                       "Replacement is not accidentally damaged");
+    EXPECT_EQ(second_damage.num(), 1) << "Retired endpoint is skipped independently";
+    EXPECT_TRUE(second_damage.damaged_entities[0] != replacement)
+        << "Replacement is not accidentally damaged";
 
     owners.combat_events.reset();
     auto const fighter_data{owners.fighters.get_const_view().columns()};

@@ -21,9 +21,9 @@ void run_worldless_spatial_query_empty(tests::SimulationFixture const& config) {
     std::vector<EntityUniqueId> results{};
     auto const count{queries.collect_non_team_entities_in_range(
         ml::make_vector3f(0.f, 0.f, 0.f), Team::Blue, 1000.f, results)};
-    tests::expect_equal(count, 0, "Empty range query has no results");
-    tests::expect_true(!queries.get_any_non_team_entity(Team::Blue).is_valid(),
-                       "Empty world has no arbitrary enemy");
+    EXPECT_EQ(count, 0) << "Empty range query has no results";
+    EXPECT_TRUE(!queries.get_any_non_team_entity(Team::Blue).is_valid())
+        << "Empty world has no arbitrary enemy";
 }
 
 void run_worldless_spatial_query_range(tests::SimulationFixture const& config) {
@@ -43,9 +43,9 @@ void run_worldless_spatial_query_range(tests::SimulationFixture const& config) {
     auto const count{
         harness.get_simulation().get_spatial_query_manager().collect_non_team_entities_in_range(
             ml::make_vector3f(0.f, 0.f, 0.f), Team::Blue, 1000.f, results)};
-    tests::expect_equal(count, 1, "Only one enemy is within the inclusive radius");
+    EXPECT_EQ(count, 1) << "Only one enemy is within the inclusive radius";
     if (count == 1) {
-        tests::expect_equal(boundary_enemy, results[0], "Boundary enemy is included");
+        EXPECT_EQ(boundary_enemy, results[0]) << "Boundary enemy is included";
     }
 
     std::array<EntityUniqueId, 4> ids;
@@ -56,12 +56,10 @@ void run_worldless_spatial_query_range(tests::SimulationFixture const& config) {
             1000.f,
             ignored_origin,
             ids)};
-    tests::expect_equal(
-        type_count, 2, "Type-filtered query ignores self and includes two capitals");
+    EXPECT_EQ(type_count, 2) << "Type-filtered query ignores self and includes two capitals";
     if (type_count == 2) {
-        tests::expect_true(friendly == ids[0], "Type-filtered order is deterministic");
-        tests::expect_true(boundary_enemy == ids[1],
-                           "Type-filtered query includes the boundary entity");
+        EXPECT_TRUE(friendly == ids[0]) << "Type-filtered order is deterministic";
+        EXPECT_TRUE(boundary_enemy == ids[1]) << "Type-filtered query includes the boundary entity";
     }
 }
 

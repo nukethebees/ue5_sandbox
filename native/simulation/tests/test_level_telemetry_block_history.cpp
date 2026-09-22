@@ -23,12 +23,10 @@ TEST(NativeSimulation, LevelTelemetryBlockHistoryTest) {
         columns.validity_masks[0] = active_entities_mask;
         columns.active_entities[0] = static_cast<std::int32_t>(tick);
     }
-    tests::expect_equal(history.retained_block_count(),
-                        std::int32_t{1},
-                        "An exact-capacity fill retains one block");
-    tests::expect_equal(history.get_stats().unused_samples_in_final_block,
-                        std::int32_t{0},
-                        "An exact-capacity fill has no final unused rows");
+    EXPECT_EQ(history.retained_block_count(), std::int32_t{1})
+        << "An exact-capacity fill retains one block";
+    EXPECT_EQ(history.get_stats().unused_samples_in_final_block, std::int32_t{0})
+        << "An exact-capacity fill has no final unused rows";
     auto const* const first_address{history.block_data(0)};
     auto const first_value{history.block_view(0).completed_ticks()[0]};
 
@@ -36,42 +34,39 @@ TEST(NativeSimulation, LevelTelemetryBlockHistoryTest) {
     next.completed_ticks[0] = 64;
     next.validity_masks[0] = active_entities_mask;
     next.active_entities[0] = 64;
-    tests::expect_equal(history.retained_block_count(),
-                        std::int32_t{2},
-                        "One row past capacity acquires exactly one more block");
-    tests::expect_equal(
-        history.block_data(0), first_address, "Growth keeps the first payload address stable");
-    tests::expect_equal(history.block_view(0).completed_ticks()[0],
-                        first_value,
-                        "Growth keeps the first payload intact");
+    EXPECT_EQ(history.retained_block_count(), std::int32_t{2})
+        << "One row past capacity acquires exactly one more block";
+    EXPECT_EQ(history.block_data(0), first_address)
+        << "Growth keeps the first payload address stable";
+    EXPECT_EQ(history.block_view(0).completed_ticks()[0], first_value)
+        << "Growth keeps the first payload intact";
 
     SimTick expected_tick{};
     history.for_each_block([&expected_tick](auto const block) {
         for (auto const tick : block.completed_ticks()) {
-            tests::expect_equal(tick, expected_tick, "Block iteration remains chronological");
+            EXPECT_EQ(tick, expected_tick) << "Block iteration remains chronological";
             ++expected_tick;
         }
     });
-    tests::expect_equal(expected_tick, SimTick{65}, "Chronological iteration visits every row");
+    EXPECT_EQ(expected_tick, SimTick{65}) << "Chronological iteration visits every row";
 
     history.reset();
-    tests::expect_equal(history.num(), std::int32_t{0}, "Reset clears logical rows");
+    EXPECT_EQ(history.num(), std::int32_t{0}) << "Reset clears logical rows";
     for (SimTick tick{}; tick < 65; ++tick) {
         auto columns{history.append_uninitialized().columns()};
         columns.completed_ticks[0] = tick;
     }
-    tests::expect_equal(history.retained_block_count(),
-                        std::int32_t{2},
-                        "An equivalent second run acquires no blocks");
-    tests::expect_equal(
-        history.block_data(0), first_address, "Reset reuse keeps the first payload address");
+    EXPECT_EQ(history.retained_block_count(), std::int32_t{2})
+        << "An equivalent second run acquires no blocks";
+    EXPECT_EQ(history.block_data(0), first_address)
+        << "Reset reuse keeps the first payload address";
 
     history.reset();
     for (std::int32_t row{}; row < 10; ++row) {
         history.append_uninitialized();
     }
-    tests::expect_equal(
-        history.retained_block_count(), std::int32_t{2}, "A smaller second run acquires no blocks");
+    EXPECT_EQ(history.retained_block_count(), std::int32_t{2})
+        << "A smaller second run acquires no blocks";
 }
 
 } // namespace tests
