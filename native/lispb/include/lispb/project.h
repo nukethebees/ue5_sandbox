@@ -102,6 +102,7 @@ class EditableProjectDocument {
   public:
     [[nodiscard]] auto project() const -> Project const& { return project_; }
     [[nodiscard]] auto path() const -> std::filesystem::path const& { return path_; }
+    [[nodiscard]] auto source_text() const -> std::string const& { return source_; }
     [[nodiscard]] auto dirty() const -> bool {
         return history_position_ != saved_history_position_;
     }

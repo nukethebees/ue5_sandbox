@@ -343,8 +343,8 @@ source is deliberately valid when the target already contains a module, allowing
 `EditableSchemaDocument::CreateModule` command to author its first module after reload. The planner
 loads this project document beside the schema document. Its Project view lists and unregisters
 current sources, registers existing relative sources, or stages empty ones through shared commands,
-and the persistent Source view composes both documents'
-affected files. Project-source history is intentionally exclusive with semantic history: while it
+and the persistent Source view lists their loaded files and composes both documents'
+affected-file previews. Project-source history is intentionally exclusive with semantic history: while it
 is active, schema commands and Save As are disabled, global Undo/Redo address the project draft,
 and Save publishes then reloads both documents. Project switching and close protection check both
 dirty states. A fully undone project history can be redone or explicitly discarded by reload.

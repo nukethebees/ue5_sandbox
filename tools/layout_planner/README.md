@@ -298,8 +298,9 @@ Enum authoring is available as an inline table:
    native-header include, and UEnum/Blueprint reflection mode. These are generated consumer-output
    paths and do not alter semantic width or target layout.
 4. Use **File > Undo** and **File > Redo** while designing.
-5. Use **File > Preview LispB changes** to reveal the dockable Source view and compare the original
-   and complete updated source while continuing to author in other panels.
+5. Open the dockable Source view to inspect the loaded project manifest and LispB files, even
+   without pending changes. **File > Preview LispB changes** brings it forward; edited files show
+   Updated and Original tabs, and each version has a copy button.
 6. Use **File > Save LispB changes** to validate the rendered sources, replace the affected source
    file, and reload the semantic document.
 
@@ -627,6 +628,7 @@ bounded to the nested declaration rather than canonicalizing the enum.
 Unrelated declarations and files are left unchanged.
 
 Closing the application with dirty semantic edits offers Save, Discard, and Cancel choices. All
-major views can be shown or hidden from View; docking and visibility are persisted. Source keeps
-each affected file's Updated/Original text available in tabs, while Diagnostics consolidates
-project-load, document-operation, and active-analysis messages without owning semantic state.
+major views can be shown or hidden from View; docking and visibility are persisted. Source lists
+the loaded files and keeps each affected file's Updated/Original text available in tabs, while
+Diagnostics consolidates project-load, document-operation, and active-analysis messages without
+owning semantic state.

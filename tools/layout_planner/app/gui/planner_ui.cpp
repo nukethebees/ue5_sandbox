@@ -1383,12 +1383,37 @@ void PlannerUi::draw_source_panel() {
         persist_view_visibility(was_open, source_view_open_);
         return;
     }
-    struct SourceViewUpdate {
+    struct SourceViewFile {
         std::filesystem::path path;
+        std::string const* loaded{};
         std::string original;
-        std::string updated;
+        std::optional<std::string> updated;
     };
-    std::vector<SourceViewUpdate> updates;
+    std::vector<SourceViewFile> files;
+    if (project_document_.has_value()) {
+        files.push_back({.path = project_document_->path(),
+                         .loaded = &project_document_->source_text(),
+                         .original = {},
+                         .updated = std::nullopt});
+    }
+    for (auto const& source : document_->source_files()) {
+        files.push_back(
+            {.path = source.path, .loaded = &source.text, .original = {}, .updated = std::nullopt});
+    }
+    auto apply_update = [&](std::filesystem::path path, std::string original, std::string updated) {
+        auto const normalized{path.lexically_normal()};
+        auto const existing{std::ranges::find_if(
+            files, [&](auto const& file) { return file.path.lexically_normal() == normalized; })};
+        if (existing == files.end()) {
+            files.push_back({.path = std::move(path),
+                             .loaded = nullptr,
+                             .original = std::move(original),
+                             .updated = std::move(updated)});
+        } else {
+            existing->original = std::move(original);
+            existing->updated = std::move(updated);
+        }
+    };
     std::string preview_error;
     if (project_document_.has_value()) {
         auto project_updates{project_document_->preview_source_updates()};
@@ -1396,9 +1421,8 @@ void PlannerUi::draw_source_panel() {
             preview_error = project_updates.error().message;
         } else {
             for (auto& update : *project_updates) {
-                updates.push_back({.path = std::move(update.path),
-                                   .original = std::move(update.original),
-                                   .updated = std::move(update.updated)});
+                apply_update(
+                    std::move(update.path), std::move(update.original), std::move(update.updated));
             }
         }
     }
@@ -1410,32 +1434,43 @@ void PlannerUi::draw_source_panel() {
         preview_error += schema_updates.error().message;
     } else {
         for (auto& update : *schema_updates) {
-            updates.push_back({.path = std::move(update.path),
-                               .original = std::move(update.original),
-                               .updated = std::move(update.updated)});
+            apply_update(
+                std::move(update.path), std::move(update.original), std::move(update.updated));
         }
     }
     if (!preview_error.empty()) {
         ImGui::TextWrapped("%s", preview_error.c_str());
-    } else if (updates.empty()) {
-        ImGui::TextDisabled("No unsaved LispB source changes.");
+    }
+    if (files.empty()) {
+        ImGui::TextDisabled("No LispB source files loaded.");
     } else if (ImGui::BeginTabBar("source-files")) {
-        for (auto const& update : updates) {
-            ImGui::PushID(update.path.string().c_str());
-            auto const label{update.path.filename().string() + "###" + update.path.string()};
+        auto draw_text = [](char const* id, std::string const& value) {
+            if (ImGui::Button("Copy source")) {
+                ImGui::SetClipboardText(value.c_str());
+            }
+            if (ImGui::BeginChild(id, {0.0F, 0.0F}, true, ImGuiWindowFlags_HorizontalScrollbar)) {
+                ImGui::TextUnformatted(value.data(), value.data() + value.size());
+            }
+            ImGui::EndChild();
+        };
+        for (auto const& file : files) {
+            ImGui::PushID(file.path.string().c_str());
+            auto const label{file.path.filename().string() +
+                             (file.updated.has_value() ? " *" : "") + "###" + file.path.string()};
             if (ImGui::BeginTabItem(label.c_str())) {
-                ImGui::TextDisabled("%s", update.path.string().c_str());
+                ImGui::TextDisabled("%s", file.path.string().c_str());
                 if (ImGui::BeginTabBar("source-version-tabs")) {
-                    if (ImGui::BeginTabItem("Updated")) {
-                        ImGui::BeginChild("updated-source", {0.0F, 0.0F}, true);
-                        ImGui::TextUnformatted(update.updated.c_str());
-                        ImGui::EndChild();
-                        ImGui::EndTabItem();
-                    }
-                    if (ImGui::BeginTabItem("Original")) {
-                        ImGui::BeginChild("original-source", {0.0F, 0.0F}, true);
-                        ImGui::TextUnformatted(update.original.c_str());
-                        ImGui::EndChild();
+                    if (file.updated.has_value()) {
+                        if (ImGui::BeginTabItem("Updated")) {
+                            draw_text("updated-source", *file.updated);
+                            ImGui::EndTabItem();
+                        }
+                        if (ImGui::BeginTabItem("Original")) {
+                            draw_text("original-source", file.original);
+                            ImGui::EndTabItem();
+                        }
+                    } else if (ImGui::BeginTabItem("Current")) {
+                        draw_text("current-source", *file.loaded);
                         ImGui::EndTabItem();
                     }
                     ImGui::EndTabBar();
