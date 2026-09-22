@@ -6,6 +6,7 @@
 #include <imgui_internal.h>
 
 #include <algorithm>
+#include <array>
 #include <charconv>
 #include <cmath>
 #include <cstdio>
@@ -23,6 +24,37 @@ namespace {
 
 using namespace layout;
 using namespace lispb::schema;
+
+void draw_docked_panel_outlines() {
+    constexpr std::array names{"Project / Schema",
+                               "Layout",
+                               "Properties",
+                               "Variants",
+                               "Comparison",
+                               "Graph",
+                               "Source",
+                               "Diagnostics"};
+    auto const thickness{std::max(1.0F, ImGui::GetStyle().WindowBorderSize)};
+    for (auto const* name : names) {
+        auto* window{ImGui::FindWindowByName(name)};
+        if (window == nullptr || window->LastFrameActive != ImGui::GetFrameCount() ||
+            !window->DockIsActive || !window->DockTabIsVisible || window->DockNode == nullptr) {
+            continue;
+        }
+
+        auto const& node{*window->DockNode};
+        auto const inset{thickness * 0.5F};
+        auto const minimum{ImVec2{node.Pos.x + inset, node.Pos.y + inset}};
+        auto const maximum{
+            ImVec2{node.Pos.x + node.Size.x - inset, node.Pos.y + node.Size.y - inset}};
+        auto const color{node.IsFocused ? IM_COL32(106, 148, 190, 255)
+                                        : IM_COL32(72, 88, 106, 255)};
+        window->DrawList->PushClipRect(
+            node.Pos, {node.Pos.x + node.Size.x, node.Pos.y + node.Size.y}, false);
+        window->DrawList->AddRect(minimum, maximum, color, 0.0F, ImDrawFlags_None, thickness);
+        window->DrawList->PopClipRect();
+    }
+}
 
 auto parse_float_setting(std::string_view const line, std::string_view const prefix)
     -> std::optional<float> {
@@ -885,6 +917,7 @@ auto PlannerUi::draw() -> bool {
     draw_source_panel();
     gate_new_declaration_dialogs();
     draw_diagnostics_panel();
+    draw_docked_panel_outlines();
     draw_new_module_dialog();
     draw_new_enum_dialog();
     draw_new_packed_value_dialog();

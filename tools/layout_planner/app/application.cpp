@@ -129,6 +129,10 @@ auto Application::initialize() -> bool {
     auto& style{ImGui::GetStyle()};
     style.ScaleAllSizes(scale);
     style.FontScaleDpi = scale;
+    style.Colors[ImGuiCol_TitleBg] = {0.12F, 0.16F, 0.21F, 1.0F};
+    style.Colors[ImGuiCol_TitleBgActive] = {0.16F, 0.22F, 0.30F, 1.0F};
+    style.Colors[ImGuiCol_TabSelected] = {0.20F, 0.31F, 0.43F, 1.0F};
+    style.Colors[ImGuiCol_TabDimmedSelected] = {0.16F, 0.24F, 0.34F, 1.0F};
     io.Fonts->AddFontDefaultVector();
 
     auto window_size{ui_.saved_window_size().value_or(WindowSize{
