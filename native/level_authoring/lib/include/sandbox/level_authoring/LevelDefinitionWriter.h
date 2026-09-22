@@ -4,8 +4,10 @@
 
 #include <expected>
 #include <string>
+#include <string_view>
 
 namespace ml::level_authoring {
-[[nodiscard]] auto emit_editor_level_source(::ioj::sim::levels::LevelDefinition const& definition)
+[[nodiscard]] auto emit_editor_level_source(::ioj::sim::levels::LevelDefinition const& definition,
+                                            std::string_view level_config = {})
     -> std::expected<std::string, std::string>;
 } // namespace ml::level_authoring

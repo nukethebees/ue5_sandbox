@@ -174,7 +174,8 @@ void append_id_clause(std::string& source,
 }
 } // namespace
 
-auto emit_editor_level_source(::ioj::sim::levels::LevelDefinition const& definition)
+auto emit_editor_level_source(::ioj::sim::levels::LevelDefinition const& definition,
+                              std::string_view const level_config)
     -> std::expected<std::string, std::string> {
     auto const errors{collect_errors(definition)};
     if (!errors.empty()) {
@@ -188,6 +189,9 @@ auto emit_editor_level_source(::ioj::sim::levels::LevelDefinition const& definit
     source += "  (title \"" + escape_string(definition.metadata.title) + "\")\n";
     if (!definition.metadata.description.empty()) {
         source += "  (description \"" + escape_string(definition.metadata.description) + "\")\n";
+    }
+    if (!level_config.empty()) {
+        source += "  (level-config \"" + escape_string(level_config) + "\")\n";
     }
 
     auto teams{definition.teams};

@@ -19,6 +19,7 @@ inline constexpr std::string_view level_prelude{R"(
 (define (id value) (list 'id value))
 (define (title value) (list 'title value))
 (define (description value) (list 'description value))
+(define (level-config value) (list 'level-config value))
 (define (par-time seconds) (list 'par-time seconds))
 (define (unlock . criteria) (cons 'unlock criteria))
 (define (level-completed level-id) (list 'level-completed level-id))
@@ -68,6 +69,7 @@ class DefinitionDecoder final {
         bool has_id{};
         bool has_title{};
         bool has_description{};
+        bool has_level_config{};
         bool has_par_time{};
         bool has_unlock{};
         bool has_teams{};
@@ -114,6 +116,13 @@ class DefinitionDecoder final {
                 }
                 has_description = true;
                 read_text_clause(clause, path, definition_.metadata.description);
+            } else if (tag == "level-config") {
+                if (has_level_config) {
+                    add_error(path, "Duplicate level-config clause");
+                    continue;
+                }
+                has_level_config = true;
+                read_text_clause(clause, path, level_config_);
             } else if (tag == "par-time") {
                 if (has_par_time) {
                     add_error(path, "Duplicate par-time clause");
@@ -189,7 +198,7 @@ class DefinitionDecoder final {
         if (!validation) {
             return {.validation_errors = std::move(validation.errors)};
         }
-        return {.definition = std::move(definition_)};
+        return {.definition = std::move(definition_), .level_config = std::move(level_config_)};
     }
   private:
     auto list_length(s7::Value const value) const -> std::int64_t {
@@ -647,6 +656,7 @@ class DefinitionDecoder final {
     s7::Scheme& scheme_;
     s7::Value root_{};
     ::ioj::sim::levels::LevelDefinition definition_{};
+    std::string level_config_{};
     std::vector<LevelDefinitionDecodeError> errors_{};
 };
 } // namespace

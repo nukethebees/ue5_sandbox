@@ -13,6 +13,7 @@ namespace ml::s7 {
 namespace {
 auto to_unreal(level_authoring::LevelDefinitionReadResult native) -> FLevelDefinitionReadResult {
     FLevelDefinitionReadResult result;
+    result.level_config = ml::to_fstring(native.level_config);
     result.script_error = ml::to_fstring(native.script_error);
     result.decode_errors.Reserve(static_cast<int32>(native.decode_errors.size()));
     for (auto& error : native.decode_errors) {

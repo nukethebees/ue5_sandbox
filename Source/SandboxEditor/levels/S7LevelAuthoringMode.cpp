@@ -80,6 +80,29 @@ auto confirm_replace_source(FStringView const path) -> bool {
                    FText::FromString(FString{path}))) == EAppReturnType::Yes;
 }
 
+auto level_config_path(AS7LevelAuthoringDocument const& document) -> FString {
+    return IsValid(document.level_config) ? document.level_config->GetPathName() : FString{};
+}
+
+auto resolve_level_config(ml::s7::FLevelDefinitionReadResult const& read,
+                          AS7LevelAuthoringDocument const& document)
+    -> std::expected<USpaceGameLevelConfig*, FString> {
+    if (read.level_config.IsEmpty()) {
+        if (IsValid(document.level_config)) {
+            return document.level_config.Get();
+        }
+        return std::unexpected{TEXT("Assign a level configuration to the S7 document.")};
+    }
+
+    auto* const config{LoadObject<USpaceGameLevelConfig>(nullptr, *read.level_config)};
+    if (!IsValid(config)) {
+        return std::unexpected{FString::Printf(
+            TEXT("The S7 source references an unavailable level configuration: %s"),
+            *read.level_config)};
+    }
+    return config;
+}
+
 auto selected_bound_entity(AS7LevelAuthoringDocument& document)
     -> std::expected<FS7LevelEntityBinding*, FString> {
     if (!GEditor) {
@@ -211,7 +234,7 @@ void US7LevelAuthoringMode::Tick(FEditorViewportClient* const viewport_client,
                                   : std::expected<ml::FLevelDefinition, FString>{std::unexpected{
                                         TEXT("The current level is unavailable.")}}};
         auto const generated{
-            definition ? ml::s7::emit_editor_level_source(*definition)
+            definition ? ml::s7::emit_editor_level_source(*definition, level_config_path(*document_))
                        : std::expected<FString, FString>{std::unexpected{definition.error()}}};
         if (!generated || document_->synchronized_scene_hash !=
                               ml::editor::FS7LevelSourceSession::source_digest(*generated)) {
@@ -787,7 +810,16 @@ void US7LevelAuthoringMode::preview_apply() {
         changed_.Broadcast();
         return;
     }
-    auto plan{ml::editor::make_s7_level_sync_plan(*level, *document_, read.definition.GetValue())};
+    auto const level_config{resolve_level_config(read, *document_)};
+    if (!level_config) {
+        set_status(FText::FromString(level_config.error()));
+        preview_.Reset();
+        preview_stale_ = false;
+        changed_.Broadcast();
+        return;
+    }
+    auto plan{ml::editor::make_s7_level_sync_plan(
+        *level, *document_, read.definition.GetValue(), **level_config)};
     if (!plan) {
         set_status(FText::FromString(plan.error()));
         preview_.Reset();
@@ -812,6 +844,9 @@ void US7LevelAuthoringMode::preview_apply() {
         TArray<FString> document_changes;
         if (preview_->plan.metadata_changed) {
             document_changes.Add(TEXT("metadata"));
+        }
+        if (preview_->plan.level_config_changed) {
+            document_changes.Add(TEXT("level config"));
         }
         if (preview_->plan.viewpoint_changed) {
             document_changes.Add(TEXT("viewpoint"));
@@ -861,7 +896,7 @@ void US7LevelAuthoringMode::apply_preview() {
             ml::editor::FS7LevelSourceSession::source_digest(source_session_.buffer());
         auto const definition{ml::editor::collect_s7_editor_level(*level, *document_)};
         auto const generated{
-            definition ? ml::s7::emit_editor_level_source(*definition)
+            definition ? ml::s7::emit_editor_level_source(*definition, level_config_path(*document_))
                        : std::expected<FString, FString>{std::unexpected{definition.error()}}};
         if (generated) {
             document_->synchronized_scene_hash =
@@ -951,7 +986,8 @@ void US7LevelAuthoringMode::save_canonical_from_scene() {
         changed_.Broadcast();
         return;
     }
-    auto const source{ml::s7::emit_editor_level_source(*definition)};
+    auto const source{
+        ml::s7::emit_editor_level_source(*definition, level_config_path(*document_))};
     if (!source) {
         set_status(FText::FromString(source.error()));
         changed_.Broadcast();
