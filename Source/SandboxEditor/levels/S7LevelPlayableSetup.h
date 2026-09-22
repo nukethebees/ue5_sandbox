@@ -10,4 +10,7 @@ class ULevel;
 namespace ml::editor {
 SANDBOXEDITOR_API auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document)
     -> std::expected<FString, FString>;
+SANDBOXEDITOR_API auto validate_playable_s7_level(ULevel& level,
+                                                  AS7LevelAuthoringDocument& document)
+    -> std::expected<FString, FString>;
 }

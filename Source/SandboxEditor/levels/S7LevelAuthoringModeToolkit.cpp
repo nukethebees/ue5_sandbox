@@ -4,6 +4,8 @@
 #include "SandboxEditor/levels/S7LevelAuthoringMode.h"
 #include "SandboxEditor/SandboxEditor.h"
 
+#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+
 #include <IDetailsView.h>
 #include <Modules/ModuleManager.h>
 #include <PropertyEditorModule.h>
@@ -12,6 +14,7 @@
 #include <Widgets/Input/SMultiLineEditableTextBox.h>
 #include <Widgets/Layout/SScrollBox.h>
 #include <Widgets/Layout/SUniformGridPanel.h>
+#include <Widgets/Text/STextBlock.h>
 
 #define LOCTEXT_NAMESPACE "FS7LevelAuthoringModeToolkit"
 
@@ -100,13 +103,39 @@ void FS7LevelAuthoringModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_
                            .Text(LOCTEXT("SetUpPlayableLevel", "Set Up Playable Level"))
                            .OnClicked(this, &FS7LevelAuthoringModeToolkit::set_up_playable_level)] +
                   SUniformGridPanel::Slot(
-                      0, 8)[SAssignNew(entity_id_, SEditableTextBox)
+                      1, 7)[SNew(SButton)
+                                .Text(LOCTEXT("ValidatePlayableLevel", "Validate Level"))
+                                .OnClicked(
+                                    this, &FS7LevelAuthoringModeToolkit::validate_playable_level)] +
+                  SUniformGridPanel::Slot(0, 8)
+                      [SNew(SButton)
+                           .Text(LOCTEXT("EditLevelConfig", "Edit Collision Grid"))
+                           .OnClicked(this, &FS7LevelAuthoringModeToolkit::open_level_config)] +
+                  SUniformGridPanel::Slot(
+                      0, 9)[SAssignNew(entity_id_, SEditableTextBox)
                                 .HintText(LOCTEXT("EntityIdHint", "Selected entity ID"))] +
                   SUniformGridPanel::Slot(
-                      1, 8)[SNew(SButton)
+                      1, 9)[SNew(SButton)
                                 .Text(LOCTEXT("RenameEntity", "Rename Entity ID"))
                                 .OnClicked(
                                     this, &FS7LevelAuthoringModeToolkit::rename_selected_entity)]] +
+             SVerticalBox::Slot().AutoHeight().Padding(
+                 4.0f)[SNew(STextBlock).AutoWrapText(true).Text_Lambda([this] {
+                 auto* const document{mode_.IsValid() ? mode_->document() : nullptr};
+                 auto* const config{IsValid(document) ? document->level_config.Get() : nullptr};
+                 if (!IsValid(config)) {
+                     return LOCTEXT("NoActiveConfig", "Level config: none");
+                 }
+                 auto const dimensions{config->collision_grid.calculate_grid_dimensions()};
+                 auto const cell_size{config->collision_grid.cell_size};
+                 auto const half_bounds{FVector3f{dimensions.X * cell_size.X * 0.5f,
+                                                  dimensions.Y * cell_size.Y * 0.5f,
+                                                  dimensions.Z * cell_size.Z * 0.5f}};
+                 return FText::FromString(FString::Printf(TEXT("Level config: %s | Grid bounds: "
+                                                               "+/-%s cm"),
+                                                          *config->GetName(),
+                                                          *half_bounds.ToString()));
+             })] +
              SVerticalBox::Slot().AutoHeight().Padding(
                  4.0f)[SAssignNew(status_, SMultiLineEditableTextBox)
                            .IsReadOnly(true)
@@ -154,6 +183,8 @@ FORWARD_ACTION(assign_selected_must_survive)
 FORWARD_ACTION(assign_selected_required_kills)
 FORWARD_ACTION(clear_selected_objectives)
 FORWARD_ACTION(import_orchestrator_mission)
+FORWARD_ACTION(open_level_config)
+FORWARD_ACTION(validate_playable_level)
 FORWARD_ACTION(set_up_playable_level)
 auto FS7LevelAuthoringModeToolkit::load_s7() -> FReply {
     if (mode_.IsValid() && mode_->load_s7()) {
