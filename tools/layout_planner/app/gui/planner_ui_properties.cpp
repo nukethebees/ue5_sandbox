@@ -2442,7 +2442,29 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
         ImGui::TableSetupColumn("Hidden", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Sentinel", ImGuiTableColumnFlags_WidthFixed);
         ImGui::TableSetupColumn("Count", ImGuiTableColumnFlags_WidthFixed);
-        ImGui::TableHeadersRow();
+        constexpr std::array<char const*, 9> header_tooltips{
+            "Select an enumerator or drag it to change its order.",
+            "C++ identifier for this enumerator.",
+            "Optional C++ value expression. Leave blank to use the next implicit value.",
+            "Numeric value derived from the initializers; read only.",
+            "Optional human-readable name for display-string conversions. Defaults to Name.",
+            "Stable text token for serialization and parsing, distinct from Display and the "
+            "numeric value. Serialized conversions require one for every non-count value.",
+            "Mark this value hidden in Unreal reflection (UMETA Hidden).",
+            "Reserve this value as a sentinel rather than a live enum value.",
+            "Use this final value as the enum's count sentinel.",
+        };
+        ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
+        for (std::size_t index{}; index < header_tooltips.size(); ++index) {
+            auto const column{static_cast<int>(index)};
+            if (!ImGui::TableSetColumnIndex(column)) {
+                continue;
+            }
+            ImGui::PushID(column);
+            ImGui::TableHeader(ImGui::TableGetColumnName(column));
+            ImGui::SetItemTooltip("%s", header_tooltips[index]);
+            ImGui::PopID();
+        }
         for (std::size_t index{}; index < schema->values.size(); ++index) {
             auto const& value{schema->values[index]};
             auto const row_selected{selected_enumerator_ == value.name};
