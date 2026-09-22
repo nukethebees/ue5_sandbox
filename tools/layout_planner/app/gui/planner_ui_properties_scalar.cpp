@@ -477,7 +477,7 @@ void PlannerUi::draw_enum_editor(TypeNode const& node, EnumType const&) {
     std::optional<codegen::EnumSchema> pending;
     auto selected_after_edit{selected_enumerator_};
     if (detail::begin_editable_table("enumerators", 9, schema->values.size())) {
-        detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
         detail::editable_table_column("Name");
         detail::editable_table_column("Initializer");
         detail::editable_table_column("Derived code");
@@ -1220,7 +1220,7 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
     std::optional<codegen::IntegerScalarSchema> pending;
     auto selected_after_edit{selected_integer_scalar_code_};
     if (detail::begin_editable_table("integer-scalar-codes", 4, schema->named_codes.size())) {
-        detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
         detail::editable_table_column("Name");
         detail::editable_table_column("Value");
         detail::editable_table_column("Sentinel", ImGuiTableColumnFlags_WidthFixed);

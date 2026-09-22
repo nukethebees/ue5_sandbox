@@ -359,7 +359,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
     std::optional<std::pair<std::string, std::string>> renamed_member;
     auto selected_after_edit{analysis_session_.inputs.selection.field};
     if (detail::begin_editable_table("soa-schema-members", 6, schema->members.size())) {
-        detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
         detail::editable_table_column("Access", ImGuiTableColumnFlags_WidthFixed);
         detail::editable_table_column("Operation", ImGuiTableColumnFlags_WidthFixed);
         detail::editable_table_column("Name");
@@ -968,7 +968,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                 soa_mask_dimension_extents_.size() == member.mask_dimensions.size() &&
                 detail::begin_editable_table(
                     "soa-mask-dimensions", 3, member.mask_dimensions.size())) {
-                detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+                detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
                 detail::editable_table_column("Index name");
                 detail::editable_table_column("Extent");
                 ImGui::TableHeadersRow();
@@ -1257,7 +1257,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
     if (soa_using_declarations_.size() == schema->using_declarations.size() &&
         detail::begin_editable_table(
             "soa-using-declarations", 2, schema->using_declarations.size())) {
-        detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
         detail::editable_table_column("Declaration after 'using'");
         ImGui::TableHeadersRow();
         for (std::size_t index{}; index < schema->using_declarations.size(); ++index) {
@@ -1400,7 +1400,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
     if (soa_function_names_.size() == schema->functions.size() &&
         soa_function_return_types_.size() == schema->functions.size() &&
         detail::begin_editable_table("soa-functions", 8, schema->functions.size())) {
-        detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
         detail::editable_table_column("Name");
         detail::editable_table_column("Return");
         detail::editable_table_column("const", ImGuiTableColumnFlags_WidthFixed);
@@ -1614,7 +1614,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
             soa_parameter_defaults_.size() == function.parameters.size() &&
             detail::begin_editable_table(
                 "soa-function-parameters", 5, function.parameters.size())) {
-            detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+            detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
             detail::editable_table_column("Name");
             detail::editable_table_column("Type");
             detail::editable_table_column("Pick", ImGuiTableColumnFlags_WidthFixed);
@@ -1813,7 +1813,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
         ImGui::BeginDisabled(pending.has_value());
         if (soa_function_body_lines_.size() == function.body_lines.size() &&
             detail::begin_editable_table("function-body-lines", 2, function.body_lines.size())) {
-            detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+            detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
             detail::editable_table_column("C++ fragment");
             ImGui::TableHeadersRow();
             for (std::size_t index{}; index < function.body_lines.size(); ++index) {
@@ -1966,7 +1966,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
         if (soa_function_dependencies_.size() == function.dependencies.size() &&
             detail::begin_editable_table(
                 "function-dependencies", 2, function.dependencies.size())) {
-            detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+            detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
             detail::editable_table_column("Registered dependency key");
             ImGui::TableHeadersRow();
             for (std::size_t index{}; index < function.dependencies.size(); ++index) {
@@ -2337,7 +2337,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
         if (soa_fixed_container_names_.size() == schema->fixed->containers.size() &&
             detail::begin_editable_table(
                 "soa-fixed-containers", 2, schema->fixed->containers.size())) {
-            detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+            detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
             detail::editable_table_column("Container type");
             ImGui::TableHeadersRow();
             for (std::size_t index{}; index < schema->fixed->containers.size(); ++index) {
@@ -2539,7 +2539,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                 schema->single_allocation_variants.size() &&
             detail::begin_editable_table(
                 "soa-single-allocation-variants", 3, schema->single_allocation_variants.size())) {
-            detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+            detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
             detail::editable_table_column("Owner type");
             detail::editable_table_column("Allocator type");
             ImGui::TableHeadersRow();

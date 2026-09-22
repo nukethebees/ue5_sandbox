@@ -147,7 +147,7 @@ auto PlannerUi::draw_union_editor(TypeNode const& node, UnionType const& union_t
     std::optional<TypeId> navigate_to;
     auto selected_after_edit{analysis_session_.inputs.selection.field};
     if (detail::begin_editable_table("union-schema-alternatives", 5, schema->alternatives.size())) {
-        detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
         detail::editable_table_column("Name");
         detail::editable_table_column("Semantic type");
         detail::editable_table_column("Fixed array", ImGuiTableColumnFlags_WidthFixed);
@@ -503,7 +503,7 @@ auto PlannerUi::draw_tagged_union_editor(TypeNode const& node, TaggedUnionType c
 
     if (detail::begin_editable_table(
             "tagged-union-schema-alternatives", 6, schema->alternatives.size())) {
-        detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
         detail::editable_table_column("Tag");
         detail::editable_table_column("Name");
         detail::editable_table_column("Semantic type");
@@ -844,7 +844,7 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
     std::optional<std::pair<std::string, std::string>> renamed_member;
     auto selected_after_edit{analysis_session_.inputs.selection.field};
     if (detail::begin_editable_table("record-schema-members", 7, schema->members.size())) {
-        detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
         detail::editable_table_column("Access", ImGuiTableColumnFlags_WidthFixed);
         detail::editable_table_column("Operation", ImGuiTableColumnFlags_WidthFixed);
         detail::editable_table_column("Name");

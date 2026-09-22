@@ -420,7 +420,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
     std::optional<std::pair<std::string, std::string>> renamed_field;
     auto selected_after_edit{analysis_session_.inputs.selection.field};
     if (detail::begin_editable_table("packed-schema-fields", 11, schema->segments.size())) {
-        detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+        detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
         detail::editable_table_column("Access", ImGuiTableColumnFlags_WidthFixed);
         detail::editable_table_column("Operation", ImGuiTableColumnFlags_WidthFixed);
         detail::editable_table_column("Name");
@@ -1799,7 +1799,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
 
         if (detail::begin_editable_table(
                 "packed-named-codes", 4, selected_schema_field->named_codes.size())) {
-            detail::editable_table_column("Edit", ImGuiTableColumnFlags_WidthFixed);
+            detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
             detail::editable_table_column("Name");
             detail::editable_table_column("Value");
             detail::editable_table_column("Sentinel", ImGuiTableColumnFlags_WidthFixed);

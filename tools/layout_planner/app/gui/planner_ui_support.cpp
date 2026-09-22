@@ -101,6 +101,7 @@ void prepare_property_input(char const* label) {
 
 auto editable_table_row_handle(bool const selected) -> bool {
     auto const handle_clicked{ImGui::Selectable("::", selected)};
+    ImGui::SetItemTooltip("Select or drag to reorder.");
     if (handle_clicked || selected || !ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
         return handle_clicked;
     }
