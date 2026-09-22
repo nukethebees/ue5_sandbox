@@ -73,7 +73,7 @@ add_custom_target(worktree-dependencies
     --settings-path
     "${PROJECT_SOURCE_DIR}/Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"
   DEPENDS
-    set-live-coding-disabled-host
+    require-set-live-coding-disabled
     unreal-native-dependencies
     sandbox-material-gen
     sandbox-mesh-gen

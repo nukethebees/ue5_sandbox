@@ -180,11 +180,6 @@ set(SANDBOX_LIVE_CODING_DISABLED_ARGUMENT
   "-ini:EditorPerProjectUserSettings:[/Script/LiveCoding.LiveCodingSettings]:bEnabled=False"
 )
 sandbox_add_dotnet_host_tool(
-  set-live-coding-disabled-host
-  SANDBOX_SET_LIVE_CODING_DISABLED_TOOL
-  "${PROJECT_SOURCE_DIR}/tools/SetLiveCodingDisabled/SetLiveCodingDisabled.csproj"
-)
-sandbox_add_dotnet_host_tool(
   unreal-build-tools-host
   SANDBOX_UNREAL_BUILD_TOOLS
   "${PROJECT_SOURCE_DIR}/tools/UnrealBuildTools/UnrealBuildTools.csproj"

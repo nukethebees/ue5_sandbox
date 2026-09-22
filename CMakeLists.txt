@@ -59,6 +59,7 @@ sandbox_add_dotnet_host_tool(
 )
 
 add_subdirectory(native)
+add_subdirectory(tools/rust)
 add_subdirectory(tools/jobserver)
 add_subdirectory(Scripts)
 add_subdirectory(tools)

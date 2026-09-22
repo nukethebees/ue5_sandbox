@@ -56,8 +56,9 @@ and native validation does not run this suite.
 - `GamePackageTools/` verifies archived game packages through the `verify-package` CMake target.
   Its staged executable accepts `--project-root`, `--package-root`, `--unreal-pak`,
   `--verification-directory`, and `--configuration`.
-- `SetLiveCodingDisabled/` is a small C# executable for disabling Live Coding in saved editor
-  settings while preserving the file's encoding and line endings.
+- `rust/` contains focused native developer-tool experiments. Its first tool disables Live Coding
+  in saved editor settings while preserving the file's encoding and line endings; see its
+  [README](rust/README.md).
 - `UnrealBuildTools/` is a thin C# executable that validates paths, scopes the native toolchain
   environment, invokes UBT, and propagates its result. UBT remains solely responsible for target
   receipts, module manifests, and BuildIds.

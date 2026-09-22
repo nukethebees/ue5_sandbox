@@ -1,0 +1,11 @@
+[package]
+name = "set-live-coding-disabled"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "set-live-coding-disabled"
+path = "src/main.rs"

@@ -13,7 +13,7 @@ add_custom_target(generate-project-files
     "-Project=${SANDBOX_UPROJECT}"
     -Game
     -WaitMutex
-  DEPENDS set-live-coding-disabled-host
+  DEPENDS require-set-live-coding-disabled
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Generating Visual Studio project files for ${SANDBOX_UPROJECT}"
   USES_TERMINAL
