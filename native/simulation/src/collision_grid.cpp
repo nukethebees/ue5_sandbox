@@ -10,13 +10,15 @@
 
 namespace ioj::sim::collision {
 namespace {
+/* **************************************** */
+// Internal helpers
+/* **************************************** */
 constexpr std::size_t axis_count{3};
 
 auto to_cell(float const value, float const cell_dimension, float const half_grid_extent) noexcept
     -> int {
     return static_cast<int>(std::floor((value + half_grid_extent) / cell_dimension));
 }
-
 auto to_closed_max_cell(float const value,
                         float const cell_dimension,
                         int const grid_dimension,
@@ -26,14 +28,12 @@ auto to_closed_max_cell(float const value,
     }
     return to_cell(value, cell_dimension, half_grid_extent);
 }
-
 auto grid_half_size(GridGeometry const geometry) noexcept -> Vec3f {
     return ml::make_vector3f(
         static_cast<float>(geometry.dimensions.x) * geometry.cell_dimensions.X * 0.5f,
         static_cast<float>(geometry.dimensions.y) * geometry.cell_dimensions.Y * 0.5f,
         static_cast<float>(geometry.dimensions.z) * geometry.cell_dimensions.Z * 0.5f);
 }
-
 auto clip_segment(Vec3f const start,
                   Vec3f const end,
                   Vec3f const bounds_min,
@@ -81,6 +81,9 @@ auto clip_segment(Vec3f const start,
 }
 }
 
+/* **************************************** */
+// Grid geometry
+/* **************************************** */
 auto CellCoord::operator[](std::size_t const index) noexcept -> int& {
     if (index == 0) {
         return x;
@@ -99,7 +102,6 @@ auto CellCoord::operator[](std::size_t const index) const noexcept -> int {
     }
     return z;
 }
-
 auto is_configured(GridGeometry const geometry) noexcept -> bool {
     if (geometry.dimensions.x <= 0 || geometry.dimensions.y <= 0 || geometry.dimensions.z <= 0 ||
         !std::isfinite(geometry.cell_dimensions.X) || !std::isfinite(geometry.cell_dimensions.Y) ||
@@ -111,7 +113,6 @@ auto is_configured(GridGeometry const geometry) noexcept -> bool {
     auto const xy_cell_count{static_cast<long long>(geometry.dimensions.x) * geometry.dimensions.y};
     return xy_cell_count <= std::numeric_limits<int>::max() / geometry.dimensions.z;
 }
-
 auto calculate_grid_dimensions(Vector3f const grid_size, Vector3f const cell_size) noexcept
     -> CellCoord {
     auto const calculate_dimension = [](float const extent, float const cell) noexcept -> int {
@@ -131,29 +132,18 @@ auto calculate_grid_dimensions(Vector3f const grid_size, Vector3f const cell_siz
             calculate_dimension(grid_size.Y, cell_size.Y),
             calculate_dimension(grid_size.Z, cell_size.Z)};
 }
-
 auto num_cells(GridGeometry const geometry) noexcept -> GridCellCount {
     return geometry.dimensions.x * geometry.dimensions.y * geometry.dimensions.z;
 }
-
 auto to_index(GridGeometry const geometry, CellCoord const coordinate) noexcept -> CellIndex {
     return coordinate.x + coordinate.y * geometry.dimensions.x +
            coordinate.z * geometry.dimensions.x * geometry.dimensions.y;
 }
-
 auto to_cell_coord(float const value, float const cell_dimension, int const grid_dimension) noexcept
     -> int {
     auto const half_extent{static_cast<float>(grid_dimension) * cell_dimension * 0.5f};
     return to_cell(value, cell_dimension, half_extent);
 }
-
-auto to_cell_min(int const coordinate,
-                 float const cell_dimension,
-                 int const grid_dimension) noexcept -> float {
-    auto const half_extent{static_cast<float>(grid_dimension) * cell_dimension * 0.5f};
-    return static_cast<float>(coordinate) * cell_dimension - half_extent;
-}
-
 auto to_cell_coord(GridGeometry const geometry, Vec3f const position) noexcept -> CellCoord {
     auto const half_size{grid_half_size(geometry)};
     return {
@@ -162,7 +152,6 @@ auto to_cell_coord(GridGeometry const geometry, Vec3f const position) noexcept -
         to_cell(position.Z, geometry.cell_dimensions.Z, half_size.Z),
     };
 }
-
 auto to_max_cell_coord(GridGeometry const geometry, Vec3f const position) noexcept -> CellCoord {
     auto const half_size{grid_half_size(geometry)};
     return {
@@ -174,13 +163,17 @@ auto to_max_cell_coord(GridGeometry const geometry, Vec3f const position) noexce
             position.Z, geometry.cell_dimensions.Z, geometry.dimensions.z, half_size.Z),
     };
 }
-
 auto to_cell_coord_bounds(GridGeometry const geometry,
                           Vec3f const min_point,
                           Vec3f const max_point) noexcept -> CellCoordBounds {
     return {to_cell_coord(geometry, min_point), to_max_cell_coord(geometry, max_point)};
 }
-
+auto to_cell_min(int const coordinate,
+                 float const cell_dimension,
+                 int const grid_dimension) noexcept -> float {
+    auto const half_extent{static_cast<float>(grid_dimension) * cell_dimension * 0.5f};
+    return static_cast<float>(coordinate) * cell_dimension - half_extent;
+}
 auto to_cell_min(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vec3f {
     auto const half_size{grid_half_size(geometry)};
     return ml::make_vector3f(
@@ -188,7 +181,6 @@ auto to_cell_min(GridGeometry const geometry, CellCoord const coordinate) noexce
         static_cast<float>(coordinate.y) * geometry.cell_dimensions.Y - half_size.Y,
         static_cast<float>(coordinate.z) * geometry.cell_dimensions.Z - half_size.Z);
 }
-
 auto to_cell_centre(GridGeometry const geometry, CellCoord const coordinate) noexcept -> Vec3f {
     auto result{to_cell_min(geometry, coordinate)};
     result.X += geometry.cell_dimensions.X * 0.5f;
@@ -197,13 +189,15 @@ auto to_cell_centre(GridGeometry const geometry, CellCoord const coordinate) noe
     return result;
 }
 
+/* **************************************** */
+// Bounds queries
+/* **************************************** */
 auto is_cell_coord_in_bounds(GridGeometry const geometry, CellCoord const coordinate) noexcept
     -> bool {
     return coordinate.x >= 0 && coordinate.x < geometry.dimensions.x && coordinate.y >= 0 &&
            coordinate.y < geometry.dimensions.y && coordinate.z >= 0 &&
            coordinate.z < geometry.dimensions.z;
 }
-
 void are_spheres_in_bounds(GridGeometry const geometry,
                            Vectors3fConstView const centres,
                            float const radius,
@@ -229,6 +223,9 @@ void are_spheres_in_bounds(GridGeometry const geometry,
     }
 }
 
+/* **************************************** */
+// AABB tracing
+/* **************************************** */
 auto trace_aabb(Vec3f const trace_start,
                 Vec3f const inverse_trace_delta,
                 Vec3f const trace_delta,
@@ -264,6 +261,9 @@ auto trace_aabb(Vec3f const trace_start,
     return minimum_t;
 }
 
+/* **************************************** */
+// Grid traversal
+/* **************************************** */
 auto GridTraversal::create(GridGeometry const geometry,
                            Vec3f const start,
                            Vec3f const end,
@@ -319,11 +319,9 @@ auto GridTraversal::create(GridGeometry const geometry,
     }
     return true;
 }
-
 auto GridTraversal::current_cell() const noexcept -> CellCoord {
     return current_cell_;
 }
-
 auto GridTraversal::advance() noexcept -> bool {
     if (current_cell_ == end_cell_) {
         return false;

@@ -21,6 +21,9 @@
 namespace ioj::sim::collision {
 namespace collision_uniform_grid_detail {
 namespace {
+/* **************************************** */
+// Tracing
+/* **************************************** */
 enum class TraceKind : std::uint8_t {
     Line,
     Sweep,
@@ -39,7 +42,6 @@ auto aabbs_for_cell(CollisionGridEntityStorage const& storage, CellIndex const c
     return storage.aabbs.get_const_view(storage.cell_offsets[element], storage.cell_counts[element])
         .columns();
 }
-
 template <TraceKind Kind, IgnoredEntityMode IgnoredMode, TraceEntityFilter EntityFilter>
 void trace_grid_aabbs(GridGeometry const geometry,
                       CollisionGridEntityStorage const& entity_storage,
@@ -272,7 +274,6 @@ void trace_grid_aabbs(GridGeometry const geometry,
         }
     }
 }
-
 template <TraceKind Kind>
 void dispatch_ignored_mode(GridGeometry const geometry,
                            CollisionGridEntityStorage const& entity_storage,
@@ -316,7 +317,6 @@ void dispatch_ignored_mode(GridGeometry const geometry,
     }
 }
 } // namespace
-
 void trace_grid_lines(GridGeometry const geometry,
                       CollisionGridEntityStorage const& entity_storage,
                       CollisionGridStaticStorage const& static_storage,
@@ -326,7 +326,6 @@ void trace_grid_lines(GridGeometry const geometry,
     trace_grid_aabbs<TraceKind::Line, IgnoredEntityMode::None, TraceEntityFilter::None>(
         geometry, entity_storage, static_storage, agents, traces, hits, {}, {});
 }
-
 void trace_grid_lines_ignoring_entities(GridGeometry const geometry,
                                         CollisionGridEntityStorage const& entity_storage,
                                         CollisionGridStaticStorage const& static_storage,
@@ -337,7 +336,6 @@ void trace_grid_lines_ignoring_entities(GridGeometry const geometry,
     trace_grid_aabbs<TraceKind::Line, IgnoredEntityMode::PerTrace, TraceEntityFilter::None>(
         geometry, entity_storage, static_storage, agents, traces, hits, ignored_entities, {});
 }
-
 void sweep_grid_aabbs(GridGeometry const geometry,
                       CollisionGridEntityStorage const& entity_storage,
                       CollisionGridStaticStorage const& static_storage,
@@ -357,6 +355,10 @@ void sweep_grid_aabbs(GridGeometry const geometry,
                                             moving_half_extent,
                                             entity_filter);
 }
+
+/* **************************************** */
+// Overlap collection
+/* **************************************** */
 void append_grid_overlaps(GridGeometry const geometry,
                           CollisionGridEntityStorage const& entity_storage,
                           CollisionGridStaticStorage const& static_storage,
@@ -423,27 +425,11 @@ void append_grid_overlaps(GridGeometry const geometry,
 }
 }
 
-auto CollisionUniformGrid::get_grid_dims() const noexcept -> collision::CellCoord {
-    return geometry_.dimensions;
-}
-void CollisionUniformGrid::set_geometry(GridGeometry const geometry) noexcept {
-    geometry_ = geometry;
-}
-auto CollisionUniformGrid::get_cell_dims() const noexcept -> Vector3f {
-    return geometry_.cell_dimensions;
-}
-
+/* **************************************** */
+// Construction and lifecycle
+/* **************************************** */
 CollisionUniformGrid::CollisionUniformGrid(AgentAccessor const& agents) noexcept
     : agents_{agents} {}
-
-auto CollisionUniformGrid::is_configured() const noexcept -> bool {
-    return collision::is_configured(geometry_);
-}
-
-auto CollisionUniformGrid::num_cells() const -> GridCellCount {
-    return collision::num_cells(geometry_);
-}
-
 void CollisionUniformGrid::reset() {
     geometry_ = {};
 
@@ -459,6 +445,62 @@ void CollisionUniformGrid::reset() {
     static_storage_.reset();
 }
 
+/* **************************************** */
+// Grid geometry
+/* **************************************** */
+auto CollisionUniformGrid::is_configured() const noexcept -> bool {
+    return collision::is_configured(geometry_);
+}
+void CollisionUniformGrid::set_geometry(GridGeometry const geometry) noexcept {
+    geometry_ = geometry;
+}
+auto CollisionUniformGrid::get_grid_dims() const noexcept -> collision::CellCoord {
+    return geometry_.dimensions;
+}
+auto CollisionUniformGrid::get_cell_dims() const noexcept -> Vector3f {
+    return geometry_.cell_dimensions;
+}
+auto CollisionUniformGrid::num_cells() const -> GridCellCount {
+    return collision::num_cells(geometry_);
+}
+auto CollisionUniformGrid::to_cell_coord(Vector3f const pos) const -> collision::CellCoord {
+    return collision::to_cell_coord(geometry_, pos);
+}
+auto CollisionUniformGrid::to_cell_coord_bounds(Vector3f const min_point,
+                                                Vector3f const max_point) const -> CellCoordBounds {
+    auto const bounds{collision::to_cell_coord_bounds(geometry_, min_point, max_point)};
+    return {bounds.min, bounds.max};
+}
+auto CollisionUniformGrid::is_cell_coord_in_bounds(collision::CellCoord const coord) const -> bool {
+    return collision::is_cell_coord_in_bounds(geometry_, coord);
+}
+auto CollisionUniformGrid::is_cell_coord_in_bounds(collision::CellCoord const min_coord,
+                                                   collision::CellCoord const max_coord) const
+    -> bool {
+    return is_cell_coord_in_bounds(min_coord) && is_cell_coord_in_bounds(max_coord);
+}
+void CollisionUniformGrid::are_spheres_in_bounds(
+    Vectors3fConstView const centres,
+    float const radius,
+    std::span<SphereInBoundsResult> const out_results) const {
+    [[maybe_unused]] auto const count{centres.num()};
+    assert(out_results.size() == static_cast<std::size_t>(count));
+    assert(std::isfinite(radius));
+    assert(radius >= 0.f);
+
+    collision::are_spheres_in_bounds(
+        geometry_,
+        centres,
+        radius,
+        {out_results.data(), static_cast<std::size_t>(out_results.size())});
+}
+auto CollisionUniformGrid::to_string(collision::CellCoord const value) -> std::string {
+    return std::format("({}, {}, {})", value.x, value.y, value.z);
+}
+
+/* **************************************** */
+// Static collision
+/* **************************************** */
 void CollisionUniformGrid::set_static_aabbs(collision::WorldAABBs static_aabbs) {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::set_static_aabbs");
 
@@ -470,7 +512,6 @@ void CollisionUniformGrid::set_static_aabbs(collision::WorldAABBs static_aabbs) 
     static_storage_.set_aabbs(std::move(static_aabbs));
     rebuild_static_grid();
 }
-
 auto CollisionUniformGrid::add_static_aabb(Vector3f const min_point, Vector3f const max_point)
     -> StaticGeometryIndex {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::add_static_aabb");
@@ -485,7 +526,6 @@ auto CollisionUniformGrid::add_static_aabb(Vector3f const min_point, Vector3f co
     rebuild_static_grid();
     return static_index;
 }
-
 void CollisionUniformGrid::rebuild_static_grid() {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::rebuild_static_grid");
 
@@ -501,6 +541,9 @@ void CollisionUniformGrid::rebuild_static_grid() {
     }
 }
 
+/* **************************************** */
+// Entity collision
+/* **************************************** */
 void CollisionUniformGrid::rebuild_entity_grid(collision::EntityAABBs const& entity_aabbs) {
     SANDBOX_PROFILE_SCOPE("CollisionUniformGrid::rebuild_entity_grid");
     if (!is_configured()) {
@@ -643,7 +686,6 @@ void CollisionUniformGrid::rebuild_entity_grid(collision::EntityAABBs const& ent
         }
     }
 }
-
 auto CollisionUniformGrid::get_entity_world_bounds() const -> WorldAABBsColumnsConstView {
     auto const entity_data{entity_storage_.rebuild_entity_data.get_const_view().columns()};
     return {entity_data.min_point_xs,
@@ -654,6 +696,9 @@ auto CollisionUniformGrid::get_entity_world_bounds() const -> WorldAABBsColumnsC
             entity_data.max_point_zs};
 }
 
+/* **************************************** */
+// Spatial queries
+/* **************************************** */
 void CollisionUniformGrid::append_overlaps(
     collision::WorldAABB const& query_bounds,
     EntityUniqueId const ignored_entity,
@@ -673,13 +718,11 @@ void CollisionUniformGrid::append_overlaps(
                                                         out_entities,
                                                         out_static_geometry_indices);
 }
-
 void CollisionUniformGrid::trace_aabbs(LineTracesConstView const& traces,
                                        TraceHitsView const& hits) const {
     collision_uniform_grid_detail::trace_grid_lines(
         geometry_, entity_storage_, static_storage_, agents_, traces, hits);
 }
-
 void CollisionUniformGrid::trace_aabbs(
     LineTracesConstView const& traces,
     TraceHitsView const& hits,
@@ -693,7 +736,6 @@ void CollisionUniformGrid::trace_aabbs(
         hits,
         {ignored_entities.data(), static_cast<std::size_t>(ignored_entities.size())});
 }
-
 void CollisionUniformGrid::sweep_aabbs(LineTracesConstView const& centre_paths,
                                        Vector3f const moving_half_extent,
                                        TraceHitsView const& hits,
@@ -714,40 +756,5 @@ void CollisionUniformGrid::sweep_aabbs(LineTracesConstView const& centre_paths,
         hits,
         {ignored_entities.data(), static_cast<std::size_t>(ignored_entities.size())},
         entity_filter);
-}
-
-auto CollisionUniformGrid::to_cell_coord(Vector3f const pos) const -> collision::CellCoord {
-    return collision::to_cell_coord(geometry_, pos);
-}
-auto CollisionUniformGrid::to_cell_coord_bounds(Vector3f const min_point,
-                                                Vector3f const max_point) const -> CellCoordBounds {
-    auto const bounds{collision::to_cell_coord_bounds(geometry_, min_point, max_point)};
-    return {bounds.min, bounds.max};
-}
-auto CollisionUniformGrid::is_cell_coord_in_bounds(collision::CellCoord const coord) const -> bool {
-    return collision::is_cell_coord_in_bounds(geometry_, coord);
-}
-auto CollisionUniformGrid::is_cell_coord_in_bounds(collision::CellCoord const min_coord,
-                                                   collision::CellCoord const max_coord) const
-    -> bool {
-    return is_cell_coord_in_bounds(min_coord) && is_cell_coord_in_bounds(max_coord);
-}
-void CollisionUniformGrid::are_spheres_in_bounds(
-    Vectors3fConstView const centres,
-    float const radius,
-    std::span<SphereInBoundsResult> const out_results) const {
-    [[maybe_unused]] auto const count{centres.num()};
-    assert(out_results.size() == static_cast<std::size_t>(count));
-    assert(std::isfinite(radius));
-    assert(radius >= 0.f);
-
-    collision::are_spheres_in_bounds(
-        geometry_,
-        centres,
-        radius,
-        {out_results.data(), static_cast<std::size_t>(out_results.size())});
-}
-auto CollisionUniformGrid::to_string(collision::CellCoord const value) -> std::string {
-    return std::format("({}, {}, {})", value.x, value.y, value.z);
 }
 }

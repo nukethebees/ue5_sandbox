@@ -27,20 +27,45 @@ enum class TraceEntityFilter : std::uint8_t {
 };
 
 struct CollisionUniformGrid {
+    /* **************************************** */
+    // Construction and lifecycle
+    /* **************************************** */
     explicit CollisionUniformGrid(AgentAccessor const& agents) noexcept;
     CollisionUniformGrid(CollisionUniformGrid const&) = delete;
     CollisionUniformGrid(CollisionUniformGrid&&) = delete;
     auto operator=(CollisionUniformGrid const&) -> CollisionUniformGrid& = delete;
     auto operator=(CollisionUniformGrid&&) -> CollisionUniformGrid& = delete;
+    void reset();
 
+    /* **************************************** */
+    // Grid geometry
+    /* **************************************** */
     auto is_configured() const noexcept -> bool;
     void set_geometry(GridGeometry geometry) noexcept;
-
     auto get_grid_dims() const noexcept -> CellCoord;
-
     auto get_cell_dims() const noexcept -> Vector3f;
-
     auto num_cells() const -> GridCellCount;
+    auto to_cell_coord(Vector3f pos) const -> CellCoord;
+    auto to_cell_coord_bounds(Vector3f min_point, Vector3f max_point) const -> CellCoordBounds;
+    auto is_cell_coord_in_bounds(CellCoord coord) const -> bool;
+    auto is_cell_coord_in_bounds(CellCoord min_coord, CellCoord max_coord) const -> bool;
+    void are_spheres_in_bounds(Vectors3fConstView centres,
+                               float radius,
+                               std::span<SphereInBoundsResult> out_results) const;
+    static auto to_string(CellCoord value) -> std::string;
+
+    /* **************************************** */
+    // Static collision
+    /* **************************************** */
+    void set_static_aabbs(WorldAABBs static_aabbs);
+    auto add_static_aabb(Vector3f min_point, Vector3f max_point) -> StaticGeometryIndex;
+    auto get_static_aabbs() const noexcept -> WorldAABBs const& { return static_storage_.aabbs(); }
+
+    /* **************************************** */
+    // Entity collision
+    /* **************************************** */
+    void rebuild_entity_grid(EntityAABBs const& entity_aabbs);
+    auto get_entity_world_bounds() const -> WorldAABBsColumnsConstView;
     auto get_cell_entities(CellCoord const cell_coord) const -> std::span<EntityUniqueId const> {
         auto const dimensions{geometry_.dimensions};
         assert(cell_coord.x >= 0 && cell_coord.x < dimensions.x && cell_coord.y >= 0 &&
@@ -55,28 +80,14 @@ struct CollisionUniformGrid {
         if (count == 0) {
             return {};
         }
+
         return std::span{entity_storage_.entities}.subspan(
             static_cast<std::size_t>(entity_storage_.cell_offsets[element]), count);
     }
 
-    auto to_cell_coord(Vector3f pos) const -> CellCoord;
-    auto to_cell_coord_bounds(Vector3f min_point, Vector3f max_point) const -> CellCoordBounds;
-
-    auto is_cell_coord_in_bounds(CellCoord coord) const -> bool;
-    auto is_cell_coord_in_bounds(CellCoord min_coord, CellCoord max_coord) const -> bool;
-    void are_spheres_in_bounds(Vectors3fConstView centres,
-                               float radius,
-                               std::span<SphereInBoundsResult> out_results) const;
-    static auto to_string(CellCoord value) -> std::string;
-
-    void reset();
-    void set_static_aabbs(WorldAABBs static_aabbs);
-    auto add_static_aabb(Vector3f min_point, Vector3f max_point) -> StaticGeometryIndex;
-    void rebuild_entity_grid(EntityAABBs const& entity_aabbs);
-
-    auto get_static_aabbs() const noexcept -> WorldAABBs const& { return static_storage_.aabbs(); }
-    auto get_entity_world_bounds() const -> WorldAABBsColumnsConstView;
-
+    /* **************************************** */
+    // Spatial queries
+    /* **************************************** */
     // Appends exact overlaps. Multi-cell participants may be appended more than once.
     void append_overlaps(WorldAABB const& query_bounds,
                          EntityUniqueId ignored_entity,
@@ -92,14 +103,17 @@ struct CollisionUniformGrid {
                      std::span<EntityUniqueId const> ignored_entities = {},
                      TraceEntityFilter entity_filter = TraceEntityFilter::None) const;
   private:
+    /* **************************************** */
+    // Static-grid building
+    /* **************************************** */
     void rebuild_static_grid();
 
+    /* **************************************** */
+    // State
+    /* **************************************** */
     AgentAccessor const& agents_;
-
     GridGeometry geometry_{};
-
     CollisionGridEntityStorage entity_storage_;
-
     CollisionGridStaticStorage static_storage_;
 };
 }

@@ -14,6 +14,9 @@ using SphereInBoundsResult = std::uint8_t;
 
 inline constexpr float no_trace_hit{std::numeric_limits<float>::infinity()};
 
+/* **************************************** */
+// Grid geometry
+/* **************************************** */
 struct CellCoord {
     int x{};
     int y{};
@@ -41,15 +44,19 @@ struct GridGeometry {
 [[nodiscard]] auto to_index(GridGeometry geometry, CellCoord coordinate) noexcept -> CellIndex;
 [[nodiscard]] auto to_cell_coord(float value, float cell_dimension, int grid_dimension) noexcept
     -> int;
-[[nodiscard]] auto to_cell_min(int coordinate, float cell_dimension, int grid_dimension) noexcept
-    -> float;
 [[nodiscard]] auto to_cell_coord(GridGeometry geometry, Vec3f position) noexcept -> CellCoord;
 [[nodiscard]] auto to_max_cell_coord(GridGeometry geometry, Vec3f position) noexcept -> CellCoord;
 [[nodiscard]] auto to_cell_coord_bounds(GridGeometry geometry,
                                         Vec3f min_point,
                                         Vec3f max_point) noexcept -> CellCoordBounds;
+[[nodiscard]] auto to_cell_min(int coordinate, float cell_dimension, int grid_dimension) noexcept
+    -> float;
 [[nodiscard]] auto to_cell_min(GridGeometry geometry, CellCoord coordinate) noexcept -> Vec3f;
 [[nodiscard]] auto to_cell_centre(GridGeometry geometry, CellCoord coordinate) noexcept -> Vec3f;
+
+/* **************************************** */
+// Bounds queries
+/* **************************************** */
 [[nodiscard]] auto is_cell_coord_in_bounds(GridGeometry geometry, CellCoord coordinate) noexcept
     -> bool;
 void are_spheres_in_bounds(GridGeometry geometry,
@@ -57,6 +64,9 @@ void are_spheres_in_bounds(GridGeometry geometry,
                            float radius,
                            std::span<SphereInBoundsResult> results) noexcept;
 
+/* **************************************** */
+// AABB tracing
+/* **************************************** */
 [[nodiscard]] auto trace_aabb(Vec3f trace_start,
                               Vec3f inverse_trace_delta,
                               Vec3f trace_delta,
@@ -64,14 +74,15 @@ void are_spheres_in_bounds(GridGeometry geometry,
                               Vec3f aabb_max,
                               Vec3f expansion = {}) noexcept -> float;
 
+/* **************************************** */
+// Grid traversal
+/* **************************************** */
 class GridTraversal {
   public:
     GridTraversal() noexcept = default;
-
     [[nodiscard]] static auto
         create(GridGeometry geometry, Vec3f start, Vec3f end, GridTraversal& result) noexcept
         -> bool;
-
     [[nodiscard]] auto current_cell() const noexcept -> CellCoord;
     [[nodiscard]] auto advance() noexcept -> bool;
   private:

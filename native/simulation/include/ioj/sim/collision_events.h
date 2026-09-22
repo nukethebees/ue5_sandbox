@@ -10,6 +10,9 @@
 namespace ioj::sim::collision {
 using AABBOverlapEventBatchIndex = std::int32_t;
 
+/* **************************************** */
+// Event views
+/* **************************************** */
 struct DetectedOverlapsView {
     EntityEntityOverlaps::ConstView entity_entity_overlaps;
     EntityStaticOverlaps::ConstView entity_static_overlaps;
@@ -33,6 +36,9 @@ struct AABBOverlapEventsView {
         -> AABBOverlapEventBatchView;
 };
 
+/* **************************************** */
+// Event storage
+/* **************************************** */
 class AABBOverlapEventStorage {
   public:
     void reset() noexcept;

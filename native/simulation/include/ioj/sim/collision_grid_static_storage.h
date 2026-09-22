@@ -37,15 +37,24 @@ class CollisionGridStaticStorage {
 
     inline static constexpr AabbIndex invalid_aabb_index{std::numeric_limits<AabbIndex>::max()};
 
+    /* **************************************** */
+    // Storage lifecycle and building
+    /* **************************************** */
     void reset() noexcept;
     void set_aabbs(WorldAABBs aabbs) noexcept;
     auto add_aabb(Vector3f min_point, Vector3f max_point) -> StaticGeometryIndex;
     [[nodiscard]] auto rebuild(GridGeometry geometry) -> std::expected<void, StaticGridBuildError>;
 
+    /* **************************************** */
+    // Accessors
+    /* **************************************** */
     [[nodiscard]] auto aabbs() const noexcept -> WorldAABBs const&;
     [[nodiscard]] auto aabb_indices_for_cell(CellIndex cell_index) const noexcept
         -> std::span<AabbIndex const>;
   private:
+    /* **************************************** */
+    // State
+    /* **************************************** */
     WorldAABBs aabbs_;
     std::vector<CellRangeIndex> cell_range_indices_;
     std::vector<RangeOffset> range_offsets_;

@@ -3,6 +3,9 @@
 #include <cstddef>
 
 namespace ioj::sim::collision {
+/* **************************************** */
+// Event views
+/* **************************************** */
 auto AABBOverlapEventsView::get_batch(AABBOverlapEventBatchIndex const index) const
     -> AABBOverlapEventBatchView {
     auto const batch{batches[static_cast<std::size_t>(index)]};
@@ -17,12 +20,14 @@ auto AABBOverlapEventsView::get_batch(AABBOverlapEventBatchIndex const index) co
     };
 }
 
+/* **************************************** */
+// Event storage
+/* **************************************** */
 void AABBOverlapEventStorage::reset() noexcept {
     entity_entity_overlaps_.reset();
     entity_static_overlaps_.reset();
     batches_.clear();
 }
-
 void AABBOverlapEventStorage::append_batch(
     collision::EntityEntityOverlapsConstView const entity_entity_overlaps,
     collision::EntityStaticOverlapsConstView const entity_static_overlaps) {
@@ -43,7 +48,6 @@ void AABBOverlapEventStorage::append_batch(
             },
     });
 }
-
 auto AABBOverlapEventStorage::get_view() const noexcept -> AABBOverlapEventsView {
     return {entity_entity_overlaps_.get_const_view(),
             entity_static_overlaps_.get_const_view(),

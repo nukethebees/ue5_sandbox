@@ -27,6 +27,9 @@ class CollisionSystem {
     friend struct ::ioj::sim::SpatialQueryManager;
     friend struct ::ioj::sim::SpatialQueryManagerTestAccess;
 
+    /* **************************************** */
+    // Construction and setup
+    /* **************************************** */
     explicit CollisionSystem(AgentAccessor const& agents) noexcept;
     CollisionSystem(CollisionSystem const&) = delete;
     CollisionSystem(CollisionSystem&&) = delete;
@@ -37,10 +40,23 @@ class CollisionSystem {
     void set_static_collision(WorldAABBs bounds);
     auto add_static_collision_aabb(Vector3f min_point, Vector3f max_point) -> StaticGeometryIndex;
 
+    /* **************************************** */
+    // Spatial-index lifecycle
+    /* **************************************** */
     void refresh_spatial_index();
+
+    /* **************************************** */
+    // Overlap detection
+    /* **************************************** */
     auto detect_overlaps(std::span<EntityUniqueId const> overlap_candidates,
                          ml::FrameScratch& scratch) -> DetectedOverlapsView;
+    void collect_overlaps_for_candidates(std::span<EntityUniqueId const> overlap_candidates,
+                                         ml::FrameScratch& scratch);
+    void finalize_overlaps(ml::FrameScratch& scratch);
 
+    /* **************************************** */
+    // Events and bounds
+    /* **************************************** */
     void reset_frame_collision_events();
     auto get_aabb_overlap_events() const -> AABBOverlapEventsView {
         return overlap_event_storage_.get_view();
@@ -48,10 +64,9 @@ class CollisionSystem {
     auto get_entity_collision_bounds() const -> WorldAABBsColumnsConstView;
     auto get_static_collision_bounds() const -> WorldAABBsColumnsConstView;
 
-    void collect_overlaps_for_candidates(std::span<EntityUniqueId const> overlap_candidates,
-                                         ml::FrameScratch& scratch);
-    void finalize_overlaps(ml::FrameScratch& scratch);
-
+    /* **************************************** */
+    // State
+    /* **************************************** */
     AgentAccessor const& agents_;
     CollisionUniformGrid uniform_grid_;
 

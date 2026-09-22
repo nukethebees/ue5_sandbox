@@ -13,13 +13,18 @@ struct CollisionGridEntityStorage {
     using CellEntryOffset = std::int32_t;
     using CellEntryCount = std::uint16_t;
 
+    /* **************************************** */
+    // Grid contents
+    /* **************************************** */
     std::vector<CellEntryOffset> cell_offsets;
     std::vector<CellEntryCount> cell_counts;
     std::vector<CellIndex> non_empty_cell_indices;
     std::vector<EntityUniqueId> entities;
     WorldAABBs aabbs;
 
-    // Rebuild-only scratch and intermediate entity data.
+    /* **************************************** */
+    // Rebuild scratch
+    /* **************************************** */
     std::vector<CellEntryOffset> cell_write_indices;
     EntityCellData rebuild_entity_data;
 };

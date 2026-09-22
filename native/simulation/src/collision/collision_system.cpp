@@ -10,6 +10,12 @@
 #include <utility>
 
 namespace ioj::sim::collision {
+/* **************************************** */
+// Construction and setup
+/* **************************************** */
+CollisionSystem::CollisionSystem(AgentAccessor const& agents) noexcept
+    : agents_{agents}
+    , uniform_grid_{agents} {}
 void CollisionSystem::initialise(GridGeometry const grid_geometry,
                                  collision::EntityAABBs const& bounds) {
     uniform_grid_.set_geometry(grid_geometry);
@@ -25,10 +31,18 @@ auto CollisionSystem::add_static_collision_aabb(Vector3f const min_point, Vector
     -> StaticGeometryIndex {
     return uniform_grid_.add_static_aabb(min_point, max_point);
 }
+
+/* **************************************** */
+// Spatial-index lifecycle
+/* **************************************** */
 void CollisionSystem::refresh_spatial_index() {
     SANDBOX_PROFILE_SCOPE("CollisionSystem::refresh_spatial_index");
     uniform_grid_.rebuild_entity_grid(entity_aabbs_);
 }
+
+/* **************************************** */
+// Overlap detection
+/* **************************************** */
 auto CollisionSystem::detect_overlaps(std::span<EntityUniqueId const> const overlap_candidates,
                                       ml::FrameScratch& scratch) -> DetectedOverlapsView {
     SANDBOX_PROFILE_SCOPE("CollisionSystem::detect_overlaps");
@@ -39,18 +53,6 @@ auto CollisionSystem::detect_overlaps(std::span<EntityUniqueId const> const over
     overlap_event_storage_.append_batch(entity_entity_overlaps, entity_static_overlaps);
 
     return {entity_entity_overlaps, entity_static_overlaps};
-}
-void CollisionSystem::reset_frame_collision_events() {
-    overlap_event_storage_.reset();
-}
-CollisionSystem::CollisionSystem(AgentAccessor const& agents) noexcept
-    : agents_{agents}
-    , uniform_grid_{agents} {}
-auto CollisionSystem::get_entity_collision_bounds() const -> WorldAABBsColumnsConstView {
-    return uniform_grid_.get_entity_world_bounds();
-}
-auto CollisionSystem::get_static_collision_bounds() const -> WorldAABBsColumnsConstView {
-    return uniform_grid_.get_static_aabbs().get_const_view().columns();
 }
 void CollisionSystem::collect_overlaps_for_candidates(
     std::span<EntityUniqueId const> const overlap_candidates, ml::FrameScratch& scratch) {
@@ -154,5 +156,18 @@ void CollisionSystem::finalize_overlaps(ml::FrameScratch& scratch) {
         }
         entity_static_overlaps_.set_num(write_index);
     }
+}
+
+/* **************************************** */
+// Events and bounds
+/* **************************************** */
+void CollisionSystem::reset_frame_collision_events() {
+    overlap_event_storage_.reset();
+}
+auto CollisionSystem::get_entity_collision_bounds() const -> WorldAABBsColumnsConstView {
+    return uniform_grid_.get_entity_world_bounds();
+}
+auto CollisionSystem::get_static_collision_bounds() const -> WorldAABBsColumnsConstView {
+    return uniform_grid_.get_static_aabbs().get_const_view().columns();
 }
 }

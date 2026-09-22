@@ -9,6 +9,9 @@
 #include <utility>
 
 namespace ioj::sim::collision {
+/* **************************************** */
+// Storage lifecycle and building
+/* **************************************** */
 void CollisionGridStaticStorage::reset() noexcept {
     aabbs_.reset();
     cell_range_indices_.clear();
@@ -16,16 +19,13 @@ void CollisionGridStaticStorage::reset() noexcept {
     range_counts_.clear();
     aabb_indices_.clear();
 }
-
 void CollisionGridStaticStorage::set_aabbs(WorldAABBs aabbs) noexcept {
     aabbs_ = std::move(aabbs);
 }
-
 auto CollisionGridStaticStorage::add_aabb(Vector3f const min_point, Vector3f const max_point)
     -> StaticGeometryIndex {
     return collision::add(aabbs_, min_point, max_point);
 }
-
 auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
     -> std::expected<void, StaticGridBuildError> {
     SANDBOX_PROFILE_SCOPE("CollisionGridStaticStorage::rebuild");
@@ -139,10 +139,12 @@ auto CollisionGridStaticStorage::rebuild(GridGeometry const geometry)
     return {};
 }
 
+/* **************************************** */
+// Accessors
+/* **************************************** */
 auto CollisionGridStaticStorage::aabbs() const noexcept -> WorldAABBs const& {
     return aabbs_;
 }
-
 auto CollisionGridStaticStorage::aabb_indices_for_cell(CellIndex const cell_index) const noexcept
     -> std::span<AabbIndex const> {
     if (cell_index < 0 || static_cast<std::size_t>(cell_index) >= cell_range_indices_.size()) {
