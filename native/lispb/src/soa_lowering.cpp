@@ -263,87 +263,6 @@ auto lower_one_soa(SoaSchema const& schema,
     return lowered;
 }
 
-auto lower_soa_module_impl(SoaModuleSchema const& module,
-                           std::map<std::string, CppType> const& types,
-                           lispb::schema::TypeGraph const& type_graph) -> Module {
-    auto const standard_library{module.backend == SoaBackend::standard_library};
-    auto const format_generated{standard_library ||
-                                std::ranges::any_of(module.structs, [](auto const& schema) {
-                                    return schema.single_allocation.has_value();
-                                })};
-    std::map<std::string, SoaSchema const*> schemas;
-    for (auto const& schema : module.structs) {
-        schemas.emplace(schema.name, &schema);
-    }
-
-    std::vector<LoweredSoa> lowered_structs;
-    lowered_structs.reserve(module.structs.size());
-    for (auto const& schema : module.structs) {
-        if (schema.layout_only) {
-            continue;
-        }
-        lowered_structs.push_back(lower_one_soa(
-            schema, schemas, module.backend, types, type_graph, module.settings.name));
-    }
-
-    NodeListBuilder header_nodes;
-    header_nodes.add(IncludeDependencies{}, 2);
-    if (!module.settings.prelude_lines.empty()) {
-        header_nodes.add(raw(join_lines(module.settings.prelude_lines)), 2);
-    }
-    NodeListBuilder definitions;
-    for (std::size_t index{0}; index < lowered_structs.size(); ++index) {
-        if (index > 0) {
-            definitions.new_lines(2);
-        }
-        definitions.append(std::move(lowered_structs[index].header));
-    }
-    auto definition_nodes{definitions.build()};
-    if (module.settings.namespace_name.has_value()) {
-        header_nodes.add(Namespace{*module.settings.namespace_name, std::move(definition_nodes)});
-    } else {
-        header_nodes.append(std::move(definition_nodes));
-    }
-    Module result{
-        .name = module.settings.name,
-        .header =
-            CppFile{
-                .path = module.settings.header,
-                .nodes = header_nodes.build(),
-                .clang_format_off = !format_generated,
-                .include_order = module.settings.include_order,
-                .format_generated = format_generated,
-            },
-    };
-    if (module.settings.source.has_value()) {
-        NodeListBuilder source_definitions;
-        for (std::size_t index{0}; index < lowered_structs.size(); ++index) {
-            if (index > 0) {
-                source_definitions.new_lines(2);
-            }
-            source_definitions.append(std::move(lowered_structs[index].source));
-        }
-        auto source_definition_nodes{source_definitions.build()};
-        if (module.settings.namespace_name.has_value()) {
-            source_definition_nodes = {
-                Namespace{*module.settings.namespace_name, std::move(source_definition_nodes)}};
-        }
-        NodeListBuilder source_nodes;
-        source_nodes.add(Include{source_include(module.settings), false}, 2)
-            .add(IncludeDependencies{}, 2)
-            .append(std::move(source_definition_nodes));
-        result.source = CppFile{
-            .path = *module.settings.source,
-            .nodes = source_nodes.build(),
-            .pragma_once = false,
-            .clang_format_off = !format_generated,
-            .include_order = module.settings.include_order,
-            .format_generated = format_generated,
-        };
-    }
-    return result;
-}
-
 } // namespace
 
 auto lower_soa(SoaSchema const& schema,
@@ -371,49 +290,14 @@ auto lower_soa_declaration(SoaSchema const& schema,
         by_name.emplace(item.name, &item);
     }
 
-    NodeListBuilder header;
-    NodeListBuilder source;
-    bool has_header{};
-    bool has_source{};
-    bool format_generated{module.soa_backend == SoaBackend::standard_library};
-    auto add = [&](SoaSchema const& item) {
-        auto lowered{lower_one_soa(
-            item, by_name, module.soa_backend, types, type_graph, module.settings.name)};
-        if (!lowered.header.empty()) {
-            if (has_header) {
-                header.new_lines(2);
-            }
-            header.append(std::move(lowered.header));
-            has_header = true;
-        }
-        if (!lowered.source.empty()) {
-            if (has_source) {
-                source.new_lines(2);
-            }
-            source.append(std::move(lowered.source));
-            has_source = true;
-        }
-        format_generated = format_generated || item.single_allocation.has_value();
-    };
     auto const wanted{allocator_prefix.has_value() ? *allocator_prefix + schema.name : schema.name};
-    for (auto const& item : schemas) {
-        if (item.name == wanted) {
-            add(item);
-            break;
-        }
-    }
-    return {
-        .header = header.build(), .source = source.build(), .format_generated = format_generated};
-}
-
-auto lower_soa_module(SoaModuleSchema const& module,
-                      std::map<std::string, CppType> const& types,
-                      lispb::schema::TypeGraph const& type_graph) -> Module {
-    auto expanded{module};
-    expanded.structs =
-        expand_soa_allocator_variants(module.backend, module.structs, module.array_allocators);
-    expanded.array_allocators.clear();
-    return lower_soa_module_impl(expanded, types, type_graph);
+    auto const& item{*by_name.at(wanted)};
+    auto lowered{
+        lower_one_soa(item, by_name, module.soa_backend, types, type_graph, module.settings.name)};
+    return {.header = std::move(lowered.header),
+            .source = std::move(lowered.source),
+            .format_generated = module.soa_backend == SoaBackend::standard_library ||
+                                item.single_allocation.has_value()};
 }
 
 } // namespace codegen::detail

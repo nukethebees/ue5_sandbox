@@ -22,22 +22,21 @@ auto manifest_with(T module, std::map<std::string, CppType> types = {}) -> Manif
     };
 }
 
-auto valid_soa_module() -> SoaModuleSchema {
-    return SoaModuleSchema{
+auto valid_soa_module() -> NormalModuleSchema {
+    return NormalModuleSchema{
         .settings = ModuleSettings{.name = "soa", .header = "Soa.h", .source = "Soa.cpp"},
-        .structs = {SoaSchema{
+        .declarations = {SoaSchema{
             .name = "FData",
             .members =
                 {
                     SoaMemberSchema{"values", SoaMemberKind::array, TypeRef{"int32"}},
                 },
-        }},
-    };
+        }}};
 }
 
-auto valid_mask_soa_module() -> SoaModuleSchema {
+auto valid_mask_soa_module() -> NormalModuleSchema {
     auto module{valid_soa_module()};
-    auto& schema{module.structs.front()};
+    auto& schema{std::get<codegen::SoaSchema>(module.declarations.front())};
     schema.field_mask_name = "FFieldMask";
     schema.field_enum_name = "EField";
     schema.members.insert(schema.members.begin(),
@@ -46,47 +45,41 @@ auto valid_mask_soa_module() -> SoaModuleSchema {
     return module;
 }
 
-auto valid_vector_module() -> VectorModuleSchema {
-    return VectorModuleSchema{
+auto valid_vector_module() -> NormalModuleSchema {
+    return NormalModuleSchema{
         .settings =
             ModuleSettings{.name = "vectors", .header = "Vectors.h", .source = "Vectors.cpp"},
-        .storage_name = "FVectors",
-        .value_type = TypeRef{"float"},
-        .components = {"xs", "ys"},
-        .equivalent_type = TypeRef{"FVector2f"},
-    };
+        .declarations = {codegen::VectorSoaSchema{.name = "FVectors",
+                                                  .value_type = TypeRef{"float"},
+                                                  .components = {"xs", "ys"},
+                                                  .equivalent_type = TypeRef{"FVector2f"}}}};
 }
 
-auto valid_facade_module() -> FacadeModuleSchema {
-    return FacadeModuleSchema{
-        .settings = ModuleSettings{.name = "facade", .header = "Facade.h"},
-        .facade =
-            FacadeSchema{
-                .name = "FFacade",
-                .target_type = TypeRef{"FTarget"},
-                .target_member_name = "target",
-                .methods = {FacadeMethodSchema{
-                    .name = "reset",
-                    .return_type = TypeRef{"void"},
-                }},
-            },
-    };
+auto valid_facade_module() -> NormalModuleSchema {
+    return NormalModuleSchema{.settings = ModuleSettings{.name = "facade", .header = "Facade.h"},
+                              .declarations = {FacadeSchema{
+                                  .name = "FFacade",
+                                  .target_type = TypeRef{"FTarget"},
+                                  .target_member_name = "target",
+                                  .methods = {FacadeMethodSchema{
+                                      .name = "reset",
+                                      .return_type = TypeRef{"void"},
+                                  }},
+                              }}};
 }
 
-auto valid_homogeneous_module() -> HomogeneousModuleSchema {
-    return HomogeneousModuleSchema{
-        .settings =
-            ModuleSettings{
-                .name = "homogeneous",
-                .header = "Values.h",
-                .source = "Values.cpp",
-            },
-        .layouts = {HomogeneousLayoutSchema{
-            .name = "Values",
-            .components = {"xs", "ys"},
-            .value_types = {HomogeneousValueSchema{TypeRef{"float"}, "f"}},
-        }},
-    };
+auto valid_homogeneous_module() -> NormalModuleSchema {
+    return NormalModuleSchema{.settings =
+                                  ModuleSettings{
+                                      .name = "homogeneous",
+                                      .header = "Values.h",
+                                      .source = "Values.cpp",
+                                  },
+                              .declarations = {HomogeneousLayoutSchema{
+                                  .name = "Values",
+                                  .components = {"xs", "ys"},
+                                  .value_types = {HomogeneousValueSchema{TypeRef{"float"}, "f"}},
+                              }}};
 }
 
 auto normal_module(std::vector<DeclarationSchema> declarations,
@@ -116,48 +109,45 @@ auto plain_soa(std::string name = "Data") -> SoaSchema {
         .members = {{.name = "values", .kind = SoaMemberKind::array, .type = TypeRef{"int32"}}}};
 }
 
-auto valid_enum_module() -> EnumModuleSchema {
-    return EnumModuleSchema{
-        .settings =
-            ModuleSettings{
-                .name = "enums",
-                .header = "Enums.h",
-                .source = "Enums.cpp",
-            },
-        .helper_namespace = "project",
-        .enums = {EnumSchema{
-            .name = "EMode",
-            .underlying_type = TypeRef{"uint8"},
-            .reflection = EnumReflection::uenum,
-            .values = {EnumeratorSchema{"Value"}},
-            .conversions = {EnumConversion::string_view},
-        }},
-    };
+auto valid_enum_module() -> NormalModuleSchema {
+    return NormalModuleSchema{.settings =
+                                  ModuleSettings{
+                                      .name = "enums",
+                                      .header = "Enums.h",
+                                      .source = "Enums.cpp",
+                                  },
+                              .declarations = {EnumSchema{
+                                  .name = "EMode",
+                                  .underlying_type = TypeRef{"uint8"},
+                                  .reflection = EnumReflection::uenum,
+                                  .values = {EnumeratorSchema{"Value"}},
+                                  .conversions = {EnumConversion::string_view},
+                              }},
+                              .enum_helper_namespace = "project"};
 }
 
-auto valid_native_enum_module() -> EnumModuleSchema {
-    return EnumModuleSchema{
+auto valid_native_enum_module() -> NormalModuleSchema {
+    return NormalModuleSchema{
         .settings =
             ModuleSettings{
                 .name = "native_enums",
                 .header = "NativeEnums.h",
                 .namespace_name = "project",
             },
-        .enums = {EnumSchema{
+        .declarations = {EnumSchema{
             .name = "NativeMode",
             .underlying_type = TypeRef{"std::uint8_t"},
             .values = {EnumeratorSchema{"Idle", "0", std::nullopt, false, "idle"},
                        EnumeratorSchema{"COUNT", "1", std::nullopt, true}},
             .count = "COUNT",
             .native_api = true,
-        }},
-    };
+        }}};
 }
 
-auto valid_integer_scalar_module() -> ScalarModuleSchema {
-    return ScalarModuleSchema{
+auto valid_integer_scalar_module() -> NormalModuleSchema {
+    return NormalModuleSchema{
         .settings = ModuleSettings{.name = "scalars", .header = "Scalars.h"},
-        .scalars = {IntegerScalarSchema{
+        .declarations = {IntegerScalarSchema{
             .name = "DamageReason",
             .signedness = false,
             .minimum_value = 0,
@@ -165,25 +155,20 @@ auto valid_integer_scalar_module() -> ScalarModuleSchema {
             .bit_width = std::nullopt,
             .named_codes = {{.name = "Unknown", .value = 0, .sentinel = false},
                             {.name = "Invalid", .value = 15, .sentinel = true}},
-        }},
-    };
+        }}};
 }
 
 auto valid_linear_quantized_manifest() -> Manifest {
     auto scalar{valid_integer_scalar_module()};
-    RepresentationModuleSchema representations{
+    NormalModuleSchema representations{
         .settings = ModuleSettings{.name = "representations", .header = "Representations.h"},
-        .linear_quantized = {LinearQuantizedSchema{
+        .declarations = {LinearQuantizedSchema{
             .name = "DamageReasonQ4",
             .source = TypeRef{"DamageReason"},
             .bit_width = 4,
             .reserved_codes = 1,
             .clipping = QuantizationClipping::reject,
-        }},
-        .integer_varints = {},
-        .fixed_points = {},
-        .optional_sentinels = {},
-    };
+        }}};
     return Manifest{.schema_version = manifest_schema_version,
                     .types = {},
                     .modules = {std::move(scalar), std::move(representations)}};
@@ -194,55 +179,42 @@ auto valid_integer_varint_manifest(
     IntegerVarintEncoding const encoding = IntegerVarintEncoding::unsigned_varint) -> Manifest {
     auto scalar{valid_integer_scalar_module()};
     if (signedness) {
-        scalar.scalars.front().signedness = true;
-        scalar.scalars.front().minimum_value = -100;
-        scalar.scalars.front().maximum_value = 100;
-        scalar.scalars.front().named_codes.clear();
+        std::get<codegen::IntegerScalarSchema>(scalar.declarations.front()).signedness = true;
+        std::get<codegen::IntegerScalarSchema>(scalar.declarations.front()).minimum_value = -100;
+        std::get<codegen::IntegerScalarSchema>(scalar.declarations.front()).maximum_value = 100;
+        std::get<codegen::IntegerScalarSchema>(scalar.declarations.front()).named_codes.clear();
     }
-    RepresentationModuleSchema representations{
+    NormalModuleSchema representations{
         .settings = ModuleSettings{.name = "representations", .header = "Representations.h"},
-        .linear_quantized = {},
-        .integer_varints = {IntegerVarintSchema{
-            .name = "DamageReasonVarint", .source = TypeRef{"DamageReason"}, .encoding = encoding}},
-        .fixed_points = {},
-        .optional_sentinels = {},
-    };
+        .declarations = {IntegerVarintSchema{.name = "DamageReasonVarint",
+                                             .source = TypeRef{"DamageReason"},
+                                             .encoding = encoding}}};
     return Manifest{.schema_version = manifest_schema_version,
                     .types = {},
                     .modules = {std::move(scalar), std::move(representations)}};
 }
 
 auto valid_fixed_point_manifest(bool const signedness = true) -> Manifest {
-    RepresentationModuleSchema representations{
+    NormalModuleSchema representations{
         .settings = ModuleSettings{.name = "representations", .header = "Representations.h"},
-        .linear_quantized = {},
-        .integer_varints = {},
-        .fixed_points = {FixedPointSchema{.name = "VelocityQ12_4",
+        .declarations = {FixedPointSchema{.name = "VelocityQ12_4",
                                           .signedness = signedness,
                                           .total_bits = 16,
                                           .fractional_bits = 4,
-                                          .rounding = FixedPointRounding::nearest_even}},
-        .optional_sentinels = {},
-    };
+                                          .rounding = FixedPointRounding::nearest_even}}};
     return Manifest{.schema_version = manifest_schema_version,
                     .types = {},
                     .modules = {std::move(representations)}};
 }
 
 auto valid_mini_float_manifest() -> Manifest {
-    RepresentationModuleSchema representations{
+    NormalModuleSchema representations{
         .settings = ModuleSettings{.name = "representations", .header = "Representations.h"},
-        .linear_quantized = {},
-        .integer_varints = {},
-        .fixed_points = {},
-        .optional_sentinels = {},
-        .optional_presence_bits = {},
-        .mini_floats = {MiniFloatSchema{.name = "CompactFloat",
-                                        .sign_bits = 1,
-                                        .exponent_bits = 5,
-                                        .significand_bits = 10,
-                                        .exponent_bias = 15}},
-    };
+        .declarations = {MiniFloatSchema{.name = "CompactFloat",
+                                         .sign_bits = 1,
+                                         .exponent_bits = 5,
+                                         .significand_bits = 10,
+                                         .exponent_bias = 15}}};
     return Manifest{.schema_version = manifest_schema_version,
                     .types = {},
                     .modules = {std::move(representations)}};
@@ -250,15 +222,11 @@ auto valid_mini_float_manifest() -> Manifest {
 
 auto valid_optional_sentinel_manifest() -> Manifest {
     auto scalar{valid_integer_scalar_module()};
-    RepresentationModuleSchema representations{
+    NormalModuleSchema representations{
         .settings = ModuleSettings{.name = "representations", .header = "Representations.h"},
-        .linear_quantized = {},
-        .integer_varints = {},
-        .fixed_points = {},
-        .optional_sentinels = {OptionalSentinelSchema{.name = "OptionalDamageReason",
-                                                      .source = TypeRef{"DamageReason"},
-                                                      .sentinel = "Invalid"}},
-    };
+        .declarations = {OptionalSentinelSchema{.name = "OptionalDamageReason",
+                                                .source = TypeRef{"DamageReason"},
+                                                .sentinel = "Invalid"}}};
     return Manifest{.schema_version = manifest_schema_version,
                     .types = {},
                     .modules = {std::move(scalar), std::move(representations)}};
@@ -266,29 +234,23 @@ auto valid_optional_sentinel_manifest() -> Manifest {
 
 auto valid_optional_presence_bit_manifest() -> Manifest {
     auto scalar{valid_integer_scalar_module()};
-    RepresentationModuleSchema representations{
+    NormalModuleSchema representations{
         .settings = ModuleSettings{.name = "representations", .header = "Representations.h"},
-        .linear_quantized = {},
-        .integer_varints = {},
-        .fixed_points = {},
-        .optional_sentinels = {},
-        .optional_presence_bits = {OptionalPresenceBitSchema{.name = "PresentDamageReason",
-                                                             .source = TypeRef{"DamageReason"}}},
-    };
+        .declarations = {OptionalPresenceBitSchema{.name = "PresentDamageReason",
+                                                   .source = TypeRef{"DamageReason"}}}};
     return Manifest{.schema_version = manifest_schema_version,
                     .types = {},
                     .modules = {std::move(scalar), std::move(representations)}};
 }
 
-auto valid_static_table_module() -> StaticTableModuleSchema {
-    return StaticTableModuleSchema{
+auto valid_static_table_module() -> NormalModuleSchema {
+    return NormalModuleSchema{
         .settings = ModuleSettings{.name = "tables", .header = "Tables.h"},
-        .tables = {StaticTableSchema{
+        .declarations = {StaticTableSchema{
             .name = "FValues",
             .rows = {StaticTableRowSchema{"first"}, StaticTableRowSchema{"second"}},
             .columns = {StaticTableColumnSchema{"ids", TypeRef{"int32"}}},
-        }},
-    };
+        }}};
 }
 
 TEST(Validation, RejectsEmptyModuleNames) {
@@ -300,142 +262,161 @@ TEST(Validation, RejectsEmptyModuleNames) {
 
 TEST(Validation, RejectsInvalidEnumDefinitions) {
     auto module{valid_enum_module()};
-    module.enums.front().values.clear();
+    std::get<codegen::EnumSchema>(module.declarations.front()).values.clear();
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.enums.front().values.push_back(EnumeratorSchema{"Value"});
+    std::get<codegen::EnumSchema>(module.declarations.front())
+        .values.push_back(EnumeratorSchema{"Value"});
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.enums.front().values.front().name = "bad-name";
+    std::get<codegen::EnumSchema>(module.declarations.front()).values.front().name = "bad-name";
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.enums.front().underlying_type = TypeRef{"@missing"};
+    std::get<codegen::EnumSchema>(module.declarations.front()).underlying_type =
+        TypeRef{"@missing"};
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsEnumSemanticWidthsThatCannotRepresentKnownValues) {
     auto module{valid_enum_module()};
-    module.enums.front().reflection = EnumReflection::none;
-    module.enums.front().bit_width = 0;
+    std::get<codegen::EnumSchema>(module.declarations.front()).reflection = EnumReflection::none;
+    std::get<codegen::EnumSchema>(module.declarations.front()).bit_width = 0;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.enums.front().reflection = EnumReflection::none;
-    module.enums.front().bit_width = 65;
+    std::get<codegen::EnumSchema>(module.declarations.front()).reflection = EnumReflection::none;
+    std::get<codegen::EnumSchema>(module.declarations.front()).bit_width = 65;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.enums.front().reflection = EnumReflection::none;
-    module.enums.front().values = {EnumeratorSchema{"Zero", "0"}, EnumeratorSchema{"Seven", "7"}};
-    module.enums.front().bit_width = 2;
+    std::get<codegen::EnumSchema>(module.declarations.front()).reflection = EnumReflection::none;
+    std::get<codegen::EnumSchema>(module.declarations.front()).values = {
+        EnumeratorSchema{"Zero", "0"}, EnumeratorSchema{"Seven", "7"}};
+    std::get<codegen::EnumSchema>(module.declarations.front()).bit_width = 2;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.enums.front().reflection = EnumReflection::none;
-    module.enums.front().values = {EnumeratorSchema{"Zero", "0"}, EnumeratorSchema{"Seven", "7"}};
-    module.enums.front().bit_width = 3;
+    std::get<codegen::EnumSchema>(module.declarations.front()).reflection = EnumReflection::none;
+    std::get<codegen::EnumSchema>(module.declarations.front()).values = {
+        EnumeratorSchema{"Zero", "0"}, EnumeratorSchema{"Seven", "7"}};
+    std::get<codegen::EnumSchema>(module.declarations.front()).bit_width = 3;
     EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
 }
 
 TEST(Validation, AppliesExplicitEnumSignednessToTheSemanticDomain) {
     auto module{valid_enum_module()};
-    module.enums.front().reflection = EnumReflection::none;
-    module.enums.front().values = {EnumeratorSchema{"Negative", "-1"},
-                                   EnumeratorSchema{"Positive", "1"}};
-    module.enums.front().signedness = false;
+    std::get<codegen::EnumSchema>(module.declarations.front()).reflection = EnumReflection::none;
+    std::get<codegen::EnumSchema>(module.declarations.front()).values = {
+        EnumeratorSchema{"Negative", "-1"}, EnumeratorSchema{"Positive", "1"}};
+    std::get<codegen::EnumSchema>(module.declarations.front()).signedness = false;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.enums.front().reflection = EnumReflection::none;
-    module.enums.front().values = {EnumeratorSchema{"Zero", "0"}, EnumeratorSchema{"Seven", "7"}};
-    module.enums.front().signedness = true;
-    module.enums.front().bit_width = 3;
+    std::get<codegen::EnumSchema>(module.declarations.front()).reflection = EnumReflection::none;
+    std::get<codegen::EnumSchema>(module.declarations.front()).values = {
+        EnumeratorSchema{"Zero", "0"}, EnumeratorSchema{"Seven", "7"}};
+    std::get<codegen::EnumSchema>(module.declarations.front()).signedness = true;
+    std::get<codegen::EnumSchema>(module.declarations.front()).bit_width = 3;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.enums.front().reflection = EnumReflection::none;
-    module.enums.front().values = {EnumeratorSchema{"Zero", "0"}, EnumeratorSchema{"Seven", "7"}};
-    module.enums.front().signedness = true;
-    module.enums.front().bit_width = 4;
+    std::get<codegen::EnumSchema>(module.declarations.front()).reflection = EnumReflection::none;
+    std::get<codegen::EnumSchema>(module.declarations.front()).values = {
+        EnumeratorSchema{"Zero", "0"}, EnumeratorSchema{"Seven", "7"}};
+    std::get<codegen::EnumSchema>(module.declarations.front()).signedness = true;
+    std::get<codegen::EnumSchema>(module.declarations.front()).bit_width = 4;
     EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
 }
 
 TEST(Validation, RejectsInvalidIntegerScalarDomainsAndNamedCodes) {
     auto module{valid_integer_scalar_module()};
-    module.scalars.front().bit_width = 3;
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).bit_width = 3;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_integer_scalar_module();
-    module.scalars.front().minimum_value = -1;
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).minimum_value = -1;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_integer_scalar_module();
-    module.scalars.front().named_codes[1].value = 10;
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).named_codes[1].value = 10;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_integer_scalar_module();
-    module.scalars.front().named_codes[0].value = 11;
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).named_codes[0].value = 11;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_integer_scalar_module();
-    module.scalars.front().named_codes[1].name = "Unknown";
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).named_codes[1].name =
+        "Unknown";
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_integer_scalar_module();
-    module.scalars.front().named_codes[1].value = 0;
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).named_codes[1].value = 0;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_integer_scalar_module();
     module.settings.source = "Scalars.cpp";
-    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+    EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
 
     module = valid_integer_scalar_module();
     auto const lowered{lower_modules(manifest_with(std::move(module)))};
     ASSERT_EQ(lowered.size(), 1U);
     ASSERT_TRUE(lowered.front().header.has_value());
     EXPECT_EQ(lowered.front().header->path, "Scalars.h");
-    EXPECT_TRUE(lowered.front().header->nodes.empty());
+    EXPECT_EQ(render_modules(lowered).front().content.find("struct "), std::string::npos);
 }
 
 TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
     auto module{valid_integer_scalar_module()};
-    module.scalars.front().cpp_type = TypeRef{"std::uint8_t"};
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).cpp_type =
+        TypeRef{"std::uint8_t"};
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_integer_scalar_module();
-    module.scalars.front().cpp_emission = IntegerScalarCppEmission::constants;
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).cpp_emission =
+        IntegerScalarCppEmission::constants;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_integer_scalar_module();
-    module.scalars.front().cpp_emission = IntegerScalarCppEmission::constants;
-    module.scalars.front().cpp_type = TypeRef{"std::uint8_t"};
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).cpp_emission =
+        IntegerScalarCppEmission::constants;
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).cpp_type =
+        TypeRef{"std::uint8_t"};
     EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
 
     module = valid_integer_scalar_module();
-    module.scalars.front().cpp_emission = IntegerScalarCppEmission::constants;
-    module.scalars.front().cpp_type = TypeRef{"std::int8_t"};
-    module.scalars.front().maximum_value = 127;
-    module.scalars.front().named_codes[1].value = 128;
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).cpp_emission =
+        IntegerScalarCppEmission::constants;
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).cpp_type =
+        TypeRef{"std::int8_t"};
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).maximum_value = 127;
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).named_codes[1].value = 128;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_integer_scalar_module();
-    module.scalars.front().cpp_emission = IntegerScalarCppEmission::constants;
-    module.scalars.front().cpp_type = TypeRef{"float"};
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).cpp_emission =
+        IntegerScalarCppEmission::constants;
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).cpp_type = TypeRef{"float"};
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_integer_scalar_module();
-    module.scalars.front().cpp_emission = IntegerScalarCppEmission::constants;
-    module.scalars.front().cpp_type = TypeRef{"std::uint8_t"};
-    module.scalars.front().named_codes.clear();
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).cpp_emission =
+        IntegerScalarCppEmission::constants;
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).cpp_type =
+        TypeRef{"std::uint8_t"};
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).named_codes.clear();
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_integer_scalar_module();
-    module.scalars.front().cpp_emission = IntegerScalarCppEmission::constants_with_names;
-    module.scalars.front().cpp_type = TypeRef{"std::uint8_t"};
-    module.scalars.front().named_codes.front().name = "name";
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).cpp_emission =
+        IntegerScalarCppEmission::constants_with_names;
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).cpp_type =
+        TypeRef{"std::uint8_t"};
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).named_codes.front().name =
+        "name";
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
@@ -443,64 +424,40 @@ TEST(Validation, AllowsEmptyEditableModulesToRemainGenerationDestinations) {
     auto settings = [](std::string name) {
         return ModuleSettings{.name = name, .header = name + ".h"};
     };
-    std::vector<ModuleSchema> modules;
-    modules.push_back(EnumModuleSchema{
-        .settings = settings("enums"), .helper_namespace = std::nullopt, .enums = {}});
-    modules.push_back(PackedValueModuleSchema{.settings = settings("packed"), .values = {}});
-    modules.push_back(ScalarModuleSchema{.settings = settings("scalars"), .scalars = {}});
-    modules.push_back(RepresentationModuleSchema{.settings = settings("representations"),
-                                                 .linear_quantized = {},
-                                                 .integer_varints = {},
-                                                 .fixed_points = {},
-                                                 .optional_sentinels = {},
-                                                 .optional_presence_bits = {},
-                                                 .mini_floats = {}});
-    modules.push_back(RecordModuleSchema{.settings = settings("records"), .records = {}});
-    modules.push_back(
-        UnionModuleSchema{.settings = settings("unions"), .unions = {}, .tagged_unions = {}});
-    modules.push_back(SoaModuleSchema{.settings = settings("soas"),
-                                      .structs = {},
-                                      .backend = SoaBackend::standard_library,
-                                      .array_allocators = {}});
-
-    for (auto& module : modules) {
-        auto manifest{Manifest{.schema_version = manifest_schema_version,
-                               .types = {},
-                               .modules = {std::move(module)}}};
-        EXPECT_NO_THROW(render_modules(lower_modules(manifest)));
-    }
+    auto module{NormalModuleSchema{.settings = settings("empty")}};
+    EXPECT_NO_THROW(render_modules(lower_modules(manifest_with(module))));
+    module.settings.source = "empty.cpp";
+    EXPECT_EQ(render_modules(lower_modules(manifest_with(module))).size(), 2U);
 }
 
 TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
-    auto module{RecordModuleSchema{
+    auto module{NormalModuleSchema{
         .settings = ModuleSettings{.name = "records", .header = "Records.h"},
-        .records = {
+        .declarations = {
             RecordSchema{.name = "Target",
                          .members = {{.name = "value", .type = TypeRef{"std::uint32_t"}}}},
-            RecordSchema{
-                .name = "User",
-                .members = {{.name = "value",
-                             .type = TypeRef{"std::uint32_t"},
-                             .relationship =
-                                 SemanticRelationSchema{.kind = SemanticRelationKind::references,
-                                                        .target = TypeRef{"Target"},
-                                                        .unit = std::nullopt}}}},
-        }}};
+            RecordSchema{.name = "User",
+                         .members = {{.name = "value",
+                                      .type = TypeRef{"std::uint32_t"},
+                                      .relationship = SemanticRelationSchema{
+                                          .kind = SemanticRelationKind::references,
+                                          .target = TypeRef{"Target"},
+                                          .unit = std::nullopt}}}}}}};
     EXPECT_NO_THROW(lower_modules(manifest_with(module)));
 
-    module.records[1].members[0].relationship =
+    std::get<codegen::RecordSchema>(module.declarations[1]).members[0].relationship =
         SemanticRelationSchema{.kind = SemanticRelationKind::offset_into,
                                .target = TypeRef{"Target"},
                                .unit = std::nullopt};
     EXPECT_THROW(lower_modules(manifest_with(module)), std::invalid_argument);
 
-    module.records[1].members[0].relationship =
+    std::get<codegen::RecordSchema>(module.declarations[1]).members[0].relationship =
         SemanticRelationSchema{.kind = SemanticRelationKind::references,
                                .target = TypeRef{"Target"},
                                .unit = SemanticRelationUnit::elements};
     EXPECT_THROW(lower_modules(manifest_with(module)), std::invalid_argument);
 
-    module.records[1].members[0].relationship =
+    std::get<codegen::RecordSchema>(module.declarations[1]).members[0].relationship =
         SemanticRelationSchema{.kind = SemanticRelationKind::offset_into,
                                .target = TypeRef{"Target"},
                                .unit = SemanticRelationUnit::bytes};
@@ -509,12 +466,14 @@ TEST(Validation, ValidatesRecordMemberRelationshipUnits) {
 
 TEST(Validation, ValidatesSoaMemberRelationshipUnits) {
     auto module{valid_soa_module()};
-    module.structs.push_back(SoaSchema{.name = "Target",
-                                       .members = {SoaMemberSchema{.name = "values",
-                                                                   .kind = SoaMemberKind::array,
-                                                                   .type = TypeRef{"std::uint32_t"},
-                                                                   .relationship = std::nullopt}}});
-    auto& relationship{module.structs.front().members.front().relationship};
+    module.declarations.push_back(
+        SoaSchema{.name = "Target",
+                  .members = {SoaMemberSchema{.name = "values",
+                                              .kind = SoaMemberKind::array,
+                                              .type = TypeRef{"std::uint32_t"},
+                                              .relationship = std::nullopt}}});
+    auto& relationship{
+        std::get<codegen::SoaSchema>(module.declarations.front()).members.front().relationship};
     relationship = SemanticRelationSchema{.kind = SemanticRelationKind::references,
                                           .target = TypeRef{"Target"},
                                           .unit = std::nullopt};
@@ -541,7 +500,7 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
                             SemanticRelationKind::count_of,
                             SemanticRelationKind::offset_into}) {
         auto module{valid_integer_scalar_module()};
-        auto& scalar{module.scalars.front()};
+        auto& scalar{std::get<codegen::IntegerScalarSchema>(module.declarations.front())};
         scalar.signedness = true;
         scalar.minimum_value = -10;
         scalar.maximum_value = 10;
@@ -556,28 +515,28 @@ TEST(Validation, RequiresUnsignedIndexCountAndOffsetIntegerScalars) {
     }
 
     auto module{valid_integer_scalar_module()};
-    module.scalars.front().relationship =
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).relationship =
         SemanticRelationSchema{.kind = SemanticRelationKind::references,
                                .target = TypeRef{"DamageReason"},
                                .unit = std::nullopt};
     EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
 
     module = valid_integer_scalar_module();
-    module.scalars.front().relationship =
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).relationship =
         SemanticRelationSchema{.kind = SemanticRelationKind::offset_into,
                                .target = TypeRef{"DamageReason"},
                                .unit = std::nullopt};
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_integer_scalar_module();
-    module.scalars.front().relationship =
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).relationship =
         SemanticRelationSchema{.kind = SemanticRelationKind::index_into,
                                .target = TypeRef{"DamageReason"},
                                .unit = SemanticRelationUnit::elements};
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_integer_scalar_module();
-    module.scalars.front().relationship =
+    std::get<codegen::IntegerScalarSchema>(module.declarations.front()).relationship =
         SemanticRelationSchema{.kind = SemanticRelationKind::offset_into,
                                .target = TypeRef{"DamageReason"},
                                .unit = SemanticRelationUnit::bytes};
@@ -590,10 +549,11 @@ TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHe
     ASSERT_EQ(lowered.size(), 2U);
     ASSERT_TRUE(lowered[1].header.has_value());
     EXPECT_EQ(lowered[1].header->path, "Representations.h");
-    EXPECT_TRUE(lowered[1].header->nodes.empty());
+    EXPECT_EQ(render_modules(lowered)[1].content.find("struct "), std::string::npos);
 
     manifest = valid_linear_quantized_manifest();
-    auto& signed_source{std::get<ScalarModuleSchema>(manifest.modules[0]).scalars.front()};
+    auto& signed_source{std::get<codegen::IntegerScalarSchema>(
+        std::get<NormalModuleSchema>(manifest.modules[0]).declarations.front())};
     signed_source.signedness = true;
     signed_source.minimum_value = -100;
     signed_source.maximum_value = 100;
@@ -601,30 +561,33 @@ TEST(Validation, ValidatesLinearQuantizedRepresentationsAndEmitsOnlyConfiguredHe
     EXPECT_NO_THROW(lower_modules(manifest));
 
     manifest = valid_linear_quantized_manifest();
-    std::get<RepresentationModuleSchema>(manifest.modules[1]).linear_quantized.front().bit_width =
-        1;
+    std::get<codegen::LinearQuantizedSchema>(
+        std::get<NormalModuleSchema>(manifest.modules[1]).declarations.front())
+        .bit_width = 1;
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 
     manifest = valid_linear_quantized_manifest();
-    auto& representation{
-        std::get<RepresentationModuleSchema>(manifest.modules[1]).linear_quantized.front()};
+    auto& representation{std::get<codegen::LinearQuantizedSchema>(
+        std::get<NormalModuleSchema>(manifest.modules[1]).declarations.front())};
     representation.bit_width = 2;
     representation.reserved_codes = 3;
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 
     manifest = valid_linear_quantized_manifest();
-    std::get<ScalarModuleSchema>(manifest.modules[0]).scalars.front().maximum_value = 0;
+    std::get<codegen::IntegerScalarSchema>(
+        std::get<NormalModuleSchema>(manifest.modules[0]).declarations.front())
+        .maximum_value = 0;
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 
     manifest = valid_linear_quantized_manifest();
-    std::get<RepresentationModuleSchema>(manifest.modules[1]).linear_quantized.front().source =
-        TypeRef{"std::uint32_t"};
+    std::get<codegen::LinearQuantizedSchema>(
+        std::get<NormalModuleSchema>(manifest.modules[1]).declarations.front())
+        .source = TypeRef{"std::uint32_t"};
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 
     manifest = valid_linear_quantized_manifest();
-    std::get<RepresentationModuleSchema>(manifest.modules[1]).settings.source =
-        "Representations.cpp";
-    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    std::get<NormalModuleSchema>(manifest.modules[1]).settings.source = "Representations.cpp";
+    EXPECT_EQ(render_modules(lower_modules(manifest)).size(), 3U);
 }
 
 TEST(Validation, ValidatesIntegerVarintSourceAndSignedness) {
@@ -645,18 +608,19 @@ TEST(Validation, ValidatesIntegerVarintSourceAndSignedness) {
         std::invalid_argument);
 
     auto manifest{valid_integer_varint_manifest()};
-    std::get<RepresentationModuleSchema>(manifest.modules[1]).integer_varints.front().source =
-        TypeRef{"std::uint32_t"};
+    std::get<codegen::IntegerVarintSchema>(
+        std::get<NormalModuleSchema>(manifest.modules[1]).declarations.front())
+        .source = TypeRef{"std::uint32_t"};
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 
     manifest = valid_integer_varint_manifest();
-    auto& representations{std::get<RepresentationModuleSchema>(manifest.modules[1])};
-    representations.linear_quantized.push_back(
-        LinearQuantizedSchema{.name = representations.integer_varints.front().name,
-                              .source = TypeRef{"DamageReason"},
-                              .bit_width = 4,
-                              .reserved_codes = 0,
-                              .clipping = QuantizationClipping::reject});
+    auto& representations{std::get<NormalModuleSchema>(manifest.modules[1])};
+    representations.declarations.push_back(LinearQuantizedSchema{
+        .name = std::get<codegen::IntegerVarintSchema>(representations.declarations.front()).name,
+        .source = TypeRef{"DamageReason"},
+        .bit_width = 4,
+        .reserved_codes = 0,
+        .clipping = QuantizationClipping::reject});
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 }
 
@@ -666,29 +630,31 @@ TEST(Validation, ValidatesFixedPointWidthsAndEmitsOnlyConfiguredHeader) {
     ASSERT_EQ(lowered.size(), 1U);
     ASSERT_TRUE(lowered.front().header.has_value());
     EXPECT_EQ(lowered.front().header->path, "Representations.h");
-    EXPECT_TRUE(lowered.front().header->nodes.empty());
+    EXPECT_EQ(render_modules(lowered).front().content.find("struct "), std::string::npos);
 
     manifest = valid_fixed_point_manifest(false);
-    auto& unsigned_fixed{
-        std::get<RepresentationModuleSchema>(manifest.modules.front()).fixed_points.front()};
+    auto& unsigned_fixed{std::get<codegen::FixedPointSchema>(
+        std::get<NormalModuleSchema>(manifest.modules.front()).declarations.front())};
     unsigned_fixed.total_bits = 8;
     unsigned_fixed.fractional_bits = 8;
     EXPECT_NO_THROW(lower_modules(manifest));
 
     manifest = valid_fixed_point_manifest();
-    std::get<RepresentationModuleSchema>(manifest.modules.front())
-        .fixed_points.front()
+    std::get<codegen::FixedPointSchema>(
+        std::get<NormalModuleSchema>(manifest.modules.front()).declarations.front())
         .fractional_bits = 16;
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 
     manifest = valid_fixed_point_manifest();
-    std::get<RepresentationModuleSchema>(manifest.modules.front()).fixed_points.front().total_bits =
-        0;
+    std::get<codegen::FixedPointSchema>(
+        std::get<NormalModuleSchema>(manifest.modules.front()).declarations.front())
+        .total_bits = 0;
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 
     manifest = valid_fixed_point_manifest();
-    auto& representations{std::get<RepresentationModuleSchema>(manifest.modules.front())};
-    representations.fixed_points.push_back(representations.fixed_points.front());
+    auto& representations{std::get<NormalModuleSchema>(manifest.modules.front())};
+    representations.declarations.push_back(
+        std::get<codegen::FixedPointSchema>(representations.declarations.front()));
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 }
 
@@ -698,11 +664,12 @@ TEST(Validation, ValidatesMiniFloatEncodingAndEmitsNoPhysicalType) {
     ASSERT_EQ(lowered.size(), 1U);
     ASSERT_TRUE(lowered.front().header.has_value());
     EXPECT_EQ(lowered.front().header->path, "Representations.h");
-    EXPECT_TRUE(lowered.front().header->nodes.empty());
+    EXPECT_EQ(render_modules(lowered).front().content.find("struct "), std::string::npos);
 
     auto invalidate = [](auto edit) {
         auto invalid{valid_mini_float_manifest()};
-        edit(std::get<RepresentationModuleSchema>(invalid.modules.front()).mini_floats.front());
+        edit(std::get<codegen::MiniFloatSchema>(
+            std::get<NormalModuleSchema>(invalid.modules.front()).declarations.front()));
         EXPECT_THROW(lower_modules(invalid), std::invalid_argument);
     };
     invalidate([](MiniFloatSchema& value) { value.sign_bits = 2; });
@@ -717,9 +684,9 @@ TEST(Validation, ValidatesMiniFloatEncodingAndEmitsNoPhysicalType) {
     invalidate([](MiniFloatSchema& value) { value.exponent_bias = 32'768; });
 
     manifest = valid_mini_float_manifest();
-    auto& representations{std::get<RepresentationModuleSchema>(manifest.modules.front())};
-    representations.fixed_points.push_back(FixedPointSchema{
-        .name = representations.mini_floats.front().name,
+    auto& representations{std::get<NormalModuleSchema>(manifest.modules.front())};
+    representations.declarations.push_back(FixedPointSchema{
+        .name = std::get<codegen::MiniFloatSchema>(representations.declarations.front()).name,
         .signedness = true,
         .total_bits = 16,
         .fractional_bits = 4,
@@ -732,29 +699,34 @@ TEST(Validation, ValidatesOptionalSentinelSourceAndCodeRole) {
     EXPECT_NO_THROW(lower_modules(valid_optional_sentinel_manifest()));
 
     auto manifest{valid_optional_sentinel_manifest()};
-    auto& optional{
-        std::get<RepresentationModuleSchema>(manifest.modules[1]).optional_sentinels.front()};
+    auto& optional{std::get<codegen::OptionalSentinelSchema>(
+        std::get<NormalModuleSchema>(manifest.modules[1]).declarations.front())};
     optional.source = TypeRef{"std::uint32_t"};
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 
     manifest = valid_optional_sentinel_manifest();
-    std::get<RepresentationModuleSchema>(manifest.modules[1]).optional_sentinels.front().sentinel =
-        "Missing";
+    std::get<codegen::OptionalSentinelSchema>(
+        std::get<NormalModuleSchema>(manifest.modules[1]).declarations.front())
+        .sentinel = "Missing";
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 
     manifest = valid_optional_sentinel_manifest();
-    std::get<RepresentationModuleSchema>(manifest.modules[1]).optional_sentinels.front().sentinel =
-        "Unknown";
+    std::get<codegen::OptionalSentinelSchema>(
+        std::get<NormalModuleSchema>(manifest.modules[1]).declarations.front())
+        .sentinel = "Unknown";
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 
     manifest = valid_optional_sentinel_manifest();
-    std::get<ScalarModuleSchema>(manifest.modules[0]).scalars.front().named_codes.clear();
+    std::get<codegen::IntegerScalarSchema>(
+        std::get<NormalModuleSchema>(manifest.modules[0]).declarations.front())
+        .named_codes.clear();
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 
     manifest = valid_optional_sentinel_manifest();
-    auto& representations{std::get<RepresentationModuleSchema>(manifest.modules[1])};
-    representations.fixed_points.push_back(FixedPointSchema{
-        .name = representations.optional_sentinels.front().name,
+    auto& representations{std::get<NormalModuleSchema>(manifest.modules[1])};
+    representations.declarations.push_back(FixedPointSchema{
+        .name =
+            std::get<codegen::OptionalSentinelSchema>(representations.declarations.front()).name,
         .signedness = false,
         .total_bits = 8,
         .fractional_bits = 0,
@@ -767,17 +739,18 @@ TEST(Validation, ValidatesOptionalPresenceBitSourceAndSharedNames) {
     EXPECT_NO_THROW(lower_modules(valid_optional_presence_bit_manifest()));
 
     auto manifest{valid_optional_presence_bit_manifest()};
-    std::get<RepresentationModuleSchema>(manifest.modules[1])
-        .optional_presence_bits.front()
+    std::get<codegen::OptionalPresenceBitSchema>(
+        std::get<NormalModuleSchema>(manifest.modules[1]).declarations.front())
         .source = TypeRef{"std::uint32_t"};
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 
     manifest = valid_optional_presence_bit_manifest();
-    auto& representations{std::get<RepresentationModuleSchema>(manifest.modules[1])};
-    representations.optional_sentinels.push_back(
-        OptionalSentinelSchema{.name = representations.optional_presence_bits.front().name,
-                               .source = TypeRef{"DamageReason"},
-                               .sentinel = "Invalid"});
+    auto& representations{std::get<NormalModuleSchema>(manifest.modules[1])};
+    representations.declarations.push_back(OptionalSentinelSchema{
+        .name =
+            std::get<codegen::OptionalPresenceBitSchema>(representations.declarations.front()).name,
+        .source = TypeRef{"DamageReason"},
+        .sentinel = "Invalid"});
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
 }
 
@@ -791,119 +764,130 @@ TEST(Validation, RejectsInvalidEnumModuleConfiguration) {
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.helper_namespace = "bad-name";
+    module.enum_helper_namespace = "bad-name";
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.enums.front().conversions.push_back(EnumConversion::string_view);
+    std::get<codegen::EnumSchema>(module.declarations.front())
+        .conversions.push_back(EnumConversion::string_view);
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.enums.front().reflection = EnumReflection::none;
-    module.enums.front().values.front().hidden = true;
+    std::get<codegen::EnumSchema>(module.declarations.front()).reflection = EnumReflection::none;
+    std::get<codegen::EnumSchema>(module.declarations.front()).values.front().hidden = true;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsUnsupportedNativeEnumCombinations) {
     auto module{valid_native_enum_module()};
-    module.enums.push_back(valid_enum_module().enums.front());
+    module.declarations.push_back(
+        std::get<codegen::EnumSchema>(valid_enum_module().declarations.front()));
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_native_enum_module();
-    module.enums.front().reflection = EnumReflection::uenum;
+    std::get<codegen::EnumSchema>(module.declarations.front()).reflection = EnumReflection::uenum;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_native_enum_module();
-    module.enums.front().enum_array = true;
+    std::get<codegen::EnumSchema>(module.declarations.front()).enum_array = true;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_native_enum_module();
-    module.enums.front().conversions = {EnumConversion::string_view};
+    std::get<codegen::EnumSchema>(module.declarations.front()).conversions = {
+        EnumConversion::string_view};
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_native_enum_module();
-    module.enums.front().export_specifier = "PROJECT_API";
+    std::get<codegen::EnumSchema>(module.declarations.front()).export_specifier = "PROJECT_API";
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_native_enum_module();
-    module.enums.front().unreal_projection = EnumUnrealProjection{
-        .name = "ENativeMode",
-        .header = "Project/NativeMode.h",
-        .header_include = "Project/NativeMode.h",
-        .conversion_header = "Project/NativeModeConversion.h",
-        .native_header_include = "project/NativeEnums.h",
-        .reflection = EnumReflection::none,
-    };
+    std::get<codegen::EnumSchema>(module.declarations.front()).unreal_projection =
+        EnumUnrealProjection{
+            .name = "ENativeMode",
+            .header = "Project/NativeMode.h",
+            .header_include = "Project/NativeMode.h",
+            .conversion_header = "Project/NativeModeConversion.h",
+            .native_header_include = "project/NativeEnums.h",
+            .reflection = EnumReflection::none,
+        };
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.enums.front().unreal_projection = EnumUnrealProjection{
-        .name = "ENativeMode",
-        .header = "Project/NativeMode.h",
-        .header_include = "Project/NativeMode.h",
-        .conversion_header = "Project/NativeModeConversion.h",
-        .native_header_include = "project/NativeEnums.h",
-    };
+    std::get<codegen::EnumSchema>(module.declarations.front()).unreal_projection =
+        EnumUnrealProjection{
+            .name = "ENativeMode",
+            .header = "Project/NativeMode.h",
+            .header_include = "Project/NativeMode.h",
+            .conversion_header = "Project/NativeModeConversion.h",
+            .native_header_include = "project/NativeEnums.h",
+        };
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsIncompleteOrAmbiguousSerializedEnumNames) {
     auto module{valid_enum_module()};
-    module.enums.front().conversions.push_back(EnumConversion::try_parse_serialized);
+    std::get<codegen::EnumSchema>(module.declarations.front())
+        .conversions.push_back(EnumConversion::try_parse_serialized);
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.enums.front().values.front().serialized_name = "value";
-    module.enums.front().values.push_back(
-        EnumeratorSchema{"Other", std::nullopt, std::nullopt, false, "value"});
-    module.enums.front().conversions.push_back(EnumConversion::try_parse_serialized);
+    std::get<codegen::EnumSchema>(module.declarations.front()).values.front().serialized_name =
+        "value";
+    std::get<codegen::EnumSchema>(module.declarations.front())
+        .values.push_back(EnumeratorSchema{"Other", std::nullopt, std::nullopt, false, "value"});
+    std::get<codegen::EnumSchema>(module.declarations.front())
+        .conversions.push_back(EnumConversion::try_parse_serialized);
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsInvalidEnumArrayDefinitions) {
     auto module{valid_enum_module()};
-    module.enums.front().enum_array = true;
-    module.enums.front().values.front().initializer = "0";
+    std::get<codegen::EnumSchema>(module.declarations.front()).enum_array = true;
+    std::get<codegen::EnumSchema>(module.declarations.front()).values.front().initializer = "0";
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.enums.front().enum_array = true;
-    module.enums.front().values.front().hidden = true;
+    std::get<codegen::EnumSchema>(module.declarations.front()).enum_array = true;
+    std::get<codegen::EnumSchema>(module.declarations.front()).values.front().hidden = true;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.enums.front().count = "Value";
+    std::get<codegen::EnumSchema>(module.declarations.front()).count = "Value";
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.enums.front().enum_array = true;
-    module.enums.front().count = "Missing";
+    std::get<codegen::EnumSchema>(module.declarations.front()).enum_array = true;
+    std::get<codegen::EnumSchema>(module.declarations.front()).count = "Missing";
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.enums.front().enum_array = true;
-    module.enums.front().values.push_back(
-        EnumeratorSchema{"COUNT", std::nullopt, std::nullopt, true});
-    module.enums.front().values.push_back(EnumeratorSchema{"After"});
-    module.enums.front().count = "COUNT";
+    std::get<codegen::EnumSchema>(module.declarations.front()).enum_array = true;
+    std::get<codegen::EnumSchema>(module.declarations.front())
+        .values.push_back(EnumeratorSchema{"COUNT", std::nullopt, std::nullopt, true});
+    std::get<codegen::EnumSchema>(module.declarations.front())
+        .values.push_back(EnumeratorSchema{"After"});
+    std::get<codegen::EnumSchema>(module.declarations.front()).count = "COUNT";
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.enums.front().enum_array = true;
-    module.enums.front().values.push_back(EnumeratorSchema{"COUNT"});
-    module.enums.front().count = "COUNT";
+    std::get<codegen::EnumSchema>(module.declarations.front()).enum_array = true;
+    std::get<codegen::EnumSchema>(module.declarations.front())
+        .values.push_back(EnumeratorSchema{"COUNT"});
+    std::get<codegen::EnumSchema>(module.declarations.front()).count = "COUNT";
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_enum_module();
-    module.enums.front().enum_array = true;
-    module.enums.front().values = {EnumeratorSchema{"COUNT", std::nullopt, std::nullopt, true}};
-    module.enums.front().count = "COUNT";
+    std::get<codegen::EnumSchema>(module.declarations.front()).enum_array = true;
+    std::get<codegen::EnumSchema>(module.declarations.front()).values = {
+        EnumeratorSchema{"COUNT", std::nullopt, std::nullopt, true}};
+    std::get<codegen::EnumSchema>(module.declarations.front()).count = "COUNT";
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
     auto module{valid_native_enum_module()};
-    auto& schema{module.enums.front()};
+    auto& schema{std::get<codegen::EnumSchema>(module.declarations.front())};
     schema.underlying_type = TypeRef{"@native_int8"};
     schema.values = {EnumeratorSchema{"Minimum", "-128"}, EnumeratorSchema{"Maximum", "127"}};
     schema.count.reset();
@@ -920,7 +904,7 @@ TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
 
 TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
     auto module{valid_native_enum_module()};
-    auto& schema{module.enums.front()};
+    auto& schema{std::get<codegen::EnumSchema>(module.declarations.front())};
     schema.underlying_type.reset();
     schema.bit_width = 12;
     schema.signedness = false;
@@ -937,41 +921,47 @@ TEST(Validation, RequiresKnownSemanticFactsWhenEnumBackingIsDerived) {
 
 TEST(Validation, RejectsInvalidStaticTableModuleConfiguration) {
     auto module{valid_static_table_module()};
-    module.tables.clear();
-    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+    module.declarations.clear();
+    EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
 
     module = valid_static_table_module();
     module.settings.source = "Tables.cpp";
+    EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
+
+    module = valid_static_table_module();
+    std::get<codegen::StaticTableSchema>(module.declarations.front()).rows.clear();
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_static_table_module();
-    module.tables.front().rows.clear();
-    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
-
-    module = valid_static_table_module();
-    module.tables.front().columns.clear();
+    std::get<codegen::StaticTableSchema>(module.declarations.front()).columns.clear();
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsInvalidStaticTableNamesAndTypes) {
     auto module{valid_static_table_module()};
-    module.tables.push_back(module.tables.front());
+    module.declarations.push_back(
+        std::get<codegen::StaticTableSchema>(module.declarations.front()));
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_static_table_module();
-    module.tables.front().rows.push_back(StaticTableRowSchema{"first"});
+    std::get<codegen::StaticTableSchema>(module.declarations.front())
+        .rows.push_back(StaticTableRowSchema{"first"});
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_static_table_module();
-    module.tables.front().rows.front().name = "bad-name";
+    std::get<codegen::StaticTableSchema>(module.declarations.front()).rows.front().name =
+        "bad-name";
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_static_table_module();
-    module.tables.front().columns.push_back(module.tables.front().columns.front());
+    std::get<codegen::StaticTableSchema>(module.declarations.front())
+        .columns.push_back(
+            std::get<codegen::StaticTableSchema>(module.declarations.front()).columns.front());
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_static_table_module();
-    module.tables.front().columns.front().type = TypeRef{"@missing"};
+    std::get<codegen::StaticTableSchema>(module.declarations.front()).columns.front().type =
+        TypeRef{"@missing"};
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
@@ -980,44 +970,58 @@ TEST(Validation, RejectsStaticTableColumnsCollidingWithGeneratedApis) {
          {"FValues", "num_rows", "num", "apply_arrays", "apply_array_pairs", "first_index"}) {
         SCOPED_TRACE(name);
         auto module{valid_static_table_module()};
-        module.tables.front().columns.front().name = name;
+        std::get<codegen::StaticTableSchema>(module.declarations.front()).columns.front().name =
+            name;
         EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
     }
 }
 
 TEST(Validation, RejectsInvalidStaticTableGroups) {
     auto module{valid_static_table_module()};
-    module.tables.front().groups = {StaticTableGroupSchema{"point", TypeRef{"FPoint"}, {"ids"}}};
+    std::get<codegen::StaticTableSchema>(module.declarations.front()).groups = {
+        StaticTableGroupSchema{"point", TypeRef{"FPoint"}, {"ids"}}};
 
     auto duplicate_group{module};
-    duplicate_group.tables.front().groups.push_back(duplicate_group.tables.front().groups.front());
+    std::get<codegen::StaticTableSchema>(duplicate_group.declarations.front())
+        .groups.push_back(std::get<codegen::StaticTableSchema>(duplicate_group.declarations.front())
+                              .groups.front());
     EXPECT_THROW(lower_modules(manifest_with(std::move(duplicate_group))), std::invalid_argument);
 
     auto invalid_name{module};
-    invalid_name.tables.front().groups.front().name = "bad-name";
+    std::get<codegen::StaticTableSchema>(invalid_name.declarations.front()).groups.front().name =
+        "bad-name";
     EXPECT_THROW(lower_modules(manifest_with(std::move(invalid_name))), std::invalid_argument);
 
     auto unknown_type{module};
-    unknown_type.tables.front().groups.front().type = TypeRef{"@missing"};
+    std::get<codegen::StaticTableSchema>(unknown_type.declarations.front()).groups.front().type =
+        TypeRef{"@missing"};
     EXPECT_THROW(lower_modules(manifest_with(std::move(unknown_type))), std::invalid_argument);
 
     auto empty_columns{module};
-    empty_columns.tables.front().groups.front().columns.clear();
+    std::get<codegen::StaticTableSchema>(empty_columns.declarations.front())
+        .groups.front()
+        .columns.clear();
     EXPECT_THROW(lower_modules(manifest_with(std::move(empty_columns))), std::invalid_argument);
 
     auto unknown_column{module};
-    unknown_column.tables.front().groups.front().columns = {"missing"};
+    std::get<codegen::StaticTableSchema>(unknown_column.declarations.front())
+        .groups.front()
+        .columns = {"missing"};
     EXPECT_THROW(lower_modules(manifest_with(std::move(unknown_column))), std::invalid_argument);
 
     auto duplicate_column{module};
-    duplicate_column.tables.front().groups.front().columns = {"ids", "ids"};
+    std::get<codegen::StaticTableSchema>(duplicate_column.declarations.front())
+        .groups.front()
+        .columns = {"ids", "ids"};
     EXPECT_THROW(lower_modules(manifest_with(std::move(duplicate_column))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsStaticTableGroupGetterCollisions) {
     auto module{valid_static_table_module()};
-    module.tables.front().columns.push_back(StaticTableColumnSchema{"get_point", TypeRef{"float"}});
-    module.tables.front().groups = {StaticTableGroupSchema{"point", TypeRef{"FPoint"}, {"ids"}}};
+    std::get<codegen::StaticTableSchema>(module.declarations.front())
+        .columns.push_back(StaticTableColumnSchema{"get_point", TypeRef{"float"}});
+    std::get<codegen::StaticTableSchema>(module.declarations.front()).groups = {
+        StaticTableGroupSchema{"point", TypeRef{"FPoint"}, {"ids"}}};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
@@ -1087,7 +1091,7 @@ TEST(Validation, RejectsKeywordsAndReservedIdentifiers) {
     for (auto const& invalid : {"class", "__generated", "_Reserved"}) {
         SCOPED_TRACE(invalid);
         auto module{valid_soa_module()};
-        module.structs.front().members.front().name = invalid;
+        std::get<codegen::SoaSchema>(module.declarations.front()).members.front().name = invalid;
         EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
     }
 
@@ -1115,69 +1119,64 @@ TEST(Validation, RejectsInvalidTypeDependencyAndOperationSpellings) {
         std::invalid_argument);
 }
 
-TEST(Validation, RejectsSoaModulesWithoutSchemas) {
-    SoaModuleSchema module{
-        .settings = ModuleSettings{.name = "soa", .header = "Soa.h"},
-    };
-
-    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
-}
-
 TEST(Validation, RejectsEmptySoaNames) {
     auto module{valid_soa_module()};
-    module.structs.front().name.clear();
+    std::get<codegen::SoaSchema>(module.declarations.front()).name.clear();
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsDuplicateSoaMembers) {
     auto module{valid_soa_module()};
-    module.structs.front().members.push_back(
-        SoaMemberSchema{"values", SoaMemberKind::array, TypeRef{"float"}});
+    std::get<codegen::SoaSchema>(module.declarations.front())
+        .members.push_back(SoaMemberSchema{"values", SoaMemberKind::array, TypeRef{"float"}});
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsMalformedSoaMemberIdentifiers) {
     auto module{valid_soa_module()};
-    module.structs.front().members.front().name = "bad-name";
+    std::get<codegen::SoaSchema>(module.declarations.front()).members.front().name = "bad-name";
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsIncompleteSoaFieldMaskDeclarations) {
     auto module{valid_mask_soa_module()};
-    module.structs.front().field_enum_name.reset();
+    std::get<codegen::SoaSchema>(module.declarations.front()).field_enum_name.reset();
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_mask_soa_module();
-    module.structs.front().field_mask_name.reset();
+    std::get<codegen::SoaSchema>(module.declarations.front()).field_mask_name.reset();
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsInvalidSoaFieldMaskMembers) {
     auto module{valid_mask_soa_module()};
-    module.structs.front().members.front().type = TypeRef{"uint8"};
+    std::get<codegen::SoaSchema>(module.declarations.front()).members.front().type =
+        TypeRef{"uint8"};
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_mask_soa_module();
-    module.structs.front().members.back().mask_field = false;
+    std::get<codegen::SoaSchema>(module.declarations.front()).members.back().mask_field = false;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_soa_module();
-    module.structs.front().members.front().mask_field = true;
+    std::get<codegen::SoaSchema>(module.declarations.front()).members.front().mask_field = true;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsInvalidSoaMaskDimensions) {
     auto module{valid_mask_soa_module()};
-    auto& member{module.structs.front().members.back()};
+    auto& member{std::get<codegen::SoaSchema>(module.declarations.front()).members.back()};
     member.mask_dimensions.push_back({"field_index", "4"});
     member.mask_dimensions.push_back({"field_index", "2"});
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_mask_soa_module();
-    module.structs.front().members.back().mask_dimensions.push_back({"bad-index", "4"});
+    std::get<codegen::SoaSchema>(module.declarations.front())
+        .members.back()
+        .mask_dimensions.push_back({"bad-index", "4"});
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
@@ -1185,36 +1184,39 @@ TEST(Validation, RejectsMembersCollidingWithGeneratedStorageApis) {
     for (auto const& name : {"num", "reset", "copy_element"}) {
         SCOPED_TRACE(name);
         auto module{valid_soa_module()};
-        module.structs.front().members.front().name = name;
+        std::get<codegen::SoaSchema>(module.declarations.front()).members.front().name = name;
         EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
     }
 
     auto homogeneous{valid_homogeneous_module()};
-    homogeneous.layouts.front().components.front() = "add";
+    std::get<codegen::HomogeneousLayoutSchema>(homogeneous.declarations.front())
+        .components.front() = "add";
     EXPECT_THROW(lower_modules(manifest_with(std::move(homogeneous))), std::invalid_argument);
 
     auto vector{valid_vector_module()};
-    vector.components.front() = "get_view";
+    std::get<codegen::VectorSoaSchema>(vector.declarations.front()).components.front() = "get_view";
     EXPECT_THROW(lower_modules(manifest_with(std::move(vector))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsUnknownSoaTypeReferences) {
     auto module{valid_soa_module()};
-    module.structs.front().members.front().type = TypeRef{"@missing"};
+    std::get<codegen::SoaSchema>(module.declarations.front()).members.front().type =
+        TypeRef{"@missing"};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsFixedSchemasOnArrayMembers) {
     auto module{valid_soa_module()};
-    module.structs.front().members.front().fixed_schema = "FChild";
+    std::get<codegen::SoaSchema>(module.declarations.front()).members.front().fixed_schema =
+        "FChild";
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsOpaqueNestedMembersInFixedSoas) {
     auto module{valid_soa_module()};
-    auto& schema{module.structs.front()};
+    auto& schema{std::get<codegen::SoaSchema>(module.declarations.front())};
     schema.fixed = FixedSoaSchema{"TDataStorage", {}};
     schema.members = {
         SoaMemberSchema{"child", SoaMemberKind::nested, TypeRef{"FChild"}},
@@ -1225,7 +1227,7 @@ TEST(Validation, RejectsOpaqueNestedMembersInFixedSoas) {
 
 TEST(Validation, RejectsUnknownNestedFixedSchemas) {
     auto module{valid_soa_module()};
-    auto& schema{module.structs.front()};
+    auto& schema{std::get<codegen::SoaSchema>(module.declarations.front())};
     schema.fixed = FixedSoaSchema{"TDataStorage", {}};
     schema.members = {
         SoaMemberSchema{"child", SoaMemberKind::nested, TypeRef{"FChild"}, "FChild"},
@@ -1236,7 +1238,7 @@ TEST(Validation, RejectsUnknownNestedFixedSchemas) {
 
 TEST(Validation, RejectsFixedSchemaCycles) {
     auto module{valid_soa_module()};
-    auto& schema{module.structs.front()};
+    auto& schema{std::get<codegen::SoaSchema>(module.declarations.front())};
     schema.fixed = FixedSoaSchema{"TDataStorage", {}};
     schema.members = {
         SoaMemberSchema{"children", SoaMemberKind::nested, TypeRef{"FData"}, "FData"},
@@ -1247,26 +1249,27 @@ TEST(Validation, RejectsFixedSchemaCycles) {
 
 TEST(Validation, RejectsCollidingGeneratedSoaTypeNames) {
     auto module{valid_soa_module()};
-    auto second{module.structs.front()};
+    auto second{std::get<codegen::SoaSchema>(module.declarations.front())};
     second.name = "FDataView";
-    module.structs.push_back(std::move(second));
+    module.declarations.push_back(std::move(second));
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsDuplicateFixedStorageAndContainerNames) {
     auto module{valid_soa_module()};
-    auto& first{module.structs.front()};
+    auto& first{std::get<codegen::SoaSchema>(module.declarations.front())};
     first.fixed = FixedSoaSchema{"TShared", {"TFixedData"}};
     auto second{first};
     second.name = "FOther";
     second.fixed = FixedSoaSchema{"TShared", {"TFixedOther"}};
-    module.structs.push_back(std::move(second));
+    module.declarations.push_back(std::move(second));
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_soa_module();
-    module.structs.front().fixed = FixedSoaSchema{"TShared", {"TShared"}};
+    std::get<codegen::SoaSchema>(module.declarations.front()).fixed =
+        FixedSoaSchema{"TShared", {"TShared"}};
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
@@ -1279,7 +1282,7 @@ TEST(Validation, RejectsSoaModulesWithoutSourceOutput) {
 
 TEST(Validation, RejectsEmptyOptionalSoaViewNames) {
     auto module{valid_soa_module()};
-    module.structs.front().view_name = "";
+    std::get<codegen::SoaSchema>(module.declarations.front()).view_name = "";
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
@@ -1288,7 +1291,8 @@ TEST(Validation, RejectsBlankSoaUsingDeclarations) {
     for (auto const* declaration : {"", " \t\r\n"}) {
         SCOPED_TRACE(declaration);
         auto module{valid_soa_module()};
-        module.structs.front().using_declarations.emplace_back(declaration);
+        std::get<codegen::SoaSchema>(module.declarations.front())
+            .using_declarations.emplace_back(declaration);
 
         EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
     }
@@ -1296,7 +1300,7 @@ TEST(Validation, RejectsBlankSoaUsingDeclarations) {
 
 TEST(Validation, RejectsDuplicateCustomSoaFunctionParameters) {
     auto module{valid_soa_module()};
-    module.structs.front().functions = {FunctionSchema{
+    std::get<codegen::SoaSchema>(module.declarations.front()).functions = {FunctionSchema{
         .name = "set",
         .return_type = TypeRef{"void"},
         .parameters =
@@ -1311,7 +1315,7 @@ TEST(Validation, RejectsDuplicateCustomSoaFunctionParameters) {
 
 TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
     auto module{valid_soa_module()};
-    module.structs.front().functions = {FunctionSchema{
+    std::get<codegen::SoaSchema>(module.declarations.front()).functions = {FunctionSchema{
         .name = "set",
         .return_type = TypeRef{"void"},
         .parameters =
@@ -1324,7 +1328,7 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_soa_module();
-    module.structs.front().functions = {FunctionSchema{
+    std::get<codegen::SoaSchema>(module.declarations.front()).functions = {FunctionSchema{
         .name = "set",
         .return_type = TypeRef{"void"},
         .parameters = {ParameterSchema{TypeRef{"int32"}, "value", " \t"}},
@@ -1335,7 +1339,7 @@ TEST(Validation, RejectsNonTrailingCustomSoaDefaultArguments) {
 
 TEST(Validation, RejectsUnknownCustomSoaDependencies) {
     auto module{valid_soa_module()};
-    module.structs.front().functions = {FunctionSchema{
+    std::get<codegen::SoaSchema>(module.declarations.front()).functions = {FunctionSchema{
         .name = "reset_values",
         .return_type = TypeRef{"void"},
         .dependencies = {"missing"},
@@ -1344,7 +1348,7 @@ TEST(Validation, RejectsUnknownCustomSoaDependencies) {
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_soa_module();
-    module.structs.front().functions = {FunctionSchema{
+    std::get<codegen::SoaSchema>(module.declarations.front()).functions = {FunctionSchema{
         .name = "reset_values",
         .return_type = TypeRef{"void"},
         .dependencies = {" \t"},
@@ -1355,7 +1359,7 @@ TEST(Validation, RejectsUnknownCustomSoaDependencies) {
 
 TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
     auto module{valid_soa_module()};
-    module.structs.front().functions = {FunctionSchema{
+    std::get<codegen::SoaSchema>(module.declarations.front()).functions = {FunctionSchema{
         .name = "class",
         .return_type = TypeRef{"void"},
         .is_inline = true,
@@ -1363,7 +1367,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_soa_module();
-    module.structs.front().functions = {FunctionSchema{
+    std::get<codegen::SoaSchema>(module.declarations.front()).functions = {FunctionSchema{
         .name = "update",
         .return_type = TypeRef{"void"},
         .is_inline = true,
@@ -1372,7 +1376,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_soa_module();
-    module.structs.front().functions = {FunctionSchema{
+    std::get<codegen::SoaSchema>(module.declarations.front()).functions = {FunctionSchema{
         .name = "invalid_static_const",
         .return_type = TypeRef{"void"},
         .is_const = true,
@@ -1381,7 +1385,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_soa_module();
-    module.structs.front().functions = {FunctionSchema{
+    std::get<codegen::SoaSchema>(module.declarations.front()).functions = {FunctionSchema{
         .name = "invalid_trailing_return",
         .return_type = TypeRef{"void"},
         .trailing_return_type = TypeRef{"int32"},
@@ -1389,7 +1393,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_soa_module();
-    module.structs.front().functions = {FunctionSchema{
+    std::get<codegen::SoaSchema>(module.declarations.front()).functions = {FunctionSchema{
         .name = "invalid_template",
         .return_type = TypeRef{"void"},
         .template_parameters = " \t",
@@ -1397,7 +1401,7 @@ TEST(Validation, RejectsInvalidCustomSoaFunctionDefinitions) {
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_soa_module();
-    module.structs.front().functions = {FunctionSchema{
+    std::get<codegen::SoaSchema>(module.declarations.front()).functions = {FunctionSchema{
         .name = "invalid_requires",
         .return_type = TypeRef{"void"},
         .requires_clause = " \t",
@@ -1409,7 +1413,7 @@ TEST(Validation, RejectsCustomSoaFunctionsCollidingWithGeneratedApisAndTypeNames
     for (auto const& name : {"sort", "get_view", "FData"}) {
         SCOPED_TRACE(name);
         auto module{valid_soa_module()};
-        module.structs.front().functions = {FunctionSchema{
+        std::get<codegen::SoaSchema>(module.declarations.front()).functions = {FunctionSchema{
             .name = name,
             .return_type = TypeRef{"void"},
             .is_inline = true,
@@ -1420,54 +1424,45 @@ TEST(Validation, RejectsCustomSoaFunctionsCollidingWithGeneratedApisAndTypeNames
 
 TEST(Validation, RejectsMalformedExportSpecifiers) {
     auto soa{valid_soa_module()};
-    soa.structs.front().export_specifier = "bad-specifier";
+    std::get<codegen::SoaSchema>(soa.declarations.front()).export_specifier = "bad-specifier";
     EXPECT_THROW(lower_modules(manifest_with(std::move(soa))), std::invalid_argument);
 
     auto homogeneous{valid_homogeneous_module()};
-    homogeneous.layouts.front().export_specifier = "class";
+    std::get<codegen::HomogeneousLayoutSchema>(homogeneous.declarations.front()).export_specifier =
+        "class";
     EXPECT_THROW(lower_modules(manifest_with(std::move(homogeneous))), std::invalid_argument);
 
     auto facade{valid_facade_module()};
-    facade.facade.export_specifier = "two words";
+    std::get<codegen::FacadeSchema>(facade.declarations.front()).export_specifier = "two words";
     EXPECT_THROW(lower_modules(manifest_with(std::move(facade))), std::invalid_argument);
 
     auto table{valid_static_table_module()};
-    table.tables.front().export_specifier = "bad-specifier";
+    std::get<codegen::StaticTableSchema>(table.declarations.front()).export_specifier =
+        "bad-specifier";
     EXPECT_THROW(lower_modules(manifest_with(std::move(table))), std::invalid_argument);
 }
 
-TEST(Validation, RejectsHomogeneousModulesWithoutLayouts) {
-    HomogeneousModuleSchema module{
-        .settings =
-            ModuleSettings{.name = "homogeneous", .header = "Values.h", .source = "Values.cpp"},
-    };
-
-    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
-}
-
 TEST(Validation, RejectsDuplicateHomogeneousComponents) {
-    HomogeneousModuleSchema module{
+    NormalModuleSchema module{
         .settings =
             ModuleSettings{.name = "homogeneous", .header = "Values.h", .source = "Values.cpp"},
-        .layouts = {HomogeneousLayoutSchema{
+        .declarations = {HomogeneousLayoutSchema{
             .name = "Values",
             .components = {"xs", "xs"},
             .value_types = {HomogeneousValueSchema{TypeRef{"float"}, "f"}},
-        }},
-    };
+        }}};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsHomogeneousLayoutsWithoutValueTypes) {
-    HomogeneousModuleSchema module{
+    NormalModuleSchema module{
         .settings =
             ModuleSettings{.name = "homogeneous", .header = "Values.h", .source = "Values.cpp"},
-        .layouts = {HomogeneousLayoutSchema{
+        .declarations = {HomogeneousLayoutSchema{
             .name = "Values",
             .components = {"xs"},
-        }},
-    };
+        }}};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
@@ -1481,46 +1476,48 @@ TEST(Validation, RejectsHomogeneousModulesWithoutSourceOutput) {
 
 TEST(Validation, RejectsDuplicateHomogeneousLayoutNames) {
     auto module{valid_homogeneous_module()};
-    module.layouts.push_back(module.layouts.front());
+    module.declarations.push_back(
+        std::get<codegen::HomogeneousLayoutSchema>(module.declarations.front()));
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsDuplicateHomogeneousValueSuffixes) {
     auto module{valid_homogeneous_module()};
-    module.layouts.front().value_types.push_back(HomogeneousValueSchema{TypeRef{"double"}, "f"});
+    std::get<codegen::HomogeneousLayoutSchema>(module.declarations.front())
+        .value_types.push_back(HomogeneousValueSchema{TypeRef{"double"}, "f"});
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsMalformedHomogeneousSuffixes) {
     auto module{valid_homogeneous_module()};
-    module.layouts.front().value_types.front().suffix = "-float";
+    std::get<codegen::HomogeneousLayoutSchema>(module.declarations.front())
+        .value_types.front()
+        .suffix = "-float";
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsCollidingHomogeneousStorageNames) {
     auto module{valid_homogeneous_module()};
-    module.layouts = {
-        HomogeneousLayoutSchema{
-            .name = "Value",
-            .components = {"xs"},
-            .value_types = {HomogeneousValueSchema{TypeRef{"float"}, "sf"}},
-        },
-        HomogeneousLayoutSchema{
-            .name = "Values",
-            .components = {"xs"},
-            .value_types = {HomogeneousValueSchema{TypeRef{"float"}, "f"}},
-        },
-    };
+    module.declarations = {HomogeneousLayoutSchema{
+                               .name = "Value",
+                               .components = {"xs"},
+                               .value_types = {HomogeneousValueSchema{TypeRef{"float"}, "sf"}},
+                           },
+                           HomogeneousLayoutSchema{
+                               .name = "Values",
+                               .components = {"xs"},
+                               .value_types = {HomogeneousValueSchema{TypeRef{"float"}, "f"}},
+                           }};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsDuplicateHomogeneousEquivalentSpecialisations) {
     auto module{valid_homogeneous_module()};
-    module.layouts.front().value_types = {
+    std::get<codegen::HomogeneousLayoutSchema>(module.declarations.front()).value_types = {
         HomogeneousValueSchema{TypeRef{"float"}, "f", TypeRef{"FVector2f"}},
         HomogeneousValueSchema{TypeRef{"float"}, "other", TypeRef{"FOtherVector2f"}},
     };
@@ -1530,51 +1527,61 @@ TEST(Validation, RejectsDuplicateHomogeneousEquivalentSpecialisations) {
 
 TEST(Validation, RejectsDuplicateHomogeneousInputTypes) {
     auto module{valid_homogeneous_module()};
-    module.layouts.front().value_types.front().input_types = {TypeRef{"FVector2f"},
-                                                              TypeRef{"FVector2f"}};
+    std::get<codegen::HomogeneousLayoutSchema>(module.declarations.front())
+        .value_types.front()
+        .input_types = {TypeRef{"FVector2f"}, TypeRef{"FVector2f"}};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsHomogeneousInputOverloadsWithMoreThanThreeComponents) {
     auto module{valid_homogeneous_module()};
-    module.layouts.front().input_members = {"X"};
+    std::get<codegen::HomogeneousLayoutSchema>(module.declarations.front()).input_members = {"X"};
 
     EXPECT_THROW(lower_modules(manifest_with(module)), std::invalid_argument);
 
-    module.layouts.front().input_members.clear();
-    module.layouts.front().components = {"xs", "ys", "zs", "ws"};
-    module.layouts.front().value_types.front().input_types = {TypeRef{"FVector4f"}};
+    std::get<codegen::HomogeneousLayoutSchema>(module.declarations.front()).input_members.clear();
+    std::get<codegen::HomogeneousLayoutSchema>(module.declarations.front()).components = {
+        "xs", "ys", "zs", "ws"};
+    std::get<codegen::HomogeneousLayoutSchema>(module.declarations.front())
+        .value_types.front()
+        .input_types = {TypeRef{"FVector4f"}};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsHomogeneousInputComponentsWithDuplicateInitials) {
     auto module{valid_homogeneous_module()};
-    module.layouts.front().components = {"x_values", "x_weights"};
-    module.layouts.front().value_types.front().input_types = {TypeRef{"FInput"}};
+    std::get<codegen::HomogeneousLayoutSchema>(module.declarations.front()).components = {
+        "x_values", "x_weights"};
+    std::get<codegen::HomogeneousLayoutSchema>(module.declarations.front())
+        .value_types.front()
+        .input_types = {TypeRef{"FInput"}};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsHomogeneousComponentParameterCollisionsWithoutInputTypes) {
     auto module{valid_homogeneous_module()};
-    module.layouts.front().components = {"x_values", "x_weights"};
+    std::get<codegen::HomogeneousLayoutSchema>(module.declarations.front()).components = {
+        "x_values", "x_weights"};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsVectorsWithMoreThanThreeComponents) {
     auto module{valid_vector_module()};
-    module.components = {"xs", "ys", "zs", "ws"};
-    module.equivalent_type = TypeRef{"FVector4f"};
+    std::get<codegen::VectorSoaSchema>(module.declarations.front()).components = {
+        "xs", "ys", "zs", "ws"};
+    std::get<codegen::VectorSoaSchema>(module.declarations.front()).equivalent_type =
+        TypeRef{"FVector4f"};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsDuplicateVectorComponents) {
     auto module{valid_vector_module()};
-    module.components = {"xs", "xs"};
+    std::get<codegen::VectorSoaSchema>(module.declarations.front()).components = {"xs", "xs"};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
@@ -1588,56 +1595,57 @@ TEST(Validation, RejectsVectorModulesWithoutSourceOutput) {
 
 TEST(Validation, RejectsMalformedVectorStorageIdentifiers) {
     auto module{valid_vector_module()};
-    module.storage_name = "F Vectors";
+    std::get<codegen::VectorSoaSchema>(module.declarations.front()).name = "F Vectors";
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsVectorComponentsWithDuplicateParameterInitials) {
     auto module{valid_vector_module()};
-    module.components = {"x_values", "x_weights"};
+    std::get<codegen::VectorSoaSchema>(module.declarations.front()).components = {"x_values",
+                                                                                  "x_weights"};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsFacadesWithoutMethods) {
     auto module{valid_facade_module()};
-    module.facade.methods.clear();
+    std::get<codegen::FacadeSchema>(module.declarations.front()).methods.clear();
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsUnknownFacadeAccess) {
     auto module{valid_facade_module()};
-    module.facade.method_access = "protected";
+    std::get<codegen::FacadeSchema>(module.declarations.front()).method_access = "protected";
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsMalformedFacadeMethodIdentifiers) {
     auto module{valid_facade_module()};
-    module.facade.methods.front().name = "bad-name";
+    std::get<codegen::FacadeSchema>(module.declarations.front()).methods.front().name = "bad-name";
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsOutOfLineFacadesWithoutSourceOutput) {
     auto module{valid_facade_module()};
-    module.facade.definitions_in_source = true;
+    std::get<codegen::FacadeSchema>(module.declarations.front()).definitions_in_source = true;
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
-TEST(Validation, RejectsInlineFacadesWithSourceOutput) {
+TEST(Validation, AllowsInlineFacadesInModulesWithSourceOutput) {
     auto module{valid_facade_module()};
     module.settings.source = "Facade.cpp";
 
-    EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
+    EXPECT_NO_THROW(lower_modules(manifest_with(std::move(module))));
 }
 
 TEST(Validation, RejectsDuplicateFacadeMethodParameters) {
     auto module{valid_facade_module()};
-    module.facade.methods.front().parameters = {
+    std::get<codegen::FacadeSchema>(module.declarations.front()).methods.front().parameters = {
         ParameterSchema{TypeRef{"int32"}, "value"},
         ParameterSchema{TypeRef{"float"}, "value"},
     };
@@ -1647,23 +1655,26 @@ TEST(Validation, RejectsDuplicateFacadeMethodParameters) {
 
 TEST(Validation, RejectsDuplicateFacadeMethodSignatures) {
     auto module{valid_facade_module()};
-    module.facade.methods.push_back(module.facade.methods.front());
+    std::get<codegen::FacadeSchema>(module.declarations.front())
+        .methods.push_back(
+            std::get<codegen::FacadeSchema>(module.declarations.front()).methods.front());
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsFacadeOverloadsDifferingOnlyByNoexcept) {
     auto module{valid_facade_module()};
-    auto second{module.facade.methods.front()};
+    auto second{std::get<codegen::FacadeSchema>(module.declarations.front()).methods.front()};
     second.is_noexcept = true;
-    module.facade.methods.push_back(std::move(second));
+    std::get<codegen::FacadeSchema>(module.declarations.front())
+        .methods.push_back(std::move(second));
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsFacadeMethodsCollidingWithBind) {
     auto module{valid_facade_module()};
-    module.facade.methods = {FacadeMethodSchema{
+    std::get<codegen::FacadeSchema>(module.declarations.front()).methods = {FacadeMethodSchema{
         .name = "bind",
         .return_type = TypeRef{"void"},
         .parameters = {ParameterSchema{TypeRef{"FTarget&"}, "target"}},
@@ -1674,7 +1685,7 @@ TEST(Validation, RejectsFacadeMethodsCollidingWithBind) {
 
 TEST(Validation, RejectsNonTrailingFacadeDefaultArguments) {
     auto module{valid_facade_module()};
-    module.facade.methods.front().parameters = {
+    std::get<codegen::FacadeSchema>(module.declarations.front()).methods.front().parameters = {
         ParameterSchema{TypeRef{"int32"}, "first", "0"},
         ParameterSchema{TypeRef{"int32"}, "second"},
     };
@@ -1684,26 +1695,28 @@ TEST(Validation, RejectsNonTrailingFacadeDefaultArguments) {
 
 TEST(Validation, RejectsUnknownFacadeValidationDependencies) {
     auto module{valid_facade_module()};
-    module.facade.validation_dependencies = {"missing"};
+    std::get<codegen::FacadeSchema>(module.declarations.front()).validation_dependencies = {
+        "missing"};
 
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
 TEST(Validation, RejectsInvalidFacadeFriendAndMemberCollisions) {
     auto module{valid_facade_module()};
-    module.facade.friend_kind = "union";
+    std::get<codegen::FacadeSchema>(module.declarations.front()).friend_kind = "union";
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_facade_module();
-    module.facade.friends = {"class"};
+    std::get<codegen::FacadeSchema>(module.declarations.front()).friends = {"class"};
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_facade_module();
-    module.facade.target_member_name = "bind";
+    std::get<codegen::FacadeSchema>(module.declarations.front()).target_member_name = "bind";
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 
     module = valid_facade_module();
-    module.facade.methods.front().name = module.facade.target_member_name;
+    std::get<codegen::FacadeSchema>(module.declarations.front()).methods.front().name =
+        std::get<codegen::FacadeSchema>(module.declarations.front()).target_member_name;
     EXPECT_THROW(lower_modules(manifest_with(std::move(module))), std::invalid_argument);
 }
 
@@ -1914,14 +1927,14 @@ TEST(Validation, NormalModuleMatchesSoaAllocatorVariantRestrictions) {
 
 TEST(Validation, FieldMaskSoaCannotUseArrayAllocatorVariants) {
     auto const allocator{SoaAllocatorVariant{"Custom", TypeRef{"FAllocator"}}};
-    auto const masked{valid_mask_soa_module().structs.front()};
+    auto const masked{std::get<codegen::SoaSchema>(valid_mask_soa_module().declarations.front())};
     auto normal{normal_soa_module(masked, {allocator})};
     auto normal_manifest{manifest_with(std::move(normal))};
     EXPECT_THROW(validate_manifest(normal_manifest), std::invalid_argument);
     EXPECT_THROW(lower_modules(std::move(normal_manifest)), std::invalid_argument);
 
     auto legacy{valid_mask_soa_module()};
-    legacy.array_allocators = {allocator};
+    legacy.soa_array_allocators = {allocator};
     auto legacy_manifest{manifest_with(std::move(legacy))};
     EXPECT_THROW(validate_manifest(legacy_manifest), std::invalid_argument);
 }

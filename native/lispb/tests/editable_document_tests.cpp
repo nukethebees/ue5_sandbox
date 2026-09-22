@@ -28,7 +28,7 @@ class TemporarySchema {
   :spelling "authored::Helper"
   :header "AuthoredHelper.h")
 )");
-        write("modules.lispb", R"((enum-module authored_enums
+        write("modules.lispb", R"((module authored_enums
   :header "AuthoredEnums.h"
   :namespace authored
   (enum Existing std::uint8_t
@@ -37,7 +37,7 @@ class TemporarySchema {
     ; Preserve the one documentation too.
     (value One :value   "1")))
 
-(packed-value-module authored_packed
+(module authored_packed
   :header "AuthoredPacked.h"
   :namespace authored
   (packed-value ExistingPacked
@@ -61,7 +61,7 @@ class TemporarySchema {
     ; Keep the future segment note.
     (reserved future :bits   16)))
 
-(scalar-module authored_scalars
+(module authored_scalars
   :header "AuthoredScalars.h"
   :namespace authored
   (integer-scalar ExistingScalar
@@ -85,7 +85,7 @@ class TemporarySchema {
     :maximum 100
     :bit-width auto))
 
-(representation-module authored_representations
+(module authored_representations
   :header "AuthoredRepresentations.h"
   :namespace authored
   (linear-quantized ExistingQ1
@@ -118,7 +118,7 @@ class TemporarySchema {
     :significand-bits 10
     :bias 15))
 
-(record-module authored_records
+(module authored_records
   :header "AuthoredRecords.h"
   :namespace authored
   (record ExistingRecord
@@ -128,7 +128,7 @@ class TemporarySchema {
     ; Keep the flag member note.
     (member flag std::uint8_t)))
 
-(union-module authored_unions
+(module authored_unions
   :header "AuthoredUnions.h"
   :namespace authored
   (union ExistingUnion
@@ -144,7 +144,7 @@ class TemporarySchema {
     (alternative value   std::uint32_t :tag Zero) ; tagged value trailing note
   ))
 
-(soa-module authored_soa
+(module authored_soa
   :header "AuthoredSoa.h"
   :namespace authored
   :backend standard-library
@@ -593,7 +593,7 @@ TEST(EditableSchemaDocument, PreservesEnumConversionRowsDuringEdits) {
 
 TEST(EditableSchemaDocument, PreservesEnumGenerationPolicyPropertiesDuringEdits) {
     TemporarySchema files;
-    files.write_source("enum_policy.lispb", R"((enum-module enum_policy
+    files.write_source("enum_policy.lispb", R"((module enum_policy
   :header "EnumPolicy.h"
   (enum PolicyMode std::uint8_t
     ; Keep the declaration policy note.
@@ -680,7 +680,7 @@ TEST(EditableSchemaDocument, PreservesEnumGenerationPolicyPropertiesDuringEdits)
 
 TEST(EditableSchemaDocument, PreservesEnumUnrealProjectionDuringEdits) {
     TemporarySchema files;
-    files.write_source("enum_projection.lispb", R"((enum-module enum_projection
+    files.write_source("enum_projection.lispb", R"((module enum_projection
   :header "NativeMode.h"
   (enum NativeMode std::uint8_t
     ; Keep the native declaration note.
@@ -1459,7 +1459,7 @@ TEST(EditableSchemaDocument, PreservesSourceWhenAddingAndRemovingTheFirstNamedCo
     auto const& updated{preview->front().updated};
     auto const other_begin{updated.find("(integer-scalar OtherScalar")};
     auto const other_end{updated.find("(integer-scalar SignedScalar", other_begin)};
-    auto const signed_end{updated.find("(representation-module", other_end)};
+    auto const signed_end{updated.find("(module authored_representations", other_end)};
     ASSERT_NE(other_begin, std::string::npos);
     ASSERT_NE(other_end, std::string::npos);
     ASSERT_NE(signed_end, std::string::npos);
@@ -1475,7 +1475,7 @@ TEST(EditableSchemaDocument, PreservesSourceWhenAddingAndRemovingTheFirstNamedCo
     EXPECT_NE(signed_source.find(":minimum -100"), std::string::npos);
 
     auto const packed_begin{updated.find("(packed-value ExistingPacked")};
-    auto const packed_end{updated.find("(scalar-module", packed_begin)};
+    auto const packed_end{updated.find("(module authored_scalars", packed_begin)};
     ASSERT_NE(packed_begin, std::string::npos);
     ASSERT_NE(packed_end, std::string::npos);
     auto const packed_source{updated.substr(packed_begin, packed_end - packed_begin)};
@@ -1838,7 +1838,7 @@ TEST(EditableSchemaDocument, PreservesPackedSegmentsAndCommentsForStructuralEdit
     ASSERT_EQ(preview->size(), 1U);
     auto const& deletion_source{preview->front().updated};
     auto const packed_begin{deletion_source.find("(packed-value ExistingPacked")};
-    auto const packed_end{deletion_source.find("(scalar-module", packed_begin)};
+    auto const packed_end{deletion_source.find("(module authored_scalars", packed_begin)};
     ASSERT_NE(packed_begin, std::string::npos);
     ASSERT_NE(packed_end, std::string::npos);
     auto const packed_source{deletion_source.substr(packed_begin, packed_end - packed_begin)};
@@ -2489,7 +2489,7 @@ TEST(EditableSchemaDocument, PreservesAggregateChildRowsDuringDirectRename) {
     auto const& updated{preview->front().updated};
 
     auto const record_begin{updated.find("(record ExistingRecord")};
-    auto const record_end{updated.find("(union-module", record_begin)};
+    auto const record_end{updated.find("(module authored_unions", record_begin)};
     ASSERT_NE(record_begin, std::string::npos);
     ASSERT_NE(record_end, std::string::npos);
     auto const record_source{updated.substr(record_begin, record_end - record_begin)};
@@ -2513,7 +2513,7 @@ TEST(EditableSchemaDocument, PreservesAggregateChildRowsDuringDirectRename) {
     EXPECT_NE(raw_source.find("; value alternative trailing note"), std::string::npos);
 
     auto const tagged_begin{updated.find("(tagged-union ExistingTagged")};
-    auto const tagged_end{updated.find("(soa-module", tagged_begin)};
+    auto const tagged_end{updated.find("(module authored_soa", tagged_begin)};
     ASSERT_NE(tagged_begin, std::string::npos);
     ASSERT_NE(tagged_end, std::string::npos);
     auto const tagged_source{updated.substr(tagged_begin, tagged_end - tagged_begin)};
@@ -4030,22 +4030,20 @@ TEST(EditableSchemaDocument, CreatesModuleThenDeclarationAndReloadsWithoutSource
 
     auto duplicate{document.apply(
         CreateModule{.source_file_index = 1,
-                     .schema = codegen::ScalarModuleSchema{
+                     .schema = codegen::NormalModuleSchema{
                          .settings = codegen::ModuleSettings{.name = "authored_scalars",
                                                              .header = "DuplicateScalars.h",
-                                                             .namespace_name = "authored"},
-                         .scalars = {}}})};
+                                                             .namespace_name = "authored"}}})};
     ASSERT_FALSE(duplicate.has_value());
     EXPECT_EQ(document.manifest().modules.size(), original_module_count);
     EXPECT_EQ(document.revision(), original_revision);
 
     auto created_module{document.apply(
         CreateModule{.source_file_index = 1,
-                     .schema = codegen::ScalarModuleSchema{
+                     .schema = codegen::NormalModuleSchema{
                          .settings = codegen::ModuleSettings{.name = "planner_scalars",
                                                              .header = "PlannerScalars.h",
-                                                             .namespace_name = "planner"},
-                         .scalars = {}}})};
+                                                             .namespace_name = "planner"}}})};
     ASSERT_TRUE(created_module.has_value()) << created_module.error().message;
     ASSERT_TRUE(*created_module);
     ASSERT_EQ(document.manifest().modules.size(), original_module_count + 1);
@@ -4120,28 +4118,17 @@ TEST(EditableSchemaDocument, NormalizesLegacyEmptyModuleKindsOnCreation) {
                                        .prelude_lines = {}};
     };
     std::vector<codegen::ModuleSchema> modules;
-    modules.push_back(codegen::EnumModuleSchema{
-        .settings = settings("new_enums"), .helper_namespace = std::nullopt, .enums = {}});
+    modules.push_back(codegen::NormalModuleSchema{.settings = settings("new_enums"),
+                                                  .enum_helper_namespace = std::nullopt});
+    modules.push_back(codegen::NormalModuleSchema{.settings = settings("new_packed")});
+    modules.push_back(codegen::NormalModuleSchema{.settings = settings("new_scalars")});
+    modules.push_back(codegen::NormalModuleSchema{.settings = settings("new_representations")});
+    modules.push_back(codegen::NormalModuleSchema{.settings = settings("new_records")});
+    modules.push_back(codegen::NormalModuleSchema{.settings = settings("new_unions")});
     modules.push_back(
-        codegen::PackedValueModuleSchema{.settings = settings("new_packed"), .values = {}});
-    modules.push_back(
-        codegen::ScalarModuleSchema{.settings = settings("new_scalars"), .scalars = {}});
-    modules.push_back(
-        codegen::RepresentationModuleSchema{.settings = settings("new_representations"),
-                                            .linear_quantized = {},
-                                            .integer_varints = {},
-                                            .fixed_points = {},
-                                            .optional_sentinels = {},
-                                            .optional_presence_bits = {},
-                                            .mini_floats = {}});
-    modules.push_back(
-        codegen::RecordModuleSchema{.settings = settings("new_records"), .records = {}});
-    modules.push_back(codegen::UnionModuleSchema{
-        .settings = settings("new_unions"), .unions = {}, .tagged_unions = {}});
-    modules.push_back(codegen::SoaModuleSchema{.settings = settings("new_soas"),
-                                               .structs = {},
-                                               .backend = codegen::SoaBackend::standard_library,
-                                               .array_allocators = {}});
+        codegen::NormalModuleSchema{.settings = settings("new_soas"),
+                                    .soa_backend = codegen::SoaBackend::standard_library,
+                                    .soa_array_allocators = {}});
 
     for (auto& module : modules) {
         auto created{
@@ -4176,13 +4163,13 @@ TEST(EditableSchemaDocument, NormalizesLegacyEmptyModuleKindsOnCreation) {
 TEST(EditableSchemaDocument, DeletesSourceBackedMiddleModuleAndRestoresExactIdentity) {
     TemporarySchema files;
     files.write_source("types.lispb", "; No registered aliases.\n");
-    auto const deleted_form{std::string{R"((scalar-module middle
+    auto const deleted_form{std::string{R"((module middle
   :header "Middle.h"
   :namespace demo
   (integer-scalar First :signed false :minimum 0 :maximum 3 :bit-width auto)
   (integer-scalar Second :signed false :minimum 0 :maximum 7 :bit-width auto)))"}};
     auto const original{std::string{R"(; Preserve this file-level introduction.
-(scalar-module first
+(module first
   :header "First.h"
   :namespace demo
   (integer-scalar Before :signed false :minimum 0 :maximum 1 :bit-width auto))
@@ -4191,7 +4178,7 @@ TEST(EditableSchemaDocument, DeletesSourceBackedMiddleModuleAndRestoresExactIden
 
 )"} + deleted_form + R"(
 
-(scalar-module last
+(module last
   :header "Last.h"
   :namespace demo
   (integer-scalar After :signed false :minimum 0 :maximum 15 :bit-width auto))
@@ -4313,7 +4300,7 @@ TEST(EditableSchemaDocument, DeletesSourceBackedMiddleModuleAndRestoresExactIden
 TEST(EditableSchemaDocument, RejectsDeletionOfTheLastModuleWithoutChangingDraft) {
     TemporarySchema files;
     files.write_source("types.lispb", "");
-    files.write_source("modules.lispb", R"((scalar-module only
+    files.write_source("modules.lispb", R"((module only
   :header "Only.h"
   :namespace demo
   (integer-scalar Value :signed false :minimum 0 :maximum 3 :bit-width auto))
@@ -4343,12 +4330,12 @@ TEST(EditableSchemaDocument, RejectsDeletionOfTheLastModuleWithoutChangingDraft)
 TEST(EditableSchemaDocument, RejectsDeletionWhenAnotherModuleUsesADeclaration) {
     TemporarySchema files;
     files.write_source("types.lispb", "");
-    files.write_source("modules.lispb", R"((scalar-module targets
+    files.write_source("modules.lispb", R"((module targets
   :header "Targets.h"
   :namespace demo
   (integer-scalar Target :signed false :minimum 0 :maximum 3 :bit-width auto))
 
-(record-module consumers
+(module consumers
   :header "Consumers.h"
   :namespace demo
   (record Consumer
@@ -4383,13 +4370,13 @@ TEST(EditableSchemaDocument, RejectsDeletionWhenAnotherModuleUsesADeclaration) {
 TEST(EditableSchemaDocument, AllowsDeletionOfEntireModuleWithInternalDependencies) {
     TemporarySchema files;
     files.write_source("types.lispb", "");
-    files.write_source("modules.lispb", R"((record-module related
+    files.write_source("modules.lispb", R"((module related
   :header "Related.h"
   :namespace demo
   (record Foo (member value std::uint8_t))
   (record Bar (member foo demo::Foo)))
 
-(scalar-module survivor
+(module survivor
   :header "Survivor.h"
   :namespace demo
   (integer-scalar Keep :signed false :minimum 0 :maximum 1 :bit-width auto))
@@ -4417,12 +4404,12 @@ TEST(EditableSchemaDocument, RejectsDeletionOfRegisteredDeclarationWithoutChangi
   :spelling "demo::Target"
   :header "Targets.h")
 )");
-    files.write_source("modules.lispb", R"((scalar-module targets
+    files.write_source("modules.lispb", R"((module targets
   :header "Targets.h"
   :namespace demo
   (integer-scalar Target :signed false :minimum 0 :maximum 3 :bit-width auto))
 
-(scalar-module survivor
+(module survivor
   :header "Survivor.h"
   :namespace demo
   (integer-scalar Keep :signed false :minimum 0 :maximum 1 :bit-width auto))
@@ -4452,17 +4439,17 @@ TEST(EditableSchemaDocument, RejectsDeletionOfRegisteredDeclarationWithoutChangi
 TEST(EditableSchemaDocument, RestoresPendingModuleOwnershipAcrossIndexShifts) {
     TemporarySchema files;
     files.write_source("types.lispb", "");
-    files.write_source("modules.lispb", R"((scalar-module first
+    files.write_source("modules.lispb", R"((module first
   :header "First.h"
   :namespace demo
   (integer-scalar First :signed false :minimum 0 :maximum 1 :bit-width auto))
 
-(scalar-module middle
+(module middle
   :header "Middle.h"
   :namespace demo
   (integer-scalar Middle :signed false :minimum 0 :maximum 3 :bit-width auto))
 )");
-    files.write_source("other.lispb", R"((scalar-module other
+    files.write_source("other.lispb", R"((module other
   :header "Other.h"
   :namespace demo
   (integer-scalar Other :signed false :minimum 0 :maximum 7 :bit-width auto))
@@ -4472,13 +4459,11 @@ TEST(EditableSchemaDocument, RestoresPendingModuleOwnershipAcrossIndexShifts) {
     ASSERT_EQ(document.source_files().size(), 3U);
     auto const middle{declaration_id(document, "middle", "Middle", "demo")};
     auto const other{declaration_id(document, "other", "Other", "demo")};
-    auto created_module{document.apply(
-        CreateModule{.source_file_index = 2,
-                     .schema = codegen::ScalarModuleSchema{
-                         .settings = codegen::ModuleSettings{.name = "pending",
-                                                             .header = "Pending.h",
-                                                             .namespace_name = "demo"},
-                         .scalars = {}}})};
+    auto created_module{document.apply(CreateModule{
+        .source_file_index = 2,
+        .schema = codegen::NormalModuleSchema{
+            .settings = codegen::ModuleSettings{
+                .name = "pending", .header = "Pending.h", .namespace_name = "demo"}}})};
     ASSERT_TRUE(created_module.has_value()) << created_module.error().message;
     ASSERT_TRUE(*created_module);
 
@@ -4568,7 +4553,7 @@ TEST(EditableSchemaDocument, PreservesDeclarationTombstonesAcrossModuleDeletionH
     TemporarySchema files;
     files.write_source("types.lispb", "");
     auto const doomed_form{std::string{
-        "(scalar-module doomed\n"
+        "(module doomed\n"
         "  :header \"Doomed.h\"\n"
         "  :namespace demo\n"
         "  (integer-scalar Alpha :signed false :minimum 0 :maximum 1 :bit-width auto)\n"
@@ -4577,7 +4562,7 @@ TEST(EditableSchemaDocument, PreservesDeclarationTombstonesAcrossModuleDeletionH
         std::string{"(integer-scalar Beta :signed false :minimum 0 :maximum 3 :bit-width auto)"}};
     auto const original{doomed_form + R"(
 
-(scalar-module survivor
+(module survivor
   :header "Survivor.h"
   :namespace demo
   (integer-scalar Keep :signed false :minimum 0 :maximum 7 :bit-width auto))
@@ -4652,7 +4637,7 @@ TEST(EditableSchemaDocument, PreservesDeclarationTombstonesAcrossModuleDeletionH
 
 TEST(EditableSchemaDocument, MovesDeclarationsAcrossCompatibleModuleSources) {
     TemporarySchema files;
-    files.write_source("destinations.lispb", R"((scalar-module destination_scalars
+    files.write_source("destinations.lispb", R"((module destination_scalars
   :header "DestinationScalars.h"
   :namespace authored
   (integer-scalar DestinationScalar
@@ -4666,11 +4651,11 @@ TEST(EditableSchemaDocument, MovesDeclarationsAcrossCompatibleModuleSources) {
     :maximum 7
     :bit-width 4))
 
-(scalar-module foreign_scalars
+(module foreign_scalars
   :header "ForeignScalars.h"
   :namespace foreign)
 
-(representation-module destination_representations
+(module destination_representations
   :header "DestinationRepresentations.h"
   :namespace authored
   (linear-quantized DestinationQ
@@ -4679,7 +4664,7 @@ TEST(EditableSchemaDocument, MovesDeclarationsAcrossCompatibleModuleSources) {
     :reserved-codes 0
     :clipping reject))
 
-(union-module destination_unions
+(module destination_unions
   :header "DestinationUnions.h"
   :namespace authored
   (union DestinationUnion
@@ -4834,15 +4819,15 @@ TEST(EditableSchemaDocument, MovesDeclarationsAcrossCompatibleModuleSources) {
 
 TEST(EditableSchemaDocument, RepairsReferencesWhenMovingAcrossNamespaces) {
     TemporarySchema files;
-    files.write_source("migrated.lispb", R"((scalar-module migrated_scalars
+    files.write_source("migrated.lispb", R"((module migrated_scalars
   :header "MigratedScalars.h"
   :namespace migrated)
 
-(enum-module migrated_enums
+(module migrated_enums
   :header "MigratedEnums.h"
   :namespace migrated)
 
-(soa-module migrated_soa
+(module migrated_soa
   :header "MigratedSoa.h"
   :namespace migrated
   :backend standard-library)
@@ -8981,23 +8966,23 @@ TEST(EditableDocument, SourceBackedSpecialDeclarationsMoveWithCanonicalFallbacks
     EXPECT_TRUE(std::holds_alternative<codegen::FacadeSchema>(destination.declarations[3]));
 }
 
-TEST(EditableDocument, HeterogeneousEditPromotesLegacyModuleToCanonicalSource) {
+TEST(EditableDocument, HeterogeneousMovePreservesModuleComments) {
     TemporarySchema files;
-    files.write_source("legacy_promotion.lispb", R"(
+    files.write_source("mixed_move.lispb", R"(
 ; Keep this outer comment.
-(scalar-module scalars
+(module scalars
   :header "Scalars.h"
   :namespace legacy
   ; Keep this declaration comment.
   (integer-scalar Health :signed false :minimum 0 :maximum 100 :bit-width auto))
 
-(enum-module enums
+(module enums
   :header "Enums.h"
   :namespace legacy
   (enum State std::uint8_t
     (value Alive)))
 )");
-    auto document{files.load_with_module_source("legacy_promotion.lispb")};
+    auto document{files.load_with_module_source("mixed_move.lispb")};
     auto const scalar_index{document.manifest().modules.size() - 2};
     auto const health{declaration_id(document, "scalars", "Health", "legacy")};
     auto const state{declaration_id(document, "enums", "State", "legacy")};
@@ -9007,7 +8992,7 @@ TEST(EditableDocument, HeterogeneousEditPromotesLegacyModuleToCanonicalSource) {
     ASSERT_TRUE(preserved.has_value()) << preserved.error().message;
     auto preview{document.preview_source_updates()};
     ASSERT_TRUE(preview.has_value()) << preview.error().message;
-    EXPECT_NE(preview->front().updated.find("(scalar-module scalars"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(module scalars"), std::string::npos);
 
     auto moved{document.apply(MoveDeclaration{.declaration = state, .module_index = scalar_index})};
     ASSERT_TRUE(moved.has_value()) << moved.error().message;
@@ -9021,7 +9006,7 @@ TEST(EditableDocument, HeterogeneousEditPromotesLegacyModuleToCanonicalSource) {
 
     auto saved{document.save()};
     ASSERT_TRUE(saved.has_value()) << saved.error().message;
-    auto reloaded{files.load_with_module_source("legacy_promotion.lispb")};
+    auto reloaded{files.load_with_module_source("mixed_move.lispb")};
     auto const& module{
         std::get<codegen::NormalModuleSchema>(reloaded.manifest().modules.at(scalar_index))};
     ASSERT_EQ(module.declarations.size(), 2U);
@@ -9030,20 +9015,20 @@ TEST(EditableDocument, HeterogeneousEditPromotesLegacyModuleToCanonicalSource) {
     EXPECT_EQ(document.declaration(state)->id, state);
 }
 
-TEST(EditableDocument, LegacyVectorModuleEditsPromoteTheWholeModule) {
+TEST(EditableDocument, VectorDeclarationEditsPreserveModuleSource) {
     TemporarySchema files;
-    files.write_source("legacy_vector.lispb", R"(
+    files.write_source("vector_edit.lispb", R"(
 ; Keep this file comment.
-(vector-soa-module legacy_vectors
+(module vector_edits
   :header "LegacyVectors.h"
   :source "LegacyVectors.cpp"
-  :storage-name LegacyVectors
-  :value-type float
-  :components (xs ys)
-  :equivalent-type int32)
+  (vector-soa LegacyVectors
+    :value-type float
+    :components (xs ys)
+    :equivalent-type int32))
 )");
-    auto document{files.load_with_module_source("legacy_vector.lispb")};
-    auto const declaration{declaration_id(document, "legacy_vectors", "LegacyVectors", "")};
+    auto document{files.load_with_module_source("vector_edit.lispb")};
+    auto const declaration{declaration_id(document, "vector_edits", "LegacyVectors", "")};
     auto const& module{std::get<codegen::NormalModuleSchema>(document.manifest().modules.back())};
     auto replacement{std::get<codegen::VectorSoaSchema>(module.declarations.front())};
     replacement.components = {"xs", "zs"};
@@ -9055,17 +9040,15 @@ TEST(EditableDocument, LegacyVectorModuleEditsPromoteTheWholeModule) {
     auto preview{document.preview_source_updates()};
     ASSERT_TRUE(preview.has_value()) << preview.error().message;
     ASSERT_EQ(preview->size(), 1U);
-    EXPECT_NE(preview->front().updated.find("(module legacy_vectors"), std::string::npos);
+    EXPECT_NE(preview->front().updated.find("(module vector_edits"), std::string::npos);
     EXPECT_NE(preview->front().updated.find("(vector-soa LegacyVectors"), std::string::npos);
     EXPECT_NE(preview->front().updated.find("; Keep this file comment."), std::string::npos);
-    EXPECT_EQ(preview->front().updated.find("(vector-soa-module legacy_vectors"),
-              std::string::npos);
 
     ASSERT_TRUE(document.undo().value());
     ASSERT_TRUE(document.redo().value());
     auto saved{document.save()};
     ASSERT_TRUE(saved.has_value()) << saved.error().message;
-    auto reloaded{files.load_with_module_source("legacy_vector.lispb")};
+    auto reloaded{files.load_with_module_source("vector_edit.lispb")};
     auto const& reloaded_module{
         std::get<codegen::NormalModuleSchema>(reloaded.manifest().modules.back())};
     auto const& vector{std::get<codegen::VectorSoaSchema>(reloaded_module.declarations.front())};

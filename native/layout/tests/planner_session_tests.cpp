@@ -11,7 +11,7 @@ auto session_manifest(bool const include_first = false) -> codegen::Manifest {
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;
     if (include_first) {
-        codegen::EnumModuleSchema first{};
+        codegen::NormalModuleSchema first{};
         first.settings.name = "first";
         first.settings.header = "First.h";
         codegen::EnumSchema value{};
@@ -21,11 +21,11 @@ auto session_manifest(bool const include_first = false) -> codegen::Manifest {
         codegen::EnumeratorSchema enumerator{};
         enumerator.name = "Value";
         value.values.push_back(std::move(enumerator));
-        first.enums.push_back(std::move(value));
+        first.declarations.push_back(std::move(value));
         manifest.modules.emplace_back(std::move(first));
     }
 
-    codegen::PackedValueModuleSchema packed_module{};
+    codegen::NormalModuleSchema packed_module{};
     packed_module.settings.name = "packed";
     packed_module.settings.header = "Packed.h";
     codegen::PackedValueSchema packed{};
@@ -36,10 +36,10 @@ auto session_manifest(bool const include_first = false) -> codegen::Manifest {
     bits.type.name = "std::uint8_t";
     bits.bits = 8;
     packed.segments.emplace_back(std::move(bits));
-    packed_module.values.push_back(std::move(packed));
+    packed_module.declarations.push_back(std::move(packed));
     manifest.modules.emplace_back(std::move(packed_module));
 
-    codegen::RecordModuleSchema records{};
+    codegen::NormalModuleSchema records{};
     records.settings.name = "records";
     records.settings.header = "Records.h";
     codegen::RecordSchema record{};
@@ -48,7 +48,7 @@ auto session_manifest(bool const include_first = false) -> codegen::Manifest {
     member.name = "value";
     member.type.name = "std::uint32_t";
     record.members.push_back(std::move(member));
-    records.records.push_back(std::move(record));
+    records.declarations.push_back(std::move(record));
     manifest.modules.emplace_back(std::move(records));
     return manifest;
 }
@@ -56,7 +56,7 @@ auto session_manifest(bool const include_first = false) -> codegen::Manifest {
 auto distribution_manifest() -> codegen::Manifest {
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;
-    codegen::EnumModuleSchema enums{};
+    codegen::NormalModuleSchema enums{};
     enums.settings.name = "kinds";
     enums.settings.header = "Kinds.h";
     codegen::EnumSchema kind{};
@@ -68,10 +68,10 @@ auto distribution_manifest() -> codegen::Manifest {
         value.name = name;
         kind.values.push_back(std::move(value));
     }
-    enums.enums.push_back(std::move(kind));
+    enums.declarations.push_back(std::move(kind));
     manifest.modules.emplace_back(std::move(enums));
 
-    codegen::UnionModuleSchema unions{};
+    codegen::NormalModuleSchema unions{};
     unions.settings.name = "unions";
     unions.settings.header = "Unions.h";
     codegen::UnionSchema raw{};
@@ -83,7 +83,7 @@ auto distribution_manifest() -> codegen::Manifest {
     large.name = "large";
     large.type.name = "std::uint32_t";
     raw.alternatives = {std::move(small), std::move(large)};
-    unions.unions.push_back(std::move(raw));
+    unions.declarations.push_back(std::move(raw));
 
     codegen::TaggedUnionSchema tagged{};
     tagged.name = "Tagged";
@@ -97,7 +97,7 @@ auto distribution_manifest() -> codegen::Manifest {
     tagged_large.tag = "Large";
     tagged_large.type.name = "std::uint32_t";
     tagged.alternatives = {std::move(tagged_small), std::move(tagged_large)};
-    unions.tagged_unions.push_back(std::move(tagged));
+    unions.declarations.push_back(std::move(tagged));
     manifest.modules.emplace_back(std::move(unions));
     return manifest;
 }
@@ -105,7 +105,7 @@ auto distribution_manifest() -> codegen::Manifest {
 auto varint_manifest(bool const include_second) -> codegen::Manifest {
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;
-    codegen::ScalarModuleSchema scalars{};
+    codegen::NormalModuleSchema scalars{};
     scalars.settings.name = "scalars";
     scalars.settings.header = "Scalars.h";
     codegen::IntegerScalarSchema value{};
@@ -113,23 +113,23 @@ auto varint_manifest(bool const include_second) -> codegen::Manifest {
     value.signedness = true;
     value.minimum_value = -100;
     value.maximum_value = 1000;
-    scalars.scalars.push_back(std::move(value));
+    scalars.declarations.push_back(std::move(value));
     manifest.modules.emplace_back(std::move(scalars));
 
-    codegen::RepresentationModuleSchema representations{};
+    codegen::NormalModuleSchema representations{};
     representations.settings.name = "representations";
     representations.settings.header = "Representations.h";
     codegen::IntegerVarintSchema first{};
     first.name = "First";
     first.source.name = "Value";
     first.encoding = codegen::IntegerVarintEncoding::signed_varint;
-    representations.integer_varints.push_back(std::move(first));
+    representations.declarations.push_back(std::move(first));
     if (include_second) {
         codegen::IntegerVarintSchema second{};
         second.name = "Second";
         second.source.name = "Value";
         second.encoding = codegen::IntegerVarintEncoding::zigzag_varint;
-        representations.integer_varints.push_back(std::move(second));
+        representations.declarations.push_back(std::move(second));
     }
     manifest.modules.emplace_back(std::move(representations));
     return manifest;

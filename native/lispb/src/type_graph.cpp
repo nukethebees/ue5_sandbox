@@ -850,16 +850,7 @@ auto TypeGraph::users_of(TypeId const id) const -> std::span<TypeId const> {
 
 auto resolve_type_graph(codegen::Manifest const& manifest) -> TypeGraph {
     codegen::validate_manifest(manifest);
-    auto const is_canonical{std::ranges::all_of(manifest.modules, [](auto const& module) {
-        return std::holds_alternative<codegen::NormalModuleSchema>(module) ||
-               std::holds_alternative<codegen::SettingsModuleSchema>(module) ||
-               std::holds_alternative<codegen::UmbrellaModuleSchema>(module);
-    })};
-    if (is_canonical) {
-        return TypeGraphBuilder{manifest}.build();
-    }
-    auto const canonical{codegen::canonical_manifest(manifest)};
-    return TypeGraphBuilder{canonical}.build();
+    return TypeGraphBuilder{manifest}.build();
 }
 
 } // namespace lispb::schema

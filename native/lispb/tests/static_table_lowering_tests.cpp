@@ -7,8 +7,8 @@
 namespace codegen {
 namespace {
 
-auto static_table_module() -> StaticTableModuleSchema {
-    return StaticTableModuleSchema{
+auto static_table_module() -> NormalModuleSchema {
+    return NormalModuleSchema{
         .settings =
             ModuleSettings{
                 .name = "tables",
@@ -16,7 +16,7 @@ auto static_table_module() -> StaticTableModuleSchema {
                 .namespace_name = "project::generated",
                 .prelude_lines = {"class FForward;"},
             },
-        .tables = {StaticTableSchema{
+        .declarations = {StaticTableSchema{
             .name = "FValues",
             .rows = {StaticTableRowSchema{"first"},
                      StaticTableRowSchema{"second"},
@@ -25,11 +25,10 @@ auto static_table_module() -> StaticTableModuleSchema {
                         StaticTableColumnSchema{"values", TypeRef{"@value"}}},
             .groups = {StaticTableGroupSchema{"point", TypeRef{"@point"}, {"ids", "values"}}},
             .export_specifier = "PROJECT_API",
-        }},
-    };
+        }}};
 }
 
-auto render_static_table(StaticTableModuleSchema module) -> std::string {
+auto render_static_table(NormalModuleSchema module) -> std::string {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
         .types = {{"value", CppType{"FValue", "Project/Value.h"}},
@@ -67,9 +66,9 @@ TEST(StaticTableLowering, GeneratesFixedRowsColumnsAndCoreFunctions) {
 
 TEST(StaticTableLowering, GeneratesMultipleTablesInOneHeader) {
     auto module{static_table_module()};
-    auto second{module.tables.front()};
+    auto second{std::get<codegen::StaticTableSchema>(module.declarations.front())};
     second.name = "FOtherValues";
-    module.tables.push_back(std::move(second));
+    module.declarations.push_back(std::move(second));
 
     auto const output{render_static_table(std::move(module))};
 

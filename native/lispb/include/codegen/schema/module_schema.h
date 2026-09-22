@@ -1,40 +1,14 @@
 #pragma once
 
-#include <codegen/schema/enum_module_schema.h>
-#include <codegen/schema/facade_module_schema.h>
-#include <codegen/schema/homogeneous_module_schema.h>
 #include <codegen/schema/module_settings.h>
 #include <codegen/schema/normal_module_schema.h>
-#include <codegen/schema/packed_value_module_schema.h>
-#include <codegen/schema/record_module_schema.h>
-#include <codegen/schema/representation_module_schema.h>
-#include <codegen/schema/scalar_module_schema.h>
 #include <codegen/schema/settings_module_schema.h>
-#include <codegen/schema/soa_module_schema.h>
-#include <codegen/schema/static_table_module_schema.h>
 #include <codegen/schema/umbrella_module_schema.h>
-#include <codegen/schema/union_module_schema.h>
-#include <codegen/schema/vector_module_schema.h>
 
-#include <optional>
 #include <variant>
-#include <vector>
 
 namespace codegen {
 
-using ModuleSchema = std::variant<NormalModuleSchema,
-                                  EnumModuleSchema,
-                                  SoaModuleSchema,
-                                  StaticTableModuleSchema,
-                                  HomogeneousModuleSchema,
-                                  PackedValueModuleSchema,
-                                  ScalarModuleSchema,
-                                  RepresentationModuleSchema,
-                                  RecordModuleSchema,
-                                  UnionModuleSchema,
-                                  VectorModuleSchema,
-                                  FacadeModuleSchema,
-                                  SettingsModuleSchema,
-                                  UmbrellaModuleSchema>;
+using ModuleSchema = std::variant<NormalModuleSchema, SettingsModuleSchema, UmbrellaModuleSchema>;
 
 } // namespace codegen

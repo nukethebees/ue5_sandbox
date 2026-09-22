@@ -57,9 +57,8 @@ completion for V1.
 The editable document/command foundation supports enum, standalone integer-scalar, linear-
 quantized, integer-varint, fixed-point, mini-float, optional-sentinel, optional-presence-bit
 representation, packed-value, record, and standard-library SoA authoring. Declarations
-can be added to existing matching modules, and empty enum, packed-value, integer-scalar,
-representation, record, union, and standard-library SoA modules can be created in an already loaded
-module source;
+can coexist in ordinary modules, and empty modules can be created with an explicit SoA
+backend in an already loaded module source;
 ordered values/fields/members/codes can be added, duplicated, deleted, reordered, and edited inline;
 packed widths can also be changed through the bit diagram. Semantic edits support undo/redo,
 affected-source preview, and validated save/reload. Supported declarations can be renamed through
@@ -331,20 +330,20 @@ lowering preference when present. When absent, known signedness/effective semant
 smallest legal fixed-width C++ primitive downstream; Unknown facts reject generation rather than
 guessing, and no fabricated primitive dependency enters the semantic graph.
 
-Standalone `scalar-module` declarations now provide ordinary `integer-scalar` semantic domains
+Standalone `integer-scalar` declarations in ordinary modules provide semantic domains
 without a C++ underlying type. Each scalar stores signedness, an inclusive live range, auto or
 explicit 1-64-bit width, and ordered named live/sentinel codes. The shared graph resolves these as
 `IntegerScalarType` nodes with no target size/alignment facts; headless analysis reports live,
 sentinel, required, and unused code space. Creation, flat inline editing and drag reorder,
-undo/redo, preview, save, and reload use the same editable-document path. Scalar modules emit an
-otherwise empty configured header by default and do not fabricate a physical C++ value type. An
+undo/redo, preview, save, and reload use the same editable-document path. Scalars emit no C++ declarations
+by default and do not fabricate a physical C++ value type. An
 explicit, source-backed `:cpp-emission constants` policy can instead project the ordered named codes
 as typed `inline constexpr` C++ constants. The author chooses a validated integral output type; this
 projection remains downstream policy and does not add ABI size/alignment to the semantic scalar.
 `constants-with-names` additionally emits an allocation-free `constexpr` value-to-symbol lookup
 whose empty result honestly represents unnamed values.
 
-`representation-module` now provides an initial source-backed `linear-quantized` physical
+`module` now provides an initial source-backed `linear-quantized` physical
 representation. It references an `integer-scalar` through the shared graph rather than copying its
 semantic range, owns an encoded width, reserved-code count, and reject/clamp clipping policy, and
 deliberately has no standalone ABI `sizeof`. Exact capacity validation retains at least two usable
@@ -358,7 +357,7 @@ headless comparison analysis for code-space, precision/error, clipping, and over
 selected-count payload-bit deltas. Allocated bytes/cache/page consequences remain Unknown until a
 container placement policy is declared.
 
-`representation-module` also supports source-backed `integer-varint` declarations for unsigned,
+`module` also supports source-backed `integer-varint` declarations for unsigned,
 signed, and ZigZag encodings. Signedness compatibility is validated against the referenced integer
 scalar; named source sentinels participate in exact minimum/maximum encoded byte analysis.
 Selected-count lower/upper byte bounds are overflow-safe. An explicit session value/weight
@@ -372,7 +371,7 @@ per-value/selected-count lower and upper byte bounds. Different semantic sources
 expected size stays Unknown without a distribution. When supplied, one source-keyed session
 distribution is applied to both encodings for checked sample totals and expectation deltas.
 
-`representation-module` now also supports source-backed standalone `fixed-point` declarations.
+`module` now also supports source-backed standalone `fixed-point` declarations.
 Signedness, total width, fractional width, and nearest-even/toward-zero rounding resolve to a
 first-class semantic representation without a fabricated C++ primitive or ABI `sizeof`. Headless
 analysis reports exact raw range, whole/fractional/sign allocation, scale, resolution, numerical
@@ -387,7 +386,7 @@ and width prefilled, then bind to it through two undoable edits; invalid binding
 declaration. Existing semantic ranges/codes/relationships disable contextual conversion to avoid
 silently discarding meaning.
 
-`representation-module` now supports source-backed `mini-float` representations. Explicit
+`module` now supports source-backed `mini-float` representations. Explicit
 sign, exponent, significand, and bias fields use an initial IEEE-style policy with distinct zero/
 subnormal, normal, and infinity/NaN exponent roles. Resolution creates a first-class semantic node
 without inventing a compiler primitive or ABI `sizeof`; analysis reports exact code roles and
@@ -403,7 +402,7 @@ Plain packed integer fields of sufficient width can also create and bind a share
 a valid prefilled bit partition; binding failure rolls back creation. The shortcut is unavailable
 when local domain metadata would otherwise be silently discarded.
 
-`representation-module` also supports source-backed `optional-sentinel` declarations. Each one
+`module` also supports source-backed `optional-sentinel` declarations. Each one
 references an integer scalar and selects one of its named sentinel codes as the absence state.
 Validation rejects non-scalar sources plus missing or non-sentinel codes; resolution retains the
 exact code, source-derived width, and dependency. Analysis separates present values, the absence
@@ -412,7 +411,7 @@ storage. Typed history/source persistence, scalar-rename repair, creation, dupli
 flat constrained source/sentinel editing, graph navigation, and Layout/Properties presentation are
 implemented.
 
-`representation-module` also supports source-backed `optional-presence-bit` declarations as a
+`module` also supports source-backed `optional-presence-bit` declarations as a
 distinct sibling policy over an integer scalar. Resolution derives one presence bit plus the source
 payload width, including 65 encoded bits for a 64-bit source. Analysis separates one canonical
 absence state from redundant absent payload patterns, source sentinel/unused code space, and
@@ -423,7 +422,7 @@ future placement facts. Any two same-source sentinel/presence declarations can b
 headless analysis and the Comparison view; policy roles, encoded width, redundant absence patterns,
 and selected-count payload-bit deltas remain separate from unspecified allocated storage.
 
-The shared LispB schema now has an initial ordinary `record-module`: records contain semantic
+The shared LispB schema supports `record` declarations in ordinary modules. Records contain semantic
 members, optional fixed element counts, and optional source-backed semantic relationships. They
 resolve to `RecordType` nodes and labeled dependency edges and
 lower to dependency-ordered ordinary C++ structs with `std::array` for fixed arrays. Illegal
@@ -466,7 +465,7 @@ effective valid-capacity/extent boundary only when all facts are known, so a pac
 does not receive optimistic semantic headroom. This remains planning state: it does not write
 capacity/extent into the semantic graph or silently change durable auto widths.
 
-The shared schema also has a source-backed `union-module` / raw `union` vertical slice. Ordered
+The shared schema also has source-backed raw `union` declarations in ordinary modules. Ordered
 alternatives may be scalar or fixed arrays, resolve to first-class dependency-bearing semantic
 nodes, reject direct and mixed record/union by-value cycles, and lower to ordinary C++ unions.
 Stable-ID commands, preview/save/reload, creation, duplication/deletion, and the flat alternative
@@ -669,8 +668,7 @@ module-local nested/fixed schema identities, retains explicit helper names while
 follow the declaration, and validates generated-name collisions transactionally. The shared source
 boundary now patches a validated owner's atomic name token and retries its ordinary source-preserving
 renderer, retaining comments, custom whitespace, stable child blocks, and localized repaired-user
-edits across all supported kinds. Registered-alias repair and vector-SoA module rename remain
-lifecycle extensions.
+edits across all supported kinds. Registered-alias repair remains a lifecycle extension.
 Draft and source-backed declarations can be deleted through their existing typed commands only when
 they have no resolved reverse users or registered alias. The document performs those checks before
 mutation, validates the remaining manifest, and preserves undo/redo and stable identity on

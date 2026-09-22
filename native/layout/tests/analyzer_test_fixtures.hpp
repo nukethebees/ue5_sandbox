@@ -44,7 +44,7 @@ inline auto entity_id_type(bool const include_reserved = false,
                            std::optional<codegen::PackedByteOrder> const byte_order = std::nullopt,
                            std::optional<codegen::PackedBitOrder> const bit_order = std::nullopt)
     -> TypeFixture {
-    codegen::EnumModuleSchema enums{};
+    codegen::NormalModuleSchema enums{};
     enums.settings.name = "entity_types";
     enums.settings.header = "EntityType.h";
     enums.settings.namespace_name = "project";
@@ -63,9 +63,9 @@ inline auto entity_id_type(bool const include_reserved = false,
                                                     .hidden = false,
                                                     .serialized_name = std::nullopt}};
     enumeration.count = "COUNT";
-    enums.enums.push_back(std::move(enumeration));
+    enums.declarations.push_back(std::move(enumeration));
 
-    codegen::PackedValueModuleSchema packed{};
+    codegen::NormalModuleSchema packed{};
     packed.settings.name = "entity_ids";
     packed.settings.header = "EntityId.h";
     codegen::PackedValueSchema packed_value{};
@@ -102,7 +102,7 @@ inline auto entity_id_type(bool const include_reserved = false,
     packed_value.invalid_value = 0xffffffff;
     packed_value.byte_order = byte_order;
     packed_value.bit_order = bit_order;
-    packed.values.push_back(std::move(packed_value));
+    packed.declarations.push_back(std::move(packed_value));
 
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;
@@ -115,7 +115,7 @@ inline auto entity_id_type(bool const include_reserved = false,
 
 inline auto signed_delta_type(bool const constrained = false, bool const full_range = false)
     -> TypeFixture {
-    codegen::PackedValueModuleSchema packed{};
+    codegen::NormalModuleSchema packed{};
     packed.settings.name = "signed_values";
     packed.settings.header = "SignedValues.h";
     codegen::PackedValueSchema value{};
@@ -147,7 +147,7 @@ inline auto signed_delta_type(bool const constrained = false, bool const full_ra
         value.segments.emplace_back(
             codegen::PackedReservedBitsSchema{.name = "future", .bits = constrained ? 24 : 15});
     }
-    packed.values.push_back(std::move(value));
+    packed.declarations.push_back(std::move(value));
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;
     manifest.modules = {std::move(packed)};
@@ -163,10 +163,10 @@ inline auto packed_integer_scalar_type() -> TypeFixture {
     scalar.maximum_value = 1000;
     scalar.named_codes = {{.name = "Invalid", .value = 4095, .sentinel = true}};
 
-    codegen::ScalarModuleSchema domains{};
+    codegen::NormalModuleSchema domains{};
     domains.settings.name = "domains";
     domains.settings.header = "Domains.h";
-    domains.scalars.push_back(std::move(scalar));
+    domains.declarations.push_back(std::move(scalar));
 
     codegen::PackedFieldSchema health{};
     health.name = "health";
@@ -178,10 +178,10 @@ inline auto packed_integer_scalar_type() -> TypeFixture {
     status.storage_type.name = "std::uint16_t";
     status.segments.emplace_back(std::move(health));
 
-    codegen::PackedValueModuleSchema packed{};
+    codegen::NormalModuleSchema packed{};
     packed.settings.name = "packed";
     packed.settings.header = "Packed.h";
-    packed.values.push_back(std::move(status));
+    packed.declarations.push_back(std::move(status));
 
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;
@@ -192,7 +192,7 @@ inline auto packed_integer_scalar_type() -> TypeFixture {
 }
 
 inline auto packed_linear_quantized_type() -> TypeFixture {
-    codegen::ScalarModuleSchema domains{};
+    codegen::NormalModuleSchema domains{};
     domains.settings.name = "domains";
     domains.settings.header = "Domains.h";
     domains.settings.namespace_name = "project";
@@ -200,9 +200,9 @@ inline auto packed_linear_quantized_type() -> TypeFixture {
     health.name = "Health";
     health.minimum_value = 0;
     health.maximum_value = 1000;
-    domains.scalars.push_back(std::move(health));
+    domains.declarations.push_back(std::move(health));
 
-    codegen::RepresentationModuleSchema representations{};
+    codegen::NormalModuleSchema representations{};
     representations.settings.name = "representations";
     representations.settings.header = "Representations.h";
     representations.settings.namespace_name = "project";
@@ -212,9 +212,9 @@ inline auto packed_linear_quantized_type() -> TypeFixture {
     health_q8.bit_width = 8;
     health_q8.reserved_codes = 2;
     health_q8.clipping = codegen::QuantizationClipping::clamp;
-    representations.linear_quantized.push_back(std::move(health_q8));
+    representations.declarations.push_back(std::move(health_q8));
 
-    codegen::PackedValueModuleSchema packed{};
+    codegen::NormalModuleSchema packed{};
     packed.settings.name = "packed";
     packed.settings.header = "Packed.h";
     packed.settings.namespace_name = "project";
@@ -232,7 +232,7 @@ inline auto packed_linear_quantized_type() -> TypeFixture {
     state.type.name = "std::uint8_t";
     state.bits = 8;
     status.segments.emplace_back(std::move(state));
-    packed.values.push_back(std::move(status));
+    packed.declarations.push_back(std::move(status));
 
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;
@@ -243,18 +243,18 @@ inline auto packed_linear_quantized_type() -> TypeFixture {
 }
 
 inline auto packed_fixed_point_type() -> TypeFixture {
-    codegen::RepresentationModuleSchema representations{};
+    codegen::NormalModuleSchema representations{};
     representations.settings.name = "representations";
     representations.settings.header = "Representations.h";
     representations.settings.namespace_name = "project";
-    representations.fixed_points.push_back(
+    representations.declarations.push_back(
         codegen::FixedPointSchema{.name = "VelocityQ8_4",
                                   .signedness = true,
                                   .total_bits = 12,
                                   .fractional_bits = 4,
                                   .rounding = codegen::FixedPointRounding::toward_zero});
 
-    codegen::PackedValueModuleSchema packed{};
+    codegen::NormalModuleSchema packed{};
     packed.settings.name = "packed";
     packed.settings.header = "Packed.h";
     packed.settings.namespace_name = "project";
@@ -268,7 +268,7 @@ inline auto packed_fixed_point_type() -> TypeFixture {
     velocity.kind = codegen::PackedFieldKind::fixed_point;
     motion.segments.emplace_back(std::move(velocity));
     motion.segments.emplace_back(codegen::PackedReservedBitsSchema{.name = "future", .bits = 4});
-    packed.values.push_back(std::move(motion));
+    packed.declarations.push_back(std::move(motion));
 
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;
@@ -282,7 +282,7 @@ inline auto integer_scalar_type() -> TypeFixture {
     codegen::Manifest manifest{
         .schema_version = codegen::manifest_schema_version,
         .types = {},
-        .modules = {codegen::ScalarModuleSchema{
+        .modules = {codegen::NormalModuleSchema{
             .settings = codegen::ModuleSettings{.name = "semantic_values",
                                                 .header = "SemanticValues.h",
                                                 .source = std::nullopt,
@@ -290,7 +290,7 @@ inline auto integer_scalar_type() -> TypeFixture {
                                                 .namespace_name = std::nullopt,
                                                 .include_order = {},
                                                 .prelude_lines = {}},
-            .scalars = {codegen::IntegerScalarSchema{
+            .declarations = {codegen::IntegerScalarSchema{
                 .name = "DamageReason",
                 .signedness = false,
                 .minimum_value = 0,
@@ -308,7 +308,7 @@ inline auto optional_sentinel_type() -> TypeFixture {
     codegen::Manifest manifest{
         .schema_version = codegen::manifest_schema_version,
         .types = {},
-        .modules = {codegen::ScalarModuleSchema{
+        .modules = {codegen::NormalModuleSchema{
                         .settings = codegen::ModuleSettings{.name = "semantic_values",
                                                             .header = "SemanticValues.h",
                                                             .source = std::nullopt,
@@ -316,7 +316,7 @@ inline auto optional_sentinel_type() -> TypeFixture {
                                                             .namespace_name = "project",
                                                             .include_order = {},
                                                             .prelude_lines = {}},
-                        .scalars = {codegen::IntegerScalarSchema{
+                        .declarations = {codegen::IntegerScalarSchema{
                             .name = "DamageReason",
                             .signedness = false,
                             .minimum_value = 0,
@@ -325,7 +325,7 @@ inline auto optional_sentinel_type() -> TypeFixture {
                             .named_codes = {{.name = "Invalid", .value = 15, .sentinel = true},
                                             {.name = "Pending", .value = 14, .sentinel = true}},
                             .relationship = std::nullopt}}},
-                    codegen::RepresentationModuleSchema{
+                    codegen::NormalModuleSchema{
                         .settings = codegen::ModuleSettings{.name = "representations",
                                                             .header = "Representations.h",
                                                             .source = std::nullopt,
@@ -333,10 +333,7 @@ inline auto optional_sentinel_type() -> TypeFixture {
                                                             .namespace_name = "project",
                                                             .include_order = {},
                                                             .prelude_lines = {}},
-                        .linear_quantized = {},
-                        .integer_varints = {},
-                        .fixed_points = {},
-                        .optional_sentinels = {codegen::OptionalSentinelSchema{
+                        .declarations = {codegen::OptionalSentinelSchema{
                             .name = "OptionalDamageReason",
                             .source = codegen::TypeRef{.name = "project::DamageReason",
                                                        .suffix = {},
@@ -354,7 +351,7 @@ inline auto optional_presence_bit_type(std::uint32_t const source_bits = 4) -> T
         .schema_version = codegen::manifest_schema_version,
         .types = {},
         .modules =
-            {codegen::ScalarModuleSchema{
+            {codegen::NormalModuleSchema{
                  .settings = codegen::ModuleSettings{.name = "semantic_values",
                                                      .header = "SemanticValues.h",
                                                      .source = std::nullopt,
@@ -362,7 +359,7 @@ inline auto optional_presence_bit_type(std::uint32_t const source_bits = 4) -> T
                                                      .namespace_name = "project",
                                                      .include_order = {},
                                                      .prelude_lines = {}},
-                 .scalars = {codegen::IntegerScalarSchema{
+                 .declarations = {codegen::IntegerScalarSchema{
                      .name = "DamageReason",
                      .signedness = false,
                      .minimum_value = 0,
@@ -380,7 +377,7 @@ inline auto optional_presence_bit_type(std::uint32_t const source_bits = 4) -> T
                                                                             .value = 14,
                                                                             .sentinel = true}},
                      .relationship = std::nullopt}}},
-             codegen::RepresentationModuleSchema{
+             codegen::NormalModuleSchema{
                  .settings = codegen::ModuleSettings{.name = "representations",
                                                      .header = "Representations.h",
                                                      .source = std::nullopt,
@@ -388,11 +385,7 @@ inline auto optional_presence_bit_type(std::uint32_t const source_bits = 4) -> T
                                                      .namespace_name = "project",
                                                      .include_order = {},
                                                      .prelude_lines = {}},
-                 .linear_quantized = {},
-                 .integer_varints = {},
-                 .fixed_points = {},
-                 .optional_sentinels = {},
-                 .optional_presence_bits = {codegen::OptionalPresenceBitSchema{
+                 .declarations = {codegen::OptionalPresenceBitSchema{
                      .name = "PresentDamageReason",
                      .source = codegen::TypeRef{.name = "project::DamageReason",
                                                 .suffix = {},
@@ -426,7 +419,7 @@ inline auto optional_comparison_types(bool const wide = false) -> OptionalCompar
         .schema_version = codegen::manifest_schema_version,
         .types = {},
         .modules =
-            {codegen::ScalarModuleSchema{
+            {codegen::NormalModuleSchema{
                  .settings = codegen::ModuleSettings{.name = "semantic_values",
                                                      .header = "SemanticValues.h",
                                                      .source = std::nullopt,
@@ -434,7 +427,7 @@ inline auto optional_comparison_types(bool const wide = false) -> OptionalCompar
                                                      .namespace_name = "project",
                                                      .include_order = {},
                                                      .prelude_lines = {}},
-                 .scalars =
+                 .declarations =
                      {codegen::IntegerScalarSchema{
                           .name = "DamageReason",
                           .signedness = false,
@@ -461,7 +454,7 @@ inline auto optional_comparison_types(bool const wide = false) -> OptionalCompar
                                                    .bit_width = 2,
                                                    .named_codes = {},
                                                    .relationship = std::nullopt}}},
-             codegen::RepresentationModuleSchema{
+             codegen::NormalModuleSchema{
                  .settings = codegen::ModuleSettings{.name = "representations",
                                                      .header = "Representations.h",
                                                      .source = std::nullopt,
@@ -469,74 +462,34 @@ inline auto optional_comparison_types(bool const wide = false) -> OptionalCompar
                                                      .namespace_name = "project",
                                                      .include_order = {},
                                                      .prelude_lines = {}},
-                 .linear_quantized = {},
-                 .integer_varints = {},
-                 .fixed_points = {},
-                 .optional_sentinels =
-                     wide
-                         ? std::vector<codegen::OptionalSentinelSchema>{{.name =
-                                                                             "OptionalDamageReason",
-                                                                         .source = codegen::
-                                                                             TypeRef{.name = "p"
-                                                                                             "r"
-                                                                                             "o"
-                                                                                             "j"
-                                                                                             "e"
-                                                                                             "c"
-                                                                                             "t"
-                                                                                             ":"
-                                                                                             ":"
-                                                                                             "D"
-                                                                                             "a"
-                                                                                             "m"
-                                                                                             "a"
-                                                                                             "g"
-                                                                                             "e"
-                                                                                             "R"
-                                                                                             "e"
-                                                                                             "a"
-                                                                                             "s"
-                                                                                             "o"
-                                                                                             "n",
-                                                                                     .suffix = {},
-                                                                                     .nested = std::
-                                                                                         nullopt},
-                                                                         .sentinel = "Invalid"}}
-                         : std::
-                               vector<codegen::OptionalSentinelSchema>{{.name =
-                                                                            "OptionalDamageReason",
-                                                                        .source =
-                                                                            codegen::TypeRef{
-                                                                                .name = "project::"
-                                                                                        "DamageReas"
-                                                                                        "on",
-                                                                                .suffix = {},
-                                                                                .nested =
-                                                                                    std::nullopt},
-                                                                        .sentinel = "Invalid"},
-                                                                       {.name = "OptionalDamageReas"
-                                                                                "onPending",
-                                                                        .source =
-                                                                            codegen::TypeRef{
-                                                                                .name = "project::"
-                                                                                        "DamageReas"
-                                                                                        "on",
-                                                                                .suffix = {},
-                                                                                .nested =
-                                                                                    std::nullopt},
-                                                                        .sentinel = "Pending"}},
-                 .optional_presence_bits =
-                     {codegen::OptionalPresenceBitSchema{
-                          .name = "PresentDamageReason",
-                          .source = codegen::TypeRef{.name = "project::DamageReason",
-                                                     .suffix = {},
-                                                     .nested = std::nullopt}},
-                      codegen::OptionalPresenceBitSchema{
-                          .name = "PresentOther",
-                          .source = codegen::TypeRef{.name = "project::Other",
-                                                     .suffix = {},
-                                                     .nested = std::nullopt}}}}},
+                 .declarations = {codegen::OptionalSentinelSchema{
+                                      .name = "OptionalDamageReason",
+                                      .source = codegen::TypeRef{.name = "project::DamageReason",
+                                                                 .suffix = {},
+                                                                 .nested = std::nullopt},
+                                      .sentinel = "Invalid"},
+                                  codegen::OptionalPresenceBitSchema{
+                                      .name = "PresentDamageReason",
+                                      .source = codegen::TypeRef{.name = "project::DamageReason",
+                                                                 .suffix = {},
+                                                                 .nested = std::nullopt}},
+                                  codegen::OptionalPresenceBitSchema{
+                                      .name = "PresentOther",
+                                      .source = codegen::TypeRef{.name = "project::Other",
+                                                                 .suffix = {},
+                                                                 .nested = std::nullopt}}}}},
     };
+    if (!wide) {
+        auto& declarations{
+            std::get<codegen::NormalModuleSchema>(manifest.modules.back()).declarations};
+        declarations.insert(declarations.begin() + 1,
+                            codegen::OptionalSentinelSchema{
+                                .name = "OptionalDamageReasonPending",
+                                .source = codegen::TypeRef{.name = "project::DamageReason",
+                                                           .suffix = {},
+                                                           .nested = std::nullopt},
+                                .sentinel = "Pending"});
+    }
     auto types{lispb::schema::resolve_type_graph(manifest)};
     auto const source{*types.find_declared("semantic_values", "DamageReason")};
     auto const sentinel{*types.find_declared("representations", "OptionalDamageReason")};
@@ -556,7 +509,7 @@ inline auto linear_quantized_type(std::uint32_t const bit_width = 8,
     codegen::Manifest manifest{
         .schema_version = codegen::manifest_schema_version,
         .types = {},
-        .modules = {codegen::ScalarModuleSchema{
+        .modules = {codegen::NormalModuleSchema{
                         .settings = codegen::ModuleSettings{.name = "semantic_values",
                                                             .header = "SemanticValues.h",
                                                             .source = std::nullopt,
@@ -564,14 +517,15 @@ inline auto linear_quantized_type(std::uint32_t const bit_width = 8,
                                                             .namespace_name = "project",
                                                             .include_order = {},
                                                             .prelude_lines = {}},
-                        .scalars = {codegen::IntegerScalarSchema{.name = "Health",
-                                                                 .signedness = signedness,
-                                                                 .minimum_value = minimum_value,
-                                                                 .maximum_value = maximum_value,
-                                                                 .bit_width = std::nullopt,
-                                                                 .named_codes = {},
-                                                                 .relationship = std::nullopt}}},
-                    codegen::RepresentationModuleSchema{
+                        .declarations = {codegen::IntegerScalarSchema{
+                            .name = "Health",
+                            .signedness = signedness,
+                            .minimum_value = minimum_value,
+                            .maximum_value = maximum_value,
+                            .bit_width = std::nullopt,
+                            .named_codes = {},
+                            .relationship = std::nullopt}}},
+                    codegen::NormalModuleSchema{
                         .settings = codegen::ModuleSettings{.name = "representations",
                                                             .header = "Representations.h",
                                                             .source = std::nullopt,
@@ -579,17 +533,14 @@ inline auto linear_quantized_type(std::uint32_t const bit_width = 8,
                                                             .namespace_name = "project",
                                                             .include_order = {},
                                                             .prelude_lines = {}},
-                        .linear_quantized = {codegen::LinearQuantizedSchema{
+                        .declarations = {codegen::LinearQuantizedSchema{
                             .name = "HealthQuantized",
                             .source = codegen::TypeRef{.name = "project::Health",
                                                        .suffix = {},
                                                        .nested = std::nullopt},
                             .bit_width = bit_width,
                             .reserved_codes = reserved_codes,
-                            .clipping = codegen::QuantizationClipping::clamp}},
-                        .integer_varints = {},
-                        .fixed_points = {},
-                        .optional_sentinels = {}}},
+                            .clipping = codegen::QuantizationClipping::clamp}}}},
     };
     auto types{lispb::schema::resolve_type_graph(manifest)};
     auto const type{*types.find_declared("representations", "HealthQuantized")};
@@ -607,7 +558,7 @@ inline auto linear_quantized_pair(bool const same_source = true,
         .schema_version = codegen::manifest_schema_version,
         .types = {},
         .modules = {
-            codegen::ScalarModuleSchema{
+            codegen::NormalModuleSchema{
                 .settings = codegen::ModuleSettings{.name = "semantic_values",
                                                     .header = "SemanticValues.h",
                                                     .source = std::nullopt,
@@ -615,21 +566,21 @@ inline auto linear_quantized_pair(bool const same_source = true,
                                                     .namespace_name = "project",
                                                     .include_order = {},
                                                     .prelude_lines = {}},
-                .scalars = {codegen::IntegerScalarSchema{.name = "Health",
-                                                         .signedness = signedness,
-                                                         .minimum_value = minimum_value,
-                                                         .maximum_value = maximum_value,
-                                                         .bit_width = std::nullopt,
-                                                         .named_codes = {},
-                                                         .relationship = std::nullopt},
-                            codegen::IntegerScalarSchema{.name = "Shield",
-                                                         .signedness = false,
-                                                         .minimum_value = 0,
-                                                         .maximum_value = 2000,
-                                                         .bit_width = std::nullopt,
-                                                         .named_codes = {},
-                                                         .relationship = std::nullopt}}},
-            codegen::RepresentationModuleSchema{
+                .declarations = {codegen::IntegerScalarSchema{.name = "Health",
+                                                              .signedness = signedness,
+                                                              .minimum_value = minimum_value,
+                                                              .maximum_value = maximum_value,
+                                                              .bit_width = std::nullopt,
+                                                              .named_codes = {},
+                                                              .relationship = std::nullopt},
+                                 codegen::IntegerScalarSchema{.name = "Shield",
+                                                              .signedness = false,
+                                                              .minimum_value = 0,
+                                                              .maximum_value = 2000,
+                                                              .bit_width = std::nullopt,
+                                                              .named_codes = {},
+                                                              .relationship = std::nullopt}}},
+            codegen::NormalModuleSchema{
                 .settings = codegen::ModuleSettings{.name = "representations",
                                                     .header = "Representations.h",
                                                     .source = std::nullopt,
@@ -637,27 +588,24 @@ inline auto linear_quantized_pair(bool const same_source = true,
                                                     .namespace_name = "project",
                                                     .include_order = {},
                                                     .prelude_lines = {}},
-                .linear_quantized = {codegen::LinearQuantizedSchema{
-                                         .name = "HealthQ8",
-                                         .source = codegen::TypeRef{.name = "project::Health",
-                                                                    .suffix = {},
-                                                                    .nested = std::nullopt},
-                                         .bit_width = first_bits,
-                                         .reserved_codes = 1,
-                                         .clipping = codegen::QuantizationClipping::clamp},
-                                     codegen::LinearQuantizedSchema{
-                                         .name = "HealthQ10",
-                                         .source = codegen::TypeRef{.name = same_source
-                                                                              ? "project::Health"
-                                                                              : "project::Shield",
-                                                                    .suffix = {},
-                                                                    .nested = std::nullopt},
-                                         .bit_width = second_bits,
-                                         .reserved_codes = 2,
-                                         .clipping = codegen::QuantizationClipping::reject}},
-                .integer_varints = {},
-                .fixed_points = {},
-                .optional_sentinels = {}}}};
+                .declarations = {
+                    codegen::LinearQuantizedSchema{
+                        .name = "HealthQ8",
+                        .source = codegen::TypeRef{.name = "project::Health",
+                                                   .suffix = {},
+                                                   .nested = std::nullopt},
+                        .bit_width = first_bits,
+                        .reserved_codes = 1,
+                        .clipping = codegen::QuantizationClipping::clamp},
+                    codegen::LinearQuantizedSchema{
+                        .name = "HealthQ10",
+                        .source = codegen::TypeRef{.name = same_source ? "project::Health"
+                                                                       : "project::Shield",
+                                                   .suffix = {},
+                                                   .nested = std::nullopt},
+                        .bit_width = second_bits,
+                        .reserved_codes = 2,
+                        .clipping = codegen::QuantizationClipping::reject}}}}};
     auto types{lispb::schema::resolve_type_graph(manifest)};
     auto const first{*types.find_declared("representations", "HealthQ8")};
     auto const second{*types.find_declared("representations", "HealthQ10")};
@@ -672,7 +620,7 @@ inline auto fixed_point_type(bool const signedness,
     codegen::Manifest manifest{
         .schema_version = codegen::manifest_schema_version,
         .types = {},
-        .modules = {codegen::RepresentationModuleSchema{
+        .modules = {codegen::NormalModuleSchema{
             .settings = codegen::ModuleSettings{.name = "representations",
                                                 .header = "Representations.h",
                                                 .source = std::nullopt,
@@ -680,14 +628,11 @@ inline auto fixed_point_type(bool const signedness,
                                                 .namespace_name = "project",
                                                 .include_order = {},
                                                 .prelude_lines = {}},
-            .linear_quantized = {},
-            .integer_varints = {},
-            .fixed_points = {codegen::FixedPointSchema{.name = "ValueFixed",
+            .declarations = {codegen::FixedPointSchema{.name = "ValueFixed",
                                                        .signedness = signedness,
                                                        .total_bits = total_bits,
                                                        .fractional_bits = fractional_bits,
-                                                       .rounding = rounding}},
-            .optional_sentinels = {}}}};
+                                                       .rounding = rounding}}}}};
     auto types{lispb::schema::resolve_type_graph(manifest)};
     auto const type{*types.find_declared("representations", "ValueFixed")};
     return {std::move(types), type};
@@ -700,7 +645,7 @@ inline auto mini_float_type(std::uint32_t const sign_bits,
     codegen::Manifest manifest{
         .schema_version = codegen::manifest_schema_version,
         .types = {},
-        .modules = {codegen::RepresentationModuleSchema{
+        .modules = {codegen::NormalModuleSchema{
             .settings = codegen::ModuleSettings{.name = "representations",
                                                 .header = "Representations.h",
                                                 .source = std::nullopt,
@@ -708,16 +653,11 @@ inline auto mini_float_type(std::uint32_t const sign_bits,
                                                 .namespace_name = "project",
                                                 .include_order = {},
                                                 .prelude_lines = {}},
-            .linear_quantized = {},
-            .integer_varints = {},
-            .fixed_points = {},
-            .optional_sentinels = {},
-            .optional_presence_bits = {},
-            .mini_floats = {codegen::MiniFloatSchema{.name = "CompactFloat",
-                                                     .sign_bits = sign_bits,
-                                                     .exponent_bits = exponent_bits,
-                                                     .significand_bits = significand_bits,
-                                                     .exponent_bias = exponent_bias}}}}};
+            .declarations = {codegen::MiniFloatSchema{.name = "CompactFloat",
+                                                      .sign_bits = sign_bits,
+                                                      .exponent_bits = exponent_bits,
+                                                      .significand_bits = significand_bits,
+                                                      .exponent_bias = exponent_bias}}}}};
     auto types{lispb::schema::resolve_type_graph(manifest)};
     auto const type{*types.find_declared("representations", "CompactFloat")};
     return {std::move(types), type};
@@ -734,7 +674,7 @@ inline auto
         .schema_version = codegen::manifest_schema_version,
         .types = {},
         .modules = {
-            codegen::ScalarModuleSchema{
+            codegen::NormalModuleSchema{
                 .settings = codegen::ModuleSettings{.name = "semantic_values",
                                                     .header = "SemanticValues.h",
                                                     .source = std::nullopt,
@@ -742,7 +682,7 @@ inline auto
                                                     .namespace_name = "project",
                                                     .include_order = {},
                                                     .prelude_lines = {}},
-                .scalars = {codegen::IntegerScalarSchema{
+                .declarations = {codegen::IntegerScalarSchema{
                     .name = "Value",
                     .signedness = signedness,
                     .minimum_value = minimum,
@@ -753,23 +693,20 @@ inline auto
                                            .name = "Invalid", .value = *sentinel, .sentinel = true}}
                                      : std::vector<codegen::PackedNamedCodeSchema>{},
                     .relationship = std::nullopt}}},
-            codegen::RepresentationModuleSchema{
-                .settings = codegen::ModuleSettings{.name = "representations",
-                                                    .header = "Representations.h",
-                                                    .source = std::nullopt,
-                                                    .header_include = std::nullopt,
-                                                    .namespace_name = "project",
-                                                    .include_order = {},
-                                                    .prelude_lines = {}},
-                .linear_quantized = {},
-                .integer_varints = {codegen::IntegerVarintSchema{
-                    .name = "ValueVarint",
-                    .source = codegen::TypeRef{.name = "project::Value",
-                                               .suffix = {},
-                                               .nested = std::nullopt},
-                    .encoding = encoding}},
-                .fixed_points = {},
-                .optional_sentinels = {}}}};
+            codegen::NormalModuleSchema{.settings =
+                                            codegen::ModuleSettings{.name = "representations",
+                                                                    .header = "Representations.h",
+                                                                    .source = std::nullopt,
+                                                                    .header_include = std::nullopt,
+                                                                    .namespace_name = "project",
+                                                                    .include_order = {},
+                                                                    .prelude_lines = {}},
+                                        .declarations = {codegen::IntegerVarintSchema{
+                                            .name = "ValueVarint",
+                                            .source = codegen::TypeRef{.name = "project::Value",
+                                                                       .suffix = {},
+                                                                       .nested = std::nullopt},
+                                            .encoding = encoding}}}}};
     auto types{lispb::schema::resolve_type_graph(manifest)};
     auto const type{*types.find_declared("representations", "ValueVarint")};
     return {std::move(types), type};
@@ -779,7 +716,7 @@ inline auto integer_varint_pair(bool const same_source = true) -> VarintComparis
     codegen::Manifest manifest{
         .schema_version = codegen::manifest_schema_version,
         .types = {},
-        .modules = {codegen::ScalarModuleSchema{
+        .modules = {codegen::NormalModuleSchema{
                         .settings = codegen::ModuleSettings{.name = "semantic_values",
                                                             .header = "SemanticValues.h",
                                                             .source = std::nullopt,
@@ -787,21 +724,22 @@ inline auto integer_varint_pair(bool const same_source = true) -> VarintComparis
                                                             .namespace_name = "project",
                                                             .include_order = {},
                                                             .prelude_lines = {}},
-                        .scalars = {codegen::IntegerScalarSchema{.name = "Value",
-                                                                 .signedness = true,
-                                                                 .minimum_value = -65,
-                                                                 .maximum_value = 64,
-                                                                 .bit_width = std::nullopt,
-                                                                 .named_codes = {},
-                                                                 .relationship = std::nullopt},
-                                    codegen::IntegerScalarSchema{.name = "Other",
-                                                                 .signedness = true,
-                                                                 .minimum_value = -1000,
-                                                                 .maximum_value = 1000,
-                                                                 .bit_width = std::nullopt,
-                                                                 .named_codes = {},
-                                                                 .relationship = std::nullopt}}},
-                    codegen::RepresentationModuleSchema{
+                        .declarations = {codegen::IntegerScalarSchema{.name = "Value",
+                                                                      .signedness = true,
+                                                                      .minimum_value = -65,
+                                                                      .maximum_value = 64,
+                                                                      .bit_width = std::nullopt,
+                                                                      .named_codes = {},
+                                                                      .relationship = std::nullopt},
+                                         codegen::IntegerScalarSchema{.name = "Other",
+                                                                      .signedness = true,
+                                                                      .minimum_value = -1000,
+                                                                      .maximum_value = 1000,
+                                                                      .bit_width = std::nullopt,
+                                                                      .named_codes = {},
+                                                                      .relationship =
+                                                                          std::nullopt}}},
+                    codegen::NormalModuleSchema{
                         .settings = codegen::ModuleSettings{.name = "representations",
                                                             .header = "Representations.h",
                                                             .source = std::nullopt,
@@ -809,23 +747,20 @@ inline auto integer_varint_pair(bool const same_source = true) -> VarintComparis
                                                             .namespace_name = "project",
                                                             .include_order = {},
                                                             .prelude_lines = {}},
-                        .linear_quantized = {},
-                        .integer_varints =
-                            {codegen::IntegerVarintSchema{
-                                 .name = "ValueSigned",
-                                 .source = codegen::TypeRef{.name = "project::Value",
-                                                            .suffix = {},
-                                                            .nested = std::nullopt},
-                                 .encoding = codegen::IntegerVarintEncoding::signed_varint},
-                             codegen::IntegerVarintSchema{
-                                 .name = "ValueZigZag",
-                                 .source = codegen::TypeRef{.name = same_source ? "project::Value"
-                                                                                : "project::Other",
-                                                            .suffix = {},
-                                                            .nested = std::nullopt},
-                                 .encoding = codegen::IntegerVarintEncoding::zigzag_varint}},
-                        .fixed_points = {},
-                        .optional_sentinels = {}}}};
+                        .declarations = {
+                            codegen::IntegerVarintSchema{
+                                .name = "ValueSigned",
+                                .source = codegen::TypeRef{.name = "project::Value",
+                                                           .suffix = {},
+                                                           .nested = std::nullopt},
+                                .encoding = codegen::IntegerVarintEncoding::signed_varint},
+                            codegen::IntegerVarintSchema{
+                                .name = "ValueZigZag",
+                                .source = codegen::TypeRef{.name = same_source ? "project::Value"
+                                                                               : "project::Other",
+                                                           .suffix = {},
+                                                           .nested = std::nullopt},
+                                .encoding = codegen::IntegerVarintEncoding::zigzag_varint}}}}};
     auto types{lispb::schema::resolve_type_graph(manifest)};
     auto const first{*types.find_declared("representations", "ValueSigned")};
     auto const second{*types.find_declared("representations", "ValueZigZag")};
@@ -848,14 +783,14 @@ inline auto soa_type(std::vector<std::pair<std::string, std::string>> columns = 
         member.type.name = std::move(type);
         members.push_back(std::move(member));
     }
-    codegen::SoaModuleSchema soa{};
+    codegen::NormalModuleSchema soa{};
     soa.settings.name = "soa";
     soa.settings.header = "Soa.h";
-    soa.backend = codegen::SoaBackend::standard_library;
+    soa.soa_backend = codegen::SoaBackend::standard_library;
     codegen::SoaSchema schema{};
     schema.name = "Columns";
     schema.members = std::move(members);
-    soa.structs.push_back(std::move(schema));
+    soa.declarations.push_back(std::move(schema));
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;
     manifest.modules = {std::move(soa)};
@@ -871,10 +806,10 @@ inline auto relationship_capacity_type(
     std::optional<std::uint64_t> const second_sentinel = std::nullopt,
     codegen::SemanticRelationUnit const offset_unit = codegen::SemanticRelationUnit::elements)
     -> RelationshipCapacityFixture {
-    codegen::SoaModuleSchema soa{};
+    codegen::NormalModuleSchema soa{};
     soa.settings.name = "entities";
     soa.settings.header = "Entities.h";
-    soa.backend = codegen::SoaBackend::standard_library;
+    soa.soa_backend = codegen::SoaBackend::standard_library;
     codegen::SoaSchema entities{};
     entities.name = "Entities";
     entities.members = {codegen::SoaMemberSchema{
@@ -886,9 +821,9 @@ inline auto relationship_capacity_type(
         .mask_field = false,
         .mask_dimensions = {},
         .relationship = std::nullopt}};
-    soa.structs.push_back(std::move(entities));
+    soa.declarations.push_back(std::move(entities));
 
-    codegen::PackedValueModuleSchema packed{};
+    codegen::NormalModuleSchema packed{};
     packed.settings.name = "handles";
     packed.settings.header = "Handles.h";
     std::vector<codegen::PackedNamedCodeSchema> named_codes;
@@ -915,7 +850,7 @@ inline auto relationship_capacity_type(
             .target = codegen::TypeRef{.name = "Entities", .suffix = {}, .nested = std::nullopt},
             .unit = kind == codegen::SemanticRelationKind::offset_into ? std::optional{offset_unit}
                                                                        : std::nullopt}};
-    packed.values = {codegen::PackedValueSchema{
+    packed.declarations = {codegen::PackedValueSchema{
         .name = "EntityValue",
         .storage_type =
             codegen::TypeRef{.name = "std::uint64_t", .suffix = {}, .nested = std::nullopt},
@@ -942,10 +877,10 @@ inline auto relationship_capacity_scalar_type(
     std::optional<std::uint64_t> const sentinel = std::nullopt,
     codegen::SemanticRelationUnit const offset_unit = codegen::SemanticRelationUnit::elements)
     -> RelationshipCapacityFixture {
-    codegen::SoaModuleSchema soa{};
+    codegen::NormalModuleSchema soa{};
     soa.settings.name = "entities";
     soa.settings.header = "Entities.h";
-    soa.backend = codegen::SoaBackend::standard_library;
+    soa.soa_backend = codegen::SoaBackend::standard_library;
     codegen::SoaSchema entities{};
     entities.name = "Entities";
     entities.members = {codegen::SoaMemberSchema{
@@ -957,12 +892,12 @@ inline auto relationship_capacity_scalar_type(
         .mask_field = false,
         .mask_dimensions = {},
         .relationship = std::nullopt}};
-    soa.structs.push_back(std::move(entities));
+    soa.declarations.push_back(std::move(entities));
 
-    codegen::ScalarModuleSchema scalars{};
+    codegen::NormalModuleSchema scalars{};
     scalars.settings.name = "handles";
     scalars.settings.header = "Handles.h";
-    scalars.scalars = {codegen::IntegerScalarSchema{
+    scalars.declarations = {codegen::IntegerScalarSchema{
         .name = "EntityValue",
         .signedness = false,
         .minimum_value = 0,
@@ -993,7 +928,7 @@ inline auto enum_domain_type(std::vector<codegen::EnumeratorSchema> values,
                              std::optional<std::string> underlying = "std::uint8_t",
                              std::optional<std::uint32_t> bit_width = std::nullopt,
                              std::optional<bool> signedness = std::nullopt) -> TypeFixture {
-    codegen::EnumModuleSchema module{};
+    codegen::NormalModuleSchema module{};
     module.settings.name = "domains";
     module.settings.header = "Domains.h";
     codegen::EnumSchema enumeration{};
@@ -1007,7 +942,7 @@ inline auto enum_domain_type(std::vector<codegen::EnumeratorSchema> values,
     enumeration.signedness = signedness;
     enumeration.values = std::move(values);
     enumeration.count = std::move(count);
-    module.enums.push_back(std::move(enumeration));
+    module.declarations.push_back(std::move(enumeration));
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;
     manifest.modules = {std::move(module)};
@@ -1039,10 +974,11 @@ inline auto record_member(std::string name,
 
 inline auto record_type(std::vector<codegen::RecordSchema> records, std::string selected = "Record")
     -> TypeFixture {
-    codegen::RecordModuleSchema module{};
+    codegen::NormalModuleSchema module{};
     module.settings.name = "records";
     module.settings.header = "Records.h";
-    module.records = std::move(records);
+    module.declarations.assign(std::make_move_iterator(records.begin()),
+                               std::make_move_iterator(records.end()));
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;
     manifest.modules = {std::move(module)};
@@ -1062,10 +998,11 @@ inline auto union_alternative(std::string name,
 
 inline auto union_type(std::vector<codegen::UnionSchema> unions, std::string selected = "Union")
     -> TypeFixture {
-    codegen::UnionModuleSchema module{};
+    codegen::NormalModuleSchema module{};
     module.settings.name = "unions";
     module.settings.header = "Unions.h";
-    module.unions = std::move(unions);
+    module.declarations.assign(std::make_move_iterator(unions.begin()),
+                               std::make_move_iterator(unions.end()));
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;
     manifest.modules = {std::move(module)};
@@ -1075,7 +1012,7 @@ inline auto union_type(std::vector<codegen::UnionSchema> unions, std::string sel
 }
 
 inline auto tagged_union_type() -> TypeFixture {
-    codegen::EnumModuleSchema enums{};
+    codegen::NormalModuleSchema enums{};
     enums.settings.name = "events";
     enums.settings.header = "Events.h";
     enums.settings.namespace_name = "events";
@@ -1100,9 +1037,9 @@ inline auto tagged_union_type() -> TypeFixture {
                    std::move(invalid_tag),
                    std::move(count_tag)};
     kind.count = "COUNT";
-    enums.enums.push_back(std::move(kind));
+    enums.declarations.push_back(std::move(kind));
 
-    codegen::UnionModuleSchema unions{};
+    codegen::NormalModuleSchema unions{};
     unions.settings.name = "payloads";
     unions.settings.header = "Payloads.h";
     unions.settings.namespace_name = "payloads";
@@ -1119,7 +1056,7 @@ inline auto tagged_union_type() -> TypeFixture {
     bytes.count = 10;
     bytes.tag = "Bytes";
     event.alternatives = {std::move(small), std::move(bytes)};
-    unions.tagged_unions.push_back(std::move(event));
+    unions.declarations.push_back(std::move(event));
 
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;

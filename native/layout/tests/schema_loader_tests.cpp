@@ -38,20 +38,20 @@ class TemporarySchemaProject {
         write("schema/types.lispb", R"((type state
   :spelling "test::State")
 )");
-        write("schema/modules.lispb", R"((enum-module states
+        write("schema/modules.lispb", R"((module states
   :header "States.h"
   :namespace test
   (enum State std::uint8_t
     (value Idle :value "0")))
 
-(packed-value-module packed
+(module packed
   :header "Packed.h"
   :namespace test
   (packed-value ExistingPacked
     :storage std::uint8_t
     (field value std::uint8_t :bits 8)))
 
-(scalar-module scalars
+(module scalars
   :header "Scalars.h"
   :namespace test
   (integer-scalar Health
@@ -66,7 +66,7 @@ class TemporarySchemaProject {
     :maximum 100
     :bit-width auto))
 
-(representation-module representations
+(module representations
   :header "Representations.h"
   :namespace test
   (linear-quantized ExistingHealthQ8
@@ -85,13 +85,13 @@ class TemporarySchemaProject {
     :significand-bits 4
     :bias 3))
 
-(record-module records
+(module records
   :header "Records.h"
   :namespace test
   (record ExistingRecord
     (member value std::uint32_t)))
 
-(soa-module soa
+(module soa
   :header "Soa.h"
   :namespace test
   :backend standard-library

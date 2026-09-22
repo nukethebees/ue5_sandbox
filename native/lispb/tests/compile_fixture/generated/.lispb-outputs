@@ -3,6 +3,7 @@ Generated.h
 Homogeneous.cpp
 Homogeneous.h
 InlineFacade.h
+Mixed.h
 PackedEnums.h
 PackedValues.h
 PlainEnums.cpp

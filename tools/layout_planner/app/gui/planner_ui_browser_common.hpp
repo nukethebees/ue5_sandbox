@@ -61,28 +61,16 @@ inline auto module_label(codegen::ModuleSchema const& module) -> std::string {
     return std::visit(
         [](auto const& value) {
             using Module = std::decay_t<decltype(value)>;
-            auto const* kind{
-                std::is_same_v<Module, codegen::EnumModuleSchema>             ? "enums"
-                : std::is_same_v<Module, codegen::ScalarModuleSchema>         ? "integer scalars"
-                : std::is_same_v<Module, codegen::RepresentationModuleSchema> ? "representations"
-                : std::is_same_v<Module, codegen::PackedValueModuleSchema>    ? "packed values"
-                : std::is_same_v<Module, codegen::RecordModuleSchema>         ? "records"
-                : std::is_same_v<Module, codegen::UnionModuleSchema>          ? "unions"
-                : std::is_same_v<Module, codegen::SoaModuleSchema>            ? "SoA"
-                                                                              : "vectors"};
+            auto const* kind{std::is_same_v<Module, codegen::NormalModuleSchema>     ? "module"
+                             : std::is_same_v<Module, codegen::SettingsModuleSchema> ? "settings"
+                                                                                     : "umbrella"};
             return value.settings.name + "  [" + kind + "]";
         },
         module);
 }
 
 inline auto is_editable_module_destination(codegen::ModuleSchema const& module) -> bool {
-    return std::holds_alternative<codegen::EnumModuleSchema>(module) ||
-           std::holds_alternative<codegen::PackedValueModuleSchema>(module) ||
-           std::holds_alternative<codegen::ScalarModuleSchema>(module) ||
-           std::holds_alternative<codegen::RepresentationModuleSchema>(module) ||
-           std::holds_alternative<codegen::RecordModuleSchema>(module) ||
-           std::holds_alternative<codegen::UnionModuleSchema>(module) ||
-           std::holds_alternative<codegen::SoaModuleSchema>(module);
+    return std::holds_alternative<codegen::NormalModuleSchema>(module);
 }
 
 inline auto matches_filter(TypeNode const& node, std::string_view const filter) -> bool {

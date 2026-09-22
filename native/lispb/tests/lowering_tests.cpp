@@ -22,22 +22,20 @@ auto render_soa(SoaSchema schema, std::map<std::string, CppType> types = {}) -> 
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
         .types = std::move(types),
-        .modules = {SoaModuleSchema{
-            .settings =
-                ModuleSettings{
-                    .name = "test",
-                    .header = "Generated.h",
-                    .source = "Generated.cpp",
-                    .header_include = "Project/Generated.h",
-                },
-            .structs = {std::move(schema)},
-        }},
+        .modules = {NormalModuleSchema{.settings =
+                                           ModuleSettings{
+                                               .name = "test",
+                                               .header = "Generated.h",
+                                               .source = "Generated.cpp",
+                                               .header_include = "Project/Generated.h",
+                                           },
+                                       .declarations = {std::move(schema)}}},
     }))};
     EXPECT_EQ(files.size(), 2);
     return RenderedModule{files[0].content, files[1].content};
 }
 
-auto render_enum(EnumModuleSchema module) -> RenderedModule {
+auto render_enum(NormalModuleSchema module) -> RenderedModule {
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
         .modules = {std::move(module)},
@@ -97,22 +95,21 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
         .types = {{"native_uint8", CppType{"std::uint8_t", "cstdint"}}},
-        .modules = {EnumModuleSchema{
+        .modules = {NormalModuleSchema{
             .settings = ModuleSettings{.name = "native_enum",
                                        .header = "NativeEnum.h",
                                        .namespace_name = "fixture"},
-            .enums = {EnumSchema{.name = "NativeState",
-                                 .underlying_type = TypeRef{"@native_uint8"},
-                                 .values = {EnumeratorSchema{.name = "Idle",
-                                                             .initializer = "0",
-                                                             .display_name = "Idle",
-                                                             .serialized_name = "idle"},
-                                            EnumeratorSchema{.name = "Active",
-                                                             .initializer = "1",
-                                                             .display_name = "Active",
-                                                             .serialized_name = "active"}},
-                                 .native_api = true}},
-        }},
+            .declarations = {EnumSchema{.name = "NativeState",
+                                        .underlying_type = TypeRef{"@native_uint8"},
+                                        .values = {EnumeratorSchema{.name = "Idle",
+                                                                    .initializer = "0",
+                                                                    .display_name = "Idle",
+                                                                    .serialized_name = "idle"},
+                                                   EnumeratorSchema{.name = "Active",
+                                                                    .initializer = "1",
+                                                                    .display_name = "Active",
+                                                                    .serialized_name = "active"}},
+                                        .native_api = true}}}},
     }))};
 
     ASSERT_EQ(files.size(), 1);
@@ -127,18 +124,18 @@ TEST(Lowering, EmitsStandaloneNativeEnumApi) {
 TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
-        .modules = {EnumModuleSchema{
+        .modules = {NormalModuleSchema{
             .settings = ModuleSettings{.name = "native_enum",
                                        .header = "NativeEnum.h",
                                        .namespace_name = "fixture"},
-            .enums = {EnumSchema{.name = "SignedState",
-                                 .underlying_type = std::nullopt,
-                                 .bit_width = 12,
-                                 .signedness = true,
-                                 .values = {EnumeratorSchema{.name = "Below", .initializer = "-1"},
-                                            EnumeratorSchema{.name = "Above", .initializer = "1"}},
-                                 .native_api = true}},
-        }},
+            .declarations = {EnumSchema{
+                .name = "SignedState",
+                .underlying_type = std::nullopt,
+                .bit_width = 12,
+                .signedness = true,
+                .values = {EnumeratorSchema{.name = "Below", .initializer = "-1"},
+                           EnumeratorSchema{.name = "Above", .initializer = "1"}},
+                .native_api = true}}}},
     }))};
 
     ASSERT_EQ(files.size(), 1);
@@ -148,79 +145,79 @@ TEST(Lowering, DerivesNativeEnumBackingFromSemanticWidthAndSignedness) {
 }
 
 TEST(Lowering, DerivesUnrealStyleEnumBackingWithoutChangingSemanticWidth) {
-    auto const output{render_enum(EnumModuleSchema{
+    auto const output{render_enum(NormalModuleSchema{
         .settings = ModuleSettings{.name = "states", .header = "States.h", .source = "States.cpp"},
-        .enums = {EnumSchema{
+        .declarations = {EnumSchema{
             .name = "EState",
             .underlying_type = std::nullopt,
             .bit_width = 12,
             .signedness = false,
             .values = {EnumeratorSchema{.name = "Idle", .initializer = "0"},
                        EnumeratorSchema{.name = "Maximum", .initializer = "4095"}},
-        }},
-    })};
+        }}})};
 
     EXPECT_NE(output.header.find("#include \"CoreMinimal.h\""), std::string::npos);
     EXPECT_NE(output.header.find("enum class EState : uint16"), std::string::npos);
 }
 
 TEST(Lowering, EmitsRequestedNamedScalarConstantsWithoutInventingScalarTypes) {
-    auto const files{render_modules(lower_modules(Manifest{
-        .schema_version = manifest_schema_version,
-        .types = {{"native_uint8", CppType{"std::uint8_t", "cstdint"}},
-                  {"native_int64", CppType{"std::int64_t", "cstdint"}},
-                  {"native_uint64", CppType{"std::uint64_t", "cstdint"}}},
-        .modules = {ScalarModuleSchema{
-            .settings = ModuleSettings{.name = "semantic_values",
-                                       .header = "SemanticValues.h",
-                                       .namespace_name = "fixture"},
-            .scalars = {IntegerScalarSchema{
-                            .name = "NoOutput",
-                            .signedness = false,
-                            .minimum_value = 0,
-                            .maximum_value = 1,
-                            .bit_width = std::nullopt,
-                            .named_codes = {{.name = "Zero", .value = 0, .sentinel = false}},
-                        },
-                        IntegerScalarSchema{
-                            .name = "DamageReason",
-                            .signedness = false,
-                            .minimum_value = 0,
-                            .maximum_value = 10,
-                            .bit_width = std::nullopt,
-                            .named_codes = {{.name = "Unknown", .value = 0, .sentinel = false},
-                                            {.name = "Invalid", .value = 255, .sentinel = true}},
-                            .cpp_emission = IntegerScalarCppEmission::constants_with_names,
-                            .cpp_type = TypeRef{"@native_uint8"},
-                        },
-                        IntegerScalarSchema{
-                            .name = "SignedLimit",
-                            .signedness = true,
-                            .minimum_value =
-                                PackedIntegerValue::from_parts(true, std::uint64_t{1} << 63),
-                            .maximum_value = 0,
-                            .bit_width = 64,
-                            .named_codes = {{.name = "Minimum",
-                                             .value = PackedIntegerValue::from_parts(
-                                                 true, std::uint64_t{1} << 63),
-                                             .sentinel = false}},
-                            .cpp_emission = IntegerScalarCppEmission::constants,
-                            .cpp_type = TypeRef{"@native_int64"},
-                        },
-                        IntegerScalarSchema{
-                            .name = "UnsignedLimit",
-                            .signedness = false,
-                            .minimum_value = 0,
-                            .maximum_value = (std::numeric_limits<std::uint64_t>::max)(),
-                            .bit_width = 64,
-                            .named_codes = {{.name = "Maximum",
-                                             .value = (std::numeric_limits<std::uint64_t>::max)(),
-                                             .sentinel = false}},
-                            .cpp_emission = IntegerScalarCppEmission::constants,
-                            .cpp_type = TypeRef{"@native_uint64"},
-                        }},
-        }},
-    }))};
+    auto const files{
+        render_modules(lower_modules(Manifest{
+            .schema_version = manifest_schema_version,
+            .types = {{"native_uint8", CppType{"std::uint8_t", "cstdint"}},
+                      {"native_int64", CppType{"std::int64_t", "cstdint"}},
+                      {"native_uint64", CppType{"std::uint64_t", "cstdint"}}},
+            .modules = {NormalModuleSchema{
+                .settings = ModuleSettings{.name = "semantic_values",
+                                           .header = "SemanticValues.h",
+                                           .namespace_name = "fixture"},
+                .declarations =
+                    {IntegerScalarSchema{
+                         .name = "NoOutput",
+                         .signedness = false,
+                         .minimum_value = 0,
+                         .maximum_value = 1,
+                         .bit_width = std::nullopt,
+                         .named_codes = {{.name = "Zero", .value = 0, .sentinel = false}},
+                     },
+                     IntegerScalarSchema{
+                         .name = "DamageReason",
+                         .signedness = false,
+                         .minimum_value = 0,
+                         .maximum_value = 10,
+                         .bit_width = std::nullopt,
+                         .named_codes = {{.name = "Unknown", .value = 0, .sentinel = false},
+                                         {.name = "Invalid", .value = 255, .sentinel = true}},
+                         .cpp_emission = IntegerScalarCppEmission::constants_with_names,
+                         .cpp_type = TypeRef{"@native_uint8"},
+                     },
+                     IntegerScalarSchema{
+                         .name = "SignedLimit",
+                         .signedness = true,
+                         .minimum_value =
+                             PackedIntegerValue::from_parts(true, std::uint64_t{1} << 63),
+                         .maximum_value = 0,
+                         .bit_width = 64,
+                         .named_codes = {{.name = "Minimum",
+                                          .value = PackedIntegerValue::from_parts(
+                                              true, std::uint64_t{1} << 63),
+                                          .sentinel = false}},
+                         .cpp_emission = IntegerScalarCppEmission::constants,
+                         .cpp_type = TypeRef{"@native_int64"},
+                     },
+                     IntegerScalarSchema{
+                         .name = "UnsignedLimit",
+                         .signedness = false,
+                         .minimum_value = 0,
+                         .maximum_value = (std::numeric_limits<std::uint64_t>::max)(),
+                         .bit_width = 64,
+                         .named_codes = {{.name = "Maximum",
+                                          .value = (std::numeric_limits<std::uint64_t>::max)(),
+                                          .sentinel = false}},
+                         .cpp_emission = IntegerScalarCppEmission::constants,
+                         .cpp_type = TypeRef{"@native_uint64"},
+                     }}}},
+        }))};
 
     ASSERT_EQ(files.size(), 1U);
     auto const& header{files.front().content};
@@ -246,11 +243,11 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
         .types = {{"native_uint8", CppType{"std::uint8_t", "cstdint"}}},
-        .modules = {EnumModuleSchema{
+        .modules = {NormalModuleSchema{
             .settings = ModuleSettings{.name = "native_enum",
                                        .header = "NativeEnum.h",
                                        .namespace_name = "fixture"},
-            .enums = {EnumSchema{
+            .declarations = {EnumSchema{
                 .name = "NativeState",
                 .underlying_type = TypeRef{"@native_uint8"},
                 .values = {EnumeratorSchema{
@@ -268,8 +265,7 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
                         .conversion_header = "Project/NativeStateConversion.h",
                         .native_header_include = "fixture/NativeEnum.h",
                     },
-            }},
-        }},
+            }}}},
     }))};
 
     ASSERT_EQ(files.size(), 3);
@@ -300,7 +296,7 @@ TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) 
 }
 
 TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
-    auto const output{render_enum(EnumModuleSchema{
+    auto const output{render_enum(NormalModuleSchema{
         .settings =
             ModuleSettings{
                 .name = "modes",
@@ -308,8 +304,7 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
                 .source = "Modes.cpp",
                 .header_include = "Project/Modes.h",
             },
-        .helper_namespace = "project",
-        .enums = {EnumSchema{
+        .declarations = {EnumSchema{
             .name = "EMode",
             .underlying_type = TypeRef{"uint8"},
             .reflection = EnumReflection::blueprint,
@@ -329,7 +324,7 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
                 },
             .export_specifier = "PROJECT_API",
         }},
-    })};
+        .enum_helper_namespace = "project"})};
 
     EXPECT_NE(output.header.find("#include \"Modes.generated.h\""), std::string::npos);
     EXPECT_NE(output.header.find("UENUM(BlueprintType)\nenum class EMode : uint8"),
@@ -363,21 +358,19 @@ TEST(Lowering, EmitsReflectedEnumsAndSelectableOutOfLineConversions) {
 }
 
 TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
-    auto const output{render_enum(EnumModuleSchema{
-        .settings =
-            ModuleSettings{
-                .name = "states",
-                .header = "States.h",
-                .source = "States.cpp",
-                .namespace_name = "project::states",
-            },
-        .enums = {EnumSchema{
-            .name = "EState",
-            .underlying_type = TypeRef{"int"},
-            .values = {EnumeratorSchema{"Ready"}},
-            .conversions = {EnumConversion::string},
-        }},
-    })};
+    auto const output{render_enum(NormalModuleSchema{.settings =
+                                                         ModuleSettings{
+                                                             .name = "states",
+                                                             .header = "States.h",
+                                                             .source = "States.cpp",
+                                                             .namespace_name = "project::states",
+                                                         },
+                                                     .declarations = {EnumSchema{
+                                                         .name = "EState",
+                                                         .underlying_type = TypeRef{"int"},
+                                                         .values = {EnumeratorSchema{"Ready"}},
+                                                         .conversions = {EnumConversion::string},
+                                                     }}})};
 
     EXPECT_NE(output.header.find("namespace project::states {\nenum class EState : int"),
               std::string::npos);
@@ -388,20 +381,19 @@ TEST(Lowering, EmitsPlainEnumsInTheirNamespace) {
 }
 
 TEST(Lowering, EmitsTraitsForEnumArrayEnums) {
-    auto const output{render_enum(EnumModuleSchema{
-        .settings =
-            ModuleSettings{
-                .name = "modes",
-                .header = "Modes.h",
-                .source = "Modes.cpp",
-            },
-        .enums = {EnumSchema{
-            .name = "EMode",
-            .underlying_type = TypeRef{"uint8"},
-            .values = {EnumeratorSchema{"First"}, EnumeratorSchema{"Second"}},
-            .enum_array = true,
-        }},
-    })};
+    auto const output{render_enum(
+        NormalModuleSchema{.settings =
+                               ModuleSettings{
+                                   .name = "modes",
+                                   .header = "Modes.h",
+                                   .source = "Modes.cpp",
+                               },
+                           .declarations = {EnumSchema{
+                               .name = "EMode",
+                               .underlying_type = TypeRef{"uint8"},
+                               .values = {EnumeratorSchema{"First"}, EnumeratorSchema{"Second"}},
+                               .enum_array = true,
+                           }}})};
 
     EXPECT_NE(output.header.find("#include \"SandboxCore/enum_array.h\""), std::string::npos);
     EXPECT_NE(
@@ -411,27 +403,26 @@ TEST(Lowering, EmitsTraitsForEnumArrayEnums) {
 }
 
 TEST(Lowering, EmitsTraitsForEnumArrayEnumsWithCountSentinels) {
-    auto const output{render_enum(EnumModuleSchema{
-        .settings =
-            ModuleSettings{
-                .name = "modes",
-                .header = "Modes.h",
-                .source = "Modes.cpp",
-            },
-        .enums = {EnumSchema{
-            .name = "EMode",
-            .underlying_type = TypeRef{"uint8"},
-            .reflection = EnumReflection::uenum,
-            .values =
-                {
-                    EnumeratorSchema{"First"},
-                    EnumeratorSchema{"Second"},
-                    EnumeratorSchema{"COUNT", std::nullopt, std::nullopt, true},
-                },
-            .enum_array = true,
-            .count = "COUNT",
-        }},
-    })};
+    auto const output{render_enum(
+        NormalModuleSchema{.settings =
+                               ModuleSettings{
+                                   .name = "modes",
+                                   .header = "Modes.h",
+                                   .source = "Modes.cpp",
+                               },
+                           .declarations = {EnumSchema{
+                               .name = "EMode",
+                               .underlying_type = TypeRef{"uint8"},
+                               .reflection = EnumReflection::uenum,
+                               .values =
+                                   {
+                                       EnumeratorSchema{"First"},
+                                       EnumeratorSchema{"Second"},
+                                       EnumeratorSchema{"COUNT", std::nullopt, std::nullopt, true},
+                                   },
+                               .enum_array = true,
+                               .count = "COUNT",
+                           }}})};
 
     EXPECT_NE(output.header.find("#include \"SandboxCore/enum_array.h\""), std::string::npos);
     EXPECT_NE(output.header.find("struct TEnumTraits<EMode> {\n    static constexpr int32 "
@@ -440,15 +431,14 @@ TEST(Lowering, EmitsTraitsForEnumArrayEnumsWithCountSentinels) {
 }
 
 TEST(Lowering, EnumDisplayLookupWithoutOverridesFallsBackDirectly) {
-    auto const output{render_enum(EnumModuleSchema{
+    auto const output{render_enum(NormalModuleSchema{
         .settings = {.name = "states", .header = "States.h", .source = "States.cpp"},
-        .enums = {EnumSchema{
+        .declarations = {EnumSchema{
             .name = "EState",
             .underlying_type = TypeRef{"int"},
             .values = {EnumeratorSchema{"Ready"}},
             .conversions = {EnumConversion::display_string},
-        }},
-    })};
+        }}})};
 
     EXPECT_NE(
         output.source.find("auto get_state_display_name(EState const value) -> TCHAR const* {\n"
@@ -461,9 +451,9 @@ TEST(Lowering, EnumDisplayLookupWithoutOverridesFallsBackDirectly) {
 }
 
 TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
-    auto const output{render_enum(EnumModuleSchema{
+    auto const output{render_enum(NormalModuleSchema{
         .settings = {.name = "states", .header = "States.h", .source = "States.cpp"},
-        .enums = {EnumSchema{
+        .declarations = {EnumSchema{
             .name = "EState",
             .underlying_type = TypeRef{"int"},
             .reflection = EnumReflection::uenum,
@@ -473,8 +463,7 @@ TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
             .conversions = {EnumConversion::display_string,
                             EnumConversion::lex_to_serialized_string,
                             EnumConversion::try_parse_serialized},
-        }},
-    })};
+        }}})};
 
     EXPECT_NE(output.header.find("UMETA(DisplayName = \"Quote\\\" Slash\\\\\\n\\t\")"),
               std::string::npos);
@@ -502,17 +491,16 @@ TEST(Lowering, EnumEscapingAndSparseDisplayCasesPreserveFallbacks) {
 TEST(Lowering, EnumTraitsRemainGlobalForQualifiedHeaderOnlyEnums) {
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
-        .modules = {EnumModuleSchema{
+        .modules = {NormalModuleSchema{
             .settings =
                 {.name = "states", .header = "States.h", .namespace_name = "project::states"},
-            .enums = {EnumSchema{
+            .declarations = {EnumSchema{
                 .name = "EState",
                 .underlying_type = TypeRef{"int"},
                 .values = {EnumeratorSchema{"Ready"}, EnumeratorSchema{"COUNT"}},
                 .enum_array = true,
                 .count = "COUNT",
-            }},
-        }},
+            }}}},
     }))};
     ASSERT_EQ(files.size(), 1);
     EXPECT_NE(

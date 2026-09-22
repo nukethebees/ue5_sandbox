@@ -76,7 +76,7 @@ TEST(PlannerType, DistinguishesUnknownTargetFactsFromErrors) {
 TEST(PlannerType, TaggedUnionsNeedRealTargetFactsWhileSemanticScalarsDoNot) {
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;
-    codegen::EnumModuleSchema enums{};
+    codegen::NormalModuleSchema enums{};
     enums.settings.name = "enums";
     enums.settings.header = "Enums.h";
     codegen::EnumSchema kind{};
@@ -86,20 +86,20 @@ TEST(PlannerType, TaggedUnionsNeedRealTargetFactsWhileSemanticScalarsDoNot) {
     codegen::EnumeratorSchema value{};
     value.name = "Value";
     kind.values.push_back(std::move(value));
-    enums.enums.push_back(std::move(kind));
+    enums.declarations.push_back(std::move(kind));
     manifest.modules.emplace_back(std::move(enums));
 
-    codegen::ScalarModuleSchema scalars{};
+    codegen::NormalModuleSchema scalars{};
     scalars.settings.name = "scalars";
     scalars.settings.header = "Scalars.h";
     codegen::IntegerScalarSchema semantic{};
     semantic.name = "Semantic";
     semantic.minimum_value = 0;
     semantic.maximum_value = 10;
-    scalars.scalars.push_back(std::move(semantic));
+    scalars.declarations.push_back(std::move(semantic));
     manifest.modules.emplace_back(std::move(scalars));
 
-    codegen::UnionModuleSchema unions{};
+    codegen::NormalModuleSchema unions{};
     unions.settings.name = "unions";
     unions.settings.header = "Unions.h";
     codegen::TaggedUnionSchema tagged{};
@@ -110,7 +110,7 @@ TEST(PlannerType, TaggedUnionsNeedRealTargetFactsWhileSemanticScalarsDoNot) {
     alternative.tag = "Value";
     alternative.type.name = "std::uint32_t";
     tagged.alternatives.push_back(std::move(alternative));
-    unions.tagged_unions.push_back(std::move(tagged));
+    unions.declarations.push_back(std::move(tagged));
     manifest.modules.emplace_back(std::move(unions));
 
     auto const types{lispb::schema::resolve_type_graph(manifest)};

@@ -47,45 +47,12 @@ auto form_range(Form const& form, std::size_t const source_file_index) -> Source
             .column = form.token.span.column};
 }
 
-void add_soa_generated_type_names(std::set<std::string>& names, codegen::SoaSchema const& schema) {
-    names.insert(schema.name);
-    names.insert(schema.view_name.value_or(schema.name + "View"));
-    names.insert(schema.const_view_name.value_or(schema.name + "ConstView"));
-    if (schema.field_mask_name.has_value()) {
-        names.insert(*schema.field_mask_name);
-        names.insert(*schema.field_enum_name);
-    }
-    if (schema.single_allocation.has_value()) {
-        names.insert(*schema.single_allocation);
-        names.insert(*schema.single_allocation + "Storage");
-        names.insert(schema.name + "SingleLayout");
-        names.insert(schema.name + "SingleView");
-        names.insert(schema.name + "SingleConstView");
-        for (auto const& variant : schema.single_allocation_variants) {
-            names.insert(variant.name);
-            names.insert(variant.name + "Storage");
-        }
-    }
-    if (schema.fixed.has_value()) {
-        names.insert(schema.fixed->storage_name);
-        names.insert(schema.fixed->containers.begin(), schema.fixed->containers.end());
-    }
-}
-
-auto soa_generated_type_names(codegen::SoaModuleSchema const& module) -> std::set<std::string> {
-    auto names{std::set<std::string>{}};
-    for (auto const& schema : module.structs) {
-        add_soa_generated_type_names(names, schema);
-    }
-    return names;
-}
-
-auto soa_generated_type_names(codegen::NormalModuleSchema const& module) -> std::set<std::string> {
-    auto names{std::set<std::string>{}};
+auto module_generated_type_names(codegen::NormalModuleSchema const& module)
+    -> std::set<std::string> {
+    std::set<std::string> names;
     for (auto const& declaration : module.declarations) {
-        if (auto const* schema{std::get_if<codegen::SoaSchema>(&declaration)}) {
-            add_soa_generated_type_names(names, *schema);
-        }
+        auto const generated{codegen::generated_cpp_names(declaration, module)};
+        names.insert(generated.begin(), generated.end());
     }
     return names;
 }
@@ -2545,181 +2512,49 @@ auto render_declaration_schema(codegen::DeclarationSchema const& declaration) ->
         declaration);
 }
 
-auto legacy_head_accepts_declaration(std::string_view const head,
-                                     codegen::DeclarationSchema const& declaration) -> bool {
-    if (head == "module") {
-        return true;
-    }
-    auto const kind{codegen::declaration_kind(declaration)};
-    if (head == "enum-module") return kind == codegen::DeclarationKind::enumeration;
-    if (head == "scalar-module") return kind == codegen::DeclarationKind::integer_scalar;
-    if (head == "packed-value-module") return kind == codegen::DeclarationKind::packed_value;
-    if (head == "record-module") return kind == codegen::DeclarationKind::record;
-    if (head == "union-module") {
-        return kind == codegen::DeclarationKind::union_type ||
-               kind == codegen::DeclarationKind::tagged_union;
-    }
-    if (head == "soa-module") return kind == codegen::DeclarationKind::soa;
-    if (head == "static-table-module") return kind == codegen::DeclarationKind::static_table;
-    if (head == "homogeneous-soa-module") {
-        return kind == codegen::DeclarationKind::homogeneous_layout;
-    }
-    if (head == "facade-module") return kind == codegen::DeclarationKind::facade;
-    if (head == "representation-module") {
-        return kind == codegen::DeclarationKind::linear_quantized ||
-               kind == codegen::DeclarationKind::integer_varint ||
-               kind == codegen::DeclarationKind::fixed_point ||
-               kind == codegen::DeclarationKind::mini_float ||
-               kind == codegen::DeclarationKind::optional_sentinel ||
-               kind == codegen::DeclarationKind::optional_presence_bit;
-    }
-    return false;
-}
-
-auto legacy_head_requires_canonical_module(std::string_view const head,
-                                           codegen::NormalModuleSchema const& module,
-                                           bool const declaration_was_touched) -> bool {
-    if (head == "vector-soa-module") {
-        return declaration_was_touched || module.declarations.size() != 1 ||
-               !std::holds_alternative<codegen::VectorSoaSchema>(module.declarations.front());
-    }
-    if (head == "facade-module") {
-        return module.declarations.size() != 1 ||
-               !std::holds_alternative<codegen::FacadeSchema>(module.declarations.front());
-    }
-    return head != "module" &&
-           std::ranges::any_of(module.declarations, [&](auto const& declaration) {
-               return !legacy_head_accepts_declaration(head, declaration);
-           });
-}
-
 auto render_editable_module(codegen::ModuleSchema const& schema) -> std::optional<std::string> {
-    return std::visit(
-        [](auto const& module) -> std::optional<std::string> {
-            using Module = std::decay_t<decltype(module)>;
-            std::string_view head;
-            if constexpr (std::is_same_v<Module, codegen::NormalModuleSchema>) {
-                head = "module";
-            } else if constexpr (std::is_same_v<Module, codegen::EnumModuleSchema>) {
-                head = "enum-module";
-            } else if constexpr (std::is_same_v<Module, codegen::PackedValueModuleSchema>) {
-                head = "packed-value-module";
-            } else if constexpr (std::is_same_v<Module, codegen::ScalarModuleSchema>) {
-                head = "scalar-module";
-            } else if constexpr (std::is_same_v<Module, codegen::RepresentationModuleSchema>) {
-                head = "representation-module";
-            } else if constexpr (std::is_same_v<Module, codegen::RecordModuleSchema>) {
-                head = "record-module";
-            } else if constexpr (std::is_same_v<Module, codegen::UnionModuleSchema>) {
-                head = "union-module";
-            } else if constexpr (std::is_same_v<Module, codegen::SoaModuleSchema>) {
-                head = "soa-module";
-            } else {
-                return std::nullopt;
-            }
+    auto const* normal{std::get_if<codegen::NormalModuleSchema>(&schema)};
+    if (normal == nullptr) {
+        return std::nullopt;
+    }
+    auto const& module{*normal};
+    auto const& settings{module.settings};
+    std::ostringstream output;
+    output << '(' << "module" << ' ' << settings.name << "\n  :header "
+           << quote(settings.header.generic_string());
+    if (settings.source.has_value()) {
+        output << "\n  :source " << quote(settings.source->generic_string());
+    }
+    if (settings.header_include.has_value()) {
+        output << "\n  :header-include " << quote(*settings.header_include);
+    }
+    if (settings.namespace_name.has_value()) {
+        output << "\n  :namespace " << *settings.namespace_name;
+    }
+    if (!settings.include_order.empty()) {
+        output << "\n  :include-order ";
+        render_quoted_list(output, settings.include_order);
+    }
+    if (!settings.prelude_lines.empty()) {
+        output << "\n  :prelude ";
+        render_quoted_list(output, settings.prelude_lines);
+    }
 
-            auto const& settings{module.settings};
-            std::ostringstream output;
-            output << '(' << head << ' ' << settings.name << "\n  :header "
-                   << quote(settings.header.generic_string());
-            if (settings.source.has_value()) {
-                output << "\n  :source " << quote(settings.source->generic_string());
-            }
-            if (settings.header_include.has_value()) {
-                output << "\n  :header-include " << quote(*settings.header_include);
-            }
-            if (settings.namespace_name.has_value()) {
-                output << "\n  :namespace " << *settings.namespace_name;
-            }
-            if (!settings.include_order.empty()) {
-                output << "\n  :include-order ";
-                render_quoted_list(output, settings.include_order);
-            }
-            if (!settings.prelude_lines.empty()) {
-                output << "\n  :prelude ";
-                render_quoted_list(output, settings.prelude_lines);
-            }
-            if constexpr (std::is_same_v<Module, codegen::NormalModuleSchema>) {
-                if (module.enum_helper_namespace.has_value()) {
-                    output << "\n  :helper-namespace " << *module.enum_helper_namespace;
-                }
-                if (module.soa_backend == codegen::SoaBackend::standard_library) {
-                    output << "\n  :backend standard-library";
-                }
-                for (auto const& allocator : module.soa_array_allocators) {
-                    output << "\n  (array-allocator " << allocator.prefix << ' '
-                           << render_type_ref(allocator.allocator) << ')';
-                }
-            } else if constexpr (std::is_same_v<Module, codegen::EnumModuleSchema>) {
-                if (module.helper_namespace.has_value()) {
-                    output << "\n  :helper-namespace " << *module.helper_namespace;
-                }
-            } else if constexpr (std::is_same_v<Module, codegen::SoaModuleSchema>) {
-                if (module.backend == codegen::SoaBackend::standard_library) {
-                    output << "\n  :backend standard-library";
-                }
-                for (auto const& allocator : module.array_allocators) {
-                    output << "\n  (array-allocator " << allocator.prefix << ' '
-                           << render_type_ref(allocator.allocator) << ')';
-                }
-            }
-
-            auto append = [&](std::string const& declaration) { output << "\n  " << declaration; };
-            if constexpr (std::is_same_v<Module, codegen::NormalModuleSchema>) {
-                for (auto const& declaration : module.declarations) {
-                    append(render_declaration_schema(declaration));
-                }
-            } else if constexpr (std::is_same_v<Module, codegen::EnumModuleSchema>) {
-                for (auto const& declaration : module.enums) {
-                    append(render_enum(declaration));
-                }
-            } else if constexpr (std::is_same_v<Module, codegen::PackedValueModuleSchema>) {
-                for (auto const& declaration : module.values) {
-                    append(render_packed_value(declaration));
-                }
-            } else if constexpr (std::is_same_v<Module, codegen::ScalarModuleSchema>) {
-                for (auto const& declaration : module.scalars) {
-                    append(render_integer_scalar(declaration));
-                }
-            } else if constexpr (std::is_same_v<Module, codegen::RepresentationModuleSchema>) {
-                for (auto const& declaration : module.linear_quantized) {
-                    append(render_linear_quantized(declaration));
-                }
-                for (auto const& declaration : module.integer_varints) {
-                    append(render_integer_varint(declaration));
-                }
-                for (auto const& declaration : module.fixed_points) {
-                    append(render_fixed_point(declaration));
-                }
-                for (auto const& declaration : module.optional_sentinels) {
-                    append(render_optional_sentinel(declaration));
-                }
-                for (auto const& declaration : module.optional_presence_bits) {
-                    append(render_optional_presence_bit(declaration));
-                }
-                for (auto const& declaration : module.mini_floats) {
-                    append(render_mini_float(declaration));
-                }
-            } else if constexpr (std::is_same_v<Module, codegen::RecordModuleSchema>) {
-                for (auto const& declaration : module.records) {
-                    append(render_record(declaration));
-                }
-            } else if constexpr (std::is_same_v<Module, codegen::UnionModuleSchema>) {
-                for (auto const& declaration : module.unions) {
-                    append(render_union(declaration));
-                }
-                for (auto const& declaration : module.tagged_unions) {
-                    append(render_tagged_union(declaration));
-                }
-            } else if constexpr (std::is_same_v<Module, codegen::SoaModuleSchema>) {
-                for (auto const& declaration : module.structs) {
-                    append(render_soa(declaration));
-                }
-            }
-            output << ')';
-            return output.str();
-        },
-        schema);
+    if (module.enum_helper_namespace.has_value()) {
+        output << "\n  :helper-namespace " << *module.enum_helper_namespace;
+    }
+    if (module.soa_backend == codegen::SoaBackend::standard_library) {
+        output << "\n  :backend standard-library";
+    }
+    for (auto const& allocator : module.soa_array_allocators) {
+        output << "\n  (array-allocator " << allocator.prefix << ' '
+               << render_type_ref(allocator.allocator) << ')';
+    }
+    for (auto const& declaration : module.declarations) {
+        output << "\n  " << render_declaration_schema(declaration);
+    }
+    output << ')';
+    return output.str();
 }
 
 auto render_single_allocation_variant(codegen::SingleAllocationVariant const& variant)
@@ -4466,12 +4301,11 @@ EditableSchemaDocument::EditableSchemaDocument(codegen::Manifest manifest,
                                                std::vector<SchemaSourceFile> source_files,
                                                std::filesystem::path types_path,
                                                std::vector<std::filesystem::path> module_paths)
-    : manifest_{codegen::canonical_manifest(manifest)}
+    : manifest_{std::move(manifest)}
     , types_{resolve_type_graph(manifest_)}
     , source_files_{std::move(source_files)}
     , types_path_{std::move(types_path)}
-    , module_paths_{std::move(module_paths)}
-    , module_source_heads_(manifest_.modules.size()) {}
+    , module_paths_{std::move(module_paths)} {}
 
 auto EditableSchemaDocument::from_manifest(codegen::Manifest manifest) -> EditableSchemaDocument {
     EditableSchemaDocument result{std::move(manifest), {}};
@@ -4602,9 +4436,8 @@ auto EditableSchemaDocument::unique_soa_generated_type_name(DeclarationId const 
     auto const occupied{std::visit(
         [](auto const& module) -> std::set<std::string> {
             using T = std::decay_t<decltype(module)>;
-            if constexpr (std::is_same_v<T, codegen::NormalModuleSchema> ||
-                          std::is_same_v<T, codegen::SoaModuleSchema>) {
-                return soa_generated_type_names(module);
+            if constexpr (std::is_same_v<T, codegen::NormalModuleSchema>) {
+                return module_generated_type_names(module);
             } else {
                 return {};
             }
@@ -4627,9 +4460,8 @@ auto EditableSchemaDocument::unique_soa_storage_owner_name(DeclarationId const d
     auto const occupied{std::visit(
         [](auto const& module) -> std::set<std::string> {
             using T = std::decay_t<decltype(module)>;
-            if constexpr (std::is_same_v<T, codegen::NormalModuleSchema> ||
-                          std::is_same_v<T, codegen::SoaModuleSchema>) {
-                return soa_generated_type_names(module);
+            if constexpr (std::is_same_v<T, codegen::NormalModuleSchema>) {
+                return module_generated_type_names(module);
             } else {
                 return {};
             }
@@ -4654,9 +4486,8 @@ auto EditableSchemaDocument::prepare_soa_duplicate(DeclarationId const declarati
     auto occupied{std::visit(
         [](auto const& module) -> std::set<std::string> {
             using T = std::decay_t<decltype(module)>;
-            if constexpr (std::is_same_v<T, codegen::NormalModuleSchema> ||
-                          std::is_same_v<T, codegen::SoaModuleSchema>) {
-                return soa_generated_type_names(module);
+            if constexpr (std::is_same_v<T, codegen::NormalModuleSchema>) {
+                return module_generated_type_names(module);
             } else {
                 return {};
             }
@@ -4787,7 +4618,7 @@ auto EditableSchemaDocument::apply(SchemaEditCommand command)
             using Edit = std::decay_t<decltype(edit)>;
             if constexpr (std::is_same_v<Edit, CreateModule>) {
                 normalized = CreateModule{.source_file_index = edit.source_file_index,
-                                          .schema = codegen::canonical_module(edit.schema)};
+                                          .schema = edit.schema};
             } else if constexpr (requires {
                                      edit.schema;
                                      edit.declaration;
@@ -4909,8 +4740,7 @@ auto EditableSchemaDocument::preview_source_updates() const
     if (!dirty()) {
         return std::vector<SchemaSourceUpdate>{};
     }
-    if (source_files_.empty() || module_source_ranges_.size() != manifest_.modules.size() ||
-        module_source_heads_.size() != manifest_.modules.size()) {
+    if (source_files_.empty() || module_source_ranges_.size() != manifest_.modules.size()) {
         return std::unexpected{SchemaEditError{"Schema draft has no source ownership information"}};
     }
 
@@ -4973,7 +4803,6 @@ auto EditableSchemaDocument::preview_source_updates() const
     };
     std::vector<std::vector<Replacement>> replacements(source_files_.size());
     std::map<std::size_t, std::set<DeclarationId>> insertions;
-    std::set<std::size_t> fully_rendered_modules;
     auto covered_by_deleted_module = [&](SourceRange const& range) {
         return std::ranges::any_of(deleted_module_source_ranges_, [&](SourceRange const& module) {
             return module.source_file_index == range.source_file_index &&
@@ -4985,47 +4814,6 @@ auto EditableSchemaDocument::preview_source_updates() const
         replacements[range.source_file_index].push_back(
             {.begin = range.begin_offset, .end = range.end_offset, .text = {}});
     }
-    auto module_has_touched_declaration = [&](std::size_t const module_index) {
-        return std::ranges::any_of(touched, [&](DeclarationId const id) {
-            auto const* info{declaration(id)};
-            return info != nullptr && info->module_index == module_index;
-        });
-    };
-    for (std::size_t module_index{}; module_index < manifest_.modules.size(); ++module_index) {
-        auto const* module{
-            std::get_if<codegen::NormalModuleSchema>(&manifest_.modules[module_index])};
-        auto const& source_range{module_source_ranges_[module_index]};
-        auto const& source_head{module_source_heads_[module_index]};
-        if (module == nullptr || !source_range.has_value() || source_head.empty() ||
-            !legacy_head_requires_canonical_module(
-                source_head, *module, module_has_touched_declaration(module_index))) {
-            continue;
-        }
-
-        auto const& source{source_files_[source_range->source_file_index].text};
-        auto const head_begin{source_range->begin_offset + 1};
-        if (head_begin + source_head.size() <= source.size() &&
-            source.substr(head_begin, source_head.size()) == source_head &&
-            source_head != "vector-soa-module" && source_head != "facade-module") {
-            replacements[source_range->source_file_index].push_back(
-                {.begin = head_begin, .end = head_begin + source_head.size(), .text = "module"});
-        } else {
-            replacements[source_range->source_file_index].push_back(
-                {.begin = source_range->begin_offset,
-                 .end = source_range->end_offset,
-                 .text = *render_editable_module(manifest_.modules[module_index])});
-            fully_rendered_modules.insert(module_index);
-        }
-    }
-    auto covered_by_rendered_module = [&](SourceRange const& range) {
-        return std::ranges::any_of(fully_rendered_modules, [&](std::size_t const module_index) {
-            auto const& module_range{module_source_ranges_[module_index]};
-            return module_range.has_value() &&
-                   module_range->source_file_index == range.source_file_index &&
-                   module_range->begin_offset <= range.begin_offset &&
-                   range.end_offset <= module_range->end_offset;
-        });
-    };
     auto render_source_aware = [&](DeclarationId const id,
                                    auto const& schema,
                                    auto const preserve,
@@ -5124,17 +4912,14 @@ auto EditableSchemaDocument::preview_source_updates() const
         if (info == nullptr) {
             auto const tombstone{source_tombstones_.find(id)};
             if (tombstone != source_tombstones_.end() &&
-                !covered_by_deleted_module(tombstone->second) &&
-                !covered_by_rendered_module(tombstone->second)) {
+                !covered_by_deleted_module(tombstone->second)) {
                 auto const& source{tombstone->second};
                 replacements[source.source_file_index].push_back(
                     {.begin = source.begin_offset, .end = source.end_offset, .text = {}});
             }
             continue;
         }
-        if (fully_rendered_modules.contains(info->module_index)) {
-            continue;
-        }
+
         auto const rendered{render_declaration(id)};
         if (!rendered.has_value()) {
             return std::unexpected{SchemaEditError{"Touched declaration cannot be serialized"}};
@@ -5164,9 +4949,7 @@ auto EditableSchemaDocument::preview_source_updates() const
     };
     std::map<InsertionBoundary, std::vector<DeclarationInfo const*>> bounded_insertions;
     for (auto const& [module_index, ids] : insertions) {
-        if (fully_rendered_modules.contains(module_index)) {
-            continue;
-        }
+
         if (pending_module_sources_.contains(module_index)) {
             continue;
         }
@@ -5550,7 +5333,7 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                 auto const module_index{manifest_.modules.size()};
                 manifest_.modules.push_back(edit.schema);
                 module_source_ranges_.push_back(std::nullopt);
-                module_source_heads_.push_back("module");
+
                 pending_module_sources_.emplace(module_index, edit.source_file_index);
                 try {
                     codegen::validate_manifest(manifest_);
@@ -5558,7 +5341,7 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                 } catch (std::exception const& error) {
                     pending_module_sources_.erase(module_index);
                     module_source_ranges_.pop_back();
-                    module_source_heads_.pop_back();
+
                     manifest_.modules.pop_back();
                     return std::unexpected{SchemaEditError{error.what()}};
                 }
@@ -5573,7 +5356,6 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                 }
 
                 auto const source{module_source_ranges_[edit.module_index]};
-                auto const source_head{module_source_heads_[edit.module_index]};
                 auto const pending{pending_module_sources_.find(edit.module_index)};
                 if (!source.has_value() && pending == pending_module_sources_.end()) {
                     return std::unexpected{
@@ -5633,7 +5415,6 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                 RestoreModule inverse{.module_index = edit.module_index,
                                       .schema = manifest_.modules[edit.module_index],
                                       .source = source,
-                                      .source_head = source_head,
                                       .pending_source_file_index =
                                           pending == pending_module_sources_.end()
                                               ? std::nullopt
@@ -5648,8 +5429,7 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                 types_ = std::move(candidate_types);
                 module_source_ranges_.erase(module_source_ranges_.begin() +
                                             static_cast<std::ptrdiff_t>(edit.module_index));
-                module_source_heads_.erase(module_source_heads_.begin() +
-                                           static_cast<std::ptrdiff_t>(edit.module_index));
+
                 if (source.has_value()) {
                     deleted_module_source_ranges_.push_back(*source);
                 }
@@ -5706,9 +5486,7 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                 module_source_ranges_.insert(module_source_ranges_.begin() +
                                                  static_cast<std::ptrdiff_t>(edit.module_index),
                                              edit.source);
-                module_source_heads_.insert(module_source_heads_.begin() +
-                                                static_cast<std::ptrdiff_t>(edit.module_index),
-                                            edit.source_head);
+
                 if (edit.source.has_value()) {
                     deleted_module_source_ranges_.erase(deleted_range);
                 }
@@ -5885,13 +5663,7 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                     return std::unexpected{SchemaEditError{"Unknown declaration id"}};
                 }
                 auto* schema{normal_schema_at<codegen::EnumSchema>(manifest_, *info)};
-                if (schema == nullptr) {
-                    auto* module{std::get_if<codegen::EnumModuleSchema>(
-                        &manifest_.modules[info->module_index])};
-                    if (module != nullptr && info->declaration_index < module->enums.size()) {
-                        schema = &module->enums[info->declaration_index];
-                    }
-                }
+
                 if (schema == nullptr) {
                     return std::unexpected{
                         SchemaEditError{"Display names can only be edited on enum declarations"}};
@@ -5926,13 +5698,7 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                     return std::unexpected{SchemaEditError{"Unknown declaration id"}};
                 }
                 auto* schema{normal_schema_at<codegen::EnumSchema>(manifest_, *info)};
-                if (schema == nullptr) {
-                    auto* module{std::get_if<codegen::EnumModuleSchema>(
-                        &manifest_.modules[info->module_index])};
-                    if (module != nullptr && info->declaration_index < module->enums.size()) {
-                        schema = &module->enums[info->declaration_index];
-                    }
-                }
+
                 if (schema == nullptr) {
                     return std::unexpected{
                         SchemaEditError{"Enumerator names can only be edited on enums"}};
@@ -6047,7 +5813,6 @@ auto load_editable_schema_document(std::filesystem::path const& types_path,
 
     std::vector<std::optional<SourceRange>> declaration_ranges;
     std::vector<std::optional<SourceRange>> module_ranges;
-    std::vector<std::string> module_heads;
     auto module_index{std::size_t{}};
     for (auto const& path : module_paths) {
         auto source{read_file(path)};
@@ -6060,33 +5825,12 @@ auto load_editable_schema_document(std::filesystem::path const& types_path,
             }
             auto const& module{manifest.modules[module_index++]};
             module_ranges.push_back(form_range(form, source_file_index));
-            module_heads.emplace_back(form.head());
             auto const expected_count{declaration_count(module)};
             if (expected_count == 0) {
                 continue;
             }
             if (auto const* normal{std::get_if<codegen::NormalModuleSchema>(&module)}) {
-                if (form.head() == "vector-soa-module") {
-                    declaration_ranges.push_back(form_range(form, source_file_index));
-                    continue;
-                }
-                if (form.head() != "module") {
-                    for (auto const& declaration : normal->declarations) {
-                        auto const found{
-                            std::ranges::find_if(form.children, [&](Form const& child) {
-                                return child.head() == codegen::declaration_head(declaration) &&
-                                       child.children.size() >= 2 &&
-                                       child.children[1].token.text ==
-                                           codegen::declaration_name(declaration);
-                            })};
-                        if (found == form.children.end()) {
-                            throw std::logic_error{
-                                "Source declaration count does not match loaded module"};
-                        }
-                        declaration_ranges.push_back(form_range(*found, source_file_index));
-                    }
-                    continue;
-                }
+
                 auto declaration_index{std::size_t{}};
                 for (auto const& child : form.children) {
                     if (declaration_index == normal->declarations.size()) {
@@ -6120,7 +5864,6 @@ auto load_editable_schema_document(std::filesystem::path const& types_path,
                                   types_path,
                                   {module_paths.begin(), module_paths.end()}};
     result.module_source_ranges_ = std::move(module_ranges);
-    result.module_source_heads_ = std::move(module_heads);
     result.initialize_declarations(std::move(declaration_ranges));
     return result;
 }

@@ -5,6 +5,7 @@
 
 #include "Homogeneous.h"
 #include "InlineFacade.h"
+#include "Mixed.h"
 #include "PackedEnums.h"
 #include "PackedValues.h"
 #include "PlainEnums.h"

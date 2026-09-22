@@ -10,10 +10,10 @@
 namespace codegen {
 namespace {
 
-auto valid_module() -> PackedValueModuleSchema {
-    return PackedValueModuleSchema{
+auto valid_module() -> NormalModuleSchema {
+    return NormalModuleSchema{
         .settings = ModuleSettings{.name = "packed", .header = "Packed.h"},
-        .values = {PackedValueSchema{
+        .declarations = {PackedValueSchema{
             .name = "FighterState",
             .storage_type = TypeRef{"std::uint32_t"},
             .segments =
@@ -22,15 +22,14 @@ auto valid_module() -> PackedValueModuleSchema {
                     PackedFieldSchema{
                         "state", TypeRef{"FighterStateKind"}, 8, PackedFieldKind::enumeration},
                 },
-        }},
-    };
+        }}};
 }
 
 auto field(PackedValueSchema& schema, std::size_t const index) -> PackedFieldSchema& {
     return std::get<PackedFieldSchema>(schema.segments[index]);
 }
 
-auto lower(PackedValueModuleSchema module) -> std::string {
+auto lower(NormalModuleSchema module) -> std::string {
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
         .modules = {std::move(module)},
@@ -39,39 +38,38 @@ auto lower(PackedValueModuleSchema module) -> std::string {
     return files.front().content;
 }
 
-auto lower_known_enum(PackedValueModuleSchema module, EnumSchema schema) -> std::string {
-    field(module.values.front(), 1).type = TypeRef{"@state"};
+auto lower_known_enum(NormalModuleSchema module, EnumSchema schema) -> std::string {
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).type =
+        TypeRef{"@state"};
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
         .types = {{"state", CppType{"FighterStateKind"}}},
-        .modules = {EnumModuleSchema{
-                        .settings = ModuleSettings{.name = "enums", .header = "Enums.h"},
-                        .enums = {std::move(schema)},
-                    },
+        .modules = {NormalModuleSchema{.settings =
+                                           ModuleSettings{.name = "enums", .header = "Enums.h"},
+                                       .declarations = {std::move(schema)}},
                     std::move(module)},
     }))};
     EXPECT_EQ(files.size(), 2);
     return files.back().content;
 }
 
-auto scalar_backed_manifest(PackedValueModuleSchema module, bool const signedness = false)
-    -> Manifest {
-    auto& packed_field{field(module.values.front(), 0)};
+auto scalar_backed_manifest(NormalModuleSchema module, bool const signedness = false) -> Manifest {
+    auto& packed_field{field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0)};
     packed_field.type = TypeRef{"project::Health"};
     packed_field.kind =
         signedness ? PackedFieldKind::signed_integer : PackedFieldKind::unsigned_integer;
     packed_field.bits.reset();
     module.settings.namespace_name = "project";
-    module.values.front().segments.resize(1);
-    module.values.front().mutable_value = true;
+    std::get<codegen::PackedValueSchema>(module.declarations.front()).segments.resize(1);
+    std::get<codegen::PackedValueSchema>(module.declarations.front()).mutable_value = true;
 
     return Manifest{
         .schema_version = manifest_schema_version,
-        .modules = {ScalarModuleSchema{
+        .modules = {NormalModuleSchema{
                         .settings = ModuleSettings{.name = "scalars",
                                                    .header = "Scalars.h",
                                                    .namespace_name = "project"},
-                        .scalars = {IntegerScalarSchema{
+                        .declarations = {IntegerScalarSchema{
                             .name = "Health",
                             .signedness = signedness,
                             .minimum_value =
@@ -88,8 +86,7 @@ auto scalar_backed_manifest(PackedValueModuleSchema module, bool const signednes
     };
 }
 
-auto lower_scalar_backed(PackedValueModuleSchema module, bool const signedness = false)
-    -> std::string {
+auto lower_scalar_backed(NormalModuleSchema module, bool const signedness = false) -> std::string {
     auto const files{
         render_modules(lower_modules(scalar_backed_manifest(std::move(module), signedness)))};
     EXPECT_EQ(files.size(), 2);
@@ -100,28 +97,28 @@ auto quantized_backed_manifest(std::uint64_t const reserved_codes = 2) -> Manife
     return Manifest{
         .schema_version = manifest_schema_version,
         .modules = {
-            ScalarModuleSchema{.settings = ModuleSettings{.name = "scalars",
+            NormalModuleSchema{.settings = ModuleSettings{.name = "scalars",
                                                           .header = "Scalars.h",
                                                           .namespace_name = "project"},
-                               .scalars = {IntegerScalarSchema{.name = "Health",
-                                                               .signedness = false,
-                                                               .minimum_value = 0,
-                                                               .maximum_value = 1000,
-                                                               .bit_width = std::nullopt}}},
-            RepresentationModuleSchema{.settings = ModuleSettings{.name = "representations",
-                                                                  .header = "Representations.h",
-                                                                  .namespace_name = "project"},
-                                       .linear_quantized = {LinearQuantizedSchema{
-                                           .name = "HealthQ8",
-                                           .source = TypeRef{"project::Health"},
-                                           .bit_width = 8,
-                                           .reserved_codes = reserved_codes,
-                                           .clipping = QuantizationClipping::clamp}}},
-            PackedValueModuleSchema{
+                               .declarations = {IntegerScalarSchema{.name = "Health",
+                                                                    .signedness = false,
+                                                                    .minimum_value = 0,
+                                                                    .maximum_value = 1000,
+                                                                    .bit_width = std::nullopt}}},
+            NormalModuleSchema{
+                .settings = ModuleSettings{.name = "representations",
+                                           .header = "Representations.h",
+                                           .namespace_name = "project"},
+                .declarations = {LinearQuantizedSchema{.name = "HealthQ8",
+                                                       .source = TypeRef{"project::Health"},
+                                                       .bit_width = 8,
+                                                       .reserved_codes = reserved_codes,
+                                                       .clipping = QuantizationClipping::clamp}}},
+            NormalModuleSchema{
                 .settings = ModuleSettings{.name = "packed",
                                            .header = "Packed.h",
                                            .namespace_name = "project"},
-                .values = {PackedValueSchema{
+                .declarations = {PackedValueSchema{
                     .name = "Vitals",
                     .storage_type = TypeRef{"std::uint16_t"},
                     .segments = {PackedFieldSchema{.name = "health",
@@ -138,20 +135,20 @@ auto fixed_point_backed_manifest(bool const signedness = true) -> Manifest {
     return Manifest{
         .schema_version = manifest_schema_version,
         .modules = {
-            RepresentationModuleSchema{
+            NormalModuleSchema{
                 .settings = ModuleSettings{.name = "representations",
                                            .header = "Representations.h",
                                            .namespace_name = "project"},
-                .fixed_points = {FixedPointSchema{.name = "VelocityQ8_4",
+                .declarations = {FixedPointSchema{.name = "VelocityQ8_4",
                                                   .signedness = signedness,
                                                   .total_bits = 12,
                                                   .fractional_bits = 4,
                                                   .rounding = FixedPointRounding::nearest_even}}},
-            PackedValueModuleSchema{
+            NormalModuleSchema{
                 .settings = ModuleSettings{.name = "packed",
                                            .header = "Packed.h",
                                            .namespace_name = "project"},
-                .values = {PackedValueSchema{
+                .declarations = {PackedValueSchema{
                     .name = "Motion",
                     .storage_type = TypeRef{"std::uint16_t"},
                     .segments = {PackedFieldSchema{.name = "velocity",
@@ -168,19 +165,19 @@ auto mini_float_backed_manifest() -> Manifest {
     return Manifest{
         .schema_version = manifest_schema_version,
         .modules = {
-            RepresentationModuleSchema{.settings = ModuleSettings{.name = "representations",
-                                                                  .header = "Representations.h",
-                                                                  .namespace_name = "project"},
-                                       .mini_floats = {MiniFloatSchema{.name = "PositionF12",
-                                                                       .sign_bits = 1,
-                                                                       .exponent_bits = 5,
-                                                                       .significand_bits = 6,
-                                                                       .exponent_bias = 15}}},
-            PackedValueModuleSchema{
+            NormalModuleSchema{.settings = ModuleSettings{.name = "representations",
+                                                          .header = "Representations.h",
+                                                          .namespace_name = "project"},
+                               .declarations = {MiniFloatSchema{.name = "PositionF12",
+                                                                .sign_bits = 1,
+                                                                .exponent_bits = 5,
+                                                                .significand_bits = 6,
+                                                                .exponent_bias = 15}}},
+            NormalModuleSchema{
                 .settings = ModuleSettings{.name = "packed",
                                            .header = "Packed.h",
                                            .namespace_name = "project"},
-                .values = {PackedValueSchema{
+                .declarations = {PackedValueSchema{
                     .name = "Position",
                     .storage_type = TypeRef{"std::uint16_t"},
                     .segments = {PackedFieldSchema{.name = "component",
@@ -195,12 +192,13 @@ auto mini_float_backed_manifest() -> Manifest {
 
 TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
     auto module{valid_module()};
-    module.values.front().invalid_value = 0x7fffffffu;
-    field(module.values.front(), 0).range_helper = true;
-    field(module.values.front(), 0).bits.reset();
-    field(module.values.front(), 0).minimum_value = 10;
-    field(module.values.front(), 0).maximum_value = 1'000'000;
-    field(module.values.front(), 0).named_codes = {
+    std::get<codegen::PackedValueSchema>(module.declarations.front()).invalid_value = 0x7fffffffu;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).range_helper = true;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).bits.reset();
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = 10;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value =
+        1'000'000;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).named_codes = {
         {.name = "Player", .value = 42, .sentinel = false},
         {.name = "Invalid", .value = 0xffffff, .sentinel = true}};
     auto const header{lower(std::move(module))};
@@ -240,7 +238,7 @@ TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
 
 TEST(PackedValue, EmitsFallibleMutationOnlyWhenRequested) {
     auto module{valid_module()};
-    module.values.front().mutable_value = true;
+    std::get<codegen::PackedValueSchema>(module.declarations.front()).mutable_value = true;
     auto const header{lower(std::move(module))};
 
     EXPECT_NE(header.find("try_make(std::uint32_t const entity_index_value"), std::string::npos);
@@ -250,9 +248,11 @@ TEST(PackedValue, EmitsFallibleMutationOnlyWhenRequested) {
 
 TEST(PackedValue, ReservedSegmentsOccupyBitsWithoutGeneratingValueApi) {
     auto module{valid_module()};
-    field(module.values.front(), 0).bits = 20;
-    module.values.front().segments.insert(module.values.front().segments.begin() + 1,
-                                          PackedReservedBitsSchema{.name = "future", .bits = 4});
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).bits = 20;
+    std::get<codegen::PackedValueSchema>(module.declarations.front())
+        .segments.insert(
+            std::get<codegen::PackedValueSchema>(module.declarations.front()).segments.begin() + 1,
+            PackedReservedBitsSchema{.name = "future", .bits = 4});
 
     auto const header{lower(std::move(module))};
 
@@ -265,7 +265,7 @@ TEST(PackedValue, ReservedSegmentsOccupyBitsWithoutGeneratingValueApi) {
 
 TEST(PackedValue, MostSignificantFirstSegmentsDriveGeneratedNumericOffsets) {
     auto module{valid_module()};
-    auto& value{module.values.front()};
+    auto& value{std::get<codegen::PackedValueSchema>(module.declarations.front())};
     field(value, 0).bits = 20;
     value.segments.insert(value.segments.begin() + 1,
                           PackedReservedBitsSchema{.name = "future", .bits = 4});
@@ -283,7 +283,7 @@ TEST(PackedValue, MostSignificantFirstSegmentsDriveGeneratedNumericOffsets) {
 
 TEST(PackedValue, MostSignificantFirstEnumDomainCanExcludeInvalidRawValue) {
     auto module{valid_module()};
-    auto& value{module.values.front()};
+    auto& value{std::get<codegen::PackedValueSchema>(module.declarations.front())};
     value.invalid_value = 7;
     value.bit_order = PackedBitOrder::most_significant_first;
 
@@ -300,7 +300,8 @@ TEST(PackedValue, MostSignificantFirstEnumDomainCanExcludeInvalidRawValue) {
 
 TEST(PackedValue, SerializedByteOrderDoesNotChangeHostNumericOffsets) {
     auto module{valid_module()};
-    module.values.front().byte_order = PackedByteOrder::big_endian;
+    std::get<codegen::PackedValueSchema>(module.declarations.front()).byte_order =
+        PackedByteOrder::big_endian;
 
     auto const header{lower(std::move(module))};
 
@@ -310,9 +311,9 @@ TEST(PackedValue, SerializedByteOrderDoesNotChangeHostNumericOffsets) {
 
 TEST(PackedValue, LowersSignedArbitraryWidthFieldWithSafeSignExtension) {
     auto module{valid_module()};
-    module.values.front().mutable_value = true;
-    module.values.front().name = "SignedDelta";
-    module.values.front().segments = {
+    std::get<codegen::PackedValueSchema>(module.declarations.front()).mutable_value = true;
+    std::get<codegen::PackedValueSchema>(module.declarations.front()).name = "SignedDelta";
+    std::get<codegen::PackedValueSchema>(module.declarations.front()).segments = {
         PackedFieldSchema{"delta", TypeRef{"std::int32_t"}, 17, PackedFieldKind::signed_integer},
         PackedReservedBitsSchema{.name = "future", .bits = 15}};
 
@@ -329,9 +330,9 @@ TEST(PackedValue, LowersSignedArbitraryWidthFieldWithSafeSignExtension) {
 
 TEST(PackedValue, DerivesAndEnforcesSignedSemanticRangeWithNamedSentinel) {
     auto module{valid_module()};
-    module.values.front().mutable_value = true;
-    module.values.front().name = "SignedTemperature";
-    module.values.front().segments = {
+    std::get<codegen::PackedValueSchema>(module.declarations.front()).mutable_value = true;
+    std::get<codegen::PackedValueSchema>(module.declarations.front()).name = "SignedTemperature";
+    std::get<codegen::PackedValueSchema>(module.declarations.front()).segments = {
         PackedFieldSchema{.name = "temperature",
                           .type = TypeRef{"std::int16_t"},
                           .bits = std::nullopt,
@@ -399,8 +400,8 @@ TEST(PackedValue, LowersLinearQuantizedPlacementToExplicitEncodedCodeApi) {
 
 TEST(PackedValue, RejectsCompetingLinearQuantizedPlacementFacts) {
     auto manifest{quantized_backed_manifest()};
-    auto& packed{std::get<PackedValueModuleSchema>(manifest.modules.back())};
-    auto& health{field(packed.values.front(), 0)};
+    auto& packed{std::get<NormalModuleSchema>(manifest.modules.back())};
+    auto& health{field(std::get<PackedValueSchema>(packed.declarations.front()), 0)};
 
     health.bits = 7;
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
@@ -446,8 +447,8 @@ TEST(PackedValue, LowersFixedPointPlacementToExplicitRawCodeApi) {
               std::string::npos);
 
     auto immutable_manifest{fixed_point_backed_manifest()};
-    std::get<PackedValueModuleSchema>(immutable_manifest.modules.back())
-        .values.front()
+    std::get<PackedValueSchema>(
+        std::get<NormalModuleSchema>(immutable_manifest.modules.back()).declarations.front())
         .mutable_value = false;
     auto const immutable_files{render_modules(lower_modules(immutable_manifest))};
     ASSERT_EQ(immutable_files.size(), 2);
@@ -459,8 +460,8 @@ TEST(PackedValue, LowersFixedPointPlacementToExplicitRawCodeApi) {
 
 TEST(PackedValue, RejectsCompetingFixedPointPlacementFacts) {
     auto manifest{fixed_point_backed_manifest()};
-    auto& packed{std::get<PackedValueModuleSchema>(manifest.modules.back())};
-    auto& velocity{field(packed.values.front(), 0)};
+    auto& packed{std::get<NormalModuleSchema>(manifest.modules.back())};
+    auto& velocity{field(std::get<PackedValueSchema>(packed.declarations.front()), 0)};
 
     velocity.bits = 11;
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
@@ -507,9 +508,11 @@ TEST(PackedValue, LowersMiniFloatPlacementAsRawEncodedBits) {
     EXPECT_EQ(header.find("component()"), std::string::npos);
 
     auto wide{mini_float_backed_manifest()};
-    auto& wide_representations{std::get<RepresentationModuleSchema>(wide.modules.front())};
-    wide_representations.mini_floats.front().significand_bits = 58;
-    auto& wide_packed{std::get<PackedValueModuleSchema>(wide.modules.back()).values.front()};
+    auto& wide_representations{std::get<NormalModuleSchema>(wide.modules.front())};
+    std::get<codegen::MiniFloatSchema>(wide_representations.declarations.front()).significand_bits =
+        58;
+    auto& wide_packed{std::get<codegen::PackedValueSchema>(
+        std::get<NormalModuleSchema>(wide.modules.back()).declarations.front())};
     wide_packed.storage_type = TypeRef{"std::uint64_t"};
     wide_packed.segments.resize(1);
     wide_packed.mutable_value = false;
@@ -526,8 +529,8 @@ TEST(PackedValue, LowersMiniFloatPlacementAsRawEncodedBits) {
 
 TEST(PackedValue, RejectsCompetingMiniFloatPlacementFacts) {
     auto manifest{mini_float_backed_manifest()};
-    auto& packed{std::get<PackedValueModuleSchema>(manifest.modules.back())};
-    auto& component{field(packed.values.front(), 0)};
+    auto& packed{std::get<NormalModuleSchema>(manifest.modules.back())};
+    auto& component{field(std::get<PackedValueSchema>(packed.declarations.front()), 0)};
     component.bits = 11;
     EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
     component.bits.reset();
@@ -554,8 +557,8 @@ TEST(PackedValue, RejectsCompetingMiniFloatPlacementFacts) {
 TEST(PackedValue, RejectsCompetingOrMismatchedIntegerScalarFieldDomain) {
     auto module{valid_module()};
     auto manifest{scalar_backed_manifest(std::move(module))};
-    auto& packed{std::get<PackedValueModuleSchema>(manifest.modules.back())};
-    auto& packed_field{field(packed.values.front(), 0)};
+    auto& packed{std::get<NormalModuleSchema>(manifest.modules.back())};
+    auto& packed_field{field(std::get<PackedValueSchema>(packed.declarations.front()), 0)};
 
     packed_field.minimum_value = 0;
     packed_field.maximum_value = 1000;
@@ -573,176 +576,199 @@ TEST(PackedValue, RejectsCompetingOrMismatchedIntegerScalarFieldDomain) {
 
 TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
     auto module{valid_module()};
-    field(module.values.front(), 0).bits = 0;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).bits = 0;
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).bits = 25;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).bits = 25;
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    module.values.front().storage_type = TypeRef{"int32"};
+    std::get<codegen::PackedValueSchema>(module.declarations.front()).storage_type =
+        TypeRef{"int32"};
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).type = TypeRef{"int32"};
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).type =
+        TypeRef{"int32"};
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).kind = PackedFieldKind::signed_integer;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).kind =
+        PackedFieldKind::signed_integer;
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).type = TypeRef{"int32"};
-    field(module.values.front(), 0).kind = PackedFieldKind::signed_integer;
-    field(module.values.front(), 0).bits.reset();
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).type =
+        TypeRef{"int32"};
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).kind =
+        PackedFieldKind::signed_integer;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).bits.reset();
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).type = TypeRef{"int16"};
-    field(module.values.front(), 0).kind = PackedFieldKind::signed_integer;
-    field(module.values.front(), 0).bits = 17;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).type =
+        TypeRef{"int16"};
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).kind =
+        PackedFieldKind::signed_integer;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).bits = 17;
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    module.values.front().segments.front() = PackedFieldSchema{"flag", TypeRef{"bool"}, 2};
+    std::get<codegen::PackedValueSchema>(module.declarations.front()).segments.front() =
+        PackedFieldSchema{"flag", TypeRef{"bool"}, 2};
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
     module.settings.source = "Packed.cpp";
+    EXPECT_EQ(render_modules(lower_modules(Manifest{.schema_version = manifest_schema_version,
+                                                    .modules = {module}}))
+                  .size(),
+              2U);
+
+    module = valid_module();
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).range_helper = true;
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 1).range_helper = true;
+    std::get<codegen::PackedValueSchema>(module.declarations.front()).invalid_value =
+        std::uint64_t{1} << 32;
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    module.values.front().invalid_value = std::uint64_t{1} << 32;
+    std::get<codegen::PackedValueSchema>(module.declarations.front()).segments = {
+        PackedReservedBitsSchema{.name = "future", .bits = 32}};
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    module.values.front().segments = {PackedReservedBitsSchema{.name = "future", .bits = 32}};
+    std::get<codegen::PackedValueSchema>(module.declarations.front())
+        .segments.insert(
+            std::get<codegen::PackedValueSchema>(module.declarations.front()).segments.begin() + 1,
+            PackedReservedBitsSchema{.name = "future", .bits = 0});
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    module.values.front().segments.insert(module.values.front().segments.begin() + 1,
-                                          PackedReservedBitsSchema{.name = "future", .bits = 0});
+    std::get<codegen::PackedValueSchema>(module.declarations.front())
+        .segments.insert(
+            std::get<codegen::PackedValueSchema>(module.declarations.front()).segments.begin() + 1,
+            PackedReservedBitsSchema{.name = "entity_index", .bits = 1});
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    module.values.front().segments.insert(
-        module.values.front().segments.begin() + 1,
-        PackedReservedBitsSchema{.name = "entity_index", .bits = 1});
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = 1;
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).minimum_value = 1;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).bits.reset();
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).bits.reset();
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits.reset();
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 1).bits.reset();
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = 100;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value = 10;
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).minimum_value = 100;
-    field(module.values.front(), 0).maximum_value = 10;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = -1;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value = 100;
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).minimum_value = -1;
-    field(module.values.front(), 0).maximum_value = 100;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).type =
+        TypeRef{"std::int32_t"};
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).kind =
+        PackedFieldKind::signed_integer;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).bits = 7;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value =
+        -100;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value = 100;
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).type = TypeRef{"std::int32_t"};
-    field(module.values.front(), 0).kind = PackedFieldKind::signed_integer;
-    field(module.values.front(), 0).bits = 7;
-    field(module.values.front(), 0).minimum_value = -100;
-    field(module.values.front(), 0).maximum_value = 100;
-    EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
-
-    module = valid_module();
-    field(module.values.front(), 0).type = TypeRef{"std::int32_t"};
-    field(module.values.front(), 0).kind = PackedFieldKind::signed_integer;
-    field(module.values.front(), 0).bits = 8;
-    field(module.values.front(), 0).minimum_value = -100;
-    field(module.values.front(), 0).maximum_value = 100;
-    field(module.values.front(), 0).named_codes = {
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).type =
+        TypeRef{"std::int32_t"};
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).kind =
+        PackedFieldKind::signed_integer;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).bits = 8;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value =
+        -100;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value = 100;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).named_codes = {
         {.name = "Invalid", .value = 0, .sentinel = true}};
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).minimum_value = 0;
-    field(module.values.front(), 0).maximum_value = std::uint64_t{1} << 24;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = 0;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value =
+        std::uint64_t{1} << 24;
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 1).minimum_value = 0;
-    field(module.values.front(), 1).maximum_value = 3;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).minimum_value = 0;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).maximum_value = 3;
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).named_codes = {
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).named_codes = {
         {.name = "Invalid", .value = 0xffffff, .sentinel = true}};
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).minimum_value = 0;
-    field(module.values.front(), 0).maximum_value = 100;
-    field(module.values.front(), 0).named_codes = {
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = 0;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value = 100;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).named_codes = {
         {.name = "Invalid", .value = 100, .sentinel = true}};
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).minimum_value = 0;
-    field(module.values.front(), 0).maximum_value = 100;
-    field(module.values.front(), 0).named_codes = {
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = 0;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value = 100;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).named_codes = {
         {.name = "Named", .value = 101, .sentinel = false}};
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).minimum_value = 0;
-    field(module.values.front(), 0).maximum_value = 100;
-    field(module.values.front(), 0).named_codes = {
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = 0;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value = 100;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).named_codes = {
         {.name = "Invalid", .value = 0x1000000, .sentinel = true}};
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).minimum_value = 0;
-    field(module.values.front(), 0).maximum_value = 100;
-    field(module.values.front(), 0).named_codes = {
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = 0;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value = 100;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).named_codes = {
         {.name = "Invalid", .value = 0xffffff, .sentinel = true},
         {.name = "Invalid", .value = 0xfffffe, .sentinel = true}};
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).minimum_value = 0;
-    field(module.values.front(), 0).maximum_value = 100;
-    field(module.values.front(), 0).named_codes = {
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).minimum_value = 0;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).maximum_value = 100;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).named_codes = {
         {.name = "Invalid", .value = 0xffffff, .sentinel = true},
         {.name = "Pending", .value = 0xffffff, .sentinel = true}};
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).relationship =
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).relationship =
         SemanticRelationSchema{.kind = SemanticRelationKind::discriminates,
                                .target = TypeRef{"ExternalPayload"},
                                .unit = std::nullopt};
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 1).relationship =
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).relationship =
         SemanticRelationSchema{.kind = SemanticRelationKind::index_into,
                                .target = TypeRef{"ExternalTable"},
                                .unit = std::nullopt};
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 
     module = valid_module();
-    field(module.values.front(), 0).relationship =
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).relationship =
         SemanticRelationSchema{.kind = SemanticRelationKind::references,
                                .target = TypeRef{"ExternalType"},
                                .unit = std::nullopt};
@@ -751,22 +777,22 @@ TEST(PackedValue, RejectsInvalidLayoutsAndTypes) {
 
 TEST(PackedValue, RejectsGeneratedApiCollisions) {
     auto module{valid_module()};
-    module.values.front().mutable_value = true;
-    field(module.values.front(), 1).name = "set_entity_index";
+    std::get<codegen::PackedValueSchema>(module.declarations.front()).mutable_value = true;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).name =
+        "set_entity_index";
     EXPECT_THROW(lower(std::move(module)), std::invalid_argument);
 }
 
 TEST(PackedValue, ValidatesKnownEnumUnderlyingType) {
     auto module{valid_module()};
-    field(module.values.front(), 1).type = TypeRef{"@state"};
-    EnumModuleSchema enums{
-        .settings = ModuleSettings{.name = "enums", .header = "Enums.h"},
-        .enums = {EnumSchema{
-            .name = "FighterStateKind",
-            .underlying_type = TypeRef{"int8"},
-            .values = {EnumeratorSchema{"Value"}},
-        }},
-    };
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).type =
+        TypeRef{"@state"};
+    NormalModuleSchema enums{.settings = ModuleSettings{.name = "enums", .header = "Enums.h"},
+                             .declarations = {EnumSchema{
+                                 .name = "FighterStateKind",
+                                 .underlying_type = TypeRef{"int8"},
+                                 .values = {EnumeratorSchema{"Value"}},
+                             }}};
     Manifest manifest{
         .schema_version = manifest_schema_version,
         .types = {{"state", CppType{"FighterStateKind"}}},
@@ -785,8 +811,8 @@ TEST(PackedValue, ValidatesKnownEnumUnderlyingType) {
 
 TEST(PackedValue, ValidatesKnownEnumEncodedWidthWithoutEmittingPerValueAssertions) {
     auto module{valid_module()};
-    module.values.front().invalid_value = 0x07ffffffu;
-    field(module.values.front(), 1).bits = 4;
+    std::get<codegen::PackedValueSchema>(module.declarations.front()).invalid_value = 0x07ffffffu;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits = 4;
     auto schema{EnumSchema{
         .name = "FighterStateKind",
         .underlying_type = TypeRef{"uint8"},
@@ -803,13 +829,13 @@ TEST(PackedValue, ValidatesKnownEnumEncodedWidthWithoutEmittingPerValueAssertion
               std::string::npos);
     EXPECT_NE(header.find("assert(raw != invalid_value);"), std::string::npos);
 
-    field(module.values.front(), 1).bits = 3;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits = 3;
     EXPECT_THROW(lower_known_enum(std::move(module), std::move(schema)), std::invalid_argument);
 }
 
 TEST(PackedValue, OmitsSentinelAssertionWhenTheKnownEnumDomainExcludesIt) {
     auto module{valid_module()};
-    module.values.front().invalid_value = 0xffffffffu;
+    std::get<codegen::PackedValueSchema>(module.declarations.front()).invalid_value = 0xffffffffu;
     auto const header{
         lower_known_enum(std::move(module),
                          EnumSchema{
@@ -825,7 +851,7 @@ TEST(PackedValue, OmitsSentinelAssertionWhenTheKnownEnumDomainExcludesIt) {
 
 TEST(PackedValue, ResolvesImplicitValuesAfterExplicitHexadecimalValues) {
     auto module{valid_module()};
-    field(module.values.front(), 1).bits = 4;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits = 4;
     auto schema{EnumSchema{
         .name = "FighterStateKind",
         .underlying_type = TypeRef{"uint8"},
@@ -838,13 +864,13 @@ TEST(PackedValue, ResolvesImplicitValuesAfterExplicitHexadecimalValues) {
 
     EXPECT_NO_THROW(static_cast<void>(lower_known_enum(module, schema)));
 
-    field(module.values.front(), 1).bits = 3;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits = 3;
     EXPECT_THROW(lower_known_enum(std::move(module), std::move(schema)), std::invalid_argument);
 }
 
 TEST(PackedValue, RejectsKnownEnumValuesOutsideTheirUnderlyingType) {
     auto module{valid_module()};
-    field(module.values.front(), 1).bits = 8;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits = 8;
     auto schema{EnumSchema{
         .name = "FighterStateKind",
         .underlying_type = TypeRef{"uint8"},
@@ -858,7 +884,7 @@ TEST(PackedValue, RejectsKnownEnumValuesOutsideTheirUnderlyingType) {
 
 TEST(PackedValue, AllowsEnumAliasesAndUsesStructuralCountSemantics) {
     auto module{valid_module()};
-    field(module.values.front(), 1).bits = 8;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits = 8;
     auto schema{EnumSchema{
         .name = "FighterStateKind",
         .underlying_type = TypeRef{"uint8"},
@@ -875,7 +901,7 @@ TEST(PackedValue, AllowsEnumAliasesAndUsesStructuralCountSemantics) {
 
 TEST(PackedValue, EmitsCompactFallbackForOpaqueKnownEnumValues) {
     auto module{valid_module()};
-    field(module.values.front(), 1).bits = 3;
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits = 3;
     auto const header{
         lower_known_enum(std::move(module),
                          EnumSchema{
@@ -896,18 +922,16 @@ TEST(PackedValue, RejectsFieldsNarrowerThanEnumSemanticDomain) {
                        std::string maximum,
                        std::optional<bool> const signedness = std::nullopt) -> Manifest {
         auto module{valid_module()};
-        field(module.values.front(), 1).bits = 2;
-        EnumModuleSchema enums{
-            .settings = ModuleSettings{.name = "enums", .header = "Enums.h"},
-            .enums = {EnumSchema{
-                .name = "FighterStateKind",
-                .underlying_type = TypeRef{"uint8"},
-                .bit_width = bit_width,
-                .signedness = signedness,
-                .values = {EnumeratorSchema{"Idle", "0"},
-                           EnumeratorSchema{"Maximum", std::move(maximum)}},
-            }},
-        };
+        field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits = 2;
+        NormalModuleSchema enums{.settings = ModuleSettings{.name = "enums", .header = "Enums.h"},
+                                 .declarations = {EnumSchema{
+                                     .name = "FighterStateKind",
+                                     .underlying_type = TypeRef{"uint8"},
+                                     .bit_width = bit_width,
+                                     .signedness = signedness,
+                                     .values = {EnumeratorSchema{"Idle", "0"},
+                                                EnumeratorSchema{"Maximum", std::move(maximum)}},
+                                 }}};
         return {.schema_version = manifest_schema_version,
                 .modules = {std::move(enums), std::move(module)}};
     };
@@ -928,21 +952,20 @@ TEST(PackedValue, RejectsFieldsNarrowerThanEnumSemanticDomain) {
 
 TEST(PackedValue, DerivesAutoWidthFromEnumSemanticDomain) {
     auto module{valid_module()};
-    field(module.values.front(), 1).bits.reset();
-    field(module.values.front(), 0).relationship =
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 1).bits.reset();
+    field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0).relationship =
         SemanticRelationSchema{.kind = SemanticRelationKind::index_into,
                                .target = TypeRef{"FighterStateKind"},
                                .unit = std::nullopt};
-    EnumModuleSchema enums{
+    NormalModuleSchema enums{
         .settings = ModuleSettings{.name = "enums", .header = "Enums.h"},
-        .enums = {EnumSchema{
+        .declarations = {EnumSchema{
             .name = "FighterStateKind",
             .underlying_type = TypeRef{"uint8"},
             .bit_width = std::nullopt,
             .signedness = false,
             .values = {EnumeratorSchema{"Idle", "0"}, EnumeratorSchema{"Maximum", "7"}},
-        }},
-    };
+        }}};
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
         .modules = {std::move(enums), std::move(module)},
@@ -956,7 +979,7 @@ TEST(PackedValue, DerivesAutoWidthFromEnumSemanticDomain) {
 
 TEST(PackedValue, SentinelCodeCanIncreaseDerivedIntegerWidth) {
     auto module{valid_module()};
-    auto& index{field(module.values.front(), 0)};
+    auto& index{field(std::get<codegen::PackedValueSchema>(module.declarations.front()), 0)};
     index.bits.reset();
     index.minimum_value = 0;
     index.maximum_value = 7;

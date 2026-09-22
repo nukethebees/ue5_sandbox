@@ -59,9 +59,9 @@ TEST(SemanticTypeGraph, PreservesEntityTypeEnumSemantics) {
 TEST(SemanticTypeGraph, PreservesExplicitEnumSemanticWidth) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::EnumModuleSchema{
+        .modules = {codegen::NormalModuleSchema{
             .settings = codegen::ModuleSettings{.name = "states", .header = "States.h"},
-            .enums = {codegen::EnumSchema{
+            .declarations = {codegen::EnumSchema{
                 .name = "State",
                 .underlying_type = codegen::TypeRef{"std::uint8_t"},
                 .bit_width = 3,
@@ -69,8 +69,7 @@ TEST(SemanticTypeGraph, PreservesExplicitEnumSemanticWidth) {
                 .values = {codegen::EnumeratorSchema{"Idle", "0"},
                            codegen::EnumeratorSchema{
                                .name = "Active", .initializer = "7", .sentinel = true}},
-            }},
-        }},
+            }}}},
     };
 
     auto const graph{resolve_type_graph(manifest)};
@@ -88,17 +87,16 @@ TEST(SemanticTypeGraph, PreservesExplicitEnumSemanticWidth) {
 TEST(SemanticTypeGraph, KeepsDerivedEnumBackingOutOfSemanticDependencies) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::EnumModuleSchema{
+        .modules = {codegen::NormalModuleSchema{
             .settings = codegen::ModuleSettings{.name = "states", .header = "States.h"},
-            .enums = {codegen::EnumSchema{
+            .declarations = {codegen::EnumSchema{
                 .name = "State",
                 .underlying_type = std::nullopt,
                 .bit_width = 3,
                 .signedness = false,
                 .values = {codegen::EnumeratorSchema{"Idle", "0"},
                            codegen::EnumeratorSchema{"Active", "7"}},
-            }},
-        }},
+            }}}},
     };
 
     auto const graph{resolve_type_graph(manifest)};
@@ -113,29 +111,30 @@ TEST(SemanticTypeGraph, ResolvesStandaloneIntegerScalarWithoutPhysicalFacts) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
         .modules = {
-            codegen::ScalarModuleSchema{
+            codegen::NormalModuleSchema{
                 .settings = codegen::ModuleSettings{.name = "semantic_values",
                                                     .header = "SemanticValues.h",
                                                     .namespace_name = "project"},
-                .scalars = {codegen::IntegerScalarSchema{
-                                .name = "DamageReason",
-                                .signedness = false,
-                                .minimum_value = 0,
-                                .maximum_value = 10,
-                                .bit_width = std::nullopt,
-                                .named_codes = {{.name = "Unknown", .value = 0, .sentinel = false},
-                                                {.name = "Invalid", .value = 15, .sentinel = true}},
-                                .relationship =
-                                    codegen::SemanticRelationSchema{
-                                        .kind = codegen::SemanticRelationKind::offset_into,
-                                        .target = codegen::TypeRef{"project::EntityTable"},
-                                        .unit = codegen::SemanticRelationUnit::bytes}},
-                            codegen::IntegerScalarSchema{.name = "EntityTable",
-                                                         .signedness = false,
-                                                         .minimum_value = 0,
-                                                         .maximum_value = 1'023,
-                                                         .bit_width = 10,
-                                                         .named_codes = {}}}}}};
+                .declarations = {
+                    codegen::IntegerScalarSchema{
+                        .name = "DamageReason",
+                        .signedness = false,
+                        .minimum_value = 0,
+                        .maximum_value = 10,
+                        .bit_width = std::nullopt,
+                        .named_codes = {{.name = "Unknown", .value = 0, .sentinel = false},
+                                        {.name = "Invalid", .value = 15, .sentinel = true}},
+                        .relationship =
+                            codegen::SemanticRelationSchema{
+                                .kind = codegen::SemanticRelationKind::offset_into,
+                                .target = codegen::TypeRef{"project::EntityTable"},
+                                .unit = codegen::SemanticRelationUnit::bytes}},
+                    codegen::IntegerScalarSchema{.name = "EntityTable",
+                                                 .signedness = false,
+                                                 .minimum_value = 0,
+                                                 .maximum_value = 1'023,
+                                                 .bit_width = 10,
+                                                 .named_codes = {}}}}}};
 
     auto const graph{resolve_type_graph(manifest)};
     auto const scalar_id{graph.find_declared("semantic_values", "DamageReason")};
@@ -168,11 +167,11 @@ TEST(SemanticTypeGraph, RejectsIntegerScalarRelationshipToExternalLeaf) {
         .schema_version = codegen::manifest_schema_version,
         .types = {{"external_table",
                    codegen::CppType{"project::ExternalTable", "ExternalTable.h"}}},
-        .modules = {codegen::ScalarModuleSchema{
+        .modules = {codegen::NormalModuleSchema{
             .settings = codegen::ModuleSettings{.name = "semantic_values",
                                                 .header = "SemanticValues.h",
                                                 .namespace_name = "project"},
-            .scalars = {
+            .declarations = {
                 codegen::IntegerScalarSchema{.name = "EntityIndex",
                                              .signedness = false,
                                              .minimum_value = 0,
@@ -191,48 +190,48 @@ TEST(SemanticTypeGraph, ResolvesPhysicalRepresentationsAndDependencies) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
         .modules =
-            {codegen::ScalarModuleSchema{
+            {codegen::NormalModuleSchema{
                  .settings = codegen::ModuleSettings{.name = "semantic_values",
                                                      .header = "SemanticValues.h",
                                                      .namespace_name = "project"},
-                 .scalars = {codegen::IntegerScalarSchema{
+                 .declarations = {codegen::IntegerScalarSchema{
                      .name = "Health",
                      .signedness = false,
                      .minimum_value = 0,
                      .maximum_value = 1000,
                      .bit_width = std::nullopt,
                      .named_codes = {{.name = "Invalid", .value = 1023, .sentinel = true}}}}},
-             codegen::RepresentationModuleSchema{
+             codegen::NormalModuleSchema{
                  .settings = codegen::ModuleSettings{.name = "representations",
                                                      .header = "Representations.h",
                                                      .namespace_name = "project"},
-                 .linear_quantized = {codegen::LinearQuantizedSchema{
-                     .name = "HealthQ8",
-                     .source = codegen::TypeRef{"project::Health"},
-                     .bit_width = 8,
-                     .reserved_codes = 1,
-                     .clipping = codegen::QuantizationClipping::clamp}},
-                 .integer_varints = {codegen::IntegerVarintSchema{
-                     .name = "HealthVarint",
-                     .source = codegen::TypeRef{"project::Health"},
-                     .encoding = codegen::IntegerVarintEncoding::unsigned_varint}},
-                 .fixed_points = {codegen::FixedPointSchema{
-                     .name = "VelocityQ12_4",
-                     .signedness = true,
-                     .total_bits = 16,
-                     .fractional_bits = 4,
-                     .rounding = codegen::FixedPointRounding::toward_zero}},
-                 .optional_sentinels = {codegen::OptionalSentinelSchema{
-                     .name = "OptionalHealth",
-                     .source = codegen::TypeRef{"project::Health"},
-                     .sentinel = "Invalid"}},
-                 .optional_presence_bits = {codegen::OptionalPresenceBitSchema{
-                     .name = "PresentHealth", .source = codegen::TypeRef{"project::Health"}}},
-                 .mini_floats = {codegen::MiniFloatSchema{.name = "CompactFloat",
-                                                          .sign_bits = 1,
-                                                          .exponent_bits = 5,
-                                                          .significand_bits = 10,
-                                                          .exponent_bias = 15}}}},
+                 .declarations =
+                     {codegen::LinearQuantizedSchema{.name = "HealthQ8",
+                                                     .source = codegen::TypeRef{"project::Health"},
+                                                     .bit_width = 8,
+                                                     .reserved_codes = 1,
+                                                     .clipping =
+                                                         codegen::QuantizationClipping::clamp},
+                      codegen::IntegerVarintSchema{
+                          .name = "HealthVarint",
+                          .source = codegen::TypeRef{"project::Health"},
+                          .encoding = codegen::IntegerVarintEncoding::unsigned_varint},
+                      codegen::FixedPointSchema{.name = "VelocityQ12_4",
+                                                .signedness = true,
+                                                .total_bits = 16,
+                                                .fractional_bits = 4,
+                                                .rounding =
+                                                    codegen::FixedPointRounding::toward_zero},
+                      codegen::OptionalSentinelSchema{.name = "OptionalHealth",
+                                                      .source = codegen::TypeRef{"project::Health"},
+                                                      .sentinel = "Invalid"},
+                      codegen::OptionalPresenceBitSchema{
+                          .name = "PresentHealth", .source = codegen::TypeRef{"project::Health"}},
+                      codegen::MiniFloatSchema{.name = "CompactFloat",
+                                               .sign_bits = 1,
+                                               .exponent_bits = 5,
+                                               .significand_bits = 10,
+                                               .exponent_bias = 15}}}},
     };
 
     auto const graph{resolve_type_graph(manifest)};
@@ -332,11 +331,11 @@ TEST(SemanticTypeGraph, ResolvesPackedIntegerScalarDomainAndDependency) {
             .schema_version = codegen::manifest_schema_version,
             .modules =
                 {
-                    codegen::ScalarModuleSchema{
+                    codegen::NormalModuleSchema{
                         .settings = codegen::ModuleSettings{.name = "domains",
                                                             .header = "Domains.h",
                                                             .namespace_name = "project"},
-                        .scalars = {codegen::IntegerScalarSchema{
+                        .declarations = {codegen::IntegerScalarSchema{
                             .name = "Health",
                             .signedness = false,
                             .minimum_value = 0,
@@ -344,30 +343,34 @@ TEST(SemanticTypeGraph, ResolvesPackedIntegerScalarDomainAndDependency) {
                             .bit_width = std::nullopt,
                             .named_codes = {{.name = "Invalid", .value = 4095, .sentinel = true}},
                         }}},
-                    codegen::PackedValueModuleSchema{
-                        .settings = codegen::ModuleSettings{.name = "packed",
-                                                            .header = "Packed.h",
-                                                            .namespace_name = "project"},
-                        .values = {codegen::
-                                       PackedValueSchema{
-                                           .name = "Status",
-                                           .storage_type = codegen::TypeRef{"std::uint16_t"},
-                                           .segments = {codegen::
-                                                            PackedFieldSchema{
-                                                                .name = "healt"
-                                                                        "h",
-                                                                .type = codegen::TypeRef{"pr"
-                                                                                         "oj"
-                                                                                         "ec"
-                                                                                         "t:"
-                                                                                         ":H"
-                                                                                         "ea"
-                                                                                         "lt"
-                                                                                         "h"},
-                                                                .bits = std::nullopt,
-                                                                .kind = codegen::PackedFieldKind::unsigned_integer,
-                                                            }},
-                                       }}},
+                    codegen::
+                        NormalModuleSchema{.settings =
+                                               codegen::ModuleSettings{.name = "packed",
+                                                                       .header = "Packed.h",
+                                                                       .namespace_name = "project"},
+                                           .declarations =
+                                               {
+                                                   codegen::
+                                                       PackedValueSchema{
+                                                           .name = "Status",
+                                                           .storage_type = codegen::
+                                                               TypeRef{"std::uint16_t"},
+                                                           .segments = {codegen::PackedFieldSchema{
+                                                               .name = "healt"
+                                                                       "h",
+                                                               .type = codegen::TypeRef{"pr"
+                                                                                        "oj"
+                                                                                        "ec"
+                                                                                        "t:"
+                                                                                        ":H"
+                                                                                        "ea"
+                                                                                        "lt"
+                                                                                        "h"},
+                                                               .bits = std::nullopt,
+                                                               .kind = codegen::
+                                                                   PackedFieldKind::unsigned_integer,
+                                                           }},
+                                                       }}},
                 },
         };
 
@@ -396,9 +399,9 @@ TEST(SemanticTypeGraph, ResolvesPackedIntegerScalarDomainAndDependency) {
 TEST(SemanticTypeGraph, RetainsPackedPhysicalOrdering) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::PackedValueModuleSchema{
+        .modules = {codegen::NormalModuleSchema{
             .settings = codegen::ModuleSettings{.name = "wire", .header = "Wire.h"},
-            .values = {codegen::PackedValueSchema{
+            .declarations = {codegen::PackedValueSchema{
                 .name = "Header",
                 .storage_type = codegen::TypeRef{"std::uint32_t"},
                 .segments = {codegen::PackedFieldSchema{
@@ -475,19 +478,18 @@ TEST(SemanticTypeGraph, RejectsVectorComponentsThatDisagreeWithDeclaredEquivalen
 TEST(SemanticTypeGraph, RejectsNestedSoaTypeThatDisagreesWithResolvedSchema) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::SoaModuleSchema{
+        .modules = {codegen::NormalModuleSchema{
             .settings = codegen::ModuleSettings{.name = "tables", .header = "Tables.h"},
-            .structs = {codegen::SoaSchema{.name = "Child",
-                                           .members = {{.name = "values",
-                                                        .kind = codegen::SoaMemberKind::array,
-                                                        .type = codegen::TypeRef{"float"}}}},
-                        codegen::SoaSchema{.name = "Parent",
-                                           .members = {{.name = "child",
-                                                        .kind = codegen::SoaMemberKind::nested,
-                                                        .type = codegen::TypeRef{"Other"},
-                                                        .nested_schema = "Child"}},
-                                           .single_allocation = "SingleParent"}},
-        }},
+            .declarations = {codegen::SoaSchema{.name = "Child",
+                                                .members = {{.name = "values",
+                                                             .kind = codegen::SoaMemberKind::array,
+                                                             .type = codegen::TypeRef{"float"}}}},
+                             codegen::SoaSchema{.name = "Parent",
+                                                .members = {{.name = "child",
+                                                             .kind = codegen::SoaMemberKind::nested,
+                                                             .type = codegen::TypeRef{"Other"},
+                                                             .nested_schema = "Child"}},
+                                                .single_allocation = "SingleParent"}}}},
     };
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
@@ -495,27 +497,26 @@ TEST(SemanticTypeGraph, RejectsNestedSoaTypeThatDisagreesWithResolvedSchema) {
 TEST(SemanticTypeGraph, ResolvesSoaColumnRelationshipsAndDependencies) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::SoaModuleSchema{
+        .modules = {codegen::NormalModuleSchema{
             .settings = codegen::ModuleSettings{.name = "tables", .header = "Tables.h"},
-            .structs =
-                {codegen::SoaSchema{
-                     .name = "Target",
-                     .members = {codegen::SoaMemberSchema{.name = "values",
-                                                          .kind = codegen::SoaMemberKind::array,
-                                                          .type = codegen::TypeRef{"float"},
-                                                          .relationship = std::nullopt}}},
-                 codegen::SoaSchema{
-                     .name = "User",
-                     .members = {codegen::SoaMemberSchema{
-                         .name = "identifiers",
-                         .kind = codegen::SoaMemberKind::array,
-                         .type = codegen::TypeRef{"std::uint32_t"},
-                         .relationship =
-                             codegen::SemanticRelationSchema{.kind = codegen::SemanticRelationKind::
-                                                                 index_into,
-                                                             .target = codegen::TypeRef{"Target"},
-                                                             .unit = std::nullopt}}}}},
-            .backend = codegen::SoaBackend::standard_library}}};
+            .declarations = {codegen::SoaSchema{.name = "Target",
+                                                .members = {codegen::SoaMemberSchema{
+                                                    .name = "values",
+                                                    .kind = codegen::SoaMemberKind::array,
+                                                    .type = codegen::TypeRef{"float"},
+                                                    .relationship = std::nullopt}}},
+                             codegen::SoaSchema{.name = "User",
+                                                .members = {codegen::SoaMemberSchema{
+                                                    .name = "identifiers",
+                                                    .kind = codegen::SoaMemberKind::array,
+                                                    .type = codegen::TypeRef{"std::uint32_t"},
+                                                    .relationship =
+                                                        codegen::SemanticRelationSchema{
+                                                            .kind = codegen::SemanticRelationKind::
+                                                                index_into,
+                                                            .target = codegen::TypeRef{"Target"},
+                                                            .unit = std::nullopt}}}}},
+            .soa_backend = codegen::SoaBackend::standard_library}}};
 
     auto const graph{resolve_type_graph(manifest)};
     auto const target{graph.find_declared("tables", "Target")};
@@ -535,29 +536,25 @@ TEST(SemanticTypeGraph, ResolvesSoaColumnRelationshipsAndDependencies) {
 TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
-        .modules =
-            {
-                codegen::RecordModuleSchema{
-                    .settings = codegen::ModuleSettings{.name = "records", .header = "Records.h"},
-                    .records =
-                        {
-                            codegen::RecordSchema{
-                                .name = "Position",
-                                .members = {{.name = "x", .type = codegen::TypeRef{"float"}}}},
-                            codegen::RecordSchema{
-                                .name = "Table",
-                                .members = {{.name = "value", .type = codegen::TypeRef{"float"}}}},
-                            codegen::RecordSchema{
-                                .name = "Path",
-                                .members = {{.name = "points",
-                                             .type = codegen::TypeRef{"Position"},
-                                             .count = 8,
-                                             .relationship = codegen::
-                                                 SemanticRelationSchema{.kind = codegen::SemanticRelationKind::member_of,
-                                                                        .target = codegen::TypeRef{"Table"},
-                                                                        .unit =
-                                                                            std::nullopt}}}},
-                        }}},
+        .modules = {codegen::NormalModuleSchema{
+            .settings = codegen::ModuleSettings{.name = "records", .header = "Records.h"},
+            .declarations = {codegen::RecordSchema{
+                                 .name = "Position",
+                                 .members = {{.name = "x", .type = codegen::TypeRef{"float"}}}},
+                             codegen::RecordSchema{
+                                 .name = "Table",
+                                 .members = {{.name = "value", .type = codegen::TypeRef{"float"}}}},
+                             codegen::RecordSchema{
+                                 .name = "Path",
+                                 .members = {{.name = "points",
+                                              .type = codegen::TypeRef{"Position"},
+                                              .count = 8,
+                                              .relationship =
+                                                  codegen::SemanticRelationSchema{
+                                                      .kind = codegen::SemanticRelationKind::
+                                                          member_of,
+                                                      .target = codegen::TypeRef{"Table"},
+                                                      .unit = std::nullopt}}}}}}},
     };
 
     auto const graph{resolve_type_graph(manifest)};
@@ -583,21 +580,19 @@ TEST(SemanticTypeGraph, ResolvesRecordMembersFixedArraysAndDependencies) {
 }
 
 TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {
-    auto module{codegen::RecordModuleSchema{
+    auto module{codegen::NormalModuleSchema{
         .settings = codegen::ModuleSettings{.name = "records", .header = "Records.h"},
-        .records = {codegen::RecordSchema{
-            .name = "Record", .members = {{.name = "self", .type = codegen::TypeRef{"Record"}}}}},
-    }};
+        .declarations = {codegen::RecordSchema{
+            .name = "Record", .members = {{.name = "self", .type = codegen::TypeRef{"Record"}}}}}}};
     auto manifest{
         codegen::Manifest{.schema_version = codegen::manifest_schema_version, .modules = {module}}};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 
-    module.records = {
+    module.declarations = {
         codegen::RecordSchema{.name = "First",
                               .members = {{.name = "second", .type = codegen::TypeRef{"Second"}}}},
         codegen::RecordSchema{.name = "Second",
-                              .members = {{.name = "first", .type = codegen::TypeRef{"First"}}}},
-    };
+                              .members = {{.name = "first", .type = codegen::TypeRef{"First"}}}}};
     manifest.modules = {module};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
@@ -605,9 +600,9 @@ TEST(SemanticTypeGraph, RejectsDirectAndIndirectByValueRecordCycles) {
 TEST(SemanticTypeGraph, ResolvesRawUnionAlternativesAndDependencies) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::UnionModuleSchema{
+        .modules = {codegen::NormalModuleSchema{
             .settings = codegen::ModuleSettings{.name = "payloads", .header = "Payloads.h"},
-            .unions = {codegen::UnionSchema{
+            .declarations = {codegen::UnionSchema{
                 .name = "Payload",
                 .alternatives =
                     {{.name = "identifier", .type = codegen::TypeRef{"std::uint32_t"}},
@@ -631,47 +626,46 @@ TEST(SemanticTypeGraph, RejectsUnionAndMixedAggregateCycles) {
         .name = "Payload",
         .alternatives = {{.name = "self", .type = codegen::TypeRef{"Payload"}}},
         .export_specifier = std::nullopt};
-    codegen::UnionModuleSchema union_module{
+    codegen::NormalModuleSchema union_module{
         .settings = codegen::ModuleSettings{.name = "payloads",
                                             .header = "Payloads.h",
                                             .namespace_name = "payloads"},
-        .unions = {union_schema}};
+        .declarations = {union_schema}};
     codegen::Manifest manifest{.schema_version = codegen::manifest_schema_version,
                                .modules = {union_module}};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 
-    union_module.unions.front().alternatives = {
+    std::get<codegen::UnionSchema>(union_module.declarations.front()).alternatives = {
         {.name = "record", .type = codegen::TypeRef{"records::Record"}}};
     codegen::RecordSchema record_schema{
         .name = "Record",
         .members = {{.name = "payload", .type = codegen::TypeRef{"payloads::Payload"}}},
         .export_specifier = std::nullopt};
-    codegen::RecordModuleSchema record_module{
+    codegen::NormalModuleSchema record_module{
         .settings = codegen::ModuleSettings{.name = "records",
                                             .header = "Records.h",
                                             .namespace_name = "records"},
-        .records = {record_schema}};
+        .declarations = {record_schema}};
     manifest.modules = {record_module, union_module};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
 
 TEST(SemanticTypeGraph, ResolvesTaggedUnionDiscriminantMappingsAndDependencies) {
-    codegen::EnumModuleSchema enums{
+    codegen::NormalModuleSchema enums{
         .settings = codegen::ModuleSettings{.name = "events",
                                             .header = "Events.h",
                                             .namespace_name = "events"},
-        .enums = {codegen::EnumSchema{
+        .declarations = {codegen::EnumSchema{
             .name = "EventKind",
             .underlying_type = codegen::TypeRef{"std::uint8_t"},
             .values = {codegen::EnumeratorSchema{"Spawn"},
                        codegen::EnumeratorSchema{"Damage"},
                        codegen::EnumeratorSchema{.name = "Invalid", .sentinel = true}}}}};
-    codegen::UnionModuleSchema unions{
+    codegen::NormalModuleSchema unions{
         .settings = codegen::ModuleSettings{.name = "payloads",
                                             .header = "Payloads.h",
                                             .namespace_name = "payloads"},
-        .unions = {},
-        .tagged_unions = {codegen::TaggedUnionSchema{
+        .declarations = {codegen::TaggedUnionSchema{
             .name = "Event",
             .discriminant = codegen::TypeRef{"events::EventKind"},
             .alternatives = {
@@ -699,24 +693,24 @@ TEST(SemanticTypeGraph, ResolvesTaggedUnionDiscriminantMappingsAndDependencies) 
 
     manifest.modules = {
         enums,
-        codegen::UnionModuleSchema{.settings = unions.settings,
-                                   .unions = {},
-                                   .tagged_unions = {codegen::TaggedUnionSchema{
-                                       .name = "Event",
-                                       .discriminant = codegen::TypeRef{"events::EventKind"},
-                                       .alternatives = {{.name = "missing",
-                                                         .type = codegen::TypeRef{"std::uint32_t"},
-                                                         .tag = "Missing"}}}}}};
+        codegen::NormalModuleSchema{.settings = unions.settings,
+                                    .declarations = {codegen::TaggedUnionSchema{
+                                        .name = "Event",
+                                        .discriminant = codegen::TypeRef{"events::EventKind"},
+                                        .alternatives = {{.name = "missing",
+                                                          .type = codegen::TypeRef{"std::uint32_t"},
+                                                          .tag = "Missing"}}}}}};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 
-    std::get<codegen::UnionModuleSchema>(manifest.modules[1])
-        .tagged_unions.front()
+    std::get<codegen::TaggedUnionSchema>(
+        std::get<codegen::NormalModuleSchema>(manifest.modules[1]).declarations.front())
         .alternatives.front()
         .tag = "Invalid";
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 
-    std::get<codegen::UnionModuleSchema>(manifest.modules[1]).tagged_unions.front().discriminant =
-        codegen::TypeRef{"std::uint8_t"};
+    std::get<codegen::TaggedUnionSchema>(
+        std::get<codegen::NormalModuleSchema>(manifest.modules[1]).declarations.front())
+        .discriminant = codegen::TypeRef{"std::uint8_t"};
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
 
@@ -724,14 +718,13 @@ TEST(SemanticTypeGraph, KeepsUnknownRegisteredTypesAsExternalLeaves) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
         .types = {{"native_handle", codegen::CppType{"NativeHandle", "native/handle.h"}}},
-        .modules = {codegen::EnumModuleSchema{
+        .modules = {codegen::NormalModuleSchema{
             .settings = codegen::ModuleSettings{.name = "mode", .header = "Mode.h"},
-            .enums = {codegen::EnumSchema{
+            .declarations = {codegen::EnumSchema{
                 .name = "Mode",
                 .underlying_type = codegen::TypeRef{"uint8"},
                 .values = {codegen::EnumeratorSchema{"Value"}},
-            }},
-        }},
+            }}}},
     };
     auto const graph{resolve_type_graph(manifest)};
     auto const handle{graph.find_registered("native_handle")};
@@ -746,16 +739,15 @@ TEST(SemanticTypeGraph, KeepsUnknownRegisteredTypesAsExternalLeaves) {
 
 TEST(SemanticTypeGraph, RejectsAmbiguousRegisteredDeclarationBindings) {
     auto enum_module = [](std::string module_name, std::string header) {
-        return codegen::EnumModuleSchema{
+        return codegen::NormalModuleSchema{
             .settings = codegen::ModuleSettings{.name = std::move(module_name),
                                                 .header = std::move(header),
                                                 .namespace_name = "project"},
-            .enums = {codegen::EnumSchema{
+            .declarations = {codegen::EnumSchema{
                 .name = "Mode",
                 .underlying_type = codegen::TypeRef{"uint8"},
                 .values = {codegen::EnumeratorSchema{"Value"}},
-            }},
-        };
+            }}};
     };
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
@@ -768,10 +760,10 @@ TEST(SemanticTypeGraph, RejectsAmbiguousRegisteredDeclarationBindings) {
 
 TEST(SemanticTypeGraph, RejectsInvalidAndDuplicateDeclaredIdentities) {
     auto const make_module = [](std::string name, std::vector<codegen::EnumSchema> enums) {
-        return codegen::EnumModuleSchema{
+        return codegen::NormalModuleSchema{
             .settings = codegen::ModuleSettings{.name = std::move(name), .header = "Types.h"},
-            .enums = std::move(enums),
-        };
+            .declarations = {std::make_move_iterator(enums.begin()),
+                             std::make_move_iterator(enums.end())}};
     };
     auto const make_enum = [](std::string name) {
         return codegen::EnumSchema{
@@ -797,14 +789,13 @@ TEST(SemanticTypeGraph, RejectsInvalidAndDuplicateDeclaredIdentities) {
 TEST(SemanticTypeGraph, RejectsUnresolvedRegisteredReferences) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::EnumModuleSchema{
+        .modules = {codegen::NormalModuleSchema{
             .settings = codegen::ModuleSettings{.name = "mode", .header = "Mode.h"},
-            .enums = {codegen::EnumSchema{
+            .declarations = {codegen::EnumSchema{
                 .name = "Mode",
                 .underlying_type = codegen::TypeRef{"@missing"},
                 .values = {codegen::EnumeratorSchema{"Value"}},
-            }},
-        }},
+            }}}},
     };
 
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
@@ -813,15 +804,14 @@ TEST(SemanticTypeGraph, RejectsUnresolvedRegisteredReferences) {
 TEST(SemanticTypeGraph, TreatsRawCppSpellingsAsExplicitExternalLeaves) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
-        .modules = {codegen::SoaModuleSchema{
+        .modules = {codegen::NormalModuleSchema{
             .settings = codegen::ModuleSettings{.name = "values", .header = "Values.h"},
-            .structs = {codegen::SoaSchema{
+            .declarations = {codegen::SoaSchema{
                 .name = "Values",
                 .members = {codegen::SoaMemberSchema{
                     "items", codegen::SoaMemberKind::array, codegen::TypeRef{"ExternalValue"}}},
             }},
-            .backend = codegen::SoaBackend::standard_library,
-        }},
+            .soa_backend = codegen::SoaBackend::standard_library}},
     };
     auto const graph{resolve_type_graph(manifest)};
     auto const values{graph.find_declared("values", "Values")};

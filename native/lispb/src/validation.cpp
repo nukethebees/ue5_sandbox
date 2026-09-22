@@ -388,1059 +388,940 @@ auto enum_code_fits(lispb::schema::EnumCode const code, EnumStorageDomain const 
     return code.negative ? code.magnitude <= sign_magnitude : code.magnitude < sign_magnitude;
 }
 
-void validate_enum(EnumModuleSchema const& module,
-                   std::map<std::string, CppType> const& types,
-                   bool const allow_mixed_apis = false) {
-    if (module.helper_namespace.has_value()) {
-        require_qualified_identifier(*module.helper_namespace,
-                                     "Enum module '" + module.settings.name + "' helper namespace");
+void validate_enum(EnumSchema const& schema,
+                   NormalModuleSchema const& module,
+                   std::map<std::string, CppType> const& types) {
+    require_identifier(schema.name, "Enum name");
+
+    auto const domain{lispb::schema::analyze_enum_domain(schema)};
+    std::optional<EnumStorageDomain> storage_domain;
+    if (schema.underlying_type.has_value()) {
+        validate_type(*schema.underlying_type, types, "Enum '" + schema.name + "' underlying");
+        auto const underlying{resolve_type(*schema.underlying_type, types)};
+        storage_domain = enum_storage_domain(underlying.spelling);
+    } else {
+        auto const derived{
+            lispb::schema::derive_enum_storage_requirement(domain, schema.bit_width)};
+        if (!derived.has_value()) {
+            throw std::invalid_argument{
+                "Enum '" + schema.name +
+                "' cannot derive C++ backing storage because its semantic signedness or width "
+                "is unknown"};
+        }
+        storage_domain =
+            EnumStorageDomain{.bit_width = derived->bit_width, .is_unsigned = !derived->signedness};
     }
-    std::optional<bool> native_api;
-    std::set<std::string> enum_names;
-    for (auto const& schema : module.enums) {
-        if (!allow_mixed_apis && native_api.has_value() && schema.native_api != *native_api) {
-            throw std::invalid_argument{"Enum module '" + module.settings.name +
-                                        "' cannot mix native and Unreal enum APIs"};
-        }
-        native_api = schema.native_api;
-        require_identifier(schema.name, "Enum name");
-        if (!enum_names.insert(schema.name).second) {
-            throw std::invalid_argument{"Duplicate enum name: " + schema.name};
-        }
-        auto const domain{lispb::schema::analyze_enum_domain(schema)};
-        std::optional<EnumStorageDomain> storage_domain;
-        if (schema.underlying_type.has_value()) {
-            validate_type(*schema.underlying_type, types, "Enum '" + schema.name + "' underlying");
-            auto const underlying{resolve_type(*schema.underlying_type, types)};
-            storage_domain = enum_storage_domain(underlying.spelling);
-        } else {
-            auto const derived{
-                lispb::schema::derive_enum_storage_requirement(domain, schema.bit_width)};
-            if (!derived.has_value()) {
-                throw std::invalid_argument{
-                    "Enum '" + schema.name +
-                    "' cannot derive C++ backing storage because its semantic signedness or width "
-                    "is unknown"};
-            }
-            storage_domain = EnumStorageDomain{.bit_width = derived->bit_width,
-                                               .is_unsigned = !derived->signedness};
-        }
-        if (schema.signedness.has_value()) {
-            auto const invalid_signedness{
-                std::ranges::find_if(domain.issues, [](auto const& issue) {
-                    return issue.severity == lispb::schema::EnumDomainIssueSeverity::error;
-                })};
-            if (invalid_signedness != domain.issues.end()) {
-                throw std::invalid_argument{"Enum '" + schema.name +
-                                            "': " + invalid_signedness->message};
-            }
-        }
-        if (schema.bit_width.has_value()) {
-            if (*schema.bit_width == 0 || *schema.bit_width > 64) {
-                throw std::invalid_argument{"Enum '" + schema.name +
-                                            "' bit width must be between 1 and 64 bits"};
-            }
-            if (domain.minimum_required_bits.has_value() &&
-                *domain.minimum_required_bits > *schema.bit_width) {
-                throw std::invalid_argument{
-                    "Enum '" + schema.name + "' known value domain requires at least " +
-                    std::to_string(*domain.minimum_required_bits) +
-                    " bits but its semantic bit width is " + std::to_string(*schema.bit_width)};
-            }
-        }
-        validate_export_specifier(schema.export_specifier,
-                                  "Enum '" + schema.name + "' export specifier");
-        if (schema.unreal_projection.has_value()) {
-            auto const& projection{*schema.unreal_projection};
-            require_identifier(projection.name,
-                               "Enum '" + schema.name + "' Unreal projection name");
-            require_value(projection.header.string(),
-                          "Enum '" + schema.name + "' Unreal projection header");
-            require_value(projection.header_include,
-                          "Enum '" + schema.name + "' Unreal projection header include");
-            require_value(projection.conversion_header.string(),
-                          "Enum '" + schema.name + "' Unreal projection conversion header");
-            require_value(projection.native_header_include,
-                          "Enum '" + schema.name + "' native enum header include");
-            if (!schema.native_api || schema.reflection != EnumReflection::none) {
-                throw std::invalid_argument{"Enum '" + schema.name +
-                                            "' Unreal projection requires a native plain enum"};
-            }
-            if (projection.reflection == EnumReflection::none) {
-                throw std::invalid_argument{"Enum '" + schema.name +
-                                            "' Unreal projection must be reflected"};
-            }
-        }
-        if (schema.native_api && schema.reflection != EnumReflection::none) {
-            throw std::invalid_argument{"Native enum '" + schema.name +
-                                        "' cannot use Unreal reflection"};
-        }
-        if (schema.native_api && (schema.enum_array || !schema.conversions.empty() ||
-                                  schema.export_specifier.has_value())) {
-            throw std::invalid_argument{"Native enum '" + schema.name +
-                                        "' cannot use Unreal enum generation options"};
-        }
-        if (schema.reflection != EnumReflection::none &&
-            module.settings.namespace_name.has_value()) {
-            throw std::invalid_argument{"Reflected enum '" + schema.name +
-                                        "' must be declared at global scope"};
-        }
-        if (schema.values.empty()) {
-            throw std::invalid_argument{"Enum '" + schema.name + "' must have values"};
-        }
-        std::vector<std::string> value_names;
-        std::vector<std::string> serialized_names;
-        auto const has_serialized_conversion{
-            std::find(schema.conversions.begin(),
-                      schema.conversions.end(),
-                      EnumConversion::lex_to_serialized_string) != schema.conversions.end() ||
-            std::find(schema.conversions.begin(),
-                      schema.conversions.end(),
-                      EnumConversion::try_parse_serialized) != schema.conversions.end()};
-        for (std::size_t index{}; index < schema.values.size(); ++index) {
-            auto const& value{schema.values[index]};
-            require_identifier(value.name, "Enum '" + schema.name + "' value name");
-            value_names.push_back(value.name);
-            if (value.initializer.has_value()) {
-                require_value(*value.initializer,
-                              "Enum '" + schema.name + "' value '" + value.name + "' initializer");
-            }
-            if (storage_domain.has_value() && domain.values[index].code.has_value() &&
-                !enum_code_fits(*domain.values[index].code, *storage_domain)) {
-                throw std::invalid_argument{"Enum '" + schema.name + "' value '" + value.name +
-                                            "' does not fit its underlying type"};
-            }
-            if (value.display_name.has_value()) {
-                require_value(*value.display_name,
-                              "Enum '" + schema.name + "' value '" + value.name + "' display name");
-            }
-            if (value.serialized_name.has_value()) {
-                require_value(*value.serialized_name,
-                              "Enum '" + schema.name + "' value '" + value.name +
-                                  "' serialized name");
-                serialized_names.push_back(*value.serialized_name);
-            } else if (has_serialized_conversion &&
-                       (!schema.count.has_value() || value.name != *schema.count)) {
-                throw std::invalid_argument{"Enum '" + schema.name + "' value '" + value.name +
-                                            "' requires a serialized name"};
-            }
-            if (value.hidden && schema.reflection == EnumReflection::none &&
-                !schema.unreal_projection.has_value() &&
-                (!schema.count.has_value() || value.name != *schema.count)) {
-                throw std::invalid_argument{"Plain enum '" + schema.name + "' value '" +
-                                            value.name + "' cannot be hidden"};
-            }
-        }
-        require_unique_names(value_names, "Enum '" + schema.name + "' values");
-        require_unique_names(serialized_names, "Enum '" + schema.name + "' serialized names");
-
-        auto count_value{schema.values.end()};
-        if (schema.count.has_value()) {
-            require_identifier(*schema.count, "Enum '" + schema.name + "' count");
-            count_value =
-                std::find_if(schema.values.begin(), schema.values.end(), [&](auto const& value) {
-                    return value.name == *schema.count;
-                });
-            if (count_value == schema.values.end()) {
-                throw std::invalid_argument{"Enum '" + schema.name + "' count '" + *schema.count +
-                                            "' does not name an enum value"};
-            }
-            if (std::next(count_value) != schema.values.end()) {
-                throw std::invalid_argument{"Enum '" + schema.name +
-                                            "' count must be the final enum value"};
-            }
-            if (count_value == schema.values.begin()) {
-                throw std::invalid_argument{"Enum '" + schema.name +
-                                            "' count must follow at least one value"};
-            }
-        }
-        if (schema.enum_array) {
-            for (auto const& value : schema.values) {
-                if (value.initializer.has_value()) {
-                    throw std::invalid_argument{"Enum-array enum '" + schema.name + "' value '" +
-                                                value.name +
-                                                "' must not have an explicit initializer"};
-                }
-            }
-
-            if (schema.count.has_value()) {
-                if ((schema.reflection != EnumReflection::none ||
-                     schema.unreal_projection.has_value()) &&
-                    !count_value->hidden) {
-                    throw std::invalid_argument{"Reflected enum-array enum '" + schema.name +
-                                                "' count must be hidden"};
-                }
-            }
-
-            for (auto const& value : schema.values) {
-                auto const is_count{schema.count.has_value() && value.name == *schema.count};
-                if (value.hidden && !is_count) {
-                    throw std::invalid_argument{"Enum-array enum '" + schema.name + "' value '" +
-                                                value.name + "' must not be hidden"};
-                }
-            }
-        }
-
-        std::set<EnumConversion> conversions;
-        for (auto const conversion : schema.conversions) {
-            if (!conversions.insert(conversion).second) {
-                throw std::invalid_argument{"Enum '" + schema.name +
-                                            "' contains duplicate conversion"};
-            }
-        }
-        if (!schema.conversions.empty() && !module.settings.source.has_value()) {
+    if (schema.signedness.has_value()) {
+        auto const invalid_signedness{std::ranges::find_if(domain.issues, [](auto const& issue) {
+            return issue.severity == lispb::schema::EnumDomainIssueSeverity::error;
+        })};
+        if (invalid_signedness != domain.issues.end()) {
             throw std::invalid_argument{"Enum '" + schema.name +
-                                        "' conversions require a source output"};
+                                        "': " + invalid_signedness->message};
         }
+    }
+    if (schema.bit_width.has_value()) {
+        if (*schema.bit_width == 0 || *schema.bit_width > 64) {
+            throw std::invalid_argument{"Enum '" + schema.name +
+                                        "' bit width must be between 1 and 64 bits"};
+        }
+        if (domain.minimum_required_bits.has_value() &&
+            *domain.minimum_required_bits > *schema.bit_width) {
+            throw std::invalid_argument{
+                "Enum '" + schema.name + "' known value domain requires at least " +
+                std::to_string(*domain.minimum_required_bits) +
+                " bits but its semantic bit width is " + std::to_string(*schema.bit_width)};
+        }
+    }
+    validate_export_specifier(schema.export_specifier,
+                              "Enum '" + schema.name + "' export specifier");
+    if (schema.unreal_projection.has_value()) {
+        auto const& projection{*schema.unreal_projection};
+        require_identifier(projection.name, "Enum '" + schema.name + "' Unreal projection name");
+        require_value(projection.header.string(),
+                      "Enum '" + schema.name + "' Unreal projection header");
+        require_value(projection.header_include,
+                      "Enum '" + schema.name + "' Unreal projection header include");
+        require_value(projection.conversion_header.string(),
+                      "Enum '" + schema.name + "' Unreal projection conversion header");
+        require_value(projection.native_header_include,
+                      "Enum '" + schema.name + "' native enum header include");
+        if (!schema.native_api || schema.reflection != EnumReflection::none) {
+            throw std::invalid_argument{"Enum '" + schema.name +
+                                        "' Unreal projection requires a native plain enum"};
+        }
+        if (projection.reflection == EnumReflection::none) {
+            throw std::invalid_argument{"Enum '" + schema.name +
+                                        "' Unreal projection must be reflected"};
+        }
+    }
+    if (schema.native_api && schema.reflection != EnumReflection::none) {
+        throw std::invalid_argument{"Native enum '" + schema.name +
+                                    "' cannot use Unreal reflection"};
+    }
+    if (schema.native_api &&
+        (schema.enum_array || !schema.conversions.empty() || schema.export_specifier.has_value())) {
+        throw std::invalid_argument{"Native enum '" + schema.name +
+                                    "' cannot use Unreal enum generation options"};
+    }
+    if (schema.reflection != EnumReflection::none && module.settings.namespace_name.has_value()) {
+        throw std::invalid_argument{"Reflected enum '" + schema.name +
+                                    "' must be declared at global scope"};
+    }
+    if (schema.values.empty()) {
+        throw std::invalid_argument{"Enum '" + schema.name + "' must have values"};
+    }
+    std::vector<std::string> value_names;
+    std::vector<std::string> serialized_names;
+    auto const has_serialized_conversion{
+        std::find(schema.conversions.begin(),
+                  schema.conversions.end(),
+                  EnumConversion::lex_to_serialized_string) != schema.conversions.end() ||
+        std::find(schema.conversions.begin(),
+                  schema.conversions.end(),
+                  EnumConversion::try_parse_serialized) != schema.conversions.end()};
+    for (std::size_t index{}; index < schema.values.size(); ++index) {
+        auto const& value{schema.values[index]};
+        require_identifier(value.name, "Enum '" + schema.name + "' value name");
+        value_names.push_back(value.name);
+        if (value.initializer.has_value()) {
+            require_value(*value.initializer,
+                          "Enum '" + schema.name + "' value '" + value.name + "' initializer");
+        }
+        if (storage_domain.has_value() && domain.values[index].code.has_value() &&
+            !enum_code_fits(*domain.values[index].code, *storage_domain)) {
+            throw std::invalid_argument{"Enum '" + schema.name + "' value '" + value.name +
+                                        "' does not fit its underlying type"};
+        }
+        if (value.display_name.has_value()) {
+            require_value(*value.display_name,
+                          "Enum '" + schema.name + "' value '" + value.name + "' display name");
+        }
+        if (value.serialized_name.has_value()) {
+            require_value(*value.serialized_name,
+                          "Enum '" + schema.name + "' value '" + value.name + "' serialized name");
+            serialized_names.push_back(*value.serialized_name);
+        } else if (has_serialized_conversion &&
+                   (!schema.count.has_value() || value.name != *schema.count)) {
+            throw std::invalid_argument{"Enum '" + schema.name + "' value '" + value.name +
+                                        "' requires a serialized name"};
+        }
+        if (value.hidden && schema.reflection == EnumReflection::none &&
+            !schema.unreal_projection.has_value() &&
+            (!schema.count.has_value() || value.name != *schema.count)) {
+            throw std::invalid_argument{"Plain enum '" + schema.name + "' value '" + value.name +
+                                        "' cannot be hidden"};
+        }
+    }
+    require_unique_names(value_names, "Enum '" + schema.name + "' values");
+    require_unique_names(serialized_names, "Enum '" + schema.name + "' serialized names");
+
+    auto count_value{schema.values.end()};
+    if (schema.count.has_value()) {
+        require_identifier(*schema.count, "Enum '" + schema.name + "' count");
+        count_value = std::find_if(schema.values.begin(),
+                                   schema.values.end(),
+                                   [&](auto const& value) { return value.name == *schema.count; });
+        if (count_value == schema.values.end()) {
+            throw std::invalid_argument{"Enum '" + schema.name + "' count '" + *schema.count +
+                                        "' does not name an enum value"};
+        }
+        if (std::next(count_value) != schema.values.end()) {
+            throw std::invalid_argument{"Enum '" + schema.name +
+                                        "' count must be the final enum value"};
+        }
+        if (count_value == schema.values.begin()) {
+            throw std::invalid_argument{"Enum '" + schema.name +
+                                        "' count must follow at least one value"};
+        }
+    }
+    if (schema.enum_array) {
+        for (auto const& value : schema.values) {
+            if (value.initializer.has_value()) {
+                throw std::invalid_argument{"Enum-array enum '" + schema.name + "' value '" +
+                                            value.name + "' must not have an explicit initializer"};
+            }
+        }
+
+        if (schema.count.has_value()) {
+            if ((schema.reflection != EnumReflection::none ||
+                 schema.unreal_projection.has_value()) &&
+                !count_value->hidden) {
+                throw std::invalid_argument{"Reflected enum-array enum '" + schema.name +
+                                            "' count must be hidden"};
+            }
+        }
+
+        for (auto const& value : schema.values) {
+            auto const is_count{schema.count.has_value() && value.name == *schema.count};
+            if (value.hidden && !is_count) {
+                throw std::invalid_argument{"Enum-array enum '" + schema.name + "' value '" +
+                                            value.name + "' must not be hidden"};
+            }
+        }
+    }
+
+    std::set<EnumConversion> conversions;
+    for (auto const conversion : schema.conversions) {
+        if (!conversions.insert(conversion).second) {
+            throw std::invalid_argument{"Enum '" + schema.name + "' contains duplicate conversion"};
+        }
+    }
+    if (!schema.conversions.empty() && !module.settings.source.has_value()) {
+        throw std::invalid_argument{"Enum '" + schema.name +
+                                    "' conversions require a source output"};
     }
 }
 
-void validate_packed_values(PackedValueModuleSchema const& module,
-                            std::map<std::string, CppType> const& types,
-                            std::vector<ModuleSchema> const& modules) {
-    auto const module_context{"Packed-value module '" + module.settings.name + "'"};
-    if (module.settings.source.has_value()) {
-        throw std::invalid_argument{module_context + " must not have a source output"};
-    }
-    std::set<std::string> value_names;
-    for (auto const& value : module.values) {
-        auto const context{"Packed value '" + value.name + "'"};
-        require_identifier(value.name, "Packed value name");
-        if (!value_names.insert(value.name).second) {
-            throw std::invalid_argument{"Duplicate packed value name: " + value.name};
-        }
-        validate_export_specifier(value.export_specifier, context + " export specifier");
-        validate_type(value.storage_type, types, context + " storage");
-        auto const storage{resolve_type(value.storage_type, types)};
-        auto const storage_width{packed_unsigned_width(storage.spelling)};
-        if (!storage_width.has_value()) {
-            throw std::invalid_argument{context +
-                                        " has unsupported storage type: " + storage.spelling};
-        }
-        if (value.segments.empty()) {
-            throw std::invalid_argument{context + " must have segments"};
-        }
-        if (!std::ranges::any_of(value.segments, [](auto const& segment) {
-                return std::holds_alternative<PackedFieldSchema>(segment);
-            })) {
-            throw std::invalid_argument{context + " must have at least one semantic field"};
-        }
-        if (value.invalid_value.has_value() && *storage_width < 64 &&
-            *value.invalid_value >= (std::uint64_t{1} << *storage_width)) {
-            throw std::invalid_argument{context + " invalid value does not fit in " +
-                                        std::to_string(*storage_width) + "-bit storage"};
-        }
+void validate_packed_value(PackedValueSchema const& value,
+                           std::map<std::string, CppType> const& types,
+                           std::vector<ModuleSchema> const& modules) {
+    auto const context{"Packed value '" + value.name + "'"};
+    require_identifier(value.name, "Packed value name");
 
-        std::set<std::string> generated_names{
-            value.name, "raw_value", "storage_type", "make", "is_valid"};
-        if (value.mutable_value) {
-            generated_names.insert("try_make");
+    validate_export_specifier(value.export_specifier, context + " export specifier");
+    validate_type(value.storage_type, types, context + " storage");
+    auto const storage{resolve_type(value.storage_type, types)};
+    auto const storage_width{packed_unsigned_width(storage.spelling)};
+    if (!storage_width.has_value()) {
+        throw std::invalid_argument{context + " has unsupported storage type: " + storage.spelling};
+    }
+    if (value.segments.empty()) {
+        throw std::invalid_argument{context + " must have segments"};
+    }
+    if (!std::ranges::any_of(value.segments, [](auto const& segment) {
+            return std::holds_alternative<PackedFieldSchema>(segment);
+        })) {
+        throw std::invalid_argument{context + " must have at least one semantic field"};
+    }
+    if (value.invalid_value.has_value() && *storage_width < 64 &&
+        *value.invalid_value >= (std::uint64_t{1} << *storage_width)) {
+        throw std::invalid_argument{context + " invalid value does not fit in " +
+                                    std::to_string(*storage_width) + "-bit storage"};
+    }
+
+    std::set<std::string> generated_names{
+        value.name, "raw_value", "storage_type", "make", "is_valid"};
+    if (value.mutable_value) {
+        generated_names.insert("try_make");
+    }
+    if (value.invalid_value.has_value()) {
+        generated_names.insert("invalid_value");
+    }
+    int used_bits{};
+    std::set<std::string> segment_names;
+    for (auto const& segment : value.segments) {
+        auto const& segment_name{packed_segment_name(segment)};
+        auto const segment_context{context + " segment '" + segment_name + "'"};
+        require_identifier(segment_name, context + " segment name");
+        if (!segment_names.insert(segment_name).second) {
+            throw std::invalid_argument{context + " has duplicate segment name: " + segment_name};
         }
-        if (value.invalid_value.has_value()) {
-            generated_names.insert("invalid_value");
-        }
-        int used_bits{};
-        std::set<std::string> segment_names;
-        for (auto const& segment : value.segments) {
-            auto const& segment_name{packed_segment_name(segment)};
-            auto const segment_context{context + " segment '" + segment_name + "'"};
-            require_identifier(segment_name, context + " segment name");
-            if (!segment_names.insert(segment_name).second) {
-                throw std::invalid_argument{context +
-                                            " has duplicate segment name: " + segment_name};
-            }
-            auto const* field{std::get_if<PackedFieldSchema>(&segment)};
-            auto const* scalar{field != nullptr ? find_integer_scalar(field->type, types, modules)
-                                                : nullptr};
-            auto const* quantized{
-                field != nullptr ? find_linear_quantized(field->type, types, modules) : nullptr};
-            auto const* fixed{field != nullptr ? find_fixed_point(field->type, types, modules)
+        auto const* field{std::get_if<PackedFieldSchema>(&segment)};
+        auto const* scalar{field != nullptr ? find_integer_scalar(field->type, types, modules)
+                                            : nullptr};
+        auto const* quantized{field != nullptr ? find_linear_quantized(field->type, types, modules)
                                                : nullptr};
-            auto const* mini{field != nullptr ? find_mini_float(field->type, types, modules)
-                                              : nullptr};
-            auto const segment_bits{field != nullptr
-                                        ? derive_packed_field_width(*field, types, modules)
-                                        : packed_segment_bits(segment)};
-            if (!segment_bits.has_value()) {
-                if (scalar != nullptr) {
+        auto const* fixed{field != nullptr ? find_fixed_point(field->type, types, modules)
+                                           : nullptr};
+        auto const* mini{field != nullptr ? find_mini_float(field->type, types, modules) : nullptr};
+        auto const segment_bits{field != nullptr ? derive_packed_field_width(*field, types, modules)
+                                                 : packed_segment_bits(segment)};
+        if (!segment_bits.has_value()) {
+            if (scalar != nullptr) {
+                throw std::invalid_argument{
+                    segment_context +
+                    " integer-scalar domain does not fit the supported 1-64-bit range"};
+            }
+            if (field != nullptr && field->kind == PackedFieldKind::linear_quantized) {
+                throw std::invalid_argument{
+                    segment_context +
+                    " linear-quantized type does not resolve to a supported representation"};
+            }
+            if (field != nullptr && field->kind == PackedFieldKind::fixed_point) {
+                throw std::invalid_argument{
+                    segment_context +
+                    " fixed-point type does not resolve to a supported representation"};
+            }
+            if (field != nullptr && field->kind == PackedFieldKind::mini_float) {
+                throw std::invalid_argument{
+                    segment_context +
+                    " mini-float type does not resolve to a supported representation"};
+            }
+            if (field != nullptr && (field->kind == PackedFieldKind::signed_integer ||
+                                     field->kind == PackedFieldKind::unsigned_integer)) {
+                if (!field->minimum_value.has_value() || !field->maximum_value.has_value()) {
                     throw std::invalid_argument{
                         segment_context +
-                        " integer-scalar domain does not fit the supported 1-64-bit range"};
+                        " integer auto width requires a semantic minimum and maximum"};
                 }
-                if (field != nullptr && field->kind == PackedFieldKind::linear_quantized) {
-                    throw std::invalid_argument{
-                        segment_context +
-                        " linear-quantized type does not resolve to a supported representation"};
-                }
-                if (field != nullptr && field->kind == PackedFieldKind::fixed_point) {
-                    throw std::invalid_argument{
-                        segment_context +
-                        " fixed-point type does not resolve to a supported representation"};
-                }
-                if (field != nullptr && field->kind == PackedFieldKind::mini_float) {
-                    throw std::invalid_argument{
-                        segment_context +
-                        " mini-float type does not resolve to a supported representation"};
-                }
-                if (field != nullptr && (field->kind == PackedFieldKind::signed_integer ||
-                                         field->kind == PackedFieldKind::unsigned_integer)) {
-                    if (!field->minimum_value.has_value() || !field->maximum_value.has_value()) {
-                        throw std::invalid_argument{
-                            segment_context +
-                            " integer auto width requires a semantic minimum and maximum"};
-                    }
-                    if (packed_integer_less(*field->maximum_value, *field->minimum_value)) {
-                        throw std::invalid_argument{segment_context +
-                                                    " semantic range minimum exceeds maximum"};
-                    }
-                    throw std::invalid_argument{
-                        segment_context +
-                        " semantic range or named codes do not fit the supported 1-64-bit domain"};
+                if (packed_integer_less(*field->maximum_value, *field->minimum_value)) {
+                    throw std::invalid_argument{segment_context +
+                                                " semantic range minimum exceeds maximum"};
                 }
                 throw std::invalid_argument{
                     segment_context +
-                    " auto width requires a known enum domain or integer semantic range"};
+                    " semantic range or named codes do not fit the supported 1-64-bit domain"};
             }
-            if (*segment_bits <= 0) {
-                throw std::invalid_argument{segment_context + " bits must be greater than zero"};
-            }
-            if (*segment_bits > *storage_width - used_bits) {
-                throw std::invalid_argument{segment_context + " does not fit in " +
-                                            std::to_string(*storage_width) + "-bit storage"};
-            }
-            used_bits += *segment_bits;
+            throw std::invalid_argument{
+                segment_context +
+                " auto width requires a known enum domain or integer semantic range"};
+        }
+        if (*segment_bits <= 0) {
+            throw std::invalid_argument{segment_context + " bits must be greater than zero"};
+        }
+        if (*segment_bits > *storage_width - used_bits) {
+            throw std::invalid_argument{segment_context + " does not fit in " +
+                                        std::to_string(*storage_width) + "-bit storage"};
+        }
+        used_bits += *segment_bits;
 
-            if (field == nullptr) {
-                continue;
-            }
-            auto const field_bits{*segment_bits};
-            auto const field_context{context + " field '" + field->name + "'"};
-            require_identifier(field->name, context + " field name");
-            validate_type(field->type, types, field_context);
-            if (field->relationship.has_value()) {
-                if (quantized != nullptr || fixed != nullptr || mini != nullptr) {
-                    throw std::invalid_argument{
-                        field_context +
-                        (quantized != nullptr
-                             ? " linear-quantized representation owns its semantic relationship "
-                               "through its source scalar"
-                         : fixed != nullptr
-                             ? " fixed-point representation cannot carry an integer-field "
-                               "semantic relationship"
-                             : " mini-float representation cannot carry an integer-field "
-                               "semantic relationship")};
-                }
-                validate_semantic_relation(
-                    *field->relationship, types, field_context + " relationship");
-                auto const relation_kind{field->relationship->kind};
-                auto const requires_integer{relation_kind == SemanticRelationKind::index_into ||
-                                            relation_kind == SemanticRelationKind::count_of ||
-                                            relation_kind == SemanticRelationKind::offset_into};
-                if (requires_integer && field->kind != PackedFieldKind::unsigned_integer) {
-                    throw std::invalid_argument{
-                        field_context + " relationship '" +
-                        std::string{semantic_relation_kind_name(relation_kind)} +
-                        "' requires an unsigned integer field"};
-                }
-                if (relation_kind == SemanticRelationKind::discriminates &&
-                    field->kind != PackedFieldKind::enumeration) {
-                    throw std::invalid_argument{
-                        field_context + " relationship 'discriminates' requires an enum field"};
-                }
-            }
-
-            auto const field_type{resolve_type(field->type, types)};
-            if ((scalar != nullptr || quantized != nullptr || fixed != nullptr ||
-                 mini != nullptr) &&
-                (field->minimum_value.has_value() || field->maximum_value.has_value() ||
-                 !field->named_codes.empty())) {
-                throw std::invalid_argument{
-                    field_context +
-                    (scalar != nullptr
-                         ? " integer-scalar type owns its semantic range and named codes"
-                     : quantized != nullptr
-                         ? " linear-quantized representation owns its semantic domain and code "
-                           "space"
-                     : fixed != nullptr
-                         ? " fixed-point representation owns its raw and numerical domains"
-                         : " mini-float representation owns its encoded code space")};
-            }
-            if (quantized != nullptr) {
-                if (field->kind != PackedFieldKind::linear_quantized) {
-                    throw std::invalid_argument{
-                        field_context + " kind must be 'linear-quantized' for its representation "
-                                        "type"};
-                }
-                if (field->bits.has_value() &&
-                    *field->bits != static_cast<int>(quantized->bit_width)) {
-                    throw std::invalid_argument{
-                        field_context + " width must equal its linear-quantized representation's " +
-                        std::to_string(quantized->bit_width) + "-bit encoding"};
-                }
-                if (field->range_helper) {
-                    throw std::invalid_argument{
-                        field_context +
-                        " linear-quantized representation cannot use an integer range helper"};
-                }
-            } else if (field->kind == PackedFieldKind::linear_quantized) {
-                throw std::invalid_argument{
-                    field_context +
-                    " ':kind linear-quantized' type must resolve to a linear-quantized "
-                    "representation"};
-            } else if (fixed != nullptr) {
-                if (field->kind != PackedFieldKind::fixed_point) {
-                    throw std::invalid_argument{
-                        field_context + " kind must be 'fixed-point' for its representation type"};
-                }
-                if (field->bits.has_value() &&
-                    *field->bits != static_cast<int>(fixed->total_bits)) {
-                    throw std::invalid_argument{
-                        field_context + " width must equal its fixed-point representation's " +
-                        std::to_string(fixed->total_bits) + "-bit encoding"};
-                }
-                if (field->range_helper) {
-                    throw std::invalid_argument{
-                        field_context +
-                        " fixed-point representation cannot use an integer range helper"};
-                }
-            } else if (field->kind == PackedFieldKind::fixed_point) {
-                throw std::invalid_argument{
-                    field_context +
-                    " ':kind fixed-point' type must resolve to a fixed-point representation"};
-            } else if (mini != nullptr) {
-                auto const total_bits{mini->sign_bits + mini->exponent_bits +
-                                      mini->significand_bits};
-                if (field->kind != PackedFieldKind::mini_float) {
-                    throw std::invalid_argument{
-                        field_context + " kind must be 'mini-float' for its representation type"};
-                }
-                if (field->bits.has_value() && *field->bits != static_cast<int>(total_bits)) {
-                    throw std::invalid_argument{
-                        field_context + " width must equal its mini-float representation's " +
-                        std::to_string(total_bits) + "-bit encoding"};
-                }
-                if (field->range_helper) {
-                    throw std::invalid_argument{
-                        field_context +
-                        " mini-float representation cannot use an integer range helper"};
-                }
-            } else if (field->kind == PackedFieldKind::mini_float) {
-                throw std::invalid_argument{
-                    field_context +
-                    " ':kind mini-float' type must resolve to a mini-float representation"};
-            } else if (scalar != nullptr) {
-                auto const expected_kind{scalar->signedness ? PackedFieldKind::signed_integer
-                                                            : PackedFieldKind::unsigned_integer};
-                if (field->kind != expected_kind) {
-                    throw std::invalid_argument{
-                        field_context + " kind must match its " +
-                        std::string{scalar->signedness ? "signed" : "unsigned"} +
-                        " integer-scalar type"};
-                }
-                auto const scalar_width{derive_integer_scalar_width(*scalar)};
-                if (!scalar_width.has_value()) {
-                    throw std::invalid_argument{field_context +
-                                                " integer-scalar domain has no supported width"};
-                }
-                if (field_bits < *scalar_width) {
-                    throw std::invalid_argument{
-                        field_context + " width is smaller than the integer scalar's " +
-                        std::to_string(*scalar_width) + "-bit semantic domain"};
-                }
-            } else if (field->kind == PackedFieldKind::unsigned_integer) {
-                if (field_type.spelling == "bool") {
-                    if (field_bits != 1) {
-                        throw std::invalid_argument{field_context + " bool type must use one bit"};
-                    }
-                } else {
-                    auto const field_width{packed_unsigned_width(field_type.spelling)};
-                    if (!field_width.has_value()) {
-                        throw std::invalid_argument{field_context +
-                                                    " must use a supported unsigned integer type, "
-                                                    "bool, or ':kind enum'"};
-                    }
-                    if (field_bits > *field_width) {
-                        throw std::invalid_argument{field_context + " width exceeds its type"};
-                    }
-                }
-            } else if (field->kind == PackedFieldKind::signed_integer) {
-                auto const field_width{packed_signed_width(field_type.spelling)};
-                if (!field_width.has_value()) {
-                    throw std::invalid_argument{field_context +
-                                                " must use a supported signed integer type"};
-                }
-                if (field_bits > *field_width) {
-                    throw std::invalid_argument{field_context + " width exceeds its signed type"};
-                }
-            } else if (packed_unsigned_width(field_type.spelling).has_value() ||
-                       packed_signed_width(field_type.spelling).has_value() ||
-                       field_type.spelling == "bool") {
-                throw std::invalid_argument{field_context +
-                                            " ':kind enum' type must not be an integer or bool"};
-            } else if (auto const* enum_schema{find_packed_enum(field->type, types, modules)}) {
-                auto const domain{lispb::schema::analyze_enum_domain(*enum_schema)};
-                auto const semantic_width{enum_schema->bit_width.has_value()
-                                              ? enum_schema->bit_width
-                                              : domain.minimum_required_bits};
-                if (semantic_width.has_value() && field_bits < static_cast<int>(*semantic_width)) {
-                    throw std::invalid_argument{
-                        field_context + " width is smaller than the enum's " +
-                        std::to_string(*semantic_width) + "-bit semantic domain"};
-                }
-                std::optional<int> underlying_width;
-                if (enum_schema->underlying_type.has_value()) {
-                    auto const underlying{resolve_type(*enum_schema->underlying_type, types)};
-                    underlying_width = packed_unsigned_width(underlying.spelling);
-                } else if (auto const derived{lispb::schema::derive_enum_storage_requirement(
-                               domain, enum_schema->bit_width)};
-                           derived.has_value() && !derived->signedness) {
-                    underlying_width = static_cast<int>(derived->bit_width);
-                }
-                if (!underlying_width.has_value()) {
-                    throw std::invalid_argument{field_context +
-                                                " enum must have an unsigned fixed-width "
-                                                "underlying type"};
-                }
-                if (field_bits > *underlying_width) {
-                    throw std::invalid_argument{field_context +
-                                                " width exceeds its enum underlying type"};
-                }
-            }
-            if (field->range_helper && (field->kind != PackedFieldKind::unsigned_integer ||
-                                        field_type.spelling == "bool")) {
-                throw std::invalid_argument{field_context +
-                                            " range helper requires an unsigned integer field"};
-            }
-            if (scalar == nullptr && quantized == nullptr && fixed == nullptr) {
-                if (field->minimum_value.has_value() != field->maximum_value.has_value()) {
-                    throw std::invalid_argument{
-                        field_context + " semantic range requires both minimum and maximum"};
-                }
-                if (field->minimum_value.has_value()) {
-                    if ((field->kind != PackedFieldKind::unsigned_integer &&
-                         field->kind != PackedFieldKind::signed_integer) ||
-                        field_type.spelling == "bool") {
-                        throw std::invalid_argument{field_context +
-                                                    " semantic range requires an integer field"};
-                    }
-                    if (packed_integer_less(*field->maximum_value, *field->minimum_value)) {
-                        throw std::invalid_argument{field_context +
-                                                    " semantic range minimum exceeds maximum"};
-                    }
-                    auto const minimum_fits{
-                        field->kind == PackedFieldKind::signed_integer
-                            ? packed_integer_fits_signed(*field->minimum_value, field_bits)
-                            : packed_integer_fits_unsigned(*field->minimum_value, field_bits)};
-                    auto const maximum_fits{
-                        field->kind == PackedFieldKind::signed_integer
-                            ? packed_integer_fits_signed(*field->maximum_value, field_bits)
-                            : packed_integer_fits_unsigned(*field->maximum_value, field_bits)};
-                    if (!minimum_fits || !maximum_fits) {
-                        throw std::invalid_argument{field_context +
-                                                    " semantic range does not fit its width"};
-                    }
-                }
-
-                std::set<std::string> named_code_names;
-                std::set<std::pair<bool, std::uint64_t>> named_code_values;
-                for (auto const& code : field->named_codes) {
-                    auto const code_context{field_context + " code '" + code.name + "'"};
-                    require_identifier(code.name, code_context + " name");
-                    if (!named_code_names.insert(code.name).second) {
-                        throw std::invalid_argument{field_context +
-                                                    " has duplicate named code: " + code.name};
-                    }
-                    if (!named_code_values.emplace(code.value.negative, code.value.magnitude)
-                             .second) {
-                        throw std::invalid_argument{field_context +
-                                                    " has duplicate named code value: " +
-                                                    format_packed_integer(code.value)};
-                    }
-                    if ((field->kind != PackedFieldKind::unsigned_integer &&
-                         field->kind != PackedFieldKind::signed_integer) ||
-                        field_type.spelling == "bool") {
-                        throw std::invalid_argument{field_context +
-                                                    " named codes require an integer field"};
-                    }
-                    auto const code_fits{
-                        field->kind == PackedFieldKind::signed_integer
-                            ? packed_integer_fits_signed(code.value, field_bits)
-                            : packed_integer_fits_unsigned(code.value, field_bits)};
-                    if (!code_fits) {
-                        throw std::invalid_argument{code_context + " does not fit the field width"};
-                    }
-                    if (code.sentinel) {
-                        if (!field->minimum_value.has_value()) {
-                            throw std::invalid_argument{code_context +
-                                                        " sentinel requires a semantic range"};
-                        }
-                        if (packed_integer_less_equal(*field->minimum_value, code.value) &&
-                            packed_integer_less_equal(code.value, *field->maximum_value)) {
-                            throw std::invalid_argument{
-                                code_context + " sentinel must be outside the live semantic range"};
-                        }
-                    } else if (field->minimum_value.has_value() &&
-                               (packed_integer_less(code.value, *field->minimum_value) ||
-                                packed_integer_less(*field->maximum_value, code.value))) {
-                        throw std::invalid_argument{
-                            code_context + " non-sentinel must be inside the live semantic range"};
-                    }
-                }
-            }
-
-            std::vector<std::string> names{
-                field->name + "_offset",
-                field->name + "_bits",
-                field->name + "_value_mask",
-                field->name + "_mask",
-            };
-            if (quantized != nullptr) {
-                names.push_back(field->name + "_encoded_type");
-                names.push_back(field->name + "_encoded");
-                names.push_back(field->name + "_maximum_encoded");
-                if (value.mutable_value) {
-                    names.push_back("set_" + field->name + "_encoded");
-                    names.push_back("try_set_" + field->name + "_encoded");
-                }
-            } else if (fixed != nullptr) {
-                names.push_back(field->name + "_raw_type");
-                names.push_back(field->name + "_raw");
-                names.push_back(field->name + "_minimum_raw");
-                names.push_back(field->name + "_maximum_raw");
-                if (value.mutable_value) {
-                    names.push_back("set_" + field->name + "_raw");
-                    names.push_back("try_set_" + field->name + "_raw");
-                }
-            } else if (mini != nullptr) {
-                names.push_back(field->name + "_encoded_type");
-                names.push_back(field->name + "_encoded");
-                names.push_back(field->name + "_maximum_encoded");
-                if (value.mutable_value) {
-                    names.push_back("set_" + field->name + "_encoded");
-                    names.push_back("try_set_" + field->name + "_encoded");
-                }
-            } else {
-                names.push_back(field->name + "_type");
-                names.push_back(field->name);
-                if (value.mutable_value) {
-                    names.push_back("set_" + field->name);
-                    names.push_back("try_set_" + field->name);
-                }
-            }
-            if (field->kind == PackedFieldKind::enumeration) {
-                names.push_back(field->name + "_underlying_type");
-            } else if (field->kind == PackedFieldKind::signed_integer) {
-                names.push_back(field->name + "_minimum");
-                names.push_back(field->name + "_maximum");
-            }
-            if (field->range_helper) {
-                names.push_back(field->name + "_range_fits");
-            }
-            auto const& generated_codes{scalar != nullptr ? scalar->named_codes
-                                                          : field->named_codes};
-            for (auto const& code : generated_codes) {
-                names.push_back(field->name + "_" + code.name);
-            }
-            for (auto const& name : names) {
-                if (!generated_names.insert(name).second) {
-                    throw std::invalid_argument{field_context +
-                                                " collides with generated API name: " + name};
-                }
-            }
-        }
-    }
-}
-
-void validate_records(RecordModuleSchema const& module,
-                      std::map<std::string, CppType> const& types) {
-    if (module.settings.source.has_value()) {
-        throw std::invalid_argument{"Record module '" + module.settings.name +
-                                    "' must not have a source output"};
-    }
-    std::vector<std::string> record_names;
-    record_names.reserve(module.records.size());
-    for (auto const& record : module.records) {
-        require_identifier(record.name, "Record name");
-        validate_export_specifier(record.export_specifier,
-                                  "Record '" + record.name + "' export specifier");
-        record_names.push_back(record.name);
-        std::vector<std::string> member_names;
-        member_names.reserve(record.members.size());
-        for (auto const& member : record.members) {
-            auto const context{"Record '" + record.name + "' member '" + member.name + "'"};
-            require_identifier(member.name, "Record '" + record.name + "' member name");
-            validate_type(member.type, types, context);
-            if (member.relationship.has_value()) {
-                validate_semantic_relation(*member.relationship, types, context + " relationship");
-            }
-            if (member.count == 0) {
-                throw std::invalid_argument{context + " count must be greater than zero"};
-            }
-            member_names.push_back(member.name);
-        }
-        require_unique_names(member_names, "Record '" + record.name + "' members");
-    }
-    require_unique_names(record_names, "Record module '" + module.settings.name + "' records");
-}
-
-void validate_unions(UnionModuleSchema const& module, std::map<std::string, CppType> const& types) {
-    if (module.settings.source.has_value()) {
-        throw std::invalid_argument{"Union module '" + module.settings.name +
-                                    "' must not have a source output"};
-    }
-    std::vector<std::string> union_names;
-    union_names.reserve(module.unions.size() + module.tagged_unions.size());
-    for (auto const& schema : module.unions) {
-        require_identifier(schema.name, "Union name");
-        validate_export_specifier(schema.export_specifier,
-                                  "Union '" + schema.name + "' export specifier");
-        if (schema.alternatives.empty()) {
-            throw std::invalid_argument{"Union '" + schema.name + "' must have alternatives"};
-        }
-        union_names.push_back(schema.name);
-        std::vector<std::string> alternative_names;
-        alternative_names.reserve(schema.alternatives.size());
-        for (auto const& alternative : schema.alternatives) {
-            auto const context{"Union '" + schema.name + "' alternative '" + alternative.name +
-                               "'"};
-            require_identifier(alternative.name, "Union '" + schema.name + "' alternative name");
-            validate_type(alternative.type, types, context);
-            if (alternative.count == 0) {
-                throw std::invalid_argument{context + " count must be greater than zero"};
-            }
-            alternative_names.push_back(alternative.name);
-        }
-        require_unique_names(alternative_names, "Union '" + schema.name + "' alternatives");
-    }
-    for (auto const& schema : module.tagged_unions) {
-        require_identifier(schema.name, "Tagged union name");
-        validate_export_specifier(schema.export_specifier,
-                                  "Tagged union '" + schema.name + "' export specifier");
-        validate_type(
-            schema.discriminant, types, "Tagged union '" + schema.name + "' discriminant");
-        if (schema.alternatives.empty()) {
-            throw std::invalid_argument{"Tagged union '" + schema.name +
-                                        "' must have alternatives"};
-        }
-        union_names.push_back(schema.name);
-        std::vector<std::string> alternative_names;
-        std::vector<std::string> tags;
-        alternative_names.reserve(schema.alternatives.size());
-        tags.reserve(schema.alternatives.size());
-        for (auto const& alternative : schema.alternatives) {
-            auto const context{"Tagged union '" + schema.name + "' alternative '" +
-                               alternative.name + "'"};
-            require_identifier(alternative.name,
-                               "Tagged union '" + schema.name + "' alternative name");
-            require_identifier(alternative.tag, context + " tag");
-            validate_type(alternative.type, types, context);
-            if (alternative.count == 0) {
-                throw std::invalid_argument{context + " count must be greater than zero"};
-            }
-            alternative_names.push_back(alternative.name);
-            tags.push_back(alternative.tag);
-        }
-        require_unique_names(alternative_names, "Tagged union '" + schema.name + "' alternatives");
-        require_unique_names(tags, "Tagged union '" + schema.name + "' tags");
-    }
-    require_unique_names(union_names, "Union module '" + module.settings.name + "' unions");
-}
-
-void validate_integer_scalars(ScalarModuleSchema const& module,
-                              std::map<std::string, CppType> const& types) {
-    if (module.settings.source.has_value()) {
-        throw std::invalid_argument{"Scalar module '" + module.settings.name +
-                                    "' must not have a source output"};
-    }
-    std::set<std::string> scalar_names;
-    std::set<std::string> generated_constant_names;
-    for (auto const& scalar : module.scalars) {
-        auto const context{"Integer scalar '" + scalar.name + "'"};
-        require_identifier(scalar.name, "Integer scalar name");
-        if (!scalar_names.insert(scalar.name).second) {
-            throw std::invalid_argument{"Scalar module '" + module.settings.name +
-                                        "' has duplicate scalar: " + scalar.name};
-        }
-        if (packed_integer_less(scalar.maximum_value, scalar.minimum_value)) {
-            throw std::invalid_argument{context + " minimum exceeds maximum"};
-        }
-        if (!scalar.signedness && scalar.minimum_value.negative) {
-            throw std::invalid_argument{context + " unsigned domain contains a negative value"};
-        }
-        if (scalar.relationship.has_value()) {
-            validate_semantic_relation(*scalar.relationship, types, context + " relationship");
-            auto const relation_kind{scalar.relationship->kind};
-            auto const requires_unsigned{relation_kind == SemanticRelationKind::index_into ||
-                                         relation_kind == SemanticRelationKind::count_of ||
-                                         relation_kind == SemanticRelationKind::offset_into};
-            if (requires_unsigned && scalar.signedness) {
-                throw std::invalid_argument{
-                    context + " relationship '" +
-                    std::string{semantic_relation_kind_name(relation_kind)} +
-                    "' requires an unsigned integer scalar"};
-            }
-        }
-
-        auto required_minimum{scalar.minimum_value};
-        auto required_maximum{scalar.maximum_value};
-        std::set<std::string> code_names;
-        std::set<std::pair<bool, std::uint64_t>> code_values;
-        for (auto const& code : scalar.named_codes) {
-            auto const code_context{context + " code '" + code.name + "'"};
-            require_identifier(code.name, code_context + " name");
-            if (!code_names.insert(code.name).second) {
-                throw std::invalid_argument{context + " has duplicate code: " + code.name};
-            }
-            if (!code_values.emplace(code.value.negative, code.value.magnitude).second) {
-                throw std::invalid_argument{
-                    context + " has duplicate code value: " + format_packed_integer(code.value)};
-            }
-            if (!scalar.signedness && code.value.negative) {
-                throw std::invalid_argument{code_context + " is negative in an unsigned domain"};
-            }
-            auto const inside_live_range{
-                packed_integer_less_equal(scalar.minimum_value, code.value) &&
-                packed_integer_less_equal(code.value, scalar.maximum_value)};
-            if (code.sentinel == inside_live_range) {
-                throw std::invalid_argument{
-                    code_context + (code.sentinel ? " sentinel must be outside the live range"
-                                                  : " non-sentinel must be inside the live range")};
-            }
-            if (packed_integer_less(code.value, required_minimum)) {
-                required_minimum = code.value;
-            }
-            if (packed_integer_less(required_maximum, code.value)) {
-                required_maximum = code.value;
-            }
-        }
-
-        auto const minimum_bits{
-            minimum_packed_integer_bits(required_minimum, required_maximum, scalar.signedness)};
-        if (!minimum_bits.has_value()) {
-            throw std::invalid_argument{context +
-                                        " domain does not fit the supported 1-64-bit range"};
-        }
-        if (scalar.bit_width.has_value() && (*scalar.bit_width == 0 || *scalar.bit_width > 64)) {
-            throw std::invalid_argument{context + " bit width must be in the range 1..64"};
-        }
-        if (scalar.bit_width.has_value() && *scalar.bit_width < *minimum_bits) {
-            throw std::invalid_argument{context + " " + std::to_string(*scalar.bit_width) +
-                                        "-bit width is smaller than the required " +
-                                        std::to_string(*minimum_bits) + " bits"};
-        }
-
-        if (scalar.cpp_emission == IntegerScalarCppEmission::none) {
-            if (scalar.cpp_type.has_value()) {
-                throw std::invalid_argument{context +
-                                            " C++ type requires the constants emission policy"};
-            }
+        if (field == nullptr) {
             continue;
         }
-        if (!scalar.cpp_type.has_value()) {
-            throw std::invalid_argument{context +
-                                        " constants emission requires an explicit C++ type"};
+        auto const field_bits{*segment_bits};
+        auto const field_context{context + " field '" + field->name + "'"};
+        require_identifier(field->name, context + " field name");
+        validate_type(field->type, types, field_context);
+        if (field->relationship.has_value()) {
+            if (quantized != nullptr || fixed != nullptr || mini != nullptr) {
+                throw std::invalid_argument{
+                    field_context +
+                    (quantized != nullptr
+                         ? " linear-quantized representation owns its semantic relationship "
+                           "through its source scalar"
+                     : fixed != nullptr
+                         ? " fixed-point representation cannot carry an integer-field "
+                           "semantic relationship"
+                         : " mini-float representation cannot carry an integer-field "
+                           "semantic relationship")};
+            }
+            validate_semantic_relation(
+                *field->relationship, types, field_context + " relationship");
+            auto const relation_kind{field->relationship->kind};
+            auto const requires_integer{relation_kind == SemanticRelationKind::index_into ||
+                                        relation_kind == SemanticRelationKind::count_of ||
+                                        relation_kind == SemanticRelationKind::offset_into};
+            if (requires_integer && field->kind != PackedFieldKind::unsigned_integer) {
+                throw std::invalid_argument{
+                    field_context + " relationship '" +
+                    std::string{semantic_relation_kind_name(relation_kind)} +
+                    "' requires an unsigned integer field"};
+            }
+            if (relation_kind == SemanticRelationKind::discriminates &&
+                field->kind != PackedFieldKind::enumeration) {
+                throw std::invalid_argument{field_context +
+                                            " relationship 'discriminates' requires an enum field"};
+            }
         }
-        if (scalar.named_codes.empty()) {
-            throw std::invalid_argument{context +
-                                        " constants emission requires at least one named code"};
-        }
-        validate_type(*scalar.cpp_type, types, context + " C++ constants type");
-        auto const cpp_type{resolve_type(*scalar.cpp_type, types)};
-        auto const storage_domain{enum_storage_domain(cpp_type.spelling)};
-        if (!storage_domain.has_value()) {
+
+        auto const field_type{resolve_type(field->type, types)};
+        if ((scalar != nullptr || quantized != nullptr || fixed != nullptr || mini != nullptr) &&
+            (field->minimum_value.has_value() || field->maximum_value.has_value() ||
+             !field->named_codes.empty())) {
             throw std::invalid_argument{
-                context + " has unsupported C++ constants type: " + cpp_type.spelling};
+                field_context +
+                (scalar != nullptr ? " integer-scalar type owns its semantic range and named codes"
+                 : quantized != nullptr
+                     ? " linear-quantized representation owns its semantic domain and code "
+                       "space"
+                 : fixed != nullptr
+                     ? " fixed-point representation owns its raw and numerical domains"
+                     : " mini-float representation owns its encoded code space")};
         }
-        auto const fits = [&](PackedIntegerValue const value) {
-            return storage_domain->is_unsigned
-                     ? packed_integer_fits_unsigned(value, storage_domain->bit_width)
-                     : packed_integer_fits_signed(value, storage_domain->bit_width);
+        if (quantized != nullptr) {
+            if (field->kind != PackedFieldKind::linear_quantized) {
+                throw std::invalid_argument{
+                    field_context + " kind must be 'linear-quantized' for its representation "
+                                    "type"};
+            }
+            if (field->bits.has_value() && *field->bits != static_cast<int>(quantized->bit_width)) {
+                throw std::invalid_argument{
+                    field_context + " width must equal its linear-quantized representation's " +
+                    std::to_string(quantized->bit_width) + "-bit encoding"};
+            }
+            if (field->range_helper) {
+                throw std::invalid_argument{
+                    field_context +
+                    " linear-quantized representation cannot use an integer range helper"};
+            }
+        } else if (field->kind == PackedFieldKind::linear_quantized) {
+            throw std::invalid_argument{
+                field_context + " ':kind linear-quantized' type must resolve to a linear-quantized "
+                                "representation"};
+        } else if (fixed != nullptr) {
+            if (field->kind != PackedFieldKind::fixed_point) {
+                throw std::invalid_argument{
+                    field_context + " kind must be 'fixed-point' for its representation type"};
+            }
+            if (field->bits.has_value() && *field->bits != static_cast<int>(fixed->total_bits)) {
+                throw std::invalid_argument{field_context +
+                                            " width must equal its fixed-point representation's " +
+                                            std::to_string(fixed->total_bits) + "-bit encoding"};
+            }
+            if (field->range_helper) {
+                throw std::invalid_argument{
+                    field_context +
+                    " fixed-point representation cannot use an integer range helper"};
+            }
+        } else if (field->kind == PackedFieldKind::fixed_point) {
+            throw std::invalid_argument{
+                field_context +
+                " ':kind fixed-point' type must resolve to a fixed-point representation"};
+        } else if (mini != nullptr) {
+            auto const total_bits{mini->sign_bits + mini->exponent_bits + mini->significand_bits};
+            if (field->kind != PackedFieldKind::mini_float) {
+                throw std::invalid_argument{
+                    field_context + " kind must be 'mini-float' for its representation type"};
+            }
+            if (field->bits.has_value() && *field->bits != static_cast<int>(total_bits)) {
+                throw std::invalid_argument{field_context +
+                                            " width must equal its mini-float representation's " +
+                                            std::to_string(total_bits) + "-bit encoding"};
+            }
+            if (field->range_helper) {
+                throw std::invalid_argument{
+                    field_context +
+                    " mini-float representation cannot use an integer range helper"};
+            }
+        } else if (field->kind == PackedFieldKind::mini_float) {
+            throw std::invalid_argument{
+                field_context +
+                " ':kind mini-float' type must resolve to a mini-float representation"};
+        } else if (scalar != nullptr) {
+            auto const expected_kind{scalar->signedness ? PackedFieldKind::signed_integer
+                                                        : PackedFieldKind::unsigned_integer};
+            if (field->kind != expected_kind) {
+                throw std::invalid_argument{
+                    field_context + " kind must match its " +
+                    std::string{scalar->signedness ? "signed" : "unsigned"} +
+                    " integer-scalar type"};
+            }
+            auto const scalar_width{derive_integer_scalar_width(*scalar)};
+            if (!scalar_width.has_value()) {
+                throw std::invalid_argument{field_context +
+                                            " integer-scalar domain has no supported width"};
+            }
+            if (field_bits < *scalar_width) {
+                throw std::invalid_argument{field_context +
+                                            " width is smaller than the integer scalar's " +
+                                            std::to_string(*scalar_width) + "-bit semantic domain"};
+            }
+        } else if (field->kind == PackedFieldKind::unsigned_integer) {
+            if (field_type.spelling == "bool") {
+                if (field_bits != 1) {
+                    throw std::invalid_argument{field_context + " bool type must use one bit"};
+                }
+            } else {
+                auto const field_width{packed_unsigned_width(field_type.spelling)};
+                if (!field_width.has_value()) {
+                    throw std::invalid_argument{field_context +
+                                                " must use a supported unsigned integer type, "
+                                                "bool, or ':kind enum'"};
+                }
+                if (field_bits > *field_width) {
+                    throw std::invalid_argument{field_context + " width exceeds its type"};
+                }
+            }
+        } else if (field->kind == PackedFieldKind::signed_integer) {
+            auto const field_width{packed_signed_width(field_type.spelling)};
+            if (!field_width.has_value()) {
+                throw std::invalid_argument{field_context +
+                                            " must use a supported signed integer type"};
+            }
+            if (field_bits > *field_width) {
+                throw std::invalid_argument{field_context + " width exceeds its signed type"};
+            }
+        } else if (packed_unsigned_width(field_type.spelling).has_value() ||
+                   packed_signed_width(field_type.spelling).has_value() ||
+                   field_type.spelling == "bool") {
+            throw std::invalid_argument{field_context +
+                                        " ':kind enum' type must not be an integer or bool"};
+        } else if (auto const* enum_schema{find_packed_enum(field->type, types, modules)}) {
+            auto const domain{lispb::schema::analyze_enum_domain(*enum_schema)};
+            auto const semantic_width{enum_schema->bit_width.has_value()
+                                          ? enum_schema->bit_width
+                                          : domain.minimum_required_bits};
+            if (semantic_width.has_value() && field_bits < static_cast<int>(*semantic_width)) {
+                throw std::invalid_argument{field_context + " width is smaller than the enum's " +
+                                            std::to_string(*semantic_width) +
+                                            "-bit semantic domain"};
+            }
+            std::optional<int> underlying_width;
+            if (enum_schema->underlying_type.has_value()) {
+                auto const underlying{resolve_type(*enum_schema->underlying_type, types)};
+                underlying_width = packed_unsigned_width(underlying.spelling);
+            } else if (auto const derived{lispb::schema::derive_enum_storage_requirement(
+                           domain, enum_schema->bit_width)};
+                       derived.has_value() && !derived->signedness) {
+                underlying_width = static_cast<int>(derived->bit_width);
+            }
+            if (!underlying_width.has_value()) {
+                throw std::invalid_argument{field_context +
+                                            " enum must have an unsigned fixed-width "
+                                            "underlying type"};
+            }
+            if (field_bits > *underlying_width) {
+                throw std::invalid_argument{field_context +
+                                            " width exceeds its enum underlying type"};
+            }
+        }
+        if (field->range_helper &&
+            (field->kind != PackedFieldKind::unsigned_integer || field_type.spelling == "bool")) {
+            throw std::invalid_argument{field_context +
+                                        " range helper requires an unsigned integer field"};
+        }
+        if (scalar == nullptr && quantized == nullptr && fixed == nullptr) {
+            if (field->minimum_value.has_value() != field->maximum_value.has_value()) {
+                throw std::invalid_argument{field_context +
+                                            " semantic range requires both minimum and maximum"};
+            }
+            if (field->minimum_value.has_value()) {
+                if ((field->kind != PackedFieldKind::unsigned_integer &&
+                     field->kind != PackedFieldKind::signed_integer) ||
+                    field_type.spelling == "bool") {
+                    throw std::invalid_argument{field_context +
+                                                " semantic range requires an integer field"};
+                }
+                if (packed_integer_less(*field->maximum_value, *field->minimum_value)) {
+                    throw std::invalid_argument{field_context +
+                                                " semantic range minimum exceeds maximum"};
+                }
+                auto const minimum_fits{
+                    field->kind == PackedFieldKind::signed_integer
+                        ? packed_integer_fits_signed(*field->minimum_value, field_bits)
+                        : packed_integer_fits_unsigned(*field->minimum_value, field_bits)};
+                auto const maximum_fits{
+                    field->kind == PackedFieldKind::signed_integer
+                        ? packed_integer_fits_signed(*field->maximum_value, field_bits)
+                        : packed_integer_fits_unsigned(*field->maximum_value, field_bits)};
+                if (!minimum_fits || !maximum_fits) {
+                    throw std::invalid_argument{field_context +
+                                                " semantic range does not fit its width"};
+                }
+            }
+
+            std::set<std::string> named_code_names;
+            std::set<std::pair<bool, std::uint64_t>> named_code_values;
+            for (auto const& code : field->named_codes) {
+                auto const code_context{field_context + " code '" + code.name + "'"};
+                require_identifier(code.name, code_context + " name");
+                if (!named_code_names.insert(code.name).second) {
+                    throw std::invalid_argument{field_context +
+                                                " has duplicate named code: " + code.name};
+                }
+                if (!named_code_values.emplace(code.value.negative, code.value.magnitude).second) {
+                    throw std::invalid_argument{
+                        field_context +
+                        " has duplicate named code value: " + format_packed_integer(code.value)};
+                }
+                if ((field->kind != PackedFieldKind::unsigned_integer &&
+                     field->kind != PackedFieldKind::signed_integer) ||
+                    field_type.spelling == "bool") {
+                    throw std::invalid_argument{field_context +
+                                                " named codes require an integer field"};
+                }
+                auto const code_fits{field->kind == PackedFieldKind::signed_integer
+                                         ? packed_integer_fits_signed(code.value, field_bits)
+                                         : packed_integer_fits_unsigned(code.value, field_bits)};
+                if (!code_fits) {
+                    throw std::invalid_argument{code_context + " does not fit the field width"};
+                }
+                if (code.sentinel) {
+                    if (!field->minimum_value.has_value()) {
+                        throw std::invalid_argument{code_context +
+                                                    " sentinel requires a semantic range"};
+                    }
+                    if (packed_integer_less_equal(*field->minimum_value, code.value) &&
+                        packed_integer_less_equal(code.value, *field->maximum_value)) {
+                        throw std::invalid_argument{
+                            code_context + " sentinel must be outside the live semantic range"};
+                    }
+                } else if (field->minimum_value.has_value() &&
+                           (packed_integer_less(code.value, *field->minimum_value) ||
+                            packed_integer_less(*field->maximum_value, code.value))) {
+                    throw std::invalid_argument{
+                        code_context + " non-sentinel must be inside the live semantic range"};
+                }
+            }
+        }
+
+        std::vector<std::string> names{
+            field->name + "_offset",
+            field->name + "_bits",
+            field->name + "_value_mask",
+            field->name + "_mask",
         };
-        if (!fits(required_minimum) || !fits(required_maximum)) {
-            throw std::invalid_argument{context + " domain does not fit C++ constants type '" +
-                                        cpp_type.spelling + "'"};
-        }
-        for (auto const& code : scalar.named_codes) {
-            auto const generated_name{scalar.name + "_" + code.name};
-            if (!generated_constant_names.insert(generated_name).second) {
-                throw std::invalid_argument{
-                    "Scalar module '" + module.settings.name +
-                    "' has duplicate generated C++ constant: " + generated_name};
+        if (quantized != nullptr) {
+            names.push_back(field->name + "_encoded_type");
+            names.push_back(field->name + "_encoded");
+            names.push_back(field->name + "_maximum_encoded");
+            if (value.mutable_value) {
+                names.push_back("set_" + field->name + "_encoded");
+                names.push_back("try_set_" + field->name + "_encoded");
+            }
+        } else if (fixed != nullptr) {
+            names.push_back(field->name + "_raw_type");
+            names.push_back(field->name + "_raw");
+            names.push_back(field->name + "_minimum_raw");
+            names.push_back(field->name + "_maximum_raw");
+            if (value.mutable_value) {
+                names.push_back("set_" + field->name + "_raw");
+                names.push_back("try_set_" + field->name + "_raw");
+            }
+        } else if (mini != nullptr) {
+            names.push_back(field->name + "_encoded_type");
+            names.push_back(field->name + "_encoded");
+            names.push_back(field->name + "_maximum_encoded");
+            if (value.mutable_value) {
+                names.push_back("set_" + field->name + "_encoded");
+                names.push_back("try_set_" + field->name + "_encoded");
+            }
+        } else {
+            names.push_back(field->name + "_type");
+            names.push_back(field->name);
+            if (value.mutable_value) {
+                names.push_back("set_" + field->name);
+                names.push_back("try_set_" + field->name);
             }
         }
-        if (scalar.cpp_emission == IntegerScalarCppEmission::constants_with_names) {
-            auto const generated_name{scalar.name + "_name"};
-            if (!generated_constant_names.insert(generated_name).second) {
-                throw std::invalid_argument{
-                    "Scalar module '" + module.settings.name +
-                    "' has duplicate generated C++ declaration: " + generated_name};
+        if (field->kind == PackedFieldKind::enumeration) {
+            names.push_back(field->name + "_underlying_type");
+        } else if (field->kind == PackedFieldKind::signed_integer) {
+            names.push_back(field->name + "_minimum");
+            names.push_back(field->name + "_maximum");
+        }
+        if (field->range_helper) {
+            names.push_back(field->name + "_range_fits");
+        }
+        auto const& generated_codes{scalar != nullptr ? scalar->named_codes : field->named_codes};
+        for (auto const& code : generated_codes) {
+            names.push_back(field->name + "_" + code.name);
+        }
+        for (auto const& name : names) {
+            if (!generated_names.insert(name).second) {
+                throw std::invalid_argument{field_context +
+                                            " collides with generated API name: " + name};
             }
         }
     }
 }
 
-void validate_representations(RepresentationModuleSchema const& module,
-                              std::map<std::string, CppType> const& types,
-                              std::vector<ModuleSchema> const& modules) {
-    auto const module_context{"Representation module '" + module.settings.name + "'"};
-    if (module.settings.source.has_value()) {
-        throw std::invalid_argument{module_context + " must not have a source output"};
+void validate_record(RecordSchema const& record, std::map<std::string, CppType> const& types) {
+    require_identifier(record.name, "Record name");
+    validate_export_specifier(record.export_specifier,
+                              "Record '" + record.name + "' export specifier");
+    std::vector<std::string> member_names;
+    member_names.reserve(record.members.size());
+    for (auto const& member : record.members) {
+        auto const context{"Record '" + record.name + "' member '" + member.name + "'"};
+        require_identifier(member.name, "Record '" + record.name + "' member name");
+        validate_type(member.type, types, context);
+        if (member.relationship.has_value()) {
+            validate_semantic_relation(*member.relationship, types, context + " relationship");
+        }
+        if (member.count == 0) {
+            throw std::invalid_argument{context + " count must be greater than zero"};
+        }
+        member_names.push_back(member.name);
     }
-    std::set<std::string> names;
-    for (auto const& representation : module.linear_quantized) {
-        auto const context{"Linear quantization '" + representation.name + "'"};
-        require_identifier(representation.name, "Linear quantization name");
-        if (!names.insert(representation.name).second) {
-            throw std::invalid_argument{module_context +
-                                        " has duplicate representation: " + representation.name};
+    require_unique_names(member_names, "Record '" + record.name + "' members");
+}
+
+void validate_union(UnionSchema const& schema, std::map<std::string, CppType> const& types) {
+    require_identifier(schema.name, "Union name");
+    validate_export_specifier(schema.export_specifier,
+                              "Union '" + schema.name + "' export specifier");
+    if (schema.alternatives.empty()) {
+        throw std::invalid_argument{"Union '" + schema.name + "' must have alternatives"};
+    }
+    std::vector<std::string> alternative_names;
+    alternative_names.reserve(schema.alternatives.size());
+    for (auto const& alternative : schema.alternatives) {
+        auto const context{"Union '" + schema.name + "' alternative '" + alternative.name + "'"};
+        require_identifier(alternative.name, "Union '" + schema.name + "' alternative name");
+        validate_type(alternative.type, types, context);
+        if (alternative.count == 0) {
+            throw std::invalid_argument{context + " count must be greater than zero"};
         }
-        validate_type(representation.source, types, context + " source");
-        auto const* source{
-            find_integer_scalar(representation.source, types, modules, module.settings.name)};
-        if (source == nullptr) {
-            throw std::invalid_argument{context +
-                                        " source must resolve to an integer-scalar declaration"};
+        alternative_names.push_back(alternative.name);
+    }
+    require_unique_names(alternative_names, "Union '" + schema.name + "' alternatives");
+}
+
+void validate_tagged_union(TaggedUnionSchema const& schema,
+                           std::map<std::string, CppType> const& types) {
+    require_identifier(schema.name, "Tagged union name");
+    validate_export_specifier(schema.export_specifier,
+                              "Tagged union '" + schema.name + "' export specifier");
+    validate_type(schema.discriminant, types, "Tagged union '" + schema.name + "' discriminant");
+    if (schema.alternatives.empty()) {
+        throw std::invalid_argument{"Tagged union '" + schema.name + "' must have alternatives"};
+    }
+    std::vector<std::string> alternative_names;
+    std::vector<std::string> tags;
+    alternative_names.reserve(schema.alternatives.size());
+    tags.reserve(schema.alternatives.size());
+    for (auto const& alternative : schema.alternatives) {
+        auto const context{"Tagged union '" + schema.name + "' alternative '" + alternative.name +
+                           "'"};
+        require_identifier(alternative.name, "Tagged union '" + schema.name + "' alternative name");
+        require_identifier(alternative.tag, context + " tag");
+        validate_type(alternative.type, types, context);
+        if (alternative.count == 0) {
+            throw std::invalid_argument{context + " count must be greater than zero"};
         }
-        if (!packed_integer_less(source->minimum_value, source->maximum_value)) {
-            throw std::invalid_argument{context +
-                                        " source range must contain at least two distinct values"};
-        }
-        if (representation.bit_width == 0 || representation.bit_width > 64) {
-            throw std::invalid_argument{context + " bit width must be in the range 1..64"};
-        }
-        auto const maximum_reserved{representation.bit_width == 64
-                                        ? (std::numeric_limits<std::uint64_t>::max)() - 1
-                                        : (std::uint64_t{1} << representation.bit_width) - 2};
-        if (representation.reserved_codes > maximum_reserved) {
-            throw std::invalid_argument{context + " reserves " +
-                                        std::to_string(representation.reserved_codes) +
-                                        " codes but at least two usable codes are required"};
+        alternative_names.push_back(alternative.name);
+        tags.push_back(alternative.tag);
+    }
+    require_unique_names(alternative_names, "Tagged union '" + schema.name + "' alternatives");
+    require_unique_names(tags, "Tagged union '" + schema.name + "' tags");
+}
+
+void validate_integer_scalar(IntegerScalarSchema const& scalar,
+                             std::map<std::string, CppType> const& types) {
+    auto const context{"Integer scalar '" + scalar.name + "'"};
+    require_identifier(scalar.name, "Integer scalar name");
+
+    if (packed_integer_less(scalar.maximum_value, scalar.minimum_value)) {
+        throw std::invalid_argument{context + " minimum exceeds maximum"};
+    }
+    if (!scalar.signedness && scalar.minimum_value.negative) {
+        throw std::invalid_argument{context + " unsigned domain contains a negative value"};
+    }
+    if (scalar.relationship.has_value()) {
+        validate_semantic_relation(*scalar.relationship, types, context + " relationship");
+        auto const relation_kind{scalar.relationship->kind};
+        auto const requires_unsigned{relation_kind == SemanticRelationKind::index_into ||
+                                     relation_kind == SemanticRelationKind::count_of ||
+                                     relation_kind == SemanticRelationKind::offset_into};
+        if (requires_unsigned && scalar.signedness) {
+            throw std::invalid_argument{context + " relationship '" +
+                                        std::string{semantic_relation_kind_name(relation_kind)} +
+                                        "' requires an unsigned integer scalar"};
         }
     }
-    for (auto const& representation : module.integer_varints) {
-        auto const context{"Integer varint '" + representation.name + "'"};
-        require_identifier(representation.name, "Integer varint name");
-        if (!names.insert(representation.name).second) {
-            throw std::invalid_argument{module_context +
-                                        " has duplicate representation: " + representation.name};
+
+    auto required_minimum{scalar.minimum_value};
+    auto required_maximum{scalar.maximum_value};
+    std::set<std::string> code_names;
+    std::set<std::pair<bool, std::uint64_t>> code_values;
+    for (auto const& code : scalar.named_codes) {
+        auto const code_context{context + " code '" + code.name + "'"};
+        require_identifier(code.name, code_context + " name");
+        if (!code_names.insert(code.name).second) {
+            throw std::invalid_argument{context + " has duplicate code: " + code.name};
         }
-        validate_type(representation.source, types, context + " source");
-        auto const* source{
-            find_integer_scalar(representation.source, types, modules, module.settings.name)};
-        if (source == nullptr) {
-            throw std::invalid_argument{context +
-                                        " source must resolve to an integer-scalar declaration"};
-        }
-        if (representation.encoding == IntegerVarintEncoding::unsigned_varint &&
-            source->signedness) {
-            throw std::invalid_argument{context + " unsigned encoding requires an unsigned source"};
-        }
-        if (representation.encoding != IntegerVarintEncoding::unsigned_varint &&
-            !source->signedness) {
-            throw std::invalid_argument{context +
-                                        " signed and zigzag encodings require a signed source"};
-        }
-    }
-    for (auto const& representation : module.fixed_points) {
-        auto const context{"Fixed-point representation '" + representation.name + "'"};
-        require_identifier(representation.name, "Fixed-point representation name");
-        if (!names.insert(representation.name).second) {
-            throw std::invalid_argument{module_context +
-                                        " has duplicate representation: " + representation.name};
-        }
-        if (representation.total_bits == 0 || representation.total_bits > 64) {
-            throw std::invalid_argument{context + " total width must be in the range 1..64"};
-        }
-        auto const maximum_fractional_bits{representation.signedness ? representation.total_bits - 1
-                                                                     : representation.total_bits};
-        if (representation.fractional_bits > maximum_fractional_bits) {
+        if (!code_values.emplace(code.value.negative, code.value.magnitude).second) {
             throw std::invalid_argument{
-                context + " fractional width must be at most " +
-                std::to_string(maximum_fractional_bits) +
-                (representation.signedness ? " so one sign bit remains" : "")};
+                context + " has duplicate code value: " + format_packed_integer(code.value)};
+        }
+        if (!scalar.signedness && code.value.negative) {
+            throw std::invalid_argument{code_context + " is negative in an unsigned domain"};
+        }
+        auto const inside_live_range{packed_integer_less_equal(scalar.minimum_value, code.value) &&
+                                     packed_integer_less_equal(code.value, scalar.maximum_value)};
+        if (code.sentinel == inside_live_range) {
+            throw std::invalid_argument{
+                code_context + (code.sentinel ? " sentinel must be outside the live range"
+                                              : " non-sentinel must be inside the live range")};
+        }
+        if (packed_integer_less(code.value, required_minimum)) {
+            required_minimum = code.value;
+        }
+        if (packed_integer_less(required_maximum, code.value)) {
+            required_maximum = code.value;
         }
     }
-    for (auto const& representation : module.mini_floats) {
-        auto const context{"Mini-float representation '" + representation.name + "'"};
-        require_identifier(representation.name, "Mini-float representation name");
-        if (!names.insert(representation.name).second) {
-            throw std::invalid_argument{module_context +
-                                        " has duplicate representation: " + representation.name};
-        }
-        if (representation.sign_bits > 1) {
-            throw std::invalid_argument{context + " sign width must be zero or one"};
-        }
-        if (representation.exponent_bits < 2 || representation.exponent_bits > 15) {
-            throw std::invalid_argument{context + " exponent width must be in the range 2..15"};
-        }
-        if (representation.significand_bits > 62) {
-            throw std::invalid_argument{context + " significand width must be in the range 0..62"};
-        }
-        auto const total_bits{representation.sign_bits + representation.exponent_bits +
-                              representation.significand_bits};
-        if (total_bits > 64) {
-            throw std::invalid_argument{context + " total width must not exceed 64 bits"};
-        }
-        if (representation.exponent_bias < -32'768 || representation.exponent_bias > 32'767) {
-            throw std::invalid_argument{context +
-                                        " exponent bias must be in the range -32768..32767"};
-        }
+
+    auto const minimum_bits{
+        minimum_packed_integer_bits(required_minimum, required_maximum, scalar.signedness)};
+    if (!minimum_bits.has_value()) {
+        throw std::invalid_argument{context + " domain does not fit the supported 1-64-bit range"};
     }
-    for (auto const& representation : module.optional_sentinels) {
-        auto const context{"Optional sentinel representation '" + representation.name + "'"};
-        require_identifier(representation.name, "Optional sentinel representation name");
-        if (!names.insert(representation.name).second) {
-            throw std::invalid_argument{module_context +
-                                        " has duplicate representation: " + representation.name};
-        }
-        validate_type(representation.source, types, context + " source");
-        auto const* source{
-            find_integer_scalar(representation.source, types, modules, module.settings.name)};
-        if (source == nullptr) {
-            throw std::invalid_argument{context +
-                                        " source must resolve to an integer-scalar declaration"};
-        }
-        require_identifier(representation.sentinel, context + " sentinel code");
-        auto const code{std::ranges::find(
-            source->named_codes, representation.sentinel, &PackedNamedCodeSchema::name)};
-        if (code == source->named_codes.end()) {
-            auto const has_sentinel{
-                std::ranges::any_of(source->named_codes, &PackedNamedCodeSchema::sentinel)};
-            throw std::invalid_argument{has_sentinel
-                                            ? context + " names unknown source code '" +
-                                                  representation.sentinel + "'"
-                                            : context + " source has no named sentinel codes"};
-        }
-        if (!code->sentinel) {
-            throw std::invalid_argument{context + " code '" + representation.sentinel +
-                                        "' is not a sentinel"};
-        }
+    if (scalar.bit_width.has_value() && (*scalar.bit_width == 0 || *scalar.bit_width > 64)) {
+        throw std::invalid_argument{context + " bit width must be in the range 1..64"};
     }
-    for (auto const& representation : module.optional_presence_bits) {
-        auto const context{"Optional presence-bit representation '" + representation.name + "'"};
-        require_identifier(representation.name, "Optional presence-bit representation name");
-        if (!names.insert(representation.name).second) {
-            throw std::invalid_argument{module_context +
-                                        " has duplicate representation: " + representation.name};
-        }
-        validate_type(representation.source, types, context + " source");
-        if (find_integer_scalar(representation.source, types, modules, module.settings.name) ==
-            nullptr) {
+    if (scalar.bit_width.has_value() && *scalar.bit_width < *minimum_bits) {
+        throw std::invalid_argument{context + " " + std::to_string(*scalar.bit_width) +
+                                    "-bit width is smaller than the required " +
+                                    std::to_string(*minimum_bits) + " bits"};
+    }
+
+    if (scalar.cpp_emission == IntegerScalarCppEmission::none) {
+        if (scalar.cpp_type.has_value()) {
             throw std::invalid_argument{context +
-                                        " source must resolve to an integer-scalar declaration"};
+                                        " C++ type requires the constants emission policy"};
         }
+        return;
+    }
+    if (!scalar.cpp_type.has_value()) {
+        throw std::invalid_argument{context + " constants emission requires an explicit C++ type"};
+    }
+    if (scalar.named_codes.empty()) {
+        throw std::invalid_argument{context +
+                                    " constants emission requires at least one named code"};
+    }
+    validate_type(*scalar.cpp_type, types, context + " C++ constants type");
+    auto const cpp_type{resolve_type(*scalar.cpp_type, types)};
+    auto const storage_domain{enum_storage_domain(cpp_type.spelling)};
+    if (!storage_domain.has_value()) {
+        throw std::invalid_argument{context +
+                                    " has unsupported C++ constants type: " + cpp_type.spelling};
+    }
+    auto const fits = [&](PackedIntegerValue const value) {
+        return storage_domain->is_unsigned
+                 ? packed_integer_fits_unsigned(value, storage_domain->bit_width)
+                 : packed_integer_fits_signed(value, storage_domain->bit_width);
+    };
+    if (!fits(required_minimum) || !fits(required_maximum)) {
+        throw std::invalid_argument{context + " domain does not fit C++ constants type '" +
+                                    cpp_type.spelling + "'"};
     }
 }
 
-void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> const& types) {
-    std::set<std::string> schema_names;
-    std::set<std::string> generated_type_names;
-    auto add_generated_type = [&](std::string const& name) {
-        if (!generated_type_names.insert(name).second) {
-            throw std::invalid_argument{"Duplicate generated SOA type name: " + name};
-        }
-    };
-    for (auto const& schema : module.structs) {
+void validate_linear_quantized(LinearQuantizedSchema const& representation,
+                               NormalModuleSchema const& module,
+                               std::map<std::string, CppType> const& types,
+                               std::vector<ModuleSchema> const& modules) {
+    auto const context{"Linear quantization '" + representation.name + "'"};
+    require_identifier(representation.name, "Linear quantization name");
+
+    validate_type(representation.source, types, context + " source");
+    auto const* source{
+        find_integer_scalar(representation.source, types, modules, module.settings.name)};
+    if (source == nullptr) {
+        throw std::invalid_argument{context +
+                                    " source must resolve to an integer-scalar declaration"};
+    }
+    if (!packed_integer_less(source->minimum_value, source->maximum_value)) {
+        throw std::invalid_argument{context +
+                                    " source range must contain at least two distinct values"};
+    }
+    if (representation.bit_width == 0 || representation.bit_width > 64) {
+        throw std::invalid_argument{context + " bit width must be in the range 1..64"};
+    }
+    auto const maximum_reserved{representation.bit_width == 64
+                                    ? (std::numeric_limits<std::uint64_t>::max)() - 1
+                                    : (std::uint64_t{1} << representation.bit_width) - 2};
+    if (representation.reserved_codes > maximum_reserved) {
+        throw std::invalid_argument{context + " reserves " +
+                                    std::to_string(representation.reserved_codes) +
+                                    " codes but at least two usable codes are required"};
+    }
+}
+
+void validate_integer_varint(IntegerVarintSchema const& representation,
+                             NormalModuleSchema const& module,
+                             std::map<std::string, CppType> const& types,
+                             std::vector<ModuleSchema> const& modules) {
+    auto const context{"Integer varint '" + representation.name + "'"};
+    require_identifier(representation.name, "Integer varint name");
+
+    validate_type(representation.source, types, context + " source");
+    auto const* source{
+        find_integer_scalar(representation.source, types, modules, module.settings.name)};
+    if (source == nullptr) {
+        throw std::invalid_argument{context +
+                                    " source must resolve to an integer-scalar declaration"};
+    }
+    if (representation.encoding == IntegerVarintEncoding::unsigned_varint && source->signedness) {
+        throw std::invalid_argument{context + " unsigned encoding requires an unsigned source"};
+    }
+    if (representation.encoding != IntegerVarintEncoding::unsigned_varint && !source->signedness) {
+        throw std::invalid_argument{context +
+                                    " signed and zigzag encodings require a signed source"};
+    }
+}
+
+void validate_fixed_point(FixedPointSchema const& representation) {
+    auto const context{"Fixed-point representation '" + representation.name + "'"};
+    require_identifier(representation.name, "Fixed-point representation name");
+
+    if (representation.total_bits == 0 || representation.total_bits > 64) {
+        throw std::invalid_argument{context + " total width must be in the range 1..64"};
+    }
+    auto const maximum_fractional_bits{representation.signedness ? representation.total_bits - 1
+                                                                 : representation.total_bits};
+    if (representation.fractional_bits > maximum_fractional_bits) {
+        throw std::invalid_argument{context + " fractional width must be at most " +
+                                    std::to_string(maximum_fractional_bits) +
+                                    (representation.signedness ? " so one sign bit remains" : "")};
+    }
+}
+
+void validate_mini_float(MiniFloatSchema const& representation) {
+    auto const context{"Mini-float representation '" + representation.name + "'"};
+    require_identifier(representation.name, "Mini-float representation name");
+
+    if (representation.sign_bits > 1) {
+        throw std::invalid_argument{context + " sign width must be zero or one"};
+    }
+    if (representation.exponent_bits < 2 || representation.exponent_bits > 15) {
+        throw std::invalid_argument{context + " exponent width must be in the range 2..15"};
+    }
+    if (representation.significand_bits > 62) {
+        throw std::invalid_argument{context + " significand width must be in the range 0..62"};
+    }
+    auto const total_bits{representation.sign_bits + representation.exponent_bits +
+                          representation.significand_bits};
+    if (total_bits > 64) {
+        throw std::invalid_argument{context + " total width must not exceed 64 bits"};
+    }
+    if (representation.exponent_bias < -32'768 || representation.exponent_bias > 32'767) {
+        throw std::invalid_argument{context + " exponent bias must be in the range -32768..32767"};
+    }
+}
+
+void validate_optional_sentinel(OptionalSentinelSchema const& representation,
+                                NormalModuleSchema const& module,
+                                std::map<std::string, CppType> const& types,
+                                std::vector<ModuleSchema> const& modules) {
+    auto const context{"Optional sentinel representation '" + representation.name + "'"};
+    require_identifier(representation.name, "Optional sentinel representation name");
+
+    validate_type(representation.source, types, context + " source");
+    auto const* source{
+        find_integer_scalar(representation.source, types, modules, module.settings.name)};
+    if (source == nullptr) {
+        throw std::invalid_argument{context +
+                                    " source must resolve to an integer-scalar declaration"};
+    }
+    require_identifier(representation.sentinel, context + " sentinel code");
+    auto const code{std::ranges::find(
+        source->named_codes, representation.sentinel, &PackedNamedCodeSchema::name)};
+    if (code == source->named_codes.end()) {
+        auto const has_sentinel{
+            std::ranges::any_of(source->named_codes, &PackedNamedCodeSchema::sentinel)};
+        throw std::invalid_argument{has_sentinel ? context + " names unknown source code '" +
+                                                       representation.sentinel + "'"
+                                                 : context + " source has no named sentinel codes"};
+    }
+    if (!code->sentinel) {
+        throw std::invalid_argument{context + " code '" + representation.sentinel +
+                                    "' is not a sentinel"};
+    }
+}
+
+void validate_optional_presence_bit(OptionalPresenceBitSchema const& representation,
+                                    NormalModuleSchema const& module,
+                                    std::map<std::string, CppType> const& types,
+                                    std::vector<ModuleSchema> const& modules) {
+    auto const context{"Optional presence-bit representation '" + representation.name + "'"};
+    require_identifier(representation.name, "Optional presence-bit representation name");
+
+    validate_type(representation.source, types, context + " source");
+    if (find_integer_scalar(representation.source, types, modules, module.settings.name) ==
+        nullptr) {
+        throw std::invalid_argument{context +
+                                    " source must resolve to an integer-scalar declaration"};
+    }
+}
+
+void validate_soa(NormalModuleSchema const& module,
+                  std::span<SoaSchema const> schemas,
+                  std::map<std::string, CppType> const& types) {
+    for (auto const& schema : schemas) {
         require_identifier(schema.name, "SOA name");
         if (schema.view_name.has_value()) {
             require_identifier(*schema.view_name, "SOA '" + schema.name + "' view name");
@@ -1449,12 +1330,7 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
             require_identifier(*schema.const_view_name,
                                "SOA '" + schema.name + "' const view name");
         }
-        if (!schema_names.insert(schema.name).second) {
-            throw std::invalid_argument{"Duplicate SOA schema name: " + schema.name};
-        }
-        add_generated_type(schema.name);
-        add_generated_type(schema.view_name.value_or(schema.name + "View"));
-        add_generated_type(schema.const_view_name.value_or(schema.name + "ConstView"));
+
         if (schema.field_mask_name.has_value() != schema.field_enum_name.has_value()) {
             throw std::invalid_argument{"SOA '" + schema.name +
                                         "' must specify both field-mask-name and field-enum-name"};
@@ -1462,19 +1338,13 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
         if (schema.field_mask_name.has_value()) {
             require_identifier(*schema.field_mask_name, "SOA '" + schema.name + "' field mask");
             require_identifier(*schema.field_enum_name, "SOA '" + schema.name + "' field enum");
-            add_generated_type(*schema.field_mask_name);
-            add_generated_type(*schema.field_enum_name);
         }
         if (schema.single_allocation.has_value()) {
             require_identifier(*schema.single_allocation, "Single-allocation owner");
-            add_generated_type(*schema.single_allocation);
-            add_generated_type(schema.name + "SingleLayout");
-            add_generated_type(schema.name + "SingleView");
-            add_generated_type(schema.name + "SingleConstView");
-            add_generated_type(schema.name + "SingleViewImpl");
+
             for (auto const& variant : schema.single_allocation_variants) {
                 require_identifier(variant.name, "single-allocation allocator variant");
-                add_generated_type(variant.name);
+
                 validate_type(variant.allocator, types, "single-allocation allocator variant");
             }
         }
@@ -1582,10 +1452,9 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
                                "SOA '" + schema.name + "' fixed storage name");
             require_unique_names(schema.fixed->containers,
                                  "SOA '" + schema.name + "' fixed containers");
-            add_generated_type(schema.fixed->storage_name);
+
             for (auto const& container : schema.fixed->containers) {
                 require_identifier(container, "SOA '" + schema.name + "' fixed container name");
-                add_generated_type(container);
             }
         }
         if (schema.equivalent_type.has_value()) {
@@ -1633,7 +1502,7 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
             }
         }
     }
-    for (auto const& root : module.structs) {
+    for (auto const& root : schemas) {
         if (!root.single_allocation) {
             continue;
         }
@@ -1674,8 +1543,8 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
                                                 member.name};
                 }
                 auto const child{
-                    std::ranges::find(module.structs, *member.nested_schema, &SoaSchema::name)};
-                if (child == module.structs.end()) {
+                    std::ranges::find(schemas, *member.nested_schema, &SoaSchema::name)};
+                if (child == schemas.end()) {
                     throw std::invalid_argument{"Unknown nested schema: " + *member.nested_schema};
                 }
                 self(self, *child, flattened);
@@ -1684,7 +1553,7 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
         };
         visit(visit, root, {});
     }
-    for (auto const& schema : module.structs) {
+    for (auto const& schema : schemas) {
         if (!schema.fixed.has_value()) {
             continue;
         }
@@ -1696,283 +1565,241 @@ void validate_soa(SoaModuleSchema const& module, std::map<std::string, CppType> 
                 throw std::invalid_argument{"Fixed SOA '" + schema.name + "' nested member '" +
                                             member.name + "' has no fixed_schema"};
             }
-            auto const found{std::find_if(
-                module.structs.begin(), module.structs.end(), [&](SoaSchema const& candidate) {
+            auto const found{
+                std::find_if(schemas.begin(), schemas.end(), [&](SoaSchema const& candidate) {
                     return candidate.name == *member.fixed_schema;
                 })};
-            if (found == module.structs.end() || !found->fixed.has_value()) {
+            if (found == schemas.end() || !found->fixed.has_value()) {
                 throw std::invalid_argument{"Unknown fixed nested schema: " + *member.fixed_schema};
             }
         }
     }
-    for (auto const& variant : module.array_allocators) {
+    for (auto const& variant : module.soa_array_allocators) {
         validate_type(variant.allocator, types, "SoA allocator variant");
     }
-    validate_soa_allocator_variants(module.backend, module.structs, module.array_allocators);
-    if (!module.settings.source.has_value() && module.backend == SoaBackend::unreal) {
+    validate_soa_allocator_variants(module.soa_backend, schemas, module.soa_array_allocators);
+    if (!module.settings.source.has_value() && module.soa_backend == SoaBackend::unreal) {
         throw std::invalid_argument{"SOA module '" + module.settings.name +
                                     "' must have a source output"};
     }
 }
 
-void validate_static_table(StaticTableModuleSchema const& module,
+void validate_static_table(StaticTableSchema const& table,
                            std::map<std::string, CppType> const& types) {
-    if (module.settings.source.has_value()) {
-        throw std::invalid_argument{"Static table module '" + module.settings.name +
-                                    "' must not have a source output"};
+    require_identifier(table.name, "Static table name");
+
+    validate_export_specifier(table.export_specifier,
+                              "Static table '" + table.name + "' export specifier");
+    if (table.rows.empty()) {
+        throw std::invalid_argument{"Static table '" + table.name + "' must have rows"};
     }
-    if (module.tables.empty()) {
-        throw std::invalid_argument{"Static table module '" + module.settings.name +
-                                    "' must have tables"};
+    if (table.columns.empty()) {
+        throw std::invalid_argument{"Static table '" + table.name + "' must have columns"};
     }
 
-    std::set<std::string> table_names;
-    for (auto const& table : module.tables) {
-        require_identifier(table.name, "Static table name");
-        if (!table_names.insert(table.name).second) {
-            throw std::invalid_argument{"Duplicate static table name: " + table.name};
+    std::vector<std::string> row_names;
+    std::set<std::string> generated_names{
+        table.name, "num_rows", "num", "apply_arrays", "apply_array_pairs"};
+    for (auto const& row : table.rows) {
+        require_identifier(row.name, "Static table '" + table.name + "' row name");
+        row_names.push_back(row.name);
+        generated_names.insert(row.name + "_index");
+    }
+    require_unique_names(row_names, "Static table '" + table.name + "' rows");
+
+    std::vector<std::string> column_names;
+    for (auto const& column : table.columns) {
+        require_identifier(column.name, "Static table '" + table.name + "' column name");
+        if (generated_names.contains(column.name)) {
+            throw std::invalid_argument{"Static table '" + table.name + "' column '" + column.name +
+                                        "' collides with generated API"};
         }
-        validate_export_specifier(table.export_specifier,
-                                  "Static table '" + table.name + "' export specifier");
-        if (table.rows.empty()) {
-            throw std::invalid_argument{"Static table '" + table.name + "' must have rows"};
+        column_names.push_back(column.name);
+        validate_type(
+            column.type, types, "Static table '" + table.name + "' column '" + column.name + "'");
+    }
+    require_unique_names(column_names, "Static table '" + table.name + "' columns");
+
+    std::set<std::string> column_name_set{column_names.begin(), column_names.end()};
+    std::set<std::string> member_names{generated_names};
+    member_names.insert(column_names.begin(), column_names.end());
+    std::set<std::string> group_names;
+    for (auto const& group : table.groups) {
+        auto const context{"Static table '" + table.name + "' group '" + group.name + "'"};
+        require_identifier(group.name, "Static table '" + table.name + "' group name");
+        if (!group_names.insert(group.name).second) {
+            throw std::invalid_argument{"Duplicate static table group name: " + group.name};
         }
-        if (table.columns.empty()) {
-            throw std::invalid_argument{"Static table '" + table.name + "' must have columns"};
+        validate_type(group.type, types, context + " type");
+        if (group.columns.empty()) {
+            throw std::invalid_argument{context + " must have columns"};
         }
 
-        std::vector<std::string> row_names;
-        std::set<std::string> generated_names{
-            table.name, "num_rows", "num", "apply_arrays", "apply_array_pairs"};
-        for (auto const& row : table.rows) {
-            require_identifier(row.name, "Static table '" + table.name + "' row name");
-            row_names.push_back(row.name);
-            generated_names.insert(row.name + "_index");
+        for (auto const& column_name : group.columns) {
+            require_identifier(column_name, context + " column name");
+            if (!column_name_set.contains(column_name)) {
+                throw std::invalid_argument{context + " references unknown column '" + column_name +
+                                            "'"};
+            }
         }
-        require_unique_names(row_names, "Static table '" + table.name + "' rows");
+        require_unique_names(group.columns, context + " columns");
 
-        std::vector<std::string> column_names;
-        for (auto const& column : table.columns) {
-            require_identifier(column.name, "Static table '" + table.name + "' column name");
-            if (generated_names.contains(column.name)) {
-                throw std::invalid_argument{"Static table '" + table.name + "' column '" +
-                                            column.name + "' collides with generated API"};
-            }
-            column_names.push_back(column.name);
-            validate_type(column.type,
-                          types,
-                          "Static table '" + table.name + "' column '" + column.name + "'");
-        }
-        require_unique_names(column_names, "Static table '" + table.name + "' columns");
-
-        std::set<std::string> column_name_set{column_names.begin(), column_names.end()};
-        std::set<std::string> member_names{generated_names};
-        member_names.insert(column_names.begin(), column_names.end());
-        std::set<std::string> group_names;
-        for (auto const& group : table.groups) {
-            auto const context{"Static table '" + table.name + "' group '" + group.name + "'"};
-            require_identifier(group.name, "Static table '" + table.name + "' group name");
-            if (!group_names.insert(group.name).second) {
-                throw std::invalid_argument{"Duplicate static table group name: " + group.name};
-            }
-            validate_type(group.type, types, context + " type");
-            if (group.columns.empty()) {
-                throw std::invalid_argument{context + " must have columns"};
-            }
-
-            for (auto const& column_name : group.columns) {
-                require_identifier(column_name, context + " column name");
-                if (!column_name_set.contains(column_name)) {
-                    throw std::invalid_argument{context + " references unknown column '" +
-                                                column_name + "'"};
-                }
-            }
-            require_unique_names(group.columns, context + " columns");
-
-            auto const getter_name{"get_" + group.name};
-            if (!member_names.insert(getter_name).second) {
-                throw std::invalid_argument{context + " getter '" + getter_name +
-                                            "' collides with another table member"};
-            }
+        auto const getter_name{"get_" + group.name};
+        if (!member_names.insert(getter_name).second) {
+            throw std::invalid_argument{context + " getter '" + getter_name +
+                                        "' collides with another table member"};
         }
     }
 }
 
-void validate_homogeneous(HomogeneousModuleSchema const& module,
+void validate_homogeneous(HomogeneousLayoutSchema const& layout,
+                          NormalModuleSchema const& module,
                           std::map<std::string, CppType> const& types) {
     if (!module.settings.source.has_value()) {
-        throw std::invalid_argument{"Homogeneous module '" + module.settings.name +
-                                    "' must have a source output"};
+        throw std::invalid_argument{"Homogeneous layout requires a source output: " + layout.name};
     }
-    if (module.layouts.empty()) {
-        throw std::invalid_argument{"Homogeneous module '" + module.settings.name +
-                                    "' must have layouts"};
-    }
-    std::set<std::string> layout_names;
-    std::set<std::string> storage_names;
-    for (auto const& layout : module.layouts) {
-        require_identifier_fragment(layout.name, "Homogeneous layout name");
-        if (!layout_names.insert(layout.name).second) {
-            throw std::invalid_argument{"Duplicate homogeneous layout name: " + layout.name};
-        }
-        if (layout.components.empty()) {
-            throw std::invalid_argument{"Homogeneous layout '" + layout.name +
-                                        "' must have components"};
-        }
-        require_unique_names(layout.components,
-                             "Homogeneous layout '" + layout.name + "' components");
-        for (auto const& component : layout.components) {
-            require_identifier(component, "Homogeneous layout '" + layout.name + "' component");
-            reject_generated_name_collision(
-                component, "Homogeneous layout '" + layout.name + "' component", true);
-        }
-        if (!layout.input_members.empty() &&
-            layout.input_members.size() != layout.components.size()) {
-            throw std::invalid_argument{"Homogeneous layout '" + layout.name +
-                                        "' input members must match its components"};
-        }
-        for (auto const& input_member : layout.input_members) {
-            require_identifier(input_member,
-                               "Homogeneous layout '" + layout.name + "' input member");
-        }
-        std::set<char> parameter_names;
-        for (auto const& component : layout.components) {
-            if (!parameter_names.insert(component.front()).second) {
-                throw std::invalid_argument{"Homogeneous layout '" + layout.name +
-                                            "' components must have unique initials"};
-            }
-        }
-        if (layout.value_types.empty()) {
-            throw std::invalid_argument{"Homogeneous layout '" + layout.name +
-                                        "' must have value types"};
-        }
-        auto has_equivalent{layout.value_types.front().equivalent_type.has_value()};
-        std::vector<std::string> suffixes;
-        std::set<std::string> equivalent_specialisations;
-        for (auto const& value : layout.value_types) {
-            require_identifier_fragment(value.suffix,
-                                        "Homogeneous layout '" + layout.name + "' value suffix");
-            suffixes.push_back(value.suffix);
-            auto const storage_name{"F" + layout.name + value.suffix};
-            if (!storage_names.insert(storage_name).second) {
-                throw std::invalid_argument{"Duplicate homogeneous storage name: " + storage_name};
-            }
-            validate_type(value.type, types, "Homogeneous layout '" + layout.name + "'");
-            if (value.equivalent_type.has_value() != has_equivalent) {
-                throw std::invalid_argument{"Homogeneous layout '" + layout.name +
-                                            "' must define all equivalent types or none"};
-            }
-            if (value.equivalent_type.has_value()) {
-                validate_type(*value.equivalent_type,
-                              types,
-                              "Homogeneous layout '" + layout.name + "' equivalent");
-                auto const value_spelling{resolve_type(value.type, types).spelling};
-                if (!equivalent_specialisations.insert(value_spelling).second) {
-                    throw std::invalid_argument{
-                        "Homogeneous layout '" + layout.name +
-                        "' has duplicate equivalent specialisation: " + value_spelling};
-                }
-            }
-            if (layout.input_members.empty() && layout.components.size() > 3 &&
-                (value.equivalent_type.has_value() || !value.input_types.empty())) {
-                throw std::invalid_argument{"Homogeneous layout '" + layout.name +
-                                            "' input APIs require at most three components without "
-                                            "explicit input members"};
-            }
-            std::set<std::string> input_types;
-            for (auto const& input : value.input_types) {
-                validate_type(input, types, "Homogeneous layout '" + layout.name + "' input");
-                auto const input_spelling{resolve_type(input, types).spelling};
-                if (!input_types.insert(input_spelling).second) {
-                    throw std::invalid_argument{"Homogeneous layout '" + layout.name +
-                                                "' has duplicate input type: " + input_spelling};
-                }
-            }
-        }
-        require_unique_names(suffixes, "Homogeneous layout '" + layout.name + "' value suffixes");
-        validate_export_specifier(layout.export_specifier,
-                                  "Homogeneous layout '" + layout.name + "' export specifier");
-    }
-}
+    require_identifier_fragment(layout.name, "Homogeneous layout name");
 
-void validate_vector(VectorModuleSchema const& module,
-                     std::map<std::string, CppType> const& types) {
-    require_identifier(module.storage_name, "Vector storage name");
-    if (module.components.empty() || module.components.size() > 3) {
-        throw std::invalid_argument{"Vector module '" + module.settings.name +
-                                    "' must have between one and three components"};
+    if (layout.components.empty()) {
+        throw std::invalid_argument{"Homogeneous layout '" + layout.name +
+                                    "' must have components"};
     }
-    require_unique_names(module.components,
-                         "Vector module '" + module.settings.name + "' components");
-    std::set<char> parameter_names;
-    for (auto const& component : module.components) {
-        require_identifier(component, "Vector module '" + module.settings.name + "' component");
+    require_unique_names(layout.components, "Homogeneous layout '" + layout.name + "' components");
+    for (auto const& component : layout.components) {
+        require_identifier(component, "Homogeneous layout '" + layout.name + "' component");
         reject_generated_name_collision(
-            component, "Vector module '" + module.settings.name + "' component", true);
+            component, "Homogeneous layout '" + layout.name + "' component", true);
+    }
+    if (!layout.input_members.empty() && layout.input_members.size() != layout.components.size()) {
+        throw std::invalid_argument{"Homogeneous layout '" + layout.name +
+                                    "' input members must match its components"};
+    }
+    for (auto const& input_member : layout.input_members) {
+        require_identifier(input_member, "Homogeneous layout '" + layout.name + "' input member");
+    }
+    std::set<char> parameter_names;
+    for (auto const& component : layout.components) {
         if (!parameter_names.insert(component.front()).second) {
-            throw std::invalid_argument{"Vector module '" + module.settings.name +
+            throw std::invalid_argument{"Homogeneous layout '" + layout.name +
                                         "' components must have unique initials"};
         }
     }
-    if (!module.equivalent_members.empty()) {
-        if (module.equivalent_members.size() != module.components.size()) {
-            throw std::invalid_argument{"Vector module '" + module.settings.name +
+    if (layout.value_types.empty()) {
+        throw std::invalid_argument{"Homogeneous layout '" + layout.name +
+                                    "' must have value types"};
+    }
+    auto has_equivalent{layout.value_types.front().equivalent_type.has_value()};
+    std::vector<std::string> suffixes;
+    std::set<std::string> equivalent_specialisations;
+    for (auto const& value : layout.value_types) {
+        require_identifier_fragment(value.suffix,
+                                    "Homogeneous layout '" + layout.name + "' value suffix");
+        suffixes.push_back(value.suffix);
+
+        validate_type(value.type, types, "Homogeneous layout '" + layout.name + "'");
+        if (value.equivalent_type.has_value() != has_equivalent) {
+            throw std::invalid_argument{"Homogeneous layout '" + layout.name +
+                                        "' must define all equivalent types or none"};
+        }
+        if (value.equivalent_type.has_value()) {
+            validate_type(*value.equivalent_type,
+                          types,
+                          "Homogeneous layout '" + layout.name + "' equivalent");
+            auto const value_spelling{resolve_type(value.type, types).spelling};
+            if (!equivalent_specialisations.insert(value_spelling).second) {
+                throw std::invalid_argument{
+                    "Homogeneous layout '" + layout.name +
+                    "' has duplicate equivalent specialisation: " + value_spelling};
+            }
+        }
+        if (layout.input_members.empty() && layout.components.size() > 3 &&
+            (value.equivalent_type.has_value() || !value.input_types.empty())) {
+            throw std::invalid_argument{"Homogeneous layout '" + layout.name +
+                                        "' input APIs require at most three components without "
+                                        "explicit input members"};
+        }
+        std::set<std::string> input_types;
+        for (auto const& input : value.input_types) {
+            validate_type(input, types, "Homogeneous layout '" + layout.name + "' input");
+            auto const input_spelling{resolve_type(input, types).spelling};
+            if (!input_types.insert(input_spelling).second) {
+                throw std::invalid_argument{"Homogeneous layout '" + layout.name +
+                                            "' has duplicate input type: " + input_spelling};
+            }
+        }
+    }
+    require_unique_names(suffixes, "Homogeneous layout '" + layout.name + "' value suffixes");
+    validate_export_specifier(layout.export_specifier,
+                              "Homogeneous layout '" + layout.name + "' export specifier");
+}
+
+void validate_vector(VectorSoaSchema const& schema,
+                     ModuleSettings const& settings,
+                     SoaBackend backend,
+                     std::map<std::string, CppType> const& types) {
+    require_identifier(schema.name, "Vector storage name");
+    if (schema.components.empty() || schema.components.size() > 3) {
+        throw std::invalid_argument{"Vector SoA '" + schema.name +
+                                    "' must have between one and three components"};
+    }
+    require_unique_names(schema.components, "Vector SoA '" + schema.name + "' components");
+    std::set<char> parameter_names;
+    for (auto const& component : schema.components) {
+        require_identifier(component, "Vector SoA '" + schema.name + "' component");
+        reject_generated_name_collision(
+            component, "Vector SoA '" + schema.name + "' component", true);
+        if (!parameter_names.insert(component.front()).second) {
+            throw std::invalid_argument{"Vector SoA '" + schema.name +
+                                        "' components must have unique initials"};
+        }
+    }
+    if (!schema.equivalent_members.empty()) {
+        if (schema.equivalent_members.size() != schema.components.size()) {
+            throw std::invalid_argument{"Vector SoA '" + schema.name +
                                         "' equivalent members must match its components"};
         }
-        require_unique_names(module.equivalent_members,
-                             "Vector module '" + module.settings.name + "' equivalent members");
-        for (auto const& member : module.equivalent_members) {
-            require_identifier(member,
-                               "Vector module '" + module.settings.name + "' equivalent member");
+        require_unique_names(schema.equivalent_members,
+                             "Vector SoA '" + schema.name + "' equivalent members");
+        for (auto const& member : schema.equivalent_members) {
+            require_identifier(member, "Vector SoA '" + schema.name + "' equivalent member");
         }
     }
-    if (module.backend == SoaBackend::standard_library && module.equivalent_members.empty()) {
-        throw std::invalid_argument{"Standard-library vector module '" + module.settings.name +
+    if (backend == SoaBackend::standard_library && schema.equivalent_members.empty()) {
+        throw std::invalid_argument{"Standard-library vector SoA '" + schema.name +
                                     "' must declare equivalent members"};
     }
-    if (module.equivalent_constructor.has_value()) {
-        require_qualified_identifier(*module.equivalent_constructor,
-                                     "Vector module '" + module.settings.name +
-                                         "' equivalent constructor");
+    if (schema.equivalent_constructor.has_value()) {
+        require_qualified_identifier(*schema.equivalent_constructor,
+                                     "Vector SoA '" + schema.name + "' equivalent constructor");
     }
-    validate_type(module.value_type, types, "Vector module '" + module.settings.name + "' value");
-    validate_type(
-        module.equivalent_type, types, "Vector module '" + module.settings.name + "' equivalent");
-    validate_export_specifier(module.export_specifier,
-                              "Vector module '" + module.settings.name + "' export specifier");
-    if (module.backend == SoaBackend::standard_library && module.fixed.has_value()) {
-        throw std::invalid_argument{"Standard-library vector module '" + module.settings.name +
+    validate_type(schema.value_type, types, "Vector SoA '" + schema.name + "' value");
+    validate_type(schema.equivalent_type, types, "Vector SoA '" + schema.name + "' equivalent");
+    validate_export_specifier(schema.export_specifier,
+                              "Vector SoA '" + schema.name + "' export specifier");
+    if (backend == SoaBackend::standard_library && schema.fixed.has_value()) {
+        throw std::invalid_argument{"Standard-library vector SoA '" + schema.name +
                                     "' does not support fixed storage"};
     }
-    if (module.backend == SoaBackend::standard_library && module.settings.source.has_value()) {
-        throw std::invalid_argument{"Standard-library vector module '" + module.settings.name +
-                                    "' must be header-only"};
-    }
-    if (module.backend == SoaBackend::unreal && !module.settings.source.has_value()) {
-        throw std::invalid_argument{"Vector module '" + module.settings.name +
-                                    "' must have a source output"};
+
+    if (backend == SoaBackend::unreal && !settings.source.has_value()) {
+        throw std::invalid_argument{"Vector SoA '" + schema.name + "' must have a source output"};
     }
 }
 
-void validate_facade(FacadeModuleSchema const& module,
-                     std::map<std::string, CppType> const& types,
-                     bool const allow_unused_source = false) {
-    auto const& facade{module.facade};
+void validate_facade(FacadeSchema const& facade,
+                     ModuleSettings const& settings,
+                     std::map<std::string, CppType> const& types) {
     require_identifier(facade.name, "Facade name");
     require_identifier(facade.target_member_name, "Facade '" + facade.name + "' target member");
     validate_type(facade.target_type, types, "Facade '" + facade.name + "' target");
     if (facade.methods.empty()) {
         throw std::invalid_argument{"Facade '" + facade.name + "' must have methods"};
     }
-    if (facade.definitions_in_source && !module.settings.source.has_value()) {
+    if (facade.definitions_in_source && !settings.source.has_value()) {
         throw std::invalid_argument{"Facade '" + facade.name +
                                     "' definitions in source require a source output"};
     }
-    if (!allow_unused_source && !facade.definitions_in_source &&
-        module.settings.source.has_value()) {
-        throw std::invalid_argument{"Facade '" + facade.name +
-                                    "' does not emit source definitions"};
-    }
+
     for (auto const* access : {&facade.bind_access, &facade.method_access}) {
         if (*access != "public" && *access != "private") {
             throw std::invalid_argument{"Facade '" + facade.name +
@@ -2127,17 +1954,10 @@ void validate_settings_module(SettingsModuleSchema const& module,
 }
 
 void validate_normal_module(NormalModuleSchema const& module, Manifest const& manifest) {
-    auto header_only{module.settings};
-    header_only.source.reset();
-    EnumModuleSchema enums{module.settings, module.enum_helper_namespace, {}};
-    ScalarModuleSchema scalars{header_only, {}};
-    RepresentationModuleSchema representations{.settings = header_only};
-    PackedValueModuleSchema packed{header_only, {}};
-    RecordModuleSchema records{header_only, {}};
-    UnionModuleSchema unions{.settings = header_only};
-    SoaModuleSchema soa{module.settings, {}, module.soa_backend, module.soa_array_allocators};
-    StaticTableModuleSchema tables{header_only, {}};
-    HomogeneousModuleSchema homogeneous{module.settings, {}};
+    if (module.enum_helper_namespace.has_value()) {
+        require_qualified_identifier(*module.enum_helper_namespace, "Module helper namespace");
+    }
+    std::vector<SoaSchema> schemas;
     std::set<std::string> names;
     std::set<std::string> generated_names;
     for (auto const& declaration : module.declarations) {
@@ -2155,74 +1975,49 @@ void validate_normal_module(NormalModuleSchema const& module, Manifest const& ma
         std::visit(
             [&](auto const& value) {
                 using T = std::decay_t<decltype(value)>;
-                if constexpr (std::is_same_v<T, EnumSchema>)
-                    enums.enums.push_back(value);
-                else if constexpr (std::is_same_v<T, IntegerScalarSchema>)
-                    scalars.scalars.push_back(value);
-                else if constexpr (std::is_same_v<T, LinearQuantizedSchema>)
-                    representations.linear_quantized.push_back(value);
-                else if constexpr (std::is_same_v<T, IntegerVarintSchema>)
-                    representations.integer_varints.push_back(value);
-                else if constexpr (std::is_same_v<T, FixedPointSchema>)
-                    representations.fixed_points.push_back(value);
-                else if constexpr (std::is_same_v<T, MiniFloatSchema>)
-                    representations.mini_floats.push_back(value);
-                else if constexpr (std::is_same_v<T, OptionalSentinelSchema>)
-                    representations.optional_sentinels.push_back(value);
-                else if constexpr (std::is_same_v<T, OptionalPresenceBitSchema>)
-                    representations.optional_presence_bits.push_back(value);
-                else if constexpr (std::is_same_v<T, PackedValueSchema>)
-                    packed.values.push_back(value);
-                else if constexpr (std::is_same_v<T, RecordSchema>)
-                    records.records.push_back(value);
-                else if constexpr (std::is_same_v<T, UnionSchema>)
-                    unions.unions.push_back(value);
-                else if constexpr (std::is_same_v<T, TaggedUnionSchema>)
-                    unions.tagged_unions.push_back(value);
-                else if constexpr (std::is_same_v<T, SoaSchema>)
-                    soa.structs.push_back(value);
-                else if constexpr (std::is_same_v<T, HomogeneousLayoutSchema>)
-                    homogeneous.layouts.push_back(value);
-                else if constexpr (std::is_same_v<T, StaticTableSchema>)
-                    tables.tables.push_back(value);
-                else if constexpr (std::is_same_v<T, VectorSoaSchema>) {
-                    VectorModuleSchema vector{.settings = module.settings,
-                                              .backend = module.soa_backend,
-                                              .storage_name = value.name,
-                                              .value_type = value.value_type,
-                                              .components = value.components,
-                                              .equivalent_members = value.equivalent_members,
-                                              .equivalent_constructor =
-                                                  value.equivalent_constructor,
-                                              .equivalent_type = value.equivalent_type,
-                                              .export_specifier = value.export_specifier,
-                                              .fixed = value.fixed};
-                    if (vector.backend == SoaBackend::standard_library) {
-                        vector.settings.source.reset();
-                    }
-                    validate_vector(vector, manifest.types);
+                if constexpr (std::is_same_v<T, EnumSchema>) {
+                    validate_enum(value, module, manifest.types);
+                } else if constexpr (std::is_same_v<T, PackedValueSchema>) {
+                    validate_packed_value(value, manifest.types, manifest.modules);
+                } else if constexpr (std::is_same_v<T, RecordSchema>) {
+                    validate_record(value, manifest.types);
+                } else if constexpr (std::is_same_v<T, UnionSchema>) {
+                    validate_union(value, manifest.types);
+                } else if constexpr (std::is_same_v<T, TaggedUnionSchema>) {
+                    validate_tagged_union(value, manifest.types);
+                } else if constexpr (std::is_same_v<T, IntegerScalarSchema>) {
+                    validate_integer_scalar(value, manifest.types);
+                } else if constexpr (std::is_same_v<T, LinearQuantizedSchema>) {
+                    validate_linear_quantized(value, module, manifest.types, manifest.modules);
+                } else if constexpr (std::is_same_v<T, IntegerVarintSchema>) {
+                    validate_integer_varint(value, module, manifest.types, manifest.modules);
+                } else if constexpr (std::is_same_v<T, FixedPointSchema>) {
+                    validate_fixed_point(value);
+                } else if constexpr (std::is_same_v<T, MiniFloatSchema>) {
+                    validate_mini_float(value);
+                } else if constexpr (std::is_same_v<T, OptionalSentinelSchema>) {
+                    validate_optional_sentinel(value, module, manifest.types, manifest.modules);
+                } else if constexpr (std::is_same_v<T, OptionalPresenceBitSchema>) {
+                    validate_optional_presence_bit(value, module, manifest.types, manifest.modules);
+                } else if constexpr (std::is_same_v<T, StaticTableSchema>) {
+                    validate_static_table(value, manifest.types);
+                } else if constexpr (std::is_same_v<T, HomogeneousLayoutSchema>) {
+                    validate_homogeneous(value, module, manifest.types);
+                } else if constexpr (std::is_same_v<T, VectorSoaSchema>) {
+                    validate_vector(value, module.settings, module.soa_backend, manifest.types);
                 } else if constexpr (std::is_same_v<T, FacadeSchema>) {
-                    validate_facade(
-                        FacadeModuleSchema{module.settings, value}, manifest.types, true);
+                    validate_facade(value, module.settings, manifest.types);
+                } else if constexpr (std::is_same_v<T, SoaSchema>) {
+                    schemas.push_back(value);
+                } else {
+                    static_assert(!sizeof(T), "Unhandled declaration validation");
                 }
             },
             declaration);
     }
-    if (!enums.enums.empty()) validate_enum(enums, manifest.types, true);
-    if (!scalars.scalars.empty()) validate_integer_scalars(scalars, manifest.types);
-    if (!representations.linear_quantized.empty() || !representations.integer_varints.empty() ||
-        !representations.fixed_points.empty() || !representations.mini_floats.empty() ||
-        !representations.optional_sentinels.empty() ||
-        !representations.optional_presence_bits.empty()) {
-        validate_representations(representations, manifest.types, manifest.modules);
+    if (!schemas.empty() || !module.soa_array_allocators.empty()) {
+        validate_soa(module, schemas, manifest.types);
     }
-    if (!packed.values.empty()) validate_packed_values(packed, manifest.types, manifest.modules);
-    if (!records.records.empty()) validate_records(records, manifest.types);
-    if (!unions.unions.empty() || !unions.tagged_unions.empty())
-        validate_unions(unions, manifest.types);
-    if (!soa.structs.empty()) validate_soa(soa, manifest.types);
-    if (!tables.tables.empty()) validate_static_table(tables, manifest.types);
-    if (!homogeneous.layouts.empty()) validate_homogeneous(homogeneous, manifest.types);
 }
 
 } // namespace
@@ -2266,28 +2061,6 @@ void validate_manifest(Manifest const& manifest) {
                 using T = std::decay_t<decltype(module)>;
                 if constexpr (std::is_same_v<T, NormalModuleSchema>) {
                     validate_normal_module(module, manifest);
-                } else if constexpr (std::is_same_v<T, EnumModuleSchema>) {
-                    validate_enum(module, manifest.types);
-                } else if constexpr (std::is_same_v<T, PackedValueModuleSchema>) {
-                    validate_packed_values(module, manifest.types, manifest.modules);
-                } else if constexpr (std::is_same_v<T, ScalarModuleSchema>) {
-                    validate_integer_scalars(module, manifest.types);
-                } else if constexpr (std::is_same_v<T, RepresentationModuleSchema>) {
-                    validate_representations(module, manifest.types, manifest.modules);
-                } else if constexpr (std::is_same_v<T, RecordModuleSchema>) {
-                    validate_records(module, manifest.types);
-                } else if constexpr (std::is_same_v<T, UnionModuleSchema>) {
-                    validate_unions(module, manifest.types);
-                } else if constexpr (std::is_same_v<T, SoaModuleSchema>) {
-                    validate_soa(module, manifest.types);
-                } else if constexpr (std::is_same_v<T, StaticTableModuleSchema>) {
-                    validate_static_table(module, manifest.types);
-                } else if constexpr (std::is_same_v<T, HomogeneousModuleSchema>) {
-                    validate_homogeneous(module, manifest.types);
-                } else if constexpr (std::is_same_v<T, VectorModuleSchema>) {
-                    validate_vector(module, manifest.types);
-                } else if constexpr (std::is_same_v<T, FacadeModuleSchema>) {
-                    validate_facade(module, manifest.types);
                 } else if constexpr (std::is_same_v<T, SettingsModuleSchema>) {
                     validate_settings_module(module, manifest.types);
                 } else if constexpr (std::is_same_v<T, UmbrellaModuleSchema>) {

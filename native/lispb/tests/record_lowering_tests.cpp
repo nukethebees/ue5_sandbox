@@ -11,21 +11,19 @@ TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
         .types = {{"value", CppType{"Value", "Project/Value.h"}}},
-        .modules = {RecordModuleSchema{
+        .modules = {NormalModuleSchema{
             .settings = ModuleSettings{.name = "records",
                                        .header = "Records.h",
                                        .namespace_name = "project"},
-            .records =
-                {
-                    RecordSchema{.name = "Position",
-                                 .members = {{.name = "x", .type = TypeRef{"float"}},
-                                             {.name = "y", .type = TypeRef{"float"}}}},
-                    RecordSchema{
-                        .name = "Sample",
-                        .members = {{.name = "position", .type = TypeRef{"Position"}},
-                                    {.name = "values", .type = TypeRef{"@value"}, .count = 3}},
-                        .export_specifier = "PROJECT_API"},
-                }}},
+            .declarations =
+                {RecordSchema{.name = "Position",
+                              .members = {{.name = "x", .type = TypeRef{"float"}},
+                                          {.name = "y", .type = TypeRef{"float"}}}},
+                 RecordSchema{
+                     .name = "Sample",
+                     .members = {{.name = "position", .type = TypeRef{"Position"}},
+                                 {.name = "values", .type = TypeRef{"@value"}, .count = 3}},
+                     .export_specifier = "PROJECT_API"}}}},
     };
 
     auto const files{render_modules(lower_modules(manifest))};
@@ -43,20 +41,23 @@ TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
 }
 
 TEST(RecordLowering, AllowsEmptyAndRejectsDuplicateAndZeroCountMembers) {
-    auto module{RecordModuleSchema{
+    auto module{NormalModuleSchema{
         .settings = ModuleSettings{.name = "records", .header = "Records.h"},
-        .records = {RecordSchema{.name = "Record",
-                                 .members = {{.name = "value", .type = TypeRef{"float"}}}}},
-    }};
+        .declarations = {RecordSchema{.name = "Record",
+                                      .members = {{.name = "value", .type = TypeRef{"float"}}}}}}};
     auto manifest{Manifest{.schema_version = manifest_schema_version, .modules = {module}}};
     EXPECT_NO_THROW(static_cast<void>(lower_modules(manifest)));
 
-    std::get<RecordModuleSchema>(manifest.modules.front()).records.front().members.clear();
+    std::get<codegen::RecordSchema>(
+        std::get<NormalModuleSchema>(manifest.modules.front()).declarations.front())
+        .members.clear();
     auto const files{render_modules(lower_modules(manifest))};
     ASSERT_EQ(files.size(), 1U);
     EXPECT_NE(files.front().content.find("struct Record"), std::string::npos);
 
-    auto& members{std::get<RecordModuleSchema>(manifest.modules.front()).records.front().members};
+    auto& members{std::get<codegen::RecordSchema>(
+                      std::get<NormalModuleSchema>(manifest.modules.front()).declarations.front())
+                      .members};
     members = {{.name = "value", .type = TypeRef{"float"}},
                {.name = "value", .type = TypeRef{"float"}}};
     EXPECT_THROW(static_cast<void>(lower_modules(manifest)), std::invalid_argument);
@@ -68,15 +69,13 @@ TEST(RecordLowering, AllowsEmptyAndRejectsDuplicateAndZeroCountMembers) {
 TEST(RecordLowering, EmitsByValueDependenciesBeforeTheirUsers) {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
-        .modules = {RecordModuleSchema{
+        .modules = {NormalModuleSchema{
             .settings = ModuleSettings{.name = "records", .header = "Records.h"},
-            .records =
-                {
-                    RecordSchema{.name = "Sample",
+            .declarations = {RecordSchema{
+                                 .name = "Sample",
                                  .members = {{.name = "position", .type = TypeRef{"Position"}}}},
-                    RecordSchema{.name = "Position",
-                                 .members = {{.name = "x", .type = TypeRef{"float"}}}},
-                }}},
+                             RecordSchema{.name = "Position",
+                                          .members = {{.name = "x", .type = TypeRef{"float"}}}}}}},
     };
 
     auto const files{render_modules(lower_modules(manifest))};

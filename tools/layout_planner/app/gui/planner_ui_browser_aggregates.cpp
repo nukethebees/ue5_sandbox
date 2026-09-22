@@ -30,25 +30,25 @@ void PlannerUi::draw_new_record_dialog() {
     auto const& modules{document_->manifest().modules};
     auto first_record_module{std::optional<std::size_t>{}};
     for (std::size_t index{}; index < modules.size(); ++index) {
-        if (std::holds_alternative<codegen::RecordModuleSchema>(modules[index])) {
+        if (std::holds_alternative<codegen::NormalModuleSchema>(modules[index])) {
             first_record_module = index;
             break;
         }
     }
     if (!first_record_module.has_value()) {
-        ImGui::TextDisabled("The target has no record module to receive a new declaration.");
+        ImGui::TextDisabled("The target has no ordinary module to receive a new declaration.");
     } else {
         if (new_record_module_index_ >= modules.size() ||
-            !std::holds_alternative<codegen::RecordModuleSchema>(
+            !std::holds_alternative<codegen::NormalModuleSchema>(
                 modules[new_record_module_index_])) {
             new_record_module_index_ = *first_record_module;
         }
         auto const& selected_module{
-            std::get<codegen::RecordModuleSchema>(modules[new_record_module_index_])};
+            std::get<codegen::NormalModuleSchema>(modules[new_record_module_index_])};
         if (!module_initiated_dialog_ &&
             ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
-                auto const* module{std::get_if<codegen::RecordModuleSchema>(&modules[index])};
+                auto const* module{std::get_if<codegen::NormalModuleSchema>(&modules[index])};
                 if (module == nullptr) {
                     continue;
                 }
@@ -71,7 +71,7 @@ void PlannerUi::draw_new_record_dialog() {
                                                                         : "Create"};
         if (ImGui::Button(create_label)) {
             auto const& module{
-                std::get<codegen::RecordModuleSchema>(modules[new_record_module_index_])};
+                std::get<codegen::NormalModuleSchema>(modules[new_record_module_index_])};
             auto const name{std::string{new_record_name_.data()}};
             auto const identity{
                 TypeIdentity{.origin = TypeOrigin::declaration,
@@ -199,24 +199,25 @@ void PlannerUi::draw_new_union_dialog() {
     auto const& modules{document_->manifest().modules};
     auto first_module{std::optional<std::size_t>{}};
     for (std::size_t index{}; index < modules.size(); ++index) {
-        if (std::holds_alternative<codegen::UnionModuleSchema>(modules[index])) {
+        if (std::holds_alternative<codegen::NormalModuleSchema>(modules[index])) {
             first_module = index;
             break;
         }
     }
     if (!first_module.has_value()) {
-        ImGui::TextDisabled("The target has no union module to receive a new declaration.");
+        ImGui::TextDisabled("The target has no ordinary module to receive a new declaration.");
     } else {
         if (new_union_module_index_ >= modules.size() ||
-            !std::holds_alternative<codegen::UnionModuleSchema>(modules[new_union_module_index_])) {
+            !std::holds_alternative<codegen::NormalModuleSchema>(
+                modules[new_union_module_index_])) {
             new_union_module_index_ = *first_module;
         }
         auto const& selected_module{
-            std::get<codegen::UnionModuleSchema>(modules[new_union_module_index_])};
+            std::get<codegen::NormalModuleSchema>(modules[new_union_module_index_])};
         if (!module_initiated_dialog_ &&
             ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
-                auto const* module{std::get_if<codegen::UnionModuleSchema>(&modules[index])};
+                auto const* module{std::get_if<codegen::NormalModuleSchema>(&modules[index])};
                 if (module != nullptr && ImGui::Selectable(module->settings.name.c_str(),
                                                            index == new_union_module_index_)) {
                     new_union_module_index_ = index;
@@ -234,7 +235,7 @@ void PlannerUi::draw_new_union_dialog() {
         ImGui::BeginDisabled(!ready);
         if (ImGui::Button("Create")) {
             auto const& module{
-                std::get<codegen::UnionModuleSchema>(modules[new_union_module_index_])};
+                std::get<codegen::NormalModuleSchema>(modules[new_union_module_index_])};
             auto const name{std::string{new_union_name_.data()}};
             auto const identity{
                 TypeIdentity{.origin = TypeOrigin::declaration,
@@ -297,7 +298,7 @@ void PlannerUi::draw_new_tagged_union_dialog() {
     auto const& modules{document_->manifest().modules};
     auto first_module{std::optional<std::size_t>{}};
     for (std::size_t index{}; index < modules.size(); ++index) {
-        if (std::holds_alternative<codegen::UnionModuleSchema>(modules[index])) {
+        if (std::holds_alternative<codegen::NormalModuleSchema>(modules[index])) {
             first_module = index;
             break;
         }
@@ -330,21 +331,21 @@ void PlannerUi::draw_new_tagged_union_dialog() {
     }
 
     if (!first_module.has_value()) {
-        ImGui::TextDisabled("The target has no union module to receive a new declaration.");
+        ImGui::TextDisabled("The target has no ordinary module to receive a new declaration.");
     } else if (first_enum == enum_types.end()) {
         ImGui::TextDisabled("The target has no enum to use as a discriminant.");
     } else {
         if (new_tagged_union_module_index_ >= modules.size() ||
-            !std::holds_alternative<codegen::UnionModuleSchema>(
+            !std::holds_alternative<codegen::NormalModuleSchema>(
                 modules[new_tagged_union_module_index_])) {
             new_tagged_union_module_index_ = *first_module;
         }
         auto const& selected_module{
-            std::get<codegen::UnionModuleSchema>(modules[new_tagged_union_module_index_])};
+            std::get<codegen::NormalModuleSchema>(modules[new_tagged_union_module_index_])};
         if (!module_initiated_dialog_ &&
             ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
-                auto const* module{std::get_if<codegen::UnionModuleSchema>(&modules[index])};
+                auto const* module{std::get_if<codegen::NormalModuleSchema>(&modules[index])};
                 if (module != nullptr &&
                     ImGui::Selectable(module->settings.name.c_str(),
                                       index == new_tagged_union_module_index_)) {
@@ -404,7 +405,7 @@ void PlannerUi::draw_new_tagged_union_dialog() {
         ImGui::BeginDisabled(!ready);
         if (ImGui::Button("Create")) {
             auto const& module{
-                std::get<codegen::UnionModuleSchema>(modules[new_tagged_union_module_index_])};
+                std::get<codegen::NormalModuleSchema>(modules[new_tagged_union_module_index_])};
             auto const name{std::string{new_tagged_union_name_.data()}};
             auto const identity{
                 TypeIdentity{.origin = TypeOrigin::declaration,
@@ -467,8 +468,8 @@ void PlannerUi::draw_new_soa_dialog() {
     auto const& modules{document_->manifest().modules};
     auto first_soa_module{std::optional<std::size_t>{}};
     for (std::size_t index{}; index < modules.size(); ++index) {
-        auto const* module{std::get_if<codegen::SoaModuleSchema>(&modules[index])};
-        if (module != nullptr && module->backend == codegen::SoaBackend::standard_library) {
+        auto const* module{std::get_if<codegen::NormalModuleSchema>(&modules[index])};
+        if (module != nullptr && module->soa_backend == codegen::SoaBackend::standard_library) {
             first_soa_module = index;
             break;
         }
@@ -481,19 +482,21 @@ void PlannerUi::draw_new_soa_dialog() {
                 return false;
             }
             auto const* module{
-                std::get_if<codegen::SoaModuleSchema>(&modules[new_soa_module_index_])};
-            return module != nullptr && module->backend == codegen::SoaBackend::standard_library;
+                std::get_if<codegen::NormalModuleSchema>(&modules[new_soa_module_index_])};
+            return module != nullptr &&
+                   module->soa_backend == codegen::SoaBackend::standard_library;
         }()};
         if (!selected_valid) {
             new_soa_module_index_ = *first_soa_module;
         }
         auto const& selected_module{
-            std::get<codegen::SoaModuleSchema>(modules[new_soa_module_index_])};
+            std::get<codegen::NormalModuleSchema>(modules[new_soa_module_index_])};
         if (!module_initiated_dialog_ &&
             ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
-                auto const* module{std::get_if<codegen::SoaModuleSchema>(&modules[index])};
-                if (module == nullptr || module->backend != codegen::SoaBackend::standard_library) {
+                auto const* module{std::get_if<codegen::NormalModuleSchema>(&modules[index])};
+                if (module == nullptr ||
+                    module->soa_backend != codegen::SoaBackend::standard_library) {
                     continue;
                 }
                 if (ImGui::Selectable(module->settings.name.c_str(),
@@ -511,7 +514,8 @@ void PlannerUi::draw_new_soa_dialog() {
         auto const ready{new_soa_name_.front() != '\0' && new_soa_member_type_.front() != '\0'};
         ImGui::BeginDisabled(!ready);
         if (ImGui::Button("Create")) {
-            auto const& module{std::get<codegen::SoaModuleSchema>(modules[new_soa_module_index_])};
+            auto const& module{
+                std::get<codegen::NormalModuleSchema>(modules[new_soa_module_index_])};
             auto const name{std::string{new_soa_name_.data()}};
             auto const identity{
                 TypeIdentity{.origin = TypeOrigin::declaration,

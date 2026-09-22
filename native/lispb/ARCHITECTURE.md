@@ -23,16 +23,10 @@ includes, and prelude remain module-wide policies. Settings modules remain speci
 describe generated settings integration rather than independent semantic types; umbrella modules
 remain special because they aggregate existing outputs.
 
-The parser accepts older family-specific module heads as compatibility input and normalizes them
-to `NormalModuleSchema` before validation or graph resolution. Repository schemas use `(module)`.
-`EditableSchemaDocument` records the original persisted module head with its source range. An edit
-that remains representable by that legacy head preserves it; an edit that introduces another
-declaration family upgrades just that source module to canonical `(module ...)` before save.
-This prevents a valid in-memory heterogeneous module from becoming invalid persisted input while
-preserving unrelated source text whenever a head-only rewrite is sufficient.
-Older C++ module structs remain temporarily accepted by the programmatic `Manifest` API; they
-are not emitted by the source loader. Removing that programmatic compatibility surface and its
-legacy validation/lowering paths is a follow-up boundary, not an alternative persisted model.
+`ModuleSchema` contains only `NormalModuleSchema`, `SettingsModuleSchema`, and
+`UmbrellaModuleSchema`. Declaration-family module types and parser heads no longer exist.
+The parser constructs the canonical declaration representation directly; validation, editing,
+graph resolution, and generation consume it without a conversion pass.
 
 The `TypeGraph` resolves normal declarations directly in sequence. Its `TypeIdentity` remains
 origin, module name, C++ namespace, and declaration name; its `TypeId` values are per-resolution
@@ -45,13 +39,16 @@ include requirements in a `DeclarationEmission`; a common assembler applies the 
 include order, prelude, namespace, and output envelopes. Explicit declaration-specific C++
 operations remain visible in their lowerers. The CLI calls the target compiler library to
 compile and publish targets; compiler selection is not embedded in argument parsing.
+Emission places same-module record and union physical dependencies before their users, including
+tagged-union discriminants. This leaves source declaration indices unchanged and does not order
+declarations by semantic navigation relationships.
 
 Declaration metadata is exhaustive: semantic-TypeGraph contribution, canonical source rendering,
 and generated C++ names are each derived by visiting `DeclarationSchema`. Generated-name ownership
 includes public helper types such as SoA views and homogeneous storage/view traits, so validation
 can reject cross-declaration collisions before lowering a heterogeneous output module.
-SoA array-allocator variants use one validation and expansion policy for canonical and legacy
-programmatic modules; they are limited to plain dynamic Unreal SoAs and their prefixed generated
+SoA array-allocator variants use one validation and expansion policy; they are limited to plain
+dynamic Unreal SoAs and their prefixed generated
 types are checked before lowering.
 
 `EditableSchemaDocument` owns the manifest draft, source-file and declaration ranges, stable

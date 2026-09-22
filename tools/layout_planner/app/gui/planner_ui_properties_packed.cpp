@@ -1018,7 +1018,8 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         auto fallback_enum_module_index{std::optional<std::size_t>{}};
         auto const& modules{document_->manifest().modules};
         for (std::size_t module_index{}; module_index < modules.size(); ++module_index) {
-            auto const* enum_module{std::get_if<codegen::EnumModuleSchema>(&modules[module_index])};
+            auto const* enum_module{
+                std::get_if<codegen::NormalModuleSchema>(&modules[module_index])};
             if (enum_module == nullptr) {
                 continue;
             }
@@ -1039,11 +1040,13 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             auto const suggested_name{suggested_type_name(selected_schema_field->name, "Type")};
             std::snprintf(
                 new_enum_name_.data(), new_enum_name_.size(), "%s", suggested_name.c_str());
-            auto& enum_module{std::get<codegen::EnumModuleSchema>(modules[new_enum_module_index_])};
+            auto& enum_module{
+                std::get<codegen::NormalModuleSchema>(modules[new_enum_module_index_])};
             auto unique_name{std::string{new_enum_name_.data()}};
             auto suffix_number{std::size_t{1}};
-            while (std::ranges::find(enum_module.enums, unique_name, &codegen::EnumSchema::name) !=
-                   enum_module.enums.end()) {
+            while (std::ranges::find(enum_module.declarations,
+                                     unique_name,
+                                     codegen::declaration_name) != enum_module.declarations.end()) {
                 unique_name = std::string{new_enum_name_.data()} + std::to_string(suffix_number++);
             }
             std::snprintf(new_enum_name_.data(), new_enum_name_.size(), "%s", unique_name.c_str());
@@ -1059,7 +1062,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         ImGui::EndDisabled();
         if (!enum_module_index.has_value()) {
             ImGui::SameLine();
-            ImGui::TextDisabled("No enum module is available.");
+            ImGui::TextDisabled("no ordinary module is available.");
         } else if (selected_resolved_field == nullptr) {
             ImGui::SameLine();
             ImGui::TextDisabled("The selected field width is unresolved.");
@@ -1072,7 +1075,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         auto fallback_scalar_module_index{std::optional<std::size_t>{}};
         for (std::size_t module_index{}; module_index < modules.size(); ++module_index) {
             auto const* scalar_module{
-                std::get_if<codegen::ScalarModuleSchema>(&modules[module_index])};
+                std::get_if<codegen::NormalModuleSchema>(&modules[module_index])};
             if (scalar_module == nullptr) {
                 continue;
             }
@@ -1096,7 +1099,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         if (ImGui::Button("Create integer scalar for selected field...")) {
             new_integer_scalar_module_index_ = *scalar_module_index;
             auto const& scalar_module{
-                std::get<codegen::ScalarModuleSchema>(modules[new_integer_scalar_module_index_])};
+                std::get<codegen::NormalModuleSchema>(modules[new_integer_scalar_module_index_])};
             auto const scalar_namespace{scalar_module.settings.namespace_name.value_or("")};
             auto const suggested_name{suggested_type_name(selected_schema_field->name, "Value")};
             auto unique_name{suggested_name};
@@ -1155,7 +1158,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         ImGui::EndDisabled();
         if (!scalar_module_index.has_value()) {
             ImGui::SameLine();
-            ImGui::TextDisabled("No scalar module is available.");
+            ImGui::TextDisabled("no ordinary module is available.");
         } else if (selected_integer_scalar != nullptr) {
             ImGui::SameLine();
             ImGui::TextDisabled("This field already uses a shared integer scalar.");
@@ -1171,7 +1174,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         auto fallback_representation_module_index{std::optional<std::size_t>{}};
         for (std::size_t module_index{}; module_index < modules.size(); ++module_index) {
             auto const* representation_module{
-                std::get_if<codegen::RepresentationModuleSchema>(&modules[module_index])};
+                std::get_if<codegen::NormalModuleSchema>(&modules[module_index])};
             if (representation_module == nullptr) {
                 continue;
             }
@@ -1199,8 +1202,8 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         ImGui::BeginDisabled(!representation_module_index.has_value() || !plain_integer_field);
         if (ImGui::Button("Create fixed point for selected field...")) {
             new_fixed_point_module_index_ = *representation_module_index;
-            auto const& module{std::get<codegen::RepresentationModuleSchema>(
-                modules[new_fixed_point_module_index_])};
+            auto const& module{
+                std::get<codegen::NormalModuleSchema>(modules[new_fixed_point_module_index_])};
             auto const namespace_name{module.settings.namespace_name.value_or("")};
             auto const suggested_name{suggested_type_name(selected_schema_field->name, "Fixed")};
             auto unique_name{suggested_name};
@@ -1231,7 +1234,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         ImGui::EndDisabled();
         if (!representation_module_index.has_value()) {
             ImGui::SameLine();
-            ImGui::TextDisabled("No representation module is available.");
+            ImGui::TextDisabled("no ordinary module is available.");
         } else if (!plain_integer_field) {
             ImGui::SameLine();
             ImGui::TextDisabled("Requires a plain integer field without local semantic metadata.");
@@ -1248,8 +1251,8 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         ImGui::BeginDisabled(!representation_module_index.has_value() || !mini_float_compatible);
         if (ImGui::Button("Create mini float for selected field...")) {
             new_mini_float_module_index_ = *representation_module_index;
-            auto const& module{std::get<codegen::RepresentationModuleSchema>(
-                modules[new_mini_float_module_index_])};
+            auto const& module{
+                std::get<codegen::NormalModuleSchema>(modules[new_mini_float_module_index_])};
             auto const namespace_name{module.settings.namespace_name.value_or("")};
             auto const suggested_name{suggested_type_name(selected_schema_field->name, "Float")};
             auto unique_name{suggested_name};
@@ -1280,7 +1283,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         ImGui::EndDisabled();
         if (!representation_module_index.has_value()) {
             ImGui::SameLine();
-            ImGui::TextDisabled("No representation module is available.");
+            ImGui::TextDisabled("no ordinary module is available.");
         } else if (!mini_float_compatible) {
             ImGui::SameLine();
             ImGui::TextDisabled("Requires a plain integer field with at least two encoding bits.");

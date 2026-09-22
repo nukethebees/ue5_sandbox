@@ -17,9 +17,9 @@ auto text_literal(std::string_view const value) -> Expr {
                 {string_literal(value)});
 }
 
-auto qualified_enum_name(EnumModuleSchema const& module, EnumSchema const& schema) -> std::string {
-    if (module.settings.namespace_name.has_value()) {
-        return *module.settings.namespace_name + "::" + schema.name;
+auto qualified_enum_name(ModuleSettings const& settings, EnumSchema const& schema) -> std::string {
+    if (settings.namespace_name.has_value()) {
+        return *settings.namespace_name + "::" + schema.name;
     }
     return schema.name;
 }
@@ -49,21 +49,21 @@ auto internal_name(EnumSchema const& schema, std::string_view const suffix) -> s
     return "get_" + snake_case_type_name(schema.name) + "_" + std::string{suffix};
 }
 
-auto enum_traits(EnumModuleSchema const& module, EnumSchema const& schema) -> Node {
+auto enum_traits(ModuleSettings const& settings, EnumSchema const& schema) -> Node {
     auto const count{
         schema.count.has_value()
             ? static_cast_expr("int32",
-                               named(qualified_enum_name(module, schema) + "::" + *schema.count))
+                               named(qualified_enum_name(settings, schema) + "::" + *schema.count))
             : literal(std::to_string(schema.values.size()))};
     return Struct{
-        .name = "TEnumTraits<" + qualified_enum_name(module, schema) + ">",
+        .name = "TEnumTraits<" + qualified_enum_name(settings, schema) + ">",
         .children = {Member{"int32", "count", count, {.is_static = true, .is_constexpr = true}}},
         .template_parameters = "",
     };
 }
 
-auto exact_lookup(EnumModuleSchema const& module, EnumSchema const& schema) -> FunctionSpec {
-    auto const enum_name{qualified_enum_name(module, schema)};
+auto exact_lookup(ModuleSettings const& settings, EnumSchema const& schema) -> FunctionSpec {
+    auto const enum_name{qualified_enum_name(settings, schema)};
     NodeListBuilder body;
     std::vector<SwitchCase> cases;
     for (auto const& value : schema.values) {
@@ -87,8 +87,8 @@ auto exact_lookup(EnumModuleSchema const& module, EnumSchema const& schema) -> F
     };
 }
 
-auto display_lookup(EnumModuleSchema const& module, EnumSchema const& schema) -> FunctionSpec {
-    auto const enum_name{qualified_enum_name(module, schema)};
+auto display_lookup(ModuleSettings const& settings, EnumSchema const& schema) -> FunctionSpec {
+    auto const enum_name{qualified_enum_name(settings, schema)};
     std::vector<SwitchCase> cases;
     for (auto const& value : schema.values) {
         if (!value.display_name.has_value()) {
@@ -112,8 +112,8 @@ auto display_lookup(EnumModuleSchema const& module, EnumSchema const& schema) ->
     };
 }
 
-auto serialized_lookup(EnumModuleSchema const& module, EnumSchema const& schema) -> FunctionSpec {
-    auto const enum_name{qualified_enum_name(module, schema)};
+auto serialized_lookup(ModuleSettings const& settings, EnumSchema const& schema) -> FunctionSpec {
+    auto const enum_name{qualified_enum_name(settings, schema)};
     NodeListBuilder body;
     std::vector<SwitchCase> cases;
     for (auto const& value : schema.values) {
@@ -140,8 +140,8 @@ auto serialized_lookup(EnumModuleSchema const& module, EnumSchema const& schema)
     };
 }
 
-auto serialized_parser(EnumModuleSchema const& module, EnumSchema const& schema) -> FunctionSpec {
-    auto const enum_name{qualified_enum_name(module, schema)};
+auto serialized_parser(ModuleSettings const& settings, EnumSchema const& schema) -> FunctionSpec {
+    auto const enum_name{qualified_enum_name(settings, schema)};
     NodeListBuilder body;
     for (auto const& value : schema.values) {
         if (!value.serialized_name.has_value()) {
@@ -169,22 +169,22 @@ auto serialized_parser(EnumModuleSchema const& module, EnumSchema const& schema)
     };
 }
 
-auto conversion_spec(EnumModuleSchema const& module,
+auto conversion_spec(ModuleSettings const& settings,
                      EnumSchema const& schema,
-                     EnumConversion const conversion) -> FunctionSpec {
+                     EnumConversion const conversion,
+                     std::optional<std::string> const& helper_namespace) -> FunctionSpec {
     if (conversion == EnumConversion::try_parse_serialized) {
-        return serialized_parser(module, schema);
+        return serialized_parser(settings, schema);
     }
-    auto const enum_name{qualified_enum_name(module, schema)};
+    auto const enum_name{qualified_enum_name(settings, schema)};
     auto const display{conversion == EnumConversion::lex_to_display_string ||
                        conversion == EnumConversion::display_string_view ||
                        conversion == EnumConversion::display_string};
     auto const serialized{conversion == EnumConversion::lex_to_serialized_string};
     auto const lexical{conversion == EnumConversion::lex_to_string ||
                        conversion == EnumConversion::lex_to_display_string || serialized};
-    auto const helper_in_type_namespace{
-        module.helper_namespace.value_or(module.settings.namespace_name.value_or("")) ==
-        module.settings.namespace_name.value_or("")};
+    auto const helper_in_type_namespace{helper_namespace.value_or(settings.namespace_name.value_or(
+                                            "")) == settings.namespace_name.value_or("")};
     auto const parameter_type{lexical || helper_in_type_namespace ? schema.name : enum_name};
     auto const lookup{
         call(named(internal_name(
@@ -251,20 +251,13 @@ auto annotation(EnumeratorSchema const& value, bool const reflected) -> std::opt
     return "UMETA(" + join(metadata, ", ") + ")";
 }
 
-auto wrapped(std::optional<std::string> const& namespace_name, Nodes nodes) -> Nodes {
-    if (!namespace_name.has_value() || nodes.empty()) {
-        return nodes;
-    }
-    return {Namespace{*namespace_name, std::move(nodes)}};
-}
-
 auto native_string_literal(std::string_view const value) -> std::string {
     return render(string_literal(value));
 }
 
-auto native_enum_name(EnumModuleSchema const& module, EnumSchema const& schema) -> std::string {
-    return module.settings.namespace_name.has_value()
-             ? "::" + *module.settings.namespace_name + "::" + schema.name
+auto native_enum_name(ModuleSettings const& settings, EnumSchema const& schema) -> std::string {
+    return settings.namespace_name.has_value()
+             ? "::" + *settings.namespace_name + "::" + schema.name
              : "::" + schema.name;
 }
 
@@ -393,8 +386,8 @@ auto native_enum_declaration(EnumSchema const& schema, std::map<std::string, Cpp
     return output.str();
 }
 
-auto native_enum_traits(EnumModuleSchema const& module, EnumSchema const& schema) -> std::string {
-    auto const qualified{native_enum_name(module, schema)};
+auto native_enum_traits(ModuleSettings const& settings, EnumSchema const& schema) -> std::string {
+    auto const qualified{native_enum_name(settings, schema)};
     auto const values{enum_values(schema)};
     std::ostringstream output;
     output << "template <>\nstruct EnumTraits<" << qualified << "> {\n";
@@ -473,10 +466,10 @@ auto unreal_projection_header(EnumSchema const& schema,
     return output.str();
 }
 
-auto unreal_conversion_header(EnumModuleSchema const& module,
+auto unreal_conversion_header(ModuleSettings const& settings,
                               EnumSchema const& schema,
                               EnumUnrealProjection const& projection) -> std::string {
-    auto const native_name{native_enum_name(module, schema)};
+    auto const native_name{native_enum_name(settings, schema)};
     std::ostringstream output;
     output << "namespace ml {\n"
            << "[[nodiscard]] constexpr auto to_native(" << projection.name
@@ -509,79 +502,12 @@ auto unreal_conversion_header(EnumModuleSchema const& module,
     return output.str();
 }
 
-auto lower_native_enum_module(EnumModuleSchema const& module,
-                              std::map<std::string, CppType> const& types) -> std::vector<Module> {
-    NodeListBuilder native_nodes;
-    native_nodes.add(Include{"array", true}, 2)
-        .add(Include{"cstdint", true}, 2)
-        .add(Include{"cstddef", true}, 2)
-        .add(Include{"optional", true}, 2)
-        .add(Include{"string_view", true}, 2)
-        .add(Include{"sandbox/core/enum_traits.h", false}, 2);
-
-    NodeListBuilder enum_nodes;
-    for (auto const& schema : module.enums) {
-        enum_nodes.add(raw(native_enum_declaration(schema, types)), 2);
-    }
-    native_nodes.append(wrapped(module.settings.namespace_name, enum_nodes.build()));
-
-    NodeListBuilder trait_nodes;
-    for (auto const& schema : module.enums) {
-        trait_nodes.add(raw(native_enum_traits(module, schema)), 2);
-    }
-    native_nodes.add(Namespace{"ml", trait_nodes.build()}, 2);
-
-    std::vector<Module> result;
-    result.push_back(Module{
-        .name = module.settings.name,
-        .header =
-            CppFile{
-                .path = module.settings.header,
-                .nodes = native_nodes.build(),
-                .clang_format_off = true,
-                .include_order = module.settings.include_order,
-            },
-    });
-
-    for (auto const& schema : module.enums) {
-        if (!schema.unreal_projection.has_value()) {
-            continue;
-        }
-        auto const& projection{*schema.unreal_projection};
-        auto const generated_header{projection.header.stem().string() + ".generated.h"};
-        result.push_back(Module{
-            .name = module.settings.name + "_" + projection.name,
-            .header =
-                CppFile{
-                    .path = projection.header,
-                    .nodes = {Include{"CoreMinimal.h", false},
-                              Include{generated_header, false},
-                              raw(unreal_projection_header(schema, projection, types))},
-                    .clang_format_off = true,
-                },
-        });
-        result.push_back(Module{
-            .name = module.settings.name + "_" + projection.name + "_conversion",
-            .header =
-                CppFile{
-                    .path = projection.conversion_header,
-                    .nodes = {Include{projection.native_header_include, false},
-                              Include{projection.header_include, false},
-                              raw(unreal_conversion_header(module, schema, projection))},
-                    .clang_format_off = true,
-                },
-        });
-    }
-    return result;
-}
-
 } // namespace
 
 auto lower_enum(EnumSchema const& schema,
                 ModuleSettings const& settings,
                 std::optional<std::string> const& helper_namespace,
                 std::map<std::string, CppType> const& types) -> DeclarationEmission {
-    EnumModuleSchema const context{settings, helper_namespace, {}};
     DeclarationEmission emission;
     emission.source_dependencies = false;
     if (schema.native_api) {
@@ -594,7 +520,7 @@ auto lower_enum(EnumSchema const& schema,
             .add(Include{"sandbox/core/enum_traits.h", false}, 2);
         emission.header_prefix = prefix.build();
         emission.header = {raw(native_enum_declaration(schema, types))};
-        emission.header_global = {Namespace{"ml", {raw(native_enum_traits(context, schema))}}};
+        emission.header_global = {Namespace{"ml", {raw(native_enum_traits(settings, schema))}}};
         if (schema.unreal_projection.has_value()) {
             auto const& projection{*schema.unreal_projection};
             auto const generated_header{projection.header.stem().string() + ".generated.h"};
@@ -613,7 +539,7 @@ auto lower_enum(EnumSchema const& schema,
                     CppFile{.path = projection.conversion_header,
                             .nodes = {Include{projection.native_header_include, false},
                                       Include{projection.header_include, false},
-                                      raw(unreal_conversion_header(context, schema, projection))},
+                                      raw(unreal_conversion_header(settings, schema, projection))},
                             .clang_format_off = true},
             });
         }
@@ -642,13 +568,13 @@ auto lower_enum(EnumSchema const& schema,
                      2);
     if (schema.enum_array) {
         emission.header_prefix.push_back(Include{"SandboxCore/enum_array.h", false});
-        emission.header_global.push_back(enum_traits(context, schema));
+        emission.header_global.push_back(enum_traits(settings, schema));
     }
 
     NodeListBuilder lex_declarations;
     NodeListBuilder helper_declarations;
     for (auto const conversion : schema.conversions) {
-        auto spec{conversion_spec(context, schema, conversion)};
+        auto spec{conversion_spec(settings, schema, conversion, helper_namespace)};
         auto const lexical{conversion == EnumConversion::lex_to_string ||
                            conversion == EnumConversion::lex_to_display_string ||
                            conversion == EnumConversion::lex_to_serialized_string};
@@ -678,18 +604,18 @@ auto lower_enum(EnumSchema const& schema,
                                        conversion == EnumConversion::string;
                             })};
         if (has_name) {
-            internal.add(Function{exact_lookup(context, schema), std::nullopt, false, false}, 2);
+            internal.add(Function{exact_lookup(settings, schema), std::nullopt, false, false}, 2);
         }
         if (has_display) {
-            internal.add(Function{display_lookup(context, schema), std::nullopt, false, false}, 2);
+            internal.add(Function{display_lookup(settings, schema), std::nullopt, false, false}, 2);
         }
         if (std::ranges::find(schema.conversions, EnumConversion::lex_to_serialized_string) !=
             schema.conversions.end()) {
-            internal.add(Function{serialized_lookup(context, schema), std::nullopt, false, false},
+            internal.add(Function{serialized_lookup(settings, schema), std::nullopt, false, false},
                          2);
         }
         for (auto const conversion : schema.conversions) {
-            auto spec{conversion_spec(context, schema, conversion)};
+            auto spec{conversion_spec(settings, schema, conversion, helper_namespace)};
             auto const is_lexical{conversion == EnumConversion::lex_to_string ||
                                   conversion == EnumConversion::lex_to_display_string ||
                                   conversion == EnumConversion::lex_to_serialized_string};
@@ -702,151 +628,6 @@ auto lower_enum(EnumSchema const& schema,
         emission.tail_namespace = helper_namespace.value_or(settings.namespace_name.value_or(""));
     }
     return emission;
-}
-
-auto lower_enum_module(EnumModuleSchema const& module, std::map<std::string, CppType> const& types)
-    -> std::vector<Module> {
-    if (std::ranges::any_of(module.enums,
-                            [](EnumSchema const& schema) { return schema.native_api; })) {
-        return lower_native_enum_module(module, types);
-    }
-    NodeListBuilder declarations;
-    NodeListBuilder traits;
-    bool has_reflected{};
-    bool has_enum_arrays{};
-    for (auto const& schema : module.enums) {
-        auto const reflected{schema.reflection != EnumReflection::none};
-        has_reflected = has_reflected || reflected;
-        has_enum_arrays = has_enum_arrays || schema.enum_array;
-        if (reflected) {
-            declarations.add(raw(schema.reflection == EnumReflection::blueprint
-                                     ? "UENUM(BlueprintType)"
-                                     : "UENUM()",
-                                 {TypeDependency{"UENUM", "CoreMinimal.h", {}}}),
-                             1);
-        }
-        std::vector<Enumerator> values;
-        for (auto const& value : schema.values) {
-            values.push_back(Enumerator{
-                .name = value.name,
-                .initializer = value.initializer,
-                .annotation = annotation(value, reflected),
-            });
-        }
-        declarations.add(
-            Enum{
-                .name = schema.name,
-                .underlying_type = enum_underlying_type(schema, types),
-                .values = std::move(values),
-            },
-            2);
-        if (schema.enum_array) {
-            traits.add(enum_traits(module, schema), 2);
-        }
-    }
-
-    NodeListBuilder lex_declarations;
-    NodeListBuilder helper_declarations;
-    for (auto const& schema : module.enums) {
-        for (auto const conversion : schema.conversions) {
-            auto spec{conversion_spec(module, schema, conversion)};
-            auto const lexical{conversion == EnumConversion::lex_to_string ||
-                               conversion == EnumConversion::lex_to_display_string ||
-                               conversion == EnumConversion::lex_to_serialized_string};
-            (lexical ? lex_declarations : helper_declarations).add(declaration(std::move(spec)), 2);
-        }
-    }
-
-    NodeListBuilder header_nodes;
-    header_nodes.add(IncludeDependencies{}, 2);
-    if (has_enum_arrays) {
-        header_nodes.add(Include{"SandboxCore/enum_array.h", false}, 2);
-    }
-    if (has_reflected) {
-        header_nodes.add(Include{module.settings.header.stem().string() + ".generated.h", false},
-                         2);
-    }
-    if (!module.settings.prelude_lines.empty()) {
-        header_nodes.add(raw(join_lines(module.settings.prelude_lines)), 2);
-    }
-    header_nodes.append(wrapped(module.settings.namespace_name, declarations.build()))
-        .append(traits.build())
-        .append(wrapped(module.settings.namespace_name, lex_declarations.build()))
-        .append(wrapped(module.helper_namespace.has_value() ? module.helper_namespace
-                                                            : module.settings.namespace_name,
-                        helper_declarations.build()));
-
-    Module result{
-        .name = module.settings.name,
-        .header =
-            CppFile{
-                .path = module.settings.header,
-                .nodes = header_nodes.build(),
-                .clang_format_off = true,
-                .include_order = module.settings.include_order,
-            },
-    };
-    if (!module.settings.source.has_value()) {
-        return {std::move(result)};
-    }
-
-    NodeListBuilder internal_definitions;
-    NodeListBuilder lex_definitions;
-    NodeListBuilder helper_definitions;
-    for (auto const& schema : module.enums) {
-        if (schema.conversions.empty()) {
-            continue;
-        }
-        auto const has_display_conversion{
-            std::ranges::any_of(schema.conversions, [](EnumConversion const conversion) {
-                return conversion == EnumConversion::lex_to_display_string ||
-                       conversion == EnumConversion::display_string_view ||
-                       conversion == EnumConversion::display_string;
-            })};
-        auto const has_name_conversion{
-            has_display_conversion ||
-            std::ranges::any_of(schema.conversions, [](EnumConversion const conversion) {
-                return conversion == EnumConversion::lex_to_string ||
-                       conversion == EnumConversion::string_view ||
-                       conversion == EnumConversion::string;
-            })};
-        if (has_name_conversion) {
-            internal_definitions.add(
-                Function{exact_lookup(module, schema), std::nullopt, false, false}, 2);
-        }
-        if (has_display_conversion) {
-            internal_definitions.add(
-                Function{display_lookup(module, schema), std::nullopt, false, false}, 2);
-        }
-        if (std::ranges::find(schema.conversions, EnumConversion::lex_to_serialized_string) !=
-            schema.conversions.end()) {
-            internal_definitions.add(
-                Function{serialized_lookup(module, schema), std::nullopt, false, false}, 2);
-        }
-        for (auto const conversion : schema.conversions) {
-            auto spec{conversion_spec(module, schema, conversion)};
-            auto const lexical{conversion == EnumConversion::lex_to_string ||
-                               conversion == EnumConversion::lex_to_display_string ||
-                               conversion == EnumConversion::lex_to_serialized_string};
-            (lexical ? lex_definitions : helper_definitions)
-                .add(Function{std::move(spec), std::nullopt, false, false}, 2);
-        }
-    }
-    NodeListBuilder source_nodes;
-    source_nodes.add(Include{source_include(module.settings), false}, 2)
-        .add(Namespace{"", internal_definitions.build()}, 2)
-        .append(wrapped(module.settings.namespace_name, lex_definitions.build()))
-        .append(wrapped(module.helper_namespace.has_value() ? module.helper_namespace
-                                                            : module.settings.namespace_name,
-                        helper_definitions.build()));
-    result.source = CppFile{
-        .path = *module.settings.source,
-        .nodes = source_nodes.build(),
-        .pragma_once = false,
-        .clang_format_off = true,
-        .include_order = module.settings.include_order,
-    };
-    return {std::move(result)};
 }
 
 } // namespace codegen::detail

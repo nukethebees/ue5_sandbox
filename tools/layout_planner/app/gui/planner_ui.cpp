@@ -900,28 +900,17 @@ void PlannerUi::gate_new_declaration_dialogs() {
         return;
     }
 
-    bool has_enum{};
-    bool has_packed{};
-    bool has_scalar{};
-    bool has_representation{};
-    bool has_record{};
-    bool has_union{};
+    bool has_module{};
     bool has_soa{};
     for (auto const& module : document_->manifest().modules) {
-        has_enum |= std::holds_alternative<codegen::EnumModuleSchema>(module);
-        has_packed |= std::holds_alternative<codegen::PackedValueModuleSchema>(module);
-        has_scalar |= std::holds_alternative<codegen::ScalarModuleSchema>(module);
-        has_representation |= std::holds_alternative<codegen::RepresentationModuleSchema>(module);
-        has_record |= std::holds_alternative<codegen::RecordModuleSchema>(module);
-        has_union |= std::holds_alternative<codegen::UnionModuleSchema>(module);
-        if (auto const* soa{std::get_if<codegen::SoaModuleSchema>(&module)}) {
-            has_soa |= soa->backend == codegen::SoaBackend::standard_library;
+        if (auto const* normal{std::get_if<codegen::NormalModuleSchema>(&module)}) {
+            has_module = true;
+            has_soa |= normal->soa_backend == codegen::SoaBackend::standard_library;
         }
     }
 
     auto require_module = [&](bool& requested,
                               bool const available,
-                              int const module_kind,
                               std::string_view const suggested_name,
                               NewDeclarationDialog const declaration) {
         if (!requested || available) {
@@ -930,7 +919,7 @@ void PlannerUi::gate_new_declaration_dialogs() {
 
         requested = false;
         declaration_after_new_module_ = declaration;
-        new_module_kind_ = module_kind;
+        new_module_backend_ = declaration == NewDeclarationDialog::soa ? 1 : 0;
         new_module_header_.fill('\0');
         new_module_namespace_.fill('\0');
         confirm_unchecked_module_header_ = false;
@@ -948,53 +937,44 @@ void PlannerUi::gate_new_declaration_dialogs() {
         open_new_module_dialog_ = true;
     };
 
-    require_module(open_new_enum_dialog_, has_enum, 0, "enums", NewDeclarationDialog::enumeration);
+    require_module(open_new_enum_dialog_, has_module, "enums", NewDeclarationDialog::enumeration);
     require_module(open_new_packed_value_dialog_,
-                   has_packed,
-                   1,
+                   has_module,
                    "packed_values",
                    NewDeclarationDialog::packed_value);
     require_module(open_new_integer_scalar_dialog_,
-                   has_scalar,
-                   2,
+                   has_module,
                    "scalars",
                    NewDeclarationDialog::integer_scalar);
     require_module(open_new_linear_quantized_dialog_,
-                   has_representation,
-                   3,
+                   has_module,
                    "representations",
                    NewDeclarationDialog::quantization);
     require_module(open_new_integer_varint_dialog_,
-                   has_representation,
-                   3,
+                   has_module,
                    "representations",
                    NewDeclarationDialog::varint);
     require_module(open_new_fixed_point_dialog_,
-                   has_representation,
-                   3,
+                   has_module,
                    "representations",
                    NewDeclarationDialog::fixed_point);
     require_module(open_new_mini_float_dialog_,
-                   has_representation,
-                   3,
+                   has_module,
                    "representations",
                    NewDeclarationDialog::mini_float);
     require_module(open_new_optional_sentinel_dialog_,
-                   has_representation,
-                   3,
+                   has_module,
                    "representations",
                    NewDeclarationDialog::optional_sentinel);
     require_module(open_new_optional_presence_bit_dialog_,
-                   has_representation,
-                   3,
+                   has_module,
                    "representations",
                    NewDeclarationDialog::optional_presence_bit);
-    require_module(open_new_record_dialog_, has_record, 4, "records", NewDeclarationDialog::record);
+    require_module(open_new_record_dialog_, has_module, "records", NewDeclarationDialog::record);
+    require_module(open_new_union_dialog_, has_module, "unions", NewDeclarationDialog::union_value);
     require_module(
-        open_new_union_dialog_, has_union, 5, "unions", NewDeclarationDialog::union_value);
-    require_module(
-        open_new_tagged_union_dialog_, has_union, 5, "unions", NewDeclarationDialog::tagged_union);
-    require_module(open_new_soa_dialog_, has_soa, 6, "soa", NewDeclarationDialog::soa);
+        open_new_tagged_union_dialog_, has_module, "unions", NewDeclarationDialog::tagged_union);
+    require_module(open_new_soa_dialog_, has_soa, "soa", NewDeclarationDialog::soa);
 }
 
 auto PlannerUi::draw_view_menu() -> bool {

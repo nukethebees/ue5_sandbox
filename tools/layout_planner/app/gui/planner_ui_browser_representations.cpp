@@ -30,24 +30,24 @@ void PlannerUi::draw_new_enum_dialog() {
     auto const& modules{document_->manifest().modules};
     auto first_enum_module{std::optional<std::size_t>{}};
     for (std::size_t index{}; index < modules.size(); ++index) {
-        if (std::holds_alternative<codegen::EnumModuleSchema>(modules[index])) {
+        if (std::holds_alternative<codegen::NormalModuleSchema>(modules[index])) {
             first_enum_module = index;
             break;
         }
     }
     if (!first_enum_module.has_value()) {
-        ImGui::TextDisabled("The target has no enum module to receive a new declaration.");
+        ImGui::TextDisabled("The target has no ordinary module to receive a new declaration.");
     } else {
         if (new_enum_module_index_ >= modules.size() ||
-            !std::holds_alternative<codegen::EnumModuleSchema>(modules[new_enum_module_index_])) {
+            !std::holds_alternative<codegen::NormalModuleSchema>(modules[new_enum_module_index_])) {
             new_enum_module_index_ = *first_enum_module;
         }
         auto const& selected_module{
-            std::get<codegen::EnumModuleSchema>(modules[new_enum_module_index_])};
+            std::get<codegen::NormalModuleSchema>(modules[new_enum_module_index_])};
         if (!module_initiated_dialog_ &&
             ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
-                auto const* module{std::get_if<codegen::EnumModuleSchema>(&modules[index])};
+                auto const* module{std::get_if<codegen::NormalModuleSchema>(&modules[index])};
                 if (module == nullptr) {
                     continue;
                 }
@@ -91,7 +91,7 @@ void PlannerUi::draw_new_enum_dialog() {
                                                                          : "Create"};
         if (ImGui::Button(create_label)) {
             auto const& module{
-                std::get<codegen::EnumModuleSchema>(modules[new_enum_module_index_])};
+                std::get<codegen::NormalModuleSchema>(modules[new_enum_module_index_])};
             auto const name{std::string{new_enum_name_.data()}};
             auto const bit_width{new_enum_width_auto_ ? std::optional<std::uint32_t>{}
                                                       : std::optional{new_enum_bit_width_}};
@@ -322,25 +322,25 @@ void PlannerUi::draw_new_packed_value_dialog() {
     auto const& modules{document_->manifest().modules};
     auto first_packed_module{std::optional<std::size_t>{}};
     for (std::size_t index{}; index < modules.size(); ++index) {
-        if (std::holds_alternative<codegen::PackedValueModuleSchema>(modules[index])) {
+        if (std::holds_alternative<codegen::NormalModuleSchema>(modules[index])) {
             first_packed_module = index;
             break;
         }
     }
     if (!first_packed_module.has_value()) {
-        ImGui::TextDisabled("The target has no packed-value module to receive a new declaration.");
+        ImGui::TextDisabled("The target has no ordinary module to receive a new declaration.");
     } else {
         if (new_packed_module_index_ >= modules.size() ||
-            !std::holds_alternative<codegen::PackedValueModuleSchema>(
+            !std::holds_alternative<codegen::NormalModuleSchema>(
                 modules[new_packed_module_index_])) {
             new_packed_module_index_ = *first_packed_module;
         }
         auto const& selected_module{
-            std::get<codegen::PackedValueModuleSchema>(modules[new_packed_module_index_])};
+            std::get<codegen::NormalModuleSchema>(modules[new_packed_module_index_])};
         if (!module_initiated_dialog_ &&
             ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
-                auto const* module{std::get_if<codegen::PackedValueModuleSchema>(&modules[index])};
+                auto const* module{std::get_if<codegen::NormalModuleSchema>(&modules[index])};
                 if (module == nullptr) {
                     continue;
                 }
@@ -374,7 +374,7 @@ void PlannerUi::draw_new_packed_value_dialog() {
         ImGui::BeginDisabled(!ready);
         if (ImGui::Button("Create")) {
             auto const& module{
-                std::get<codegen::PackedValueModuleSchema>(modules[new_packed_module_index_])};
+                std::get<codegen::NormalModuleSchema>(modules[new_packed_module_index_])};
             auto const name{std::string{new_packed_value_name_.data()}};
             auto const identity{
                 TypeIdentity{.origin = TypeOrigin::declaration,
@@ -476,25 +476,25 @@ void PlannerUi::draw_new_integer_scalar_dialog() {
     auto const& modules{document_->manifest().modules};
     auto first_scalar_module{std::optional<std::size_t>{}};
     for (std::size_t index{}; index < modules.size(); ++index) {
-        if (std::holds_alternative<codegen::ScalarModuleSchema>(modules[index])) {
+        if (std::holds_alternative<codegen::NormalModuleSchema>(modules[index])) {
             first_scalar_module = index;
             break;
         }
     }
     if (!first_scalar_module.has_value()) {
-        ImGui::TextDisabled("The target has no scalar module to receive a new declaration.");
+        ImGui::TextDisabled("The target has no ordinary module to receive a new declaration.");
     } else {
         if (new_integer_scalar_module_index_ >= modules.size() ||
-            !std::holds_alternative<codegen::ScalarModuleSchema>(
+            !std::holds_alternative<codegen::NormalModuleSchema>(
                 modules[new_integer_scalar_module_index_])) {
             new_integer_scalar_module_index_ = *first_scalar_module;
         }
         auto const& selected_module{
-            std::get<codegen::ScalarModuleSchema>(modules[new_integer_scalar_module_index_])};
+            std::get<codegen::NormalModuleSchema>(modules[new_integer_scalar_module_index_])};
         if (!module_initiated_dialog_ &&
             ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
-                auto const* module{std::get_if<codegen::ScalarModuleSchema>(&modules[index])};
+                auto const* module{std::get_if<codegen::NormalModuleSchema>(&modules[index])};
                 if (module == nullptr) {
                     continue;
                 }
@@ -531,7 +531,7 @@ void PlannerUi::draw_new_integer_scalar_dialog() {
             pending_packed_integer_scalar_binding_.has_value() ? "Create and use" : "Create"};
         if (ImGui::Button(create_label)) {
             auto const& module{
-                std::get<codegen::ScalarModuleSchema>(modules[new_integer_scalar_module_index_])};
+                std::get<codegen::NormalModuleSchema>(modules[new_integer_scalar_module_index_])};
             auto const name{std::string{new_integer_scalar_name_.data()}};
             auto const identity{
                 TypeIdentity{.origin = TypeOrigin::declaration,
@@ -636,27 +636,25 @@ void PlannerUi::draw_new_linear_quantized_dialog() {
     auto const& modules{document_->manifest().modules};
     auto first_module{std::optional<std::size_t>{}};
     for (std::size_t index{}; index < modules.size(); ++index) {
-        if (std::holds_alternative<codegen::RepresentationModuleSchema>(modules[index])) {
+        if (std::holds_alternative<codegen::NormalModuleSchema>(modules[index])) {
             first_module = index;
             break;
         }
     }
     if (!first_module.has_value()) {
-        ImGui::TextDisabled(
-            "The target has no representation module to receive a new declaration.");
+        ImGui::TextDisabled("The target has no ordinary module to receive a new declaration.");
     } else {
         if (new_linear_quantized_module_index_ >= modules.size() ||
-            !std::holds_alternative<codegen::RepresentationModuleSchema>(
+            !std::holds_alternative<codegen::NormalModuleSchema>(
                 modules[new_linear_quantized_module_index_])) {
             new_linear_quantized_module_index_ = *first_module;
         }
-        auto const& selected_module{std::get<codegen::RepresentationModuleSchema>(
-            modules[new_linear_quantized_module_index_])};
+        auto const& selected_module{
+            std::get<codegen::NormalModuleSchema>(modules[new_linear_quantized_module_index_])};
         if (!module_initiated_dialog_ &&
             ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
-                auto const* module{
-                    std::get_if<codegen::RepresentationModuleSchema>(&modules[index])};
+                auto const* module{std::get_if<codegen::NormalModuleSchema>(&modules[index])};
                 if (module == nullptr) {
                     continue;
                 }
@@ -799,27 +797,25 @@ void PlannerUi::draw_new_integer_varint_dialog() {
     auto const& modules{document_->manifest().modules};
     auto first_module{std::optional<std::size_t>{}};
     for (std::size_t index{}; index < modules.size(); ++index) {
-        if (std::holds_alternative<codegen::RepresentationModuleSchema>(modules[index])) {
+        if (std::holds_alternative<codegen::NormalModuleSchema>(modules[index])) {
             first_module = index;
             break;
         }
     }
     if (!first_module.has_value()) {
-        ImGui::TextDisabled(
-            "The target has no representation module to receive a new declaration.");
+        ImGui::TextDisabled("The target has no ordinary module to receive a new declaration.");
     } else {
         if (new_integer_varint_module_index_ >= modules.size() ||
-            !std::holds_alternative<codegen::RepresentationModuleSchema>(
+            !std::holds_alternative<codegen::NormalModuleSchema>(
                 modules[new_integer_varint_module_index_])) {
             new_integer_varint_module_index_ = *first_module;
         }
-        auto const& selected_module{std::get<codegen::RepresentationModuleSchema>(
-            modules[new_integer_varint_module_index_])};
+        auto const& selected_module{
+            std::get<codegen::NormalModuleSchema>(modules[new_integer_varint_module_index_])};
         if (!module_initiated_dialog_ &&
             ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
-                auto const* module{
-                    std::get_if<codegen::RepresentationModuleSchema>(&modules[index])};
+                auto const* module{std::get_if<codegen::NormalModuleSchema>(&modules[index])};
                 if (module != nullptr &&
                     ImGui::Selectable(module->settings.name.c_str(),
                                       index == new_integer_varint_module_index_)) {
@@ -1026,27 +1022,25 @@ void PlannerUi::draw_new_fixed_point_dialog() {
     auto const& modules{document_->manifest().modules};
     auto first_module{std::optional<std::size_t>{}};
     for (std::size_t index{}; index < modules.size(); ++index) {
-        if (std::holds_alternative<codegen::RepresentationModuleSchema>(modules[index])) {
+        if (std::holds_alternative<codegen::NormalModuleSchema>(modules[index])) {
             first_module = index;
             break;
         }
     }
     if (!first_module.has_value()) {
-        ImGui::TextDisabled(
-            "The target has no representation module to receive a new declaration.");
+        ImGui::TextDisabled("The target has no ordinary module to receive a new declaration.");
     } else {
         if (new_fixed_point_module_index_ >= modules.size() ||
-            !std::holds_alternative<codegen::RepresentationModuleSchema>(
+            !std::holds_alternative<codegen::NormalModuleSchema>(
                 modules[new_fixed_point_module_index_])) {
             new_fixed_point_module_index_ = *first_module;
         }
         auto const& selected_module{
-            std::get<codegen::RepresentationModuleSchema>(modules[new_fixed_point_module_index_])};
+            std::get<codegen::NormalModuleSchema>(modules[new_fixed_point_module_index_])};
         if (!module_initiated_dialog_ &&
             ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
-                auto const* module{
-                    std::get_if<codegen::RepresentationModuleSchema>(&modules[index])};
+                auto const* module{std::get_if<codegen::NormalModuleSchema>(&modules[index])};
                 if (module != nullptr &&
                     ImGui::Selectable(module->settings.name.c_str(),
                                       index == new_fixed_point_module_index_)) {
@@ -1235,27 +1229,25 @@ void PlannerUi::draw_new_mini_float_dialog() {
     auto const& modules{document_->manifest().modules};
     auto first_module{std::optional<std::size_t>{}};
     for (std::size_t index{}; index < modules.size(); ++index) {
-        if (std::holds_alternative<codegen::RepresentationModuleSchema>(modules[index])) {
+        if (std::holds_alternative<codegen::NormalModuleSchema>(modules[index])) {
             first_module = index;
             break;
         }
     }
     if (!first_module.has_value()) {
-        ImGui::TextDisabled(
-            "The target has no representation module to receive a new declaration.");
+        ImGui::TextDisabled("The target has no ordinary module to receive a new declaration.");
     } else {
         if (new_mini_float_module_index_ >= modules.size() ||
-            !std::holds_alternative<codegen::RepresentationModuleSchema>(
+            !std::holds_alternative<codegen::NormalModuleSchema>(
                 modules[new_mini_float_module_index_])) {
             new_mini_float_module_index_ = *first_module;
         }
         auto const& selected_module{
-            std::get<codegen::RepresentationModuleSchema>(modules[new_mini_float_module_index_])};
+            std::get<codegen::NormalModuleSchema>(modules[new_mini_float_module_index_])};
         if (!module_initiated_dialog_ &&
             ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
-                auto const* module{
-                    std::get_if<codegen::RepresentationModuleSchema>(&modules[index])};
+                auto const* module{std::get_if<codegen::NormalModuleSchema>(&modules[index])};
                 if (module != nullptr && ImGui::Selectable(module->settings.name.c_str(),
                                                            index == new_mini_float_module_index_)) {
                     new_mini_float_module_index_ = index;
@@ -1380,7 +1372,7 @@ void PlannerUi::draw_new_optional_sentinel_dialog() {
     auto const& modules{document_->manifest().modules};
     auto first_module{std::optional<std::size_t>{}};
     for (std::size_t index{}; index < modules.size(); ++index) {
-        if (std::holds_alternative<codegen::RepresentationModuleSchema>(modules[index])) {
+        if (std::holds_alternative<codegen::NormalModuleSchema>(modules[index])) {
             first_module = index;
             break;
         }
@@ -1397,24 +1389,22 @@ void PlannerUi::draw_new_optional_sentinel_dialog() {
     }
 
     if (!first_module.has_value()) {
-        ImGui::TextDisabled(
-            "The target has no representation module to receive a new declaration.");
+        ImGui::TextDisabled("The target has no ordinary module to receive a new declaration.");
     } else if (sources.empty()) {
         ImGui::TextDisabled(
             "No integer scalar has a named sentinel code. Add one before creating this encoding.");
     } else {
         if (new_optional_sentinel_module_index_ >= modules.size() ||
-            !std::holds_alternative<codegen::RepresentationModuleSchema>(
+            !std::holds_alternative<codegen::NormalModuleSchema>(
                 modules[new_optional_sentinel_module_index_])) {
             new_optional_sentinel_module_index_ = *first_module;
         }
-        auto const& selected_module{std::get<codegen::RepresentationModuleSchema>(
-            modules[new_optional_sentinel_module_index_])};
+        auto const& selected_module{
+            std::get<codegen::NormalModuleSchema>(modules[new_optional_sentinel_module_index_])};
         if (!module_initiated_dialog_ &&
             ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
-                auto const* module{
-                    std::get_if<codegen::RepresentationModuleSchema>(&modules[index])};
+                auto const* module{std::get_if<codegen::NormalModuleSchema>(&modules[index])};
                 if (module != nullptr &&
                     ImGui::Selectable(module->settings.name.c_str(),
                                       index == new_optional_sentinel_module_index_)) {
@@ -1571,7 +1561,7 @@ void PlannerUi::draw_new_optional_presence_bit_dialog() {
     auto const& modules{document_->manifest().modules};
     auto first_module{std::optional<std::size_t>{}};
     for (std::size_t index{}; index < modules.size(); ++index) {
-        if (std::holds_alternative<codegen::RepresentationModuleSchema>(modules[index])) {
+        if (std::holds_alternative<codegen::NormalModuleSchema>(modules[index])) {
             first_module = index;
             break;
         }
@@ -1586,24 +1576,22 @@ void PlannerUi::draw_new_optional_presence_bit_dialog() {
     }
 
     if (!first_module.has_value()) {
-        ImGui::TextDisabled(
-            "The target has no representation module to receive a new declaration.");
+        ImGui::TextDisabled("The target has no ordinary module to receive a new declaration.");
     } else if (sources.empty()) {
         ImGui::TextDisabled(
             "No integer scalar is available. Add a semantic scalar before creating this encoding.");
     } else {
         if (new_optional_presence_bit_module_index_ >= modules.size() ||
-            !std::holds_alternative<codegen::RepresentationModuleSchema>(
+            !std::holds_alternative<codegen::NormalModuleSchema>(
                 modules[new_optional_presence_bit_module_index_])) {
             new_optional_presence_bit_module_index_ = *first_module;
         }
-        auto const& selected_module{std::get<codegen::RepresentationModuleSchema>(
+        auto const& selected_module{std::get<codegen::NormalModuleSchema>(
             modules[new_optional_presence_bit_module_index_])};
         if (!module_initiated_dialog_ &&
             ImGui::BeginCombo("Module", selected_module.settings.name.c_str())) {
             for (std::size_t index{}; index < modules.size(); ++index) {
-                auto const* module{
-                    std::get_if<codegen::RepresentationModuleSchema>(&modules[index])};
+                auto const* module{std::get_if<codegen::NormalModuleSchema>(&modules[index])};
                 if (module != nullptr &&
                     ImGui::Selectable(module->settings.name.c_str(),
                                       index == new_optional_presence_bit_module_index_)) {

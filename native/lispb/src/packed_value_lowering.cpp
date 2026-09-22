@@ -894,15 +894,4 @@ auto lower_packed_value(PackedValueSchema const& schema,
     return {.header = {packed_value_text(schema, types, packed, type_graph)}};
 }
 
-auto lower_packed_value_module(PackedValueModuleSchema const& module,
-                               std::map<std::string, CppType> const& types,
-                               lispb::schema::TypeGraph const& type_graph) -> Module {
-    std::vector<DeclarationEmission> emissions;
-    emissions.reserve(module.values.size());
-    for (auto const& value : module.values) {
-        emissions.push_back(lower_packed_value(value, types, type_graph, module.settings.name));
-    }
-    return assemble_module(module.settings, emissions).front();
-}
-
 } // namespace codegen::detail

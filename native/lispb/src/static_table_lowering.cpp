@@ -99,14 +99,4 @@ auto lower_static_table(StaticTableSchema const& schema,
     return {.header = {table_node(schema, types)}};
 }
 
-auto lower_static_table_module(StaticTableModuleSchema const& module,
-                               std::map<std::string, CppType> const& types) -> Module {
-    std::vector<DeclarationEmission> emissions;
-    emissions.reserve(module.tables.size());
-    for (auto const& table : module.tables) {
-        emissions.push_back(lower_static_table(table, types));
-    }
-    return assemble_module(module.settings, emissions).front();
-}
-
 } // namespace codegen::detail

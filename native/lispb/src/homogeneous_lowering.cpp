@@ -49,15 +49,6 @@ auto lower_homogeneous_impl(HomogeneousLayoutSchema const& layout,
 
 } // namespace
 
-auto lower_homogeneous_module(HomogeneousModuleSchema const& module,
-                              std::map<std::string, CppType> const& types) -> Module {
-    std::vector<DeclarationEmission> emissions;
-    for (auto const& layout : module.layouts) {
-        emissions.push_back(lower_homogeneous_impl(layout, types));
-    }
-    return assemble_module(module.settings, emissions).front();
-}
-
 auto lower_homogeneous(HomogeneousLayoutSchema const& schema,
                        std::map<std::string, CppType> const& types) -> DeclarationEmission {
     return lower_homogeneous_impl(schema, types);

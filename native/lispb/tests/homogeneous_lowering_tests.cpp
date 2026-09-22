@@ -16,7 +16,7 @@ struct RenderedHomogeneousModule {
     std::string source;
 };
 
-auto render_homogeneous(HomogeneousModuleSchema module, std::map<std::string, CppType> types = {})
+auto render_homogeneous(NormalModuleSchema module, std::map<std::string, CppType> types = {})
     -> RenderedHomogeneousModule {
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
@@ -27,23 +27,21 @@ auto render_homogeneous(HomogeneousModuleSchema module, std::map<std::string, Cp
     return RenderedHomogeneousModule{files[0].content, files[1].content};
 }
 
-auto homogeneous_module(std::vector<HomogeneousValueSchema> value_types = {HomogeneousValueSchema{
-                            TypeRef{"float"}, "f"}}) -> HomogeneousModuleSchema {
-    return HomogeneousModuleSchema{
-        .settings =
-            ModuleSettings{
-                .name = "values",
-                .header = "Values.h",
-                .source = "Values.cpp",
-                .header_include = "Project/Values.h",
-            },
-        .layouts = {HomogeneousLayoutSchema{
-            .name = "Values",
-            .components = {"xs", "ys"},
-            .value_types = std::move(value_types),
-            .export_specifier = "PROJECT_API",
-        }},
-    };
+auto homogeneous_module(std::vector<HomogeneousValueSchema> value_types = {
+                            HomogeneousValueSchema{TypeRef{"float"}, "f"}}) -> NormalModuleSchema {
+    return NormalModuleSchema{.settings =
+                                  ModuleSettings{
+                                      .name = "values",
+                                      .header = "Values.h",
+                                      .source = "Values.cpp",
+                                      .header_include = "Project/Values.h",
+                                  },
+                              .declarations = {HomogeneousLayoutSchema{
+                                  .name = "Values",
+                                  .components = {"xs", "ys"},
+                                  .value_types = std::move(value_types),
+                                  .export_specifier = "PROJECT_API",
+                              }}};
 }
 
 TEST(HomogeneousLowering, EmitsCompleteViewAndStorageApisForEveryComponent) {
@@ -84,7 +82,8 @@ TEST(HomogeneousLowering, EmitsEquivalentAndInputTypeApis) {
         .equivalent_type = TypeRef{"@vector"},
         .input_types = {TypeRef{"@vector"}, TypeRef{"@point"}},
     }})};
-    module.layouts.front().input_members = {"U", "V"};
+    std::get<codegen::HomogeneousLayoutSchema>(module.declarations.front()).input_members = {"U",
+                                                                                             "V"};
     auto const output{render_homogeneous(std::move(module),
                                          {{"vector", CppType{"FVector2f", "Project/Vector.h"}},
                                           {"point", CppType{"FPoint2f", "Project/Point.h"}}})};
@@ -125,7 +124,7 @@ TEST(HomogeneousLowering, EmitsEquivalentAndInputTypeApis) {
 TEST(HomogeneousLowering, EmitsEveryLayoutAndValueTypeExactlyOnce) {
     auto module{homogeneous_module({HomogeneousValueSchema{TypeRef{"float"}, "f"},
                                     HomogeneousValueSchema{TypeRef{"double"}, "d"}})};
-    module.layouts.push_back(HomogeneousLayoutSchema{
+    module.declarations.push_back(HomogeneousLayoutSchema{
         .name = "Scalars",
         .components = {"values"},
         .value_types = {HomogeneousValueSchema{TypeRef{"int32"}, "i32"}},

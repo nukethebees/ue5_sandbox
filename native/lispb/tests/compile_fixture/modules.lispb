@@ -1,4 +1,4 @@
-(enum-module plain_enum_fixture
+(module plain_enum_fixture
   :header "PlainEnums.h"
   :source "PlainEnums.cpp"
   :header-include "PlainEnums.h"
@@ -13,7 +13,7 @@
       :display-name "Readable Name"
       :serialized-name readable_name)))
 
-(enum-module reflected_enum_fixture
+(module reflected_enum_fixture
   :header "ReflectedEnums.h"
   :source "ReflectedEnums.cpp"
   :header-include "ReflectedEnums.h"
@@ -28,7 +28,7 @@
     (value COUNT
       :hidden true)))
 
-(enum-module packed_enum_fixture
+(module packed_enum_fixture
   :header "PackedEnums.h"
   :namespace codegen_compile_fixture
   (enum PackedState @standard_uint8
@@ -50,7 +50,7 @@
     (value One)
     (value COUNT)))
 
-(scalar-module scalar_fixture
+(module scalar_fixture
   :header "ScalarValues.h"
   :namespace codegen_compile_fixture
   (integer-scalar DamageReason
@@ -69,7 +69,7 @@
     :maximum 1000
     :bit-width auto))
 
-(representation-module representation_fixture
+(module representation_fixture
   :header "Representations.h"
   :namespace codegen_compile_fixture
   (linear-quantized HealthQ8
@@ -93,7 +93,7 @@
     :significand-bits 6
     :bias 15))
 
-(packed-value-module packed_value_fixture
+(module packed_value_fixture
   :header "PackedValues.h"
   :namespace codegen_compile_fixture
   (packed-value FighterState
@@ -199,7 +199,7 @@
     :apply deferred
     (control float-range :min 50 :max 100 :step 0.5)))
 
-(homogeneous-soa-module homogeneous_fixture
+(module homogeneous_fixture
   :header "Homogeneous.h"
   :source "Homogeneous.cpp"
   :header-include "Homogeneous.h"
@@ -215,7 +215,7 @@
     :components (values)
     (value-type int32 i)))
 
-(static-table-module static_table_fixture
+(module static_table_fixture
   :header "StaticTables.h"
   :namespace codegen_compile_fixture
   (table FStaticTableFixture
@@ -241,7 +241,7 @@
     (group max_point @vector3
       :columns (max_xs max_ys max_zs))))
 
-(soa-module soa_fixture
+(module soa_fixture
   :header "Soa.h"
   :source "Soa.cpp"
   :header-include "Soa.h"
@@ -326,39 +326,39 @@
     (fixed TFixedRowsStorage
       :containers (TFixedRows TFixedRowsAlt))))
 
-(vector-soa-module vector2_fixture
+(module vector2_fixture
   :header "Vector2.h"
   :source "Vector2.cpp"
   :header-include "Vector2.h"
   :namespace codegen_compile_fixture
-  :storage-name FVectors2f
-  :value-type float
-  :components (xs ys)
-  :equivalent-type @vector)
+  (vector-soa FVectors2f
+    :value-type float
+    :components (xs ys)
+    :equivalent-type @vector))
 
-(vector-soa-module vector1_fixture
+(module vector1_fixture
   :header "Vector1.h"
   :source "Vector1.cpp"
   :header-include "Vector1.h"
   :namespace codegen_compile_fixture
-  :storage-name FVectors1f
-  :value-type float
-  :components (xs)
-  :equivalent-type @scalar)
+  (vector-soa FVectors1f
+    :value-type float
+    :components (xs)
+    :equivalent-type @scalar))
 
-(vector-soa-module vector3_fixture
+(module vector3_fixture
   :header "Vector3.h"
   :source "Vector3.cpp"
   :header-include "Vector3.h"
   :namespace codegen_compile_fixture
-  :storage-name FVectors3f
-  :value-type float
-  :components (xs ys zs)
-  :equivalent-type @vector3
-  (fixed TVectors3Storage
-    :containers (TFixedVectors3)))
+  (vector-soa FVectors3f
+    :value-type float
+    :components (xs ys zs)
+    :equivalent-type @vector3
+    (fixed TVectors3Storage
+      :containers (TFixedVectors3))))
 
-(facade-module inline_facade_fixture
+(module inline_facade_fixture
   :header "InlineFacade.h"
   :namespace codegen_compile_fixture
   (facade FInlineFacade @target target
@@ -371,7 +371,7 @@
     (method reset void
       :target-name clear)))
 
-(facade-module reference_facade_fixture
+(module reference_facade_fixture
   :header "ReferenceFacade.h"
   :namespace codegen_compile_fixture
   (facade FReferenceFacade @target target
@@ -382,7 +382,7 @@
       :target-name set
       (parameter value "int32 const"))))
 
-(facade-module source_facade_fixture
+(module source_facade_fixture
   :header "SourceFacade.h"
   :source "SourceFacade.cpp"
   :header-include "SourceFacade.h"
@@ -397,6 +397,18 @@
     (method get int32
       :const true)))
 
+(module mixed_fixture
+  :header "Mixed.h"
+  :namespace codegen_compile_fixture::mixed
+  (record Packet (member payload Payload))
+  (tagged-union Event :discriminant Kind
+    (alternative data Packet :tag Data))
+  (union Payload (alternative position Position))
+  (record Position
+    (member x float)
+    (member y float))
+  (enum Kind @standard_uint8 (value Data)))
+
 (umbrella-module all_fixture
   :header "Generated.h"
-  :headers ("Homogeneous.h" "Soa.h" "Vector1.h" "Vector2.h" "Vector3.h" "InlineFacade.h" "SourceFacade.h" "ReferenceFacade.h" "PlainEnums.h" "ReflectedEnums.h" "PackedEnums.h" "ScalarValues.h" "Representations.h" "PackedValues.h" "Settings.h" "StaticTables.h"))
+  :headers ("Homogeneous.h" "Soa.h" "Vector1.h" "Vector2.h" "Vector3.h" "InlineFacade.h" "SourceFacade.h" "ReferenceFacade.h" "PlainEnums.h" "ReflectedEnums.h" "PackedEnums.h" "ScalarValues.h" "Representations.h" "PackedValues.h" "Settings.h" "StaticTables.h" "Mixed.h"))
