@@ -41,7 +41,8 @@ auto PlannerUi::draw_type_picker(std::string_view const module_name, TypeIdentit
         }
     };
 
-    ImGui::BeginChild("type-candidates", {420.0F, 260.0F}, true);
+    ImGui::BeginChild(
+        "type-candidates", {420.0F, 260.0F}, true, ImGuiWindowFlags_HorizontalScrollbar);
     std::map<std::string, std::size_t, std::less<>> declaration_spelling_counts;
     for (auto const& declaration : document_->declarations()) {
         if (auto const type{analysis_session_.inputs.workspace.types().find(declaration.identity)};
@@ -95,7 +96,7 @@ void PlannerUi::draw_properties_panel() {
         return;
     }
     auto const was_open{properties_view_open_};
-    ImGui::Begin("Properties", &properties_view_open_);
+    ImGui::Begin("Properties", &properties_view_open_, ImGuiWindowFlags_HorizontalScrollbar);
     persist_view_visibility(was_open, properties_view_open_);
     if (!analysis_session_.inputs.selection.type.has_value()) {
         ImGui::TextDisabled("No selection.");
@@ -1454,7 +1455,7 @@ void PlannerUi::draw_variants_panel() {
         return;
     }
     auto const was_open{variants_view_open_};
-    ImGui::Begin("Variants", &variants_view_open_);
+    ImGui::Begin("Variants", &variants_view_open_, ImGuiWindowFlags_HorizontalScrollbar);
     persist_view_visibility(was_open, variants_view_open_);
     auto const baseline_before_actions{analysis_session_.inputs.workspace.active_variant_id() ==
                                        LayoutWorkspace::baseline_variant_id};
@@ -1507,7 +1508,8 @@ void PlannerUi::draw_variants_panel() {
     ImGui::EndDisabled();
 
     ImGui::Separator();
-    if (ImGui::BeginChild("variant-list", {0.0F, 0.0F}, false)) {
+    if (ImGui::BeginChild(
+            "variant-list", {0.0F, 0.0F}, false, ImGuiWindowFlags_HorizontalScrollbar)) {
         for (auto const& variant : analysis_session_.inputs.workspace.variants()) {
             auto const selected{analysis_session_.inputs.workspace.active_variant_id() ==
                                 variant.id};

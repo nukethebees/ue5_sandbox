@@ -465,7 +465,7 @@ void PlannerUi::draw_graph_panel() {
     }
 
     auto const open_before{graph_view_open_};
-    if (!ImGui::Begin("Graph", &graph_view_open_)) {
+    if (!ImGui::Begin("Graph", &graph_view_open_, ImGuiWindowFlags_HorizontalScrollbar)) {
         ImGui::End();
         if (open_before != graph_view_open_) {
             ImGui::MarkIniSettingsDirty();

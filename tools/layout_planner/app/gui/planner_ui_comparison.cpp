@@ -7,7 +7,7 @@ void PlannerUi::draw_comparison_panel() {
         return;
     }
     auto const was_open{comparison_view_open_};
-    ImGui::Begin("Comparison", &comparison_view_open_);
+    ImGui::Begin("Comparison", &comparison_view_open_, ImGuiWindowFlags_HorizontalScrollbar);
     persist_view_visibility(was_open, comparison_view_open_);
     ImGui::TextDisabled("ABI profile: %s", analysis_session_.primary_abi().name().c_str());
 
