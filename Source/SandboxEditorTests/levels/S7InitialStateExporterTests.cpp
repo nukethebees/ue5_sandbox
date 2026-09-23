@@ -1,11 +1,13 @@
 #include <SandboxEditor/levels/S7InitialStateExporter.h>
 #include <SandboxEditor/levels/S7InitialStateImporter.h>
+#include <SandboxEditor/levels/S7LevelAuthoringDocument.h>
 
 #include <SpaceGame/defences/spinners/TestTubeSpinnerProxy.h>
 #include <SpaceGame/defences/turrets/TestStaticTurretsProxy.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameS7/LevelDefinitionReader.h>
 #include <SpaceGameS7/LevelDefinitionWriter.h>
 
@@ -87,6 +89,8 @@ TEST_CLASS(S7InitialStateExporter, "Sandbox.UnitTests")
             TestRunner->AddError(source.error());
             return;
         }
+        TestRunner->TestFalse(TEXT("Asset defaults are not exported as S7 overrides"),
+                              source->Contains(TEXT("(collision-grid")));
 
         ml::s7::FLevelDefinitionReader reader;
         auto const read{reader.read_source(*source)};
@@ -138,6 +142,79 @@ TEST_CLASS(S7InitialStateExporter, "Sandbox.UnitTests")
             TEXT("Capital transform round trips"),
             imported_capital->GetActorTransform().Equals(
                 FTransform{FRotator{0.0, 90.0, 0.0}, FVector{-1000.0, 2000.0, 3000.0}}, 0.001));
+    }
+
+    TEST_METHOD(OnlyExplicitDocumentGridDimensionsAreExported)
+    {
+        auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
+        auto* const player{spawn_actor<ATestSpaceShip>(*world, TEXT("Hero"))};
+        auto* const document{spawn_actor<AS7LevelAuthoringDocument>(*world, TEXT("S7 Document"))};
+        auto* const config{ml::s7_level_config::load_canonical()};
+        if (!TestRunner->TestNotNull(TEXT("Player spawns"), player) ||
+            !TestRunner->TestNotNull(TEXT("Document spawns"), document) ||
+            !TestRunner->TestNotNull(TEXT("Canonical defaults load"), config)) {
+            return;
+        }
+        player->set_team(ETestTeam::Blue);
+        document->level_config = config;
+        document->grid_override_schema_version = 1;
+
+        auto check_source = [this, world](bool const has_size, bool const has_cells) {
+            auto const collected{
+                ml::editor::collect_s7_initial_state(*world->GetCurrentLevel(), export_metadata())};
+            if (!TestRunner->TestTrue(TEXT("Grid state exports"), collected.has_value())) {
+                return;
+            }
+            auto const source{ml::s7::emit_editor_level_source(collected->definition)};
+            if (!TestRunner->TestTrue(TEXT("Grid state writes"), source.has_value())) {
+                return;
+            }
+            TestRunner->TestEqual(TEXT("Only explicit level size is written"),
+                                  source->Contains(TEXT("(level-size")),
+                                  has_size);
+            TestRunner->TestEqual(TEXT("Only explicit cell size is written"),
+                                  source->Contains(TEXT("(cell-size")),
+                                  has_cells);
+            TestRunner->TestEqual(TEXT("Empty grid clause is omitted"),
+                                  source->Contains(TEXT("(collision-grid")),
+                                  has_size || has_cells);
+        };
+
+        check_source(false, false);
+        document->grid_cell_size = FVector3f{6000.f, 7000.f, 8000.f};
+        check_source(false, true);
+        document->grid_cell_size = FVector3f::ZeroVector;
+        document->level_size = FVector3f{2100000.f, 2200000.f, 500000.f};
+        check_source(true, false);
+        document->grid_cell_size = FVector3f{6000.f, 7000.f, 8000.f};
+        check_source(true, true);
+        document->level_size = config->collision_grid.grid_size;
+        check_source(true, true);
+    }
+
+    TEST_METHOD(OrchestratorDefaultsWithoutDocumentStayImplicit)
+    {
+        auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
+        auto* const player{spawn_actor<ATestSpaceShip>(*world, TEXT("Hero"))};
+        auto* const orchestrator{spawn_actor<ATestBatchOrchestrator>(*world, TEXT("Orchestrator"))};
+        auto* const config{ml::s7_level_config::load_canonical()};
+        if (!TestRunner->TestNotNull(TEXT("Player spawns"), player) ||
+            !TestRunner->TestNotNull(TEXT("Orchestrator spawns"), orchestrator) ||
+            !TestRunner->TestNotNull(TEXT("Canonical defaults load"), config)) {
+            return;
+        }
+        player->set_team(ETestTeam::Blue);
+        orchestrator->set_level_config(*config);
+        auto const collected{
+            ml::editor::collect_s7_initial_state(*world->GetCurrentLevel(), export_metadata())};
+        if (!TestRunner->TestTrue(TEXT("Initial state exports"), collected.has_value())) {
+            return;
+        }
+        auto const source{ml::s7::emit_editor_level_source(collected->definition)};
+        if (TestRunner->TestTrue(TEXT("Initial state writes"), source.has_value())) {
+            TestRunner->TestFalse(TEXT("Base grid is not pinned in S7"),
+                                  source->Contains(TEXT("(collision-grid")));
+        }
     }
 
     TEST_METHOD(PlayerlessExportGetsDeterministicObserverCamera)

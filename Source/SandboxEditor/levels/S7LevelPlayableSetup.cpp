@@ -51,7 +51,11 @@ auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& docume
         return std::unexpected{TEXT("The current editor level is unavailable.")};
     }
     if (!IsValid(config)) {
-        return std::unexpected{TEXT("Assign a level configuration to the S7 document.")};
+        return std::unexpected{
+            TEXT("The canonical S7 runtime level configuration is unavailable.")};
+    }
+    if (!config->is_valid(true)) {
+        return std::unexpected{TEXT("The base S7 level configuration is invalid.")};
     }
     auto const definition{collect_s7_editor_level(level, document)};
     if (!definition) {

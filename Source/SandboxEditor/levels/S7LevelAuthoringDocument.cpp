@@ -44,6 +44,8 @@ void AS7LevelAuthoringDocument::migrate_collision_grid_overrides() {
         return;
     }
 
+    // Matching legacy copies become inherited. Preserve differing values because their original
+    // intent cannot be recovered from the old document.
     auto const overrides{collision_grid_overrides()};
     Modify();
     level_size = overrides.level_size.Get(FVector3f::ZeroVector);

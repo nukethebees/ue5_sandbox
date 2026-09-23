@@ -1,5 +1,6 @@
 #include <SpaceGame/input/CanonicalShipControls.h>
 #include <SpaceGame/input/ControlBindingMetadata.h>
+#include <SpaceGame/input/SpaceGameInputModifier.h>
 #include <SpaceGame/ships/common/SpaceShipControllerInputs.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -7,10 +8,12 @@
 #include <CQTest.h>
 #include <InputAction.h>
 #include <InputMappingContext.h>
+#include <InputModifiers.h>
 #include <PlayerMappableKeySettings.h>
 #include <UObject/UnrealType.h>
 
 #include <initializer_list>
+#include <tuple>
 #include <utility>
 
 namespace {
@@ -194,6 +197,60 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
                      {EKeys::Gamepad_LeftShoulder, TEXT("IA_Ship_Brake")},
                      {EKeys::Gamepad_LeftTriggerAxis, TEXT("IA_Ship_EmergencyBrake")},
                      {EKeys::Gamepad_RightTriggerAxis, TEXT("IA_Ship_FirePrimary")}});
+    }
+
+    TEST_METHOD(DirectionalBindingsPreserveSign)
+    {
+        using ml::ioj::EShipControlScope;
+        auto check_sign = [this](EShipControlScope const scope,
+                                 FKey const key,
+                                 TCHAR const* const action,
+                                 bool const negative) {
+            auto const* const context{ml::ioj::load_ship_control_context(scope)};
+            if (!TestRunner->TestNotNull(TEXT("Directional context loads"), context)) {
+                return;
+            }
+            int32 matching{};
+            for (auto const& mapping : context->GetMappings()) {
+                if (mapping.Key != key) {
+                    continue;
+                }
+                ++matching;
+                TestRunner->TestEqual(
+                    TEXT("Directional action"), mapping.Action->GetName(), FString{action});
+                int32 negate_count{};
+                int32 response_count{};
+                for (auto const modifier_ptr : mapping.Modifiers) {
+                    auto const* const modifier{modifier_ptr.Get()};
+                    negate_count += modifier->IsA<UInputModifierNegate>() ? 1 : 0;
+                    response_count += modifier->IsA<ml::ioj::USpaceGameInputModifier>() ? 1 : 0;
+                }
+                TestRunner->TestEqual(TEXT("Negate presence matches authored direction"),
+                                      negate_count,
+                                      negative ? 1 : 0);
+                TestRunner->TestEqual(TEXT("Gamepad directional response remains present"),
+                                      response_count,
+                                      key.IsGamepadKey() ? 1 : 0);
+                TestRunner->TestEqual(TEXT("No unexpected directional modifier"),
+                                      mapping.Modifiers.Num(),
+                                      negate_count + response_count);
+            }
+            TestRunner->TestEqual(TEXT("Directional key has one mapping"), matching, 1);
+        };
+        check_sign(EShipControlScope::Fighter, EKeys::Q, TEXT("IA_Ship_Roll"), true);
+        check_sign(EShipControlScope::Fighter, EKeys::E, TEXT("IA_Ship_Roll"), false);
+        check_sign(EShipControlScope::Skater, EKeys::A, TEXT("IA_Ship_Roll"), true);
+        check_sign(EShipControlScope::Skater, EKeys::D, TEXT("IA_Ship_Roll"), false);
+        for (auto const& [positive, negative, action] :
+             {std::tuple{EKeys::W, EKeys::S, TEXT("IA_Ship_TranslateForward")},
+              std::tuple{EKeys::D, EKeys::A, TEXT("IA_Ship_TranslateRight")},
+              std::tuple{EKeys::SpaceBar, EKeys::C, TEXT("IA_Ship_TranslateUp")},
+              std::tuple{EKeys::Gamepad_FaceButton_Top,
+                         EKeys::Gamepad_FaceButton_Bottom,
+                         TEXT("IA_Ship_TranslateUp")}}) {
+            check_sign(EShipControlScope::Gunship, positive, action, false);
+            check_sign(EShipControlScope::Gunship, negative, action, true);
+        }
     }
 
     TEST_METHOD(ProductionControllerUsesCanonicalContexts)

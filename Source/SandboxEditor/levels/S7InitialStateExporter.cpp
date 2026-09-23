@@ -8,8 +8,6 @@
 #include <SpaceGame/levels/LevelEntityResolution.h>
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
-#include <SpaceGame/simulation/SpaceGameLevelConfig.h>
-#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameS7/LevelDefinitionWriter.h>
 #include <SpaceGameS7/LevelScriptCatalog.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
@@ -35,18 +33,6 @@ struct FExportCandidate {
     FString id_base{};
     FLevelEntityId id{};
 };
-
-auto find_orchestrator_level_config(ULevel const& level) -> USpaceGameLevelConfig const* {
-    for (auto const actor_ptr : level.Actors) {
-        auto const* const orchestrator{Cast<ATestBatchOrchestrator>(actor_ptr.Get())};
-        auto const* const config{IsValid(orchestrator) ? orchestrator->get_level_config()
-                                                       : nullptr};
-        if (IsValid(config)) {
-            return config;
-        }
-    }
-    return nullptr;
-}
 
 auto is_ascii_alpha(TCHAR const value) -> bool {
     return (value >= TEXT('a') && value <= TEXT('z')) || (value >= TEXT('A') && value <= TEXT('Z'));
@@ -363,11 +349,6 @@ auto collect_s7_initial_state(ULevel const& level, FLevelMetadata const& metadat
         if (grid.level_size.IsSet() || grid.cell_size.IsSet()) {
             builder.set_collision_grid(grid);
         }
-    } else if (auto const* const config{find_orchestrator_level_config(level)}; IsValid(config)) {
-        builder.set_collision_grid({
-            .level_size = config->collision_grid.grid_size,
-            .cell_size = config->collision_grid.cell_size,
-        });
     }
     TSet<FLevelTeamId> used_teams;
     for (auto const& candidate : candidates) {

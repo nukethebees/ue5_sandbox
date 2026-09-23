@@ -109,7 +109,10 @@ void FS7LevelAuthoringModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_
                                     this, &FS7LevelAuthoringModeToolkit::validate_playable_level)] +
                   SUniformGridPanel::Slot(0, 8)
                       [SNew(SButton)
-                           .Text(LOCTEXT("EditLevelConfig", "Edit Collision Grid"))
+                           .Text(LOCTEXT("EditLevelConfig", "Edit Grid Defaults"))
+                           .ToolTipText(LOCTEXT(
+                               "EditLevelConfigTooltip",
+                               "Edit shared defaults. Changes may affect multiple S7 levels."))
                            .OnClicked(this, &FS7LevelAuthoringModeToolkit::open_level_config)] +
                   SUniformGridPanel::Slot(
                       0, 9)[SAssignNew(entity_id_, SEditableTextBox)
@@ -133,10 +136,11 @@ void FS7LevelAuthoringModeToolkit::Init(TSharedPtr<IToolkitHost> const& toolkit_
                  auto const half_bounds{FVector3f{dimensions.X * cell_size.X * 0.5f,
                                                   dimensions.Y * cell_size.Y * 0.5f,
                                                   dimensions.Z * cell_size.Z * 0.5f}};
-                 return FText::FromString(FString::Printf(TEXT("Level config: %s | Grid bounds: "
-                                                               "+/-%s cm"),
-                                                          *config->GetName(),
-                                                          *half_bounds.ToString()));
+                 return FText::FromString(
+                     FString::Printf(TEXT("Shared grid defaults: %s | Effective grid bounds: "
+                                          "+/-%s cm"),
+                                     *config->GetName(),
+                                     *half_bounds.ToString()));
              })] +
              SVerticalBox::Slot().AutoHeight().Padding(
                  4.0f)[SAssignNew(status_, SMultiLineEditableTextBox)
