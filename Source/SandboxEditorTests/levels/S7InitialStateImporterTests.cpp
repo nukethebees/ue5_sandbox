@@ -69,6 +69,21 @@ auto count_actors(UWorld& world) -> int32 {
 
 TEST_CLASS(S7InitialStateImporter, "Sandbox.UnitTests")
 {
+    TEST_METHOD(CollisionGridOverrideIsReportedAsUnsupported)
+    {
+        auto definition{make_actor_level()};
+        definition.collision_grid =
+            ml::FLevelCollisionGridDefinition{.cell_size = FVector3f{6000.f, 7000.f, 8000.f}};
+        auto const plan{ml::editor::make_s7_initial_state_import_plan(definition)};
+        if (!TestRunner->TestTrue(TEXT("Import plan accepts source"), plan.has_value())) {
+            return;
+        }
+        TestRunner->TestEqual(
+            TEXT("Grid override is counted"), plan->unsupported.collision_grid_override_count, 1);
+        TestRunner->TestTrue(TEXT("Grid loss is reported to user"),
+                             plan->unsupported.format().Contains(TEXT("collision-grid")));
+    }
+
     TEST_METHOD(ProceduralS7ProducesInitialEntities)
     {
         ml::s7::FLevelDefinitionReader reader;

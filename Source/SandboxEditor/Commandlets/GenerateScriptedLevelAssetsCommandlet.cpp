@@ -107,8 +107,8 @@ constexpr TCHAR observer_input_package_path[]{TEXT("/SpaceGame/Input/Observer/")
 constexpr TCHAR benchmark_input_package_path[]{TEXT("/SpaceGame/Input/Benchmark/")};
 constexpr TCHAR ship_input_package_path[]{TEXT("/SpaceGame/Input/SpaceShip/")};
 FName const scripted_level_generation_context{TEXT("GenerateScriptedLevelAssets")};
-constexpr TCHAR runtime_config_package_name[]{TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig")};
-constexpr TCHAR runtime_config_asset_name[]{TEXT("DA_GameRuntimeLevelConfig")};
+auto constexpr& runtime_config_package_name{ml::s7_level_config::canonical_package_name};
+auto constexpr& runtime_config_asset_name{ml::s7_level_config::canonical_asset_name};
 constexpr TCHAR player_controller_object_path[]{
     TEXT("/SpaceGame/Players/BP_SpaceGamePlayerController.BP_SpaceGamePlayerController")};
 constexpr TCHAR player_controller_package_name[]{

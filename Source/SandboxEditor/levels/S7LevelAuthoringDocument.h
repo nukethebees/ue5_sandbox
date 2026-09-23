@@ -117,17 +117,24 @@ class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
     UPROPERTY(EditAnywhere, Category = "Level", meta = (MultiLine = "true"))
     FString description{};
 
-    UPROPERTY(EditAnywhere, Category = "Level")
+    UPROPERTY(
+        VisibleAnywhere,
+        Category = "Level",
+        meta = (ToolTip = "Shared canonical S7 runtime defaults; edit per-level dimensions below"))
     TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
 
     UPROPERTY(EditAnywhere,
-              Category = "Level",
-              meta = (Units = "cm", ToolTip = "Zero inherits the game asset's grid size"))
+              Category = "Collision Grid Overrides",
+              meta = (Units = "cm",
+                      DisplayName = "Level Size Override",
+                      ToolTip = "Zero inherits the shared game asset's grid size"))
     FVector3f level_size{FVector3f::ZeroVector};
 
     UPROPERTY(EditAnywhere,
-              Category = "Level",
-              meta = (Units = "cm", ToolTip = "Zero inherits the game asset's grid cell size"))
+              Category = "Collision Grid Overrides",
+              meta = (Units = "cm",
+                      DisplayName = "Cell Size Override",
+                      ToolTip = "Zero inherits the shared game asset's grid cell size"))
     FVector3f grid_cell_size{FVector3f::ZeroVector};
 
     UPROPERTY()

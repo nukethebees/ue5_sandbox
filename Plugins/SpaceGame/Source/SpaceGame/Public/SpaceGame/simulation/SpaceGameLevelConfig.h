@@ -27,6 +27,16 @@ class UMaterialInterface;
 class UNiagaraSystem;
 class UStaticMesh;
 class UTestTeamVisualData;
+class USpaceGameLevelConfig;
+
+namespace ml::s7_level_config {
+inline constexpr TCHAR canonical_package_name[]{
+    TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig")};
+inline constexpr TCHAR canonical_asset_name[]{TEXT("DA_GameRuntimeLevelConfig")};
+inline constexpr TCHAR canonical_object_path[]{
+    TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig.DA_GameRuntimeLevelConfig")};
+SPACEGAME_API auto load_canonical() -> USpaceGameLevelConfig*;
+}
 
 USTRUCT(BlueprintType)
 struct SPACEGAME_API FScenarioClassConfig {

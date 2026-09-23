@@ -1,6 +1,7 @@
 #include <SandboxTests/support/PlayerControllerTestAccess.h>
 #include <SandboxTests/support/test_setup.h>
 
+#include <ioj/sim/player/sim.h>
 #include <SpaceGame/input/CanonicalShipControls.h>
 #include <SpaceGame/levels/ExampleLevels.h>
 #include <SpaceGame/levels/LevelLoader.h>
@@ -73,6 +74,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
         }
         if (auto* const controller{controller_.Get()}) {
             controller->ConsoleCommand(TEXT("Input.-key Four"), true);
+            controller->ConsoleCommand(TEXT("Input.-key Gamepad_FaceButton_Bottom"), true);
         }
         level_setup.end_test();
         controller_.Reset();
@@ -224,6 +226,46 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 }
                 checks.is_true(settings_->GetActiveKeyProfileId() == active_profile_id_,
                                TEXT("Flight-mode selection does not cycle key profiles"));
+            });
+    }
+
+    TEST_METHOD(GunshipGamepadADescendsWithoutFiring)
+    {
+        TestCommandBuilder.Do([this] { setup(); })
+            .Until([this] { return !checks.all_passed || ready(); }, timeout)
+            .Then([this] {
+                if (!checks.is_true(ready(), TEXT("Direct gameplay startup is ready"))) {
+                    return;
+                }
+                controller_->ConsoleCommand(TEXT("Input.+key Four"), true);
+            })
+            .Until(
+                [this] {
+                    auto const* const ship{IsValid(controller_.Get())
+                                               ? Cast<ATestSpaceShip>(controller_->GetPawn())
+                                               : nullptr};
+                    return !checks.all_passed ||
+                           (IsValid(ship) && ship->get_active_flight_model_slot() ==
+                                                 ::ioj::sim::player::FlightModelSlot::Left);
+                },
+                timeout)
+            .Then([this] {
+                controller_->ConsoleCommand(TEXT("Input.+key Gamepad_FaceButton_Bottom"), true);
+            })
+            .Until(
+                [this] {
+                    auto const* const sim{
+                        level_setup.get_orchestrator()->get_player_ship_simulation()};
+                    return !checks.all_passed ||
+                           (sim && sim->get_flight_intent().translation.z < -0.5f);
+                },
+                timeout)
+            .Then([this] {
+                auto const* const sim{level_setup.get_orchestrator()->get_player_ship_simulation()};
+                checks.is_true(sim && sim->get_flight_intent().translation.z < -0.5f,
+                               TEXT("Gunship gamepad A sends negative vertical intent"));
+                checks.is_true(sim && sim->laser_firing_mode == ::ioj::sim::LaserFiringState::idle,
+                               TEXT("Gunship gamepad A does not fire"));
             });
     }
 
@@ -442,6 +484,16 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 checks.is_true(
                     settings->set_flight_model_profile(EShipControlScope::Gunship, tuned),
                     TEXT("Numeric and response tuning are accepted"));
+                tuned.config.boost.available = !tuned.config.boost.available;
+                tuned.config.boost.accelerator_activates_boost =
+                    !tuned.config.boost.accelerator_activates_boost;
+                tuned.config.brake.available = !tuned.config.brake.available;
+                tuned.config.emergency_brake.available = !tuned.config.emergency_brake.available;
+                tuned.config.rotation.roll.stabilization.enabled =
+                    !tuned.config.rotation.roll.stabilization.enabled;
+                checks.is_true(
+                    settings->set_flight_model_profile(EShipControlScope::Gunship, tuned),
+                    TEXT("Behavioral boost, brake, and stabilization tuning is accepted"));
                 checks.is_true(settings->flight_model_loadout().up == before.up &&
                                    settings->flight_model_loadout().right == before.right &&
                                    settings->flight_model_loadout().down == before.down,

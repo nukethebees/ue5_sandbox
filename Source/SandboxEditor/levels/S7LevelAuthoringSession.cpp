@@ -86,8 +86,13 @@ auto create_level_authoring_document(ULevel& level)
     auto const map_name{FPackageName::GetShortName(level.GetOutermost()->GetName())};
     document->level_id = canonical_s7_level_entity_id(map_name, TEXTVIEW("authored-level"));
     document->title = map_name;
-    document->level_config = LoadObject<USpaceGameLevelConfig>(
-        nullptr, TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig.DA_GameRuntimeLevelConfig"));
+    document->level_config = ml::s7_level_config::load_canonical();
+    if (!IsValid(document->level_config)) {
+        document->Destroy();
+        transaction.Cancel();
+        return std::unexpected{
+            TEXT("The canonical S7 runtime level configuration is unavailable.")};
+    }
     return document;
 }
 
@@ -213,6 +218,14 @@ auto repair_s7_level_bindings(ULevel& level, AS7LevelAuthoringDocument& document
 
 auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument const& document)
     -> std::expected<FLevelDefinition, FString> {
+    auto const* const config{document.level_config.Get()};
+    auto const* const canonical{ml::s7_level_config::load_canonical()};
+    auto const temporary_preview{level.GetOutermost()->GetName().StartsWith(TEXT("/Temp/"))};
+    if (!IsValid(config) || !IsValid(canonical) || (config != canonical && !temporary_preview)) {
+        return std::unexpected{
+            TEXT("S7 authoring requires the canonical GameRuntime level configuration asset.")};
+    }
+
     TMap<AActor const*, FLevelEntityId> ids_by_actor;
     TSet<FName> ids;
     FLevelBuilder builder;

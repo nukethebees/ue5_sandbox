@@ -84,12 +84,11 @@ auto resolve_level_config(UWorld& world) -> std::expected<USpaceGameLevelConfig*
         return config;
     }
 
-    constexpr TCHAR runtime_config_path[]{
-        TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig.DA_GameRuntimeLevelConfig")};
-    auto* const config{LoadObject<USpaceGameLevelConfig>(nullptr, runtime_config_path)};
+    auto* const config{ml::s7_level_config::load_canonical()};
     if (!IsValid(config)) {
-        return std::unexpected{FString::Printf(
-            TEXT("Could not load the fallback level configuration '%s'."), runtime_config_path)};
+        return std::unexpected{
+            FString::Printf(TEXT("Could not load the fallback level configuration '%s'."),
+                            ml::s7_level_config::canonical_object_path)};
     }
     return config;
 }
@@ -175,7 +174,7 @@ void show_error(FString const& message) {
 auto FS7UnsupportedFeatureSummary::is_empty() const noexcept -> bool {
     return scheduled_spawn_group_count == 0 && scheduled_entity_count == 0 &&
            mission_definition_count == 0 && mission_event_count == 0 && initial_camera_count == 0 &&
-           unlock_criterion_count == 0;
+           unlock_criterion_count == 0 && collision_grid_override_count == 0;
 }
 
 auto FS7UnsupportedFeatureSummary::format() const -> FString {
@@ -214,6 +213,10 @@ auto FS7UnsupportedFeatureSummary::format() const -> FString {
                                               TEXTVIEW("unlock criterion"),
                                               TEXTVIEW("unlock criteria"))));
     }
+    if (collision_grid_override_count > 0) {
+        lines.Add(TEXT(
+            "- collision-grid dimension overrides (not imported by the initial-state importer)"));
+    }
     return FString::Join(lines, TEXT("\n"));
 }
 
@@ -239,6 +242,7 @@ auto make_s7_initial_state_import_plan(FLevelDefinition const& definition)
     plan.unsupported.mission_event_count = definition.mission_events.Num();
     plan.unsupported.initial_camera_count = definition.camera.IsSet() ? 1 : 0;
     plan.unsupported.unlock_criterion_count = definition.unlock_criteria.Num();
+    plan.unsupported.collision_grid_override_count = definition.collision_grid.IsSet() ? 1 : 0;
 
     TArray<FDelayedSpawnGroup> delayed_groups;
     auto const entities{definition.entities.get_const_view()};

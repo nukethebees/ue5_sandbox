@@ -14,6 +14,10 @@
 #include <Misc/DataValidation.h>
 #endif
 
+auto ml::s7_level_config::load_canonical() -> USpaceGameLevelConfig* {
+    return LoadObject<USpaceGameLevelConfig>(nullptr, canonical_object_path);
+}
+
 namespace {
 auto collision_class_lists_are_valid(FCollisionGridConfig const& config) -> bool {
     for (auto const actor_class : config.harvested_collision_actor_classes) {

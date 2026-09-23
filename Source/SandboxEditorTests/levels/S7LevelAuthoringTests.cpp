@@ -12,6 +12,7 @@
 #include <SpaceGame/ships/capital/TestCapitalShipProxy.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
+#include <SpaceGame/simulation/TestBatchOrchestrator.h>
 #include <SpaceGameS7/LevelDefinitionReader.h>
 #include <SpaceGameS7/LevelDefinitionWriter.h>
 
@@ -218,6 +219,37 @@ void assert_stale_preview_does_not_apply(TTestRunner& test_runner,
 
 TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
 {
+    TEST_METHOD(NewDocumentAndGameRuntimeUseTheSameCanonicalBase)
+    {
+        auto* const world{FAutomationEditorCommonUtils::CreateNewMap()};
+        auto const created{ml::editor::create_level_authoring_document(*world->GetCurrentLevel())};
+        auto* const canonical{ml::s7_level_config::load_canonical()};
+        if (!TestRunner->TestTrue(TEXT("Authoring document is created"), created.has_value()) ||
+            !TestRunner->TestNotNull(TEXT("Canonical S7 config loads"), canonical)) {
+            return;
+        }
+        TestRunner->TestTrue(TEXT("New document uses canonical defaults"),
+                             (*created)->level_config == canonical);
+
+        auto* const runtime_map{
+            LoadObject<UWorld>(nullptr, TEXT("/SpaceGame/Levels/GameRuntime.GameRuntime"))};
+        if (!TestRunner->TestNotNull(TEXT("Generated runtime map loads"), runtime_map)) {
+            return;
+        }
+        ATestBatchOrchestrator const* runtime_orchestrator{};
+        for (auto const actor_ptr : runtime_map->PersistentLevel->Actors) {
+            if (auto const* const candidate{Cast<ATestBatchOrchestrator>(actor_ptr.Get())}) {
+                runtime_orchestrator = candidate;
+                break;
+            }
+        }
+        if (TestRunner->TestNotNull(TEXT("Runtime map owns an orchestrator"),
+                                    runtime_orchestrator)) {
+            TestRunner->TestTrue(TEXT("Editor and runtime use the same base asset"),
+                                 runtime_orchestrator->get_level_config() == canonical);
+        }
+    }
+
     TEST_METHOD(CollisionGridInheritsAssetAndKeepsPartialOverridesLive)
     {
         auto fixture{make_preview_fixture()};
@@ -266,10 +298,24 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         fixture.document->level_size = original_size;
         auto const fully_authored{ml::editor::validate_playable_s7_level(
             *fixture.world->GetCurrentLevel(), *fixture.document)};
-        if (!TestRunner->TestTrue(TEXT("Authored size replaces invalid asset size"),
-                                  fully_authored.has_value())) {
-            TestRunner->AddError(fully_authored.error());
-        }
+        TestRunner->TestFalse(TEXT("Valid S7 override cannot repair invalid base asset"),
+                              fully_authored.has_value());
+        fixture.document->level_size = FVector3f::ZeroVector;
+        TestRunner->TestFalse(TEXT("Invalid base without override fails"),
+                              ml::editor::validate_playable_s7_level(
+                                  *fixture.world->GetCurrentLevel(), *fixture.document)
+                                  .has_value());
+        fixture.level_config->collision_grid.grid_size = original_size;
+        fixture.document->level_size = FVector3f{-1.f, 100.f, 100.f};
+        TestRunner->TestFalse(TEXT("Invalid explicit override fails"),
+                              ml::editor::validate_playable_s7_level(
+                                  *fixture.world->GetCurrentLevel(), *fixture.document)
+                                  .has_value());
+        fixture.document->level_size = original_size;
+        TestRunner->TestTrue(TEXT("Valid full override passes"),
+                             ml::editor::validate_playable_s7_level(
+                                 *fixture.world->GetCurrentLevel(), *fixture.document)
+                                 .has_value());
     }
 
     TEST_METHOD(CollisionGridMigratesSeededValuesWithoutLosingExplicitOverrides)
@@ -340,6 +386,38 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
             *fixture.world->GetCurrentLevel(), *fixture.document)};
         TestRunner->TestTrue(TEXT("No grid override is reintroduced"),
                              recollected.has_value() && !recollected->collision_grid.IsSet());
+    }
+
+    TEST_METHOD(CollisionGridSourceApplyReplacesOnlyPresentDimensions)
+    {
+        auto fixture{make_preview_fixture()};
+        if (!TestRunner->TestTrue(TEXT("Fixture is valid"), fixture.is_valid())) {
+            return;
+        }
+        fixture.document->migrate_collision_grid_overrides();
+        fixture.document->level_size = FVector3f{2100000.f, 2100000.f, 500000.f};
+        fixture.document->grid_cell_size = FVector3f{6000.f, 6000.f, 20000.f};
+
+        auto definition{ml::editor::collect_s7_editor_level(*fixture.world->GetCurrentLevel(),
+                                                            *fixture.document)};
+        if (!TestRunner->TestTrue(TEXT("Existing overrides collect"), definition.has_value())) {
+            return;
+        }
+        auto const incoming_cells{FVector3f{7000.f, 8000.f, 22000.f}};
+        definition->collision_grid =
+            ml::FLevelCollisionGridDefinition{.level_size = NullOpt, .cell_size = incoming_cells};
+        auto const plan{ml::editor::make_s7_level_sync_plan(
+            *fixture.world->GetCurrentLevel(), *fixture.document, *definition)};
+        if (!TestRunner->TestTrue(TEXT("Partial replacement plans"), plan.has_value())) {
+            return;
+        }
+        auto const applied{ml::editor::apply_s7_level_sync_plan(
+            *fixture.world->GetCurrentLevel(), *fixture.document, *plan)};
+        TestRunner->TestTrue(TEXT("Partial replacement applies"), applied.has_value());
+        TestRunner->TestTrue(TEXT("Omitted size returns to inheritance"),
+                             fixture.document->level_size == FVector3f::ZeroVector);
+        TestRunner->TestTrue(TEXT("Present cell override is replaced"),
+                             fixture.document->grid_cell_size == incoming_cells);
     }
 
     TEST_METHOD(CollisionGridPartialOverrideSurvivesS7RoundTrip)
@@ -765,6 +843,7 @@ TEST_CLASS(S7LevelAuthoring, "Sandbox.UnitTests")
         }
         player->set_team(ETestTeam::Blue);
         enemy->set_team(ETestTeam::Red);
+        document->level_config = ml::s7_level_config::load_canonical();
         document->level_id = TEXT("objective-round-trip");
         document->title = TEXT("Objective Round Trip");
         document->entities = {{.id = TEXT("player"), .actor = player},

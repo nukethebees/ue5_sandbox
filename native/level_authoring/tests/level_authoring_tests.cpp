@@ -161,6 +161,7 @@ TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourc
 
         auto const source{emit_editor_level_source(definition)};
         ASSERT_TRUE(source) << source.error();
+        EXPECT_EQ(source->contains("(collision-grid"), mask != 0);
         EXPECT_EQ(source->contains("(level-size"), (mask & 1) != 0);
         EXPECT_EQ(source->contains("(cell-size"), (mask & 2) != 0);
 
@@ -201,6 +202,27 @@ TEST(NativeLevelAuthoringCollisionGrid, RejectsMalformedAndInvalidExplicitDimens
 )")};
     ASSERT_FALSE(duplicate);
     EXPECT_FALSE(duplicate.decode_errors.empty());
+
+    for (std::string_view const grid : {
+             "(collision-grid)",
+             "(collision-grid (level-size 2000 2000 2000) (level-size 3000 3000 3000))",
+             "(collision-grid (unknown 2000 2000 2000))",
+             "(collision-grid (level-size -1 2000 2000))",
+             "(collision-grid (level-size +nan.0 2000 2000))",
+         }) {
+        SCOPED_TRACE(grid);
+        auto source{std::string{R"((level
+  (id 'bad-grid-case)
+  (title "Bad Grid Case")
+  )"}};
+        source += grid;
+        source += R"(
+  (teams (team 'blue))
+  (player 'player)
+  (entities (entity 'player 'player-fighter 'blue
+              (position 0 0 0) (rotation 0 0 0))))";
+        EXPECT_FALSE(reader.read_source(source));
+    }
 }
 
 TEST(NativeLevelAuthoringWriter, RoundTripsInitialMissionObjectives) {

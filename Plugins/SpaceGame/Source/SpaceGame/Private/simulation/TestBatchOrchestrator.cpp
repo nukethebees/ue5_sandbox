@@ -434,11 +434,12 @@ void ATestBatchOrchestrator::clear_player_ship() {
 // Level initialization
 /* **************************************** */
 auto ATestBatchOrchestrator::initialise_simulation(
+    USpaceGameLevelConfig const& effective_config,
     ml::FLevelStartErrors& errors,
     TOptional<ml::FProxyLevelSimBuild>& proxy_build,
     ::ioj::sim::collision::GridGeometry& grid_geometry) -> bool {
     auto& world{*GetWorld()};
-    auto const& config{*level_config};
+    auto const& config{effective_config};
 
     TOptional<::ioj::sim::player::PlayerSpawnData> player;
     if (IsValid(player_ship)) {
@@ -549,25 +550,30 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         return false;
     }
 
+    if (!level_config->is_valid(presentation_enabled)) {
+        handle_level_start_failure(TEXT("Cannot start level: base level configuration is invalid"));
+        return false;
+    }
+
+    auto* effective_config{level_config.Get()};
     if (use_collision_grid_override) {
-        auto* const runtime_config{DuplicateObject<USpaceGameLevelConfig>(level_config, this)};
-        if (!IsValid(runtime_config)) {
+        effective_config = DuplicateObject<USpaceGameLevelConfig>(level_config, this);
+        if (!IsValid(effective_config)) {
             handle_level_start_failure(
                 TEXT("Cannot start level: collision-grid override could not be applied"));
             return false;
         }
-        runtime_config->collision_grid =
+        effective_config->collision_grid =
             apply_collision_grid_overrides(level_config->collision_grid);
-        level_config = runtime_config;
     }
 
     ml::FLevelStartErrors config_errors;
     TArray<FString> config_error_messages;
-    level_config->get_validation_errors(config_error_messages, presentation_enabled);
+    effective_config->get_validation_errors(config_error_messages, presentation_enabled);
     config_errors.append(MoveTemp(config_error_messages));
 
     if (presentation_enabled && IsValid(player_ship) &&
-        !level_config->player_ship.team_visual_data) {
+        !effective_config->player_ship.team_visual_data) {
         config_errors.add(TEXT("player_ship.team_visual_data is null"));
     }
     if (!FMath::IsFinite(simulation_tick_loop.tick_rate) || simulation_tick_loop.tick_rate <= 0.0) {
@@ -595,7 +601,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
     ml::FLevelStartErrors simulation_errors;
     TOptional<ml::FProxyLevelSimBuild> proxy_build;
     ::ioj::sim::collision::GridGeometry grid_geometry{};
-    if (!initialise_simulation(simulation_errors, proxy_build, grid_geometry)) {
+    if (!initialise_simulation(*effective_config, simulation_errors, proxy_build, grid_geometry)) {
         handle_level_start_failure(
             FString::Printf(TEXT("Cannot start level:\n%s"), *simulation_errors.format()));
         return false;
@@ -612,7 +618,7 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
         proxy_build->destroy_proxy_actors();
     }
     auto static_bounds{world_collision_.initialise_static_geometry(
-        *world, level_config->collision_grid, grid_geometry)};
+        *world, effective_config->collision_grid, grid_geometry)};
     level_simulation_->set_static_collision(MoveTemp(static_bounds));
 
     telemetry_environment_ = make_level_telemetry_environment(*world);

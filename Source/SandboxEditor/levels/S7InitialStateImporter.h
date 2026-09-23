@@ -25,6 +25,7 @@ struct SANDBOXEDITOR_API FS7UnsupportedFeatureSummary {
     int32 mission_event_count{};
     int32 initial_camera_count{};
     int32 unlock_criterion_count{};
+    int32 collision_grid_override_count{};
 
     [[nodiscard]] auto is_empty() const noexcept -> bool;
     [[nodiscard]] auto format() const -> FString;

@@ -59,6 +59,10 @@ struct SpatialQueryManager {
 
     void initialise(collision::GridGeometry grid_geometry,
                     collision::EntityAABBs const& entity_bounds);
+    auto get_grid_geometry() const noexcept -> collision::GridGeometry {
+        auto const& grid{collision_system_.uniform_grid_};
+        return {grid.get_grid_dims(), grid.get_cell_dims()};
+    }
 
     void reserve_thread_buffers(std::int32_t count);
 

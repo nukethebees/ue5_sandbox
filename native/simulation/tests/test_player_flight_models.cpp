@@ -968,6 +968,35 @@ TEST(NativeSimulationFlightModels, AuthoredInputTopologyAllowsTuningButRejectsCh
         EXPECT_TRUE(matches_authored_flight_model_topology(edited, preset));
 
         edited = authored;
+        edited.boost.available = !authored.boost.available;
+        EXPECT_TRUE(matches_authored_flight_model_topology(edited, preset));
+        edited = authored;
+        edited.boost.accelerator_activates_boost = !authored.boost.accelerator_activates_boost;
+        EXPECT_TRUE(matches_authored_flight_model_topology(edited, preset));
+        edited = authored;
+        edited.brake.available = !authored.brake.available;
+        EXPECT_TRUE(matches_authored_flight_model_topology(edited, preset));
+        edited = authored;
+        edited.emergency_brake.available = !authored.emergency_brake.available;
+        EXPECT_TRUE(matches_authored_flight_model_topology(edited, preset));
+        edited = authored;
+        edited.rotation.roll.stabilization.enabled = !authored.rotation.roll.stabilization.enabled;
+        EXPECT_TRUE(matches_authored_flight_model_topology(edited, preset));
+        edited = authored;
+        edited.translation.forward.passive_drag_reference_frame =
+            authored.translation.forward.passive_drag_reference_frame == ReferenceFrame::Ship
+                ? ReferenceFrame::World
+                : ReferenceFrame::Ship;
+        EXPECT_TRUE(matches_authored_flight_model_topology(edited, preset));
+        edited = authored;
+        edited.translation.forward.active_stabilization_reference_frame =
+            authored.translation.forward.active_stabilization_reference_frame ==
+                    ReferenceFrame::Ship
+                ? ReferenceFrame::World
+                : ReferenceFrame::Ship;
+        EXPECT_TRUE(matches_authored_flight_model_topology(edited, preset));
+
+        edited = authored;
         edited.translation.forward.manual.semantic =
             authored.translation.forward.manual.semantic == TranslationSemantic::Acceleration
                 ? TranslationSemantic::TargetVelocity
