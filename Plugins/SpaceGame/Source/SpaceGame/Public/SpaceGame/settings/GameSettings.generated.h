@@ -35,7 +35,6 @@ enum class EGameSetting : uint8 {
     SfxVolume,
     UIVolume,
     Bees,
-    PlayerShipFlightControlPreset,
     MouseTurnSensitivity,
     GamepadTurnSensitivity,
     GamepadTurnDeadZone,
@@ -63,8 +62,7 @@ enum class EGameSettingValueType : uint8 {
     GameGraphicsPreset,
     GameQualityLevel,
     GameAntiAliasingMethod,
-    Int32,
-    PlayerShipFlightControlPreset
+    Int32
 };
 enum class EGameSettingBackend : uint8 {
     Audio,
@@ -77,7 +75,6 @@ enum class EGameSettingOptionProvider : uint8 {
     AAMethods,
     FrameRateLimits,
     GraphicsPresets,
-    PlayerShipFlightControlPresets,
     QualityLevels,
     SupportedResolutions,
     WindowModes
@@ -132,7 +129,6 @@ struct SPACEGAME_API FGameSettingsState {
     float sfx_volume{};
     float ui_volume{};
     int32 bees{};
-    EPlayerShipFlightControlPreset player_ship_flight_control_preset{};
     float mouse_turn_sensitivity{};
     float gamepad_turn_sensitivity{};
     float gamepad_turn_dead_zone{};
@@ -150,8 +146,7 @@ using FGameSettingValue = std::variant<FIntPoint,
                                        EGameGraphicsPreset,
                                        EGameQualityLevel,
                                        EGameAntiAliasingMethod,
-                                       int32,
-                                       EPlayerShipFlightControlPreset>;
+                                       int32>;
 
 SPACEGAME_API auto game_setting_category_descriptors()
     -> TConstArrayView<FGameSettingCategoryDescriptor>;
@@ -322,15 +317,6 @@ class TGameSettingsAccess {
 
     void set_bees(int32 const value) {
         derived().set_setting(EGameSetting::Bees, FGameSettingValue{value});
-    }
-
-    auto player_ship_flight_control_preset() const -> EPlayerShipFlightControlPreset {
-        return derived().settings_state().player_ship_flight_control_preset;
-    }
-
-    void set_player_ship_flight_control_preset(EPlayerShipFlightControlPreset const value) {
-        derived().set_setting(EGameSetting::PlayerShipFlightControlPreset,
-                              FGameSettingValue{value});
     }
 
     auto mouse_turn_sensitivity() const -> float {

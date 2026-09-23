@@ -128,7 +128,6 @@ auto FGameSettingsBackend::read() const -> FGameSettingsState {
         .sfx_volume = settings->sfx_volume(),
         .ui_volume = settings->ui_volume(),
         .bees = settings->bees(),
-        .player_ship_flight_control_preset = settings->player_ship_flight_control_preset(),
         .mouse_turn_sensitivity = input_settings != nullptr
                                     ? input_settings->mouse_turn_sensitivity()
                                     : input_defaults->mouse_turn_sensitivity(),
@@ -208,7 +207,6 @@ auto FGameSettingsBackend::defaults() const -> FGameSettingsState {
         .sfx_volume = defaults->sfx_volume(),
         .ui_volume = defaults->ui_volume(),
         .bees = defaults->bees(),
-        .player_ship_flight_control_preset = defaults->player_ship_flight_control_preset(),
         .mouse_turn_sensitivity = input_defaults->mouse_turn_sensitivity(),
         .gamepad_turn_sensitivity = input_defaults->gamepad_turn_sensitivity(),
         .gamepad_turn_dead_zone = input_defaults->gamepad_turn_dead_zone(),
@@ -243,11 +241,6 @@ void FGameSettingsBackend::preview_immediate(FGameSettingsState const& state,
         }
         case EGameSetting::Bees: {
             settings->set_bees(state.bees);
-            break;
-        }
-        case EGameSetting::PlayerShipFlightControlPreset: {
-            settings->set_player_ship_flight_control_preset(
-                state.player_ship_flight_control_preset);
             break;
         }
         case EGameSetting::MouseTurnSensitivity:
@@ -318,9 +311,6 @@ void FGameSettingsBackend::save() const {
     if (auto* settings{user_settings()}) {
         settings->SaveSettings();
     }
-    if (auto* const input_settings{input_user_settings()}) {
-        input_settings->AsyncSaveSettings();
-    }
 }
 
 auto FGameSettingsBackend::options(EGameSettingOptionProvider const provider) const
@@ -390,15 +380,6 @@ auto FGameSettingsBackend::options(EGameSettingOptionProvider const provider) co
                 make_option(EGameQualityLevel::Medium, TEXT("Medium")),
                 make_option(EGameQualityLevel::High, TEXT("High")),
                 make_option(EGameQualityLevel::Epic, TEXT("Epic")),
-            };
-            break;
-        }
-        case EGameSettingOptionProvider::PlayerShipFlightControlPresets: {
-            result = {
-                make_option(EPlayerShipFlightControlPreset::Starfox, TEXT("Starfox")),
-                make_option(EPlayerShipFlightControlPreset::Fighter, TEXT("Fighter")),
-                make_option(EPlayerShipFlightControlPreset::Skater, TEXT("Skater")),
-                make_option(EPlayerShipFlightControlPreset::Gunship, TEXT("Gunship")),
             };
             break;
         }
@@ -479,7 +460,6 @@ void FGameSettingsBackend::write_non_display(USpaceGameUserSettings& settings,
     settings.set_sfx_volume(state.sfx_volume);
     settings.set_ui_volume(state.ui_volume);
     settings.set_bees(state.bees);
-    settings.set_player_ship_flight_control_preset(state.player_ship_flight_control_preset);
 }
 
 } // namespace ml::ioj

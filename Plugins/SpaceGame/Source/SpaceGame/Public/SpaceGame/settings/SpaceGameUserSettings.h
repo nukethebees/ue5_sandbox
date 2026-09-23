@@ -37,8 +37,6 @@ class SPACEGAME_API USpaceGameUserSettings : public UGameUserSettings {
     auto bees() const -> int32;
     void set_bees(int32 value);
 
-    auto player_ship_flight_control_preset() const -> EPlayerShipFlightControlPreset;
-    void set_player_ship_flight_control_preset(EPlayerShipFlightControlPreset value);
     auto flight_model_loadout() const -> ::ioj::sim::player::FlightModelLoadout;
     void set_flight_model_loadout(::ioj::sim::player::FlightModelLoadout const& loadout);
   private:
@@ -65,13 +63,6 @@ class SPACEGAME_API USpaceGameUserSettings : public UGameUserSettings {
 
     UPROPERTY(Config)
     int32 bees_{};
-
-    UPROPERTY(Config)
-    int32 player_ship_flight_control_preset_{
-        static_cast<int32>(EPlayerShipFlightControlPreset::Gunship)};
-
-    UPROPERTY(Config)
-    int32 flight_model_settings_version_{};
 
     UPROPERTY(Config)
     FString starfox_flight_model_{};

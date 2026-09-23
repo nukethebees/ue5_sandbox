@@ -953,4 +953,47 @@ TEST(NativeSimulationFlightModels, RotationStabilizationDelayIsIndependentPerAxi
     EXPECT_DOUBLE_EQ(state.controller.time_since_rotation_input.z, 1.0);
     EXPECT_NEAR(state.physical.transform.rotator().roll, 0.0, 1.e-5);
 }
+
+TEST(NativeSimulationFlightModels, AuthoredInputTopologyAllowsTuningButRejectsChannelChanges) {
+    using namespace player;
+    for (auto const preset : {FlightModelPreset::Starfox,
+                              FlightModelPreset::Fighter,
+                              FlightModelPreset::Skater,
+                              FlightModelPreset::Gunship}) {
+        SCOPED_TRACE(static_cast<int>(preset));
+        auto const authored{make_flight_model_profile(preset).config};
+        auto edited{authored};
+        edited.translation.forward.normal.positive_target_speed += 100.f;
+        edited.translation.forward.manual.response.mode = ResponseMode::RateLimited;
+        EXPECT_TRUE(matches_authored_flight_model_topology(edited, preset));
+
+        edited = authored;
+        edited.translation.forward.manual.semantic =
+            authored.translation.forward.manual.semantic == TranslationSemantic::Acceleration
+                ? TranslationSemantic::TargetVelocity
+                : TranslationSemantic::Acceleration;
+        EXPECT_FALSE(matches_authored_flight_model_topology(edited, preset));
+        edited = authored;
+        edited.translation.forward.manual.input_source =
+            authored.translation.forward.manual.input_source == TranslationInputSource::Axis
+                ? TranslationInputSource::Accelerator
+                : TranslationInputSource::Axis;
+        EXPECT_FALSE(matches_authored_flight_model_topology(edited, preset));
+        edited = authored;
+        edited.translation.forward.manual.reference_frame =
+            authored.translation.forward.manual.reference_frame == ReferenceFrame::Ship
+                ? ReferenceFrame::World
+                : ReferenceFrame::Ship;
+        EXPECT_FALSE(matches_authored_flight_model_topology(edited, preset));
+        edited = authored;
+        edited.rotation.pitch.manual_semantic = RotationSemantic::Disabled;
+        EXPECT_FALSE(matches_authored_flight_model_topology(edited, preset));
+        edited = authored;
+        edited.translation.up.manual.semantic =
+            authored.translation.up.manual.semantic == TranslationSemantic::Disabled
+                ? TranslationSemantic::TargetVelocity
+                : TranslationSemantic::Disabled;
+        EXPECT_FALSE(matches_authored_flight_model_topology(edited, preset));
+    }
+}
 } // namespace ioj::sim::tests

@@ -55,14 +55,16 @@ class SPACEGAME_API UGameSettingsSubsystem final
     auto is_dirty() const -> bool;
     auto is_dirty(EGameSettingCategory category) const -> bool;
     auto is_at_defaults(EGameSettingCategory category) const -> bool;
-    auto flight_model_profile() const -> ::ioj::sim::player::FlightModelProfile const&;
+    auto flight_model_profile(EShipControlScope scope) const
+        -> ::ioj::sim::player::FlightModelProfile const&;
     auto flight_model_loadout() const -> ::ioj::sim::player::FlightModelLoadout const&;
-    auto set_flight_model_profile(::ioj::sim::player::FlightModelProfile profile) -> bool;
+    auto set_flight_model_profile(EShipControlScope scope,
+                                  ::ioj::sim::player::FlightModelProfile profile) -> bool;
     auto is_awaiting_display_confirmation() const -> bool;
     auto display_confirmation_seconds_remaining() const -> int32;
 
     /* **************************************** */
-    // Control profiles and bindings
+    // Control bindings
     /* **************************************** */
     auto control_bindings(EHardwareDevicePrimaryType device_type) const
         -> TArray<FControlBindingView>;
@@ -97,7 +99,6 @@ class SPACEGAME_API UGameSettingsSubsystem final
     auto normalize_value(FGameSettingDescriptor const& descriptor,
                          FGameSettingValue const& value) const -> TOptional<FGameSettingValue>;
     auto input_user_settings() const -> USpaceGameInputUserSettings*;
-    void reset_flight_model_profile();
 
     /* **************************************** */
     // Control binding helpers
@@ -107,6 +108,8 @@ class SPACEGAME_API UGameSettingsSubsystem final
                              FControlBindingAddress const& address,
                              FKey key,
                              bool defer_change_broadcast) const -> bool;
+    auto unmap_control_binding(USpaceGameInputUserSettings& settings,
+                               FControlBindingAddress const& address) const -> bool;
     void capture_input_edit_state();
     void restore_input_edit_state();
     auto input_is_dirty() const -> bool;
@@ -117,7 +120,6 @@ class SPACEGAME_API UGameSettingsSubsystem final
     FGameSettingsBackend backend_;
     TWeakObjectPtr<ULocalPlayer> editing_local_player_{};
     FGameSettingsEditState edit_state_{};
-    ::ioj::sim::player::FlightModelProfile flight_model_profile_{};
     ::ioj::sim::player::FlightModelLoadout flight_model_loadout_{};
     ::ioj::sim::player::FlightModelLoadout applied_flight_model_loadout_{};
     TArray<FControlBindingView> applied_control_bindings_{};

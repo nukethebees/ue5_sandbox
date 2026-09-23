@@ -33,11 +33,4 @@ enum class EGameGraphicsPreset : uint8 {
     Epic,
 };
 
-enum class EPlayerShipFlightControlPreset : uint8 {
-    Starfox,
-    Fighter,
-    Skater,
-    Gunship,
-};
-
 } // namespace ml::ioj

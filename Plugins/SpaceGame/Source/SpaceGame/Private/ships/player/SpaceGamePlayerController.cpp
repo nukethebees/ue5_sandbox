@@ -140,6 +140,7 @@ void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
                 this, &ThisClass::on_input_user_settings_initialized);
         }
     }
+    registered_input_settings_.Reset();
     GetWorldTimerManager().ClearTimer(initial_pause_timer_);
     GetWorldTimerManager().ClearTimer(main_menu_input_timer_);
     modal_ui_.detach_callbacks(*this);
@@ -376,6 +377,9 @@ void ASpaceGamePlayerController::initialise_input_user_settings() {
     if (!IsValid(settings)) {
         return;
     }
+    if (registered_input_settings_.Get() == settings) {
+        return;
+    }
     for (auto const& definition : ml::ioj::canonical_ship_control_contexts()) {
         auto* const mapping{ml::ioj::load_ship_control_context(definition.scope)};
         if (!IsValid(mapping)) {
@@ -395,8 +399,10 @@ void ASpaceGamePlayerController::initialise_input_user_settings() {
         UE_LOG(LogSandboxController,
                Error,
                TEXT("Canonical input settings class is not installed for the local player"));
+        return;
     }
 
+    registered_input_settings_ = settings;
     FModifyContextOptions rebuild_options;
     rebuild_options.bForceImmediately = true;
     subsystem->RequestRebuildControlMappings(rebuild_options,
@@ -404,6 +410,7 @@ void ASpaceGamePlayerController::initialise_input_user_settings() {
 }
 void ASpaceGamePlayerController::on_input_user_settings_initialized(
     UEnhancedInputUserSettings const* const settings) {
+    static_cast<void>(settings);
     initialise_input_user_settings();
 }
 auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera,

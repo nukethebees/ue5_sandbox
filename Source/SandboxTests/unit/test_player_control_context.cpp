@@ -1,4 +1,5 @@
 #include <SpaceGame/input/CanonicalShipControls.h>
+#include <SpaceGame/input/ControlBindingMetadata.h>
 #include <SpaceGame/ships/common/SpaceShipControllerInputs.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
@@ -6,6 +7,7 @@
 #include <CQTest.h>
 #include <InputAction.h>
 #include <InputMappingContext.h>
+#include <PlayerMappableKeySettings.h>
 #include <UObject/UnrealType.h>
 
 #include <initializer_list>
@@ -38,11 +40,25 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
             TSet<FName> identities;
             for (auto const& mapping : context->GetMappings()) {
                 auto const name{mapping.GetMappingName()};
+                TestRunner->TestFalse(TEXT("Mapping identity is valid"), name.IsNone());
                 TestRunner->TestFalse(TEXT("Mapping identity is unique"),
                                       identities.Contains(name));
                 identities.Add(name);
-                TestRunner->TestTrue(TEXT("Mapping identity has semantic scope"),
-                                     name.ToString().Contains(TEXT(".")));
+                auto const identity{name.ToString()};
+                TestRunner->TestTrue(
+                    TEXT("Mapping identity has owning scope"),
+                    identity.StartsWith(FString{definition.asset_name}.RightChop(9) + TEXT(".")));
+                TestRunner->TestTrue(TEXT("Mapping identity has hardware device"),
+                                     identity.EndsWith(mapping.Key.IsGamepadKey()
+                                                           ? TEXT(".Gamepad")
+                                                           : TEXT(".KeyboardMouse")));
+                auto const* const key_settings{mapping.GetPlayerMappableKeySettings()};
+                auto const* const metadata{
+                    IsValid(key_settings)
+                        ? Cast<ml::ioj::UControlBindingMetadata>(key_settings->Metadata)
+                        : nullptr};
+                TestRunner->TestTrue(TEXT("Mapping metadata has owning scope"),
+                                     IsValid(metadata) && metadata->scope == definition.scope);
             }
         }
 

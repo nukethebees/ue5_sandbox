@@ -198,15 +198,6 @@
       :min 0
       :max 5
       :step 1))
-  (setting player_ship_flight_control_preset "Edit Flight Model"
-    :tooltip "Choose which flight-model slot to tune below. This does not change the active flight mode or input layout."
-    :category controls
-    :value-type @player_ship_flight_control_preset
-    :backend game_user_settings
-    :apply immediate
-    :device shared
-    (control choice
-      :options-provider player_ship_flight_control_presets))
   (setting mouse_turn_sensitivity "Mouse Sensitivity"
     :tooltip "Mouse virtual-stick sensitivity multiplier. 1.0 reaches full deflection after 400 mouse counts."
     :category controls
