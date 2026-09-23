@@ -21,7 +21,7 @@ struct FPlayerControllerTestAccess {
                               FSpaceShipControllerInputs const& input) {
         controller.input = input;
         controller.global_input.mapping_context = NewObject<UInputMappingContext>(&controller);
-        controller.global_input.toggle_menu = input.move;
+        controller.global_input.toggle_menu = input.select_starfox;
         controller.control_contexts_.initialise(controller,
                                                 component,
                                                 subsystem,

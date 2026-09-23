@@ -293,6 +293,8 @@ void configure_common_actions(FlightModelConfig& config) {
     result.boosted_maximum_resultant_speed = 16000.f;
     configure_common_actions(result);
     configure_common_rotation(result);
+    result.rotation.roll.manual_semantic = RotationSemantic::TargetAngularVelocity;
+    result.rotation.roll.maximum_rate = 90.f;
     return result;
 }
 

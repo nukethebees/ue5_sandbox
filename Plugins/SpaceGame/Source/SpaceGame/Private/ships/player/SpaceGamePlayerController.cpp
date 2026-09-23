@@ -2,7 +2,7 @@
 
 #include <ioj/sim/mission_manager.h>
 #include <SandboxCoreEngine/actor_utils.h>
-#include <SpaceGame/input/ControlProfiles.h>
+#include <SpaceGame/input/CanonicalShipControls.h>
 #include <SpaceGame/input/SpaceGameInputUserSettings.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/settings/GameSettingsSubsystem.h>
@@ -132,6 +132,14 @@ void ASpaceGamePlayerController::apply_main_menu_input_mode() {
 }
 void ASpaceGamePlayerController::EndPlay(EEndPlayReason::Type const reason) {
     ending_play_ = true;
+    if (auto* const local_player{GetLocalPlayer()}; IsValid(local_player)) {
+        if (auto* const subsystem{
+                ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)};
+            IsValid(subsystem)) {
+            subsystem->OnPostUserSettingsInitialized.RemoveDynamic(
+                this, &ThisClass::on_input_user_settings_initialized);
+        }
+    }
     GetWorldTimerManager().ClearTimer(initial_pause_timer_);
     GetWorldTimerManager().ClearTimer(main_menu_input_timer_);
     modal_ui_.detach_callbacks(*this);
@@ -168,8 +176,8 @@ void ASpaceGamePlayerController::OnPossess(APawn* const in_pawn) {
     UE_LOG(LogSandbox, Display, TEXT("Possessed player ship"));
 }
 void ASpaceGamePlayerController::attach_ship(Pawn& ship) {
-    apply_player_ship_flight_model_config(ship);
     ship.on_player_ship_died.BindUObject(this, &ThisClass::on_player_ship_died);
+    apply_player_ship_flight_model_config(ship);
     control_contexts_.set_ship(&ship);
     modal_ui_.on_ship_changed(true);
 
@@ -200,36 +208,27 @@ void ASpaceGamePlayerController::apply_player_ship_flight_model_config(Pawn& shi
         return;
     }
 
-    auto const& profile{settings->flight_model_profile()};
-    using Preset = ::ioj::sim::player::FlightModelPreset;
-    using Slot = ::ioj::sim::player::FlightModelSlot;
-    auto slot{Slot::Up};
-    switch (profile.base_preset) {
-        case Preset::Starfox:
-            slot = Slot::Up;
-            break;
-        case Preset::Fighter:
-            slot = Slot::Right;
-            break;
-        case Preset::Skater:
-            slot = Slot::Down;
-            break;
-        case Preset::Gunship:
-            slot = Slot::Left;
-            break;
-    }
-    if (ship.set_flight_model_slot_profile(slot, profile)) {
-        ship.select_flight_model_slot(slot);
+    auto const& loadout{settings->flight_model_loadout()};
+    using ::ioj::sim::player::FlightModelSlot;
+    for (auto const slot : {FlightModelSlot::Up,
+                            FlightModelSlot::Right,
+                            FlightModelSlot::Down,
+                            FlightModelSlot::Left}) {
+        if (!ship.set_flight_model_slot_profile(
+                slot, ::ioj::sim::player::flight_model_profile(loadout, slot))) {
+            UE_LOG(LogSandboxController, Error, TEXT("Could not apply saved flight model slot"));
+        }
     }
 }
 void ASpaceGamePlayerController::on_player_ship_flight_model_selected() {
     auto* const ship{Cast<Pawn>(GetPawn())};
-    auto* const game_instance{GetGameInstance()};
-    auto* const settings{IsValid(game_instance)
-                             ? game_instance->GetSubsystem<ml::ioj::UGameSettingsSubsystem>()
-                             : nullptr};
-    if (IsValid(ship) && IsValid(settings)) {
-        settings->observe_flight_model_profile(ship->get_active_flight_model_profile());
+    if (!IsValid(ship)) {
+        return;
+    }
+    if (auto* const orchestrator{orchestrator_.Get()}; IsValid(orchestrator)) {
+        auto const scope{ml::ioj::flight_control_scope(ship->get_active_flight_model_slot())};
+        orchestrator->get_hud_manager().set_selected_mapping_context(
+            FString{ml::ioj::canonical_ship_control_context(scope).asset_name});
     }
 }
 void ASpaceGamePlayerController::activate_ship_control() {
@@ -345,6 +344,8 @@ void ASpaceGamePlayerController::SetupInputComponent() {
     TRY_INIT_PTR(input_subsystem,
                  ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player));
 
+    initialise_input_user_settings();
+
     if (control_contexts_.initialise(*this,
                                      *input_component,
                                      *input_subsystem,
@@ -357,46 +358,53 @@ void ASpaceGamePlayerController::SetupInputComponent() {
 }
 void ASpaceGamePlayerController::initialise_input_user_settings() {
     auto* const local_player{GetLocalPlayer()};
+    if (!IsValid(local_player)) {
+        return;
+    }
     auto* const subsystem{
-        IsValid(local_player)
-            ? ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)
-            : nullptr};
-    auto* const settings{IsValid(subsystem) ? subsystem->GetUserSettings() : nullptr};
-    auto* const mapping_context{input.get_mapping_context()};
-    if (!IsValid(settings) || !IsValid(mapping_context)) {
+        ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)};
+    if (!IsValid(subsystem)) {
         UE_LOG(LogSandboxController,
                Error,
-               TEXT("ASpaceGamePlayerController::initialise_input_user_settings: Input settings "
-                    "or mapping context are invalid."));
+               TEXT("ASpaceGamePlayerController::initialise_input_user_settings: Enhanced Input "
+                    "subsystem is invalid."));
         return;
     }
-    if (!ml::ioj::register_control_profiles(*settings, *mapping_context)) {
+    subsystem->OnPostUserSettingsInitialized.AddUniqueDynamic(
+        this, &ThisClass::on_input_user_settings_initialized);
+    auto* const settings{subsystem->GetUserSettings()};
+    if (!IsValid(settings)) {
         return;
     }
-
-    auto* const space_game_settings{Cast<ml::ioj::USpaceGameInputUserSettings>(settings)};
-    if (!IsValid(space_game_settings) || !space_game_settings->migrate_legacy_gamepad_bindings()) {
-        return;
+    for (auto const& definition : ml::ioj::canonical_ship_control_contexts()) {
+        auto* const mapping{ml::ioj::load_ship_control_context(definition.scope)};
+        if (!IsValid(mapping)) {
+            UE_LOG(LogSandboxController,
+                   Error,
+                   TEXT("Could not register canonical input context %s"),
+                   definition.asset_name);
+            return;
+        }
+        if (!settings->IsMappingContextRegistered(mapping)) {
+            settings->RegisterInputMappingContext(mapping);
+        }
+    }
+    if (auto* const ship_settings{Cast<ml::ioj::USpaceGameInputUserSettings>(settings)}) {
+        ship_settings->finalize_canonical_registration();
+    } else {
+        UE_LOG(LogSandboxController,
+               Error,
+               TEXT("Canonical input settings class is not installed for the local player"));
     }
 
     FModifyContextOptions rebuild_options;
     rebuild_options.bForceImmediately = true;
     subsystem->RequestRebuildControlMappings(rebuild_options,
                                              EInputMappingRebuildType::RebuildWithFlush);
-    space_game_settings->AsyncSaveSettings();
 }
-void ASpaceGamePlayerController::on_ship_control_profile_changed(FString const& profile_name) {
-    UE_LOG(LogSandbox, Display, TEXT("Setting control profile to: %s"), *profile_name);
-
-    auto* const orchestrator{orchestrator_.Get()};
-    if (!IsValid(orchestrator)) {
-        UE_LOG(LogSandboxController,
-               Warning,
-               TEXT("ASpaceGamePlayerController::on_ship_control_profile_changed: HUD "
-                    "orchestrator is invalid."));
-        return;
-    }
-    orchestrator->get_hud_manager().set_selected_mapping_context(profile_name);
+void ASpaceGamePlayerController::on_input_user_settings_initialized(
+    UEnhancedInputUserSettings const* const settings) {
+    initialise_input_user_settings();
 }
 auto ASpaceGamePlayerController::activate_playerless_camera(ACameraActor& camera,
                                                             EPlayerControlContext const context)
@@ -716,21 +724,6 @@ void ASpaceGamePlayerController::quit_game() {
 /* **************************************** */
 // Diagnostics
 /* **************************************** */
-auto ASpaceGamePlayerController::get_input_snapshot() const -> FPlayerInputSnapshot {
-    FPlayerInputSnapshot snapshot{
-        .control_context = get_active_control_context(),
-        .pause_menu_active = modal_ui_.is_pause_active(),
-    };
-    auto const* const ship{Cast<Pawn>(GetPawn())};
-    if (IsValid(ship) && ship->has_simulation()) {
-        snapshot.movement = ship->get_move_input();
-        snapshot.turn = ship->get_turn_input();
-        snapshot.sampled_movement = ship->get_sampled_target_speed_scale();
-        snapshot.fire_active = ship->get_laser_firing_mode() != ::ioj::sim::LaserFiringState::idle;
-        snapshot.sampling_active = ship->is_sampling_target_speed();
-    }
-    return snapshot;
-}
 void ASpaceGamePlayerController::Tick(float const dt) {
     Super::Tick(dt);
 

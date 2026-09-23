@@ -273,20 +273,15 @@ void Sim::refresh_effective_action(PlayerSimulationState& state) noexcept {
 /* **************************************** */
 // Flight controls
 /* **************************************** */
-void Sim::set_move_input(ml::Vector2d const input) noexcept {
-    flight_intent_.translation.y = std::clamp(input.x, -1.0, 1.0);
-    flight_intent_.translation.x = std::clamp(input.y, -1.0, 1.0);
-}
-
-void Sim::set_forward_move_input(float const input) noexcept {
+void Sim::set_forward_input(float const input) noexcept {
     flight_intent_.translation.x = std::clamp(input, -1.f, 1.f);
 }
 
-void Sim::set_lateral_move_input(float const input) noexcept {
+void Sim::set_right_input(float const input) noexcept {
     flight_intent_.translation.y = std::clamp(input, -1.f, 1.f);
 }
 
-void Sim::set_vertical_move_input(float const input) noexcept {
+void Sim::set_up_input(float const input) noexcept {
     flight_intent_.translation.z = std::clamp(input, -1.f, 1.f);
 }
 
@@ -300,20 +295,8 @@ void Sim::set_ship_2d_control(ml::Vector2d const input) {
     };
 }
 
-void Sim::set_throttle(float const input) noexcept {
+void Sim::set_accelerator(float const input) noexcept {
     flight_intent_.accelerator = std::clamp(input, 0.f, 1.f);
-}
-
-void Sim::set_ship_1d_control_x(float const input) {
-    auto control{sampled_target_speed_scale_};
-    control.x = input;
-    set_ship_2d_control(control);
-}
-
-void Sim::set_ship_1d_control_y(float const input) {
-    auto control{sampled_target_speed_scale_};
-    control.y = input;
-    set_ship_2d_control(control);
 }
 
 void Sim::start_sampling() noexcept {
@@ -358,9 +341,16 @@ void Sim::adjust_desired_forward_velocity(float const direction) {
     planned_state_ = state_;
 }
 
-void Sim::turn(ml::Vector2d const direction) noexcept {
-    flight_intent_.rotation.x = direction.y;
-    flight_intent_.rotation.y = direction.x;
+void Sim::set_pitch_input(float const input) noexcept {
+    flight_intent_.rotation.x = std::clamp(input, -1.f, 1.f);
+}
+
+void Sim::set_yaw_input(float const input) noexcept {
+    flight_intent_.rotation.y = std::clamp(input, -1.f, 1.f);
+}
+
+void Sim::set_roll_input(float const input) noexcept {
+    flight_intent_.rotation.z = std::clamp(input, -1.f, 1.f);
 }
 
 void Sim::start_boost() {
@@ -387,15 +377,16 @@ void Sim::start_emergency_brake() {
     planned_state_ = state_;
 }
 
-void Sim::stop_brake() {
-    flight_intent_.brake_held = false;
+void Sim::stop_emergency_brake() {
     flight_intent_.emergency_brake_held = false;
     refresh_effective_action(state_);
     planned_state_ = state_;
 }
 
-void Sim::roll(float const direction) noexcept {
-    flight_intent_.rotation.z = std::clamp(direction, -1.f, 1.f);
+void Sim::stop_brake() {
+    flight_intent_.brake_held = false;
+    refresh_effective_action(state_);
+    planned_state_ = state_;
 }
 
 void Sim::select_flight_model_slot(FlightModelSlot const slot) noexcept {

@@ -322,8 +322,7 @@ auto SGameOptionsView::OnKeyDown(FGeometry const& geometry, FKeyEvent const& key
         if (managed_binding_.IsSet() && managed_binding_->current_key.IsValid()) {
             buttons.Add(binding_clear_button_);
         }
-        if (managed_binding_.IsSet() && managed_binding_->modified &&
-            !managed_binding_->custom_profile) {
+        if (managed_binding_.IsSet() && managed_binding_->modified) {
             buttons.Add(binding_reset_button_);
         }
         buttons.Add(binding_cancel_button_);
@@ -451,28 +450,16 @@ auto SGameOptionsView::build_footer() -> TSharedRef<SWidget> {
                           if (active_tab_ != EOptionsTab::Controls) {
                               return NSLOCTEXT("OptionsMenu", "ResetCategory", "Reset Category");
                           }
-                          return control_reset_scope(active_control_profile_custom_) ==
-                                         EControlResetScope::SettingsOnly
-                                   ? NSLOCTEXT("OptionsMenu",
-                                               "ResetControlSettings",
-                                               "Reset Control Settings")
-                                   : NSLOCTEXT(
-                                         "OptionsMenu", "ResetAllControls", "Reset All Controls");
+                          return NSLOCTEXT("OptionsMenu", "ResetAllControls", "Reset All Controls");
                       })
                       .ToolTipText_Lambda([this] {
                           if (active_tab_ != EOptionsTab::Controls) {
                               return FText::GetEmpty();
                           }
-                          return control_reset_scope(active_control_profile_custom_) ==
-                                         EControlResetScope::SettingsOnly
-                                   ? NSLOCTEXT("OptionsMenu",
-                                               "ResetCustomControlSettingsTip",
-                                               "Reset all response settings. Custom bindings are "
-                                               "preserved.")
-                                   : NSLOCTEXT("OptionsMenu",
-                                               "ResetAllControlsTip",
-                                               "Reset response settings and bindings for both "
-                                               "devices in this profile.");
+                          return NSLOCTEXT(
+                              "OptionsMenu",
+                              "ResetAllControlsTip",
+                              "Reset response settings and bindings for both devices.");
                       })
                       .OnClicked_Lambda([delegate = on_reset_]() {
                           delegate.ExecuteIfBound();
@@ -593,152 +580,6 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                                                .Title(title)[rows]];
     };
 
-    auto const profiles{settings->control_profiles()};
-    TArray<FText> profile_labels;
-    profile_labels.Reserve(profiles.Num());
-    for (auto const& profile : profiles) {
-        profile_labels.Add(
-            profile.modified && !profile.custom
-                ? FText::Format(
-                      NSLOCTEXT("OptionsMenu", "ModifiedControlProfile", "{0} (Modified)"),
-                      profile.display_name)
-                : profile.display_name);
-    }
-    auto const* const active_profile{
-        profiles.FindByPredicate([](auto const& profile) { return profile.active; })};
-    active_control_profile_custom_ = active_profile != nullptr && active_profile->custom;
-    TSharedPtr<SSettingsChoice> profile_choice;
-    auto profile_rows{SNew(SVerticalBox)};
-    profile_rows->AddSlot().AutoHeight().Padding(style_->settings().row_padding)
-        [SAssignNew(profile_choice, SSettingsChoice)
-             .Style(&style_->settings())
-             .Label(NSLOCTEXT("OptionsMenu", "ControlProfile", "Control Profile"))
-             .ToolTipText(NSLOCTEXT(
-                 "OptionsMenu", "ControlProfileTip", "Choose a preset or custom control profile."))
-             .Options(MoveTemp(profile_labels))
-             .SelectedIndex_Lambda([weak_settings = settings_, profiles] {
-                 auto const* const current{weak_settings.Get()};
-                 if (current == nullptr) {
-                     return int32{INDEX_NONE};
-                 }
-                 auto const current_profiles{current->control_profiles()};
-                 return current_profiles.IndexOfByPredicate(
-                     [](FControlProfileView const& profile) { return profile.active; });
-             })
-             .OnSelectionChanged_Lambda([this, profiles](int32 const index) {
-                 if (auto* const current{settings_.Get()};
-                     profiles.IsValidIndex(index) && current != nullptr &&
-                     current->set_control_profile(profiles[index].id)) {
-                     control_profile_error_ = FText::GetEmpty();
-                     request_controls_rebuild(FControlsFocusIdentity{
-                         .kind = EControlsFocusKind::Profile,
-                     });
-                 }
-             })];
-    auto profile_actions{SNew(SHorizontalBox)};
-    profile_actions->AddSlot().AutoWidth().Padding(FMargin{
-        0.0f,
-        0.0f,
-        style_->settings().button_spacing,
-        0.0f})[SNew(SGameButton)
-                   .Style(&style_->button(EGameButtonStyle::Secondary))
-                   .Audio(audio_)
-                   .Text(NSLOCTEXT("OptionsMenu", "CreateCustomProfile", "Copy to New Custom"))
-                   .OnClicked_Lambda([this] {
-                       if (auto* const current{settings_.Get()}) {
-                           if (current->create_custom_control_profile()) {
-                               control_profile_error_ = FText::GetEmpty();
-                           } else {
-                               control_profile_error_ =
-                                   NSLOCTEXT("OptionsMenu",
-                                             "CreateCustomProfileFailed",
-                                             "Could not create the custom control profile.");
-                           }
-                           request_controls_rebuild(FControlsFocusIdentity{
-                               .kind = EControlsFocusKind::Profile,
-                           });
-                       }
-                       return FReply::Handled();
-                   })];
-    if (active_profile != nullptr && active_profile->custom) {
-        auto const name_input{
-            SNew(SBorder)
-                .BorderImage(&style_->chrome().frame_border)
-                .Padding(FMargin{1.0f})
-                    [SNew(SBorder)
-                         .BorderImage(&style_->chrome().body_background)
-                         .Padding(FMargin{12.0f, 8.0f})
-                             [SNew(SEditableText)
-                                  .Text(active_profile->display_name)
-                                  .HintText(NSLOCTEXT(
-                                      "OptionsMenu", "CustomProfileNameHint", "Profile name"))
-                                  .Font(style_->text(EGameTextStyle::Body).Font)
-                                  .ColorAndOpacity(style_->palette().text_primary)
-                                  .SelectAllTextWhenFocused(true)
-                                  .OnTextCommitted_Lambda(
-                                      [this](FText const& text, ETextCommit::Type const commit) {
-                                          if (commit == ETextCommit::OnCleared) {
-                                              return;
-                                          }
-                                          auto* const current{settings_.Get()};
-                                          if (current == nullptr ||
-                                              !current->rename_active_custom_control_profile(
-                                                  text.ToString())) {
-                                              control_profile_error_ = NSLOCTEXT(
-                                                  "OptionsMenu",
-                                                  "RenameCustomProfileFailed",
-                                                  "Profile names must be unique and contain 1–48 "
-                                                  "characters.");
-                                          } else {
-                                              control_profile_error_ = FText::GetEmpty();
-                                          }
-                                          request_controls_rebuild(FControlsFocusIdentity{
-                                              .kind = EControlsFocusKind::Profile,
-                                          });
-                                      })]]};
-        profile_rows->AddSlot().AutoHeight().Padding(style_->settings().row_padding)
-            [SNew(SSettingsRow)
-                 .Style(&style_->settings())
-                 .Label(NSLOCTEXT("OptionsMenu", "CustomProfileName", "Profile Name"))
-                 .ToolTipText(
-                     NSLOCTEXT("OptionsMenu",
-                               "CustomProfileNameTip",
-                               "Rename this custom profile. Names must be unique."))[name_input]];
-        profile_actions->AddSlot()
-            .AutoWidth()[SNew(SGameButton)
-                             .Style(&style_->button(EGameButtonStyle::Secondary))
-                             .Audio(audio_)
-                             .Text(NSLOCTEXT("OptionsMenu", "DeleteCustomProfile", "Delete Custom"))
-                             .OnClicked_Lambda([this, profile_id = active_profile->id] {
-                                 if (auto* const current{settings_.Get()}) {
-                                     if (current->delete_custom_control_profile(profile_id)) {
-                                         control_profile_error_ = FText::GetEmpty();
-                                     } else {
-                                         control_profile_error_ = NSLOCTEXT(
-                                             "OptionsMenu",
-                                             "DeleteCustomProfileFailed",
-                                             "Could not delete the custom control profile.");
-                                     }
-                                     request_controls_rebuild(FControlsFocusIdentity{
-                                         .kind = EControlsFocusKind::Profile,
-                                     });
-                                 }
-                                 return FReply::Handled();
-                             })];
-    }
-    profile_rows->AddSlot().AutoHeight().Padding(style_->settings().row_padding)[profile_actions];
-    if (!control_profile_error_.IsEmpty()) {
-        profile_rows->AddSlot().AutoHeight().Padding(
-            style_->settings().row_padding)[SNew(STextBlock)
-                                                .Text(control_profile_error_)
-                                                .TextStyle(&style_->text(EGameTextStyle::Caption))
-                                                .ColorAndOpacity(style_->palette().danger)];
-    }
-    page_focus_actions_[static_cast<int32>(EOptionsTab::Controls)] = [profile_choice] {
-        profile_choice->focus();
-    };
-    add_section(NSLOCTEXT("OptionsMenu", "ProfilesSection", "Profiles"), profile_rows);
-
     auto const add_setting_sections = [this, settings, &add_section](
                                           EGameSettingDevice const device) {
         FText current_section;
@@ -777,7 +618,6 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
     using RotationSemantic = ::ioj::sim::player::RotationSemantic;
     using ResponseMode = ::ioj::sim::player::ResponseMode;
     using ReferenceFrame = ::ioj::sim::player::ReferenceFrame;
-    using InputSource = ::ioj::sim::player::TranslationInputSource;
     using FacingCoupling = ::ioj::sim::player::FacingVelocityCoupling;
 
     auto flight_rows{SNew(SVerticalBox)};
@@ -1025,8 +865,15 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
 
     auto const add_translation_axis = [&](FText const& axis_name,
                                           TranslationAxis TranslationAxes::* member) {
-        flight_rows = SNew(SVerticalBox);
         auto const axis = [member](auto& config) -> auto& { return config.translation.*member; };
+        auto const baseline{::ioj::sim::player::make_flight_model_profile(
+            settings->flight_model_profile().base_preset)};
+        auto const& authored_axis{axis(baseline.config)};
+        if (authored_axis.manual.semantic == TranslationSemantic::Disabled &&
+            authored_axis.automatic.semantic == TranslationSemantic::Disabled) {
+            return;
+        }
+        flight_rows = SNew(SVerticalBox);
         auto const& current_axis{axis(settings->flight_model_profile().config)};
         auto const manual_prefix{
             field_label(axis_name, NSLOCTEXT("OptionsMenu", "ManualChannel", "Manual"))};
@@ -1038,22 +885,25 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                           NSLOCTEXT("OptionsMenu", "TranslationTargetSpeed", "Target Speed"),
                           NSLOCTEXT("OptionsMenu", "TranslationTargetVelocity", "Target Velocity"),
                           NSLOCTEXT("OptionsMenu", "TranslationAcceleration", "Acceleration")};
-        add_flight_choice(
-            field_label(manual_prefix, NSLOCTEXT("OptionsMenu", "SemanticField", "Semantic")),
-            NSLOCTEXT("OptionsMenu",
-                      "ManualTranslationSemanticTip",
-                      "How manual intent controls this axis."),
-            semantic_options,
-            [axis](FlightConfig const& config) {
-                return static_cast<int32>(axis(config).manual.semantic);
-            },
-            [axis](FlightConfig& config, int32 const index) {
-                apply_flight_model_translation_semantic_edit(
-                    axis(config),
-                    EFlightModelTranslationChannel::Manual,
-                    static_cast<TranslationSemantic>(index));
-            });
-        if (current_axis.manual.semantic != TranslationSemantic::Disabled) {
+        if (authored_axis.manual.semantic != TranslationSemantic::Disabled) {
+            add_flight_choice(
+                field_label(manual_prefix, NSLOCTEXT("OptionsMenu", "SemanticField", "Semantic")),
+                NSLOCTEXT("OptionsMenu",
+                          "ManualTranslationSemanticTip",
+                          "How manual intent controls this axis."),
+                semantic_options,
+                [axis](FlightConfig const& config) {
+                    return static_cast<int32>(axis(config).manual.semantic);
+                },
+                [axis](FlightConfig& config, int32 const index) {
+                    apply_flight_model_translation_semantic_edit(
+                        axis(config),
+                        EFlightModelTranslationChannel::Manual,
+                        static_cast<TranslationSemantic>(index));
+                });
+        }
+        if (authored_axis.manual.semantic != TranslationSemantic::Disabled &&
+            current_axis.manual.semantic != TranslationSemantic::Disabled) {
             add_flight_choice(
                 field_label(manual_prefix,
                             NSLOCTEXT("OptionsMenu", "ReferenceFrameField", "Reference Frame")),
@@ -1068,45 +918,32 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                 [axis](FlightConfig& config, int32 const index) {
                     axis(config).manual.reference_frame = static_cast<ReferenceFrame>(index);
                 });
-            if (current_axis.manual.semantic != TranslationSemantic::TargetSpeed) {
-                add_flight_choice(
-                    field_label(manual_prefix,
-                                NSLOCTEXT("OptionsMenu", "InputSourceField", "Input Source")),
-                    NSLOCTEXT("OptionsMenu",
-                              "TranslationInputSourceTip",
-                              "Use this axis input or the shared accelerator intent."),
-                    {NSLOCTEXT("OptionsMenu", "AxisInput", "Axis"),
-                     NSLOCTEXT("OptionsMenu", "AcceleratorInput", "Accelerator")},
-                    [axis](FlightConfig const& config) {
-                        return static_cast<int32>(axis(config).manual.input_source);
-                    },
-                    [axis](FlightConfig& config, int32 const index) {
-                        axis(config).manual.input_source = static_cast<InputSource>(index);
-                    });
-            }
             add_response(
                 manual_prefix,
                 [axis](auto& config) -> auto& { return axis(config).manual.response; },
                 100000.f);
         }
 
-        add_flight_choice(
-            field_label(automatic_prefix,
-                        NSLOCTEXT("OptionsMenu", "SemanticFieldAutomatic", "Semantic")),
-            NSLOCTEXT("OptionsMenu",
-                      "AutomaticTranslationSemanticTip",
-                      "How automatic intent controls this axis."),
-            semantic_options,
-            [axis](FlightConfig const& config) {
-                return static_cast<int32>(axis(config).automatic.semantic);
-            },
-            [axis](FlightConfig& config, int32 const index) {
-                apply_flight_model_translation_semantic_edit(
-                    axis(config),
-                    EFlightModelTranslationChannel::Automatic,
-                    static_cast<TranslationSemantic>(index));
-            });
-        if (current_axis.automatic.semantic != TranslationSemantic::Disabled) {
+        if (authored_axis.automatic.semantic != TranslationSemantic::Disabled) {
+            add_flight_choice(
+                field_label(automatic_prefix,
+                            NSLOCTEXT("OptionsMenu", "SemanticFieldAutomatic", "Semantic")),
+                NSLOCTEXT("OptionsMenu",
+                          "AutomaticTranslationSemanticTip",
+                          "How automatic intent controls this axis."),
+                semantic_options,
+                [axis](FlightConfig const& config) {
+                    return static_cast<int32>(axis(config).automatic.semantic);
+                },
+                [axis](FlightConfig& config, int32 const index) {
+                    apply_flight_model_translation_semantic_edit(
+                        axis(config),
+                        EFlightModelTranslationChannel::Automatic,
+                        static_cast<TranslationSemantic>(index));
+                });
+        }
+        if (authored_axis.automatic.semantic != TranslationSemantic::Disabled &&
+            current_axis.automatic.semantic != TranslationSemantic::Disabled) {
             add_flight_choice(
                 field_label(
                     automatic_prefix,
@@ -1324,8 +1161,13 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
 
     auto const add_rotation_axis = [&](FText const& axis_name,
                                        RotationAxis RotationAxes::* member) {
-        flight_rows = SNew(SVerticalBox);
         auto const axis = [member](auto& config) -> auto& { return config.rotation.*member; };
+        auto const baseline{::ioj::sim::player::make_flight_model_profile(
+            settings->flight_model_profile().base_preset)};
+        if (axis(baseline.config).manual_semantic == RotationSemantic::Disabled) {
+            return;
+        }
+        flight_rows = SNew(SVerticalBox);
         auto const& current_axis{axis(settings->flight_model_profile().config)};
         add_flight_choice(
             field_label(axis_name, NSLOCTEXT("OptionsMenu", "RotationSemantic", "Semantic")),
@@ -1602,6 +1444,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                       request_controls_rebuild(FControlsFocusIdentity{
                           .kind = EControlsFocusKind::Device,
                           .device = EGameSettingDevice::KeyboardMouse,
+                          .scope = controls_scope_,
                       });
                       return FReply::Handled();
                   })] +
@@ -1616,6 +1459,7 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
                            request_controls_rebuild(FControlsFocusIdentity{
                                .kind = EControlsFocusKind::Device,
                                .device = EGameSettingDevice::Controller,
+                               .scope = controls_scope_,
                            });
                            return FReply::Handled();
                        })]];
@@ -1624,18 +1468,76 @@ void SGameOptionsView::rebuild_controls_page(TOptional<FControlsFocusIdentity> r
         FControlsFocusIdentity{
             .kind = EControlsFocusKind::Device,
             .device = EGameSettingDevice::KeyboardMouse,
+            .scope = controls_scope_,
         },
         keyboard_mouse_button.ToSharedRef());
     register_controls_focus(
         FControlsFocusIdentity{
             .kind = EControlsFocusKind::Device,
             .device = EGameSettingDevice::Controller,
+            .scope = controls_scope_,
         },
         controller_button.ToSharedRef());
+    page_focus_actions_[static_cast<int32>(EOptionsTab::Controls)] = [keyboard_mouse_button] {
+        keyboard_mouse_button->focus();
+    };
+
+    auto scope_rows{SNew(SVerticalBox)};
+    auto scope_buttons{SNew(SHorizontalBox)};
+    auto const scopes{TArray<EShipControlScope>{EShipControlScope::General,
+                                                EShipControlScope::Starfox,
+                                                EShipControlScope::Fighter,
+                                                EShipControlScope::Skater,
+                                                EShipControlScope::Gunship}};
+    for (auto const scope : scopes) {
+        auto const label{[scope] {
+            switch (scope) {
+                case EShipControlScope::General:
+                    return FText::FromString(TEXT("General"));
+                case EShipControlScope::Starfox:
+                    return FText::FromString(TEXT("Starfox"));
+                case EShipControlScope::Fighter:
+                    return FText::FromString(TEXT("Fighter"));
+                case EShipControlScope::Skater:
+                    return FText::FromString(TEXT("Skater"));
+                case EShipControlScope::Gunship:
+                    return FText::FromString(TEXT("Gunship"));
+            }
+            return FText::GetEmpty();
+        }()};
+        TSharedPtr<SGameButton> button;
+        scope_buttons->AddSlot().FillWidth(1.0f).Padding(
+            FMargin{0.0f,
+                    0.0f,
+                    style_->settings().button_spacing,
+                    0.0f})[SAssignNew(button, SGameButton)
+                               .Style(&style_->button(EGameButtonStyle::Secondary))
+                               .Audio(audio_)
+                               .Selected(controls_scope_ == scope)
+                               .Text(label)
+                               .OnClicked_Lambda([this, scope] {
+                                   controls_scope_ = scope;
+                                   request_controls_rebuild(FControlsFocusIdentity{
+                                       .kind = EControlsFocusKind::Scope,
+                                       .device = controls_device_,
+                                       .scope = scope,
+                                   });
+                                   return FReply::Handled();
+                               })];
+        register_controls_focus(
+            FControlsFocusIdentity{
+                .kind = EControlsFocusKind::Scope,
+                .device = controls_device_,
+                .scope = scope,
+            },
+            button.ToSharedRef());
+    }
+    scope_rows->AddSlot().AutoHeight()[scope_buttons];
+    add_section(NSLOCTEXT("OptionsMenu", "ControlScopeSection", "Flight Mode"), scope_rows);
 
     add_setting_sections(controls_device_);
 
-    auto const bindings{settings->control_bindings(controls_device_type())};
+    auto const bindings{settings->control_bindings(controls_device_type(), controls_scope_)};
     FText binding_category;
     TSharedPtr<SVerticalBox> binding_rows;
     auto const flush_binding_category = [&] {
@@ -2349,11 +2251,6 @@ auto SGameOptionsView::build_binding_management_prompt() -> TSharedRef<SWidget> 
                    .Text(NSLOCTEXT("OptionsMenu", "ResetBinding", "Reset"))
                    .Enabled_Lambda(
                        [this] { return managed_binding_.IsSet() && managed_binding_->modified; })
-                   .Visibility_Lambda([this] {
-                       return managed_binding_.IsSet() && managed_binding_->custom_profile
-                                ? EVisibility::Collapsed
-                                : EVisibility::Visible;
-                   })
                    .OnClicked_Lambda([this] {
                        if (!managed_binding_.IsSet()) {
                            return FReply::Handled();
@@ -2689,6 +2586,7 @@ auto SGameOptionsView::binding_focus_identity(FControlBindingView const& binding
         .device = binding.device_type == EHardwareDevicePrimaryType::Gamepad
                     ? EGameSettingDevice::Controller
                     : EGameSettingDevice::KeyboardMouse,
+        .scope = binding.scope,
         .binding = control_binding_identity(binding.address, binding.device_type),
     };
 }
@@ -2712,17 +2610,10 @@ void SGameOptionsView::restore_controls_focus(FControlsFocusIdentity const& iden
         return;
     }
 
-    if (identity.kind == EControlsFocusKind::Profile) {
-        auto const index{static_cast<int32>(EOptionsTab::Controls)};
-        if (page_focus_actions_.IsValidIndex(index) && page_focus_actions_[index]) {
-            page_focus_actions_[index]();
-            return;
-        }
-    }
-
     auto const selected_device{FControlsFocusIdentity{
         .kind = EControlsFocusKind::Device,
         .device = controls_device_,
+        .scope = controls_scope_,
     }};
     target = controls_focus_targets_.FindByPredicate(
         [&selected_device](FControlsFocusTarget const& candidate) {

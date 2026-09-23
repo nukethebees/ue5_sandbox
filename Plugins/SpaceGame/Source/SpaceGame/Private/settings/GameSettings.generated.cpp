@@ -397,9 +397,9 @@ static TArray<FGameSettingDescriptor> const descriptors{
      EGameSettingOptionProvider::PlayerShipFlightControlPresets,
      EGameSettingAvailabilityProvider::Always,
      TEXT("player_ship_flight_control_preset"),
-     FText::FromString(TEXT("Flight Controls")),
-     FText::FromString(TEXT("Select the default runtime flight model. D-pad directions select the "
-                            "four model slots while flying.")),
+     FText::FromString(TEXT("Edit Flight Model")),
+     FText::FromString(TEXT("Choose which flight-model slot to tune below. This does not change "
+                            "the active flight mode or input layout.")),
      0,
      0,
      0,

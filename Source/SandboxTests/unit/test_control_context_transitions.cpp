@@ -25,6 +25,16 @@ struct FPlayerControlContextsTestAccess {
     static void fail_next_bind(FPlayerControlContexts& contexts, EPlayerControlContext context) {
         contexts.fail_bind_mask_ |= static_cast<uint8>(1u << static_cast<uint8>(context));
     }
+    static auto ship_context(FPlayerControlContexts& contexts) -> FShipControlContext& {
+        return contexts.ship_;
+    }
+};
+
+struct FShipControlContextTestAccess {
+    static void select(FShipControlContext& context,
+                       ::ioj::sim::player::FlightModelSlot const slot) {
+        context.select_flight_model_slot(slot);
+    }
 };
 
 TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
@@ -74,8 +84,26 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
         auto const* const input_property{
             FindFProperty<FStructProperty>(defaults->GetClass(), TEXT("input"))};
         ship_input_ = *input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(defaults);
-        ship_input_.mapping_context = NewObject<UInputMappingContext>(controller_);
+        ship_input_.starfox = NewObject<UInputMappingContext>(controller_);
+        ship_input_.fighter = NewObject<UInputMappingContext>(controller_);
+        ship_input_.skater = NewObject<UInputMappingContext>(controller_);
+        ship_input_.gunship = NewObject<UInputMappingContext>(controller_);
         auto* const action{NewObject<UInputAction>(controller_)};
+        ship_input_.translate_forward = action;
+        ship_input_.translate_right = action;
+        ship_input_.translate_up = action;
+        ship_input_.pitch = action;
+        ship_input_.yaw = action;
+        ship_input_.roll = action;
+        ship_input_.accelerate = action;
+        ship_input_.brake = action;
+        ship_input_.boost = action;
+        ship_input_.emergency_brake = action;
+        ship_input_.fire_primary = action;
+        ship_input_.select_starfox = action;
+        ship_input_.select_fighter = action;
+        ship_input_.select_skater = action;
+        ship_input_.select_gunship = action;
         global_input_.mapping_context = NewObject<UInputMappingContext>(controller_);
         global_input_.toggle_menu = action;
         benchmark_input_.mapping_context = NewObject<UInputMappingContext>(controller_);
@@ -131,7 +159,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Player to None succeeds"),
                              contexts_.set_control_context(EPlayerControlContext::None));
         TestRunner->TestFalse(TEXT("Ship mapping is removed"),
-                              subsystem_->HasMappingContext(ship_input_.mapping_context));
+                              subsystem_->HasMappingContext(ship_input_.starfox));
         TestRunner->TestTrue(TEXT("Global mapping remains in None"),
                              subsystem_->HasMappingContext(global_input_.mapping_context));
         TestRunner->TestEqual(TEXT("Global and unrelated handlers remain"),
@@ -144,6 +172,67 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
         TestRunner->TestEqual(TEXT("Shutdown retains unrelated handler"),
                               component_->GetActionEventBindings().Num(),
                               1);
+    }
+
+    TEST_METHOD(FlightModesSwitchAsOneNativeAndEnhancedInputState)
+    {
+        using Slot = ::ioj::sim::player::FlightModelSlot;
+        contexts_.set_ship(ship_);
+        TestRunner->TestTrue(TEXT("Player context binds"),
+                             contexts_.set_control_context(EPlayerControlContext::Player));
+        auto assert_mode = [this](Slot const slot, UInputMappingContext* const active) {
+            TestRunner->TestTrue(TEXT("Native flight slot is selected"),
+                                 ship_->get_active_flight_model_slot() == slot);
+            TestRunner->TestTrue(TEXT("General context stays active"),
+                                 subsystem_->HasMappingContext(global_input_.mapping_context));
+            int32 active_count{};
+            for (auto* const mode : {ship_input_.starfox,
+                                     ship_input_.fighter,
+                                     ship_input_.skater,
+                                     ship_input_.gunship}) {
+                active_count += subsystem_->HasMappingContext(mode) ? 1 : 0;
+            }
+            TestRunner->TestEqual(TEXT("Exactly one mode context is active"), active_count, 1);
+            TestRunner->TestTrue(TEXT("Correct mode context is active"),
+                                 subsystem_->HasMappingContext(active));
+        };
+        assert_mode(Slot::Up, ship_input_.starfox);
+        auto& bridge{FPlayerControlContextsTestAccess::ship_context(contexts_)};
+        FShipControlContextTestAccess::select(bridge, Slot::Left);
+        assert_mode(Slot::Left, ship_input_.gunship);
+        FShipControlContextTestAccess::select(bridge, Slot::Right);
+        assert_mode(Slot::Right, ship_input_.fighter);
+        FShipControlContextTestAccess::select(bridge, Slot::Down);
+        assert_mode(Slot::Down, ship_input_.skater);
+        FShipControlContextTestAccess::select(bridge, Slot::Up);
+        assert_mode(Slot::Up, ship_input_.starfox);
+    }
+
+    TEST_METHOD(UnbindNeutralisesAllContinuousAndHeldShipInput)
+    {
+        contexts_.set_ship(ship_);
+        contexts_.set_control_context(EPlayerControlContext::Player);
+        ship_->set_forward_input(1.f);
+        ship_->set_right_input(1.f);
+        ship_->set_up_input(1.f);
+        ship_->set_pitch_input(1.f);
+        ship_->set_yaw_input(1.f);
+        ship_->set_roll_input(1.f);
+        ship_->set_accelerator(1.f);
+        ship_->start_boost();
+        ship_->start_brake();
+        ship_->start_emergency_brake();
+        ship_->start_fire_laser();
+        contexts_.set_control_context(EPlayerControlContext::None);
+        auto const& intent{ship_simulation_.get_flight_intent()};
+        TestRunner->TestTrue(TEXT("Translation and rotation clear"),
+                             intent.translation == ml::Vector3d{} &&
+                                 intent.rotation == ml::Vector3d{});
+        TestRunner->TestTrue(TEXT("Accelerator and held propulsion clear"),
+                             intent.accelerator == 0.f && !intent.boost_held &&
+                                 !intent.brake_held && !intent.emergency_brake_held);
+        TestRunner->TestFalse(TEXT("Primary fire clears"),
+                              ship_->get_laser_firing_mode() != ::ioj::sim::LaserFiringState::idle);
     }
 
     TEST_METHOD(BenchmarkRepeatAndShutdownRemoveEveryOwnedBinding)
@@ -247,7 +336,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Ship context is restored"),
                              contexts_.get_active_context() == EPlayerControlContext::Player);
         TestRunner->TestTrue(TEXT("Ship mapping is restored"),
-                             subsystem_->HasMappingContext(ship_input_.mapping_context));
+                             subsystem_->HasMappingContext(ship_input_.starfox));
         TestRunner->TestFalse(TEXT("Requested Observer mapping is cleaned up"),
                               subsystem_->HasMappingContext(observer_input_.mapping_context));
         TestRunner->TestEqual(TEXT("Ship binding count is restored"),

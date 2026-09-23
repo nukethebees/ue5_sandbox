@@ -1,8 +1,8 @@
 #include "SandboxEditor/Commandlets/GenerateScriptedLevelAssetsCommandlet.h"
 
 #include <SandboxShaders/GpuStarfield/GpuStarfieldActor.h>
+#include <SpaceGame/input/CanonicalShipControls.h>
 #include <SpaceGame/input/ControlBindingMetadata.h>
-#include <SpaceGame/input/ControlProfiles.h>
 #include <SpaceGame/input/SpaceGameInputModifier.h>
 #include <SpaceGame/presentation/TestBatchGameUiData.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
@@ -96,9 +96,6 @@ constexpr TCHAR back_action_package_name[]{TEXT("/SpaceGame/Input/UI/IA_menu_bac
 constexpr TCHAR back_action_object_path[]{TEXT("/SpaceGame/Input/UI/IA_menu_back.IA_menu_back")};
 constexpr TCHAR menu_mapping_package_name[]{TEXT("/SpaceGame/Input/UI/IMC_menu")};
 constexpr TCHAR menu_mapping_object_path[]{TEXT("/SpaceGame/Input/UI/IMC_menu.IMC_menu")};
-constexpr TCHAR global_mapping_object_path[]{
-    TEXT("/SpaceGame/Input/Player/IMC_Player_Global.IMC_Player_Global")};
-constexpr TCHAR pause_action_object_path[]{TEXT("/SpaceGame/Input/SpaceShip/IA_pause.IA_pause")};
 constexpr TCHAR battle_viewer_widget_object_path[]{
     TEXT("/SpaceGame/UI/InGame/WBP_BattleViewerHud.WBP_BattleViewerHud")};
 constexpr TCHAR battle_viewer_widget_package_name[]{
@@ -109,28 +106,6 @@ constexpr TCHAR benchmark_widget_package_name[]{TEXT("/SpaceGame/UI/InGame/WBP_B
 constexpr TCHAR observer_input_package_path[]{TEXT("/SpaceGame/Input/Observer/")};
 constexpr TCHAR benchmark_input_package_path[]{TEXT("/SpaceGame/Input/Benchmark/")};
 constexpr TCHAR ship_input_package_path[]{TEXT("/SpaceGame/Input/SpaceShip/")};
-constexpr TCHAR ship_base_mapping_object_path[]{
-    TEXT("/SpaceGame/Input/SpaceShip/IMC_SpaceShip_Base.IMC_SpaceShip_Base")};
-constexpr TCHAR ship_aim_move_mapping_object_path[]{
-    TEXT("/SpaceGame/Input/SpaceShip/IMC_space_ship_twinstick_aim_move."
-         "IMC_space_ship_twinstick_aim_move")};
-constexpr TCHAR ship_move_aim_mapping_object_path[]{
-    TEXT("/SpaceGame/Input/SpaceShip/IMC_space_ship_twinstick_move_aim."
-         "IMC_space_ship_twinstick_move_aim")};
-constexpr TCHAR ship_z_roll_aim_mapping_object_path[]{
-    TEXT("/SpaceGame/Input/SpaceShip/IMC_space_ship_twinstick_z-roll_aim."
-         "IMC_space_ship_twinstick_z-roll_aim")};
-constexpr TCHAR ship_boost_action_object_path[]{
-    TEXT("/SpaceGame/Input/SpaceShip/IA_ship_boost.IA_ship_boost")};
-constexpr TCHAR ship_brake_action_object_path[]{
-    TEXT("/SpaceGame/Input/SpaceShip/IA_ship_brake.IA_ship_brake")};
-constexpr TCHAR ship_fire_action_object_path[]{
-    TEXT("/SpaceGame/Input/SpaceShip/IA_ship_fire.IA_ship_fire")};
-constexpr TCHAR ship_cycle_input_profile_action_object_path[]{
-    TEXT("/SpaceGame/Input/SpaceShip/IA_cycle_input_mapping_context."
-         "IA_cycle_input_mapping_context")};
-constexpr TCHAR ship_forward_move_action_object_path[]{
-    TEXT("/SpaceGame/Input/SpaceShip/IA_ship_vertical_move.IA_ship_vertical_move")};
 FName const scripted_level_generation_context{TEXT("GenerateScriptedLevelAssets")};
 constexpr TCHAR runtime_config_package_name[]{TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig")};
 constexpr TCHAR runtime_config_asset_name[]{TEXT("DA_GameRuntimeLevelConfig")};
@@ -553,11 +528,7 @@ auto generate_menu_input_assets() -> bool {
         back_action_object_path, back_action_package_name, TEXT("IA_menu_back"))};
     auto* const menu_mapping{load_or_create_asset<UInputMappingContext>(
         menu_mapping_object_path, menu_mapping_package_name, TEXT("IMC_menu"))};
-    auto* const global_mapping{
-        LoadObject<UInputMappingContext>(nullptr, global_mapping_object_path)};
-    auto* const pause_action{LoadObject<UInputAction>(nullptr, pause_action_object_path)};
-    if (!IsValid(back_action) || !IsValid(menu_mapping) || !IsValid(global_mapping) ||
-        !IsValid(pause_action)) {
+    if (!IsValid(back_action) || !IsValid(menu_mapping)) {
         UE_LOG(LogTemp, Error, TEXT("Could not load or create menu input assets"));
         return false;
     }
@@ -569,16 +540,7 @@ auto generate_menu_input_assets() -> bool {
     menu_mapping->MapKey(back_action, EKeys::Escape);
     menu_mapping->MapKey(back_action, EKeys::Gamepad_FaceButton_Right);
 
-    bool pause_gamepad_mapping_exists{false};
-    global_mapping->ForEachKeyMapping([&](FEnhancedActionKeyMapping const& mapping) {
-        pause_gamepad_mapping_exists |=
-            mapping.Action == pause_action && mapping.Key == EKeys::Gamepad_Special_Right;
-    });
-    if (!pause_gamepad_mapping_exists) {
-        global_mapping->Modify();
-        global_mapping->MapKey(pause_action, EKeys::Gamepad_Special_Right);
-    }
-    return save_asset(*back_action) && save_asset(*menu_mapping) && save_asset(*global_mapping);
+    return save_asset(*back_action) && save_asset(*menu_mapping);
 }
 
 auto create_input_action(TCHAR const* const package_path,
@@ -591,6 +553,8 @@ auto create_input_action(TCHAR const* const package_path,
     if (IsValid(action)) {
         action->Modify();
         action->ValueType = value_type;
+        action->Triggers.Reset();
+        action->Modifiers.Reset();
     }
     return action;
 }
@@ -774,460 +738,547 @@ auto generate_benchmark_widget(UClass& button_class) -> UClass* {
     return compile_and_save(*blueprint) ? blueprint->GeneratedClass.Get() : nullptr;
 }
 
-struct FInputBindingPresentation {
-    FName action_name;
-    FText label;
-    ml::ioj::EControlBindingGroup group{};
-    int32 order{};
+struct FGeneratedShipInputActions {
+    FSpaceShipControllerInputs ship{};
+    UInputMappingContext* general{nullptr};
+    UInputAction* pause{nullptr};
+
+    auto is_valid() const -> bool {
+        if (!IsValid(general) || !IsValid(pause) || !IsValid(ship.starfox) ||
+            !IsValid(ship.fighter) || !IsValid(ship.skater) || !IsValid(ship.gunship)) {
+            return false;
+        }
+        for (auto* const action : {ship.translate_forward,
+                                   ship.translate_right,
+                                   ship.translate_up,
+                                   ship.pitch,
+                                   ship.yaw,
+                                   ship.roll,
+                                   ship.accelerate,
+                                   ship.brake,
+                                   ship.boost,
+                                   ship.emergency_brake,
+                                   ship.fire_primary,
+                                   ship.select_starfox,
+                                   ship.select_fighter,
+                                   ship.select_skater,
+                                   ship.select_gunship}) {
+            if (!IsValid(action)) {
+                return false;
+            }
+        }
+        return true;
+    }
 };
 
-TArray<FInputBindingPresentation> const input_binding_presentations{
-    {TEXT("IA_ship_throttle"), INVTEXT("Accelerate"), ml::ioj::EControlBindingGroup::Flight, 10},
-    {TEXT("IA_ship_vertical_move"),
-     INVTEXT("Forward / Backward"),
-     ml::ioj::EControlBindingGroup::Flight,
-     20},
-    {TEXT("IA_ship_lateral_move"), INVTEXT("Strafe"), ml::ioj::EControlBindingGroup::Flight, 30},
-    {TEXT("IA_ship_vertical_translation"),
-     INVTEXT("Translate Up / Down"),
-     ml::ioj::EControlBindingGroup::Flight,
-     40},
-    {TEXT("IA_ship_move"), INVTEXT("Move"), ml::ioj::EControlBindingGroup::Flight, 50},
-    {TEXT("IA_Turn"), INVTEXT("Turn"), ml::ioj::EControlBindingGroup::Flight, 50},
-    {TEXT("IA_Ship_TurnPointerDelta"),
-     INVTEXT("Mouse Steering"),
-     ml::ioj::EControlBindingGroup::Flight,
-     51},
-    {TEXT("IA_Ship_EngagePointerTurn"),
-     INVTEXT("Hold to Steer with Mouse"),
-     ml::ioj::EControlBindingGroup::Flight,
-     52},
-    {TEXT("IA_ship_roll"), INVTEXT("Roll"), ml::ioj::EControlBindingGroup::Flight, 60},
-    {TEXT("IA_ship_boost"), INVTEXT("Boost"), ml::ioj::EControlBindingGroup::Flight, 70},
-    {TEXT("IA_ship_brake"), INVTEXT("Brake"), ml::ioj::EControlBindingGroup::Flight, 80},
-    {TEXT("IA_ship_barrel_roll"),
-     INVTEXT("Barrel Roll"),
-     ml::ioj::EControlBindingGroup::Flight,
-     90},
-    {TEXT("IA_ship_control"),
-     INVTEXT("Direct Flight Control"),
-     ml::ioj::EControlBindingGroup::Flight,
-     100},
-    {TEXT("IA_ship_control_x"),
-     INVTEXT("Direct Lateral Control"),
-     ml::ioj::EControlBindingGroup::Flight,
-     110},
-    {TEXT("IA_ship_control_y"),
-     INVTEXT("Direct Forward Control"),
-     ml::ioj::EControlBindingGroup::Flight,
-     120},
-    {TEXT("IA_ship_decrease_desired_forward_velocity"),
-     INVTEXT("Decrease Desired Speed"),
-     ml::ioj::EControlBindingGroup::Flight,
-     130},
-    {TEXT("IA_ship_increase_desired_forward_velocity"),
-     INVTEXT("Increase Desired Speed"),
-     ml::ioj::EControlBindingGroup::Flight,
-     140},
-    {TEXT("IA_ship_select_flight_model_up"),
-     INVTEXT("Select Starfox Flight Model"),
-     ml::ioj::EControlBindingGroup::Flight,
-     150},
-    {TEXT("IA_ship_select_flight_model_right"),
-     INVTEXT("Select Fighter Flight Model"),
-     ml::ioj::EControlBindingGroup::Flight,
-     160},
-    {TEXT("IA_ship_select_flight_model_down"),
-     INVTEXT("Select Skater Flight Model"),
-     ml::ioj::EControlBindingGroup::Flight,
-     170},
-    {TEXT("IA_ship_select_flight_model_left"),
-     INVTEXT("Select Gunship Flight Model"),
-     ml::ioj::EControlBindingGroup::Flight,
-     180},
-    {TEXT("IA_ship_fire"), INVTEXT("Fire"), ml::ioj::EControlBindingGroup::Combat, 10},
-    {TEXT("IA_cycle_prev_fire_rate"),
-     INVTEXT("Previous Fire Rate"),
-     ml::ioj::EControlBindingGroup::Combat,
-     20},
-    {TEXT("IA_cycle_next_fire_rate"),
-     INVTEXT("Next Fire Rate"),
-     ml::ioj::EControlBindingGroup::Combat,
-     30},
-    {TEXT("IA_ship_sample_and_hold"),
-     INVTEXT("Sample and Hold"),
-     ml::ioj::EControlBindingGroup::Utility,
-     10},
-    {TEXT("IA_cycle_input_mapping_context"),
-     INVTEXT("Next Control Profile"),
-     ml::ioj::EControlBindingGroup::Utility,
-     20},
-};
-
-auto directional_binding_label(FInputBindingPresentation const& presentation,
-                               FKey const key,
-                               int32 const count,
-                               int32 const index) -> FText {
-    if (count <= 1) {
-        return presentation.label;
+auto scope_name(ml::ioj::EShipControlScope const scope) -> TCHAR const* {
+    switch (scope) {
+        case ml::ioj::EShipControlScope::General:
+            return TEXT("General");
+        case ml::ioj::EShipControlScope::Starfox:
+            return TEXT("Starfox");
+        case ml::ioj::EShipControlScope::Fighter:
+            return TEXT("Fighter");
+        case ml::ioj::EShipControlScope::Skater:
+            return TEXT("Skater");
+        case ml::ioj::EShipControlScope::Gunship:
+            return TEXT("Gunship");
     }
-
-    auto const action_name{presentation.action_name};
-    if (action_name == TEXT("IA_ship_lateral_move") || action_name == TEXT("IA_ship_control_x")) {
-        if (key == EKeys::A) {
-            return FText::Format(INVTEXT("{0} Left"), presentation.label);
-        }
-        if (key == EKeys::D) {
-            return FText::Format(INVTEXT("{0} Right"), presentation.label);
-        }
-    }
-    if (action_name == TEXT("IA_ship_vertical_move") || action_name == TEXT("IA_ship_control_y")) {
-        if (key == EKeys::W) {
-            return action_name == TEXT("IA_ship_vertical_move") ? INVTEXT("Forward")
-                                                                : INVTEXT("Direct Forward Control");
-        }
-        if (key == EKeys::S) {
-            return action_name == TEXT("IA_ship_vertical_move")
-                     ? INVTEXT("Backward")
-                     : INVTEXT("Direct Backward Control");
-        }
-    }
-    if (action_name == TEXT("IA_ship_vertical_translation")) {
-        if (key == EKeys::SpaceBar || key == EKeys::Gamepad_FaceButton_Top) {
-            return INVTEXT("Translate Up");
-        }
-        if (key == EKeys::LeftControl || key == EKeys::Gamepad_FaceButton_Bottom) {
-            return INVTEXT("Translate Down");
-        }
-    }
-    if (action_name == TEXT("IA_ship_roll")) {
-        if (key == EKeys::Q) {
-            return INVTEXT("Roll Left");
-        }
-        if (key == EKeys::E) {
-            return INVTEXT("Roll Right");
-        }
-    }
-    return FText::Format(
-        INVTEXT("{0} — Alternate {1}"), presentation.label, FText::AsNumber(index + 1));
+    return TEXT("Unknown");
 }
 
-auto mapping_device_is_gamepad(FEnhancedActionKeyMapping const& mapping) -> bool {
-    return mapping.Key.IsGamepadKey();
-}
-
-auto mapping_device_is_mouse(FEnhancedActionKeyMapping const& mapping) -> bool {
-    return mapping.Key.IsMouseButton();
-}
-
-void duplicate_instanced_mapping_data(FEnhancedActionKeyMapping& mapping,
-                                      UInputMappingContext& destination) {
-    for (auto& modifier : mapping.Modifiers) {
-        modifier =
-            IsValid(modifier) ? DuplicateObject<UInputModifier>(modifier, &destination) : nullptr;
-    }
-    for (auto& trigger : mapping.Triggers) {
-        trigger =
-            IsValid(trigger) ? DuplicateObject<UInputTrigger>(trigger, &destination) : nullptr;
-    }
-}
-
-auto configure_mapping(FEnhancedActionKeyMapping& mapping,
-                       UInputMappingContext& owner,
-                       int32 const same_device_action_count,
-                       int32 const same_device_action_index) -> bool {
-    if (!IsValid(mapping.Action)) {
-        return false;
+auto create_ship_mapping_context(ml::ioj::EShipControlScope const scope) -> UInputMappingContext* {
+    auto const& definition{ml::ioj::canonical_ship_control_context(scope)};
+    auto const package_name{
+        FString::Printf(TEXT("%s%s"), definition.package_path, definition.asset_name)};
+    auto const object_path{FString::Printf(TEXT("%s.%s"), *package_name, definition.asset_name)};
+    auto* const context{load_or_create_asset<UInputMappingContext>(
+        *object_path, *package_name, FName{definition.asset_name})};
+    if (!IsValid(context)) {
+        return nullptr;
     }
 
-    auto const* const presentation{
-        input_binding_presentations.FindByPredicate([&mapping](auto const& candidate) {
-            return candidate.action_name == mapping.Action->GetFName();
-        })};
-    if (presentation == nullptr) {
-        UE_LOG(LogTemp,
-               Error,
-               TEXT("No controls presentation metadata is authored for '%s'"),
-               *mapping.Action->GetName());
-        return false;
+    context->Modify();
+    context->UnmapAll();
+    if (auto* const overrides{FindFProperty<FMapProperty>(UInputMappingContext::StaticClass(),
+                                                          TEXT("MappingProfileOverrides"))}) {
+        overrides->ClearValue_InContainer(context);
+    }
+    return context;
+}
+
+void add_ship_mapping(UInputMappingContext& context,
+                      ml::ioj::EShipControlScope const scope,
+                      UInputAction& action,
+                      FKey const key,
+                      TCHAR const* const semantic,
+                      TCHAR const* const role,
+                      bool const negative,
+                      int32 const display_order) {
+    auto& mapping{context.MapKey(&action, key)};
+    if (negative) {
+        mapping.Modifiers.Add(NewObject<UInputModifierNegate>(&context));
+    }
+    if (action.ValueType == EInputActionValueType::Axis1D && semantic != nullptr &&
+        key != EKeys::Gamepad_LeftTriggerAxis) {
+        auto* response{NewObject<ml::ioj::USpaceGameInputModifier>(&context)};
+        if (key == EKeys::MouseX || key == EKeys::MouseY) {
+            response->response = ml::ioj::ESpaceGameInputResponse::TurnPointerDelta;
+        } else if (key.IsGamepadKey()) {
+            response->response = FCString::Strcmp(semantic, TEXT("Pitch")) == 0 ||
+                                         FCString::Strcmp(semantic, TEXT("Yaw")) == 0 ||
+                                         FCString::Strcmp(semantic, TEXT("Roll")) == 0
+                                   ? ml::ioj::ESpaceGameInputResponse::GamepadTurn
+                                   : ml::ioj::ESpaceGameInputResponse::GamepadMove;
+        } else {
+            response = nullptr;
+        }
+        if (response != nullptr) {
+            response->pitch_axis = FCString::Strcmp(semantic, TEXT("Pitch")) == 0;
+            mapping.Modifiers.Add(response);
+        }
     }
 
     auto* const behavior_property{FindFProperty<FEnumProperty>(
         FEnhancedActionKeyMapping::StaticStruct(), TEXT("SettingBehavior"))};
     auto* const settings_property{FindFProperty<FObjectProperty>(
         FEnhancedActionKeyMapping::StaticStruct(), TEXT("PlayerMappableKeySettings"))};
-    check(behavior_property != nullptr && settings_property != nullptr);
+    check(behavior_property && settings_property);
     behavior_property->GetUnderlyingProperty()->SetIntPropertyValue(
         behavior_property->ContainerPtrToValuePtr<void>(&mapping),
         static_cast<int64>(EPlayerMappableKeySettingBehaviors::OverrideSettings));
-    auto* const settings{NewObject<UPlayerMappableKeySettings>(&owner)};
-    auto mapping_name{mapping.Action->GetFName().ToString()};
-    if (same_device_action_count > 1) {
-        mapping_name += FString::Printf(TEXT(".%d"), same_device_action_index + 1);
-    }
-    settings->Name = FName{mapping_name};
 
-    settings->DisplayName = directional_binding_label(
-        *presentation, mapping.Key, same_device_action_count, same_device_action_index);
-    settings->DisplayCategory = ml::ioj::control_binding_group_label(presentation->group);
+    auto* const settings{NewObject<UPlayerMappableKeySettings>(&context)};
+    auto mapping_name{FString::Printf(TEXT("%s.%s"), scope_name(scope), semantic)};
+    if (role != nullptr && role[0] != TCHAR{}) {
+        mapping_name += FString::Printf(TEXT(".%s"), role);
+    }
+    mapping_name += key.IsGamepadKey() ? TEXT(".Gamepad") : TEXT(".KeyboardMouse");
+    settings->Name = FName{mapping_name};
+    settings->DisplayName = FText::FromString(role != nullptr && role[0] != TCHAR{}
+                                                  ? FString::Printf(TEXT("%s %s"), semantic, role)
+                                                  : FString{semantic});
+    auto const group{
+        FCString::Strcmp(semantic, TEXT("FirePrimary")) == 0 ? ml::ioj::EControlBindingGroup::Combat
+        : scope == ml::ioj::EShipControlScope::General ? ml::ioj::EControlBindingGroup::Utility
+                                                       : ml::ioj::EControlBindingGroup::Flight};
+    settings->DisplayCategory = ml::ioj::control_binding_group_label(group);
     auto* const metadata{NewObject<ml::ioj::UControlBindingMetadata>(settings)};
-    metadata->group = presentation->group;
-    metadata->display_order = presentation->order * 10 + same_device_action_index;
+    metadata->scope = scope;
+    metadata->group = group;
+    metadata->display_order = display_order;
     settings->Metadata = metadata;
     settings_property->SetObjectPropertyValue_InContainer(&mapping, settings);
-
-    auto const analog{mapping.Key.IsAxis1D() || mapping.Key.IsAxis2D() || mapping.Key.IsAxis3D()};
-    if (!analog) {
-        return true;
-    }
-    mapping.Modifiers.RemoveAll([](TObjectPtr<UInputModifier> const& modifier) {
-        return IsValid(modifier) && (modifier->IsA<UInputModifierDeadZone>() ||
-                                     modifier->IsA<ml::ioj::USpaceGameInputModifier>());
-    });
-
-    auto const action_name{mapping.Action->GetName()};
-    if (action_name.Contains(TEXT("Throttle"), ESearchCase::IgnoreCase)) {
-        return true;
-    }
-
-    auto* const response_modifier{NewObject<ml::ioj::USpaceGameInputModifier>(&owner)};
-    if (mapping_device_is_mouse(mapping)) {
-        if (!action_name.Contains(TEXT("Turn"), ESearchCase::IgnoreCase)) {
-            return true;
-        }
-        response_modifier->response = ml::ioj::ESpaceGameInputResponse::TurnPointerDelta;
-    } else if (!mapping_device_is_gamepad(mapping)) {
-        return true;
-    } else if (action_name.Contains(TEXT("Turn"), ESearchCase::IgnoreCase)) {
-        response_modifier->response = ml::ioj::ESpaceGameInputResponse::GamepadTurn;
-    } else {
-        response_modifier->response = ml::ioj::ESpaceGameInputResponse::GamepadMove;
-    }
-    mapping.Modifiers.Add(response_modifier);
-    return true;
 }
-
-auto configure_mappings(TArray<FEnhancedActionKeyMapping>& mappings,
-                        UInputMappingContext& owner,
-                        UInputAction& turn_pointer_delta_action) -> bool {
-    for (auto& mapping : mappings) {
-        if (mapping.Key.IsAxis2D() && mapping_device_is_mouse(mapping) && IsValid(mapping.Action) &&
-            mapping.Action->GetName().Contains(TEXT("Turn"), ESearchCase::IgnoreCase)) {
-            mapping.Action = &turn_pointer_delta_action;
-            mapping.Triggers.RemoveAll([](TObjectPtr<UInputTrigger> const& trigger) {
-                return IsValid(trigger) && trigger->IsA<UInputTriggerChordAction>();
-            });
-        }
-    }
-
-    auto mapping_group = [](FEnhancedActionKeyMapping const& mapping) {
-        return FString::Printf(
-            TEXT("%s:%s"),
-            IsValid(mapping.Action) ? *mapping.Action->GetPathName() : TEXT("Invalid"),
-            mapping_device_is_gamepad(mapping) ? TEXT("Gamepad") : TEXT("KeyboardMouse"));
-    };
-    TMap<FString, int32> counts;
-    for (auto const& mapping : mappings) {
-        counts.FindOrAdd(mapping_group(mapping))++;
-    }
-
-    TMap<FString, int32> indices;
-    auto success{true};
-    for (auto& mapping : mappings) {
-        auto const key{mapping_group(mapping)};
-        auto& index{indices.FindOrAdd(key)};
-        success = configure_mapping(mapping, owner, counts.FindRef(key), index) && success;
-        ++index;
-    }
-    return success;
-}
-
-auto set_profile_override(UInputMappingContext& destination,
-                          FString const& profile_id,
-                          UInputMappingContext const& source,
-                          TConstArrayView<FEnhancedActionKeyMapping> const shared_mappings,
-                          UInputAction& turn_pointer_delta_action) -> bool {
-    auto* const property{FindFProperty<FMapProperty>(UInputMappingContext::StaticClass(),
-                                                     TEXT("MappingProfileOverrides"))};
-    if (property == nullptr) {
-        UE_LOG(LogTemp, Error, TEXT("Could not find MappingProfileOverrides property"));
-        return false;
-    }
-
-    FScriptMapHelper mappings{property, property->ContainerPtrToValuePtr<void>(&destination)};
-    auto* value{mappings.FindValueFromHash(&profile_id)};
-    if (value == nullptr) {
-        auto const index{mappings.AddDefaultValue_Invalid_NeedsRehash()};
-        CastFieldChecked<FStrProperty>(property->KeyProp)
-            ->SetPropertyValue(mappings.GetKeyPtr(index), profile_id);
-        mappings.Rehash();
-        value = mappings.FindValueFromHash(&profile_id);
-    }
-
-    auto* const data{reinterpret_cast<FInputMappingContextMappingData*>(value)};
-    data->Mappings = source.GetMappings();
-    data->Mappings.RemoveAll([](FEnhancedActionKeyMapping const& mapping) {
-        return !mapping_device_is_gamepad(mapping);
-    });
-    for (auto const& mapping : shared_mappings) {
-        if (!mapping_device_is_gamepad(mapping)) {
-            data->Mappings.Add(mapping);
-        }
-    }
-    for (auto& mapping : data->Mappings) {
-        duplicate_instanced_mapping_data(mapping, destination);
-    }
-    return configure_mappings(data->Mappings, destination, turn_pointer_delta_action);
-}
-
-struct FGeneratedShipInputActions {
-    UInputAction* pointer_delta{nullptr};
-    UInputAction* engage_pointer{nullptr};
-    UInputAction* throttle{nullptr};
-    UInputAction* forward_move{nullptr};
-    UInputAction* vertical_move{nullptr};
-    UInputAction* increase_desired_forward_velocity{nullptr};
-    UInputAction* decrease_desired_forward_velocity{nullptr};
-    UInputAction* select_flight_model_up{nullptr};
-    UInputAction* select_flight_model_right{nullptr};
-    UInputAction* select_flight_model_down{nullptr};
-    UInputAction* select_flight_model_left{nullptr};
-
-    auto is_valid() const -> bool {
-        return IsValid(pointer_delta) && IsValid(engage_pointer) && IsValid(throttle) &&
-               IsValid(forward_move) && IsValid(vertical_move) &&
-               IsValid(increase_desired_forward_velocity) &&
-               IsValid(decrease_desired_forward_velocity) && IsValid(select_flight_model_up) &&
-               IsValid(select_flight_model_right) && IsValid(select_flight_model_down) &&
-               IsValid(select_flight_model_left);
-    }
-};
 
 auto generate_gameplay_input_assets() -> FGeneratedShipInputActions {
-    FGeneratedShipInputActions actions{
-        .pointer_delta = create_input_action(ship_input_package_path,
-                                             TEXT("IA_Ship_TurnPointerDelta"),
-                                             EInputActionValueType::Axis2D),
-        .engage_pointer = create_input_action(ship_input_package_path,
-                                              TEXT("IA_Ship_EngagePointerTurn"),
-                                              EInputActionValueType::Boolean),
-        .throttle = create_input_action(
-            ship_input_package_path, TEXT("IA_ship_throttle"), EInputActionValueType::Axis1D),
-        .forward_move = LoadObject<UInputAction>(nullptr, ship_forward_move_action_object_path),
-        .vertical_move = create_input_action(ship_input_package_path,
-                                             TEXT("IA_ship_vertical_translation"),
-                                             EInputActionValueType::Axis1D),
-        .increase_desired_forward_velocity =
-            create_input_action(ship_input_package_path,
-                                TEXT("IA_ship_increase_desired_forward_velocity"),
-                                EInputActionValueType::Boolean),
-        .decrease_desired_forward_velocity =
-            create_input_action(ship_input_package_path,
-                                TEXT("IA_ship_decrease_desired_forward_velocity"),
-                                EInputActionValueType::Boolean),
-        .select_flight_model_up = create_input_action(ship_input_package_path,
-                                                      TEXT("IA_ship_select_flight_model_up"),
-                                                      EInputActionValueType::Boolean),
-        .select_flight_model_right = create_input_action(ship_input_package_path,
-                                                         TEXT("IA_ship_select_flight_model_right"),
-                                                         EInputActionValueType::Boolean),
-        .select_flight_model_down = create_input_action(ship_input_package_path,
-                                                        TEXT("IA_ship_select_flight_model_down"),
-                                                        EInputActionValueType::Boolean),
-        .select_flight_model_left = create_input_action(ship_input_package_path,
-                                                        TEXT("IA_ship_select_flight_model_left"),
-                                                        EInputActionValueType::Boolean),
+    FGeneratedShipInputActions result{};
+    auto& ship{result.ship};
+    auto make_axis = [](TCHAR const* name) {
+        return create_input_action(ship_input_package_path, name, EInputActionValueType::Axis1D);
     };
-    auto* const base{LoadObject<UInputMappingContext>(nullptr, ship_base_mapping_object_path)};
-    auto* const aim_move{
-        LoadObject<UInputMappingContext>(nullptr, ship_aim_move_mapping_object_path)};
-    auto* const move_aim{
-        LoadObject<UInputMappingContext>(nullptr, ship_move_aim_mapping_object_path)};
-    auto* const z_roll_aim{
-        LoadObject<UInputMappingContext>(nullptr, ship_z_roll_aim_mapping_object_path)};
-    auto* const boost{LoadObject<UInputAction>(nullptr, ship_boost_action_object_path)};
-    auto* const brake{LoadObject<UInputAction>(nullptr, ship_brake_action_object_path)};
-    auto* const fire{LoadObject<UInputAction>(nullptr, ship_fire_action_object_path)};
-    auto* const cycle_input_profile{
-        LoadObject<UInputAction>(nullptr, ship_cycle_input_profile_action_object_path)};
-    if (!actions.is_valid() || !IsValid(base) || !IsValid(aim_move) || !IsValid(move_aim) ||
-        !IsValid(z_roll_aim) || !IsValid(boost) || !IsValid(brake) || !IsValid(fire) ||
-        !IsValid(cycle_input_profile)) {
-        UE_LOG(LogTemp, Error, TEXT("Could not load ship input actions or mapping contexts"));
+    auto make_button = [](TCHAR const* name) {
+        return create_input_action(ship_input_package_path, name, EInputActionValueType::Boolean);
+    };
+    ship.translate_forward = make_axis(TEXT("IA_Ship_TranslateForward"));
+    ship.translate_right = make_axis(TEXT("IA_Ship_TranslateRight"));
+    ship.translate_up = make_axis(TEXT("IA_Ship_TranslateUp"));
+    ship.pitch = make_axis(TEXT("IA_Ship_Pitch"));
+    ship.yaw = make_axis(TEXT("IA_Ship_Yaw"));
+    ship.roll = make_axis(TEXT("IA_Ship_Roll"));
+    ship.accelerate = make_axis(TEXT("IA_Ship_Accelerate"));
+    ship.brake = make_button(TEXT("IA_Ship_Brake"));
+    ship.boost = make_button(TEXT("IA_Ship_Boost"));
+    ship.emergency_brake = make_button(TEXT("IA_Ship_EmergencyBrake"));
+    ship.fire_primary = make_button(TEXT("IA_Ship_FirePrimary"));
+    ship.select_starfox = make_button(TEXT("IA_Ship_SelectStarfox"));
+    ship.select_fighter = make_button(TEXT("IA_Ship_SelectFighter"));
+    ship.select_skater = make_button(TEXT("IA_Ship_SelectSkater"));
+    ship.select_gunship = make_button(TEXT("IA_Ship_SelectGunship"));
+    result.pause = make_button(TEXT("IA_pause"));
+    result.general = create_ship_mapping_context(ml::ioj::EShipControlScope::General);
+    ship.starfox = create_ship_mapping_context(ml::ioj::EShipControlScope::Starfox);
+    ship.fighter = create_ship_mapping_context(ml::ioj::EShipControlScope::Fighter);
+    ship.skater = create_ship_mapping_context(ml::ioj::EShipControlScope::Skater);
+    ship.gunship = create_ship_mapping_context(ml::ioj::EShipControlScope::Gunship);
+    if (!result.is_valid()) {
+        UE_LOG(LogTemp, Error, TEXT("Could not create canonical ship input assets"));
         return {};
     }
 
-    auto configure_power_gamepad_mappings = [&actions, boost, brake, fire, cycle_input_profile](
-                                                UInputMappingContext& mapping) {
-        mapping.Modify();
-        mapping.UnmapKey(boost, EKeys::Gamepad_LeftTriggerAxis);
-        mapping.UnmapKey(cycle_input_profile, EKeys::Gamepad_LeftTriggerAxis);
-        mapping.UnmapKey(actions.throttle, EKeys::Gamepad_LeftTriggerAxis);
-        mapping.MapKey(actions.throttle, EKeys::Gamepad_LeftTriggerAxis);
-        mapping.UnmapKey(brake, EKeys::Gamepad_LeftShoulder);
-        mapping.MapKey(brake, EKeys::Gamepad_LeftShoulder);
-        mapping.UnmapKey(fire, EKeys::Gamepad_RightTriggerAxis);
-        mapping.MapKey(fire, EKeys::Gamepad_RightTriggerAxis);
-        mapping.UnmapKey(fire, EKeys::Gamepad_FaceButton_Bottom);
-        mapping.UnmapKey(actions.vertical_move, EKeys::Gamepad_FaceButton_Top);
-        mapping.MapKey(actions.vertical_move, EKeys::Gamepad_FaceButton_Top);
-        mapping.UnmapKey(actions.vertical_move, EKeys::Gamepad_FaceButton_Bottom);
-        auto& move_down{mapping.MapKey(actions.vertical_move, EKeys::Gamepad_FaceButton_Bottom)};
-        move_down.Modifiers.Add(NewObject<UInputModifierNegate>(&mapping));
-        mapping.UnmapKey(actions.select_flight_model_up, EKeys::Gamepad_DPad_Up);
-        mapping.MapKey(actions.select_flight_model_up, EKeys::Gamepad_DPad_Up);
-        mapping.UnmapKey(actions.select_flight_model_right, EKeys::Gamepad_DPad_Right);
-        mapping.MapKey(actions.select_flight_model_right, EKeys::Gamepad_DPad_Right);
-        mapping.UnmapKey(actions.select_flight_model_down, EKeys::Gamepad_DPad_Down);
-        mapping.MapKey(actions.select_flight_model_down, EKeys::Gamepad_DPad_Down);
-        mapping.UnmapKey(actions.select_flight_model_left, EKeys::Gamepad_DPad_Left);
-        mapping.MapKey(actions.select_flight_model_left, EKeys::Gamepad_DPad_Left);
+    using Scope = ml::ioj::EShipControlScope;
+    auto add = [](UInputMappingContext& context,
+                  Scope const scope,
+                  UInputAction* const action,
+                  FKey const key,
+                  TCHAR const* const semantic,
+                  TCHAR const* const role = TEXT(""),
+                  bool const negative = false,
+                  int32 const order = 10) {
+        add_ship_mapping(context, scope, *action, key, semantic, role, negative, order);
     };
-    configure_power_gamepad_mappings(*base);
-    configure_power_gamepad_mappings(*aim_move);
-    configure_power_gamepad_mappings(*move_aim);
-    configure_power_gamepad_mappings(*z_roll_aim);
 
-    base->Modify();
-    base->UnmapKey(actions.engage_pointer, EKeys::RightMouseButton);
-    base->MapKey(actions.engage_pointer, EKeys::RightMouseButton);
-    base->UnmapKey(actions.increase_desired_forward_velocity, EKeys::MouseScrollUp);
-    base->MapKey(actions.increase_desired_forward_velocity, EKeys::MouseScrollUp);
-    base->UnmapKey(actions.decrease_desired_forward_velocity, EKeys::MouseScrollDown);
-    base->MapKey(actions.decrease_desired_forward_velocity, EKeys::MouseScrollDown);
-    base->UnmapKey(actions.throttle, EKeys::W);
-    base->MapKey(actions.throttle, EKeys::W);
-    base->UnmapKey(actions.vertical_move, EKeys::SpaceBar);
-    base->MapKey(actions.vertical_move, EKeys::SpaceBar);
-    base->UnmapKey(actions.vertical_move, EKeys::LeftControl);
-    auto& move_down{base->MapKey(actions.vertical_move, EKeys::LeftControl)};
-    move_down.Modifiers.Add(NewObject<UInputModifierNegate>(base));
-    auto& default_mappings{const_cast<TArray<FEnhancedActionKeyMapping>&>(base->GetMappings())};
-    auto const default_mappings_configured{
-        configure_mappings(default_mappings, *base, *actions.pointer_delta)};
+    auto& general{*result.general};
+    add(general, Scope::General, result.pause, EKeys::Escape, TEXT("Pause"));
+    add(general, Scope::General, result.pause, EKeys::Gamepad_Special_Right, TEXT("Pause"));
+    add(general,
+        Scope::General,
+        ship.select_starfox,
+        EKeys::One,
+        TEXT("SelectStarfox"),
+        TEXT(""),
+        false,
+        20);
+    add(general,
+        Scope::General,
+        ship.select_fighter,
+        EKeys::Two,
+        TEXT("SelectFighter"),
+        TEXT(""),
+        false,
+        30);
+    add(general,
+        Scope::General,
+        ship.select_skater,
+        EKeys::Three,
+        TEXT("SelectSkater"),
+        TEXT(""),
+        false,
+        40);
+    add(general,
+        Scope::General,
+        ship.select_gunship,
+        EKeys::Four,
+        TEXT("SelectGunship"),
+        TEXT(""),
+        false,
+        50);
+    add(general,
+        Scope::General,
+        ship.select_starfox,
+        EKeys::Gamepad_DPad_Up,
+        TEXT("SelectStarfox"),
+        TEXT(""),
+        false,
+        20);
+    add(general,
+        Scope::General,
+        ship.select_fighter,
+        EKeys::Gamepad_DPad_Right,
+        TEXT("SelectFighter"),
+        TEXT(""),
+        false,
+        30);
+    add(general,
+        Scope::General,
+        ship.select_skater,
+        EKeys::Gamepad_DPad_Down,
+        TEXT("SelectSkater"),
+        TEXT(""),
+        false,
+        40);
+    add(general,
+        Scope::General,
+        ship.select_gunship,
+        EKeys::Gamepad_DPad_Left,
+        TEXT("SelectGunship"),
+        TEXT(""),
+        false,
+        50);
 
-    auto const profiles{ml::ioj::control_profile_definitions()};
-    auto const success{
-        set_profile_override(
-            *base, profiles[1].id, *aim_move, default_mappings, *actions.pointer_delta) &&
-        set_profile_override(
-            *base, profiles[2].id, *move_aim, default_mappings, *actions.pointer_delta) &&
-        set_profile_override(
-            *base, profiles[3].id, *z_roll_aim, default_mappings, *actions.pointer_delta)};
-    return default_mappings_configured && success && save_asset(*actions.pointer_delta) &&
-                   save_asset(*actions.engage_pointer) && save_asset(*actions.throttle) &&
-                   save_asset(*actions.vertical_move) &&
-                   save_asset(*actions.increase_desired_forward_velocity) &&
-                   save_asset(*actions.decrease_desired_forward_velocity) &&
-                   save_asset(*actions.select_flight_model_up) &&
-                   save_asset(*actions.select_flight_model_right) &&
-                   save_asset(*actions.select_flight_model_down) &&
-                   save_asset(*actions.select_flight_model_left) && save_asset(*base) &&
-                   save_asset(*aim_move) && save_asset(*move_aim) && save_asset(*z_roll_aim)
-             ? actions
-             : FGeneratedShipInputActions{};
+    auto add_mouse = [&](UInputMappingContext& context, Scope const scope) {
+        add(context, scope, ship.pitch, EKeys::MouseY, TEXT("Pitch"), TEXT(""), true, 10);
+        add(context, scope, ship.yaw, EKeys::MouseX, TEXT("Yaw"), TEXT(""), false, 20);
+        add(context,
+            scope,
+            ship.fire_primary,
+            EKeys::LeftMouseButton,
+            TEXT("FirePrimary"),
+            TEXT(""),
+            false,
+            100);
+    };
+    auto add_keyboard_propulsion = [&](UInputMappingContext& context, Scope const scope) {
+        add(context, scope, ship.accelerate, EKeys::W, TEXT("Accelerate"), TEXT(""), false, 40);
+        add(context, scope, ship.brake, EKeys::S, TEXT("Brake"), TEXT(""), false, 50);
+        add(context, scope, ship.boost, EKeys::LeftShift, TEXT("Boost"), TEXT(""), false, 60);
+        add(context,
+            scope,
+            ship.emergency_brake,
+            EKeys::X,
+            TEXT("EmergencyBrake"),
+            TEXT(""),
+            false,
+            70);
+    };
+    auto add_controller_propulsion =
+        [&](UInputMappingContext& context, Scope const scope, FKey const emergency_key) {
+            add(context,
+                scope,
+                ship.accelerate,
+                EKeys::Gamepad_LeftTriggerAxis,
+                TEXT("Accelerate"),
+                TEXT(""),
+                false,
+                40);
+            add(context,
+                scope,
+                ship.brake,
+                EKeys::Gamepad_LeftShoulder,
+                TEXT("Brake"),
+                TEXT(""),
+                false,
+                50);
+            add(context,
+                scope,
+                ship.boost,
+                EKeys::Gamepad_RightShoulder,
+                TEXT("Boost"),
+                TEXT(""),
+                false,
+                60);
+            add(context,
+                scope,
+                ship.emergency_brake,
+                emergency_key,
+                TEXT("EmergencyBrake"),
+                TEXT(""),
+                false,
+                70);
+            add(context,
+                scope,
+                ship.fire_primary,
+                EKeys::Gamepad_RightTriggerAxis,
+                TEXT("FirePrimary"),
+                TEXT(""),
+                false,
+                100);
+        };
+
+    auto& starfox{*ship.starfox};
+    add_mouse(starfox, Scope::Starfox);
+    add_keyboard_propulsion(starfox, Scope::Starfox);
+    add(starfox,
+        Scope::Starfox,
+        ship.pitch,
+        EKeys::Gamepad_LeftY,
+        TEXT("Pitch"),
+        TEXT(""),
+        false,
+        10);
+    add(starfox, Scope::Starfox, ship.yaw, EKeys::Gamepad_LeftX, TEXT("Yaw"), TEXT(""), false, 20);
+    add_controller_propulsion(starfox, Scope::Starfox, EKeys::Gamepad_FaceButton_Left);
+
+    auto& fighter{*ship.fighter};
+    add_mouse(fighter, Scope::Fighter);
+    add_keyboard_propulsion(fighter, Scope::Fighter);
+    add(fighter, Scope::Fighter, ship.roll, EKeys::Q, TEXT("Roll"), TEXT("Negative"), true, 30);
+    add(fighter, Scope::Fighter, ship.roll, EKeys::E, TEXT("Roll"), TEXT("Positive"), false, 31);
+    add(fighter,
+        Scope::Fighter,
+        ship.pitch,
+        EKeys::Gamepad_RightY,
+        TEXT("Pitch"),
+        TEXT(""),
+        false,
+        10);
+    add(fighter, Scope::Fighter, ship.yaw, EKeys::Gamepad_RightX, TEXT("Yaw"), TEXT(""), false, 20);
+    add(fighter,
+        Scope::Fighter,
+        ship.roll,
+        EKeys::Gamepad_LeftX,
+        TEXT("Roll"),
+        TEXT(""),
+        false,
+        30);
+    add_controller_propulsion(fighter, Scope::Fighter, EKeys::Gamepad_FaceButton_Right);
+
+    auto& skater{*ship.skater};
+    add_mouse(skater, Scope::Skater);
+    add_keyboard_propulsion(skater, Scope::Skater);
+    add(skater, Scope::Skater, ship.roll, EKeys::A, TEXT("Roll"), TEXT("Negative"), true, 30);
+    add(skater, Scope::Skater, ship.roll, EKeys::D, TEXT("Roll"), TEXT("Positive"), false, 31);
+    add(skater,
+        Scope::Skater,
+        ship.pitch,
+        EKeys::Gamepad_LeftY,
+        TEXT("Pitch"),
+        TEXT(""),
+        false,
+        10);
+    add(skater, Scope::Skater, ship.yaw, EKeys::Gamepad_LeftX, TEXT("Yaw"), TEXT(""), false, 20);
+    add(skater, Scope::Skater, ship.roll, EKeys::Gamepad_RightX, TEXT("Roll"), TEXT(""), false, 30);
+    add_controller_propulsion(skater, Scope::Skater, EKeys::Gamepad_FaceButton_Right);
+
+    auto& gunship{*ship.gunship};
+    add_mouse(gunship, Scope::Gunship);
+    add(gunship,
+        Scope::Gunship,
+        ship.translate_forward,
+        EKeys::W,
+        TEXT("TranslateForward"),
+        TEXT("Positive"),
+        false,
+        30);
+    add(gunship,
+        Scope::Gunship,
+        ship.translate_forward,
+        EKeys::S,
+        TEXT("TranslateForward"),
+        TEXT("Negative"),
+        true,
+        31);
+    add(gunship,
+        Scope::Gunship,
+        ship.translate_right,
+        EKeys::D,
+        TEXT("TranslateRight"),
+        TEXT("Positive"),
+        false,
+        40);
+    add(gunship,
+        Scope::Gunship,
+        ship.translate_right,
+        EKeys::A,
+        TEXT("TranslateRight"),
+        TEXT("Negative"),
+        true,
+        41);
+    add(gunship,
+        Scope::Gunship,
+        ship.translate_up,
+        EKeys::SpaceBar,
+        TEXT("TranslateUp"),
+        TEXT("Positive"),
+        false,
+        50);
+    add(gunship,
+        Scope::Gunship,
+        ship.translate_up,
+        EKeys::C,
+        TEXT("TranslateUp"),
+        TEXT("Negative"),
+        true,
+        51);
+    add(gunship, Scope::Gunship, ship.boost, EKeys::LeftShift, TEXT("Boost"), TEXT(""), false, 60);
+    add(gunship,
+        Scope::Gunship,
+        ship.brake,
+        EKeys::LeftControl,
+        TEXT("Brake"),
+        TEXT(""),
+        false,
+        70);
+    add(gunship,
+        Scope::Gunship,
+        ship.emergency_brake,
+        EKeys::X,
+        TEXT("EmergencyBrake"),
+        TEXT(""),
+        false,
+        80);
+    add(gunship,
+        Scope::Gunship,
+        ship.translate_forward,
+        EKeys::Gamepad_LeftY,
+        TEXT("TranslateForward"),
+        TEXT(""),
+        false,
+        30);
+    add(gunship,
+        Scope::Gunship,
+        ship.translate_right,
+        EKeys::Gamepad_LeftX,
+        TEXT("TranslateRight"),
+        TEXT(""),
+        false,
+        40);
+    add(gunship,
+        Scope::Gunship,
+        ship.pitch,
+        EKeys::Gamepad_RightY,
+        TEXT("Pitch"),
+        TEXT(""),
+        false,
+        10);
+    add(gunship, Scope::Gunship, ship.yaw, EKeys::Gamepad_RightX, TEXT("Yaw"), TEXT(""), false, 20);
+    add(gunship,
+        Scope::Gunship,
+        ship.translate_up,
+        EKeys::Gamepad_FaceButton_Top,
+        TEXT("TranslateUp"),
+        TEXT("Positive"),
+        false,
+        50);
+    add(gunship,
+        Scope::Gunship,
+        ship.translate_up,
+        EKeys::Gamepad_FaceButton_Bottom,
+        TEXT("TranslateUp"),
+        TEXT("Negative"),
+        true,
+        51);
+    add(gunship,
+        Scope::Gunship,
+        ship.boost,
+        EKeys::Gamepad_RightShoulder,
+        TEXT("Boost"),
+        TEXT(""),
+        false,
+        60);
+    add(gunship,
+        Scope::Gunship,
+        ship.brake,
+        EKeys::Gamepad_LeftShoulder,
+        TEXT("Brake"),
+        TEXT(""),
+        false,
+        70);
+    add(gunship,
+        Scope::Gunship,
+        ship.emergency_brake,
+        EKeys::Gamepad_LeftTriggerAxis,
+        TEXT("EmergencyBrake"),
+        TEXT(""),
+        false,
+        80);
+    add(gunship,
+        Scope::Gunship,
+        ship.fire_primary,
+        EKeys::Gamepad_RightTriggerAxis,
+        TEXT("FirePrimary"),
+        TEXT(""),
+        false,
+        100);
+
+    for (auto* const action : {result.pause,
+                               ship.translate_forward,
+                               ship.translate_right,
+                               ship.translate_up,
+                               ship.pitch,
+                               ship.yaw,
+                               ship.roll,
+                               ship.accelerate,
+                               ship.brake,
+                               ship.boost,
+                               ship.emergency_brake,
+                               ship.fire_primary,
+                               ship.select_starfox,
+                               ship.select_fighter,
+                               ship.select_skater,
+                               ship.select_gunship}) {
+        if (!save_asset(*action)) {
+            return {};
+        }
+    }
+    for (auto* const context :
+         {result.general, ship.starfox, ship.fighter, ship.skater, ship.gunship}) {
+        if (!save_asset(*context)) {
+            return {};
+        }
+    }
+    return result;
 }
-
 auto configure_ui_data(UClass& root_class,
                        UClass& button_class,
                        UClass& main_class,
@@ -1307,66 +1358,40 @@ auto configure_control_context_inputs(UBlueprint& blueprint,
     return true;
 }
 
-auto configure_gameplay_inputs(UBlueprint& blueprint,
-                               UBlueprint const& source,
-                               UInputMappingContext& mapping_context,
-                               FGeneratedShipInputActions const& actions) -> bool {
+auto configure_gameplay_inputs(UBlueprint& blueprint, FGeneratedShipInputActions const& actions)
+    -> bool {
     auto* const controller{
         Cast<ASpaceGamePlayerController>(blueprint.GeneratedClass->GetDefaultObject())};
-    auto const* const source_controller{
-        Cast<ASpaceGamePlayerController>(source.GeneratedClass->GetDefaultObject())};
     auto* const input_property{
         FindFProperty<FStructProperty>(blueprint.GeneratedClass, TEXT("input"))};
-    auto const* const source_input_property{
-        FindFProperty<FStructProperty>(source.GeneratedClass, TEXT("input"))};
     auto* const global_input_property{
         FindFProperty<FStructProperty>(blueprint.GeneratedClass, TEXT("global_input"))};
-    auto const* const source_global_input_property{
-        FindFProperty<FStructProperty>(source.GeneratedClass, TEXT("global_input"))};
-    if (!IsValid(controller) || !IsValid(source_controller) || !input_property ||
-        !source_input_property || !global_input_property || !source_global_input_property) {
-        UE_LOG(LogTemp, Error, TEXT("Could not configure player controller gameplay inputs"));
+    if (!IsValid(controller) || !input_property || !global_input_property || !actions.is_valid()) {
+        UE_LOG(LogTemp, Error, TEXT("Could not configure canonical player controller input"));
         return false;
     }
 
+    FGlobalControlInputs const global{
+        .mapping_context = actions.general,
+        .toggle_menu = actions.pause,
+    };
     controller->Modify();
-    if (&blueprint != &source) {
-        input_property->CopyCompleteValue(
-            input_property->ContainerPtrToValuePtr<void>(controller),
-            source_input_property->ContainerPtrToValuePtr<void>(source_controller));
-        global_input_property->CopyCompleteValue(
-            global_input_property->ContainerPtrToValuePtr<void>(controller),
-            source_global_input_property->ContainerPtrToValuePtr<void>(source_controller));
-    }
-    auto* const input{
-        input_property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(controller)};
-    input->mapping_context = &mapping_context;
-    input->turn_pointer_delta = actions.pointer_delta;
-    input->engage_pointer_turn = actions.engage_pointer;
-    input->throttle = actions.throttle;
-    input->forward_move = actions.forward_move;
-    input->vertical_move = actions.vertical_move;
-    input->increase_desired_forward_velocity = actions.increase_desired_forward_velocity;
-    input->decrease_desired_forward_velocity = actions.decrease_desired_forward_velocity;
-    input->select_flight_model_up = actions.select_flight_model_up;
-    input->select_flight_model_right = actions.select_flight_model_right;
-    input->select_flight_model_down = actions.select_flight_model_down;
-    input->select_flight_model_left = actions.select_flight_model_left;
+    input_property->CopyCompleteValue(input_property->ContainerPtrToValuePtr<void>(controller),
+                                      &actions.ship);
+    global_input_property->CopyCompleteValue(
+        global_input_property->ContainerPtrToValuePtr<void>(controller), &global);
     FBlueprintEditorUtils::MarkBlueprintAsModified(&blueprint);
     return true;
 }
-
 auto load_or_create_player_controller(FObserverControlInputs const& observer,
                                       FBenchmarkControlInputs const& benchmark,
                                       FGeneratedShipInputActions const& actions) -> UBlueprint* {
     auto* const source{LoadObject<UBlueprint>(nullptr, source_player_controller_object_path)};
-    auto* const mapping_context{
-        LoadObject<UInputMappingContext>(nullptr, ship_base_mapping_object_path)};
-    if (!IsValid(source) || !IsValid(source->GeneratedClass) || !IsValid(mapping_context)) {
+    if (!IsValid(source) || !IsValid(source->GeneratedClass)) {
         UE_LOG(LogTemp, Error, TEXT("Could not load source player controller inputs"));
         return nullptr;
     }
-    if (!configure_gameplay_inputs(*source, *source, *mapping_context, actions)) {
+    if (!configure_gameplay_inputs(*source, actions)) {
         return nullptr;
     }
     CastChecked<UBlueprintGeneratedClass>(source->GeneratedClass)
@@ -1397,7 +1422,7 @@ auto load_or_create_player_controller(FObserverControlInputs const& observer,
         return nullptr;
     }
     if (!configure_control_context_inputs(*blueprint, observer, benchmark) ||
-        !configure_gameplay_inputs(*blueprint, *source, *mapping_context, actions)) {
+        !configure_gameplay_inputs(*blueprint, actions)) {
         return nullptr;
     }
 
@@ -1409,7 +1434,7 @@ auto load_or_create_player_controller(FObserverControlInputs const& observer,
         return nullptr;
     }
     if (!configure_control_context_inputs(*blueprint, observer, benchmark) ||
-        !configure_gameplay_inputs(*blueprint, *source, *mapping_context, actions)) {
+        !configure_gameplay_inputs(*blueprint, actions)) {
         return nullptr;
     }
     CastChecked<UBlueprintGeneratedClass>(blueprint->GeneratedClass)

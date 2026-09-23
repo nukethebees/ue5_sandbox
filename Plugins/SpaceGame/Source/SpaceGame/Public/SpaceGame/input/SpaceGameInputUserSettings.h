@@ -9,19 +9,10 @@ namespace ml::ioj {
 class UControlBindingMetadata;
 
 UCLASS()
-class SPACEGAME_API USpaceGameKeyProfile final : public UEnhancedPlayerMappableKeyProfile {
-    GENERATED_BODY()
-  public:
-    void initialize_from(UEnhancedPlayerMappableKeyProfile const& source);
-    void set_runtime_profile_id(FString const& profile_id);
-};
-
-UCLASS()
 class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUserSettings {
     GENERATED_BODY()
   public:
-    void Initialize(ULocalPlayer* local_player) override;
-    auto SetActiveKeyProfile(FString const& profile_id) -> bool override;
+    void finalize_canonical_registration();
 
     [[nodiscard]] auto mouse_turn_sensitivity() const noexcept -> float {
         return mouse_turn_sensitivity_;
@@ -51,14 +42,6 @@ class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUse
     }
     void set_invert_gamepad_pitch(bool value) noexcept;
 
-    auto create_custom_key_profile(FPlayerMappableKeyProfileCreationArgs const& arguments,
-                                   FString const& source_profile_id)
-        -> UEnhancedPlayerMappableKeyProfile*;
-    auto rename_custom_key_profile(FString const& profile_id, FText const& display_name) -> bool;
-    auto delete_custom_key_profile(FString const& profile_id) -> bool;
-    auto migrate_legacy_gamepad_bindings() -> bool;
-    [[nodiscard]] auto custom_key_profile_source_id(FString const& profile_id) const -> FString;
-    [[nodiscard]] auto custom_key_profile_display_name(FString const& profile_id) const -> FText;
     [[nodiscard]] auto chord_mapping_for_mapping(FString const& profile_id,
                                                  FPlayerKeyMapping const& mapping) const
         -> FPlayerKeyMapping const*;
@@ -66,18 +49,10 @@ class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUse
                                                 FPlayerKeyMapping const& mapping) const
         -> UControlBindingMetadata const*;
   protected:
-    auto RegisterKeyMappingsToProfile(UEnhancedPlayerMappableKeyProfile& profile,
-                                      UInputMappingContext const* mapping_context) -> bool override;
     auto DetermineHardwareDeviceForActionMapping(FEnhancedActionKeyMapping const& action_mapping,
                                                  UInputMappingContext const* mapping_context) const
         -> FHardwareDeviceIdentifier override;
   private:
-    void apply_active_mapping_profile_id();
-    void migrate_custom_profile_metadata();
-    void prune_stale_mapping_rows(UEnhancedPlayerMappableKeyProfile& profile,
-                                  FString const& mapping_profile_id) const;
-    void restore_active_profile_id();
-
     UPROPERTY(SaveGame)
     float mouse_turn_sensitivity_{0.25f};
 
@@ -95,15 +70,6 @@ class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUse
 
     UPROPERTY(SaveGame)
     bool invert_gamepad_pitch_{};
-
-    UPROPERTY(SaveGame)
-    TMap<FString, FString> custom_profile_source_ids_;
-
-    UPROPERTY(SaveGame)
-    TMap<FString, FString> custom_profile_names_;
-
-    UPROPERTY(SaveGame)
-    int32 gamepad_binding_schema_version_{};
 };
 
 } // namespace ml::ioj

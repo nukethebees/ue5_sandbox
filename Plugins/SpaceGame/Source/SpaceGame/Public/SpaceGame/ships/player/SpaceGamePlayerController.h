@@ -11,18 +11,9 @@
 class ATestBatchOrchestrator;
 class ATestSpaceShip;
 class ACameraActor;
+class UEnhancedInputUserSettings;
 struct FTestMissionCompletion;
 class UTestBatchGameUiData;
-
-struct SPACEGAME_API FPlayerInputSnapshot {
-    FVector2D movement{FVector2D::ZeroVector};
-    FVector2D turn{FVector2D::ZeroVector};
-    FVector2D sampled_movement{FVector2D::ZeroVector};
-    EPlayerControlContext control_context{EPlayerControlContext::None};
-    bool fire_active{false};
-    bool pause_menu_active{false};
-    bool sampling_active{false};
-};
 
 UCLASS()
 class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
@@ -43,7 +34,6 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     void Tick(float dt) override;
     void show_main_menu();
     auto activate_playerless_camera(ACameraActor& camera, EPlayerControlContext context) -> bool;
-    [[nodiscard]] auto get_input_snapshot() const -> FPlayerInputSnapshot;
     [[nodiscard]] auto get_active_control_context() const noexcept -> EPlayerControlContext {
         return control_contexts_.get_active_context();
     }
@@ -93,7 +83,8 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     // Input and presentation callbacks
     /* **************************************** */
     void initialise_input_user_settings();
-    void on_ship_control_profile_changed(FString const& profile_name);
+    UFUNCTION()
+    void on_input_user_settings_initialized(UEnhancedInputUserSettings const* settings);
     void set_observer_look_active(bool active);
     void set_observer_movement_speed(float speed);
 

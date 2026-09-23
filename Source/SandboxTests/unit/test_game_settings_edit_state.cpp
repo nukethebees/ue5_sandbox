@@ -1,8 +1,10 @@
 #include <SpaceGame/settings/ControlSettingsTypes.h>
 #include <SpaceGame/settings/FlightModelEditor.h>
+#include <SpaceGame/settings/FlightModelSettingsCodec.h>
 #include <SpaceGame/settings/GameSettingsBackend.h>
 #include <SpaceGame/settings/GameSettingsEditState.h>
 #include <SpaceGame/settings/GameSettingsSubsystem.h>
+#include <SpaceGame/settings/SpaceGameUserSettings.h>
 
 #include <CQTest.h>
 #include <Engine/GameInstance.h>
@@ -193,156 +195,38 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
                                  keyboard_binding, EHardwareDevicePrimaryType::Unspecified) &&
                                  ml::ioj::control_binding_matches_device(
                                      controller_binding, EHardwareDevicePrimaryType::Unspecified));
-        TestRunner->TestTrue(TEXT("Built-in profiles reset all controls"),
-                             ml::ioj::control_reset_scope(false) ==
-                                 ml::ioj::EControlResetScope::AllControls);
-        TestRunner->TestTrue(TEXT("Custom profiles reset response settings only"),
-                             ml::ioj::control_reset_scope(true) ==
-                                 ml::ioj::EControlResetScope::SettingsOnly);
     }
 
-    TEST_METHOD(RuntimeFlightModelEditsAreValidatedAndMarkedCustom)
+    TEST_METHOD(FlightModelSlotsPersistIndependently)
     {
-        auto* const game_instance{NewObject<UGameInstance>()};
-        auto* const settings{NewObject<ml::ioj::UGameSettingsSubsystem>(game_instance)};
-        int32 change_count{};
-        settings->flight_model_config_changed.AddLambda([&change_count] { ++change_count; });
-
-        auto profile{::ioj::sim::player::make_flight_model_profile(
-            ::ioj::sim::player::FlightModelPreset::Fighter)};
-        profile.config.translation.forward.passive_drag = 321.f;
-        profile.config.translation.right.manual.semantic =
-            ::ioj::sim::player::TranslationSemantic::Acceleration;
-        profile.config.translation.right.manual.reference_frame =
-            ::ioj::sim::player::ReferenceFrame::World;
-        profile.config.translation.right.manual.response.mode =
-            ::ioj::sim::player::ResponseMode::RateLimited;
-        TestRunner->TestTrue(TEXT("Valid runtime flight-model edits are accepted"),
-                             settings->set_flight_model_profile(profile));
-        TestRunner->TestTrue(TEXT("A runtime edit marks the profile custom"),
-                             settings->flight_model_profile().customized);
-        TestRunner->TestTrue(
-            TEXT("The edited underlying value remains inspectable"),
-            FMath::IsNearlyEqual(
-                settings->flight_model_profile().config.translation.forward.passive_drag, 321.f));
-        TestRunner->TestTrue(
-            TEXT("Runtime enum edits remain inspectable"),
-            settings->flight_model_profile().config.translation.right.manual.semantic ==
-                    ::ioj::sim::player::TranslationSemantic::Acceleration &&
-                settings->flight_model_profile().config.translation.right.manual.reference_frame ==
-                    ::ioj::sim::player::ReferenceFrame::World &&
-                settings->flight_model_profile().config.translation.right.manual.response.mode ==
-                    ::ioj::sim::player::ResponseMode::RateLimited);
-        TestRunner->TestEqual(
-            TEXT("Accepted edits emit the targeted change signal"), change_count, 1);
-
-        auto invalid{settings->flight_model_profile()};
-        invalid.config.translation.forward.passive_drag = -1.f;
-        TestRunner->TestFalse(TEXT("Invalid runtime flight-model edits are rejected"),
-                              settings->set_flight_model_profile(invalid));
-        TestRunner->TestTrue(
-            TEXT("Rejected edits preserve the previous runtime profile"),
-            FMath::IsNearlyEqual(
-                settings->flight_model_profile().config.translation.forward.passive_drag, 321.f));
-        TestRunner->TestEqual(TEXT("Rejected edits do not emit a change signal"), change_count, 1);
-
-        invalid = settings->flight_model_profile();
-        invalid.config.translation.forward.manual.semantic =
-            ::ioj::sim::player::TranslationSemantic::TargetSpeed;
-        invalid.config.translation.forward.automatic.semantic =
-            ::ioj::sim::player::TranslationSemantic::TargetVelocity;
-        TestRunner->TestFalse(TEXT("Ambiguous target-channel edits are rejected"),
-                              settings->set_flight_model_profile(invalid));
-        TestRunner->TestEqual(
-            TEXT("Rejected channel edits do not emit a change signal"), change_count, 1);
-
-        auto observed{::ioj::sim::player::make_flight_model_profile(
-            ::ioj::sim::player::FlightModelPreset::Skater)};
-        TestRunner->TestTrue(TEXT("A valid native selection can update the editor view"),
-                             settings->observe_flight_model_profile(observed));
-        TestRunner->TestTrue(TEXT("Observing a selection does not mark it custom"),
-                             settings->flight_model_profile().base_preset ==
-                                     ::ioj::sim::player::FlightModelPreset::Skater &&
-                                 !settings->flight_model_profile().customized);
-        TestRunner->TestEqual(
-            TEXT("Observing a native selection does not reapply configuration"), change_count, 1);
+        auto* const user_settings{NewObject<ml::ioj::USpaceGameUserSettings>()};
+        auto loadout{::ioj::sim::player::make_default_flight_model_loadout()};
+        loadout.right.config.translation.forward.passive_drag = 321.f;
+        loadout.right.customized = true;
+        user_settings->set_flight_model_loadout(loadout);
+        auto const restored{user_settings->flight_model_loadout()};
+        TestRunner->TestTrue(TEXT("Fighter tuning survives a settings round trip"),
+                             restored.right == loadout.right);
+        TestRunner->TestTrue(TEXT("Other slots retain their own defaults"),
+                             restored.up == loadout.up && restored.down == loadout.down &&
+                                 restored.left == loadout.left);
+        TestRunner->TestTrue(TEXT("Saved configuration does not change the active slot"),
+                             restored.initial_slot == ::ioj::sim::player::FlightModelSlot::Up);
     }
 
-    TEST_METHOD(RuntimeFlightModelSemanticEditsAreTransactional)
+    TEST_METHOD(FlightModelCodecRejectsCorruptData)
     {
-        using Channel = ml::ioj::EFlightModelTranslationChannel;
-        using InputSource = ::ioj::sim::player::TranslationInputSource;
-        using Semantic = ::ioj::sim::player::TranslationSemantic;
-
-        auto* const game_instance{NewObject<UGameInstance>()};
-        auto* const settings{NewObject<ml::ioj::UGameSettingsSubsystem>(game_instance)};
-        int32 change_count{};
-        settings->flight_model_config_changed.AddLambda([&change_count] { ++change_count; });
-
         auto profile{::ioj::sim::player::make_flight_model_profile(
-            ::ioj::sim::player::FlightModelPreset::Starfox)};
-        auto& forward{profile.config.translation.forward};
-        ml::ioj::apply_flight_model_translation_semantic_edit(
-            forward, Channel::Manual, Semantic::TargetVelocity);
-        TestRunner->TestTrue(TEXT("Selecting a manual target disables the automatic target"),
-                             forward.manual.semantic == Semantic::TargetVelocity &&
-                                 forward.automatic.semantic == Semantic::Disabled);
-        TestRunner->TestTrue(TEXT("Disabling the automatic target preserves its tuning data"),
-                             FMath::IsNearlyEqual(forward.automatic.automatic_value, 1.f));
-        TestRunner->TestTrue(TEXT("The manual target transaction is valid and accepted"),
-                             settings->set_flight_model_profile(profile));
-
-        profile = settings->flight_model_profile();
-        ml::ioj::apply_flight_model_translation_semantic_edit(
-            profile.config.translation.forward, Channel::Automatic, Semantic::TargetSpeed);
-        TestRunner->TestTrue(
-            TEXT("Selecting an automatic target disables the manual target"),
-            profile.config.translation.forward.automatic.semantic == Semantic::TargetSpeed &&
-                profile.config.translation.forward.manual.semantic == Semantic::Disabled);
-        TestRunner->TestTrue(TEXT("The automatic target transaction is valid and accepted"),
-                             settings->set_flight_model_profile(profile));
-
-        profile = settings->flight_model_profile();
-        ml::ioj::apply_flight_model_translation_semantic_edit(
-            profile.config.translation.forward, Channel::Manual, Semantic::Acceleration);
-        TestRunner->TestTrue(
-            TEXT("Target and acceleration composition remains intact"),
-            profile.config.translation.forward.manual.semantic == Semantic::Acceleration &&
-                profile.config.translation.forward.automatic.semantic == Semantic::TargetSpeed);
-        TestRunner->TestTrue(TEXT("Target and acceleration composition remains valid"),
-                             settings->set_flight_model_profile(profile));
-
-        profile = settings->flight_model_profile();
-        ml::ioj::apply_flight_model_translation_semantic_edit(
-            profile.config.translation.forward, Channel::Automatic, Semantic::Acceleration);
-        TestRunner->TestTrue(
-            TEXT("Two acceleration channels remain intact"),
-            profile.config.translation.forward.manual.semantic == Semantic::Acceleration &&
-                profile.config.translation.forward.automatic.semantic == Semantic::Acceleration);
-        TestRunner->TestTrue(TEXT("Two acceleration channels remain valid"),
-                             settings->set_flight_model_profile(profile));
-
-        profile = settings->flight_model_profile();
-        profile.config.translation.forward.manual.input_source = InputSource::Accelerator;
-        ml::ioj::apply_flight_model_translation_semantic_edit(
-            profile.config.translation.forward, Channel::Manual, Semantic::TargetSpeed);
-        TestRunner->TestTrue(TEXT("Manual TargetSpeed atomically selects Axis input"),
-                             profile.config.translation.forward.manual.input_source ==
-                                 InputSource::Axis);
-        TestRunner->TestTrue(TEXT("The normalized TargetSpeed transaction is valid and accepted"),
-                             settings->set_flight_model_profile(profile));
-
-        auto const& applied{settings->flight_model_profile()};
-        TestRunner->TestTrue(TEXT("Semantic edits mark the runtime profile custom"),
-                             applied.customized);
-        TestRunner->TestTrue(
-            TEXT("The final semantic edit reaches the runtime profile"),
-            applied.config.translation.forward.manual.semantic == Semantic::TargetSpeed &&
-                applied.config.translation.forward.automatic.semantic == Semantic::Acceleration);
-        TestRunner->TestTrue(
-            TEXT("Every transaction passes native validation"),
-            ::ioj::sim::player::validate_flight_model_config(applied.config).has_value());
-        TestRunner->TestEqual(
-            TEXT("Each accepted transaction emits the runtime change signal"), change_count, 5);
+            ::ioj::sim::player::FlightModelPreset::Gunship)};
+        auto const original{profile};
+        TestRunner->TestFalse(
+            TEXT("Invalid data is rejected"),
+            ml::ioj::flight_model_settings_codec::decode(TEXT("broken"), profile));
+        TestRunner->TestTrue(TEXT("Invalid data does not alter the profile"), profile == original);
+        auto const encoded{ml::ioj::flight_model_settings_codec::encode(profile)};
+        profile.config.translation.up.passive_drag = 123.f;
+        TestRunner->TestTrue(TEXT("Versioned profile decodes"),
+                             ml::ioj::flight_model_settings_codec::decode(encoded, profile));
+        TestRunner->TestTrue(TEXT("Decoded profile matches original"), profile == original);
     }
 };

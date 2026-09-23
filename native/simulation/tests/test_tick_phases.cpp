@@ -134,7 +134,7 @@ TEST(TickPhases, ThinkingFireIsDeferredWithActionMovementSnapshot) {
     simulation.finish_initialisation();
 
     auto* commands{simulation.get_player_ship_commands()};
-    commands->set_lateral_move_input(1.f);
+    commands->set_right_input(1.f);
     commands->start_fire_laser();
 
     auto const& player{*simulation.get_player_ship_simulation()};
@@ -163,7 +163,7 @@ TEST(TickPhases, ActionMovementIsVisibleToSameTickOverlapDetection) {
 
     LevelSim simulation{std::move(data)};
     simulation.finish_initialisation();
-    simulation.get_player_ship_commands()->set_lateral_move_input(1.f);
+    simulation.get_player_ship_commands()->set_right_input(1.f);
 
     simulation.start();
     simulation.advance(simulation.get_clock().get_tick_period());
@@ -276,7 +276,7 @@ TEST(TickPhases, ExistingProjectilesUsePreMovementTargetsAndQueriesAdvanceAfterw
     simulation.finish_initialisation();
 
     auto const& laser_sim{simulation.get_lasers()};
-    simulation.get_player_ship_commands()->set_lateral_move_input(1.f);
+    simulation.get_player_ship_commands()->set_right_input(1.f);
 
     lasers::SpawnRequests shot{};
     shot.add({{290.f, 100.f, 0.f}},

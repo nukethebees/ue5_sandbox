@@ -198,8 +198,8 @@
       :min 0
       :max 5
       :step 1))
-  (setting player_ship_flight_control_preset "Flight Controls"
-    :tooltip "Select the default runtime flight model. D-pad directions select the four model slots while flying."
+  (setting player_ship_flight_control_preset "Edit Flight Model"
+    :tooltip "Choose which flight-model slot to tune below. This does not change the active flight mode or input layout."
     :category controls
     :value-type @player_ship_flight_control_preset
     :backend game_user_settings

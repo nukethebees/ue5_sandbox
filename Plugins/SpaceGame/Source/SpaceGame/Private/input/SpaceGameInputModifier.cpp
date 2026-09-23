@@ -64,19 +64,19 @@ auto apply_dead_zone(FInputActionValue const& value, float const threshold) -> F
     return value;
 }
 
-auto scale_and_invert(FInputActionValue const& value, float const scale, bool const invert_y)
+auto scale_and_invert(FInputActionValue const& value, float const scale, bool const invert_pitch)
     -> FInputActionValue {
     switch (value.GetValueType()) {
         case EInputActionValueType::Axis1D:
-            return FInputActionValue{value.Get<float>() * scale};
+            return FInputActionValue{value.Get<float>() * scale * (invert_pitch ? -1.f : 1.f)};
         case EInputActionValueType::Axis2D: {
             auto output{value.Get<FVector2D>() * scale};
-            output.Y *= invert_y ? -1.0f : 1.0f;
+            output.Y *= invert_pitch ? -1.0f : 1.0f;
             return FInputActionValue{output};
         }
         case EInputActionValueType::Axis3D: {
             auto output{value.Get<FVector>() * scale};
-            output.Y *= invert_y ? -1.0f : 1.0f;
+            output.Y *= invert_pitch ? -1.0f : 1.0f;
             return FInputActionValue{output};
         }
         case EInputActionValueType::Boolean:
@@ -101,12 +101,12 @@ auto USpaceGameInputModifier::ModifyRaw_Implementation(
             return scale_and_invert(current_value,
                                     input_constants::virtual_stick_units_per_mouse_count *
                                         settings->mouse_turn_sensitivity(),
-                                    settings->invert_mouse_pitch());
+                                    pitch_axis && settings->invert_mouse_pitch());
         case ESpaceGameInputResponse::GamepadTurn:
             return scale_and_invert(
                 apply_dead_zone(current_value, settings->gamepad_turn_dead_zone()),
                 settings->gamepad_turn_sensitivity(),
-                settings->invert_gamepad_pitch());
+                pitch_axis && settings->invert_gamepad_pitch());
         case ESpaceGameInputResponse::GamepadMove:
             return apply_dead_zone(current_value, settings->gamepad_move_dead_zone());
     }

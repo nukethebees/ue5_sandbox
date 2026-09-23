@@ -1,53 +1,36 @@
 #include <SpaceGame/ships/player/ShipControlContext.h>
 
-#include <SpaceGame/input/ControlProfiles.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <EnhancedInputComponent.h>
 #include <EnhancedInputSubsystemInterface.h>
-#include <EnhancedInputSubsystems.h>
-#include <HAL/PlatformTime.h>
 #include <InputAction.h>
 #include <InputActionValue.h>
 #include <InputMappingContext.h>
-#include <UserSettings/EnhancedInputUserSettings.h>
-
-namespace ship_control_constants {
-inline constexpr double pointer_turn_dead_zone{0.05};
-}
 
 auto FShipControlContext::initialise(ASpaceGamePlayerController& owner,
-                                     UEnhancedInputComponent& input_component,
-                                     IEnhancedInputSubsystemInterface& input_subsystem,
+                                     UEnhancedInputComponent& component,
+                                     IEnhancedInputSubsystemInterface& subsystem,
                                      FSpaceShipControllerInputs const& input) -> bool {
     if (initialised_) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("FShipControlContext::initialise: Context is already initialised."));
         return false;
     }
-
-    auto* const input_subsystem_object{Cast<UObject>(&input_subsystem)};
-    if (!IsValid(input_subsystem_object)) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("FShipControlContext::initialise: Input subsystem is not a UObject."));
+    auto* const subsystem_object{Cast<UObject>(&subsystem)};
+    if (!IsValid(subsystem_object)) {
+        UE_LOG(LogSandboxController, Error, TEXT("Ship input subsystem is invalid."));
         return false;
     }
 
     owner_ = &owner;
-    input_component_ = &input_component;
-    input_subsystem_object_ = input_subsystem_object;
-    input_subsystem_ = &input_subsystem;
+    input_component_ = &component;
+    input_subsystem_object_ = subsystem_object;
+    input_subsystem_ = &subsystem;
     input_ = &input;
-    throttle_gesture_ = FShipInputGestureRecognizer{input.double_tap_window_seconds};
-    brake_gesture_ = FShipInputGestureRecognizer{input.double_tap_window_seconds};
     initialised_ = true;
     return true;
 }
-
 auto FShipControlContext::can_bind() const -> bool {
     auto* const ship{ship_.Get()};
     if (!initialised_ || !owner_.IsValid() || !input_component_.IsValid() ||
@@ -55,39 +38,49 @@ auto FShipControlContext::can_bind() const -> bool {
         !ship->has_simulation() || !input_) {
         return false;
     }
-
-    return IsValid(input_->get_mapping_context());
+    return IsValid(input_->starfox) && IsValid(input_->fighter) && IsValid(input_->skater) &&
+           IsValid(input_->gunship);
 }
-
 auto FShipControlContext::bind() -> bool {
     if (bound_) {
+        verify_mode_invariant();
         return true;
     }
-
     if (!can_bind()) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("FShipControlContext::bind: Context dependencies are invalid."));
+        UE_LOG(LogSandboxController, Error, TEXT("Ship input cannot bind."));
+        return false;
+    }
+
+    auto* const mapping{context_for_slot(ship_->get_active_flight_model_slot())};
+    if (!IsValid(mapping)) {
+        UE_LOG(LogSandboxController, Error, TEXT("Selected flight mode IMC is invalid."));
         return false;
     }
 
     bound_ = true;
     bind_actions();
-    add_mapping_context();
+    FModifyContextOptions options{};
+    options.bForceImmediately = true;
+    input_subsystem_->AddMappingContext(mapping, 0, options);
+    active_mode_mapping_ = mapping;
+    verify_mode_invariant();
+    if (auto* const owner{owner_.Get()}) {
+        owner->on_player_ship_flight_model_selected();
+    }
     return true;
 }
-
 void FShipControlContext::unbind() {
     if (!bound_) {
         return;
     }
-
     bound_ = false;
     neutralise_ship_input();
-    remove_mapping_context();
+    if (input_subsystem_object_.IsValid() && input_subsystem_ && active_mode_mapping_.IsValid()) {
+        input_subsystem_->RemoveMappingContext(active_mode_mapping_.Get());
+    }
+    active_mode_mapping_.Reset();
     remove_action_bindings();
 }
-
 void FShipControlContext::shutdown() {
     unbind();
     ship_.Reset();
@@ -98,513 +91,281 @@ void FShipControlContext::shutdown() {
     input_ = nullptr;
     initialised_ = false;
 }
-
 void FShipControlContext::set_ship(ATestSpaceShip* const ship) {
     if (bound_ && ship_.Get() != ship) {
         unbind();
     }
     ship_ = ship;
 }
-
-void FShipControlContext::bind_actions() {
-    auto* const input_component{input_component_.Get()};
-    check(IsValid(input_component));
-    check(input_);
-
-    auto bind_value{[this, input_component](
-                        UInputAction* const action, ETriggerEvent const event, auto method) {
-        if (!IsValid(action)) {
-            UE_LOG(LogSandboxController,
-                   Warning,
-                   TEXT("FShipControlContext::bind_actions: Input action is invalid."));
-            return;
-        }
-
-        auto& binding{input_component->BindActionValueLambda(
-            action, event, [this, method](FInputActionValue const& value) {
-                if (bound_) {
-                    (this->*method)(value);
-                }
-            })};
-        binding_handles_.Add(binding.GetHandle());
-    }};
-    auto bind_no_value{[this, input_component](
-                           UInputAction* const action, ETriggerEvent const event, auto method) {
-        if (!IsValid(action)) {
-            UE_LOG(LogSandboxController,
-                   Warning,
-                   TEXT("FShipControlContext::bind_actions: Input action is invalid."));
-            return;
-        }
-
-        auto& binding{input_component->BindActionValueLambda(
-            action, event, [this, method](FInputActionValue const&) {
-                if (bound_) {
-                    (this->*method)();
-                }
-            })};
-        binding_handles_.Add(binding.GetHandle());
-    }};
-
-    using enum ETriggerEvent;
-
-    bind_value(input_->move, Triggered, &FShipControlContext::set_move_input);
-    bind_no_value(input_->move, Completed, &FShipControlContext::move_completed);
-    bind_value(input_->lateral_move, Triggered, &FShipControlContext::set_lateral_move_input);
-    bind_no_value(input_->lateral_move, Completed, &FShipControlContext::lateral_move_completed);
-    bind_value(input_->forward_move, Triggered, &FShipControlContext::set_forward_move_input);
-    bind_no_value(input_->forward_move, Completed, &FShipControlContext::forward_move_completed);
-    bind_value(input_->vertical_move, Triggered, &FShipControlContext::set_vertical_move_input);
-    bind_no_value(input_->vertical_move, Completed, &FShipControlContext::vertical_move_completed);
-
-    bind_no_value(
-        input_->ship_2d_control, Started, &FShipControlContext::set_ship_2d_control_started);
-    bind_value(input_->ship_2d_control, Triggered, &FShipControlContext::set_ship_2d_control);
-    bind_no_value(
-        input_->ship_2d_control, Completed, &FShipControlContext::ship_2d_control_completed);
-    bind_no_value(
-        input_->ship_1d_control_x, Started, &FShipControlContext::set_ship_2d_control_started);
-    bind_value(input_->ship_1d_control_x, Triggered, &FShipControlContext::set_ship_1d_control_x);
-    bind_no_value(
-        input_->ship_1d_control_x, Completed, &FShipControlContext::ship_2d_control_completed);
-    bind_no_value(
-        input_->ship_1d_control_y, Started, &FShipControlContext::set_ship_2d_control_started);
-    bind_value(input_->ship_1d_control_y, Triggered, &FShipControlContext::set_ship_1d_control_y);
-    bind_no_value(
-        input_->ship_1d_control_y, Completed, &FShipControlContext::ship_2d_control_completed);
-
-    bind_no_value(
-        input_->select_flight_model_up, Started, &FShipControlContext::select_flight_model_up);
-    bind_no_value(input_->select_flight_model_right,
-                  Started,
-                  &FShipControlContext::select_flight_model_right);
-    bind_no_value(
-        input_->select_flight_model_down, Started, &FShipControlContext::select_flight_model_down);
-    bind_no_value(
-        input_->select_flight_model_left, Started, &FShipControlContext::select_flight_model_left);
-    bind_no_value(input_->sample_and_hold, Started, &FShipControlContext::start_sampling);
-    bind_no_value(input_->sample_and_hold, Completed, &FShipControlContext::stop_sampling);
-    bind_no_value(input_->increase_desired_forward_velocity,
-                  Started,
-                  &FShipControlContext::increase_desired_forward_velocity);
-    bind_no_value(input_->decrease_desired_forward_velocity,
-                  Started,
-                  &FShipControlContext::decrease_desired_forward_velocity);
-
-    bind_value(input_->turn, Triggered, &FShipControlContext::turn);
-    bind_no_value(input_->turn, Completed, &FShipControlContext::turn_completed);
-    bind_no_value(input_->engage_pointer_turn, Started, &FShipControlContext::engage_pointer_turn);
-    bind_value(input_->turn_pointer_delta, Triggered, &FShipControlContext::update_pointer_turn);
-    bind_no_value(
-        input_->engage_pointer_turn, Completed, &FShipControlContext::disengage_pointer_turn);
-    bind_value(input_->roll, Started, &FShipControlContext::start_roll);
-    bind_value(input_->roll, Triggered, &FShipControlContext::roll);
-    bind_value(input_->roll, Completed, &FShipControlContext::stop_roll);
-    bind_value(input_->throttle, Started, &FShipControlContext::start_throttle);
-    bind_value(input_->throttle, Triggered, &FShipControlContext::set_throttle);
-    bind_no_value(input_->throttle, Completed, &FShipControlContext::stop_throttle);
-    bind_no_value(input_->boost, Started, &FShipControlContext::start_boost);
-    bind_no_value(input_->boost, Completed, &FShipControlContext::stop_boost);
-    bind_no_value(input_->brake, Started, &FShipControlContext::start_brake);
-    bind_no_value(input_->brake, Completed, &FShipControlContext::stop_brake);
-
-    bind_no_value(input_->fire_laser, Started, &FShipControlContext::start_fire_laser);
-    bind_no_value(input_->fire_laser, Completed, &FShipControlContext::stop_fire_laser);
-    bind_no_value(
-        input_->cycle_prev_fire_rate, Started, &FShipControlContext::cycle_prev_fire_rate);
-    bind_no_value(
-        input_->cycle_next_fire_rate, Started, &FShipControlContext::cycle_next_fire_rate);
-    bind_no_value(input_->cycle_input_mapping_context,
-                  Started,
-                  &FShipControlContext::cycle_input_mapping_context);
-}
-
-void FShipControlContext::remove_action_bindings() {
-    auto* const input_component{input_component_.Get()};
-    if (IsValid(input_component)) {
-        for (uint32 const handle : binding_handles_) {
-            input_component->RemoveBindingByHandle(handle);
-        }
+auto FShipControlContext::context_for_slot(::ioj::sim::player::FlightModelSlot const slot) const
+    -> UInputMappingContext* {
+    if (!input_) {
+        return nullptr;
     }
-    binding_handles_.Reset();
-}
-
-void FShipControlContext::add_mapping_context() {
-    check(input_subsystem_object_.IsValid() && input_subsystem_);
-    check(input_ && IsValid(input_->get_mapping_context()));
-
-    FModifyContextOptions options{};
-    options.bNotifyUserSettings = true;
-    registered_mapping_ = input_->get_mapping_context();
-    input_subsystem_->AddMappingContext(registered_mapping_.Get(), 0, options);
-
-    if (auto* const owner{owner_.Get()}) {
-        auto const* const settings{input_subsystem_->GetUserSettings()};
-        auto const* const profile{settings != nullptr ? settings->GetActiveKeyProfile() : nullptr};
-        owner->on_ship_control_profile_changed(
-            profile != nullptr ? profile->GetProfileDisplayName().ToString() : FString{});
+    switch (slot) {
+        case ::ioj::sim::player::FlightModelSlot::Up:
+            return input_->starfox;
+        case ::ioj::sim::player::FlightModelSlot::Right:
+            return input_->fighter;
+        case ::ioj::sim::player::FlightModelSlot::Down:
+            return input_->skater;
+        case ::ioj::sim::player::FlightModelSlot::Left:
+            return input_->gunship;
     }
+    return nullptr;
 }
-
-void FShipControlContext::remove_mapping_context() {
-    if (input_subsystem_object_.IsValid() && input_subsystem_ && registered_mapping_.IsValid()) {
-        input_subsystem_->RemoveMappingContext(registered_mapping_.Get());
-    }
-    registered_mapping_.Reset();
-}
-
-void FShipControlContext::neutralise_ship_input() {
-    turn_input_ = FVector2D::ZeroVector;
-    pointer_turn_position_ = FVector2D::ZeroVector;
-    pointer_turn_engaged_ = false;
-
-    boost_press_active_ = false;
-    reset_flight_gesture_state();
-
-    auto* const ship{ship_.Get()};
-    if (!IsValid(ship) || !ship->has_simulation()) {
+void FShipControlContext::verify_mode_invariant() const {
+    if (!bound_ || !input_subsystem_object_.IsValid() || !input_subsystem_) {
         return;
     }
-
-    ship->set_move_input(FVector2D::ZeroVector);
-    ship->set_lateral_move_input(0.f);
-    ship->set_forward_move_input(0.f);
-    ship->set_vertical_move_input(0.f);
-    ship->set_ship_2d_control(FVector2D::ZeroVector);
-    ship->set_ship_1d_control_x(0.f);
-    ship->set_ship_1d_control_y(0.f);
-    ship->turn(FVector2D::ZeroVector);
-    ship->roll(0.f);
-    ship->set_throttle(0.f);
-    ship->stop_sampling();
-    ship->stop_boost();
-    ship->stop_brake();
-    ship->stop_fire_laser();
-}
-
-void FShipControlContext::reset_flight_gesture_state() {
-    throttle_gesture_.reset();
-    brake_gesture_.reset();
-    throttle_press_active_ = false;
-    throttle_boost_active_ = false;
-    brake_press_active_ = false;
-}
-
-auto FShipControlContext::get_ship() const -> ATestSpaceShip* {
-    auto* const ship{ship_.Get()};
-    if (!IsValid(ship)) {
-        UE_LOG(LogSandboxController, Error, TEXT("FShipControlContext: Player ship is invalid."));
-        return nullptr;
+    int32 count{};
+    for (auto* const mapping :
+         {input_->starfox, input_->fighter, input_->skater, input_->gunship}) {
+        count += IsValid(mapping) && input_subsystem_->HasMappingContext(mapping) ? 1 : 0;
     }
-    if (!ship->has_simulation()) {
-        UE_LOG(LogSandboxController,
-               Warning,
-               TEXT("FShipControlContext: Player simulation is not initialized."));
-        return nullptr;
-    }
-    return ship;
-}
-
-void FShipControlContext::set_move_input(FInputActionValue const& value) {
-    if (auto* const ship{get_ship()}) {
-        ship->set_move_input(value.Get<FVector2D>());
-    }
-}
-void FShipControlContext::move_completed() {
-    if (auto* const ship{get_ship()}) {
-        ship->set_move_input(FVector2D::ZeroVector);
-    }
-}
-void FShipControlContext::set_lateral_move_input(FInputActionValue const& value) {
-    if (auto* const ship{get_ship()}) {
-        ship->set_lateral_move_input(value.Get<float>());
-    }
-}
-void FShipControlContext::lateral_move_completed() {
-    if (auto* const ship{get_ship()}) {
-        ship->set_lateral_move_input(0.f);
-    }
-}
-void FShipControlContext::set_forward_move_input(FInputActionValue const& value) {
-    if (auto* const ship{get_ship()}) {
-        ship->set_forward_move_input(value.Get<float>());
-    }
-}
-void FShipControlContext::forward_move_completed() {
-    if (auto* const ship{get_ship()}) {
-        ship->set_forward_move_input(0.f);
-    }
-}
-void FShipControlContext::set_vertical_move_input(FInputActionValue const& value) {
-    if (auto* const ship{get_ship()}) {
-        ship->set_vertical_move_input(value.Get<float>());
-    }
-}
-void FShipControlContext::vertical_move_completed() {
-    if (auto* const ship{get_ship()}) {
-        ship->set_vertical_move_input(0.f);
-    }
-}
-void FShipControlContext::set_ship_2d_control_started() {
-    start_sampling();
-}
-void FShipControlContext::set_ship_2d_control(FInputActionValue const& value) {
-    if (auto* const ship{get_ship()}) {
-        ship->set_ship_2d_control(value.Get<FVector2D>());
-    }
-}
-void FShipControlContext::ship_2d_control_completed() {
-    stop_sampling();
-}
-void FShipControlContext::set_ship_1d_control_x(FInputActionValue const& value) {
-    if (auto* const ship{get_ship()}) {
-        ship->set_ship_1d_control_x(value.Get<float>());
-    }
-}
-void FShipControlContext::set_ship_1d_control_y(FInputActionValue const& value) {
-    if (auto* const ship{get_ship()}) {
-        ship->set_ship_1d_control_y(value.Get<float>());
-    }
-}
-void FShipControlContext::select_flight_model_up() {
-    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Up);
-}
-void FShipControlContext::select_flight_model_right() {
-    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Right);
-}
-void FShipControlContext::select_flight_model_down() {
-    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Down);
-}
-void FShipControlContext::select_flight_model_left() {
-    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Left);
+    checkf(count == 1 && input_subsystem_->HasMappingContext(active_mode_mapping_.Get()),
+           TEXT("Ship input must have exactly one flight-mode IMC."));
 }
 void FShipControlContext::select_flight_model_slot(::ioj::sim::player::FlightModelSlot const slot) {
     auto* const ship{get_ship()};
-    auto const preserve_brake{brake_press_active_};
-    reset_flight_gesture_state();
-    brake_press_active_ = preserve_brake;
-    if (ship == nullptr) {
+    auto* const next{context_for_slot(slot)};
+    if (!bound_ || !IsValid(ship) || !IsValid(next) || !input_subsystem_object_.IsValid()) {
         return;
     }
-    publish_boost_intent();
-    ship->stop_brake();
-    if (preserve_brake) {
-        ship->start_brake();
+    if (ship->get_active_flight_model_slot() == slot) {
+        verify_mode_invariant();
+        return;
     }
+
+    auto* const previous{active_mode_mapping_.Get()};
+    neutralise_ship_input();
+    input_subsystem_->RemoveMappingContext(previous);
     ship->select_flight_model_slot(slot);
+    FModifyContextOptions options{};
+    options.bForceImmediately = true;
+    input_subsystem_->AddMappingContext(next, 0, options);
+    active_mode_mapping_ = next;
+    verify_mode_invariant();
     if (auto* const owner{owner_.Get()}) {
         owner->on_player_ship_flight_model_selected();
     }
 }
-void FShipControlContext::start_sampling() {
-    if (auto* const ship{get_ship()}) {
-        ship->start_sampling();
+void FShipControlContext::select_starfox() {
+    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Up);
+}
+void FShipControlContext::select_fighter() {
+    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Right);
+}
+void FShipControlContext::select_skater() {
+    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Down);
+}
+void FShipControlContext::select_gunship() {
+    select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Left);
+}
+void FShipControlContext::bind_actions() {
+    auto* const component{input_component_.Get()};
+    check(IsValid(component) && input_);
+    auto bind_value{
+        [this, component](UInputAction* const action, ETriggerEvent const event, auto method) {
+            check(IsValid(action));
+            auto& binding{component->BindActionValueLambda(
+                action, event, [this, method](FInputActionValue const& value) {
+                    if (bound_) {
+                        (this->*method)(value);
+                    }
+                })};
+            binding_handles_.Add(binding.GetHandle());
+        }};
+    auto bind_event{
+        [this, component](UInputAction* const action, ETriggerEvent const event, auto method) {
+            check(IsValid(action));
+            auto& binding{component->BindActionValueLambda(
+                action, event, [this, method](FInputActionValue const&) {
+                    if (bound_) {
+                        (this->*method)();
+                    }
+                })};
+            binding_handles_.Add(binding.GetHandle());
+        }};
+    using enum ETriggerEvent;
+    bind_value(input_->translate_forward, Triggered, &FShipControlContext::set_forward_input);
+    bind_value(input_->translate_right, Triggered, &FShipControlContext::set_right_input);
+    bind_value(input_->translate_up, Triggered, &FShipControlContext::set_up_input);
+    bind_value(input_->pitch, Triggered, &FShipControlContext::set_pitch_input);
+    bind_value(input_->yaw, Triggered, &FShipControlContext::set_yaw_input);
+    bind_value(input_->roll, Triggered, &FShipControlContext::set_roll_input);
+    bind_value(input_->accelerate, Triggered, &FShipControlContext::set_accelerator);
+    bind_event(input_->translate_forward, Completed, &FShipControlContext::clear_forward_input);
+    bind_event(input_->translate_forward, Canceled, &FShipControlContext::clear_forward_input);
+    bind_event(input_->translate_right, Completed, &FShipControlContext::clear_right_input);
+    bind_event(input_->translate_right, Canceled, &FShipControlContext::clear_right_input);
+    bind_event(input_->translate_up, Completed, &FShipControlContext::clear_up_input);
+    bind_event(input_->translate_up, Canceled, &FShipControlContext::clear_up_input);
+    bind_event(input_->pitch, Completed, &FShipControlContext::clear_pitch_input);
+    bind_event(input_->pitch, Canceled, &FShipControlContext::clear_pitch_input);
+    bind_event(input_->yaw, Completed, &FShipControlContext::clear_yaw_input);
+    bind_event(input_->yaw, Canceled, &FShipControlContext::clear_yaw_input);
+    bind_event(input_->roll, Completed, &FShipControlContext::clear_roll_input);
+    bind_event(input_->roll, Canceled, &FShipControlContext::clear_roll_input);
+    bind_event(input_->accelerate, Completed, &FShipControlContext::clear_accelerator);
+    bind_event(input_->accelerate, Canceled, &FShipControlContext::clear_accelerator);
+    bind_event(input_->boost, Started, &FShipControlContext::start_boost);
+    bind_event(input_->boost, Completed, &FShipControlContext::stop_boost);
+    bind_event(input_->boost, Canceled, &FShipControlContext::stop_boost);
+    bind_event(input_->brake, Started, &FShipControlContext::start_brake);
+    bind_event(input_->brake, Completed, &FShipControlContext::stop_brake);
+    bind_event(input_->brake, Canceled, &FShipControlContext::stop_brake);
+    bind_event(input_->emergency_brake, Started, &FShipControlContext::start_emergency_brake);
+    bind_event(input_->emergency_brake, Completed, &FShipControlContext::stop_emergency_brake);
+    bind_event(input_->emergency_brake, Canceled, &FShipControlContext::stop_emergency_brake);
+    bind_event(input_->fire_primary, Started, &FShipControlContext::start_fire_primary);
+    bind_event(input_->fire_primary, Completed, &FShipControlContext::stop_fire_primary);
+    bind_event(input_->fire_primary, Canceled, &FShipControlContext::stop_fire_primary);
+    bind_event(input_->select_starfox, Started, &FShipControlContext::select_starfox);
+    bind_event(input_->select_fighter, Started, &FShipControlContext::select_fighter);
+    bind_event(input_->select_skater, Started, &FShipControlContext::select_skater);
+    bind_event(input_->select_gunship, Started, &FShipControlContext::select_gunship);
+}
+void FShipControlContext::remove_action_bindings() {
+    if (auto* const component{input_component_.Get()}) {
+        for (auto const handle : binding_handles_) {
+            component->RemoveBindingByHandle(handle);
+        }
     }
+    binding_handles_.Reset();
 }
-void FShipControlContext::stop_sampling() {
-    if (auto* const ship{get_ship()}) {
-        ship->stop_sampling();
-    }
-}
-void FShipControlContext::increase_desired_forward_velocity() {
-    if (auto* const ship{get_ship()}) {
-        ship->adjust_desired_forward_velocity(1.f);
-    }
-}
-void FShipControlContext::decrease_desired_forward_velocity() {
-    if (auto* const ship{get_ship()}) {
-        ship->adjust_desired_forward_velocity(-1.f);
-    }
-}
-void FShipControlContext::turn(FInputActionValue const& value) {
-    turn_input_ = value.Get<FVector2D>();
-    publish_turn();
-}
-void FShipControlContext::turn_completed() {
-    turn_input_ = FVector2D::ZeroVector;
-    publish_turn();
-}
-void FShipControlContext::engage_pointer_turn() {
-    pointer_turn_position_ = FVector2D::ZeroVector;
-    pointer_turn_engaged_ = true;
-    publish_turn();
-}
-void FShipControlContext::update_pointer_turn(FInputActionValue const& value) {
-    if (!pointer_turn_engaged_) {
+void FShipControlContext::neutralise_ship_input() {
+    auto* const ship{ship_.Get()};
+    if (!IsValid(ship) || !ship->has_simulation()) {
         return;
     }
-
-    pointer_turn_position_ =
-        (pointer_turn_position_ + value.Get<FVector2D>()).GetClampedToMaxSize(1.0);
-    publish_turn();
+    ship->set_forward_input(0.f);
+    ship->set_right_input(0.f);
+    ship->set_up_input(0.f);
+    ship->set_pitch_input(0.f);
+    ship->set_yaw_input(0.f);
+    ship->set_roll_input(0.f);
+    ship->set_accelerator(0.f);
+    ship->stop_boost();
+    ship->stop_brake();
+    ship->stop_emergency_brake();
+    ship->stop_fire_laser();
 }
-void FShipControlContext::disengage_pointer_turn() {
-    pointer_turn_position_ = FVector2D::ZeroVector;
-    pointer_turn_engaged_ = false;
-    publish_turn();
+auto FShipControlContext::get_ship() const -> ATestSpaceShip* {
+    auto* const ship{ship_.Get()};
+    if (!IsValid(ship) || !ship->has_simulation()) {
+        UE_LOG(LogSandboxController, Warning, TEXT("Player ship simulation is unavailable."));
+        return nullptr;
+    }
+    return ship;
 }
-void FShipControlContext::publish_turn() {
+void FShipControlContext::set_forward_input(FInputActionValue const& value) {
     if (auto* const ship{get_ship()}) {
-        if (!pointer_turn_engaged_) {
-            ship->turn(turn_input_);
-            return;
-        }
-
-        auto const magnitude{pointer_turn_position_.Size()};
-        auto const pointer_turn{
-            magnitude <= ship_control_constants::pointer_turn_dead_zone
-                ? FVector2D::ZeroVector
-                : pointer_turn_position_.GetSafeNormal() *
-                      ((magnitude - ship_control_constants::pointer_turn_dead_zone) /
-                       (1.0 - ship_control_constants::pointer_turn_dead_zone))};
-        ship->turn(pointer_turn);
+        ship->set_forward_input(value.Get<float>());
     }
 }
-void FShipControlContext::start_roll(FInputActionValue const& value) {
-    UE_LOG(LogSandboxController, Verbose, TEXT("Begin roll: %.1f"), value.Get<float>());
-}
-void FShipControlContext::roll(FInputActionValue const& value) {
+void FShipControlContext::set_right_input(FInputActionValue const& value) {
     if (auto* const ship{get_ship()}) {
-        ship->roll(FMath::Clamp(value.Get<float>(), -1.f, 1.f));
+        ship->set_right_input(value.Get<float>());
     }
 }
-void FShipControlContext::stop_roll(FInputActionValue const& value) {
-    UE_LOG(LogSandboxController, Verbose, TEXT("End roll: %.1f"), value.Get<float>());
+void FShipControlContext::set_up_input(FInputActionValue const& value) {
     if (auto* const ship{get_ship()}) {
-        ship->roll(0.f);
+        ship->set_up_input(value.Get<float>());
     }
 }
-void FShipControlContext::start_throttle(FInputActionValue const& value) {
-    start_throttle_at(value.Get<float>(), FPlatformTime::Seconds());
-}
-void FShipControlContext::start_throttle_at(float const input, double const time_seconds) {
+void FShipControlContext::set_pitch_input(FInputActionValue const& value) {
     if (auto* const ship{get_ship()}) {
-        throttle_press_active_ = true;
-        if (throttle_gesture_.begin_press(time_seconds)) {
-            throttle_boost_active_ = true;
-            publish_boost_intent();
-        }
-        ship->set_throttle(input);
+        ship->set_pitch_input(value.Get<float>());
     }
 }
-void FShipControlContext::set_throttle(FInputActionValue const& value) {
-    set_throttle_value(value.Get<float>());
-}
-void FShipControlContext::set_throttle_value(float const input) {
+void FShipControlContext::set_yaw_input(FInputActionValue const& value) {
     if (auto* const ship{get_ship()}) {
-        ship->set_throttle(input);
+        ship->set_yaw_input(value.Get<float>());
     }
 }
-void FShipControlContext::stop_throttle() {
-    stop_throttle_at(FPlatformTime::Seconds());
+void FShipControlContext::set_roll_input(FInputActionValue const& value) {
+    if (auto* const ship{get_ship()}) {
+        ship->set_roll_input(value.Get<float>());
+    }
 }
-void FShipControlContext::stop_throttle_at(double const time_seconds) {
-    auto* const ship{get_ship()};
-    if (throttle_press_active_) {
-        throttle_gesture_.end_press(time_seconds);
-    } else {
-        throttle_gesture_.reset();
+void FShipControlContext::set_accelerator(FInputActionValue const& value) {
+    if (auto* const ship{get_ship()}) {
+        ship->set_accelerator(value.Get<float>());
     }
-    throttle_press_active_ = false;
-
-    if (ship != nullptr) {
-        ship->set_throttle(0.f);
-        if (throttle_boost_active_) {
-            throttle_boost_active_ = false;
-            publish_boost_intent();
-        }
+}
+void FShipControlContext::clear_forward_input() {
+    if (auto* const ship{get_ship()}) {
+        ship->set_forward_input(0.f);
     }
-    throttle_boost_active_ = false;
+}
+void FShipControlContext::clear_right_input() {
+    if (auto* const ship{get_ship()}) {
+        ship->set_right_input(0.f);
+    }
+}
+void FShipControlContext::clear_up_input() {
+    if (auto* const ship{get_ship()}) {
+        ship->set_up_input(0.f);
+    }
+}
+void FShipControlContext::clear_pitch_input() {
+    if (auto* const ship{get_ship()}) {
+        ship->set_pitch_input(0.f);
+    }
+}
+void FShipControlContext::clear_yaw_input() {
+    if (auto* const ship{get_ship()}) {
+        ship->set_yaw_input(0.f);
+    }
+}
+void FShipControlContext::clear_roll_input() {
+    if (auto* const ship{get_ship()}) {
+        ship->set_roll_input(0.f);
+    }
+}
+void FShipControlContext::clear_accelerator() {
+    if (auto* const ship{get_ship()}) {
+        ship->set_accelerator(0.f);
+    }
 }
 void FShipControlContext::start_boost() {
-    boost_press_active_ = true;
-    publish_boost_intent();
+    if (auto* const ship{get_ship()}) {
+        ship->start_boost();
+    }
 }
 void FShipControlContext::stop_boost() {
-    boost_press_active_ = false;
-    publish_boost_intent();
-}
-void FShipControlContext::publish_boost_intent() {
     if (auto* const ship{get_ship()}) {
-        if (boost_press_active_ || throttle_boost_active_) {
-            ship->start_boost();
-        } else {
-            ship->stop_boost();
-        }
+        ship->stop_boost();
     }
 }
 void FShipControlContext::start_brake() {
-    start_brake_at(FPlatformTime::Seconds());
-}
-void FShipControlContext::start_brake_at(double const time_seconds) {
     if (auto* const ship{get_ship()}) {
         ship->start_brake();
-        brake_press_active_ = true;
-        if (brake_gesture_.begin_press(time_seconds)) {
-            ship->start_emergency_brake();
-        }
     }
 }
 void FShipControlContext::stop_brake() {
-    stop_brake_at(FPlatformTime::Seconds());
-}
-void FShipControlContext::stop_brake_at(double const time_seconds) {
-    auto* const ship{get_ship()};
-    if (brake_press_active_) {
-        brake_gesture_.end_press(time_seconds);
-    } else {
-        brake_gesture_.reset();
-    }
-    brake_press_active_ = false;
-
-    if (ship != nullptr) {
+    if (auto* const ship{get_ship()}) {
         ship->stop_brake();
     }
 }
-void FShipControlContext::start_fire_laser() {
+void FShipControlContext::start_emergency_brake() {
+    if (auto* const ship{get_ship()}) {
+        ship->start_emergency_brake();
+    }
+}
+void FShipControlContext::stop_emergency_brake() {
+    if (auto* const ship{get_ship()}) {
+        ship->stop_emergency_brake();
+    }
+}
+void FShipControlContext::start_fire_primary() {
     if (auto* const ship{get_ship()}) {
         ship->start_fire_laser();
     }
 }
-void FShipControlContext::stop_fire_laser() {
+void FShipControlContext::stop_fire_primary() {
     if (auto* const ship{get_ship()}) {
         ship->stop_fire_laser();
-    }
-}
-void FShipControlContext::cycle_prev_fire_rate() {
-    if (auto* const ship{get_ship()}) {
-        ship->select_previous_laser_fire_rate();
-    }
-}
-void FShipControlContext::cycle_next_fire_rate() {
-    if (auto* const ship{get_ship()}) {
-        ship->select_next_laser_fire_rate();
-    }
-}
-
-void FShipControlContext::cycle_input_mapping_context() {
-    if (!bound_ || !input_subsystem_) {
-        return;
-    }
-    auto* const settings{input_subsystem_->GetUserSettings()};
-    if (!IsValid(settings)) {
-        UE_LOG(
-            LogSandboxController,
-            Error,
-            TEXT("FShipControlContext::cycle_input_mapping_context: Input settings are invalid."));
-        return;
-    }
-    if (!ml::ioj::cycle_control_profile(*settings)) {
-        UE_LOG(LogSandboxController,
-               Error,
-               TEXT("FShipControlContext::cycle_input_mapping_context: Could not select the next "
-                    "control profile."));
-        return;
-    }
-    settings->AsyncSaveSettings();
-    if (auto* const owner{owner_.Get()}) {
-        auto const* const profile{settings->GetActiveKeyProfile()};
-        owner->on_ship_control_profile_changed(
-            profile != nullptr ? profile->GetProfileDisplayName().ToString() : FString{});
     }
 }
