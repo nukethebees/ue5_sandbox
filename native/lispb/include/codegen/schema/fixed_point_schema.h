@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -28,6 +29,8 @@ struct FixedPointSchema {
     std::uint32_t total_bits{};
     std::uint32_t fractional_bits{};
     FixedPointRounding rounding{FixedPointRounding::nearest_even};
+    std::optional<std::string> minimum_value{std::nullopt};
+    std::optional<std::string> maximum_value{std::nullopt};
 };
 
 } // namespace codegen

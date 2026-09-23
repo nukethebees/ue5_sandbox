@@ -562,6 +562,21 @@ TEST(GeneratedPackedValue, RoundTripsFixedPointRawCodes) {
     EXPECT_EQ(value.fraction_raw(), 127);
     EXPECT_EQ(value.state(), 0x1abc);
     EXPECT_EQ(value.raw_value(), 0xd5e7f800u);
+    EXPECT_EQ(value.velocity_value(), -128.0);
+    EXPECT_EQ(value.fraction_value(), 127.0 / 128.0);
+
+    Motion::velocity_raw_type converted{};
+    EXPECT_TRUE(Motion::try_encode_velocity_value(1.5, converted));
+    EXPECT_EQ(converted, 24);
+    EXPECT_TRUE(Motion::try_encode_velocity_value(0.03125, converted));
+    EXPECT_EQ(converted, 0);
+    EXPECT_TRUE(Motion::try_encode_velocity_value(0.09375, converted));
+    EXPECT_EQ(converted, 2);
+    EXPECT_FALSE(
+        Motion::try_encode_velocity_value((std::numeric_limits<double>::infinity)(), converted));
+    EXPECT_FALSE(Motion::try_encode_velocity_value(128.0, converted));
+    EXPECT_TRUE(value.try_set_velocity_value(-1.5));
+    EXPECT_EQ(value.velocity_raw(), -24);
 
     auto const before_failure{value.raw_value()};
     EXPECT_FALSE(value.try_set_velocity_raw(-2049));

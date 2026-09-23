@@ -1,3 +1,4 @@
+#include "../platform/file_dialog.hpp"
 #include "planner_ui_comparison_common.hpp"
 
 namespace ioj::layout_planner {
@@ -5,18 +6,18 @@ namespace ioj::layout_planner {
 auto PlannerUi::draw_comparison_target_profile_picker() -> bool {
     ImGui::Text("A: %s", analysis_session_.primary_abi().name().c_str());
     ImGui::Text("B: %s", analysis_session_.comparison_abi().name().c_str());
-    ImGui::SetNextItemWidth(-1.0F);
-    ImGui::InputText("B profile path",
-                     comparison_target_profile_path_.data(),
-                     comparison_target_profile_path_.size());
+    ImGui::TextWrapped("B profile: %s",
+                       comparison_target_profile_path_.front() == '\0'
+                           ? "None"
+                           : comparison_target_profile_path_.data());
 
     bool changed{};
     if (ImGui::Button("Load B profile")) {
-        auto const path{std::filesystem::path{comparison_target_profile_path_.data()}};
-        if (path.empty()) {
-            comparison_target_profile_error_ = "Comparison profile path is required.";
-        } else if (load_comparison_target_profile(path)) {
-            changed = true;
+        auto chosen{file_dialog_->open_file(comparison_target_profile_path_.data(), "")};
+        if (!chosen.has_value()) {
+            comparison_target_profile_error_ = chosen.error();
+        } else if (chosen->has_value()) {
+            changed = load_comparison_target_profile(**chosen);
         }
     }
     ImGui::SameLine();

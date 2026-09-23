@@ -434,8 +434,12 @@ TEST(PackedValue, LowersFixedPointPlacementToExplicitRawCodeApi) {
     EXPECT_NE(header.find("try_make(std::int16_t const velocity_raw_value"), std::string::npos);
     EXPECT_NE(header.find("auto velocity_raw() const noexcept -> std::int16_t"), std::string::npos);
     EXPECT_NE(header.find("try_set_velocity_raw(std::int16_t const value)"), std::string::npos);
-    EXPECT_NE(header.find("value < velocity_minimum_raw || value > velocity_maximum_raw"),
+    EXPECT_NE(header.find("value < velocity_minimum_allowed_raw || value > "
+                          "velocity_maximum_allowed_raw"),
               std::string::npos);
+    EXPECT_NE(header.find("auto velocity_value() const noexcept -> double"), std::string::npos);
+    EXPECT_NE(header.find("try_encode_velocity_value(double const value"), std::string::npos);
+    EXPECT_NE(header.find("try_set_velocity_value(double const value"), std::string::npos);
     EXPECT_EQ(header.find("project::VelocityQ8_4"), std::string::npos);
     EXPECT_EQ(header.find("velocity()"), std::string::npos);
 
@@ -446,6 +450,20 @@ TEST(PackedValue, LowersFixedPointPlacementToExplicitRawCodeApi) {
     EXPECT_NE(unsigned_header.find("velocity_maximum_raw{velocity_raw_type{0xfff}}"),
               std::string::npos);
 
+    auto bounded_manifest{fixed_point_backed_manifest()};
+    auto& fixed_schema{std::get<FixedPointSchema>(
+        std::get<NormalModuleSchema>(bounded_manifest.modules.front()).declarations.front())};
+    fixed_schema.minimum_value = "-1.5";
+    fixed_schema.maximum_value = "2.25";
+    auto const bounded_files{render_modules(lower_modules(bounded_manifest))};
+    auto const& bounded_header{bounded_files.back().content};
+    EXPECT_NE(
+        bounded_header.find("velocity_minimum_allowed_raw{static_cast<velocity_raw_type>(-24)}"),
+        std::string::npos);
+    EXPECT_NE(
+        bounded_header.find("velocity_maximum_allowed_raw{static_cast<velocity_raw_type>(36)}"),
+        std::string::npos);
+
     auto immutable_manifest{fixed_point_backed_manifest()};
     std::get<PackedValueSchema>(
         std::get<NormalModuleSchema>(immutable_manifest.modules.back()).declarations.front())
@@ -453,8 +471,8 @@ TEST(PackedValue, LowersFixedPointPlacementToExplicitRawCodeApi) {
     auto const immutable_files{render_modules(lower_modules(immutable_manifest))};
     ASSERT_EQ(immutable_files.size(), 2);
     EXPECT_NE(immutable_files.back().content.find(
-                  "assert(velocity_raw_value >= velocity_minimum_raw && velocity_raw_value <= "
-                  "velocity_maximum_raw);"),
+                  "assert(velocity_raw_value >= velocity_minimum_allowed_raw && "
+                  "velocity_raw_value <= velocity_maximum_allowed_raw);"),
               std::string::npos);
 }
 

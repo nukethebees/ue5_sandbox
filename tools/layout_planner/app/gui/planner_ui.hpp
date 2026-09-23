@@ -23,6 +23,8 @@ struct ImGuiTextBuffer;
 
 namespace ioj::layout_planner {
 
+class FileDialog;
+
 struct WindowSize {
     int width{};
     int height{};
@@ -36,6 +38,8 @@ struct VarintDistributionRow {
 class PlannerUi {
   public:
     explicit PlannerUi(layout::SchemaLoadResult loaded);
+
+    void set_file_dialog(FileDialog* dialog);
 
     void register_settings_handler();
     void finish_startup(bool reopen_recent_project);
@@ -167,7 +171,8 @@ class PlannerUi {
     void sync_document_graph(std::optional<lispb::schema::TypeIdentity> selection);
     auto load_project(std::filesystem::path const& path,
                       bool allow_dirty = false,
-                      bool use_recent_target = false) -> bool;
+                      bool use_recent_target = false,
+                      std::optional<std::string> selected_target = std::nullopt) -> bool;
     void adopt_loaded_schema(layout::SchemaLoadResult loaded);
     void remember_recent_project(std::filesystem::path const& path);
     void refresh_analysis();
@@ -191,6 +196,7 @@ class PlannerUi {
     void draw_packed_layout(lispb::schema::PackedType const& packed,
                             layout::PackedAnalysis const& baseline);
     void draw_record_layout(layout::RecordAnalysis const& analysis);
+    void draw_fixed_point_bit_layout(layout::FixedPointAnalysis const& analysis);
     void draw_soa_layout(lispb::schema::SoaType const& soa, layout::SoaAnalysis const& baseline);
     void draw_diagnostics(std::vector<layout::Diagnostic> const& diagnostics) const;
     auto duplicate_selected_declaration(lispb::schema::TypeNode const& node) -> bool;
@@ -223,9 +229,12 @@ class PlannerUi {
     std::array<char, 1024> comparison_target_profile_path_{};
     std::array<char, 32> target_cache_line_bytes_{};
     std::array<char, 32> target_page_bytes_{};
-    std::array<char, 32> target_l1_data_cache_bytes_{};
-    std::array<char, 32> target_l2_cache_bytes_{};
-    std::array<char, 32> target_l3_cache_bytes_{};
+    std::array<char, 64> target_l1_data_cache_bytes_{};
+    std::array<char, 64> target_l2_cache_bytes_{};
+    std::array<char, 64> target_l3_cache_bytes_{};
+    int target_l1_data_cache_unit_{1};
+    int target_l2_cache_unit_{1};
+    int target_l3_cache_unit_{1};
     std::string target_profile_load_error_;
     std::string comparison_target_profile_error_;
     std::string target_memory_fact_error_;
@@ -273,6 +282,8 @@ class PlannerUi {
     std::uint32_t new_fixed_point_total_bits_{16};
     std::uint32_t new_fixed_point_fractional_bits_{8};
     int new_fixed_point_rounding_{};
+    std::array<char, 128> new_fixed_point_minimum_{};
+    std::array<char, 128> new_fixed_point_maximum_{};
     std::array<char, 128> new_mini_float_name_{};
     std::uint32_t new_mini_float_sign_bits_{1};
     std::uint32_t new_mini_float_exponent_bits_{5};
@@ -411,6 +422,8 @@ class PlannerUi {
     std::optional<lispb::schema::DeclarationId> linear_quantized_editor_declaration_;
     std::optional<lispb::schema::DeclarationId> integer_varint_editor_declaration_;
     std::optional<lispb::schema::DeclarationId> fixed_point_editor_declaration_;
+    std::array<char, 128> fixed_point_minimum_{};
+    std::array<char, 128> fixed_point_maximum_{};
     std::optional<lispb::schema::DeclarationId> optional_sentinel_editor_declaration_;
     std::optional<lispb::schema::DeclarationId> optional_presence_bit_editor_declaration_;
     std::optional<lispb::schema::DeclarationId> record_editor_declaration_;
@@ -454,6 +467,10 @@ class PlannerUi {
     std::map<std::string, std::filesystem::path, std::less<>> persisted_target_profile_paths_;
     std::array<char, 128> graph_search_{};
     std::array<char, 1024> new_project_path_{};
+    FileDialog* file_dialog_{};
+    std::filesystem::path pending_project_path_;
+    std::vector<std::string> pending_project_targets_;
+    bool open_project_target_dialog_{};
     std::array<char, 128> new_project_target_{};
     std::optional<int> window_width_;
     std::optional<int> window_height_;

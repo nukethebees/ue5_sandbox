@@ -27,6 +27,12 @@ if(SANDBOX_LAYOUT_PLANNER OR SANDBOX_IMAGE_LAB)
 
 endif()
 
+if(SANDBOX_LAYOUT_PLANNER)
+  set(NFD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+  set(NFD_INSTALL OFF CACHE BOOL "" FORCE)
+  add_subdirectory(nativefiledialog-extended EXCLUDE_FROM_ALL)
+endif()
+
 if(SANDBOX_LAYOUT_PLANNER OR SANDBOX_IMAGE_LAB)
   add_library(sandbox-imgui)
   target_sources(sandbox-imgui PRIVATE

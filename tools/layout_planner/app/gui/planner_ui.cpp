@@ -1,7 +1,9 @@
 #include "planner_ui.hpp"
 
+#include "../platform/file_dialog.hpp"
 #include "planner_ui_support.hpp"
 
+#include <codegen/schema/fixed_point_value.h>
 #include <ioj/layout/planner_type.hpp>
 #include <lispb/target_compiler.h>
 
@@ -23,10 +25,40 @@
 #include <variant>
 
 namespace ioj::layout_planner {
+
+void PlannerUi::set_file_dialog(FileDialog* const dialog) {
+    file_dialog_ = dialog;
+}
+
 namespace {
 
 using namespace layout;
 using namespace lispb::schema;
+
+auto format_cache_capacity(std::uint64_t const bytes, int const unit) -> std::string {
+    auto const divisor{std::uint64_t{1} << (unit * 10)};
+    auto result{std::to_string(bytes / divisor)};
+    auto remainder{bytes % divisor};
+    if (remainder == 0) {
+        return result;
+    }
+    result += '.';
+    while (remainder != 0) {
+        remainder *= 10;
+        result += static_cast<char>('0' + remainder / divisor);
+        remainder %= divisor;
+    }
+    return result;
+}
+
+auto parse_cache_capacity(std::string_view const text, int const unit)
+    -> std::optional<std::uint64_t> {
+    auto parsed{codegen::parse_fixed_point_value(text, static_cast<std::uint32_t>(unit * 10))};
+    if (!parsed.has_value() || parsed->negative) {
+        return std::nullopt;
+    }
+    return parsed->magnitude;
+}
 
 void draw_docked_panel_outlines() {
     constexpr std::array names{"Project / Schema",
@@ -392,9 +424,27 @@ void PlannerUi::sync_target_memory_fact_inputs() {
     auto const& memory{analysis_session_.primary_abi().memory_facts()};
     write_value(target_cache_line_bytes_, memory.cache_line_bytes);
     write_value(target_page_bytes_, memory.page_bytes);
-    write_value(target_l1_data_cache_bytes_, memory.l1_data_cache_bytes);
-    write_value(target_l2_cache_bytes_, memory.l2_cache_bytes);
-    write_value(target_l3_cache_bytes_, memory.l3_cache_bytes);
+    auto write_cache = [](auto& buffer, int& unit, std::optional<std::uint64_t> const value) {
+        buffer.fill('\0');
+        unit = 1;
+        if (!value.has_value()) {
+            return;
+        }
+        if (*value != 0) {
+            for (auto candidate{3}; candidate >= 1; --candidate) {
+                if (*value % (std::uint64_t{1} << (candidate * 10)) == 0) {
+                    unit = candidate;
+                    break;
+                }
+            }
+        }
+        auto const text{format_cache_capacity(*value, unit)};
+        std::snprintf(buffer.data(), buffer.size(), "%s", text.c_str());
+    };
+    write_cache(
+        target_l1_data_cache_bytes_, target_l1_data_cache_unit_, memory.l1_data_cache_bytes);
+    write_cache(target_l2_cache_bytes_, target_l2_cache_unit_, memory.l2_cache_bytes);
+    write_cache(target_l3_cache_bytes_, target_l3_cache_unit_, memory.l3_cache_bytes);
     target_memory_fact_error_.clear();
 }
 
@@ -477,16 +527,16 @@ auto PlannerUi::draw_target_profile() -> bool {
     ImGui::TextDisabled(
         "Loads explicit compiler/configuration facts for this analysis session; it never modifies "
         "LispB.");
-    ImGui::SetNextItemWidth(-1.0F);
-    ImGui::InputText("Profile path", target_profile_path_.data(), target_profile_path_.size());
+    ImGui::TextWrapped("Profile: %s",
+                       target_profile_path_.front() == '\0' ? "None" : target_profile_path_.data());
 
     bool changed{};
     if (ImGui::Button("Load profile")) {
-        auto const path{std::filesystem::path{target_profile_path_.data()}};
-        if (path.empty()) {
-            target_profile_load_error_ = "Target profile path is required.";
-        } else if (load_target_profile(path, true)) {
-            changed = true;
+        auto chosen{file_dialog_->open_file(target_profile_path_.data(), "")};
+        if (!chosen.has_value()) {
+            target_profile_load_error_ = chosen.error();
+        } else if (chosen->has_value()) {
+            changed = load_target_profile(**chosen, true);
         }
     }
     ImGui::SameLine();
@@ -501,7 +551,7 @@ auto PlannerUi::draw_target_profile() -> bool {
 
     ImGui::SeparatorText("Session memory facts");
     ImGui::TextDisabled(
-        "Byte values apply to analysis only. Empty fields are Unknown; line/page sizes must be "
+        "Values apply to analysis only. Empty fields are Unknown; line/page sizes must be "
         "non-zero.");
     constexpr auto flags{ImGuiInputTextFlags_CharsDecimal};
     ImGui::SetNextItemWidth(180.0F);
@@ -511,17 +561,33 @@ auto PlannerUi::draw_target_profile() -> bool {
                      flags);
     ImGui::SetNextItemWidth(180.0F);
     ImGui::InputText("Page bytes", target_page_bytes_.data(), target_page_bytes_.size(), flags);
-    ImGui::SetNextItemWidth(180.0F);
-    ImGui::InputText("L1 data cache bytes",
-                     target_l1_data_cache_bytes_.data(),
-                     target_l1_data_cache_bytes_.size(),
-                     flags);
-    ImGui::SetNextItemWidth(180.0F);
-    ImGui::InputText(
-        "L2 cache bytes", target_l2_cache_bytes_.data(), target_l2_cache_bytes_.size(), flags);
-    ImGui::SetNextItemWidth(180.0F);
-    ImGui::InputText(
-        "L3 cache bytes", target_l3_cache_bytes_.data(), target_l3_cache_bytes_.size(), flags);
+    auto draw_cache_input = [&](char const* label, auto& buffer, int& unit) {
+        ImGui::TextUnformatted(label);
+        ImGui::SetNextItemWidth(180.0F);
+        auto const input_id{std::string{"##value-"} + label};
+        ImGui::InputText(input_id.c_str(), buffer.data(), buffer.size(), flags);
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(85.0F);
+        auto selected_unit{unit};
+        auto const unit_id{std::string{"##unit-"} + label};
+        if (ImGui::Combo(unit_id.c_str(), &selected_unit, "B\0KiB\0MiB\0GiB\0")) {
+            auto const bytes{buffer.front() == '\0' ? std::optional<std::uint64_t>{}
+                                                    : parse_cache_capacity(buffer.data(), unit)};
+            if (buffer.front() != '\0' && !bytes.has_value()) {
+                target_memory_fact_error_ =
+                    std::string{label} + " must represent a whole number of bytes.";
+                return;
+            }
+            unit = selected_unit;
+            if (bytes.has_value()) {
+                auto const text{format_cache_capacity(*bytes, unit)};
+                std::snprintf(buffer.data(), buffer.size(), "%s", text.c_str());
+            }
+        }
+    };
+    draw_cache_input("L1 data cache", target_l1_data_cache_bytes_, target_l1_data_cache_unit_);
+    draw_cache_input("L2 cache", target_l2_cache_bytes_, target_l2_cache_unit_);
+    draw_cache_input("L3 cache", target_l3_cache_bytes_, target_l3_cache_unit_);
 
     if (ImGui::Button("Apply memory facts")) {
         MemoryFacts candidate;
@@ -548,20 +614,40 @@ auto PlannerUi::draw_target_profile() -> bool {
             output = parsed;
             return true;
         };
+        auto parse_cache = [&](char const* const text,
+                               char const* const label,
+                               int const unit,
+                               std::optional<std::uint64_t>& output) {
+            if (*text == '\0') {
+                output.reset();
+                return true;
+            }
+            output = parse_cache_capacity(text, unit);
+            if (!output.has_value()) {
+                target_memory_fact_error_ =
+                    std::string{label} + " must represent a whole number of bytes within uint64.";
+                return false;
+            }
+            return true;
+        };
         auto const valid{
             parse_value(target_cache_line_bytes_.data(),
                         "Cache-line bytes",
                         true,
                         candidate.cache_line_bytes) &&
             parse_value(target_page_bytes_.data(), "Page bytes", true, candidate.page_bytes) &&
-            parse_value(target_l1_data_cache_bytes_.data(),
-                        "L1 data cache bytes",
-                        false,
+            parse_cache(target_l1_data_cache_bytes_.data(),
+                        "L1 data cache",
+                        target_l1_data_cache_unit_,
                         candidate.l1_data_cache_bytes) &&
-            parse_value(
-                target_l2_cache_bytes_.data(), "L2 cache bytes", false, candidate.l2_cache_bytes) &&
-            parse_value(
-                target_l3_cache_bytes_.data(), "L3 cache bytes", false, candidate.l3_cache_bytes)};
+            parse_cache(target_l2_cache_bytes_.data(),
+                        "L2 cache",
+                        target_l2_cache_unit_,
+                        candidate.l2_cache_bytes) &&
+            parse_cache(target_l3_cache_bytes_.data(),
+                        "L3 cache",
+                        target_l3_cache_unit_,
+                        candidate.l3_cache_bytes)};
         if (valid) {
             auto const matches_defaults{
                 candidate.cache_line_bytes == target_memory_fact_defaults_.cache_line_bytes &&
@@ -619,7 +705,7 @@ void PlannerUi::finish_startup(bool const reopen_recent_project) {
         }
     }
     if (!fallback_path.empty()) {
-        static_cast<void>(load_project(fallback_path, true));
+        static_cast<void>(load_project(fallback_path, true, true));
     }
 }
 
@@ -1061,17 +1147,23 @@ auto PlannerUi::draw_file_menu() -> bool {
                                             : has_document && document_->can_redo()};
     if (ImGui::MenuItem("New Project...")) {
         auto const suggested{std::filesystem::current_path() / "lispb" / "new_project.lispb"};
-        set_text_buffer(new_project_path_, suggested.string());
-        set_text_buffer(new_project_target_, "new-schema");
-        schema_edit_message_.clear();
-        open_new_project_dialog_ = true;
+        auto chosen{file_dialog_->save_file(suggested, "lispb")};
+        if (!chosen.has_value()) {
+            schema_edit_message_ = chosen.error();
+        } else if (chosen->has_value()) {
+            set_text_buffer(new_project_path_, chosen->value().string());
+            set_text_buffer(new_project_target_, "new-schema");
+            schema_edit_message_.clear();
+            open_new_project_dialog_ = true;
+        }
     }
     if (ImGui::MenuItem("Open Project...")) {
-        std::snprintf(open_project_path_.data(),
-                      open_project_path_.size(),
-                      "%s",
-                      project_path_.string().c_str());
-        open_project_dialog_ = true;
+        auto chosen{file_dialog_->open_file(project_path_, "lispb")};
+        if (!chosen.has_value()) {
+            schema_edit_message_ = chosen.error();
+        } else if (chosen->has_value()) {
+            changed |= load_project(**chosen, false, true);
+        }
     }
     if (ImGui::BeginMenu("Open Recent", !recent_projects_.empty())) {
         for (auto const& path : recent_projects_) {
@@ -1151,11 +1243,21 @@ auto PlannerUi::draw_file_menu() -> bool {
     if (ImGui::MenuItem("Save As...")) {
         auto destination{project_path_.parent_path() /
                          (project_path_.stem().string() + "_copy.lispb")};
-        std::snprintf(save_as_project_path_.data(),
-                      save_as_project_path_.size(),
-                      "%s",
-                      destination.string().c_str());
-        open_save_as_dialog_ = true;
+        auto chosen{file_dialog_->save_file(destination, "lispb")};
+        if (!chosen.has_value()) {
+            schema_edit_message_ = chosen.error();
+        } else if (chosen->has_value()) {
+            auto cloned{clone_lispb_schema(*document_, **chosen, target_name_)};
+            if (cloned.loaded) {
+                adopt_loaded_schema(std::move(cloned));
+                schema_edit_message_ = "Saved and opened the cloned LispB project.";
+                changed = true;
+            } else {
+                schema_edit_message_ = cloned.diagnostics.empty()
+                                         ? "Could not clone the LispB project."
+                                         : cloned.diagnostics.front().message;
+            }
+        }
     }
     ImGui::EndDisabled();
     if (ImGui::MenuItem("Export C++",
@@ -1176,14 +1278,44 @@ auto PlannerUi::draw_file_menu() -> bool {
 }
 
 void PlannerUi::draw_project_path_dialogs() {
+    if (std::exchange(open_project_target_dialog_, false)) {
+        ImGui::OpenPopup("Choose LispB target");
+    }
+    if (ImGui::BeginPopupModal("Choose LispB target", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        ImGui::TextWrapped("Choose a C++ schema target in %s",
+                           pending_project_path_.string().c_str());
+        for (auto const& name : pending_project_targets_) {
+            if (ImGui::Selectable(name.c_str())) {
+                auto const path{pending_project_path_};
+                pending_project_path_.clear();
+                pending_project_targets_.clear();
+                ImGui::CloseCurrentPopup();
+                static_cast<void>(load_project(path, false, false, name));
+                break;
+            }
+        }
+        if (ImGui::Button("Cancel")) {
+            pending_project_path_.clear();
+            pending_project_targets_.clear();
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
     if (open_new_project_dialog_) {
         ImGui::OpenPopup("New LispB project");
         open_new_project_dialog_ = false;
     }
     if (ImGui::BeginPopupModal("New LispB project", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextUnformatted("Project manifest path");
-        ImGui::SetNextItemWidth(720.0F);
-        ImGui::InputText("##new-project-path", new_project_path_.data(), new_project_path_.size());
+        ImGui::TextWrapped("%s", new_project_path_.data());
+        if (ImGui::Button("Choose location...")) {
+            auto chosen{file_dialog_->save_file(new_project_path_.data(), "lispb")};
+            if (!chosen.has_value()) {
+                schema_edit_message_ = chosen.error();
+            } else if (chosen->has_value()) {
+                set_text_buffer(new_project_path_, chosen->value().string());
+            }
+        }
         ImGui::TextUnformatted("C++ schema target name");
         ImGui::SetNextItemWidth(360.0F);
         ImGui::InputText(
@@ -1257,66 +1389,6 @@ void PlannerUi::draw_project_path_dialogs() {
         ImGui::EndPopup();
     }
 
-    if (open_project_dialog_) {
-        ImGui::OpenPopup("Open LispB project");
-        open_project_dialog_ = false;
-    }
-    if (ImGui::BeginPopupModal("Open LispB project", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::TextUnformatted("Project manifest path");
-        ImGui::SetNextItemWidth(720.0F);
-        ImGui::InputText(
-            "##open-project-path", open_project_path_.data(), open_project_path_.size());
-        ImGui::BeginDisabled(open_project_path_.front() == '\0');
-        if (ImGui::Button("Open")) {
-            if (load_project(open_project_path_.data(), false, true)) {
-                ImGui::CloseCurrentPopup();
-            }
-        }
-        ImGui::EndDisabled();
-        ImGui::SameLine();
-        if (ImGui::Button("Cancel")) {
-            ImGui::CloseCurrentPopup();
-        }
-        if (!schema_edit_message_.empty()) {
-            ImGui::TextWrapped("%s", schema_edit_message_.c_str());
-        }
-        ImGui::EndPopup();
-    }
-
-    if (open_save_as_dialog_) {
-        ImGui::OpenPopup("Save LispB project as");
-        open_save_as_dialog_ = false;
-    }
-    if (ImGui::BeginPopupModal(
-            "Save LispB project as", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-        ImGui::TextUnformatted("New project manifest path");
-        ImGui::SetNextItemWidth(720.0F);
-        ImGui::InputText(
-            "##save-as-project-path", save_as_project_path_.data(), save_as_project_path_.size());
-        ImGui::TextDisabled("A sibling <name>_schema directory will contain the cloned sources.");
-        ImGui::BeginDisabled(save_as_project_path_.front() == '\0' || !document_.has_value());
-        if (ImGui::Button("Save As")) {
-            auto cloned{clone_lispb_schema(*document_, save_as_project_path_.data(), target_name_)};
-            if (cloned.loaded) {
-                adopt_loaded_schema(std::move(cloned));
-                schema_edit_message_ = "Saved and opened the cloned LispB project.";
-                ImGui::CloseCurrentPopup();
-            } else {
-                schema_edit_message_ = cloned.diagnostics.empty()
-                                         ? "Could not clone the LispB project."
-                                         : cloned.diagnostics.front().message;
-            }
-        }
-        ImGui::EndDisabled();
-        ImGui::SameLine();
-        if (ImGui::Button("Cancel")) {
-            ImGui::CloseCurrentPopup();
-        }
-        if (!schema_edit_message_.empty()) {
-            ImGui::TextWrapped("%s", schema_edit_message_.c_str());
-        }
-        ImGui::EndPopup();
-    }
     if (std::exchange(open_export_build_root_dialog_, false)) {
         ImGui::OpenPopup("Export build directory");
     }
@@ -1324,9 +1396,15 @@ void PlannerUi::draw_project_path_dialogs() {
             "Export build directory", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         ImGui::TextUnformatted("This target writes output relative to a build directory.");
         ImGui::TextUnformatted("Build directory (absolute path)");
-        ImGui::SetNextItemWidth(560.0F);
-        ImGui::InputText(
-            "##export-build-root", export_build_root_path_.data(), export_build_root_path_.size());
+        ImGui::TextWrapped("%s", export_build_root_path_.data());
+        if (ImGui::Button("Choose build directory...")) {
+            auto chosen{file_dialog_->pick_folder(export_build_root_path_.data())};
+            if (!chosen.has_value()) {
+                schema_edit_message_ = chosen.error();
+            } else if (chosen->has_value()) {
+                set_text_buffer(export_build_root_path_, chosen->value().string());
+            }
+        }
         auto const build_root{std::filesystem::path{export_build_root_path_.data()}};
         ImGui::BeginDisabled(!build_root.is_absolute() || has_dirty_changes());
         if (ImGui::Button("Export")) {
@@ -1484,11 +1562,20 @@ void PlannerUi::draw_diagnostics_panel() {
         return;
     }
 
+    struct DisplayDiagnostic {
+        std::string label;
+        DiagnosticSeverity severity;
+        std::string message;
+    };
+    std::vector<DisplayDiagnostic> entries;
     std::string content;
-    auto append_message = [&](std::string_view const label, std::string_view const message) {
+    auto append_message = [&](std::string_view const label,
+                              std::string_view const message,
+                              DiagnosticSeverity const severity = DiagnosticSeverity::info) {
         if (message.empty()) {
             return;
         }
+        entries.push_back({std::string{label}, severity, std::string{message}});
         if (!content.empty()) {
             content += "\n\n";
         }
@@ -1501,14 +1588,9 @@ void PlannerUi::draw_diagnostics_panel() {
         if (diagnostics.empty()) {
             return;
         }
-        std::string messages;
         for (auto const& diagnostic : diagnostics) {
-            if (!messages.empty()) {
-                messages += '\n';
-            }
-            messages += diagnostic.message;
+            append_message(label, diagnostic.message, diagnostic.severity);
         }
-        append_message(label, messages);
     };
     auto append_analysis = [&](char const* const label, auto const& analysis) {
         if (analysis.has_value()) {
@@ -1517,9 +1599,10 @@ void PlannerUi::draw_diagnostics_panel() {
     };
     append_message("Document status", schema_edit_message_);
     append_diagnostics("Project load", load_diagnostics_);
-    append_message("Target profile", target_profile_load_error_);
-    append_message("Target profile", target_memory_fact_error_);
-    append_message("Comparison target profile", comparison_target_profile_error_);
+    append_message("Target profile", target_profile_load_error_, DiagnosticSeverity::error);
+    append_message("Target profile", target_memory_fact_error_, DiagnosticSeverity::error);
+    append_message(
+        "Comparison target profile", comparison_target_profile_error_, DiagnosticSeverity::error);
     append_analysis("Semantic domain", analysis_session_.results().enum_domain);
     append_analysis("Enum target comparison", analysis_session_.results().enum_target_comparison);
     append_analysis("Integer scalar", analysis_session_.results().integer_scalar_analysis);
@@ -1560,7 +1643,7 @@ void PlannerUi::draw_diagnostics_panel() {
     append_analysis("SoA access", analysis_session_.results().soa_access_analysis);
     append_analysis("SoA target access comparison",
                     analysis_session_.results().soa_target_access_comparison);
-    if (content.empty() && schema_warning_message_.empty()) {
+    if (entries.empty() && schema_warning_message_.empty()) {
         ImGui::TextDisabled("No current diagnostics.");
     } else {
         auto copy_text{content};
@@ -1584,12 +1667,21 @@ void PlannerUi::draw_diagnostics_panel() {
                                       ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_WordWrap);
             ImGui::PopStyleColor();
         }
-        if (!content.empty()) {
-            ImGui::InputTextMultiline("##diagnostics-text",
-                                      content.data(),
-                                      content.size() + 1,
-                                      ImGui::GetContentRegionAvail(),
-                                      ImGuiInputTextFlags_ReadOnly | ImGuiInputTextFlags_WordWrap);
+        std::string previous_label;
+        for (auto const& entry : entries) {
+            if (entry.label != previous_label) {
+                ImGui::SeparatorText(entry.label.c_str());
+                previous_label = entry.label;
+            }
+            ImGui::PushStyleColor(ImGuiCol_Text, detail::diagnostic_color(entry.severity));
+            ImGui::TextWrapped("%s", entry.message.c_str());
+            ImGui::PopStyleColor();
+            if (ImGui::BeginPopupContextItem()) {
+                if (ImGui::MenuItem("Copy message")) {
+                    ImGui::SetClipboardText(entry.message.c_str());
+                }
+                ImGui::EndPopup();
+            }
         }
     }
 
@@ -1832,40 +1924,43 @@ void PlannerUi::invalidate_type_editor_state() {
 
 auto PlannerUi::load_project(std::filesystem::path const& path,
                              bool const allow_dirty,
-                             bool const use_recent_target) -> bool {
+                             bool const use_recent_target,
+                             std::optional<std::string> selected_target) -> bool {
     if (!allow_dirty && has_dirty_changes()) {
         schema_edit_message_ =
             "Save or undo the current LispB changes before opening another project.";
         return false;
     }
-    auto target{target_name_};
-    if (use_recent_target) {
+    auto target{selected_target.value_or(target_name_)};
+    if (use_recent_target && !selected_target.has_value()) {
         auto const normalized{std::filesystem::absolute(path).lexically_normal()};
-        if (auto const found{recent_project_targets_.find(graph_project_key(normalized))};
-            found != recent_project_targets_.end()) {
-            target = found->second;
-        } else {
-            try {
-                auto const project{lispb::load_project(path)};
-                if (!project.targets.contains(target)) {
-                    std::optional<std::string> only_schema_target;
-                    for (auto const& [name, candidate] : project.targets) {
-                        if (!std::holds_alternative<lispb::CppSchemaTarget>(candidate)) {
-                            continue;
-                        }
-                        if (only_schema_target.has_value()) {
-                            only_schema_target.reset();
-                            break;
-                        }
-                        only_schema_target = name;
-                    }
-                    if (only_schema_target.has_value()) {
-                        target = *only_schema_target;
-                    }
+        try {
+            auto const project{lispb::load_project(path)};
+            std::vector<std::string> schema_targets;
+            for (auto const& [name, candidate] : project.targets) {
+                if (std::holds_alternative<lispb::CppSchemaTarget>(candidate)) {
+                    schema_targets.push_back(name);
                 }
-            } catch (std::exception const&) {
-                // The schema loader will report the project error.
             }
+            if (schema_targets.empty()) {
+                schema_edit_message_ = "The LispB project has no C++ schema target.";
+                return false;
+            }
+            auto const remembered{recent_project_targets_.find(graph_project_key(normalized))};
+            if (remembered != recent_project_targets_.end() &&
+                std::ranges::find(schema_targets, remembered->second) != schema_targets.end()) {
+                target = remembered->second;
+            } else if (schema_targets.size() == 1) {
+                target = schema_targets.front();
+            } else {
+                pending_project_path_ = normalized;
+                pending_project_targets_ = std::move(schema_targets);
+                open_project_target_dialog_ = true;
+                return false;
+            }
+        } catch (std::exception const& error) {
+            schema_edit_message_ = error.what();
+            return false;
         }
     }
     auto loaded{load_lispb_schema(path, target)};
@@ -2700,6 +2795,7 @@ void PlannerUi::draw_layout_panel() {
         ImGui::TextDisabled(
             "Variable-length size is a range; expected size requires a value distribution.");
     } else if (std::holds_alternative<FixedPointType>(definition)) {
+        draw_fixed_point_bit_layout(*analysis_session_.results().fixed_point_analysis);
         ImGui::SeparatorText("Analysis scale");
         if (draw_element_count()) {
             ImGui::End();
@@ -2714,6 +2810,9 @@ void PlannerUi::draw_layout_panel() {
         ImGui::Text("Representable range: %.12g .. %.12g",
                     static_cast<double>(analysis.minimum_value),
                     static_cast<double>(analysis.maximum_value));
+        ImGui::Text("Allowed range: %.12g .. %.12g",
+                    static_cast<double>(analysis.minimum_allowed_value),
+                    static_cast<double>(analysis.maximum_allowed_value));
         ImGui::TextDisabled(
             "Encoded payload bits are not a standalone ABI sizeof/alignment or allocation size.");
         draw_diagnostics(analysis.diagnostics);

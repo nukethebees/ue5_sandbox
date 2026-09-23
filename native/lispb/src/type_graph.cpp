@@ -2,6 +2,7 @@
 
 #include "packed_value_internal.h"
 
+#include <codegen/schema/fixed_point_value.h>
 #include <codegen/validation.h>
 
 #include <algorithm>
@@ -377,10 +378,17 @@ class TypeGraphBuilder {
                     return IntegerVarintType{.source = std::move(scalar),
                                              .encoding = source.encoding};
                 } else if constexpr (std::is_same_v<T, codegen::FixedPointSchema>) {
-                    return FixedPointType{.signedness = source.signedness,
-                                          .total_bits = source.total_bits,
-                                          .fractional_bits = source.fractional_bits,
-                                          .rounding = source.rounding};
+                    return FixedPointType{
+                        .signedness = source.signedness,
+                        .total_bits = source.total_bits,
+                        .fractional_bits = source.fractional_bits,
+                        .rounding = source.rounding,
+                        .minimum_raw_value = source.minimum_value.transform([&](auto const& value) {
+                            return *codegen::parse_fixed_point_value(value, source.fractional_bits);
+                        }),
+                        .maximum_raw_value = source.maximum_value.transform([&](auto const& value) {
+                            return *codegen::parse_fixed_point_value(value, source.fractional_bits);
+                        })};
                 } else if constexpr (std::is_same_v<T, codegen::MiniFloatSchema>) {
                     return MiniFloatType{.sign_bits = source.sign_bits,
                                          .exponent_bits = source.exponent_bits,

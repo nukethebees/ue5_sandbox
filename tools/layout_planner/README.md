@@ -441,7 +441,8 @@ The same source-keyed session distribution is evaluated under both encodings to 
 expected-value, and selected-count estimate deltas.
 
 Fixed-point authoring uses **+ New fixed point** with explicit signedness, total width, fractional
-width, and rounding policy. Standalone analysis reports raw range, numerical endpoints, scale,
+width, rounding policy, and optional independent decimal bounds aligned to the bit resolution.
+Standalone analysis reports raw and allowed ranges, numerical endpoints, scale,
 resolution, and maximum rounding error without inventing an ABI wrapper. A plain packed integer
 field also offers **Create fixed point for selected field...**, prefilled with its signedness and
 exact width; creation and binding are separate undoable edits, and failed binding rolls back the
@@ -450,9 +451,10 @@ those semantics explicitly rather than silently losing them. To place an existin
 representation in a packed value, choose it in the field type picker. The field switches atomically
 to **fixed point**, follows the exact representation width, and clears competing integer-field
 range, code, helper, and relationship metadata. The packed table and detail view reuse the same
-headless fixed-point facts. Generated packed APIs expose only `*_raw` scaled integer accessors with
-signed or unsigned boundary validation; they do not silently return decoded real values or apply
-rounding. Conversion helpers and non-packed placement remain later representation policy.
+headless fixed-point facts. The Layout panel shows sign, whole, and fractional bits. Generated
+packed APIs retain `*_raw` scaled integer accessors and add a decoded `*_value()` getter plus
+checked `try_encode_*_value(double, raw&)` and mutable `try_set_*_value(double)` helpers. Encoding
+applies the selected rounding policy and rejects nonfinite or out-of-range values.
 
 Mini-float declarations also fit in packed fields through the shared type picker. The placement
 derives its exact sign/exponent/significand width and retains the original representation identity;

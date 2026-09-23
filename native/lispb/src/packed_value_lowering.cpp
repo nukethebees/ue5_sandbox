@@ -355,13 +355,9 @@ void append_immutable_validation(std::string& output,
             continue;
         }
         if (packed_field.fixed_point_type != nullptr) {
-            if (packed_field.fixed_point_type->signedness) {
-                output += "        assert(" + value_name + " >= " + field.name +
-                          "_minimum_raw && " + value_name + " <= " + field.name +
-                          "_maximum_raw);\n";
-            } else {
-                output += "        assert(" + value_name + " <= " + field.name + "_maximum_raw);\n";
-            }
+            output += "        assert(" + value_name + " >= " + field.name +
+                      "_minimum_allowed_raw && " + value_name + " <= " + field.name +
+                      "_maximum_allowed_raw);\n";
             continue;
         }
         if (packed_field.mini_float_type != nullptr) {
@@ -575,6 +571,7 @@ auto packed_value_text(PackedValueSchema const& source_schema,
                       hex_value(value_mask) + "}};\n";
         }
         if (fixed_type != nullptr) {
+            dependencies.push_back(TypeDependency{"std::isfinite", "cmath", {}});
             auto const raw_type{packed_field_type_alias(*field)};
             if (fixed_type->signedness) {
                 auto const native_width{*packed_signed_width(field_type.spelling)};
@@ -598,6 +595,18 @@ auto packed_value_text(PackedValueSchema const& source_schema,
                 output += "    inline static constexpr " + raw_type + " " + field->name +
                           "_maximum_raw{" + raw_type + "{" + hex_value(value_mask) + "}};\n";
             }
+            output += "    inline static constexpr " + raw_type + " " + field->name +
+                      "_minimum_allowed_raw{" +
+                      (fixed_type->minimum_raw_value.has_value()
+                           ? integer_cast_literal(raw_type, *fixed_type->minimum_raw_value)
+                           : field->name + "_minimum_raw") +
+                      "};\n";
+            output += "    inline static constexpr " + raw_type + " " + field->name +
+                      "_maximum_allowed_raw{" +
+                      (fixed_type->maximum_raw_value.has_value()
+                           ? integer_cast_literal(raw_type, *fixed_type->maximum_raw_value)
+                           : field->name + "_maximum_raw") +
+                      "};\n";
         }
         if (field->kind == PackedFieldKind::signed_integer) {
             auto const signed_width{*packed_signed_width(field_type.spelling)};
@@ -701,6 +710,15 @@ auto packed_value_text(PackedValueSchema const& source_schema,
             continue;
         }
         if (field.kind != PackedFieldKind::enumeration) {
+            if (field.kind == PackedFieldKind::fixed_point) {
+                auto const* fixed_type{fixed_point_type_for_field(packed, type_graph, field.name)};
+                if (fixed_type->minimum_raw_value.has_value() ||
+                    fixed_type->maximum_raw_value.has_value()) {
+                    validity_checks.push_back("(" + field.name + "_raw() >= " + field.name +
+                                              "_minimum_allowed_raw && " + field.name +
+                                              "_raw() <= " + field.name + "_maximum_allowed_raw)");
+                }
+            }
             continue;
         }
         auto const* enum_type{enum_type_for_field(packed, type_graph, field.name)};
@@ -760,6 +778,52 @@ auto packed_value_text(PackedValueSchema const& source_schema,
         }
         output += "    }\n";
 
+        if (fixed_type != nullptr) {
+            auto const raw_type{packed_field_type_alias(field)};
+            auto const fractional_bits{std::to_string(fixed_type->fractional_bits)};
+            auto const exclusive_limit{
+                std::to_string(fixed_type->signedness ? field_bits - 1 : field_bits)};
+            output +=
+                "\n    [[nodiscard]] auto " + field.name + "_value() const noexcept -> double {\n";
+            output += "        return std::ldexp(static_cast<double>(" + field.name + "_raw()), -" +
+                      fractional_bits + ");\n    }\n";
+            output += "\n    [[nodiscard]] static auto try_encode_" + field.name +
+                      "_value(double const value, " + raw_type + "& out_raw) noexcept -> bool {\n";
+            output +=
+                "        if (!std::isfinite(value)) {\n            return false;\n        }\n";
+            output += "        if (value < std::ldexp(static_cast<double>(" + field.name +
+                      "_minimum_allowed_raw), -" + fractional_bits + ") ||\n";
+            output += "            value > std::ldexp(static_cast<double>(" + field.name +
+                      "_maximum_allowed_raw), -" + fractional_bits + ")) {\n";
+            output += "            return false;\n        }\n";
+            output += "        auto const scaled{std::ldexp(value, " + fractional_bits + ")};\n";
+            output +=
+                "        if (!std::isfinite(scaled)) {\n            return false;\n        }\n";
+            if (fixed_type->rounding == FixedPointRounding::toward_zero) {
+                output += "        auto const rounded{std::trunc(scaled)};\n";
+            } else {
+                output += "        auto const lower{std::floor(scaled)};\n";
+                output += "        auto const fraction{scaled - lower};\n";
+                output += "        auto const rounded{fraction > 0.5 ||\n";
+                output += "                           (fraction == 0.5 && std::fmod(lower, 2.0) != "
+                          "0.0)\n";
+                output += "                               ? lower + 1.0\n                          "
+                          "     : lower};\n";
+            }
+            output += "        if (rounded >= std::ldexp(1.0, " + exclusive_limit + ")";
+            if (fixed_type->signedness) {
+                output += " ||\n            rounded < -std::ldexp(1.0, " + exclusive_limit + ")";
+            } else {
+                output += " || rounded < 0.0";
+            }
+            output += ") {\n            return false;\n        }\n";
+            output += "        auto const raw{static_cast<" + raw_type + ">(rounded)};\n";
+            output += "        if (raw < " + field.name + "_minimum_allowed_raw || raw > " +
+                      field.name + "_maximum_allowed_raw) {\n";
+            output += "            return false;\n        }\n";
+            output += "        out_raw = raw;\n        return true;\n    }\n";
+        }
+
         if (schema.mutable_value) {
             output += "\n    [[nodiscard]] constexpr auto try_set_" + accessor + "(" +
                       field_type.spelling + " const value) noexcept -> bool {\n";
@@ -774,12 +838,8 @@ auto packed_value_text(PackedValueSchema const& source_schema,
                 output += "            return false;\n        }\n";
                 output += "        auto const encoded{static_cast<storage_type>(value)};\n";
             } else if (field.kind == PackedFieldKind::fixed_point) {
-                if (fixed_type->signedness) {
-                    output += "        if (value < " + field.name + "_minimum_raw || value > " +
-                              field.name + "_maximum_raw) {\n";
-                } else {
-                    output += "        if (value > " + field.name + "_maximum_raw) {\n";
-                }
+                output += "        if (value < " + field.name + "_minimum_allowed_raw || value > " +
+                          field.name + "_maximum_allowed_raw) {\n";
                 output += "            return false;\n        }\n";
                 output += "        auto const encoded{static_cast<storage_type>(value)};\n";
             } else if (field.kind == PackedFieldKind::enumeration) {
@@ -840,6 +900,14 @@ auto packed_value_text(PackedValueSchema const& source_schema,
                       "_value_mask) << " + field.name + "_offset)};\n";
             output += "        value_ = static_cast<storage_type>(cleared | shifted);\n";
             output += "        return true;\n    }\n";
+            if (fixed_type != nullptr) {
+                output += "\n    [[nodiscard]] auto try_set_" + field.name +
+                          "_value(double const value) noexcept -> bool {\n";
+                output += "        " + packed_field_type_alias(field) + " raw{};\n";
+                output += "        if (!try_encode_" + field.name +
+                          "_value(value, raw)) {\n            return false;\n        }\n";
+                output += "        return try_set_" + field.name + "_raw(raw);\n    }\n";
+            }
 
             output += "\n    constexpr void set_" + accessor + "(" + field_type.spelling +
                       " const value) noexcept {\n";

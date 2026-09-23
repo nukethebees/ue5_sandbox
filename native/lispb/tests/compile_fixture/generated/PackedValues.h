@@ -6,6 +6,7 @@
 #include "PackedEnums.h"
 
 #include <cassert>
+#include <cmath>
 #include <compare>
 #include <cstdint>
 #include <limits>
@@ -1158,6 +1159,8 @@ struct Motion {
         static_cast<velocity_raw_type>(-2048)};
     inline static constexpr velocity_raw_type velocity_maximum_raw{
         static_cast<velocity_raw_type>(2047)};
+    inline static constexpr velocity_raw_type velocity_minimum_allowed_raw{velocity_minimum_raw};
+    inline static constexpr velocity_raw_type velocity_maximum_allowed_raw{velocity_maximum_raw};
     using fraction_raw_type = std::uint8_t;
     static_assert(std::is_unsigned_v<std::uint8_t>);
     static_assert(std::numeric_limits<std::uint8_t>::digits >= 7);
@@ -1168,6 +1171,8 @@ struct Motion {
     inline static constexpr storage_type fraction_mask{storage_type{0x7f000}};
     inline static constexpr fraction_raw_type fraction_minimum_raw{fraction_raw_type{0}};
     inline static constexpr fraction_raw_type fraction_maximum_raw{fraction_raw_type{0x7f}};
+    inline static constexpr fraction_raw_type fraction_minimum_allowed_raw{fraction_minimum_raw};
+    inline static constexpr fraction_raw_type fraction_maximum_allowed_raw{fraction_maximum_raw};
     using state_type = std::uint16_t;
 
     inline static constexpr int state_offset{19};
@@ -1231,8 +1236,42 @@ struct Motion {
         return static_cast<std::int16_t>(-static_cast<std::int16_t>(magnitude));
     }
 
+    [[nodiscard]] auto velocity_value() const noexcept -> double {
+        return std::ldexp(static_cast<double>(velocity_raw()), -4);
+    }
+
+    [[nodiscard]] static auto try_encode_velocity_value(double const value,
+                                                        velocity_raw_type& out_raw) noexcept
+        -> bool {
+        if (!std::isfinite(value)) {
+            return false;
+        }
+        if (value < std::ldexp(static_cast<double>(velocity_minimum_allowed_raw), -4) ||
+            value > std::ldexp(static_cast<double>(velocity_maximum_allowed_raw), -4)) {
+            return false;
+        }
+        auto const scaled{std::ldexp(value, 4)};
+        if (!std::isfinite(scaled)) {
+            return false;
+        }
+        auto const lower{std::floor(scaled)};
+        auto const fraction{scaled - lower};
+        auto const rounded{fraction > 0.5 || (fraction == 0.5 && std::fmod(lower, 2.0) != 0.0)
+                               ? lower + 1.0
+                               : lower};
+        if (rounded >= std::ldexp(1.0, 11) || rounded < -std::ldexp(1.0, 11)) {
+            return false;
+        }
+        auto const raw{static_cast<velocity_raw_type>(rounded)};
+        if (raw < velocity_minimum_allowed_raw || raw > velocity_maximum_allowed_raw) {
+            return false;
+        }
+        out_raw = raw;
+        return true;
+    }
+
     [[nodiscard]] constexpr auto try_set_velocity_raw(std::int16_t const value) noexcept -> bool {
-        if (value < velocity_minimum_raw || value > velocity_maximum_raw) {
+        if (value < velocity_minimum_allowed_raw || value > velocity_maximum_allowed_raw) {
             return false;
         }
         auto const encoded{static_cast<storage_type>(value)};
@@ -1242,6 +1281,14 @@ struct Motion {
             static_cast<storage_type>(encoded & velocity_value_mask) << velocity_offset)};
         value_ = static_cast<storage_type>(cleared | shifted);
         return true;
+    }
+
+    [[nodiscard]] auto try_set_velocity_value(double const value) noexcept -> bool {
+        velocity_raw_type raw{};
+        if (!try_encode_velocity_value(value, raw)) {
+            return false;
+        }
+        return try_set_velocity_raw(raw);
     }
 
     constexpr void set_velocity_raw(std::int16_t const value) noexcept {
@@ -1255,8 +1302,38 @@ struct Motion {
                                          fraction_value_mask);
     }
 
+    [[nodiscard]] auto fraction_value() const noexcept -> double {
+        return std::ldexp(static_cast<double>(fraction_raw()), -7);
+    }
+
+    [[nodiscard]] static auto try_encode_fraction_value(double const value,
+                                                        fraction_raw_type& out_raw) noexcept
+        -> bool {
+        if (!std::isfinite(value)) {
+            return false;
+        }
+        if (value < std::ldexp(static_cast<double>(fraction_minimum_allowed_raw), -7) ||
+            value > std::ldexp(static_cast<double>(fraction_maximum_allowed_raw), -7)) {
+            return false;
+        }
+        auto const scaled{std::ldexp(value, 7)};
+        if (!std::isfinite(scaled)) {
+            return false;
+        }
+        auto const rounded{std::trunc(scaled)};
+        if (rounded >= std::ldexp(1.0, 7) || rounded < 0.0) {
+            return false;
+        }
+        auto const raw{static_cast<fraction_raw_type>(rounded)};
+        if (raw < fraction_minimum_allowed_raw || raw > fraction_maximum_allowed_raw) {
+            return false;
+        }
+        out_raw = raw;
+        return true;
+    }
+
     [[nodiscard]] constexpr auto try_set_fraction_raw(std::uint8_t const value) noexcept -> bool {
-        if (value > fraction_maximum_raw) {
+        if (value < fraction_minimum_allowed_raw || value > fraction_maximum_allowed_raw) {
             return false;
         }
         auto const encoded{static_cast<storage_type>(value)};
@@ -1266,6 +1343,14 @@ struct Motion {
             static_cast<storage_type>(encoded & fraction_value_mask) << fraction_offset)};
         value_ = static_cast<storage_type>(cleared | shifted);
         return true;
+    }
+
+    [[nodiscard]] auto try_set_fraction_value(double const value) noexcept -> bool {
+        fraction_raw_type raw{};
+        if (!try_encode_fraction_value(value, raw)) {
+            return false;
+        }
+        return try_set_fraction_raw(raw);
     }
 
     constexpr void set_fraction_raw(std::uint8_t const value) noexcept {

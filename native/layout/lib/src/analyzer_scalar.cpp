@@ -784,6 +784,12 @@ auto Analyzer::analyze_fixed_point(lispb::schema::TypeGraph const& types,
                         resolution;
     }
 
+    auto const minimum_allowed_raw{fixed.minimum_raw_value.value_or(minimum_raw)};
+    auto const maximum_allowed_raw{fixed.maximum_raw_value.value_or(maximum_raw)};
+    auto const to_value = [&](codegen::PackedIntegerValue const raw) {
+        auto const value{static_cast<long double>(raw.magnitude) / scale};
+        return raw.negative ? -value : value;
+    };
     auto const total_encoded_bits{checked_multiply(fixed.total_bits, element_count)};
     FixedPointAnalysis result{.type = type,
                               .signedness = fixed.signedness,
@@ -792,10 +798,14 @@ auto Analyzer::analyze_fixed_point(lispb::schema::TypeGraph const& types,
                               .whole_bits = whole_bits,
                               .minimum_raw_value = minimum_raw,
                               .maximum_raw_value = maximum_raw,
+                              .minimum_allowed_raw_value = minimum_allowed_raw,
+                              .maximum_allowed_raw_value = maximum_allowed_raw,
                               .scale = scale,
                               .resolution = resolution,
                               .minimum_value = minimum_value,
                               .maximum_value = maximum_value,
+                              .minimum_allowed_value = to_value(minimum_allowed_raw),
+                              .maximum_allowed_value = to_value(maximum_allowed_raw),
                               .maximum_rounding_error =
                                   fixed.rounding == codegen::FixedPointRounding::nearest_even
                                       ? resolution / 2.0L

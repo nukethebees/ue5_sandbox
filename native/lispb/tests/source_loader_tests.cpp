@@ -544,7 +544,9 @@ TEST(SourceLoader, ReadsPhysicalRepresentations) {
     :signed true
     :total-bits 16
     :fractional-bits 4
-    :rounding toward-zero)
+    :rounding toward-zero
+    :minimum -2.5
+    :maximum 3.75)
   (mini-float CompactFloat
     :sign-bits 1
     :exponent-bits 5
@@ -577,6 +579,8 @@ TEST(SourceLoader, ReadsPhysicalRepresentations) {
     EXPECT_EQ(fixed_point.total_bits, 16U);
     EXPECT_EQ(fixed_point.fractional_bits, 4U);
     EXPECT_EQ(fixed_point.rounding, FixedPointRounding::toward_zero);
+    EXPECT_EQ(fixed_point.minimum_value, "-2.5");
+    EXPECT_EQ(fixed_point.maximum_value, "3.75");
     auto const& mini_float{schema_at<MiniFloatSchema>(manifest, 1, 3)};
     EXPECT_EQ(mini_float.name, "CompactFloat");
     EXPECT_EQ(mini_float.sign_bits, 1U);

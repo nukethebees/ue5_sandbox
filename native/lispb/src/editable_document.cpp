@@ -1034,7 +1034,14 @@ auto render_fixed_point(codegen::FixedPointSchema const& schema) -> std::string 
     output << "(fixed-point " << schema.name << "\n    :signed "
            << (schema.signedness ? "true" : "false") << "\n    :total-bits " << schema.total_bits
            << "\n    :fractional-bits " << schema.fractional_bits << "\n    :rounding "
-           << fixed_point_rounding_name(schema.rounding) << ')';
+           << fixed_point_rounding_name(schema.rounding);
+    if (schema.minimum_value.has_value()) {
+        output << "\n    :minimum " << *schema.minimum_value;
+    }
+    if (schema.maximum_value.has_value()) {
+        output << "\n    :maximum " << *schema.maximum_value;
+    }
+    output << ')';
     return output.str();
 }
 
@@ -1752,12 +1759,14 @@ auto try_render_source_preserved_integer_varint(codegen::IntegerVarintSchema con
 auto try_render_source_preserved_fixed_point(codegen::FixedPointSchema const& schema,
                                              std::string_view const original)
     -> std::optional<std::string> {
-    auto const properties{std::array<SourceProperty, 4>{
+    auto const properties{std::array<SourceProperty, 6>{
         std::pair{"signed", std::optional{schema.signedness ? "true" : "false"}},
         std::pair{"total-bits", std::optional{std::to_string(schema.total_bits)}},
         std::pair{"fractional-bits", std::optional{std::to_string(schema.fractional_bits)}},
         std::pair{"rounding",
-                  std::optional{std::string{fixed_point_rounding_name(schema.rounding)}}}}};
+                  std::optional{std::string{fixed_point_rounding_name(schema.rounding)}}},
+        std::pair{"minimum", schema.minimum_value},
+        std::pair{"maximum", schema.maximum_value}}};
     return try_render_source_preserved_properties("fixed-point", schema.name, properties, original);
 }
 

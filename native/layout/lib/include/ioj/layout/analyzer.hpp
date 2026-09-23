@@ -271,10 +271,14 @@ struct FixedPointAnalysis {
     std::uint32_t whole_bits{};
     codegen::PackedIntegerValue minimum_raw_value;
     codegen::PackedIntegerValue maximum_raw_value;
+    codegen::PackedIntegerValue minimum_allowed_raw_value;
+    codegen::PackedIntegerValue maximum_allowed_raw_value;
     long double scale{};
     long double resolution{};
     long double minimum_value{};
     long double maximum_value{};
+    long double minimum_allowed_value{};
+    long double maximum_allowed_value{};
     long double maximum_rounding_error{};
     codegen::FixedPointRounding rounding{codegen::FixedPointRounding::nearest_even};
     std::uint64_t element_count{1};

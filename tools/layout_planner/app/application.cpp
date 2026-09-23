@@ -1,6 +1,7 @@
 #include "application.hpp"
 
 #include "gui/planner_ui.hpp"
+#include "platform/file_dialog.hpp"
 #include "platform/sdl_headers.hpp"
 
 #include <ioj/layout/frame_pacer.hpp>
@@ -47,6 +48,7 @@ class Application {
     static auto is_interaction_event(Uint32 type) -> bool;
 
     PlannerUi ui_;
+    FileDialog file_dialog_;
     bool reopen_recent_project_{};
     SDL_Window* window_{};
     SDL_GPUDevice* gpu_device_{};
@@ -88,6 +90,7 @@ Application::~Application() {
     if (window_ != nullptr) {
         SDL_DestroyWindow(window_);
     }
+    file_dialog_.shutdown();
     if (sdl_initialized_) {
         SDL_Quit();
     }
@@ -157,6 +160,12 @@ auto Application::initialize() -> bool {
     }
     ui_.remember_window_size(window_size);
     SDL_SetWindowPosition(window_, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
+    if (!file_dialog_.initialize(window_)) {
+        std::fprintf(
+            stderr, "File dialog initialization failed: %s\n", file_dialog_.error().c_str());
+        return false;
+    }
+    ui_.set_file_dialog(&file_dialog_);
 
     constexpr auto shader_formats{SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL |
                                   SDL_GPU_SHADERFORMAT_MSL | SDL_GPU_SHADERFORMAT_METALLIB};

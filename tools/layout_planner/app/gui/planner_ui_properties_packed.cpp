@@ -351,6 +351,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
                                                    .schema = std::move(replacement)})) {
             analysis_session_.inputs.selection.field = name;
+            ImGui::EndDisabled();
             return true;
         }
     }
@@ -362,6 +363,8 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
                                                    .schema = std::move(replacement)})) {
             analysis_session_.inputs.selection.field = packed_editor_field_;
+            ImGui::EndDisabled();
+            ImGui::EndDisabled();
             return true;
         }
     }
@@ -375,6 +378,8 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
                                                    .schema = std::move(replacement)})) {
             analysis_session_.inputs.selection.field = packed_editor_field_;
+            ImGui::EndDisabled();
+            ImGui::EndDisabled();
             return true;
         }
     }
@@ -393,6 +398,8 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                                                    .schema = std::move(replacement)})) {
             analysis_session_.inputs.selection.packed_access_fields.erase(deleted_name);
             analysis_session_.inputs.selection.field = next_name;
+            ImGui::EndDisabled();
+            ImGui::EndDisabled();
             return true;
         }
     }
@@ -1614,6 +1621,9 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             ImGui::Text("Raw range: %s..%s", minimum_raw.c_str(), maximum_raw.c_str());
             ImGui::Text(
                 "Numerical range: %.9Lg..%.9Lg", fixed->minimum_value, fixed->maximum_value);
+            ImGui::Text("Allowed range: %.9Lg..%.9Lg",
+                        fixed->minimum_allowed_value,
+                        fixed->maximum_allowed_value);
             ImGui::Text("Width: %u total / %u whole / %u fractional bits",
                         fixed->total_bits,
                         fixed->whole_bits,
@@ -1626,8 +1636,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             ImGui::TextDisabled("Fixed-point analysis is unavailable.");
         }
         ImGui::TextDisabled(
-            "Generated packed APIs expose scaled raw integers; conversion remains representation "
-            "policy.");
+            "Generated packed APIs expose raw codes and checked double conversion.");
     } else if (!pending.has_value() && selected_schema_field != nullptr &&
                selected_mini_float != nullptr) {
         ImGui::SeparatorText("Mini float");
@@ -1678,224 +1687,243 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 : std::optional<std::size_t>{static_cast<std::size_t>(
                       selected_code - selected_schema_field->named_codes.begin())}};
 
-        ImGui::SeparatorText("Named codes");
-        ImGui::TextDisabled(
-            "Named codes remain ordinary integer values; sentinels sit outside the live range.");
-        ImGui::BeginDisabled(!named_value.has_value());
-        if (ImGui::Button("+ Named code")) {
-            auto replacement{*schema};
-            auto& field{
-                std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])};
-            auto name{unique_code_name(field.named_codes, "Code")};
-            field.named_codes.push_back({.name = name, .value = *named_value, .sentinel = false});
-            if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
-                                                       .schema = std::move(replacement)})) {
-                analysis_session_.inputs.selection.field = selected_segment_name;
-                selected_packed_code_ = std::move(name);
-                return true;
-            }
-        }
-        ImGui::EndDisabled();
-        ImGui::SameLine();
-        ImGui::BeginDisabled(!sentinel_value.has_value());
-        if (ImGui::Button("+ Sentinel")) {
-            auto replacement{*schema};
-            auto& field{
-                std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])};
-            auto name{unique_code_name(field.named_codes, "Invalid")};
-            field.named_codes.push_back({.name = name, .value = *sentinel_value, .sentinel = true});
-            if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
-                                                       .schema = std::move(replacement)})) {
-                analysis_session_.inputs.selection.field = selected_segment_name;
-                selected_packed_code_ = std::move(name);
-                return true;
-            }
-        }
-        ImGui::EndDisabled();
-        ImGui::SameLine();
-        auto const duplicate_value{
-            current_code_index.has_value()
-                ? first_available_code(
-                      *selected_schema_field,
-                      effective_width,
-                      selected_schema_field->named_codes[*current_code_index].sentinel)
-                : std::nullopt};
-        ImGui::BeginDisabled(!current_code_index.has_value() || !duplicate_value.has_value());
-        if (ImGui::Button("Duplicate code")) {
-            auto replacement{*schema};
-            auto& field{
-                std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])};
-            auto copy{field.named_codes[*current_code_index]};
-            copy.name = unique_code_name(field.named_codes, copy.name + "_copy");
-            copy.value = *duplicate_value;
-            field.named_codes.insert(field.named_codes.begin() +
-                                         static_cast<std::ptrdiff_t>(*current_code_index + 1),
-                                     copy);
-            if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
-                                                       .schema = std::move(replacement)})) {
-                analysis_session_.inputs.selection.field = selected_segment_name;
-                selected_packed_code_ = std::move(copy.name);
-                return true;
-            }
-        }
-        ImGui::EndDisabled();
-        ImGui::SameLine();
-        ImGui::BeginDisabled(!current_code_index.has_value() || *current_code_index == 0);
-        if (ImGui::Button("Code up")) {
-            auto const code_name{selected_schema_field->named_codes[*current_code_index].name};
-            auto replacement{*schema};
-            auto& codes{std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])
-                            .named_codes};
-            std::swap(codes[*current_code_index], codes[*current_code_index - 1]);
-            if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
-                                                       .schema = std::move(replacement)})) {
-                analysis_session_.inputs.selection.field = selected_segment_name;
-                selected_packed_code_ = code_name;
-                return true;
-            }
-        }
-        ImGui::EndDisabled();
-        ImGui::SameLine();
-        ImGui::BeginDisabled(!current_code_index.has_value() ||
-                             *current_code_index + 1 >= selected_schema_field->named_codes.size());
-        if (ImGui::Button("Code down")) {
-            auto const code_name{selected_schema_field->named_codes[*current_code_index].name};
-            auto replacement{*schema};
-            auto& codes{std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])
-                            .named_codes};
-            std::swap(codes[*current_code_index], codes[*current_code_index + 1]);
-            if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
-                                                       .schema = std::move(replacement)})) {
-                analysis_session_.inputs.selection.field = selected_segment_name;
-                selected_packed_code_ = code_name;
-                return true;
-            }
-        }
-        ImGui::EndDisabled();
-        ImGui::SameLine();
-        ImGui::BeginDisabled(!current_code_index.has_value());
-        if (ImGui::Button("Delete code")) {
-            auto replacement{*schema};
-            auto& codes{std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])
-                            .named_codes};
-            codes.erase(codes.begin() + static_cast<std::ptrdiff_t>(*current_code_index));
-            auto const next_code{codes.empty()
-                                     ? std::string{}
-                                     : codes[std::min(*current_code_index, codes.size() - 1)].name};
-            if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
-                                                       .schema = std::move(replacement)})) {
-                analysis_session_.inputs.selection.field = selected_segment_name;
-                selected_packed_code_ = next_code;
-                return true;
-            }
-        }
-        ImGui::EndDisabled();
-
-        if (!selected_schema_field->minimum_value.has_value()) {
-            ImGui::TextDisabled("Set a semantic range before adding sentinel codes.");
-        } else if (!sentinel_value.has_value()) {
-            ImGui::TextDisabled("No unused code outside the live range fits this field width.");
-        }
-
-        if (detail::begin_editable_table(
-                "packed-named-codes", 4, selected_schema_field->named_codes.size())) {
-            detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
-            detail::editable_table_column("Name");
-            detail::editable_table_column("Value");
-            detail::editable_table_column("Sentinel", ImGuiTableColumnFlags_WidthFixed);
-            ImGui::TableHeadersRow();
-            for (std::size_t code_index{}; code_index < selected_schema_field->named_codes.size();
-                 ++code_index) {
-                auto const& code{selected_schema_field->named_codes[code_index]};
-                auto const row_selected{selected_packed_code_ == code.name};
-                ImGui::PushID(static_cast<int>(code_index));
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                if (detail::editable_table_row_handle(row_selected)) {
-                    selected_packed_code_ = code.name;
-                    packed_code_editor_declaration_.reset();
+        if (ImGui::CollapsingHeader("Named codes", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::TextDisabled("Named codes remain ordinary integer values; sentinels sit outside "
+                                "the live range.");
+            ImGui::BeginDisabled(!named_value.has_value());
+            if (ImGui::Button("+ Named code")) {
+                auto replacement{*schema};
+                auto& field{
+                    std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])};
+                auto name{unique_code_name(field.named_codes, "Code")};
+                field.named_codes.push_back(
+                    {.name = name, .value = *named_value, .sentinel = false});
+                if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
+                                                           .schema = std::move(replacement)})) {
+                    analysis_session_.inputs.selection.field = selected_segment_name;
+                    selected_packed_code_ = std::move(name);
+                    ImGui::EndDisabled();
+                    return true;
                 }
-                if (ImGui::BeginDragDropSource()) {
-                    ImGui::SetDragDropPayload("PACKED_CODE_ROW", &code_index, sizeof(code_index));
-                    ImGui::Text("Move %s", code.name.c_str());
-                    ImGui::EndDragDropSource();
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!sentinel_value.has_value());
+            if (ImGui::Button("+ Sentinel")) {
+                auto replacement{*schema};
+                auto& field{
+                    std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])};
+                auto name{unique_code_name(field.named_codes, "Invalid")};
+                field.named_codes.push_back(
+                    {.name = name, .value = *sentinel_value, .sentinel = true});
+                if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
+                                                           .schema = std::move(replacement)})) {
+                    analysis_session_.inputs.selection.field = selected_segment_name;
+                    selected_packed_code_ = std::move(name);
+                    ImGui::EndDisabled();
+                    return true;
                 }
-                if (ImGui::BeginDragDropTarget()) {
-                    if (auto const* payload{ImGui::AcceptDragDropPayload("PACKED_CODE_ROW")}) {
-                        auto const source_index{*static_cast<std::size_t const*>(payload->Data)};
-                        if (source_index < selected_schema_field->named_codes.size() &&
-                            source_index != code_index) {
-                            pending = *schema;
-                            auto& codes{std::get<codegen::PackedFieldSchema>(
-                                            pending->segments[*selected_index])
-                                            .named_codes};
-                            selected_code_after_edit = codes[source_index].name;
-                            move_element(codes, source_index, code_index);
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            auto const duplicate_value{
+                current_code_index.has_value()
+                    ? first_available_code(
+                          *selected_schema_field,
+                          effective_width,
+                          selected_schema_field->named_codes[*current_code_index].sentinel)
+                    : std::nullopt};
+            ImGui::BeginDisabled(!current_code_index.has_value() || !duplicate_value.has_value());
+            if (ImGui::Button("Duplicate code")) {
+                auto replacement{*schema};
+                auto& field{
+                    std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])};
+                auto copy{field.named_codes[*current_code_index]};
+                copy.name = unique_code_name(field.named_codes, copy.name + "_copy");
+                copy.value = *duplicate_value;
+                field.named_codes.insert(field.named_codes.begin() +
+                                             static_cast<std::ptrdiff_t>(*current_code_index + 1),
+                                         copy);
+                if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
+                                                           .schema = std::move(replacement)})) {
+                    analysis_session_.inputs.selection.field = selected_segment_name;
+                    selected_packed_code_ = std::move(copy.name);
+                    ImGui::EndDisabled();
+                    return true;
+                }
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!current_code_index.has_value() || *current_code_index == 0);
+            if (ImGui::Button("Code up")) {
+                auto const code_name{selected_schema_field->named_codes[*current_code_index].name};
+                auto replacement{*schema};
+                auto& codes{
+                    std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])
+                        .named_codes};
+                std::swap(codes[*current_code_index], codes[*current_code_index - 1]);
+                if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
+                                                           .schema = std::move(replacement)})) {
+                    analysis_session_.inputs.selection.field = selected_segment_name;
+                    selected_packed_code_ = code_name;
+                    ImGui::EndDisabled();
+                    return true;
+                }
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!current_code_index.has_value() ||
+                                 *current_code_index + 1 >=
+                                     selected_schema_field->named_codes.size());
+            if (ImGui::Button("Code down")) {
+                auto const code_name{selected_schema_field->named_codes[*current_code_index].name};
+                auto replacement{*schema};
+                auto& codes{
+                    std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])
+                        .named_codes};
+                std::swap(codes[*current_code_index], codes[*current_code_index + 1]);
+                if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
+                                                           .schema = std::move(replacement)})) {
+                    analysis_session_.inputs.selection.field = selected_segment_name;
+                    selected_packed_code_ = code_name;
+                    ImGui::EndDisabled();
+                    return true;
+                }
+            }
+            ImGui::EndDisabled();
+            ImGui::SameLine();
+            ImGui::BeginDisabled(!current_code_index.has_value());
+            if (ImGui::Button("Delete code")) {
+                auto replacement{*schema};
+                auto& codes{
+                    std::get<codegen::PackedFieldSchema>(replacement.segments[*selected_index])
+                        .named_codes};
+                codes.erase(codes.begin() + static_cast<std::ptrdiff_t>(*current_code_index));
+                auto const next_code{
+                    codes.empty() ? std::string{}
+                                  : codes[std::min(*current_code_index, codes.size() - 1)].name};
+                if (apply_document_edit(ReplacePackedValue{.declaration = *declaration,
+                                                           .schema = std::move(replacement)})) {
+                    analysis_session_.inputs.selection.field = selected_segment_name;
+                    selected_packed_code_ = next_code;
+                    ImGui::EndDisabled();
+                    return true;
+                }
+            }
+            ImGui::EndDisabled();
+
+            if (!selected_schema_field->minimum_value.has_value()) {
+                ImGui::TextDisabled("Set a semantic range before adding sentinel codes.");
+            } else if (!sentinel_value.has_value()) {
+                ImGui::TextDisabled("No unused code outside the live range fits this field width.");
+            }
+
+            if (detail::begin_editable_table(
+                    "packed-named-codes", 4, selected_schema_field->named_codes.size())) {
+                detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
+                detail::editable_table_column("Name");
+                detail::editable_table_column("Value");
+                detail::editable_table_column("Sentinel", ImGuiTableColumnFlags_WidthFixed);
+                ImGui::TableHeadersRow();
+                for (std::size_t code_index{};
+                     code_index < selected_schema_field->named_codes.size();
+                     ++code_index) {
+                    auto const& code{selected_schema_field->named_codes[code_index]};
+                    auto const row_selected{selected_packed_code_ == code.name};
+                    ImGui::PushID(static_cast<int>(code_index));
+                    ImGui::TableNextRow();
+                    ImGui::TableNextColumn();
+                    if (detail::editable_table_row_handle(row_selected)) {
+                        selected_packed_code_ = code.name;
+                        packed_code_editor_declaration_.reset();
+                    }
+                    if (ImGui::BeginDragDropSource()) {
+                        ImGui::SetDragDropPayload(
+                            "PACKED_CODE_ROW", &code_index, sizeof(code_index));
+                        ImGui::Text("Move %s", code.name.c_str());
+                        ImGui::EndDragDropSource();
+                    }
+                    if (ImGui::BeginDragDropTarget()) {
+                        if (auto const* payload{ImGui::AcceptDragDropPayload("PACKED_CODE_ROW")}) {
+                            auto const source_index{
+                                *static_cast<std::size_t const*>(payload->Data)};
+                            if (source_index < selected_schema_field->named_codes.size() &&
+                                source_index != code_index) {
+                                pending = *schema;
+                                auto& codes{std::get<codegen::PackedFieldSchema>(
+                                                pending->segments[*selected_index])
+                                                .named_codes};
+                                selected_code_after_edit = codes[source_index].name;
+                                move_element(codes, source_index, code_index);
+                            }
                         }
+                        ImGui::EndDragDropTarget();
                     }
-                    ImGui::EndDragDropTarget();
-                }
 
-                ImGui::TableNextColumn();
-                if (row_selected) {
-                    ImGui::SetNextItemWidth(-1.0F);
-                    auto const submitted{ImGui::InputText("##code-name",
-                                                          packed_code_name_.data(),
-                                                          packed_code_name_.size(),
-                                                          ImGuiInputTextFlags_EnterReturnsTrue)};
-                    if (!pending.has_value() &&
-                        (submitted || ImGui::IsItemDeactivatedAfterEdit())) {
-                        pending = *schema;
-                        auto& edited{
-                            std::get<codegen::PackedFieldSchema>(pending->segments[*selected_index])
-                                .named_codes[code_index]};
-                        edited.name = packed_code_name_.data();
-                        selected_code_after_edit = edited.name;
+                    ImGui::TableNextColumn();
+                    if (row_selected) {
+                        ImGui::SetNextItemWidth(-1.0F);
+                        auto const submitted{
+                            ImGui::InputText("##code-name",
+                                             packed_code_name_.data(),
+                                             packed_code_name_.size(),
+                                             ImGuiInputTextFlags_EnterReturnsTrue)};
+                        if (!pending.has_value() &&
+                            (submitted || ImGui::IsItemDeactivatedAfterEdit())) {
+                            pending = *schema;
+                            auto& edited{std::get<codegen::PackedFieldSchema>(
+                                             pending->segments[*selected_index])
+                                             .named_codes[code_index]};
+                            edited.name = packed_code_name_.data();
+                            selected_code_after_edit = edited.name;
+                        }
+                    } else {
+                        ImGui::TextUnformatted(code.name.c_str());
                     }
-                } else {
-                    ImGui::TextUnformatted(code.name.c_str());
-                }
 
-                ImGui::TableNextColumn();
-                if (row_selected) {
-                    ImGui::SetNextItemWidth(-1.0F);
-                    auto const submitted{ImGui::InputText("##code-value",
-                                                          packed_code_value_.data(),
-                                                          packed_code_value_.size(),
-                                                          ImGuiInputTextFlags_EnterReturnsTrue)};
-                    if (!pending.has_value() &&
-                        (submitted || ImGui::IsItemDeactivatedAfterEdit())) {
-                        if (auto const value{
-                                detail::parse_packed_integer(packed_code_value_.data())}) {
+                    ImGui::TableNextColumn();
+                    if (row_selected) {
+                        ImGui::SetNextItemWidth(-1.0F);
+                        auto const submitted{
+                            ImGui::InputText("##code-value",
+                                             packed_code_value_.data(),
+                                             packed_code_value_.size(),
+                                             ImGuiInputTextFlags_EnterReturnsTrue)};
+                        if (!pending.has_value() &&
+                            (submitted || ImGui::IsItemDeactivatedAfterEdit())) {
+                            if (auto const value{
+                                    detail::parse_packed_integer(packed_code_value_.data())}) {
+                                pending = *schema;
+                                std::get<codegen::PackedFieldSchema>(
+                                    pending->segments[*selected_index])
+                                    .named_codes[code_index]
+                                    .value = *value;
+                            } else {
+                                schema_edit_message_ = "Named code value must be a signed decimal "
+                                                       "or hexadecimal integer.";
+                            }
+                        }
+                    } else {
+                        auto const value{codegen::format_packed_integer(code.value)};
+                        ImGui::TextUnformatted(value.c_str());
+                    }
+
+                    ImGui::TableNextColumn();
+                    if (row_selected) {
+                        auto sentinel{packed_code_sentinel_};
+                        if (ImGui::Checkbox("##code-sentinel", &sentinel)) {
                             pending = *schema;
                             std::get<codegen::PackedFieldSchema>(pending->segments[*selected_index])
                                 .named_codes[code_index]
-                                .value = *value;
-                        } else {
-                            schema_edit_message_ =
-                                "Named code value must be a signed decimal or hexadecimal integer.";
+                                .sentinel = sentinel;
                         }
+                    } else {
+                        ImGui::TextUnformatted(code.sentinel ? "yes" : "-");
                     }
-                } else {
-                    auto const value{codegen::format_packed_integer(code.value)};
-                    ImGui::TextUnformatted(value.c_str());
+                    ImGui::PopID();
                 }
-
-                ImGui::TableNextColumn();
-                if (row_selected) {
-                    auto sentinel{packed_code_sentinel_};
-                    if (ImGui::Checkbox("##code-sentinel", &sentinel)) {
-                        pending = *schema;
-                        std::get<codegen::PackedFieldSchema>(pending->segments[*selected_index])
-                            .named_codes[code_index]
-                            .sentinel = sentinel;
-                    }
-                } else {
-                    ImGui::TextUnformatted(code.sentinel ? "yes" : "-");
-                }
-                ImGui::PopID();
+                ImGui::EndTable();
             }
-            ImGui::EndTable();
         }
     }
 

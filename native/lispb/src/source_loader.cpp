@@ -1129,7 +1129,7 @@ auto parse_integer_varint(Form const& form) -> IntegerVarintSchema {
 
 auto parse_fixed_point(Form const& form) -> FixedPointSchema {
     Fields const fields{form, "fixed-point", 1};
-    fields.validate({"signed", "total-bits", "fractional-bits", "rounding"});
+    fields.validate({"signed", "total-bits", "fractional-bits", "rounding", "minimum", "maximum"});
 
     auto const total_bits{integer(fields.required("total-bits"), "fixed-point total width")};
     if (total_bits <= 0 || total_bits > 64) {
@@ -1153,11 +1153,18 @@ auto parse_fixed_point(Form const& form) -> FixedPointSchema {
         }
     }
 
-    return {.name = text(fields.positional(0), "fixed-point name"),
-            .signedness = boolean(fields.required("signed"), "fixed-point signedness"),
-            .total_bits = static_cast<std::uint32_t>(total_bits),
-            .fractional_bits = static_cast<std::uint32_t>(fractional_bits),
-            .rounding = rounding};
+    auto const* minimum{fields.optional("minimum")};
+    auto const* maximum{fields.optional("maximum")};
+    return {
+        .name = text(fields.positional(0), "fixed-point name"),
+        .signedness = boolean(fields.required("signed"), "fixed-point signedness"),
+        .total_bits = static_cast<std::uint32_t>(total_bits),
+        .fractional_bits = static_cast<std::uint32_t>(fractional_bits),
+        .rounding = rounding,
+        .minimum_value = minimum == nullptr ? std::nullopt
+                                            : std::optional{text(*minimum, "fixed-point minimum")},
+        .maximum_value = maximum == nullptr ? std::nullopt
+                                            : std::optional{text(*maximum, "fixed-point maximum")}};
 }
 
 auto parse_mini_float(Form const& form) -> MiniFloatSchema {

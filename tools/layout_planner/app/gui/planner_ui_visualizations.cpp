@@ -1342,150 +1342,61 @@ void PlannerUi::draw_packed_layout(PackedType const& packed, PackedAnalysis cons
     }
 }
 
+void PlannerUi::draw_fixed_point_bit_layout(FixedPointAnalysis const& analysis) {
+    ImGui::SeparatorText("Bit layout");
+    ImGui::Text("MSB %u", analysis.total_bits - 1);
+    ImGui::SameLine();
+    ImGui::TextDisabled("to LSB 0");
+
+    auto const width{std::max(1.0F, ImGui::GetContentRegionAvail().x)};
+    auto const origin{ImGui::GetCursorScreenPos()};
+    constexpr auto height{54.0F};
+    auto* const draw_list{ImGui::GetWindowDrawList()};
+    struct BitRegion {
+        char const* name;
+        std::uint32_t bits;
+        ImVec4 color;
+    };
+    auto const regions{std::array{
+        BitRegion{"Sign", analysis.signedness ? 1U : 0U, {0.72F, 0.38F, 0.38F, 1.0F}},
+        BitRegion{"Whole", analysis.whole_bits, {0.25F, 0.47F, 0.72F, 1.0F}},
+        BitRegion{"Fraction", analysis.fractional_bits, {0.28F, 0.66F, 0.49F, 1.0F}},
+    }};
+    auto offset{std::uint32_t{0}};
+    for (auto const& region : regions) {
+        if (region.bits == 0) {
+            continue;
+        }
+        auto const left{origin.x + width * static_cast<float>(offset) /
+                                       static_cast<float>(analysis.total_bits)};
+        auto const right{origin.x + width * static_cast<float>(offset + region.bits) /
+                                        static_cast<float>(analysis.total_bits)};
+        draw_list->AddRectFilled(
+            {left, origin.y}, {right, origin.y + height}, ImGui::GetColorU32(region.color));
+        draw_list->AddRect(
+            {left, origin.y}, {right, origin.y + height}, ImGui::GetColorU32(ImGuiCol_Border));
+        if (right - left > 62.0F) {
+            auto const label{std::string{region.name} + " (" + std::to_string(region.bits) + ")"};
+            draw_list->AddText({left + 5.0F, origin.y + 17.0F},
+                               ImGui::GetColorU32(packed_detail_text_color),
+                               label.c_str());
+        }
+        offset += region.bits;
+    }
+    ImGui::Dummy({width, height});
+    ImGui::Text("%u sign | %u whole | %u fractional bits",
+                analysis.signedness ? 1U : 0U,
+                analysis.whole_bits,
+                analysis.fractional_bits);
+    ImGui::Text("Allowed raw range: %s .. %s",
+                codegen::format_packed_integer(analysis.minimum_allowed_raw_value).c_str(),
+                codegen::format_packed_integer(analysis.maximum_allowed_raw_value).c_str());
+}
+
 void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
     auto const& node{analysis_session_.inputs.workspace.types().type(analysis.type)};
     ImGui::Text("%s", node.identity.name.c_str());
     ImGui::TextDisabled("%s", node.identity.module_name.c_str());
-
-    ImGui::SeparatorText("Analysis scale");
-    if (draw_element_count()) {
-        return;
-    }
-    auto const& aggregate{analysis.aggregate};
-    if (ImGui::BeginTable("record-aggregate",
-                          2,
-                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                              ImGuiTableFlags_SizingStretchProp)) {
-        auto draw_stat{[](char const* const label, std::string const& value) {
-            ImGui::TableNextRow();
-            ImGui::TableNextColumn();
-            ImGui::TextUnformatted(label);
-            ImGui::TableNextColumn();
-            ImGui::TextUnformatted(value.c_str());
-        }};
-        draw_stat("Physical storage", detail::format_bytes(aggregate.total_storage_bytes));
-        draw_stat("Member extents", detail::format_bytes(aggregate.total_payload_bytes));
-        draw_stat("Padding", detail::format_bytes(aggregate.total_internal_padding_bytes));
-        draw_stat("Tail padding", detail::format_bytes(aggregate.total_tail_padding_bytes));
-        draw_stat("Total padding", detail::format_bytes(aggregate.total_padding_bytes));
-        draw_stat("Minimum cache lines", detail::format_number(aggregate.minimum_cache_lines));
-        draw_stat("Complete elements / cache line",
-                  detail::format_number(aggregate.complete_elements_per_cache_line));
-        draw_stat("Elements crossing cache-line boundaries",
-                  detail::format_number(aggregate.cache_line_straddling_elements));
-        draw_stat("Minimum pages", detail::format_number(aggregate.minimum_pages));
-        draw_stat("Complete elements / page",
-                  detail::format_number(aggregate.complete_elements_per_page));
-        draw_stat("Elements crossing page boundaries",
-                  detail::format_number(aggregate.page_straddling_elements));
-        draw_stat("Fits L1 data cache", detail::format_fit(aggregate.cache_capacity.fits_l1_data));
-        draw_stat("Fits L2 cache", detail::format_fit(aggregate.cache_capacity.fits_l2));
-        draw_stat("Fits L3 cache", detail::format_fit(aggregate.cache_capacity.fits_l3));
-        ImGui::EndTable();
-    }
-    if (analysis.size_bytes.has_value() && analysis.internal_padding_bytes.has_value() &&
-        analysis.tail_padding_bytes.has_value() && *analysis.size_bytes != 0) {
-        auto const padding{*analysis.internal_padding_bytes + *analysis.tail_padding_bytes};
-        auto const waste{static_cast<double>(padding) * 100.0 /
-                         static_cast<double>(*analysis.size_bytes)};
-        ImGui::TextDisabled("Per-element ABI padding: %.3f%% (%llu of %llu bytes).",
-                            waste,
-                            static_cast<unsigned long long>(padding),
-                            static_cast<unsigned long long>(*analysis.size_bytes));
-    }
-    ImGui::TextDisabled("Target memory facts: %s",
-                        analysis_session_.primary_abi().memory_facts().provenance.empty()
-                            ? "Unknown"
-                            : analysis_session_.primary_abi().memory_facts().provenance.c_str());
-    ImGui::TextDisabled(
-        "Boundary crossing assumes a contiguous array whose base is cache-line/page aligned.");
-
-    ImGui::SeparatorText("Sequential access set");
-    if (draw_access_operation()) {
-        refresh_analysis();
-    }
-    if (analysis_session_.results().record_access_analysis.has_value()) {
-        auto const& access{*analysis_session_.results().record_access_analysis};
-        std::string member_names;
-        for (auto const& member_name : access.member_names) {
-            if (!member_names.empty()) {
-                member_names += ", ";
-            }
-            member_names += member_name;
-        }
-        ImGui::TextWrapped("Members: %s", member_names.c_str());
-        if (ImGui::BeginTable("record-member-access",
-                              2,
-                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
-                                  ImGuiTableFlags_SizingStretchProp)) {
-            auto draw_stat{[](char const* const label, std::string const& value) {
-                ImGui::TableNextRow();
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(label);
-                ImGui::TableNextColumn();
-                ImGui::TextUnformatted(value.c_str());
-            }};
-            draw_stat("Operation", detail::access_operation_summary(access.accesses));
-            draw_stat("Useful selected bytes", detail::format_bytes(access.useful_bytes));
-            draw_stat("Classified read useful bytes",
-                      detail::format_bytes(access.read_useful_bytes));
-            draw_stat("Classified write useful bytes",
-                      detail::format_bytes(access.write_useful_bytes));
-            draw_stat("Logical read useful bytes",
-                      detail::format_bytes(access.logical_read_useful_bytes));
-            draw_stat("Logical write useful bytes",
-                      detail::format_bytes(access.logical_write_useful_bytes));
-            draw_stat("Enclosing AoS footprint",
-                      detail::format_bytes(access.object_footprint_bytes));
-            draw_stat("Distinct cache lines touched",
-                      detail::format_number(access.cache_lines_touched));
-            draw_stat("Bytes in touched cache lines",
-                      detail::format_bytes(access.cache_bytes_touched));
-            draw_stat("Read cache lines covered",
-                      detail::format_number(access.read_cache_lines_touched));
-            draw_stat("Read cache-line address coverage",
-                      detail::format_bytes(access.read_cache_bytes_touched));
-            draw_stat("Write cache lines covered",
-                      detail::format_number(access.write_cache_lines_touched));
-            draw_stat("Write cache-line address coverage",
-                      detail::format_bytes(access.write_cache_bytes_touched));
-            draw_stat("Non-selected bytes in touched cache lines",
-                      detail::format_bytes(access.non_selected_cache_bytes));
-            draw_stat("Exact footprint <= L1 data cache",
-                      detail::format_fit(access.cache_footprint_capacity.fits_l1_data));
-            draw_stat("Exact footprint <= L2 cache",
-                      detail::format_fit(access.cache_footprint_capacity.fits_l2));
-            draw_stat("Exact footprint <= L3 cache",
-                      detail::format_fit(access.cache_footprint_capacity.fits_l3));
-            draw_stat("Distinct pages touched", detail::format_number(access.pages_touched));
-            draw_stat("Bytes in touched pages", detail::format_bytes(access.page_bytes_touched));
-            draw_stat("Read pages covered", detail::format_number(access.read_pages_touched));
-            draw_stat("Read page address coverage",
-                      detail::format_bytes(access.read_page_bytes_touched));
-            draw_stat("Write pages covered", detail::format_number(access.write_pages_touched));
-            draw_stat("Write page address coverage",
-                      detail::format_bytes(access.write_page_bytes_touched));
-            draw_stat("Non-selected bytes in touched pages",
-                      detail::format_bytes(access.non_selected_page_bytes));
-            ImGui::EndTable();
-        }
-        draw_footprint_composition("Exact cache-line footprint composition",
-                                   access.useful_bytes,
-                                   access.cache_bytes_touched,
-                                   access.non_selected_cache_bytes);
-        draw_footprint_composition("Exact page footprint composition",
-                                   access.useful_bytes,
-                                   access.page_bytes_touched,
-                                   access.non_selected_page_bytes);
-        ImGui::TextDisabled(
-            "One sequential classified access to the selected members per element; aligned "
-            "contiguous AoS base assumed. Footprints describe address coverage and do not infer "
-            "write allocation, eviction, or bus traffic. Logical useful totals multiply by the "
-            "declared accesses per element only.");
-        draw_diagnostics(access.diagnostics);
-    } else {
-        ImGui::TextDisabled("Select record members in the Access column to define the access set.");
-    }
 
     ImGui::SeparatorText("Object layout");
     ImGui::Text("Size: %s B    Alignment: %s B",
@@ -1649,6 +1560,147 @@ void PlannerUi::draw_record_layout(RecordAnalysis const& analysis) {
         }
         ImGui::EndTable();
     }
+
+    ImGui::SeparatorText("Analysis scale");
+    if (draw_element_count()) {
+        return;
+    }
+    auto const& aggregate{analysis.aggregate};
+    if (ImGui::BeginTable("record-aggregate",
+                          2,
+                          ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                              ImGuiTableFlags_SizingStretchProp)) {
+        auto draw_stat{[](char const* const label, std::string const& value) {
+            ImGui::TableNextRow();
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(label);
+            ImGui::TableNextColumn();
+            ImGui::TextUnformatted(value.c_str());
+        }};
+        draw_stat("Physical storage", detail::format_bytes(aggregate.total_storage_bytes));
+        draw_stat("Member extents", detail::format_bytes(aggregate.total_payload_bytes));
+        draw_stat("Padding", detail::format_bytes(aggregate.total_internal_padding_bytes));
+        draw_stat("Tail padding", detail::format_bytes(aggregate.total_tail_padding_bytes));
+        draw_stat("Total padding", detail::format_bytes(aggregate.total_padding_bytes));
+        draw_stat("Minimum cache lines", detail::format_number(aggregate.minimum_cache_lines));
+        draw_stat("Complete elements / cache line",
+                  detail::format_number(aggregate.complete_elements_per_cache_line));
+        draw_stat("Elements crossing cache-line boundaries",
+                  detail::format_number(aggregate.cache_line_straddling_elements));
+        draw_stat("Minimum pages", detail::format_number(aggregate.minimum_pages));
+        draw_stat("Complete elements / page",
+                  detail::format_number(aggregate.complete_elements_per_page));
+        draw_stat("Elements crossing page boundaries",
+                  detail::format_number(aggregate.page_straddling_elements));
+        draw_stat("Fits L1 data cache", detail::format_fit(aggregate.cache_capacity.fits_l1_data));
+        draw_stat("Fits L2 cache", detail::format_fit(aggregate.cache_capacity.fits_l2));
+        draw_stat("Fits L3 cache", detail::format_fit(aggregate.cache_capacity.fits_l3));
+        ImGui::EndTable();
+    }
+    if (analysis.size_bytes.has_value() && analysis.internal_padding_bytes.has_value() &&
+        analysis.tail_padding_bytes.has_value() && *analysis.size_bytes != 0) {
+        auto const padding{*analysis.internal_padding_bytes + *analysis.tail_padding_bytes};
+        auto const waste{static_cast<double>(padding) * 100.0 /
+                         static_cast<double>(*analysis.size_bytes)};
+        ImGui::TextDisabled("Per-element ABI padding: %.3f%% (%llu of %llu bytes).",
+                            waste,
+                            static_cast<unsigned long long>(padding),
+                            static_cast<unsigned long long>(*analysis.size_bytes));
+    }
+    ImGui::TextDisabled("Target memory facts: %s",
+                        analysis_session_.primary_abi().memory_facts().provenance.empty()
+                            ? "Unknown"
+                            : analysis_session_.primary_abi().memory_facts().provenance.c_str());
+    ImGui::TextDisabled(
+        "Boundary crossing assumes a contiguous array whose base is cache-line/page aligned.");
+
+    ImGui::SeparatorText("Sequential access set");
+    if (draw_access_operation()) {
+        refresh_analysis();
+    }
+    if (analysis_session_.results().record_access_analysis.has_value()) {
+        auto const& access{*analysis_session_.results().record_access_analysis};
+        std::string member_names;
+        for (auto const& member_name : access.member_names) {
+            if (!member_names.empty()) {
+                member_names += ", ";
+            }
+            member_names += member_name;
+        }
+        ImGui::TextWrapped("Members: %s", member_names.c_str());
+        if (ImGui::BeginTable("record-member-access",
+                              2,
+                              ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg |
+                                  ImGuiTableFlags_SizingStretchProp)) {
+            auto draw_stat{[](char const* const label, std::string const& value) {
+                ImGui::TableNextRow();
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(label);
+                ImGui::TableNextColumn();
+                ImGui::TextUnformatted(value.c_str());
+            }};
+            draw_stat("Operation", detail::access_operation_summary(access.accesses));
+            draw_stat("Useful selected bytes", detail::format_bytes(access.useful_bytes));
+            draw_stat("Classified read useful bytes",
+                      detail::format_bytes(access.read_useful_bytes));
+            draw_stat("Classified write useful bytes",
+                      detail::format_bytes(access.write_useful_bytes));
+            draw_stat("Logical read useful bytes",
+                      detail::format_bytes(access.logical_read_useful_bytes));
+            draw_stat("Logical write useful bytes",
+                      detail::format_bytes(access.logical_write_useful_bytes));
+            draw_stat("Enclosing AoS footprint",
+                      detail::format_bytes(access.object_footprint_bytes));
+            draw_stat("Distinct cache lines touched",
+                      detail::format_number(access.cache_lines_touched));
+            draw_stat("Bytes in touched cache lines",
+                      detail::format_bytes(access.cache_bytes_touched));
+            draw_stat("Read cache lines covered",
+                      detail::format_number(access.read_cache_lines_touched));
+            draw_stat("Read cache-line address coverage",
+                      detail::format_bytes(access.read_cache_bytes_touched));
+            draw_stat("Write cache lines covered",
+                      detail::format_number(access.write_cache_lines_touched));
+            draw_stat("Write cache-line address coverage",
+                      detail::format_bytes(access.write_cache_bytes_touched));
+            draw_stat("Non-selected bytes in touched cache lines",
+                      detail::format_bytes(access.non_selected_cache_bytes));
+            draw_stat("Exact footprint <= L1 data cache",
+                      detail::format_fit(access.cache_footprint_capacity.fits_l1_data));
+            draw_stat("Exact footprint <= L2 cache",
+                      detail::format_fit(access.cache_footprint_capacity.fits_l2));
+            draw_stat("Exact footprint <= L3 cache",
+                      detail::format_fit(access.cache_footprint_capacity.fits_l3));
+            draw_stat("Distinct pages touched", detail::format_number(access.pages_touched));
+            draw_stat("Bytes in touched pages", detail::format_bytes(access.page_bytes_touched));
+            draw_stat("Read pages covered", detail::format_number(access.read_pages_touched));
+            draw_stat("Read page address coverage",
+                      detail::format_bytes(access.read_page_bytes_touched));
+            draw_stat("Write pages covered", detail::format_number(access.write_pages_touched));
+            draw_stat("Write page address coverage",
+                      detail::format_bytes(access.write_page_bytes_touched));
+            draw_stat("Non-selected bytes in touched pages",
+                      detail::format_bytes(access.non_selected_page_bytes));
+            ImGui::EndTable();
+        }
+        draw_footprint_composition("Exact cache-line footprint composition",
+                                   access.useful_bytes,
+                                   access.cache_bytes_touched,
+                                   access.non_selected_cache_bytes);
+        draw_footprint_composition("Exact page footprint composition",
+                                   access.useful_bytes,
+                                   access.page_bytes_touched,
+                                   access.non_selected_page_bytes);
+        ImGui::TextDisabled(
+            "One sequential classified access to the selected members per element; aligned "
+            "contiguous AoS base assumed. Footprints describe address coverage and do not infer "
+            "write allocation, eviction, or bus traffic. Logical useful totals multiply by the "
+            "declared accesses per element only.");
+        draw_diagnostics(access.diagnostics);
+    } else {
+        ImGui::TextDisabled("Select record members in the Access column to define the access set.");
+    }
+
     draw_diagnostics(analysis.diagnostics);
 }
 

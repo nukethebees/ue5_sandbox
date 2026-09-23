@@ -3,6 +3,7 @@
 #include "schema_internal.h"
 
 #include <codegen/path_utils.h>
+#include <codegen/schema/fixed_point_value.h>
 #include <codegen/schema/soa_allocator_variants.h>
 #include <lispb/schema/enum_domain.h>
 
@@ -1247,6 +1248,36 @@ void validate_fixed_point(FixedPointSchema const& representation) {
         throw std::invalid_argument{context + " fractional width must be at most " +
                                     std::to_string(maximum_fractional_bits) +
                                     (representation.signedness ? " so one sign bit remains" : "")};
+    }
+
+    std::optional<PackedIntegerValue> minimum;
+    std::optional<PackedIntegerValue> maximum;
+    if (representation.minimum_value.has_value()) {
+        auto parsed{
+            parse_fixed_point_value(*representation.minimum_value, representation.fractional_bits)};
+        if (!parsed.has_value()) {
+            throw std::invalid_argument{context + " minimum: " + parsed.error()};
+        }
+        minimum = *parsed;
+    }
+    if (representation.maximum_value.has_value()) {
+        auto parsed{
+            parse_fixed_point_value(*representation.maximum_value, representation.fractional_bits)};
+        if (!parsed.has_value()) {
+            throw std::invalid_argument{context + " maximum: " + parsed.error()};
+        }
+        maximum = *parsed;
+    }
+    auto const fits = [&](PackedIntegerValue const value) {
+        return representation.signedness
+                 ? packed_integer_fits_signed(value, representation.total_bits)
+                 : packed_integer_fits_unsigned(value, representation.total_bits);
+    };
+    if ((minimum.has_value() && !fits(*minimum)) || (maximum.has_value() && !fits(*maximum))) {
+        throw std::invalid_argument{context + " bounds must fit the representation width"};
+    }
+    if (minimum.has_value() && maximum.has_value() && packed_integer_less(*maximum, *minimum)) {
+        throw std::invalid_argument{context + " maximum must be at least minimum"};
     }
 }
 

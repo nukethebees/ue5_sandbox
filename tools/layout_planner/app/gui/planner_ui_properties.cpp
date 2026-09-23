@@ -552,6 +552,9 @@ void PlannerUi::draw_properties_panel() {
             ImGui::Text("Representable range: %.12g .. %.12g",
                         static_cast<double>(analysis.minimum_value),
                         static_cast<double>(analysis.maximum_value));
+            ImGui::Text("Allowed range: %.12g .. %.12g",
+                        static_cast<double>(analysis.minimum_allowed_value),
+                        static_cast<double>(analysis.maximum_allowed_value));
             ImGui::Text("Rounding: %s",
                         codegen::fixed_point_rounding_name(analysis.rounding).data());
             ImGui::Text("Maximum rounding error: %.12g",

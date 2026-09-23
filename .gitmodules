@@ -32,3 +32,6 @@
 	path = native/third_party/imgui
 	url = https://github.com/ocornut/imgui.git
 	shallow = true
+[submodule "native/third_party/nativefiledialog-extended"]
+	path = native/third_party/nativefiledialog-extended
+	url = https://github.com/btzy/nativefiledialog-extended.git

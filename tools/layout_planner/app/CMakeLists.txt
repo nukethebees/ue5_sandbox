@@ -1,6 +1,7 @@
 add_executable(layout-planner)
 target_sources(layout-planner PRIVATE
   application.cpp
+  platform/file_dialog.cpp
   gui/planner_ui.cpp
   gui/planner_ui_browser.cpp
   gui/planner_ui_browser_representations.cpp
@@ -22,11 +23,15 @@ target_include_directories(layout-planner PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}")
 target_link_libraries(layout-planner PRIVATE
   CLI11::CLI11
   SDL3::SDL3-static
+  nfd::nfd
   native-layout
   lispb-target-compiler
   sandbox-imgui
   sandbox::warnings_as_errors
 )
+if(WIN32)
+  target_link_libraries(layout-planner PRIVATE ole32 uuid shell32)
+endif()
 target_compile_definitions(layout-planner PRIVATE SDL_MAIN_HANDLED)
 
 install(TARGETS layout-planner

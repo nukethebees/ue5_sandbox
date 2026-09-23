@@ -33,6 +33,7 @@ target_sources(lispb-schema PRIVATE
   src/declaration_schema.cpp
   src/editable_document.cpp
   src/enum_domain.cpp
+  src/fixed_point_value.cpp
   src/packed_value_internal.cpp
   src/schema.cpp
   src/soa_allocator_variants.cpp

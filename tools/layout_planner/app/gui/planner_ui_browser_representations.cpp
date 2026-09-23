@@ -1065,6 +1065,12 @@ void PlannerUi::draw_new_fixed_point_dialog() {
                      &new_fixed_point_rounding_,
                      rounding_labels.data(),
                      static_cast<int>(rounding_labels.size()));
+        ImGui::InputText("Minimum value (optional)",
+                         new_fixed_point_minimum_.data(),
+                         new_fixed_point_minimum_.size());
+        ImGui::InputText("Maximum value (optional)",
+                         new_fixed_point_maximum_.data(),
+                         new_fixed_point_maximum_.size());
 
         auto const total_valid{new_fixed_point_total_bits_ >= 1 &&
                                new_fixed_point_total_bits_ <= 64};
@@ -1111,7 +1117,15 @@ void PlannerUi::draw_new_fixed_point_dialog() {
                                 .fractional_bits = new_fixed_point_fractional_bits_,
                                 .rounding = new_fixed_point_rounding_ == 0
                                               ? codegen::FixedPointRounding::nearest_even
-                                              : codegen::FixedPointRounding::toward_zero},
+                                              : codegen::FixedPointRounding::toward_zero,
+                                .minimum_value = new_fixed_point_minimum_.front() == '\0'
+                                                   ? std::nullopt
+                                                   : std::optional{std::string{
+                                                         new_fixed_point_minimum_.data()}},
+                                .maximum_value = new_fixed_point_maximum_.front() == '\0'
+                                                   ? std::nullopt
+                                                   : std::optional{std::string{
+                                                         new_fixed_point_maximum_.data()}}},
                         .insertion_index = std::nullopt},
                     selection) &&
                 bind_new_fixed_point_to_packed_field(identity)) {
@@ -1120,6 +1134,8 @@ void PlannerUi::draw_new_fixed_point_dialog() {
                 new_fixed_point_total_bits_ = 16;
                 new_fixed_point_fractional_bits_ = 8;
                 new_fixed_point_rounding_ = 0;
+                new_fixed_point_minimum_.fill('\0');
+                new_fixed_point_maximum_.fill('\0');
                 pending_packed_fixed_point_binding_.reset();
                 ImGui::CloseCurrentPopup();
             }
