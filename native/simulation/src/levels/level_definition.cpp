@@ -1,5 +1,5 @@
-#include <ioj/sim/levels/level_definition.h>
 #include <ioj/sim/collision_grid.h>
+#include <ioj/sim/levels/level_definition.h>
 
 #include <algorithm>
 #include <cctype>
@@ -370,31 +370,33 @@ auto validate_level(LevelDefinition const& definition) -> LevelValidationResult 
     }
     if (definition.collision_grid) {
         auto const& grid{*definition.collision_grid};
-        auto const valid_level_size{std::isfinite(grid.level_size.x) &&
-                                    std::isfinite(grid.level_size.y) &&
-                                    std::isfinite(grid.level_size.z) && grid.level_size.x > 0.0 &&
-                                    grid.level_size.y > 0.0 && grid.level_size.z > 0.0};
-        if (!valid_level_size) {
+        auto const valid_level_size{
+            !grid.level_size ||
+            (std::isfinite(grid.level_size->x) && std::isfinite(grid.level_size->y) &&
+             std::isfinite(grid.level_size->z) && grid.level_size->x > 0.0 &&
+             grid.level_size->y > 0.0 && grid.level_size->z > 0.0)};
+        if (grid.level_size && !valid_level_size) {
             add_error(result,
                       LevelValidationErrorCode::InvalidLevelSize,
                       "Collision-grid level size must be finite and greater than zero");
         }
-        auto const valid_cell_size{std::isfinite(grid.cell_size.x) &&
-                                   std::isfinite(grid.cell_size.y) &&
-                                   std::isfinite(grid.cell_size.z) && grid.cell_size.x > 0.0 &&
-                                   grid.cell_size.y > 0.0 && grid.cell_size.z > 0.0};
-        if (!valid_cell_size) {
+        auto const valid_cell_size{!grid.cell_size ||
+                                   (std::isfinite(grid.cell_size->x) &&
+                                    std::isfinite(grid.cell_size->y) &&
+                                    std::isfinite(grid.cell_size->z) && grid.cell_size->x > 0.0 &&
+                                    grid.cell_size->y > 0.0 && grid.cell_size->z > 0.0)};
+        if (grid.cell_size && !valid_cell_size) {
             add_error(result,
                       LevelValidationErrorCode::InvalidGridCellSize,
                       "Collision-grid cell size must be finite and greater than zero");
         }
-        if (valid_level_size && valid_cell_size) {
-            auto const level_size{Vector3f{{static_cast<float>(grid.level_size.x),
-                                            static_cast<float>(grid.level_size.y),
-                                            static_cast<float>(grid.level_size.z)}}};
-            auto const cell_size{Vector3f{{static_cast<float>(grid.cell_size.x),
-                                           static_cast<float>(grid.cell_size.y),
-                                           static_cast<float>(grid.cell_size.z)}}};
+        if (grid.level_size && grid.cell_size && valid_level_size && valid_cell_size) {
+            auto const level_size{Vector3f{{static_cast<float>(grid.level_size->x),
+                                            static_cast<float>(grid.level_size->y),
+                                            static_cast<float>(grid.level_size->z)}}};
+            auto const cell_size{Vector3f{{static_cast<float>(grid.cell_size->x),
+                                           static_cast<float>(grid.cell_size->y),
+                                           static_cast<float>(grid.cell_size->z)}}};
             auto const dimensions{collision::calculate_grid_dimensions(level_size, cell_size)};
             auto const geometry{collision::GridGeometry{dimensions, cell_size}};
             if (!collision::is_configured(geometry) || collision::num_cells(geometry) <= 0) {

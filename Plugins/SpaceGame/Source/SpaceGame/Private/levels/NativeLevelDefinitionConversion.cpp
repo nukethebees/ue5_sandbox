@@ -58,10 +58,16 @@ auto to_native(FLevelDefinition const& definition) -> ::ioj::sim::levels::LevelD
 
     if (definition.collision_grid.IsSet()) {
         auto const& grid{definition.collision_grid.GetValue()};
-        result.collision_grid = {
-            .level_size = {grid.level_size.X, grid.level_size.Y, grid.level_size.Z},
-            .cell_size = {grid.cell_size.X, grid.cell_size.Y, grid.cell_size.Z},
-        };
+        ::ioj::sim::levels::LevelCollisionGridDefinition native_grid;
+        if (grid.level_size.IsSet()) {
+            auto const size{grid.level_size.GetValue()};
+            native_grid.level_size = ::ioj::sim::levels::Vector3d{size.X, size.Y, size.Z};
+        }
+        if (grid.cell_size.IsSet()) {
+            auto const size{grid.cell_size.GetValue()};
+            native_grid.cell_size = ::ioj::sim::levels::Vector3d{size.X, size.Y, size.Z};
+        }
+        result.collision_grid = MoveTemp(native_grid);
     }
 
     if (definition.camera.IsSet()) {
@@ -136,14 +142,18 @@ auto to_unreal(::ioj::sim::levels::LevelDefinition definition) -> FLevelDefiniti
 
     if (definition.collision_grid) {
         auto const& grid{*definition.collision_grid};
-        builder.set_collision_grid({
-            .level_size = FVector3f{static_cast<float>(grid.level_size.x),
-                                    static_cast<float>(grid.level_size.y),
-                                    static_cast<float>(grid.level_size.z)},
-            .cell_size = FVector3f{static_cast<float>(grid.cell_size.x),
-                                   static_cast<float>(grid.cell_size.y),
-                                   static_cast<float>(grid.cell_size.z)},
-        });
+        FLevelCollisionGridDefinition unreal_grid;
+        if (grid.level_size) {
+            unreal_grid.level_size = FVector3f{static_cast<float>(grid.level_size->x),
+                                               static_cast<float>(grid.level_size->y),
+                                               static_cast<float>(grid.level_size->z)};
+        }
+        if (grid.cell_size) {
+            unreal_grid.cell_size = FVector3f{static_cast<float>(grid.cell_size->x),
+                                              static_cast<float>(grid.cell_size->y),
+                                              static_cast<float>(grid.cell_size->z)};
+        }
+        builder.set_collision_grid(unreal_grid);
     }
 
     for (auto const& level_id : definition.unlock_level_ids) {

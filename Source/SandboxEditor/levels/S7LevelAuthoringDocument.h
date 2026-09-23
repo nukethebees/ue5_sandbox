@@ -1,5 +1,6 @@
 #pragma once
 
+#include <SpaceGame/levels/LevelDefinition.h>
 #include <SpaceGame/missions/TestMissionMode.h>
 
 #include <CoreMinimal.h>
@@ -8,6 +9,7 @@
 #include "S7LevelAuthoringDocument.generated.h"
 
 class USpaceGameLevelConfig;
+struct FCollisionGridConfig;
 
 USTRUCT()
 struct FS7LevelEntityBinding {
@@ -90,6 +92,12 @@ class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
     AS7LevelAuthoringDocument();
 
     bool IsEditorOnly() const override { return true; }
+    void PostActorCreated() override;
+    void PostRegisterAllComponents() override;
+    [[nodiscard]] auto collision_grid_overrides() const -> ml::FLevelCollisionGridDefinition;
+    [[nodiscard]] auto resolve_collision_grid(FCollisionGridConfig const& source) const
+        -> FCollisionGridConfig;
+    void migrate_collision_grid_overrides();
 
     UPROPERTY(EditAnywhere, Category = "Document")
     FString source_path{};
@@ -112,11 +120,18 @@ class SANDBOXEDITOR_API AS7LevelAuthoringDocument final : public AInfo {
     UPROPERTY(EditAnywhere, Category = "Level")
     TObjectPtr<USpaceGameLevelConfig> level_config{nullptr};
 
-    UPROPERTY(EditAnywhere, Category = "Level", meta = (Units = "cm"))
+    UPROPERTY(EditAnywhere,
+              Category = "Level",
+              meta = (Units = "cm", ToolTip = "Zero inherits the game asset's grid size"))
     FVector3f level_size{FVector3f::ZeroVector};
 
-    UPROPERTY(EditAnywhere, Category = "Level", meta = (Units = "cm"))
+    UPROPERTY(EditAnywhere,
+              Category = "Level",
+              meta = (Units = "cm", ToolTip = "Zero inherits the game asset's grid cell size"))
     FVector3f grid_cell_size{FVector3f::ZeroVector};
+
+    UPROPERTY()
+    int32 grid_override_schema_version{};
 
     UPROPERTY(EditAnywhere, EditFixedSize, Category = "Entities", meta = (TitleProperty = "id"))
     TArray<FS7LevelEntityBinding> entities{};

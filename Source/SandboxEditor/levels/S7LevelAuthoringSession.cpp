@@ -88,10 +88,6 @@ auto create_level_authoring_document(ULevel& level)
     document->title = map_name;
     document->level_config = LoadObject<USpaceGameLevelConfig>(
         nullptr, TEXT("/SpaceGame/Levels/DA_GameRuntimeLevelConfig.DA_GameRuntimeLevelConfig"));
-    if (IsValid(document->level_config)) {
-        document->level_size = document->level_config->collision_grid.grid_size;
-        document->grid_cell_size = document->level_config->collision_grid.cell_size;
-    }
     return document;
 }
 
@@ -225,10 +221,10 @@ auto collect_s7_editor_level(ULevel const& level, AS7LevelAuthoringDocument cons
         .title = document.title,
         .description = document.description,
     });
-    builder.set_collision_grid({
-        .level_size = document.level_size,
-        .cell_size = document.grid_cell_size,
-    });
+    auto const grid{document.collision_grid_overrides()};
+    if (grid.level_size.IsSet() || grid.cell_size.IsSet()) {
+        builder.set_collision_grid(grid);
+    }
 
     TSet<FLevelTeamId> teams;
     TArray<FEntitySpawnDefinition> entities;

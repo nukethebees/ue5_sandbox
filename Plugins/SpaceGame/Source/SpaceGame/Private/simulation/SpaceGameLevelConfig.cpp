@@ -59,6 +59,19 @@ auto FCollisionGridConfig::calculate_grid_dimensions() const noexcept -> FIntVec
     return {dimensions.x, dimensions.y, dimensions.z};
 }
 
+auto FCollisionGridConfig::with_dimension_overrides(TOptional<FVector3f> grid_size_override,
+                                                    TOptional<FVector3f> cell_size_override) const
+    -> FCollisionGridConfig {
+    auto result{*this};
+    if (grid_size_override.IsSet()) {
+        result.grid_size = grid_size_override.GetValue();
+    }
+    if (cell_size_override.IsSet()) {
+        result.cell_size = cell_size_override.GetValue();
+    }
+    return result;
+}
+
 auto FCollisionGridConfig::is_valid() const noexcept -> bool {
     return collision_grid_dimensions_are_valid(*this) && collision_class_lists_are_valid(*this);
 }

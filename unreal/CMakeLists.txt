@@ -293,6 +293,13 @@ add_unreal_automation_test(
   LABELS unit
 )
 add_unreal_automation_test(
+  Sandbox.S7AuthoringTests
+  FILTERS
+    Sandbox.UnitTests.S7LevelAuthoring
+    Sandbox.UnitTests.SpaceGameLevelConfig.CollisionGridDimensionOverridesKeepUnspecifiedAssetValues
+  LABELS s7-authoring
+)
+add_unreal_automation_test(
   SandboxISMC.ModuleLoadSmoke
   FILTERS SandboxISMC.ModuleLoadSmoke
   LABELS ismc-module-smoke

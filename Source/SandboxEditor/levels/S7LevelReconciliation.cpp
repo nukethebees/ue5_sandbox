@@ -375,12 +375,14 @@ auto make_s7_level_sync_plan(ULevel const& level,
     if (!prepared) {
         return std::unexpected{prepared.error()};
     }
+    auto const current_grid{document.collision_grid_overrides()};
+    auto const next_grid{definition.collision_grid.IsSet() ? definition.collision_grid.GetValue()
+                                                           : FLevelCollisionGridDefinition{}};
     return FS7LevelSyncPlan{.definition = definition,
                             .changes = MoveTemp(prepared->changes),
                             .collision_grid_changed =
-                                definition.collision_grid.IsSet() &&
-                                (document.level_size != definition.collision_grid->level_size ||
-                                 document.grid_cell_size != definition.collision_grid->cell_size),
+                                current_grid.level_size != next_grid.level_size ||
+                                current_grid.cell_size != next_grid.cell_size,
                             .metadata_changed = prepared->metadata_changed,
                             .viewpoint_changed = prepared->viewpoint_changed,
                             .mission_changed = prepared->mission_changed};
@@ -436,10 +438,14 @@ auto apply_s7_level_sync_plan(ULevel& level,
     }
 
     document.Modify();
-    if (plan.definition.collision_grid.IsSet()) {
-        document.level_size = plan.definition.collision_grid->level_size;
-        document.grid_cell_size = plan.definition.collision_grid->cell_size;
-    }
+    auto const grid{plan.definition.collision_grid.IsSet()
+                        ? plan.definition.collision_grid.GetValue()
+                        : FLevelCollisionGridDefinition{}};
+    document.level_size =
+        grid.level_size.IsSet() ? grid.level_size.GetValue() : FVector3f::ZeroVector;
+    document.grid_cell_size =
+        grid.cell_size.IsSet() ? grid.cell_size.GetValue() : FVector3f::ZeroVector;
+    document.grid_override_schema_version = 1;
     auto const entities{plan.definition.entities.get_const_view()};
     auto const entity_count{entities.num()};
     document.level_id = plan.definition.metadata.id.value;

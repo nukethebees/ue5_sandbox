@@ -19,8 +19,7 @@ inline constexpr std::string_view level_prelude{R"(
 (define (id value) (list 'id value))
 (define (title value) (list 'title value))
 (define (description value) (list 'description value))
-(define (collision-grid level-size-value cell-size-value)
-  (list 'collision-grid level-size-value cell-size-value))
+(define (collision-grid . values) (cons 'collision-grid values))
 (define (level-size x y z) (list 'level-size x y z))
 (define (cell-size x y z) (list 'cell-size x y z))
 (define (par-time seconds) (list 'par-time seconds))
@@ -657,20 +656,54 @@ class DefinitionDecoder final {
     }
 
     void read_collision_grid(s7::Value const clause, std::string const& path) {
-        if (!expect_length(clause, 3, path)) {
+        auto const count{list_length(clause) - 1};
+        if (count == 0) {
+            add_error(path, "Collision-grid clause must contain a level-size or cell-size");
             return;
         }
-        double level_size[3]{};
-        double cell_size[3]{};
-        auto valid{read_vector(
-            list_value(clause, 1), "level-size", path + ".level-size", level_size)};
-        valid = read_vector(list_value(clause, 2), "cell-size", path + ".cell-size", cell_size) &&
-                valid;
+        ::ioj::sim::levels::LevelCollisionGridDefinition grid;
+        bool valid{true};
+        for (std::int64_t index{}; index < count; ++index) {
+            auto const value{list_value(clause, index + 1)};
+            auto const value_path{reader_detail::indexed_path(path, index)};
+            if (!is_non_empty_list(value) || !s7::is_symbol(list_value(value, 0))) {
+                add_error(value_path, "Expected a collision-grid dimension");
+                valid = false;
+                continue;
+            }
+            auto const tag{std::string{s7::symbol_name(list_value(value, 0))}};
+            double components[3]{};
+            if (tag == "level-size") {
+                if (grid.level_size) {
+                    add_error(value_path, "Duplicate collision-grid level-size clause");
+                    valid = false;
+                    continue;
+                }
+                if (read_vector(value, "level-size", value_path, components)) {
+                    grid.level_size =
+                        ::ioj::sim::levels::Vector3d{components[0], components[1], components[2]};
+                } else {
+                    valid = false;
+                }
+            } else if (tag == "cell-size") {
+                if (grid.cell_size) {
+                    add_error(value_path, "Duplicate collision-grid cell-size clause");
+                    valid = false;
+                    continue;
+                }
+                if (read_vector(value, "cell-size", value_path, components)) {
+                    grid.cell_size =
+                        ::ioj::sim::levels::Vector3d{components[0], components[1], components[2]};
+                } else {
+                    valid = false;
+                }
+            } else {
+                add_error(value_path, "Unknown collision-grid dimension '" + tag + "'");
+                valid = false;
+            }
+        }
         if (valid) {
-            definition_.collision_grid = {
-                .level_size = {level_size[0], level_size[1], level_size[2]},
-                .cell_size = {cell_size[0], cell_size[1], cell_size[2]},
-            };
+            definition_.collision_grid = std::move(grid);
         }
     }
 

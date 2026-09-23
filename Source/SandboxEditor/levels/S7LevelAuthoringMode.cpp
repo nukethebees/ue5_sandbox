@@ -400,13 +400,7 @@ void US7LevelAuthoringMode::refresh_document() {
         create_document();
         return;
     }
-    if (IsValid(document_->level_config) &&
-        (document_->level_size == FVector3f::ZeroVector ||
-         document_->grid_cell_size == FVector3f::ZeroVector)) {
-        document_->Modify();
-        document_->level_size = document_->level_config->collision_grid.grid_size;
-        document_->grid_cell_size = document_->level_config->collision_grid.cell_size;
-    }
+    document_->migrate_collision_grid_overrides();
     auto const attached{source_session_.attach(*document_)};
     if (!attached) {
         set_status(FText::FromString(attached.error()));
