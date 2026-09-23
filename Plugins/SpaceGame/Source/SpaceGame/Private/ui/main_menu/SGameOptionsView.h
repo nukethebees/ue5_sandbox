@@ -22,15 +22,17 @@ class SGameButton;
 class UGameSettingsSubsystem;
 struct FGameCapabilities;
 
-enum class EControlsFocusKind : uint8 { Profile, Device, Binding };
+enum class EControlsFocusKind : uint8 { Device, Scope, Binding };
 
 struct FControlsFocusIdentity {
-    EControlsFocusKind kind{EControlsFocusKind::Profile};
+    EControlsFocusKind kind{EControlsFocusKind::Device};
     EGameSettingDevice device{EGameSettingDevice::Shared};
+    EShipControlScope scope{EShipControlScope::General};
     FControlBindingIdentity binding{};
 
     auto operator==(FControlsFocusIdentity const& other) const -> bool {
-        return kind == other.kind && device == other.device && binding == other.binding;
+        return kind == other.kind && device == other.device && scope == other.scope &&
+               binding == other.binding;
     }
 };
 
@@ -211,7 +213,6 @@ class SGameOptionsView final : public SCompoundWidget {
     FKey captured_key_{};
     FText capture_error_{};
     int32 captured_chord_dependent_count_{};
-    FText control_profile_error_{};
     TArray<FControlsFocusTarget> controls_focus_targets_{};
     TOptional<FControlsFocusIdentity> pending_controls_focus_{};
     TOptional<FControlsFocusIdentity> pending_controls_rebuild_focus_{};
@@ -223,8 +224,8 @@ class SGameOptionsView final : public SCompoundWidget {
     bool dirty_prompt_visible_{};
     bool display_prompt_visible_{};
     bool binding_management_visible_{};
-    bool active_control_profile_custom_{};
     EGameSettingDevice controls_device_{EGameSettingDevice::KeyboardMouse};
+    EShipControlScope controls_scope_{EShipControlScope::General};
 };
 
 } // namespace ml::ioj

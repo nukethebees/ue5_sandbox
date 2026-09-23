@@ -26,8 +26,26 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
         auto* const subsystem{NewObject<USandboxTestEnhancedInputSubsystem>(controller)};
         subsystem->initialise();
         FSpaceShipControllerInputs input;
-        input.mapping_context = NewObject<UInputMappingContext>(controller);
-        input.move = NewObject<UInputAction>(controller);
+        input.starfox = NewObject<UInputMappingContext>(controller);
+        input.fighter = NewObject<UInputMappingContext>(controller);
+        input.skater = NewObject<UInputMappingContext>(controller);
+        input.gunship = NewObject<UInputMappingContext>(controller);
+        auto* const action{NewObject<UInputAction>(controller)};
+        input.translate_forward = action;
+        input.translate_right = action;
+        input.translate_up = action;
+        input.pitch = action;
+        input.yaw = action;
+        input.roll = action;
+        input.accelerate = action;
+        input.brake = action;
+        input.boost = action;
+        input.emergency_brake = action;
+        input.fire_primary = action;
+        input.select_starfox = action;
+        input.select_fighter = action;
+        input.select_skater = action;
+        input.select_gunship = action;
         FPlayerControllerTestAccess::prepare_input(*controller, *component, *subsystem, input);
         TestRunner->TestTrue(TEXT("Benchmark binds without possession"),
                              FPlayerControllerTestAccess::select_context(
@@ -150,10 +168,27 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
         auto* const component{NewObject<UEnhancedInputComponent>(controller)};
         auto* const subsystem{NewObject<USandboxTestEnhancedInputSubsystem>(controller)};
         subsystem->initialise();
-        auto const* const defaults{config->classes.player_controller_class.GetDefaultObject()};
-        auto const* const property{
-            FindFProperty<FStructProperty>(defaults->GetClass(), TEXT("input"))};
-        auto const& input{*property->ContainerPtrToValuePtr<FSpaceShipControllerInputs>(defaults)};
+        FSpaceShipControllerInputs input;
+        input.starfox = NewObject<UInputMappingContext>(controller);
+        input.fighter = NewObject<UInputMappingContext>(controller);
+        input.skater = NewObject<UInputMappingContext>(controller);
+        input.gunship = NewObject<UInputMappingContext>(controller);
+        auto* const action{NewObject<UInputAction>(controller)};
+        input.translate_forward = action;
+        input.translate_right = action;
+        input.translate_up = action;
+        input.pitch = action;
+        input.yaw = action;
+        input.roll = action;
+        input.accelerate = action;
+        input.brake = action;
+        input.boost = action;
+        input.emergency_brake = action;
+        input.fire_primary = action;
+        input.select_starfox = action;
+        input.select_fighter = action;
+        input.select_skater = action;
+        input.select_gunship = action;
         FPlayerControllerTestAccess::prepare_input(*controller, *component, *subsystem, input);
         FPlayerControllerTestAccess::prepare_completion(*controller);
         controller->Possess(ship);
@@ -161,7 +196,7 @@ TEST_CLASS(PlayerController, "Sandbox.UnitTests")
                              controller->get_active_control_context() ==
                                  EPlayerControlContext::None);
         TestRunner->TestFalse(TEXT("Completion does not install the ship mapping"),
-                              subsystem->HasMappingContext(input.get_mapping_context()));
+                              subsystem->HasMappingContext(input.starfox));
         TestRunner->TestTrue(TEXT("Replacement ship is restored when the modal closes"),
                              FPlayerControllerTestAccess::restore_context(*controller) ==
                                  EPlayerControlContext::Player);

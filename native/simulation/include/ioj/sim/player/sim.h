@@ -105,24 +105,23 @@ struct Sim {
     /* **************************************** */
     // Flight controls
     /* **************************************** */
-    void set_move_input(ml::Vector2d input) noexcept;
-    void set_forward_move_input(float input) noexcept;
-    void set_lateral_move_input(float input) noexcept;
-    void set_vertical_move_input(float input) noexcept;
+    void set_forward_input(float input) noexcept;
+    void set_right_input(float input) noexcept;
+    void set_up_input(float input) noexcept;
     void set_ship_2d_control(ml::Vector2d input);
-    void set_ship_1d_control_x(float input);
-    void set_ship_1d_control_y(float input);
     void start_sampling() noexcept;
     void stop_sampling();
     void adjust_desired_forward_velocity(float direction);
-    void turn(ml::Vector2d direction) noexcept;
-    void set_throttle(float input) noexcept;
+    void set_pitch_input(float input) noexcept;
+    void set_yaw_input(float input) noexcept;
+    void set_roll_input(float input) noexcept;
+    void set_accelerator(float input) noexcept;
     void start_boost();
     void stop_boost();
     void start_brake();
     void start_emergency_brake();
+    void stop_emergency_brake();
     void stop_brake();
-    void roll(float direction) noexcept;
     void select_flight_model_slot(FlightModelSlot slot) noexcept;
     [[nodiscard]] auto set_flight_model_slot_profile(FlightModelSlot slot,
                                                      FlightModelProfile profile) noexcept -> bool;

@@ -1,7 +1,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-
 #include "SpaceShipControllerInputs.generated.h"
 
 class UInputMappingContext;
@@ -11,76 +10,45 @@ USTRUCT(BlueprintType)
 struct SPACEGAME_API FSpaceShipControllerInputs {
     GENERATED_BODY()
 
-    auto get_mapping_context() const -> UInputMappingContext*;
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Flight Models")
+    UInputMappingContext* starfox{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Flight Models")
+    UInputMappingContext* fighter{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Flight Models")
+    UInputMappingContext* skater{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Flight Models")
+    UInputMappingContext* gunship{nullptr};
 
-    UPROPERTY(EditDefaultsOnly, Category = "Input")
-    UInputMappingContext* mapping_context{nullptr};
-
-    UPROPERTY(meta = (DeprecatedProperty,
-                      DeprecationMessage = "Migrated to the profile overrides on mapping_context"))
-    TArray<UInputMappingContext*> mapping_contexts_DEPRECATED{};
-
-    UPROPERTY(meta = (DeprecatedProperty,
-                      DeprecationMessage = "The active profile is owned by Enhanced Input"))
-    int32 initial_mapping_context_index_DEPRECATED{};
-
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* move{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* turn{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* turn_pointer_delta{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* engage_pointer_turn{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* fire_laser{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* throttle{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* boost{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* brake{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Translation")
+    UInputAction* translate_forward{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Translation")
+    UInputAction* translate_right{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Translation")
+    UInputAction* translate_up{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Rotation")
+    UInputAction* pitch{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Rotation")
+    UInputAction* yaw{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Rotation")
     UInputAction* roll{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* barrel_roll{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* cycle_next_fire_rate{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* cycle_prev_fire_rate{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* cycle_input_mapping_context{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* lateral_move{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* forward_move{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* vertical_move{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* sample_and_hold{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* increase_desired_forward_velocity{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* decrease_desired_forward_velocity{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* ship_2d_control{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* ship_1d_control_x{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input")
-    UInputAction* ship_1d_control_y{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input|Flight Model")
-    UInputAction* select_flight_model_up{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input|Flight Model")
-    UInputAction* select_flight_model_right{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input|Flight Model")
-    UInputAction* select_flight_model_down{nullptr};
-    UPROPERTY(EditAnywhere, Category = "Input|Flight Model")
-    UInputAction* select_flight_model_left{nullptr};
-
-    UPROPERTY(EditAnywhere, Category = "Input|Gestures", meta = (ClampMin = "0.01"))
-    float double_tap_window_seconds{0.25f};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Propulsion")
+    UInputAction* accelerate{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Propulsion")
+    UInputAction* brake{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Propulsion")
+    UInputAction* boost{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Propulsion")
+    UInputAction* emergency_brake{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Weapons")
+    UInputAction* fire_primary{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Flight Models")
+    UInputAction* select_starfox{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Flight Models")
+    UInputAction* select_fighter{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Flight Models")
+    UInputAction* select_skater{nullptr};
+    UPROPERTY(EditDefaultsOnly, Category = "Input|Flight Models")
+    UInputAction* select_gunship{nullptr};
 };
 
 USTRUCT(BlueprintType)

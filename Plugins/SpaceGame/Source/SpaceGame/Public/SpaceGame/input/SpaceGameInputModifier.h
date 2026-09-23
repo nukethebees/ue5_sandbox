@@ -19,6 +19,9 @@ class SPACEGAME_API USpaceGameInputModifier final : public UInputModifier {
   public:
     UPROPERTY(EditAnywhere, Category = "Settings")
     ESpaceGameInputResponse response{ESpaceGameInputResponse::GamepadMove};
+
+    UPROPERTY(EditAnywhere, Category = "Settings")
+    bool pitch_axis{};
   protected:
     auto ModifyRaw_Implementation(UEnhancedPlayerInput const* player_input,
                                   FInputActionValue current_value,

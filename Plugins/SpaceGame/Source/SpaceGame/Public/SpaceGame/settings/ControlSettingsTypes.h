@@ -6,25 +6,10 @@
 
 namespace ml::ioj {
 
-enum class EControlResetScope : uint8 { AllControls, SettingsOnly };
-
-inline auto control_reset_scope(bool const custom_profile) -> EControlResetScope {
-    return custom_profile ? EControlResetScope::SettingsOnly : EControlResetScope::AllControls;
-}
-
 inline auto can_hold_chord_key(FKey const key) -> bool {
     return key.IsValid() && !key.IsAxis1D() && !key.IsAxis2D() && !key.IsAxis3D() &&
            key != EKeys::MouseScrollUp && key != EKeys::MouseScrollDown;
 }
-
-struct FControlProfileView {
-    FString id;
-    FString mapping_profile_id;
-    FText display_name;
-    bool active{};
-    bool modified{};
-    bool custom{};
-};
 
 struct FControlBindingAddress {
     FString profile_id;
@@ -67,12 +52,12 @@ struct FControlBindingView {
     FText display_category;
     EControlBindingGroup display_group{EControlBindingGroup::Flight};
     int32 display_order{};
+    EShipControlScope scope{EShipControlScope::General};
     EHardwareDevicePrimaryType device_type{EHardwareDevicePrimaryType::Unspecified};
     FKey current_key;
     FKey default_key;
     TOptional<FControlChordBindingView> chord;
     bool modified{};
-    bool custom_profile{};
 };
 
 inline auto control_binding_matches_device(FControlBindingView const& binding,

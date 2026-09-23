@@ -2,32 +2,30 @@
 
 #include "EnhancedActionKeyMapping.h"
 #include "InputMappingContext.h"
-#include "InputTriggers.h"
 #include "PlayerMappableKeySettings.h"
+#include "SpaceGame/input/CanonicalShipControls.h"
 #include "SpaceGame/input/ControlBindingMetadata.h"
-#include "SpaceGame/input/ControlProfiles.h"
 
 namespace ml::ioj {
 
-void USpaceGameKeyProfile::initialize_from(UEnhancedPlayerMappableKeyProfile const& source) {
-    PlayerMappedKeys = source.GetPlayerMappingRows();
-}
+void USpaceGameInputUserSettings::finalize_canonical_registration() {
+    auto* const profile{GetDefaultKeyProfile()};
+    if (!IsValid(profile)) {
+        UE_LOG(LogTemp, Error, TEXT("Canonical input registration has no default key profile"));
+        return;
+    }
 
-void USpaceGameKeyProfile::set_runtime_profile_id(FString const& profile_id) {
-    ProfileIdentifierString = profile_id;
-}
+    static_cast<void>(SetKeyProfileToDefault());
 
-void USpaceGameInputUserSettings::Initialize(ULocalPlayer* const local_player) {
-    Super::Initialize(local_player);
-    migrate_custom_profile_metadata();
-    apply_active_mapping_profile_id();
-}
-
-auto USpaceGameInputUserSettings::SetActiveKeyProfile(FString const& profile_id) -> bool {
-    restore_active_profile_id();
-    auto const changed{Super::SetActiveKeyProfile(profile_id)};
-    apply_active_mapping_profile_id();
-    return changed;
+    TArray<FString> obsolete_ids;
+    for (auto const& pair : SavedKeyProfilesMap) {
+        if (pair.Value != profile) {
+            obsolete_ids.Add(pair.Key);
+        }
+    }
+    for (auto const& id : obsolete_ids) {
+        SavedKeyProfilesMap.Remove(id);
+    }
 }
 
 void USpaceGameInputUserSettings::set_mouse_turn_sensitivity(float const value) noexcept {
@@ -54,234 +52,38 @@ void USpaceGameInputUserSettings::set_invert_gamepad_pitch(bool const value) noe
     invert_gamepad_pitch_ = value;
 }
 
-auto USpaceGameInputUserSettings::create_custom_key_profile(
-    FPlayerMappableKeyProfileCreationArgs const& arguments, FString const& source_profile_id)
-    -> UEnhancedPlayerMappableKeyProfile* {
-    auto const* const source_profile{GetKeyProfileWithId(source_profile_id)};
-    if (!is_custom_control_profile_id(arguments.ProfileStringIdentifier) ||
-        !IsValid(source_profile)) {
-        return nullptr;
-    }
-
-    auto custom_arguments{arguments};
-    custom_arguments.ProfileType = USpaceGameKeyProfile::StaticClass();
-    auto* const profile{Cast<USpaceGameKeyProfile>(CreateNewKeyProfile(custom_arguments))};
-    if (!IsValid(profile)) {
-        return nullptr;
-    }
-
-    auto const mapping_profile_id{custom_key_profile_source_id(source_profile_id)};
-    custom_profile_source_ids_.Add(arguments.ProfileStringIdentifier,
-                                   mapping_profile_id.IsEmpty() ? source_profile_id
-                                                                : mapping_profile_id);
-    custom_profile_names_.Add(arguments.ProfileStringIdentifier, arguments.DisplayName.ToString());
-    profile->initialize_from(*source_profile);
-    if (profile->GetPlayerMappingRows().IsEmpty()) {
-        delete_custom_key_profile(arguments.ProfileStringIdentifier);
-        UE_LOG(LogTemp,
-               Warning,
-               TEXT("Could not populate custom control profile '%s' from '%s'"),
-               *arguments.ProfileStringIdentifier,
-               *source_profile_id);
-        return nullptr;
-    }
-    return profile;
-}
-
-auto USpaceGameInputUserSettings::rename_custom_key_profile(FString const& profile_id,
-                                                            FText const& display_name) -> bool {
-    auto* const profile{GetKeyProfileWithId(profile_id)};
-    if (!is_custom_control_profile_id(profile_id) || !IsValid(profile)) {
-        return false;
-    }
-    profile->SetDisplayName(display_name);
-    custom_profile_names_.Add(profile_id, display_name.ToString());
-    OnSettingsChanged.Broadcast(this);
-    return true;
-}
-
-auto USpaceGameInputUserSettings::delete_custom_key_profile(FString const& profile_id) -> bool {
-    if (!is_custom_control_profile_id(profile_id) || !SavedKeyProfilesMap.Contains(profile_id)) {
-        return false;
-    }
-    if (GetActiveKeyProfileId() == profile_id &&
-        !SetActiveKeyProfile(control_profile_definitions()[0].id)) {
-        return false;
-    }
-    if (SavedKeyProfilesMap.Remove(profile_id) != 1 || GetActiveKeyProfileId() == profile_id) {
-        return false;
-    }
-    custom_profile_source_ids_.Remove(profile_id);
-    custom_profile_names_.Remove(profile_id);
-    OnSettingsChanged.Broadcast(this);
-    return true;
-}
-
-auto USpaceGameInputUserSettings::migrate_legacy_gamepad_bindings() -> bool {
-    constexpr int32 current_schema_version{1};
-    if (gamepad_binding_schema_version_ >= current_schema_version ||
-        RegisteredMappingContexts.IsEmpty()) {
-        return false;
-    }
-
-    FName const fire_action_name{TEXT("IA_ship_fire")};
-    FName const cycle_profile_action_name{TEXT("IA_cycle_input_mapping_context")};
-    for (auto const& profile_pair : SavedKeyProfilesMap) {
-        auto* const profile{profile_pair.Value.Get()};
-        if (!IsValid(profile)) {
-            continue;
-        }
-
-        TArray<FName> mapping_names;
-        for (auto const& row : profile->GetPlayerMappingRows()) {
-            mapping_names.Add(row.Key);
-        }
-        for (auto const mapping_name : mapping_names) {
-            auto* const row{profile->FindKeyMappingRowMutable(mapping_name)};
-            if (row == nullptr) {
-                continue;
-            }
-            for (auto& mapping : row->Mappings) {
-                auto const* const action{mapping.GetAssociatedInputAction()};
-                if (!IsValid(action)) {
-                    continue;
-                }
-                auto const current_key{mapping.GetCurrentKey()};
-                if ((action->GetFName() == fire_action_name &&
-                     current_key == EKeys::Gamepad_FaceButton_Bottom) ||
-                    (action->GetFName() == cycle_profile_action_name &&
-                     current_key == EKeys::Gamepad_LeftTriggerAxis)) {
-                    mapping.ResetToDefault();
-                }
-            }
-        }
-    }
-
-    gamepad_binding_schema_version_ = current_schema_version;
-    OnSettingsChanged.Broadcast(this);
-    return true;
-}
-
-auto USpaceGameInputUserSettings::custom_key_profile_source_id(FString const& profile_id) const
-    -> FString {
-    if (auto const* const source_id{custom_profile_source_ids_.Find(profile_id)}) {
-        return *source_id;
-    }
-    return {};
-}
-
-auto USpaceGameInputUserSettings::custom_key_profile_display_name(FString const& profile_id) const
-    -> FText {
-    if (auto const* const display_name{custom_profile_names_.Find(profile_id)}) {
-        return FText::FromString(*display_name);
-    }
-    auto const* const profile{GetKeyProfileWithId(profile_id)};
-    return IsValid(profile) ? profile->GetProfileDisplayName() : FText::GetEmpty();
-}
-
 auto USpaceGameInputUserSettings::chord_mapping_for_mapping(FString const& profile_id,
                                                             FPlayerKeyMapping const& mapping) const
     -> FPlayerKeyMapping const* {
-    auto const* const profile{GetKeyProfileWithId(profile_id)};
-    auto const* const action{mapping.GetAssociatedInputAction()};
-    if (!IsValid(profile) || !IsValid(action)) {
-        return {};
-    }
-
-    auto source_profile_id{custom_key_profile_source_id(profile_id)};
-    if (source_profile_id.IsEmpty()) {
-        source_profile_id = profile->GetProfileIdString();
-    }
-    for (auto const& mapping_context : RegisteredMappingContexts) {
-        auto const* const context{mapping_context.Get()};
-        if (!IsValid(context)) {
-            continue;
-        }
-        for (auto const& source_mapping : context->GetMappingsForProfile(source_profile_id)) {
-            if (source_mapping.Action != action || source_mapping.Key != mapping.GetDefaultKey()) {
-                continue;
-            }
-            for (auto const& trigger : source_mapping.Triggers) {
-                auto const* const chord_trigger{Cast<UInputTriggerChordAction>(trigger)};
-                if (!IsValid(chord_trigger) || !IsValid(chord_trigger->ChordAction)) {
-                    continue;
-                }
-                for (auto const& row : profile->GetPlayerMappingRows()) {
-                    for (auto const& candidate : row.Value.Mappings) {
-                        if (candidate.GetAssociatedInputAction() == chord_trigger->ChordAction &&
-                            candidate.GetPrimaryDeviceType() == mapping.GetPrimaryDeviceType()) {
-                            return &candidate;
-                        }
-                    }
-                }
-                return nullptr;
-            }
-        }
-    }
-    return {};
+    static_cast<void>(profile_id);
+    static_cast<void>(mapping);
+    return nullptr;
 }
 
 auto USpaceGameInputUserSettings::control_binding_metadata(FString const& profile_id,
                                                            FPlayerKeyMapping const& mapping) const
     -> UControlBindingMetadata const* {
-    auto source_profile_id{custom_key_profile_source_id(profile_id)};
-    if (source_profile_id.IsEmpty()) {
-        auto const* const profile{GetKeyProfileWithId(profile_id)};
-        if (!IsValid(profile)) {
-            return nullptr;
-        }
-        source_profile_id = profile->GetProfileIdString();
+    auto const* const profile{GetKeyProfileWithId(profile_id)};
+    if (!IsValid(profile)) {
+        return nullptr;
     }
 
-    auto const mapping_is_gamepad{mapping.GetPrimaryDeviceType() ==
-                                  EHardwareDevicePrimaryType::Gamepad};
-    for (auto const& mapping_context : RegisteredMappingContexts) {
-        auto const* const context{mapping_context.Get()};
-        if (!IsValid(context)) {
+    auto const gamepad{mapping.GetPrimaryDeviceType() == EHardwareDevicePrimaryType::Gamepad};
+    for (auto const& definition : canonical_ship_control_contexts()) {
+        auto const* const context{load_ship_control_context(definition.scope)};
+        if (!IsValid(context) || !IsMappingContextRegistered(context)) {
             continue;
         }
-        for (auto const& source_mapping : context->GetMappingsForProfile(source_profile_id)) {
-            if (source_mapping.GetMappingName() != mapping.GetMappingName() ||
-                source_mapping.Key.IsGamepadKey() != mapping_is_gamepad) {
+        for (auto const& source : context->GetMappingsForProfile(profile->GetProfileIdString())) {
+            if (source.GetMappingName() != mapping.GetMappingName() ||
+                source.Key.IsGamepadKey() != gamepad) {
                 continue;
             }
-            auto const* const settings{source_mapping.GetPlayerMappableKeySettings()};
+            auto const* const settings{source.GetPlayerMappableKeySettings()};
             return IsValid(settings) ? Cast<UControlBindingMetadata>(settings->Metadata) : nullptr;
         }
     }
     return nullptr;
-}
-
-auto USpaceGameInputUserSettings::RegisterKeyMappingsToProfile(
-    UEnhancedPlayerMappableKeyProfile& profile, UInputMappingContext const* const mapping_context)
-    -> bool {
-    auto profile_id{profile.GetProfileIdString()};
-    for (auto const& profile_pair : SavedKeyProfilesMap) {
-        if (profile_pair.Value == &profile) {
-            profile_id = profile_pair.Key;
-            break;
-        }
-    }
-    auto const source_profile_id{custom_key_profile_source_id(profile_id)};
-    auto* const custom_profile{Cast<USpaceGameKeyProfile>(&profile)};
-    auto const mapping_profile_id{source_profile_id.IsEmpty() ? profile.GetProfileIdString()
-                                                              : source_profile_id};
-    if (custom_profile == nullptr || source_profile_id.IsEmpty()) {
-        auto const result{Super::RegisterKeyMappingsToProfile(profile, mapping_context)};
-        if (result) {
-            prune_stale_mapping_rows(profile, mapping_profile_id);
-        }
-        return result;
-    }
-
-    auto const runtime_profile_id{profile.GetProfileIdString()};
-    custom_profile->set_runtime_profile_id(source_profile_id);
-    auto const result{Super::RegisterKeyMappingsToProfile(profile, mapping_context)};
-    custom_profile->set_runtime_profile_id(runtime_profile_id);
-    if (result) {
-        prune_stale_mapping_rows(profile, mapping_profile_id);
-    }
-    return result;
 }
 
 auto USpaceGameInputUserSettings::DetermineHardwareDeviceForActionMapping(
@@ -290,66 +92,6 @@ auto USpaceGameInputUserSettings::DetermineHardwareDeviceForActionMapping(
     static_cast<void>(mapping_context);
     return action_mapping.Key.IsGamepadKey() ? FHardwareDeviceIdentifier::DefaultGamepad
                                              : FHardwareDeviceIdentifier::DefaultKeyboardAndMouse;
-}
-
-void USpaceGameInputUserSettings::apply_active_mapping_profile_id() {
-    auto* const profile{Cast<USpaceGameKeyProfile>(GetActiveKeyProfile())};
-    auto const source_profile_id{custom_key_profile_source_id(GetActiveKeyProfileId())};
-    if (profile != nullptr && !source_profile_id.IsEmpty()) {
-        profile->set_runtime_profile_id(source_profile_id);
-    }
-}
-
-void USpaceGameInputUserSettings::migrate_custom_profile_metadata() {
-    for (auto const& profile_pair : SavedKeyProfilesMap) {
-        if (!is_custom_control_profile_id(profile_pair.Key) || !IsValid(profile_pair.Value)) {
-            continue;
-        }
-        if (!custom_profile_source_ids_.Contains(profile_pair.Key)) {
-            auto source_profile_id{profile_pair.Value->GetProfileIdString()};
-            if (!control_profile_definitions().ContainsByPredicate(
-                    [&source_profile_id](auto const& definition) {
-                        return definition.id == source_profile_id;
-                    })) {
-                source_profile_id = control_profile_definitions()[0].id;
-            }
-            custom_profile_source_ids_.Add(profile_pair.Key, MoveTemp(source_profile_id));
-        }
-        if (!custom_profile_names_.Contains(profile_pair.Key) &&
-            !profile_pair.Value->GetProfileDisplayName().IsEmpty()) {
-            custom_profile_names_.Add(profile_pair.Key,
-                                      profile_pair.Value->GetProfileDisplayName().ToString());
-        }
-    }
-}
-
-void USpaceGameInputUserSettings::prune_stale_mapping_rows(
-    UEnhancedPlayerMappableKeyProfile& profile, FString const& mapping_profile_id) const {
-    TSet<FName> registered_mapping_names;
-    for (auto const& mapping_context : RegisteredMappingContexts) {
-        if (!IsValid(mapping_context)) {
-            continue;
-        }
-        for (auto const& mapping : mapping_context->GetMappingsForProfile(mapping_profile_id)) {
-            if (mapping.IsPlayerMappable()) {
-                registered_mapping_names.Add(mapping.GetMappingName());
-            }
-        }
-    }
-
-    auto& rows{const_cast<TMap<FName, FKeyMappingRow>&>(profile.GetPlayerMappingRows())};
-    for (auto iterator{rows.CreateIterator()}; iterator; ++iterator) {
-        if (!registered_mapping_names.Contains(iterator.Key())) {
-            iterator.RemoveCurrent();
-        }
-    }
-}
-
-void USpaceGameInputUserSettings::restore_active_profile_id() {
-    auto* const profile{Cast<USpaceGameKeyProfile>(GetActiveKeyProfile())};
-    if (profile != nullptr) {
-        profile->set_runtime_profile_id(GetActiveKeyProfileId());
-    }
 }
 
 } // namespace ml::ioj

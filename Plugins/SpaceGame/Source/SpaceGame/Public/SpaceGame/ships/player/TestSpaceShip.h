@@ -68,36 +68,28 @@ class SPACEGAME_API ATestSpaceShip
     /* **************************************** */
     // Flight controls
     /* **************************************** */
-    void set_move_input(FVector2D input);
-    void set_lateral_move_input(float input);
-    void set_forward_move_input(float input);
-    void set_vertical_move_input(float input);
-    void set_ship_2d_control(FVector2D input);
-    void set_ship_1d_control_x(float input);
-    void set_ship_1d_control_y(float input);
+    void set_forward_input(float input);
+    void set_right_input(float input);
+    void set_up_input(float input);
+    void set_pitch_input(float input);
+    void set_yaw_input(float input);
+    void set_roll_input(float input);
+    void set_accelerator(float input);
     void select_flight_model_slot(::ioj::sim::player::FlightModelSlot slot);
+    auto get_active_flight_model_slot() const -> ::ioj::sim::player::FlightModelSlot;
     auto set_flight_model_slot_profile(::ioj::sim::player::FlightModelSlot slot,
                                        ::ioj::sim::player::FlightModelProfile profile) -> bool;
     auto get_active_flight_model_profile() const -> ::ioj::sim::player::FlightModelProfile;
-    void start_sampling();
-    void stop_sampling();
-    void adjust_desired_forward_velocity(float direction);
-    void turn(FVector2D direction);
-    void set_throttle(float input);
     void start_boost();
     void stop_boost();
     void start_brake();
     void start_emergency_brake();
+    void stop_emergency_brake();
     void stop_brake();
     auto get_velocity() const -> FVector;
     auto get_speed() const -> float;
-    void roll(float direction);
     auto get_persistent_forward_target_speed() const -> float;
-    auto get_move_input() const -> FVector2D;
     auto get_sampled_target_speed_scale() const -> FVector2D;
-    auto is_sampling_target_speed() const -> bool;
-    auto get_turn_input() const -> FVector2D;
-    auto get_throttle() const -> float;
 
     /* **************************************** */
     // Energy and weapons

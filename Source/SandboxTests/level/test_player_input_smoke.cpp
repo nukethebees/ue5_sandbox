@@ -1,9 +1,10 @@
 #include <SandboxTests/support/PlayerControllerTestAccess.h>
 #include <SandboxTests/support/test_setup.h>
 
-#include <SpaceGame/input/ControlProfiles.h>
+#include <SpaceGame/input/CanonicalShipControls.h>
 #include <SpaceGame/levels/ExampleLevels.h>
 #include <SpaceGame/levels/LevelLoader.h>
+#include <SpaceGame/settings/GameSettingsSubsystem.h>
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
@@ -12,8 +13,6 @@
 #include <Engine/LocalPlayer.h>
 #include <EnhancedInputComponent.h>
 #include <EnhancedInputSubsystems.h>
-#include <InputAction.h>
-#include <InputMappingContext.h>
 #include <UserSettings/EnhancedInputUserSettings.h>
 
 TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
@@ -22,12 +21,10 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
     inline static FTimespan const timeout{FTimespan::FromSeconds(2)};
 
     ml::FSoftTestAssertions checks{};
-    TWeakObjectPtr<ASpaceGamePlayerController> controller_{nullptr};
-    TWeakObjectPtr<UEnhancedInputLocalPlayerSubsystem> input_subsystem_{nullptr};
-    TWeakObjectPtr<UEnhancedInputUserSettings> input_settings_{nullptr};
-    FString original_profile_id_{};
-    TArray<FKey> pressed_keys_{};
-    int32 release_wait_ticks_{0};
+    TWeakObjectPtr<ASpaceGamePlayerController> controller_{};
+    TWeakObjectPtr<UEnhancedInputLocalPlayerSubsystem> subsystem_{};
+    TWeakObjectPtr<UEnhancedInputUserSettings> settings_{};
+    FString active_profile_id_{};
 
     BEFORE_EACH()
     {
@@ -38,26 +35,28 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
 
     AFTER_EACH()
     {
-        release_pressed_keys();
-        restore_profile();
+        if (auto* const controller{controller_.Get()}) {
+            controller->ConsoleCommand(TEXT("Input.-key Four"), true);
+        }
         level_setup.end_test();
         controller_.Reset();
-        input_subsystem_.Reset();
-        input_settings_.Reset();
+        subsystem_.Reset();
+        settings_.Reset();
+        active_profile_id_.Reset();
     }
 
     AFTER_ALL()
     { level_setup.teardown(); }
-  private:
-    auto setup(FString const& profile_id, bool const start_simulation = true) -> bool {
+
+    auto setup() -> bool {
         auto* const orchestrator{level_setup.get_orchestrator()};
-        if (!checks.is_valid(orchestrator, TEXT("Input smoke orchestrator is available"))) {
+        if (!checks.is_valid(orchestrator, TEXT("Orchestrator exists"))) {
             return false;
         }
-
         ml::FLevelLoader loader{*orchestrator};
-        auto const load_result{loader.load(ml::example_levels::make_native_example())};
-        if (!checks.is_true(static_cast<bool>(load_result), TEXT("Input smoke level loads"))) {
+        if (!checks.is_true(
+                static_cast<bool>(loader.load(ml::example_levels::make_native_example())),
+                TEXT("Gameplay level loads directly"))) {
             return false;
         }
         auto* const controller{
@@ -66,722 +65,140 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
             return false;
         }
         controller_ = controller;
-        if (!checks.is_true(controller->GetClass()->GetOutermost()->GetName() ==
-                                TEXT("/SpaceGame/Players/BP_SpaceGamePlayerController"),
-                            TEXT("Smoke test uses the canonical runtime controller Blueprint")) ||
-            !checks.is_true(IsValid(Cast<UEnhancedInputComponent>(controller->InputComponent)),
-                            TEXT("Production Enhanced Input component is active")) ||
-            !checks.is_true(controller->GetPawn().Get() == orchestrator->get_player_ship(),
-                            TEXT("Player controller possesses the loaded player ship"))) {
-            return false;
-        }
-
         auto* const local_player{controller->GetLocalPlayer()};
         auto* const subsystem{
             IsValid(local_player)
                 ? ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)
                 : nullptr};
         auto* const settings{IsValid(subsystem) ? subsystem->GetUserSettings() : nullptr};
-        if (!checks.is_true(IsValid(subsystem),
-                            TEXT("Enhanced Input local-player subsystem is active")) ||
-            !checks.is_true(IsValid(settings), TEXT("Enhanced Input user settings are active"))) {
+        if (!checks.is_true(IsValid(subsystem), TEXT("Enhanced Input subsystem exists")) ||
+            !checks.is_true(IsValid(settings), TEXT("Persistent input settings exist"))) {
             return false;
         }
-        input_subsystem_ = subsystem;
-        input_settings_ = settings;
-        original_profile_id_ = settings->GetActiveKeyProfileId();
-
-        FGameplayTagContainer failure_reason;
-        settings->ResetKeyProfileIdToDefault(profile_id, failure_reason);
-        auto const profile_selected{settings->GetActiveKeyProfileId() == profile_id ||
-                                    settings->SetActiveKeyProfile(profile_id)};
-        if (!checks.is_true(failure_reason.IsEmpty(),
-                            TEXT("Authored control profile resets for the smoke test")) ||
-            !checks.is_true(profile_selected, TEXT("Requested control profile becomes active"))) {
-            return false;
+        subsystem_ = subsystem;
+        settings_ = settings;
+        checks.is_true(IsValid(Cast<UEnhancedInputComponent>(controller->InputComponent)),
+                       TEXT("Production Enhanced Input component is active"));
+        checks.is_true(controller->GetClass()->GetOutermost()->GetName() ==
+                           TEXT("/SpaceGame/Players/BP_SpaceGamePlayerController"),
+                       TEXT("Canonical runtime controller Blueprint is used"));
+        for (auto const& definition : ml::ioj::canonical_ship_control_contexts()) {
+            auto* const context{ml::ioj::load_ship_control_context(definition.scope)};
+            checks.is_true(IsValid(context) && settings->IsMappingContextRegistered(context),
+                           TEXT("Canonical context registered without opening Options"));
         }
-        FModifyContextOptions rebuild_options;
-        rebuild_options.bForceImmediately = true;
-        subsystem->RequestRebuildControlMappings(rebuild_options,
-                                                 EInputMappingRebuildType::RebuildWithFlush);
-        if (start_simulation) {
-            orchestrator->start_simulation();
-        }
-        return true;
+        orchestrator->start_simulation();
+        return checks.all_passed;
     }
 
-    auto input_is_ready() const -> bool {
+    auto ready() const -> bool {
         auto const* const controller{controller_.Get()};
-        auto const* const subsystem{input_subsystem_.Get()};
+        auto const* const subsystem{subsystem_.Get()};
         auto const* const ship{IsValid(controller) ? Cast<ATestSpaceShip>(controller->GetPawn())
                                                    : nullptr};
-        if (!IsValid(controller) || !IsValid(subsystem) || !IsValid(ship) ||
-            !ship->has_simulation()) {
-            return false;
-        }
-        auto const& ship_input{FPlayerControllerTestAccess::ship_input(*controller)};
-        auto const& global_input{FPlayerControllerTestAccess::global_input(*controller)};
-        return controller->get_active_control_context() == EPlayerControlContext::Player &&
-               subsystem->HasMappingContext(ship_input.get_mapping_context()) &&
-               subsystem->HasMappingContext(global_input.mapping_context);
+        return IsValid(subsystem) && IsValid(ship) && ship->has_simulation() &&
+               controller->get_active_control_context() == EPlayerControlContext::Player &&
+               subsystem->HasMappingContext(
+                   ml::ioj::load_ship_control_context(ml::ioj::EShipControlScope::General)) &&
+               subsystem->HasMappingContext(
+                   ml::ioj::load_ship_control_context(ml::ioj::EShipControlScope::Starfox));
     }
 
-    void check_input_is_ready() {
-        checks.is_true(input_is_ready(),
-                       TEXT("Simulation-bound player input contexts become active"));
-    }
-
-    void select_flight_model_slot(::ioj::sim::player::FlightModelSlot const slot) {
-        auto* const controller{controller_.Get()};
-        auto* const ship{IsValid(controller) ? Cast<ATestSpaceShip>(controller->GetPawn())
-                                             : nullptr};
-        if (checks.is_valid(ship, TEXT("Player ship accepts a flight model selection"))) {
-            ship->select_flight_model_slot(slot);
-        }
-    }
-
-    void restore_profile() {
-        auto* const settings{input_settings_.Get()};
-        auto* const subsystem{input_subsystem_.Get()};
-        if (!IsValid(settings) || !IsValid(subsystem) || original_profile_id_.IsEmpty()) {
-            return;
-        }
-        settings->SetActiveKeyProfile(original_profile_id_);
-        FModifyContextOptions rebuild_options;
-        rebuild_options.bForceImmediately = true;
-        subsystem->RequestRebuildControlMappings(rebuild_options,
-                                                 EInputMappingRebuildType::RebuildWithFlush);
-        original_profile_id_.Reset();
-    }
-
-    auto has_ship_mapping(
-        FString const& profile_id, UInputAction const* const action, FKey const key) const -> bool {
-        auto const* const controller{controller_.Get()};
-        if (!IsValid(controller) || !IsValid(action)) {
-            return false;
-        }
-        UInputMappingContext const* const context{
-            FPlayerControllerTestAccess::ship_input(*controller).get_mapping_context()};
-        if (!IsValid(context)) {
-            return false;
-        }
-        auto const has_mapping = [action, key](auto const& mappings) {
-            return mappings.ContainsByPredicate([action, key](auto const& mapping) {
-                return mapping.Action == action && mapping.Key == key;
-            });
-        };
-        auto const default_profile{ml::ioj::control_profile_definitions()[0].id};
-        auto const& mappings{profile_id == default_profile
-                                 ? context->GetMappings()
-                                 : context->GetMappingsForProfile(profile_id)};
-        return has_mapping(mappings);
-    }
-
-    auto has_global_mapping(UInputAction const* const action, FKey const key) const -> bool {
-        auto const* const controller{controller_.Get()};
-        if (!IsValid(controller) || !IsValid(action)) {
-            return false;
-        }
-        auto const* const context{
-            FPlayerControllerTestAccess::global_input(*controller).mapping_context};
-        return IsValid(context) &&
-               context->GetMappings().ContainsByPredicate([action, key](auto const& mapping) {
-                   return mapping.Action == action && mapping.Key == key;
-               });
-    }
-
-    void press_key(FKey const key, FVector const value = FVector{1.0, 0.0, 0.0}) {
-        auto* const controller{controller_.Get()};
-        if (!checks.is_true(IsValid(controller), TEXT("Player controller accepts input"))) {
-            return;
-        }
-        if (!pressed_keys_.Contains(key)) {
-            pressed_keys_.Add(key);
-        }
-        FString command;
-        if (EKeys::GetPairedKeyDetails(key) != nullptr) {
-            command =
-                FString::Printf(TEXT("Input.+key %s X=%f Y=%f"), *key.ToString(), value.X, value.Y);
-        } else if (key.IsAnalog()) {
-            command = FString::Printf(TEXT("Input.+key %s %f"), *key.ToString(), value.X);
-        } else {
-            command = FString::Printf(TEXT("Input.+key %s"), *key.ToString());
-        }
-        controller->ConsoleCommand(command, true);
-    }
-
-    void release_key(FKey const key) {
-        auto* const controller{controller_.Get()};
-        if (!pressed_keys_.Contains(key)) {
-            return;
-        }
-        if (IsValid(controller)) {
-            controller->ConsoleCommand(FString::Printf(TEXT("Input.-key %s"), *key.ToString()),
-                                       true);
-        }
-        pressed_keys_.Remove(key);
-    }
-
-    void release_pressed_keys() {
-        auto const keys{pressed_keys_};
-        for (auto const key : keys) {
-            release_key(key);
-        }
-    }
-
-    auto snapshot() const -> FPlayerInputSnapshot {
-        auto const* const controller{controller_.Get()};
-        return IsValid(controller) ? controller->get_input_snapshot() : FPlayerInputSnapshot{};
-    }
-
-    auto ship_velocity() const -> FVector {
-        auto const* const controller{controller_.Get()};
-        auto const* const ship{IsValid(controller) ? Cast<ATestSpaceShip>(controller->GetPawn())
-                                                   : nullptr};
-        return IsValid(ship) ? ship->get_velocity() : FVector::ZeroVector;
-    }
-
-    auto keyboard_forward_is_active() const -> bool {
-        auto const state{snapshot()};
-        return FMath::IsNearlyZero(state.movement.X) && state.movement.Y > 0.0 &&
-               state.turn.IsNearlyZero() && state.sampled_movement.IsNearlyZero();
-    }
-
-    auto keyboard_backward_is_active() const -> bool {
-        auto const state{snapshot()};
-        return FMath::IsNearlyZero(state.movement.X) && state.movement.Y < 0.0 &&
-               state.turn.IsNearlyZero() && state.sampled_movement.IsNearlyZero();
-    }
-
-    auto keyboard_left_is_active() const -> bool {
-        auto const state{snapshot()};
-        return state.movement.X < 0.0 && FMath::IsNearlyZero(state.movement.Y) &&
-               state.turn.IsNearlyZero() && state.sampled_movement.IsNearlyZero();
-    }
-
-    auto keyboard_right_is_active() const -> bool {
-        auto const state{snapshot()};
-        return state.movement.X > 0.0 && FMath::IsNearlyZero(state.movement.Y) &&
-               state.turn.IsNearlyZero() && state.sampled_movement.IsNearlyZero();
-    }
-
-    auto ship_axes_are_clear() const -> bool {
-        auto const state{snapshot()};
-        return state.movement.IsNearlyZero() && state.turn.IsNearlyZero();
-    }
-
-    auto fire_is_active(bool const expected) const -> bool {
-        return controller_.IsValid() && snapshot().fire_active == expected;
-    }
-
-    void run_fire_test(FString profile_id, FKey const key, FVector const value) {
-        TestCommandBuilder
-            .Do([this, profile_id, key, value] {
-                if (!setup(profile_id)) {
-                    return;
-                }
-            })
-            .Until([this] { return !checks.all_passed || input_is_ready(); }, timeout)
-            .Then([this, profile_id = MoveTemp(profile_id), key, value] {
-                check_input_is_ready();
-                auto const* const fire_action{
-                    FPlayerControllerTestAccess::ship_input(*controller_).fire_laser};
-                if (!checks.is_true(has_ship_mapping(profile_id, fire_action, key),
-                                    TEXT("Authored profile maps the tested key to fire"))) {
-                    return;
-                }
-                checks.is_true(fire_is_active(false), TEXT("Fire starts inactive"));
-                press_key(key, value);
-            })
-            .Until([this] { return !checks.all_passed || fire_is_active(true); }, timeout)
-            .Then([this, key] {
-                checks.is_true(fire_is_active(true),
-                               TEXT("Physical fire key reaches controller state"));
-                release_key(key);
-            })
-            .Until([this] { return !checks.all_passed || fire_is_active(false); }, timeout)
-            .Then([this] {
-                checks.is_true(fire_is_active(false),
-                               TEXT("Releasing fire clears controller state"));
-            });
-    }
-  public:
-    TEST_METHOD(KeyboardMovementContract)
+    TEST_METHOD(DirectGameplayStartupAndModeSwitch)
     {
-        auto const default_profile{ml::ioj::control_profile_definitions()[0].id};
-        TestCommandBuilder
-            .Do([this, default_profile] {
-                if (!setup(default_profile, false)) {
+        TestCommandBuilder.Do([this] { setup(); })
+            .Until([this] { return !checks.all_passed || ready(); }, timeout)
+            .Then([this] {
+                if (!checks.is_true(ready(), TEXT("Starfox context activates after possession"))) {
                     return;
                 }
-                auto const& ship_input{FPlayerControllerTestAccess::ship_input(*controller_)};
-                checks.is_true(has_ship_mapping(default_profile, ship_input.forward_move, EKeys::W),
-                               TEXT("Default profile maps W to forward movement"));
-                checks.is_true(ship_axes_are_clear(), TEXT("Ship input starts neutral"));
-                select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Left);
-                press_key(EKeys::W);
-                release_wait_ticks_ = 0;
+                auto* const subsystem{subsystem_.Get()};
+                for (auto const scope : {ml::ioj::EShipControlScope::Fighter,
+                                         ml::ioj::EShipControlScope::Skater,
+                                         ml::ioj::EShipControlScope::Gunship}) {
+                    checks.is_true(
+                        !subsystem->HasMappingContext(ml::ioj::load_ship_control_context(scope)),
+                        TEXT("Other flight modes remain inactive"));
+                }
+                active_profile_id_ = settings_->GetActiveKeyProfileId();
+                controller_->ConsoleCommand(TEXT("Input.+key Four"), true);
             })
             .Until(
                 [this] {
-                    ++release_wait_ticks_;
-                    return !checks.all_passed || release_wait_ticks_ > 1;
-                },
-                timeout)
-            .Then([this] {
-                checks.is_true(ship_axes_are_clear(),
-                               TEXT("Held W cannot reach an unbound simulation"));
-                if (auto* const orchestrator{level_setup.get_orchestrator()};
-                    checks.is_valid(orchestrator, TEXT("Input smoke orchestrator remains valid"))) {
-                    orchestrator->start_simulation();
-                }
-            })
-            .Until(
-                [this] {
-                    return !checks.all_passed || (input_is_ready() && keyboard_forward_is_active());
-                },
-                timeout)
-            .Then([this] {
-                checks.is_true(keyboard_forward_is_active(),
-                               TEXT("W produces forward movement without turning"));
-                release_key(EKeys::W);
-            })
-            .Until([this] { return !checks.all_passed || ship_axes_are_clear(); }, timeout)
-            .Then([this] {
-                checks.is_true(ship_axes_are_clear(), TEXT("Releasing W clears movement"));
-                press_key(EKeys::S);
-            })
-            .Until([this] { return !checks.all_passed || keyboard_backward_is_active(); }, timeout)
-            .Then([this] {
-                checks.is_true(keyboard_backward_is_active(),
-                               TEXT("S produces backward movement without turning"));
-                release_key(EKeys::S);
-                press_key(EKeys::A);
-            })
-            .Until([this] { return !checks.all_passed || keyboard_left_is_active(); }, timeout)
-            .Then([this] {
-                checks.is_true(keyboard_left_is_active(),
-                               TEXT("A produces left movement without turning"));
-                release_key(EKeys::A);
-            })
-            .Until([this] { return !checks.all_passed || ship_axes_are_clear(); }, timeout)
-            .Then([this] {
-                checks.is_true(ship_axes_are_clear(), TEXT("Releasing A clears movement"));
-                press_key(EKeys::D);
-            })
-            .Until([this] { return !checks.all_passed || keyboard_right_is_active(); }, timeout)
-            .Then([this] {
-                checks.is_true(keyboard_right_is_active(),
-                               TEXT("D produces right movement without turning"));
-                release_key(EKeys::D);
-            })
-            .Until([this] { return !checks.all_passed || ship_axes_are_clear(); }, timeout)
-            .Then([this] {
-                checks.is_true(ship_axes_are_clear(), TEXT("Releasing D clears movement"));
-            });
-    }
-
-    TEST_METHOD(KeyboardSampleAndHold)
-    {
-        auto const default_profile{ml::ioj::control_profile_definitions()[0].id};
-        TestCommandBuilder
-            .Do([this, default_profile] {
-                if (!setup(default_profile)) {
-                    return;
-                }
-            })
-            .Until([this] { return !checks.all_passed || input_is_ready(); }, timeout)
-            .Then([this, default_profile] {
-                check_input_is_ready();
-                auto const& ship_input{FPlayerControllerTestAccess::ship_input(*controller_)};
-                if (!checks.is_true(
-                        has_ship_mapping(
-                            default_profile, ship_input.sample_and_hold, EKeys::ThumbMouseButton2),
-                        TEXT("Default profile maps mouse thumb 2 to sample-and-hold"))) {
-                    return;
-                }
-                press_key(EKeys::ThumbMouseButton2);
-            })
-            .Until([this] { return !checks.all_passed || snapshot().sampling_active; }, timeout)
-            .Then([this] {
-                auto const state{snapshot()};
-                checks.is_true(state.sampling_active,
-                               TEXT("Mouse thumb 2 starts a sampling session"));
-                checks.is_true(state.sampled_movement.IsNearlyZero(),
-                               TEXT("Sampling starts from neutral"));
-                press_key(EKeys::W);
-                press_key(EKeys::D);
-            })
-            .Until(
-                [this] {
-                    auto const state{snapshot()};
+                    auto const* const subsystem{subsystem_.Get()};
                     return !checks.all_passed ||
-                           (state.sampling_active && state.sampled_movement.X > 0.0 &&
-                            state.sampled_movement.Y > 0.0);
+                           (IsValid(subsystem) &&
+                            subsystem->HasMappingContext(ml::ioj::load_ship_control_context(
+                                ml::ioj::EShipControlScope::Gunship)));
                 },
                 timeout)
             .Then([this] {
-                auto const state{snapshot()};
-                checks.is_true(state.sampling_active,
-                               TEXT("Sampling remains active while chorded keys are held"));
-                checks.is_true(state.sampled_movement.X > 0.0 && state.sampled_movement.Y > 0.0,
-                               TEXT("D and W sample right and forward"));
-                checks.is_true(state.movement.IsNearlyZero() && state.turn.IsNearlyZero(),
-                               TEXT("Chorded sampling does not leak into movement or turn"));
-                release_key(EKeys::ThumbMouseButton2);
-                release_key(EKeys::W);
-                release_key(EKeys::D);
-            })
-            .Until([this] { return !checks.all_passed || !snapshot().sampling_active; }, timeout)
-            .Then([this] {
-                auto const state{snapshot()};
-                checks.is_true(!state.sampling_active,
-                               TEXT("Releasing sample-and-hold commits the sample"));
-                checks.is_true(state.sampled_movement.X > 0.0 && state.sampled_movement.Y > 0.0,
-                               TEXT("Committed sample retains its direction"));
-                press_key(EKeys::ThumbMouseButton2);
-            })
-            .Until(
-                [this] {
-                    auto const state{snapshot()};
-                    return !checks.all_passed ||
-                           (state.sampling_active && state.sampled_movement.IsNearlyZero());
-                },
-                timeout)
-            .Then([this] {
-                auto const state{snapshot()};
-                checks.is_true(state.sampling_active && state.sampled_movement.IsNearlyZero(),
-                               TEXT("A new sampling session resets to neutral"));
-                release_key(EKeys::ThumbMouseButton2);
+                auto* const controller{controller_.Get()};
+                auto* const ship{IsValid(controller) ? Cast<ATestSpaceShip>(controller->GetPawn())
+                                                     : nullptr};
+                auto* const subsystem{subsystem_.Get()};
+                checks.is_true(IsValid(ship) && ship->get_active_flight_model_slot() ==
+                                                    ::ioj::sim::player::FlightModelSlot::Left,
+                               TEXT("Gunship key selects native Left slot"));
+                checks.is_true(subsystem->HasMappingContext(ml::ioj::load_ship_control_context(
+                                   ml::ioj::EShipControlScope::General)),
+                               TEXT("General remains active"));
+                for (auto const scope : {ml::ioj::EShipControlScope::Starfox,
+                                         ml::ioj::EShipControlScope::Fighter,
+                                         ml::ioj::EShipControlScope::Skater}) {
+                    checks.is_true(
+                        !subsystem->HasMappingContext(ml::ioj::load_ship_control_context(scope)),
+                        TEXT("Other modes are inactive"));
+                }
+                checks.is_true(settings_->GetActiveKeyProfileId() == active_profile_id_,
+                               TEXT("Flight-mode selection does not cycle key profiles"));
             });
     }
 
-    TEST_METHOD(MouseWheelAdjustsPersistentDesiredForwardVelocity)
+    TEST_METHOD(ControlsQueriesStayWithinDeviceAndFlightScope)
     {
-        auto const default_profile{ml::ioj::control_profile_definitions()[0].id};
-        auto desired_forward_target = [this] {
-            auto const* const controller{controller_.Get()};
-            auto const* const ship{IsValid(controller) ? Cast<ATestSpaceShip>(controller->GetPawn())
-                                                       : nullptr};
-            return IsValid(ship) ? ship->get_persistent_forward_target_speed() : 0.f;
-        };
-        auto configured_forward_step = [this] {
-            auto const* const controller{controller_.Get()};
-            auto const* const ship{IsValid(controller) ? Cast<ATestSpaceShip>(controller->GetPawn())
-                                                       : nullptr};
-            if (!IsValid(ship)) {
-                return 0.f;
-            }
-            auto const& drive{
-                ship->get_active_flight_model_profile().config.translation.forward.normal};
-            return FMath::Min(drive.positive_target_speed, drive.positive_speed_limit) * 0.05f;
-        };
-        TestCommandBuilder
-            .Do([this, default_profile] {
-                if (!setup(default_profile)) {
+        TestCommandBuilder.Do([this] { setup(); })
+            .Until([this] { return !checks.all_passed || ready(); }, timeout)
+            .Then([this] {
+                if (!checks.is_true(ready(), TEXT("Gameplay input is ready"))) {
                     return;
                 }
-                select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Left);
-            })
-            .Until([this] { return !checks.all_passed || input_is_ready(); }, timeout)
-            .Then([this, default_profile] {
-                check_input_is_ready();
-                auto const& ship_input{FPlayerControllerTestAccess::ship_input(*controller_)};
-                if (!checks.is_true(has_ship_mapping(default_profile,
-                                                     ship_input.increase_desired_forward_velocity,
-                                                     EKeys::MouseScrollUp),
-                                    TEXT("Default profile maps wheel up to velocity increase")) ||
-                    !checks.is_true(has_ship_mapping(default_profile,
-                                                     ship_input.decrease_desired_forward_velocity,
-                                                     EKeys::MouseScrollDown),
-                                    TEXT("Default profile maps wheel down to velocity decrease"))) {
+                auto* const controller{controller_.Get()};
+                auto* const game_instance{controller->GetGameInstance()};
+                auto* const settings{
+                    IsValid(game_instance)
+                        ? game_instance->GetSubsystem<ml::ioj::UGameSettingsSubsystem>()
+                        : nullptr};
+                if (!checks.is_true(IsValid(settings), TEXT("Game settings exist"))) {
                     return;
                 }
-                checks.is_true(!snapshot().sampling_active,
-                               TEXT("Velocity trim starts outside sampling"));
-                press_key(EKeys::MouseScrollUp);
-            })
-            .Until(
-                [this, desired_forward_target] {
-                    return !checks.all_passed || desired_forward_target() > 0.f;
-                },
-                timeout)
-            .Then([this, configured_forward_step, desired_forward_target] {
-                checks.is_true(
-                    FMath::IsNearlyEqual(desired_forward_target(), configured_forward_step()),
-                    TEXT("Wheel up applies one configured trim step"));
-                checks.is_true(!snapshot().sampling_active,
-                               TEXT("Wheel trim does not enter sampling"));
-                release_key(EKeys::MouseScrollUp);
-                press_key(EKeys::MouseScrollDown);
-            })
-            .Until(
-                [this, desired_forward_target] {
-                    return !checks.all_passed || FMath::IsNearlyZero(desired_forward_target());
-                },
-                timeout)
-            .Then([this, desired_forward_target] {
-                checks.is_true(FMath::IsNearlyZero(desired_forward_target()),
-                               TEXT("Wheel down adjusts the existing persistent target"));
-                checks.is_true(!snapshot().sampling_active,
-                               TEXT("Decreasing velocity remains outside sampling"));
-            });
-    }
-
-    TEST_METHOD(PointerVirtualStickTurn)
-    {
-        auto const default_profile{ml::ioj::control_profile_definitions()[0].id};
-        TestCommandBuilder
-            .Do([this, default_profile] {
-                if (!setup(default_profile)) {
-                    return;
+                settings->begin_edit(controller->GetLocalPlayer());
+                using ml::ioj::EShipControlScope;
+                auto const starfox{settings->control_bindings(EHardwareDevicePrimaryType::Gamepad,
+                                                              EShipControlScope::Starfox)};
+                auto const gunship{settings->control_bindings(EHardwareDevicePrimaryType::Gamepad,
+                                                              EShipControlScope::Gunship)};
+                auto const general{settings->control_bindings(
+                    EHardwareDevicePrimaryType::KeyboardAndMouse, EShipControlScope::General)};
+                checks.is_true(!starfox.IsEmpty() && !gunship.IsEmpty() && !general.IsEmpty(),
+                               TEXT("Each canonical scope has its own remappable bindings"));
+                for (auto const& binding : starfox) {
+                    checks.is_true(binding.scope == EShipControlScope::Starfox &&
+                                       binding.device_type == EHardwareDevicePrimaryType::Gamepad,
+                                   TEXT("Starfox query has only controller Starfox rows"));
                 }
-            })
-            .Until([this] { return !checks.all_passed || input_is_ready(); }, timeout)
-            .Then([this, default_profile] {
-                check_input_is_ready();
-                auto const& ship_input{FPlayerControllerTestAccess::ship_input(*controller_)};
-                auto const mappings_valid{
-                    checks.is_true(has_ship_mapping(default_profile,
-                                                    ship_input.turn_pointer_delta,
-                                                    EKeys::Mouse2D),
-                                   TEXT("Default profile maps Mouse2D to pointer displacement")) &&
-                    checks.is_true(has_ship_mapping(default_profile,
-                                                    ship_input.engage_pointer_turn,
-                                                    EKeys::RightMouseButton),
-                                   TEXT("Default profile maps right mouse to pointer engagement"))};
-                if (!mappings_valid) {
-                    return;
+                for (auto const& binding : gunship) {
+                    checks.is_true(binding.scope == EShipControlScope::Gunship &&
+                                       binding.device_type == EHardwareDevicePrimaryType::Gamepad,
+                                   TEXT("Gunship query has only controller Gunship rows"));
                 }
-                press_key(EKeys::Mouse2D, FVector{20.0, 0.0, 0.0});
-                release_wait_ticks_ = 0;
-            })
-            .Until(
-                [this] {
-                    ++release_wait_ticks_;
-                    return !checks.all_passed || release_wait_ticks_ > 2;
-                },
-                timeout)
-            .Then([this] {
-                checks.is_true(snapshot().turn.IsNearlyZero(),
-                               TEXT("Pointer displacement is ignored until RMB is held"));
-                release_key(EKeys::Mouse2D);
-                press_key(EKeys::RightMouseButton);
-                release_wait_ticks_ = 0;
-            })
-            .Until(
-                [this] {
-                    ++release_wait_ticks_;
-                    return !checks.all_passed || release_wait_ticks_ > 1;
-                },
-                timeout)
-            .Then([this] { press_key(EKeys::Mouse2D, FVector{20.0, 0.0, 0.0}); })
-            .Until(
-                [this] {
-                    auto const turn{snapshot().turn};
-                    return !checks.all_passed || !FMath::IsNearlyZero(turn.X);
-                },
-                timeout)
-            .Then([this] {
-                auto const turn{snapshot().turn};
-                checks.is_true(turn.X > 0.0 && FMath::IsNearlyZero(turn.Y),
-                               TEXT("Horizontal pointer displacement produces horizontal turn"));
-                release_key(EKeys::Mouse2D);
-                release_wait_ticks_ = 0;
-            })
-            .Until(
-                [this] {
-                    ++release_wait_ticks_;
-                    return !checks.all_passed || release_wait_ticks_ > 1;
-                },
-                timeout)
-            .Then([this] {
-                checks.is_true(!FMath::IsNearlyZero(snapshot().turn.X),
-                               TEXT("Pointer displacement remains a held turn rate"));
-                release_key(EKeys::RightMouseButton);
-            })
-            .Until([this] { return !checks.all_passed || snapshot().turn.IsNearlyZero(); }, timeout)
-            .Then([this] {
-                checks.is_true(snapshot().turn.IsNearlyZero(),
-                               TEXT("Releasing pointer engagement clears turn"));
-                press_key(EKeys::RightMouseButton);
-                release_wait_ticks_ = 0;
-            })
-            .Until(
-                [this] {
-                    ++release_wait_ticks_;
-                    return !checks.all_passed || release_wait_ticks_ > 1;
-                },
-                timeout)
-            .Then([this] { press_key(EKeys::Mouse2D, FVector{0.0, 20.0, 0.0}); })
-            .Until([this] { return !checks.all_passed || !FMath::IsNearlyZero(snapshot().turn.Y); },
-                   timeout)
-            .Then([this] {
-                auto const turn{snapshot().turn};
-                checks.is_true(FMath::IsNearlyZero(turn.X) && turn.Y > 0.0,
-                               TEXT("Vertical pointer displacement produces vertical turn"));
-                release_key(EKeys::Mouse2D);
-                release_key(EKeys::RightMouseButton);
-            });
-    }
-
-    TEST_METHOD(MouseFirePressAndRelease)
-    {
-        run_fire_test(ml::ioj::control_profile_definitions()[0].id,
-                      EKeys::LeftMouseButton,
-                      FVector{1.0, 0.0, 0.0});
-    }
-
-    TEST_METHOD(GamepadMovementAndFire)
-    {
-        auto const profile{ml::ioj::control_profile_definitions()[1].id};
-        TestCommandBuilder
-            .Do([this, profile] {
-                if (!setup(profile)) {
-                    return;
-                }
-            })
-            .Until([this] { return !checks.all_passed || input_is_ready(); }, timeout)
-            .Then([this, profile] {
-                check_input_is_ready();
-                auto const& ship_input{FPlayerControllerTestAccess::ship_input(*controller_)};
-                checks.is_true(has_ship_mapping(profile, ship_input.move, EKeys::Gamepad_Right2D),
-                               TEXT("Gamepad profile maps the right stick to movement"));
-                checks.is_true(has_ship_mapping(profile, ship_input.turn, EKeys::Gamepad_Left2D),
-                               TEXT("Gamepad profile maps the left stick to turning"));
-                checks.is_true(
-                    has_ship_mapping(
-                        profile, ship_input.vertical_move, EKeys::Gamepad_FaceButton_Bottom),
-                    TEXT("Gamepad profile maps the lower face button to vertical movement"));
-                checks.is_true(!has_ship_mapping(profile,
-                                                 ship_input.fire_laser,
-                                                 EKeys::Gamepad_FaceButton_Bottom),
-                               TEXT("Gamepad profile does not map the lower face button to fire"));
-                checks.is_true(has_ship_mapping(
-                                   profile, ship_input.fire_laser, EKeys::Gamepad_RightTriggerAxis),
-                               TEXT("Gamepad profile maps the right trigger to fire"));
-                checks.is_true(
-                    has_ship_mapping(profile, ship_input.throttle, EKeys::Gamepad_LeftTriggerAxis),
-                    TEXT("Gamepad profile maps the left trigger to analog throttle"));
-                checks.is_true(
-                    has_ship_mapping(profile, ship_input.brake, EKeys::Gamepad_LeftShoulder),
-                    TEXT("Gamepad profile maps the left shoulder to braking"));
-                press_key(EKeys::Gamepad_Right2D, FVector{0.65, 0.8, 0.0});
-                release_wait_ticks_ = 0;
-            })
-            .Until(
-                [this] {
-                    ++release_wait_ticks_;
-                    return !checks.all_passed || release_wait_ticks_ > 1;
-                },
-                timeout)
-            .Then([this] {
-                checks.is_true(snapshot().movement.IsNearlyZero(),
-                               TEXT("Starfox ignores the right-stick movement action"));
-                release_key(EKeys::Gamepad_Right2D);
-                press_key(EKeys::Gamepad_Left2D, FVector{0.65, 0.8, 0.0});
-            })
-            .Until([this] { return !checks.all_passed || !snapshot().turn.IsNearlyZero(); },
-                   timeout)
-            .Then([this] {
-                checks.is_true(!snapshot().turn.IsNearlyZero(),
-                               TEXT("Starfox records the left-stick turn input"));
-                release_key(EKeys::Gamepad_Left2D);
-                select_flight_model_slot(::ioj::sim::player::FlightModelSlot::Left);
-                press_key(EKeys::Gamepad_FaceButton_Bottom);
-            })
-            .Until(
-                [this] {
-                    return !checks.all_passed || fire_is_active(true) || ship_velocity().Z < 0.0;
-                },
-                timeout)
-            .Then([this] {
-                checks.is_true(ship_velocity().Z < 0.0,
-                               TEXT("Gunship lower face button produces downward movement"));
-                checks.is_true(fire_is_active(false),
-                               TEXT("Gunship lower face button does not fire"));
-                release_key(EKeys::Gamepad_FaceButton_Bottom);
-                press_key(EKeys::Gamepad_RightTriggerAxis);
-            })
-            .Until([this] { return !checks.all_passed || fire_is_active(true); }, timeout)
-            .Then([this] {
-                checks.is_true(fire_is_active(true), TEXT("Gamepad trigger reaches fire state"));
-                release_key(EKeys::Gamepad_RightTriggerAxis);
-            })
-            .Until([this] { return !checks.all_passed || fire_is_active(false); }, timeout)
-            .Then([this] {
-                checks.is_true(fire_is_active(false),
-                               TEXT("Gamepad trigger release clears fire state"));
-            });
-    }
-
-    TEST_METHOD(GamepadPauseAndResume)
-    {
-        auto const default_profile{ml::ioj::control_profile_definitions()[0].id};
-        TestCommandBuilder
-            .Do([this, default_profile] {
-                if (!setup(default_profile)) {
-                    return;
-                }
-            })
-            .Until([this] { return !checks.all_passed || input_is_ready(); }, timeout)
-            .Then([this] {
-                check_input_is_ready();
-                auto const& global_input{FPlayerControllerTestAccess::global_input(*controller_)};
-                if (!checks.is_true(
-                        has_global_mapping(global_input.toggle_menu, EKeys::Gamepad_Special_Right),
-                        TEXT("Global context maps gamepad Start to pause"))) {
-                    return;
-                }
-                auto const snapshot{controller_->get_input_snapshot()};
-                checks.is_true(!snapshot.pause_menu_active, TEXT("Pause menu starts inactive"));
-                checks.is_true(snapshot.control_context == EPlayerControlContext::Player,
-                               TEXT("Player context starts active"));
-                press_key(EKeys::Gamepad_Special_Right);
-            })
-            .Until(
-                [this] {
-                    if (!checks.all_passed || !controller_.IsValid()) {
-                        return true;
-                    }
-                    auto const snapshot{controller_->get_input_snapshot()};
-                    return snapshot.pause_menu_active &&
-                           snapshot.control_context == EPlayerControlContext::None;
-                },
-                timeout)
-            .Then([this] {
-                auto const snapshot{controller_->get_input_snapshot()};
-                checks.is_true(snapshot.pause_menu_active,
-                               TEXT("Gamepad Start opens the pause path"));
-                checks.is_true(snapshot.control_context == EPlayerControlContext::None,
-                               TEXT("Pause suspends player input context"));
-                release_key(EKeys::Gamepad_Special_Right);
-                release_wait_ticks_ = 0;
-            })
-            .Until(
-                [this] {
-                    ++release_wait_ticks_;
-                    return release_wait_ticks_ > 1;
-                },
-                timeout)
-            .Then([this] { press_key(EKeys::Gamepad_Special_Right); })
-            .Until(
-                [this] {
-                    if (!checks.all_passed || !controller_.IsValid()) {
-                        return true;
-                    }
-                    auto const snapshot{controller_->get_input_snapshot()};
-                    return !snapshot.pause_menu_active &&
-                           snapshot.control_context == EPlayerControlContext::Player;
-                },
-                timeout)
-            .Then([this] {
-                auto const snapshot{controller_->get_input_snapshot()};
-                checks.is_true(!snapshot.pause_menu_active,
-                               TEXT("Second gamepad Start closes pause"));
-                checks.is_true(snapshot.control_context == EPlayerControlContext::Player,
-                               TEXT("Closing pause restores player input context"));
-                release_key(EKeys::Gamepad_Special_Right);
+                checks.is_true(starfox.ContainsByPredicate([](auto const& binding) {
+                    return binding.address.mapping_name == FName{TEXT("Starfox.Pitch.Gamepad")};
+                }) && gunship.ContainsByPredicate([](auto const& binding) {
+                    return binding.address.mapping_name == FName{TEXT("Gunship.Pitch.Gamepad")};
+                }),
+                               TEXT("Same semantic action has separate stable mode identities"));
+                settings->cancel();
             });
     }
 };

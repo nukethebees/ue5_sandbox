@@ -21,33 +21,19 @@ class CommandInterface {
         simulation.set_speed_sampling_enabled(enabled);
     }
 
-    void set_move_input(ml::Vector2d input) noexcept { simulation.set_move_input(input); }
+    void set_forward_input(float input) noexcept { simulation.set_forward_input(input); }
 
-    void set_forward_move_input(float input) noexcept { simulation.set_forward_move_input(input); }
+    void set_right_input(float input) noexcept { simulation.set_right_input(input); }
 
-    void set_lateral_move_input(float input) noexcept { simulation.set_lateral_move_input(input); }
+    void set_up_input(float input) noexcept { simulation.set_up_input(input); }
 
-    void set_vertical_move_input(float input) noexcept {
-        simulation.set_vertical_move_input(input);
-    }
+    void set_pitch_input(float input) noexcept { simulation.set_pitch_input(input); }
 
-    void set_ship_2d_control(ml::Vector2d input) { simulation.set_ship_2d_control(input); }
+    void set_yaw_input(float input) noexcept { simulation.set_yaw_input(input); }
 
-    void set_ship_1d_control_x(float input) { simulation.set_ship_1d_control_x(input); }
+    void set_roll_input(float input) noexcept { simulation.set_roll_input(input); }
 
-    void set_ship_1d_control_y(float input) { simulation.set_ship_1d_control_y(input); }
-
-    void start_sampling() noexcept { simulation.start_sampling(); }
-
-    void stop_sampling() { simulation.stop_sampling(); }
-
-    void adjust_desired_forward_velocity(float direction) {
-        simulation.adjust_desired_forward_velocity(direction);
-    }
-
-    void turn(ml::Vector2d direction) noexcept { simulation.turn(direction); }
-
-    void set_throttle(float input) noexcept { simulation.set_throttle(input); }
+    void set_accelerator(float input) noexcept { simulation.set_accelerator(input); }
 
     void start_boost() { simulation.start_boost(); }
 
@@ -57,9 +43,9 @@ class CommandInterface {
 
     void start_emergency_brake() { simulation.start_emergency_brake(); }
 
-    void stop_brake() { simulation.stop_brake(); }
+    void stop_emergency_brake() { simulation.stop_emergency_brake(); }
 
-    void roll(float direction) noexcept { simulation.roll(direction); }
+    void stop_brake() { simulation.stop_brake(); }
 
     void select_flight_model_slot(FlightModelSlot slot) noexcept {
         simulation.select_flight_model_slot(slot);

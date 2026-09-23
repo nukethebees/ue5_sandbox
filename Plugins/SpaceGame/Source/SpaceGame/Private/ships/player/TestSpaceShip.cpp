@@ -163,32 +163,26 @@ auto ATestSpaceShip::get_kills() const -> int32 {
 /* **************************************** */
 // Flight controls
 /* **************************************** */
-void ATestSpaceShip::set_move_input(FVector2D const input) {
-    commands().set_move_input(ml::to_native(input));
+void ATestSpaceShip::set_forward_input(float const input) {
+    commands().set_forward_input(input);
 }
-
-void ATestSpaceShip::set_lateral_move_input(float const input) {
-    commands().set_lateral_move_input(input);
+void ATestSpaceShip::set_right_input(float const input) {
+    commands().set_right_input(input);
 }
-
-void ATestSpaceShip::set_forward_move_input(float const input) {
-    commands().set_forward_move_input(input);
+void ATestSpaceShip::set_up_input(float const input) {
+    commands().set_up_input(input);
 }
-
-void ATestSpaceShip::set_vertical_move_input(float const input) {
-    commands().set_vertical_move_input(input);
+void ATestSpaceShip::set_pitch_input(float const input) {
+    commands().set_pitch_input(input);
 }
-
-void ATestSpaceShip::set_ship_2d_control(FVector2D const input) {
-    commands().set_ship_2d_control(ml::to_native(input));
+void ATestSpaceShip::set_yaw_input(float const input) {
+    commands().set_yaw_input(input);
 }
-
-void ATestSpaceShip::set_ship_1d_control_x(float const input) {
-    commands().set_ship_1d_control_x(input);
+void ATestSpaceShip::set_roll_input(float const input) {
+    commands().set_roll_input(input);
 }
-
-void ATestSpaceShip::set_ship_1d_control_y(float const input) {
-    commands().set_ship_1d_control_y(input);
+void ATestSpaceShip::set_accelerator(float const input) {
+    commands().set_accelerator(input);
 }
 
 void ATestSpaceShip::select_flight_model_slot(::ioj::sim::player::FlightModelSlot const slot) {
@@ -196,6 +190,10 @@ void ATestSpaceShip::select_flight_model_slot(::ioj::sim::player::FlightModelSlo
     if (bound_commands_) {
         commands().select_flight_model_slot(slot);
     }
+}
+auto ATestSpaceShip::get_active_flight_model_slot() const -> ::ioj::sim::player::FlightModelSlot {
+    return bound_simulation ? bound_simulation->get_active_flight_model_slot()
+                            : flight_models_.initial_slot;
 }
 
 auto ATestSpaceShip::set_flight_model_slot_profile(::ioj::sim::player::FlightModelSlot const slot,
@@ -220,31 +218,6 @@ auto ATestSpaceShip::get_active_flight_model_profile() const
     return bound_simulation->get_active_flight_model_profile();
 }
 
-void ATestSpaceShip::start_sampling() {
-    commands().start_sampling();
-}
-
-void ATestSpaceShip::stop_sampling() {
-    commands().stop_sampling();
-}
-
-void ATestSpaceShip::adjust_desired_forward_velocity(float const direction) {
-    commands().adjust_desired_forward_velocity(direction);
-}
-
-void ATestSpaceShip::turn(FVector2D const direction) {
-#if WITH_EDITOR
-    if (log_config.can_log(EActorLogVerbosity::VeryVerbose)) {
-        UE_LOG(LogSandbox, Verbose, TEXT("Turning: %s"), *direction.ToString());
-    }
-#endif
-    commands().turn(ml::to_native(direction));
-}
-
-void ATestSpaceShip::set_throttle(float const input) {
-    commands().set_throttle(input);
-}
-
 void ATestSpaceShip::start_boost() {
     commands().start_boost();
 }
@@ -259,6 +232,9 @@ void ATestSpaceShip::start_brake() {
 
 void ATestSpaceShip::start_emergency_brake() {
     commands().start_emergency_brake();
+}
+void ATestSpaceShip::stop_emergency_brake() {
+    commands().stop_emergency_brake();
 }
 
 void ATestSpaceShip::stop_brake() {
@@ -278,47 +254,12 @@ auto ATestSpaceShip::get_speed() const -> float {
     return simulation().get_speed();
 }
 
-void ATestSpaceShip::roll(float const direction) {
-    commands().roll(direction);
-}
-
 auto ATestSpaceShip::get_persistent_forward_target_speed() const -> float {
     return simulation().get_controller_state().persistent_forward_target_speed;
 }
 
-auto ATestSpaceShip::get_move_input() const -> FVector2D {
-    using ::ioj::sim::player::TranslationInputSource;
-    using ::ioj::sim::player::TranslationSemantic;
-
-    auto const& simulation_ref{simulation()};
-    auto const& input{simulation_ref.get_flight_intent().translation};
-    auto const& translation{simulation_ref.get_active_flight_model_config().translation};
-    auto const consumes_axis_input = [](auto const& channel) {
-        return channel.input_source == TranslationInputSource::Axis &&
-               (channel.semantic == TranslationSemantic::TargetVelocity ||
-                channel.semantic == TranslationSemantic::Acceleration);
-    };
-    return {
-        consumes_axis_input(translation.right.manual) ? input.y : 0.0,
-        consumes_axis_input(translation.forward.manual) ? input.x : 0.0,
-    };
-}
-
 auto ATestSpaceShip::get_sampled_target_speed_scale() const -> FVector2D {
     return ml::to_unreal(simulation().get_sampled_target_speed_scale());
-}
-
-auto ATestSpaceShip::is_sampling_target_speed() const -> bool {
-    return simulation().is_sampling_target_speed();
-}
-
-auto ATestSpaceShip::get_turn_input() const -> FVector2D {
-    auto const& input{simulation().get_flight_intent().rotation};
-    return {input.y, input.x};
-}
-
-auto ATestSpaceShip::get_throttle() const -> float {
-    return simulation().get_flight_intent().accelerator;
 }
 
 /* **************************************** */

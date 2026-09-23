@@ -35,28 +35,22 @@
       (parameter team @native_team))
     (method set_speed_sampling_enabled void :noexcept true
       (parameter enabled bool))
-    (method set_move_input void :noexcept true
-      (parameter input "ml::Vector2d"))
-    (method set_forward_move_input void :noexcept true
+    (method set_forward_input void :noexcept true
       (parameter input float))
-    (method set_lateral_move_input void :noexcept true
+    (method set_right_input void :noexcept true
       (parameter input float))
-    (method set_vertical_move_input void :noexcept true
+    (method set_up_input void :noexcept true
       (parameter input float))
-    (method set_ship_2d_control void (parameter input "ml::Vector2d"))
-    (method set_ship_1d_control_x void (parameter input float))
-    (method set_ship_1d_control_y void (parameter input float))
-    (method start_sampling void :noexcept true)
-    (method stop_sampling void)
-    (method adjust_desired_forward_velocity void (parameter direction float))
-    (method turn void :noexcept true (parameter direction "ml::Vector2d"))
-    (method set_throttle void :noexcept true (parameter input float))
+    (method set_pitch_input void :noexcept true (parameter input float))
+    (method set_yaw_input void :noexcept true (parameter input float))
+    (method set_roll_input void :noexcept true (parameter input float))
+    (method set_accelerator void :noexcept true (parameter input float))
     (method start_boost void)
     (method stop_boost void)
     (method start_brake void)
     (method start_emergency_brake void)
+    (method stop_emergency_brake void)
     (method stop_brake void)
-    (method roll void :noexcept true (parameter direction float))
     (method select_flight_model_slot void :noexcept true
       (parameter slot "FlightModelSlot"))
     (method set_flight_model_slot_profile bool :noexcept true

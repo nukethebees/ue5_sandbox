@@ -56,26 +56,23 @@ class SPACEGAME_API UGameSettingsSubsystem final
     auto is_dirty(EGameSettingCategory category) const -> bool;
     auto is_at_defaults(EGameSettingCategory category) const -> bool;
     auto flight_model_profile() const -> ::ioj::sim::player::FlightModelProfile const&;
+    auto flight_model_loadout() const -> ::ioj::sim::player::FlightModelLoadout const&;
     auto set_flight_model_profile(::ioj::sim::player::FlightModelProfile profile) -> bool;
-    auto observe_flight_model_profile(::ioj::sim::player::FlightModelProfile profile) -> bool;
     auto is_awaiting_display_confirmation() const -> bool;
     auto display_confirmation_seconds_remaining() const -> int32;
 
     /* **************************************** */
     // Control profiles and bindings
     /* **************************************** */
-    auto control_profiles() const -> TArray<FControlProfileView>;
     auto control_bindings(EHardwareDevicePrimaryType device_type) const
+        -> TArray<FControlBindingView>;
+    auto control_bindings(EHardwareDevicePrimaryType device_type, EShipControlScope scope) const
         -> TArray<FControlBindingView>;
     auto binding_conflicts(FControlBindingAddress const& address, FKey key) const
         -> TArray<FControlBindingView>;
     auto chord_binding_conflicts(FControlBindingAddress const& address,
                                  FKey activator_key,
                                  FKey action_key) const -> TArray<FControlBindingView>;
-    auto set_control_profile(FString const& profile_id) -> bool;
-    auto create_custom_control_profile() -> bool;
-    auto rename_active_custom_control_profile(FString const& display_name) -> bool;
-    auto delete_custom_control_profile(FString const& profile_id) -> bool;
     auto set_control_binding(FControlBindingAddress const& address,
                              FKey key,
                              bool replace_conflicts) -> bool;
@@ -85,7 +82,7 @@ class SPACEGAME_API UGameSettingsSubsystem final
                            bool replace_conflicts) -> bool;
     auto clear_control_binding(FControlBindingAddress const& address) -> bool;
     auto reset_control_binding(FControlBindingAddress const& address) -> bool;
-    auto reset_active_control_profile() -> bool;
+    auto reset_all_control_bindings() -> bool;
 
     FGameSettingsChanged settings_changed;
     FGameSettingChanged setting_changed;
@@ -121,9 +118,9 @@ class SPACEGAME_API UGameSettingsSubsystem final
     TWeakObjectPtr<ULocalPlayer> editing_local_player_{};
     FGameSettingsEditState edit_state_{};
     ::ioj::sim::player::FlightModelProfile flight_model_profile_{};
-    TArray<FControlProfileView> applied_control_profiles_{};
+    ::ioj::sim::player::FlightModelLoadout flight_model_loadout_{};
+    ::ioj::sim::player::FlightModelLoadout applied_flight_model_loadout_{};
     TArray<FControlBindingView> applied_control_bindings_{};
-    FString applied_control_profile_id_{};
     double display_confirmation_deadline_{};
     FTSTicker::FDelegateHandle display_confirmation_ticker_;
     bool editing_{};

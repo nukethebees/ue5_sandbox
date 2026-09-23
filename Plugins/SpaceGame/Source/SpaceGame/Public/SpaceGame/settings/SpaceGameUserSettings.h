@@ -3,6 +3,8 @@
 #include "GameFramework/GameUserSettings.h"
 #include "SpaceGame/settings/GameSettingsTypes.h"
 
+#include <ioj/sim/player/flight_model_config.h>
+
 #include "SpaceGameUserSettings.generated.h"
 
 namespace ml::ioj {
@@ -37,6 +39,8 @@ class SPACEGAME_API USpaceGameUserSettings : public UGameUserSettings {
 
     auto player_ship_flight_control_preset() const -> EPlayerShipFlightControlPreset;
     void set_player_ship_flight_control_preset(EPlayerShipFlightControlPreset value);
+    auto flight_model_loadout() const -> ::ioj::sim::player::FlightModelLoadout;
+    void set_flight_model_loadout(::ioj::sim::player::FlightModelLoadout const& loadout);
   private:
     UPROPERTY(Config)
     int32 anti_aliasing_method_{};
@@ -68,6 +72,18 @@ class SPACEGAME_API USpaceGameUserSettings : public UGameUserSettings {
 
     UPROPERTY(Config)
     int32 flight_model_settings_version_{};
+
+    UPROPERTY(Config)
+    FString starfox_flight_model_{};
+
+    UPROPERTY(Config)
+    FString fighter_flight_model_{};
+
+    UPROPERTY(Config)
+    FString skater_flight_model_{};
+
+    UPROPERTY(Config)
+    FString gunship_flight_model_{};
 };
 
 } // namespace ml::ioj

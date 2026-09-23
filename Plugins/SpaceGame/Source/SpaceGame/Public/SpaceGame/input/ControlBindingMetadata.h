@@ -8,6 +8,15 @@
 namespace ml::ioj {
 
 UENUM()
+enum class EShipControlScope : uint8 {
+    General,
+    Starfox,
+    Fighter,
+    Skater,
+    Gunship,
+};
+
+UENUM()
 enum class EControlBindingGroup : uint8 {
     Flight,
     Combat,
@@ -20,6 +29,9 @@ class SPACEGAME_API UControlBindingMetadata final : public UObject {
   public:
     UPROPERTY()
     EControlBindingGroup group{EControlBindingGroup::Flight};
+
+    UPROPERTY()
+    EShipControlScope scope{EShipControlScope::General};
 
     UPROPERTY()
     int32 display_order{};
