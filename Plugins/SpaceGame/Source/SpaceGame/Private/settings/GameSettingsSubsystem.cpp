@@ -12,22 +12,6 @@
 namespace ml::ioj {
 constexpr double display_confirmation_duration_seconds{15.0};
 
-auto to_flight_model_preset(EPlayerShipFlightControlPreset const preset)
-    -> ::ioj::sim::player::FlightModelPreset {
-    using NativePreset = ::ioj::sim::player::FlightModelPreset;
-    switch (preset) {
-        case EPlayerShipFlightControlPreset::Starfox:
-            return NativePreset::Starfox;
-        case EPlayerShipFlightControlPreset::Fighter:
-            return NativePreset::Fighter;
-        case EPlayerShipFlightControlPreset::Skater:
-            return NativePreset::Skater;
-        case EPlayerShipFlightControlPreset::Gunship:
-            return NativePreset::Gunship;
-    }
-    return NativePreset::Gunship;
-}
-
 /* **************************************** */
 // Lifecycle
 /* **************************************** */
@@ -40,7 +24,6 @@ void UGameSettingsSubsystem::Initialize(FSubsystemCollectionBase& collection) {
         flight_model_loadout_ = ::ioj::sim::player::make_default_flight_model_loadout();
     }
     applied_flight_model_loadout_ = flight_model_loadout_;
-    reset_flight_model_profile();
 }
 
 void UGameSettingsSubsystem::Deinitialize() {
@@ -62,7 +45,6 @@ void UGameSettingsSubsystem::begin_edit(ULocalPlayer* const local_player) {
     editing_local_player_ = local_player;
     edit_state_.begin(backend_.read(), backend_.defaults());
     flight_model_loadout_ = applied_flight_model_loadout_;
-    reset_flight_model_profile();
     capture_input_edit_state();
     editing_ = true;
     settings_changed.Broadcast();
@@ -77,7 +59,7 @@ void UGameSettingsSubsystem::cancel() {
     preview_immediate_settings(edit_state_.applied());
     edit_state_.cancel();
     flight_model_loadout_ = applied_flight_model_loadout_;
-    reset_flight_model_profile();
+    flight_model_config_changed.Broadcast();
     editing_ = false;
     for (auto const& descriptor : game_setting_descriptors()) {
         if (game_setting_value(before, descriptor.id) !=
@@ -97,12 +79,20 @@ void UGameSettingsSubsystem::apply() {
     auto const& applied{edit_state_.applied()};
     auto const display_changed{pending.resolution != applied.resolution ||
                                pending.window_mode != applied.window_mode};
+    auto const input_changed{input_is_dirty() ||
+                             edit_state_.is_dirty(EGameSettingCategory::Controls)};
     backend_.apply_non_display(pending);
     if (auto* const settings{Cast<USpaceGameUserSettings>(GEngine->GetGameUserSettings())}) {
         settings->set_flight_model_loadout(flight_model_loadout_);
     }
     applied_flight_model_loadout_ = flight_model_loadout_;
     capture_input_edit_state();
+    if (input_changed) {
+        if (auto* const input_settings{input_user_settings()}) {
+            input_settings->ApplySettings();
+            input_settings->AsyncSaveSettings();
+        }
+    }
     if (!display_changed) {
         backend_.save();
         edit_state_.commit_all();
@@ -134,7 +124,7 @@ void UGameSettingsSubsystem::reset_category(EGameSettingCategory const category)
     edit_state_.reset_category(category);
     if (category == EGameSettingCategory::Controls) {
         flight_model_loadout_ = ::ioj::sim::player::make_default_flight_model_loadout();
-        reset_flight_model_profile();
+        flight_model_config_changed.Broadcast();
         reset_all_control_bindings();
     }
     for (auto const& descriptor : game_setting_descriptors()) {
@@ -214,9 +204,6 @@ void UGameSettingsSubsystem::set_setting(EGameSetting const setting,
     if (descriptor.apply_mode == ESettingApplyMode::Immediate) {
         backend_.preview_immediate(edit_state_.pending(), setting);
     }
-    if (setting == EGameSetting::PlayerShipFlightControlPreset) {
-        reset_flight_model_profile();
-    }
     setting_changed.Broadcast(setting);
     settings_changed.Broadcast();
 }
@@ -264,9 +251,11 @@ auto UGameSettingsSubsystem::is_at_defaults(EGameSettingCategory const category)
     return edit_state_.is_at_defaults(category);
 }
 
-auto UGameSettingsSubsystem::flight_model_profile() const
+auto UGameSettingsSubsystem::flight_model_profile(EShipControlScope const scope) const
     -> ::ioj::sim::player::FlightModelProfile const& {
-    return flight_model_profile_;
+    check(scope != EShipControlScope::General);
+    return ::ioj::sim::player::flight_model_profile(flight_model_loadout_,
+                                                    flight_model_slot(scope));
 }
 
 auto UGameSettingsSubsystem::flight_model_loadout() const
@@ -274,56 +263,20 @@ auto UGameSettingsSubsystem::flight_model_loadout() const
     return flight_model_loadout_;
 }
 
-auto
-    UGameSettingsSubsystem::set_flight_model_profile(::ioj::sim::player::FlightModelProfile profile)
-        -> bool {
-    auto const preset{to_flight_model_preset(player_ship_flight_control_preset())};
-    auto const baseline{::ioj::sim::player::make_flight_model_profile(preset)};
-    auto const unsupported_translation = [](auto const& edited, auto const& original) {
-        return original.manual.semantic == ::ioj::sim::player::TranslationSemantic::Disabled &&
-               edited.manual.semantic != ::ioj::sim::player::TranslationSemantic::Disabled;
-    };
-    auto const unsupported_rotation = [](auto const& edited, auto const& original) {
-        return original.manual_semantic == ::ioj::sim::player::RotationSemantic::Disabled &&
-               edited.manual_semantic != ::ioj::sim::player::RotationSemantic::Disabled;
-    };
-    if (unsupported_translation(profile.config.translation.forward,
-                                baseline.config.translation.forward) ||
-        unsupported_translation(profile.config.translation.right,
-                                baseline.config.translation.right) ||
-        unsupported_translation(profile.config.translation.up, baseline.config.translation.up) ||
-        unsupported_rotation(profile.config.rotation.pitch, baseline.config.rotation.pitch) ||
-        unsupported_rotation(profile.config.rotation.yaw, baseline.config.rotation.yaw) ||
-        unsupported_rotation(profile.config.rotation.roll, baseline.config.rotation.roll)) {
+auto UGameSettingsSubsystem::set_flight_model_profile(
+    EShipControlScope const scope, ::ioj::sim::player::FlightModelProfile profile) -> bool {
+    if (!editing_ || awaiting_display_confirmation_ || scope == EShipControlScope::General) {
         return false;
     }
-    if ((preset == ::ioj::sim::player::FlightModelPreset::Fighter ||
-         preset == ::ioj::sim::player::FlightModelPreset::Skater) &&
-        profile.config.translation.forward.manual.input_source !=
-            ::ioj::sim::player::TranslationInputSource::Accelerator) {
+    auto const slot{flight_model_slot(scope)};
+    auto const preset{
+        ::ioj::sim::player::flight_model_profile(flight_model_loadout_, slot).base_preset};
+    if (profile.base_preset != preset ||
+        !::ioj::sim::player::matches_authored_flight_model_topology(profile.config, preset) ||
+        !::ioj::sim::player::validate_flight_model_config(profile.config)) {
         return false;
     }
-    if (preset == ::ioj::sim::player::FlightModelPreset::Gunship &&
-        (profile.config.translation.forward.manual.input_source !=
-             ::ioj::sim::player::TranslationInputSource::Axis ||
-         profile.config.translation.right.manual.input_source !=
-             ::ioj::sim::player::TranslationInputSource::Axis ||
-         profile.config.translation.up.manual.input_source !=
-             ::ioj::sim::player::TranslationInputSource::Axis)) {
-        return false;
-    }
-    if (!::ioj::sim::player::validate_flight_model_config(profile.config)) {
-        return false;
-    }
-    profile.base_preset = preset;
     profile.customized = true;
-    flight_model_profile_ = profile;
-    using ::ioj::sim::player::FlightModelSlot;
-    auto const slot{
-        preset == ::ioj::sim::player::FlightModelPreset::Starfox   ? FlightModelSlot::Up
-        : preset == ::ioj::sim::player::FlightModelPreset::Fighter ? FlightModelSlot::Right
-        : preset == ::ioj::sim::player::FlightModelPreset::Skater  ? FlightModelSlot::Down
-                                                                   : FlightModelSlot::Left};
     ::ioj::sim::player::flight_model_profile(flight_model_loadout_, slot) = profile;
     flight_model_config_changed.Broadcast();
     settings_changed.Broadcast();
@@ -410,20 +363,8 @@ auto UGameSettingsSubsystem::input_user_settings() const -> USpaceGameInputUserS
                                 : nullptr;
 }
 
-void UGameSettingsSubsystem::reset_flight_model_profile() {
-    using ::ioj::sim::player::FlightModelSlot;
-    auto const preset{to_flight_model_preset(player_ship_flight_control_preset())};
-    auto const slot{
-        preset == ::ioj::sim::player::FlightModelPreset::Starfox   ? FlightModelSlot::Up
-        : preset == ::ioj::sim::player::FlightModelPreset::Fighter ? FlightModelSlot::Right
-        : preset == ::ioj::sim::player::FlightModelPreset::Skater  ? FlightModelSlot::Down
-                                                                   : FlightModelSlot::Left};
-    flight_model_profile_ = ::ioj::sim::player::flight_model_profile(flight_model_loadout_, slot);
-    flight_model_config_changed.Broadcast();
-}
-
 /* **************************************** */
-// Control profiles and bindings
+// Control bindings
 /* **************************************** */
 
 auto UGameSettingsSubsystem::all_control_bindings() const -> TArray<FControlBindingView> {
@@ -620,6 +561,27 @@ auto UGameSettingsSubsystem::map_control_binding(USpaceGameInputUserSettings& se
     return true;
 }
 
+auto UGameSettingsSubsystem::unmap_control_binding(USpaceGameInputUserSettings& settings,
+                                                   FControlBindingAddress const& address) const
+    -> bool {
+    FMapPlayerKeyArgs arguments{};
+    arguments.MappingName = address.mapping_name;
+    arguments.Slot = address.slot;
+    arguments.HardwareDeviceId = address.hardware_device_id;
+    arguments.ProfileIdString = address.profile_id;
+    FGameplayTagContainer failure_reason;
+    settings.UnMapPlayerKey(arguments, failure_reason);
+    if (!failure_reason.IsEmpty()) {
+        UE_LOG(LogTemp,
+               Warning,
+               TEXT("Could not reset control '%s': %s"),
+               *address.mapping_name.ToString(),
+               *failure_reason.ToStringSimple());
+        return false;
+    }
+    return true;
+}
+
 auto UGameSettingsSubsystem::set_control_binding(FControlBindingAddress const& address,
                                                  FKey const key,
                                                  bool const replace_conflicts) -> bool {
@@ -770,19 +732,7 @@ auto UGameSettingsSubsystem::reset_control_binding(FControlBindingAddress const&
     if (!editing_ || settings == nullptr) {
         return false;
     }
-    FMapPlayerKeyArgs arguments{};
-    arguments.MappingName = address.mapping_name;
-    arguments.Slot = address.slot;
-    arguments.HardwareDeviceId = address.hardware_device_id;
-    arguments.ProfileIdString = address.profile_id;
-    FGameplayTagContainer failure_reason;
-    settings->UnMapPlayerKey(arguments, failure_reason);
-    if (!failure_reason.IsEmpty()) {
-        UE_LOG(LogTemp,
-               Warning,
-               TEXT("Could not reset control '%s': %s"),
-               *address.mapping_name.ToString(),
-               *failure_reason.ToStringSimple());
+    if (!unmap_control_binding(*settings, address)) {
         return false;
     }
     settings_changed.Broadcast();
@@ -794,14 +744,11 @@ auto UGameSettingsSubsystem::reset_all_control_bindings() -> bool {
     if (!editing_ || settings == nullptr) {
         return false;
     }
-    FGameplayTagContainer failure_reason;
-    settings->ResetKeyProfileIdToDefault(settings->GetActiveKeyProfileId(), failure_reason);
-    if (!failure_reason.IsEmpty()) {
-        UE_LOG(LogTemp,
-               Warning,
-               TEXT("Could not reset active control profile: %s"),
-               *failure_reason.ToStringSimple());
-        return false;
+    auto const bindings{control_bindings(EHardwareDevicePrimaryType::Unspecified)};
+    for (auto const& binding : bindings) {
+        if (!unmap_control_binding(*settings, binding.address)) {
+            return false;
+        }
     }
     settings_changed.Broadcast();
     return true;
@@ -820,10 +767,10 @@ void UGameSettingsSubsystem::restore_input_edit_state() {
         return;
     }
 
-    FGameplayTagContainer failure_reason;
-    settings->ResetKeyProfileIdToDefault(settings->GetActiveKeyProfileId(), failure_reason);
     for (auto const& binding : applied_control_bindings_) {
-        if (binding.current_key != binding.default_key) {
+        if (binding.current_key == binding.default_key) {
+            static_cast<void>(unmap_control_binding(*settings, binding.address));
+        } else {
             static_cast<void>(
                 map_control_binding(*settings, binding.address, binding.current_key, true));
         }

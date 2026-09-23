@@ -1,5 +1,4 @@
 #include <SpaceGame/settings/ControlSettingsTypes.h>
-#include <SpaceGame/settings/FlightModelEditor.h>
 #include <SpaceGame/settings/FlightModelSettingsCodec.h>
 #include <SpaceGame/settings/GameSettingsBackend.h>
 #include <SpaceGame/settings/GameSettingsEditState.h>
@@ -17,14 +16,12 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
         applied.vsync = false;
         applied.master_volume = 0.25f;
         applied.bees = 2;
-        applied.player_ship_flight_control_preset =
-            ml::ioj::EPlayerShipFlightControlPreset::Gunship;
+        applied.mouse_turn_sensitivity = 0.25f;
         auto defaults{applied};
         defaults.vsync = true;
         defaults.master_volume = 1.0f;
         defaults.bees = 0;
-        defaults.player_ship_flight_control_preset =
-            ml::ioj::EPlayerShipFlightControlPreset::Starfox;
+        defaults.mouse_turn_sensitivity = 1.f;
 
         ml::ioj::FGameSettingsEditState state;
         state.begin(applied, defaults);
@@ -55,15 +52,13 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
         state.cancel();
         TestRunner->TestEqual(TEXT("Cancel restores the applied value"), state.pending().bees, 2);
 
-        state.set_setting(
-            ml::ioj::EGameSetting::PlayerShipFlightControlPreset,
-            ml::ioj::FGameSettingValue{ml::ioj::EPlayerShipFlightControlPreset::Skater});
-        TestRunner->TestTrue(TEXT("Flight controls are tracked as a Controls setting"),
+        state.set_setting(ml::ioj::EGameSetting::MouseTurnSensitivity,
+                          ml::ioj::FGameSettingValue{0.5f});
+        TestRunner->TestTrue(TEXT("Input response is tracked as a Controls setting"),
                              state.is_dirty(ml::ioj::EGameSettingCategory::Controls));
         state.reset_category(ml::ioj::EGameSettingCategory::Controls);
-        TestRunner->TestEqual(TEXT("Reset restores the default flight control preset"),
-                              state.pending().player_ship_flight_control_preset,
-                              ml::ioj::EPlayerShipFlightControlPreset::Starfox);
+        TestRunner->TestTrue(TEXT("Reset restores default input response"),
+                             FMath::IsNearlyEqual(state.pending().mouse_turn_sensitivity, 1.f));
     }
 
     TEST_METHOD(AvailabilityUsesPendingState)
@@ -79,6 +74,29 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
         TestRunner->TestTrue(
             TEXT("AA quality is enabled from the pending anti-aliasing method"),
             backend.is_available(ml::ioj::EGameSettingAvailabilityProvider::AAQuality, state));
+    }
+
+    TEST_METHOD(DisplayRevertKeepsAlreadyAppliedControls)
+    {
+        ml::ioj::FGameSettingsState initial{};
+        initial.resolution = FIntPoint{1920, 1080};
+        initial.mouse_turn_sensitivity = 1.f;
+
+        ml::ioj::FGameSettingsEditState state;
+        state.begin(initial, initial);
+        state.set_setting(ml::ioj::EGameSetting::Resolution,
+                          ml::ioj::FGameSettingValue{FIntPoint{1280, 720}});
+        state.set_setting(ml::ioj::EGameSetting::MouseTurnSensitivity,
+                          ml::ioj::FGameSettingValue{1.5f});
+        state.commit_setting(ml::ioj::EGameSetting::MouseTurnSensitivity);
+        state.cancel();
+
+        TestRunner->TestTrue(TEXT("Reverting display restores its previous resolution"),
+                             state.pending().resolution == initial.resolution);
+        TestRunner->TestTrue(TEXT("Reverting display retains applied input response"),
+                             FMath::IsNearlyEqual(state.pending().mouse_turn_sensitivity, 1.5f));
+        TestRunner->TestFalse(TEXT("Applied controls and reverted display leave clean state"),
+                              state.is_dirty());
     }
 
     TEST_METHOD(GraphicsPresetUpdatesOnlyItsQualityGroups)
@@ -128,9 +146,6 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
         auto const device_for = [](ml::ioj::EGameSetting const setting) {
             return ml::ioj::game_setting_descriptor(setting).device;
         };
-        TestRunner->TestTrue(TEXT("Flight controls are shared"),
-                             device_for(ml::ioj::EGameSetting::PlayerShipFlightControlPreset) ==
-                                 ml::ioj::EGameSettingDevice::Shared);
         TestRunner->TestTrue(TEXT("Mouse sensitivity belongs to keyboard and mouse"),
                              device_for(ml::ioj::EGameSetting::MouseTurnSensitivity) ==
                                  ml::ioj::EGameSettingDevice::KeyboardMouse);

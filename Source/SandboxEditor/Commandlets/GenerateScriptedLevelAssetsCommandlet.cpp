@@ -807,6 +807,14 @@ auto create_ship_mapping_context(ml::ioj::EShipControlScope const scope) -> UInp
     return context;
 }
 
+template <typename TObject>
+auto mapping_subobject(UObject& outer, FString const& name) -> TObject* {
+    if (auto* const existing{FindObject<TObject>(&outer, *name)}) {
+        return existing;
+    }
+    return NewObject<TObject>(&outer, FName{name});
+}
+
 void add_ship_mapping(UInputMappingContext& context,
                       ml::ioj::EShipControlScope const scope,
                       UInputAction& action,
@@ -815,28 +823,34 @@ void add_ship_mapping(UInputMappingContext& context,
                       TCHAR const* const role,
                       bool const negative,
                       int32 const display_order) {
+    auto mapping_name{FString::Printf(TEXT("%s.%s"), scope_name(scope), semantic)};
+    if (role != nullptr && role[0] != TCHAR{}) {
+        mapping_name += FString::Printf(TEXT(".%s"), role);
+    }
+    mapping_name += key.IsGamepadKey() ? TEXT(".Gamepad") : TEXT(".KeyboardMouse");
+    auto object_suffix{mapping_name.Replace(TEXT("."), TEXT("_"))};
+
     auto& mapping{context.MapKey(&action, key)};
     if (negative) {
-        mapping.Modifiers.Add(NewObject<UInputModifierNegate>(&context));
+        mapping.Modifiers.Add(mapping_subobject<UInputModifierNegate>(
+            context, FString::Printf(TEXT("Negate_%s"), *object_suffix)));
     }
-    if (action.ValueType == EInputActionValueType::Axis1D && semantic != nullptr &&
-        key != EKeys::Gamepad_LeftTriggerAxis) {
-        auto* response{NewObject<ml::ioj::USpaceGameInputModifier>(&context)};
+    if (action.ValueType == EInputActionValueType::Axis1D &&
+        (key == EKeys::MouseX || key == EKeys::MouseY ||
+         (key.IsGamepadKey() && key != EKeys::Gamepad_LeftTriggerAxis))) {
+        auto* response{mapping_subobject<ml::ioj::USpaceGameInputModifier>(
+            context, FString::Printf(TEXT("Response_%s"), *object_suffix))};
         if (key == EKeys::MouseX || key == EKeys::MouseY) {
             response->response = ml::ioj::ESpaceGameInputResponse::TurnPointerDelta;
-        } else if (key.IsGamepadKey()) {
+        } else {
             response->response = FCString::Strcmp(semantic, TEXT("Pitch")) == 0 ||
                                          FCString::Strcmp(semantic, TEXT("Yaw")) == 0 ||
                                          FCString::Strcmp(semantic, TEXT("Roll")) == 0
                                    ? ml::ioj::ESpaceGameInputResponse::GamepadTurn
                                    : ml::ioj::ESpaceGameInputResponse::GamepadMove;
-        } else {
-            response = nullptr;
         }
-        if (response != nullptr) {
-            response->pitch_axis = FCString::Strcmp(semantic, TEXT("Pitch")) == 0;
-            mapping.Modifiers.Add(response);
-        }
+        response->pitch_axis = FCString::Strcmp(semantic, TEXT("Pitch")) == 0;
+        mapping.Modifiers.Add(response);
     }
 
     auto* const behavior_property{FindFProperty<FEnumProperty>(
@@ -848,22 +862,21 @@ void add_ship_mapping(UInputMappingContext& context,
         behavior_property->ContainerPtrToValuePtr<void>(&mapping),
         static_cast<int64>(EPlayerMappableKeySettingBehaviors::OverrideSettings));
 
-    auto* const settings{NewObject<UPlayerMappableKeySettings>(&context)};
-    auto mapping_name{FString::Printf(TEXT("%s.%s"), scope_name(scope), semantic)};
-    if (role != nullptr && role[0] != TCHAR{}) {
-        mapping_name += FString::Printf(TEXT(".%s"), role);
-    }
-    mapping_name += key.IsGamepadKey() ? TEXT(".Gamepad") : TEXT(".KeyboardMouse");
+    auto* const settings{mapping_subobject<UPlayerMappableKeySettings>(
+        context, FString::Printf(TEXT("Settings_%s"), *object_suffix))};
     settings->Name = FName{mapping_name};
-    settings->DisplayName = FText::FromString(role != nullptr && role[0] != TCHAR{}
-                                                  ? FString::Printf(TEXT("%s %s"), semantic, role)
-                                                  : FString{semantic});
+    auto const display_name{role != nullptr && role[0] != TCHAR{}
+                                ? FString::Printf(TEXT("%s %s"), semantic, role)
+                                : FString{semantic}};
+    settings->DisplayName = FText::ChangeKey(
+        FTextKey{TEXT("ShipControls")}, FTextKey{mapping_name}, FText::FromString(display_name));
     auto const group{
         FCString::Strcmp(semantic, TEXT("FirePrimary")) == 0 ? ml::ioj::EControlBindingGroup::Combat
         : scope == ml::ioj::EShipControlScope::General ? ml::ioj::EControlBindingGroup::Utility
                                                        : ml::ioj::EControlBindingGroup::Flight};
     settings->DisplayCategory = ml::ioj::control_binding_group_label(group);
-    auto* const metadata{NewObject<ml::ioj::UControlBindingMetadata>(settings)};
+    auto* const metadata{mapping_subobject<ml::ioj::UControlBindingMetadata>(
+        *settings, FString::Printf(TEXT("Metadata_%s"), *object_suffix))};
     metadata->scope = scope;
     metadata->group = group;
     metadata->display_order = display_order;

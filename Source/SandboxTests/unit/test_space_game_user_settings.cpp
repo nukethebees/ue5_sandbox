@@ -5,7 +5,6 @@
 #include <HAL/FileManager.h>
 #include <HAL/IConsoleManager.h>
 #include <Misc/ConfigCacheIni.h>
-#include <Misc/FileHelper.h>
 #include <Misc/Paths.h>
 #include <Misc/ScopeExit.h>
 
@@ -18,15 +17,12 @@ TEST_CLASS(SpaceGameUserSettings, "Sandbox.UnitTests")
         TestRunner->TestTrue(TEXT("Bloom defaults to enabled"), source->bloom_enabled());
         TestRunner->TestFalse(TEXT("Motion blur defaults to disabled"),
                               source->motion_blur_enabled());
-        TestRunner->TestEqual(TEXT("Gunship is the default flight control preset"),
-                              source->player_ship_flight_control_preset(),
-                              ml::ioj::EPlayerShipFlightControlPreset::Gunship);
-
         source->set_bloom_enabled(false);
         source->set_motion_blur_enabled(true);
         source->set_master_volume(0.35f);
-        source->set_player_ship_flight_control_preset(
-            ml::ioj::EPlayerShipFlightControlPreset::Skater);
+        auto loadout{::ioj::sim::player::make_default_flight_model_loadout()};
+        loadout.left.config.translation.up.normal.positive_target_speed = 1234.f;
+        source->set_flight_model_loadout(loadout);
 
         auto const config_path{FPaths::CreateTempFilename(
             *FPaths::ProjectSavedDir(), TEXT("SpaceGameUserSettings"), TEXT(".ini"))};
@@ -46,9 +42,8 @@ TEST_CLASS(SpaceGameUserSettings, "Sandbox.UnitTests")
                              loaded->motion_blur_enabled());
         TestRunner->TestTrue(TEXT("Existing custom settings still round trip"),
                              FMath::IsNearlyEqual(loaded->master_volume(), 0.35f));
-        TestRunner->TestEqual(TEXT("Flight control preset survives a config round trip"),
-                              loaded->player_ship_flight_control_preset(),
-                              ml::ioj::EPlayerShipFlightControlPreset::Skater);
+        TestRunner->TestTrue(TEXT("Four-slot tuning survives a config round trip"),
+                             loaded->flight_model_loadout() == loadout);
     }
 
     TEST_METHOD(RenderingEffectOverridesTakePrecedenceOverScalability)
@@ -101,39 +96,15 @@ TEST_CLASS(SpaceGameUserSettings, "Sandbox.UnitTests")
                              motion_blur_quality->GetInt() > 0);
     }
 
-    TEST_METHOD(LegacyFlightControlPresetValuesMigrateExplicitly)
+    TEST_METHOD(SavedFlightTopologyCannotOverrideAuthoredMode)
     {
-        using Preset = ml::ioj::EPlayerShipFlightControlPreset;
-        TArray<TPair<int32, Preset>> const cases{
-            {0, Preset::Starfox},
-            {1, Preset::Gunship},
-            {2, Preset::Skater},
-            {99, Preset::Gunship},
-        };
-
-        for (auto const& [legacy_value, expected] : cases) {
-            auto const config_path{FPaths::CreateTempFilename(
-                *FPaths::ProjectSavedDir(), TEXT("LegacyFlightModelSettings"), TEXT(".ini"))};
-            ON_SCOPE_EXIT {
-                GConfig->UnloadFile(config_path);
-                IFileManager::Get().Delete(*config_path);
-            };
-            auto const config{FString::Printf(TEXT("[/Script/SpaceGame.SpaceGameUserSettings]\n")
-                                                  TEXT("player_ship_flight_control_preset_=%d\n")
-                                                      TEXT("flight_model_settings_version_=0\n"),
-                                              legacy_value)};
-            if (!TestRunner->TestTrue(TEXT("Legacy test config can be written"),
-                                      FFileHelper::SaveStringToFile(config, *config_path))) {
-                continue;
-            }
-
-            auto* const settings{NewObject<ml::ioj::USpaceGameUserSettings>()};
-            settings->LoadConfig(ml::ioj::USpaceGameUserSettings::StaticClass(), *config_path);
-            settings->ValidateSettings();
-
-            TestRunner->TestEqual(TEXT("Legacy preset maps to the documented flight model"),
-                                  settings->player_ship_flight_control_preset(),
-                                  expected);
-        }
+        auto* const settings{NewObject<ml::ioj::USpaceGameUserSettings>()};
+        auto loadout{::ioj::sim::player::make_default_flight_model_loadout()};
+        loadout.left.config.translation.up.manual.semantic =
+            ::ioj::sim::player::TranslationSemantic::Disabled;
+        settings->set_flight_model_loadout(loadout);
+        TestRunner->TestTrue(TEXT("A saved topology mutation is discarded"),
+                             settings->flight_model_loadout() ==
+                                 ::ioj::sim::player::make_default_flight_model_loadout());
     }
 };

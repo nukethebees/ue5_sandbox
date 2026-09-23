@@ -412,6 +412,40 @@ auto make_flight_model_profile(FlightModelPreset const preset) -> FlightModelPro
     return {preset, false, config};
 }
 
+auto matches_authored_flight_model_topology(FlightModelConfig const& config,
+                                            FlightModelPreset const preset) -> bool {
+    auto const& authored{make_flight_model_profile(preset).config};
+    auto const same_channel = [](TranslationChannelConfig const& edited,
+                                 TranslationChannelConfig const& original) {
+        return edited.semantic == original.semantic &&
+               edited.reference_frame == original.reference_frame &&
+               edited.input_source == original.input_source;
+    };
+    auto const same_translation = [&](TranslationAxisConfig const& edited,
+                                      TranslationAxisConfig const& original) {
+        return same_channel(edited.manual, original.manual) &&
+               same_channel(edited.automatic, original.automatic) &&
+               edited.passive_drag_reference_frame == original.passive_drag_reference_frame &&
+               edited.active_stabilization_reference_frame ==
+                   original.active_stabilization_reference_frame;
+    };
+    auto const same_rotation = [](RotationAxisConfig const& edited,
+                                  RotationAxisConfig const& original) {
+        return edited.manual_semantic == original.manual_semantic &&
+               edited.stabilization.enabled == original.stabilization.enabled;
+    };
+    return same_translation(config.translation.forward, authored.translation.forward) &&
+           same_translation(config.translation.right, authored.translation.right) &&
+           same_translation(config.translation.up, authored.translation.up) &&
+           same_rotation(config.rotation.pitch, authored.rotation.pitch) &&
+           same_rotation(config.rotation.yaw, authored.rotation.yaw) &&
+           same_rotation(config.rotation.roll, authored.rotation.roll) &&
+           config.boost.available == authored.boost.available &&
+           config.boost.accelerator_activates_boost == authored.boost.accelerator_activates_boost &&
+           config.brake.available == authored.brake.available &&
+           config.emergency_brake.available == authored.emergency_brake.available;
+}
+
 auto make_default_flight_model_loadout() -> FlightModelLoadout {
     return {
         .up = make_flight_model_profile(FlightModelPreset::Starfox),

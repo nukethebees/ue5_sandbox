@@ -90,31 +90,6 @@ void USpaceGameUserSettings::ValidateSettings() {
     sfx_volume_ = FMath::IsFinite(sfx_volume_) ? FMath::Clamp(sfx_volume_, 0.0f, 1.0f) : 1.0f;
     ui_volume_ = FMath::IsFinite(ui_volume_) ? FMath::Clamp(ui_volume_, 0.0f, 1.0f) : 1.0f;
     bees_ = FMath::Clamp(bees_, 0, 5);
-    if (flight_model_settings_version_ < 1) {
-        switch (player_ship_flight_control_preset_) {
-            case 0:
-                player_ship_flight_control_preset_ =
-                    static_cast<int32>(EPlayerShipFlightControlPreset::Starfox);
-                break;
-            case 1:
-                player_ship_flight_control_preset_ =
-                    static_cast<int32>(EPlayerShipFlightControlPreset::Gunship);
-                break;
-            case 2:
-                player_ship_flight_control_preset_ =
-                    static_cast<int32>(EPlayerShipFlightControlPreset::Skater);
-                break;
-            default:
-                player_ship_flight_control_preset_ =
-                    static_cast<int32>(EPlayerShipFlightControlPreset::Gunship);
-                break;
-        }
-        flight_model_settings_version_ = 1;
-    }
-    player_ship_flight_control_preset_ =
-        FMath::Clamp(player_ship_flight_control_preset_,
-                     static_cast<int32>(EPlayerShipFlightControlPreset::Starfox),
-                     static_cast<int32>(EPlayerShipFlightControlPreset::Gunship));
 }
 
 void USpaceGameUserSettings::SetToDefaults() {
@@ -128,9 +103,6 @@ void USpaceGameUserSettings::SetToDefaults() {
     sfx_volume_ = 1.0f;
     ui_volume_ = 1.0f;
     bees_ = 0;
-    player_ship_flight_control_preset_ =
-        static_cast<int32>(EPlayerShipFlightControlPreset::Gunship);
-    flight_model_settings_version_ = 1;
     starfox_flight_model_.Reset();
     fighter_flight_model_.Reset();
     skater_flight_model_.Reset();
@@ -204,19 +176,6 @@ void USpaceGameUserSettings::set_bees(int32 const value) {
     bees_ = FMath::Clamp(value, 0, 5);
 }
 
-auto USpaceGameUserSettings::player_ship_flight_control_preset() const
-    -> EPlayerShipFlightControlPreset {
-    return static_cast<EPlayerShipFlightControlPreset>(
-        FMath::Clamp(player_ship_flight_control_preset_,
-                     static_cast<int32>(EPlayerShipFlightControlPreset::Starfox),
-                     static_cast<int32>(EPlayerShipFlightControlPreset::Gunship)));
-}
-
-void USpaceGameUserSettings::set_player_ship_flight_control_preset(
-    EPlayerShipFlightControlPreset const value) {
-    player_ship_flight_control_preset_ = static_cast<int32>(value);
-}
-
 auto USpaceGameUserSettings::flight_model_loadout() const
     -> ::ioj::sim::player::FlightModelLoadout {
     auto loadout{::ioj::sim::player::make_default_flight_model_loadout()};
@@ -225,7 +184,9 @@ auto USpaceGameUserSettings::flight_model_loadout() const
                       ::ioj::sim::player::FlightModelProfile& target) {
         auto candidate{target};
         if (!data.IsEmpty() && (!flight_model_settings_codec::decode(data, candidate) ||
-                                candidate.base_preset != preset)) {
+                                candidate.base_preset != preset ||
+                                !::ioj::sim::player::matches_authored_flight_model_topology(
+                                    candidate.config, preset))) {
             UE_LOG(LogTemp, Warning, TEXT("Ignoring invalid saved flight model slot"));
             return;
         }

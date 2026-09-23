@@ -125,6 +125,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
     FPlayerModalUi modal_ui_;
 
     FPlayerControlContexts control_contexts_;
+    TWeakObjectPtr<UEnhancedInputUserSettings> registered_input_settings_;
     TWeakObjectPtr<ATestBatchOrchestrator> orchestrator_;
     EPlayerControllerMode mode_{EPlayerControllerMode::Gameplay};
     bool begin_play_finished_{false};
