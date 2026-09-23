@@ -143,6 +143,66 @@ TEST(NativeLevelAuthoringWriter, EmitsDeterministicReadableSource) {
     EXPECT_DOUBLE_EQ(delayed.spawn_time_seconds, 2.5);
 }
 
+TEST(NativeLevelAuthoringCollisionGrid, PreservesIndependentOverridesAcrossSourceRoundTrip) {
+    LevelDefinitionReader reader;
+    auto const base{make_level("grid-round-trip")};
+    for (int const mask : {0, 1, 2, 3}) {
+        auto definition{base};
+        if (mask != 0) {
+            ::ioj::sim::levels::LevelCollisionGridDefinition grid;
+            if ((mask & 1) != 0) {
+                grid.level_size = ::ioj::sim::levels::Vector3d{2000000.0, 2000000.0, 500000.0};
+            }
+            if ((mask & 2) != 0) {
+                grid.cell_size = ::ioj::sim::levels::Vector3d{5000.0, 5000.0, 20000.0};
+            }
+            definition.collision_grid = grid;
+        }
+
+        auto const source{emit_editor_level_source(definition)};
+        ASSERT_TRUE(source) << source.error();
+        EXPECT_EQ(source->contains("(level-size"), (mask & 1) != 0);
+        EXPECT_EQ(source->contains("(cell-size"), (mask & 2) != 0);
+
+        auto const loaded{reader.read_source(*source)};
+        ASSERT_TRUE(loaded) << loaded.script_error;
+        ASSERT_EQ(loaded.definition->collision_grid.has_value(), mask != 0);
+        if (mask != 0) {
+            EXPECT_EQ(loaded.definition->collision_grid->level_size.has_value(), (mask & 1) != 0);
+            EXPECT_EQ(loaded.definition->collision_grid->cell_size.has_value(), (mask & 2) != 0);
+        }
+    }
+}
+
+TEST(NativeLevelAuthoringCollisionGrid, RejectsMalformedAndInvalidExplicitDimensions) {
+    LevelDefinitionReader reader;
+    auto const invalid_source{reader.read_source(R"(
+(level
+  (id 'bad-grid)
+  (title "Bad Grid")
+  (collision-grid (cell-size 0 5000 5000))
+  (teams (team 'blue))
+  (player 'player)
+  (entities (entity 'player 'player-fighter 'blue
+              (position 0 0 0) (rotation 0 0 0))))
+)")};
+    ASSERT_FALSE(invalid_source);
+    EXPECT_FALSE(invalid_source.validation_errors.empty());
+
+    auto const duplicate{reader.read_source(R"(
+(level
+  (id 'duplicate-grid)
+  (title "Duplicate Grid")
+  (collision-grid (cell-size 5000 5000 5000) (cell-size 6000 6000 6000))
+  (teams (team 'blue))
+  (player 'player)
+  (entities (entity 'player 'player-fighter 'blue
+              (position 0 0 0) (rotation 0 0 0))))
+)")};
+    ASSERT_FALSE(duplicate);
+    EXPECT_FALSE(duplicate.decode_errors.empty());
+}
+
 TEST(NativeLevelAuthoringWriter, RoundTripsInitialMissionObjectives) {
     auto definition{make_level("mission-writer")};
     definition.teams.push_back("red");

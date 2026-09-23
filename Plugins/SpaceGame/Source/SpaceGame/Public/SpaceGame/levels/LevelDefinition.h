@@ -33,8 +33,8 @@ struct SPACEGAME_API FLevelCameraDefinition {
 };
 
 struct SPACEGAME_API FLevelCollisionGridDefinition {
-    FVector3f level_size{FVector3f::ZeroVector};
-    FVector3f cell_size{FVector3f::ZeroVector};
+    TOptional<FVector3f> level_size{NullOpt};
+    TOptional<FVector3f> cell_size{NullOpt};
 };
 
 struct SPACEGAME_API FLevelMissionDefinition {

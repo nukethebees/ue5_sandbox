@@ -371,7 +371,8 @@ void ATestBatchOrchestrator::set_level_config(USpaceGameLevelConfig& config) {
 }
 void ATestBatchOrchestrator::set_collision_grid_override(FVector3f const level_size,
                                                          FVector3f const cell_size) {
-    use_collision_grid_override = true;
+    use_collision_grid_override =
+        level_size != FVector3f::ZeroVector || cell_size != FVector3f::ZeroVector;
     level_size_override = level_size;
     grid_cell_size_override = cell_size;
     refresh_collision_grid_visualization();
@@ -555,8 +556,8 @@ auto ATestBatchOrchestrator::begin_play() -> bool {
                 TEXT("Cannot start level: collision-grid override could not be applied"));
             return false;
         }
-        runtime_config->collision_grid.grid_size = level_size_override;
-        runtime_config->collision_grid.cell_size = grid_cell_size_override;
+        runtime_config->collision_grid =
+            apply_collision_grid_overrides(level_config->collision_grid);
         level_config = runtime_config;
     }
 
@@ -764,6 +765,23 @@ auto ATestBatchOrchestrator::should_initialise_in_begin_play() const noexcept ->
 /* **************************************** */
 // Presentation and diagnostics
 /* **************************************** */
+auto
+    ATestBatchOrchestrator::apply_collision_grid_overrides(FCollisionGridConfig const& source) const
+    -> FCollisionGridConfig {
+    if (!use_collision_grid_override) {
+        return source;
+    }
+    TOptional<FVector3f> size_override;
+    TOptional<FVector3f> cell_override;
+    if (level_size_override != FVector3f::ZeroVector) {
+        size_override = level_size_override;
+    }
+    if (grid_cell_size_override != FVector3f::ZeroVector) {
+        cell_override = grid_cell_size_override;
+    }
+    return source.with_dimension_overrides(size_override, cell_override);
+}
+
 void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
     if (!IsValid(collision_grid_visualization)) {
         UE_LOG(LogSandbox,
@@ -774,11 +792,7 @@ void ATestBatchOrchestrator::refresh_collision_grid_visualization() {
 
     TOptional<FCollisionGridVisualizationSettings> settings;
     if (presentation_enabled && IsValid(level_config)) {
-        auto collision_grid{level_config->collision_grid};
-        if (use_collision_grid_override) {
-            collision_grid.grid_size = level_size_override;
-            collision_grid.cell_size = grid_cell_size_override;
-        }
+        auto const collision_grid{apply_collision_grid_overrides(level_config->collision_grid)};
         settings.Emplace(FCollisionGridVisualizationSettings{
             .dimensions = collision_grid.calculate_grid_dimensions(),
             .cell_size = collision_grid.cell_size,

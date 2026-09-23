@@ -72,8 +72,10 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     void clear_collision_grid_override();
     void set_level_definition(ml::FLevelDefinition definition) {
         if (definition.collision_grid.IsSet()) {
-            set_collision_grid_override(definition.collision_grid->level_size,
-                                        definition.collision_grid->cell_size);
+            auto const& grid{definition.collision_grid.GetValue()};
+            set_collision_grid_override(
+                grid.level_size.IsSet() ? grid.level_size.GetValue() : FVector3f::ZeroVector,
+                grid.cell_size.IsSet() ? grid.cell_size.GetValue() : FVector3f::ZeroVector);
         } else {
             clear_collision_grid_override();
         }
@@ -221,6 +223,8 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     /* **************************************** */
     auto make_presentation_resources() const -> FLevelPresentationResources;
     void refresh_collision_grid_visualization();
+    [[nodiscard]] auto apply_collision_grid_overrides(FCollisionGridConfig const& source) const
+        -> FCollisionGridConfig;
     void update_collision_bounds_visualization();
 
     /* **************************************** */
@@ -241,10 +245,14 @@ class SPACEGAME_API ATestBatchOrchestrator : public AActor {
     UPROPERTY(EditAnywhere, Category = "Sandbox|Collision")
     bool use_collision_grid_override{};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Collision", meta = (EditCondition = "use_collision_grid_override", Units = "cm"))
+    UPROPERTY(EditAnywhere,
+              Category = "Sandbox|Collision",
+              meta = (EditCondition = "use_collision_grid_override", Units = "cm"))
     FVector3f level_size_override{FVector3f::ZeroVector};
 
-    UPROPERTY(EditAnywhere, Category = "Sandbox|Collision", meta = (EditCondition = "use_collision_grid_override", Units = "cm"))
+    UPROPERTY(EditAnywhere,
+              Category = "Sandbox|Collision",
+              meta = (EditCondition = "use_collision_grid_override", Units = "cm"))
     FVector3f grid_cell_size_override{FVector3f::ZeroVector};
 
     UPROPERTY(VisibleAnywhere, Category = "Sandbox|Collision")

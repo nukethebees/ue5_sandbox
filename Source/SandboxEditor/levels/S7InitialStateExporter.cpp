@@ -36,16 +36,11 @@ struct FExportCandidate {
     FLevelEntityId id{};
 };
 
-auto find_level_config(ULevel const& level) -> USpaceGameLevelConfig const* {
-    for (auto const actor_ptr : level.Actors) {
-        auto const* const document{Cast<AS7LevelAuthoringDocument>(actor_ptr.Get())};
-        if (IsValid(document) && IsValid(document->level_config)) {
-            return document->level_config;
-        }
-    }
+auto find_orchestrator_level_config(ULevel const& level) -> USpaceGameLevelConfig const* {
     for (auto const actor_ptr : level.Actors) {
         auto const* const orchestrator{Cast<ATestBatchOrchestrator>(actor_ptr.Get())};
-        auto const* const config{IsValid(orchestrator) ? orchestrator->get_level_config() : nullptr};
+        auto const* const config{IsValid(orchestrator) ? orchestrator->get_level_config()
+                                                       : nullptr};
         if (IsValid(config)) {
             return config;
         }
@@ -356,7 +351,19 @@ auto collect_s7_initial_state(ULevel const& level, FLevelMetadata const& metadat
 
     FLevelBuilder builder;
     builder.set_metadata(metadata);
-    if (auto const* const config{find_level_config(level)}; IsValid(config)) {
+    AS7LevelAuthoringDocument const* document{};
+    for (auto const actor_ptr : level.Actors) {
+        document = Cast<AS7LevelAuthoringDocument>(actor_ptr.Get());
+        if (IsValid(document)) {
+            break;
+        }
+    }
+    if (IsValid(document)) {
+        auto const grid{document->collision_grid_overrides()};
+        if (grid.level_size.IsSet() || grid.cell_size.IsSet()) {
+            builder.set_collision_grid(grid);
+        }
+    } else if (auto const* const config{find_orchestrator_level_config(level)}; IsValid(config)) {
         builder.set_collision_grid({
             .level_size = config->collision_grid.grid_size,
             .cell_size = config->collision_grid.cell_size,

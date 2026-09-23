@@ -189,15 +189,21 @@ auto emit_editor_level_source(::ioj::sim::levels::LevelDefinition const& definit
     if (!definition.metadata.description.empty()) {
         source += "  (description \"" + escape_string(definition.metadata.description) + "\")\n";
     }
-    if (definition.collision_grid) {
+    if (definition.collision_grid &&
+        (definition.collision_grid->level_size || definition.collision_grid->cell_size)) {
         auto const& grid{*definition.collision_grid};
         source += "  (collision-grid\n";
-        source += "    (level-size " + format_number(grid.level_size.x) + " " +
-                  format_number(grid.level_size.y) + " " + format_number(grid.level_size.z) +
-                  ")\n";
-        source += "    (cell-size " + format_number(grid.cell_size.x) + " " +
-                  format_number(grid.cell_size.y) + " " + format_number(grid.cell_size.z) +
-                  "))\n";
+        if (grid.level_size) {
+            source += "    (level-size " + format_number(grid.level_size->x) + " " +
+                      format_number(grid.level_size->y) + " " + format_number(grid.level_size->z) +
+                      ")";
+            source += grid.cell_size ? "\n" : ")\n";
+        }
+        if (grid.cell_size) {
+            source += "    (cell-size " + format_number(grid.cell_size->x) + " " +
+                      format_number(grid.cell_size->y) + " " + format_number(grid.cell_size->z) +
+                      "))\n";
+        }
     }
 
     auto teams{definition.teams};

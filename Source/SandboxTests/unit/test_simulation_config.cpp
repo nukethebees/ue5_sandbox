@@ -138,6 +138,31 @@ TEST_CLASS(SpaceGameLevelConfig, "Sandbox.UnitTests")
             errors.Contains(TEXT("collision_grid.grid_size components must be positive")));
     }
 
+    TEST_METHOD(CollisionGridDimensionOverridesKeepUnspecifiedAssetValues)
+    {
+        FCollisionGridConfig source;
+        source.grid_size = FVector3f{2000000.f, 2000000.f, 500000.f};
+        source.cell_size = FVector3f{5000.f, 5000.f, 20000.f};
+
+        auto const inherited{source.with_dimension_overrides(NullOpt, NullOpt)};
+        TestRunner->TestTrue(TEXT("No overrides preserve asset dimensions"),
+                             inherited.grid_size == source.grid_size &&
+                                 inherited.cell_size == source.cell_size);
+
+        auto const authored_cells{
+            source.with_dimension_overrides(NullOpt, FVector3f{6000.f, 6000.f, 20000.f})};
+        TestRunner->TestTrue(TEXT("Cell override keeps asset size"),
+                             authored_cells.grid_size == source.grid_size);
+        TestRunner->TestTrue(TEXT("Cell override applies independently"),
+                             authored_cells.cell_size == FVector3f{6000.f, 6000.f, 20000.f});
+
+        source.grid_size.X += 10000.f;
+        auto const updated{
+            source.with_dimension_overrides(NullOpt, FVector3f{6000.f, 6000.f, 20000.f})};
+        TestRunner->TestTrue(TEXT("Inherited size follows changed asset"),
+                             updated.grid_size == source.grid_size);
+    }
+
     TEST_METHOD(DuplicatePreservesNestedValuesAndAssetReferences)
     {
         auto const* const source{ml::load_default_level_config()};

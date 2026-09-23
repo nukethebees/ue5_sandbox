@@ -43,8 +43,8 @@ struct LevelCameraDefinition {
 };
 
 struct LevelCollisionGridDefinition {
-    Vector3d level_size{};
-    Vector3d cell_size{};
+    std::optional<Vector3d> level_size{};
+    std::optional<Vector3d> cell_size{};
 };
 
 struct LevelMissionDefinition {

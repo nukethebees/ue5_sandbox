@@ -50,8 +50,8 @@ auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& docume
     if (!IsValid(world) || document.GetLevel() != &level) {
         return std::unexpected{TEXT("The current editor level is unavailable.")};
     }
-    if (!IsValid(config) || !config->is_valid(true)) {
-        return std::unexpected{TEXT("Assign a valid level configuration to the S7 document.")};
+    if (!IsValid(config)) {
+        return std::unexpected{TEXT("Assign a level configuration to the S7 document.")};
     }
     auto const definition{collect_s7_editor_level(level, document)};
     if (!definition) {
@@ -83,8 +83,7 @@ auto validate_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& docume
     if (!effective_config.IsValid()) {
         return std::unexpected{TEXT("Could not prepare the authored collision-grid settings.")};
     }
-    effective_config->collision_grid.grid_size = document.level_size;
-    effective_config->collision_grid.cell_size = document.grid_cell_size;
+    effective_config->collision_grid = document.resolve_collision_grid(config->collision_grid);
     if (!effective_config->is_valid(true)) {
         return std::unexpected{TEXT("The authored collision-grid settings are invalid.")};
     }
@@ -214,7 +213,10 @@ auto set_up_playable_s7_level(ULevel& level, AS7LevelAuthoringDocument& document
         binding.actor->Modify();
     }
     new_orchestrator->set_level_config(*document.level_config);
-    new_orchestrator->set_collision_grid_override(document.level_size, document.grid_cell_size);
+    auto const grid{document.collision_grid_overrides()};
+    new_orchestrator->set_collision_grid_override(
+        grid.level_size.IsSet() ? grid.level_size.GetValue() : FVector3f::ZeroVector,
+        grid.cell_size.IsSet() ? grid.cell_size.GetValue() : FVector3f::ZeroVector);
 
     auto& mission{new_orchestrator->get_mission_definition()};
     mission = {};
