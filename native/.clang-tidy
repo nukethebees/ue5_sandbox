@@ -9,5 +9,6 @@ Checks:
   - bugprone-argument-comment
   - bugprone-use-after-move
   - performance-unnecessary-copy-initialization
+  - bugprone-dangling-handle
 ExtraArgsBefore:
   - /EHsc
