@@ -177,19 +177,19 @@ struct Sim {
     /* **************************************** */
     // Movement
     /* **************************************** */
-    void move(float dt, TaskView const& task_span, ml::FrameScratch& scratch);
+    void move(float dt, TaskView const& fighters, ml::FrameScratch& scratch);
     void update_navigation_steering(ml::FrameScratch& scratch);
     void collect_navigation_updates(NavigationScratch& scratch);
     void update_separation_observations(NavigationScratch& scratch);
     void apply_separation_steering();
     void scan_preferred_navigation(NavigationScratch& scratch,
                                    float clearance,
-                                   float lookahead_time,
-                                   float minimum_distance);
+                                   float avoidance_lookahead_time,
+                                   float minimum_lookahead_distance);
     void scan_alternative_navigation(NavigationScratch& scratch,
                                      float clearance,
-                                     float lookahead_time,
-                                     float minimum_distance);
+                                     float avoidance_lookahead_time,
+                                     float minimum_lookahead_distance);
     void execute_navigation_sweeps(NavigationScratch& scratch, float clearance);
     void select_navigation_alternatives(NavigationScratch& scratch, float safe_progress_time);
     void apply_navigation_choices(NavigationScratch const& scratch);
@@ -203,7 +203,7 @@ struct Sim {
     /* **************************************** */
     // Spawning
     /* **************************************** */
-    auto queue_spawns(FighterSpawnQueueConstView queue) -> std::int32_t;
+    auto queue_spawns(FighterSpawnQueueConstView new_spawns) -> std::int32_t;
     void reassign_pending_spawns(EntityUniqueId parent, EntityUniqueId replacement);
     void commit_spawns();
 

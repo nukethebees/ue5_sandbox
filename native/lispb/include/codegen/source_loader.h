@@ -34,9 +34,9 @@ struct LoadedTypeRegistry {
 
 auto load_type_registry(std::filesystem::path const& path) -> LoadedTypeRegistry;
 auto load_sources(LoadedTypeRegistry const& registry,
-                  std::span<std::filesystem::path const> modules) -> Manifest;
+                  std::span<std::filesystem::path const> module_paths) -> Manifest;
 
-auto load_sources(std::filesystem::path const& types,
-                  std::span<std::filesystem::path const> modules) -> Manifest;
+auto load_sources(std::filesystem::path const& types_path,
+                  std::span<std::filesystem::path const> module_paths) -> Manifest;
 
 } // namespace codegen

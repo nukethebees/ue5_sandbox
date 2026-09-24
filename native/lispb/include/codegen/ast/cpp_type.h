@@ -23,10 +23,10 @@ struct CppType {
     ParameterPassing parameter_passing{ParameterPassing::const_reference};
 
     CppType() = default;
-    CppType(char const* spelling);
-    CppType(std::string spelling);
-    CppType(std::string spelling, std::string header);
-    CppType(std::string spelling, std::vector<TypeDependency> dependencies);
+    CppType(char const* value);
+    CppType(std::string value);
+    CppType(std::string value, std::string header);
+    CppType(std::string value, std::vector<TypeDependency> type_dependencies);
 
     auto operation(TypeOperation operation) const -> std::optional<std::string>;
     auto operation_parameter_passing(TypeOperation operation) const -> ParameterPassing;

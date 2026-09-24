@@ -12,8 +12,8 @@ struct FunctionParameter {
     std::string name;
     std::optional<std::string> default_value;
 
-    FunctionParameter(CppType type, std::string name);
-    FunctionParameter(CppType type, std::string name, std::string default_value);
+    FunctionParameter(CppType value_type, std::string value_name);
+    FunctionParameter(CppType value_type, std::string value_name, std::string value_default);
 };
 
 } // namespace codegen

@@ -253,6 +253,7 @@ Checks:
   - performance-no-automatic-move
   - performance-no-int-to-ptr
   - readability-braces-around-statements
+  - readability-inconsistent-declaration-parameter-name
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:

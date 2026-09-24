@@ -10,7 +10,7 @@ struct Rotator3d {
     double roll{};
 };
 auto to_quaternion(Rotator3d rotation) noexcept -> ml::Quaternion4d;
-auto to_rotator(ml::Quaternion4d rotation) noexcept -> Rotator3d;
+auto to_rotator(ml::Quaternion4d q) noexcept -> Rotator3d;
 inline auto to_float(Rotator3d const rotation) noexcept -> Rotator3f {
     return {static_cast<float>(rotation.pitch),
             static_cast<float>(rotation.yaw),

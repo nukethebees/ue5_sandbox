@@ -19,7 +19,7 @@ auto render_native_avx512_lab_source(Emission const& emission, ExpandedVariant c
     -> std::string;
 auto render_native_relaxed_autovec_source(Emission const& emission,
                                           ExpandedVariant const& expanded,
-                                          std::string_view suffix) -> std::string;
+                                          std::string_view instruction_set) -> std::string;
 auto render_native_simd_dispatch_source(Emission const& emission, ExpandedVariant const& expanded)
     -> std::string;
 

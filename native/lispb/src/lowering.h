@@ -48,7 +48,7 @@ auto lower_soa_declaration(SoaSchema const& schema,
 auto lower_homogeneous(HomogeneousLayoutSchema const& schema, TypeRegistry const& types)
     -> DeclarationEmission;
 auto lower_facade(FacadeSchema const& schema, TypeRegistry const& types) -> DeclarationEmission;
-auto lower_vector(VectorSoaSchema const& schema, SoaBackend backend, TypeRegistry const& types)
+auto lower_vector(VectorSoaSchema const& vector, SoaBackend backend, TypeRegistry const& types)
     -> DeclarationEmission;
 
 auto lower_settings_module(SettingsModuleSchema const& module, TypeRegistry const& types) -> Module;
