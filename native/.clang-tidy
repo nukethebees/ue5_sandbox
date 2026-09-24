@@ -159,6 +159,18 @@ Checks:
   - modernize-use-std-print
   - modernize-use-using
   - misc-unused-parameters
+  - cppcoreguidelines-avoid-capturing-lambda-coroutines
+  - cppcoreguidelines-avoid-goto
+  - cppcoreguidelines-avoid-reference-coroutine-parameters
+  - cppcoreguidelines-interfaces-global-init
+  - cppcoreguidelines-no-suspend-with-lock
+  - cppcoreguidelines-pro-type-const-cast
+  - cppcoreguidelines-pro-type-cstyle-cast
+  - cppcoreguidelines-pro-type-static-cast-downcast
+  - cppcoreguidelines-rvalue-reference-param-not-moved
+  - cppcoreguidelines-slicing
+  - cppcoreguidelines-use-enum-class
+  - cppcoreguidelines-virtual-class-destructor
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
