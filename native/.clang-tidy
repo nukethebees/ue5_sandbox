@@ -87,6 +87,7 @@ Checks:
   - bugprone-stringview-nullptr
   - bugprone-suspicious-enum-usage
   - bugprone-suspicious-include
+  - bugprone-suspicious-memory-comparison
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
