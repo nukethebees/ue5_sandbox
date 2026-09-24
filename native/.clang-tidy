@@ -198,6 +198,7 @@ Checks:
   - modernize-concat-nested-namespaces
   - modernize-min-max-use-initializer-list
   - modernize-raw-string-literal
+  - modernize-use-scoped-lock
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:

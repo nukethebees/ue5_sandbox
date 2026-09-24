@@ -10,7 +10,7 @@ auto QueryThreadBufferPool::reserve(std::int32_t const count) -> QueryThreadBuff
         return QueryThreadBufferReserveResult::invalid_count;
     }
 
-    std::lock_guard const lock{mutex_};
+    std::scoped_lock const lock{mutex_};
     auto const required_count{static_cast<std::size_t>(count)};
     if (required_count <= buffers_.size()) {
         return QueryThreadBufferReserveResult::unchanged;
@@ -30,7 +30,7 @@ auto QueryThreadBufferPool::reserve(std::int32_t const count) -> QueryThreadBuff
 }
 
 auto QueryThreadBufferPool::try_acquire() -> std::optional<std::int32_t> {
-    std::lock_guard const lock{mutex_};
+    std::scoped_lock const lock{mutex_};
     if (free_indices_.empty()) {
         return std::nullopt;
     }
@@ -42,7 +42,7 @@ auto QueryThreadBufferPool::try_acquire() -> std::optional<std::int32_t> {
 }
 
 auto QueryThreadBufferPool::release(std::int32_t const index) -> bool {
-    std::lock_guard const lock{mutex_};
+    std::scoped_lock const lock{mutex_};
     auto const valid_index{index >= 0 && static_cast<std::size_t>(index) < buffers_.size()};
     auto const already_free{std::ranges::find(free_indices_, index) != free_indices_.end()};
     if (!valid_index || already_free || active_count_ <= 0) {
