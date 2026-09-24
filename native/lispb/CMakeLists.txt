@@ -4,7 +4,6 @@ if(IOJ_KERNEL_BENCHMARK_PLOTS)
     message(FATAL_ERROR
       "IOJ_KERNEL_BENCHMARK_PLOTS requires IOJ_KERNEL_BENCHMARKS")
   endif()
-  find_package(Python3 REQUIRED COMPONENTS Interpreter)
   find_program(UV_EXECUTABLE NAMES uv REQUIRED)
 endif()
 

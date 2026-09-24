@@ -4,6 +4,8 @@ include(cmake/jobserver_integration.cmake)
 sandbox_configure_jobserver()
 
 project(SandboxUnrealBuild LANGUAGES CXX)
+enable_testing()
+
 sandbox_add_jobserver_status_target()
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -12,17 +14,17 @@ if(CMAKE_UNITY_BUILD)
 endif()
 
 include(cmake/compiler_detection.cmake)
+include(cmake/dotnet_host_tools.cmake)
+
 ioj_is_msvc_frontend(IOJ_MSVC_FRONTEND)
 ioj_is_clang_cl(IOJ_IS_CLANG_CL)
 
-enable_testing()
-
-include(cmake/dotnet_host_tools.cmake)
 add_custom_target(csharp-host-tools)
 
 add_subdirectory(cmake)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
+set(IOJ_HAS_PYTHON ${Python3_Interpreter_FOUND})
 
 option(IOJ_WITH_UNREAL "Configure Unreal Engine integration and targets" ON)
 option(IOJ_WITH_ASAN "Instrument native targets with AddressSanitizer" OFF)
