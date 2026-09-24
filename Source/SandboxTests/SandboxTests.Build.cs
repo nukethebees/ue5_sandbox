@@ -47,6 +47,7 @@ public class SandboxTests : ModuleRules
             "RenderCore",
             "RHI",
             "SlateCore",
+            "Slate",
             "TraceLog",
             "UnrealEd",
             "LevelEditor",

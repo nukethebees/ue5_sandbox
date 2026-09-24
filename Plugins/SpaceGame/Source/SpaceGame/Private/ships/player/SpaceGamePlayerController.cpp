@@ -14,6 +14,7 @@
 #include <SpaceGameSimulation/support/logging/SandboxLogCategories.h>
 
 #include <Camera/CameraActor.h>
+#include <CommonInputSubsystem.h>
 #include <Engine/Engine.h>
 #include <Engine/GameInstance.h>
 #include <Engine/GameViewportClient.h>
@@ -83,7 +84,11 @@ bool ASpaceGamePlayerController::InputKey(FInputKeyEventArgs const& event_args) 
          event_args.Key == EKeys::LeftMouseButton || event_args.Key == EKeys::MouseY)) {
         auto contexts{FString{}};
         auto actions{FString{}};
+        bool common_ui_click{};
         if (auto* const local_player{GetLocalPlayer()}) {
+            if (auto* const common_input{local_player->GetSubsystem<UCommonInputSubsystem>()}) {
+                common_ui_click = common_input->GetIsGamepadSimulatedClick();
+            }
             if (auto* const subsystem{
                     ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)}) {
                 UInputMappingContext const* const canonical_contexts[]{global_input.mapping_context,
@@ -112,13 +117,15 @@ bool ASpaceGamePlayerController::InputKey(FInputKeyEventArgs const& event_args) 
         }
         UE_LOG(LogSandboxController,
                Warning,
-               TEXT("[InputTrace] raw key=%s event=%d value=%.3f gamepad=%d simulated=%d "
+               TEXT("[InputTrace] viewport key=%s event=%d value=%.3f gamepad=%d simulated=%d "
+                    "common_ui_click=%d "
                     "device=%d contexts=[%s] actions=[%s]"),
                *event_args.Key.GetFName().ToString(),
                static_cast<int32>(event_args.Event),
                event_args.AmountDepressed,
                event_args.IsGamepad(),
                event_args.IsSimulatedInput(),
+               common_ui_click,
                event_args.InputDevice.GetId(),
                *contexts,
                *actions);

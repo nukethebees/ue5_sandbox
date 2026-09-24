@@ -10,21 +10,30 @@
 #include <SpaceGame/ships/player/SpaceGamePlayerController.h>
 #include <SpaceGame/ships/player/TestSpaceShip.h>
 #include <SpaceGame/simulation/TestBatchOrchestrator.h>
+#include <SpaceGame/ui/common/InputActionRouter.h>
 
+#include <CommonInputSubsystem.h>
 #include <CQTest.h>
+#include <Engine/GameViewportClient.h>
 #include <Engine/LocalPlayer.h>
 #include <EnhancedInputComponent.h>
 #include <EnhancedInputDeveloperSettings.h>
 #include <EnhancedInputSubsystems.h>
 #include <EnhancedPlayerInput.h>
+#include <Framework/Application/SlateApplication.h>
+#include <Framework/Application/SlateUser.h>
+#include <HAL/IConsoleManager.h>
+#include <Input/CommonAnalogCursor.h>
 #include <InputAction.h>
 #include <InputKeyEventArgs.h>
 #include <InputMappingContext.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/Guid.h>
 #include <PlayerMappableKeySettings.h>
+#include <Slate/SceneViewport.h>
 #include <UObject/UnrealType.h>
 #include <UserSettings/EnhancedInputUserSettings.h>
+#include <Widgets/SViewport.h>
 
 TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
 {
@@ -49,6 +58,9 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
     bool original_yaw_inversion_{};
     bool original_roll_inversion_{};
     bool original_vertical_inversion_{};
+    bool used_slate_input_{};
+    int32 original_accept_simulation_{};
+    FIntPoint original_viewport_size_{};
 
     BEFORE_EACH()
     {
@@ -59,6 +71,14 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
 
     AFTER_EACH()
     {
+        if (used_slate_input_ && controller_.IsValid()) {
+            send_slate_key(EKeys::Gamepad_FaceButton_Bottom, false);
+            IConsoleManager::Get()
+                .FindConsoleVariable(TEXT("CommonUI.ShouldVirtualAcceptSimulateMouseButton"))
+                ->Set(original_accept_simulation_, ECVF_SetByCode);
+            controller_->GetLocalPlayer()->ViewportClient->GetGameViewport()->SetViewportSize(
+                original_viewport_size_.X, original_viewport_size_.Y);
+        }
         if (restore_remap_) {
             if (auto* const settings{settings_.Get()}) {
                 FMapPlayerKeyArgs args{};
@@ -121,6 +141,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
         restore_remap_ = false;
         restore_pitch_inversion_ = false;
         restore_other_inversions_ = false;
+        used_slate_input_ = false;
     }
 
     AFTER_ALL()
@@ -250,6 +271,52 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
     auto native_vertical() const -> float {
         auto const* const sim{level_setup.get_orchestrator()->get_player_ship_simulation()};
         return sim != nullptr ? sim->get_flight_intent().translation.z : 0.0f;
+    }
+
+    auto prepare_slate_input() -> bool {
+        auto* const local_player{controller_->GetLocalPlayer()};
+        auto* const router{local_player->GetSubsystem<UCommonUIActionRouterBase>()};
+        auto* const accept_simulation{IConsoleManager::Get().FindConsoleVariable(
+            TEXT("CommonUI.ShouldVirtualAcceptSimulateMouseButton"))};
+        if (!checks.is_true(IsValid(router) && router->IsA<ml::ioj::UInputActionRouter>(),
+                            TEXT("Production CommonUI router is installed")) ||
+            !checks.is_true(accept_simulation != nullptr, TEXT("CommonUI Accept CVar exists"))) {
+            return false;
+        }
+        original_accept_simulation_ = accept_simulation->GetInt();
+        accept_simulation->Set(1, ECVF_SetByCode);
+        used_slate_input_ = true;
+        local_player->GetSubsystem<UCommonInputSubsystem>()->SetCurrentInputType(
+            ECommonInputType::Gamepad);
+        auto* const viewport{local_player->ViewportClient->GetGameViewport()};
+        original_viewport_size_ = viewport->GetSizeXY();
+        // NullRHI leaves the viewport at zero size, which discards physical key events.
+        if (original_viewport_size_ == FIntPoint::ZeroValue) {
+            viewport->SetViewportSize(1280, 720);
+        }
+        checks.is_true(viewport->GetSizeXY() != FIntPoint::ZeroValue,
+                       TEXT("Scene viewport accepts physical key events"));
+        FSlateApplication::Get().SetUserFocus(
+            local_player->GetSlateUser()->GetUserIndex(),
+            local_player->ViewportClient->GetGameViewportWidget());
+        checks.is_true(local_player->GetSlateUser()->GetFocusedWidget() ==
+                           local_player->ViewportClient->GetGameViewportWidget(),
+                       TEXT("PIE viewport is attached to Slate and receives focus"));
+        checks.is_true(router->GetActiveInputMode() == ECommonInputMode::Game,
+                       TEXT("Gameplay owns the CommonUI input mode"));
+        return checks.all_passed;
+    }
+
+    void send_slate_key(FKey const key, bool const pressed) {
+        auto const user{
+            static_cast<uint32>(controller_->GetLocalPlayer()->GetSlateUser()->GetUserIndex())};
+        FKeyEvent const event{key, FModifierKeysState{}, user, false, 0, 0};
+        auto& slate{FSlateApplication::Get()};
+        if (pressed) {
+            slate.ProcessKeyDownEvent(event);
+        } else {
+            slate.ProcessKeyUpEvent(event);
+        }
     }
 
     auto canonical_remap_reloaded(FKey const expected_key) const -> bool {
@@ -508,7 +575,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
             });
     }
 
-    TEST_METHOD(GunshipPhysicalKeyPathADescendsWithoutFiring)
+    TEST_METHOD(GunshipSlateADescendsWithoutCommonUIClick)
     {
         TestCommandBuilder.Do([this] { setup(); })
             .Until([this] { return !checks.all_passed || ready(); }, timeout)
@@ -527,8 +594,12 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 controller_->ConsoleCommand(TEXT("Input.-key Four"), true);
                 check_active_contexts(ml::ioj::EShipControlScope::Gunship);
                 check_single_ship_action_bindings();
-                controller_->InputKey(FInputKeyEventArgs::CreateSimulated(
-                    EKeys::Gamepad_FaceButton_Bottom, IE_Pressed, 1.0f));
+                if (prepare_slate_input()) {
+                    send_slate_key(EKeys::Gamepad_FaceButton_Bottom, true);
+                    checks.is_true(!FSlateApplication::Get().GetPressedMouseButtons().Contains(
+                                       EKeys::LeftMouseButton),
+                                   TEXT("Gameplay Accept does not synthesize mouse down"));
+                }
             })
             .Until(
                 [this] {
@@ -541,10 +612,72 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
             .Then([this] {
                 auto const* const sim{level_setup.get_orchestrator()->get_player_ship_simulation()};
                 checks.is_true(sim != nullptr && sim->get_flight_intent().translation.z < -0.5f,
-                               TEXT("Hardware key path maps A to descent"));
+                               TEXT("Slate and CommonUI route A to descent"));
                 checks.is_true(sim != nullptr &&
                                    sim->laser_firing_mode == ::ioj::sim::LaserFiringState::idle,
-                               TEXT("Hardware key path A does not fire"));
+                               TEXT("CommonUI does not turn gameplay A into mouse fire"));
+                send_slate_key(EKeys::Gamepad_FaceButton_Bottom, false);
+            })
+            .Until([this] { return !checks.all_passed || FMath::IsNearlyZero(native_vertical()); },
+                   timeout)
+            .Then([this] {
+                checks.is_true(FMath::IsNearlyZero(native_vertical()),
+                               TEXT("Slate A release clears descent"));
+                FPlayerControllerTestAccess::toggle_pause(*controller_);
+            })
+            .Until(
+                [this] {
+                    auto* const router{
+                        controller_->GetLocalPlayer()->GetSubsystem<UCommonUIActionRouterBase>()};
+                    return !checks.all_passed ||
+                           (FPlayerControllerTestAccess::has_modal(*controller_) &&
+                            router->GetActiveInputMode() == ECommonInputMode::Menu);
+                },
+                timeout)
+            .Then([this] {
+                auto* const router{
+                    controller_->GetLocalPlayer()->GetSubsystem<UCommonUIActionRouterBase>()};
+                auto const user{static_cast<uint32>(
+                    controller_->GetLocalPlayer()->GetSlateUser()->GetUserIndex())};
+                FKeyEvent const accept{
+                    EKeys::Gamepad_FaceButton_Bottom, FModifierKeysState{}, user, false, 0, 0};
+                checks.is_true(
+                    router->GetCommonAnalogCursor()->ShouldVirtualAcceptSimulateMouseButton(
+                        accept, IE_Pressed),
+                    TEXT("Menu Accept retains CommonUI mouse-click behavior"));
+                send_slate_key(EKeys::Gamepad_FaceButton_Bottom, true);
+                checks.is_true(FSlateApplication::Get().GetPressedMouseButtons().Contains(
+                                   EKeys::LeftMouseButton),
+                               TEXT("Menu Accept still synthesizes mouse down"));
+                send_slate_key(EKeys::Gamepad_FaceButton_Bottom, false);
+                checks.is_true(!FSlateApplication::Get().GetPressedMouseButtons().Contains(
+                                   EKeys::LeftMouseButton),
+                               TEXT("Menu Accept releases the synthetic mouse button"));
+                // NullRHI has no rendered hit-test grid for clicking Resume.
+                FPlayerControllerTestAccess::toggle_pause(*controller_);
+            })
+            .Until(
+                [this] {
+                    return !checks.all_passed ||
+                           (!FPlayerControllerTestAccess::has_modal(*controller_) &&
+                            controller_->get_active_control_context() ==
+                                EPlayerControlContext::Player);
+                },
+                timeout)
+            .Then([this] {
+                checks.is_true(!FPlayerControllerTestAccess::has_modal(*controller_),
+                               TEXT("Pause returns to gameplay"));
+                check_active_contexts(ml::ioj::EShipControlScope::Gunship);
+                send_slate_key(EKeys::Gamepad_FaceButton_Bottom, true);
+            })
+            .Until([this] { return !checks.all_passed || native_vertical() < -0.5f; }, timeout)
+            .Then([this] {
+                checks.is_true(native_vertical() < -0.5f,
+                               TEXT("Gameplay A descends again after Resume"));
+                checks.is_true(level_setup.get_orchestrator()
+                                       ->get_player_ship_simulation()
+                                       ->laser_firing_mode == ::ioj::sim::LaserFiringState::idle,
+                               TEXT("Resume does not leave synthetic mouse fire held"));
             });
     }
 
