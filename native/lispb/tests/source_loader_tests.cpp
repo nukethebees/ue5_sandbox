@@ -123,19 +123,20 @@ TEST(SourceLoader, ScalarEmissionOnlyEstablishesRepresentationForAliases) {
         TemporaryManifest files;
         files.write_root(
             "(module reasons :header \"Reasons.h\"\n"
-            "  (record Consumer (member reason Reason))\n"
+            "  (integer-scalar Context :signed false :minimum 0 :maximum 10\n"
+            "    (relation references Reason))\n"
             "  (integer-scalar Reason :signed false :minimum 0 :maximum 10 :bit-width 8\n"
             "    :cpp-emission " +
             name + (mode == IntegerScalarCppEmission::none ? "" : " :cpp-type @byte") +
             "\n    (code Unknown :value 0)\n"
             "    (code Invalid :value 255 :sentinel true)\n"
-            "    (relation references Consumer)))");
+            "    (relation references Context)))");
         files.write("types.lispb", "(type byte :spelling \"std::uint8_t\" :header \"cstdint\")");
         auto const manifest{files.load()};
         EXPECT_EQ(schema_at<IntegerScalarSchema>(manifest, 0, 1).cpp_emission, mode);
         auto const graph{lispb::schema::resolve_type_graph(manifest)};
         auto const reason{*graph.find_declared("reasons", "Reason")};
-        auto const consumer{*graph.find_declared("reasons", "Consumer")};
+        auto const context{*graph.find_declared("reasons", "Context")};
         auto const byte{*graph.find_registered("byte")};
         auto const& scalar{
             std::get<lispb::schema::IntegerScalarType>(graph.type(reason).definition)};
@@ -147,16 +148,24 @@ TEST(SourceLoader, ScalarEmissionOnlyEstablishesRepresentationForAliases) {
         EXPECT_EQ(scalar.bit_width, 8);
         EXPECT_EQ(scalar.named_codes.size(), 2);
         ASSERT_TRUE(scalar.relationship.has_value());
-        EXPECT_EQ(scalar.relationship->target.type, consumer);
+        EXPECT_EQ(scalar.relationship->target.type, context);
+        auto const& related{
+            std::get<lispb::schema::IntegerScalarType>(graph.type(context).definition)};
+        EXPECT_FALSE(related.cpp_representation.has_value());
+        ASSERT_TRUE(related.relationship.has_value());
+        EXPECT_EQ(related.relationship->target.type, reason);
         EXPECT_EQ(std::ranges::find(graph.dependencies_of(reason), byte) !=
                       graph.dependencies_of(reason).end(),
                   alias);
         EXPECT_EQ(std::ranges::find(graph.users_of(byte), reason) != graph.users_of(byte).end(),
                   alias);
-        EXPECT_NE(std::ranges::find(graph.dependencies_of(reason), consumer),
+        EXPECT_NE(std::ranges::find(graph.dependencies_of(reason), context),
                   graph.dependencies_of(reason).end());
-        EXPECT_NE(std::ranges::find(graph.users_of(reason), consumer),
-                  graph.users_of(reason).end());
+        EXPECT_NE(std::ranges::find(graph.users_of(context), reason),
+                  graph.users_of(context).end());
+        EXPECT_NE(std::ranges::find(graph.dependencies_of(context), reason),
+                  graph.dependencies_of(context).end());
+        EXPECT_NE(std::ranges::find(graph.users_of(reason), context), graph.users_of(reason).end());
 
         auto const header{render_modules(lower_modules(manifest)).front().content};
         auto const constants{mode == IntegerScalarCppEmission::constants ||
@@ -166,6 +175,7 @@ TEST(SourceLoader, ScalarEmissionOnlyEstablishesRepresentationForAliases) {
         EXPECT_EQ(header.contains("Reason_name("),
                   mode == IntegerScalarCppEmission::constants_with_names);
         EXPECT_EQ(header.contains("#include <cstdint>"), mode != IntegerScalarCppEmission::none);
+        EXPECT_FALSE(header.contains("Context"));
     }
 }
 
