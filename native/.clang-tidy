@@ -15,6 +15,30 @@
 # bugprone-narrowing-conversions: includes mission kill-count signedness policy (4).
 # bugprone-unchecked-optional-access: 721 reports, including checked result wrappers
 # and explicitly guarded optionals; too noisy for this rollout.
+# Further deferred checks; preserve existing contracts and review findings separately.
+# misc-misplaced-const: intentional const S7 pointer aliases (49 reports).
+# clang-analyzer-cplusplus.Move: tests of defined moved-from container states (5).
+# clang-analyzer-cplusplus.PlacementNew: SoA byte-array lifetime/zero-size storage needs review (14).
+# misc-const-correctness: broad local-const style churn (268).
+# modernize-avoid-c-arrays: array/API and fixture rewrites (68).
+# modernize-return-braced-init-list: string count/character constructor overload concern (1).
+# modernize-use-designated-initializers: widespread aggregate/math initializer churn (2832).
+# modernize-use-emplace: mixed generator/test construction churn (61).
+# modernize-use-equals-default: changes instrumented test-type triviality (1).
+# modernize-use-integer-sign-comparison: mixed comparisons need range-contract review (37).
+# modernize-use-std-numbers: includes constants deliberately matching FMath (5).
+# cppcoreguidelines-avoid-do-while: statement macros and a directory-creation retry loop (7).
+# cppcoreguidelines-avoid-non-const-global-variables: callback-observable test state (1).
+# cppcoreguidelines-init-variables: output parameters and exhaustive branch assignments (15).
+# cppcoreguidelines-macro-usage: test assertion macro preserving expression context (1).
+# cppcoreguidelines-misleading-capture-default-by-value: this is already explicitly captured (2).
+# cppcoreguidelines-missing-std-forward: callbacks deliberately invoked as lvalues (5).
+# cppcoreguidelines-no-malloc: matching deallocation for S7-owned C API output (1).
+# cppcoreguidelines-prefer-member-initializer: constructor sequencing needs separate review (2).
+# cppcoreguidelines-pro-bounds-array-to-pointer-decay: C APIs and array fixtures (53).
+# cppcoreguidelines-pro-type-member-init: scratch arrays populated before reading (12).
+# cppcoreguidelines-pro-type-vararg: C APIs and bounded formatting calls (5).
+# cppcoreguidelines-special-member-functions: mixed ownership/test-type policy changes (16).
 Checks:
   - '-*'
   - modernize-use-nullptr
