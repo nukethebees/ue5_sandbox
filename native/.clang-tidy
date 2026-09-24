@@ -254,6 +254,7 @@ Checks:
   - performance-no-int-to-ptr
   - readability-braces-around-statements
   - readability-inconsistent-declaration-parameter-name
+  - readability-isolate-declaration
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
