@@ -86,6 +86,7 @@ Checks:
   - bugprone-string-literal-with-embedded-nul
   - bugprone-stringview-nullptr
   - bugprone-suspicious-enum-usage
+  - bugprone-suspicious-include
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
