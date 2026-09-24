@@ -30,5 +30,6 @@ Checks:
   - bugprone-branch-clone
   - bugprone-capturing-this-in-member-variable
   - bugprone-casting-through-void
+  - bugprone-chained-comparison
 ExtraArgsBefore:
   - /EHsc
