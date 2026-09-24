@@ -195,6 +195,7 @@ Checks:
   - cppcoreguidelines-slicing
   - cppcoreguidelines-use-enum-class
   - cppcoreguidelines-virtual-class-destructor
+  - modernize-concat-nested-namespaces
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:

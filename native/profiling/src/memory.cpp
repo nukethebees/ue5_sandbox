@@ -2,8 +2,7 @@
 
 #include <tracy/Tracy.hpp>
 
-namespace ml {
-namespace profiling {
+namespace ml::profiling {
 namespace memory_profiling {
 constexpr std::int32_t allocation_callstack_depth{16};
 
@@ -38,6 +37,5 @@ void record_memory_free(MemoryDomain const domain, void const* const pointer) no
     if (pointer != nullptr) {
         TracyFreeN(pointer, memory_profiling::domain_name(domain));
     }
-}
 }
 }
