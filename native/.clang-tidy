@@ -34,5 +34,6 @@ Checks:
   - bugprone-compare-pointer-to-member-virtual-function
   - bugprone-copy-constructor-init
   - bugprone-crtp-constructor-accessibility
+  - bugprone-dynamic-static-initializers
 ExtraArgsBefore:
   - /EHsc
