@@ -313,8 +313,9 @@ Enum authoring is available as an inline table:
    paths and do not alter semantic width or target layout.
 4. Use **File > Undo** and **File > Redo** while designing.
 5. Open the dockable Source view to inspect the loaded project manifest and LispB files, even
-   without pending changes. **File > Preview LispB changes** brings it forward; edited files show
-   Updated and Original tabs, and each version has a copy button.
+   without pending changes. Choose a file from the dropdown. **File > Preview LispB changes**
+   brings the view forward; edited files show Updated and Original tabs, and each version has a
+   copy button.
 6. Use **File > Save LispB changes** to validate the rendered sources, replace the affected source
    file, and reload the semantic document.
 

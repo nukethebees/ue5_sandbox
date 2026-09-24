@@ -498,6 +498,7 @@ class PlannerUi {
     bool open_new_tagged_union_dialog_{};
     bool open_new_soa_dialog_{};
     bool source_view_open_{};
+    std::filesystem::path selected_source_view_path_;
     bool diagnostics_view_open_{true};
     bool focus_diagnostics_view_{};
     bool focus_source_view_{};

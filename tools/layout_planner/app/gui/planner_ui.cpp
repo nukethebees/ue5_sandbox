@@ -1607,7 +1607,40 @@ void PlannerUi::draw_source_panel() {
     }
     if (files.empty()) {
         ImGui::TextDisabled("No LispB source files loaded.");
-    } else if (ImGui::BeginTabBar("source-files")) {
+    } else {
+        auto const project_directory{project_path_.parent_path()};
+        auto file_label = [&](SourceViewFile const& file) {
+            auto const relative{file.path.lexically_relative(project_directory)};
+            auto label{relative.empty() ? file.path.generic_string() : relative.generic_string()};
+            if (file.updated.has_value()) {
+                label += " *";
+            }
+            return label;
+        };
+        auto selected_index{std::size_t{0}};
+        for (std::size_t index{}; index < files.size(); ++index) {
+            if (files[index].path.lexically_normal() == selected_source_view_path_) {
+                selected_index = index;
+                break;
+            }
+        }
+        selected_source_view_path_ = files[selected_index].path.lexically_normal();
+        auto const preview{file_label(files[selected_index])};
+        ImGui::TextUnformatted("File");
+        ImGui::SameLine();
+        ImGui::SetNextItemWidth(-1.0F);
+        if (ImGui::BeginCombo("##source-file", preview.c_str())) {
+            for (std::size_t index{}; index < files.size(); ++index) {
+                ImGui::PushID(static_cast<int>(index));
+                auto const label{file_label(files[index])};
+                if (ImGui::Selectable(label.c_str(), index == selected_index)) {
+                    selected_index = index;
+                    selected_source_view_path_ = files[index].path.lexically_normal();
+                }
+                ImGui::PopID();
+            }
+            ImGui::EndCombo();
+        }
         auto draw_text = [](char const* id, std::string const& value) {
             if (ImGui::Button("Copy source")) {
                 ImGui::SetClipboardText(value.c_str());
@@ -1617,33 +1650,28 @@ void PlannerUi::draw_source_panel() {
             }
             ImGui::EndChild();
         };
-        for (auto const& file : files) {
-            ImGui::PushID(file.path.string().c_str());
-            auto const label{file.path.filename().string() +
-                             (file.updated.has_value() ? " *" : "") + "###" + file.path.string()};
-            if (ImGui::BeginTabItem(label.c_str())) {
-                ImGui::TextDisabled("%s", file.path.string().c_str());
-                if (ImGui::BeginTabBar("source-version-tabs")) {
-                    if (file.updated.has_value()) {
-                        if (ImGui::BeginTabItem("Updated")) {
-                            draw_text("updated-source", *file.updated);
-                            ImGui::EndTabItem();
-                        }
-                        if (ImGui::BeginTabItem("Original")) {
-                            draw_text("original-source", file.original);
-                            ImGui::EndTabItem();
-                        }
-                    } else if (ImGui::BeginTabItem("Current")) {
-                        draw_text("current-source", *file.loaded);
-                        ImGui::EndTabItem();
-                    }
-                    ImGui::EndTabBar();
+        auto const& file{files[selected_index]};
+        ImGui::PushID(file.path.string().c_str());
+        ImGui::TextDisabled("%s", file.path.string().c_str());
+        if (ImGui::BeginTabBar("source-version-tabs")) {
+            if (file.updated.has_value()) {
+                if (ImGui::BeginTabItem("Updated")) {
+                    draw_text("updated-source", *file.updated);
+                    ImGui::EndTabItem();
                 }
-                ImGui::EndTabItem();
+                if (ImGui::BeginTabItem("Original")) {
+                    draw_text("original-source", file.original);
+                    ImGui::EndTabItem();
+                }
+            } else if (file.loaded != nullptr) {
+                if (ImGui::BeginTabItem("Current")) {
+                    draw_text("current-source", *file.loaded);
+                    ImGui::EndTabItem();
+                }
             }
-            ImGui::PopID();
+            ImGui::EndTabBar();
         }
-        ImGui::EndTabBar();
+        ImGui::PopID();
     }
     ImGui::End();
     persist_view_visibility(was_open, source_view_open_);
