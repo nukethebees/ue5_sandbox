@@ -302,7 +302,7 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
                      FighterOrder{.task = 1},
                      FighterTask::Standby,
                      {});
-    stale_orders.add(EntityUniqueId::make(100000, EntityType::Fighter),
+    stale_orders.add(EntityUniqueId(100000, EntityType::Fighter),
                      FighterOrder{.task = 1},
                      FighterTask::Standby,
                      {});

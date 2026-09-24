@@ -10,7 +10,7 @@
 namespace ioj::sim::tests {
 namespace {
 auto make_id(EntityType const type, std::uint32_t const index) -> EntityUniqueId {
-    return EntityUniqueId::make(entity_identity_offset(type, index), type);
+    return EntityUniqueId(entity_identity_offset(type, index), type);
 }
 
 template <std::size_t Size>

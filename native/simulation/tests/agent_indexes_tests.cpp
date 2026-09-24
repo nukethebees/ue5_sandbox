@@ -11,7 +11,7 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
     fighters.add_defaulted(1);
     auto data{fighters.get_view().columns()};
     auto const id{
-        EntityUniqueId::make(entity_identity_offset(EntityType::Fighter, 0), EntityType::Fighter)};
+        EntityUniqueId(entity_identity_offset(EntityType::Fighter, 0), EntityType::Fighter)};
     data.entity_ids[0] = id;
     data.locations.set(0, {{10.f, 20.f, 30.f}});
     data.velocities.set(0, {{1.f, 2.f, 3.f}});
@@ -39,10 +39,9 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
             id,
             EntityUniqueId{},
             id,
-            EntityUniqueId::make(entity_identity_offset(EntityType::CapitalShip, 0),
-                                 EntityType::CapitalShip),
-            EntityUniqueId::make(entity_identity_offset(EntityType::Fighter, 999),
-                                 EntityType::Fighter)};
+            EntityUniqueId(entity_identity_offset(EntityType::CapitalShip, 0),
+                           EntityType::CapitalShip),
+            EntityUniqueId(entity_identity_offset(EntityType::Fighter, 999), EntityType::Fighter)};
         std::array<std::int32_t, ids.size()> order{};
         std::array<std::uint8_t, ids.size()> alive{};
         Vectors3f locations;
@@ -116,10 +115,10 @@ TEST(AgentIndices, ResolvesOwnerRowsAndRejectsUnissuedOrWrongTypeIds) {
     SimClock clock;
     AgentIndices indexes{clock};
     std::array const fighters{
-        EntityUniqueId::make(entity_identity_offset(EntityType::Fighter, 2), EntityType::Fighter),
-        EntityUniqueId::make(entity_identity_offset(EntityType::Fighter, 5), EntityType::Fighter)};
-    std::array const capitals{EntityUniqueId::make(
-        entity_identity_offset(EntityType::CapitalShip, 0), EntityType::CapitalShip)};
+        EntityUniqueId(entity_identity_offset(EntityType::Fighter, 2), EntityType::Fighter),
+        EntityUniqueId(entity_identity_offset(EntityType::Fighter, 5), EntityType::Fighter)};
+    std::array const capitals{EntityUniqueId(entity_identity_offset(EntityType::CapitalShip, 0),
+                                             EntityType::CapitalShip)};
     indexes.bind(EntityType::Fighter, fighters);
     indexes.bind(EntityType::CapitalShip, capitals);
     clock.phase = SimulationPhase::Thinking;
@@ -128,14 +127,14 @@ TEST(AgentIndices, ResolvesOwnerRowsAndRejectsUnissuedOrWrongTypeIds) {
     EXPECT_EQ(indexes.find(fighters[1]), 1);
     EXPECT_EQ(indexes.find(capitals[0]), 0);
     EXPECT_EQ(indexes.find({}), -1);
-    EXPECT_EQ(indexes.find(EntityUniqueId::make(entity_identity_offset(EntityType::Fighter, 1),
-                                                EntityType::Fighter)),
+    EXPECT_EQ(indexes.find(EntityUniqueId(entity_identity_offset(EntityType::Fighter, 1),
+                                          EntityType::Fighter)),
               -1);
-    EXPECT_EQ(indexes.find(EntityUniqueId::make(entity_identity_offset(EntityType::CapitalShip, 2),
-                                                EntityType::CapitalShip)),
+    EXPECT_EQ(indexes.find(EntityUniqueId(entity_identity_offset(EntityType::CapitalShip, 2),
+                                          EntityType::CapitalShip)),
               -1);
-    EXPECT_EQ(indexes.find(EntityUniqueId::make(entity_identity_offset(EntityType::Fighter, 100),
-                                                EntityType::Fighter)),
+    EXPECT_EQ(indexes.find(EntityUniqueId(entity_identity_offset(EntityType::Fighter, 100),
+                                          EntityType::Fighter)),
               -1);
 }
 
@@ -143,9 +142,9 @@ TEST(AgentIndices, RemovalAndReorderingCannotAliasOldIdentity) {
     SimClock clock;
     AgentIndices indexes{clock};
     auto const removed{
-        EntityUniqueId::make(entity_identity_offset(EntityType::Fighter, 0), EntityType::Fighter)};
+        EntityUniqueId(entity_identity_offset(EntityType::Fighter, 0), EntityType::Fighter)};
     auto const survivor{
-        EntityUniqueId::make(entity_identity_offset(EntityType::Fighter, 1), EntityType::Fighter)};
+        EntityUniqueId(entity_identity_offset(EntityType::Fighter, 1), EntityType::Fighter)};
     std::array const before{removed, survivor};
     indexes.bind(EntityType::Fighter, before);
     clock.phase = SimulationPhase::Thinking;
@@ -156,7 +155,7 @@ TEST(AgentIndices, RemovalAndReorderingCannotAliasOldIdentity) {
     EXPECT_EQ(indexes.find(removed), 0);
     indexes.retire(removed);
     auto const newborn{
-        EntityUniqueId::make(entity_identity_offset(EntityType::Fighter, 2), EntityType::Fighter)};
+        EntityUniqueId(entity_identity_offset(EntityType::Fighter, 2), EntityType::Fighter)};
     std::array const after{survivor, newborn};
     indexes.bind(EntityType::Fighter, after);
     clock.phase = SimulationPhase::Thinking;

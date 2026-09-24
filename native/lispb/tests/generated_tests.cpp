@@ -376,19 +376,41 @@ TEST(GeneratedPackedValue, HasStorageLayoutProperties) {
     }());
 }
 
+TEST(GeneratedPackedValue, ConstructorsDistinguishFieldValuesFromRawStorage) {
+    constexpr PackedSingle value{std::uint8_t{3}};
+    constexpr auto raw{PackedSingle::from_raw(std::uint8_t{3})};
+    static_assert(value.raw_value() == 0x30 && value.value() == 3);
+    static_assert(raw.raw_value() == 3 && raw.value() == 0);
+    static_assert(PackedSingle{}.raw_value() == 0);
+    static_assert(sizeof(PackedSingle) == sizeof(std::uint8_t));
+    static_assert(std::is_trivially_copyable_v<PackedSingle>);
+    static_assert(std::is_standard_layout_v<PackedSingle>);
+    static_assert(!std::is_convertible_v<std::uint8_t, PackedSingle>);
+    static_assert(std::is_same_v<PackedSingle::value_type, std::uint8_t>);
+    static_assert(std::is_same_v<Vitals::storage_type, std::uint16_t>);
+    static_assert(std::is_same_v<FighterState::storage_type, std::uint32_t>);
+    static_assert(std::is_same_v<PackedWide::storage_type, std::uint64_t>);
+    static_assert(FighterState{42, PackedState::AB}.raw_value() == 0xab00002a);
+    static_assert(SignedWide{std::numeric_limits<std::int64_t>::min()}.delta() ==
+                  std::numeric_limits<std::int64_t>::min());
+    static_assert(CheckedValue{42, DomainState::One}.serial() == 42);
+    EXPECT_DEATH(static_cast<void>(PackedSingle{std::uint8_t{16}}), "");
+    EXPECT_DEATH(static_cast<void>(SignedDelta{-65'537}), "");
+}
+
 TEST(GeneratedPackedValue, CombinesAndExtractsFields) {
     FighterState value;
     value.set_entity_index(0x123456u);
     value.set_state(PackedState::AB);
     EXPECT_EQ(value.raw_value(), 0xAB123456u);
 
-    auto const from_raw{FighterState{0xAB123456u}};
+    auto const from_raw{FighterState::from_raw(0xAB123456u)};
     EXPECT_EQ(from_raw.entity_index(), 0x123456u);
     EXPECT_EQ(from_raw.state(), PackedState::AB);
 }
 
 TEST(GeneratedPackedValue, SettersPreserveOtherFieldsAndRejectOverflow) {
-    FighterState value{0xAB123456u};
+    auto value{FighterState::from_raw(0xAB123456u)};
     value.set_entity_index(0xffffffu);
     EXPECT_EQ(value.raw_value(), 0xABffffffu);
     value.set_state(PackedState::Zero);
@@ -402,17 +424,17 @@ TEST(GeneratedPackedValue, SettersPreserveOtherFieldsAndRejectOverflow) {
 }
 
 TEST(GeneratedPackedValue, ComparesByRawValue) {
-    EXPECT_LT(FighterState{1u}, FighterState{2u});
-    EXPECT_LE(FighterState{1u}, FighterState{2u});
-    EXPECT_GT(FighterState{2u}, FighterState{1u});
-    EXPECT_GE(FighterState{2u}, FighterState{1u});
-    EXPECT_EQ(FighterState{2u}, FighterState{2u});
-    EXPECT_NE(FighterState{1u}, FighterState{2u});
+    EXPECT_LT(FighterState::from_raw(1u), FighterState::from_raw(2u));
+    EXPECT_LE(FighterState::from_raw(1u), FighterState::from_raw(2u));
+    EXPECT_GT(FighterState::from_raw(2u), FighterState::from_raw(1u));
+    EXPECT_GE(FighterState::from_raw(2u), FighterState::from_raw(1u));
+    EXPECT_EQ(FighterState::from_raw(2u), FighterState::from_raw(2u));
+    EXPECT_NE(FighterState::from_raw(1u), FighterState::from_raw(2u));
 }
 
 TEST(GeneratedPackedValue, ExhaustivelyRoundTripsUint8Storage) {
     for (unsigned raw{}; raw <= 0xffu; ++raw) {
-        auto const packed{PackedByte{static_cast<std::uint8_t>(raw)}};
+        auto const packed{PackedByte::from_raw(static_cast<std::uint8_t>(raw))};
         EXPECT_EQ(packed.low(), raw & 0x7u);
         EXPECT_EQ(packed.flag(), (raw & 0x8u) != 0);
         EXPECT_EQ(packed.high(), (raw >> 4u) & 0xfu);
@@ -437,9 +459,9 @@ TEST(GeneratedPackedValue, ExhaustivelyRoundTripsUint8Storage) {
 }
 
 TEST(GeneratedPackedValue, RoundTripsMostSignificantFirstFields) {
-    static_assert(NetworkHeader::version_offset == 28);
-    static_assert(NetworkHeader::kind_offset == 20);
-    static_assert(NetworkHeader::length_offset == 0);
+    static_assert(NetworkHeader::version_field::offset == 28);
+    static_assert(NetworkHeader::kind_field::offset == 20);
+    static_assert(NetworkHeader::length_field::offset == 0);
 
     NetworkHeader header;
     header.set_version(std::uint8_t{0xa});
@@ -447,7 +469,7 @@ TEST(GeneratedPackedValue, RoundTripsMostSignificantFirstFields) {
     header.set_length(std::uint16_t{0x1234});
     EXPECT_EQ(header.raw_value(), std::uint32_t{0xabc01234});
 
-    auto const from_raw{NetworkHeader{std::uint32_t{0x5a70beef}}};
+    auto const from_raw{NetworkHeader::from_raw(std::uint32_t{0x5a70beef})};
     EXPECT_EQ(from_raw.version(), std::uint8_t{0x5});
     EXPECT_EQ(from_raw.kind(), std::uint8_t{0xa7});
     EXPECT_EQ(from_raw.length(), std::uint16_t{0xbeef});
@@ -455,12 +477,12 @@ TEST(GeneratedPackedValue, RoundTripsMostSignificantFirstFields) {
 
 TEST(GeneratedPackedValue, HandlesFullWidthStorageAndNarrowEnums) {
     auto const maximum{std::numeric_limits<std::uint64_t>::max()};
-    static_assert(PackedWide::value_bits == 64);
+    static_assert(PackedWide::value_field::bits == 64);
     PackedWide wide;
     EXPECT_TRUE(wide.try_set_value(maximum));
     EXPECT_EQ(wide.value(), maximum);
     EXPECT_EQ(wide.raw_value(), maximum);
-    EXPECT_EQ(PackedWide{std::uint64_t{0x123456789abcdef0}}.value(),
+    EXPECT_EQ(PackedWide::from_raw(std::uint64_t{0x123456789abcdef0}).value(),
               std::uint64_t{0x123456789abcdef0});
 
     PackedTinyState tiny;
@@ -476,7 +498,7 @@ TEST(GeneratedPackedValue, HandlesFullWidthStorageAndNarrowEnums) {
 }
 
 TEST(GeneratedPackedValue, RoundTripsSignedArbitraryWidthBoundaries) {
-    static_assert(SignedWide::delta_bits == 64);
+    static_assert(SignedWide::delta_field::bits == 64);
     SignedDelta delta;
     EXPECT_TRUE(delta.try_set_delta(-65'536));
     EXPECT_EQ(delta.delta(), -65'536);
@@ -492,19 +514,19 @@ TEST(GeneratedPackedValue, RoundTripsSignedArbitraryWidthBoundaries) {
     EXPECT_FALSE(delta.try_set_delta(-65'537));
     EXPECT_FALSE(delta.try_set_delta(65'536));
     EXPECT_EQ(delta.raw_value(), before_failure);
-    EXPECT_EQ(SignedDelta{std::uint32_t{0x1ffff}}.delta(), -1);
-    EXPECT_EQ(SignedDelta{std::uint32_t{0x10000}}.delta(), -65'536);
+    EXPECT_EQ(SignedDelta::from_raw(std::uint32_t{0x1ffff}).delta(), -1);
+    EXPECT_EQ(SignedDelta::from_raw(std::uint32_t{0x10000}).delta(), -65'536);
 
     SignedWide wide;
     EXPECT_TRUE(wide.try_set_delta(std::numeric_limits<std::int64_t>::min()));
     EXPECT_EQ(wide.delta(), std::numeric_limits<std::int64_t>::min());
     EXPECT_TRUE(wide.try_set_delta(std::numeric_limits<std::int64_t>::max()));
     EXPECT_EQ(wide.delta(), std::numeric_limits<std::int64_t>::max());
-    EXPECT_EQ(SignedWide{std::numeric_limits<std::uint64_t>::max()}.delta(), -1);
+    EXPECT_EQ(SignedWide::from_raw(std::numeric_limits<std::uint64_t>::max()).delta(), -1);
 }
 
 TEST(GeneratedPackedValue, EnforcesSignedSemanticRangeAndSentinel) {
-    static_assert(SignedTemperature::temperature_bits == 8);
+    static_assert(SignedTemperature::temperature_field::bits == 8);
     static_assert(SignedTemperature::temperature_Freezing == 0);
     static_assert(SignedTemperature::temperature_Unknown == -128);
 
@@ -522,11 +544,11 @@ TEST(GeneratedPackedValue, EnforcesSignedSemanticRangeAndSentinel) {
     EXPECT_FALSE(temperature.try_set_temperature(-101));
     EXPECT_FALSE(temperature.try_set_temperature(101));
     EXPECT_EQ(temperature.raw_value(), before_failure);
-    EXPECT_FALSE(SignedTemperature{std::uint32_t{0x9b}}.is_valid());
+    EXPECT_FALSE(SignedTemperature::from_raw(std::uint32_t{0x9b}).is_valid());
 }
 
 TEST(GeneratedPackedValue, RoundTripsLinearQuantizedEncodedCodes) {
-    static_assert(Vitals::health_bits == 8);
+    static_assert(Vitals::health_field::bits == 8);
     static_assert(Vitals::health_maximum_encoded == 253);
 
     Vitals value;
@@ -540,7 +562,7 @@ TEST(GeneratedPackedValue, RoundTripsLinearQuantizedEncodedCodes) {
     auto const before_failure{value.raw_value()};
     EXPECT_FALSE(value.try_set_health_encoded(254));
     EXPECT_EQ(value.raw_value(), before_failure);
-    EXPECT_FALSE(Vitals{0x00feu}.is_valid());
+    EXPECT_FALSE(Vitals::from_raw(0x00feu).is_valid());
 
     Vitals made;
     EXPECT_TRUE(Vitals::try_make(42, 7, made));
@@ -549,10 +571,10 @@ TEST(GeneratedPackedValue, RoundTripsLinearQuantizedEncodedCodes) {
 }
 
 TEST(GeneratedPackedValue, RoundTripsFixedPointRawCodes) {
-    static_assert(Motion::velocity_bits == 12);
+    static_assert(Motion::velocity_field::bits == 12);
     static_assert(Motion::velocity_minimum_raw == -2048);
     static_assert(Motion::velocity_maximum_raw == 2047);
-    static_assert(Motion::fraction_bits == 7);
+    static_assert(Motion::fraction_field::bits == 7);
     static_assert(Motion::fraction_minimum_raw == 0);
     static_assert(Motion::fraction_maximum_raw == 127);
 
@@ -594,7 +616,7 @@ TEST(GeneratedPackedValue, RoundTripsFixedPointRawCodes) {
 }
 
 TEST(GeneratedPackedValue, RoundTripsMiniFloatEncodedCodes) {
-    static_assert(PackedMiniFloat::component_bits == 12);
+    static_assert(PackedMiniFloat::component_field::bits == 12);
     static_assert(PackedMiniFloat::component_maximum_encoded == 0xfff);
 
     PackedMiniFloat value;
@@ -616,23 +638,23 @@ TEST(GeneratedPackedValue, RoundTripsMiniFloatEncodedCodes) {
 
 TEST(GeneratedPackedValue, GeneratesConstructionValidationAndRangeHelpers) {
     static_assert(CheckedValue::invalid_value == 0x7fffffffu);
-    static_assert(CheckedValue::serial_range_fits(0, CheckedValue::serial_value_mask + 1));
-    static_assert(!CheckedValue::serial_range_fits(CheckedValue::serial_value_mask, 2));
+    static_assert(CheckedValue::serial_range_fits(0, CheckedValue::serial_field::value_mask + 1));
+    static_assert(!CheckedValue::serial_range_fits(CheckedValue::serial_field::value_mask, 2));
 
     CheckedValue const null_value;
     EXPECT_FALSE(null_value.is_valid());
     EXPECT_EQ(null_value.raw_value(), CheckedValue::invalid_value);
 
-    auto const value{CheckedValue::make(42, DomainState::One)};
+    auto const value{CheckedValue(42, DomainState::One)};
     EXPECT_TRUE(value.is_valid());
     EXPECT_EQ(value.serial(), 42u);
     EXPECT_EQ(value.state(), DomainState::One);
 
-    auto const zero{CheckedValue::make(7, DomainState::Zero)};
+    auto const zero{CheckedValue(7, DomainState::Zero)};
     EXPECT_EQ(zero.serial(), 7u);
     EXPECT_EQ(zero.state(), DomainState::Zero);
     EXPECT_EQ(zero.raw_value(), 7u);
-    EXPECT_FALSE(CheckedValue{0xffffffffu}.is_valid());
+    EXPECT_FALSE(CheckedValue::from_raw(0xffffffffu).is_valid());
 }
 
 TEST(GeneratedFixedSoa, Lifetimes) {

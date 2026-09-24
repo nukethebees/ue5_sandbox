@@ -44,7 +44,7 @@ inline constexpr std::uint32_t entity_identity_capacity{[] {
     }
     return count;
 }()};
-static_assert(entity_identity_capacity <= EntityUniqueId::index_value_mask);
+static_assert(entity_identity_capacity <= EntityUniqueId::index_field::value_mask);
 
 [[nodiscard]] inline constexpr auto is_entity_identity_offset(EntityUniqueId const id) noexcept
     -> bool {

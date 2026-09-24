@@ -58,7 +58,7 @@ void add_entity(ml::tests::FDisplayEntityTestData& entities,
     entity_type_radii[type] = radius;
     entities.teams[index] = ml::to_native(team);
     entities.entity_types[index] = type;
-    auto const owner{::ioj::sim::EntityUniqueId::make(
+    auto const owner{::ioj::sim::EntityUniqueId(
         ::ioj::sim::entity_identity_offset(entities.entity_types[index], index),
         entities.entity_types[index])};
     entities.add_health(index, owner, alive ? health : 0);
@@ -80,7 +80,7 @@ auto make_forward_x_view() -> FEntityOverlayView {
 auto entity_id(ml::tests::FDisplayEntityTestData const& entities, int32 const index)
     -> ::ioj::sim::EntityUniqueId {
     auto const type{entities.entity_types[index]};
-    return ::ioj::sim::EntityUniqueId::make(::ioj::sim::entity_identity_offset(type, index), type);
+    return ::ioj::sim::EntityUniqueId(::ioj::sim::entity_identity_offset(type, index), type);
 }
 
 auto select_target(ml::tests::FDisplayEntityTestData const& entities,

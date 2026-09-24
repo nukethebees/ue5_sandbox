@@ -62,7 +62,7 @@ auto write_debug_frames(FString const& output_directory) -> bool {
     auto const count{UE_ARRAY_COUNT(positions)};
     entities.add_defaulted(count);
     for (int32 index{0}; index < count; ++index) {
-        entities.entity_ids[index] = ::ioj::sim::EntityUniqueId::make(
+        entities.entity_ids[index] = ::ioj::sim::EntityUniqueId(
             ::ioj::sim::entity_identity_offset(::ioj::sim::EntityType::Turret, index),
             ::ioj::sim::EntityType::Turret);
         entities.locations.set(index, ml::to_native(positions[index]));

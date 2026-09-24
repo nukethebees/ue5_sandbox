@@ -40,7 +40,7 @@ void add_entity(ml::tests::FDisplayEntityTestData& entities,
     entities.locations.set(index, ml::to_native(location));
     entities.teams[index] = ml::to_native(team);
     entities.entity_types[index] = type;
-    auto const owner{::ioj::sim::EntityUniqueId::make(
+    auto const owner{::ioj::sim::EntityUniqueId(
         ::ioj::sim::entity_identity_offset(entities.entity_types[index], index),
         entities.entity_types[index])};
     entities.add_health(index, owner, alive ? 100 : 0);
@@ -101,8 +101,8 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 
         std::vector<::ioj::sim::EntityUniqueId> ids;
         for (int32 index{}; index < entities.num(); ++index) {
-            ids.push_back(::ioj::sim::EntityUniqueId::make(static_cast<std::uint32_t>(index),
-                                                           entities.entity_types[index]));
+            ids.push_back(::ioj::sim::EntityUniqueId(static_cast<std::uint32_t>(index),
+                                                     entities.entity_types[index]));
         }
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
@@ -192,8 +192,8 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
 
         std::vector<::ioj::sim::EntityUniqueId> ids;
         for (int32 index{}; index < entities.num(); ++index) {
-            ids.push_back(::ioj::sim::EntityUniqueId::make(static_cast<std::uint32_t>(index),
-                                                           entities.entity_types[index]));
+            ids.push_back(::ioj::sim::EntityUniqueId(static_cast<std::uint32_t>(index),
+                                                     entities.entity_types[index]));
         }
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
@@ -240,8 +240,8 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
             entities, world_contact, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
         std::vector<::ioj::sim::EntityUniqueId> ids;
         for (int32 index{}; index < entities.num(); ++index) {
-            ids.push_back(::ioj::sim::EntityUniqueId::make(static_cast<std::uint32_t>(index),
-                                                           entities.entity_types[index]));
+            ids.push_back(::ioj::sim::EntityUniqueId(static_cast<std::uint32_t>(index),
+                                                     entities.entity_types[index]));
         }
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
@@ -366,8 +366,8 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
             entities, {250.0f, -80.0f, 40.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Fighter);
         std::vector<::ioj::sim::EntityUniqueId> ids;
         for (int32 index{}; index < entities.num(); ++index) {
-            ids.push_back(::ioj::sim::EntityUniqueId::make(static_cast<std::uint32_t>(index),
-                                                           entities.entity_types[index]));
+            ids.push_back(::ioj::sim::EntityUniqueId(static_cast<std::uint32_t>(index),
+                                                     entities.entity_types[index]));
         }
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());
@@ -389,8 +389,8 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
                                           {1500.0f, 100.0f, 0.0f},
                                           ETestTeam::Green,
                                           ::ioj::sim::EntityType::CapitalShip);
-        ids.push_back(::ioj::sim::EntityUniqueId::make(
-            static_cast<std::uint32_t>(entities.num() - 1), entities.entity_types.back()));
+        ids.push_back(::ioj::sim::EntityUniqueId(static_cast<std::uint32_t>(entities.num() - 1),
+                                                 entities.entity_types.back()));
         objective_roles.Add(EEntityOverlayObjectiveRole::None);
         static_cast<void>(collect_radar_instances(ml::test_radar_source::make_view(entities, ids),
                                                   objective_roles,
@@ -424,8 +424,8 @@ TEST_CLASS(RadarSource, "Sandbox.UnitTests")
             entities, {1600.0f, 0.0f, 1200.0f}, ETestTeam::Red, ::ioj::sim::EntityType::Turret);
         std::vector<::ioj::sim::EntityUniqueId> ids;
         for (int32 index{}; index < entities.num(); ++index) {
-            ids.push_back(::ioj::sim::EntityUniqueId::make(static_cast<std::uint32_t>(index),
-                                                           entities.entity_types[index]));
+            ids.push_back(::ioj::sim::EntityUniqueId(static_cast<std::uint32_t>(index),
+                                                     entities.entity_types[index]));
         }
         TArray<EEntityOverlayObjectiveRole> objective_roles;
         objective_roles.Init(EEntityOverlayObjectiveRole::None, entities.num());

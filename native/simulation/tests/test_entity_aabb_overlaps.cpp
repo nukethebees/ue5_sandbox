@@ -711,7 +711,7 @@ TEST(EntityAABBOverlaps, InvalidDeadAndRetiredCandidatesAreIgnored) {
         << "Removed ID no longer resolves after publication";
 
     std::array const overlap_candidates{
-        EntityUniqueId{}, EntityUniqueId::make(999, EntityType::PlayerShip), removed_id, live};
+        EntityUniqueId{}, EntityUniqueId(999, EntityType::PlayerShip), removed_id, live};
     fixture.refresh_and_detect_overlaps(std::span<EntityUniqueId const>{
         overlap_candidates.data(),
         static_cast<std::size_t>(static_cast<std::int32_t>(overlap_candidates.size()))});

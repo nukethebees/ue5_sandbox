@@ -21,7 +21,7 @@ constexpr float miss_max_distance{500.f};
 
 TEST(NativeSimulation, LaserSpawnRequestRowOperationsKeepColumnsPaired) {
     lasers::SpawnRequests requests{};
-    auto const instigator{EntityUniqueId::make(7, EntityType::CapitalShip)};
+    auto const instigator{EntityUniqueId(7, EntityType::CapitalShip)};
     LaserSource const source{Team::Green, EntityType::CapitalShip};
 
     auto expect_row = [&](std::int32_t const index, float const offset) {

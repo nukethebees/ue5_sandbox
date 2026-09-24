@@ -61,7 +61,7 @@ TEST(NativeSoa, SwapRemovalKeepsTraceHitColumnsAligned) {
         hits.add(Vector3f{{static_cast<float>(index),
                            static_cast<float>(index + 10),
                            static_cast<float>(index + 20)}},
-                 EntityUniqueId{static_cast<std::uint32_t>(index + 100)},
+                 EntityUniqueId::from_raw(static_cast<std::uint32_t>(index + 100)),
                  index + 200,
                  static_cast<std::uint8_t>(index + 1));
     }
@@ -73,7 +73,7 @@ TEST(NativeSoa, SwapRemovalKeepsTraceHitColumnsAligned) {
     EXPECT_EQ(columns.locations.xs[0], 0.0f);
     EXPECT_EQ(columns.locations.xs[1], 1.0f);
     EXPECT_EQ(columns.locations.xs[2], 5.0f);
-    EXPECT_EQ(columns.entities[2], EntityUniqueId{105});
+    EXPECT_EQ(columns.entities[2], EntityUniqueId::from_raw(105));
     EXPECT_EQ(columns.static_geometry_indices[2], 205);
     EXPECT_EQ(columns.hits[2], 6);
 }
