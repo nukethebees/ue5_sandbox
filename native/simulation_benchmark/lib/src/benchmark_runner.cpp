@@ -463,10 +463,10 @@ auto to_json(BenchmarkResult const& result) -> std::string {
     std::ostringstream output;
     output << std::setprecision(std::numeric_limits<double>::max_digits10)
            << "{\"schema_version\":2"
-           << ",\"level\":{\"path\":" << json_string(result.level_path)
+           << R"(,"level":{"path":)" << json_string(result.level_path)
            << ",\"id\":" << json_string(result.level_id)
            << ",\"title\":" << json_string(result.level_title) << "}"
-           << ",\"workload\":{\"requested_seconds\":" << result.requested_seconds
+           << R"(,"workload":{"requested_seconds":)" << result.requested_seconds
            << ",\"tick_rate_hz\":" << result.tick_rate_hz << ",\"game_speed\":" << result.game_speed
            << ",\"requested_ticks\":" << result.requested_ticks
            << ",\"completed_ticks\":" << result.completed_ticks
@@ -476,7 +476,7 @@ auto to_json(BenchmarkResult const& result) -> std::string {
            << ",\"warmup_ticks\":" << result.warmup_ticks
            << ",\"measured_ticks\":" << result.measured_ticks
            << ",\"total_simulation_ticks\":" << result.total_simulation_ticks << "}"
-           << ",\"timing\":{\"elapsed_seconds\":" << result.elapsed_seconds
+           << R"(,"timing":{"elapsed_seconds":)" << result.elapsed_seconds
            << ",\"total_elapsed_seconds\":" << result.total_elapsed_seconds
            << ",\"ticks_per_second\":" << ticks_per_second
            << ",\"realtime_factor\":" << realtime_factor
@@ -484,7 +484,7 @@ auto to_json(BenchmarkResult const& result) -> std::string {
            << ",\"median_tick_microseconds\":" << result.median_tick_microseconds
            << ",\"p95_tick_microseconds\":" << result.p95_tick_microseconds
            << ",\"p99_tick_microseconds\":" << result.p99_tick_microseconds << "}"
-           << ",\"fighter_stress\":{\"enabled\":"
+           << R"(,"fighter_stress":{"enabled":)"
            << (result.fighter_stress_enabled ? "true" : "false")
            << ",\"configured_cap\":" << result.configured_fighter_cap
            << ",\"steady_state_fighters\":" << result.steady_state_fighters
@@ -492,10 +492,10 @@ auto to_json(BenchmarkResult const& result) -> std::string {
            << ",\"maximum_measured_fighters\":" << result.maximum_measured_fighters
            << ",\"fighter_spawns_during_measurement\":" << result.fighter_spawns_during_measurement
            << ",\"lasers_spawned_during_measurement\":" << result.lasers_spawned_during_measurement
-           << ",\"task_counts\":{\"standby\":" << result.standby_fighters
+           << R"(,"task_counts":{"standby":)" << result.standby_fighters
            << ",\"move_to_destination\":" << result.moving_fighters
            << ",\"attack\":" << result.attacking_fighters << "}}"
-           << ",\"final_state\":{\"mission_state\":" << json_string(result.mission_state)
+           << R"(,"final_state":{"mission_state":)" << json_string(result.mission_state)
            << ",\"initial_capital_ships\":" << result.initial_capital_ships
            << ",\"initial_turrets\":" << result.initial_turrets
            << ",\"alive_entities\":" << result.alive_entities
@@ -504,18 +504,18 @@ auto to_json(BenchmarkResult const& result) -> std::string {
            << ",\"active_lasers\":" << result.active_lasers
            << ",\"lasers_spawned\":" << result.lasers_spawned
            << ",\"peak_fighters\":" << result.peak_fighters << "}"
-           << ",\"memory\":{\"frame_capacity_bytes\":" << result.frame_memory_capacity_bytes
+           << R"(,"memory":{"frame_capacity_bytes":)" << result.frame_memory_capacity_bytes
            << ",\"frame_peak_claimed_bytes\":" << result.frame_memory_peak_claimed_bytes
            << ",\"frame_peak_payload_bytes\":" << result.frame_memory_peak_payload_bytes
            << ",\"frame_total_padding_bytes\":" << result.frame_memory_total_padding_bytes
            << ",\"frame_total_root_claims\":" << result.frame_memory_total_root_claims
            << ",\"frame_overflow_count\":" << result.frame_memory_overflow_count << "}"
-           << ",\"telemetry\":{\"enabled\":" << (result.telemetry_enabled ? "true" : "false")
+           << R"(,"telemetry":{"enabled":)" << (result.telemetry_enabled ? "true" : "false")
            << ",\"rows\":" << result.telemetry_rows
            << ",\"acquired_blocks\":" << result.telemetry_acquired_blocks
            << ",\"retained_blocks\":" << result.telemetry_retained_blocks
            << ",\"allocated_bytes\":" << result.telemetry_allocated_bytes << "}"
-           << ",\"environment\":{\"hardware_threads\":" << result.hardware_threads
+           << R"(,"environment":{"hardware_threads":)" << result.hardware_threads
            << ",\"compiler\":" << json_string(result.compiler)
            << ",\"build_type\":" << json_string(result.build_type)
            << ",\"tracy_enabled\":" << (result.tracy_enabled ? "true" : "false") << "}}";

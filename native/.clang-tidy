@@ -197,6 +197,7 @@ Checks:
   - cppcoreguidelines-virtual-class-destructor
   - modernize-concat-nested-namespaces
   - modernize-min-max-use-initializer-list
+  - modernize-raw-string-literal
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:

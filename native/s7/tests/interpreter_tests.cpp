@@ -109,7 +109,7 @@ void rejects_unsafe_operations_and_remains_usable(TestContext& test) {
         "((symbol-initial-value 'open-input-file) \"scenario.scm\")",
         "((#_symbol-initial-value 'getenv) \"PATH\")",
         "((eval '#_getenv) \"PATH\")",
-        "((eval-string \"#_getenv\") \"PATH\")",
+        R"(((eval-string "#_getenv") "PATH"))",
         "(unlet (rootlet) 'load)",
         "(#_rootlet)",
         "(set! (*s7* 'scheme-version) 'r7rs)",
@@ -250,7 +250,7 @@ void enforces_library_resource_limits(TestContext& test) {
         .max_loaded_files = 1,
     }};
     auto const file_count{file_count_interpreter.evaluate(
-        "(begin (load-script \"first.scm\") (load-script \"second.scm\"))")};
+        R"((begin (load-script "first.scm") (load-script "second.scm")))")};
     test.expect(!file_count.succeeded, "the library file count is limited");
     test.expect(file_count.error.contains("file count limit"),
                 "the library file count limit is reported");
