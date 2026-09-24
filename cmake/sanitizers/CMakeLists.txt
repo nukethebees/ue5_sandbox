@@ -23,10 +23,8 @@ function(sandbox_enable_address_sanitizer)
       "IOJ_ENABLE_ASAN is supported only for Windows x64 configurations.")
   endif()
 
-  if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR
-     NOT CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
-    message(FATAL_ERROR
-      "IOJ_ENABLE_ASAN requires the Windows clang-cl toolchain.")
+  if(NOT IOJ_IS_CLANG_CL)
+    message(FATAL_ERROR "IOJ_ENABLE_ASAN requires the Windows clang-cl toolchain.")
   endif()
 
   add_compile_options(
