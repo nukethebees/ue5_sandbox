@@ -3,7 +3,6 @@ include("${PROJECT_SOURCE_DIR}/cmake/jobserver_commands.cmake")
 include("${PROJECT_SOURCE_DIR}/cmake/unreal_paths.cmake")
 include("${PROJECT_SOURCE_DIR}/cmake/unreal_arguments.cmake")
 include("${PROJECT_SOURCE_DIR}/cmake/msvc_environment.cmake")
-include("${PROJECT_SOURCE_DIR}/cmake/clang_cl_asan_paths.cmake")
 
 set(cmake_test_cli [=[C:\Users\Test User\jobserver.exe]=])
 set(cmake_test_worktree [=[C:\src\Sandbox Worktree]=])

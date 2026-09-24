@@ -16,7 +16,6 @@ endif()
 include(cmake/compiler_detection.cmake)
 include(cmake/dotnet_host_tools.cmake)
 include(cmake/ue_cache_vars.cmake)
-include(cmake/address_sanitizer.cmake)
 
 ioj_is_msvc_frontend(IOJ_MSVC_FRONTEND)
 ioj_is_clang_cl(IOJ_IS_CLANG_CL)
