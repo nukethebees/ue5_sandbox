@@ -1,9 +1,3 @@
-set(CACHE{UE_ROOT}
-  TYPE PATH
-  HELP "Root directory of the Unreal Engine installation"
-  VALUE "$ENV{UE_ROOT}"
-)
-
 set(CACHE{IOJ_ISMC_BENCHMARK_SECONDS}
   TYPE STRING
   HELP "Duration of the offscreen SandboxISMC paired benchmark"

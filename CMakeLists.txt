@@ -15,6 +15,7 @@ endif()
 
 include(cmake/compiler_detection.cmake)
 include(cmake/dotnet_host_tools.cmake)
+include(cmake/ue_cache_vars.cmake)
 
 ioj_is_msvc_frontend(IOJ_MSVC_FRONTEND)
 ioj_is_clang_cl(IOJ_IS_CLANG_CL)
@@ -29,25 +30,6 @@ set(IOJ_HAS_PYTHON ${Python3_Interpreter_FOUND})
 option(IOJ_WITH_UNREAL "Configure Unreal Engine integration and targets" ON)
 option(IOJ_WITH_ASAN "Instrument native targets with AddressSanitizer" OFF)
 option(IOJ_WITH_CLANG_TIDY "Run clang-tidy for first-party native targets" OFF)
-
-set(CACHE{UE_PLATFORM}
-  TYPE STRING
-  HELP "Unreal target platform passed to UnrealBuildTool"
-  VALUE Win64
-)
-
-set(CACHE{UE_CONFIGURATION}
-  TYPE STRING
-  HELP "Unreal target configuration and native artifact configuration"
-  VALUE Development
-)
-set_property(CACHE UE_CONFIGURATION PROPERTY STRINGS
-  Debug
-  DebugGame
-  Development
-  Shipping
-  Test
-)
 
 if(IOJ_WITH_ASAN)
   include(cmake/address_sanitizer.cmake)
