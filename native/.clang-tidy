@@ -66,6 +66,7 @@ Checks:
   - bugprone-misplaced-pointer-arithmetic-in-alloc
   - bugprone-move-forwarding-reference
   - bugprone-multi-level-implicit-pointer-conversion
+  - bugprone-multiple-new-in-one-expression
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
