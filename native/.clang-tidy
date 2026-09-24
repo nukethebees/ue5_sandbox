@@ -94,6 +94,7 @@ Checks:
   - bugprone-suspicious-string-compare
   - bugprone-swapped-arguments
   - bugprone-tagged-union-member-count
+  - bugprone-terminating-continue
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
