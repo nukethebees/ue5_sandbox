@@ -17,6 +17,7 @@ target_link_libraries(native-layout-tests PRIVATE
   native-layout
   GTest::gtest_main
   sandbox::native_defaults
+  ioj::test_pch
 )
 target_compile_definitions(native-layout-tests PRIVATE
   IOJ_SOURCE_DIR="${PROJECT_SOURCE_DIR}"

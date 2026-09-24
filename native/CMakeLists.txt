@@ -133,31 +133,6 @@ if(TARGET TracyClientUnreal)
   )
 endif()
 
-sandbox_target_precompile_common_headers(
-  native-core
-  native-simulation
-  native-simulation-unreal
-  sandbox-image
-)
-sandbox_target_precompile_codegen_headers(
-  codegen-lib
-  kernel-codegen-lib
-  material-gen
-  sandbox-material-gen
-  slate-codegen-lib
-)
-sandbox_target_precompile_test_headers(
-  codegen-tests
-  kernel-codegen-tests
-  native-layout-tests
-  native-core-tests
-  native-level-authoring-tests
-  native-simulation-tests
-  native-simulation-benchmark-tests
-  sandbox-image-tests
-  slate-codegen-tests
-)
-
 if(IOJ_WITH_CLANG_TIDY)
   sandbox_add_native_clang_tidy_target()
 endif()

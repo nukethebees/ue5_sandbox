@@ -17,6 +17,7 @@ target_link_libraries(kernel-codegen-lib
   PRIVATE
   lispb-syntax
   sandbox::native_codegen_defaults
+  ioj::codegen_pch
 )
 
 add_executable(kernel-codegen-tests
@@ -31,6 +32,7 @@ target_link_libraries(kernel-codegen-tests PRIVATE
   lispb-syntax
   GTest::gtest_main
   sandbox::native_codegen_defaults
+  ioj::test_pch
 )
 
 add_test(NAME kernel-codegen-tests COMMAND kernel-codegen-tests)

@@ -11,6 +11,7 @@ target_link_libraries(material-gen
   PRIVATE
     lispb-syntax
     sandbox::native_codegen_defaults
+    ioj::codegen_pch
 )
 
 if(IOJ_WITH_UNREAL)
@@ -31,6 +32,7 @@ if(IOJ_WITH_UNREAL)
   target_link_libraries(sandbox-material-gen PRIVATE
     sandbox::native_codegen_defaults
     sandbox::unreal_avx2
+    ioj::codegen_pch
   )
   set_target_properties(sandbox-material-gen PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY

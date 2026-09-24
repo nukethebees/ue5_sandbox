@@ -5,6 +5,7 @@ target_link_libraries(native-simulation-benchmark-tests PRIVATE
   native-simulation-benchmark-lib
   GTest::gtest_main
   sandbox::native_defaults
+  ioj::test_pch
 )
 target_compile_definitions(native-simulation-benchmark-tests PRIVATE
   IOJ_PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}"

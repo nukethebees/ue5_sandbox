@@ -89,6 +89,7 @@ target_link_libraries(codegen-lib
     lispb-schema
   PRIVATE
     sandbox::native_codegen_defaults
+    ioj::codegen_pch
 )
 
 add_library(lispb-target-compiler
@@ -229,6 +230,7 @@ target_link_libraries(codegen-tests PRIVATE
   lispb-project
   GTest::gtest_main
   sandbox::native_codegen_defaults
+  ioj::test_pch
 )
 target_compile_definitions(codegen-tests PRIVATE
   IOJ_CODEGEN_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"

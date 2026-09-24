@@ -5,6 +5,7 @@ target_link_libraries(native-level-authoring-tests PRIVATE
   native-level-authoring
   GTest::gtest_main
   sandbox::native_defaults
+  ioj::test_pch
 )
 configure_sandbox_s7_abi(native-level-authoring-tests)
 

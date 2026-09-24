@@ -9,7 +9,10 @@ if(IOJ_WITH_UNREAL)
   # Tracy DLL imports are compiled into the simulation objects used by Unreal.
   add_library(native-simulation-unreal STATIC)
   get_target_property(native_simulation_sources native-simulation SOURCES)
-  target_sources(native-simulation-unreal PRIVATE ${native_simulation_sources})
+  target_sources(native-simulation-unreal 
+    PRIVATE 
+      ${native_simulation_sources}
+  )
   list(APPEND native_simulation_targets native-simulation-unreal)
 endif()
 
@@ -20,8 +23,13 @@ foreach(native_simulation_target IN LISTS native_simulation_targets)
     "${PROJECT_SOURCE_DIR}/native/core/include"
   )
   target_link_libraries(${native_simulation_target}
-    PUBLIC sandbox::handmade_math native-memory native-core
-    PRIVATE sandbox::native_defaults
+    PUBLIC 
+      sandbox::handmade_math 
+      native-memory 
+      native-core
+    PRIVATE 
+      sandbox::native_defaults
+      ioj::core_pch
   )
   if(IOJ_WITH_TRACY)
     target_compile_definitions(${native_simulation_target} PRIVATE IOJ_WITH_TRACY)

@@ -15,8 +15,6 @@ include(cmake/compiler_detection.cmake)
 ioj_is_msvc_frontend(IOJ_MSVC_FRONTEND)
 ioj_is_clang_cl(IOJ_IS_CLANG_CL)
 
-include(cmake/precompiled_headers.cmake)
-
 enable_testing()
 
 include(cmake/dotnet_host_tools.cmake)

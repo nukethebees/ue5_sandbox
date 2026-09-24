@@ -11,6 +11,7 @@ target_link_libraries(slate-codegen-lib
   PRIVATE
   lispb-syntax
   sandbox::native_codegen_defaults
+  ioj::codegen_pch
 )
 
 add_executable(slate-codegen-tests
@@ -23,6 +24,7 @@ target_link_libraries(slate-codegen-tests PRIVATE
   lispb-syntax
   GTest::gtest_main
   sandbox::native_codegen_defaults
+  ioj::test_pch
 )
 
 add_test(NAME slate-codegen-tests COMMAND slate-codegen-tests)

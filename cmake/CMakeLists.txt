@@ -1,3 +1,4 @@
+add_subdirectory(precompiled_headers)
 add_subdirectory(compiler_options)
 add_subdirectory(compiler_warnings)
 add_subdirectory(tests)

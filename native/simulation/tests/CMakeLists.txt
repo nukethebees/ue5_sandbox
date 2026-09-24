@@ -49,6 +49,7 @@ target_compile_features(native-simulation-tests PRIVATE cxx_std_23)
 target_link_libraries(native-simulation-tests PRIVATE
   native-simulation
   sandbox::native_defaults
+  ioj::test_pch
 )
 
 target_link_libraries(native-simulation-tests PRIVATE GTest::gtest_main)

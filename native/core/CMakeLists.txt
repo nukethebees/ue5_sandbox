@@ -41,8 +41,11 @@ target_sources(native-core PRIVATE
 target_compile_features(native-core PUBLIC cxx_std_23)
 target_include_directories(native-core PUBLIC include)
 target_link_libraries(native-core
-  PUBLIC sandbox::handmade_math
-  PRIVATE sandbox::native_defaults
+  PUBLIC 
+    sandbox::handmade_math
+  PRIVATE 
+    sandbox::native_defaults
+    ioj::core_pch
 )
 if(IOJ_WITH_TRACY)
   target_compile_definitions(native-core PRIVATE IOJ_WITH_TRACY)
@@ -95,7 +98,7 @@ target_sources(native-core-tests PRIVATE
   tests/vector_math_tests.cpp
 )
 target_compile_features(native-core-tests PRIVATE cxx_std_23)
-target_link_libraries(native-core-tests PRIVATE native-core sandbox::native_defaults)
+target_link_libraries(native-core-tests PRIVATE native-core sandbox::native_defaults ioj::test_pch)
 
 target_link_libraries(native-core-tests PRIVATE GTest::gtest_main)
 
