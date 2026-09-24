@@ -1,5 +1,5 @@
 #include <SandboxCore/single_allocation/runtime.h>
-#include <SbxCoreExperiments/soa_types.h>
+#include "generated/soa_fixture.h"
 
 #include <CQTest.h>
 
@@ -8,7 +8,7 @@
 
 TEST_CLASS(SingleAllocationSoa, "SandboxCoreEngine.UnitTests")
 {
-    using Owner = ml::single_allocation_experiment::SingleAllocationAlignmentData;
+    using Owner = ml::soa_test_fixture::SingleRows;
 
     TEST_METHOD(CompactHandleFollowsGrowth)
     {

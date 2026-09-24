@@ -6,9 +6,7 @@
     :types "lispb/schema/types.lispb"
     :sources (
       "lispb/schema/core_layouts.lispb"
-      "lispb/schema/single_allocation_experiment.lispb"
       "lispb/schema/level_telemetry_history.lispb"
-      "lispb/schema/soa_spacing_shapes.lispb"
       "lispb/schema/native_collision.lispb"
         "lispb/schema/native_entity_cell_data.lispb"
         "lispb/schema/native_world_aabbs.lispb"
@@ -35,6 +33,16 @@
     :types "native/lispb/tests/compile_fixture/types.lispb"
     :sources ("native/lispb/tests/compile_fixture/modules.lispb")
     :output-root (project-path "native/lispb/tests/compile_fixture/generated"))
+
+  (cpp-schema native-soa-fixture
+    :types "native/lispb/native_soa/types.lispb"
+    :sources ("native/lispb/native_soa/fixture.lispb")
+    :output-root (build-path "native/lispb/native_soa/generated"))
+
+  (cpp-schema sandbox-core-test-fixture
+    :types "lispb/schema/common_scalars.lispb"
+    :sources ("Plugins/SandboxCore/Source/SandboxCoreEngineTests/Private/soa_fixture.lispb")
+    :output-root (project-path "Plugins/SandboxCore/Source/SandboxCoreEngineTests/Private/generated"))
 
   (slate slate-core-widgets
     :sources ("Plugins/SandboxUI/Source/SandboxUI/Private/widgets/CoreWidgets.lispb")
@@ -157,7 +165,7 @@
       slate-game-options
       slate-level-select))
   (group committed-code
-    :targets (sandbox-code slate-production kernel-unreal kernel-native-core))
+    :targets (sandbox-code sandbox-core-test-fixture slate-production kernel-unreal kernel-native-core))
   (group materials
     :targets (
       ui-glow-material

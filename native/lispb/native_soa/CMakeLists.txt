@@ -1,13 +1,27 @@
-add_executable(native-soa-generate generate.cpp)
-target_link_libraries(native-soa-generate PRIVATE codegen-lib sandbox::native_defaults)
 set(NATIVE_SOA_GENERATED "${CMAKE_CURRENT_BINARY_DIR}/generated")
 add_custom_command(
   OUTPUT "${NATIVE_SOA_GENERATED}/native_soa_types.h"
-  COMMAND native-soa-generate "${PROJECT_SOURCE_DIR}" "${NATIVE_SOA_GENERATED}"
-  DEPENDS native-soa-generate
-    "${PROJECT_SOURCE_DIR}/lispb/schema/single_allocation_experiment.lispb"
-    "${PROJECT_SOURCE_DIR}/lispb/schema/types.lispb"
+  COMMAND lispb generate
+    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
+    --build-root "${CMAKE_BINARY_DIR}"
+    --target native-soa-fixture
+    --depfile "${NATIVE_SOA_GENERATED}/fixture.d"
+  DEPENDS lispb
+    "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
+    "${CMAKE_CURRENT_SOURCE_DIR}/types.lispb"
+    "${CMAKE_CURRENT_SOURCE_DIR}/fixture.lispb"
+  DEPFILE "${NATIVE_SOA_GENERATED}/fixture.d"
   VERBATIM)
+add_custom_target(generate-native-soa-fixture
+  DEPENDS "${NATIVE_SOA_GENERATED}/native_soa_types.h")
+add_custom_target(check-generated-native-soa-fixture
+  COMMAND lispb check
+    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
+    --build-root "${CMAKE_BINARY_DIR}"
+    --target native-soa-fixture
+  DEPENDS generate-native-soa-fixture
+  VERBATIM)
+add_dependencies(check-generated-code check-generated-native-soa-fixture)
 add_library(native-soa INTERFACE)
 target_compile_features(native-soa INTERFACE cxx_std_23)
 target_include_directories(native-soa INTERFACE "${CMAKE_CURRENT_SOURCE_DIR}/include" "${NATIVE_SOA_GENERATED}")
@@ -32,53 +46,24 @@ add_test(NAME native-soa-tests-mimalloc COMMAND native-soa-tests-mimalloc)
 set_tests_properties(native-soa-tests-mimalloc PROPERTIES LABELS "unit;all;native;native-soa")
 
 if(IOJ_NATIVE_SOA_BENCHMARKS)
-find_program(UV_EXECUTABLE NAMES uv REQUIRED)
-
-add_executable(native-soa-benchmarks benchmarks.cpp bulk_benchmarks.cpp production_benchmarks.cpp)
+add_executable(native-soa-benchmarks production_benchmarks.cpp)
 target_sources(native-soa-benchmarks PRIVATE
   "${PROJECT_SOURCE_DIR}/native/simulation/src/laser_frame_output.cpp")
 set_target_properties(native-soa-benchmarks PROPERTIES UNITY_BUILD OFF)
-target_link_libraries(native-soa-benchmarks PRIVATE native-soa benchmark::benchmark_main)
+target_link_libraries(native-soa-benchmarks PRIVATE
+  sandbox::native_defaults sandbox::handmade_math benchmark::benchmark_main)
 target_include_directories(native-soa-benchmarks PRIVATE
-  "${PROJECT_SOURCE_DIR}/native/simulation/include")
-add_executable(native-soa-reserve-matrix reserve_matrix.cpp)
-target_link_libraries(native-soa-reserve-matrix PRIVATE native-soa benchmark::benchmark_main)
-target_compile_definitions(native-soa-reserve-matrix PRIVATE NATIVE_SOA_MIMALLOC=0)
-add_executable(native-soa-reserve-matrix-mimalloc reserve_matrix.cpp)
-target_compile_definitions(native-soa-reserve-matrix-mimalloc PRIVATE NATIVE_SOA_MIMALLOC=1)
-target_link_libraries(native-soa-reserve-matrix-mimalloc PRIVATE native-soa benchmark::benchmark_main
-  sandbox::mimalloc)
-foreach(matrix_target IN ITEMS native-soa-reserve-matrix native-soa-reserve-matrix-mimalloc)
-  target_link_libraries(${matrix_target} PRIVATE
-    sandbox::arch_avx2
-    sandbox::debug_symbols
-    sandbox::fp_precise
-  )
-endforeach()
+  "${PROJECT_SOURCE_DIR}/native/simulation/include"
+  "${PROJECT_SOURCE_DIR}/native/core/include")
 target_link_libraries(native-soa-benchmarks PRIVATE
   sandbox::arch_avx2
   sandbox::debug_symbols
   sandbox::fp_precise
 )
 add_test(NAME native-soa-dry-run COMMAND native-soa-benchmarks --benchmark_dry_run
-  "--benchmark_filter=^(Vector|Single)/"
+  "--benchmark_filter=^Production/"
   "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-dry-run.json" --benchmark_out_format=json)
-set_tests_properties(native-soa-dry-run PROPERTIES LABELS "native-soa" FIXTURES_SETUP native-soa-json)
-add_test(NAME native-soa-plot-smoke COMMAND "${UV_EXECUTABLE}" run "${PROJECT_SOURCE_DIR}/Scripts/plot-native-soa-benchmarks.py"
-  --input "${CMAKE_BINARY_DIR}/native-soa-dry-run.json" --output-dir "${CMAKE_BINARY_DIR}/native-soa-dry-run-plots")
-set_tests_properties(native-soa-plot-smoke PROPERTIES LABELS "native-soa" FIXTURES_REQUIRED native-soa-json)
-
-set(NATIVE_SOA_RESULTS "${CMAKE_BINARY_DIR}/native-soa-results.json")
-sandbox_jobserver_command(native_soa_reserve_report_command BENCHMARK benchmark
-  "Native SoA reserve benchmark")
-add_custom_target(native-soa-reserve-report
-  COMMAND ${native_soa_reserve_report_command} native-soa-benchmarks
-    --benchmark_filter=/reserve/ --benchmark_repetitions=9
-    --benchmark_enable_random_interleaving=true --benchmark_min_time=0.1s
-    "--benchmark_out=${NATIVE_SOA_RESULTS}" --benchmark_out_format=json
-  COMMAND "${UV_EXECUTABLE}" run "${PROJECT_SOURCE_DIR}/Scripts/plot-native-soa-benchmarks.py"
-    --input "${NATIVE_SOA_RESULTS}" --output-dir "${CMAKE_BINARY_DIR}/native-soa-plots"
-  DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
+set_tests_properties(native-soa-dry-run PROPERTIES LABELS "native-soa")
 
 sandbox_jobserver_command(native_soa_production_report_command BENCHMARK benchmark
   "Native SoA production benchmark")
@@ -110,20 +95,4 @@ add_custom_target(native-soa-laser-hit-append-report
     --benchmark_out_format=json
   DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
 
-add_custom_target(native-soa-reserve-matrix-report
-  COMMAND "${IOJ_BENCHMARK_TOOLS}" native-soa-reserve-matrix
-    --standard "$<TARGET_FILE:native-soa-reserve-matrix>"
-    --mimalloc "$<TARGET_FILE:native-soa-reserve-matrix-mimalloc>"
-    --output-dir "${CMAKE_BINARY_DIR}/native-soa-reserve-matrix"
-  COMMAND "${UV_EXECUTABLE}" run "${PROJECT_SOURCE_DIR}/Scripts/plot-native-soa-reserve-matrix.py"
-    --input "${CMAKE_BINARY_DIR}/native-soa-reserve-matrix/native-reserve-matrix.json"
-    --output-dir "${CMAKE_BINARY_DIR}/native-soa-reserve-matrix"
-  DEPENDS native-soa-reserve-matrix native-soa-reserve-matrix-mimalloc benchmark-tools-host USES_TERMINAL VERBATIM)
-add_test(NAME native-soa-reserve-matrix-smoke
-  COMMAND "${IOJ_BENCHMARK_TOOLS}" native-soa-reserve-matrix
-    --standard "$<TARGET_FILE:native-soa-reserve-matrix>"
-    --mimalloc "$<TARGET_FILE:native-soa-reserve-matrix-mimalloc>"
-    --rows 4096 --owners 1,4 --dry-run
-    --output-dir "${CMAKE_BINARY_DIR}/native-soa-reserve-matrix-smoke")
-set_tests_properties(native-soa-reserve-matrix-smoke PROPERTIES LABELS "native-soa")
 endif()

@@ -25,7 +25,7 @@ internal sealed class BenchmarkToolsApplication(
     TextWriter standard_error,
     string executable_path)
 {
-    private const string usage = "Usage: BenchmarkTools <native-simulation|fighter-simulation|frame-memory-level|frame-memory-revision-ab|level-telemetry|gpu-starfield|native-soa-reserve-matrix> [options]";
+    private const string usage = "Usage: BenchmarkTools <native-simulation|fighter-simulation|frame-memory-level|frame-memory-revision-ab|level-telemetry|gpu-starfield> [options]";
 
     internal IProcessRunner ProcessRunner => process_runner;
     internal IJobserverLocator JobserverLocator => jobserver_locator;
@@ -66,7 +66,6 @@ internal sealed class BenchmarkToolsApplication(
                 "frame-memory-revision-ab" => await FrameMemoryRevisionAbBenchmarkCommand.RunAsync(this, repository_paths, arguments.Skip(1).ToArray(), cancellation_token),
                 "level-telemetry" => await LevelTelemetryBenchmarkCommand.RunAsync(this, repository_paths, arguments.Skip(1).ToArray(), cancellation_token),
                 "gpu-starfield" => await GpuStarfieldBenchmarkCommand.RunAsync(this, repository_paths, arguments.Skip(1).ToArray(), cancellation_token),
-                "native-soa-reserve-matrix" => await NativeSoaReserveMatrixBenchmarkCommand.RunAsync(this, repository_paths, arguments.Skip(1).ToArray(), cancellation_token),
                 _ => WriteUsage($"Unknown benchmark command '{arguments[0]}'."),
             };
         }

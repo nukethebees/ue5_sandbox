@@ -1,0 +1,4 @@
+(type odd_bytes :spelling "OddBytes" :header "native_soa/leaf_types.h")
+(type aligned32 :spelling "Aligned32" :header "native_soa/leaf_types.h")
+(type aligned64 :spelling "Aligned64" :header "native_soa/leaf_types.h")
+(type aligned256 :spelling "Aligned256" :header "native_soa/leaf_types.h")

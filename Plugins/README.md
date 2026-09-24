@@ -12,7 +12,7 @@ Use this map to find the owner before following a plugin's own README or source 
 | Third-party/editor integration | `VisualStudioTools` |
 
 Several plugins already have local documentation: [SpaceGame](SpaceGame/README.md),
-[SandboxCore experiments](SandboxCore/Source/SbxCoreExperiments/README.md),
+[SandboxCore storage](SandboxCore/Source/SandboxCore/single_allocation_storage.md),
 [SandboxShaders](SandboxShaders/README.md), [SandboxUI](SandboxUI/README.md),
 [SandboxISMC](SandboxISMC/README.md), and [SandboxGpuTutorials](SandboxGpuTutorials/README.md).
 

@@ -318,6 +318,10 @@ add_custom_target(generate-code
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target sandbox-code
+  COMMAND lispb generate
+    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
+    --build-root "${CMAKE_BINARY_DIR}"
+    --target sandbox-core-test-fixture
   DEPENDS lispb
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Generating committed Sandbox C++ files"
@@ -330,6 +334,10 @@ add_custom_target(check-generated-code
     --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
     --build-root "${CMAKE_BINARY_DIR}"
     --target sandbox-code
+  COMMAND lispb check
+    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
+    --build-root "${CMAKE_BINARY_DIR}"
+    --target sandbox-core-test-fixture
   DEPENDS lispb
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Checking committed Sandbox C++ files"

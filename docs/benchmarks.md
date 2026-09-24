@@ -18,7 +18,6 @@ Results are disposable local data unless a specific experiment says otherwise; w
 | Revision A/B frame-memory comparison | `tools/bin/BenchmarkTools.exe frame-memory-revision-ab` | Safely creates and evaluates a detached baseline worktree. |
 | Level telemetry | `tools/bin/BenchmarkTools.exe level-telemetry` | Configures, builds, and runs the telemetry CTest preset. |
 | GPU starfield | `tools/bin/BenchmarkTools.exe gpu-starfield` | Runs, validates, and writes versioned JSON/CSV/Markdown artifacts. |
-| Native SOA reserve matrix | `tools/bin/BenchmarkTools.exe native-soa-reserve-matrix` | Writes structured matrix results; pair them with `plot-native-soa-reserve-matrix.py`. |
 | Unreal-backed measurements | Benchmark CMake presets and commandlet targets | Presets are in `cmake/presets/*benchmarks.json`. |
 
 Run the fighter benchmark with:

@@ -1,12 +1,12 @@
 # Generated single-allocation SoA
 
-The `single_allocation` schema setting adds an opt-in owning representation alongside the normal TArray-backed generated owner:
+The LispB `single-allocation` declaration adds an owning representation alongside the ordinary generated owner (TArray-backed in Unreal and vector-backed in native builds):
 
-```json
-"single_allocation": {"name": "SingleEntityData"}
+```lisp
+(single-allocation SingleEntityData)
 ```
 
-The runtime is part of SandboxCore, and production simulation storage uses generated single-allocation owners. Comparison types remain in SbxCoreExperiments. The former `experimental_single_allocation` setting has been renamed; repository manifests have been updated rather than maintaining two spellings.
+SandboxCore provides the Unreal runtime adapter. Native and Unreal owners share the layout and compact-view implementation under `native/core`. Production simulation storage uses generated single-allocation owners.
 
 ## Ownership and layout
 
@@ -99,8 +99,8 @@ enforced by the module rules. Restart the Editor after rebuilding SandboxCore; r
 while its private allocator still owns live storage is unsupported.
 
 Allocator variants select a type providing `allocate(bytes, alignment)` and `free(data)`. The
-FMemory comparison remains explicit. The native backend retains its standard/mimalloc
-configuration choices and uses the same private allocator library without linking Unreal.
+native backend retains its standard/mimalloc configuration choices and uses the same private
+allocator library without linking Unreal.
 
 ## Validation and measurement
 
@@ -119,11 +119,13 @@ cmake --build out/build/native --target check-generated-code
 SoA allocation variants (`native-soa-tests` and `native-soa-tests-mimalloc`) and its benchmark
 smoke checks; it is not a timed performance comparison. `generate-code` and
 `check-generated-code` validate committed generated output. Allocation counting uses the compile
-fixture's allocator adapter, while the native SoA suites exercise actual standard and mimalloc
-storage and alignment.
+fixture's allocator adapter. Small schemas in `native/lispb/native_soa` cover odd-sized and
+32/64/256-byte-aligned leaves, repeated nested vectors, layout limits, and bulk operations. The
+native SoA suites exercise actual standard and mimalloc storage and alignment.
 
 For Unreal-dependent behavior, build the Editor and run the existing CQTest/Unreal Automation
-unit suite:
+unit suite. The private SandboxCoreEngineTests fixture covers compact handles across growth,
+self-append, nested alias detection, and move assignment:
 
 ```powershell
 cmake --workflow --preset debug-game
@@ -142,4 +144,4 @@ ctest --preset win-x64-clangcl-release-asan -R '^native-soa-tests$'
 
 This checks the standard allocation path, not mimalloc internals. UBSan has not been run.
 
-The [comparison README](../SbxCoreExperiments/README.md) documents benchmark commands; the [investigation report](../SbxCoreExperiments/INVESTIGATION.md) preserves earlier allocator measurements. Those historical numbers predate the compact-view and bulk-operation changes. Production gameplay adoption should follow populated-workload measurements, not empty reserve alone.
+The `native-soa-benchmarks` executable measures production fighter, laser, spinner, and laser-hit storage. Its production report targets remain available through CMake; see [Benchmarks](../../../../docs/benchmarks.md) for the supported workflow.

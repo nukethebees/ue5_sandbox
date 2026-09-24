@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace BenchmarkTools.Tests;
@@ -19,32 +18,6 @@ public sealed class MigratedBenchmarkCommandTests
         Assert.AreEqual(0, exit_code);
         Assert.AreEqual("native-simulation", runner.Requests.Single().Arguments[0]);
         StringAssert.Contains(output.ToString(), "batch-benchmark");
-    }
-
-    [TestMethod]
-    public async Task ReserveMatrix_dry_run_writes_structured_results_and_does_not_request_a_lease()
-    {
-        using var repository = new TemporaryRepository();
-        var standard = repository.CreateFile("standard.exe");
-        var mimalloc = repository.CreateFile("mimalloc.exe");
-        var output = Path.Combine(repository.Root, "results");
-        var runner = new RecordingRunner(request =>
-        {
-            var destination = request.Arguments.Single(argument => argument.StartsWith("--benchmark_out=", StringComparison.Ordinal))["--benchmark_out=".Length..];
-            var filter = request.Arguments.Single(argument => argument.StartsWith("--benchmark_filter=", StringComparison.Ordinal))["--benchmark_filter=".Length..];
-            var name = filter[1..^1].Replace("\\/", "/", StringComparison.Ordinal);
-            Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-            File.WriteAllText(destination, JsonSerializer.Serialize(new { benchmarks = new[] { new { run_name = name, real_time = 1.0, time_unit = "ms" } } }));
-            return new ProcessResult(0);
-        });
-        var application = CreateApplication(runner, TextWriter.Null);
-
-        var exit_code = await application.RunAsync(["native-soa-reserve-matrix", "--standard", standard, "--mimalloc", mimalloc, "--output-dir", output, "--rows", "4096", "--owners", "1", "--repetitions", "1", "--dry-run"], repository.Root);
-
-        Assert.AreEqual(0, exit_code);
-        Assert.AreEqual(8, runner.Requests.Count);
-        Assert.IsTrue(File.Exists(Path.Combine(output, "native-reserve-matrix.json")));
-        Assert.IsTrue(File.Exists(Path.Combine(output, "native-reserve-matrix.csv")));
     }
 
     [TestMethod]
@@ -83,27 +56,16 @@ public sealed class MigratedBenchmarkCommandTests
             {
                 return new ProcessResult(0, "commit\n");
             }
-            if (request.Arguments.Any(argument => argument.StartsWith("--benchmark_out=", StringComparison.Ordinal)))
-            {
-                var destination = request.Arguments.Single(argument => argument.StartsWith("--benchmark_out=", StringComparison.Ordinal))["--benchmark_out=".Length..];
-                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
-                File.WriteAllText(destination, "{}");
-                return new ProcessResult(0);
-            }
             return new ProcessResult(0, "{}\n");
         });
         var application = new BenchmarkToolsApplication(runner, new FakeJobserverLocator(), new FakeEnvironment(), TextWriter.Null, errors, @"C:\tools\BenchmarkTools.exe");
-        var standard = repository.CreateFile("standard.exe");
-        var mimalloc = repository.CreateFile("mimalloc.exe");
         var prepared = Path.Combine(repository.Root, "prepared");
         Directory.CreateDirectory(prepared);
 
         Assert.AreEqual(1, await application.RunAsync(["frame-memory-level", "--skip-build"], repository.Root));
         Assert.AreEqual(1, await application.RunAsync(["fighter-simulation", "--fighter-caps", "1", "--skip-build"], repository.Root));
         Assert.AreEqual(1, await application.RunAsync(["frame-memory-revision-ab", "--skip-build", "--baseline-worktree", prepared], repository.Root));
-        Assert.AreEqual(1, await application.RunAsync(["native-soa-reserve-matrix", "--standard", standard, "--mimalloc", mimalloc, "--output-dir", "results", "--rows", "4096", "--owners", "1", "--repetitions", "1", "--dry-run"], repository.Root));
         StringAssert.Contains(errors.ToString(), "malformed");
-        StringAssert.Contains(errors.ToString(), "benchmarks array");
     }
 
     [TestMethod]
@@ -169,13 +131,6 @@ public sealed class MigratedBenchmarkCommandTests
         }
 
         public string Root { get; }
-
-        public string CreateFile(string name)
-        {
-            var path = Path.Combine(Root, name);
-            File.WriteAllText(path, string.Empty);
-            return path;
-        }
 
         public void Dispose() => Directory.Delete(Root, recursive: true);
     }

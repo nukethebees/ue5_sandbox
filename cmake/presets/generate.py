@@ -860,21 +860,8 @@ def make_native_benchmark_document() -> dict[str, Any]:
                 "native-soa-tests",
                 "native-soa-tests-mimalloc",
                 "native-soa-benchmarks",
-                "native-soa-reserve-matrix",
-                "native-soa-reserve-matrix-mimalloc",
-                "benchmark-tools-host",
                 "codegen-tests",
             ],
-        },
-        {
-            "name": "native-soa-reserve",
-            "configurePreset": "native-soa",
-            "targets": ["native-soa-reserve-report"],
-        },
-        {
-            "name": "native-soa-reserve-matrix",
-            "configurePreset": "native-soa",
-            "targets": ["native-soa-reserve-matrix-report"],
         },
         {
             "name": "native-simulation-benchmark",
@@ -924,7 +911,7 @@ def make_native_benchmark_document() -> dict[str, Any]:
             "configurePreset": "native-soa",
             "filter": {
                 "include": {
-                    "name": "^(native-soa|SingleAllocationSoa\\.)"
+                    "name": "^(native-soa|codegen-tests$|codegen-generated-tests$)"
                 }
             },
         },
@@ -962,24 +949,6 @@ def make_native_benchmark_document() -> dict[str, Any]:
             build_name="kernel-vector-layout-benchmark-plots",
         ),
         _workflow("native-soa", "native-soa", "native-soa"),
-        {
-            "name": "native-soa-reserve",
-            "steps": [
-                {"type": "configure", "name": "native-soa"},
-                {"type": "build", "name": "native-soa"},
-                {"type": "test", "name": "native-soa"},
-                {"type": "build", "name": "native-soa-reserve"},
-            ],
-        },
-        {
-            "name": "native-soa-reserve-matrix",
-            "steps": [
-                {"type": "configure", "name": "native-soa"},
-                {"type": "build", "name": "native-soa"},
-                {"type": "test", "name": "native-soa"},
-                {"type": "build", "name": "native-soa-reserve-matrix"},
-            ],
-        },
         {
             "name": "native-simulation-benchmark",
             "steps": [

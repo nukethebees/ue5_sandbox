@@ -8,60 +8,6 @@
   :spelling "EntityCounts"
   :header "ioj/sim/entity_telemetry.h")
 
-(type soa_experiment_MimallocArrayAllocator
-  :spelling "MimallocArrayAllocator"
-  :header "SbxCoreExperiments/soa_reference_allocators.h")
-
-(type soa_experiment_FMemoryStorageAllocator
-  :spelling "ml::soa_storage::FMemoryStorageAllocator"
-  :header "SandboxCore/single_allocation/allocators.h")
-
-(type soa_experiment_MallocAllocator
-  :spelling "MallocAllocator"
-  :header "SbxCoreExperiments/soa_reference_allocators.h")
-
-(type soa_experiment_ReallocAllocator
-  :spelling "ReallocAllocator"
-  :header "SbxCoreExperiments/soa_reference_allocators.h")
-
-(type soa_experiment_Handle
-  :spelling "Handle"
-  :header "SbxCoreExperiments/soa_leaf_types.h")
-
-(type soa_experiment_EntityId
-  :spelling "EntityId"
-  :header "SbxCoreExperiments/soa_leaf_types.h")
-
-(type soa_experiment_Task
-  :spelling "Task"
-  :header "SbxCoreExperiments/soa_leaf_types.h")
-
-(type soa_experiment_Team
-  :spelling "Team"
-  :header "SbxCoreExperiments/soa_leaf_types.h")
-
-(type soa_experiment_OddBytes
-  :spelling "OddBytes"
-  :header "SbxCoreExperiments/soa_leaf_types.h")
-
-(type soa_experiment_Aligned32
-  :spelling "Aligned32"
-  :header "SbxCoreExperiments/soa_leaf_types.h")
-
-(type soa_experiment_Aligned64
-  :spelling "Aligned64"
-  :header "SbxCoreExperiments/soa_leaf_types.h")
-
-(type soa_experiment_Aligned256
-  :spelling "Aligned256"
-  :header "SbxCoreExperiments/soa_leaf_types.h")
-
-
-
-
-
-
-
 (type collision_enabled
   :spelling "ECollisionEnabled::Type"
   :header "Engine/EngineTypes.h"

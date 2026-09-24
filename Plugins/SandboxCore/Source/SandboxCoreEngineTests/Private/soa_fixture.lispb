@@ -1,0 +1,16 @@
+(module sandbox_core_soa_fixture
+  :header "soa_fixture.h"
+  :source "soa_fixture.cpp"
+  :header-include "soa_fixture.h"
+  :namespace ml::soa_test_fixture
+  (struct Vectors
+    :operations (all)
+    :vector-components (xs ys zs)
+    (member xs array float)
+    (member ys array float)
+    (member zs array float))
+  (struct Rows
+    :operations (all)
+    (member bytes array uint8)
+    (member nested nested Vectors :nested-schema Vectors)
+    (single-allocation SingleRows)))

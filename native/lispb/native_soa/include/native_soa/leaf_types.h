@@ -2,19 +2,7 @@
 
 #include <cstdint>
 
-namespace ml::native_experiment {
-
-struct Handle {
-    std::int32_t index{-1};
-    std::int32_t generation{-1};
-};
-
-struct EntityId {
-    std::uint32_t value{0xffffffffu};
-};
-
-enum class Task : std::uint8_t { None };
-enum class Team : std::uint8_t { None };
+namespace ml::native_soa_fixture {
 
 struct OddBytes {
     std::uint8_t bytes[3];
@@ -31,5 +19,10 @@ struct alignas(64) Aligned64 {
 struct alignas(256) Aligned256 {
     std::int32_t value{256};
 };
+
+static_assert(sizeof(OddBytes) == 3);
+static_assert(alignof(Aligned32) == 32);
+static_assert(alignof(Aligned64) == 64);
+static_assert(alignof(Aligned256) == 256);
 
 }

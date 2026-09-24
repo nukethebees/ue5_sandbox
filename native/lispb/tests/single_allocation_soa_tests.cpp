@@ -1,11 +1,8 @@
 #include <codegen/generator.h>
-#include <codegen/source_loader.h>
-#include <lispb/project.h>
 
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <filesystem>
 #include <stdexcept>
 #include <string_view>
 
@@ -179,19 +176,19 @@ TEST(SingleAllocationSoa, AllocatorVariantsApplyToNestedColumns) {
                 auto values{schemas()};
                 return std::vector<DeclarationSchema>{values.begin(), values.end()};
             }(),
-        .soa_array_allocators = {{"Malloc", TypeRef{"MallocAllocator"}},
-                                 {"Realloc", TypeRef{"ReallocAllocator"}}}}};
+        .soa_array_allocators = {{"Test", TypeRef{"TestArrayAllocator"}},
+                                 {"Other", TypeRef{"OtherArrayAllocator"}}}}};
     auto const files{render_modules(
         lower_modules(Manifest{.schema_version = manifest_schema_version, .modules = {module}}))};
     auto const& output{files.front().content};
-    EXPECT_NE(output.find("TArray<uint8, MallocAllocator> small;"), std::string::npos);
-    EXPECT_NE(output.find("TArray<int32, MallocAllocator> ids;"), std::string::npos);
-    EXPECT_NE(output.find("MallocChild nested;"), std::string::npos);
-    EXPECT_NE(output.find("TArray<Aligned256, ReallocAllocator> wide;"), std::string::npos);
-    EXPECT_NE(output.find("ReallocChild nested;"), std::string::npos);
+    EXPECT_NE(output.find("TArray<uint8, TestArrayAllocator> small;"), std::string::npos);
+    EXPECT_NE(output.find("TArray<int32, TestArrayAllocator> ids;"), std::string::npos);
+    EXPECT_NE(output.find("TestChild nested;"), std::string::npos);
+    EXPECT_NE(output.find("TArray<Aligned256, OtherArrayAllocator> wide;"), std::string::npos);
+    EXPECT_NE(output.find("OtherChild nested;"), std::string::npos);
     EXPECT_NE(output.find("TArray<uint8> small;"), std::string::npos);
-    EXPECT_EQ(output.find("MallocSingleRows"), std::string::npos);
-    module.soa_array_allocators.push_back({"Malloc", TypeRef{"ReallocAllocator"}});
+    EXPECT_EQ(output.find("TestSingleRows"), std::string::npos);
+    module.soa_array_allocators.push_back({"Test", TypeRef{"OtherArrayAllocator"}});
     EXPECT_THROW(
         lower_modules(Manifest{.schema_version = manifest_schema_version, .modules = {module}}),
         std::invalid_argument);
@@ -395,64 +392,4 @@ TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
               std::string::npos);
 }
 
-TEST(SingleAllocationSoa, BenchmarkSchemaTracksFighterLeafOrderAndWidths) {
-    auto const project_root{
-        std::filesystem::path{IOJ_CODEGEN_SOURCE_DIR}.parent_path().parent_path()};
-    auto const project{lispb::load_project(project_root / "lispb/project.lispb")};
-    auto const& target{std::get<lispb::CppSchemaTarget>(project.targets.at("sandbox-code"))};
-    std::vector<std::filesystem::path> sources;
-    for (auto const& source : target.sources) {
-        sources.push_back(project.root / source);
-    }
-    auto const manifest{load_sources(project.root / target.types, sources)};
-    auto find_struct = [&](std::string_view const module_name,
-                           std::string_view const struct_name) -> SoaSchema const& {
-        for (auto const& module : manifest.modules) {
-            auto const* soa{std::get_if<NormalModuleSchema>(&module)};
-            if (soa == nullptr || soa->settings.name != module_name) {
-                continue;
-            }
-            for (auto const& declaration : soa->declarations) {
-                auto const* schema{std::get_if<SoaSchema>(&declaration)};
-                if (schema != nullptr && schema->name == struct_name) {
-                    return *schema;
-                }
-            }
-        }
-        throw std::runtime_error{"Missing " + std::string{struct_name} + " schema in module " +
-                                 std::string{module_name}};
-    };
-
-    auto const& fighter{find_struct("fighters_soa", "FighterEntityData").members};
-    std::vector<SoaMemberSchema> experiment;
-    for (auto const& member : find_struct("single_allocation_experiment", "EntityData").members) {
-        if (member.type.name != "Countdown8" && member.type.name != "Countdown16" &&
-            member.type.name != "PeriodicCountdown16") {
-            experiment.push_back(member);
-            continue;
-        }
-        auto const& countdown{find_struct("single_allocation_experiment", *member.nested_schema)};
-        for (auto leaf : countdown.members) {
-            leaf.name = leaf.name == "counters" ? member.name : member.name + "_" + leaf.name;
-            experiment.push_back(std::move(leaf));
-        }
-    }
-    ASSERT_EQ(fighter.size(), experiment.size());
-    std::map<std::string, std::string> const equivalents{
-        {"@native_health", "int32"},
-        {"@native_health_index", "int32"},
-        {"@native_unique_id", "@soa_experiment_EntityId"},
-        {"@native_fighter_task", "@soa_experiment_Task"},
-        {"@native_team", "@soa_experiment_Team"},
-        {"@native_vectors_3f", "Vectors"}};
-    for (std::size_t index{}; index < fighter.size(); ++index) {
-        auto const expected_name{fighter[index].name == "health_indices" ? "healths"
-                                                                         : fighter[index].name};
-        EXPECT_EQ(expected_name, experiment[index].name);
-        EXPECT_EQ(fighter[index].kind, experiment[index].kind);
-        auto const& type{fighter[index].type.name};
-        auto const found{equivalents.find(type)};
-        EXPECT_EQ(experiment[index].type.name, found == equivalents.end() ? type : found->second);
-    }
-}
 }

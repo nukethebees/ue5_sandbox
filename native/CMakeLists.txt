@@ -1,5 +1,5 @@
 option(IOJ_KERNEL_BENCHMARKS "Build native generated-kernel benchmarks" OFF)
-option(IOJ_NATIVE_SOA_BENCHMARKS "Build standalone experimental SoA benchmarks" OFF)
+option(IOJ_NATIVE_SOA_BENCHMARKS "Build production simulation SoA benchmarks" OFF)
 option(IOJ_FRAME_MEMORY_LEVEL_BENCHMARK "Register the native frame-memory level benchmark" OFF)
 option(IOJ_KERNEL_BENCHMARK_PLOTS "Generate native kernel benchmark plots" OFF)
 option(IOJ_LAYOUT_PLANNER "Build the standalone memory layout planner" OFF)
