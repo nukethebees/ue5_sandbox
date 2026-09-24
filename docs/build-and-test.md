@@ -23,6 +23,12 @@ Alternatively, set `UE_ROOT` in the ignored `CMakeUserPresets.json` using a loca
 that inherits from `development`. CMake builds pinned native dependencies from source; no package
 manager configuration is needed.
 
+Windows native builds and Unreal share the `CompilerVersion` and `WindowsSDKVersion` pins in
+`Config/DefaultEngine.ini`. Install those MSVC x64 build tools and Windows SDK versions through
+Visual Studio Installer. Both CMake toolchains use the pinned headers and libraries, including
+when run from a developer prompt for a different toolset. After changing either pin, remove the
+affected `out/build/<preset>` directories and rebuild the native libraries before building Unreal.
+
 Project-owned build options and compile definitions use the `IOJ_` prefix. CMake passes
 `IOJ_NATIVE_TOOLCHAIN` to UnrealBuildTools, project-file generation, and UAT; Unreal module rules
 read that same environment variable. Set `IOJ_WITH_UNREAL=OFF` for standalone native builds.
