@@ -82,6 +82,7 @@ Checks:
   - bugprone-spuriously-wake-up-functions
   - bugprone-standalone-empty
   - bugprone-string-constructor
+  - bugprone-string-integer-assignment
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
