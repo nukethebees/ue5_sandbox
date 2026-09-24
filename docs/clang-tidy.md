@@ -39,11 +39,11 @@ The audit uses `run-clang-tidy`'s detected CPU count by default. Choose a differ
 while configuring, for example:
 
 ```powershell
-cmake --preset win-x64-clangcl-debug-tidy -D SANDBOX_CLANG_TIDY_JOBS=4
+cmake --preset win-x64-clangcl-debug-tidy -D IOJ_CLANG_TIDY_JOBS=4
 cmake --build --preset win-x64-clangcl-debug-tidy
 ```
 
-Set `SANDBOX_CLANG_TIDY_JOBS=0` to restore the automatic worker count.
+Set `IOJ_CLANG_TIDY_JOBS=0` to restore the automatic worker count.
 
 ## Enabled checks
 
