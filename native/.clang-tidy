@@ -95,6 +95,7 @@ Checks:
   - bugprone-swapped-arguments
   - bugprone-tagged-union-member-count
   - bugprone-terminating-continue
+  - bugprone-throw-keyword-missing
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
