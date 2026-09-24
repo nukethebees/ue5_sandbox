@@ -101,8 +101,8 @@ sandbox_assert_list_equal("container arguments preserve Windows paths" "${contai
   [=[-pak;-iostore;-compressed;-prereqs;-cookoutputdir=C:\Artifacts Root\cook;-stagingdirectory=C:\Artifacts Root\stage]=])
 
 set(msvc_environment_text [=[noise
-SANDBOX_MSVC_PATH=C:\VS Tools\bin;C:\Windows\System32
-SANDBOX_MSVC_INCLUDE= C:\SDK Include\ucrt
+IOJ_MSVC_PATH=C:\VS Tools\bin;C:\Windows\System32
+IOJ_MSVC_INCLUDE= C:\SDK Include\ucrt
 ]=])
 string(REPLACE "\n" "\r\n" msvc_environment_text "${msvc_environment_text}")
 sandbox_get_msvc_environment_value(msvc_path "${msvc_environment_text}" PATH)

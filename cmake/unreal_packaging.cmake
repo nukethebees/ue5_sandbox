@@ -18,10 +18,10 @@ function(add_unreal_build_cook_run_target target_name)
   add_custom_target(${target_name}
     COMMAND ${activity_command}
       "${CMAKE_COMMAND}" -E env
-      "SANDBOX_NATIVE_TOOLCHAIN=${SANDBOX_NATIVE_TOOLCHAIN}"
-      "UE-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
+      "IOJ_NATIVE_TOOLCHAIN=${IOJ_NATIVE_TOOLCHAIN}"
+      "UE-LocalDataCachePath=${IOJ_LOCAL_DDC_DIR}"
       "${UE_RUN_UAT_SCRIPT}" BuildCookRun
-      "-project=${SANDBOX_UPROJECT}"
+      "-project=${IOJ_UPROJECT}"
       -target=Sandbox
       "-targetplatform=${UE_PLATFORM}"
       "-clientconfig=${UE_CONFIGURATION}"
@@ -45,7 +45,7 @@ function(add_unreal_packaging_targets)
   endif()
 
   sandbox_make_unreal_cook_arguments(cook_arguments
-    "${UE_DEVELOPMENT_EDITOR_CMD_EXE}" "${SANDBOX_GAME_COOK_DIRECTORY}")
+    "${UE_DEVELOPMENT_EDITOR_CMD_EXE}" "${IOJ_GAME_COOK_DIRECTORY}")
 
   if(UE_CONFIGURATION STREQUAL "Development")
     add_unreal_build_cook_run_target(cook
@@ -62,7 +62,7 @@ function(add_unreal_packaging_targets)
   endif()
 
   sandbox_make_unreal_container_arguments(container_arguments
-    "${SANDBOX_GAME_COOK_ROOT}" "${SANDBOX_GAME_STAGE_ROOT}")
+    "${IOJ_GAME_COOK_ROOT}" "${IOJ_GAME_STAGE_ROOT}")
 
   add_unreal_build_cook_run_target(stage
     COMMENT "Staging Sandbox ${UE_PLATFORM} ${UE_CONFIGURATION}"
@@ -79,15 +79,15 @@ function(add_unreal_packaging_targets)
       -skipstage
       -archive
       ${container_arguments}
-      "-archivedirectory=${SANDBOX_GAME_ARCHIVE_ROOT}"
+      "-archivedirectory=${IOJ_GAME_ARCHIVE_ROOT}"
   )
 
   sandbox_jobserver_command(run_staged_command STANDARD command
     "Run staged Sandbox ${UE_PLATFORM} ${UE_CONFIGURATION}")
   add_custom_target(run-staged
     COMMAND ${run_staged_command} "${CMAKE_COMMAND}" -E chdir
-      "${SANDBOX_GAME_STAGE_DIRECTORY}"
-      "${SANDBOX_GAME_STAGE_EXECUTABLE}"
+      "${IOJ_GAME_STAGE_DIRECTORY}"
+      "${IOJ_GAME_STAGE_EXECUTABLE}"
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     COMMENT "Running staged Sandbox ${UE_PLATFORM} ${UE_CONFIGURATION}"
     USES_TERMINAL
@@ -97,11 +97,11 @@ function(add_unreal_packaging_targets)
   sandbox_unreal_jobserver_command(verify_package_command STANDARD SHARED package
     "Verify Sandbox package ${UE_PLATFORM} ${UE_CONFIGURATION}")
   add_custom_target(verify-package
-    COMMAND ${verify_package_command} "${SANDBOX_GAME_PACKAGE_TOOLS}"
+    COMMAND ${verify_package_command} "${IOJ_GAME_PACKAGE_TOOLS}"
       --project-root "${PROJECT_SOURCE_DIR}"
-      --package-root "${SANDBOX_GAME_ARCHIVE_DIRECTORY}"
+      --package-root "${IOJ_GAME_ARCHIVE_DIRECTORY}"
       --unreal-pak "${UE_UNREAL_PAK_EXE}"
-      --verification-directory "${SANDBOX_GAME_VERIFICATION_ROOT}"
+      --verification-directory "${IOJ_GAME_VERIFICATION_ROOT}"
       --configuration "${UE_CONFIGURATION}"
     DEPENDS game-package-tools-host
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"

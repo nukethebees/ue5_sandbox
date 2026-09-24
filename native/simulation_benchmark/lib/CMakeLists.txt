@@ -12,13 +12,13 @@ target_link_libraries(native-simulation-benchmark-lib
   PRIVATE native-level-authoring CLI11::CLI11 sandbox::native_defaults
 )
 target_compile_definitions(native-simulation-benchmark-lib PRIVATE
-  SANDBOX_BENCHMARK_COMPILER_ID="${CMAKE_CXX_COMPILER_ID}"
-  SANDBOX_BENCHMARK_BUILD_TYPE="${CMAKE_BUILD_TYPE}"
+  IOJ_BENCHMARK_COMPILER_ID="${CMAKE_CXX_COMPILER_ID}"
+  IOJ_BENCHMARK_BUILD_TYPE="${CMAKE_BUILD_TYPE}"
 )
-if(SANDBOX_WITH_TRACY)
+if(IOJ_WITH_TRACY)
   target_compile_definitions(native-simulation-benchmark-lib PRIVATE
-    SANDBOX_BENCHMARK_WITH_TRACY
-    SANDBOX_WITH_TRACY
+    IOJ_BENCHMARK_WITH_TRACY
+    IOJ_WITH_TRACY
   )
   target_link_libraries(native-simulation-benchmark-lib PRIVATE Tracy::TracyClient)
 endif()

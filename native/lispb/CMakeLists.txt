@@ -1,8 +1,8 @@
-find_program(SANDBOX_CLANG_FORMAT_EXECUTABLE NAMES clang-format REQUIRED)
-if(SANDBOX_KERNEL_BENCHMARK_PLOTS)
-  if(NOT SANDBOX_KERNEL_BENCHMARKS)
+find_program(IOJ_CLANG_FORMAT_EXECUTABLE NAMES clang-format REQUIRED)
+if(IOJ_KERNEL_BENCHMARK_PLOTS)
+  if(NOT IOJ_KERNEL_BENCHMARKS)
     message(FATAL_ERROR
-      "SANDBOX_KERNEL_BENCHMARK_PLOTS requires SANDBOX_KERNEL_BENCHMARKS")
+      "IOJ_KERNEL_BENCHMARK_PLOTS requires IOJ_KERNEL_BENCHMARKS")
   endif()
   find_package(Python3 REQUIRED COMPONENTS Interpreter)
   find_program(UV_EXECUTABLE NAMES uv REQUIRED)
@@ -17,7 +17,7 @@ add_library(lispb-output
 )
 target_compile_features(lispb-output PUBLIC cxx_std_23)
 target_compile_definitions(lispb-output
-  PRIVATE SANDBOX_CLANG_FORMAT_EXECUTABLE="${SANDBOX_CLANG_FORMAT_EXECUTABLE}"
+  PRIVATE IOJ_CLANG_FORMAT_EXECUTABLE="${IOJ_CLANG_FORMAT_EXECUTABLE}"
 )
 target_include_directories(lispb-output PUBLIC include)
 target_link_libraries(lispb-output PRIVATE sandbox::native_codegen_defaults)
@@ -231,7 +231,7 @@ target_link_libraries(codegen-tests PRIVATE
   sandbox::native_codegen_defaults
 )
 target_compile_definitions(codegen-tests PRIVATE
-  SANDBOX_CODEGEN_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
+  IOJ_CODEGEN_SOURCE_DIR="${CMAKE_CURRENT_SOURCE_DIR}"
 )
 
 add_test(NAME codegen-tests COMMAND codegen-tests)

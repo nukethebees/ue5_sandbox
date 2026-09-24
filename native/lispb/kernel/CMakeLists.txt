@@ -194,7 +194,7 @@ add_custom_target(check-generated-native-core-kernels
   VERBATIM
 )
 
-if(SANDBOX_KERNEL_BENCHMARKS)
+if(IOJ_KERNEL_BENCHMARKS)
   set(KERNEL_NATIVE_SIMD_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/native-simd-generated")
   set(KERNEL_NATIVE_SIMD_HEADER
     "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/add_scaled_x86_simd_lab.h"
@@ -363,7 +363,7 @@ if(SANDBOX_KERNEL_BENCHMARKS)
     PROPERTIES LABELS "native-kernel-benchmark"
   )
 
-  if(SANDBOX_KERNEL_BENCHMARK_PLOTS)
+  if(IOJ_KERNEL_BENCHMARK_PLOTS)
     set(KERNEL_BENCHMARK_PLOT_SCRIPT
       "${PROJECT_SOURCE_DIR}/Scripts/plot-kernel-benchmarks.py"
     )

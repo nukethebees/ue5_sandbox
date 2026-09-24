@@ -1,4 +1,4 @@
-option(SANDBOX_TRACY_TOOLS "Build the vendored Tracy command-line tools" OFF)
+option(IOJ_TRACY_TOOLS "Build the vendored Tracy command-line tools" OFF)
 
 add_library(tracy-benchmark-comparison-lib STATIC)
 target_sources(tracy-benchmark-comparison-lib PRIVATE
@@ -38,7 +38,7 @@ target_link_libraries(tracy-benchmark-compare-tests PRIVATE
   sandbox::native_defaults
 )
 target_compile_definitions(tracy-benchmark-compare-tests PRIVATE
-  SANDBOX_PERF_TEST_HELPER_PATH="$<TARGET_FILE:tracy-benchmark-compare-test-helper>"
+  IOJ_PERF_TEST_HELPER_PATH="$<TARGET_FILE:tracy-benchmark-compare-test-helper>"
 )
 
 add_executable(tracy-benchmark-compare-test-helper tests/process_test_helper.cpp)
@@ -49,7 +49,7 @@ add_dependencies(tracy-benchmark-compare-tests tracy-benchmark-compare-test-help
 add_test(NAME tracy-benchmark-compare-tests COMMAND tracy-benchmark-compare-tests)
 set_tests_properties(tracy-benchmark-compare-tests PROPERTIES LABELS "unit;all;perf")
 
-if(NOT SANDBOX_TRACY_TOOLS)
+if(NOT IOJ_TRACY_TOOLS)
   return()
 endif()
 

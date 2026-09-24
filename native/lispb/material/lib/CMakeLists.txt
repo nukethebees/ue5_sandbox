@@ -13,10 +13,10 @@ target_link_libraries(material-gen
     sandbox::native_codegen_defaults
 )
 
-if(SANDBOX_WITH_UNREAL)
+if(IOJ_WITH_UNREAL)
   foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
     file(MAKE_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/MaterialGen/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${configuration}"
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/MaterialGen/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${configuration}"
     )
   endforeach()
 
@@ -34,7 +34,7 @@ if(SANDBOX_WITH_UNREAL)
   )
   set_target_properties(sandbox-material-gen PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/MaterialGen/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/MaterialGen/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
     OUTPUT_NAME sandbox_material_gen
   )
 

@@ -4,16 +4,16 @@ endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/../msvc_environment.cmake")
 
-find_program(SANDBOX_NINJA_EXECUTABLE NAMES ninja REQUIRED)
-set(CMAKE_MAKE_PROGRAM "${SANDBOX_NINJA_EXECUTABLE}" CACHE FILEPATH "" FORCE)
+find_program(IOJ_NINJA_EXECUTABLE NAMES ninja REQUIRED)
+set(CMAKE_MAKE_PROGRAM "${IOJ_NINJA_EXECUTABLE}" CACHE FILEPATH "" FORCE)
 
 if(NOT DEFINED ENV{VCToolsInstallDir})
-  find_program(SANDBOX_VSWHERE_EXECUTABLE NAMES vswhere vswhere.exe
+  find_program(IOJ_VSWHERE_EXECUTABLE NAMES vswhere vswhere.exe
     PATHS "C:/Program Files (x86)/Microsoft Visual Studio/Installer"
     REQUIRED)
 
   execute_process(
-    COMMAND "${SANDBOX_VSWHERE_EXECUTABLE}" -latest -products *
+    COMMAND "${IOJ_VSWHERE_EXECUTABLE}" -latest -products *
       -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64
       -property installationPath
     OUTPUT_VARIABLE visual_studio_root
@@ -28,17 +28,17 @@ if(NOT DEFINED ENV{VCToolsInstallDir})
   execute_process(
     COMMAND cmd.exe /d /v:on /c call "${vsdevcmd}"
       -no_logo -arch=x64 -host_arch=x64 >nul
-      && echo SANDBOX_MSVC_PATH=!PATH!
-      && echo SANDBOX_MSVC_INCLUDE=!INCLUDE!
-      && echo SANDBOX_MSVC_LIB=!LIB!
-      && echo SANDBOX_MSVC_LIBPATH=!LIBPATH!
-      && echo SANDBOX_MSVC_VCTOOLSINSTALLDIR=!VCToolsInstallDir!
-      && echo SANDBOX_MSVC_VCINSTALLDIR=!VCINSTALLDIR!
-      && echo SANDBOX_MSVC_VSINSTALLDIR=!VSINSTALLDIR!
-      && echo SANDBOX_MSVC_WINDOWSSDKDIR=!WindowsSdkDir!
-      && echo SANDBOX_MSVC_WINDOWSSDKVERSION=!WindowsSDKVersion!
-      && echo SANDBOX_MSVC_UNIVERSALCRTSDKDIR=!UniversalCRTSdkDir!
-      && echo SANDBOX_MSVC_UCRTVERSION=!UCRTVersion!
+      && echo IOJ_MSVC_PATH=!PATH!
+      && echo IOJ_MSVC_INCLUDE=!INCLUDE!
+      && echo IOJ_MSVC_LIB=!LIB!
+      && echo IOJ_MSVC_LIBPATH=!LIBPATH!
+      && echo IOJ_MSVC_VCTOOLSINSTALLDIR=!VCToolsInstallDir!
+      && echo IOJ_MSVC_VCINSTALLDIR=!VCINSTALLDIR!
+      && echo IOJ_MSVC_VSINSTALLDIR=!VSINSTALLDIR!
+      && echo IOJ_MSVC_WINDOWSSDKDIR=!WindowsSdkDir!
+      && echo IOJ_MSVC_WINDOWSSDKVERSION=!WindowsSDKVersion!
+      && echo IOJ_MSVC_UNIVERSALCRTSDKDIR=!UniversalCRTSdkDir!
+      && echo IOJ_MSVC_UCRTVERSION=!UCRTVersion!
     OUTPUT_VARIABLE msvc_environment
     RESULT_VARIABLE vsdevcmd_result
   )
@@ -80,4 +80,4 @@ set(CMAKE_MODULE_LINKER_FLAGS_INIT "${msvc_linker_flags}")
 set(CMAKE_C_COMPILER "${msvc_cl}" CACHE FILEPATH "" FORCE)
 set(CMAKE_CXX_COMPILER "${msvc_cl}" CACHE FILEPATH "" FORCE)
 set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreadedDLL CACHE STRING "" FORCE)
-set(SANDBOX_NATIVE_TOOLCHAIN msvc CACHE STRING "Native compiler toolchain" FORCE)
+set(IOJ_NATIVE_TOOLCHAIN msvc CACHE STRING "Native compiler toolchain" FORCE)

@@ -1,11 +1,11 @@
 sandbox_add_dotnet_host_tool(
   architecture-checks-host
-  SANDBOX_ARCHITECTURE_CHECKS
+  IOJ_ARCHITECTURE_CHECKS
   "${PROJECT_SOURCE_DIR}/tools/ArchitectureChecks/ArchitectureChecks.csproj"
 )
 
 add_custom_target(check-space-game-layers
-  COMMAND "${SANDBOX_ARCHITECTURE_CHECKS}" --root "${PROJECT_SOURCE_DIR}"
+  COMMAND "${IOJ_ARCHITECTURE_CHECKS}" --root "${PROJECT_SOURCE_DIR}"
   DEPENDS architecture-checks-host
   WORKING_DIRECTORY "${PROJECT_BINARY_DIR}"
   COMMENT "Checking SpaceGame module boundaries"

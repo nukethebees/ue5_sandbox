@@ -19,7 +19,7 @@ target_link_libraries(native-layout-tests PRIVATE
   sandbox::native_defaults
 )
 target_compile_definitions(native-layout-tests PRIVATE
-  SANDBOX_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+  IOJ_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
 
 add_test(NAME native-layout-tests COMMAND native-layout-tests)

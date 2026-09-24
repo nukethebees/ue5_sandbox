@@ -22,9 +22,9 @@ add_subdirectory(cmake)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
 
-option(SANDBOX_WITH_UNREAL "Configure Unreal Engine integration and targets" ON)
-option(SANDBOX_WITH_ASAN "Instrument native targets with AddressSanitizer" OFF)
-option(SANDBOX_WITH_CLANG_TIDY "Run clang-tidy for first-party native targets" OFF)
+option(IOJ_WITH_UNREAL "Configure Unreal Engine integration and targets" ON)
+option(IOJ_WITH_ASAN "Instrument native targets with AddressSanitizer" OFF)
+option(IOJ_WITH_CLANG_TIDY "Run clang-tidy for first-party native targets" OFF)
 
 set(CACHE{UE_PLATFORM}
   TYPE STRING
@@ -45,7 +45,7 @@ set_property(CACHE UE_CONFIGURATION PROPERTY STRINGS
   Test
 )
 
-if(SANDBOX_WITH_ASAN)
+if(IOJ_WITH_ASAN)
   include(cmake/address_sanitizer.cmake)
   sandbox_enable_address_sanitizer()
 endif()
@@ -54,7 +54,7 @@ add_subdirectory(cmake/clang_tidy)
 
 sandbox_add_dotnet_host_tool(
   benchmark-tools-host
-  SANDBOX_BENCHMARK_TOOLS
+  IOJ_BENCHMARK_TOOLS
   "${PROJECT_SOURCE_DIR}/tools/BenchmarkTools/BenchmarkTools.csproj"
 )
 
@@ -66,6 +66,6 @@ add_subdirectory(tools)
 add_subdirectory(lispb/materials)
 add_subdirectory(Plugins/SpaceGame)
 
-if(SANDBOX_WITH_UNREAL)
+if(IOJ_WITH_UNREAL)
   add_subdirectory(unreal)
 endif()

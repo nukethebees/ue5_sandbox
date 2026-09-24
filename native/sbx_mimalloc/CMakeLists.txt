@@ -8,7 +8,7 @@ set(SBX_MIMALLOC_PREFIX_HEADER
 )
 sandbox_add_dotnet_host_tool(
   native-binary-tools-host
-  SANDBOX_NATIVE_BINARY_TOOLS
+  IOJ_NATIVE_BINARY_TOOLS
   "${PROJECT_SOURCE_DIR}/tools/NativeBinaryTools/NativeBinaryTools.csproj"
 )
 
@@ -35,7 +35,7 @@ configure_sbx_mimalloc_object(sbx-mimalloc-prefix-probe)
 
 add_custom_command(
   OUTPUT "${SBX_MIMALLOC_PREFIX_HEADER}"
-  COMMAND "${SANDBOX_NATIVE_BINARY_TOOLS}" mimalloc-symbols generate
+  COMMAND "${IOJ_NATIVE_BINARY_TOOLS}" mimalloc-symbols generate
     --nm "${SBX_LLVM_NM}"
     --readobj "${SBX_LLVM_READOBJ}"
     --output "${SBX_MIMALLOC_PREFIX_HEADER}"
@@ -53,7 +53,7 @@ target_compile_definitions(sbx-mimalloc-implementation PRIVATE
   SBX_MIMALLOC_PREFIXED_LINKER_INCLUDES=1
 )
 add_dependencies(sbx-mimalloc-implementation sbx-mimalloc-prefix-header)
-if(SANDBOX_MSVC_FRONTEND)
+if(IOJ_MSVC_FRONTEND)
   target_compile_options(sbx-mimalloc-implementation PRIVATE
     /Zl
     "/FI${SBX_MIMALLOC_PREFIX_HEADER}"
@@ -68,7 +68,7 @@ endif()
 set(SBX_MIMALLOC_AUDIT_STAMP "${CMAKE_CURRENT_BINARY_DIR}/sbx-mimalloc-symbol-audit.stamp")
 add_custom_command(
   OUTPUT "${SBX_MIMALLOC_AUDIT_STAMP}"
-  COMMAND "${SANDBOX_NATIVE_BINARY_TOOLS}" mimalloc-symbols verify
+  COMMAND "${IOJ_NATIVE_BINARY_TOOLS}" mimalloc-symbols verify
     --nm "${SBX_LLVM_NM}"
     --readobj "${SBX_LLVM_READOBJ}"
     $<TARGET_OBJECTS:sbx-mimalloc-implementation>
@@ -95,8 +95,8 @@ target_link_libraries(sbx-mimalloc
   PUBLIC sandbox::cxx_standard psapi shell32 user32 advapi32 bcrypt
   PRIVATE sandbox::native_defaults
 )
-if(SANDBOX_WITH_TRACY)
-  target_compile_definitions(sbx-mimalloc PRIVATE SANDBOX_WITH_TRACY)
+if(IOJ_WITH_TRACY)
+  target_compile_definitions(sbx-mimalloc PRIVATE IOJ_WITH_TRACY)
   target_link_libraries(sbx-mimalloc PRIVATE sandbox::profiling)
 endif()
 set_property(TARGET sbx-mimalloc PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
@@ -106,13 +106,13 @@ add_dependencies(sbx-mimalloc sbx-mimalloc-symbol-audit)
 set_target_properties(sbx-mimalloc PROPERTIES
   OUTPUT_NAME SandboxMimalloc
 )
-if(SANDBOX_WITH_UNREAL)
+if(IOJ_WITH_UNREAL)
   target_link_libraries(sbx-mimalloc-prefix-probe PRIVATE sandbox::unreal_avx2)
   target_link_libraries(sbx-mimalloc-implementation PRIVATE sandbox::unreal_avx2)
   target_link_libraries(sbx-mimalloc PRIVATE sandbox::unreal_avx2)
   set_target_properties(sbx-mimalloc PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/SbxMimalloc/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/SbxMimalloc/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
   )
 endif()
 

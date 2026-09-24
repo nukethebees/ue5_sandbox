@@ -1,11 +1,11 @@
-set(SANDBOX_IMAGE_SOURCES
+set(IOJ_IMAGE_SOURCES
   src/image_generation.cpp
   src/image_generation_utilities.cpp
   src/image_preview.cpp
   src/noise_sampling.cpp
 )
 
-add_library(sandbox-image STATIC ${SANDBOX_IMAGE_SOURCES})
+add_library(sandbox-image STATIC ${IOJ_IMAGE_SOURCES})
 target_compile_features(sandbox-image PUBLIC cxx_std_23)
 target_include_directories(sandbox-image
   PUBLIC include
@@ -17,7 +17,7 @@ set_target_properties(sandbox-image PROPERTIES
 )
 
 add_executable(sandbox-image-tests
-  ${SANDBOX_IMAGE_SOURCES}
+  ${IOJ_IMAGE_SOURCES}
   tests/image_generation_tests.cpp
 )
 target_compile_features(sandbox-image-tests PRIVATE cxx_std_23)

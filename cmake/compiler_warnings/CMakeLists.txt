@@ -6,7 +6,7 @@ add_library(sandbox_codegen_warning_exceptions INTERFACE)
 add_library(sandbox_msvc_strict INTERFACE)
 add_library(sandbox_clang_strict INTERFACE)
 
-if(SANDBOX_MSVC_FRONTEND)
+if(IOJ_MSVC_FRONTEND)
   target_add_supported_options(sandbox_warning_level COMPILE /W4 /wd4324)
   target_add_supported_options(sandbox_warning_errors COMPILE /WX)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
@@ -28,7 +28,7 @@ else()
   )
 endif()
 
-if(SANDBOX_MSVC_FRONTEND AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if(IOJ_MSVC_FRONTEND AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   set(sandbox_clang_additional_warnings
     /clang:-Wpedantic # Warn about language extensions outside the selected C++ standard.
     /clang:-Wcast-align # Warn when a cast increases the required pointer alignment.

@@ -1,9 +1,9 @@
-option(SANDBOX_KERNEL_BENCHMARKS "Build native generated-kernel benchmarks" OFF)
-option(SANDBOX_NATIVE_SOA_BENCHMARKS "Build standalone experimental SoA benchmarks" OFF)
-option(SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK "Register the native frame-memory level benchmark" OFF)
-option(SANDBOX_KERNEL_BENCHMARK_PLOTS "Generate native kernel benchmark plots" OFF)
-option(SANDBOX_LAYOUT_PLANNER "Build the standalone memory layout planner" OFF)
-option(SANDBOX_IMAGE_LAB "Build the standalone Image Lab" OFF)
+option(IOJ_KERNEL_BENCHMARKS "Build native generated-kernel benchmarks" OFF)
+option(IOJ_NATIVE_SOA_BENCHMARKS "Build standalone experimental SoA benchmarks" OFF)
+option(IOJ_FRAME_MEMORY_LEVEL_BENCHMARK "Register the native frame-memory level benchmark" OFF)
+option(IOJ_KERNEL_BENCHMARK_PLOTS "Generate native kernel benchmark plots" OFF)
+option(IOJ_LAYOUT_PLANNER "Build the standalone memory layout planner" OFF)
+option(IOJ_IMAGE_LAB "Build the standalone Image Lab" OFF)
 
 add_library(sandbox_native_no_rtti INTERFACE)
 add_library(sandbox::native_no_rtti ALIAS sandbox_native_no_rtti)
@@ -26,16 +26,16 @@ target_link_libraries(sandbox_native_codegen_defaults INTERFACE
   sandbox::codegen_warnings
 )
 
-if(SANDBOX_LAYOUT_PLANNER)
+if(IOJ_LAYOUT_PLANNER)
   enable_language(C)
 endif()
 
 add_subdirectory(third_party)
 add_subdirectory(third_party/handmade_math)
 
-set(SANDBOX_WITH_TRACY OFF)
+set(IOJ_WITH_TRACY OFF)
 if(UE_CONFIGURATION MATCHES "^(Debug|DebugGame|Development)$")
-  set(SANDBOX_WITH_TRACY ON)
+  set(IOJ_WITH_TRACY ON)
 
   set(TRACY_ENABLE ON)
   set(TRACY_ON_DEMAND ON)
@@ -56,7 +56,7 @@ if(UE_CONFIGURATION MATCHES "^(Debug|DebugGame|Development)$")
   endif()
   set_target_properties(TracyClient PROPERTIES OUTPUT_NAME SandboxTracyClientStatic)
 
-  if(SANDBOX_WITH_UNREAL)
+  if(IOJ_WITH_UNREAL)
     add_library(TracyClientUnreal SHARED)
     target_sources(TracyClientUnreal PRIVATE
       third_party/tracy/public/TracyClient.cpp
@@ -69,7 +69,7 @@ if(UE_CONFIGURATION MATCHES "^(Debug|DebugGame|Development)$")
     get_target_property(tracy_libraries TracyClient INTERFACE_LINK_LIBRARIES)
     target_compile_definitions(TracyClientUnreal
       PUBLIC ${tracy_definitions} TRACY_MANUAL_LIFETIME TRACY_IMPORTS
-      PRIVATE TRACY_EXPORTS SANDBOX_TRACY_MEMORY_EXPORTS _ITERATOR_DEBUG_LEVEL=0
+      PRIVATE TRACY_EXPORTS IOJ_TRACY_MEMORY_EXPORTS _ITERATOR_DEBUG_LEVEL=0
     )
     target_link_libraries(TracyClientUnreal PUBLIC ${tracy_libraries})
     set_property(TARGET TracyClientUnreal PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
@@ -81,14 +81,14 @@ if(UE_CONFIGURATION MATCHES "^(Debug|DebugGame|Development)$")
     set_target_properties(TracyClientUnreal PROPERTIES
       OUTPUT_NAME SandboxTracyClient
       ARCHIVE_OUTPUT_DIRECTORY
-        "${PROJECT_SOURCE_DIR}/Binaries/Native/Tracy/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+        "${PROJECT_SOURCE_DIR}/Binaries/Native/Tracy/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
       RUNTIME_OUTPUT_DIRECTORY
-        "${PROJECT_SOURCE_DIR}/Binaries/Native/Tracy/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+        "${PROJECT_SOURCE_DIR}/Binaries/Native/Tracy/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
     )
   endif()
 endif()
 
-if(SANDBOX_WITH_CLANG_TIDY)
+if(IOJ_WITH_CLANG_TIDY)
   sandbox_configure_native_clang_tidy()
 endif()
 
@@ -158,6 +158,6 @@ sandbox_target_precompile_test_headers(
   slate-codegen-tests
 )
 
-if(SANDBOX_WITH_CLANG_TIDY)
+if(IOJ_WITH_CLANG_TIDY)
   sandbox_add_native_clang_tidy_target()
 endif()

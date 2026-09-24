@@ -44,19 +44,19 @@ target_link_libraries(native-core
   PUBLIC sandbox::handmade_math
   PRIVATE sandbox::native_defaults
 )
-if(SANDBOX_WITH_TRACY)
-  target_compile_definitions(native-core PRIVATE SANDBOX_WITH_TRACY)
+if(IOJ_WITH_TRACY)
+  target_compile_definitions(native-core PRIVATE IOJ_WITH_TRACY)
   target_link_libraries(native-core PRIVATE sandbox::profiling)
 endif()
 
 set_target_properties(native-core PROPERTIES
   OUTPUT_NAME SandboxNativeCore
 )
-if(SANDBOX_WITH_UNREAL)
+if(IOJ_WITH_UNREAL)
   target_link_libraries(native-core PRIVATE sandbox::unreal_avx2)
   set_target_properties(native-core PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/Core/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/Core/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
   )
 endif()
 
@@ -102,7 +102,7 @@ target_link_libraries(native-core-tests PRIVATE GTest::gtest_main)
 add_test(NAME native-core-tests COMMAND native-core-tests)
 set_tests_properties(native-core-tests PROPERTIES LABELS "unit;all;native;native-core")
 
-if(SANDBOX_KERNEL_BENCHMARKS)
+if(IOJ_KERNEL_BENCHMARKS)
   add_executable(native-core-benchmarks)
   target_sources(native-core-benchmarks PRIVATE
     benchmarks/projectile_intercept_benchmarks.cpp
@@ -161,7 +161,7 @@ if(WIN32)
   target_compile_definitions(native-core-tests PRIVATE _ITERATOR_DEBUG_LEVEL=0)
 endif()
 
-if(SANDBOX_MSVC_FRONTEND)
+if(IOJ_MSVC_FRONTEND)
   target_compile_options(native-core PRIVATE /permissive-)
   if(UE_CONFIGURATION MATCHES "^(Development|Shipping|Test)$")
     target_compile_options(native-core PRIVATE /O2)
@@ -176,6 +176,6 @@ if(UE_CONFIGURATION MATCHES "^(Shipping|Test)$")
   target_compile_definitions(native-core PRIVATE NDEBUG)
 endif()
 
-if(SANDBOX_MSVC_FRONTEND)
+if(IOJ_MSVC_FRONTEND)
   target_compile_options(native-core-tests PRIVATE /permissive-)
 endif()

@@ -6,7 +6,7 @@ target_link_libraries(material-gen-tests PRIVATE
   sandbox::native_codegen_defaults
 )
 target_compile_definitions(material-gen-tests PRIVATE
-  SANDBOX_PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+  IOJ_PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
 
 add_test(NAME MaterialGenTests COMMAND material-gen-tests)

@@ -1,4 +1,4 @@
-find_program(SANDBOX_DXC_EXECUTABLE
+find_program(IOJ_DXC_EXECUTABLE
   NAMES dxc dxc.exe
   REQUIRED
   DOC "Path to the DirectX Shader Compiler"
@@ -26,14 +26,14 @@ function(sandbox_add_dxc_shader_test)
   endif()
 
   set(dxc_command
-    "${SANDBOX_DXC_EXECUTABLE}"
+    "${IOJ_DXC_EXECUTABLE}"
     -T "${shader_PROFILE}"
   )
   if(shader_ENTRY_POINT)
     list(APPEND dxc_command -E "${shader_ENTRY_POINT}")
   endif()
   list(APPEND dxc_command
-    -DSANDBOX_STANDALONE_DXC=1
+    -DIOJ_STANDALONE_DXC=1
     -WX
     -Fo "${CMAKE_CURRENT_BINARY_DIR}/${shader_NAME}.dxil"
     "${shader_SOURCE}"

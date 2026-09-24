@@ -41,16 +41,16 @@ set_property(TARGET game PROPERTY FOLDER "Sandbox/Unreal/Build")
 
 add_unreal_editor_target(run-editor
   EXECUTABLE "${UE_EDITOR_EXE}"
-  ARGUMENTS "${SANDBOX_LIVE_CODING_DISABLED_ARGUMENT}"
+  ARGUMENTS "${IOJ_LIVE_CODING_DISABLED_ARGUMENT}"
   DEPENDS editor
-  COMMENT "Launching ${SANDBOX_UPROJECT} with Live Coding disabled"
+  COMMENT "Launching ${IOJ_UPROJECT} with Live Coding disabled"
   FOLDER "Sandbox/Unreal/Editor"
 )
 add_unreal_editor_target(run-editor-debug
   EXECUTABLE "${UE_EDITOR_EXE}"
-  ARGUMENTS "${SANDBOX_LIVE_CODING_DISABLED_ARGUMENT}" -WaitForDebugger
+  ARGUMENTS "${IOJ_LIVE_CODING_DISABLED_ARGUMENT}" -WaitForDebugger
   DEPENDS editor
-  COMMENT "Launching ${SANDBOX_UPROJECT} with Live Coding disabled and waiting for a debugger"
+  COMMENT "Launching ${IOJ_UPROJECT} with Live Coding disabled and waiting for a debugger"
   FOLDER "Sandbox/Unreal/Editor"
 )
 
@@ -69,7 +69,7 @@ foreach(sandbox_unreal_packaging_target IN ITEMS
 endforeach()
 
 add_custom_target(worktree-dependencies
-  COMMAND "${SANDBOX_SET_LIVE_CODING_DISABLED_TOOL}"
+  COMMAND "${IOJ_SET_LIVE_CODING_DISABLED_TOOL}"
     --settings-path
     "${PROJECT_SOURCE_DIR}/Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"
   DEPENDS

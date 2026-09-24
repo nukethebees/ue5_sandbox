@@ -7,7 +7,7 @@ target_link_libraries(native-simulation-benchmark-tests PRIVATE
   sandbox::native_defaults
 )
 target_compile_definitions(native-simulation-benchmark-tests PRIVATE
-  SANDBOX_PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+  IOJ_PROJECT_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
 )
 configure_sandbox_s7_abi(native-simulation-benchmark-tests)
 
@@ -16,9 +16,9 @@ set_tests_properties(native-simulation-benchmark-tests PROPERTIES
   LABELS "unit;all;native;native-simulation-benchmark"
 )
 
-if(SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK)
+if(IOJ_FRAME_MEMORY_LEVEL_BENCHMARK)
   add_test(NAME native-frame-memory-level-benchmark
-    COMMAND "${SANDBOX_BENCHMARK_TOOLS}" frame-memory-level --seconds 20 --skip-build
+    COMMAND "${IOJ_BENCHMARK_TOOLS}" frame-memory-level --seconds 20 --skip-build
   )
   set_tests_properties(native-frame-memory-level-benchmark PROPERTIES
     LABELS "frame-memory-level-benchmark"

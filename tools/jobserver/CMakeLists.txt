@@ -141,22 +141,22 @@ set_tests_properties(jobserver-unreal-integration-tests PROPERTIES
   LABELS "jobserver"
   TIMEOUT 180)
 
-option(SANDBOX_JOBSERVER_SYSTEM_TESTS
+option(IOJ_JOBSERVER_SYSTEM_TESTS
   "Register tests that mutate the canonical per-user jobserver installation"
   OFF
 )
-if(SANDBOX_JOBSERVER_SYSTEM_TESTS)
+if(IOJ_JOBSERVER_SYSTEM_TESTS)
   add_test(NAME jobserver-system-cross-worktree
     COMMAND pwsh -NoProfile -File
       "${CMAKE_CURRENT_SOURCE_DIR}/tests/system/CrossWorktree.ps1"
       -SourceRoot "${PROJECT_SOURCE_DIR}"
-      -ClientPath "${SANDBOX_JOBSERVER_CLI}"
+      -ClientPath "${IOJ_JOBSERVER_CLI}"
   )
   add_test(NAME jobserver-system-upgrade
     COMMAND pwsh -NoProfile -File
       "${CMAKE_CURRENT_SOURCE_DIR}/tests/system/UpgradeLifecycle.ps1"
       -BuildDirectory "${CMAKE_BINARY_DIR}"
-      -ClientPath "${SANDBOX_JOBSERVER_CLI}"
+      -ClientPath "${IOJ_JOBSERVER_CLI}"
       -BuiltClientPath "$<TARGET_FILE:jobserver>"
       -BuiltDaemonPath "$<TARGET_FILE:jobserverd>"
   )
@@ -195,7 +195,7 @@ add_custom_target(install-jobserver
     "${CMAKE_CURRENT_SOURCE_DIR}/install/Install-Jobserver.ps1"
     -BuiltClientPath "$<TARGET_FILE:jobserver>"
     -BuiltDaemonPath "$<TARGET_FILE:jobserverd>"
-    -InstallRoot "${SANDBOX_JOBSERVER_INSTALL_ROOT}"
+    -InstallRoot "${IOJ_JOBSERVER_INSTALL_ROOT}"
     -RegisterScript "${CMAKE_CURRENT_SOURCE_DIR}/install/Register-Jobserver.ps1"
   DEPENDS jobserver jobserverd
   COMMENT "Installing and registering the canonical per-user jobserver"

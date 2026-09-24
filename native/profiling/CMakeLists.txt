@@ -4,7 +4,7 @@ target_include_directories(native-profiling-api INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/include"
 )
 
-if(SANDBOX_WITH_TRACY)
+if(IOJ_WITH_TRACY)
   add_library(native-profiling STATIC)
   add_library(sandbox::profiling ALIAS native-profiling)
   target_sources(native-profiling PRIVATE src/memory.cpp)

@@ -22,9 +22,9 @@ configure_sandbox_s7_abi(native-level-authoring)
 set_target_properties(native-level-authoring PROPERTIES
   OUTPUT_NAME SandboxNativeLevelAuthoring
 )
-if(SANDBOX_WITH_UNREAL)
+if(IOJ_WITH_UNREAL)
   set_target_properties(native-level-authoring PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/LevelAuthoring/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/LevelAuthoring/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
   )
 endif()

@@ -14,7 +14,7 @@ function(sandbox_add_dotnet_host_tool target_name output_variable project_file)
     set(dotnet_configuration Release)
   endif()
 
-  find_program(SANDBOX_DOTNET_EXECUTABLE NAMES dotnet REQUIRED)
+  find_program(IOJ_DOTNET_EXECUTABLE NAMES dotnet REQUIRED)
 
   set(output_directory
     "${CMAKE_BINARY_DIR}/host-tools/${tool_name}/${dotnet_configuration}"
@@ -23,7 +23,7 @@ function(sandbox_add_dotnet_host_tool target_name output_variable project_file)
   set(intermediate_directory "${output_directory}/obj/")
 
   add_custom_target(${target_name}
-    COMMAND "${SANDBOX_DOTNET_EXECUTABLE}" build "${project_file}"
+    COMMAND "${IOJ_DOTNET_EXECUTABLE}" build "${project_file}"
       --configuration "${dotnet_configuration}"
       --output "${output_directory}"
       --nologo

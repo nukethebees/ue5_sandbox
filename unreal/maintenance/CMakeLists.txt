@@ -2,20 +2,20 @@ sandbox_unreal_exclusive_jobserver_command(generate_project_files_command genera
   "Generate Unreal project files")
 
 add_custom_target(generate-project-files
-  COMMAND "${SANDBOX_SET_LIVE_CODING_DISABLED_TOOL}"
+  COMMAND "${IOJ_SET_LIVE_CODING_DISABLED_TOOL}"
     --settings-path
     "${PROJECT_SOURCE_DIR}/Saved/Config/WindowsEditor/EditorPerProjectUserSettings.ini"
   COMMAND ${generate_project_files_command}
     "${CMAKE_COMMAND}" -E env
-    "SANDBOX_NATIVE_TOOLCHAIN=${SANDBOX_NATIVE_TOOLCHAIN}"
+    "IOJ_NATIVE_TOOLCHAIN=${IOJ_NATIVE_TOOLCHAIN}"
     "${UE_GENERATE_PROJECT_FILES_SCRIPT}"
     ${UE_GENERATE_PROJECT_FILES_ARGUMENTS}
-    "-Project=${SANDBOX_UPROJECT}"
+    "-Project=${IOJ_UPROJECT}"
     -Game
     -WaitMutex
   DEPENDS require-set-live-coding-disabled
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-  COMMENT "Generating Visual Studio project files for ${SANDBOX_UPROJECT}"
+  COMMENT "Generating Visual Studio project files for ${IOJ_UPROJECT}"
   USES_TERMINAL
   VERBATIM
 )

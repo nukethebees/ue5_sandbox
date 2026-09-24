@@ -12,5 +12,5 @@ target_link_libraries(image-lab PRIVATE
 )
 target_compile_definitions(image-lab PRIVATE
   SDL_MAIN_HANDLED
-  SANDBOX_IMAGE_LAB_PROJECT_DIRECTORY="${PROJECT_SOURCE_DIR}"
+  IOJ_IMAGE_LAB_PROJECT_DIRECTORY="${PROJECT_SOURCE_DIR}"
 )

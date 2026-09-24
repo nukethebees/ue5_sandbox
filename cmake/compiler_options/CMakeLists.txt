@@ -38,7 +38,7 @@ add_library(sandbox::fp_fast ALIAS sandbox_fp_fast)
 add_library(sandbox_debug_symbols INTERFACE)
 add_library(sandbox::debug_symbols ALIAS sandbox_debug_symbols)
 
-if(SANDBOX_MSVC_FRONTEND)
+if(IOJ_MSVC_FRONTEND)
   target_compile_options(sandbox_release_optimization INTERFACE
     "$<${sandbox_release_configuration}:/O2>"
     "$<${sandbox_release_configuration}:/Ot>"

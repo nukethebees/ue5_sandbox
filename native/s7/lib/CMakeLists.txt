@@ -1,4 +1,4 @@
-set(SANDBOX_S7_DEFINITIONS
+set(IOJ_S7_DEFINITIONS
   DISABLE_AUTOLOAD=1
   DISABLE_FILE_OUTPUT=1
   HAVE_COMPLEX_NUMBERS=0
@@ -15,7 +15,7 @@ target_sources(sandbox-s7-third-party PRIVATE
   src/s7_sandbox.cpp
 )
 target_compile_features(sandbox-s7-third-party PRIVATE cxx_std_23)
-target_compile_definitions(sandbox-s7-third-party PRIVATE ${SANDBOX_S7_DEFINITIONS})
+target_compile_definitions(sandbox-s7-third-party PRIVATE ${IOJ_S7_DEFINITIONS})
 target_include_directories(sandbox-s7-third-party PRIVATE ../ThirdParty/s7)
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   target_compile_options(sandbox-s7-third-party PRIVATE
@@ -37,7 +37,7 @@ target_sources(sandbox-s7 PRIVATE
   $<TARGET_OBJECTS:sandbox-s7-third-party>
 )
 target_compile_features(sandbox-s7 PUBLIC cxx_std_23)
-target_compile_definitions(sandbox-s7 PRIVATE ${SANDBOX_S7_DEFINITIONS})
+target_compile_definitions(sandbox-s7 PRIVATE ${IOJ_S7_DEFINITIONS})
 target_include_directories(sandbox-s7 PUBLIC include)
 target_include_directories(sandbox-s7 SYSTEM PRIVATE ../ThirdParty/s7)
 
@@ -56,18 +56,18 @@ configure_sandbox_s7_abi(sandbox-s7)
 set_target_properties(sandbox-s7 PROPERTIES
   OUTPUT_NAME sandbox_s7
 )
-if(SANDBOX_WITH_UNREAL)
+if(IOJ_WITH_UNREAL)
   target_link_libraries(sandbox-s7-third-party PRIVATE sandbox::unreal_avx2)
   target_link_libraries(sandbox-s7 PRIVATE sandbox::unreal_avx2)
   foreach(configuration IN ITEMS Debug DebugGame Development Shipping Test)
     file(MAKE_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/S7/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${configuration}"
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/S7/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${configuration}"
     )
   endforeach()
 
   set_target_properties(sandbox-s7 PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/Native/S7/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${PROJECT_SOURCE_DIR}/Binaries/Native/S7/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
   )
 endif()
 

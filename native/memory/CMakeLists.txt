@@ -7,19 +7,19 @@ target_sources(native-memory PRIVATE
 target_compile_features(native-memory PUBLIC cxx_std_23)
 target_include_directories(native-memory PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(native-memory PRIVATE sandbox::native_defaults)
-if(SANDBOX_WITH_TRACY)
-  target_compile_definitions(native-memory PRIVATE SANDBOX_WITH_TRACY)
+if(IOJ_WITH_TRACY)
+  target_compile_definitions(native-memory PRIVATE IOJ_WITH_TRACY)
   target_link_libraries(native-memory PRIVATE sandbox::profiling)
 endif()
 
 set_target_properties(native-memory PROPERTIES
   OUTPUT_NAME SandboxNativeMemory
 )
-if(SANDBOX_WITH_UNREAL)
+if(IOJ_WITH_UNREAL)
   target_link_libraries(native-memory PRIVATE sandbox::unreal_avx2)
   set_target_properties(native-memory PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/Binaries/NativeMemory/${SANDBOX_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
+      "${PROJECT_SOURCE_DIR}/Binaries/NativeMemory/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
   )
 endif()
 
@@ -36,7 +36,7 @@ foreach(native_memory_target IN ITEMS native-memory native-memory-tests)
   set_property(TARGET ${native_memory_target} PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
   target_compile_definitions(${native_memory_target} PRIVATE _ITERATOR_DEBUG_LEVEL=0)
 
-  if(SANDBOX_MSVC_FRONTEND)
+  if(IOJ_MSVC_FRONTEND)
     target_compile_options(${native_memory_target} PRIVATE /permissive-)
     if(UE_CONFIGURATION MATCHES "^(Development|Shipping|Test)$")
       target_compile_options(${native_memory_target} PRIVATE /O2)

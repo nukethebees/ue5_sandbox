@@ -13,13 +13,13 @@ function(add_unreal_target target_name unreal_target)
 
   add_custom_target(${target_name}
     COMMAND ${activity_command}
-      ${SANDBOX_UNREAL_BUILD_TOOLS}
+      ${IOJ_UNREAL_BUILD_TOOLS}
       --build-script "${UE_BUILD_SCRIPT}"
       --target ${unreal_target}
       --platform ${UE_PLATFORM}
       --configuration ${UE_CONFIGURATION}
-      --project "${SANDBOX_UPROJECT}"
-      --native-toolchain "${SANDBOX_NATIVE_TOOLCHAIN}"
+      --project "${IOJ_UPROJECT}"
+      --native-toolchain "${IOJ_NATIVE_TOOLCHAIN}"
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
     COMMENT "Building ${unreal_target} ${UE_PLATFORM} ${UE_CONFIGURATION} through UnrealBuildTool"
     DEPENDS unreal-build-tools-host
@@ -64,7 +64,7 @@ function(add_unreal_editor_target target_name)
     "${editor_target_engine_access}" unreal-command
     "${editor_target_COMMENT}")
   add_custom_target(${target_name}
-    COMMAND ${activity_command} "${editor_target_EXECUTABLE}" "${SANDBOX_UPROJECT}"
+    COMMAND ${activity_command} "${editor_target_EXECUTABLE}" "${IOJ_UPROJECT}"
       ${editor_target_ARGUMENTS}
     DEPENDS ${editor_target_DEPENDS}
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
@@ -100,9 +100,9 @@ function(add_unreal_commandlet_target target_name)
   sandbox_unreal_jobserver_command(activity_command STANDARD SHARED unreal-command
     "Run Unreal commandlet: ${commandlet_COMMANDLET}")
   add_custom_target(${target_name}
-    COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
       "-run=${commandlet_COMMANDLET}"
-      "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
+      "-LocalDataCachePath=${IOJ_LOCAL_DDC_DIR}"
       -ddc=NoZenLocalFallback
       -unattended
       -nop4
@@ -122,7 +122,7 @@ function(add_unreal_benchmark_commandlet_target target_name commandlet)
   sandbox_unreal_jobserver_command(activity_command BENCHMARK SHARED benchmark
     "Benchmark Unreal commandlet: ${commandlet}")
   add_custom_target(${target_name}
-    COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
       "-run=${commandlet}"
       ${ARGN}
       -AllowCommandletRendering
@@ -187,13 +187,13 @@ function(add_unreal_editor_test test_name)
   if(NOT editor_test_NO_LOCAL_DDC)
     list(APPEND editor_test_common_arguments
       -ddc=NoZenLocalFallback
-      "-LocalDataCachePath=${SANDBOX_LOCAL_DDC_DIR}"
+      "-LocalDataCachePath=${IOJ_LOCAL_DDC_DIR}"
     )
   endif()
 
   add_test(
     NAME "${test_name}"
-    COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${SANDBOX_UPROJECT}"
+    COMMAND ${activity_command} "${UE_EDITOR_CMD_EXE}" "${IOJ_UPROJECT}"
       ${editor_test_ARGUMENTS}
       ${editor_test_common_arguments}
   )
@@ -227,7 +227,7 @@ function(add_unreal_automation_test test_name)
   sandbox_make_automation_exec_commands(automation_exec_commands
     "${automation_filter_expression}")
   sandbox_make_space_game_test_arguments(space_game_test_arguments
-    "${SANDBOX_SPACE_GAME_TEST_TIME_SCALE}")
+    "${IOJ_SPACE_GAME_TEST_TIME_SCALE}")
 
   add_unreal_editor_test("${test_name}"
     ARGUMENTS

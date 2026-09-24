@@ -33,7 +33,7 @@ function(target_add_supported_options interface_target)
     "${supported_options_COMPILE};${supported_options_LINK}"
   )
   string(SHA256 options_hash "${options_identity}")
-  set(support_variable "SANDBOX_SUPPORTED_OPTIONS_${options_hash}")
+  set(support_variable "IOJ_SUPPORTED_OPTIONS_${options_hash}")
 
   if(NOT DEFINED ${support_variable})
     set(try_compile_arguments)

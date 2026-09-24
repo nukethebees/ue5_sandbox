@@ -31,7 +31,7 @@ target_link_libraries(native-soa-tests-mimalloc PRIVATE
 add_test(NAME native-soa-tests-mimalloc COMMAND native-soa-tests-mimalloc)
 set_tests_properties(native-soa-tests-mimalloc PROPERTIES LABELS "unit;all;native;native-soa")
 
-if(SANDBOX_NATIVE_SOA_BENCHMARKS)
+if(IOJ_NATIVE_SOA_BENCHMARKS)
 find_program(UV_EXECUTABLE NAMES uv REQUIRED)
 
 add_executable(native-soa-benchmarks benchmarks.cpp bulk_benchmarks.cpp production_benchmarks.cpp)
@@ -111,7 +111,7 @@ add_custom_target(native-soa-laser-hit-append-report
   DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
 
 add_custom_target(native-soa-reserve-matrix-report
-  COMMAND "${SANDBOX_BENCHMARK_TOOLS}" native-soa-reserve-matrix
+  COMMAND "${IOJ_BENCHMARK_TOOLS}" native-soa-reserve-matrix
     --standard "$<TARGET_FILE:native-soa-reserve-matrix>"
     --mimalloc "$<TARGET_FILE:native-soa-reserve-matrix-mimalloc>"
     --output-dir "${CMAKE_BINARY_DIR}/native-soa-reserve-matrix"
@@ -120,7 +120,7 @@ add_custom_target(native-soa-reserve-matrix-report
     --output-dir "${CMAKE_BINARY_DIR}/native-soa-reserve-matrix"
   DEPENDS native-soa-reserve-matrix native-soa-reserve-matrix-mimalloc benchmark-tools-host USES_TERMINAL VERBATIM)
 add_test(NAME native-soa-reserve-matrix-smoke
-  COMMAND "${SANDBOX_BENCHMARK_TOOLS}" native-soa-reserve-matrix
+  COMMAND "${IOJ_BENCHMARK_TOOLS}" native-soa-reserve-matrix
     --standard "$<TARGET_FILE:native-soa-reserve-matrix>"
     --mimalloc "$<TARGET_FILE:native-soa-reserve-matrix-mimalloc>"
     --rows 4096 --owners 1,4 --dry-run

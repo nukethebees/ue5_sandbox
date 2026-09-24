@@ -1,11 +1,11 @@
 sandbox_add_dotnet_host_tool(
   code-format-tools-host
-  SANDBOX_CODE_FORMAT_TOOLS
+  IOJ_CODE_FORMAT_TOOLS
   "${PROJECT_SOURCE_DIR}/tools/CodeFormatTools/CodeFormatTools.csproj"
 )
 
 add_custom_target(format-code
-  COMMAND "${SANDBOX_CODE_FORMAT_TOOLS}" --changed
+  COMMAND "${IOJ_CODE_FORMAT_TOOLS}" --changed
   DEPENDS code-format-tools-host
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Formatting Git-changed project source files"
@@ -14,7 +14,7 @@ add_custom_target(format-code
 )
 
 add_custom_target(format-all-code
-  COMMAND "${SANDBOX_CODE_FORMAT_TOOLS}"
+  COMMAND "${IOJ_CODE_FORMAT_TOOLS}"
   DEPENDS code-format-tools-host
   WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
   COMMENT "Formatting all project source files"
@@ -33,10 +33,10 @@ set_tests_properties(Sandbox.CSharpTools PROPERTIES
 )
 
 add_subdirectory(perf)
-if(SANDBOX_LAYOUT_PLANNER)
+if(IOJ_LAYOUT_PLANNER)
   add_subdirectory(layout_planner)
 endif()
 
-if(SANDBOX_IMAGE_LAB)
+if(IOJ_IMAGE_LAB)
   add_subdirectory(image_lab)
 endif()

@@ -12,4 +12,4 @@ if(BUILD_SHARED_LIBS AND UNIX)
 endif()
 
 include("${CMAKE_CURRENT_LIST_DIR}/../cpu_features.cmake")
-sandbox_add_cpu_features("${SANDBOX_CPU_FEATURES_SOURCE_DIRECTORY}")
+sandbox_add_cpu_features("${IOJ_CPU_FEATURES_SOURCE_DIRECTORY}")
