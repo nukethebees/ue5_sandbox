@@ -6,5 +6,6 @@ Checks:
   - readability-redundant-string-init
   - performance-unnecessary-value-param
   - performance-move-const-arg
+  - bugprone-argument-comment
 ExtraArgsBefore:
   - /EHsc
