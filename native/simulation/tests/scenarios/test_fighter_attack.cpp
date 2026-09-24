@@ -349,9 +349,9 @@ auto run_dense_navigation_fixture(tests::SimulationFixture const& config,
 
 void run_worldless_fighter_dense_determinism(tests::SimulationFixture const& config) {
     auto const first_id{
-        EntityUniqueId::make(entity_identity_offset(EntityType::Fighter, 7), EntityType::Fighter)};
-    auto const second_id{EntityUniqueId::make(entity_identity_offset(EntityType::Fighter, 100),
-                                              EntityType::Fighter)};
+        EntityUniqueId(entity_identity_offset(EntityType::Fighter, 7), EntityType::Fighter)};
+    auto const second_id{
+        EntityUniqueId(entity_identity_offset(EntityType::Fighter, 100), EntityType::Fighter)};
     auto const forward{fighters::make_coincident_separation_direction(first_id, second_id)};
     auto const reverse{fighters::make_coincident_separation_direction(second_id, first_id)};
     EXPECT_TRUE(HMM_LenSqrV3(forward + reverse) < 1.e-8f)

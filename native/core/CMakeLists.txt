@@ -11,6 +11,7 @@ target_sources(native-core PRIVATE
   include/sandbox/core/speed_response.h
   include/sandbox/core/diagnostics.h
   include/sandbox/core/enum_traits.h
+  include/sandbox/core/packed_value.h
   include/sandbox/core/countdown_timers.h
   include/sandbox/core/math_types.h
   include/sandbox/core/native_soa/storage.h

@@ -21,7 +21,7 @@ class EntityIdAllocator {
                             static_cast<unsigned>(type),
                             count));
         }
-        auto const id{EntityUniqueId::make(entity_identity_offset(type, count), type)};
+        auto const id{EntityUniqueId(entity_identity_offset(type, count), type)};
         history_rows_[type].push_back(history_row);
         ++count;
         return id;

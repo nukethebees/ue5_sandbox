@@ -185,6 +185,7 @@ target_link_libraries(codegen-generated-compile-fixture PRIVATE sandbox::native_
 add_executable(codegen-generated-tests)
 target_sources(codegen-generated-tests PRIVATE
   tests/generated_tests.cpp
+  tests/packed_support_tests.cpp
   $<TARGET_OBJECTS:codegen-generated-compile-fixture>
 )
 set_target_properties(codegen-generated-tests PROPERTIES UNITY_BUILD OFF)
@@ -257,6 +258,20 @@ foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
       "-DREJECT_TARGET=${reject_target}"
       -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/reject_single_allocation_leaf.cmake")
   set_tests_properties("SingleAllocationRejects${restriction}" PROPERTIES
+    LABELS "unit;all;native;codegen" RESOURCE_LOCK codegen-negative-build)
+endforeach()
+foreach(restriction IN ITEMS SIGNED_STORAGE BOOL_STORAGE ZERO_BITS NEGATIVE_BITS NEGATIVE_OFFSET OVERFLOW FULL_OFFSET)
+  set(reject_target "codegen-reject-packed-${restriction}")
+  add_library(${reject_target} OBJECT EXCLUDE_FROM_ALL tests/compile_fixture/rejected_packed_field.cpp)
+  target_compile_features(${reject_target} PRIVATE cxx_std_23)
+  target_compile_definitions(${reject_target} PRIVATE "CODEGEN_BAD_${restriction}")
+  target_include_directories(${reject_target} PRIVATE "${PROJECT_SOURCE_DIR}/native/core/include")
+  target_link_libraries(${reject_target} PRIVATE sandbox::native_codegen_defaults)
+  add_test(NAME "PackedFieldRejects${restriction}"
+    COMMAND "${CMAKE_COMMAND}" "-DBUILD_DIR=${CMAKE_BINARY_DIR}"
+      "-DREJECT_TARGET=${reject_target}"
+      -P "${CMAKE_CURRENT_SOURCE_DIR}/tests/reject_packed_field.cmake")
+  set_tests_properties("PackedFieldRejects${restriction}" PROPERTIES
     LABELS "unit;all;native;codegen" RESOURCE_LOCK codegen-negative-build)
 endforeach()
 add_test(NAME CodegenCliChecksGeneratedFixture

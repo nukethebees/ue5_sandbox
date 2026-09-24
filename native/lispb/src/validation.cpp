@@ -600,7 +600,7 @@ void validate_packed_value(PackedValueSchema const& value,
     }
 
     std::set<std::string> generated_names{
-        value.name, "raw_value", "storage_type", "make", "is_valid"};
+        value.name, "raw_value", "storage_type", "from_raw", "is_valid"};
     if (value.mutable_value) {
         generated_names.insert("try_make");
     }
@@ -946,10 +946,7 @@ void validate_packed_value(PackedValueSchema const& value,
         }
 
         std::vector<std::string> names{
-            field->name + "_offset",
-            field->name + "_bits",
-            field->name + "_value_mask",
-            field->name + "_mask",
+            field->name + "_field",
         };
         if (quantized != nullptr || mini != nullptr) {
             names.push_back(field->name + "_encoded_type");

@@ -58,6 +58,22 @@ edits replace the graph and adjust locations; rejected edits restore the previou
 graph, source ownership, and revision. Source-backed module deletion and restoration retain
 their original ranges, including comments and unrelated text.
 
+## Packed C++ values
+
+Packed values store one unsigned fixed-width integer. The schema defines offsets, widths, and
+bit order; C++ lowering uses explicit masks and shifts through `ml::PackedField` and the
+`packed_extract`, `packed_pack`, and `packed_insert` helpers in `sandbox/core/packed_value.h`.
+Each field exposes `<name>_field::{offset,bits,value_mask,mask}` instead of four separate
+`<name>_offset`, `<name>_bits`, `<name>_value_mask`, and `<name>_mask` constants.
+Storage checks share `valid_packed_storage`; semantic range, enum, and sentinel validation
+remain in generated code. Standard fixed-width integer spellings remain unchanged.
+
+An explicit field-value constructor replaces `make(...)`. `Type::from_raw(raw)` replaces
+the raw-storage constructor and preserves all bits without validation. Default construction
+still produces zero or the schema's invalid value. Mutable types retain `try_make` and setters;
+immutable types expose neither. These are source API migrations; storage layout, comparison,
+serialization, and value validation are unchanged.
+
 ## External scalar registry
 
 `Manifest::types` owns `RegisteredTypeSchema`: the existing C++ spelling/includes/operations and

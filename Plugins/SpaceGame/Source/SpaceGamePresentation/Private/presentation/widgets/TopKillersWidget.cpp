@@ -24,15 +24,15 @@ void UTopKillersWidget::NativePreConstruct() {
         team_colours[ETestTeam::Yellow] = FLinearColor::Yellow;
 
         top_killers.reset();
-        top_killers.add(::ioj::sim::EntityUniqueId::make(14, ::ioj::sim::EntityType::Fighter),
+        top_killers.add(::ioj::sim::EntityUniqueId(14, ::ioj::sim::EntityType::Fighter),
                         ::ioj::sim::EntityType::Fighter,
                         ETestTeam::Green,
                         18);
-        top_killers.add(::ioj::sim::EntityUniqueId::make(7, ::ioj::sim::EntityType::Turret),
+        top_killers.add(::ioj::sim::EntityUniqueId(7, ::ioj::sim::EntityType::Turret),
                         ::ioj::sim::EntityType::Turret,
                         ETestTeam::Red,
                         13);
-        top_killers.add(::ioj::sim::EntityUniqueId::make(2, ::ioj::sim::EntityType::CapitalShip),
+        top_killers.add(::ioj::sim::EntityUniqueId(2, ::ioj::sim::EntityType::CapitalShip),
                         ::ioj::sim::EntityType::CapitalShip,
                         ETestTeam::Blue,
                         9);

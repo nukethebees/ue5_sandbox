@@ -96,6 +96,10 @@
 (module packed_value_fixture
   :header "PackedValues.h"
   :namespace codegen_compile_fixture
+  (packed-value PackedSingle
+    :storage std::uint8_t
+    (reserved low :bits 4)
+    (field value std::uint8_t :bits 4))
   (packed-value FighterState
     :storage std::uint32_t
     :mutable true

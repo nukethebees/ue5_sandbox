@@ -4,6 +4,7 @@
 #pragma once
 
 #include "ioj/sim/entity_type.h"
+#include "sandbox/core/packed_value.h"
 
 #include <cassert>
 #include <compare>
@@ -14,44 +15,34 @@
 namespace ioj::sim {
 struct EntityUniqueId {
     using storage_type = std::uint32_t;
-    static_assert(std::is_unsigned_v<storage_type>);
-    static_assert(std::numeric_limits<storage_type>::digits == 32);
+    static_assert(ml::valid_packed_storage<storage_type, 32>());
     using index_type = std::uint32_t;
-
-    inline static constexpr int index_offset{0};
-    inline static constexpr int index_bits{24};
-    inline static constexpr storage_type index_value_mask{storage_type{0xffffff}};
-    inline static constexpr storage_type index_mask{storage_type{0xffffff}};
+    using index_field = ml::PackedField<storage_type, index_type, 0, 24>;
     using entity_type_type = ioj::sim::EntityType;
     using entity_type_underlying_type = std::underlying_type_t<ioj::sim::EntityType>;
     static_assert(std::is_enum_v<ioj::sim::EntityType>);
     static_assert(std::is_unsigned_v<entity_type_underlying_type>);
     static_assert(std::numeric_limits<entity_type_underlying_type>::digits >= 8);
-
-    inline static constexpr int entity_type_offset{24};
-    inline static constexpr int entity_type_bits{8};
-    inline static constexpr storage_type entity_type_value_mask{storage_type{0xff}};
-    inline static constexpr storage_type entity_type_mask{storage_type{0xff000000}};
+    using entity_type_field = ml::PackedField<storage_type, entity_type_type, 24, 8>;
 
     inline static constexpr storage_type invalid_value{storage_type{0xffffffff}};
 
     constexpr EntityUniqueId() noexcept = default;
-    explicit constexpr EntityUniqueId(storage_type const raw) noexcept
-        : value_{raw} {}
+    [[nodiscard]] static constexpr auto from_raw(storage_type const raw) noexcept
+        -> EntityUniqueId {
+        EntityUniqueId result;
+        result.value_ = raw;
+        return result;
+    }
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    [[nodiscard]] static constexpr auto make(std::uint32_t const index_value,
-                                             ioj::sim::EntityType const entity_type_value) noexcept
-        -> EntityUniqueId {
-        assert(index_value <= static_cast<std::uint32_t>(index_value_mask));
+    explicit constexpr EntityUniqueId(std::uint32_t const index_value,
+                                      ioj::sim::EntityType const entity_type_value) noexcept {
+        assert(index_value <= static_cast<std::uint32_t>(index_field::value_mask));
         assert(entity_type_value < ioj::sim::EntityType::COUNT);
-        return EntityUniqueId{static_cast<storage_type>(
-            ((static_cast<storage_type>(index_value) & index_value_mask) << index_offset) |
-            ((static_cast<storage_type>(
-                  static_cast<entity_type_underlying_type>(entity_type_value)) &
-              entity_type_value_mask)
-             << entity_type_offset))};
+        value_ = static_cast<storage_type>(ml::packed_pack<index_field>(index_value) |
+                                           ml::packed_pack<entity_type_field>(entity_type_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
@@ -61,20 +52,18 @@ struct EntityUniqueId {
     [[nodiscard]] constexpr auto operator<=>(EntityUniqueId const&) const noexcept = default;
 
     [[nodiscard]] constexpr auto index() const noexcept -> std::uint32_t {
-        return static_cast<std::uint32_t>(static_cast<storage_type>(value_ >> index_offset) &
-                                          index_value_mask);
+        return ml::packed_extract<index_field>(value_);
     }
 
     [[nodiscard]] static constexpr auto index_range_fits(std::uint32_t const first,
                                                          std::uint32_t const count) noexcept
         -> bool {
-        return count == 0 || (first <= index_value_mask && count - 1 <= index_value_mask - first);
+        return count == 0 ||
+               (first <= index_field::value_mask && count - 1 <= index_field::value_mask - first);
     }
 
     [[nodiscard]] constexpr auto entity_type() const noexcept -> ioj::sim::EntityType {
-        auto const encoded{static_cast<entity_type_underlying_type>(
-            static_cast<storage_type>(value_ >> entity_type_offset) & entity_type_value_mask)};
-        return static_cast<ioj::sim::EntityType>(encoded);
+        return ml::packed_extract<entity_type_field>(value_);
     }
   private:
     storage_type value_{invalid_value};

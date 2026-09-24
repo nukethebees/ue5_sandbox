@@ -14,7 +14,7 @@
 namespace ioj::sim::tests {
 namespace {
 auto make_id(EntityType const type, std::uint32_t const ordinal) -> EntityUniqueId {
-    return EntityUniqueId::make(entity_identity_offset(type, ordinal), type);
+    return EntityUniqueId(entity_identity_offset(type, ordinal), type);
 }
 }
 
