@@ -13,45 +13,38 @@ set(CLI11_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(CLI11_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 add_subdirectory(cli11 EXCLUDE_FROM_ALL)
 
-if(IOJ_LAYOUT_PLANNER OR IOJ_IMAGE_LAB)
-  if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|x86_64)$")
-    set(SDL_CPU_X64 ON CACHE BOOL "Detected architecture X64" FORCE)
-  endif()
-  set(SDL_SHARED OFF CACHE BOOL "" FORCE)
-  set(SDL_STATIC ON CACHE BOOL "" FORCE)
-  set(SDL_TESTS OFF CACHE BOOL "" FORCE)
-  set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
-  set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
-  set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
-  add_subdirectory(sdl EXCLUDE_FROM_ALL)
-
+if(WIN32 AND CMAKE_SIZEOF_VOID_P EQUAL 8 AND CMAKE_SYSTEM_PROCESSOR MATCHES "^(AMD64|x86_64)$")
+  set(SDL_CPU_X64 ON CACHE BOOL "Detected architecture X64" FORCE)
 endif()
+set(SDL_SHARED OFF CACHE BOOL "" FORCE)
+set(SDL_STATIC ON CACHE BOOL "" FORCE)
+set(SDL_TESTS OFF CACHE BOOL "" FORCE)
+set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
+set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(SDL_INSTALL OFF CACHE BOOL "" FORCE)
+add_subdirectory(sdl EXCLUDE_FROM_ALL)
 
-if(IOJ_LAYOUT_PLANNER)
-  set(NFD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-  set(NFD_INSTALL OFF CACHE BOOL "" FORCE)
-  add_subdirectory(nativefiledialog-extended EXCLUDE_FROM_ALL)
-endif()
+set(NFD_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(NFD_INSTALL OFF CACHE BOOL "" FORCE)
+add_subdirectory(nativefiledialog-extended EXCLUDE_FROM_ALL)
 
-if(IOJ_LAYOUT_PLANNER OR IOJ_IMAGE_LAB)
-  add_library(sandbox-imgui)
-  target_sources(sandbox-imgui PRIVATE
-    imgui/imgui.cpp
-    imgui/imgui_draw.cpp
-    imgui/imgui_tables.cpp
-    imgui/imgui_widgets.cpp
-    imgui/misc/cpp/imgui_stdlib.cpp
-    imgui/backends/imgui_impl_sdl3.cpp
-    imgui/backends/imgui_impl_sdlgpu3.cpp
-  )
-  target_compile_features(sandbox-imgui PUBLIC cxx_std_23)
-  target_include_directories(sandbox-imgui SYSTEM PUBLIC
-    "${CMAKE_CURRENT_SOURCE_DIR}/imgui"
-    "${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends"
-  )
-  target_link_libraries(sandbox-imgui PUBLIC SDL3::SDL3-static)
-  set_property(TARGET sandbox-imgui PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
-endif()
+add_library(sandbox-imgui)
+target_sources(sandbox-imgui PRIVATE
+  imgui/imgui.cpp
+  imgui/imgui_draw.cpp
+  imgui/imgui_tables.cpp
+  imgui/imgui_widgets.cpp
+  imgui/misc/cpp/imgui_stdlib.cpp
+  imgui/backends/imgui_impl_sdl3.cpp
+  imgui/backends/imgui_impl_sdlgpu3.cpp
+)
+target_compile_features(sandbox-imgui PUBLIC cxx_std_23)
+target_include_directories(sandbox-imgui SYSTEM PUBLIC
+  "${CMAKE_CURRENT_SOURCE_DIR}/imgui"
+  "${CMAKE_CURRENT_SOURCE_DIR}/imgui/backends"
+)
+target_link_libraries(sandbox-imgui PUBLIC SDL3::SDL3-static)
+set_property(TARGET sandbox-imgui PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
 
 foreach(google_test_target IN ITEMS gtest gtest_main)
   set_property(TARGET ${google_test_target} PROPERTY
@@ -72,17 +65,15 @@ if(IOJ_WITH_UNREAL)
   )
 endif()
 
-if(IOJ_KERNEL_BENCHMARKS OR IOJ_NATIVE_SOA_BENCHMARKS)
-  set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
-  set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
-  set(BENCHMARK_ENABLE_DOXYGEN OFF CACHE BOOL "" FORCE)
-  set(BENCHMARK_INSTALL_DOCS OFF CACHE BOOL "" FORCE)
-  set(BENCHMARK_INSTALL_TOOLS OFF CACHE BOOL "" FORCE)
-  add_subdirectory(benchmark)
+set(BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+set(BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+set(BENCHMARK_ENABLE_DOXYGEN OFF CACHE BOOL "" FORCE)
+set(BENCHMARK_INSTALL_DOCS OFF CACHE BOOL "" FORCE)
+set(BENCHMARK_INSTALL_TOOLS OFF CACHE BOOL "" FORCE)
+add_subdirectory(benchmark)
 
-  foreach(google_benchmark_target IN ITEMS benchmark benchmark_main)
-    set_property(TARGET ${google_benchmark_target} PROPERTY
-      MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
-    target_compile_definitions(${google_benchmark_target} PRIVATE _ITERATOR_DEBUG_LEVEL=0)
-  endforeach()
-endif()
+foreach(google_benchmark_target IN ITEMS benchmark benchmark_main)
+  set_property(TARGET ${google_benchmark_target} PROPERTY
+    MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
+  target_compile_definitions(${google_benchmark_target} PRIVATE _ITERATOR_DEBUG_LEVEL=0)
+endforeach()

@@ -11,7 +11,7 @@ profiling.
 Build the benchmark before reserving the machine for a measurement:
 
 ```powershell
-cmake --preset native-simulation-benchmark
+cmake --preset native-benchmark
 cmake --build --preset native-simulation-benchmark
 ```
 
@@ -22,7 +22,7 @@ the timeout expires).
 ```powershell
 $repo = (Get-Location).Path
 $jobserver = Join-Path $env:LOCALAPPDATA 'NukeTheBees\jobserver\bin\jobserver.exe'
-$benchmark = Join-Path $repo 'out\build\native-simulation-benchmark\bin\native-simulation-benchmark.exe'
+$benchmark = Join-Path $repo 'out\build\native-benchmark\bin\native-simulation-benchmark.exe'
 
 & $jobserver run `
   --name 'fighter scheduling Tracy capture' `

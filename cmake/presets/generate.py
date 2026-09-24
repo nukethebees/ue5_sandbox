@@ -29,7 +29,7 @@ CONFIGURATIONS = (
 
 DEFAULT_NATIVE_CONFIGURATION = "native"
 CODEGEN_CONFIGURATION = DEFAULT_NATIVE_CONFIGURATION
-BENCHMARK_CONFIGURATION = "win-x64-clangcl-release-unity"
+BENCHMARK_CONFIGURATION = "native-benchmark"
 CLANG_TIDY_CONFIGURATION = "win-x64-clangcl-debug-tidy"
 LAYOUT_PLANNER_CONFIGURATION = "layout-planner"
 IMAGE_LAB_CONFIGURATION = "image-lab"
@@ -98,8 +98,6 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             "cacheVariables": {
                 "IOJ_WITH_UNREAL": False,
                 "IOJ_ENABLE_ASAN": False,
-                "IOJ_LAYOUT_PLANNER": False,
-                "IOJ_IMAGE_LAB": False,
                 "CMAKE_UNITY_BUILD": False,
             },
         }
@@ -142,18 +140,6 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
     )
     configure_presets.append(
         {
-            "name": IMAGE_LAB_CONFIGURATION,
-            "displayName": "Image Lab (clang-cl Debug)",
-            "inherits": [
-                "windows-clang-cl",
-                "native-common",
-                "native-config-debug",
-            ],
-            "cacheVariables": {"IOJ_IMAGE_LAB": True},
-        }
-    )
-    configure_presets.append(
-        {
             "name": CLANG_TIDY_CONFIGURATION,
             "displayName": "Native Windows x64 clang-cl Debug + clang-tidy",
             "inherits": "win-x64-clangcl-debug",
@@ -166,19 +152,6 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             },
         }
     )
-    configure_presets.append(
-        {
-            "name": LAYOUT_PLANNER_CONFIGURATION,
-            "displayName": "Memory Layout Planner (clang-cl Debug)",
-            "inherits": [
-                "windows-clang-cl",
-                "native-common",
-                "native-config-debug",
-            ],
-            "cacheVariables": {"IOJ_LAYOUT_PLANNER": True},
-        }
-    )
-
     document["configurePresets"] = configure_presets
     document["buildPresets"] = [
         {
@@ -188,7 +161,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
         },
         {
             "name": IMAGE_LAB_CONFIGURATION,
-            "configurePreset": IMAGE_LAB_CONFIGURATION,
+            "configurePreset": "win-x64-clangcl-debug",
             "targets": ["image-lab", "image-lab-cli", "image-lab-tests"],
         },
         *(
@@ -200,7 +173,11 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             for test_target in ("native-core-tests", "native-simulation-tests")
         ),
         *(
-            {"name": combination.name, "configurePreset": combination.name}
+            {
+                "name": combination.name,
+                "configurePreset": combination.name,
+                "targets": ["native-tests", "tracy-benchmark-compare-tests"],
+            }
             for combination in combinations
         ),
         {
@@ -225,7 +202,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
         },
         {
             "name": LAYOUT_PLANNER_CONFIGURATION,
-            "configurePreset": LAYOUT_PLANNER_CONFIGURATION,
+            "configurePreset": "win-x64-clangcl-debug",
             "targets": ["layout-planner", "native-layout-tests"],
         },
     ]
@@ -272,13 +249,13 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
         {
             "name": LAYOUT_PLANNER_CONFIGURATION,
             "inherits": "test-base",
-            "configurePreset": LAYOUT_PLANNER_CONFIGURATION,
+            "configurePreset": "win-x64-clangcl-debug",
             "filter": {"include": {"label": "layout"}},
         },
         {
             "name": IMAGE_LAB_CONFIGURATION,
             "inherits": "test-base",
-            "configurePreset": IMAGE_LAB_CONFIGURATION,
+            "configurePreset": "win-x64-clangcl-debug",
             "filter": {"include": {"label": "image-lab"}},
         },
     ]
@@ -347,7 +324,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
         {
             "name": LAYOUT_PLANNER_CONFIGURATION,
             "steps": [
-                {"type": "configure", "name": LAYOUT_PLANNER_CONFIGURATION},
+                {"type": "configure", "name": "win-x64-clangcl-debug"},
                 {"type": "build", "name": LAYOUT_PLANNER_CONFIGURATION},
                 {"type": "test", "name": LAYOUT_PLANNER_CONFIGURATION},
             ],
@@ -355,7 +332,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
         {
             "name": IMAGE_LAB_CONFIGURATION,
             "steps": [
-                {"type": "configure", "name": IMAGE_LAB_CONFIGURATION},
+                {"type": "configure", "name": "win-x64-clangcl-debug"},
                 {"type": "build", "name": IMAGE_LAB_CONFIGURATION},
                 {"type": "test", "name": IMAGE_LAB_CONFIGURATION},
             ],
@@ -781,42 +758,10 @@ def make_native_benchmark_document() -> dict[str, Any]:
             },
         },
         {
-            "name": "kernel-benchmark",
-            "displayName": "Native kernel benchmark",
-            "inherits": BENCHMARK_CONFIGURATION,
-            "cacheVariables": {
-                "IOJ_KERNEL_BENCHMARKS": True,
-                "UE_CONFIGURATION": "Development",
-            },
-        },
-        {
-            "name": "kernel-benchmark-plots",
-            "displayName": "Native kernel benchmark plots",
-            "inherits": "kernel-benchmark",
-            "cacheVariables": {"IOJ_KERNEL_BENCHMARK_PLOTS": True},
-        },
-        {
-            "name": "native-soa",
-            "inherits": BENCHMARK_CONFIGURATION,
-            "cacheVariables": {
-                "IOJ_NATIVE_SOA_BENCHMARKS": True,
-                "UE_CONFIGURATION": "Development",
-            },
-        },
-        {
-            "name": "native-simulation-benchmark",
-            "displayName": "Native simulation benchmark",
-            "inherits": BENCHMARK_CONFIGURATION,
+            "name": BENCHMARK_CONFIGURATION,
+            "displayName": "Native benchmarks (clang-cl Release + Unity)",
+            "inherits": "win-x64-clangcl-release-unity",
             "cacheVariables": {"UE_CONFIGURATION": "Development"},
-        },
-        {
-            "name": "frame-memory-level-benchmark",
-            "displayName": "Native frame-memory level benchmark",
-            "inherits": BENCHMARK_CONFIGURATION,
-            "cacheVariables": {
-                "IOJ_FRAME_MEMORY_LEVEL_BENCHMARK": True,
-                "UE_CONFIGURATION": "Development",
-            },
         },
     ]
     document["buildPresets"] = [
@@ -832,22 +777,22 @@ def make_native_benchmark_document() -> dict[str, Any]:
         },
         {
             "name": "kernel-benchmark",
-            "configurePreset": "kernel-benchmark",
+            "configurePreset": BENCHMARK_CONFIGURATION,
             "targets": ["kernel-native-simd-tests", "kernel-native-benchmarks"],
         },
         {
             "name": "kernel-benchmark-plots",
-            "configurePreset": "kernel-benchmark-plots",
+            "configurePreset": BENCHMARK_CONFIGURATION,
             "targets": ["kernel-native-simd-tests", "kernel-benchmark-report"],
         },
         {
             "name": "kernel-benchmark-plots-full",
-            "configurePreset": "kernel-benchmark-plots",
+            "configurePreset": BENCHMARK_CONFIGURATION,
             "targets": ["kernel-native-simd-tests", "kernel-benchmark-report-full"],
         },
         {
             "name": "kernel-vector-layout-benchmark-plots",
-            "configurePreset": "kernel-benchmark-plots",
+            "configurePreset": BENCHMARK_CONFIGURATION,
             "targets": [
                 "kernel-native-simd-tests",
                 "kernel-vector-layout-benchmark-report",
@@ -855,7 +800,7 @@ def make_native_benchmark_document() -> dict[str, Any]:
         },
         {
             "name": "native-soa",
-            "configurePreset": "native-soa",
+            "configurePreset": BENCHMARK_CONFIGURATION,
             "targets": [
                 "native-soa-tests",
                 "native-soa-tests-mimalloc",
@@ -865,7 +810,7 @@ def make_native_benchmark_document() -> dict[str, Any]:
         },
         {
             "name": "native-simulation-benchmark",
-            "configurePreset": "native-simulation-benchmark",
+            "configurePreset": BENCHMARK_CONFIGURATION,
             "targets": [
                 "native-simulation-benchmark",
                 "native-simulation-benchmark-tests",
@@ -874,7 +819,7 @@ def make_native_benchmark_document() -> dict[str, Any]:
         },
         {
             "name": "frame-memory-level-benchmark",
-            "configurePreset": "frame-memory-level-benchmark",
+            "configurePreset": BENCHMARK_CONFIGURATION,
             "targets": [
                 "native-simulation-benchmark",
                 "native-simulation-benchmark-tests",
@@ -892,13 +837,13 @@ def make_native_benchmark_document() -> dict[str, Any]:
         {
             "name": "kernel-benchmark-tests",
             "inherits": "test-base",
-            "configurePreset": "kernel-benchmark",
+            "configurePreset": BENCHMARK_CONFIGURATION,
             "filter": {"include": {"label": "native-kernel-benchmark"}},
         },
         {
             "name": "kernel-benchmark-plot-tests",
             "inherits": "test-base",
-            "configurePreset": "kernel-benchmark-plots",
+            "configurePreset": BENCHMARK_CONFIGURATION,
             "filter": {
                 "include": {
                     "label": "native-kernel-benchmark|kernel-benchmark-plot"
@@ -908,7 +853,7 @@ def make_native_benchmark_document() -> dict[str, Any]:
         {
             "name": "native-soa",
             "inherits": "test-base",
-            "configurePreset": "native-soa",
+            "configurePreset": BENCHMARK_CONFIGURATION,
             "filter": {
                 "include": {
                     "name": "^(native-soa|codegen-tests$|codegen-generated-tests$)"
@@ -918,7 +863,7 @@ def make_native_benchmark_document() -> dict[str, Any]:
         {
             "name": "frame-memory-level-benchmark",
             "inherits": "test-base",
-            "configurePreset": "frame-memory-level-benchmark",
+            "configurePreset": BENCHMARK_CONFIGURATION,
             "filter": {"include": {"label": "^frame-memory-level-benchmark$"}},
         },
     ]
@@ -930,35 +875,35 @@ def make_native_benchmark_document() -> dict[str, Any]:
                 {"type": "build", "name": "tracy-tools"},
             ],
         },
-        _workflow("kernel-benchmark", "kernel-benchmark", "kernel-benchmark-tests"),
+        _workflow("kernel-benchmark", BENCHMARK_CONFIGURATION, "kernel-benchmark-tests"),
         _workflow(
             "kernel-benchmark-plots",
-            "kernel-benchmark-plots",
+            BENCHMARK_CONFIGURATION,
             "kernel-benchmark-plot-tests",
         ),
         _workflow(
             "kernel-benchmark-plots-full",
-            "kernel-benchmark-plots",
+            BENCHMARK_CONFIGURATION,
             "kernel-benchmark-plot-tests",
             build_name="kernel-benchmark-plots-full",
         ),
         _workflow(
             "kernel-vector-layout-benchmark-plots",
-            "kernel-benchmark-plots",
+            BENCHMARK_CONFIGURATION,
             "kernel-benchmark-plot-tests",
             build_name="kernel-vector-layout-benchmark-plots",
         ),
-        _workflow("native-soa", "native-soa", "native-soa"),
+        _workflow("native-soa", BENCHMARK_CONFIGURATION, "native-soa"),
         {
             "name": "native-simulation-benchmark",
             "steps": [
-                {"type": "configure", "name": "native-simulation-benchmark"},
+                {"type": "configure", "name": BENCHMARK_CONFIGURATION},
                 {"type": "build", "name": "native-simulation-benchmark"},
             ],
         },
         _workflow(
             "frame-memory-level-benchmark",
-            "frame-memory-level-benchmark",
+            BENCHMARK_CONFIGURATION,
             "frame-memory-level-benchmark",
         ),
     ]

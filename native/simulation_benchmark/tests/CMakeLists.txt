@@ -17,12 +17,10 @@ set_tests_properties(native-simulation-benchmark-tests PROPERTIES
   LABELS "unit;all;native;native-simulation-benchmark"
 )
 
-if(IOJ_FRAME_MEMORY_LEVEL_BENCHMARK)
-  add_test(NAME native-frame-memory-level-benchmark
-    COMMAND "${IOJ_BENCHMARK_TOOLS}" frame-memory-level --seconds 20 --skip-build
-  )
-  set_tests_properties(native-frame-memory-level-benchmark PROPERTIES
-    LABELS "frame-memory-level-benchmark"
-    TIMEOUT 600
-  )
-endif()
+add_test(NAME native-frame-memory-level-benchmark
+  COMMAND "${IOJ_BENCHMARK_TOOLS}" frame-memory-level --seconds 20 --skip-build
+)
+set_tests_properties(native-frame-memory-level-benchmark PROPERTIES
+  LABELS "frame-memory-level-benchmark"
+  TIMEOUT 600
+)

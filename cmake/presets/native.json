@@ -17,8 +17,6 @@
       "cacheVariables": {
         "IOJ_WITH_UNREAL": false,
         "IOJ_ENABLE_ASAN": false,
-        "IOJ_LAYOUT_PLANNER": false,
-        "IOJ_IMAGE_LAB": false,
         "CMAKE_UNITY_BUILD": false
       }
     },
@@ -190,18 +188,6 @@
       "inherits": "win-x64-clangcl-debug-unity"
     },
     {
-      "name": "image-lab",
-      "displayName": "Image Lab (clang-cl Debug)",
-      "inherits": [
-        "windows-clang-cl",
-        "native-common",
-        "native-config-debug"
-      ],
-      "cacheVariables": {
-        "IOJ_IMAGE_LAB": true
-      }
-    },
-    {
       "name": "win-x64-clangcl-debug-tidy",
       "displayName": "Native Windows x64 clang-cl Debug + clang-tidy",
       "inherits": "win-x64-clangcl-debug",
@@ -211,18 +197,6 @@
         "CMAKE_DISABLE_PRECOMPILE_HEADERS": true,
         "CMAKE_CXX_SCAN_FOR_MODULES": false,
         "CMAKE_EXPORT_COMPILE_COMMANDS": true
-      }
-    },
-    {
-      "name": "layout-planner",
-      "displayName": "Memory Layout Planner (clang-cl Debug)",
-      "inherits": [
-        "windows-clang-cl",
-        "native-common",
-        "native-config-debug"
-      ],
-      "cacheVariables": {
-        "IOJ_LAYOUT_PLANNER": true
       }
     }
   ],
@@ -236,7 +210,7 @@
     },
     {
       "name": "image-lab",
-      "configurePreset": "image-lab",
+      "configurePreset": "win-x64-clangcl-debug",
       "targets": [
         "image-lab",
         "image-lab-cli",
@@ -259,51 +233,99 @@
     },
     {
       "name": "win-x64-clangcl-debug",
-      "configurePreset": "win-x64-clangcl-debug"
+      "configurePreset": "win-x64-clangcl-debug",
+      "targets": [
+        "native-tests",
+        "tracy-benchmark-compare-tests"
+      ]
     },
     {
       "name": "win-x64-clangcl-debug-unity",
-      "configurePreset": "win-x64-clangcl-debug-unity"
+      "configurePreset": "win-x64-clangcl-debug-unity",
+      "targets": [
+        "native-tests",
+        "tracy-benchmark-compare-tests"
+      ]
     },
     {
       "name": "win-x64-clangcl-debug-asan",
-      "configurePreset": "win-x64-clangcl-debug-asan"
+      "configurePreset": "win-x64-clangcl-debug-asan",
+      "targets": [
+        "native-tests",
+        "tracy-benchmark-compare-tests"
+      ]
     },
     {
       "name": "win-x64-clangcl-debug-asan-unity",
-      "configurePreset": "win-x64-clangcl-debug-asan-unity"
+      "configurePreset": "win-x64-clangcl-debug-asan-unity",
+      "targets": [
+        "native-tests",
+        "tracy-benchmark-compare-tests"
+      ]
     },
     {
       "name": "win-x64-clangcl-release",
-      "configurePreset": "win-x64-clangcl-release"
+      "configurePreset": "win-x64-clangcl-release",
+      "targets": [
+        "native-tests",
+        "tracy-benchmark-compare-tests"
+      ]
     },
     {
       "name": "win-x64-clangcl-release-unity",
-      "configurePreset": "win-x64-clangcl-release-unity"
+      "configurePreset": "win-x64-clangcl-release-unity",
+      "targets": [
+        "native-tests",
+        "tracy-benchmark-compare-tests"
+      ]
     },
     {
       "name": "win-x64-clangcl-release-asan",
-      "configurePreset": "win-x64-clangcl-release-asan"
+      "configurePreset": "win-x64-clangcl-release-asan",
+      "targets": [
+        "native-tests",
+        "tracy-benchmark-compare-tests"
+      ]
     },
     {
       "name": "win-x64-clangcl-release-asan-unity",
-      "configurePreset": "win-x64-clangcl-release-asan-unity"
+      "configurePreset": "win-x64-clangcl-release-asan-unity",
+      "targets": [
+        "native-tests",
+        "tracy-benchmark-compare-tests"
+      ]
     },
     {
       "name": "win-x64-msvc-debug",
-      "configurePreset": "win-x64-msvc-debug"
+      "configurePreset": "win-x64-msvc-debug",
+      "targets": [
+        "native-tests",
+        "tracy-benchmark-compare-tests"
+      ]
     },
     {
       "name": "win-x64-msvc-debug-unity",
-      "configurePreset": "win-x64-msvc-debug-unity"
+      "configurePreset": "win-x64-msvc-debug-unity",
+      "targets": [
+        "native-tests",
+        "tracy-benchmark-compare-tests"
+      ]
     },
     {
       "name": "win-x64-msvc-release",
-      "configurePreset": "win-x64-msvc-release"
+      "configurePreset": "win-x64-msvc-release",
+      "targets": [
+        "native-tests",
+        "tracy-benchmark-compare-tests"
+      ]
     },
     {
       "name": "win-x64-msvc-release-unity",
-      "configurePreset": "win-x64-msvc-release-unity"
+      "configurePreset": "win-x64-msvc-release-unity",
+      "targets": [
+        "native-tests",
+        "tracy-benchmark-compare-tests"
+      ]
     },
     {
       "name": "codegen",
@@ -331,7 +353,7 @@
     },
     {
       "name": "layout-planner",
-      "configurePreset": "layout-planner",
+      "configurePreset": "win-x64-clangcl-debug",
       "targets": [
         "layout-planner",
         "native-layout-tests"
@@ -524,7 +546,7 @@
     {
       "name": "layout-planner",
       "inherits": "test-base",
-      "configurePreset": "layout-planner",
+      "configurePreset": "win-x64-clangcl-debug",
       "filter": {
         "include": {
           "label": "layout"
@@ -534,7 +556,7 @@
     {
       "name": "image-lab",
       "inherits": "test-base",
-      "configurePreset": "image-lab",
+      "configurePreset": "win-x64-clangcl-debug",
       "filter": {
         "include": {
           "label": "image-lab"
@@ -861,7 +883,7 @@
       "steps": [
         {
           "type": "configure",
-          "name": "layout-planner"
+          "name": "win-x64-clangcl-debug"
         },
         {
           "type": "build",
@@ -878,7 +900,7 @@
       "steps": [
         {
           "type": "configure",
-          "name": "image-lab"
+          "name": "win-x64-clangcl-debug"
         },
         {
           "type": "build",

@@ -21,44 +21,10 @@
       }
     },
     {
-      "name": "kernel-benchmark",
-      "displayName": "Native kernel benchmark",
+      "name": "native-benchmark",
+      "displayName": "Native benchmarks (clang-cl Release + Unity)",
       "inherits": "win-x64-clangcl-release-unity",
       "cacheVariables": {
-        "IOJ_KERNEL_BENCHMARKS": true,
-        "UE_CONFIGURATION": "Development"
-      }
-    },
-    {
-      "name": "kernel-benchmark-plots",
-      "displayName": "Native kernel benchmark plots",
-      "inherits": "kernel-benchmark",
-      "cacheVariables": {
-        "IOJ_KERNEL_BENCHMARK_PLOTS": true
-      }
-    },
-    {
-      "name": "native-soa",
-      "inherits": "win-x64-clangcl-release-unity",
-      "cacheVariables": {
-        "IOJ_NATIVE_SOA_BENCHMARKS": true,
-        "UE_CONFIGURATION": "Development"
-      }
-    },
-    {
-      "name": "native-simulation-benchmark",
-      "displayName": "Native simulation benchmark",
-      "inherits": "win-x64-clangcl-release-unity",
-      "cacheVariables": {
-        "UE_CONFIGURATION": "Development"
-      }
-    },
-    {
-      "name": "frame-memory-level-benchmark",
-      "displayName": "Native frame-memory level benchmark",
-      "inherits": "win-x64-clangcl-release-unity",
-      "cacheVariables": {
-        "IOJ_FRAME_MEMORY_LEVEL_BENCHMARK": true,
         "UE_CONFIGURATION": "Development"
       }
     }
@@ -76,7 +42,7 @@
     },
     {
       "name": "kernel-benchmark",
-      "configurePreset": "kernel-benchmark",
+      "configurePreset": "native-benchmark",
       "targets": [
         "kernel-native-simd-tests",
         "kernel-native-benchmarks"
@@ -84,7 +50,7 @@
     },
     {
       "name": "kernel-benchmark-plots",
-      "configurePreset": "kernel-benchmark-plots",
+      "configurePreset": "native-benchmark",
       "targets": [
         "kernel-native-simd-tests",
         "kernel-benchmark-report"
@@ -92,7 +58,7 @@
     },
     {
       "name": "kernel-benchmark-plots-full",
-      "configurePreset": "kernel-benchmark-plots",
+      "configurePreset": "native-benchmark",
       "targets": [
         "kernel-native-simd-tests",
         "kernel-benchmark-report-full"
@@ -100,7 +66,7 @@
     },
     {
       "name": "kernel-vector-layout-benchmark-plots",
-      "configurePreset": "kernel-benchmark-plots",
+      "configurePreset": "native-benchmark",
       "targets": [
         "kernel-native-simd-tests",
         "kernel-vector-layout-benchmark-report"
@@ -108,7 +74,7 @@
     },
     {
       "name": "native-soa",
-      "configurePreset": "native-soa",
+      "configurePreset": "native-benchmark",
       "targets": [
         "native-soa-tests",
         "native-soa-tests-mimalloc",
@@ -118,7 +84,7 @@
     },
     {
       "name": "native-simulation-benchmark",
-      "configurePreset": "native-simulation-benchmark",
+      "configurePreset": "native-benchmark",
       "targets": [
         "native-simulation-benchmark",
         "native-simulation-benchmark-tests",
@@ -127,7 +93,7 @@
     },
     {
       "name": "frame-memory-level-benchmark",
-      "configurePreset": "frame-memory-level-benchmark",
+      "configurePreset": "native-benchmark",
       "targets": [
         "native-simulation-benchmark",
         "native-simulation-benchmark-tests",
@@ -149,7 +115,7 @@
     {
       "name": "kernel-benchmark-tests",
       "inherits": "test-base",
-      "configurePreset": "kernel-benchmark",
+      "configurePreset": "native-benchmark",
       "filter": {
         "include": {
           "label": "native-kernel-benchmark"
@@ -159,7 +125,7 @@
     {
       "name": "kernel-benchmark-plot-tests",
       "inherits": "test-base",
-      "configurePreset": "kernel-benchmark-plots",
+      "configurePreset": "native-benchmark",
       "filter": {
         "include": {
           "label": "native-kernel-benchmark|kernel-benchmark-plot"
@@ -169,7 +135,7 @@
     {
       "name": "native-soa",
       "inherits": "test-base",
-      "configurePreset": "native-soa",
+      "configurePreset": "native-benchmark",
       "filter": {
         "include": {
           "name": "^(native-soa|codegen-tests$|codegen-generated-tests$)"
@@ -179,7 +145,7 @@
     {
       "name": "frame-memory-level-benchmark",
       "inherits": "test-base",
-      "configurePreset": "frame-memory-level-benchmark",
+      "configurePreset": "native-benchmark",
       "filter": {
         "include": {
           "label": "^frame-memory-level-benchmark$"
@@ -206,7 +172,7 @@
       "steps": [
         {
           "type": "configure",
-          "name": "kernel-benchmark"
+          "name": "native-benchmark"
         },
         {
           "type": "build",
@@ -223,7 +189,7 @@
       "steps": [
         {
           "type": "configure",
-          "name": "kernel-benchmark-plots"
+          "name": "native-benchmark"
         },
         {
           "type": "build",
@@ -240,7 +206,7 @@
       "steps": [
         {
           "type": "configure",
-          "name": "kernel-benchmark-plots"
+          "name": "native-benchmark"
         },
         {
           "type": "build",
@@ -257,7 +223,7 @@
       "steps": [
         {
           "type": "configure",
-          "name": "kernel-benchmark-plots"
+          "name": "native-benchmark"
         },
         {
           "type": "build",
@@ -274,7 +240,7 @@
       "steps": [
         {
           "type": "configure",
-          "name": "native-soa"
+          "name": "native-benchmark"
         },
         {
           "type": "build",
@@ -291,7 +257,7 @@
       "steps": [
         {
           "type": "configure",
-          "name": "native-simulation-benchmark"
+          "name": "native-benchmark"
         },
         {
           "type": "build",
@@ -304,7 +270,7 @@
       "steps": [
         {
           "type": "configure",
-          "name": "frame-memory-level-benchmark"
+          "name": "native-benchmark"
         },
         {
           "type": "build",

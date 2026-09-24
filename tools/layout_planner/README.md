@@ -12,21 +12,22 @@ authoring.
 From the repository root, initialize the optional UI dependencies and run the dedicated workflow:
 
 ```powershell
-git submodule update --init native/third_party/sdl native/third_party/imgui
+git submodule update --init native/third_party/sdl native/third_party/imgui `
+  native/third_party/nativefiledialog-extended
 cmake --workflow --preset layout-planner
 ```
 
 The workflow builds and tests the planner. The development executable stays in this worktree:
 
 ```text
-.\out\build\layout-planner\tools\layout_planner\app\layout-planner.exe
+.\out\build\win-x64-clangcl-debug\tools\layout_planner\app\layout-planner.exe
 ```
 
 To promote a tested build to a separate, per-user installation, run this from the repository root:
 
 ```powershell
 $plannerInstallRoot = Join-Path $env:LOCALAPPDATA 'MemoryLayoutPlanner'
-cmake --install .\out\build\layout-planner --component layout-planner --prefix $plannerInstallRoot
+cmake --install .\out\build\win-x64-clangcl-debug --component layout-planner --prefix $plannerInstallRoot
 $plannerBin = Join-Path $plannerInstallRoot 'bin'
 & (Join-Path $plannerBin 'layout-planner.exe') --help
 ```
@@ -48,7 +49,7 @@ Run the worktree build with the repository root as its working directory, or use
 `layout-planner` if you added the installed `bin` directory to `PATH`:
 
 ```powershell
-.\out\build\layout-planner\tools\layout_planner\app\layout-planner.exe
+.\out\build\win-x64-clangcl-debug\tools\layout_planner\app\layout-planner.exe
 ```
 
 Use **File > Export C++** after saving to generate the selected target into its configured output
@@ -62,7 +63,7 @@ uses its `sandbox-code` target. From elsewhere, pass `--project` to select the m
 either selection when inspecting another manifest or target:
 
 ```powershell
-.\out\build\layout-planner\tools\layout_planner\app\layout-planner.exe `
+.\out\build\win-x64-clangcl-debug\tools\layout_planner\app\layout-planner.exe `
   --project path\to\project.lispb `
   --target target-name
 ```

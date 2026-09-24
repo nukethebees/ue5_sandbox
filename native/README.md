@@ -42,26 +42,27 @@ Native dependencies are pinned submodules under `native/third_party` and are ini
 
 ```powershell
 git submodule update --init native/third_party/googletest native/third_party/cpu_features `
-  native/third_party/benchmark native/third_party/cli11 native/third_party/nlohmann_json
+  native/third_party/benchmark native/third_party/cli11 native/third_party/nlohmann_json `
+  native/third_party/tracy native/third_party/sdl native/third_party/imgui `
+  native/third_party/nativefiledialog-extended
 ```
 
-The optional memory layout planner additionally uses the pinned SDL3 and Dear ImGui submodules:
+The optional memory layout planner uses SDL3, Dear ImGui, and Native File Dialog:
 
 ```powershell
-git submodule update --init native/third_party/sdl native/third_party/imgui
 cmake --workflow --preset layout-planner
 ```
 
 The executable remains local to the worktree at
-`%REPOSITORY_ROOT%\out\build\layout-planner\tools\layout_planner\app\layout-planner.exe`; it is not
+`%REPOSITORY_ROOT%\out\build\win-x64-clangcl-debug\tools\layout_planner\app\layout-planner.exe`; it is not
 installed system-wide or added to `PATH`. Run it from the repository root to load
 `lispb/project.lispb`, or pass `--project` and `--target` explicitly. See the
 [memory layout planner guide](../tools/layout_planner/README.md) for usage, supported analysis, and
 V1 limitations.
 
 Image Lab is the standalone GUI and CLI for the deterministic image generators. Its interface uses
-SDL3, SDL_GPU, and Dear ImGui for presentation; image generation remains CPU-native. Initialize
-the same SDL3 and ImGui submodules, then run `cmake --workflow --preset image-lab`; see the
+SDL3, SDL_GPU, and Dear ImGui for presentation; image generation remains CPU-native. Run
+`cmake --workflow --preset image-lab`; see the
 [Image Lab guide](../tools/image_lab/README.md).
 
 Simulation tests live in `simulation/tests/`. Asset/configuration conversion and presentation remain

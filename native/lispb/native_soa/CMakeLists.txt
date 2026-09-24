@@ -45,7 +45,6 @@ target_link_libraries(native-soa-tests-mimalloc PRIVATE
 add_test(NAME native-soa-tests-mimalloc COMMAND native-soa-tests-mimalloc)
 set_tests_properties(native-soa-tests-mimalloc PROPERTIES LABELS "unit;all;native;native-soa")
 
-if(IOJ_NATIVE_SOA_BENCHMARKS)
 add_executable(native-soa-benchmarks production_benchmarks.cpp)
 target_sources(native-soa-benchmarks PRIVATE
   "${PROJECT_SOURCE_DIR}/native/simulation/src/laser_frame_output.cpp")
@@ -94,5 +93,3 @@ add_custom_target(native-soa-laser-hit-append-report
     "--benchmark_out=${CMAKE_BINARY_DIR}/native-soa-laser-hit-append-results.json"
     --benchmark_out_format=json
   DEPENDS native-soa-benchmarks USES_TERMINAL VERBATIM)
-
-endif()

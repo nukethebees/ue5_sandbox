@@ -33,10 +33,5 @@ set_tests_properties(Sandbox.CSharpTools PROPERTIES
 )
 
 add_subdirectory(perf)
-if(IOJ_LAYOUT_PLANNER)
-  add_subdirectory(layout_planner)
-endif()
-
-if(IOJ_IMAGE_LAB)
-  add_subdirectory(image_lab)
-endif()
+add_subdirectory(layout_planner)
+add_subdirectory(image_lab)

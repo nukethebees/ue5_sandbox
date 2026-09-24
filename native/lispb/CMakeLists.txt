@@ -1,11 +1,4 @@
 find_program(IOJ_CLANG_FORMAT_EXECUTABLE NAMES clang-format REQUIRED)
-if(IOJ_KERNEL_BENCHMARK_PLOTS)
-  if(NOT IOJ_KERNEL_BENCHMARKS)
-    message(FATAL_ERROR
-      "IOJ_KERNEL_BENCHMARK_PLOTS requires IOJ_KERNEL_BENCHMARKS")
-  endif()
-  find_program(UV_EXECUTABLE NAMES uv REQUIRED)
-endif()
 
 add_subdirectory(sexpr)
 add_subdirectory(material)

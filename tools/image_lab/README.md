@@ -8,14 +8,15 @@ RGBA PNGs only and never creates or imports Unreal assets.
 Initialize the pinned SDL3 and Dear ImGui submodules, then build the dedicated workflow:
 
 ```powershell
-git submodule update --init native/third_party/sdl native/third_party/imgui
+git submodule update --init native/third_party/sdl native/third_party/imgui `
+  native/third_party/nativefiledialog-extended
 cmake --workflow --preset image-lab
 ```
 
-Run the GUI from `out/build/image-lab/tools/image_lab/gui/image-lab.exe`. Its default output
+Run the GUI from `out/build/win-x64-clangcl-debug/tools/image_lab/gui/image-lab.exe`. Its default output
 directory is `Saved/ImageLab` at the repository root.
 
-The CLI is at `out/build/image-lab/tools/image_lab/cli/image-lab-cli.exe`:
+The CLI is at `out/build/win-x64-clangcl-debug/tools/image_lab/cli/image-lab-cli.exe`:
 
 ```powershell
 image-lab-cli list

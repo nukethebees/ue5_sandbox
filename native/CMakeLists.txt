@@ -1,10 +1,3 @@
-option(IOJ_KERNEL_BENCHMARKS "Build native generated-kernel benchmarks" OFF)
-option(IOJ_NATIVE_SOA_BENCHMARKS "Build production simulation SoA benchmarks" OFF)
-option(IOJ_FRAME_MEMORY_LEVEL_BENCHMARK "Register the native frame-memory level benchmark" OFF)
-option(IOJ_KERNEL_BENCHMARK_PLOTS "Generate native kernel benchmark plots" OFF)
-option(IOJ_LAYOUT_PLANNER "Build the standalone memory layout planner" OFF)
-option(IOJ_IMAGE_LAB "Build the standalone Image Lab" OFF)
-
 if(IOJ_ENABLE_ASAN)
   set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 endif()
@@ -32,9 +25,7 @@ target_link_libraries(sandbox_native_codegen_defaults INTERFACE
   ioj::asan
 )
 
-if(IOJ_LAYOUT_PLANNER)
-  enable_language(C)
-endif()
+enable_language(C)
 
 add_subdirectory(third_party)
 add_subdirectory(third_party/handmade_math)

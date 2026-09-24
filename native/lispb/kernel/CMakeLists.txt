@@ -196,279 +196,275 @@ add_custom_target(check-generated-native-core-kernels
   VERBATIM
 )
 
-if(IOJ_KERNEL_BENCHMARKS)
-  set(KERNEL_NATIVE_SIMD_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/native-simd-generated")
-  set(KERNEL_NATIVE_SIMD_HEADER
-    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/add_scaled_x86_simd_lab.h"
-  )
-  set(KERNEL_NATIVE_SIMD_AVX2_SOURCE
-    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/add_scaled_x86_simd_lab_avx2.cpp"
-  )
-  set(KERNEL_NATIVE_SIMD_AVX512_SOURCE
-    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/add_scaled_x86_simd_lab_avx512.cpp"
-  )
-  set(KERNEL_NATIVE_DOT_HEADER
-    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab.h"
-  )
-  set(KERNEL_NATIVE_DOT_AVX2_SOURCE
-    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_avx2.cpp"
-  )
-  set(KERNEL_NATIVE_DOT_AVX512_SOURCE
-    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_avx512.cpp"
-  )
-  set(KERNEL_NATIVE_DOT_RELAXED_AVX2_SOURCE
-    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_relaxed_avx2.cpp"
-  )
-  set(KERNEL_NATIVE_DOT_RELAXED_AVX512_SOURCE
-    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_relaxed_avx512.cpp"
-  )
-  set(KERNEL_NATIVE_DOT3_HEADER
-    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_3d_x86_simd_lab.h"
-  )
-  set(KERNEL_NATIVE_DOT3_AVX2_SOURCE
-    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_3d_x86_simd_lab_avx2.cpp"
-  )
-  set(KERNEL_NATIVE_DOT3_AVX512_SOURCE
-    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_3d_x86_simd_lab_avx512.cpp"
-  )
-  set(KERNEL_NATIVE_SIMD_FILES
-    "${KERNEL_NATIVE_SIMD_HEADER}"
-    "${KERNEL_NATIVE_SIMD_AVX2_SOURCE}"
-    "${KERNEL_NATIVE_SIMD_AVX512_SOURCE}"
-    "${KERNEL_NATIVE_DOT_HEADER}"
-    "${KERNEL_NATIVE_DOT_AVX2_SOURCE}"
-    "${KERNEL_NATIVE_DOT_AVX512_SOURCE}"
-    "${KERNEL_NATIVE_DOT_RELAXED_AVX2_SOURCE}"
-    "${KERNEL_NATIVE_DOT_RELAXED_AVX512_SOURCE}"
-    "${KERNEL_NATIVE_DOT3_HEADER}"
-    "${KERNEL_NATIVE_DOT3_AVX2_SOURCE}"
-    "${KERNEL_NATIVE_DOT3_AVX512_SOURCE}"
-  )
-  add_custom_command(
-    OUTPUT ${KERNEL_NATIVE_SIMD_FILES}
-    COMMAND lispb generate
-      --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
-      --build-root "${CMAKE_BINARY_DIR}"
-      --target kernel-native-simd
-    DEPENDS
-      lispb
-      "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
-      "${KERNEL_CANDIDATE_DOCUMENT}"
-    COMMENT "Generating the native x86 SIMD kernel experiment"
-    VERBATIM
-  )
-  set(KERNEL_NATIVE_SIMD_CONVENIENCE_DIRECTORY
-    "${PROJECT_SOURCE_DIR}/out/benchmarks/kernel/generated"
-  )
-  add_custom_target(kernel-native-generated-sources
-    COMMAND "${CMAKE_COMMAND}" -E make_directory
-      "${KERNEL_NATIVE_SIMD_CONVENIENCE_DIRECTORY}"
-    COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different
-      "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated"
-      "${KERNEL_NATIVE_SIMD_CONVENIENCE_DIRECTORY}"
-    DEPENDS ${KERNEL_NATIVE_SIMD_FILES}
-    COMMENT "Updating the stable native SIMD generated-source mirror"
-    VERBATIM
-  )
+set(KERNEL_NATIVE_SIMD_OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/native-simd-generated")
+set(KERNEL_NATIVE_SIMD_HEADER
+  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/add_scaled_x86_simd_lab.h"
+)
+set(KERNEL_NATIVE_SIMD_AVX2_SOURCE
+  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/add_scaled_x86_simd_lab_avx2.cpp"
+)
+set(KERNEL_NATIVE_SIMD_AVX512_SOURCE
+  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/add_scaled_x86_simd_lab_avx512.cpp"
+)
+set(KERNEL_NATIVE_DOT_HEADER
+  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab.h"
+)
+set(KERNEL_NATIVE_DOT_AVX2_SOURCE
+  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_avx2.cpp"
+)
+set(KERNEL_NATIVE_DOT_AVX512_SOURCE
+  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_avx512.cpp"
+)
+set(KERNEL_NATIVE_DOT_RELAXED_AVX2_SOURCE
+  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_relaxed_avx2.cpp"
+)
+set(KERNEL_NATIVE_DOT_RELAXED_AVX512_SOURCE
+  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_x86_simd_lab_relaxed_avx512.cpp"
+)
+set(KERNEL_NATIVE_DOT3_HEADER
+  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_3d_x86_simd_lab.h"
+)
+set(KERNEL_NATIVE_DOT3_AVX2_SOURCE
+  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_3d_x86_simd_lab_avx2.cpp"
+)
+set(KERNEL_NATIVE_DOT3_AVX512_SOURCE
+  "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated/dot_product_3d_x86_simd_lab_avx512.cpp"
+)
+set(KERNEL_NATIVE_SIMD_FILES
+  "${KERNEL_NATIVE_SIMD_HEADER}"
+  "${KERNEL_NATIVE_SIMD_AVX2_SOURCE}"
+  "${KERNEL_NATIVE_SIMD_AVX512_SOURCE}"
+  "${KERNEL_NATIVE_DOT_HEADER}"
+  "${KERNEL_NATIVE_DOT_AVX2_SOURCE}"
+  "${KERNEL_NATIVE_DOT_AVX512_SOURCE}"
+  "${KERNEL_NATIVE_DOT_RELAXED_AVX2_SOURCE}"
+  "${KERNEL_NATIVE_DOT_RELAXED_AVX512_SOURCE}"
+  "${KERNEL_NATIVE_DOT3_HEADER}"
+  "${KERNEL_NATIVE_DOT3_AVX2_SOURCE}"
+  "${KERNEL_NATIVE_DOT3_AVX512_SOURCE}"
+)
+add_custom_command(
+  OUTPUT ${KERNEL_NATIVE_SIMD_FILES}
+  COMMAND lispb generate
+    --project "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
+    --build-root "${CMAKE_BINARY_DIR}"
+    --target kernel-native-simd
+  DEPENDS
+    lispb
+    "${PROJECT_SOURCE_DIR}/lispb/project.lispb"
+    "${KERNEL_CANDIDATE_DOCUMENT}"
+  COMMENT "Generating the native x86 SIMD kernel experiment"
+  VERBATIM
+)
+set(KERNEL_NATIVE_SIMD_CONVENIENCE_DIRECTORY
+  "${PROJECT_SOURCE_DIR}/out/benchmarks/kernel/generated"
+)
+add_custom_target(kernel-native-generated-sources
+  COMMAND "${CMAKE_COMMAND}" -E make_directory
+    "${KERNEL_NATIVE_SIMD_CONVENIENCE_DIRECTORY}"
+  COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different
+    "${KERNEL_NATIVE_SIMD_OUTPUT}/native/generated"
+    "${KERNEL_NATIVE_SIMD_CONVENIENCE_DIRECTORY}"
+  DEPENDS ${KERNEL_NATIVE_SIMD_FILES}
+  COMMENT "Updating the stable native SIMD generated-source mirror"
+  VERBATIM
+)
 
-  add_library(kernel-native-simd-avx2 OBJECT
-    "${KERNEL_NATIVE_SIMD_AVX2_SOURCE}"
-    "${KERNEL_NATIVE_DOT_AVX2_SOURCE}"
-    "${KERNEL_NATIVE_DOT3_AVX2_SOURCE}"
-  )
-  add_library(kernel-native-simd-avx512 OBJECT
-    "${KERNEL_NATIVE_SIMD_AVX512_SOURCE}"
-    "${KERNEL_NATIVE_DOT_AVX512_SOURCE}"
-    "${KERNEL_NATIVE_DOT3_AVX512_SOURCE}"
-  )
-  add_library(kernel-native-dot-relaxed-avx2 OBJECT
-    "${KERNEL_NATIVE_DOT_RELAXED_AVX2_SOURCE}"
-  )
-  add_library(kernel-native-dot-relaxed-avx512 OBJECT
-    "${KERNEL_NATIVE_DOT_RELAXED_AVX512_SOURCE}"
-  )
-  foreach(TARGET IN ITEMS
-      kernel-native-simd-avx2
-      kernel-native-simd-avx512
-      kernel-native-dot-relaxed-avx2
-      kernel-native-dot-relaxed-avx512)
-    set_target_properties(${TARGET} PROPERTIES UNITY_BUILD OFF)
-    target_compile_features(${TARGET} PRIVATE cxx_std_23)
-    target_include_directories(${TARGET} PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
-    target_link_libraries(${TARGET} PRIVATE sandbox::native_codegen_defaults)
-  endforeach()
-  target_link_libraries(kernel-native-simd-avx2 PRIVATE
-    ioj::arch_avx2
-    ioj::fp_strict
-  )
-  target_link_libraries(kernel-native-simd-avx512 PRIVATE
-    ioj::arch_avx512
-    ioj::fp_strict
-  )
-  target_link_libraries(kernel-native-dot-relaxed-avx2 PRIVATE
-    ioj::arch_avx2
-    ioj::fp_fast
-  )
-  target_link_libraries(kernel-native-dot-relaxed-avx512 PRIVATE
-    ioj::arch_avx512
-    ioj::fp_fast
-  )
+add_library(kernel-native-simd-avx2 OBJECT
+  "${KERNEL_NATIVE_SIMD_AVX2_SOURCE}"
+  "${KERNEL_NATIVE_DOT_AVX2_SOURCE}"
+  "${KERNEL_NATIVE_DOT3_AVX2_SOURCE}"
+)
+add_library(kernel-native-simd-avx512 OBJECT
+  "${KERNEL_NATIVE_SIMD_AVX512_SOURCE}"
+  "${KERNEL_NATIVE_DOT_AVX512_SOURCE}"
+  "${KERNEL_NATIVE_DOT3_AVX512_SOURCE}"
+)
+add_library(kernel-native-dot-relaxed-avx2 OBJECT
+  "${KERNEL_NATIVE_DOT_RELAXED_AVX2_SOURCE}"
+)
+add_library(kernel-native-dot-relaxed-avx512 OBJECT
+  "${KERNEL_NATIVE_DOT_RELAXED_AVX512_SOURCE}"
+)
+foreach(TARGET IN ITEMS
+    kernel-native-simd-avx2
+    kernel-native-simd-avx512
+    kernel-native-dot-relaxed-avx2
+    kernel-native-dot-relaxed-avx512)
+  set_target_properties(${TARGET} PROPERTIES UNITY_BUILD OFF)
+  target_compile_features(${TARGET} PRIVATE cxx_std_23)
+  target_include_directories(${TARGET} PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
+  target_link_libraries(${TARGET} PRIVATE sandbox::native_codegen_defaults)
+endforeach()
+target_link_libraries(kernel-native-simd-avx2 PRIVATE
+  ioj::arch_avx2
+  ioj::fp_strict
+)
+target_link_libraries(kernel-native-simd-avx512 PRIVATE
+  ioj::arch_avx512
+  ioj::fp_strict
+)
+target_link_libraries(kernel-native-dot-relaxed-avx2 PRIVATE
+  ioj::arch_avx2
+  ioj::fp_fast
+)
+target_link_libraries(kernel-native-dot-relaxed-avx512 PRIVATE
+  ioj::arch_avx512
+  ioj::fp_fast
+)
 
-  set(KERNEL_NATIVE_SIMD_OBJECTS
-    $<TARGET_OBJECTS:kernel-native-simd-avx2>
-    $<TARGET_OBJECTS:kernel-native-simd-avx512>
-    $<TARGET_OBJECTS:kernel-native-dot-relaxed-avx2>
-    $<TARGET_OBJECTS:kernel-native-dot-relaxed-avx512>
-  )
-  add_executable(kernel-native-simd-tests
-    tests/x86_simd_lab_tests.cpp
-    ${KERNEL_NATIVE_SIMD_OBJECTS}
-  )
-  add_dependencies(kernel-native-simd-tests kernel-native-generated-sources)
-  target_compile_features(kernel-native-simd-tests PRIVATE cxx_std_23)
-  target_include_directories(kernel-native-simd-tests PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
-  target_link_libraries(kernel-native-simd-tests PRIVATE
-    CpuFeatures::cpu_features
-    GTest::gtest_main
-    ioj::arch_avx2
-    sandbox::native_codegen_defaults
-    ioj::fp_strict
-  )
-  add_test(NAME kernel-native-simd-tests COMMAND kernel-native-simd-tests)
-  set_tests_properties(kernel-native-simd-tests
-    PROPERTIES LABELS "unit;native-kernel-benchmark"
-  )
+set(KERNEL_NATIVE_SIMD_OBJECTS
+  $<TARGET_OBJECTS:kernel-native-simd-avx2>
+  $<TARGET_OBJECTS:kernel-native-simd-avx512>
+  $<TARGET_OBJECTS:kernel-native-dot-relaxed-avx2>
+  $<TARGET_OBJECTS:kernel-native-dot-relaxed-avx512>
+)
+add_executable(kernel-native-simd-tests
+  tests/x86_simd_lab_tests.cpp
+  ${KERNEL_NATIVE_SIMD_OBJECTS}
+)
+add_dependencies(kernel-native-simd-tests kernel-native-generated-sources)
+target_compile_features(kernel-native-simd-tests PRIVATE cxx_std_23)
+target_include_directories(kernel-native-simd-tests PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
+target_link_libraries(kernel-native-simd-tests PRIVATE
+  CpuFeatures::cpu_features
+  GTest::gtest_main
+  ioj::arch_avx2
+  sandbox::native_codegen_defaults
+  ioj::fp_strict
+)
+add_test(NAME kernel-native-simd-tests COMMAND kernel-native-simd-tests)
+set_tests_properties(kernel-native-simd-tests
+  PROPERTIES LABELS "unit;native-kernel-benchmark"
+)
 
-  add_executable(kernel-native-benchmarks
-    benchmarks/add_scaled_benchmarks.cpp
-    benchmarks/dot_product_benchmarks.cpp
-    benchmarks/dot_product_3d_benchmarks.cpp
-    ${KERNEL_NATIVE_SIMD_OBJECTS}
-  )
-  set_target_properties(kernel-native-benchmarks PROPERTIES UNITY_BUILD OFF)
-  add_dependencies(kernel-native-benchmarks kernel-native-generated-sources)
-  target_compile_features(kernel-native-benchmarks PRIVATE cxx_std_23)
-  target_include_directories(kernel-native-benchmarks PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
-  target_link_libraries(kernel-native-benchmarks PRIVATE
-    benchmark::benchmark
-    benchmark::benchmark_main
-    CpuFeatures::cpu_features
-    ioj::arch_avx2
-    sandbox::native_codegen_defaults
-    ioj::fp_strict
-  )
-  add_test(
-    NAME KernelNativeBenchmarkDryRun
-    COMMAND kernel-native-benchmarks --benchmark_dry_run
-  )
-  set_tests_properties(KernelNativeBenchmarkDryRun
-    PROPERTIES LABELS "native-kernel-benchmark"
-  )
+add_executable(kernel-native-benchmarks
+  benchmarks/add_scaled_benchmarks.cpp
+  benchmarks/dot_product_benchmarks.cpp
+  benchmarks/dot_product_3d_benchmarks.cpp
+  ${KERNEL_NATIVE_SIMD_OBJECTS}
+)
+set_target_properties(kernel-native-benchmarks PROPERTIES UNITY_BUILD OFF)
+add_dependencies(kernel-native-benchmarks kernel-native-generated-sources)
+target_compile_features(kernel-native-benchmarks PRIVATE cxx_std_23)
+target_include_directories(kernel-native-benchmarks PRIVATE "${KERNEL_NATIVE_SIMD_OUTPUT}")
+target_link_libraries(kernel-native-benchmarks PRIVATE
+  benchmark::benchmark
+  benchmark::benchmark_main
+  CpuFeatures::cpu_features
+  ioj::arch_avx2
+  sandbox::native_codegen_defaults
+  ioj::fp_strict
+)
+add_test(
+  NAME KernelNativeBenchmarkDryRun
+  COMMAND kernel-native-benchmarks --benchmark_dry_run
+)
+set_tests_properties(KernelNativeBenchmarkDryRun
+  PROPERTIES LABELS "native-kernel-benchmark"
+)
 
-  if(IOJ_KERNEL_BENCHMARK_PLOTS)
-    set(KERNEL_BENCHMARK_PLOT_SCRIPT
-      "${PROJECT_SOURCE_DIR}/Scripts/plot-kernel-benchmarks.py"
-    )
-    set(KERNEL_BENCHMARK_PLOT_TEST
-      "${PROJECT_SOURCE_DIR}/Scripts/test_plot_kernel_benchmarks.py"
-    )
-    set(KERNEL_BENCHMARK_SCRIPT_LOCK
-      "${PROJECT_SOURCE_DIR}/Scripts/plot-kernel-benchmarks.py.lock"
-    )
-    set(KERNEL_BENCHMARK_RESULTS_DIRECTORY
-      "${PROJECT_SOURCE_DIR}/out/benchmarks/kernel"
-    )
-    set(KERNEL_BENCHMARK_RESULTS
-      "${KERNEL_BENCHMARK_RESULTS_DIRECTORY}/results.json"
-    )
-    set(KERNEL_BENCHMARK_PLOTS_DIRECTORY
-      "${KERNEL_BENCHMARK_RESULTS_DIRECTORY}/plots"
-    )
-    set(KERNEL_BENCHMARK_UV_CACHE
-      "${PROJECT_SOURCE_DIR}/out/uv-cache"
-    )
-    set(KERNEL_BENCHMARK_MATPLOTLIB_CACHE
-      "${PROJECT_SOURCE_DIR}/out/matplotlib-cache"
-    )
-    set(KERNEL_BENCHMARK_TEST_TEMP
-      "${PROJECT_SOURCE_DIR}/out/test-temp"
-    )
-    file(MAKE_DIRECTORY
-      "${KERNEL_BENCHMARK_UV_CACHE}"
-      "${KERNEL_BENCHMARK_MATPLOTLIB_CACHE}"
-      "${KERNEL_BENCHMARK_TEST_TEMP}"
-    )
+set(KERNEL_BENCHMARK_PLOT_SCRIPT
+  "${PROJECT_SOURCE_DIR}/Scripts/plot-kernel-benchmarks.py"
+)
+set(KERNEL_BENCHMARK_PLOT_TEST
+  "${PROJECT_SOURCE_DIR}/Scripts/test_plot_kernel_benchmarks.py"
+)
+set(KERNEL_BENCHMARK_SCRIPT_LOCK
+  "${PROJECT_SOURCE_DIR}/Scripts/plot-kernel-benchmarks.py.lock"
+)
+set(KERNEL_BENCHMARK_RESULTS_DIRECTORY
+  "${PROJECT_SOURCE_DIR}/out/benchmarks/kernel"
+)
+set(KERNEL_BENCHMARK_RESULTS
+  "${KERNEL_BENCHMARK_RESULTS_DIRECTORY}/results.json"
+)
+set(KERNEL_BENCHMARK_PLOTS_DIRECTORY
+  "${KERNEL_BENCHMARK_RESULTS_DIRECTORY}/plots"
+)
+set(KERNEL_BENCHMARK_UV_CACHE
+  "${PROJECT_SOURCE_DIR}/out/uv-cache"
+)
+set(KERNEL_BENCHMARK_MATPLOTLIB_CACHE
+  "${PROJECT_SOURCE_DIR}/out/matplotlib-cache"
+)
+set(KERNEL_BENCHMARK_TEST_TEMP
+  "${PROJECT_SOURCE_DIR}/out/test-temp"
+)
+file(MAKE_DIRECTORY
+  "${KERNEL_BENCHMARK_UV_CACHE}"
+  "${KERNEL_BENCHMARK_MATPLOTLIB_CACHE}"
+  "${KERNEL_BENCHMARK_TEST_TEMP}"
+)
 
-    function(add_kernel_benchmark_report target_name)
-      cmake_parse_arguments(REPORT "" "FILTER;COMMENT" "" ${ARGN})
-      set(filter_argument)
-      if(REPORT_FILTER)
-        set(filter_argument "--benchmark_filter=${REPORT_FILTER}")
-      endif()
-      sandbox_jobserver_command(kernel_benchmark_command BENCHMARK benchmark "${REPORT_COMMENT}")
-
-      add_custom_target(${target_name}
-        COMMAND "${CMAKE_COMMAND}" -E remove_directory
-          "${KERNEL_BENCHMARK_PLOTS_DIRECTORY}"
-        COMMAND "${CMAKE_COMMAND}" -E rm -f
-          "${KERNEL_BENCHMARK_RESULTS}"
-        COMMAND "${CMAKE_COMMAND}" -E make_directory
-          "${KERNEL_BENCHMARK_RESULTS_DIRECTORY}"
-          "${KERNEL_BENCHMARK_PLOTS_DIRECTORY}"
-        COMMAND ${kernel_benchmark_command} kernel-native-benchmarks
-          --benchmark_repetitions=7
-          --benchmark_min_time=0.05s
-          --benchmark_enable_random_interleaving=true
-          --benchmark_display_aggregates_only=true
-          ${filter_argument}
-          "--benchmark_out=${KERNEL_BENCHMARK_RESULTS}"
-          --benchmark_out_format=json
-        COMMAND "${CMAKE_COMMAND}" -E env
-          "UV_CACHE_DIR=${KERNEL_BENCHMARK_UV_CACHE}"
-          "MPLCONFIGDIR=${KERNEL_BENCHMARK_MATPLOTLIB_CACHE}"
-          "${UV_EXECUTABLE}" run --locked
-            "${KERNEL_BENCHMARK_PLOT_SCRIPT}"
-            "${KERNEL_BENCHMARK_RESULTS}"
-            "--output=${KERNEL_BENCHMARK_PLOTS_DIRECTORY}"
-            --format=png
-        DEPENDS
-          kernel-native-benchmarks
-          "${KERNEL_BENCHMARK_PLOT_SCRIPT}"
-          "${KERNEL_BENCHMARK_SCRIPT_LOCK}"
-        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-        COMMENT "${REPORT_COMMENT}"
-        USES_TERMINAL
-        VERBATIM
-      )
-    endfunction()
-
-    add_kernel_benchmark_report(kernel-benchmark-report
-      FILTER "^(add_scaled/elementwise|dot_product/relaxed)/(flat|chunked16)/[^/]+/ordinary/aligned/(4096|16384|65536|100000)/real_time$"
-      COMMENT "Benchmarking representative generated kernel workloads and plotting the results"
-    )
-    add_kernel_benchmark_report(kernel-vector-layout-benchmark-report
-      FILTER "^dot_product_3d/elementwise/(aos/(scalar|autovec-avx2|avx2|autovec-avx512|avx512)|(soa-flat|soa-chunked16)/(autovec-avx2|avx2|autovec-avx512|avx512))/ordinary/aligned/(4096|16384|65536|100000)/real_time$"
-      COMMENT "Benchmarking generated 3D dot products across AOS and SOA layouts"
-    )
-    add_kernel_benchmark_report(kernel-benchmark-report-full
-      COMMENT "Benchmarking the comprehensive generated kernel matrix and plotting the results"
-    )
-
-    add_test(
-      NAME KernelBenchmarkPlotTests
-      COMMAND "${Python3_EXECUTABLE}"
-        "${KERNEL_BENCHMARK_PLOT_TEST}"
-        "--uv=${UV_EXECUTABLE}"
-        "--temporary-root=${KERNEL_BENCHMARK_TEST_TEMP}"
-    )
-    set_tests_properties(KernelBenchmarkPlotTests PROPERTIES
-      LABELS "kernel-benchmark-plot"
-      WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
-      ENVIRONMENT
-        "UV_CACHE_DIR=${KERNEL_BENCHMARK_UV_CACHE};MPLCONFIGDIR=${KERNEL_BENCHMARK_MATPLOTLIB_CACHE};TMP=${KERNEL_BENCHMARK_TEST_TEMP};TEMP=${KERNEL_BENCHMARK_TEST_TEMP}"
-    )
+function(add_kernel_benchmark_report target_name)
+  cmake_parse_arguments(REPORT "" "FILTER;COMMENT" "" ${ARGN})
+  set(filter_argument)
+  if(REPORT_FILTER)
+    set(filter_argument "--benchmark_filter=${REPORT_FILTER}")
   endif()
-endif()
+  sandbox_jobserver_command(kernel_benchmark_command BENCHMARK benchmark "${REPORT_COMMENT}")
+
+  add_custom_target(${target_name}
+    COMMAND "${CMAKE_COMMAND}" -E remove_directory
+      "${KERNEL_BENCHMARK_PLOTS_DIRECTORY}"
+    COMMAND "${CMAKE_COMMAND}" -E rm -f
+      "${KERNEL_BENCHMARK_RESULTS}"
+    COMMAND "${CMAKE_COMMAND}" -E make_directory
+      "${KERNEL_BENCHMARK_RESULTS_DIRECTORY}"
+      "${KERNEL_BENCHMARK_PLOTS_DIRECTORY}"
+    COMMAND ${kernel_benchmark_command} kernel-native-benchmarks
+      --benchmark_repetitions=7
+      --benchmark_min_time=0.05s
+      --benchmark_enable_random_interleaving=true
+      --benchmark_display_aggregates_only=true
+      ${filter_argument}
+      "--benchmark_out=${KERNEL_BENCHMARK_RESULTS}"
+      --benchmark_out_format=json
+    COMMAND "${CMAKE_COMMAND}" -E env
+      "UV_CACHE_DIR=${KERNEL_BENCHMARK_UV_CACHE}"
+      "MPLCONFIGDIR=${KERNEL_BENCHMARK_MATPLOTLIB_CACHE}"
+      "uv" run --locked
+        "${KERNEL_BENCHMARK_PLOT_SCRIPT}"
+        "${KERNEL_BENCHMARK_RESULTS}"
+        "--output=${KERNEL_BENCHMARK_PLOTS_DIRECTORY}"
+        --format=png
+    DEPENDS
+      kernel-native-benchmarks
+      "${KERNEL_BENCHMARK_PLOT_SCRIPT}"
+      "${KERNEL_BENCHMARK_SCRIPT_LOCK}"
+    WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+    COMMENT "${REPORT_COMMENT}"
+    USES_TERMINAL
+    VERBATIM
+  )
+endfunction()
+
+add_kernel_benchmark_report(kernel-benchmark-report
+  FILTER "^(add_scaled/elementwise|dot_product/relaxed)/(flat|chunked16)/[^/]+/ordinary/aligned/(4096|16384|65536|100000)/real_time$"
+  COMMENT "Benchmarking representative generated kernel workloads and plotting the results"
+)
+add_kernel_benchmark_report(kernel-vector-layout-benchmark-report
+  FILTER "^dot_product_3d/elementwise/(aos/(scalar|autovec-avx2|avx2|autovec-avx512|avx512)|(soa-flat|soa-chunked16)/(autovec-avx2|avx2|autovec-avx512|avx512))/ordinary/aligned/(4096|16384|65536|100000)/real_time$"
+  COMMENT "Benchmarking generated 3D dot products across AOS and SOA layouts"
+)
+add_kernel_benchmark_report(kernel-benchmark-report-full
+  COMMENT "Benchmarking the comprehensive generated kernel matrix and plotting the results"
+)
+
+add_test(
+  NAME KernelBenchmarkPlotTests
+  COMMAND "${Python3_EXECUTABLE}"
+    "${KERNEL_BENCHMARK_PLOT_TEST}"
+    "--uv=uv"
+    "--temporary-root=${KERNEL_BENCHMARK_TEST_TEMP}"
+)
+set_tests_properties(KernelBenchmarkPlotTests PROPERTIES
+  LABELS "kernel-benchmark-plot"
+  WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+  ENVIRONMENT
+    "UV_CACHE_DIR=${KERNEL_BENCHMARK_UV_CACHE};MPLCONFIGDIR=${KERNEL_BENCHMARK_MATPLOTLIB_CACHE};TMP=${KERNEL_BENCHMARK_TEST_TEMP};TEMP=${KERNEL_BENCHMARK_TEST_TEMP}"
+)
 
 add_dependencies(generate-code generate-kernel-code)
 add_dependencies(generate-code generate-native-core-kernels)
