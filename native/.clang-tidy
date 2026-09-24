@@ -93,6 +93,7 @@ Checks:
   - bugprone-suspicious-semicolon
   - bugprone-suspicious-string-compare
   - bugprone-swapped-arguments
+  - bugprone-tagged-union-member-count
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
