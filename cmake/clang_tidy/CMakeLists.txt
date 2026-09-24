@@ -16,16 +16,6 @@ if(NOT IOJ_CLANG_TIDY_JOBS MATCHES "^[0-9]+$")
   message(FATAL_ERROR "IOJ_CLANG_TIDY_JOBS must be a non-negative integer.")
 endif()
 
-set(IOJ_NATIVE_CLANG_TIDY_CHECKS
-  modernize-use-nullptr
-  modernize-use-override
-  readability-redundant-control-flow
-  readability-redundant-string-init
-  performance-unnecessary-value-param
-  performance-move-const-arg
-  CACHE INTERNAL "Low-noise clang-tidy checks for first-party native code"
-)
-
 function(sandbox_configure_native_clang_tidy)
   file(TO_CMAKE_PATH "${PROJECT_SOURCE_DIR}/native" sandbox_native_source_root)
   string(REPLACE "/" "[/\\\\]" sandbox_native_source_root_pattern
@@ -37,7 +27,6 @@ function(sandbox_configure_native_clang_tidy)
 endfunction()
 
 function(sandbox_add_native_clang_tidy_target)
-  list(JOIN IOJ_NATIVE_CLANG_TIDY_CHECKS "," sandbox_native_clang_tidy_checks)
   set(sandbox_native_clang_tidy_log "${CMAKE_BINARY_DIR}/clang-tidy.log")
   sandbox_jobserver_command(clang_tidy_command STANDARD static-analysis
     "clang-tidy: first-party native sources")
@@ -50,7 +39,6 @@ function(sandbox_add_native_clang_tidy_target)
       -ClangTidyExecutable "${IOJ_CLANG_TIDY_EXECUTABLE}"
       -LogFile "${sandbox_native_clang_tidy_log}"
       -CompilationDatabase "${CMAKE_BINARY_DIR}"
-      -Checks "${sandbox_native_clang_tidy_checks}"
       -Jobs "${IOJ_CLANG_TIDY_JOBS}"
       -SourceFilter "${IOJ_NATIVE_CLANG_TIDY_SOURCE_FILTER}"
     WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"

@@ -45,11 +45,4 @@ cmake --build --preset win-x64-clangcl-debug-tidy
 
 Set `IOJ_CLANG_TIDY_JOBS=0` to restore the automatic worker count.
 
-## Enabled checks
-
-- `modernize-use-nullptr`
-- `modernize-use-override`
-- `readability-redundant-control-flow`
-- `readability-redundant-string-init`
-- `performance-unnecessary-value-param`
-- `performance-move-const-arg`
+The enabled checks and audit compiler arguments are defined in `native/.clang-tidy`.

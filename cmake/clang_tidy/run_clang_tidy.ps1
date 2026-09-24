@@ -11,8 +11,6 @@ param(
   [Parameter(Mandatory)]
   [string]$CompilationDatabase,
   [Parameter(Mandatory)]
-  [string]$Checks,
-  [Parameter(Mandatory)]
   [int]$Jobs,
   [Parameter(Mandatory)]
   [string]$SourceFilter
@@ -30,8 +28,6 @@ $clang_tidy_arguments = @(
   $ClangTidyExecutable,
   "-p",
   $CompilationDatabase,
-  "-checks=-*,$Checks",
-  "-extra-arg-before=/EHsc",
   "-j",
   $Jobs,
   $SourceFilter

@@ -1,0 +1,10 @@
+Checks:
+  - '-*'
+  - modernize-use-nullptr
+  - modernize-use-override
+  - readability-redundant-control-flow
+  - readability-redundant-string-init
+  - performance-unnecessary-value-param
+  - performance-move-const-arg
+ExtraArgsBefore:
+  - /EHsc
