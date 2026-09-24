@@ -16,7 +16,7 @@
       "displayName": "Vendored Tracy command-line tools",
       "inherits": "win-x64-clangcl-release",
       "cacheVariables": {
-        "SANDBOX_TRACY_TOOLS": true,
+        "IOJ_TRACY_TOOLS": true,
         "UE_CONFIGURATION": "Shipping"
       }
     },
@@ -25,7 +25,7 @@
       "displayName": "Native kernel benchmark",
       "inherits": "win-x64-clangcl-release-unity",
       "cacheVariables": {
-        "SANDBOX_KERNEL_BENCHMARKS": true,
+        "IOJ_KERNEL_BENCHMARKS": true,
         "UE_CONFIGURATION": "Development"
       }
     },
@@ -58,7 +58,7 @@
       "displayName": "Native frame-memory level benchmark",
       "inherits": "win-x64-clangcl-release-unity",
       "cacheVariables": {
-        "SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK": true,
+        "IOJ_FRAME_MEMORY_LEVEL_BENCHMARK": true,
         "UE_CONFIGURATION": "Development"
       }
     }

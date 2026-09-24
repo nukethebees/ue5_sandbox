@@ -98,8 +98,8 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             "cacheVariables": {
                 "IOJ_WITH_UNREAL": False,
                 "IOJ_ENABLE_ASAN": False,
-                "SANDBOX_LAYOUT_PLANNER": False,
-                "SANDBOX_IMAGE_LAB": False,
+                "IOJ_LAYOUT_PLANNER": False,
+                "IOJ_IMAGE_LAB": False,
                 "CMAKE_UNITY_BUILD": False,
             },
         }
@@ -149,7 +149,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
                 "native-common",
                 "native-config-debug",
             ],
-            "cacheVariables": {"SANDBOX_IMAGE_LAB": True},
+            "cacheVariables": {"IOJ_IMAGE_LAB": True},
         }
     )
     configure_presets.append(
@@ -175,7 +175,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
                 "native-common",
                 "native-config-debug",
             ],
-            "cacheVariables": {"SANDBOX_LAYOUT_PLANNER": True},
+            "cacheVariables": {"IOJ_LAYOUT_PLANNER": True},
         }
     )
 
@@ -776,7 +776,7 @@ def make_native_benchmark_document() -> dict[str, Any]:
             "displayName": "Vendored Tracy command-line tools",
             "inherits": "win-x64-clangcl-release",
             "cacheVariables": {
-                "SANDBOX_TRACY_TOOLS": True,
+                "IOJ_TRACY_TOOLS": True,
                 "UE_CONFIGURATION": "Shipping",
             },
         },
@@ -785,7 +785,7 @@ def make_native_benchmark_document() -> dict[str, Any]:
             "displayName": "Native kernel benchmark",
             "inherits": BENCHMARK_CONFIGURATION,
             "cacheVariables": {
-                "SANDBOX_KERNEL_BENCHMARKS": True,
+                "IOJ_KERNEL_BENCHMARKS": True,
                 "UE_CONFIGURATION": "Development",
             },
         },
@@ -814,7 +814,7 @@ def make_native_benchmark_document() -> dict[str, Any]:
             "displayName": "Native frame-memory level benchmark",
             "inherits": BENCHMARK_CONFIGURATION,
             "cacheVariables": {
-                "SANDBOX_FRAME_MEMORY_LEVEL_BENCHMARK": True,
+                "IOJ_FRAME_MEMORY_LEVEL_BENCHMARK": True,
                 "UE_CONFIGURATION": "Development",
             },
         },

@@ -17,8 +17,8 @@
       "cacheVariables": {
         "IOJ_WITH_UNREAL": false,
         "IOJ_ENABLE_ASAN": false,
-        "SANDBOX_LAYOUT_PLANNER": false,
-        "SANDBOX_IMAGE_LAB": false,
+        "IOJ_LAYOUT_PLANNER": false,
+        "IOJ_IMAGE_LAB": false,
         "CMAKE_UNITY_BUILD": false
       }
     },
@@ -198,7 +198,7 @@
         "native-config-debug"
       ],
       "cacheVariables": {
-        "SANDBOX_IMAGE_LAB": true
+        "IOJ_IMAGE_LAB": true
       }
     },
     {
@@ -222,7 +222,7 @@
         "native-config-debug"
       ],
       "cacheVariables": {
-        "SANDBOX_LAYOUT_PLANNER": true
+        "IOJ_LAYOUT_PLANNER": true
       }
     }
   ],
