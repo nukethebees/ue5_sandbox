@@ -4,6 +4,8 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+
 namespace ioj::layout {
 namespace {
 
@@ -170,6 +172,82 @@ TEST(PlannerSelection, OwnerKindChangeClearsLocalWorkload) {
     EXPECT_TRUE(selection.field.empty());
     EXPECT_TRUE(selection.record_access_members.empty());
     EXPECT_FALSE(selection.record_access_set_explicit);
+}
+
+TEST(PlannerSelection, DeclarationOnlySelectionKeepsIdentityWithoutInventingType) {
+    codegen::Manifest manifest{};
+    manifest.schema_version = codegen::manifest_schema_version;
+    codegen::NormalModuleSchema module{};
+    module.settings.name = "declarations";
+    module.settings.header = "Declarations.h";
+    module.settings.source = "Declarations.cpp";
+    auto layout{codegen::HomogeneousLayoutSchema{}};
+    layout.name = "Layout";
+    layout.components = {"xs", "ys"};
+    auto value{codegen::HomogeneousValueSchema{}};
+    value.type.name = "float";
+    value.suffix = "f";
+    layout.value_types.push_back(std::move(value));
+    module.declarations.emplace_back(std::move(layout));
+    auto table{codegen::StaticTableSchema{}};
+    table.name = "Table";
+    table.rows.push_back(codegen::StaticTableRowSchema{"first"});
+    auto column{codegen::StaticTableColumnSchema{}};
+    column.name = "ids";
+    column.type.name = "std::int32_t";
+    table.columns.push_back(std::move(column));
+    module.declarations.emplace_back(std::move(table));
+    auto facade{codegen::FacadeSchema{}};
+    facade.name = "Facade";
+    facade.target_type.name = "Target";
+    facade.target_member_name = "target";
+    auto method{codegen::FacadeMethodSchema{}};
+    method.name = "reset";
+    method.return_type.name = "void";
+    facade.methods.push_back(std::move(method));
+    module.declarations.emplace_back(std::move(facade));
+    auto record{codegen::RecordSchema{}};
+    record.name = "Record";
+    module.declarations.emplace_back(std::move(record));
+    manifest.modules.emplace_back(std::move(module));
+    auto const document{lispb::schema::EditableSchemaDocument::from_manifest(std::move(manifest))};
+    PlannerSelection selection;
+
+    for (auto const& info : document.declarations()) {
+        if (info.identity.name == "Record") {
+            continue;
+        }
+        auto const* normal{std::get_if<codegen::NormalModuleSchema>(
+            &document.manifest().modules[info.module_index])};
+        ASSERT_NE(normal, nullptr);
+        auto const& schema{normal->declarations[info.declaration_index]};
+        EXPECT_TRUE(declaration_capabilities(schema).inspectable);
+        EXPECT_FALSE(declaration_capabilities(schema).physical_analysis_available);
+        EXPECT_FALSE(document.types().find(info.identity).has_value());
+        EXPECT_TRUE(selection.select_declaration(document, info.id));
+        EXPECT_EQ(selection.declaration, info.id);
+        EXPECT_FALSE(selection.type.has_value());
+        selection.reconcile(document.types(), std::nullopt, &document);
+        EXPECT_EQ(selection.declaration, info.id);
+    }
+
+    auto const record_type{*document.types().find_declared("declarations", "Record")};
+    EXPECT_TRUE(selection.select_type(document.types(), record_type));
+    EXPECT_FALSE(selection.declaration.has_value());
+    EXPECT_EQ(selection.type, record_type);
+
+    auto promoted_manifest{document.manifest()};
+    auto promoted{codegen::RecordSchema{}};
+    promoted.name = "Layout";
+    std::get<codegen::NormalModuleSchema>(promoted_manifest.modules.front()).declarations.front() =
+        std::move(promoted);
+    auto const promoted_document{
+        lispb::schema::EditableSchemaDocument::from_manifest(std::move(promoted_manifest))};
+    EXPECT_TRUE(selection.select_declaration(document, document.declarations().front().id));
+    selection.reconcile(promoted_document.types(), std::nullopt, &promoted_document);
+    EXPECT_FALSE(selection.declaration.has_value());
+    ASSERT_TRUE(selection.type.has_value());
+    EXPECT_EQ(promoted_document.types().type(*selection.type).identity.name, "Layout");
 }
 
 } // namespace

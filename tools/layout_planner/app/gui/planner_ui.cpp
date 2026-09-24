@@ -443,8 +443,10 @@ PlannerUi::PlannerUi(SchemaLoadResult loaded)
     target_memory_fact_defaults_ = analysis_session_.primary_abi().memory_facts();
     sync_target_memory_fact_inputs();
     auto const types{analysis_session_.inputs.workspace.types().types()};
-    auto const found{std::ranges::find_if(
-        types, [](auto const& type) { return declaration_capabilities(type).visible; })};
+    auto const found{std::ranges::find_if(types, [](auto const& type) {
+        return type.identity.origin == TypeOrigin::declaration &&
+               declaration_capabilities(type).inspectable;
+    })};
     if (found != types.end()) {
         select_type(TypeId{static_cast<std::uint32_t>(found - types.begin())});
     }
@@ -2157,7 +2159,8 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
         }
     }
     for (std::size_t index{}; index < types.size(); ++index) {
-        if (declaration_capabilities(types[index]).visible) {
+        if (types[index].identity.origin == TypeOrigin::declaration &&
+            declaration_capabilities(types[index]).inspectable) {
             select_type(TypeId{static_cast<std::uint32_t>(index)});
             break;
         }
@@ -2312,6 +2315,14 @@ void PlannerUi::select_type(std::optional<TypeId> type) {
     invalidate_type_editor_state();
 }
 
+void PlannerUi::select_declaration(DeclarationId const declaration) {
+    if (!document_.has_value() ||
+        !analysis_session_.inputs.selection.select_declaration(*document_, declaration)) {
+        return;
+    }
+    invalidate_type_editor_state();
+}
+
 void PlannerUi::draw_target_profile_panel() {
     if (!target_profile_view_open_) {
         return;
@@ -2349,12 +2360,26 @@ void PlannerUi::draw_layout_panel() {
         ImGui::MarkIniSettingsDirty();
     }
     ImGui::Separator();
-    if (ImGui::Button("+ Add variant")) {
+    auto const selected_type{analysis_session_.inputs.selection.type};
+    auto const can_analyze{
+        selected_type.has_value() &&
+        declaration_capabilities(analysis_session_.inputs.workspace.types().type(*selected_type))
+            .physical_analysis_available};
+    if (can_analyze && ImGui::Button("+ Add variant")) {
         create_variant_for_selected_schema();
     }
     ImGui::Separator();
-    if (!analysis_session_.inputs.selection.type.has_value()) {
-        ImGui::TextDisabled("Select a supported schema.");
+    if (!selected_type.has_value()) {
+        ImGui::TextDisabled(
+            analysis_session_.inputs.selection.declaration.has_value()
+                ? "This declaration has no semantic type or physical layout analysis."
+                : "Select a schema.");
+    } else if (!can_analyze) {
+        auto const& node{analysis_session_.inputs.workspace.types().type(*selected_type)};
+        ImGui::TextWrapped("Physical layout analysis is not available for %s.",
+                           std::holds_alternative<SoaType>(node.definition)
+                               ? "the Unreal SoA backend"
+                               : "this semantic type");
     } else if (auto const& definition{analysis_session_.inputs.workspace.types()
                                           .type(*analysis_session_.inputs.selection.type)
                                           .definition};

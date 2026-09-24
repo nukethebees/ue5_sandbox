@@ -265,7 +265,7 @@ void PlannerAnalysisSession::replace_types(EditableSchemaDocument const& documen
     }
 
     inputs.workspace.replace_types(document.types());
-    inputs.selection.reconcile(inputs.workspace.types(), selection);
+    inputs.selection.reconcile(inputs.workspace.types(), selection, &document);
 }
 
 auto PlannerAnalysisSession::results() const -> PlannerAnalysisResults const& {

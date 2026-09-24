@@ -381,27 +381,27 @@ void PlannerUi::draw_project_panel() {
                     auto const resolved_type{
                         analysis_session_.inputs.workspace.types().find(declaration->identity)};
                     auto const& schema{normal->declarations[declaration->declaration_index]};
-                    if (!resolved_type.has_value() ||
-                        !declaration_capabilities(
-                             analysis_session_.inputs.workspace.types().type(*resolved_type))
-                             .visible) {
+                    auto const* node{
+                        resolved_type.has_value()
+                            ? &analysis_session_.inputs.workspace.types().type(*resolved_type)
+                            : nullptr};
+                    auto const capabilities{node != nullptr ? declaration_capabilities(*node)
+                                                            : declaration_capabilities(schema)};
+                    if (!capabilities.inspectable) {
                         ImGui::TextDisabled("%s  [%s, read-only]",
                                             declaration->identity.name.c_str(),
                                             std::string{codegen::declaration_head(schema)}.c_str());
                         ImGui::SetItemTooltip(
-                            "Planner editing is not available for this declaration. "
-                            "Edit it in the LispB source.");
+                            "This declaration could not be resolved for planner inspection.");
                         continue;
                     }
-                    auto const type{*resolved_type};
-                    auto const& node{analysis_session_.inputs.workspace.types().type(type)};
-                    auto const* kind_label{
-                        std::holds_alternative<codegen::VectorSoaSchema>(schema)
-                            ? "vector-soa, read-only"
-                            : declaration_kind_label(declaration_capabilities(node).kind)};
-                    auto const item_label{node.identity.name + "  [" + kind_label + "]"};
-                    auto const selected{analysis_session_.inputs.selection.type.has_value() &&
-                                        *analysis_session_.inputs.selection.type == type};
+                    auto const kind_label{declaration_kind_label(capabilities.kind)};
+                    auto const item_label{declaration->identity.name + "  [" + kind_label +
+                                          (capabilities.editable ? "]" : ", view only]")};
+                    auto const selected{
+                        node != nullptr
+                            ? analysis_session_.inputs.selection.type == resolved_type
+                            : analysis_session_.inputs.selection.declaration == declaration->id};
                     ImGui::PushID(static_cast<int>(declaration->id.value));
                     auto const editing_record{inline_record_rename_ == declaration->id};
                     if (editing_record) {
@@ -420,14 +420,19 @@ void PlannerUi::draw_project_panel() {
                         } else if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
                             if (inline_record_name_.front() == '\0') {
                                 schema_edit_message_ = "Record name cannot be empty.";
-                            } else if (node.identity.name == inline_record_name_.data()) {
+                            } else if (node != nullptr &&
+                                       node->identity.name == inline_record_name_.data()) {
                                 inline_record_rename_.reset();
                             } else {
                                 rename_record = {declaration->id, inline_record_name_.data()};
                             }
                         }
                     } else if (ImGui::Selectable(item_label.c_str(), selected)) {
-                        select_type(type);
+                        if (resolved_type.has_value()) {
+                            select_type(*resolved_type);
+                        } else {
+                            select_declaration(declaration->id);
+                        }
                         analysis_session_.inputs.selection.field.clear();
                         analysis_session_.inputs.selection.packed_access_fields.clear();
                         analysis_session_.inputs.selection.packed_access_set_explicit = false;
@@ -435,24 +440,27 @@ void PlannerUi::draw_project_panel() {
                         analysis_session_.inputs.selection.record_access_set_explicit = false;
                         packed_dragged_divider_.reset();
                         packed_dragged_variant_id_.reset();
-                        if (std::holds_alternative<RecordType>(node.definition)) {
+                        if (node != nullptr &&
+                            std::holds_alternative<RecordType>(node->definition)) {
                             inline_record_rename_ = declaration->id;
                             std::snprintf(inline_record_name_.data(),
                                           inline_record_name_.size(),
                                           "%s",
-                                          node.identity.name.c_str());
+                                          node->identity.name.c_str());
                             focus_inline_record_rename_ = true;
                         } else {
                             inline_record_rename_.reset();
                         }
                     }
-                    auto const state{analysis_session_.status(type)};
-                    auto const* status{state == LayoutStatus::available
-                                           ? (declaration_capabilities(node).has_physical_layout
-                                                  ? "layout facts available"
-                                                  : "analysis available")
-                                       : state == LayoutStatus::unknown ? "layout facts unknown"
-                                                                        : "analysis error"};
+                    auto const state{resolved_type.has_value() &&
+                                             capabilities.physical_analysis_available
+                                         ? analysis_session_.status(*resolved_type)
+                                         : LayoutStatus::unknown};
+                    auto const* status{!capabilities.physical_analysis_available
+                                           ? "physical analysis unavailable"
+                                       : state == LayoutStatus::available ? "analysis available"
+                                       : state == LayoutStatus::unknown   ? "layout facts unknown"
+                                                                          : "analysis error"};
                     ImGui::TextDisabled("%s", status);
                     ImGui::PopID();
                 }

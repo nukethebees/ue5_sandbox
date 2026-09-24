@@ -3,6 +3,7 @@
 #include <ioj/layout/analyzer.hpp>
 #include <ioj/layout/planner_type.hpp>
 
+#include <lispb/schema/editable_document.h>
 #include <lispb/schema/type_graph.h>
 
 #include <map>
@@ -13,6 +14,7 @@ namespace ioj::layout {
 
 struct PlannerSelection {
     std::optional<lispb::schema::TypeId> type;
+    std::optional<lispb::schema::DeclarationId> declaration;
     std::string field;
     std::map<std::string, AccessOperation, std::less<>> packed_access_fields;
     std::map<std::string, AccessOperation, std::less<>> record_access_members;
@@ -23,8 +25,11 @@ struct PlannerSelection {
 
     auto select_type(lispb::schema::TypeGraph const& types,
                      std::optional<lispb::schema::TypeId> next) -> bool;
+    auto select_declaration(lispb::schema::EditableSchemaDocument const& document,
+                            lispb::schema::DeclarationId next) -> bool;
     void reconcile(lispb::schema::TypeGraph const& types,
-                   std::optional<lispb::schema::TypeIdentity> selected_identity);
+                   std::optional<lispb::schema::TypeIdentity> selected_identity,
+                   lispb::schema::EditableSchemaDocument const* document = nullptr);
     void clear_type_local_state();
   private:
     std::optional<lispb::schema::TypeIdentity> identity_;
