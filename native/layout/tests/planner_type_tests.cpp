@@ -17,7 +17,7 @@ namespace ioj::layout {
 namespace {
 
 TEST(PlannerType, ClassifiesInspectableAndPhysicalDeclarations) {
-    auto const project{std::filesystem::path{SANDBOX_SOURCE_DIR} / "lispb/project.lispb"};
+    auto const project{std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb"};
     auto loaded{load_lispb_schema(project, "sandbox-code")};
     ASSERT_TRUE(loaded.loaded);
     ASSERT_TRUE(loaded.document.has_value());
@@ -151,7 +151,7 @@ TEST(PlannerType, SwitchingToUnrealSoaClearsPhysicalResults) {
 }
 
 TEST(PlannerType, DistinguishesUnknownTargetFactsFromErrors) {
-    auto const project{std::filesystem::path{SANDBOX_SOURCE_DIR} / "lispb/project.lispb"};
+    auto const project{std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb"};
     auto loaded{load_lispb_schema(project, "sandbox-code")};
     ASSERT_TRUE(loaded.loaded);
     ASSERT_TRUE(loaded.document.has_value());

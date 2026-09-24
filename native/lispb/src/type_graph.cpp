@@ -860,7 +860,7 @@ class TypeGraphBuilder {
                 message += graph_.type(*current).identity.name + " -> ";
             }
             message += graph_.type(type).identity.name;
-            throw std::invalid_argument{std::move(message)};
+            throw std::invalid_argument{message};
         }
 
         states[type.value] = 1;

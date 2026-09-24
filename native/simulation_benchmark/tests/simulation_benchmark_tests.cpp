@@ -252,7 +252,7 @@ TEST(SimulationBenchmarkJson, EmitsStableSchemaAndEscapesStrings) {
 }
 
 TEST(SimulationBenchmarkRunner, LoadsCompilesAndAdvancesExistingLevel) {
-    auto const level_path{std::filesystem::path{SANDBOX_PROJECT_SOURCE_DIR} / "LevelScripts" /
+    auto const level_path{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts" /
                           "DevThreeSecondFailure.scm"};
     auto const result{run_benchmark({.level_path = level_path, .simulated_seconds = 0.01})};
 
@@ -264,7 +264,7 @@ TEST(SimulationBenchmarkRunner, LoadsCompilesAndAdvancesExistingLevel) {
 }
 
 TEST(SimulationBenchmarkRunner, AdvancesOneTickPerCallAtAnyRequestedGameSpeed) {
-    auto const level_path{std::filesystem::path{SANDBOX_PROJECT_SOURCE_DIR} / "LevelScripts" /
+    auto const level_path{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts" /
                           "DevThreeSecondFailure.scm"};
     auto const result{
         run_benchmark({.level_path = level_path, .simulated_seconds = 0.05, .game_speed = 2})};
@@ -276,7 +276,7 @@ TEST(SimulationBenchmarkRunner, AdvancesOneTickPerCallAtAnyRequestedGameSpeed) {
 }
 
 TEST(SimulationBenchmarkRunner, SaturatesAndMeasuresFighterStressScenario) {
-    auto const level_path{std::filesystem::path{SANDBOX_PROJECT_SOURCE_DIR} / "LevelScripts" /
+    auto const level_path{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} / "LevelScripts" /
                           "FighterSchedulingBenchmark.scm"};
     auto const result{run_benchmark({.level_path = level_path,
                                      .simulated_seconds = 0.01,

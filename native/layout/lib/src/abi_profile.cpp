@@ -154,7 +154,7 @@ auto AbiProfile::host_common() -> AbiProfile {
     return result;
 }
 
-void AbiProfile::set(std::string spelling, TypeFacts facts) {
+void AbiProfile::set(std::string spelling, TypeFacts const& facts) {
     types_.insert_or_assign(std::move(spelling), facts);
 }
 
@@ -419,11 +419,11 @@ auto parse_abi_profile(std::string_view const source)
     }
 
     AbiProfile result{std::move(profile_name), std::move(identity)};
-    for (auto& [spelling, facts] : types) {
-        result.set(std::move(spelling), std::move(facts));
+    for (auto const& [spelling, facts] : types) {
+        result.set(spelling, facts);
     }
-    for (auto& [spelling, represented_by] : representations) {
-        result.set_representation(std::move(spelling), std::move(represented_by));
+    for (auto const& [spelling, represented_by] : representations) {
+        result.set_representation(spelling, represented_by);
     }
     result.set_memory_facts(std::move(memory));
     return result;

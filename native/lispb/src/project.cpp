@@ -730,7 +730,7 @@ auto EditableProjectDocument::apply_internal(ProjectEditCommand const& command)
     }
 }
 
-auto EditableProjectDocument::apply(ProjectEditCommand command)
+auto EditableProjectDocument::apply(ProjectEditCommand const& command)
     -> std::expected<bool, ProjectEditError> {
     auto inverse{apply_internal(command)};
     if (!inverse.has_value()) {

@@ -397,7 +397,7 @@ TEST(SingleAllocationSoa, FlattensMultipleLevelsAndRepeatedNestedSchemas) {
 
 TEST(SingleAllocationSoa, BenchmarkSchemaTracksFighterLeafOrderAndWidths) {
     auto const project_root{
-        std::filesystem::path{SANDBOX_CODEGEN_SOURCE_DIR}.parent_path().parent_path()};
+        std::filesystem::path{IOJ_CODEGEN_SOURCE_DIR}.parent_path().parent_path()};
     auto const project{lispb::load_project(project_root / "lispb/project.lispb")};
     auto const& target{std::get<lispb::CppSchemaTarget>(project.targets.at("sandbox-code"))};
     std::vector<std::filesystem::path> sources;

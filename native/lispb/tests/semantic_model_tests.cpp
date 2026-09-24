@@ -16,7 +16,7 @@ namespace {
 
 auto production_graph() -> TypeGraph {
     auto const project_root{
-        std::filesystem::path{SANDBOX_CODEGEN_SOURCE_DIR}.parent_path().parent_path()};
+        std::filesystem::path{IOJ_CODEGEN_SOURCE_DIR}.parent_path().parent_path()};
     auto const project{lispb::load_project(project_root / "lispb/project.lispb")};
     auto const& target{std::get<lispb::CppSchemaTarget>(project.targets.at("sandbox-code"))};
     std::vector<std::filesystem::path> sources;
@@ -455,7 +455,7 @@ TEST(SemanticTypeGraph, ResolvesStandardLibrarySoaColumns) {
 
 TEST(SemanticTypeGraph, RejectsVectorComponentsThatDisagreeWithDeclaredEquivalent) {
     auto const project_root{
-        std::filesystem::path{SANDBOX_CODEGEN_SOURCE_DIR}.parent_path().parent_path()};
+        std::filesystem::path{IOJ_CODEGEN_SOURCE_DIR}.parent_path().parent_path()};
     auto const project{lispb::load_project(project_root / "lispb/project.lispb")};
     auto const& target{std::get<lispb::CppSchemaTarget>(project.targets.at("sandbox-code"))};
     std::vector<std::filesystem::path> sources;
@@ -741,10 +741,10 @@ TEST(SemanticTypeGraph, KeepsUnknownRegisteredTypesAsExternalLeaves) {
 }
 
 TEST(SemanticTypeGraph, RejectsAmbiguousRegisteredDeclarationBindings) {
-    auto enum_module = [](std::string module_name, std::string header) {
+    auto enum_module = [](std::string module_name, std::string const& header) {
         return codegen::NormalModuleSchema{
             .settings = codegen::ModuleSettings{.name = std::move(module_name),
-                                                .header = std::move(header),
+                                                .header = header,
                                                 .namespace_name = "project"},
             .declarations = {codegen::EnumSchema{
                 .name = "Mode",

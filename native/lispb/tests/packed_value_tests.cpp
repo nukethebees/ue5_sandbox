@@ -534,7 +534,7 @@ TEST(PackedValue, LowersMiniFloatPlacementAsRawEncodedBits) {
     wide_packed.storage_type = TypeRef{"std::uint64_t"};
     wide_packed.segments.resize(1);
     wide_packed.mutable_value = false;
-    auto const wide_files{render_modules(lower_modules(std::move(wide)))};
+    auto const wide_files{render_modules(lower_modules(wide))};
     ASSERT_EQ(wide_files.size(), 2U);
     EXPECT_NE(wide_files.back().content.find("component_bits{64}"), std::string::npos);
     EXPECT_NE(wide_files.back().content.find("component_maximum_encoded{"

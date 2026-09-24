@@ -421,7 +421,7 @@ TEST(Validation, ValidatesIntegerScalarCppConstantsPolicy) {
 }
 
 TEST(Validation, AllowsEmptyEditableModulesToRemainGenerationDestinations) {
-    auto settings = [](std::string name) {
+    auto settings = [](std::string const& name) {
         return ModuleSettings{.name = name, .header = name + ".h"};
     };
     auto module{NormalModuleSchema{.settings = settings("empty")}};
@@ -1934,7 +1934,7 @@ TEST(Validation, FieldMaskSoaCannotUseArrayAllocatorVariants) {
     auto normal{normal_soa_module(masked, {allocator})};
     auto normal_manifest{manifest_with(std::move(normal))};
     EXPECT_THROW(validate_manifest(normal_manifest), std::invalid_argument);
-    EXPECT_THROW(lower_modules(std::move(normal_manifest)), std::invalid_argument);
+    EXPECT_THROW(lower_modules(normal_manifest), std::invalid_argument);
 
     auto legacy{valid_mask_soa_module()};
     legacy.soa_array_allocators = {allocator};

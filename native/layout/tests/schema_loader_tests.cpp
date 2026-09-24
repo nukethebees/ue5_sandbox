@@ -223,7 +223,7 @@ TEST(SchemaLoader, ExternalScalarRepresentationsAnalyzeWithoutInventingAbiFacts)
 }
 
 TEST(SchemaLoader, LoadsSemanticEnumsPackedValuesAndSoas) {
-    auto const project_path{std::filesystem::path{SANDBOX_SOURCE_DIR} / "lispb/project.lispb"};
+    auto const project_path{std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb"};
     auto const loaded{load_lispb_schema(project_path, "sandbox-code")};
     ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
     ASSERT_TRUE(loaded.project_document.has_value());
@@ -258,7 +258,7 @@ TEST(SchemaLoader, LoadsSemanticEnumsPackedValuesAndSoas) {
 }
 
 TEST(SchemaLoader, DerivesFactsThroughSemanticRepresentations) {
-    auto const project_path{std::filesystem::path{SANDBOX_SOURCE_DIR} / "lispb/project.lispb"};
+    auto const project_path{std::filesystem::path{IOJ_SOURCE_DIR} / "lispb/project.lispb"};
     auto const loaded{load_lispb_schema(project_path, "sandbox-code")};
     ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
     ASSERT_TRUE(loaded.document.has_value());

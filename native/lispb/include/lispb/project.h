@@ -118,7 +118,7 @@ class EditableProjectDocument {
         return found == pending_renames_.end() ? std::nullopt : std::optional{found->second};
     }
 
-    auto apply(ProjectEditCommand command) -> std::expected<bool, ProjectEditError>;
+    auto apply(ProjectEditCommand const& command) -> std::expected<bool, ProjectEditError>;
     auto undo() -> std::expected<bool, ProjectEditError>;
     auto redo() -> std::expected<bool, ProjectEditError>;
     void discard_redo_history();

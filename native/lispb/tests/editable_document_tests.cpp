@@ -211,8 +211,7 @@ class TemporarySchema {
 };
 
 auto fixture_document() -> EditableSchemaDocument {
-    auto const root{std::filesystem::path{SANDBOX_CODEGEN_SOURCE_DIR} / "tests" /
-                    "compile_fixture"};
+    auto const root{std::filesystem::path{IOJ_CODEGEN_SOURCE_DIR} / "tests" / "compile_fixture"};
     auto const modules{std::array{root / "modules.lispb"}};
     return load_editable_schema_document(root / "types.lispb", modules);
 }
@@ -4108,7 +4107,7 @@ TEST(EditableSchemaDocument, NormalizesLegacyEmptyModuleKindsOnCreation) {
     TemporarySchema files;
     auto document{files.load()};
     auto const original_module_count{document.manifest().modules.size()};
-    auto settings = [](std::string name) {
+    auto settings = [](std::string const& name) {
         return codegen::ModuleSettings{.name = name,
                                        .header = name + ".h",
                                        .source = std::nullopt,

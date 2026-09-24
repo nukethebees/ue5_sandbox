@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <type_traits>

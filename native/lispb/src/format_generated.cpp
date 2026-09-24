@@ -93,7 +93,7 @@ auto quote_argument(std::wstring const& argument) -> std::wstring {
 #endif
 
 void run_formatter(std::filesystem::path const& input, std::filesystem::path const& style) {
-    std::filesystem::path const executable{SANDBOX_CLANG_FORMAT_EXECUTABLE};
+    std::filesystem::path const executable{IOJ_CLANG_FORMAT_EXECUTABLE};
 #if defined(_WIN32)
     auto command{quote_argument(executable.wstring()) + L" -i " +
                  quote_argument(L"--style=file:" + style.wstring()) + L" " +

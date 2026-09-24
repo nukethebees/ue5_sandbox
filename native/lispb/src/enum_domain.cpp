@@ -153,8 +153,7 @@ auto analyze_enum_domain(std::span<EnumDomainInput const> const values,
             previous.reset();
             all_codes_known = false;
         }
-        result.values.push_back(
-            {.name = value.name, .reserved = value.reserved, .code = std::move(code)});
+        result.values.push_back({.name = value.name, .reserved = value.reserved, .code = code});
     }
 
     result.distinct_code_count = distinct_codes.size();

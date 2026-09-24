@@ -438,9 +438,9 @@ auto run_benchmark(BenchmarkOptions const& options, ProfilerReadyCallback const 
         .telemetry_retained_blocks = telemetry_history.retained_block_count,
         .telemetry_allocated_bytes = telemetry_history.total_byte_capacity,
         .hardware_threads = std::thread::hardware_concurrency(),
-        .compiler = SANDBOX_BENCHMARK_COMPILER_ID,
-        .build_type = SANDBOX_BENCHMARK_BUILD_TYPE,
-#ifdef SANDBOX_BENCHMARK_WITH_TRACY
+        .compiler = IOJ_BENCHMARK_COMPILER_ID,
+        .build_type = IOJ_BENCHMARK_BUILD_TYPE,
+#ifdef IOJ_BENCHMARK_WITH_TRACY
         .tracy_enabled = true,
 #else
         .tracy_enabled = false,

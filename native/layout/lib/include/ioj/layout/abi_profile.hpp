@@ -55,7 +55,7 @@ class AbiProfile {
 
     static auto host_common() -> AbiProfile;
 
-    void set(std::string spelling, TypeFacts facts);
+    void set(std::string spelling, TypeFacts const& facts);
     void set_representation(std::string spelling, std::string represented_by);
     void set_memory_facts(MemoryFacts facts);
     void set_identity(AbiProfileIdentity identity);

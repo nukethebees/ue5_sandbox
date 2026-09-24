@@ -37,7 +37,7 @@ auto read(std::filesystem::path const& path) -> std::string {
 }
 
 TEST(MaterialFrontend, LowersUiGlowGoldenSourceWithStableHandles) {
-    auto const source_path{std::filesystem::path{SANDBOX_PROJECT_SOURCE_DIR} /
+    auto const source_path{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} /
                            "Plugins/SandboxUI/Source/SandboxUI/Private/materials/"
                            "UiGlowComposite.lispb"};
     auto const result{analyze(
@@ -84,7 +84,7 @@ TEST(MaterialFrontend, LowersVertexColourForProceduralRendererMaterials) {
 }
 
 TEST(CompiledMaterial, RoundTripsDeterministically) {
-    auto const source_path{std::filesystem::path{SANDBOX_PROJECT_SOURCE_DIR} /
+    auto const source_path{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} /
                            "Plugins/SandboxUI/Source/SandboxUI/Private/materials/"
                            "UiGlowComposite.lispb"};
     auto const source{read(source_path)};
@@ -139,7 +139,7 @@ TEST(CompiledMaterial, RejectsWrongVersionCorruptionAndTrailingData) {
 }
 
 TEST(MaterialFrontend, LowersWorldSurfaceSettingsInstanceDataAndOpacity) {
-    auto const source_path{std::filesystem::path{SANDBOX_PROJECT_SOURCE_DIR} /
+    auto const source_path{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR} /
                            "Plugins/SpaceGame/Source/SpaceGamePresentation/Private/materials/"
                            "SoftTargetWorld.lispb"};
     auto const result{analyze(
@@ -269,7 +269,7 @@ TEST(MaterialFrontend, SupportsEveryNumericExpressionAndPropagatesTypes) {
 }
 
 TEST(MaterialFrontend, LowersMigratedMaterialsToNativeScaffoldingAndTypedShaderLeaves) {
-    auto const source_root{std::filesystem::path{SANDBOX_PROJECT_SOURCE_DIR}};
+    auto const source_root{std::filesystem::path{IOJ_PROJECT_SOURCE_DIR}};
     std::array<std::filesystem::path, 9> const sources{
         source_root / "Plugins/SandboxShaders/Source/SbxShadersExperiments/Private/materials/"
                       "RadarDisplay.lispb",

@@ -374,8 +374,7 @@ auto apply_source_replacements(std::string_view const original,
         if (replacement.end > result.size() || replacement.begin > replacement.end) {
             return std::nullopt;
         }
-        result.replace(
-            replacement.begin, replacement.end - replacement.begin, std::move(replacement.text));
+        result.replace(replacement.begin, replacement.end - replacement.begin, replacement.text);
     }
     return result;
 }
@@ -744,7 +743,7 @@ auto try_render_source_preserved_enum(codegen::EnumSchema const& schema,
         if (!preceding_newline && (row.empty() || row.front() != '\n')) {
             rendered_values += '\n';
         }
-        rendered_values += std::move(row);
+        rendered_values += row;
     };
 
     for (auto const& value : schema.values) {
@@ -1191,7 +1190,7 @@ auto patch_source_named_code_rows(Form const& parent,
         if (!preceding_newline && (row.empty() || row.front() != '\n')) {
             rendered_codes += '\n';
         }
-        rendered_codes += std::move(row);
+        rendered_codes += row;
     };
 
     for (auto const& code : codes) {
@@ -1613,7 +1612,7 @@ auto try_render_source_preserved_packed_value(codegen::PackedValueSchema const& 
         if (!preceding_newline && (row.empty() || row.front() != '\n')) {
             rendered_segments += '\n';
         }
-        rendered_segments += std::move(row);
+        rendered_segments += row;
     };
 
     for (auto const& segment : schema.segments) {
@@ -1988,7 +1987,7 @@ auto try_render_source_preserved_aggregate(std::string_view const declaration_he
         if (!preceding_newline && (row.empty() || row.front() != '\n')) {
             rendered_children += '\n';
         }
-        rendered_children += std::move(row);
+        rendered_children += row;
     };
 
     for (auto const& child : children) {
@@ -2175,7 +2174,7 @@ auto try_render_source_preserved_tagged_union(codegen::TaggedUnionSchema const& 
         if (!preceding_newline && (row.empty() || row.front() != '\n')) {
             rendered_alternatives += '\n';
         }
-        rendered_alternatives += std::move(row);
+        rendered_alternatives += row;
     };
 
     for (auto const& alternative : schema.alternatives) {
@@ -2742,7 +2741,7 @@ auto patch_source_mask_dimensions(Form const& source_member,
         if (!preceding_newline && (row.empty() || row.front() != '\n')) {
             rendered_rows += '\n';
         }
-        rendered_rows += std::move(row);
+        rendered_rows += row;
     };
     for (auto const& dimension : dimensions) {
         auto const renamed{renamed_dimension.has_value() &&
@@ -2936,7 +2935,7 @@ auto patch_source_scalar_list_property(Form const& source,
         if (!preceding_newline && (row.empty() || row.front() != '\n')) {
             rendered_rows += '\n';
         }
-        rendered_rows += std::move(row);
+        rendered_rows += row;
     };
     for (auto const& value : values) {
         auto const edited{edited_value.has_value() && edited_value->second == value};
@@ -3112,7 +3111,7 @@ auto patch_source_fixed_soa(codegen::FixedSoaSchema const& schema,
         if (!preceding_newline && (row.empty() || row.front() != '\n')) {
             rendered_rows += '\n';
         }
-        rendered_rows += std::move(row);
+        rendered_rows += row;
     };
     for (auto const& container : schema.containers) {
         auto const renamed{renamed_container.has_value() && renamed_container->second == container};
@@ -3237,7 +3236,7 @@ auto patch_source_single_allocation(codegen::SoaSchema const& schema,
         if (!preceding_newline && (row.empty() || row.front() != '\n')) {
             rendered_variants += '\n';
         }
-        rendered_variants += std::move(row);
+        rendered_variants += row;
     };
 
     for (auto const& variant : schema.single_allocation_variants) {
@@ -3518,7 +3517,7 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
         if (!preceding_newline && (row.empty() || row.front() != '\n')) {
             rendered_members += '\n';
         }
-        rendered_members += std::move(row);
+        rendered_members += row;
     };
 
     for (auto const& member : schema.members) {
@@ -3835,7 +3834,7 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
             if (!preceding_newline && (row.empty() || row.front() != '\n')) {
                 rendered_parameters += '\n';
             }
-            rendered_parameters += std::move(row);
+            rendered_parameters += row;
         };
         for (std::size_t index{}; index < function.parameters.size(); ++index) {
             auto const& parameter{function.parameters[index]};
@@ -3965,7 +3964,7 @@ auto try_render_source_preserved_soa(codegen::SoaSchema const& schema,
             if (!preceding_newline && (row.empty() || row.front() != '\n')) {
                 rendered_functions += '\n';
             }
-            rendered_functions += std::move(row);
+            rendered_functions += row;
         };
         for (std::size_t index{}; index < schema.functions.size(); ++index) {
             auto const& function{schema.functions[index]};
@@ -5151,7 +5150,7 @@ void EditableSchemaDocument::initialize_declarations(
                                      .identity = std::move(identity),
                                      .module_index = module_index,
                                      .declaration_index = declaration_index,
-                                     .source = std::move(source)});
+                                     .source = source});
             ++source_index;
         });
     if (!source_ranges.empty() && source_index != source_ranges.size()) {
