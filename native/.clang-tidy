@@ -105,6 +105,7 @@ Checks:
   - bugprone-unused-local-non-trivial-variable
   - bugprone-virtual-near-miss
   - bugprone-reserved-identifier
+  - bugprone-unused-return-value
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
