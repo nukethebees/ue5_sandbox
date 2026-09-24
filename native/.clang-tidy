@@ -40,5 +40,6 @@ Checks:
   - bugprone-dynamic-static-initializers
   - bugprone-empty-catch
   - bugprone-fold-init-type
+  - bugprone-forward-declaration-namespace
 ExtraArgsBefore:
   - /EHsc
