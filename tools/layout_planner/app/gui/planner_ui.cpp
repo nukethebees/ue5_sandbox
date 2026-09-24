@@ -1668,7 +1668,9 @@ void PlannerUi::draw_diagnostics_panel() {
             ImGui::PopStyleColor();
         }
         std::string previous_label;
-        for (auto const& entry : entries) {
+        for (std::size_t index{}; index < entries.size(); ++index) {
+            auto const& entry{entries[index]};
+            ImGui::PushID(static_cast<int>(index));
             if (entry.label != previous_label) {
                 ImGui::SeparatorText(entry.label.c_str());
                 previous_label = entry.label;
@@ -1676,12 +1678,13 @@ void PlannerUi::draw_diagnostics_panel() {
             ImGui::PushStyleColor(ImGuiCol_Text, detail::diagnostic_color(entry.severity));
             ImGui::TextWrapped("%s", entry.message.c_str());
             ImGui::PopStyleColor();
-            if (ImGui::BeginPopupContextItem()) {
+            if (ImGui::BeginPopupContextItem("diagnostic-context")) {
                 if (ImGui::MenuItem("Copy message")) {
                     ImGui::SetClipboardText(entry.message.c_str());
                 }
                 ImGui::EndPopup();
             }
+            ImGui::PopID();
         }
     }
 
