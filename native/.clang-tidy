@@ -60,6 +60,7 @@ Checks:
   - bugprone-infinite-loop
   - bugprone-lambda-function-name
   - bugprone-macro-parentheses
+  - bugprone-macro-repeated-side-effects
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
