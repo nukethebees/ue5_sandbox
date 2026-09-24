@@ -1688,12 +1688,15 @@ void PlannerUi::draw_diagnostics_panel() {
         ImGui::SetNextWindowFocus();
     }
     auto const was_open{diagnostics_view_open_};
-    if (!ImGui::Begin(
-            "Diagnostics", &diagnostics_view_open_, ImGuiWindowFlags_HorizontalScrollbar)) {
+    if (!ImGui::Begin("Diagnostics",
+                      &diagnostics_view_open_,
+                      ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar)) {
         ImGui::End();
         persist_view_visibility(was_open, diagnostics_view_open_);
         return;
     }
+
+    detail::pane_section_menu();
 
     struct DisplayDiagnostic {
         std::string label;
@@ -2342,8 +2345,10 @@ void PlannerUi::draw_target_profile_panel() {
     }
 
     auto const was_open{target_profile_view_open_};
-    if (ImGui::Begin(
-            "Target Profile", &target_profile_view_open_, ImGuiWindowFlags_HorizontalScrollbar)) {
+    if (ImGui::Begin("Target Profile",
+                     &target_profile_view_open_,
+                     ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar)) {
+        detail::pane_section_menu();
         if (draw_target_profile()) {
             refresh_analysis();
         }
@@ -2357,8 +2362,11 @@ void PlannerUi::draw_layout_panel() {
         return;
     }
     auto const was_open{layout_view_open_};
-    ImGui::Begin("Layout", &layout_view_open_, ImGuiWindowFlags_HorizontalScrollbar);
+    ImGui::Begin("Layout",
+                 &layout_view_open_,
+                 ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
     persist_view_visibility(was_open, layout_view_open_);
+    detail::pane_section_menu();
     ImGui::TextWrapped("Target: %s", known_or_unknown(analysis_session_.primary_abi().name()));
     if (ImGui::SmallButton("Profile settings...")) {
         target_profile_view_open_ = true;

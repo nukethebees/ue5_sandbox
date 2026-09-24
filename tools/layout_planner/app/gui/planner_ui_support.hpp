@@ -15,10 +15,8 @@
 
 namespace ioj::layout_planner::detail {
 
-[[nodiscard]] inline auto section(char const* label, bool const default_open = true) -> bool {
-    return ImGui::CollapsingHeader(
-        label, default_open ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None);
-}
+void pane_section_menu();
+[[nodiscard]] auto section(char const* label, bool default_open = true) -> bool;
 
 class WrappingButtonRow {
   public:

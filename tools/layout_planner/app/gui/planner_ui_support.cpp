@@ -10,6 +10,62 @@
 
 namespace ioj::layout_planner::detail {
 
+void pane_section_menu() {
+    auto& storage{ImGui::GetCurrentWindow()->RootWindow->StateStorage};
+    if (!ImGui::BeginMenuBar()) {
+        return;
+    }
+
+    auto const width{ImGui::CalcTextSize("...").x + 2.0F * ImGui::GetStyle().FramePadding.x};
+    auto position{ImGui::GetCursorScreenPos()};
+    position.x = std::max(position.x,
+                          ImGui::GetWindowPos().x + ImGui::GetWindowWidth() -
+                              ImGui::GetStyle().WindowPadding.x - width);
+    ImGui::SetCursorScreenPos(position);
+    if (ImGui::SmallButton("...##section-actions")) {
+        ImGui::OpenPopup("section-actions");
+    }
+    ImGui::SetItemTooltip("Section actions");
+    if (ImGui::BeginPopup("section-actions")) {
+        auto open{std::optional<bool>{}};
+        if (ImGui::MenuItem("Collapse all sections")) {
+            open = false;
+        }
+        if (ImGui::MenuItem("Expand all sections")) {
+            open = true;
+        }
+        if (open.has_value()) {
+            auto const revision_key{ImHashStr("planner-section-action-revision")};
+            storage.SetInt(revision_key, storage.GetInt(revision_key) + 1);
+            storage.SetBool(ImHashStr("planner-section-action-open"), *open);
+        }
+        ImGui::EndPopup();
+    }
+    ImGui::EndMenuBar();
+}
+
+auto section(char const* label, bool const default_open) -> bool {
+    auto const* window{ImGui::GetCurrentWindow()};
+    if (window->SkipItems) {
+        return false;
+    }
+
+    auto const& pane_storage{window->RootWindow->StateStorage};
+    auto const revision{pane_storage.GetInt(ImHashStr("planner-section-action-revision"))};
+    auto* storage{ImGui::GetStateStorage()};
+    ImGui::PushID(label);
+    auto const applied_key{ImGui::GetID("section-action-applied")};
+    ImGui::PopID();
+
+    // Hidden nested sections apply the last pane action when they are next submitted.
+    if (storage->GetInt(applied_key) != revision) {
+        ImGui::SetNextItemOpen(pane_storage.GetBool(ImHashStr("planner-section-action-open")));
+        storage->SetInt(applied_key, revision);
+    }
+    return ImGui::CollapsingHeader(
+        label, default_open ? ImGuiTreeNodeFlags_DefaultOpen : ImGuiTreeNodeFlags_None);
+}
+
 WrappingButtonRow::WrappingButtonRow(bool const follow_previous_item) {
     available_width_ = std::max(1.0F, ImGui::GetContentRegionAvail().x);
     right_edge_ = ImGui::GetCursorScreenPos().x + available_width_;

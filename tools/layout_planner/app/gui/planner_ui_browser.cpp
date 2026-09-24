@@ -7,8 +7,11 @@ void PlannerUi::draw_project_panel() {
         return;
     }
     auto const was_open{project_view_open_};
-    ImGui::Begin("Project / Schema", &project_view_open_, ImGuiWindowFlags_HorizontalScrollbar);
+    ImGui::Begin("Project / Schema",
+                 &project_view_open_,
+                 ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
     persist_view_visibility(was_open, project_view_open_);
+    detail::pane_section_menu();
     if (!project_path_.empty()) {
         ImGui::PushTextWrapPos(0.0F);
         ImGui::TextDisabled("%s", project_path_.string().c_str());

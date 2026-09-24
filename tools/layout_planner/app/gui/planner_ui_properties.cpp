@@ -101,8 +101,11 @@ void PlannerUi::draw_properties_panel() {
         return;
     }
     auto const was_open{properties_view_open_};
-    ImGui::Begin("Properties", &properties_view_open_, ImGuiWindowFlags_HorizontalScrollbar);
+    ImGui::Begin("Properties",
+                 &properties_view_open_,
+                 ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_MenuBar);
     persist_view_visibility(was_open, properties_view_open_);
+    detail::pane_section_menu();
     if (!analysis_session_.inputs.selection.type.has_value()) {
         auto const declaration{analysis_session_.inputs.selection.declaration};
         auto const* info{document_.has_value() && declaration.has_value()
