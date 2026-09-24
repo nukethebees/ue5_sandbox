@@ -29,5 +29,6 @@ Checks:
   - bugprone-bool-pointer-implicit-conversion
   - bugprone-branch-clone
   - bugprone-capturing-this-in-member-variable
+  - bugprone-casting-through-void
 ExtraArgsBefore:
   - /EHsc
