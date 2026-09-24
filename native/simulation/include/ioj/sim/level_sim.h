@@ -144,7 +144,7 @@ struct LevelSim {
     auto get_spinners() const -> spinners::Sim const& { return spinners_simulation_; }
     auto get_entity_ledger() const -> EntityLedger const& { return entity_ledger_; }
     auto get_entity_tables() const -> EntityTables const& { return entity_tables_; }
-    auto get_agent_indexes() const -> AgentIndexes const& { return agent_indexes_; }
+    auto get_agent_indexes() const -> AgentIndices const& { return agent_indexes_; }
     auto get_agent_accessor() const -> AgentAccessor const& { return agent_accessor_; }
     auto get_mission_manager() const -> MissionManager const& { return mission_manager_; }
     auto get_spatial_query_manager() const -> SpatialQueryManager const& { return query_manager_; }
@@ -182,7 +182,7 @@ struct LevelSim {
     ml::FrameMemoryResource frame_memory_;
     EntityLedger entity_ledger_;
     CombatEvents combat_events_{entity_ledger_};
-    AgentIndexes agent_indexes_{clock_};
+    AgentIndices agent_indexes_{clock_};
     EntityTables entity_tables_{agent_indexes_};
     AgentAccessor agent_accessor_{agent_indexes_, entity_tables_.health};
     SpatialQueryManager query_manager_;

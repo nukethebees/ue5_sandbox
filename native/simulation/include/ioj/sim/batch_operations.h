@@ -15,7 +15,7 @@ namespace ioj::sim::batch {
 void sort_and_deduplicate_removal_indices(std::vector<std::int32_t>& local_indices_to_remove);
 
 void resolve_damage_events(DirectDamageEventsConstView damage_events,
-                           AgentIndexes const& indexes,
+                           AgentIndices const& indexes,
                            [[maybe_unused]] std::span<EntityUniqueId const> entity_ids,
                            HealthView healths,
                            std::vector<std::int32_t>& local_indices_to_remove,

@@ -14,7 +14,7 @@ namespace ioj::sim {
 template <typename Index>
 class EntityComponentIndexBindings {
   public:
-    explicit EntityComponentIndexBindings(AgentIndexes const& indexes) noexcept
+    explicit EntityComponentIndexBindings(AgentIndices const& indexes) noexcept
         : indexes_{indexes} {}
 
     void bind(EntityType const type,
@@ -71,12 +71,12 @@ class EntityComponentIndexBindings {
         std::span<Index> indices;
     };
 
-    AgentIndexes const& indexes_;
+    AgentIndices const& indexes_;
     ml::EnumArray<EntityType, Binding, static_cast<std::size_t>(EntityType::COUNT)> bindings_{};
 };
 
 struct EntityTables {
-    explicit EntityTables(AgentIndexes const& indexes) noexcept
+    explicit EntityTables(AgentIndices const& indexes) noexcept
         : health_indices_{indexes} {}
 
     void bind_health_indices(EntityType const type,

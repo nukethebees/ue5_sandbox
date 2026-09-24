@@ -43,7 +43,7 @@ TEST_CLASS(ControlContextTransitions, "Sandbox.UnitTests")
     ::ioj::sim::EntityLedger ledger_;
     ::ioj::sim::CombatEvents combat_events_{ledger_};
     ::ioj::sim::HealthTable health_table_;
-    ::ioj::sim::AgentIndexes indexes_{clock_};
+    ::ioj::sim::AgentIndices indexes_{clock_};
     ::ioj::sim::AgentAccessor agents_{indexes_, health_table_};
     ::ioj::sim::SpatialQueryManager queries_{agents_};
     ::ioj::sim::lasers::Sim lasers_{clock_, combat_events_, queries_};

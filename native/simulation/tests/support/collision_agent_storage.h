@@ -233,7 +233,7 @@ struct CollisionAgentStorage {
     SimClock clock;
     EntityLedger ledger;
     CombatEvents combat_events{ledger};
-    AgentIndexes indexes{clock};
+    AgentIndices indexes{clock};
     EntityTables entity_tables{indexes};
     HealthTable& health_table{entity_tables.health};
     AgentAccessor agents{indexes, health_table};

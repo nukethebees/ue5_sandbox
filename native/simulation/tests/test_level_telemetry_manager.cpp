@@ -39,7 +39,7 @@ TEST(LevelTelemetryManager, RecordsAndReusesHistory) {
     clock.initialise({});
     EntityLedger entity_ledger;
     CombatEvents combat_events{entity_ledger};
-    AgentIndexes indexes{clock};
+    AgentIndices indexes{clock};
     HealthTable health_table;
     AgentAccessor agents{indexes, health_table};
     SpatialQueryManager spatial_queries{agents};

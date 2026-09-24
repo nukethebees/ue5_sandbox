@@ -50,11 +50,11 @@ class AgentAccessor {
   public:
     // Bound entity and health views are borrowed. Do not query while their backing entity or
     // component storage is undergoing structural mutation; bind again after the commit.
-    AgentAccessor(AgentIndexes& indexes, HealthTable const& health_table) noexcept
+    AgentAccessor(AgentIndices& indexes, HealthTable const& health_table) noexcept
         : indexes_{indexes}
         , health_table_{health_table} {}
 
-    auto indexes() const noexcept -> AgentIndexes& { return indexes_; }
+    auto indexes() const noexcept -> AgentIndices& { return indexes_; }
 
     [[nodiscard]] auto entity_counts() const noexcept -> EntityTypeSizes {
         EntityTypeSizes counts;
@@ -288,7 +288,7 @@ class AgentAccessor {
         return result && result->is_alive() ? result : std::nullopt;
     }
   private:
-    AgentIndexes& indexes_;
+    AgentIndices& indexes_;
     HealthTable const& health_table_;
     CapitalEntityData::ConstView capitals_{};
     FighterEntityData::ConstView fighters_{};

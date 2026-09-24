@@ -757,7 +757,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         ::ioj::sim::SimClock clock;
         ::ioj::sim::EntityLedger ledger;
         ::ioj::sim::CombatEvents combat_events{ledger};
-        ::ioj::sim::AgentIndexes indexes{clock};
+        ::ioj::sim::AgentIndices indexes{clock};
         ::ioj::sim::HealthTable health_table;
         ::ioj::sim::AgentAccessor agents{indexes, health_table};
         ::ioj::sim::SpatialQueryManager queries{agents};
@@ -788,7 +788,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         ::ioj::sim::SimClock clock;
         ::ioj::sim::EntityLedger ledger;
         ::ioj::sim::CombatEvents combat_events{ledger};
-        ::ioj::sim::AgentIndexes indexes{clock};
+        ::ioj::sim::AgentIndices indexes{clock};
         ::ioj::sim::HealthTable health_table;
         ::ioj::sim::AgentAccessor agents{indexes, health_table};
         ::ioj::sim::SpatialQueryManager queries{agents};
@@ -1062,7 +1062,7 @@ TEST_CLASS(PlayerControlContext, "Sandbox.UnitTests")
         ::ioj::sim::SimClock clock;
         ::ioj::sim::EntityLedger ledger;
         ::ioj::sim::CombatEvents combat_events{ledger};
-        ::ioj::sim::AgentIndexes indexes{clock};
+        ::ioj::sim::AgentIndices indexes{clock};
         ::ioj::sim::HealthTable health_table;
         ::ioj::sim::AgentAccessor agents{indexes, health_table};
         ::ioj::sim::SpatialQueryManager queries{agents};

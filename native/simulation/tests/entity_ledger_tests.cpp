@@ -20,7 +20,7 @@ auto make_id(EntityType const type, std::uint32_t const ordinal) -> EntityUnique
 
 TEST(DamageQueue, GroupsMixedOwnerEventsAndFiltersRetiredRecipients) {
     SimClock clock;
-    AgentIndexes indexes{clock};
+    AgentIndices indexes{clock};
     auto const turret{make_id(EntityType::Turret, 0)};
     auto const capital{make_id(EntityType::CapitalShip, 0)};
     auto const retired_fighter{make_id(EntityType::Fighter, 0)};
@@ -77,7 +77,7 @@ TEST(DamageResolution, RecordsOnlyDamageAppliedToLiveEntities) {
     auto const retired{ledger.record_spawn(EntityType::CapitalShip, Team::Blue, true)};
 
     SimClock clock;
-    AgentIndexes indexes{clock};
+    AgentIndices indexes{clock};
     std::array const fighters{victim};
     indexes.bind(EntityType::Fighter, fighters);
 

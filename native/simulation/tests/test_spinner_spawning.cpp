@@ -47,7 +47,7 @@ TEST(SpinnerSpawning, RepeatedAppendsPreserveRowsAndCooldowns) {
     SimClock clock;
     EntityLedger ledger;
     CombatEvents combat_events{ledger};
-    AgentIndexes indexes{clock};
+    AgentIndices indexes{clock};
     HealthTable health_table;
     AgentAccessor agents{indexes, health_table};
     SpatialQueryManager queries{agents};

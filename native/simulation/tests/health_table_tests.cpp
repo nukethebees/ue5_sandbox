@@ -199,7 +199,7 @@ TEST(HealthTable, MovedRowCanAlsoBeRemovedLaterInBatch) {
 
 TEST(EntityTables, DenseRemovalRepairsCrossTypeMapping) {
     SimClock clock;
-    AgentIndexes indexes{clock};
+    AgentIndices indexes{clock};
     EntityTables tables{indexes};
     std::array const owners{
         make_id(EntityType::Fighter, 0),
@@ -227,7 +227,7 @@ TEST(EntityTables, DenseRemovalRepairsCrossTypeMapping) {
 
 TEST(EntityTables, MultipleDenseRemovalsRepairSameTypeMappings) {
     SimClock clock;
-    AgentIndexes indexes{clock};
+    AgentIndices indexes{clock};
     EntityTables tables{indexes};
     std::array const owners{
         make_id(EntityType::Fighter, 0),
@@ -254,7 +254,7 @@ TEST(EntityTables, MultipleDenseRemovalsRepairSameTypeMappings) {
 
 TEST(EntityTables, RetainedPlayerUsesTheSameReverseMappingContract) {
     SimClock clock;
-    AgentIndexes indexes{clock};
+    AgentIndices indexes{clock};
     EntityTables tables{indexes};
     std::array const owners{
         make_id(EntityType::Fighter, 0),

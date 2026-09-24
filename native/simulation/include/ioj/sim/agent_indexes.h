@@ -18,11 +18,11 @@ namespace ioj::sim {
 // Allocation and ID offsets last for the level lifetime. Indexes address retained entity storage,
 // not liveness. Retire IDs before storage removal and bind surviving rows after layout changes,
 // before any subsequent lookup.
-class AgentIndexes {
+class AgentIndices {
   public:
     inline static constexpr std::uint32_t invalid_index{std::numeric_limits<std::uint32_t>::max()};
 
-    explicit AgentIndexes(
+    explicit AgentIndices(
         SimClock const& clock,
         std::pmr::memory_resource* const resource = std::pmr::get_default_resource())
         : clock_{clock}

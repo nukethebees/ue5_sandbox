@@ -48,8 +48,8 @@ void AgentAccessor::gather_targets(std::span<EntityUniqueId const> const ids,
                     auto const offset{id.index()};
                     auto const index{offset >= base && offset - base < indexes.size()
                                          ? indexes[offset - base]
-                                         : AgentIndexes::invalid_index};
-                    state = index != AgentIndexes::invalid_index
+                                         : AgentIndices::invalid_index};
+                    state = index != AgentIndices::invalid_index
                               ? read(static_cast<std::int32_t>(index))
                               : agent_accessor_detail::TargetState{};
                     if (!state.alive) {

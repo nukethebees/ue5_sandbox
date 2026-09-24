@@ -22,7 +22,7 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
                      100,
                      std::span<HealthIndex>{data.health_indices});
     SimClock clock;
-    AgentIndexes indexes{clock};
+    AgentIndices indexes{clock};
     AgentAccessor agents{indexes, health_table};
     indexes.bind(EntityType::Fighter, data.entity_ids);
     agents.bind({}, fighters.get_const_view().columns(), {}, {});
@@ -112,9 +112,9 @@ TEST(AgentAccessor, ReadsAuthoritativeStateAndDistinguishesDeadFromRemoved) {
     }
 }
 
-TEST(AgentIndexes, ResolvesOwnerRowsAndRejectsUnissuedOrWrongTypeIds) {
+TEST(AgentIndices, ResolvesOwnerRowsAndRejectsUnissuedOrWrongTypeIds) {
     SimClock clock;
-    AgentIndexes indexes{clock};
+    AgentIndices indexes{clock};
     std::array const fighters{
         EntityUniqueId::make(entity_identity_offset(EntityType::Fighter, 2), EntityType::Fighter),
         EntityUniqueId::make(entity_identity_offset(EntityType::Fighter, 5), EntityType::Fighter)};
@@ -139,9 +139,9 @@ TEST(AgentIndexes, ResolvesOwnerRowsAndRejectsUnissuedOrWrongTypeIds) {
               -1);
 }
 
-TEST(AgentIndexes, RemovalAndReorderingCannotAliasOldIdentity) {
+TEST(AgentIndices, RemovalAndReorderingCannotAliasOldIdentity) {
     SimClock clock;
-    AgentIndexes indexes{clock};
+    AgentIndices indexes{clock};
     auto const removed{
         EntityUniqueId::make(entity_identity_offset(EntityType::Fighter, 0), EntityType::Fighter)};
     auto const survivor{
@@ -167,7 +167,7 @@ TEST(AgentIndexes, RemovalAndReorderingCannotAliasOldIdentity) {
     auto const rows{indexes.group(EntityType::Fighter)};
     auto const base{entity_identity_offsets[EntityType::Fighter]};
     EXPECT_EQ(rows[newborn.index() - base], 1u);
-    EXPECT_EQ(rows[removed.index() - base], AgentIndexes::invalid_index);
+    EXPECT_EQ(rows[removed.index() - base], AgentIndices::invalid_index);
     EXPECT_EQ(rows[survivor.index() - base], 0u);
 }
 }

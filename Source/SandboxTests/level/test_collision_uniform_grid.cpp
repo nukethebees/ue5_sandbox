@@ -51,7 +51,7 @@ TEST_CLASS(CollisionUniformGrid, "Sandbox.UnitTests")
             ASandboxTestOmittedCollisionActor::StaticClass());
 
         ::ioj::sim::SimClock clock;
-        ::ioj::sim::AgentIndexes indexes{clock};
+        ::ioj::sim::AgentIndices indexes{clock};
         ::ioj::sim::HealthTable health_table;
         ::ioj::sim::AgentAccessor agents{indexes, health_table};
         ::ioj::sim::collision::CollisionUniformGrid grid{agents};
