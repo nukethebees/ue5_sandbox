@@ -39,6 +39,20 @@
 # cppcoreguidelines-pro-type-member-init: scratch arrays populated before reading (12).
 # cppcoreguidelines-pro-type-vararg: C APIs and bounded formatting calls (5).
 # cppcoreguidelines-special-member-functions: mixed ownership/test-type policy changes (16).
+# Deferred performance/readability findings; keep this rollout bounded:
+# performance-enum-size: representation changes without demonstrated storage benefit (7).
+# performance-inefficient-string-concatenation: widespread generator/diagnostic string rewrites (52).
+# readability-avoid-nested-conditional-operator: mixed local expression/style rewrites (42).
+# readability-convert-member-functions-to-static: test fixtures and subsystem method contracts (25).
+# readability-implicit-bool-conversion: intentional flag/pointer truth tests; mixed style value (18).
+# readability-make-member-function-const: includes logical mutations through shared SoA state (8).
+# readability-math-missing-parentheses: broad precedence/style churn (243).
+# readability-named-parameter: intentionally unused callback/test parameters (15).
+# readability-qualified-auto: pointer spelling changes throughout tests and APIs (71).
+# readability-redundant-member-init: conflicts with explicit initialization style (40).
+# readability-simplify-boolean-expr: mixed literal cleanup and optional DeMorgan rewrites (6).
+# readability-static-accessed-through-instance: tests using the uniform container instance API (4).
+# readability-uppercase-literal-suffix: established lowercase f style; large mechanical churn (4850).
 Checks:
   - '-*'
   - modernize-use-nullptr
