@@ -78,7 +78,7 @@ auto RootArena::Impl::try_acquire_range(std::size_t const size_bytes, std::size_
             reusable_ranges_.push_back({.data = range.data, .size_bytes = padding});
         }
 
-        auto* const aligned_data{reinterpret_cast<std::byte*>(begin + padding)};
+        auto* const aligned_data{range.data + padding};
         auto const remaining{range.size_bytes - padding - size_bytes};
         if (remaining > 0) {
             reusable_ranges_.push_back(
@@ -101,9 +101,10 @@ auto RootArena::Impl::try_acquire_range(std::size_t const size_bytes, std::size_
         return nullptr;
     }
 
+    auto* const aligned_data{backing_.data() + claimed_bytes_ + padding};
     claimed_bytes_ += padding + size_bytes;
     last_allocation_failure_.reset();
-    return reinterpret_cast<std::byte*>(current_address + padding);
+    return aligned_data;
 }
 
 void RootArena::Impl::release_range(std::byte* const data, std::size_t const size_bytes) {

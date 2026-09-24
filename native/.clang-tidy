@@ -251,6 +251,7 @@ Checks:
   - readability-suspicious-call-argument
   - readability-uniqueptr-delete-release
   - performance-no-automatic-move
+  - performance-no-int-to-ptr
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
