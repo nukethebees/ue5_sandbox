@@ -703,7 +703,7 @@ class DefinitionDecoder final {
             }
         }
         if (valid) {
-            definition_.collision_grid = grid;
+            definition_.collision_grid = std::move(grid);
         }
     }
 

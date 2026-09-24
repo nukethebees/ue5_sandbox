@@ -309,8 +309,8 @@ void append_make_parameters(std::string& output, std::vector<PackedFieldLayout> 
         if (index != 0) {
             output += ", ";
         }
-        output +=
-            fields[index].type.spelling + " const " + packed_field_value_name(fields[index].field);
+        output += packed_field_type_alias(fields[index].field) + " const " +
+                  packed_field_value_name(fields[index].field);
     }
 }
 
@@ -323,17 +323,16 @@ void append_make_arguments(std::string& output, std::vector<PackedFieldLayout> c
     }
 }
 
-void append_semantic_range_assertion(std::string& output,
-                                     PackedFieldSchema const& field,
-                                     CppType const& type) {
+void append_semantic_range_assertion(std::string& output, PackedFieldSchema const& field) {
     if (!field.minimum_value.has_value()) {
         return;
     }
 
+    auto const field_alias{packed_field_type_alias(field)};
     output += "        assert((" + field.name +
-              "_value >= " + integer_cast_literal(type.spelling, *field.minimum_value) + " && " +
-              field.name +
-              "_value <= " + integer_cast_literal(type.spelling, *field.maximum_value) + ")";
+              "_value >= " + integer_cast_literal(field_alias, *field.minimum_value) + " && " +
+              field.name + "_value <= " + integer_cast_literal(field_alias, *field.maximum_value) +
+              ")";
     for (auto const& code : field.named_codes) {
         if (code.sentinel) {
             output += " || " + field.name + "_value == " + field.name + "_" + code.name;
@@ -347,6 +346,7 @@ void append_immutable_validation(std::string& output,
     for (auto const& packed_field : fields) {
         auto const& field{packed_field.field};
         auto const value_name{packed_field_value_name(field)};
+        auto const field_alias{packed_field_type_alias(field)};
         if (packed_field.type.spelling == "bool") {
             continue;
         }
@@ -366,7 +366,7 @@ void append_immutable_validation(std::string& output,
         }
         if (field.kind == PackedFieldKind::enumeration) {
             if (packed_field.enum_type != nullptr && packed_field.enum_type->count.has_value()) {
-                output += "        assert(" + value_name + " < " + packed_field.type.spelling +
+                output += "        assert(" + value_name + " < " + field_alias +
                           "::" + *packed_field.enum_type->count + ");\n";
             } else if (packed_field.enum_type == nullptr) {
                 output += "        assert(static_cast<" + field.name + "_underlying_type>(" +
@@ -379,10 +379,10 @@ void append_immutable_validation(std::string& output,
             output += "        assert(" + value_name + " >= " + field.name + "_minimum && " +
                       value_name + " <= " + field.name + "_maximum);\n";
         } else {
-            output += "        assert(" + value_name + " <= static_cast<" +
-                      packed_field.type.spelling + ">(" + field.name + "_field::value_mask));\n";
+            output += "        assert(" + value_name + " <= static_cast<" + field_alias + ">(" +
+                      field.name + "_field::value_mask));\n";
         }
-        append_semantic_range_assertion(output, field, packed_field.type);
+        append_semantic_range_assertion(output, field);
     }
 }
 
@@ -506,6 +506,7 @@ auto packed_value_text(PackedValueSchema const& source_schema,
         }
         auto const field_bits{static_cast<std::uint32_t>(segment_bits)};
         auto const field_type{resolve_type(field->type, types)};
+        auto const field_alias{packed_field_type_alias(*field)};
         auto const* quantized_type{
             linear_quantized_type_for_field(packed, type_graph, field->name)};
         auto const* fixed_type{fixed_point_type_for_field(packed, type_graph, field->name)};
@@ -514,30 +515,29 @@ auto packed_value_text(PackedValueSchema const& source_schema,
         if (auto dependency{dependency_for_integer(field_type)}) {
             dependencies.push_back(std::move(*dependency));
         }
-        output +=
-            "    using " + packed_field_type_alias(*field) + " = " + field_type.spelling + ";\n";
+        output += "    using " + field_alias + " = " + field_type.spelling + ";\n";
         if (field->kind == PackedFieldKind::enumeration) {
             output += "    using " + field->name + "_underlying_type = std::underlying_type_t<" +
-                      field_type.spelling + ">;\n";
-            output += "    static_assert(std::is_enum_v<" + field_type.spelling + ">);\n";
+                      field_alias + ">;\n";
+            output += "    static_assert(std::is_enum_v<" + field_alias + ">);\n";
             output +=
                 "    static_assert(std::is_unsigned_v<" + field->name + "_underlying_type>);\n";
             output += "    static_assert(std::numeric_limits<" + field->name +
                       "_underlying_type>::digits >= " + std::to_string(field_bits) + ");\n";
         } else if (field->kind == PackedFieldKind::signed_integer) {
-            output += "    static_assert(std::is_signed_v<" + field_type.spelling + ">);\n";
-            output += "    static_assert(std::numeric_limits<" + field_type.spelling +
+            output += "    static_assert(std::is_signed_v<" + field_alias + ">);\n";
+            output += "    static_assert(std::numeric_limits<" + field_alias +
                       ">::digits + 1 >= " + std::to_string(field_bits) + ");\n";
         } else if (field->kind == PackedFieldKind::linear_quantized ||
                    field->kind == PackedFieldKind::mini_float) {
-            output += "    static_assert(std::is_unsigned_v<" + field_type.spelling + ">);\n";
-            output += "    static_assert(std::numeric_limits<" + field_type.spelling +
+            output += "    static_assert(std::is_unsigned_v<" + field_alias + ">);\n";
+            output += "    static_assert(std::numeric_limits<" + field_alias +
                       ">::digits >= " + std::to_string(field_bits) + ");\n";
         } else if (field->kind == PackedFieldKind::fixed_point) {
             output += "    static_assert(std::is_" +
                       std::string{fixed_type->signedness ? "signed" : "unsigned"} + "_v<" +
-                      field_type.spelling + ">);\n";
-            output += "    static_assert(std::numeric_limits<" + field_type.spelling + ">::digits" +
+                      field_alias + ">);\n";
+            output += "    static_assert(std::numeric_limits<" + field_alias + ">::digits" +
                       (fixed_type->signedness ? " + 1" : "") + " >= " + std::to_string(field_bits) +
                       ");\n";
         }
@@ -597,24 +597,23 @@ auto packed_value_text(PackedValueSchema const& source_schema,
         if (field->kind == PackedFieldKind::signed_integer) {
             auto const signed_width{*packed_signed_width(field_type.spelling)};
             if (field_bits == static_cast<std::uint32_t>(signed_width)) {
-                output += "    inline static constexpr " + field_type.spelling + " " + field->name +
-                          "_minimum{std::numeric_limits<" + field_type.spelling + ">::min()};\n";
-                output += "    inline static constexpr " + field_type.spelling + " " + field->name +
-                          "_maximum{std::numeric_limits<" + field_type.spelling + ">::max()};\n";
+                output += "    inline static constexpr " + field_alias + " " + field->name +
+                          "_minimum{std::numeric_limits<" + field_alias + ">::min()};\n";
+                output += "    inline static constexpr " + field_alias + " " + field->name +
+                          "_maximum{std::numeric_limits<" + field_alias + ">::max()};\n";
             } else {
                 auto const sign_magnitude{std::uint64_t{1} << (field_bits - 1)};
-                output += "    inline static constexpr " + field_type.spelling + " " + field->name +
-                          "_minimum{static_cast<" + field_type.spelling + ">(-" +
+                output += "    inline static constexpr " + field_alias + " " + field->name +
+                          "_minimum{static_cast<" + field_alias + ">(-" +
                           std::to_string(sign_magnitude) + ")};\n";
-                output += "    inline static constexpr " + field_type.spelling + " " + field->name +
-                          "_maximum{static_cast<" + field_type.spelling + ">(" +
+                output += "    inline static constexpr " + field_alias + " " + field->name +
+                          "_maximum{static_cast<" + field_alias + ">(" +
                           std::to_string(sign_magnitude - 1) + ")};\n";
             }
         }
         for (auto const& code : field->named_codes) {
-            output += "    inline static constexpr " + field_type.spelling + " " + field->name +
-                      "_" + code.name + "{" +
-                      integer_cast_literal(field_type.spelling, code.value) + "};\n";
+            output += "    inline static constexpr " + field_alias + " " + field->name + "_" +
+                      code.name + "{" + integer_cast_literal(field_alias, code.value) + "};\n";
         }
 
         if (field->kind == PackedFieldKind::enumeration) {
@@ -639,7 +638,7 @@ auto packed_value_text(PackedValueSchema const& source_schema,
                         if (!first_value) {
                             output += ",\n";
                         }
-                        output += "        " + field_type.spelling + "::" + enumerator.name;
+                        output += "        " + field_alias + "::" + enumerator.name;
                         first_value = false;
                     }
                     output += "\n    >());\n";
@@ -685,11 +684,11 @@ auto packed_value_text(PackedValueSchema const& source_schema,
         if ((field.kind == PackedFieldKind::unsigned_integer ||
              field.kind == PackedFieldKind::signed_integer) &&
             field.minimum_value.has_value()) {
-            auto const field_type{resolve_type(field.type, types)};
+            auto const field_alias{packed_field_type_alias(field)};
             auto check{"(" + field.name +
-                       "() >= " + integer_cast_literal(field_type.spelling, *field.minimum_value) +
-                       " && " + field.name + "() <= " +
-                       integer_cast_literal(field_type.spelling, *field.maximum_value) + ")"};
+                       "() >= " + integer_cast_literal(field_alias, *field.minimum_value) + " && " +
+                       field.name +
+                       "() <= " + integer_cast_literal(field_alias, *field.maximum_value) + ")"};
             for (auto const& code : field.named_codes) {
                 if (code.sentinel) {
                     check += " || " + field.name + "() == " + field.name + "_" + code.name;
@@ -712,8 +711,8 @@ auto packed_value_text(PackedValueSchema const& source_schema,
         }
         auto const* enum_type{enum_type_for_field(packed, type_graph, field.name)};
         if (enum_type != nullptr && enum_type->count.has_value()) {
-            auto const field_type{resolve_type(field.type, types)};
-            validity_checks.push_back(field.name + "() < " + field_type.spelling +
+            auto const field_alias{packed_field_type_alias(field)};
+            validity_checks.push_back(field.name + "() < " + field_alias +
                                       "::" + *enum_type->count);
         }
     }
@@ -731,11 +730,12 @@ auto packed_value_text(PackedValueSchema const& source_schema,
     for (auto const* field_pointer : fields) {
         auto const& field{*field_pointer};
         auto const field_type{resolve_type(field.type, types)};
+        auto const field_alias{packed_field_type_alias(field)};
         auto const field_bits{resolved_width_for_field(packed, field.name)};
         auto const accessor{packed_field_accessor(field)};
         auto const* fixed_type{fixed_point_type_for_field(packed, type_graph, field.name)};
         output += "\n    [[nodiscard]] constexpr auto " + accessor + "() const noexcept -> " +
-                  field_type.spelling + " {\n";
+                  field_alias + " {\n";
         output += "        return ml::packed_extract<" + field.name + "_field>(value_);\n";
         output += "    }\n";
 
@@ -786,8 +786,8 @@ auto packed_value_text(PackedValueSchema const& source_schema,
         }
 
         if (schema.mutable_value) {
-            output += "\n    [[nodiscard]] constexpr auto try_set_" + accessor + "(" +
-                      field_type.spelling + " const value) noexcept -> bool {\n";
+            output += "\n    [[nodiscard]] constexpr auto try_set_" + accessor + "(" + field_alias +
+                      " const value) noexcept -> bool {\n";
             if (field.kind == PackedFieldKind::linear_quantized ||
                 field.kind == PackedFieldKind::mini_float) {
                 output += "        if (value > " + field.name + "_maximum_encoded) {\n";
@@ -804,8 +804,8 @@ auto packed_value_text(PackedValueSchema const& source_schema,
                 output += "            return false;\n        }\n";
                 if (auto const* enum_type{enum_type_for_field(packed, type_graph, field.name)};
                     enum_type != nullptr && enum_type->count.has_value()) {
-                    output += "        if (value >= " + field_type.spelling +
-                              "::" + *enum_type->count + ") {\n";
+                    output +=
+                        "        if (value >= " + field_alias + "::" + *enum_type->count + ") {\n";
                     output += "            return false;\n        }\n";
                 }
             } else if (field.kind == PackedFieldKind::signed_integer) {
@@ -814,9 +814,9 @@ auto packed_value_text(PackedValueSchema const& source_schema,
                 output += "            return false;\n        }\n";
                 if (field.minimum_value.has_value()) {
                     output += "        if ((value < " +
-                              integer_cast_literal(field_type.spelling, *field.minimum_value) +
+                              integer_cast_literal(field_alias, *field.minimum_value) +
                               " || value > " +
-                              integer_cast_literal(field_type.spelling, *field.maximum_value) + ")";
+                              integer_cast_literal(field_alias, *field.maximum_value) + ")";
                     for (auto const& code : field.named_codes) {
                         if (code.sentinel) {
                             output += " && value != " + field.name + "_" + code.name;
@@ -826,14 +826,14 @@ auto packed_value_text(PackedValueSchema const& source_schema,
                     output += "            return false;\n        }\n";
                 }
             } else if (field_type.spelling != "bool") {
-                output += "        if (value > static_cast<" + field_type.spelling + ">(" +
-                          field.name + "_field::value_mask)) {\n";
+                output += "        if (value > static_cast<" + field_alias + ">(" + field.name +
+                          "_field::value_mask)) {\n";
                 output += "            return false;\n        }\n";
                 if (field.minimum_value.has_value()) {
                     output += "        if ((value < " +
-                              integer_cast_literal(field_type.spelling, *field.minimum_value) +
+                              integer_cast_literal(field_alias, *field.minimum_value) +
                               " || value > " +
-                              integer_cast_literal(field_type.spelling, *field.maximum_value) + ")";
+                              integer_cast_literal(field_alias, *field.maximum_value) + ")";
                     for (auto const& code : field.named_codes) {
                         if (code.sentinel) {
                             output += " && value != " + field.name + "_" + code.name;
@@ -855,7 +855,7 @@ auto packed_value_text(PackedValueSchema const& source_schema,
                 output += "        return try_set_" + field.name + "_raw(raw);\n    }\n";
             }
 
-            output += "\n    constexpr void set_" + accessor + "(" + field_type.spelling +
+            output += "\n    constexpr void set_" + accessor + "(" + field_alias +
                       " const value) noexcept {\n";
             output += "        if (!try_set_" + accessor + "(value)) {\n";
             output += "            assert(false && \"Packed field value does not fit.\");\n";
@@ -864,17 +864,17 @@ auto packed_value_text(PackedValueSchema const& source_schema,
 
         if (field.range_helper) {
             output += "\n    [[nodiscard]] static constexpr auto " + field.name + "_range_fits(" +
-                      field_type.spelling + " const first, " + field_type.spelling +
+                      field_alias + " const first, " + field_alias +
                       " const count) noexcept -> bool {\n";
             output += "        return count == 0 ||\n";
             if (field.minimum_value.has_value()) {
-                output += "               (first >= " +
-                          integer_cast_literal(field_type.spelling, *field.minimum_value) +
-                          " && first <= " +
-                          integer_cast_literal(field_type.spelling, *field.maximum_value) + " &&\n";
+                output +=
+                    "               (first >= " +
+                    integer_cast_literal(field_alias, *field.minimum_value) +
+                    " && first <= " + integer_cast_literal(field_alias, *field.maximum_value) +
+                    " &&\n";
                 output += "                count - 1 <= " +
-                          integer_cast_literal(field_type.spelling, *field.maximum_value) +
-                          " - first);\n";
+                          integer_cast_literal(field_alias, *field.maximum_value) + " - first);\n";
             } else {
                 output += "               (first <= " + field.name +
                           "_field::value_mask && count - 1 <= " + field.name +

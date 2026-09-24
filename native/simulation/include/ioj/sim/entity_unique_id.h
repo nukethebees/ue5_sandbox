@@ -19,8 +19,8 @@ struct EntityUniqueId {
     using index_type = std::uint32_t;
     using index_field = ml::PackedField<storage_type, index_type, 0, 24>;
     using entity_type_type = ioj::sim::EntityType;
-    using entity_type_underlying_type = std::underlying_type_t<ioj::sim::EntityType>;
-    static_assert(std::is_enum_v<ioj::sim::EntityType>);
+    using entity_type_underlying_type = std::underlying_type_t<entity_type_type>;
+    static_assert(std::is_enum_v<entity_type_type>);
     static_assert(std::is_unsigned_v<entity_type_underlying_type>);
     static_assert(std::numeric_limits<entity_type_underlying_type>::digits >= 8);
     using entity_type_field = ml::PackedField<storage_type, entity_type_type, 24, 8>;
@@ -37,32 +37,31 @@ struct EntityUniqueId {
 
     [[nodiscard]] constexpr auto raw_value() const noexcept -> storage_type { return value_; }
 
-    explicit constexpr EntityUniqueId(std::uint32_t const index_value,
-                                      ioj::sim::EntityType const entity_type_value) noexcept {
-        assert(index_value <= static_cast<std::uint32_t>(index_field::value_mask));
-        assert(entity_type_value < ioj::sim::EntityType::COUNT);
+    explicit constexpr EntityUniqueId(index_type const index_value,
+                                      entity_type_type const entity_type_value) noexcept {
+        assert(index_value <= static_cast<index_type>(index_field::value_mask));
+        assert(entity_type_value < entity_type_type::COUNT);
         value_ = static_cast<storage_type>(ml::packed_pack<index_field>(index_value) |
                                            ml::packed_pack<entity_type_field>(entity_type_value));
     }
 
     [[nodiscard]] constexpr auto is_valid() const noexcept -> bool {
-        return value_ != invalid_value && entity_type() < ioj::sim::EntityType::COUNT;
+        return value_ != invalid_value && entity_type() < entity_type_type::COUNT;
     }
 
     [[nodiscard]] constexpr auto operator<=>(EntityUniqueId const&) const noexcept = default;
 
-    [[nodiscard]] constexpr auto index() const noexcept -> std::uint32_t {
+    [[nodiscard]] constexpr auto index() const noexcept -> index_type {
         return ml::packed_extract<index_field>(value_);
     }
 
-    [[nodiscard]] static constexpr auto index_range_fits(std::uint32_t const first,
-                                                         std::uint32_t const count) noexcept
-        -> bool {
+    [[nodiscard]] static constexpr auto index_range_fits(index_type const first,
+                                                         index_type const count) noexcept -> bool {
         return count == 0 ||
                (first <= index_field::value_mask && count - 1 <= index_field::value_mask - first);
     }
 
-    [[nodiscard]] constexpr auto entity_type() const noexcept -> ioj::sim::EntityType {
+    [[nodiscard]] constexpr auto entity_type() const noexcept -> entity_type_type {
         return ml::packed_extract<entity_type_field>(value_);
     }
   private:
