@@ -9,8 +9,7 @@
 namespace codegen::detail {
 namespace {
 
-auto record_member_type(RecordMemberSchema const& member,
-                        std::map<std::string, CppType> const& types) -> CppType {
+auto record_member_type(RecordMemberSchema const& member, TypeRegistry const& types) -> CppType {
     auto element{resolve_type(member.type, types)};
     if (!member.count.has_value()) {
         return element;
@@ -20,7 +19,7 @@ auto record_member_type(RecordMemberSchema const& member,
                    {std::move(array_dependency)}};
 }
 
-auto record_node(RecordSchema const& record, std::map<std::string, CppType> const& types) -> Node {
+auto record_node(RecordSchema const& record, TypeRegistry const& types) -> Node {
     NodeListBuilder members;
     for (auto const& member : record.members) {
         members.add(Member{record_member_type(member, types), member.name});
@@ -34,8 +33,7 @@ auto record_node(RecordSchema const& record, std::map<std::string, CppType> cons
 
 } // namespace
 
-auto lower_record(RecordSchema const& schema, std::map<std::string, CppType> const& types)
-    -> DeclarationEmission {
+auto lower_record(RecordSchema const& schema, TypeRegistry const& types) -> DeclarationEmission {
     return {.header = {record_node(schema, types)}};
 }
 

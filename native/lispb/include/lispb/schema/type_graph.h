@@ -39,11 +39,6 @@ struct ResolvedTypeRef {
     codegen::CppType cpp_type;
 };
 
-struct ExternalType {
-    codegen::CppType cpp_type;
-    std::vector<std::string> registered_names;
-};
-
 struct Enumerator {
     std::string name;
     std::optional<std::string> explicit_value;
@@ -145,6 +140,12 @@ struct IntegerScalarType {
     std::optional<SemanticRelationship> relationship;
 };
 
+struct ExternalType {
+    codegen::CppType cpp_type;
+    std::vector<std::string> registered_names;
+    std::variant<std::monostate, IntegerScalarType, codegen::FloatingPointFormat> semantics;
+};
+
 struct LinearQuantizedType {
     ResolvedTypeRef source;
     std::uint32_t bit_width{};
@@ -227,6 +228,10 @@ struct TypeNode {
     std::vector<TypeId> dependencies;
     std::vector<TypeId> users;
 };
+
+auto integer_domain(TypeNode const& node) -> IntegerScalarType const*;
+auto packed_integer_domain(TypeNode const& node, codegen::PackedFieldSchema const& field)
+    -> IntegerScalarType const*;
 
 class TypeGraphBuilder;
 

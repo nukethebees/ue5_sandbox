@@ -1,6 +1,7 @@
 #pragma once
 
 #include <codegen/schema.h>
+#include <codegen/source_loader.h>
 
 #include <lispb/schema/type_graph.h>
 
@@ -38,9 +39,13 @@ struct SourceRange {
     auto operator==(SourceRange const&) const -> bool = default;
 };
 
+enum class SchemaSourceKind { module, type_registry };
+
 struct SchemaSourceFile {
     std::filesystem::path path;
     std::string text;
+    SchemaSourceKind kind{SchemaSourceKind::module};
+    std::vector<codegen::RegistryInclude> includes;
 };
 
 struct DeclarationInfo {
@@ -383,6 +388,7 @@ class EditableSchemaDocument {
     auto manifest() const -> codegen::Manifest const&;
     auto types() const -> TypeGraph const&;
     auto source_files() const -> std::span<SchemaSourceFile const>;
+    auto registered_type_source(std::string_view name) const -> std::optional<SourceRange>;
     auto declarations() const -> std::span<DeclarationInfo const>;
     auto declaration(DeclarationId id) const -> DeclarationInfo const*;
     auto find_declaration(TypeIdentity const& identity) const -> std::optional<DeclarationId>;
@@ -445,6 +451,7 @@ class EditableSchemaDocument {
     codegen::Manifest manifest_;
     TypeGraph types_;
     std::vector<SchemaSourceFile> source_files_;
+    std::map<std::string, SourceRange, std::less<>> registered_type_sources_;
     std::filesystem::path types_path_;
     std::vector<std::filesystem::path> module_paths_;
     std::vector<std::optional<SourceRange>> module_source_ranges_;

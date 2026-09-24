@@ -5878,7 +5878,7 @@ TEST(EditableSchemaDocument, CreatesEditsDeletesAndReloadsOptionalPresenceBitRep
     auto rejected{document.apply(
         ReplaceOptionalPresenceBit{.declaration = created, .schema = std::move(invalid)})};
     ASSERT_FALSE(rejected.has_value());
-    EXPECT_NE(rejected.error().message.find("integer-scalar"), std::string::npos);
+    EXPECT_NE(rejected.error().message.find("integer domain"), std::string::npos);
     EXPECT_EQ(document.revision(), revision_before_invalid);
 
     auto replacement{*document.optional_presence_bit_schema(created)};

@@ -575,7 +575,10 @@ void PlannerUi::draw_new_module_dialog() {
             "New editable module", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
         return;
     }
-    if (!document_.has_value() || document_->source_files().size() < 2) {
+    if (!document_.has_value() ||
+        std::ranges::none_of(document_->source_files(), [](auto const& source) {
+            return source.kind == lispb::schema::SchemaSourceKind::module;
+        })) {
         ImGui::TextDisabled("No loaded LispB module source can receive a new module.");
         if (ImGui::Button("Close")) {
             ImGui::CloseCurrentPopup();
@@ -603,12 +606,20 @@ void PlannerUi::draw_new_module_dialog() {
         "Namespace (optional)", new_module_namespace_.data(), new_module_namespace_.size());
 
     auto const sources{document_->source_files()};
-    if (new_module_source_file_index_ == 0 || new_module_source_file_index_ >= sources.size()) {
-        new_module_source_file_index_ = 1;
+    if (new_module_source_file_index_ >= sources.size() ||
+        sources[new_module_source_file_index_].kind != lispb::schema::SchemaSourceKind::module) {
+        new_module_source_file_index_ =
+            static_cast<std::size_t>(std::ranges::find(sources,
+                                                       lispb::schema::SchemaSourceKind::module,
+                                                       &lispb::schema::SchemaSourceFile::kind) -
+                                     sources.begin());
     }
     auto const source_label{sources[new_module_source_file_index_].path.filename().string()};
     if (ImGui::BeginCombo("LispB source", source_label.c_str())) {
-        for (std::size_t index{1}; index < sources.size(); ++index) {
+        for (std::size_t index{}; index < sources.size(); ++index) {
+            if (sources[index].kind != lispb::schema::SchemaSourceKind::module) {
+                continue;
+            }
             auto const label{sources[index].path.string()};
             if (ImGui::Selectable(label.c_str(), index == new_module_source_file_index_)) {
                 new_module_source_file_index_ = index;

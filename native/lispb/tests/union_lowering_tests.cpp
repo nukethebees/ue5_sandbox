@@ -10,7 +10,7 @@ namespace {
 TEST(UnionLowering, GeneratesRawAlternativesAndFixedArrays) {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
-        .types = {{"value", CppType{"Value", "Project/Value.h"}}},
+        .types = {{"value", RegisteredTypeSchema{.cpp_type = CppType{"Value", "Project/Value.h"}}}},
         .modules = {NormalModuleSchema{
             .settings =
                 ModuleSettings{.name = "unions", .header = "Unions.h", .namespace_name = "project"},
@@ -51,7 +51,8 @@ TEST(UnionLowering, EmitsByValueDependenciesBeforeTheirUsers) {
 TEST(UnionLowering, GeneratesTaggedAggregateWithExplicitPayloadUnion) {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
-        .types = {{"event_kind", CppType{"events::EventKind", "Events.h"}}},
+        .types = {{"event_kind",
+                   RegisteredTypeSchema{.cpp_type = CppType{"events::EventKind", "Events.h"}}}},
         .modules = {NormalModuleSchema{
                         .settings = ModuleSettings{.name = "events",
                                                    .header = "Events.h",

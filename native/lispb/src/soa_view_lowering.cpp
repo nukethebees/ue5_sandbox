@@ -52,7 +52,7 @@ auto view_struct(std::string name,
                  std::string const& const_view_name,
                  std::vector<ResolvedMember> const& members,
                  SoaSchema const& schema,
-                 std::map<std::string, CppType> const& types,
+                 TypeRegistry const& types,
                  bool const_only) -> Struct {
     NodeListBuilder nodes;
     nodes.add(UsingDeclaration{"View", CppType{view_name}}, 1)
@@ -89,7 +89,7 @@ auto view_struct(std::string name,
 
 auto soa_equivalent_nodes(TypeRef const& equivalent_reference,
                           std::vector<ResolvedMember> const& members,
-                          std::map<std::string, CppType> const& types) -> Nodes {
+                          TypeRegistry const& types) -> Nodes {
     auto const equivalent{resolve_type(equivalent_reference, types)};
     std::vector<std::string> values;
     for (auto const& member : members) {
@@ -239,7 +239,7 @@ auto soa_view_specs(std::vector<ResolvedMember> const& members, bool const_only)
 
 auto soa_view_struct_nodes(SoaSchema const& schema,
                            std::vector<ResolvedMember> const& members,
-                           std::map<std::string, CppType> const& types,
+                           TypeRegistry const& types,
                            std::string const& view_name,
                            std::string const& const_view_name) -> Nodes {
     NodeListBuilder result;

@@ -43,7 +43,7 @@ auto lower_known_enum(NormalModuleSchema module, EnumSchema schema) -> std::stri
         TypeRef{"@state"};
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
-        .types = {{"state", CppType{"FighterStateKind"}}},
+        .types = {{"state", RegisteredTypeSchema{.cpp_type = CppType{"FighterStateKind"}}}},
         .modules = {NormalModuleSchema{.settings =
                                            ModuleSettings{.name = "enums", .header = "Enums.h"},
                                        .declarations = {std::move(schema)}},
@@ -813,7 +813,7 @@ TEST(PackedValue, ValidatesKnownEnumUnderlyingType) {
                              }}};
     Manifest manifest{
         .schema_version = manifest_schema_version,
-        .types = {{"state", CppType{"FighterStateKind"}}},
+        .types = {{"state", RegisteredTypeSchema{.cpp_type = CppType{"FighterStateKind"}}}},
         .modules = {std::move(enums), std::move(module)},
     };
 

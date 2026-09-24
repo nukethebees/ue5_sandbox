@@ -16,6 +16,7 @@ struct PackedNamedCodeSchema {
     std::string name;
     PackedIntegerValue value;
     bool sentinel{};
+    auto operator==(PackedNamedCodeSchema const&) const -> bool = default;
 };
 
 struct PackedFieldSchema {

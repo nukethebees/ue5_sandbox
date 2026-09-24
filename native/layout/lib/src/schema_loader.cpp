@@ -9,6 +9,7 @@
 #include <cctype>
 #include <exception>
 #include <fstream>
+#include <map>
 #include <sstream>
 #include <utility>
 
@@ -236,13 +237,29 @@ auto detail::clone_lispb_schema_with_opener(lispb::schema::EditableSchemaDocumen
         }};
 
         auto const types_name{std::filesystem::path{"types.lispb"}};
-        write_file(source_directory / types_name, source_text(sources.front()));
+        std::map<std::filesystem::path, std::filesystem::path> cloned_paths;
+        for (std::size_t index{}; index < sources.size(); ++index) {
+            cloned_paths.emplace(
+                std::filesystem::weakly_canonical(sources[index].path),
+                index == 0 ? types_name
+                           : std::filesystem::path{safe_filename(sources[index].path, index)});
+        }
         std::vector<std::filesystem::path> module_names;
-        module_names.reserve(sources.size() - 1);
-        for (std::size_t index{1}; index < sources.size(); ++index) {
-            auto const name{std::filesystem::path{safe_filename(sources[index].path, index)}};
-            write_file(source_directory / name, source_text(sources[index]));
-            module_names.push_back(name);
+        for (auto const& source : sources) {
+            auto const& name{cloned_paths.at(std::filesystem::weakly_canonical(source.path))};
+            auto content{source_text(source)};
+            for (auto include = source.includes.rbegin(); include != source.includes.rend();
+                 ++include) {
+                auto const& range{include->source_range};
+                content.replace(range.begin_offset,
+                                range.end_offset - range.begin_offset,
+                                "(include " +
+                                    quote(cloned_paths.at(include->target).generic_string()) + ")");
+            }
+            write_file(source_directory / name, content);
+            if (source.kind == lispb::schema::SchemaSourceKind::module) {
+                module_names.push_back(name);
+            }
         }
 
         auto const relative_source_directory{source_directory.filename()};

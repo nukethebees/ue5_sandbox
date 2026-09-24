@@ -10,7 +10,7 @@ namespace {
 TEST(RecordLowering, GeneratesSemanticMembersAndFixedArrays) {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
-        .types = {{"value", CppType{"Value", "Project/Value.h"}}},
+        .types = {{"value", RegisteredTypeSchema{.cpp_type = CppType{"Value", "Project/Value.h"}}}},
         .modules = {NormalModuleSchema{
             .settings = ModuleSettings{.name = "records",
                                        .header = "Records.h",

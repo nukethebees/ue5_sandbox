@@ -1,3 +1,5 @@
+(include "common_scalars.lispb")
+
 (type level_telemetry_entity_type_counts
   :spelling "EntityTypeCounts"
   :header "ioj/sim/entity_telemetry.h")

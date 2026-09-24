@@ -1,7 +1,7 @@
 #pragma once
 
-#include <codegen/ast/cpp_type.h>
 #include <codegen/schema/module_schema.h>
+#include <codegen/schema/registered_type_schema.h>
 
 #include <map>
 #include <string>
@@ -11,7 +11,7 @@ namespace codegen {
 
 struct Manifest {
     int schema_version;
-    std::map<std::string, CppType> types;
+    TypeRegistry types;
     std::vector<ModuleSchema> modules;
 };
 

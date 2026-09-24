@@ -112,8 +112,7 @@ auto scalar_constant_literal(CppType const& type, PackedIntegerValue const value
     return "static_cast<" + type.spelling + ">(" + literal + ")";
 }
 
-auto scalar_cpp_type(TypeRef const& reference, std::map<std::string, CppType> const& types)
-    -> CppType {
+auto scalar_cpp_type(TypeRef const& reference, TypeRegistry const& types) -> CppType {
     auto type{resolve_type(reference, types)};
     if (type.dependencies.empty() &&
         (type.spelling.starts_with("std::uint") || type.spelling.starts_with("std::int"))) {
@@ -126,7 +125,7 @@ auto scalar_cpp_type(TypeRef const& reference, std::map<std::string, CppType> co
     return type;
 }
 
-auto lower_scalar(IntegerScalarSchema const& scalar, std::map<std::string, CppType> const& types)
+auto lower_scalar(IntegerScalarSchema const& scalar, TypeRegistry const& types)
     -> detail::DeclarationEmission {
     NodeListBuilder declarations;
     if (scalar.cpp_emission != IntegerScalarCppEmission::none) {
@@ -271,10 +270,13 @@ auto render_modules(std::vector<Module> const& modules) -> std::vector<Generated
 
 auto compile_sources(std::filesystem::path const& types,
                      std::span<std::filesystem::path const> const modules) -> lispb::Compilation {
-    auto const manifest{load_sources(types, modules)};
+    auto const registry{load_type_registry(types)};
+    auto const manifest{load_sources(registry, modules)};
     auto const files{render_modules(lower_modules(manifest))};
     lispb::Compilation result;
-    result.dependencies.push_back(types);
+    for (auto const& source : registry.sources) {
+        result.dependencies.push_back(source.path);
+    }
     result.dependencies.insert(result.dependencies.end(), modules.begin(), modules.end());
     for (auto const& file : files) {
         result.artifacts.push_back(file);

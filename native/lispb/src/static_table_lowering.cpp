@@ -15,8 +15,7 @@ auto static_array_type(CppType const& element_type) -> CppType {
     };
 }
 
-auto group_getter(StaticTableGroupSchema const& group, std::map<std::string, CppType> const& types)
-    -> Node {
+auto group_getter(StaticTableGroupSchema const& group, TypeRegistry const& types) -> Node {
     auto const result_type{resolve_type(group.type, types)};
     std::vector<std::string> arguments;
     arguments.reserve(group.columns.size());
@@ -34,8 +33,7 @@ auto group_getter(StaticTableGroupSchema const& group, std::map<std::string, Cpp
     });
 }
 
-auto table_node(StaticTableSchema const& table, std::map<std::string, CppType> const& types)
-    -> Node {
+auto table_node(StaticTableSchema const& table, TypeRegistry const& types) -> Node {
     CppType const int32_type{"int32", "CoreMinimal.h"};
     NodeListBuilder children;
     children.add(Member{int32_type,
@@ -94,8 +92,8 @@ auto table_node(StaticTableSchema const& table, std::map<std::string, CppType> c
 
 } // namespace
 
-auto lower_static_table(StaticTableSchema const& schema,
-                        std::map<std::string, CppType> const& types) -> DeclarationEmission {
+auto lower_static_table(StaticTableSchema const& schema, TypeRegistry const& types)
+    -> DeclarationEmission {
     return {.header = {table_node(schema, types)}};
 }
 

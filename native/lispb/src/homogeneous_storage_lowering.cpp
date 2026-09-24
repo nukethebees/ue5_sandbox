@@ -386,7 +386,7 @@ auto homogeneous_storage_array_operation_nodes(HomogeneousLayoutSchema const& la
 
 auto homogeneous_storage_value_nodes(HomogeneousLayoutSchema const& layout,
                                      HomogeneousValueSchema const& value,
-                                     std::map<std::string, CppType> const& types) -> Nodes {
+                                     TypeRegistry const& types) -> Nodes {
     NodeListBuilder result;
     if (value.equivalent_type.has_value()) {
         std::vector<std::string> values;
@@ -479,7 +479,7 @@ auto homogeneous_storage_value_nodes(HomogeneousLayoutSchema const& layout,
 
 auto homogeneous_storage_node(HomogeneousLayoutSchema const& layout,
                               HomogeneousValueSchema const& value,
-                              std::map<std::string, CppType> const& types) -> Node {
+                              TypeRegistry const& types) -> Node {
     auto const value_type{resolve_type(value.type, types)};
     auto const equivalent_type{
         value.equivalent_type.has_value()

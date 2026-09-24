@@ -8,7 +8,7 @@ namespace codegen::detail {
 
 auto lower_vector(VectorSoaSchema const& vector,
                   SoaBackend const backend,
-                  std::map<std::string, CppType> const& types) -> DeclarationEmission {
+                  TypeRegistry const& types) -> DeclarationEmission {
     if (backend == SoaBackend::standard_library) {
         std::vector<SoaMemberSchema> members;
         for (auto const& component : vector.components) {

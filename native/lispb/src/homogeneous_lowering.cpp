@@ -28,8 +28,8 @@ auto homogeneous_permutation_definition(HomogeneousLayoutSchema const& layout,
         "F" + layout.name + value.suffix);
 }
 
-auto lower_homogeneous_impl(HomogeneousLayoutSchema const& layout,
-                            std::map<std::string, CppType> const& types) -> DeclarationEmission {
+auto lower_homogeneous_impl(HomogeneousLayoutSchema const& layout, TypeRegistry const& types)
+    -> DeclarationEmission {
     NodeListBuilder header_definitions;
     NodeListBuilder source_definitions;
     bool has_source_definition{};
@@ -49,8 +49,8 @@ auto lower_homogeneous_impl(HomogeneousLayoutSchema const& layout,
 
 } // namespace
 
-auto lower_homogeneous(HomogeneousLayoutSchema const& schema,
-                       std::map<std::string, CppType> const& types) -> DeclarationEmission {
+auto lower_homogeneous(HomogeneousLayoutSchema const& schema, TypeRegistry const& types)
+    -> DeclarationEmission {
     return lower_homogeneous_impl(schema, types);
 }
 

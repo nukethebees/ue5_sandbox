@@ -11,8 +11,7 @@ namespace codegen::detail {
 auto join(std::vector<std::string> const& values, std::string_view separator) -> std::string;
 auto join_lines(std::vector<std::string> const& values) -> std::string;
 auto source_include(ModuleSettings const& settings) -> std::string;
-auto dependency_for_key(std::string const& key, std::map<std::string, CppType> const& types)
-    -> TypeDependency;
+auto dependency_for_key(std::string const& key, TypeRegistry const& types) -> TypeDependency;
 auto qualify(CppType type, std::string const& suffix) -> CppType;
 auto native_spelling(std::string const& spelling) -> std::string;
 auto title_case_identifier(std::string_view const identifier) -> std::string;

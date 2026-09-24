@@ -106,7 +106,7 @@ auto namespace_close(ModuleSettings const& settings) -> std::string {
 }
 
 auto build_header(SettingsModuleSchema const& module,
-                  std::map<std::string, CppType> const& types,
+                  TypeRegistry const& types,
                   std::vector<TypeDependency>& dependencies) -> std::string {
     std::vector<CppType> value_types;
     std::set<std::string> unique_types;
@@ -242,8 +242,7 @@ auto build_header(SettingsModuleSchema const& module,
     return output.str();
 }
 
-auto build_source(SettingsModuleSchema const& module, std::map<std::string, CppType> const& types)
-    -> std::string {
+auto build_source(SettingsModuleSchema const& module, TypeRegistry const& types) -> std::string {
     std::ostringstream output;
     output << namespace_open(module.settings);
     output << "namespace {\n\nstatic TArray<FGameSettingCategoryDescriptor> const "
@@ -318,8 +317,8 @@ auto build_source(SettingsModuleSchema const& module, std::map<std::string, CppT
 
 } // namespace
 
-auto lower_settings_module(SettingsModuleSchema const& module,
-                           std::map<std::string, CppType> const& types) -> Module {
+auto lower_settings_module(SettingsModuleSchema const& module, TypeRegistry const& types)
+    -> Module {
     std::vector<TypeDependency> dependencies{
         TypeDependency{"uint8", "CoreMinimal.h", {}},
         TypeDependency{"FText", "CoreMinimal.h", {}},

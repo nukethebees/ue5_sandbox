@@ -10,8 +10,8 @@
 namespace codegen::detail {
 namespace {
 
-auto alternative_type(UnionAlternativeSchema const& alternative,
-                      std::map<std::string, CppType> const& types) -> CppType {
+auto alternative_type(UnionAlternativeSchema const& alternative, TypeRegistry const& types)
+    -> CppType {
     auto element{resolve_type(alternative.type, types)};
     if (!alternative.count.has_value()) {
         return element;
@@ -22,7 +22,7 @@ auto alternative_type(UnionAlternativeSchema const& alternative,
                    {std::move(array_dependency)}};
 }
 
-auto union_node(UnionSchema const& schema, std::map<std::string, CppType> const& types) -> Node {
+auto union_node(UnionSchema const& schema, TypeRegistry const& types) -> Node {
     NodeListBuilder alternatives;
     for (auto const& alternative : schema.alternatives) {
         alternatives.add(Member{alternative_type(alternative, types), alternative.name});
@@ -33,8 +33,7 @@ auto union_node(UnionSchema const& schema, std::map<std::string, CppType> const&
                   .record_kind = "union"};
 }
 
-auto tagged_union_node(TaggedUnionSchema const& schema, std::map<std::string, CppType> const& types)
-    -> Node {
+auto tagged_union_node(TaggedUnionSchema const& schema, TypeRegistry const& types) -> Node {
     NodeListBuilder alternatives;
     for (auto const& alternative : schema.alternatives) {
         alternatives.add(LineComment{"tag: " + alternative.tag});
@@ -57,13 +56,12 @@ auto tagged_union_node(TaggedUnionSchema const& schema, std::map<std::string, Cp
 
 } // namespace
 
-auto lower_union(UnionSchema const& schema, std::map<std::string, CppType> const& types)
-    -> DeclarationEmission {
+auto lower_union(UnionSchema const& schema, TypeRegistry const& types) -> DeclarationEmission {
     return {.header = {union_node(schema, types)}};
 }
 
-auto lower_tagged_union(TaggedUnionSchema const& schema,
-                        std::map<std::string, CppType> const& types) -> DeclarationEmission {
+auto lower_tagged_union(TaggedUnionSchema const& schema, TypeRegistry const& types)
+    -> DeclarationEmission {
     return {.header = {tagged_union_node(schema, types)}};
 }
 

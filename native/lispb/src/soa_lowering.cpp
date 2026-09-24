@@ -165,9 +165,8 @@ auto field_mask_nodes(SoaSchema const& schema, bool const standard_library = fal
                  TypeDependency{"std::uint64_t", "cstdint", {}}})};
 }
 
-auto lower_soa_impl(SoaSchema const& schema,
-                    std::map<std::string, CppType> const& types,
-                    Nodes storage_prelude) -> LoweredSoa {
+auto lower_soa_impl(SoaSchema const& schema, TypeRegistry const& types, Nodes storage_prelude)
+    -> LoweredSoa {
     auto const members{resolve_members(schema, types)};
     auto const view_name{schema.view_name.value_or(schema.name + "View")};
     auto const const_view_name{schema.const_view_name.value_or(schema.name + "ConstView")};
@@ -222,7 +221,7 @@ auto lower_soa_impl(SoaSchema const& schema,
 auto lower_one_soa(SoaSchema const& schema,
                    std::map<std::string, SoaSchema const*> const& schemas,
                    SoaBackend const backend,
-                   std::map<std::string, CppType> const& types,
+                   TypeRegistry const& types,
                    lispb::schema::TypeGraph const& type_graph,
                    std::string const& module_name) -> LoweredSoa {
     if (schema.layout_only) {
@@ -265,15 +264,14 @@ auto lower_one_soa(SoaSchema const& schema,
 
 } // namespace
 
-auto lower_soa(SoaSchema const& schema,
-               std::map<std::string, CppType> const& types,
-               Nodes storage_prelude) -> LoweredSoa {
+auto lower_soa(SoaSchema const& schema, TypeRegistry const& types, Nodes storage_prelude)
+    -> LoweredSoa {
     return lower_soa_impl(schema, types, std::move(storage_prelude));
 }
 
 auto lower_soa_declaration(SoaSchema const& schema,
                            NormalModuleSchema const& module,
-                           std::map<std::string, CppType> const& types,
+                           TypeRegistry const& types,
                            lispb::schema::TypeGraph const& type_graph,
                            std::optional<std::string> const& allocator_prefix)
     -> DeclarationEmission {

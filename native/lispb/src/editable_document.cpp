@@ -4334,6 +4334,12 @@ auto EditableSchemaDocument::source_files() const -> std::span<SchemaSourceFile 
     return source_files_;
 }
 
+auto EditableSchemaDocument::registered_type_source(std::string_view const name) const
+    -> std::optional<SourceRange> {
+    auto const found{registered_type_sources_.find(name)};
+    return found == registered_type_sources_.end() ? std::nullopt : std::optional{found->second};
+}
+
 auto EditableSchemaDocument::declarations() const -> std::span<DeclarationInfo const> {
     return declarations_;
 }
@@ -5325,7 +5331,8 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                                       .schema = std::move(schema),
                                       .insertion_index = info.declaration_index}};
             } else if constexpr (std::is_same_v<Edit, CreateModule>) {
-                if (edit.source_file_index == 0 || edit.source_file_index >= source_files_.size() ||
+                if (edit.source_file_index >= source_files_.size() ||
+                    source_files_[edit.source_file_index].kind != SchemaSourceKind::module ||
                     std::ranges::find(module_paths_, source_files_[edit.source_file_index].path) ==
                         module_paths_.end()) {
                     return std::unexpected{
@@ -5816,9 +5823,15 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
 auto load_editable_schema_document(std::filesystem::path const& types_path,
                                    std::span<std::filesystem::path const> const module_paths)
     -> EditableSchemaDocument {
-    auto manifest{codegen::load_sources(types_path, module_paths)};
+    auto registry{codegen::load_type_registry(types_path)};
+    auto manifest{codegen::load_sources(registry, module_paths)};
     std::vector<SchemaSourceFile> sources;
-    sources.push_back({.path = types_path, .text = read_file(types_path)});
+    for (auto& source : registry.sources) {
+        sources.push_back({.path = std::move(source.path),
+                           .text = std::move(source.text),
+                           .kind = SchemaSourceKind::type_registry,
+                           .includes = std::move(source.includes)});
+    }
 
     std::vector<std::optional<SourceRange>> declaration_ranges;
     std::vector<std::optional<SourceRange>> module_ranges;
@@ -5874,6 +5887,14 @@ auto load_editable_schema_document(std::filesystem::path const& types_path,
                                   {module_paths.begin(), module_paths.end()}};
     result.module_source_ranges_ = std::move(module_ranges);
     result.initialize_declarations(std::move(declaration_ranges));
+    for (auto const& [name, range] : registry.declarations) {
+        result.registered_type_sources_.emplace(name,
+                                                SourceRange{range.source_file_index,
+                                                            range.begin_offset,
+                                                            range.end_offset,
+                                                            range.line,
+                                                            range.column});
+    }
     return result;
 }
 

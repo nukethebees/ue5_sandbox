@@ -128,8 +128,8 @@ void lower_semantic_fields(PackedValueSchema& schema,
         }
 
         auto const& semantic_field{semantic_field_for(packed, field->name)};
-        auto const* scalar{std::get_if<lispb::schema::IntegerScalarType>(
-            &type_graph.type(semantic_field.semantic_type.type).definition)};
+        auto const* scalar{lispb::schema::packed_integer_domain(
+            type_graph.type(semantic_field.semantic_type.type), *field)};
         if (scalar != nullptr) {
             field->type = TypeRef{
                 .name = fixed_width_integer_spelling(scalar->signedness, semantic_field.bit_width)};
@@ -213,7 +213,7 @@ struct PackedFieldLayout {
 };
 
 auto packed_field_layouts(PackedValueSchema const& schema,
-                          std::map<std::string, CppType> const& types,
+                          TypeRegistry const& types,
                           lispb::schema::PackedType const& packed,
                           lispb::schema::TypeGraph const& type_graph,
                           int const storage_bits) -> std::vector<PackedFieldLayout> {
@@ -454,7 +454,7 @@ void append_immutable_construction(std::string& output,
 }
 
 auto packed_value_text(PackedValueSchema const& source_schema,
-                       std::map<std::string, CppType> const& types,
+                       TypeRegistry const& types,
                        lispb::schema::PackedType const& packed,
                        lispb::schema::TypeGraph const& type_graph) -> Raw {
     auto schema{source_schema};
@@ -951,7 +951,7 @@ auto packed_value_text(PackedValueSchema const& source_schema,
 } // namespace
 
 auto lower_packed_value(PackedValueSchema const& schema,
-                        std::map<std::string, CppType> const& types,
+                        TypeRegistry const& types,
                         lispb::schema::TypeGraph const& type_graph,
                         std::string const& module_name) -> DeclarationEmission {
     auto const type_id{type_graph.find_declared(module_name, schema.name)};

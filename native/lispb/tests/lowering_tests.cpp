@@ -18,7 +18,7 @@ struct RenderedModule {
     std::string source;
 };
 
-auto render_soa(SoaSchema schema, std::map<std::string, CppType> types = {}) -> RenderedModule {
+auto render_soa(SoaSchema schema, TypeRegistry types = {}) -> RenderedModule {
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
         .types = std::move(types),
@@ -94,7 +94,8 @@ TEST(Lowering, EmitsOnlyRequestedStorageOperations) {
 TEST(Lowering, EmitsStandaloneNativeEnumApi) {
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
-        .types = {{"native_uint8", CppType{"std::uint8_t", "cstdint"}}},
+        .types = {{"native_uint8",
+                   RegisteredTypeSchema{.cpp_type = CppType{"std::uint8_t", "cstdint"}}}},
         .modules = {NormalModuleSchema{
             .settings = ModuleSettings{.name = "native_enum",
                                        .header = "NativeEnum.h",
@@ -164,9 +165,12 @@ TEST(Lowering, EmitsRequestedNamedScalarConstantsWithoutInventingScalarTypes) {
     auto const files{
         render_modules(lower_modules(Manifest{
             .schema_version = manifest_schema_version,
-            .types = {{"native_uint8", CppType{"std::uint8_t", "cstdint"}},
-                      {"native_int64", CppType{"std::int64_t", "cstdint"}},
-                      {"native_uint64", CppType{"std::uint64_t", "cstdint"}}},
+            .types = {{"native_uint8",
+                       RegisteredTypeSchema{.cpp_type = CppType{"std::uint8_t", "cstdint"}}},
+                      {"native_int64",
+                       RegisteredTypeSchema{.cpp_type = CppType{"std::int64_t", "cstdint"}}},
+                      {"native_uint64",
+                       RegisteredTypeSchema{.cpp_type = CppType{"std::uint64_t", "cstdint"}}}},
             .modules = {NormalModuleSchema{
                 .settings = ModuleSettings{.name = "semantic_values",
                                            .header = "SemanticValues.h",
@@ -242,7 +246,8 @@ TEST(Lowering, EmitsRequestedNamedScalarConstantsWithoutInventingScalarTypes) {
 TEST(Lowering, EmitsNativeEnumUnrealProjectionWithExplicitNumericCompatibility) {
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
-        .types = {{"native_uint8", CppType{"std::uint8_t", "cstdint"}}},
+        .types = {{"native_uint8",
+                   RegisteredTypeSchema{.cpp_type = CppType{"std::uint8_t", "cstdint"}}}},
         .modules = {NormalModuleSchema{
             .settings = ModuleSettings{.name = "native_enum",
                                        .header = "NativeEnum.h",
@@ -554,7 +559,8 @@ TEST(Lowering, PreservesCustomNestedRemovalOperation) {
 
     auto const output{
         render_soa(std::move(schema),
-                   {{"registered", std::move(registered)}, {"generic", CppType{"FGeneric"}}})};
+                   {{"registered", RegisteredTypeSchema{.cpp_type = std::move(registered)}},
+                    {"generic", RegisteredTypeSchema{.cpp_type = CppType{"FGeneric"}}}})};
 
     auto const removal{output.header.find("void remove_at_swap(")};
     ASSERT_NE(removal, std::string::npos);
@@ -579,7 +585,9 @@ TEST(Lowering, CustomRemovalDoesNotRequireGenericContainerHelpers) {
         .members = {SoaMemberSchema{"registered", SoaMemberKind::nested, TypeRef{"@registered"}}},
         .operations = {StorageOperation::remove_at_swap},
     }};
-    auto const output{render_soa(std::move(schema), {{"registered", std::move(registered)}})};
+    auto const output{
+        render_soa(std::move(schema),
+                   {{"registered", RegisteredTypeSchema{.cpp_type = std::move(registered)}}})};
     EXPECT_NE(output.header.find("#include \"Project/Registered.h\""), std::string::npos);
     EXPECT_NE(output.header.find("registered.erase_swap(index, count, allow_shrinking);"),
               std::string::npos);
@@ -594,7 +602,8 @@ TEST(Lowering, UsesSharedConventionalNestedRemovalOperation) {
         .members = {SoaMemberSchema{"nested", SoaMemberKind::nested, TypeRef{"@nested"}}},
         .operations = {StorageOperation::remove_at_swap},
     }};
-    auto const output{render_soa(std::move(schema), {{"nested", std::move(nested)}})};
+    auto const output{render_soa(
+        std::move(schema), {{"nested", RegisteredTypeSchema{.cpp_type = std::move(nested)}}})};
 
     EXPECT_NE(
         output.header.find("ml::soa_ops::remove_at_swap(*this, index, count, allow_shrinking);"),
@@ -648,7 +657,8 @@ TEST(Lowering, EmitsLogicalElementSettersAndAddForArraysAndSupportedNestedMember
             },
     }};
 
-    auto const output{render_soa(std::move(schema), {{"vectors", std::move(vectors)}})};
+    auto const output{render_soa(
+        std::move(schema), {{"vectors", RegisteredTypeSchema{.cpp_type = std::move(vectors)}}})};
 
     EXPECT_EQ(occurrences(output.header,
                           "void set(int32 const index, FVectors3f::equivalent_type const "
@@ -677,7 +687,8 @@ TEST(Lowering, OmitsLogicalElementSetterAndAddForUnsupportedNestedMembers) {
             },
     }};
 
-    auto const output{render_soa(std::move(schema), {{"nested", CppType{"FNested"}}})};
+    auto const output{render_soa(
+        std::move(schema), {{"nested", RegisteredTypeSchema{.cpp_type = CppType{"FNested"}}}})};
 
     EXPECT_EQ(output.header.find("void set("), std::string::npos);
     EXPECT_EQ(output.header.find("auto add("), std::string::npos);
@@ -722,8 +733,9 @@ TEST(Lowering, LowersCustomFunctionsToTheirRequestedFile) {
         },
     };
 
-    auto const output{
-        render_soa(std::move(schema), {{"helper", CppType{"helper", "Project/Helper.h"}}})};
+    auto const output{render_soa(
+        std::move(schema),
+        {{"helper", RegisteredTypeSchema{.cpp_type = CppType{"helper", "Project/Helper.h"}}}})};
 
     EXPECT_NE(output.header.find("using View = FMutableRows;"), std::string::npos);
     EXPECT_NE(output.header.find("using ConstView = FRows;"), std::string::npos);

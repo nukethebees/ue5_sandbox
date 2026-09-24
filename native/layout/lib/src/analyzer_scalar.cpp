@@ -1,5 +1,7 @@
 #include "analyzer_internal.hpp"
 
+#include <stdexcept>
+
 namespace ioj::layout {
 
 auto Analyzer::analyze_enum(lispb::schema::TypeGraph const& types,
@@ -323,7 +325,11 @@ auto Analyzer::analyze_integer_scalar(
     lispb::schema::TypeGraph const& types,
     lispb::schema::TypeId const type,
     std::span<RelationshipTargetFacts const> const relationship_targets) -> IntegerScalarAnalysis {
-    auto const& scalar{std::get<lispb::schema::IntegerScalarType>(types.type(type).definition)};
+    auto const* domain{lispb::schema::integer_domain(types.type(type))};
+    if (domain == nullptr) {
+        throw std::invalid_argument{"Integer scalar analysis requires a declared integer domain"};
+    }
+    auto const& scalar{*domain};
     auto required_minimum{scalar.minimum_value};
     auto required_maximum{scalar.maximum_value};
     auto sentinel_count{std::uint64_t{0}};
@@ -501,8 +507,7 @@ auto Analyzer::analyze_optional_sentinel(lispb::schema::TypeGraph const& types,
     -> OptionalSentinelAnalysis {
     auto const& optional{
         std::get<lispb::schema::OptionalSentinelType>(types.type(type).definition)};
-    auto const& source{
-        std::get<lispb::schema::IntegerScalarType>(types.type(optional.source.type).definition)};
+    auto const& source{*lispb::schema::integer_domain(types.type(optional.source.type))};
     auto const source_analysis{analyze_integer_scalar(types, optional.source.type)};
 
     OptionalSentinelAnalysis result{
@@ -540,8 +545,7 @@ auto Analyzer::analyze_optional_presence_bit(lispb::schema::TypeGraph const& typ
     -> OptionalPresenceBitAnalysis {
     auto const& optional{
         std::get<lispb::schema::OptionalPresenceBitType>(types.type(type).definition)};
-    auto const& source{
-        std::get<lispb::schema::IntegerScalarType>(types.type(optional.source.type).definition)};
+    auto const& source{*lispb::schema::integer_domain(types.type(optional.source.type))};
     auto const source_analysis{analyze_integer_scalar(types, optional.source.type)};
 
     OptionalPresenceBitAnalysis result{
@@ -661,8 +665,7 @@ auto Analyzer::analyze_linear_quantized(lispb::schema::TypeGraph const& types,
     -> LinearQuantizedAnalysis {
     auto const& quantized{
         std::get<lispb::schema::LinearQuantizedType>(types.type(type).definition)};
-    auto const& source{
-        std::get<lispb::schema::IntegerScalarType>(types.type(quantized.source.type).definition)};
+    auto const& source{*lispb::schema::integer_domain(types.type(quantized.source.type))};
 
     auto const total_code_count{
         quantized.bit_width == 64
@@ -911,8 +914,7 @@ auto Analyzer::analyze_integer_varint(lispb::schema::TypeGraph const& types,
                                       lispb::schema::TypeId const type,
                                       std::uint64_t const element_count) -> IntegerVarintAnalysis {
     auto const& varint{std::get<lispb::schema::IntegerVarintType>(types.type(type).definition)};
-    auto const& source{
-        std::get<lispb::schema::IntegerScalarType>(types.type(varint.source.type).definition)};
+    auto const& source{*lispb::schema::integer_domain(types.type(varint.source.type))};
 
     auto const minimum_endpoint_bytes{integer_varint_bytes(source.minimum_value, varint.encoding)};
     auto const maximum_endpoint_bytes{integer_varint_bytes(source.maximum_value, varint.encoding)};
@@ -989,8 +991,7 @@ auto Analyzer::analyze_integer_varint_distribution(
     std::span<IntegerVarintDistributionEntry const> const entries,
     std::uint64_t const selected_element_count) -> IntegerVarintDistributionAnalysis {
     auto const& varint{std::get<lispb::schema::IntegerVarintType>(types.type(type).definition)};
-    auto const& source{
-        std::get<lispb::schema::IntegerScalarType>(types.type(varint.source.type).definition)};
+    auto const& source{*lispb::schema::integer_domain(types.type(varint.source.type))};
     IntegerVarintDistributionAnalysis result{.type = type,
                                              .valid_entry_count = 0,
                                              .total_weight = 0,

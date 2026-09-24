@@ -25,37 +25,32 @@ struct DeclarationEmission {
 
 auto assemble_module(ModuleSettings const& settings, std::span<DeclarationEmission> emissions)
     -> std::vector<Module>;
-auto lower_record(RecordSchema const& schema, std::map<std::string, CppType> const& types)
+auto lower_record(RecordSchema const& schema, TypeRegistry const& types) -> DeclarationEmission;
+auto lower_union(UnionSchema const& schema, TypeRegistry const& types) -> DeclarationEmission;
+auto lower_tagged_union(TaggedUnionSchema const& schema, TypeRegistry const& types)
     -> DeclarationEmission;
-auto lower_union(UnionSchema const& schema, std::map<std::string, CppType> const& types)
+auto lower_static_table(StaticTableSchema const& schema, TypeRegistry const& types)
     -> DeclarationEmission;
-auto lower_tagged_union(TaggedUnionSchema const& schema,
-                        std::map<std::string, CppType> const& types) -> DeclarationEmission;
-auto lower_static_table(StaticTableSchema const& schema,
-                        std::map<std::string, CppType> const& types) -> DeclarationEmission;
 auto lower_packed_value(PackedValueSchema const& schema,
-                        std::map<std::string, CppType> const& types,
+                        TypeRegistry const& types,
                         lispb::schema::TypeGraph const& type_graph,
                         std::string const& module_name) -> DeclarationEmission;
 auto lower_enum(EnumSchema const& schema,
                 ModuleSettings const& settings,
                 std::optional<std::string> const& helper_namespace,
-                std::map<std::string, CppType> const& types) -> DeclarationEmission;
+                TypeRegistry const& types) -> DeclarationEmission;
 auto lower_soa_declaration(SoaSchema const& schema,
                            NormalModuleSchema const& module,
-                           std::map<std::string, CppType> const& types,
+                           TypeRegistry const& types,
                            lispb::schema::TypeGraph const& type_graph,
                            std::optional<std::string> const& allocator_prefix = std::nullopt)
     -> DeclarationEmission;
-auto lower_homogeneous(HomogeneousLayoutSchema const& schema,
-                       std::map<std::string, CppType> const& types) -> DeclarationEmission;
-auto lower_facade(FacadeSchema const& schema, std::map<std::string, CppType> const& types)
+auto lower_homogeneous(HomogeneousLayoutSchema const& schema, TypeRegistry const& types)
     -> DeclarationEmission;
-auto lower_vector(VectorSoaSchema const& schema,
-                  SoaBackend backend,
-                  std::map<std::string, CppType> const& types) -> DeclarationEmission;
+auto lower_facade(FacadeSchema const& schema, TypeRegistry const& types) -> DeclarationEmission;
+auto lower_vector(VectorSoaSchema const& schema, SoaBackend backend, TypeRegistry const& types)
+    -> DeclarationEmission;
 
-auto lower_settings_module(SettingsModuleSchema const& module,
-                           std::map<std::string, CppType> const& types) -> Module;
+auto lower_settings_module(SettingsModuleSchema const& module, TypeRegistry const& types) -> Module;
 
 } // namespace codegen::detail

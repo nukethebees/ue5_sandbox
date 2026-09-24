@@ -242,8 +242,8 @@ auto homogeneous_view_node(HomogeneousLayoutSchema const& layout, bool const has
 
 namespace {
 
-auto equivalent_type_nodes(HomogeneousLayoutSchema const& layout,
-                           std::map<std::string, CppType> const& types) -> Nodes {
+auto equivalent_type_nodes(HomogeneousLayoutSchema const& layout, TypeRegistry const& types)
+    -> Nodes {
     if (!layout.value_types.front().equivalent_type.has_value()) {
         return {};
     }
@@ -269,8 +269,8 @@ auto equivalent_type_nodes(HomogeneousLayoutSchema const& layout,
 
 } // namespace
 
-auto homogeneous_view_nodes(HomogeneousLayoutSchema const& layout,
-                            std::map<std::string, CppType> const& types) -> Nodes {
+auto homogeneous_view_nodes(HomogeneousLayoutSchema const& layout, TypeRegistry const& types)
+    -> Nodes {
     auto const has_equivalent_type{layout.value_types.front().equivalent_type.has_value()};
     NodeListBuilder result;
     result.append(equivalent_type_nodes(layout, types));

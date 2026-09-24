@@ -16,7 +16,7 @@ struct RenderedHomogeneousModule {
     std::string source;
 };
 
-auto render_homogeneous(NormalModuleSchema module, std::map<std::string, CppType> types = {})
+auto render_homogeneous(NormalModuleSchema module, TypeRegistry types = {})
     -> RenderedHomogeneousModule {
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
@@ -84,9 +84,10 @@ TEST(HomogeneousLowering, EmitsEquivalentAndInputTypeApis) {
     }})};
     std::get<codegen::HomogeneousLayoutSchema>(module.declarations.front()).input_members = {"U",
                                                                                              "V"};
-    auto const output{render_homogeneous(std::move(module),
-                                         {{"vector", CppType{"FVector2f", "Project/Vector.h"}},
-                                          {"point", CppType{"FPoint2f", "Project/Point.h"}}})};
+    auto const output{render_homogeneous(
+        std::move(module),
+        {{"vector", RegisteredTypeSchema{.cpp_type = CppType{"FVector2f", "Project/Vector.h"}}},
+         {"point", RegisteredTypeSchema{.cpp_type = CppType{"FPoint2f", "Project/Point.h"}}}})};
 
     EXPECT_NE(output.header.find("template <typename T>\nstruct TValuesEquivalentType;"),
               std::string::npos);

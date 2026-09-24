@@ -120,10 +120,10 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             ? std::get_if<lispb::schema::PackedField>(&packed.segments[*selected_index])
             : nullptr};
     auto const* selected_integer_scalar{
-        selected_resolved_field != nullptr
-            ? std::get_if<IntegerScalarType>(&analysis_session_.inputs.workspace.types()
-                                                  .type(selected_resolved_field->semantic_type.type)
-                                                  .definition)
+        selected_resolved_field != nullptr && selected_schema_field != nullptr
+            ? packed_integer_domain(analysis_session_.inputs.workspace.types().type(
+                                        selected_resolved_field->semantic_type.type),
+                                    *selected_schema_field)
             : nullptr};
     auto const* selected_linear_quantized{
         selected_resolved_field != nullptr
@@ -446,11 +446,11 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 index < packed.segments.size()
                     ? std::get_if<lispb::schema::PackedField>(&packed.segments[index])
                     : nullptr};
-            auto const field_uses_integer_scalar{resolved_field != nullptr &&
-                                                 std::holds_alternative<IntegerScalarType>(
-                                                     analysis_session_.inputs.workspace.types()
-                                                         .type(resolved_field->semantic_type.type)
-                                                         .definition)};
+            auto const field_uses_integer_scalar{
+                resolved_field != nullptr && field != nullptr &&
+                packed_integer_domain(analysis_session_.inputs.workspace.types().type(
+                                          resolved_field->semantic_type.type),
+                                      *field) != nullptr};
             auto const* field_linear_quantized{
                 resolved_field != nullptr ? std::get_if<LinearQuantizedType>(
                                                 &analysis_session_.inputs.workspace.types()
@@ -629,10 +629,12 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                     auto const picked_type{std::ranges::find_if(
                         analysis_session_.inputs.workspace.types().types(),
                         [&](TypeNode const& candidate) {
-                            return candidate.identity.origin == TypeOrigin::declaration &&
-                                   ((candidate.identity.module_name == node.identity.module_name &&
-                                     candidate.identity.name == *picked) ||
-                                    candidate.cpp_spelling == *picked);
+                            return (candidate.identity.origin == TypeOrigin::declaration &&
+                                    ((candidate.identity.module_name == node.identity.module_name &&
+                                      candidate.identity.name == *picked) ||
+                                     candidate.cpp_spelling == *picked)) ||
+                                   (candidate.identity.origin != TypeOrigin::declaration &&
+                                    integer_source_reference(candidate) == *picked);
                         })};
                     if (picked_type != analysis_session_.inputs.workspace.types().types().end() &&
                         std::holds_alternative<EnumType>(picked_type->definition)) {
@@ -675,7 +677,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                     } else if (picked_type !=
                                analysis_session_.inputs.workspace.types().types().end()) {
                         if (auto const* scalar{
-                                std::get_if<IntegerScalarType>(&picked_type->definition)}) {
+                                packed_integer_domain(*picked_type, pending_field)}) {
                             pending_field.kind = scalar->signedness
                                                    ? codegen::PackedFieldKind::signed_integer
                                                    : codegen::PackedFieldKind::unsigned_integer;

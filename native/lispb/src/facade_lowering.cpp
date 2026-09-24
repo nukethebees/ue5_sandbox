@@ -7,7 +7,7 @@
 namespace codegen::detail {
 namespace {
 
-auto lower_facade_impl(FacadeSchema const& facade, std::map<std::string, CppType> const& types)
+auto lower_facade_impl(FacadeSchema const& facade, TypeRegistry const& types)
     -> DeclarationEmission {
     auto target_type{resolve_type(facade.target_type, types)};
     auto const definitions_in_source{facade.definitions_in_source};
@@ -110,8 +110,7 @@ auto lower_facade_impl(FacadeSchema const& facade, std::map<std::string, CppType
 
 } // namespace
 
-auto lower_facade(FacadeSchema const& schema, std::map<std::string, CppType> const& types)
-    -> DeclarationEmission {
+auto lower_facade(FacadeSchema const& schema, TypeRegistry const& types) -> DeclarationEmission {
     return lower_facade_impl(schema, types);
 }
 

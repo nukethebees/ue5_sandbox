@@ -18,7 +18,7 @@ auto example_manifest() -> Manifest {
     handle.member_operations.emplace(TypeOperation::remove_at_swap, "remove_at_swap");
     return Manifest{
         .schema_version = manifest_schema_version,
-        .types = {{"handle", std::move(handle)}},
+        .types = {{"handle", RegisteredTypeSchema{.cpp_type = std::move(handle)}}},
         .modules =
             {
                 NormalModuleSchema{
@@ -366,7 +366,8 @@ TEST(Generator, MapsAbsoluteProjectPathsIntoASeparateOutputRoot) {
 TEST(Generator, LowersFacadeWithPrivateBindingAndSourceDefinitions) {
     auto manifest{Manifest{
         .schema_version = manifest_schema_version,
-        .types = {{"target", CppType{"FTarget", "Project/Target.h"}}},
+        .types = {{"target",
+                   RegisteredTypeSchema{.cpp_type = CppType{"FTarget", "Project/Target.h"}}}},
         .modules = {NormalModuleSchema{
             .settings =
                 ModuleSettings{
@@ -391,7 +392,8 @@ TEST(Generator, LowersFacadeWithPrivateBindingAndSourceDefinitions) {
                 .definitions_in_source = true,
             }}}},
     }};
-    manifest.types.emplace("check", CppType{"check", "CoreMinimal.h"});
+    manifest.types.emplace("check",
+                           RegisteredTypeSchema{.cpp_type = CppType{"check", "CoreMinimal.h"}});
 
     auto const files{render_modules(lower_modules(manifest))};
     ASSERT_EQ(files.size(), 2);
@@ -410,7 +412,8 @@ TEST(Generator, LowersFacadeWithPrivateBindingAndSourceDefinitions) {
 TEST(Generator, LowersFacadeWithReferenceTarget) {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
-        .types = {{"target", CppType{"FTarget", "Project/Target.h"}}},
+        .types = {{"target",
+                   RegisteredTypeSchema{.cpp_type = CppType{"FTarget", "Project/Target.h"}}}},
         .modules = {NormalModuleSchema{
             .settings = ModuleSettings{.name = "facade", .header = "Facade.h"},
             .declarations = {FacadeSchema{
@@ -457,7 +460,8 @@ TEST(Generator, LowersHomogeneousLayouts) {
 TEST(Generator, LowersVectorLayoutsThroughDynamicSoa) {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
-        .types = {{"vector", CppType{"FVector3f", "CoreMinimal.h"}}},
+        .types = {{"vector",
+                   RegisteredTypeSchema{.cpp_type = CppType{"FVector3f", "CoreMinimal.h"}}}},
         .modules = {NormalModuleSchema{
             .settings =
                 ModuleSettings{.name = "vectors", .header = "Vectors.h", .source = "Vectors.cpp"},
@@ -568,7 +572,7 @@ TEST(Generator, LowersFlatAndNestedFixedSoaLayouts) {
     child_type.member_operations.emplace(TypeOperation::remove_at_swap, "remove_at_swap");
     Manifest const manifest{
         .schema_version = manifest_schema_version,
-        .types = {{"child", std::move(child_type)}},
+        .types = {{"child", RegisteredTypeSchema{.cpp_type = std::move(child_type)}}},
         .modules = {NormalModuleSchema{
             .settings = ModuleSettings{.name = "fixed", .header = "Fixed.h", .source = "Fixed.cpp"},
             .declarations =

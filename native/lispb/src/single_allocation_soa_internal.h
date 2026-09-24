@@ -63,7 +63,7 @@ struct SingleAllocationModel {
 
 auto build_single_allocation_model(SoaSchema const& schema,
                                    std::map<std::string, SoaSchema const*> const& schemas,
-                                   std::map<std::string, CppType> const& types,
+                                   TypeRegistry const& types,
                                    lispb::schema::TypeGraph const& type_graph,
                                    std::string const& module_name,
                                    SoaBackend backend) -> SingleAllocationModel;

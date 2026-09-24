@@ -28,13 +28,12 @@ auto source_include(ModuleSettings const& settings) -> std::string {
     return settings.header.filename().generic_string();
 }
 
-auto dependency_for_key(std::string const& key, std::map<std::string, CppType> const& types)
-    -> TypeDependency {
+auto dependency_for_key(std::string const& key, TypeRegistry const& types) -> TypeDependency {
     auto const found{types.find(key)};
-    if (found == types.end() || found->second.dependencies.empty()) {
+    if (found == types.end() || found->second.cpp_type.dependencies.empty()) {
         throw std::invalid_argument{"Unknown dependency type: " + key};
     }
-    return found->second.dependencies.front();
+    return found->second.cpp_type.dependencies.front();
 }
 
 auto qualify(CppType type, std::string const& suffix) -> CppType {

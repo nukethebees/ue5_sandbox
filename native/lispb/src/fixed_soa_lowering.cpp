@@ -3,7 +3,7 @@
 namespace codegen::detail {
 namespace {
 
-auto fixed_nodes(FixedLayout const& layout, std::map<std::string, CppType> const& types) -> Nodes {
+auto fixed_nodes(FixedLayout const& layout, TypeRegistry const& types) -> Nodes {
     NodeListBuilder result;
     result.add(fixed_storage_node(layout));
     for (auto const& container : layout.schema->fixed->containers) {
@@ -16,7 +16,7 @@ auto fixed_nodes(FixedLayout const& layout, std::map<std::string, CppType> const
 
 auto lower_fixed_nodes(SoaSchema const& schema,
                        std::map<std::string, SoaSchema const*> const& schemas,
-                       std::map<std::string, CppType> const& types) -> Nodes {
+                       TypeRegistry const& types) -> Nodes {
     return fixed_nodes(build_fixed_layout(schema, schemas, types), types);
 }
 

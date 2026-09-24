@@ -25,6 +25,12 @@ auto status(std::vector<Diagnostic> const& diagnostics, bool const facts_availab
 
 } // namespace
 
+auto integer_source_reference(lispb::schema::TypeNode const& node) -> std::string {
+    return node.identity.origin == lispb::schema::TypeOrigin::registered_external
+             ? "@" + node.identity.name
+             : node.cpp_spelling;
+}
+
 auto declaration_capabilities(lispb::schema::TypeNode const& node) -> DeclarationCapabilities {
     auto result{std::visit(
         [](auto const& definition) -> DeclarationCapabilities {

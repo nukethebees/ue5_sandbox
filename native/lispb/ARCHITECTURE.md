@@ -58,6 +58,32 @@ edits replace the graph and adjust locations; rejected edits restore the previou
 graph, source ownership, and revision. Source-backed module deletion and restoration retain
 their original ranges, including comments and unrelated text.
 
+## External scalar registry
+
+`Manifest::types` owns `RegisteredTypeSchema`: the existing C++ spelling/includes/operations and
+an optional integer domain or IEEE binary floating-point format. This metadata generates no C++
+declaration. The graph retains `ExternalType` identity and exposes the resolved scalar metadata
+to shared integer-domain consumers and planner inspection. Plain references with the same
+normalized C++ spelling receive the same metadata; conflicting registrations are rejected.
+
+Integer domains require `:signed` and `:bit-width` (1–64). Optional `:minimum` and `:maximum`
+default to the full representable range; `(code name :value N :sentinel true)` can reserve named
+values outside the live range. Validation applies the same range and code rules as declared
+integer scalars. Floating-point formats are `ieee754-binary16`, `ieee754-binary32`, and
+`ieee754-binary64`. These are semantic contracts; neither domain width nor format supplies an
+ABI size or alignment. Integer representations accept external integer sources, while floating
+point and opaque external types remain ineligible for integer-only representations.
+
+External packed fields with `:bits auto` use the registered domain. Explicit-width external
+fields (including `@` aliases) retain their field-local range, so existing narrow fields such
+as a 24-bit `uint32` do not change when primitive metadata is included.
+
+Registry `(include "relative/path.lispb")` forms load each canonical file once, reject cycles,
+and contribute the entire closure to generator dependencies. `EditableSchemaDocument` tracks
+registry and module source roles explicitly, including registration locations. Source navigation,
+save/reload and clone use this closure; clone rewrites include paths to its copied sources.
+Registry definitions remain source-authored, with no parallel planner schema or structured editor.
+
 ## Single-allocation SoA
 
 The LispB `soa` declaration is validated before lowering. A single-allocation owner is a

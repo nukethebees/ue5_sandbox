@@ -17,7 +17,7 @@ auto composed(std::string spelling, TypeDependency outer, CppType const& contain
 
 } // namespace
 
-auto resolve_members(SoaSchema const& schema, std::map<std::string, CppType> const& types)
+auto resolve_members(SoaSchema const& schema, TypeRegistry const& types)
     -> std::vector<ResolvedMember> {
     std::vector<ResolvedMember> result;
     for (auto const& member : schema.members) {

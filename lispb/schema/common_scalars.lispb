@@ -1,0 +1,22 @@
+; Semantic descriptions of the project's external scalar types.
+; Physical size and alignment are supplied by the target ABI profile.
+(type int8 :spelling "int8" :pass-by value
+  (integer :signed true :bit-width 8))
+(type uint8 :spelling "uint8" :pass-by value
+  (integer :signed false :bit-width 8))
+(type int16 :spelling "int16" :pass-by value
+  (integer :signed true :bit-width 16))
+(type uint16 :spelling "uint16" :pass-by value
+  (integer :signed false :bit-width 16))
+(type int32 :spelling "int32" :pass-by value
+  (integer :signed true :bit-width 32))
+(type uint32 :spelling "uint32" :pass-by value
+  (integer :signed false :bit-width 32))
+(type int64 :spelling "int64" :pass-by value
+  (integer :signed true :bit-width 64))
+(type uint64 :spelling "uint64" :pass-by value
+  (integer :signed false :bit-width 64))
+(type float :spelling "float" :pass-by value
+  (floating-point :format ieee754-binary32))
+(type double :spelling "double" :pass-by value
+  (floating-point :format ieee754-binary64))

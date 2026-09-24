@@ -51,8 +51,7 @@ void render_vector_storage_operations(std::ostringstream& out) {
            "*this, std::forward<Compare>(compare), scratch_indices); }\n";
 }
 
-auto is_vector3f_schema(SoaSchema const& schema, std::map<std::string, CppType> const& types)
-    -> bool {
+auto is_vector3f_schema(SoaSchema const& schema, TypeRegistry const& types) -> bool {
     if (schema.members.size() != 3) {
         return false;
     }
@@ -71,7 +70,7 @@ auto is_vector3f_schema(SoaSchema const& schema, std::map<std::string, CppType> 
 
 auto lower_native_soa(SoaSchema const& schema,
                       std::map<std::string, SoaSchema const*> const& schemas,
-                      std::map<std::string, CppType> const& types,
+                      TypeRegistry const& types,
                       bool const allow_equivalent_type,
                       std::span<std::string const> const equivalent_members,
                       std::string_view const equivalent_constructor) -> LoweredSoa {

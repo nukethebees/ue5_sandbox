@@ -14,7 +14,7 @@ namespace codegen {
 namespace {
 
 template <typename T>
-auto manifest_with(T module, std::map<std::string, CppType> types = {}) -> Manifest {
+auto manifest_with(T module, TypeRegistry types = {}) -> Manifest {
     return Manifest{
         .schema_version = manifest_schema_version,
         .types = std::move(types),
@@ -891,8 +891,8 @@ TEST(Validation, SupportsSignedEnumValuesWhenTheyFitTheUnderlyingType) {
     schema.underlying_type = TypeRef{"@native_int8"};
     schema.values = {EnumeratorSchema{"Minimum", "-128"}, EnumeratorSchema{"Maximum", "127"}};
     schema.count.reset();
-    auto const types{std::map<std::string, CppType>{
-        {"native_int8", CppType{"std::int8_t", "cstdint"}},
+    auto const types{TypeRegistry{
+        {"native_int8", RegisteredTypeSchema{.cpp_type = CppType{"std::int8_t", "cstdint"}}},
     }};
 
     EXPECT_NO_THROW(static_cast<void>(lower_modules(manifest_with(module, types))));
@@ -1102,21 +1102,24 @@ TEST(Validation, RejectsKeywordsAndReservedIdentifiers) {
 
 TEST(Validation, RejectsEmptyTypeSpellings) {
     auto module{valid_soa_module()};
-    EXPECT_THROW(lower_modules(manifest_with(std::move(module), {{"empty", CppType{}}})),
+    EXPECT_THROW(lower_modules(manifest_with(
+                     std::move(module), {{"empty", RegisteredTypeSchema{.cpp_type = CppType{}}}})),
                  std::invalid_argument);
 }
 
 TEST(Validation, RejectsInvalidTypeDependencyAndOperationSpellings) {
     auto empty_header{CppType{"FValue", ""}};
-    EXPECT_THROW(
-        lower_modules(manifest_with(valid_soa_module(), {{"value", std::move(empty_header)}})),
-        std::invalid_argument);
+    EXPECT_THROW(lower_modules(manifest_with(
+                     valid_soa_module(),
+                     {{"value", RegisteredTypeSchema{.cpp_type = std::move(empty_header)}}})),
+                 std::invalid_argument);
 
     CppType invalid_operation{"FValue"};
     invalid_operation.member_operations.emplace(TypeOperation::remove_at_swap, "bad-name");
-    EXPECT_THROW(
-        lower_modules(manifest_with(valid_soa_module(), {{"value", std::move(invalid_operation)}})),
-        std::invalid_argument);
+    EXPECT_THROW(lower_modules(manifest_with(
+                     valid_soa_module(),
+                     {{"value", RegisteredTypeSchema{.cpp_type = std::move(invalid_operation)}}})),
+                 std::invalid_argument);
 }
 
 TEST(Validation, RejectsEmptySoaNames) {

@@ -7,8 +7,10 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <limits>
 #include <string>
 
 namespace codegen {
@@ -29,6 +31,7 @@ class TemporaryManifest {
     }
 
     void write(std::string const& name, std::string const& content) const {
+        std::filesystem::create_directories((directory_ / name).parent_path());
         std::ofstream output{directory_ / name};
         output << content;
     }
@@ -54,6 +57,172 @@ auto schema_at(Manifest const& manifest,
                std::size_t const declaration_index = 0) -> Schema const& {
     auto const& module{std::get<NormalModuleSchema>(manifest.modules.at(module_index))};
     return std::get<Schema>(module.declarations.at(declaration_index));
+}
+
+TEST(SourceLoader, IncludedExternalScalarsRetainExternalIdentityAndEnrichPlainReferences) {
+    TemporaryManifest files;
+    files.write_root(R"((module example :header "Example.h"
+      (record Values (member x double) (member y int8) (member z std::int8_t) (member w @signed_byte))))");
+    files.write("types.lispb",
+                R"((include "common/types.lispb") (include "common/./scalars.lispb"))");
+    files.write("common/types.lispb", R"((include "scalars.lispb"))");
+    files.write("common/scalars.lispb", R"(
+      (type signed_byte :spelling "int8" (integer :signed true :bit-width 8))
+      (type real :spelling "double" (floating-point :format ieee754-binary64)))");
+    auto const registry{load_type_registry(files.path("types.lispb"))};
+    ASSERT_EQ(registry.sources.size(), 3);
+    EXPECT_EQ(registry.declarations.at("signed_byte").source_file_index, 2);
+    auto const manifest{files.load()};
+    auto const graph{lispb::schema::resolve_type_graph(manifest)};
+    auto const registered{*graph.find_registered("signed_byte")};
+    EXPECT_EQ(graph.type(registered).identity.origin,
+              lispb::schema::TypeOrigin::registered_external);
+    auto const& record{std::get<lispb::schema::RecordType>(
+        graph.type(*graph.find_declared("example", "Values")).definition)};
+    auto const& floating{std::get<lispb::schema::ExternalType>(
+        graph.type(record.members[0].semantic_type.type).definition)};
+    EXPECT_EQ(std::get<FloatingPointFormat>(floating.semantics),
+              FloatingPointFormat::ieee754_binary64);
+    for (std::size_t index{1}; index < record.members.size(); ++index) {
+        auto const& node{graph.type(record.members[index].semantic_type.type)};
+        EXPECT_TRUE(std::holds_alternative<lispb::schema::ExternalType>(node.definition));
+        auto const* scalar{lispb::schema::integer_domain(node)};
+        ASSERT_NE(scalar, nullptr);
+        EXPECT_TRUE(scalar->signedness);
+        EXPECT_EQ(scalar->bit_width, 8);
+        EXPECT_EQ(scalar->minimum_value, PackedIntegerValue{-128});
+        EXPECT_EQ(scalar->maximum_value, PackedIntegerValue{127});
+    }
+    std::filesystem::path const modules[]{files.path("modules.lispb")};
+    auto const compiled{compile_sources(files.path("types.lispb"), modules)};
+    EXPECT_NE(
+        std::ranges::find(compiled.dependencies,
+                          std::filesystem::weakly_canonical(files.path("common/scalars.lispb"))),
+        compiled.dependencies.end());
+    EXPECT_EQ(compiled.dependencies.size(), 4);
+}
+
+TEST(SourceLoader, ExternalIntegerDomainsDriveRepresentationsAndPackedWidths) {
+    TemporaryManifest files;
+    files.write_root(R"((module example :header "Example.h"
+      (linear-quantized Quantized :source @index :bits 4)
+      (integer-varint Encoded :source @index :encoding unsigned)
+      (optional-sentinel MaybeIndex :source @index :sentinel invalid)
+      (optional-presence-bit PresentIndex :source @index)
+      (packed-value Packed :storage uint32
+        (field index @index :bits auto)
+        (field subset uint32 :bits 24))))");
+    files.write("types.lispb", R"(
+      (type index :spelling "NativeIndex" (integer :signed false :bit-width 8 :maximum 254
+        (code invalid :value 255 :sentinel true)))
+      (type uint32 :spelling "uint32" (integer :signed false :bit-width 32)))");
+    auto const manifest{files.load()};
+    auto const graph{lispb::schema::resolve_type_graph(manifest)};
+    auto const source{*graph.find_registered("index")};
+    EXPECT_EQ(graph.users_of(source).size(), 5);
+    auto const& packed{std::get<lispb::schema::PackedType>(
+        graph.type(*graph.find_declared("example", "Packed")).definition)};
+    EXPECT_EQ(std::get<lispb::schema::PackedField>(packed.segments[0]).bit_width, 8);
+    EXPECT_EQ(std::get<lispb::schema::PackedField>(packed.segments[1]).bit_width, 24);
+    auto const output{render_modules(lower_modules(manifest))};
+    ASSERT_EQ(output.size(), 1);
+    EXPECT_EQ(output[0].content.find("struct NativeIndex"), std::string::npos);
+    EXPECT_NE(output[0].content.find("std::uint8_t"), std::string::npos);
+}
+
+TEST(SourceLoader, ExternalMetadataPreservesExplicitWidthCppFieldEmission) {
+    TemporaryManifest files;
+    files.write_root(R"((module example :header "Example.h"
+      (packed-value Packed :storage uint64
+        (field subset uint32 :bits 24)
+        (field alias @legacy :bits 24 :minimum 0 :maximum 100)
+        (reserved future :bits 16))
+      (record Values (member x int8) (member y double))))");
+    files.write("types.lispb", R"((type legacy :spelling "uint32"))");
+    auto const original{render_modules(lower_modules(files.load()))};
+    files.write("types.lispb", R"(
+      (type legacy :spelling "uint32")
+      (type integer :spelling "uint32" (integer :signed false :bit-width 32))
+      (type byte :spelling "int8" (integer :signed true :bit-width 8))
+      (type real :spelling "double" (floating-point :format ieee754-binary64)))");
+    auto const manifest{files.load()};
+    auto const enriched{render_modules(lower_modules(manifest))};
+    ASSERT_EQ(original.size(), 1);
+    ASSERT_EQ(enriched.size(), 1);
+    EXPECT_EQ(original[0].content, enriched[0].content);
+
+    auto const graph{lispb::schema::resolve_type_graph(manifest)};
+    auto const& node{graph.type(*graph.find_registered("integer"))};
+    auto field{std::get<PackedFieldSchema>(schema_at<PackedValueSchema>(manifest, 0).segments[0])};
+    EXPECT_EQ(lispb::schema::packed_integer_domain(node, field), nullptr);
+    field.bits.reset();
+    EXPECT_NE(lispb::schema::packed_integer_domain(node, field), nullptr);
+    field.bits = 32;
+    field.type.name = "@integer";
+    EXPECT_EQ(lispb::schema::packed_integer_domain(node, field), nullptr);
+}
+
+TEST(SourceLoader, RejectsInvalidExternalDomainsAndIncludes) {
+    TemporaryManifest files;
+    files.write_root(R"((module example :header "Example.h"))");
+    for (
+        auto const* source :
+        {R"((type x :spelling "X" (integer :signed true :bit-width 0)))",
+         R"((type x :spelling "X" (integer :signed true :bit-width 8 :maximum 128)))",
+         R"((type x :spelling "X" (integer :signed false :bit-width 8 :minimum -1)))",
+         R"((type x :spelling "X" (integer :signed false :bit-width 8 (code invalid :value 255 :sentinel true))))",
+         R"((type x :spelling "X" (floating-point :format invented)))",
+         R"((type x :spelling "X" (integer :signed true :bit-width 8) (floating-point :format ieee754-binary32)))",
+         R"((type x :spelling "int8" (integer :signed true :bit-width 8)) (type y :spelling "std::int8_t" (integer :signed false :bit-width 8)))",
+         R"((type x :spelling "X") (type x :spelling "Y"))",
+         R"((include "missing.lispb"))",
+         R"((include "types.lispb"))"}) {
+        SCOPED_TRACE(source);
+        files.write("types.lispb", source);
+        EXPECT_THROW(lispb::schema::resolve_type_graph(files.load()), std::exception);
+    }
+}
+
+TEST(SourceLoader, ExternalIntegerDefaultsCoverFull64BitDomains) {
+    TemporaryManifest files;
+    files.write_root(R"((module example :header "Example.h"))");
+    files.write("types.lispb", R"(
+      (type signed64 :spelling "int64" (integer :signed true :bit-width 64))
+      (type unsigned64 :spelling "uint64" (integer :signed false :bit-width 64)))");
+    auto const graph{lispb::schema::resolve_type_graph(files.load())};
+    auto const* signed_domain{
+        lispb::schema::integer_domain(graph.type(*graph.find_registered("signed64")))};
+    auto const* unsigned_domain{
+        lispb::schema::integer_domain(graph.type(*graph.find_registered("unsigned64")))};
+    ASSERT_NE(signed_domain, nullptr);
+    ASSERT_NE(unsigned_domain, nullptr);
+    EXPECT_EQ(signed_domain->minimum_value,
+              PackedIntegerValue::from_parts(true, std::uint64_t{1} << 63));
+    EXPECT_EQ(unsigned_domain->maximum_value,
+              PackedIntegerValue{(std::numeric_limits<std::uint64_t>::max)()});
+}
+
+TEST(SourceLoader, ExternalRepresentationSourcesObeyIntegerDomainRules) {
+    TemporaryManifest files;
+    files.write("types.lispb", R"(
+      (type real :spelling "double" (floating-point :format ieee754-binary64))
+      (type opaque :spelling "Opaque")
+      (type signed_byte :spelling "int8" (integer :signed true :bit-width 8))
+      (type byte :spelling "uint8" (integer :signed false :bit-width 8)))");
+    for (auto const* declaration :
+         {"(linear-quantized Q :source @real :bits 4)",
+          "(integer-varint V :source @opaque :encoding unsigned)",
+          "(integer-varint V :source @signed_byte :encoding unsigned)",
+          "(integer-varint V :source @byte :encoding zigzag)",
+          "(optional-sentinel S :source @byte :sentinel missing)",
+          "(optional-presence-bit P :source @real)",
+          "(optional-presence-bit P :source (type-ref @byte :suffix \"*\"))",
+          "(record double (member x int8))"}) {
+        SCOPED_TRACE(declaration);
+        files.write("modules.lispb",
+                    "(module example :header \"Example.h\" " + std::string{declaration} + ")");
+        EXPECT_THROW(lispb::schema::resolve_type_graph(files.load()), std::exception);
+    }
 }
 
 TEST(SourceLoader, NormalModuleKeepsMixedDeclarationOrderAndResolvesTypes) {
@@ -192,8 +361,8 @@ TEST(SourceLoader, ReadsCommentsAndTypedSoa) {
     auto const manifest{files.load()};
 
     ASSERT_EQ(manifest.types.size(), 1);
-    EXPECT_EQ(manifest.types.at("handle").spelling, "FHandle");
-    EXPECT_EQ(manifest.types.at("handle").operation(TypeOperation::add_element), "add");
+    EXPECT_EQ(manifest.types.at("handle").cpp_type.spelling, "FHandle");
+    EXPECT_EQ(manifest.types.at("handle").cpp_type.operation(TypeOperation::add_element), "add");
     ASSERT_EQ(manifest.modules.size(), 1);
     auto const& schema{schema_at<SoaSchema>(manifest, 0)};
     EXPECT_EQ(schema.operations, all_storage_operations());

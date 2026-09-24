@@ -1394,14 +1394,15 @@ auto PlannerUi::draw_linear_quantized_editor(TypeNode const& node, LinearQuantiz
 
     if (ImGui::BeginCombo("Semantic source", schema->source.name.c_str())) {
         for (auto const& candidate : document_->types().types()) {
-            if (!std::holds_alternative<IntegerScalarType>(candidate.definition)) {
+            if (integer_domain(candidate) == nullptr) {
                 continue;
             }
-            auto const selected{candidate.cpp_spelling == schema->source.name};
-            if (ImGui::Selectable(candidate.cpp_spelling.c_str(), selected)) {
+            auto const selected{integer_source_reference(candidate) == schema->source.name};
+            if (ImGui::Selectable(integer_source_reference(candidate).c_str(), selected)) {
                 auto replacement{*schema};
-                replacement.source = codegen::TypeRef{
-                    .name = candidate.cpp_spelling, .suffix = {}, .nested = std::nullopt};
+                replacement.source = codegen::TypeRef{.name = integer_source_reference(candidate),
+                                                      .suffix = {},
+                                                      .nested = std::nullopt};
                 ImGui::EndCombo();
                 if (apply_document_edit(ReplaceLinearQuantized{.declaration = *declaration,
                                                                .schema = std::move(replacement)})) {
@@ -1498,15 +1499,16 @@ auto PlannerUi::draw_integer_varint_editor(TypeNode const& node, IntegerVarintTy
 
     if (ImGui::BeginCombo("Semantic source", schema->source.name.c_str())) {
         for (auto const& candidate : document_->types().types()) {
-            auto const* scalar{std::get_if<IntegerScalarType>(&candidate.definition)};
+            auto const* scalar{integer_domain(candidate)};
             if (scalar == nullptr) {
                 continue;
             }
-            auto const selected{candidate.cpp_spelling == schema->source.name};
-            if (ImGui::Selectable(candidate.cpp_spelling.c_str(), selected)) {
+            auto const selected{integer_source_reference(candidate) == schema->source.name};
+            if (ImGui::Selectable(integer_source_reference(candidate).c_str(), selected)) {
                 auto replacement{*schema};
-                replacement.source = codegen::TypeRef{
-                    .name = candidate.cpp_spelling, .suffix = {}, .nested = std::nullopt};
+                replacement.source = codegen::TypeRef{.name = integer_source_reference(candidate),
+                                                      .suffix = {},
+                                                      .nested = std::nullopt};
                 if (scalar->signedness &&
                     replacement.encoding == codegen::IntegerVarintEncoding::unsigned_varint) {
                     replacement.encoding = codegen::IntegerVarintEncoding::zigzag_varint;
@@ -1525,8 +1527,8 @@ auto PlannerUi::draw_integer_varint_editor(TypeNode const& node, IntegerVarintTy
         ImGui::EndCombo();
     }
 
-    auto const& source_scalar{std::get<IntegerScalarType>(
-        analysis_session_.inputs.workspace.types().type(varint.source.type).definition)};
+    auto const& source_scalar{
+        *integer_domain(analysis_session_.inputs.workspace.types().type(varint.source.type))};
     auto const current_label{codegen::integer_varint_encoding_name(schema->encoding)};
     if (ImGui::BeginCombo("Encoding", current_label.data())) {
         constexpr std::array encodings{codegen::IntegerVarintEncoding::unsigned_varint,
@@ -1577,20 +1579,22 @@ auto PlannerUi::draw_optional_sentinel_editor(TypeNode const& node,
 
     auto const& current_source{
         analysis_session_.inputs.workspace.types().type(optional.source.type)};
-    if (ImGui::BeginCombo("Source scalar", current_source.cpp_spelling.c_str())) {
+    if (ImGui::BeginCombo("Source scalar", integer_source_reference(current_source).c_str())) {
         auto const types{analysis_session_.inputs.workspace.types().types()};
         for (std::size_t index{}; index < types.size(); ++index) {
-            auto const* candidate{std::get_if<IntegerScalarType>(&types[index].definition)};
+            auto const* candidate{integer_domain(types[index])};
             if (candidate == nullptr ||
                 !std::ranges::any_of(candidate->named_codes, &PackedNamedCode::sentinel)) {
                 continue;
             }
             auto const type{TypeId{static_cast<std::uint32_t>(index)}};
             auto const selected{type == optional.source.type};
-            if (ImGui::Selectable(types[index].cpp_spelling.c_str(), selected)) {
+            if (ImGui::Selectable(integer_source_reference(types[index]).c_str(), selected)) {
                 auto replacement{*schema};
-                replacement.source = codegen::TypeRef{
-                    .name = types[index].cpp_spelling, .suffix = {}, .nested = std::nullopt};
+                replacement.source =
+                    codegen::TypeRef{.name = integer_source_reference(types[index]),
+                                     .suffix = {},
+                                     .nested = std::nullopt};
                 auto const existing_code{std::ranges::find(
                     candidate->named_codes, replacement.sentinel, &PackedNamedCode::name)};
                 if (existing_code == candidate->named_codes.end() || !existing_code->sentinel) {
@@ -1614,7 +1618,7 @@ auto PlannerUi::draw_optional_sentinel_editor(TypeNode const& node,
         ImGui::EndCombo();
     }
 
-    auto const& scalar{std::get<IntegerScalarType>(current_source.definition)};
+    auto const& scalar{*integer_domain(current_source)};
     if (ImGui::BeginCombo("Absence sentinel", schema->sentinel.c_str())) {
         for (auto const& code : scalar.named_codes) {
             if (!code.sentinel) {
@@ -1660,18 +1664,20 @@ auto PlannerUi::draw_optional_presence_bit_editor(TypeNode const& node,
 
     auto const& current_source{
         analysis_session_.inputs.workspace.types().type(optional.source.type)};
-    if (ImGui::BeginCombo("Source scalar", current_source.cpp_spelling.c_str())) {
+    if (ImGui::BeginCombo("Source scalar", integer_source_reference(current_source).c_str())) {
         auto const types{analysis_session_.inputs.workspace.types().types()};
         for (std::size_t index{}; index < types.size(); ++index) {
-            if (!std::holds_alternative<IntegerScalarType>(types[index].definition)) {
+            if (integer_domain(types[index]) == nullptr) {
                 continue;
             }
             auto const type{TypeId{static_cast<std::uint32_t>(index)}};
             auto const selected{type == optional.source.type};
-            if (ImGui::Selectable(types[index].cpp_spelling.c_str(), selected)) {
+            if (ImGui::Selectable(integer_source_reference(types[index]).c_str(), selected)) {
                 auto replacement{*schema};
-                replacement.source = codegen::TypeRef{
-                    .name = types[index].cpp_spelling, .suffix = {}, .nested = std::nullopt};
+                replacement.source =
+                    codegen::TypeRef{.name = integer_source_reference(types[index]),
+                                     .suffix = {},
+                                     .nested = std::nullopt};
                 ImGui::EndCombo();
                 if (apply_document_edit(ReplaceOptionalPresenceBit{
                         .declaration = *declaration, .schema = std::move(replacement)})) {

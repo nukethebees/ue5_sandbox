@@ -670,11 +670,11 @@ void PlannerUi::draw_new_linear_quantized_dialog() {
             "Name", new_linear_quantized_name_.data(), new_linear_quantized_name_.size());
         if (new_linear_quantized_source_.front() == '\0') {
             for (auto const& node : document_->types().types()) {
-                if (std::holds_alternative<IntegerScalarType>(node.definition)) {
+                if (integer_domain(node) != nullptr) {
                     std::snprintf(new_linear_quantized_source_.data(),
                                   new_linear_quantized_source_.size(),
                                   "%s",
-                                  node.cpp_spelling.c_str());
+                                  integer_source_reference(node).c_str());
                     break;
                 }
             }
@@ -684,15 +684,16 @@ void PlannerUi::draw_new_linear_quantized_dialog() {
                                     : new_linear_quantized_source_.data()};
         if (ImGui::BeginCombo("Semantic source", source_label)) {
             for (auto const& node : document_->types().types()) {
-                if (!std::holds_alternative<IntegerScalarType>(node.definition)) {
+                if (integer_domain(node) == nullptr) {
                     continue;
                 }
-                auto const selected{node.cpp_spelling == new_linear_quantized_source_.data()};
-                if (ImGui::Selectable(node.cpp_spelling.c_str(), selected)) {
+                auto const selected{integer_source_reference(node) ==
+                                    new_linear_quantized_source_.data()};
+                if (ImGui::Selectable(integer_source_reference(node).c_str(), selected)) {
                     std::snprintf(new_linear_quantized_source_.data(),
                                   new_linear_quantized_source_.size(),
                                   "%s",
-                                  node.cpp_spelling.c_str());
+                                  integer_source_reference(node).c_str());
                 }
             }
             ImGui::EndCombo();
@@ -828,11 +829,11 @@ void PlannerUi::draw_new_integer_varint_dialog() {
         ImGui::InputText("Name", new_integer_varint_name_.data(), new_integer_varint_name_.size());
         if (new_integer_varint_source_.front() == '\0') {
             for (auto const& node : document_->types().types()) {
-                if (auto const* scalar{std::get_if<IntegerScalarType>(&node.definition)}) {
+                if (auto const* scalar{integer_domain(node)}) {
                     std::snprintf(new_integer_varint_source_.data(),
                                   new_integer_varint_source_.size(),
                                   "%s",
-                                  node.cpp_spelling.c_str());
+                                  integer_source_reference(node).c_str());
                     new_integer_varint_encoding_ = scalar->signedness ? 2 : 0;
                     break;
                 }
@@ -840,8 +841,8 @@ void PlannerUi::draw_new_integer_varint_dialog() {
         }
         auto source_signed{std::optional<bool>{}};
         for (auto const& node : document_->types().types()) {
-            if (node.cpp_spelling == new_integer_varint_source_.data()) {
-                if (auto const* scalar{std::get_if<IntegerScalarType>(&node.definition)}) {
+            if (integer_source_reference(node) == new_integer_varint_source_.data()) {
+                if (auto const* scalar{integer_domain(node)}) {
                     source_signed = scalar->signedness;
                 }
                 break;
@@ -852,16 +853,17 @@ void PlannerUi::draw_new_integer_varint_dialog() {
                                     : new_integer_varint_source_.data()};
         if (ImGui::BeginCombo("Semantic source", source_label)) {
             for (auto const& node : document_->types().types()) {
-                auto const* scalar{std::get_if<IntegerScalarType>(&node.definition)};
+                auto const* scalar{integer_domain(node)};
                 if (scalar == nullptr) {
                     continue;
                 }
-                auto const selected{node.cpp_spelling == new_integer_varint_source_.data()};
-                if (ImGui::Selectable(node.cpp_spelling.c_str(), selected)) {
+                auto const selected{integer_source_reference(node) ==
+                                    new_integer_varint_source_.data()};
+                if (ImGui::Selectable(integer_source_reference(node).c_str(), selected)) {
                     std::snprintf(new_integer_varint_source_.data(),
                                   new_integer_varint_source_.size(),
                                   "%s",
-                                  node.cpp_spelling.c_str());
+                                  integer_source_reference(node).c_str());
                     source_signed = scalar->signedness;
                     new_integer_varint_encoding_ = scalar->signedness ? 2 : 0;
                 }
@@ -1397,7 +1399,7 @@ void PlannerUi::draw_new_optional_sentinel_dialog() {
     std::vector<TypeId> sources;
     auto const types{analysis_session_.inputs.workspace.types().types()};
     for (std::size_t index{}; index < types.size(); ++index) {
-        auto const* scalar{std::get_if<IntegerScalarType>(&types[index].definition)};
+        auto const* scalar{integer_domain(types[index])};
         if (scalar != nullptr &&
             std::ranges::any_of(scalar->named_codes, &PackedNamedCode::sentinel)) {
             sources.push_back(TypeId{static_cast<std::uint32_t>(index)});
@@ -1433,8 +1435,8 @@ void PlannerUi::draw_new_optional_sentinel_dialog() {
         ImGui::InputText(
             "Name", new_optional_sentinel_name_.data(), new_optional_sentinel_name_.size());
         auto selected_source{std::ranges::find_if(sources, [&](TypeId const type) {
-            return analysis_session_.inputs.workspace.types().type(type).cpp_spelling ==
-                   new_optional_sentinel_source_.data();
+            return integer_source_reference(analysis_session_.inputs.workspace.types().type(
+                       type)) == new_optional_sentinel_source_.data();
         })};
         if (selected_source == sources.end()) {
             selected_source = sources.begin();
@@ -1442,8 +1444,8 @@ void PlannerUi::draw_new_optional_sentinel_dialog() {
             std::snprintf(new_optional_sentinel_source_.data(),
                           new_optional_sentinel_source_.size(),
                           "%s",
-                          node.cpp_spelling.c_str());
-            auto const& scalar{std::get<IntegerScalarType>(node.definition)};
+                          integer_source_reference(node).c_str());
+            auto const& scalar{*integer_domain(node)};
             auto const sentinel{std::ranges::find_if(
                 scalar.named_codes, [](auto const& code) { return code.sentinel; })};
             std::snprintf(new_optional_sentinel_code_.data(),
@@ -1453,20 +1455,21 @@ void PlannerUi::draw_new_optional_sentinel_dialog() {
         }
 
         auto selected_source_type{*selected_source};
-        if (ImGui::BeginCombo("Semantic source",
-                              analysis_session_.inputs.workspace.types()
-                                  .type(selected_source_type)
-                                  .cpp_spelling.c_str())) {
+        if (ImGui::BeginCombo(
+                "Semantic source",
+                integer_source_reference(
+                    analysis_session_.inputs.workspace.types().type(selected_source_type))
+                    .c_str())) {
             for (auto const type : sources) {
                 auto const& candidate{analysis_session_.inputs.workspace.types().type(type)};
                 auto const selected{type == selected_source_type};
-                if (ImGui::Selectable(candidate.cpp_spelling.c_str(), selected)) {
+                if (ImGui::Selectable(integer_source_reference(candidate).c_str(), selected)) {
                     selected_source_type = type;
                     std::snprintf(new_optional_sentinel_source_.data(),
                                   new_optional_sentinel_source_.size(),
                                   "%s",
-                                  candidate.cpp_spelling.c_str());
-                    auto const& scalar{std::get<IntegerScalarType>(candidate.definition)};
+                                  integer_source_reference(candidate).c_str());
+                    auto const& scalar{*integer_domain(candidate)};
                     auto const sentinel{std::ranges::find_if(
                         scalar.named_codes, [](auto const& code) { return code.sentinel; })};
                     std::snprintf(new_optional_sentinel_code_.data(),
@@ -1483,7 +1486,7 @@ void PlannerUi::draw_new_optional_sentinel_dialog() {
 
         auto const& source_node{
             analysis_session_.inputs.workspace.types().type(selected_source_type)};
-        auto const& source_scalar{std::get<IntegerScalarType>(source_node.definition)};
+        auto const& source_scalar{*integer_domain(source_node)};
         auto selected_code{std::ranges::find_if(source_scalar.named_codes, [&](auto const& code) {
             return code.sentinel && code.name == new_optional_sentinel_code_.data();
         })};
@@ -1586,7 +1589,7 @@ void PlannerUi::draw_new_optional_presence_bit_dialog() {
     std::vector<TypeId> sources;
     auto const types{analysis_session_.inputs.workspace.types().types()};
     for (std::size_t index{}; index < types.size(); ++index) {
-        if (std::holds_alternative<IntegerScalarType>(types[index].definition)) {
+        if (integer_domain(types[index]) != nullptr) {
             sources.push_back(TypeId{static_cast<std::uint32_t>(index)});
         }
     }
@@ -1620,8 +1623,8 @@ void PlannerUi::draw_new_optional_presence_bit_dialog() {
         ImGui::InputText(
             "Name", new_optional_presence_bit_name_.data(), new_optional_presence_bit_name_.size());
         auto selected_source{std::ranges::find_if(sources, [&](TypeId const type) {
-            return analysis_session_.inputs.workspace.types().type(type).cpp_spelling ==
-                   new_optional_presence_bit_source_.data();
+            return integer_source_reference(analysis_session_.inputs.workspace.types().type(
+                       type)) == new_optional_presence_bit_source_.data();
         })};
         if (selected_source == sources.end()) {
             selected_source = sources.begin();
@@ -1629,23 +1632,24 @@ void PlannerUi::draw_new_optional_presence_bit_dialog() {
             std::snprintf(new_optional_presence_bit_source_.data(),
                           new_optional_presence_bit_source_.size(),
                           "%s",
-                          node.cpp_spelling.c_str());
+                          integer_source_reference(node).c_str());
         }
 
         auto selected_source_type{*selected_source};
-        if (ImGui::BeginCombo("Semantic source",
-                              analysis_session_.inputs.workspace.types()
-                                  .type(selected_source_type)
-                                  .cpp_spelling.c_str())) {
+        if (ImGui::BeginCombo(
+                "Semantic source",
+                integer_source_reference(
+                    analysis_session_.inputs.workspace.types().type(selected_source_type))
+                    .c_str())) {
             for (auto const type : sources) {
                 auto const& candidate{analysis_session_.inputs.workspace.types().type(type)};
                 auto const selected{type == selected_source_type};
-                if (ImGui::Selectable(candidate.cpp_spelling.c_str(), selected)) {
+                if (ImGui::Selectable(integer_source_reference(candidate).c_str(), selected)) {
                     selected_source_type = type;
                     std::snprintf(new_optional_presence_bit_source_.data(),
                                   new_optional_presence_bit_source_.size(),
                                   "%s",
-                                  candidate.cpp_spelling.c_str());
+                                  integer_source_reference(candidate).c_str());
                 }
                 if (selected) {
                     ImGui::SetItemDefaultFocus();
@@ -1654,8 +1658,8 @@ void PlannerUi::draw_new_optional_presence_bit_dialog() {
             ImGui::EndCombo();
         }
 
-        auto const& source_scalar{std::get<IntegerScalarType>(
-            analysis_session_.inputs.workspace.types().type(selected_source_type).definition)};
+        auto const& source_scalar{
+            *integer_domain(analysis_session_.inputs.workspace.types().type(selected_source_type))};
         ImGui::Text("Encoding: 1 presence bit + %u payload bits = %u bits/value",
                     source_scalar.bit_width,
                     source_scalar.bit_width + 1);

@@ -271,8 +271,7 @@ auto enum_values(EnumSchema const& schema) -> std::vector<EnumeratorSchema const
     return result;
 }
 
-auto enum_underlying_type(EnumSchema const& schema, std::map<std::string, CppType> const& types)
-    -> CppType {
+auto enum_underlying_type(EnumSchema const& schema, TypeRegistry const& types) -> CppType {
     if (schema.underlying_type.has_value()) {
         return resolve_type(*schema.underlying_type, types);
     }
@@ -293,8 +292,7 @@ auto enum_underlying_type(EnumSchema const& schema, std::map<std::string, CppTyp
     return CppType{spelling, schema.native_api ? "cstdint" : "CoreMinimal.h"};
 }
 
-auto native_enum_declaration(EnumSchema const& schema, std::map<std::string, CppType> const& types)
-    -> std::string {
+auto native_enum_declaration(EnumSchema const& schema, TypeRegistry const& types) -> std::string {
     auto const underlying{enum_underlying_type(schema, types).spelling};
     std::ostringstream output;
     output << "enum class " << schema.name << " : " << underlying << " {\n";
@@ -436,7 +434,7 @@ auto unreal_underlying_type(CppType const& native_type) -> std::string {
 
 auto unreal_projection_header(EnumSchema const& schema,
                               EnumUnrealProjection const& projection,
-                              std::map<std::string, CppType> const& types) -> std::string {
+                              TypeRegistry const& types) -> std::string {
     std::ostringstream output;
     output << (projection.reflection == EnumReflection::blueprint ? "UENUM(BlueprintType)"
                                                                   : "UENUM()")
@@ -507,7 +505,7 @@ auto unreal_conversion_header(ModuleSettings const& settings,
 auto lower_enum(EnumSchema const& schema,
                 ModuleSettings const& settings,
                 std::optional<std::string> const& helper_namespace,
-                std::map<std::string, CppType> const& types) -> DeclarationEmission {
+                TypeRegistry const& types) -> DeclarationEmission {
     DeclarationEmission emission;
     emission.source_dependencies = false;
     if (schema.native_api) {

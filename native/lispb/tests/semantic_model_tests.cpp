@@ -166,7 +166,8 @@ TEST(SemanticTypeGraph, RejectsIntegerScalarRelationshipToExternalLeaf) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
         .types = {{"external_table",
-                   codegen::CppType{"project::ExternalTable", "ExternalTable.h"}}},
+                   codegen::RegisteredTypeSchema{
+                       .cpp_type = codegen::CppType{"project::ExternalTable", "ExternalTable.h"}}}},
         .modules = {codegen::NormalModuleSchema{
             .settings = codegen::ModuleSettings{.name = "semantic_values",
                                                 .header = "SemanticValues.h",
@@ -717,7 +718,9 @@ TEST(SemanticTypeGraph, ResolvesTaggedUnionDiscriminantMappingsAndDependencies) 
 TEST(SemanticTypeGraph, KeepsUnknownRegisteredTypesAsExternalLeaves) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
-        .types = {{"native_handle", codegen::CppType{"NativeHandle", "native/handle.h"}}},
+        .types = {{"native_handle",
+                   codegen::RegisteredTypeSchema{
+                       .cpp_type = codegen::CppType{"NativeHandle", "native/handle.h"}}}},
         .modules = {codegen::NormalModuleSchema{
             .settings = codegen::ModuleSettings{.name = "mode", .header = "Mode.h"},
             .declarations = {codegen::EnumSchema{
@@ -751,7 +754,8 @@ TEST(SemanticTypeGraph, RejectsAmbiguousRegisteredDeclarationBindings) {
     };
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,
-        .types = {{"mode", codegen::CppType{"project::Mode"}}},
+        .types = {{"mode",
+                   codegen::RegisteredTypeSchema{.cpp_type = codegen::CppType{"project::Mode"}}}},
         .modules = {enum_module("first", "First.h"), enum_module("second", "Second.h")},
     };
 

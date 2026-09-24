@@ -1,4 +1,5 @@
 #include <ioj/layout/analyzer.hpp>
+#include <ioj/layout/planner_session.hpp>
 #include <ioj/layout/schema_loader.hpp>
 
 #include "../lib/src/schema_loader_transaction.hpp"
@@ -111,6 +112,10 @@ class TemporarySchemaProject {
         std::ifstream input{path(relative), std::ios::binary};
         return {std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
     }
+    void write_source(std::filesystem::path const& relative, std::string_view const text) const {
+        std::filesystem::create_directories(path(relative).parent_path());
+        write(relative, text);
+    }
   private:
     void write(std::filesystem::path const& relative, std::string_view const text) const {
         std::ofstream output{path(relative), std::ios::binary};
@@ -119,6 +124,103 @@ class TemporarySchemaProject {
 
     std::filesystem::path root_;
 };
+
+TEST(SchemaLoader, SavesReloadsAndClonesIncludedExternalScalars) {
+    TemporarySchemaProject files;
+    auto const registry{std::string{R"((include "common/scalars.lispb"))"}};
+    auto const common{std::string{R"(; Shared scalar contracts remain source-authored.
+      (type signed_byte :spelling "int8" (integer :signed true :bit-width 8))
+      (type real :spelling "double" (floating-point :format ieee754-binary64)))"}};
+    files.write_source("schema/types.lispb", registry);
+    files.write_source("schema/common/scalars.lispb", common);
+    auto loaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
+    auto& document{*loaded.document};
+    ASSERT_EQ(document.source_files().size(), 3);
+    EXPECT_EQ(document.source_files()[1].kind, lispb::schema::SchemaSourceKind::type_registry);
+    EXPECT_EQ(document.source_files()[2].kind, lispb::schema::SchemaSourceKind::module);
+    auto const source{document.registered_type_source("signed_byte")};
+    ASSERT_TRUE(source.has_value());
+    EXPECT_EQ(source->source_file_index, 1);
+    EXPECT_EQ(source->line, 2);
+    auto const record{*document.types().find_declared("records", "ExistingRecord")};
+    auto const id{*document.find_declaration(document.types().type(record).identity)};
+    ASSERT_TRUE(
+        document.apply(lispb::schema::RenameDeclaration{.declaration = id, .new_name = "Renamed"})
+            .has_value());
+    ASSERT_TRUE(document.undo().has_value());
+    ASSERT_TRUE(document.redo().has_value());
+    auto const saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    EXPECT_EQ(files.read("schema/types.lispb"), registry);
+    EXPECT_EQ(files.read("schema/common/scalars.lispb"), common);
+    EXPECT_TRUE(document.types().find_declared("records", "Renamed").has_value());
+    ASSERT_NE(lispb::schema::integer_domain(
+                  document.types().type(*document.types().find_registered("signed_byte"))),
+              nullptr);
+
+    auto const cloned{clone_lispb_schema(document, files.path("copy.lispb"), "test-schema")};
+    ASSERT_TRUE(cloned.loaded) << diagnostic_text(cloned);
+    ASSERT_TRUE(cloned.document.has_value());
+    EXPECT_EQ(cloned.document->source_files().size(), 3);
+    EXPECT_EQ(cloned.document->manifest().modules.size(), document.manifest().modules.size());
+    auto const cloned_source{cloned.document->registered_type_source("signed_byte")};
+    ASSERT_TRUE(cloned_source.has_value());
+    EXPECT_NE(cloned.document->source_files()[cloned_source->source_file_index].path,
+              document.source_files()[source->source_file_index].path);
+    files.write_source("schema/common/scalars.lispb", "(invalid original registry)");
+    auto const independent{load_lispb_schema(files.path("copy.lispb"), "test-schema")};
+    EXPECT_TRUE(independent.loaded) << diagnostic_text(independent);
+}
+
+TEST(SchemaLoader, ExternalScalarRepresentationsAnalyzeWithoutInventingAbiFacts) {
+    TemporarySchemaProject files;
+    files.write_source("schema/types.lispb", R"(
+      (type index :spelling "NativeIndex" (integer :signed false :bit-width 8 :maximum 254
+        (code invalid :value 255 :sentinel true)))
+      (type real :spelling "double" (floating-point :format ieee754-binary64)))");
+    files.write_source("schema/modules.lispb", R"((module reps :header "Reps.h"
+      (linear-quantized Q :source @index :bits 4)
+      (integer-varint V :source @index :encoding unsigned)
+      (optional-sentinel S :source @index :sentinel invalid)
+      (optional-presence-bit P :source @index)
+      (record Values (member value @index))))");
+    auto const loaded{load_lispb_schema(files.path("project.lispb"), "test-schema")};
+    ASSERT_TRUE(loaded.loaded) << diagnostic_text(loaded);
+    auto const& types{loaded.document->types()};
+    auto const source{*types.find_registered("index")};
+    auto const capabilities{declaration_capabilities(types.type(source))};
+    EXPECT_EQ(capabilities.kind, DeclarationKind::external);
+    EXPECT_TRUE(capabilities.inspectable);
+    EXPECT_FALSE(capabilities.editable);
+    EXPECT_FALSE(capabilities.supports_variant_overrides);
+    EXPECT_EQ(integer_source_reference(types.type(source)), "@index");
+    EXPECT_THROW(Analyzer::analyze_integer_scalar(types, *types.find_registered("real")),
+                 std::invalid_argument);
+    auto const q{Analyzer::analyze_linear_quantized(types, *types.find_declared("reps", "Q"))};
+    EXPECT_EQ(q.source_minimum, codegen::PackedIntegerValue{0});
+    EXPECT_EQ(q.source_maximum, codegen::PackedIntegerValue{254});
+    EXPECT_EQ(q.encoded_storage_bits, 4);
+    auto const v{Analyzer::analyze_integer_varint(types, *types.find_declared("reps", "V"))};
+    EXPECT_EQ(v.minimum_encoded_bytes, 1);
+    EXPECT_EQ(v.maximum_encoded_bytes, 2);
+    auto const s{Analyzer::analyze_optional_sentinel(types, *types.find_declared("reps", "S"))};
+    EXPECT_EQ(s.sentinel_value, codegen::PackedIntegerValue{255});
+    EXPECT_EQ(s.encoded_storage_bits, 8);
+    auto const p{Analyzer::analyze_optional_presence_bit(types, *types.find_declared("reps", "P"))};
+    EXPECT_EQ(p.encoded_storage_bits, 9);
+    auto const record{*types.find_declared("reps", "Values")};
+    PlannerAnalysisSession session{types};
+    session.inputs.selection.select_type(types, record);
+    session.refresh(&*loaded.document);
+    ASSERT_TRUE(session.results().record_analysis.has_value());
+    EXPECT_FALSE(session.results().record_analysis->size_bytes.has_value());
+    session.inputs.selection.select_type(types, source);
+    session.refresh(&*loaded.document);
+    EXPECT_FALSE(session.results().record_analysis.has_value());
+    EXPECT_FALSE(session.primary_abi().find("NativeIndex").has_value());
+    EXPECT_EQ(lispb::schema::integer_domain(types.type(source))->bit_width, 8);
+}
 
 TEST(SchemaLoader, LoadsSemanticEnumsPackedValuesAndSoas) {
     auto const project_path{std::filesystem::path{SANDBOX_SOURCE_DIR} / "lispb/project.lispb"};

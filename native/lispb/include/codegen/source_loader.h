@@ -7,6 +7,35 @@
 
 namespace codegen {
 
+struct RegistrySourceRange {
+    std::size_t source_file_index{};
+    std::size_t begin_offset{};
+    std::size_t end_offset{};
+    std::size_t line{1};
+    std::size_t column{1};
+};
+
+struct RegistryInclude {
+    RegistrySourceRange source_range;
+    std::filesystem::path target;
+};
+
+struct RegistrySourceFile {
+    std::filesystem::path path;
+    std::string text;
+    std::vector<RegistryInclude> includes;
+};
+
+struct LoadedTypeRegistry {
+    TypeRegistry types;
+    std::vector<RegistrySourceFile> sources;
+    std::map<std::string, RegistrySourceRange, std::less<>> declarations;
+};
+
+auto load_type_registry(std::filesystem::path const& path) -> LoadedTypeRegistry;
+auto load_sources(LoadedTypeRegistry const& registry,
+                  std::span<std::filesystem::path const> modules) -> Manifest;
+
 auto load_sources(std::filesystem::path const& types,
                   std::span<std::filesystem::path const> modules) -> Manifest;
 

@@ -7,6 +7,8 @@
 #include <array>
 #include <cstdint>
 #include <fstream>
+#include <limits>
+#include <set>
 #include <span>
 #include <stdexcept>
 #include <string_view>
@@ -1403,9 +1405,44 @@ auto parse_module(Form const& form) -> ModuleSchema {
     fail(form.token.span, "unknown module declaration '" + std::string{head} + "'");
 }
 
-auto parse_type_definition(Form const& form) -> std::pair<std::string, CppType> {
+auto parse_external_integer(Form const& form) -> ExternalIntegerSchema {
+    Fields const fields{form, "integer", 0};
+    fields.validate({"signed", "bit-width", "minimum", "maximum"}, {"code"});
+    auto const width{integer(fields.required("bit-width"), "external integer bit width")};
+    if (width < 1 || width > 64) {
+        fail(form.token.span, "external integer bit width must be in the range 1..64");
+    }
+    auto const signedness{boolean(fields.required("signed"), "external integer signedness")};
+    auto const magnitude{std::uint64_t{1} << (width - 1)};
+    auto const maximum{signedness    ? magnitude - 1
+                       : width == 64 ? (std::numeric_limits<std::uint64_t>::max)()
+                                     : (std::uint64_t{1} << width) - 1};
+    ExternalIntegerSchema result{.signedness = signedness,
+                                 .minimum_value =
+                                     signedness ? PackedIntegerValue::from_parts(true, magnitude)
+                                                : PackedIntegerValue{0},
+                                 .maximum_value = PackedIntegerValue{maximum},
+                                 .bit_width = static_cast<std::uint32_t>(width)};
+    if (auto const* minimum{fields.optional("minimum")}) {
+        result.minimum_value = packed_integer(*minimum, "external integer minimum");
+    }
+    if (auto const* maximum_form{fields.optional("maximum")}) {
+        result.maximum_value = packed_integer(*maximum_form, "external integer maximum");
+    }
+    for (auto const* declaration : fields.declarations()) {
+        Fields const code{*declaration, "code", 1};
+        code.validate({"value", "sentinel"});
+        result.named_codes.push_back({.name = text(code.positional(0), "code name"),
+                                      .value = packed_integer(code.required("value"), "code value"),
+                                      .sentinel = boolean_or(code, "sentinel")});
+    }
+    return result;
+}
+
+auto parse_type_definition(Form const& form) -> std::pair<std::string, RegisteredTypeSchema> {
     Fields const fields{form, "type", 1};
-    fields.validate({"spelling", "header", "pass-by"}, {"operation"});
+    fields.validate({"spelling", "header", "pass-by"}, {"operation", "integer", "floating-point"});
+    ExternalScalarSchema semantics;
     auto type{CppType{text(fields.required("spelling"), "type spelling")}};
     if (auto const* pass_by{fields.optional("pass-by")}) {
         type.parameter_passing = parse_parameter_passing(*pass_by);
@@ -1414,6 +1451,29 @@ auto parse_type_definition(Form const& form) -> std::pair<std::string, CppType> 
         type.dependencies.push_back(TypeDependency{type.spelling, std::move(*header), {}});
     }
     for (auto const* declaration : fields.declarations()) {
+        if (declaration->head() != "operation") {
+            if (!std::holds_alternative<std::monostate>(semantics)) {
+                fail(declaration->token.span, "type may have only one scalar description");
+            }
+            if (declaration->head() == "integer") {
+                semantics = parse_external_integer(*declaration);
+            } else {
+                Fields const floating{*declaration, "floating-point", 0};
+                floating.validate({"format"});
+                auto const format{text(floating.required("format"), "floating-point format")};
+                if (format == "ieee754-binary16") {
+                    semantics = FloatingPointFormat::ieee754_binary16;
+                } else if (format == "ieee754-binary32") {
+                    semantics = FloatingPointFormat::ieee754_binary32;
+                } else if (format == "ieee754-binary64") {
+                    semantics = FloatingPointFormat::ieee754_binary64;
+                } else {
+                    fail(declaration->token.span,
+                         "unsupported floating-point format '" + format + "'");
+                }
+            }
+            continue;
+        }
         Fields const operation{*declaration, "operation", 2};
         operation.validate({"pass-by"});
         auto const operation_name{text(operation.positional(0), "type operation")};
@@ -1444,33 +1504,78 @@ auto parse_type_definition(Form const& form) -> std::pair<std::string, CppType> 
                  "remove-at-swap does not accept ':pass-by'");
         }
     }
-    return {text(fields.positional(0), "type name"), std::move(type)};
-}
-
-auto load_types(std::filesystem::path const& path) -> std::map<std::string, CppType> {
-    auto const forms{read_document(path)};
-    std::map<std::string, CppType> result;
-    for (auto const& form : forms) {
-        auto [name, type]{parse_type_definition(form)};
-        if (!result.emplace(name, std::move(type)).second) {
-            fail(form.token.span, "duplicate type definition '" + name + "'");
-        }
-    }
-    return result;
+    return {text(fields.positional(0), "type name"),
+            {.cpp_type = std::move(type), .semantics = std::move(semantics)}};
 }
 
 } // namespace
 
+auto load_type_registry(std::filesystem::path const& root) -> LoadedTypeRegistry {
+    LoadedTypeRegistry result;
+    std::set<std::filesystem::path> loaded;
+    std::set<std::filesystem::path> active;
+    auto load = [&](auto&& self, std::filesystem::path const& source_path) -> void {
+        auto const path{std::filesystem::weakly_canonical(source_path)};
+        if (active.contains(path)) {
+            throw ManifestError{"Cyclic type registry include: " + path.string()};
+        }
+        if (!loaded.insert(path).second) {
+            return;
+        }
+        active.insert(path);
+        auto const index{result.sources.size()};
+        auto source{read_file(path)};
+        auto const forms{sexpr::read_forms(path.string(), source)};
+        result.sources.push_back({.path = path, .text = std::move(source)});
+        for (auto const& form : forms) {
+            RegistrySourceRange const range{index,
+                                            form.token.span.offset,
+                                            form.closing.span.offset + 1,
+                                            form.token.span.line,
+                                            form.token.span.column};
+            if (form.head() == "include") {
+                Fields const include{form, "include", 1};
+                include.validate({});
+                auto const target{std::filesystem::weakly_canonical(
+                    path.parent_path() / text(include.positional(0), "include path"))};
+                result.sources[index].includes.push_back({range, target});
+                try {
+                    self(self, target);
+                } catch (std::exception const& error) {
+                    fail(form.token.span, error.what());
+                }
+                continue;
+            }
+            auto [name, type]{parse_type_definition(form)};
+            if (!result.types.emplace(name, std::move(type)).second) {
+                fail(form.token.span, "duplicate type definition '" + name + "'");
+            }
+            result.declarations.emplace(std::move(name), range);
+        }
+        active.erase(path);
+    };
+    try {
+        load(load, root);
+    } catch (sexpr::SourceError const& error) {
+        throw ManifestError{error.what()};
+    }
+    return result;
+}
+
 auto load_sources(std::filesystem::path const& types_path,
                   std::span<std::filesystem::path const> const module_paths) -> Manifest {
-    auto types{load_types(types_path)};
+    return load_sources(load_type_registry(types_path), module_paths);
+}
+
+auto load_sources(LoadedTypeRegistry const& registry,
+                  std::span<std::filesystem::path const> const module_paths) -> Manifest {
     std::vector<ModuleSchema> modules;
     for (auto const& module_path : module_paths) {
         for (auto const& form : read_document(module_path)) {
             modules.push_back(parse_module(form));
         }
     }
-    return Manifest{manifest_schema_version, std::move(types), std::move(modules)};
+    return Manifest{manifest_schema_version, registry.types, std::move(modules)};
 }
 
 } // namespace codegen

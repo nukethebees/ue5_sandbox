@@ -147,8 +147,7 @@ void add_compact_function(NodeListBuilder& nodes,
               trailing_new_lines);
 }
 
-auto fixed_container_prelude_nodes(SoaSchema const& schema,
-                                   std::map<std::string, CppType> const& types) -> Nodes {
+auto fixed_container_prelude_nodes(SoaSchema const& schema, TypeRegistry const& types) -> Nodes {
     NodeListBuilder result;
     result.add(UsingDeclaration{"size_type", CppType{"int32"}}, 1)
         .add(UsingDeclaration{"View", CppType{schema.view_name.value_or(schema.name + "View")}}, 1)
@@ -454,8 +453,7 @@ auto fixed_container_access_nodes(SoaSchema const& schema) -> Nodes {
     return result.build();
 }
 
-auto fixed_container_set_nodes(SoaSchema const& schema, std::map<std::string, CppType> const& types)
-    -> Nodes {
+auto fixed_container_set_nodes(SoaSchema const& schema, TypeRegistry const& types) -> Nodes {
     auto const members{resolve_members(schema, types)};
     std::vector<FunctionSpec> setters;
     if (auto set{soa_set_spec(schema, members, false)}; set.has_value()) {
@@ -706,7 +704,7 @@ auto fixed_container_dependencies(FixedLayout const& layout) -> std::vector<Type
 
 auto fixed_container_node(FixedLayout const& layout,
                           std::string const& name,
-                          std::map<std::string, CppType> const& types) -> Node {
+                          TypeRegistry const& types) -> Node {
     auto const& schema{*layout.schema};
     NodeListBuilder children;
     children.append(fixed_container_prelude_nodes(schema, types))

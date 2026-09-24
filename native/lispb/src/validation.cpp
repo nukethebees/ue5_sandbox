@@ -257,9 +257,7 @@ void require_unique_names(std::vector<std::string> const& names, std::string con
     }
 }
 
-void validate_type(TypeRef const& type,
-                   std::map<std::string, CppType> const& types,
-                   std::string const& context) {
+void validate_type(TypeRef const& type, TypeRegistry const& types, std::string const& context) {
     require_value(type.name, context + " type");
     if (type.nested.has_value()) {
         require_value(*type.nested, context + " nested type");
@@ -268,7 +266,7 @@ void validate_type(TypeRef const& type,
 }
 
 void validate_semantic_relation(SemanticRelationSchema const& relationship,
-                                std::map<std::string, CppType> const& types,
+                                TypeRegistry const& types,
                                 std::string const& context) {
     validate_type(relationship.target, types, context);
     auto const offset_relation{relationship.kind == SemanticRelationKind::offset_into};
@@ -297,17 +295,17 @@ void validate_export_specifier(std::optional<std::string> const& value,
 }
 
 void validate_dependency(std::string const& key,
-                         std::map<std::string, CppType> const& types,
+                         TypeRegistry const& types,
                          std::string const& context) {
     require_non_blank_value(key, context + " dependency");
     auto const found{types.find(key)};
-    if (found == types.end() || found->second.dependencies.empty()) {
+    if (found == types.end() || found->second.cpp_type.dependencies.empty()) {
         throw std::invalid_argument{context + " has unknown dependency: " + key};
     }
 }
 
 auto parameter_type_names(std::vector<ParameterSchema> const& parameters,
-                          std::map<std::string, CppType> const& types,
+                          TypeRegistry const& types,
                           std::string const& context) -> std::vector<std::string> {
     std::vector<std::string> names;
     std::vector<std::string> type_names;
@@ -391,7 +389,7 @@ auto enum_code_fits(lispb::schema::EnumCode const code, EnumStorageDomain const 
 
 void validate_enum(EnumSchema const& schema,
                    NormalModuleSchema const& module,
-                   std::map<std::string, CppType> const& types) {
+                   TypeRegistry const& types) {
     require_identifier(schema.name, "Enum name");
 
     auto const domain{lispb::schema::analyze_enum_domain(schema)};
@@ -575,7 +573,7 @@ void validate_enum(EnumSchema const& schema,
 }
 
 void validate_packed_value(PackedValueSchema const& value,
-                           std::map<std::string, CppType> const& types,
+                           TypeRegistry const& types,
                            std::vector<ModuleSchema> const& modules) {
     auto const context{"Packed value '" + value.name + "'"};
     require_identifier(value.name, "Packed value name");
@@ -619,8 +617,8 @@ void validate_packed_value(PackedValueSchema const& value,
             throw std::invalid_argument{context + " has duplicate segment name: " + segment_name};
         }
         auto const* field{std::get_if<PackedFieldSchema>(&segment)};
-        auto const* scalar{field != nullptr ? find_integer_scalar(field->type, types, modules)
-                                            : nullptr};
+        auto const scalar{field != nullptr ? find_packed_integer_domain(*field, types, modules)
+                                           : std::nullopt};
         auto const* quantized{field != nullptr ? find_linear_quantized(field->type, types, modules)
                                                : nullptr};
         auto const* fixed{field != nullptr ? find_fixed_point(field->type, types, modules)
@@ -629,7 +627,7 @@ void validate_packed_value(PackedValueSchema const& value,
         auto const segment_bits{field != nullptr ? derive_packed_field_width(*field, types, modules)
                                                  : packed_segment_bits(segment)};
         if (!segment_bits.has_value()) {
-            if (scalar != nullptr) {
+            if (scalar.has_value()) {
                 throw std::invalid_argument{
                     segment_context +
                     " integer-scalar domain does not fit the supported 1-64-bit range"};
@@ -717,12 +715,12 @@ void validate_packed_value(PackedValueSchema const& value,
         }
 
         auto const field_type{resolve_type(field->type, types)};
-        if ((scalar != nullptr || quantized != nullptr || fixed != nullptr || mini != nullptr) &&
+        if ((scalar.has_value() || quantized != nullptr || fixed != nullptr || mini != nullptr) &&
             (field->minimum_value.has_value() || field->maximum_value.has_value() ||
              !field->named_codes.empty())) {
             throw std::invalid_argument{
                 field_context +
-                (scalar != nullptr ? " integer-scalar type owns its semantic range and named codes"
+                (scalar.has_value() ? " integer-scalar type owns its semantic range and named codes"
                  : quantized != nullptr
                      ? " linear-quantized representation owns its semantic domain and code "
                        "space"
@@ -789,7 +787,7 @@ void validate_packed_value(PackedValueSchema const& value,
             throw std::invalid_argument{
                 field_context +
                 " ':kind mini-float' type must resolve to a mini-float representation"};
-        } else if (scalar != nullptr) {
+        } else if (scalar.has_value()) {
             auto const expected_kind{scalar->signedness ? PackedFieldKind::signed_integer
                                                         : PackedFieldKind::unsigned_integer};
             if (field->kind != expected_kind) {
@@ -872,7 +870,7 @@ void validate_packed_value(PackedValueSchema const& value,
             throw std::invalid_argument{field_context +
                                         " range helper requires an unsigned integer field"};
         }
-        if (scalar == nullptr && quantized == nullptr && fixed == nullptr) {
+        if (!scalar.has_value() && quantized == nullptr && fixed == nullptr) {
             if (field->minimum_value.has_value() != field->maximum_value.has_value()) {
                 throw std::invalid_argument{field_context +
                                             " semantic range requires both minimum and maximum"};
@@ -995,7 +993,7 @@ void validate_packed_value(PackedValueSchema const& value,
         if (field->range_helper) {
             names.push_back(field->name + "_range_fits");
         }
-        auto const& generated_codes{scalar != nullptr ? scalar->named_codes : field->named_codes};
+        auto const& generated_codes{scalar.has_value() ? scalar->named_codes : field->named_codes};
         for (auto const& code : generated_codes) {
             names.push_back(field->name + "_" + code.name);
         }
@@ -1008,7 +1006,7 @@ void validate_packed_value(PackedValueSchema const& value,
     }
 }
 
-void validate_record(RecordSchema const& record, std::map<std::string, CppType> const& types) {
+void validate_record(RecordSchema const& record, TypeRegistry const& types) {
     require_identifier(record.name, "Record name");
     validate_export_specifier(record.export_specifier,
                               "Record '" + record.name + "' export specifier");
@@ -1029,7 +1027,7 @@ void validate_record(RecordSchema const& record, std::map<std::string, CppType> 
     require_unique_names(member_names, "Record '" + record.name + "' members");
 }
 
-void validate_union(UnionSchema const& schema, std::map<std::string, CppType> const& types) {
+void validate_union(UnionSchema const& schema, TypeRegistry const& types) {
     require_identifier(schema.name, "Union name");
     validate_export_specifier(schema.export_specifier,
                               "Union '" + schema.name + "' export specifier");
@@ -1050,8 +1048,7 @@ void validate_union(UnionSchema const& schema, std::map<std::string, CppType> co
     require_unique_names(alternative_names, "Union '" + schema.name + "' alternatives");
 }
 
-void validate_tagged_union(TaggedUnionSchema const& schema,
-                           std::map<std::string, CppType> const& types) {
+void validate_tagged_union(TaggedUnionSchema const& schema, TypeRegistry const& types) {
     require_identifier(schema.name, "Tagged union name");
     validate_export_specifier(schema.export_specifier,
                               "Tagged union '" + schema.name + "' export specifier");
@@ -1079,30 +1076,13 @@ void validate_tagged_union(TaggedUnionSchema const& schema,
     require_unique_names(tags, "Tagged union '" + schema.name + "' tags");
 }
 
-void validate_integer_scalar(IntegerScalarSchema const& scalar,
-                             std::map<std::string, CppType> const& types) {
-    auto const context{"Integer scalar '" + scalar.name + "'"};
-    require_identifier(scalar.name, "Integer scalar name");
-
+void validate_integer_domain(IntegerDomainView const& scalar, std::string const& context) {
     if (packed_integer_less(scalar.maximum_value, scalar.minimum_value)) {
         throw std::invalid_argument{context + " minimum exceeds maximum"};
     }
     if (!scalar.signedness && scalar.minimum_value.negative) {
         throw std::invalid_argument{context + " unsigned domain contains a negative value"};
     }
-    if (scalar.relationship.has_value()) {
-        validate_semantic_relation(*scalar.relationship, types, context + " relationship");
-        auto const relation_kind{scalar.relationship->kind};
-        auto const requires_unsigned{relation_kind == SemanticRelationKind::index_into ||
-                                     relation_kind == SemanticRelationKind::count_of ||
-                                     relation_kind == SemanticRelationKind::offset_into};
-        if (requires_unsigned && scalar.signedness) {
-            throw std::invalid_argument{context + " relationship '" +
-                                        std::string{semantic_relation_kind_name(relation_kind)} +
-                                        "' requires an unsigned integer scalar"};
-        }
-    }
-
     auto required_minimum{scalar.minimum_value};
     auto required_maximum{scalar.maximum_value};
     std::set<std::string> code_names;
@@ -1148,6 +1128,36 @@ void validate_integer_scalar(IntegerScalarSchema const& scalar,
                                     "-bit width is smaller than the required " +
                                     std::to_string(*minimum_bits) + " bits"};
     }
+}
+
+void validate_integer_scalar(IntegerScalarSchema const& scalar, TypeRegistry const& types) {
+    auto const context{"Integer scalar '" + scalar.name + "'"};
+    require_identifier(scalar.name, "Integer scalar name");
+
+    validate_integer_domain(integer_domain(scalar), context);
+    if (scalar.relationship.has_value()) {
+        validate_semantic_relation(*scalar.relationship, types, context + " relationship");
+        auto const relation_kind{scalar.relationship->kind};
+        auto const requires_unsigned{relation_kind == SemanticRelationKind::index_into ||
+                                     relation_kind == SemanticRelationKind::count_of ||
+                                     relation_kind == SemanticRelationKind::offset_into};
+        if (requires_unsigned && scalar.signedness) {
+            throw std::invalid_argument{context + " relationship '" +
+                                        std::string{semantic_relation_kind_name(relation_kind)} +
+                                        "' requires an unsigned integer scalar"};
+        }
+    }
+
+    auto required_minimum{scalar.minimum_value};
+    auto required_maximum{scalar.maximum_value};
+    for (auto const& code : scalar.named_codes) {
+        if (packed_integer_less(code.value, required_minimum)) {
+            required_minimum = code.value;
+        }
+        if (packed_integer_less(required_maximum, code.value)) {
+            required_maximum = code.value;
+        }
+    }
 
     if (scalar.cpp_emission == IntegerScalarCppEmission::none) {
         if (scalar.cpp_type.has_value()) {
@@ -1183,17 +1193,16 @@ void validate_integer_scalar(IntegerScalarSchema const& scalar,
 
 void validate_linear_quantized(LinearQuantizedSchema const& representation,
                                NormalModuleSchema const& module,
-                               std::map<std::string, CppType> const& types,
+                               TypeRegistry const& types,
                                std::vector<ModuleSchema> const& modules) {
     auto const context{"Linear quantization '" + representation.name + "'"};
     require_identifier(representation.name, "Linear quantization name");
 
     validate_type(representation.source, types, context + " source");
-    auto const* source{
-        find_integer_scalar(representation.source, types, modules, module.settings.name)};
-    if (source == nullptr) {
-        throw std::invalid_argument{context +
-                                    " source must resolve to an integer-scalar declaration"};
+    auto const source{
+        find_integer_domain(representation.source, types, modules, module.settings.name)};
+    if (!source.has_value()) {
+        throw std::invalid_argument{context + " source must have a declared integer domain"};
     }
     if (!packed_integer_less(source->minimum_value, source->maximum_value)) {
         throw std::invalid_argument{context +
@@ -1214,17 +1223,16 @@ void validate_linear_quantized(LinearQuantizedSchema const& representation,
 
 void validate_integer_varint(IntegerVarintSchema const& representation,
                              NormalModuleSchema const& module,
-                             std::map<std::string, CppType> const& types,
+                             TypeRegistry const& types,
                              std::vector<ModuleSchema> const& modules) {
     auto const context{"Integer varint '" + representation.name + "'"};
     require_identifier(representation.name, "Integer varint name");
 
     validate_type(representation.source, types, context + " source");
-    auto const* source{
-        find_integer_scalar(representation.source, types, modules, module.settings.name)};
-    if (source == nullptr) {
-        throw std::invalid_argument{context +
-                                    " source must resolve to an integer-scalar declaration"};
+    auto const source{
+        find_integer_domain(representation.source, types, modules, module.settings.name)};
+    if (!source.has_value()) {
+        throw std::invalid_argument{context + " source must have a declared integer domain"};
     }
     if (representation.encoding == IntegerVarintEncoding::unsigned_varint && source->signedness) {
         throw std::invalid_argument{context + " unsigned encoding requires an unsigned source"};
@@ -1306,17 +1314,16 @@ void validate_mini_float(MiniFloatSchema const& representation) {
 
 void validate_optional_sentinel(OptionalSentinelSchema const& representation,
                                 NormalModuleSchema const& module,
-                                std::map<std::string, CppType> const& types,
+                                TypeRegistry const& types,
                                 std::vector<ModuleSchema> const& modules) {
     auto const context{"Optional sentinel representation '" + representation.name + "'"};
     require_identifier(representation.name, "Optional sentinel representation name");
 
     validate_type(representation.source, types, context + " source");
-    auto const* source{
-        find_integer_scalar(representation.source, types, modules, module.settings.name)};
-    if (source == nullptr) {
-        throw std::invalid_argument{context +
-                                    " source must resolve to an integer-scalar declaration"};
+    auto const source{
+        find_integer_domain(representation.source, types, modules, module.settings.name)};
+    if (!source.has_value()) {
+        throw std::invalid_argument{context + " source must have a declared integer domain"};
     }
     require_identifier(representation.sentinel, context + " sentinel code");
     auto const code{std::ranges::find(
@@ -1336,22 +1343,21 @@ void validate_optional_sentinel(OptionalSentinelSchema const& representation,
 
 void validate_optional_presence_bit(OptionalPresenceBitSchema const& representation,
                                     NormalModuleSchema const& module,
-                                    std::map<std::string, CppType> const& types,
+                                    TypeRegistry const& types,
                                     std::vector<ModuleSchema> const& modules) {
     auto const context{"Optional presence-bit representation '" + representation.name + "'"};
     require_identifier(representation.name, "Optional presence-bit representation name");
 
     validate_type(representation.source, types, context + " source");
-    if (find_integer_scalar(representation.source, types, modules, module.settings.name) ==
-        nullptr) {
-        throw std::invalid_argument{context +
-                                    " source must resolve to an integer-scalar declaration"};
+    if (!find_integer_domain(representation.source, types, modules, module.settings.name)
+             .has_value()) {
+        throw std::invalid_argument{context + " source must have a declared integer domain"};
     }
 }
 
 void validate_soa(NormalModuleSchema const& module,
                   std::span<SoaSchema const> schemas,
-                  std::map<std::string, CppType> const& types) {
+                  TypeRegistry const& types) {
     for (auto const& schema : schemas) {
         require_identifier(schema.name, "SOA name");
         if (schema.view_name.has_value()) {
@@ -1615,8 +1621,7 @@ void validate_soa(NormalModuleSchema const& module,
     }
 }
 
-void validate_static_table(StaticTableSchema const& table,
-                           std::map<std::string, CppType> const& types) {
+void validate_static_table(StaticTableSchema const& table, TypeRegistry const& types) {
     require_identifier(table.name, "Static table name");
 
     validate_export_specifier(table.export_specifier,
@@ -1685,7 +1690,7 @@ void validate_static_table(StaticTableSchema const& table,
 
 void validate_homogeneous(HomogeneousLayoutSchema const& layout,
                           NormalModuleSchema const& module,
-                          std::map<std::string, CppType> const& types) {
+                          TypeRegistry const& types) {
     if (!module.settings.source.has_value()) {
         throw std::invalid_argument{"Homogeneous layout requires a source output: " + layout.name};
     }
@@ -1767,7 +1772,7 @@ void validate_homogeneous(HomogeneousLayoutSchema const& layout,
 void validate_vector(VectorSoaSchema const& schema,
                      ModuleSettings const& settings,
                      SoaBackend backend,
-                     std::map<std::string, CppType> const& types) {
+                     TypeRegistry const& types) {
     require_identifier(schema.name, "Vector storage name");
     if (schema.components.empty() || schema.components.size() > 3) {
         throw std::invalid_argument{"Vector SoA '" + schema.name +
@@ -1819,7 +1824,7 @@ void validate_vector(VectorSoaSchema const& schema,
 
 void validate_facade(FacadeSchema const& facade,
                      ModuleSettings const& settings,
-                     std::map<std::string, CppType> const& types) {
+                     TypeRegistry const& types) {
     require_identifier(facade.name, "Facade name");
     require_identifier(facade.target_member_name, "Facade '" + facade.name + "' target member");
     validate_type(facade.target_type, types, "Facade '" + facade.name + "' target");
@@ -1889,8 +1894,7 @@ void validate_facade(FacadeSchema const& facade,
     }
 }
 
-void validate_settings_module(SettingsModuleSchema const& module,
-                              std::map<std::string, CppType> const& types) {
+void validate_settings_module(SettingsModuleSchema const& module, TypeRegistry const& types) {
     auto const context{"Settings module '" + module.settings.name + "'"};
     if (!module.settings.source.has_value()) {
         throw std::invalid_argument{context + " must have a source output"};
@@ -2064,7 +2068,12 @@ void validate_manifest(Manifest const& manifest) {
     if (manifest.modules.empty()) {
         throw std::invalid_argument{"Manifest must contain at least one module"};
     }
-    for (auto const& [name, type] : manifest.types) {
+    for (auto const& [name, registered] : manifest.types) {
+        auto const& type{registered.cpp_type};
+        if (auto const* scalar{std::get_if<ExternalIntegerSchema>(&registered.semantics)}) {
+            validate_integer_domain(integer_domain(*scalar), "External integer '" + name + "'");
+        }
+        static_cast<void>(external_scalar_schema(manifest.types, type.spelling));
         require_value(name, "Type name");
         require_value(type.spelling, "Type '" + name + "' spelling");
         for (auto const& dependency : type.dependencies) {

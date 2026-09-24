@@ -31,8 +31,9 @@ auto static_table_module() -> NormalModuleSchema {
 auto render_static_table(NormalModuleSchema module) -> std::string {
     Manifest const manifest{
         .schema_version = manifest_schema_version,
-        .types = {{"value", CppType{"FValue", "Project/Value.h"}},
-                  {"point", CppType{"FPoint", "Project/Point.h"}}},
+        .types = {{"value", RegisteredTypeSchema{.cpp_type = CppType{"FValue", "Project/Value.h"}}},
+                  {"point",
+                   RegisteredTypeSchema{.cpp_type = CppType{"FPoint", "Project/Point.h"}}}},
         .modules = {std::move(module)},
     };
     auto const files{render_modules(lower_modules(manifest))};

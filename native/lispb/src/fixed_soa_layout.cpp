@@ -12,7 +12,7 @@ auto fixed_leaf_argument(FixedLeaf const& leaf) -> std::string {
 
 auto build_soa_layout(SoaSchema const& schema,
                       std::map<std::string, SoaSchema const*> const& schemas,
-                      std::map<std::string, CppType> const& types,
+                      TypeRegistry const& types,
                       bool const fixed,
                       std::vector<std::string> const& prefix,
                       std::set<std::string> ancestors) -> FixedLayout {
@@ -60,7 +60,7 @@ auto build_soa_layout(SoaSchema const& schema,
 
 auto build_fixed_layout(SoaSchema const& schema,
                         std::map<std::string, SoaSchema const*> const& schemas,
-                        std::map<std::string, CppType> const& types,
+                        TypeRegistry const& types,
                         std::vector<std::string> const& prefix,
                         std::set<std::string> ancestors) -> FixedLayout {
     return build_soa_layout(schema, schemas, types, true, prefix, std::move(ancestors));

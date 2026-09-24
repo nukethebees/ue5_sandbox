@@ -11,8 +11,41 @@
 
 namespace codegen {
 
-auto resolve_type(TypeRef const& reference, std::map<std::string, CppType> const& types)
-    -> CppType {
+auto integer_domain(IntegerScalarSchema const& scalar) -> IntegerDomainView {
+    return {scalar.signedness,
+            scalar.minimum_value,
+            scalar.maximum_value,
+            scalar.bit_width,
+            scalar.named_codes};
+}
+
+auto integer_domain(ExternalIntegerSchema const& scalar) -> IntegerDomainView {
+    return {scalar.signedness,
+            scalar.minimum_value,
+            scalar.maximum_value,
+            scalar.bit_width,
+            scalar.named_codes};
+}
+
+auto external_scalar_schema(TypeRegistry const& types, std::string const& spelling)
+    -> ExternalScalarSchema const* {
+    auto const normalized{native_spelling(spelling)};
+    ExternalScalarSchema const* result{};
+    for (auto const& [name, registered] : types) {
+        if (std::holds_alternative<std::monostate>(registered.semantics) ||
+            native_spelling(registered.cpp_type.spelling) != normalized) {
+            continue;
+        }
+        if (result != nullptr && *result != registered.semantics) {
+            throw std::invalid_argument{"Conflicting scalar descriptions for C++ type '" +
+                                        spelling + "'"};
+        }
+        result = &registered.semantics;
+    }
+    return result;
+}
+
+auto resolve_type(TypeRef const& reference, TypeRegistry const& types) -> CppType {
     CppType result;
     if (reference.name.starts_with('@')) {
         auto const key{reference.name.substr(1)};
@@ -20,7 +53,7 @@ auto resolve_type(TypeRef const& reference, std::map<std::string, CppType> const
         if (found == types.end()) {
             throw std::invalid_argument{"Unknown C++ type reference: " + reference.name};
         }
-        result = found->second;
+        result = found->second.cpp_type;
     } else {
         result = CppType{reference.name};
     }

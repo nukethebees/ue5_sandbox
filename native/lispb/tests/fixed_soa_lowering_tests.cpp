@@ -11,8 +11,7 @@
 namespace codegen {
 namespace {
 
-auto render_fixed(std::vector<SoaSchema> schemas, std::map<std::string, CppType> types = {})
-    -> std::string {
+auto render_fixed(std::vector<SoaSchema> schemas, TypeRegistry types = {}) -> std::string {
     auto const files{render_modules(lower_modules(Manifest{
         .schema_version = manifest_schema_version,
         .types = std::move(types),
@@ -50,8 +49,8 @@ auto parent_schema(std::vector<std::string> containers = {"TFixedRows"}) -> SoaS
     };
 }
 
-auto fixed_types() -> std::map<std::string, CppType> {
-    return {{"child", CppType{"FChild"}}};
+auto fixed_types() -> TypeRegistry {
+    return {{"child", RegisteredTypeSchema{.cpp_type = CppType{"FChild"}}}};
 }
 
 TEST(FixedSoaLowering, PreservesRecursiveLeafOrderAndNestedStorage) {

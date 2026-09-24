@@ -20,8 +20,7 @@ auto container_function(std::string spelling) -> Expr {
     return named(std::move(spelling), {std::move(dependency)});
 }
 
-auto function_spec(FunctionSchema const& schema, std::map<std::string, CppType> const& types)
-    -> FunctionSpec {
+auto function_spec(FunctionSchema const& schema, TypeRegistry const& types) -> FunctionSpec {
     std::vector<FunctionParameter> parameters;
     for (auto const& parameter : schema.parameters) {
         auto resolved{resolve_type(parameter.type, types)};
@@ -101,8 +100,7 @@ auto explicit_remove_at_swap_body(std::vector<ResolvedMember> const& members) ->
 
 } // namespace
 
-auto soa_function_spec(FunctionSchema const& schema, std::map<std::string, CppType> const& types)
-    -> FunctionSpec {
+auto soa_function_spec(FunctionSchema const& schema, TypeRegistry const& types) -> FunctionSpec {
     return function_spec(schema, types);
 }
 
@@ -380,7 +378,7 @@ auto soa_storage_node(SoaSchema const& schema,
                       std::vector<ResolvedMember> const& members,
                       std::string const& view_name,
                       std::string const& const_view_name,
-                      std::map<std::string, CppType> const& types,
+                      TypeRegistry const& types,
                       std::vector<FunctionSpec>& custom_source,
                       Nodes storage_prelude) -> Node {
     NodeListBuilder nodes;

@@ -42,6 +42,8 @@ struct DeclarationCapabilities {
 
 enum class LayoutStatus { available, unknown, error };
 
+auto integer_source_reference(lispb::schema::TypeNode const& node) -> std::string;
+
 auto declaration_capabilities(lispb::schema::TypeNode const& node) -> DeclarationCapabilities;
 auto declaration_capabilities(codegen::DeclarationSchema const& declaration)
     -> DeclarationCapabilities;

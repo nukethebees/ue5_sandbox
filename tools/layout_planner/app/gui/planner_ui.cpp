@@ -2012,8 +2012,7 @@ auto PlannerUi::apply_document_edit(SchemaEditCommand command,
 void PlannerUi::sync_document_graph(std::optional<TypeIdentity> selection) {
     std::erase_if(varint_distributions_, [&](auto const& entry) {
         auto const type{document_->types().find(entry.first)};
-        return !type.has_value() || !std::holds_alternative<IntegerScalarType>(
-                                        document_->types().type(*type).definition);
+        return !type.has_value() || integer_domain(document_->types().type(*type)) == nullptr;
     });
     analysis_session_.replace_types(*document_, selection);
     invalidate_type_editor_state();

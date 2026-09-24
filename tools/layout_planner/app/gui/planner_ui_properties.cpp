@@ -78,10 +78,10 @@ auto PlannerUi::draw_type_picker(std::string_view const module_name, TypeIdentit
     }
     if (detail::section("Registered semantic types")) {
         auto const owner_type{analysis_session_.inputs.workspace.types().find(owner)};
-        for (auto const& [name, cpp_type] : document_->manifest().types) {
+        for (auto const& [name, registered] : document_->manifest().types) {
             auto const type{analysis_session_.inputs.workspace.types().find_registered(name)};
             if (type.has_value() && type != owner_type) {
-                draw_candidate("@" + name, cpp_type.spelling);
+                draw_candidate("@" + name, registered.cpp_type.spelling);
             }
         }
     }
@@ -1215,9 +1215,64 @@ void PlannerUi::draw_properties_panel() {
                 ImGui::TextUnformatted("Registered as");
                 for (auto const& name : external->registered_names) {
                     ImGui::BulletText("@%s", name.c_str());
+                    if (document_.has_value()) {
+                        if (auto const source{document_->registered_type_source(name)}) {
+                            auto const& path{
+                                document_->source_files()[source->source_file_index].path};
+                            ImGui::TextWrapped("Source: %s:%llu",
+                                               path.string().c_str(),
+                                               static_cast<unsigned long long>(source->line));
+                            ImGui::PushID(name.c_str());
+                            if (ImGui::SmallButton("View source")) {
+                                selected_source_view_path_ = path.lexically_normal();
+                                source_view_open_ = true;
+                                focus_source_view_ = true;
+                            }
+                            ImGui::PopID();
+                        }
+                    }
                 }
             }
-            ImGui::TextDisabled("Internal structure is not declared in LispB.");
+            if (auto const* scalar{integer_domain(node)}) {
+                ImGui::Text("Integer domain: %s, %u bits",
+                            scalar->signedness ? "signed" : "unsigned",
+                            scalar->bit_width);
+                ImGui::Text("Live range: %s .. %s",
+                            codegen::format_packed_integer(scalar->minimum_value).c_str(),
+                            codegen::format_packed_integer(scalar->maximum_value).c_str());
+                for (auto const& code : scalar->named_codes) {
+                    ImGui::BulletText("%s = %s%s",
+                                      code.name.c_str(),
+                                      codegen::format_packed_integer(code.value).c_str(),
+                                      code.sentinel ? " [sentinel]" : "");
+                }
+            } else if (auto const* format{
+                           std::get_if<codegen::FloatingPointFormat>(&external->semantics)}) {
+                auto const info{codegen::floating_point_format_info(*format)};
+                ImGui::Text("Floating-point format: %s",
+                            codegen::floating_point_format_name(*format).data());
+                ImGui::Text("Precision: %u binary digits", info.fraction_bits + 1);
+                ImGui::Text("Sign / exponent / fraction: 1 / %u / %u bits",
+                            info.exponent_bits,
+                            info.fraction_bits);
+                ImGui::Text("Normal exponent range: %d .. %d",
+                            1 - info.exponent_bias,
+                            static_cast<int>((std::uint32_t{1} << info.exponent_bits) - 2) -
+                                info.exponent_bias);
+                ImGui::TextUnformatted("Supports signed zero, subnormal values, infinity and NaN.");
+            } else {
+                ImGui::TextDisabled("Scalar semantics are not declared in LispB.");
+            }
+            ImGui::SeparatorText("Target ABI facts");
+            if (auto const facts{analysis_session_.primary_abi().find(
+                    codegen::native_spelling(external->cpp_type.spelling))}) {
+                ImGui::Text("Size: %llu bytes; alignment: %llu bytes",
+                            static_cast<unsigned long long>(facts->size_bytes),
+                            static_cast<unsigned long long>(facts->alignment_bytes));
+                ImGui::TextWrapped("Source: %s", facts->provenance.c_str());
+            } else {
+                ImGui::TextUnformatted("Physical size and alignment are unknown for this target.");
+            }
         }
     } else {
         if (auto const* packed{std::get_if<PackedType>(&node.definition)}) {

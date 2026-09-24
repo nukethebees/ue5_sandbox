@@ -79,39 +79,64 @@ auto packed_signed_width(std::string_view const spelling) -> std::optional<int> 
 }
 
 auto find_packed_enum(TypeRef const& type,
-                      std::map<std::string, CppType> const& types,
+                      TypeRegistry const& types,
                       std::vector<ModuleSchema> const& modules) -> EnumSchema const* {
     return find_normal<EnumSchema>(resolve_type(type, types).spelling, modules);
 }
 
-auto find_integer_scalar(TypeRef const& type,
-                         std::map<std::string, CppType> const& types,
+auto find_integer_domain(TypeRef const& type,
+                         TypeRegistry const& types,
                          std::vector<ModuleSchema> const& modules,
-                         std::string_view const module_name) -> IntegerScalarSchema const* {
-    return find_normal<IntegerScalarSchema>(
-        resolve_type(type, types).spelling, modules, module_name);
+                         std::string_view const module_name) -> std::optional<IntegerDomainView> {
+    if (!type.suffix.empty() || type.nested.has_value()) {
+        return std::nullopt;
+    }
+    auto const spelling{resolve_type(type, types).spelling};
+    if (auto const* scalar{find_normal<IntegerScalarSchema>(spelling, modules, module_name)}) {
+        return integer_domain(*scalar);
+    }
+    if (auto const* semantics{external_scalar_schema(types, spelling)}) {
+        if (auto const* scalar{std::get_if<ExternalIntegerSchema>(semantics)}) {
+            return integer_domain(*scalar);
+        }
+    }
+    return std::nullopt;
 }
 
 auto find_linear_quantized(TypeRef const& type,
-                           std::map<std::string, CppType> const& types,
+                           TypeRegistry const& types,
                            std::vector<ModuleSchema> const& modules)
     -> LinearQuantizedSchema const* {
     return find_normal<LinearQuantizedSchema>(resolve_type(type, types).spelling, modules);
 }
 
+auto find_packed_integer_domain(PackedFieldSchema const& field,
+                                TypeRegistry const& types,
+                                std::vector<ModuleSchema> const& modules,
+                                std::string_view const module_name)
+    -> std::optional<IntegerDomainView> {
+    if (field.bits.has_value() &&
+        find_normal<IntegerScalarSchema>(
+            resolve_type(field.type, types).spelling, modules, module_name) == nullptr) {
+        // Explicit widths on plain C++ fields describe a field-local subset of the type's values.
+        return std::nullopt;
+    }
+    return find_integer_domain(field.type, types, modules, module_name);
+}
+
 auto find_fixed_point(TypeRef const& type,
-                      std::map<std::string, CppType> const& types,
+                      TypeRegistry const& types,
                       std::vector<ModuleSchema> const& modules) -> FixedPointSchema const* {
     return find_normal<FixedPointSchema>(resolve_type(type, types).spelling, modules);
 }
 
 auto find_mini_float(TypeRef const& type,
-                     std::map<std::string, CppType> const& types,
+                     TypeRegistry const& types,
                      std::vector<ModuleSchema> const& modules) -> MiniFloatSchema const* {
     return find_normal<MiniFloatSchema>(resolve_type(type, types).spelling, modules);
 }
 
-auto derive_integer_scalar_width(IntegerScalarSchema const& scalar) -> std::optional<int> {
+auto derive_integer_scalar_width(IntegerDomainView const& scalar) -> std::optional<int> {
     if (scalar.bit_width.has_value()) {
         return static_cast<int>(*scalar.bit_width);
     }
@@ -131,12 +156,12 @@ auto derive_integer_scalar_width(IntegerScalarSchema const& scalar) -> std::opti
 }
 
 auto derive_packed_field_width(PackedFieldSchema const& field,
-                               std::map<std::string, CppType> const& types,
+                               TypeRegistry const& types,
                                std::vector<ModuleSchema> const& modules) -> std::optional<int> {
     if (field.bits.has_value()) {
         return field.bits;
     }
-    if (auto const* scalar{find_integer_scalar(field.type, types, modules)}) {
+    if (auto const scalar{find_integer_domain(field.type, types, modules)}) {
         return derive_integer_scalar_width(*scalar);
     }
     if (field.kind == PackedFieldKind::linear_quantized) {

@@ -23,6 +23,24 @@ auto qualified_name(codegen::ModuleSettings const& settings, std::string const& 
 
 } // namespace
 
+auto integer_domain(TypeNode const& node) -> IntegerScalarType const* {
+    if (auto const* scalar{std::get_if<IntegerScalarType>(&node.definition)}) {
+        return scalar;
+    }
+    if (auto const* external{std::get_if<ExternalType>(&node.definition)}) {
+        return std::get_if<IntegerScalarType>(&external->semantics);
+    }
+    return nullptr;
+}
+
+auto packed_integer_domain(TypeNode const& node, codegen::PackedFieldSchema const& field)
+    -> IntegerScalarType const* {
+    if (field.bits.has_value() && !std::holds_alternative<IntegerScalarType>(node.definition)) {
+        return nullptr;
+    }
+    return integer_domain(node);
+}
+
 class TypeGraphBuilder {
   public:
     explicit TypeGraphBuilder(codegen::Manifest const& manifest)
@@ -205,14 +223,51 @@ class TypeGraphBuilder {
         }
     }
 
+    auto external_type(codegen::CppType cpp_type, std::vector<std::string> names = {})
+        -> ExternalType {
+        ExternalType result{.cpp_type = std::move(cpp_type), .registered_names = std::move(names)};
+        auto const* metadata{
+            codegen::external_scalar_schema(manifest_.types, result.cpp_type.spelling)};
+        if (metadata == nullptr) {
+            return result;
+        }
+        if (result.registered_names.empty()) {
+            for (auto const& [name, registered] : manifest_.types) {
+                if (codegen::native_spelling(registered.cpp_type.spelling) ==
+                    codegen::native_spelling(result.cpp_type.spelling)) {
+                    result.registered_names.push_back(name);
+                }
+            }
+        }
+        if (auto const* scalar{std::get_if<codegen::ExternalIntegerSchema>(metadata)}) {
+            IntegerScalarType domain{.signedness = scalar->signedness,
+                                     .minimum_value = scalar->minimum_value,
+                                     .maximum_value = scalar->maximum_value,
+                                     .bit_width = scalar->bit_width,
+                                     .bit_width_auto = false};
+            for (auto const& code : scalar->named_codes) {
+                domain.named_codes.push_back({code.name, code.value, code.sentinel});
+            }
+            result.semantics = std::move(domain);
+        } else if (auto const* format{std::get_if<codegen::FloatingPointFormat>(metadata)}) {
+            result.semantics = *format;
+        }
+        return result;
+    }
+
     void bind_registered_types() {
-        for (auto const& [name, cpp_type] : manifest_.types) {
+        for (auto const& [name, registered] : manifest_.types) {
+            auto const& cpp_type{registered.cpp_type};
             auto const separator{cpp_type.spelling.rfind("::")};
             auto const declared_name{separator == std::string::npos
                                          ? cpp_type.spelling
                                          : cpp_type.spelling.substr(separator + 2)};
             if (auto const local{declarations_by_module_name_.find(std::pair{name, declared_name})};
                 local != declarations_by_module_name_.end()) {
+                if (!std::holds_alternative<std::monostate>(registered.semantics)) {
+                    throw std::invalid_argument{"External scalar registration '@" + name +
+                                                "' matches a LispB declaration"};
+                }
                 graph_.registered_types_.emplace(name, local->second);
                 continue;
             }
@@ -229,6 +284,10 @@ class TypeGraphBuilder {
                 }
             }
             if (matches != nullptr) {
+                if (!std::holds_alternative<std::monostate>(registered.semantics)) {
+                    throw std::invalid_argument{"External scalar registration '@" + name +
+                                                "' matches a LispB declaration"};
+                }
                 if (matches->size() != 1) {
                     throw std::invalid_argument{"Registered type '@" + name +
                                                 "' ambiguously matches multiple declarations of '" +
@@ -241,7 +300,7 @@ class TypeGraphBuilder {
             auto const id{
                 add_type(TypeIdentity{.origin = TypeOrigin::registered_external, .name = name},
                          cpp_type.spelling,
-                         ExternalType{.cpp_type = cpp_type, .registered_names = {name}})};
+                         external_type(cpp_type, {name}))};
             graph_.registered_types_.emplace(name, id);
         }
     }
@@ -253,7 +312,7 @@ class TypeGraphBuilder {
         }
         auto const id{add_type(TypeIdentity{.origin = TypeOrigin::cpp_spelling, .name = spelling},
                                spelling,
-                               ExternalType{.cpp_type = codegen::CppType{spelling}})};
+                               external_type(codegen::CppType{spelling}))};
         raw_external_types_.emplace(spelling, id);
         return id;
     }
@@ -357,11 +416,9 @@ class TypeGraphBuilder {
                     return type;
                 } else if constexpr (std::is_same_v<T, codegen::LinearQuantizedSchema>) {
                     auto scalar{resolve_ref(source.source, module_name)};
-                    if (!std::holds_alternative<IntegerScalarType>(
-                            graph_.types_[scalar.type.value].definition)) {
-                        throw std::invalid_argument{
-                            "Linear quantization '" + source.name +
-                            "' source must resolve to an integer-scalar declaration"};
+                    if (integer_domain(graph_.types_[scalar.type.value]) == nullptr) {
+                        throw std::invalid_argument{"Linear quantization '" + source.name +
+                                                    "' source must have a declared integer domain"};
                     }
                     return LinearQuantizedType{.source = std::move(scalar),
                                                .bit_width = source.bit_width,
@@ -369,11 +426,9 @@ class TypeGraphBuilder {
                                                .clipping = source.clipping};
                 } else if constexpr (std::is_same_v<T, codegen::IntegerVarintSchema>) {
                     auto scalar{resolve_ref(source.source, module_name)};
-                    if (!std::holds_alternative<IntegerScalarType>(
-                            graph_.types_[scalar.type.value].definition)) {
-                        throw std::invalid_argument{
-                            "Integer varint '" + source.name +
-                            "' source must resolve to an integer-scalar declaration"};
+                    if (integer_domain(graph_.types_[scalar.type.value]) == nullptr) {
+                        throw std::invalid_argument{"Integer varint '" + source.name +
+                                                    "' source must have a declared integer domain"};
                     }
                     return IntegerVarintType{.source = std::move(scalar),
                                              .encoding = source.encoding};
@@ -396,12 +451,11 @@ class TypeGraphBuilder {
                                          .exponent_bias = source.exponent_bias};
                 } else if constexpr (std::is_same_v<T, codegen::OptionalSentinelSchema>) {
                     auto scalar_ref{resolve_ref(source.source, module_name)};
-                    auto const* scalar{std::get_if<IntegerScalarType>(
-                        &graph_.types_[scalar_ref.type.value].definition)};
+                    auto const* scalar{integer_domain(graph_.types_[scalar_ref.type.value])};
                     if (scalar == nullptr) {
-                        throw std::invalid_argument{
-                            "Optional sentinel representation '" + source.name +
-                            "' source must resolve to an integer-scalar declaration"};
+                        throw std::invalid_argument{"Optional sentinel representation '" +
+                                                    source.name +
+                                                    "' source must have a declared integer domain"};
                     }
                     auto const sentinel{std::ranges::find(
                         scalar->named_codes, source.sentinel, &PackedNamedCode::name)};
@@ -416,12 +470,11 @@ class TypeGraphBuilder {
                                                 .bit_width = scalar->bit_width};
                 } else if constexpr (std::is_same_v<T, codegen::OptionalPresenceBitSchema>) {
                     auto scalar_ref{resolve_ref(source.source, module_name)};
-                    auto const* scalar{std::get_if<IntegerScalarType>(
-                        &graph_.types_[scalar_ref.type.value].definition)};
+                    auto const* scalar{integer_domain(graph_.types_[scalar_ref.type.value])};
                     if (scalar == nullptr) {
-                        throw std::invalid_argument{
-                            "Optional presence-bit representation '" + source.name +
-                            "' source must resolve to an integer-scalar declaration"};
+                        throw std::invalid_argument{"Optional presence-bit representation '" +
+                                                    source.name +
+                                                    "' source must have a declared integer domain"};
                     }
                     return OptionalPresenceBitType{.source = std::move(scalar_ref),
                                                    .payload_bits = scalar->bit_width,
@@ -439,11 +492,8 @@ class TypeGraphBuilder {
                             [&](auto const& value) {
                                 using Segment = std::decay_t<decltype(value)>;
                                 if constexpr (std::is_same_v<Segment, codegen::PackedFieldSchema>) {
-                                    auto const* scalar{
-                                        codegen::detail::find_integer_scalar(value.type,
-                                                                             manifest_.types,
-                                                                             manifest_.modules,
-                                                                             module_name)};
+                                    auto const scalar{codegen::detail::find_packed_integer_domain(
+                                        value, manifest_.types, manifest_.modules, module_name)};
                                     PackedField field{
                                         .name = value.name,
                                         .semantic_type = resolve_ref(value.type, module_name),
@@ -453,16 +503,16 @@ class TypeGraphBuilder {
                                         .bit_width_auto = !value.bits.has_value(),
                                         .kind = value.kind,
                                         .range_helper = value.range_helper,
-                                        .minimum_value = scalar != nullptr
+                                        .minimum_value = scalar.has_value()
                                                            ? std::optional{scalar->minimum_value}
                                                            : value.minimum_value,
-                                        .maximum_value = scalar != nullptr
+                                        .maximum_value = scalar.has_value()
                                                            ? std::optional{scalar->maximum_value}
                                                            : value.maximum_value,
                                         .named_codes = {},
                                         .relationship = std::nullopt};
-                                    auto const& codes{scalar != nullptr ? scalar->named_codes
-                                                                        : value.named_codes};
+                                    auto const& codes{scalar.has_value() ? scalar->named_codes
+                                                                         : value.named_codes};
                                     for (auto const& code : codes) {
                                         field.named_codes.push_back({.name = code.name,
                                                                      .value = code.value,
