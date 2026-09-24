@@ -140,7 +140,7 @@ auto lower_scalar(IntegerScalarSchema const& scalar, TypeRegistry const& types)
     -> detail::DeclarationEmission {
     NodeListBuilder declarations;
     if (scalar.cpp_emission == IntegerScalarCppEmission::alias) {
-        auto const cpp_type{resolve_type(*scalar.cpp_type, types)};
+        auto const cpp_type{scalar_cpp_type(*scalar.cpp_type, types)};
         declarations.add(
             raw("using " + scalar.name + " = " + cpp_type.spelling + ";", cpp_type.dependencies));
         return {.header = declarations.build()};

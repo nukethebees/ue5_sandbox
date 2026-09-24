@@ -58,6 +58,19 @@ static_assert(ml::packed_extract<EnumField>(0xffff) == State::maximum);
 static_assert(ml::packed_pack<EnumField>(State::maximum) == 0xe000);
 static_assert(ml::packed_insert<EnumField>(0xffff, State::zero) == 0x1fff);
 
+enum class WideState : std::uint64_t { maximum = (std::numeric_limits<std::uint64_t>::max)() };
+using WideEnumField = ml::PackedField<std::uint64_t, WideState, 0, 64>;
+static_assert(ml::packed_extract<WideEnumField>(
+                  ml::packed_pack<WideEnumField>(WideState::maximum)) == WideState::maximum);
+using ConstField = ml::PackedField<std::uint16_t, std::int16_t const, 3, 5>;
+static_assert(ml::packed_extract<ConstField>(ml::packed_pack<ConstField>(-16)) == -16);
+using ConstEnumField = ml::PackedField<std::uint8_t, State const, 0, 3>;
+static_assert(ml::packed_extract<ConstEnumField>(7) == State::maximum);
+using CvFlag = ml::PackedField<std::uint8_t, bool const volatile, 0, 1>;
+static_assert(CvFlag::bits == 1);
+using CvInteger = ml::PackedField<std::uint16_t, std::uint16_t const volatile, 0, 16>;
+static_assert(CvInteger::value_mask == 0xffff);
+
 TEST(PackedSupport, ExhaustivelyDecodesSignedFieldsAndPreservesOtherBits) {
     using Field = ml::PackedField<std::uint8_t, std::int16_t, 2, 4>;
     for (unsigned raw{}; raw <= 0xffu; ++raw) {

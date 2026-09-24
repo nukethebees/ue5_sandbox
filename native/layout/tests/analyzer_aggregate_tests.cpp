@@ -48,6 +48,42 @@ TEST(RecordAnalyzer, IntegerScalarAliasUsesRepresentationWithoutLosingIdentity) 
     EXPECT_EQ(soa.columns[0].total_bytes, 20);
 }
 
+TEST(RecordAnalyzer, ScalarConstantsDoNotSupplyPhysicalLayout) {
+    for (auto const emission : {codegen::IntegerScalarCppEmission::none,
+                                codegen::IntegerScalarCppEmission::constants,
+                                codegen::IntegerScalarCppEmission::constants_with_names}) {
+        SCOPED_TRACE(codegen::integer_scalar_cpp_emission_name(emission));
+        codegen::IntegerScalarSchema scalar{};
+        scalar.name = "Reason";
+        scalar.maximum_value = 15;
+        scalar.bit_width = 4;
+        scalar.named_codes = {{.name = "Unknown", .value = 0}};
+        scalar.cpp_emission = emission;
+        if (emission != codegen::IntegerScalarCppEmission::none) {
+            scalar.cpp_type =
+                codegen::TypeRef{.name = "std::uint8_t", .suffix = {}, .nested = std::nullopt};
+        }
+        codegen::RecordSchema record{};
+        record.name = "Consumer";
+        record.members = {record_member("reason", "Reason")};
+        codegen::NormalModuleSchema module{};
+        module.settings.name = "reasons";
+        module.settings.header = "Reasons.h";
+        module.declarations = {scalar, record};
+        codegen::Manifest manifest{};
+        manifest.schema_version = codegen::manifest_schema_version;
+        manifest.modules.push_back(module);
+        auto const graph{lispb::schema::resolve_type_graph(manifest)};
+        auto const reason{*graph.find_declared("reasons", "Reason")};
+        EXPECT_FALSE(physical_type_spelling(graph, reason).has_value());
+        EXPECT_EQ(Analyzer::analyze_integer_scalar(graph, reason).effective_bit_width, 4);
+        auto const layout{Analyzer::analyze_record(
+            graph, *graph.find_declared("reasons", "Consumer"), AbiProfile::host_common())};
+        EXPECT_FALSE(layout.size_bytes.has_value());
+        EXPECT_FALSE(layout.diagnostics.empty());
+    }
+}
+
 TEST(RecordAnalyzer, ReportsOffsetsInternalAndTailPadding) {
     auto const fixture{
         record_type({codegen::RecordSchema{.name = "Record",

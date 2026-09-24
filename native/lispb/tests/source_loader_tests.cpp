@@ -113,6 +113,84 @@ TEST(SourceLoader, AliasEmissionKeepsSemanticIdentityAndDependencies) {
     EXPECT_EQ(header.find("Health_Invalid"), std::string::npos);
 }
 
+TEST(SourceLoader, ScalarEmissionOnlyEstablishesRepresentationForAliases) {
+    for (auto const mode : {IntegerScalarCppEmission::none,
+                            IntegerScalarCppEmission::constants,
+                            IntegerScalarCppEmission::constants_with_names,
+                            IntegerScalarCppEmission::alias}) {
+        auto const name{std::string{integer_scalar_cpp_emission_name(mode)}};
+        SCOPED_TRACE(name);
+        TemporaryManifest files;
+        files.write_root(
+            "(module reasons :header \"Reasons.h\"\n"
+            "  (record Consumer (member reason Reason))\n"
+            "  (integer-scalar Reason :signed false :minimum 0 :maximum 10 :bit-width 8\n"
+            "    :cpp-emission " +
+            name + (mode == IntegerScalarCppEmission::none ? "" : " :cpp-type @byte") +
+            "\n    (code Unknown :value 0)\n"
+            "    (code Invalid :value 255 :sentinel true)\n"
+            "    (relation references Consumer)))");
+        files.write("types.lispb", "(type byte :spelling \"std::uint8_t\" :header \"cstdint\")");
+        auto const manifest{files.load()};
+        EXPECT_EQ(schema_at<IntegerScalarSchema>(manifest, 0, 1).cpp_emission, mode);
+        auto const graph{lispb::schema::resolve_type_graph(manifest)};
+        auto const reason{*graph.find_declared("reasons", "Reason")};
+        auto const consumer{*graph.find_declared("reasons", "Consumer")};
+        auto const byte{*graph.find_registered("byte")};
+        auto const& scalar{
+            std::get<lispb::schema::IntegerScalarType>(graph.type(reason).definition)};
+        auto const alias{mode == IntegerScalarCppEmission::alias};
+        EXPECT_EQ(scalar.cpp_representation.has_value(), alias);
+        if (alias) {
+            EXPECT_EQ(scalar.cpp_representation->type, byte);
+        }
+        EXPECT_EQ(scalar.bit_width, 8);
+        EXPECT_EQ(scalar.named_codes.size(), 2);
+        ASSERT_TRUE(scalar.relationship.has_value());
+        EXPECT_EQ(scalar.relationship->target.type, consumer);
+        EXPECT_EQ(std::ranges::find(graph.dependencies_of(reason), byte) !=
+                      graph.dependencies_of(reason).end(),
+                  alias);
+        EXPECT_EQ(std::ranges::find(graph.users_of(byte), reason) != graph.users_of(byte).end(),
+                  alias);
+        EXPECT_NE(std::ranges::find(graph.dependencies_of(reason), consumer),
+                  graph.dependencies_of(reason).end());
+        EXPECT_NE(std::ranges::find(graph.users_of(reason), consumer),
+                  graph.users_of(reason).end());
+
+        auto const header{render_modules(lower_modules(manifest)).front().content};
+        auto const constants{mode == IntegerScalarCppEmission::constants ||
+                             mode == IntegerScalarCppEmission::constants_with_names};
+        EXPECT_EQ(header.contains("using Reason = std::uint8_t;"), alias);
+        EXPECT_EQ(header.contains("inline constexpr std::uint8_t Reason_Invalid"), constants);
+        EXPECT_EQ(header.contains("Reason_name("),
+                  mode == IntegerScalarCppEmission::constants_with_names);
+        EXPECT_EQ(header.contains("#include <cstdint>"), mode != IntegerScalarCppEmission::none);
+    }
+}
+
+TEST(SourceLoader, ScalarAliasesShareCppTypeIncludeResolution) {
+    for (auto const* representation : {"@native_int32", "std::int32_t", "int32", "uint32"}) {
+        SCOPED_TRACE(representation);
+        TemporaryManifest files;
+        files.write_root("(module values :header \"Values.h\"\n"
+                         "  (integer-scalar Value :signed false :minimum 0 :maximum 100\n"
+                         "    :cpp-emission alias :cpp-type " +
+                         std::string{representation} + "))");
+        files.write("types.lispb",
+                    "(type native_int32 :spelling \"std::int32_t\" :header \"cstdint\")");
+        auto const header{render_modules(lower_modules(files.load())).front().content};
+        auto const standard{std::string_view{representation}.starts_with('@') ||
+                            std::string_view{representation}.starts_with("std::")};
+        auto const spelling{standard ? "std::int32_t" : representation};
+        EXPECT_TRUE(header.contains("using Value = " + std::string{spelling} + ";"));
+        auto const include{standard ? "#include <cstdint>" : "#include \"CoreTypes.h\""};
+        auto const position{header.find(include)};
+        ASSERT_NE(position, std::string::npos);
+        EXPECT_EQ(header.find(include, position + 1), std::string::npos);
+    }
+}
+
 TEST(SourceLoader, PackedDefaultsAreValidatedWithoutChangingImplicitSentinels) {
     TemporaryManifest files;
     files.write_root(R"((module orders :header "Orders.h"

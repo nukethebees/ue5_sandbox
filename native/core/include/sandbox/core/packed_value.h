@@ -24,6 +24,25 @@ struct PackedField {
     static_assert(Bits > 0 && Bits <= std::numeric_limits<Storage>::digits &&
                       Offset <= std::numeric_limits<Storage>::digits - Bits,
                   "Packed field must fit in storage");
+    static_assert(
+        [] {
+            using UnqualifiedValue = std::remove_cv_t<Value>;
+            if constexpr (std::is_same_v<UnqualifiedValue, bool>) {
+                return Bits == 1;
+            } else if constexpr (std::is_integral_v<UnqualifiedValue>) {
+                return std::numeric_limits<UnqualifiedValue>::digits +
+                           (std::is_signed_v<UnqualifiedValue> ? 1 : 0) >=
+                       Bits;
+            } else if constexpr (std::is_enum_v<UnqualifiedValue>) {
+                using Underlying = std::underlying_type_t<UnqualifiedValue>;
+                return std::is_unsigned_v<Underlying> &&
+                       std::numeric_limits<Underlying>::digits >= Bits;
+            } else {
+                return false;
+            }
+        }(),
+        "Packed field requires an integer, one-bit bool, or unsigned enum value type wide enough "
+        "for its bits");
 
     inline static constexpr int offset{Offset};
     inline static constexpr int bits{Bits};

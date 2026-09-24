@@ -1,3 +1,5 @@
+#include "ScalarValues.h"
+
 #include "Generated.h"
 
 #include <gtest/gtest.h>
@@ -27,8 +29,16 @@ using namespace codegen_compile_fixture;
 
 TEST(GeneratedScalarAlias, UsesConfiguredCppType) {
     static_assert(std::is_same_v<Health, std::uint16_t>);
+    static_assert(std::is_same_v<RegisteredInt, std::int32_t>);
+    static_assert(std::is_same_v<StandardInt, std::int32_t>);
+    static_assert(std::is_same_v<UnrealInt, int32>);
+    static_assert(std::is_same_v<UnrealUint, uint32>);
     Health const health{1000};
     EXPECT_EQ(health, 1000);
+    EXPECT_EQ(DamageCode_Laser, 1);
+    EXPECT_EQ(DamageReason_Laser, 1);
+    EXPECT_EQ(DamageReason_name(DamageReason_Laser), "Laser");
+    EXPECT_EQ(DamageReason_name(42), "");
 }
 
 TEST(GeneratedPackedDefaults, ConstructsDefaultsAndSupportsPartialRawConstruction) {
@@ -40,6 +50,9 @@ TEST(GeneratedPackedDefaults, ConstructsDefaultsAndSupportsPartialRawConstructio
     constexpr DefaultsMsb msb{};
     static_assert(msb.low() == 5 && msb.delta() == -3);
     EXPECT_EQ(msb.raw_value(), (5U << 13) | (29U << 6));
+    constexpr auto raw_partial{PartialDefaults::from_raw(0xff)};
+    static_assert(raw_partial.raw_value() == 0xff);
+    static_assert(raw_partial.first() == 3 && raw_partial.gap() == 3 && raw_partial.last() == 3);
     auto partial{PartialDefaults::from_raw(0)};
     EXPECT_TRUE(PartialDefaults::try_make(2, 1, 0, partial));
     EXPECT_EQ(partial.first(), 2);

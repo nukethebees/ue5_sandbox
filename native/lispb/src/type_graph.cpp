@@ -477,7 +477,8 @@ class TypeGraphBuilder {
                     type.bit_width =
                         source.bit_width.value_or(*codegen::minimum_packed_integer_bits(
                             required_minimum, required_maximum, source.signedness));
-                    if (source.cpp_type.has_value()) {
+                    if (source.cpp_emission == codegen::IntegerScalarCppEmission::alias &&
+                        source.cpp_type.has_value()) {
                         type.cpp_representation = resolve_ref(*source.cpp_type, module_name);
                     }
                     if (source.relationship.has_value()) {

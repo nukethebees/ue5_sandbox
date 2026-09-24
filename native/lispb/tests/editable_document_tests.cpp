@@ -371,6 +371,46 @@ TEST(EditableSchemaDocument, RoundTripsScalarAliasAndPartialPackedDefaults) {
               files.path("modules.lispb"));
 }
 
+TEST(EditableSchemaDocument, ScalarEmissionEditsReconcilePhysicalRepresentation) {
+    TemporarySchema files;
+    files.write_source("types.lispb", "");
+    files.write_source("modules.lispb", R"((module values :header "Values.h"
+      (integer-scalar Reason :signed false :minimum 0 :maximum 10
+        (code Unknown :value 0))))");
+    auto document{files.load()};
+    auto const declaration{document.declarations()[0].id};
+    auto has_representation = [](EditableSchemaDocument const& current) {
+        auto const type{*current.types().find_declared("values", "Reason")};
+        return std::get<IntegerScalarType>(current.types().type(type).definition)
+            .cpp_representation.has_value();
+    };
+    for (auto const mode : {codegen::IntegerScalarCppEmission::alias,
+                            codegen::IntegerScalarCppEmission::constants,
+                            codegen::IntegerScalarCppEmission::constants_with_names,
+                            codegen::IntegerScalarCppEmission::none}) {
+        SCOPED_TRACE(codegen::integer_scalar_cpp_emission_name(mode));
+        auto const previous_representation{has_representation(document)};
+        auto scalar{*document.integer_scalar_schema(declaration)};
+        scalar.cpp_emission = mode;
+        scalar.cpp_type = mode == codegen::IntegerScalarCppEmission::none
+                            ? std::nullopt
+                            : std::optional{codegen::TypeRef{"std::uint8_t"}};
+        ASSERT_TRUE(document.apply(ReplaceIntegerScalar{declaration, scalar}).has_value());
+        auto const alias{mode == codegen::IntegerScalarCppEmission::alias};
+        EXPECT_EQ(has_representation(document), alias);
+        EXPECT_EQ(document.declarations()[0].id, declaration);
+        ASSERT_TRUE(document.undo().has_value());
+        EXPECT_EQ(has_representation(document), previous_representation);
+        ASSERT_TRUE(document.redo().has_value());
+        EXPECT_EQ(has_representation(document), alias);
+        ASSERT_TRUE(document.save().has_value());
+        auto const reloaded{files.load()};
+        EXPECT_EQ(reloaded.integer_scalar_schema(reloaded.declarations()[0].id)->cpp_emission,
+                  mode);
+        EXPECT_EQ(has_representation(reloaded), alias);
+    }
+}
+
 TEST(EditableSchemaDocument, RetainsDeclarationSourceOwnershipAndRanges) {
     auto const document{fixture_document()};
     auto const id{declaration_id(document, "plain_enum_fixture", "EPlainFixture")};

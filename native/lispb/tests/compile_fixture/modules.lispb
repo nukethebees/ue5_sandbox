@@ -53,6 +53,17 @@
 (module scalar_fixture
   :header "ScalarValues.h"
   :namespace codegen_compile_fixture
+  (integer-scalar RegisteredInt :signed true :minimum -100 :maximum 100
+    :cpp-emission alias :cpp-type @native_int32)
+  (integer-scalar StandardInt :signed true :minimum -100 :maximum 100
+    :cpp-emission alias :cpp-type std::int32_t)
+  (integer-scalar UnrealInt :signed true :minimum -100 :maximum 100
+    :cpp-emission alias :cpp-type int32)
+  (integer-scalar UnrealUint :signed false :minimum 0 :maximum 100
+    :cpp-emission alias :cpp-type uint32)
+  (integer-scalar DamageCode :signed false :minimum 0 :maximum 10
+    :cpp-emission constants :cpp-type @standard_uint8
+    (code Laser :value 1))
   (integer-scalar DamageReason
     :signed false
     :minimum 0

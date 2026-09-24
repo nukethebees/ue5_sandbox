@@ -1,10 +1,33 @@
 #include <algorithm>
 #include <ioj/sim/direct_damage_events.h>
+#include <ioj/sim/fighter_types.h>
+#include <ioj/sim/health.h>
 #include <ioj/sim/level_sim.h>
 #include <ioj/sim/testing/level_sim_test_access.h>
+#include <type_traits>
 #include "support/simulation_test_support.h"
 
 namespace ioj::sim::tests {
+
+TEST(SimulationSchema, PreservesHealthAndFighterOrderRepresentations) {
+    static_assert(std::is_same_v<Health, std::int32_t>);
+    static_assert(sizeof(FighterOrder) == 1 && alignof(FighterOrder) == 1);
+    static_assert(std::is_trivially_copyable_v<FighterOrder>);
+    static_assert(FighterOrder{}.raw_value() == 0);
+    static_assert(static_cast<std::uint8_t>(FighterTask::Standby) == 0);
+    static_assert(static_cast<std::uint8_t>(FighterTask::MoveToDestination) == 1);
+    static_assert(static_cast<std::uint8_t>(FighterTask::Attack) == 2);
+    static_assert(static_cast<std::uint8_t>(FighterTask::COUNT) == 3);
+    for (std::uint8_t raw{}; raw < 4; ++raw) {
+        auto const order{FighterOrder::from_raw(raw)};
+        EXPECT_EQ(order.task(), raw & 1);
+        EXPECT_EQ(order.target(), raw >> 1);
+        EXPECT_EQ((FighterOrder{order.task(), order.target()}).raw_value(), raw);
+    }
+    EXPECT_EQ(FighterOrder::from_raw(0xfc).raw_value(), 0xfc);
+    EXPECT_TRUE(is_dead(-1));
+    EXPECT_TRUE(is_alive(1));
+}
 
 namespace {
 auto make_cap_battle(std::span<Team const> const capital_teams,

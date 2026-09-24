@@ -231,6 +231,12 @@ TEST(PackedValue, ValidatesExplicitDefaultsAndReportsStorageBudget) {
     field(packed, 1).default_value = 1;
     packed.invalid_value = 2;
     EXPECT_THROW(lower(module), std::invalid_argument);
+    packed.bit_order = PackedBitOrder::most_significant_first;
+    EXPECT_NO_THROW(lower(module));
+    packed.invalid_value = 64;
+    EXPECT_THROW(lower(module), std::invalid_argument);
+    field(packed, 0).default_value.reset();
+    EXPECT_NO_THROW(lower(module));
     packed.invalid_value.reset();
     field(packed, 1).bits = 8;
     try {

@@ -852,7 +852,8 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
         }
     }
     text_disabled_wrapped(
-        "This is a semantic domain. A packed field or future representation chooses storage.");
+        "This is a semantic domain. Packed fields choose their storage independently; "
+        "alias emission supplies a C++ representation for ordinary layout.");
 
     if (detail::section("C++ output policy", false)) {
         auto emission{static_cast<int>(schema->cpp_emission)};
@@ -865,7 +866,7 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
                 replacement.cpp_type.reset();
             } else if (!replacement.cpp_type.has_value()) {
                 if (integer_scalar_cpp_type_.front() == '\0') {
-                    schema_edit_message_ = "Enter a C++ representation before enabling emission.";
+                    schema_edit_message_ = "Enter a C++ output type before enabling emission.";
                 } else {
                     replacement.cpp_type = codegen::TypeRef{.name = integer_scalar_cpp_type_.data(),
                                                             .suffix = {},
@@ -881,7 +882,11 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
                 }
             }
         }
-        detail::prepare_property_input("C++ representation");
+        auto const* cpp_type_label{
+            schema->cpp_emission == codegen::IntegerScalarCppEmission::alias  ? "C++ representation"
+            : schema->cpp_emission == codegen::IntegerScalarCppEmission::none ? "C++ output type"
+                                                                              : "Constants type"};
+        detail::prepare_property_input(cpp_type_label);
         auto const submitted{ImGui::InputText("##scalar-cpp-representation",
                                               integer_scalar_cpp_type_.data(),
                                               integer_scalar_cpp_type_.size(),
@@ -899,7 +904,8 @@ auto PlannerUi::draw_integer_scalar_editor(TypeNode const& node, IntegerScalarTy
         }
         text_disabled_wrapped(
             "Alias emits using Scalar = Representation; it does not create a distinct C++ type. "
-            "Constants modes require named codes. LispB scalar identity is unchanged.");
+            "Constants modes type only the emitted constants and do not establish scalar layout. "
+            "They require named codes. LispB scalar identity is unchanged.");
     }
     if (detail::section("Semantic relationship", false)) {
         auto const current_kind{semantic_relationship_kinds[static_cast<std::size_t>(

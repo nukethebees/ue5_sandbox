@@ -253,7 +253,8 @@ foreach(restriction IN ITEMS COPY DESTRUCTOR DEFAULT)
   set_tests_properties("SingleAllocationRejects${restriction}" PROPERTIES
     LABELS "unit;all;native;codegen" RESOURCE_LOCK codegen-negative-build)
 endforeach()
-foreach(restriction IN ITEMS SIGNED_STORAGE BOOL_STORAGE ZERO_BITS NEGATIVE_BITS NEGATIVE_OFFSET OVERFLOW FULL_OFFSET)
+foreach(restriction IN ITEMS SIGNED_STORAGE BOOL_STORAGE ZERO_BITS NEGATIVE_BITS NEGATIVE_OFFSET OVERFLOW FULL_OFFSET
+    UNSIGNED_VALUE SIGNED_VALUE BOOL_VALUE ENUM_WIDTH ENUM_SIGNED FLOAT_VALUE POINTER_VALUE REFERENCE_VALUE)
   set(reject_target "codegen-reject-packed-${restriction}")
   add_library(${reject_target} OBJECT EXCLUDE_FROM_ALL tests/compile_fixture/rejected_packed_field.cpp)
   target_compile_features(${reject_target} PRIVATE cxx_std_23)

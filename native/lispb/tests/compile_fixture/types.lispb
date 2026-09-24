@@ -75,3 +75,4 @@
   :spelling "FFixedChild")
 
 (type standard_uint16 :spelling "std::uint16_t" :header "cstdint" :pass-by value)
+(type native_int32 :spelling "std::int32_t" :header "cstdint" :pass-by value)

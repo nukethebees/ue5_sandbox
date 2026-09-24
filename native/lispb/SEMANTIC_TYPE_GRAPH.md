@@ -24,7 +24,8 @@ facts. Matching plain C++ references also receive this metadata. See the
 [external scalar registry](ARCHITECTURE.md#external-scalar-registry) for syntax and include rules.
 
 The graph keeps logical meaning separate from physical representation. An enum node references its
-underlying type, an integer scalar optionally references its configured C++ representation,
+underlying type, an alias-emitted integer scalar references its configured C++ representation
+(constants-only emission does not establish one),
 and a packed node references both its storage and the logical type of every bit field,
 a record node references each member type, and a SoA node references each column type. Packed
 fields, integer scalars, record members, and SoA columns may also carry explicit labeled semantic

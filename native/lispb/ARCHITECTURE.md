@@ -65,8 +65,10 @@ bit order; C++ lowering uses explicit masks and shifts through `ml::PackedField`
 `packed_extract`, `packed_pack`, and `packed_insert` helpers in `sandbox/core/packed_value.h`.
 Each field exposes `<name>_field::{offset,bits,value_mask,mask}` instead of four separate
 `<name>_offset`, `<name>_bits`, `<name>_value_mask`, and `<name>_mask` constants.
-Storage checks share `valid_packed_storage`; semantic range, enum, and sentinel validation
-remain in generated code. Standard fixed-width integer spellings remain unchanged.
+Storage checks share `valid_packed_storage`. `PackedField` also requires a value representation
+wide enough for its bits: integral types, one-bit bool, or enums with unsigned underlying types.
+Wider value types may represent narrower fields. Semantic ranges, enumerator membership, and
+sentinel validation remain in generated code. Standard fixed-width integer spellings remain unchanged.
 
 An explicit field-value constructor replaces `make(...)`. `Type::from_raw(raw)` replaces
 the raw-storage constructor and preserves all bits without validation. Default construction
@@ -97,8 +99,11 @@ and named codes; it needs no named codes and emits no constant helpers. Width do
 
 With `native_uint16` registered as `std::uint16_t` from `cstdint`, this emits
 `using Health = std::uint16_t;` in the module namespace, with the normal include dependency.
-`IntegerScalarType` retains a resolved representation reference for physical layout analysis;
-the emission policy remains schema/backend metadata. `using Health = std::uint16_t;` and
+Only alias emission supplies `IntegerScalarType` with a resolved representation reference and
+dependency for physical layout analysis. Constants modes use `:cpp-type` only to type their
+emitted constants; they leave the scalar purely semantic. All scalar emission modes share C++
+type dependency resolution, including `CoreTypes.h` for raw Unreal integer spellings.
+The emission policy remains schema/backend metadata. `using Health = std::uint16_t;` and
 `using Armour = std::uint16_t;` describe distinct LispB semantic types but interchangeable C++ types.
 Alias emission provides no strong typing or runtime domain checking.
 
