@@ -68,6 +68,7 @@ Checks:
   - bugprone-multi-level-implicit-pointer-conversion
   - bugprone-multiple-new-in-one-expression
   - bugprone-multiple-statement-macro
+  - bugprone-no-escape
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
