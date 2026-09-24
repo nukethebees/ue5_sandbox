@@ -72,6 +72,7 @@ Checks:
   - bugprone-non-zero-enum-to-bool-conversion
   - bugprone-nondeterministic-pointer-iteration-order
   - bugprone-not-null-terminated-result
+  - bugprone-optional-value-conversion
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
