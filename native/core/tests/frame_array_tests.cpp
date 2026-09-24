@@ -115,6 +115,7 @@ TEST(NativeCoreFrameArray, AddsEmplacesAndExposesNativeViews) {
     EXPECT_EQ(&moved, values.data() + 1);
     EXPECT_EQ(&emplaced, values.data() + 2);
     EXPECT_EQ(copied_source.value, 10);
+    // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
     EXPECT_EQ(moved_source.value, -1);
     EXPECT_EQ(TrackedValue::copy_count, 1);
     EXPECT_EQ(TrackedValue::move_count, 1);
@@ -170,6 +171,7 @@ TEST(NativeCoreFrameArray, DestroysActiveValuesAndSupportsMoveOnlyValues) {
     values.add(std::move(source));
     values.emplace(20);
 
+    // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
     EXPECT_EQ(source.value, -1);
     EXPECT_EQ(values[0].value, 10);
     EXPECT_EQ(values[1].value, 20);

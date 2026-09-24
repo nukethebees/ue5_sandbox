@@ -68,6 +68,7 @@ auto moving_a_block_transfers_its_range() -> bool {
     auto* const address{source.data()};
 
     Block destination{std::move(source)};
+    // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
     if (!expect(!static_cast<bool>(source), "moved-from block is empty") ||
         !expect(destination.data() == address, "move preserves the block address") ||
         !expect(arena.get_statistics().live_block_count == 1,

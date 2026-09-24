@@ -85,11 +85,13 @@ TEST(NativeSoa, LayoutGrowthAndMoves) {
     EXPECT_EQ(owner.num(), 127);
     auto const* data{array_columns(owner.get_view()).bytes.data()};
     auto moved{std::move(owner)};
+    // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
     EXPECT_EQ(owner.capacity(), 0);
     EXPECT_EQ(array_columns(moved.get_view()).bytes.data(), data);
     owner.reserve(64);
     owner = std::move(moved);
     EXPECT_EQ(array_columns(owner.get_view()).bytes.data(), data);
+    // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
     EXPECT_EQ(moved.num(), 0);
     EXPECT_EQ(array_columns(owner.get_view(2, 3)).num(), 3);
     owner.reset();

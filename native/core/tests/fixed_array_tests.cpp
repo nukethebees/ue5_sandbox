@@ -186,7 +186,9 @@ TEST(NativeCoreFixedArray, CopiesMovesAndSupportsMoveOnlyValues) {
     assigned = copied;
     assigned = std::move(moved);
 
+    // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
     EXPECT_TRUE(source.is_empty());
+    // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
     EXPECT_TRUE(moved.is_empty());
     EXPECT_EQ(copied.num(), 2);
     EXPECT_EQ(assigned[0], "alpha");
@@ -197,6 +199,7 @@ TEST(NativeCoreFixedArray, CopiesMovesAndSupportsMoveOnlyValues) {
     move_only.emplace_back(20);
     ml::FixedArray<MoveOnlyValue, 2> moved_only{std::move(move_only)};
 
+    // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
     EXPECT_TRUE(move_only.is_empty());
     EXPECT_EQ(moved_only[0].value, 10);
     EXPECT_EQ(moved_only[1].value, 20);
@@ -268,6 +271,7 @@ TEST(NativeCoreFixedArray, CopiesAndMovesUninitialisedQueryResults) {
     ml::FixedArray<ResultHandle, 8> copied{source};
     ml::FixedArray<ResultHandle, 8> moved{std::move(source)};
 
+    // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
     EXPECT_TRUE(source.is_empty());
     expect_results(copied, 4, 27);
     expect_results(moved, 4, 27);

@@ -119,6 +119,7 @@ TEST(GeneratedSingleAllocationSoa, Ownership) {
         check(source.get_view().keys()[0] == 42);
         auto* const pointer{source.get_view().keys().GetData()};
         Owner moved{std::move(source)};
+        // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
         check(source.num() == 0 && source.capacity() == 0 && source.allocated_bytes() == 0);
         check(CountingAllocator::allocations == 2 && CountingAllocator::frees == 1);
         Owner destination;
@@ -126,6 +127,7 @@ TEST(GeneratedSingleAllocationSoa, Ownership) {
         check(CountingAllocator::allocations == 3);
         destination = std::move(moved);
         check(CountingAllocator::frees == 2);
+        // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
         check(moved.num() == 0 && moved.capacity() == 0);
         auto& alias{destination};
         destination = std::move(alias);
@@ -651,6 +653,7 @@ TEST(GeneratedFixedSoa, Lifetimes) {
         check(copied.num() == 2 && FTracked::alive == 4);
 
         auto moved{std::move(copied)};
+        // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
         check(copied.is_empty());
         check(moved.num() == 2 && FTracked::alive == 4);
         moved.remove_at_swap(0, 1, EAllowShrinking::No);
@@ -712,6 +715,7 @@ TEST(GeneratedFixedSoa, AssignmentResizeAndBulkOperationsPreserveLifetimes) {
         EXPECT_EQ(FTracked::alive, 8);
         destination = std::move(appended);
         EXPECT_EQ(FTracked::alive, 5);
+        // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
         EXPECT_TRUE(appended.is_empty());
         EXPECT_EQ(destination.num(), 2);
         EXPECT_EQ(destination.get_const_view().children.tracked[1].value, 20);
@@ -949,6 +953,7 @@ TEST(GeneratedSingleAllocationSoa, LayoutAndAccess) {
     check(parents.get_const_view().view_children().values[64] == 37);
 
     SingleParents moved{std::move(parents)};
+    // NOLINTNEXTLINE(bugprone-use-after-move): Verify the defined moved-from state.
     check(parents.capacity() == 0);
     moved.remove_at_swap(0, 1);
     check(moved.get_view().columns().children.values[0] == 37);

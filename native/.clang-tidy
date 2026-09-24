@@ -7,5 +7,6 @@ Checks:
   - performance-unnecessary-value-param
   - performance-move-const-arg
   - bugprone-argument-comment
+  - bugprone-use-after-move
 ExtraArgsBefore:
   - /EHsc
