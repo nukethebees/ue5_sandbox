@@ -104,6 +104,7 @@ Checks:
   - bugprone-unsafe-functions
   - bugprone-unused-local-non-trivial-variable
   - bugprone-virtual-near-miss
+  - bugprone-reserved-identifier
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
