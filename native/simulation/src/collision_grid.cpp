@@ -326,7 +326,7 @@ auto GridTraversal::advance() noexcept -> bool {
     if (current_cell_ == end_cell_) {
         return false;
     }
-    auto const next_t{std::min(next_t_.X, std::min(next_t_.Y, next_t_.Z))};
+    auto const next_t{std::min({next_t_.X, next_t_.Y, next_t_.Z})};
     if (next_t > 1.0f) {
         return false;
     }

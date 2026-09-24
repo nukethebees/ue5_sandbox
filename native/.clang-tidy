@@ -196,6 +196,7 @@ Checks:
   - cppcoreguidelines-use-enum-class
   - cppcoreguidelines-virtual-class-destructor
   - modernize-concat-nested-namespaces
+  - modernize-min-max-use-initializer-list
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:

@@ -32,6 +32,6 @@ auto make_entity_world_bounds(EntityAABBs const& bounds,
 
 auto get_entity_radius(EntityAABBs const& bounds, EntityType const type) noexcept -> float {
     auto const half_extents{bounds.get_half_extents(type)};
-    return std::max(std::max(half_extents.X, half_extents.Y), half_extents.Z);
+    return std::max({half_extents.X, half_extents.Y, half_extents.Z});
 }
 } // namespace collision
