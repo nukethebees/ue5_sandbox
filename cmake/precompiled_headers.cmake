@@ -1,3 +1,5 @@
+include_guard(GLOBAL)
+
 function(sandbox_target_precompile_common_headers)
   foreach(target IN LISTS ARGN)
     if(TARGET ${target})
