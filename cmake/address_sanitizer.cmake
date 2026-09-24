@@ -4,16 +4,16 @@ include("${CMAKE_CURRENT_LIST_DIR}/clang_cl_asan_paths.cmake")
 function(sandbox_enable_address_sanitizer)
   if(IOJ_WITH_UNREAL)
     message(FATAL_ERROR
-      "IOJ_WITH_ASAN is supported only for native-only configurations.")
+      "IOJ_ENABLE_ASAN is supported only for native-only configurations.")
   endif()
   if(NOT WIN32 OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR
-      "IOJ_WITH_ASAN is supported only for Windows x64 configurations.")
+      "IOJ_ENABLE_ASAN is supported only for Windows x64 configurations.")
   endif()
   if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR
      NOT CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
     message(FATAL_ERROR
-      "IOJ_WITH_ASAN requires the Windows clang-cl toolchain.")
+      "IOJ_ENABLE_ASAN requires the Windows clang-cl toolchain.")
   endif()
 
   add_compile_options(

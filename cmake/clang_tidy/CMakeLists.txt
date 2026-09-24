@@ -1,9 +1,9 @@
-if(NOT IOJ_WITH_CLANG_TIDY)
+if(NOT IOJ_ENABLE_CLANG_TIDY)
   return()
 endif()
 
 if(NOT IOJ_IS_CLANG_CL)
-  message(FATAL_ERROR "IOJ_WITH_CLANG_TIDY requires the clang-cl toolchain.")
+  message(FATAL_ERROR "IOJ_ENABLE_CLANG_TIDY requires the clang-cl toolchain.")
 endif()
 
 find_program(IOJ_CLANG_TIDY_EXECUTABLE NAMES clang-tidy REQUIRED)

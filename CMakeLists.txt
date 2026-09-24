@@ -26,10 +26,10 @@ find_package(Python3 REQUIRED COMPONENTS Interpreter)
 set(IOJ_HAS_PYTHON ${Python3_Interpreter_FOUND})
 
 option(IOJ_WITH_UNREAL "Configure Unreal Engine integration and targets" ON)
-option(IOJ_WITH_ASAN "Instrument native targets with AddressSanitizer" OFF)
-option(IOJ_WITH_CLANG_TIDY "Run clang-tidy for first-party native targets" OFF)
+option(IOJ_ENABLE_ASAN "Instrument native targets with AddressSanitizer" OFF)
+option(IOJ_ENABLE_CLANG_TIDY "Run clang-tidy for first-party native targets" OFF)
 
-if(IOJ_WITH_ASAN)
+if(IOJ_ENABLE_ASAN)
   include(cmake/address_sanitizer.cmake)
   sandbox_enable_address_sanitizer()
 endif()

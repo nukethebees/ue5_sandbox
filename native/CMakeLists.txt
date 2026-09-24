@@ -88,7 +88,7 @@ if(UE_CONFIGURATION MATCHES "^(Debug|DebugGame|Development)$")
   endif()
 endif()
 
-if(IOJ_WITH_CLANG_TIDY)
+if(IOJ_ENABLE_CLANG_TIDY)
   sandbox_configure_native_clang_tidy()
 endif()
 
@@ -133,6 +133,6 @@ if(TARGET TracyClientUnreal)
   )
 endif()
 
-if(IOJ_WITH_CLANG_TIDY)
+if(IOJ_ENABLE_CLANG_TIDY)
   sandbox_add_native_clang_tidy_target()
 endif()
