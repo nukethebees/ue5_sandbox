@@ -24,5 +24,6 @@ Checks:
   - performance-type-promotion-in-math-fn
   - bugprone-assert-side-effect
   - bugprone-assignment-in-if-condition
+  - bugprone-bad-signal-to-kill-thread
 ExtraArgsBefore:
   - /EHsc
