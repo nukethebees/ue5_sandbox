@@ -1,11 +1,3 @@
-if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC" OR
-   CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
-  set(IOJ_MSVC_FRONTEND TRUE)
-else()
-  set(IOJ_MSVC_FRONTEND FALSE)
-endif()
-set(IOJ_MSVC_FRONTEND "${IOJ_MSVC_FRONTEND}" PARENT_SCOPE)
-
 add_subdirectory(compiler_options)
 add_subdirectory(compiler_warnings)
 add_subdirectory(tests)

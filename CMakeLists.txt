@@ -11,6 +11,10 @@ if(CMAKE_UNITY_BUILD)
   set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 endif()
 
+include(cmake/compiler_detection.cmake)
+ioj_is_msvc_frontend(IOJ_MSVC_FRONTEND)
+ioj_is_clang_cl(IOJ_IS_CLANG_CL)
+
 include(cmake/precompiled_headers.cmake)
 
 enable_testing()

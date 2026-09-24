@@ -2,7 +2,7 @@ if(NOT IOJ_WITH_CLANG_TIDY)
   return()
 endif()
 
-if(NOT IOJ_MSVC_FRONTEND OR NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if(NOT IOJ_IS_CLANG_CL)
   message(FATAL_ERROR "IOJ_WITH_CLANG_TIDY requires the clang-cl toolchain.")
 endif()
 
