@@ -16,7 +16,7 @@
 namespace ioj::layout_planner::detail {
 
 void pane_section_menu();
-[[nodiscard]] auto section(char const* label, bool default_open = true) -> bool;
+[[nodiscard]] auto section(char const* label, bool default_open = false) -> bool;
 
 class WrappingButtonRow {
   public:

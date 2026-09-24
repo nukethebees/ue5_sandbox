@@ -362,9 +362,7 @@ void PlannerUi::draw_project_panel() {
                 ImGui::SetNextItemOpen(true, ImGuiCond_Always);
                 open_record_module_.reset();
             }
-            auto const open{ImGui::TreeNodeEx(label.c_str(),
-                                              ImGuiTreeNodeFlags_DefaultOpen |
-                                                  ImGuiTreeNodeFlags_NoTreePushOnOpen)};
+            auto const open{ImGui::TreeNodeEx(label.c_str(), ImGuiTreeNodeFlags_NoTreePushOnOpen)};
             if (ImGui::IsItemHovered() && !declarations.empty() &&
                 declarations.front()->source.has_value()) {
                 auto const source_index{declarations.front()->source->source_file_index};

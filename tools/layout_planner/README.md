@@ -82,9 +82,9 @@ view can be shown or hidden from **View**. Maximized, minimized, and fullscreen 
 the last normal window size. Use **View > Reset panel layout** to restore the default views and
 arrangement.
 
-Use the **...** menu at the top-right of a pane to **Collapse all sections** or **Expand all
-sections**. These actions include nested sections and affect only that pane. Individual sections
-can still be opened or closed afterward.
+Sections and schema module groups start collapsed. Use the **...** menu at the top-right of a pane
+to **Collapse all sections** or **Expand all sections**. These actions include nested sections and
+affect only that pane. Individual sections can still be opened or closed afterward.
 
 Single-click a file in **Project sources** to show it in **Source**. The highlighted row follows
 the file shown there. Viewing remains available while edits are pending. To rename a source,
