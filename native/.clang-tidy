@@ -23,5 +23,6 @@ Checks:
   - performance-move-constructor-init
   - performance-type-promotion-in-math-fn
   - bugprone-assert-side-effect
+  - bugprone-assignment-in-if-condition
 ExtraArgsBefore:
   - /EHsc
