@@ -28,7 +28,7 @@ else()
   )
 endif()
 
-if(IOJ_MSVC_FRONTEND AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+if(IOJ_IS_CLANG_CL)
   set(sandbox_clang_additional_warnings
     /clang:-Wpedantic # Warn about language extensions outside the selected C++ standard.
     /clang:-Wcast-align # Warn when a cast increases the required pointer alignment.
