@@ -224,6 +224,48 @@ auto parse_target_profile_mapping(std::string_view const value)
     return std::pair{*project, std::filesystem::path{*profile}};
 }
 
+auto parse_target_memory_mapping(std::string_view value)
+    -> std::optional<std::pair<std::string, MemoryFacts>> {
+    auto const separator{value.find('|')};
+    if (separator == std::string_view::npos) {
+        return std::nullopt;
+    }
+    auto const project{percent_decode(value.substr(0, separator))};
+    if (!project.has_value()) {
+        return std::nullopt;
+    }
+    value.remove_prefix(separator + 1);
+
+    std::array<std::optional<std::uint64_t>, 5> fields;
+    for (auto index{std::size_t{0}}; index < fields.size(); ++index) {
+        auto const next{value.find('|')};
+        if ((index + 1 < fields.size()) != (next != std::string_view::npos)) {
+            return std::nullopt;
+        }
+        auto const field{value.substr(0, next)};
+        if (field != "-") {
+            std::uint64_t number{};
+            auto const [end,
+                        error]{std::from_chars(field.data(), field.data() + field.size(), number)};
+            if (error != std::errc{} || end != field.data() + field.size() ||
+                (index < 2 && number == 0)) {
+                return std::nullopt;
+            }
+            fields[index] = number;
+        }
+        if (next != std::string_view::npos) {
+            value.remove_prefix(next + 1);
+        }
+    }
+    return std::pair{*project,
+                     MemoryFacts{.cache_line_bytes = fields[0],
+                                 .page_bytes = fields[1],
+                                 .l1_data_cache_bytes = fields[2],
+                                 .l2_cache_bytes = fields[3],
+                                 .l3_cache_bytes = fields[4],
+                                 .provenance = "Project override"}};
+}
+
 auto parse_recent_target_mapping(std::string_view const value)
     -> std::optional<std::pair<std::string, std::string>> {
     auto const separator{value.find('|')};
@@ -448,6 +490,17 @@ void PlannerUi::sync_target_memory_fact_inputs() {
     target_memory_fact_error_.clear();
 }
 
+void PlannerUi::restore_saved_target_memory_facts() {
+    auto const found{persisted_target_memory_facts_.find(graph_project_key(project_path_))};
+    if (found == persisted_target_memory_facts_.end()) {
+        return;
+    }
+    auto profile{analysis_session_.primary_abi()};
+    profile.set_memory_facts(found->second);
+    analysis_session_.set_primary_abi(std::move(profile));
+    sync_target_memory_fact_inputs();
+}
+
 auto PlannerUi::load_target_profile(std::filesystem::path const& path, bool const persist) -> bool {
     auto loaded{load_abi_profile(path)};
     if (!loaded.has_value()) {
@@ -471,9 +524,12 @@ auto PlannerUi::load_target_profile(std::filesystem::path const& path, bool cons
     sync_target_memory_fact_inputs();
     target_profile_load_error_.clear();
 
-    if (persist && !project_path_.empty()) {
-        persisted_target_profile_paths_.insert_or_assign(graph_project_key(project_path_),
-                                                         std::move(stored_path));
+    if (persist) {
+        auto const key{graph_project_key(project_path_)};
+        if (!project_path_.empty()) {
+            persisted_target_profile_paths_.insert_or_assign(key, std::move(stored_path));
+        }
+        persisted_target_memory_facts_.erase(key);
         ImGui::MarkIniSettingsDirty();
     }
     return true;
@@ -486,9 +542,13 @@ void PlannerUi::use_builtin_target_profile(bool const clear_persisted) {
     target_profile_load_error_.clear();
     target_profile_path_.fill('\0');
 
-    if (clear_persisted && !project_path_.empty() &&
-        persisted_target_profile_paths_.erase(graph_project_key(project_path_)) != 0) {
-        ImGui::MarkIniSettingsDirty();
+    if (clear_persisted) {
+        auto const key{graph_project_key(project_path_)};
+        auto const profile_removed{persisted_target_profile_paths_.erase(key) != 0};
+        auto const memory_removed{persisted_target_memory_facts_.erase(key) != 0};
+        if (profile_removed || memory_removed) {
+            ImGui::MarkIniSettingsDirty();
+        }
     }
 }
 
@@ -549,10 +609,10 @@ auto PlannerUi::draw_target_profile() -> bool {
             ImVec4{0.95F, 0.45F, 0.35F, 1.0F}, "%s", target_profile_load_error_.c_str());
     }
 
-    ImGui::SeparatorText("Session memory facts");
+    ImGui::SeparatorText("Project memory facts");
     ImGui::TextDisabled(
-        "Values apply to analysis only. Empty fields are Unknown; line/page sizes must be "
-        "non-zero.");
+        "Applied values are saved for this project and used only for analysis. Empty fields are "
+        "Unknown; line/page sizes must be non-zero.");
     constexpr auto flags{ImGuiInputTextFlags_CharsDecimal};
     ImGui::SetNextItemWidth(180.0F);
     ImGui::InputText("Cache-line bytes",
@@ -656,13 +716,20 @@ auto PlannerUi::draw_target_profile() -> bool {
                 candidate.l2_cache_bytes == target_memory_fact_defaults_.l2_cache_bytes &&
                 candidate.l3_cache_bytes == target_memory_fact_defaults_.l3_cache_bytes};
             candidate.provenance =
-                matches_defaults ? target_memory_fact_defaults_.provenance : "Session override";
+                matches_defaults ? target_memory_fact_defaults_.provenance : "Project override";
             if (candidate != analysis_session_.primary_abi().memory_facts()) {
                 auto profile{analysis_session_.primary_abi()};
-                profile.set_memory_facts(std::move(candidate));
+                profile.set_memory_facts(candidate);
                 analysis_session_.set_primary_abi(std::move(profile));
                 changed = true;
             }
+            auto const key{graph_project_key(project_path_)};
+            if (matches_defaults) {
+                persisted_target_memory_facts_.erase(key);
+            } else {
+                persisted_target_memory_facts_.insert_or_assign(key, candidate);
+            }
+            ImGui::MarkIniSettingsDirty();
             target_memory_fact_error_.clear();
         }
     }
@@ -673,6 +740,9 @@ auto PlannerUi::draw_target_profile() -> bool {
             profile.set_memory_facts(target_memory_fact_defaults_);
             analysis_session_.set_primary_abi(std::move(profile));
             changed = true;
+        }
+        if (persisted_target_memory_facts_.erase(graph_project_key(project_path_)) != 0) {
+            ImGui::MarkIniSettingsDirty();
         }
         sync_target_memory_fact_inputs();
     }
@@ -767,6 +837,7 @@ auto PlannerUi::settings_read_open(ImGuiContext*, ImGuiSettingsHandler* handler,
     ui->graph_node_positions_.clear();
     ui->persisted_graph_node_positions_.clear();
     ui->persisted_target_profile_paths_.clear();
+    ui->persisted_target_memory_facts_.clear();
     return ui;
 }
 
@@ -848,6 +919,17 @@ void PlannerUi::settings_read_line(ImGuiContext*,
         }
         return;
     }
+    constexpr std::string_view target_memory_prefix{"TargetMemory="};
+    if (value.starts_with(target_memory_prefix)) {
+        auto const parsed{parse_target_memory_mapping(value.substr(target_memory_prefix.size()))};
+        if (parsed.has_value()) {
+            ui->persisted_target_memory_facts_.insert_or_assign(parsed->first, parsed->second);
+            if (parsed->first == graph_project_key(ui->project_path_)) {
+                ui->restore_saved_target_memory_facts();
+            }
+        }
+        return;
+    }
     constexpr std::string_view graph_node_prefix{"GraphNode="};
     if (value.starts_with(graph_node_prefix)) {
         auto const parsed{parse_graph_position(value.substr(graph_node_prefix.size()))};
@@ -911,6 +993,24 @@ void PlannerUi::settings_write_all(ImGuiContext*,
         auto const encoded_project{percent_encode(project)};
         auto const encoded_profile{percent_encode(profile.generic_string())};
         output->appendf("TargetProfile=%s|%s\n", encoded_project.c_str(), encoded_profile.c_str());
+    }
+    auto format_memory_value = [](std::optional<std::uint64_t> const value) {
+        return value.has_value() ? std::to_string(*value) : std::string{"-"};
+    };
+    for (auto const& [project, memory] : ui->persisted_target_memory_facts_) {
+        auto const encoded_project{percent_encode(project)};
+        auto const cache_line{format_memory_value(memory.cache_line_bytes)};
+        auto const page{format_memory_value(memory.page_bytes)};
+        auto const l1{format_memory_value(memory.l1_data_cache_bytes)};
+        auto const l2{format_memory_value(memory.l2_cache_bytes)};
+        auto const l3{format_memory_value(memory.l3_cache_bytes)};
+        output->appendf("TargetMemory=%s|%s|%s|%s|%s|%s\n",
+                        encoded_project.c_str(),
+                        cache_line.c_str(),
+                        page.c_str(),
+                        l1.c_str(),
+                        l2.c_str(),
+                        l3.c_str());
     }
     for (auto const& [project, positions] : ui->persisted_graph_node_positions_) {
         auto const encoded_project{percent_encode(project)};
@@ -1995,6 +2095,7 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
         set_text_buffer(target_profile_path_, saved_profile->second.string());
         static_cast<void>(load_target_profile(saved_profile->second, false));
     }
+    restore_saved_target_memory_facts();
     project_document_ = std::move(loaded.project_document);
     document_ = std::move(loaded.document);
     load_diagnostics_ = std::move(loaded.diagnostics);

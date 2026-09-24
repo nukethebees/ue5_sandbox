@@ -127,9 +127,10 @@ arrangement.
    rejected transactionally. The chosen profile path is remembered independently for each project;
    a missing or invalid restored file falls back to the built-in profile with a diagnostic. Expand
    **Primitive facts** to inspect every exact size, alignment, integer role, value width,
-   representation alias, and provenance. The editor also accepts session-only cache-line, page,
-   and cache-capacity facts in bytes, with empty fields remaining Unknown; these inputs immediately
-   refresh analysis but never modify LispB or semantic dirty history.
+   representation alias, and provenance. **Apply memory facts** saves cache-line, page, and
+   B/KiB/MiB/GiB cache-capacity values in the planner settings for the current project and
+   restores them on restart. Empty fields remain Unknown. **Restore profile facts** removes the
+   project override. These inputs refresh analysis without modifying LispB or semantic dirty history.
    Record maps derive member offsets, fixed-array extents, alignment, padding, and tail
    padding from the active target profile. The shared element-count control scales record storage,
    member extents, padding, minimum cache lines, and minimum pages with overflow-safe arithmetic.

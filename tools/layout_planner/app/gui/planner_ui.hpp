@@ -203,6 +203,7 @@ class PlannerUi {
     auto delete_declaration(lispb::schema::DeclarationId declaration) -> bool;
     void sync_variant_name();
     void sync_target_memory_fact_inputs();
+    void restore_saved_target_memory_facts();
     auto load_target_profile(std::filesystem::path const& path, bool persist) -> bool;
     void use_builtin_target_profile(bool clear_persisted);
     auto load_comparison_target_profile(std::filesystem::path const& path) -> bool;
@@ -465,6 +466,7 @@ class PlannerUi {
     std::map<std::string, std::map<lispb::schema::TypeIdentity, std::array<float, 2>>, std::less<>>
         persisted_graph_node_positions_;
     std::map<std::string, std::filesystem::path, std::less<>> persisted_target_profile_paths_;
+    std::map<std::string, layout::MemoryFacts, std::less<>> persisted_target_memory_facts_;
     std::array<char, 128> graph_search_{};
     std::array<char, 1024> new_project_path_{};
     FileDialog* file_dialog_{};
