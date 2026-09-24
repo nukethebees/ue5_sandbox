@@ -150,6 +150,15 @@ Checks:
   - clang-analyzer-core.uninitialized.CapturedBlockVariable
   - clang-analyzer-core.uninitialized.NewArraySize
   - clang-analyzer-core.uninitialized.UndefReturn
+  - modernize-loop-convert
+  - modernize-macro-to-enum
+  - modernize-use-auto
+  - modernize-use-default-member-init
+  - modernize-use-noexcept
+  - modernize-use-std-format
+  - modernize-use-std-print
+  - modernize-use-using
+  - misc-unused-parameters
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
