@@ -31,7 +31,7 @@ if(IOJ_WITH_UNREAL)
   target_include_directories(sandbox-material-gen PUBLIC include)
   target_link_libraries(sandbox-material-gen PRIVATE
     sandbox::native_codegen_defaults
-    sandbox::unreal_avx2
+    ioj::unreal_avx2
     ioj::codegen_pch
   )
   set_target_properties(sandbox-material-gen PROPERTIES

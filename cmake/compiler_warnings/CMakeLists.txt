@@ -1,35 +1,40 @@
 include(add_supported_interface_options.cmake)
 
-add_library(sandbox_warning_level INTERFACE)
-add_library(sandbox_warning_errors INTERFACE)
-add_library(sandbox_codegen_warning_exceptions INTERFACE)
-add_library(sandbox_msvc_strict INTERFACE)
-add_library(sandbox_clang_strict INTERFACE)
+add_library(ioj_warning_level INTERFACE)
+add_library(ioj::warning_level ALIAS ioj_warning_level)
+add_library(ioj_warning_errors INTERFACE)
+add_library(ioj::warning_errors ALIAS ioj_warning_errors)
+add_library(ioj_codegen_warning_exceptions INTERFACE)
+add_library(ioj::codegen_warning_exceptions ALIAS ioj_codegen_warning_exceptions)
+add_library(ioj_msvc_strict INTERFACE)
+add_library(ioj::msvc_strict ALIAS ioj_msvc_strict)
+add_library(ioj_clang_strict INTERFACE)
+add_library(ioj::clang_strict ALIAS ioj_clang_strict)
 
 if(IOJ_MSVC_FRONTEND)
-  target_add_supported_options(sandbox_warning_level COMPILE /W4 /wd4324)
-  target_add_supported_options(sandbox_warning_errors COMPILE /WX)
+  target_add_supported_options(ioj_warning_level COMPILE /W4 /wd4324)
+  target_add_supported_options(ioj_warning_errors COMPILE /WX)
   if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    target_add_supported_options(sandbox_codegen_warning_exceptions COMPILE
+    target_add_supported_options(ioj_codegen_warning_exceptions COMPILE
       /clang:-Wno-missing-designated-field-initializers
       /clang:-Wno-missing-field-initializers
     )
   endif()
 else()
-  target_add_supported_options(sandbox_warning_level COMPILE
+  target_add_supported_options(ioj_warning_level COMPILE
     -Wall
     -Wextra
     -Wpedantic
   )
-  target_add_supported_options(sandbox_warning_errors COMPILE -Werror)
-  target_add_supported_options(sandbox_codegen_warning_exceptions COMPILE
+  target_add_supported_options(ioj_warning_errors COMPILE -Werror)
+  target_add_supported_options(ioj_codegen_warning_exceptions COMPILE
     -Wno-missing-designated-field-initializers
     -Wno-missing-field-initializers
   )
 endif()
 
 if(IOJ_IS_CLANG_CL)
-  set(sandbox_clang_additional_warnings
+  set(ioj_clang_additional_warnings
     /clang:-Wpedantic # Warn about language extensions outside the selected C++ standard.
     /clang:-Wcast-align # Warn when a cast increases the required pointer alignment.
     /clang:-Wcast-qual # Warn when a cast removes type qualifiers such as const.
@@ -59,15 +64,15 @@ if(IOJ_IS_CLANG_CL)
     /clang:-Wweak-vtables # Warn when a virtual table has no out-of-line key function.
     /clang:-Wzero-as-null-pointer-constant # Warn when literal zero is used as a null pointer.
   )
-  foreach(sandbox_clang_warning IN LISTS sandbox_clang_additional_warnings)
-    target_add_supported_options(sandbox_clang_strict COMPILE
-      "${sandbox_clang_warning}"
+  foreach(ioj_clang_warning IN LISTS ioj_clang_additional_warnings)
+    target_add_supported_options(ioj_clang_strict COMPILE
+      "${ioj_clang_warning}"
     )
   endforeach()
 endif()
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-  set(sandbox_msvc_additional_warnings
+  set(ioj_msvc_additional_warnings
     /w44191 # A function pointer conversion is unsafe.
     /w44242 # A conversion may lose data.
     /w44254 # An operator conversion may lose data.
@@ -126,13 +131,13 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     /w45266 # A const qualifier on a return type has no effect.
     /w45267 # An implicitly generated copy operation is deprecated.
   )
-  foreach(sandbox_msvc_warning IN LISTS sandbox_msvc_additional_warnings)
-    target_add_supported_options(sandbox_msvc_strict COMPILE
-      "${sandbox_msvc_warning}"
+  foreach(ioj_msvc_warning IN LISTS ioj_msvc_additional_warnings)
+    target_add_supported_options(ioj_msvc_strict COMPILE
+      "${ioj_msvc_warning}"
     )
   endforeach()
 
-  set(sandbox_msvc_conformance_options
+  set(ioj_msvc_conformance_options
     /permissive-
     /Zc:__cplusplus
     /Zc:alignedNew
@@ -163,32 +168,32 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
     /Zc:wchar_t
     /Zc:zeroSizeArrayNew
   )
-  foreach(sandbox_msvc_conformance_option IN LISTS sandbox_msvc_conformance_options)
-    target_add_supported_options(sandbox_msvc_strict COMPILE
-      "${sandbox_msvc_conformance_option}"
+  foreach(ioj_msvc_conformance_option IN LISTS ioj_msvc_conformance_options)
+    target_add_supported_options(ioj_msvc_strict COMPILE
+      "${ioj_msvc_conformance_option}"
     )
   endforeach()
 endif()
 
-add_library(sandbox_warnings INTERFACE)
-add_library(sandbox::warnings ALIAS sandbox_warnings)
-target_link_libraries(sandbox_warnings INTERFACE
-  sandbox::cxx_standard
-  sandbox_warning_level
-  sandbox_msvc_strict
-  sandbox_clang_strict
+add_library(ioj_warnings INTERFACE)
+add_library(ioj::warnings ALIAS ioj_warnings)
+target_link_libraries(ioj_warnings INTERFACE
+  ioj::cxx_standard
+  ioj::warning_level
+  ioj::msvc_strict
+  ioj::clang_strict
 )
 
-add_library(sandbox_warnings_as_errors INTERFACE)
-add_library(sandbox::warnings_as_errors ALIAS sandbox_warnings_as_errors)
-target_link_libraries(sandbox_warnings_as_errors INTERFACE
-  sandbox_warnings
-  sandbox_warning_errors
+add_library(ioj_warnings_as_errors INTERFACE)
+add_library(ioj::warnings_as_errors ALIAS ioj_warnings_as_errors)
+target_link_libraries(ioj_warnings_as_errors INTERFACE
+  ioj::warnings
+  ioj::warning_errors
 )
 
-add_library(sandbox_codegen_warnings INTERFACE)
-add_library(sandbox::codegen_warnings ALIAS sandbox_codegen_warnings)
-target_link_libraries(sandbox_codegen_warnings INTERFACE
-  sandbox_warnings_as_errors
-  sandbox_codegen_warning_exceptions
+add_library(ioj_codegen_warnings INTERFACE)
+add_library(ioj::codegen_warnings ALIAS ioj_codegen_warnings)
+target_link_libraries(ioj_codegen_warnings INTERFACE
+  ioj::warnings_as_errors
+  ioj::codegen_warning_exceptions
 )

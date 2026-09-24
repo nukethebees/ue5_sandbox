@@ -15,7 +15,7 @@ sandbox_add_dotnet_host_tool(
 set_source_files_properties("${SBX_MIMALLOC_SOURCE}" PROPERTIES LANGUAGE CXX)
 
 function(configure_sbx_mimalloc_object target)
-  target_link_libraries(${target} PRIVATE sandbox::cxx_standard)
+  target_link_libraries(${target} PRIVATE ioj::cxx_standard ioj::asan)
   target_include_directories(${target} PRIVATE "${SBX_MIMALLOC_ROOT}/include")
   target_compile_definitions(${target} PRIVATE
     MI_BUILD_RELEASE=1
@@ -92,7 +92,7 @@ target_include_directories(sbx-mimalloc
 )
 target_include_directories(sbx-mimalloc SYSTEM PRIVATE "${SBX_MIMALLOC_ROOT}/include")
 target_link_libraries(sbx-mimalloc
-  PUBLIC sandbox::cxx_standard psapi shell32 user32 advapi32 bcrypt
+  PUBLIC ioj::cxx_standard psapi shell32 user32 advapi32 bcrypt
   PRIVATE sandbox::native_defaults
 )
 if(IOJ_WITH_TRACY)
@@ -107,9 +107,9 @@ set_target_properties(sbx-mimalloc PROPERTIES
   OUTPUT_NAME SandboxMimalloc
 )
 if(IOJ_WITH_UNREAL)
-  target_link_libraries(sbx-mimalloc-prefix-probe PRIVATE sandbox::unreal_avx2)
-  target_link_libraries(sbx-mimalloc-implementation PRIVATE sandbox::unreal_avx2)
-  target_link_libraries(sbx-mimalloc PRIVATE sandbox::unreal_avx2)
+  target_link_libraries(sbx-mimalloc-prefix-probe PRIVATE ioj::unreal_avx2)
+  target_link_libraries(sbx-mimalloc-implementation PRIVATE ioj::unreal_avx2)
+  target_link_libraries(sbx-mimalloc PRIVATE ioj::unreal_avx2)
   set_target_properties(sbx-mimalloc PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
       "${PROJECT_SOURCE_DIR}/Binaries/Native/SbxMimalloc/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"

@@ -65,7 +65,7 @@ unset(IOJ_CPU_FEATURES_SOURCE_DIRECTORY)
 set_property(TARGET cpu_features PROPERTY MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
 
 if(IOJ_WITH_UNREAL)
-  target_link_libraries(cpu_features PRIVATE sandbox::unreal_avx2)
+  target_link_libraries(cpu_features PRIVATE ioj::unreal_avx2)
   set_target_properties(cpu_features PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
       "${PROJECT_SOURCE_DIR}/Binaries/Native/CpuFeatures/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"

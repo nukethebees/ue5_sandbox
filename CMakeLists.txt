@@ -20,18 +20,14 @@ include(cmake/ue_cache_vars.cmake)
 ioj_is_msvc_frontend(IOJ_MSVC_FRONTEND)
 ioj_is_clang_cl(IOJ_IS_CLANG_CL)
 
-add_subdirectory(cmake)
-
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
-set(IOJ_HAS_PYTHON ${Python3_Interpreter_FOUND})
-
 option(IOJ_WITH_UNREAL "Configure Unreal Engine integration and targets" ON)
 option(IOJ_ENABLE_ASAN "Instrument native targets with AddressSanitizer" OFF)
 option(IOJ_ENABLE_CLANG_TIDY "Run clang-tidy for first-party native targets" OFF)
 
-if(IOJ_ENABLE_ASAN)
-  sandbox_enable_address_sanitizer()
-endif()
+add_subdirectory(cmake)
+
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+set(IOJ_HAS_PYTHON ${Python3_Interpreter_FOUND})
 
 sandbox_add_dotnet_host_tool(
   benchmark-tools-host

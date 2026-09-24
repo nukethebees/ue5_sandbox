@@ -38,9 +38,9 @@ add_executable(native-soa-tests-mimalloc tests.cpp)
 target_compile_definitions(native-soa-tests-mimalloc PRIVATE NATIVE_SOA_MIMALLOC=1)
 target_link_libraries(native-soa-tests-mimalloc PRIVATE native-soa GTest::gtest_main sandbox::mimalloc)
 target_link_libraries(native-soa-tests-mimalloc PRIVATE
-  sandbox::arch_avx2
-  sandbox::debug_symbols
-  sandbox::fp_precise
+  ioj::arch_avx2
+  ioj::debug_symbols
+  ioj::fp_precise
 )
 add_test(NAME native-soa-tests-mimalloc COMMAND native-soa-tests-mimalloc)
 set_tests_properties(native-soa-tests-mimalloc PROPERTIES LABELS "unit;all;native;native-soa")
@@ -56,9 +56,9 @@ target_include_directories(native-soa-benchmarks PRIVATE
   "${PROJECT_SOURCE_DIR}/native/simulation/include"
   "${PROJECT_SOURCE_DIR}/native/core/include")
 target_link_libraries(native-soa-benchmarks PRIVATE
-  sandbox::arch_avx2
-  sandbox::debug_symbols
-  sandbox::fp_precise
+  ioj::arch_avx2
+  ioj::debug_symbols
+  ioj::fp_precise
 )
 add_test(NAME native-soa-dry-run COMMAND native-soa-benchmarks --benchmark_dry_run
   "--benchmark_filter=^Production/"

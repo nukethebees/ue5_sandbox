@@ -298,20 +298,20 @@ if(IOJ_KERNEL_BENCHMARKS)
     target_link_libraries(${TARGET} PRIVATE sandbox::native_codegen_defaults)
   endforeach()
   target_link_libraries(kernel-native-simd-avx2 PRIVATE
-    sandbox::arch_avx2
-    sandbox::fp_strict
+    ioj::arch_avx2
+    ioj::fp_strict
   )
   target_link_libraries(kernel-native-simd-avx512 PRIVATE
-    sandbox::arch_avx512
-    sandbox::fp_strict
+    ioj::arch_avx512
+    ioj::fp_strict
   )
   target_link_libraries(kernel-native-dot-relaxed-avx2 PRIVATE
-    sandbox::arch_avx2
-    sandbox::fp_fast
+    ioj::arch_avx2
+    ioj::fp_fast
   )
   target_link_libraries(kernel-native-dot-relaxed-avx512 PRIVATE
-    sandbox::arch_avx512
-    sandbox::fp_fast
+    ioj::arch_avx512
+    ioj::fp_fast
   )
 
   set(KERNEL_NATIVE_SIMD_OBJECTS
@@ -330,9 +330,9 @@ if(IOJ_KERNEL_BENCHMARKS)
   target_link_libraries(kernel-native-simd-tests PRIVATE
     CpuFeatures::cpu_features
     GTest::gtest_main
-    sandbox::arch_avx2
+    ioj::arch_avx2
     sandbox::native_codegen_defaults
-    sandbox::fp_strict
+    ioj::fp_strict
   )
   add_test(NAME kernel-native-simd-tests COMMAND kernel-native-simd-tests)
   set_tests_properties(kernel-native-simd-tests
@@ -353,9 +353,9 @@ if(IOJ_KERNEL_BENCHMARKS)
     benchmark::benchmark
     benchmark::benchmark_main
     CpuFeatures::cpu_features
-    sandbox::arch_avx2
+    ioj::arch_avx2
     sandbox::native_codegen_defaults
-    sandbox::fp_strict
+    ioj::fp_strict
   )
   add_test(
     NAME KernelNativeBenchmarkDryRun

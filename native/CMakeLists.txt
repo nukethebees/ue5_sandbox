@@ -5,6 +5,10 @@ option(IOJ_KERNEL_BENCHMARK_PLOTS "Generate native kernel benchmark plots" OFF)
 option(IOJ_LAYOUT_PLANNER "Build the standalone memory layout planner" OFF)
 option(IOJ_IMAGE_LAB "Build the standalone Image Lab" OFF)
 
+if(IOJ_ENABLE_ASAN)
+  set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+endif()
+
 add_library(sandbox_native_no_rtti INTERFACE)
 add_library(sandbox::native_no_rtti ALIAS sandbox_native_no_rtti)
 target_compile_options(sandbox_native_no_rtti INTERFACE
@@ -16,14 +20,16 @@ add_library(sandbox_native_defaults INTERFACE)
 add_library(sandbox::native_defaults ALIAS sandbox_native_defaults)
 target_link_libraries(sandbox_native_defaults INTERFACE
   sandbox::native_no_rtti
-  sandbox::warnings_as_errors
+  ioj::warnings_as_errors
+  ioj::asan
 )
 
 add_library(sandbox_native_codegen_defaults INTERFACE)
 add_library(sandbox::native_codegen_defaults ALIAS sandbox_native_codegen_defaults)
 target_link_libraries(sandbox_native_codegen_defaults INTERFACE
   sandbox::native_no_rtti
-  sandbox::codegen_warnings
+  ioj::codegen_warnings
+  ioj::asan
 )
 
 if(IOJ_LAYOUT_PLANNER)

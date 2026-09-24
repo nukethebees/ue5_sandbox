@@ -48,7 +48,7 @@ foreach(native_simulation_target IN LISTS native_simulation_targets)
     OUTPUT_NAME SandboxNativeSimulation
   )
   if(IOJ_WITH_UNREAL)
-    target_link_libraries(${native_simulation_target} PRIVATE sandbox::unreal_avx2)
+    target_link_libraries(${native_simulation_target} PRIVATE ioj::unreal_avx2)
   endif()
 endforeach()
 

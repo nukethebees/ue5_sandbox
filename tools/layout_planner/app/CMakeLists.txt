@@ -28,7 +28,7 @@ target_link_libraries(layout-planner PRIVATE
   native-layout
   lispb-target-compiler
   sandbox-imgui
-  sandbox::warnings_as_errors
+  ioj::warnings_as_errors
 )
 if(WIN32)
   target_link_libraries(layout-planner PRIVATE ole32 uuid shell32)

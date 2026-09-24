@@ -25,7 +25,7 @@ if(IOJ_WITH_UNREAL)
     PRIVATE src
   )
   target_link_libraries(sandbox-mesh-gen PRIVATE sandbox::native_defaults)
-  target_link_libraries(sandbox-mesh-gen PRIVATE sandbox::unreal_avx2)
+  target_link_libraries(sandbox-mesh-gen PRIVATE ioj::unreal_avx2)
   set_target_properties(sandbox-mesh-gen PROPERTIES
     ARCHIVE_OUTPUT_DIRECTORY
       "${PROJECT_SOURCE_DIR}/Binaries/Native/MeshGen/${IOJ_NATIVE_TOOLCHAIN}/${UE_PLATFORM}/${UE_CONFIGURATION}"
