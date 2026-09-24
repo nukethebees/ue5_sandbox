@@ -60,6 +60,8 @@ auto player_sim(LevelSim const& simulation) -> player::Sim const& {
 }
 
 auto mutable_player_sim(LevelSim& simulation) -> player::Sim& {
+    // Test setup owns a mutable simulation; the inspection API exposes it as const.
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
     return const_cast<player::Sim&>(player_sim(simulation));
 }
 

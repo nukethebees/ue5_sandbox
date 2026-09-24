@@ -450,6 +450,8 @@ auto make_default_flight_model_loadout() -> FlightModelLoadout {
 
 auto flight_model_profile(FlightModelLoadout& loadout, FlightModelSlot const slot) noexcept
     -> FlightModelProfile& {
+    // The const overload selects a member of the mutable loadout supplied here.
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
     return const_cast<FlightModelProfile&>(
         flight_model_profile(static_cast<FlightModelLoadout const&>(loadout), slot));
 }
