@@ -20,7 +20,8 @@ Unreal Engine 5.8 project.
 * When starting a new task, clear the old build directories and start fresh
 * Run code/asset generators before starting the task and re-run as needed
 * Perform feature work on dedicated feature branches
-* Use the CMake workflows and jobserver described in [Builds](#builds). Do not bypass them
+* Do not bypass instructions here unless explicitly told to
+* Use the CMake workflows and jobserver described in [Builds](#builds). 
 * Do not interfere with agents in other worktrees
 * **Fast default:** 
   * Understand the task
@@ -29,11 +30,6 @@ Unreal Engine 5.8 project.
   * Run the smallest useful native/focused validation
   * Fix with focused checks then report ready
   * Only build and run what is needed.
-* A feature is **ready for integration** when its implementation is formatted, reviewed, and given
-  credible light/focused validation; native C++ changes also have a clean clang-tidy audit; and
-  its commits are coherent. Do not repeatedly rebase merely because `dev` advanced; rebase during
-  development only for a specific known dependency. Report readiness and wait for the user's
-  explicit authorization without acquiring a reservation.
 * After the user authorizes integration, run `integrate-feature` from the feature
   worktree. This queues fairly for the exclusive `integration/dev` jobserver resource; ordinary
   feature work and unrelated jobserver resources remain concurrent.
@@ -41,10 +37,6 @@ Unreal Engine 5.8 project.
   * When directly submitting a coordinated job, provide a descriptive operation name and an established jobserver kind; it should be identifiable from `jobserver status`, `show`, or `history`. 
   * Use queue metadata to understand ownership and contention; never cancel or kill another agent's job simply because it blocks yours.
   * Processes explicitly reported as owned by the current worktree by `jobserver process-owner` or `jobserver processes --owned` may be terminated with `jobserver kill-owned` without asking the user.
-* The final transaction pins `dev`, rebases once, reviews the effective patch rather than its
-  incidental commit SHA, runs only gates selected from the changed dependency surface, and
-  atomically merges the exact validated candidate. Do not repeatedly rebase and restart expensive
-  validation because unrelated work landed before the integration turn.
 * Tooling and native-only candidates must not acquire Unreal resources unless their dependency
   surface requires Unreal. Run light, relevant tests after implementation; run expensive relevant
   gates once against the pinned final candidate.
