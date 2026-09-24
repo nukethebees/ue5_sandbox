@@ -54,6 +54,12 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             std::snprintf(
                 packed_field_name_.data(), packed_field_name_.size(), "%s", selected_name.c_str());
             if (auto const* field{std::get_if<codegen::PackedFieldSchema>(&*selected)}) {
+                std::snprintf(packed_field_default_.data(),
+                              packed_field_default_.size(),
+                              "%s",
+                              field->default_value.transform(codegen::format_packed_integer)
+                                  .value_or("")
+                                  .c_str());
                 std::snprintf(packed_field_type_.data(),
                               packed_field_type_.size(),
                               "%s",
@@ -426,7 +432,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
     std::optional<TypeId> navigate_to;
     std::optional<std::pair<std::string, std::string>> renamed_field;
     auto selected_after_edit{analysis_session_.inputs.selection.field};
-    if (detail::begin_editable_table("packed-schema-fields", 11, schema->segments.size())) {
+    if (detail::begin_editable_table("packed-schema-fields", 12, schema->segments.size())) {
         detail::editable_table_column("", ImGuiTableColumnFlags_WidthFixed);
         detail::editable_table_column("Access", ImGuiTableColumnFlags_WidthFixed);
         detail::editable_table_column("Operation", ImGuiTableColumnFlags_WidthFixed);
@@ -438,7 +444,33 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
         detail::editable_table_column("Range", ImGuiTableColumnFlags_WidthFixed);
         detail::editable_table_column("Semantic range");
         detail::editable_table_column("Representable");
-        ImGui::TableHeadersRow();
+        detail::editable_table_column("Default");
+        constexpr std::array header_tips{
+            "Select a segment or drag to reorder its bit position.",
+            "Include this field in the modeled access workload.",
+            "R = read, W = write, RW = read and write; affects analysis only.",
+            "Field or reserved-region name.",
+            "LispB semantic type; use the picker or arrow to inspect its declaration.",
+            "Bits occupied in the packed storage integer.",
+            "Derive width from the semantic type or field domain.",
+            "Encoding kind; semantic types own their encoding where applicable.",
+            "Generate an integer range-check helper for this field.",
+            "Allowed semantic values, including separately declared sentinel codes.",
+            "Values representable by the chosen field width or encoding.",
+            "Numeric constructor value (raw/encoded for representations). Blank is implicit zero "
+            "when all defaults are blank, unless an invalid sentinel is configured. "
+            "Partial explicit defaults disable default construction."};
+        ImGui::TableNextRow(ImGuiTableRowFlags_Headers);
+        for (int column{}; column < static_cast<int>(header_tips.size()); ++column) {
+            ImGui::TableSetColumnIndex(column);
+            ImGui::TableHeader(ImGui::TableGetColumnName(column));
+            ImGui::SetItemTooltip("%s", header_tips[static_cast<std::size_t>(column)]);
+        }
+        auto default_gap{false};
+        auto const explicit_defaults{std::ranges::any_of(schema->segments, [](auto const& segment) {
+            auto const* field{std::get_if<codegen::PackedFieldSchema>(&segment)};
+            return field != nullptr && field->default_value.has_value();
+        })};
         for (std::size_t index{}; index < schema->segments.size(); ++index) {
             auto const& segment{schema->segments[index]};
             auto const* field{std::get_if<codegen::PackedFieldSchema>(&segment)};
@@ -569,9 +601,8 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                     }
                 }
                 auto operation_index{static_cast<int>(operation)};
-                ImGui::SetNextItemWidth(105.0F);
-                if (ImGui::Combo(
-                        "##access-operation", &operation_index, "Read\0Write\0Read + write\0")) {
+                ImGui::SetNextItemWidth(-1.0F);
+                if (ImGui::Combo("##access-operation", &operation_index, "R\0W\0RW\0")) {
                     if (!analysis_session_.inputs.selection.packed_access_set_explicit) {
                         analysis_session_.inputs.selection.packed_access_fields.clear();
                         analysis_session_.inputs.selection.packed_access_set_explicit = true;
@@ -582,6 +613,8 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             } else {
                 ImGui::TextDisabled("-");
             }
+
+            detail::editable_table_content_hint("RW", ImGui::GetFrameHeight());
 
             ImGui::TableNextColumn();
             if (row_selected) {
@@ -751,6 +784,7 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 ImGui::BeginDisabled(field_uses_integer_scalar ||
                                      field_linear_quantized != nullptr ||
                                      field_fixed_point != nullptr || field_mini_float != nullptr);
+                ImGui::SetNextItemWidth(-1.0F);
                 if (ImGui::BeginCombo("##kind", kind_label)) {
                     if (ImGui::Selectable("unsigned",
                                           field->kind ==
@@ -871,6 +905,8 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
             } else if (!row_selected) {
                 ImGui::TextUnformatted(kind_label);
             }
+
+            detail::editable_table_content_hint(kind_label, ImGui::GetFrameHeight());
 
             ImGui::TableNextColumn();
             auto range_helper{field != nullptr && field->range_helper};
@@ -1015,6 +1051,52 @@ auto PlannerUi::draw_packed_editor(TypeNode const& node, PackedType const& packe
                 }
             } else {
                 ImGui::TextDisabled("Unknown");
+            }
+            ImGui::TableNextColumn();
+            if (field == nullptr) {
+                ImGui::TextDisabled("0 (reserved)");
+            } else {
+                auto const inactive{explicit_defaults && default_gap};
+                if (inactive) {
+                    ImGui::PushStyleColor(ImGuiCol_Text,
+                                          ImGui::GetStyleColorVec4(ImGuiCol_TextDisabled));
+                }
+                auto const value_text{
+                    field->default_value.transform(codegen::format_packed_integer).value_or("")};
+                auto const* hint{explicit_defaults                   ? "required"
+                                 : schema->invalid_value.has_value() ? "sentinel"
+                                                                     : "0 (implicit)"};
+                if (row_selected) {
+                    ImGui::SetNextItemWidth(-1.0F);
+                    auto const submitted{
+                        ImGui::InputTextWithHint("##default",
+                                                 hint,
+                                                 packed_field_default_.data(),
+                                                 packed_field_default_.size(),
+                                                 ImGuiInputTextFlags_EnterReturnsTrue)};
+                    if (submitted || ImGui::IsItemDeactivatedAfterEdit()) {
+                        auto const default_value{
+                            detail::parse_packed_integer(packed_field_default_.data())};
+                        if (packed_field_default_.front() == '\0' || default_value.has_value()) {
+                            if (!pending.has_value()) {
+                                pending = *schema;
+                            }
+                            std::get<codegen::PackedFieldSchema>(pending->segments[index])
+                                .default_value = default_value;
+                        } else {
+                            schema_edit_message_ = "Default must be an integer or blank.";
+                        }
+                    }
+                } else {
+                    ImGui::TextUnformatted(value_text.empty() ? hint : value_text.c_str());
+                }
+                if (inactive) {
+                    ImGui::PopStyleColor();
+                    ImGui::SetItemTooltip("Retained but inactive: fill every field default to "
+                                          "enable default construction.");
+                }
+                detail::editable_table_content_hint(value_text.empty() ? hint : value_text);
+                default_gap |= !field->default_value.has_value();
             }
             ImGui::PopID();
         }

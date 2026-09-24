@@ -1,0 +1,11 @@
+(module health
+  :header "native/simulation/include/ioj/sim/health_type.h"
+  :backend standard-library
+  :namespace ioj::sim
+  (integer-scalar Health
+    :signed true
+    :minimum -2147483648
+    :maximum 2147483647
+    :bit-width 32
+    :cpp-type @native_int32
+    :cpp-emission alias))

@@ -1,10 +1,8 @@
 #pragma once
 
-#include <cstdint>
+#include <ioj/sim/health_type.h>
 
 namespace ioj::sim {
-using Health = std::int32_t;
-
 [[nodiscard]] constexpr auto is_alive(Health const health) noexcept -> bool {
     return health > 0;
 }

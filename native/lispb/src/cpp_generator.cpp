@@ -44,6 +44,17 @@ auto declaration_emission_order(NormalModuleSchema const& module,
         auto const type{graph.find_declared(module.settings.name,
                                             declaration_name(module.declarations[index]))};
         if (type.has_value()) {
+            for (auto const dependency_type : graph.dependencies_of(*type)) {
+                auto const found{declarations.find(dependency_type)};
+                if (found == declarations.end()) {
+                    continue;
+                }
+                auto const* scalar{
+                    std::get_if<IntegerScalarSchema>(&module.declarations[found->second])};
+                if (scalar != nullptr && scalar->cpp_emission == IntegerScalarCppEmission::alias) {
+                    self(self, found->second);
+                }
+            }
             auto dependency = [&](lispb::schema::ResolvedTypeRef const& reference) {
                 if (auto const found{declarations.find(reference.type)};
                     found != declarations.end()) {
@@ -128,6 +139,12 @@ auto scalar_cpp_type(TypeRef const& reference, TypeRegistry const& types) -> Cpp
 auto lower_scalar(IntegerScalarSchema const& scalar, TypeRegistry const& types)
     -> detail::DeclarationEmission {
     NodeListBuilder declarations;
+    if (scalar.cpp_emission == IntegerScalarCppEmission::alias) {
+        auto const cpp_type{resolve_type(*scalar.cpp_type, types)};
+        declarations.add(
+            raw("using " + scalar.name + " = " + cpp_type.spelling + ";", cpp_type.dependencies));
+        return {.header = declarations.build()};
+    }
     if (scalar.cpp_emission != IntegerScalarCppEmission::none) {
         if (!scalar.cpp_type.has_value()) {
             throw std::invalid_argument{"Integer scalar '" + scalar.name +

@@ -288,7 +288,7 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
     EXPECT_FALSE(simulation.get_agent_accessor().read(original_id));
     EXPECT_TRUE(simulation.get_capital_ships().get_fighter_ids(0).empty());
     FighterOrderQueue stale_orders;
-    stale_orders.add(original_id, FighterOrder{.task = 1}, FighterTask::Standby, {});
+    stale_orders.add(original_id, FighterOrder{1, 0}, FighterTask::Standby, {});
     LevelSimTestAccess::queue_fighter_orders(simulation, stale_orders);
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_fighters().get_num_instances(), 0);
@@ -299,19 +299,17 @@ TEST(FighterLiveCap, SameTickRemovalAndReconstruction) {
     auto const replacement_id{simulation.get_read_view().fighters.entities.entity_ids[0]};
     EXPECT_NE(replacement_id, original_id);
     stale_orders.add(simulation.get_read_view().capitals.entities.entity_ids[0],
-                     FighterOrder{.task = 1},
+                     FighterOrder{1, 0},
                      FighterTask::Standby,
                      {});
-    stale_orders.add(EntityUniqueId(100000, EntityType::Fighter),
-                     FighterOrder{.task = 1},
-                     FighterTask::Standby,
-                     {});
+    stale_orders.add(
+        EntityUniqueId(100000, EntityType::Fighter), FighterOrder{1, 0}, FighterTask::Standby, {});
     LevelSimTestAccess::queue_fighter_orders(simulation, stale_orders);
     simulation.advance(simulation.get_clock().get_tick_period());
     EXPECT_EQ(simulation.get_fighters().get_tasks()[0], FighterTask::Attack);
 
     FighterOrderQueue valid_orders;
-    valid_orders.add(replacement_id, FighterOrder{.task = 1}, FighterTask::Standby, {});
+    valid_orders.add(replacement_id, FighterOrder{1, 0}, FighterTask::Standby, {});
     LevelSimTestAccess::queue_fighter_orders(simulation, valid_orders);
     EXPECT_EQ(simulation.get_fighters().get_tasks()[0], FighterTask::Attack);
     simulation.advance(simulation.get_clock().get_tick_period());

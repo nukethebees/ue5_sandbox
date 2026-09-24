@@ -3,6 +3,51 @@
 namespace ioj::layout {
 namespace {
 
+TEST(RecordAnalyzer, IntegerScalarAliasUsesRepresentationWithoutLosingIdentity) {
+    codegen::IntegerScalarSchema scalar_schema{};
+    scalar_schema.name = "Health";
+    scalar_schema.maximum_value = 15;
+    scalar_schema.bit_width = 4;
+    scalar_schema.cpp_emission = codegen::IntegerScalarCppEmission::alias;
+    scalar_schema.cpp_type =
+        codegen::TypeRef{.name = "std::uint16_t", .suffix = {}, .nested = std::nullopt};
+    codegen::RecordSchema record_schema{};
+    record_schema.name = "Vessel";
+    record_schema.members = {record_member("health", "Health")};
+    codegen::SoaSchema soa_schema{};
+    soa_schema.name = "Fleet";
+    codegen::SoaMemberSchema column{};
+    column.name = "healths";
+    column.kind = codegen::SoaMemberKind::array;
+    column.type.name = "Health";
+    soa_schema.members.push_back(column);
+    codegen::NormalModuleSchema module{};
+    module.settings.name = "vitals";
+    module.settings.header = "Vitals.h";
+    module.soa_backend = codegen::SoaBackend::standard_library;
+    module.declarations = {scalar_schema, record_schema, soa_schema};
+    codegen::Manifest manifest{};
+    manifest.schema_version = codegen::manifest_schema_version;
+    manifest.modules.push_back(module);
+    auto const graph{lispb::schema::resolve_type_graph(manifest)};
+    auto const health{*graph.find_declared("vitals", "Health")};
+    EXPECT_TRUE(
+        std::holds_alternative<lispb::schema::IntegerScalarType>(graph.type(health).definition));
+    EXPECT_EQ(graph.type(health).identity.name, "Health");
+    EXPECT_EQ(physical_type_spelling(graph, health), "std::uint16_t");
+    auto const scalar{Analyzer::analyze_integer_scalar(graph, health)};
+    EXPECT_EQ(scalar.effective_bit_width, 4);
+    auto const record{Analyzer::analyze_record(
+        graph, *graph.find_declared("vitals", "Vessel"), AbiProfile::host_common())};
+    EXPECT_EQ(record.size_bytes, 2);
+    EXPECT_EQ(record.alignment_bytes, 2);
+    auto const soa{Analyzer::analyze_soa(
+        graph, *graph.find_declared("vitals", "Fleet"), {}, AbiProfile::host_common(), 10)};
+    ASSERT_EQ(soa.columns.size(), 1);
+    EXPECT_EQ(soa.columns[0].physical_type, "std::uint16_t");
+    EXPECT_EQ(soa.columns[0].total_bytes, 20);
+}
+
 TEST(RecordAnalyzer, ReportsOffsetsInternalAndTailPadding) {
     auto const fixture{
         record_type({codegen::RecordSchema{.name = "Record",

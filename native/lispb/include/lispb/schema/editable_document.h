@@ -388,6 +388,7 @@ class EditableSchemaDocument {
     auto manifest() const -> codegen::Manifest const&;
     auto types() const -> TypeGraph const&;
     auto source_files() const -> std::span<SchemaSourceFile const>;
+    auto module_source_file(std::size_t module_index) const -> std::optional<std::size_t>;
     auto registered_type_source(std::string_view name) const -> std::optional<SourceRange>;
     auto declarations() const -> std::span<DeclarationInfo const>;
     auto declaration(DeclarationId id) const -> DeclarationInfo const*;

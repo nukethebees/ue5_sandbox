@@ -23,6 +23,11 @@ auto physical_type_spelling(lispb::schema::TypeGraph const& types, lispb::schema
             current = packed->storage_type.type;
             continue;
         }
+        if (auto const* scalar{std::get_if<lispb::schema::IntegerScalarType>(&node.definition)};
+            scalar != nullptr && scalar->cpp_representation.has_value()) {
+            current = scalar->cpp_representation->type;
+            continue;
+        }
         return std::nullopt;
     }
     return std::nullopt;

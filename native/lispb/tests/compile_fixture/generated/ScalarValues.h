@@ -27,4 +27,5 @@ inline constexpr std::uint8_t DamageReason_Invalid{static_cast<std::uint8_t>(255
     return {};
 }
 
+using Health = std::uint16_t;
 } // namespace codegen_compile_fixture

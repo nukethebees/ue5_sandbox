@@ -1,8 +1,11 @@
 #include "packed_value_internal.h"
 
+#include <codegen/schema/fixed_point_value.h>
 #include <lispb/schema/enum_domain.h>
 
 #include <algorithm>
+#include <limits>
+#include <stdexcept>
 
 namespace codegen::detail {
 namespace {
@@ -219,6 +222,109 @@ auto derive_packed_field_width(PackedFieldSchema const& field,
     auto const bits{minimum_packed_integer_bits(
         minimum_code, maximum_code, field.kind == PackedFieldKind::signed_integer)};
     return bits.has_value() ? std::optional<int>{static_cast<int>(*bits)} : std::nullopt;
+}
+
+auto packed_default_value(PackedValueSchema const& schema,
+                          TypeRegistry const& types,
+                          std::vector<ModuleSchema> const& modules)
+    -> std::optional<std::uint64_t> {
+    auto const storage_bits{
+        packed_unsigned_width(resolve_type(schema.storage_type, types).spelling).value()};
+    auto const most_significant_first{schema.bit_order == PackedBitOrder::most_significant_first};
+    auto used_bits{0};
+    auto any_default{false};
+    auto complete{true};
+    std::uint64_t raw{};
+
+    for (auto const& segment : schema.segments) {
+        auto const* field{std::get_if<PackedFieldSchema>(&segment)};
+        auto const bits{field != nullptr ? derive_packed_field_width(*field, types, modules).value()
+                                         : std::get<PackedReservedBitsSchema>(segment).bits};
+        auto const offset{most_significant_first ? storage_bits - used_bits - bits : used_bits};
+        used_bits += bits;
+        if (field == nullptr) {
+            continue;
+        }
+        if (!field->default_value.has_value()) {
+            complete = false;
+            continue;
+        }
+
+        any_default = true;
+        auto const value{*field->default_value};
+        auto const scalar{find_packed_integer_domain(*field, types, modules)};
+        auto const* fixed{find_fixed_point(field->type, types, modules)};
+        auto const signedness{fixed != nullptr ? fixed->signedness
+                              : scalar.has_value()
+                                  ? scalar->signedness
+                                  : field->kind == PackedFieldKind::signed_integer};
+        auto valid{signedness
+                       ? packed_integer_fits_signed(value, static_cast<std::uint32_t>(bits))
+                       : packed_integer_fits_unsigned(value, static_cast<std::uint32_t>(bits))};
+        auto const minimum{scalar.has_value() ? std::optional{scalar->minimum_value}
+                                              : field->minimum_value};
+        auto const maximum{scalar.has_value() ? std::optional{scalar->maximum_value}
+                                              : field->maximum_value};
+        auto const codes{scalar.has_value()
+                             ? scalar->named_codes
+                             : std::span<PackedNamedCodeSchema const>{field->named_codes}};
+        if (minimum.has_value() && maximum.has_value()) {
+            auto const sentinel{std::ranges::any_of(
+                codes, [&](auto const& code) { return code.sentinel && code.value == value; })};
+            valid = valid && (sentinel || (packed_integer_less_equal(*minimum, value) &&
+                                           packed_integer_less_equal(value, *maximum)));
+        }
+        if (field->kind == PackedFieldKind::enumeration) {
+            auto const* enumeration{find_packed_enum(field->type, types, modules)};
+            if (enumeration == nullptr) {
+                valid = false;
+            } else {
+                auto const domain{lispb::schema::analyze_enum_domain(*enumeration)};
+                valid = valid && std::ranges::any_of(domain.values, [&](auto const& enumerator) {
+                            return !enumerator.reserved && enumerator.code.has_value() &&
+                                   enumerator.code->negative == value.negative &&
+                                   enumerator.code->magnitude == value.magnitude;
+                        });
+            }
+        }
+        if (auto const* quantized{find_linear_quantized(field->type, types, modules)}) {
+            auto const mask{bits == 64 ? (std::numeric_limits<std::uint64_t>::max)()
+                                       : (std::uint64_t{1} << bits) - 1};
+            valid = valid && !value.negative && value.magnitude <= mask - quantized->reserved_codes;
+        }
+        if (fixed != nullptr) {
+            if (fixed->minimum_value.has_value()) {
+                auto const bound{
+                    parse_fixed_point_value(*fixed->minimum_value, fixed->fractional_bits)};
+                valid = valid && bound.has_value() && packed_integer_less_equal(*bound, value);
+            }
+            if (fixed->maximum_value.has_value()) {
+                auto const bound{
+                    parse_fixed_point_value(*fixed->maximum_value, fixed->fractional_bits)};
+                valid = valid && bound.has_value() && packed_integer_less_equal(value, *bound);
+            }
+        }
+        if (!valid) {
+            throw std::invalid_argument{"Packed value '" + schema.name + "' field '" + field->name +
+                                        "' default is outside its representable semantic domain"};
+        }
+        auto const mask{bits == 64 ? (std::numeric_limits<std::uint64_t>::max)()
+                                   : (std::uint64_t{1} << bits) - 1};
+        auto const encoded{value.negative ? std::uint64_t{0} - value.magnitude : value.magnitude};
+        raw |= (encoded & mask) << offset;
+    }
+
+    if (!any_default) {
+        return schema.invalid_value.value_or(0);
+    }
+    if (!complete) {
+        return std::nullopt;
+    }
+    if (schema.invalid_value == raw) {
+        throw std::invalid_argument{"Packed value '" + schema.name +
+                                    "' defaults produce its invalid value"};
+    }
+    return raw;
 }
 
 } // namespace codegen::detail

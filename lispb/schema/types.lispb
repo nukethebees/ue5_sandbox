@@ -75,6 +75,11 @@
   :header "cstdint"
   :pass-by value)
 
+(type native_int32
+  :spelling "std::int32_t"
+  :header "cstdint"
+  :pass-by value)
+
 (type native_level_mission_event_type
   :spelling "LevelMissionEventType"
   :header "ioj/sim/level_event_types.h"

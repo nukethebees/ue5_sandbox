@@ -226,7 +226,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
         {
             "name": LAYOUT_PLANNER_CONFIGURATION,
             "configurePreset": LAYOUT_PLANNER_CONFIGURATION,
-            "targets": ["layout-planner", "native-layout-tests"],
+            "targets": ["layout-planner", "native-layout-tests", "layout-planner-ui-tests"],
         },
     ]
     document["testPresets"] = [

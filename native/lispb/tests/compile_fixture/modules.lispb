@@ -67,7 +67,9 @@
     :signed false
     :minimum 0
     :maximum 1000
-    :bit-width auto))
+    :bit-width auto
+    :cpp-type @standard_uint16
+    :cpp-emission alias))
 
 (module representation_fixture
   :header "Representations.h"
@@ -96,6 +98,18 @@
 (module packed_value_fixture
   :header "PackedValues.h"
   :namespace codegen_compile_fixture
+  (packed-value Defaults :storage std::uint16_t :mutable true
+    (field low std::uint8_t :bits 3 :default 5)
+    (reserved gap :bits 2)
+    (field delta std::int8_t :bits 5 :kind signed :default -3))
+  (packed-value DefaultsMsb :storage std::uint16_t :bit-order msb-first
+    (field low std::uint8_t :bits 3 :default 5)
+    (reserved gap :bits 2)
+    (field delta std::int8_t :bits 5 :kind signed :default -3))
+  (packed-value PartialDefaults :storage std::uint8_t :mutable true
+    (field first std::uint8_t :bits 2 :default 1)
+    (field gap std::uint8_t :bits 2)
+    (field last std::uint8_t :bits 2 :default 3))
   (packed-value PackedSingle
     :storage std::uint8_t
     (reserved low :bits 4)

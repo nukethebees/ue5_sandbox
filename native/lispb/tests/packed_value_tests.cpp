@@ -209,6 +209,53 @@ auto mini_float_backed_manifest() -> Manifest {
         }};
 }
 
+TEST(PackedValue, ValidatesExplicitDefaultsAndReportsStorageBudget) {
+    NormalModuleSchema module{
+        .settings = {.name = "orders", .header = "Orders.h"},
+        .declarations = {PackedValueSchema{
+            .name = "FighterOrder",
+            .storage_type = TypeRef{"std::uint8_t"},
+            .segments = {
+                PackedFieldSchema{
+                    .name = "task", .type = TypeRef{"std::uint8_t"}, .bits = 1, .default_value = 0},
+                PackedFieldSchema{.name = "target",
+                                  .type = TypeRef{"std::uint8_t"},
+                                  .bits = 1,
+                                  .default_value = 1}}}}};
+    EXPECT_NO_THROW(lower(module));
+    auto& packed{std::get<PackedValueSchema>(module.declarations[0])};
+    field(packed, 1).default_value = 2;
+    EXPECT_THROW(lower(module), std::invalid_argument);
+    field(packed, 1).default_value = -1;
+    EXPECT_THROW(lower(module), std::invalid_argument);
+    field(packed, 1).default_value = 1;
+    packed.invalid_value = 2;
+    EXPECT_THROW(lower(module), std::invalid_argument);
+    packed.invalid_value.reset();
+    field(packed, 1).bits = 8;
+    try {
+        static_cast<void>(lower(module));
+        FAIL() << "Expected overflow";
+    } catch (std::invalid_argument const& error) {
+        EXPECT_NE(std::string{error.what()}.find("requires 8 bits, 1 already used, 7 remaining"),
+                  std::string::npos);
+    }
+}
+
+TEST(PackedValue, ValidatesDefaultsAgainstSemanticRangesAndNamedSentinels) {
+    auto manifest{scalar_backed_manifest(valid_module())};
+    auto& module{std::get<NormalModuleSchema>(manifest.modules.back())};
+    auto& packed{std::get<PackedValueSchema>(module.declarations.front())};
+    field(packed, 0).default_value = 0;
+    EXPECT_NO_THROW(lower_modules(manifest));
+    field(packed, 0).default_value = 4095;
+    EXPECT_NO_THROW(lower_modules(manifest));
+    field(packed, 0).default_value = 1001;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+    field(packed, 0).default_value = 1000000;
+    EXPECT_THROW(lower_modules(manifest), std::invalid_argument);
+}
+
 TEST(PackedValue, LowersTypedFieldsAndThreeWayComparison) {
     auto module{valid_module()};
     std::get<codegen::PackedValueSchema>(module.declarations.front()).invalid_value = 0x7fffffffu;

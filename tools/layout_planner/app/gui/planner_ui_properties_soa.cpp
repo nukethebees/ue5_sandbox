@@ -428,8 +428,7 @@ auto PlannerUi::draw_soa_editor(TypeNode const& node, SoaType const& soa) -> boo
                 }
                 auto operation_index{static_cast<int>(operation)};
                 ImGui::SetNextItemWidth(105.0F);
-                if (ImGui::Combo(
-                        "##access-operation", &operation_index, "Read\0Write\0Read + write\0")) {
+                if (ImGui::Combo("##access-operation", &operation_index, "R\0W\0RW\0")) {
                     if (!analysis_session_.inputs.selection.soa_access_set_explicit) {
                         analysis_session_.inputs.selection.soa_access_columns.clear();
                         if (!analysis_session_.inputs.selection.field.empty()) {

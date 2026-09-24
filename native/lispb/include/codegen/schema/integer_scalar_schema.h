@@ -11,7 +11,7 @@
 
 namespace codegen {
 
-enum class IntegerScalarCppEmission { none, constants, constants_with_names };
+enum class IntegerScalarCppEmission { none, constants, constants_with_names, alias };
 
 [[nodiscard]] constexpr auto
     integer_scalar_cpp_emission_name(IntegerScalarCppEmission const emission) -> std::string_view {
@@ -22,6 +22,8 @@ enum class IntegerScalarCppEmission { none, constants, constants_with_names };
             return "constants";
         case IntegerScalarCppEmission::constants_with_names:
             return "constants-with-names";
+        case IntegerScalarCppEmission::alias:
+            return "alias";
     }
     return "none";
 }

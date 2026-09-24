@@ -88,6 +88,7 @@ struct PackedField {
     std::optional<codegen::PackedIntegerValue> maximum_value;
     std::vector<PackedNamedCode> named_codes;
     std::optional<SemanticRelationship> relationship;
+    std::optional<codegen::PackedIntegerValue> default_value{};
 };
 
 struct PackedReservedBits {
@@ -103,6 +104,7 @@ struct PackedType {
     std::optional<std::uint64_t> invalid_raw_value;
     std::optional<codegen::PackedByteOrder> byte_order;
     codegen::PackedBitOrder bit_order{codegen::PackedBitOrder::least_significant_first};
+    std::optional<std::uint64_t> default_raw_value{};
 };
 
 struct RecordMember {
@@ -146,6 +148,7 @@ struct IntegerScalarType {
     bool bit_width_auto{};
     std::vector<PackedNamedCode> named_codes;
     std::optional<SemanticRelationship> relationship;
+    std::optional<ResolvedTypeRef> cpp_representation{};
 };
 
 struct ExternalType {

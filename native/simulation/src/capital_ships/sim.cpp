@@ -359,10 +359,8 @@ void Sim::queue_fighter_orders() {
         for (auto index{span.start()}; index < end; ++index) {
             auto const fighter_id{fighter_ids[static_cast<std::size_t>(index)]};
             if (!capital_target.is_valid()) {
-                fighter_order_queue.add(fighter_id,
-                                        FighterOrder{.task = 1, .target = 1},
-                                        FighterTask::Standby,
-                                        capital_target);
+                fighter_order_queue.add(
+                    fighter_id, FighterOrder{1, 1}, FighterTask::Standby, capital_target);
                 continue;
             }
 
@@ -370,8 +368,7 @@ void Sim::queue_fighter_orders() {
             assert(fighter_index >= 0);
             auto const target{fighter_targets[fighter_index]};
             if (!agents_.read_alive(target)) {
-                fighter_order_queue.add(
-                    fighter_id, FighterOrder{.task = 0, .target = 1}, {}, capital_target);
+                fighter_order_queue.add(fighter_id, FighterOrder{0, 1}, {}, capital_target);
             }
         }
     }

@@ -41,9 +41,11 @@ native/simulation/include/ioj/sim/entity_type.h
 native/simulation/include/ioj/sim/entity_unique_id.h
 native/simulation/include/ioj/sim/fighter_entity_data.h
 native/simulation/include/ioj/sim/fighter_order_queue.h
+native/simulation/include/ioj/sim/fighter_orders.h
 native/simulation/include/ioj/sim/fighter_spawn_queue.h
 native/simulation/include/ioj/sim/fighters/command_interface.h
 native/simulation/include/ioj/sim/fighters/phase_interface.h
+native/simulation/include/ioj/sim/health_type.h
 native/simulation/include/ioj/sim/laser_hit_details.h
 native/simulation/include/ioj/sim/laser_soa.h
 native/simulation/include/ioj/sim/lasers/phase_interface.h

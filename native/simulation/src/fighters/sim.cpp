@@ -1127,7 +1127,7 @@ void Sim::set_task_unchecked(std::int32_t const index, Task const task) noexcept
         index, task == Task::Standby ? NavigationRiskTier::Clear : NavigationRiskTier::Nearby);
 }
 void Sim::set_task(EntityUniqueId const fighter, Task const task) noexcept {
-    order_queue.add(fighter, FighterOrder{.task = 1, .target = 0}, task, {});
+    order_queue.add(fighter, FighterOrder{1, 0}, task, {});
 }
 bool Sim::tasks_are_contiguous() const noexcept {
     SANDBOX_PROFILE_SCOPE("fighters::Sim::tasks_are_contiguous");
@@ -1502,7 +1502,7 @@ void Sim::commit_orders() {
 
         auto const element{static_cast<std::size_t>(fighter_index)};
         auto const order{orders.orders[order_index]};
-        if (order.task) {
+        if (order.task()) {
             auto const old_task{data.tasks[element]};
             auto const new_task{orders.tasks[order_index]};
             data.tasks[element] = new_task;
@@ -1514,7 +1514,7 @@ void Sim::commit_orders() {
                 data.attack_reposition_countdowns[element] = 0;
             }
         }
-        if (order.target) {
+        if (order.target()) {
             data.target_ids[element] = orders.targets[order_index];
         }
     }

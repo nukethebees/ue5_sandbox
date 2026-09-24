@@ -548,7 +548,8 @@ auto parse_packed_bit_order(Form const& form) -> PackedBitOrder {
 
 auto parse_packed_field(Form const& form) -> PackedFieldSchema {
     Fields const fields{form, "field", 2};
-    fields.validate({"bits", "kind", "range-helper", "minimum", "maximum"}, {"code", "relation"});
+    fields.validate({"bits", "kind", "range-helper", "minimum", "maximum", "default"},
+                    {"code", "relation"});
 
     auto kind{PackedFieldKind::unsigned_integer};
     if (auto const* value{fields.optional("kind")}) {
@@ -619,6 +620,10 @@ auto parse_packed_field(Form const& form) -> PackedFieldSchema {
                                                   *maximum, "packed field maximum")},
         .named_codes = std::move(named_codes),
         .relationship = std::move(relationship),
+        .default_value = fields.optional("default") == nullptr
+                           ? std::nullopt
+                           : std::optional{packed_integer(*fields.optional("default"),
+                                                          "packed field default")},
     };
 }
 
@@ -1046,10 +1051,12 @@ auto parse_integer_scalar(Form const& form) -> IntegerScalarSchema {
             cpp_emission = IntegerScalarCppEmission::constants;
         } else if (emission_name == "constants-with-names") {
             cpp_emission = IntegerScalarCppEmission::constants_with_names;
+        } else if (emission_name == "alias") {
+            cpp_emission = IntegerScalarCppEmission::alias;
         } else if (emission_name != "none") {
             fail(emission->token.span,
-                 "integer scalar C++ emission policy must be none, constants, or "
-                 "constants-with-names");
+                 "integer scalar C++ emission policy must be none, constants, "
+                 "constants-with-names, or alias");
         }
     }
     auto const* cpp_type{fields.optional("cpp-type")};

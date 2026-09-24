@@ -70,9 +70,37 @@ remain in generated code. Standard fixed-width integer spellings remain unchange
 
 An explicit field-value constructor replaces `make(...)`. `Type::from_raw(raw)` replaces
 the raw-storage constructor and preserves all bits without validation. Default construction
-still produces zero or the schema's invalid value. Mutable types retain `try_make` and setters;
+produces zero or the schema's invalid value when no field defaults are declared. Mutable types retain `try_make` and setters;
 immutable types expose neither. These are source API migrations; storage layout, comparison,
 serialization, and value validation are unchanged.
+
+Packed fields accept numeric `:default` values, for example
+`(field task std::uint8_t :bits 1 :default 0)`. Values use the field constructor's units:
+integer/enum codes, fixed-point raw integers, or quantized/mini-float encodings. Explicit defaults
+must fit the field's domain and width. When every non-reserved field has a default, default
+construction packs those values with zero reserved bits; the result must not equal `:invalid-value`.
+An incomplete explicit default set is valid authoring state but deletes the C++ default constructor.
+Full-field constructors, `try_make`, and `from_raw` remain usable. Removing every explicit default
+restores implicit zero initialization, with `:invalid-value` taking precedence where declared.
+
+## Integer scalar C++ emission
+
+An integer scalar retains its own semantic identity, domain, named codes, and relationships.
+Its one-of-N `:cpp-emission` policy is `none`, `constants`, `constants-with-names`, or `alias`.
+`alias` requires an explicit supported integer `:cpp-type` whose range contains the scalar domain
+and named codes; it needs no named codes and emits no constant helpers. Width does not infer a C++ type.
+
+```lisp
+(integer-scalar Health :signed false :minimum 0 :maximum 65535 :bit-width 16
+  :cpp-type @native_uint16 :cpp-emission alias)
+```
+
+With `native_uint16` registered as `std::uint16_t` from `cstdint`, this emits
+`using Health = std::uint16_t;` in the module namespace, with the normal include dependency.
+`IntegerScalarType` retains a resolved representation reference for physical layout analysis;
+the emission policy remains schema/backend metadata. `using Health = std::uint16_t;` and
+`using Armour = std::uint16_t;` describe distinct LispB semantic types but interchangeable C++ types.
+Alias emission provides no strong typing or runtime domain checking.
 
 ## External scalar registry
 

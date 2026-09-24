@@ -334,7 +334,8 @@
       "configurePreset": "layout-planner",
       "targets": [
         "layout-planner",
-        "native-layout-tests"
+        "native-layout-tests",
+        "layout-planner-ui-tests"
       ]
     }
   ],

@@ -915,8 +915,7 @@ auto PlannerUi::draw_record_editor(TypeNode const& node, RecordType const& recor
                 }
                 auto operation_index{static_cast<int>(operation)};
                 ImGui::SetNextItemWidth(105.0F);
-                if (ImGui::Combo(
-                        "##access-operation", &operation_index, "Read\0Write\0Read + write\0")) {
+                if (ImGui::Combo("##access-operation", &operation_index, "R\0W\0RW\0")) {
                     if (!analysis_session_.inputs.selection.record_access_set_explicit) {
                         analysis_session_.inputs.selection.record_access_members.clear();
                         if (!analysis_session_.inputs.selection.field.empty()) {

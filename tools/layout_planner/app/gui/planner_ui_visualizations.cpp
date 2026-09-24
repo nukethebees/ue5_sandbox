@@ -970,7 +970,7 @@ auto PlannerUi::draw_access_operation() -> bool {
     bool changed{};
     auto operation_index{static_cast<int>(analysis_session_.inputs.access_operation)};
     ImGui::SetNextItemWidth(180.0F);
-    if (ImGui::Combo("Default / all", &operation_index, "Read\0Write\0Read + write\0")) {
+    if (ImGui::Combo("Default / all", &operation_index, "R\0W\0RW\0")) {
         analysis_session_.inputs.access_operation = static_cast<AccessOperation>(operation_index);
         for (auto& [name, operation] : analysis_session_.inputs.selection.packed_access_fields) {
             static_cast<void>(name);

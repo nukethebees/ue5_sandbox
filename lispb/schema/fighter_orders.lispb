@@ -1,0 +1,15 @@
+(module fighter_orders
+  :header "native/simulation/include/ioj/sim/fighter_orders.h"
+  :backend standard-library
+  :namespace ioj::sim
+  (enum FighterTask @native_uint8
+    :native-api true
+    :count COUNT
+    (value Standby :value "0")
+    (value MoveToDestination :value "1")
+    (value Attack :value "2")
+    (value COUNT :value "3"))
+  (packed-value FighterOrder
+    :storage @native_uint8
+    (field task @native_uint8 :bits 1 :default 0)
+    (field target @native_uint8 :bits 1 :default 0)))
