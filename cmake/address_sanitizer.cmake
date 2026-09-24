@@ -6,10 +6,12 @@ function(sandbox_enable_address_sanitizer)
     message(FATAL_ERROR
       "IOJ_ENABLE_ASAN is supported only for native-only configurations.")
   endif()
+
   if(NOT WIN32 OR NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
     message(FATAL_ERROR
       "IOJ_ENABLE_ASAN is supported only for Windows x64 configurations.")
   endif()
+
   if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR
      NOT CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
     message(FATAL_ERROR
@@ -21,6 +23,7 @@ function(sandbox_enable_address_sanitizer)
     /clang:-fno-omit-frame-pointer
     /RTC-
   )
+
   add_link_options(/INCREMENTAL:NO)
   set(CMAKE_CXX_SCAN_FOR_MODULES OFF CACHE BOOL
     "Disable C++ module dependency scanning for AddressSanitizer builds" FORCE)
@@ -31,6 +34,7 @@ function(sandbox_enable_address_sanitizer)
     OUTPUT_STRIP_TRAILING_WHITESPACE
     RESULT_VARIABLE resource_directory_result
   )
+
   if(NOT resource_directory_result EQUAL 0 OR
      clang_resource_directory STREQUAL "")
     message(FATAL_ERROR
