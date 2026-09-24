@@ -65,6 +65,7 @@ Checks:
   - bugprone-misplaced-operator-in-strlen-in-alloc
   - bugprone-misplaced-pointer-arithmetic-in-alloc
   - bugprone-move-forwarding-reference
+  - bugprone-multi-level-implicit-pointer-conversion
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
