@@ -13,6 +13,7 @@ class ATestSpaceShip;
 class ACameraActor;
 class UEnhancedInputUserSettings;
 struct FTestMissionCompletion;
+struct FInputKeyEventArgs;
 class UTestBatchGameUiData;
 
 UCLASS()
@@ -30,6 +31,7 @@ class SPACEGAME_API ASpaceGamePlayerController : public APlayerController {
   public:
     using Pawn = ATestSpaceShip;
     ASpaceGamePlayerController();
+    bool InputKey(FInputKeyEventArgs const& event_args) override;
     void SetupInputComponent() override;
     void Tick(float dt) override;
     void show_main_menu();

@@ -6,6 +6,12 @@
 #include <SpaceGame/simulation/SpaceGameLevelConfig.h>
 
 #include <CQTest.h>
+#include <EdGraph/EdGraph.h>
+#include <EdGraph/EdGraphNode.h>
+#include <Engine/Blueprint.h>
+#include <Engine/BlueprintGeneratedClass.h>
+#include <Engine/InputDelegateBinding.h>
+#include <Engine/SimpleConstructionScript.h>
 #include <InputAction.h>
 #include <InputMappingContext.h>
 #include <InputModifiers.h>
@@ -31,6 +37,45 @@ auto action_names_for_key(UInputMappingContext const& context, FKey const key) -
 
 TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
 {
+    TEST_METHOD(ProductionControllerBlueprintHasNoInputGraph)
+    {
+        auto* const blueprint{LoadObject<UBlueprint>(
+            nullptr,
+            TEXT("/SpaceGame/Players/BP_SpaceGamePlayerController.BP_SpaceGamePlayerController"))};
+        if (!TestRunner->TestNotNull(TEXT("Production controller Blueprint"), blueprint)) {
+            return;
+        }
+        TestRunner->TestTrue(TEXT("Direct C++ controller parent"),
+                             blueprint->ParentClass == ASpaceGamePlayerController::StaticClass());
+        TArray<UEdGraph*> graphs;
+        blueprint->GetAllGraphs(graphs);
+        for (auto const* const graph : graphs) {
+            for (auto const& node_ptr : graph->Nodes) {
+                auto const* const node{node_ptr.Get()};
+                if (graph->GetFName() == TEXT("UserConstructionScript") &&
+                    node->GetClass()->GetFName() == TEXT("K2Node_FunctionEntry")) {
+                    continue;
+                }
+                TestRunner->AddError(
+                    FString::Printf(TEXT("Unexpected controller graph node: %s/%s"),
+                                    *graph->GetName(),
+                                    *node->GetClass()->GetName()));
+            }
+        }
+        TestRunner->TestTrue(TEXT("No Blueprint-added components"),
+                             blueprint->SimpleConstructionScript == nullptr ||
+                                 blueprint->SimpleConstructionScript->GetAllNodes().IsEmpty());
+        auto const* const generated{Cast<UBlueprintGeneratedClass>(blueprint->GeneratedClass)};
+        if (!TestRunner->TestNotNull(TEXT("Generated controller class"), generated)) {
+            return;
+        }
+        for (auto const& binding_ptr : generated->DynamicBindingObjects) {
+            auto const* const binding{binding_ptr.Get()};
+            TestRunner->TestFalse(TEXT("No Blueprint input binding"),
+                                  IsValid(binding) && binding->IsA<UInputDelegateBinding>());
+        }
+    }
+
     TEST_METHOD(GeneratedContextsAndActions)
     {
         for (auto const& definition : ml::ioj::canonical_ship_control_contexts()) {
@@ -220,10 +265,19 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
                     TEXT("Directional action"), mapping.Action->GetName(), FString{action});
                 int32 negate_count{};
                 int32 response_count{};
-                for (auto const modifier_ptr : mapping.Modifiers) {
+                int32 negate_index{INDEX_NONE};
+                int32 response_index{INDEX_NONE};
+                for (int32 index{}; index < mapping.Modifiers.Num(); ++index) {
+                    auto const modifier_ptr{mapping.Modifiers[index]};
                     auto const* const modifier{modifier_ptr.Get()};
-                    negate_count += modifier->IsA<UInputModifierNegate>() ? 1 : 0;
-                    response_count += modifier->IsA<ml::ioj::USpaceGameInputModifier>() ? 1 : 0;
+                    if (modifier->IsA<UInputModifierNegate>()) {
+                        ++negate_count;
+                        negate_index = index;
+                    }
+                    if (modifier->IsA<ml::ioj::USpaceGameInputModifier>()) {
+                        ++response_count;
+                        response_index = index;
+                    }
                 }
                 TestRunner->TestEqual(TEXT("Negate presence matches authored direction"),
                                       negate_count,
@@ -234,6 +288,10 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
                 TestRunner->TestEqual(TEXT("No unexpected directional modifier"),
                                       mapping.Modifiers.Num(),
                                       negate_count + response_count);
+                if (negative && response_count == 1) {
+                    TestRunner->TestTrue(TEXT("Authored Negate runs before user inversion"),
+                                         negate_index < response_index);
+                }
             }
             TestRunner->TestEqual(TEXT("Directional key has one mapping"), matching, 1);
         };
@@ -250,6 +308,51 @@ TEST_CLASS(CanonicalShipInput, "Sandbox.UnitTests")
                          TEXT("IA_Ship_TranslateUp")}}) {
             check_sign(EShipControlScope::Gunship, positive, action, false);
             check_sign(EShipControlScope::Gunship, negative, action, true);
+        }
+    }
+
+    TEST_METHOD(ControllerAxesCarrySemanticIdentity)
+    {
+        using ml::ioj::EShipControlScope;
+        using ml::ioj::ESpaceGameInputAxis;
+        for (auto const scope : {EShipControlScope::Starfox,
+                                 EShipControlScope::Fighter,
+                                 EShipControlScope::Skater,
+                                 EShipControlScope::Gunship}) {
+            auto const* const context{ml::ioj::load_ship_control_context(scope)};
+            if (!TestRunner->TestNotNull(TEXT("Flight context loads"), context)) {
+                continue;
+            }
+            for (auto const& mapping : context->GetMappings()) {
+                if (!mapping.Key.IsGamepadKey() && mapping.Key != EKeys::MouseX &&
+                    mapping.Key != EKeys::MouseY) {
+                    continue;
+                }
+                ESpaceGameInputAxis expected{ESpaceGameInputAxis::None};
+                auto const name{mapping.Action->GetName()};
+                if (name == TEXT("IA_Ship_Pitch")) {
+                    expected = ESpaceGameInputAxis::Pitch;
+                } else if (name == TEXT("IA_Ship_Yaw")) {
+                    expected = ESpaceGameInputAxis::Yaw;
+                } else if (name == TEXT("IA_Ship_Roll")) {
+                    expected = ESpaceGameInputAxis::Roll;
+                } else if (name == TEXT("IA_Ship_TranslateUp")) {
+                    expected = ESpaceGameInputAxis::VerticalTranslation;
+                } else {
+                    continue;
+                }
+                auto const* const response{mapping.Modifiers.FindByPredicate(
+                    [](TObjectPtr<UInputModifier> const& modifier) {
+                        return modifier.Get()->IsA<ml::ioj::USpaceGameInputModifier>();
+                    })};
+                TestRunner->TestTrue(TEXT("Semantic axis response exists"), response != nullptr);
+                if (response != nullptr) {
+                    TestRunner->TestTrue(
+                        TEXT("Semantic axis matches action"),
+                        CastChecked<ml::ioj::USpaceGameInputModifier>(response->Get())->axis ==
+                            expected);
+                }
+            }
         }
     }
 

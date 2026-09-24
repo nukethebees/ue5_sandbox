@@ -3,6 +3,7 @@
 
 #include <ioj/sim/player/sim.h>
 #include <SpaceGame/input/CanonicalShipControls.h>
+#include <SpaceGame/input/SpaceGameInputUserSettings.h>
 #include <SpaceGame/levels/ExampleLevels.h>
 #include <SpaceGame/levels/LevelLoader.h>
 #include <SpaceGame/settings/GameSettingsSubsystem.h>
@@ -15,7 +16,9 @@
 #include <EnhancedInputComponent.h>
 #include <EnhancedInputDeveloperSettings.h>
 #include <EnhancedInputSubsystems.h>
+#include <EnhancedPlayerInput.h>
 #include <InputAction.h>
+#include <InputKeyEventArgs.h>
 #include <InputMappingContext.h>
 #include <Kismet/GameplayStatics.h>
 #include <Misc/Guid.h>
@@ -40,6 +43,12 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
     FKey original_default_key_{};
     int32 test_user_index_{};
     bool restore_remap_{};
+    bool restore_pitch_inversion_{};
+    bool original_pitch_inversion_{};
+    bool restore_other_inversions_{};
+    bool original_yaw_inversion_{};
+    bool original_roll_inversion_{};
+    bool original_vertical_inversion_{};
 
     BEFORE_EACH()
     {
@@ -67,6 +76,23 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 settings->ApplySettings();
             }
         }
+        if (restore_pitch_inversion_) {
+            if (auto* const input_settings{
+                    Cast<ml::ioj::USpaceGameInputUserSettings>(settings_.Get())}) {
+                input_settings->set_invert_gamepad_pitch(original_pitch_inversion_);
+                input_settings->ApplySettings();
+            }
+        }
+        if (restore_other_inversions_) {
+            if (auto* const input_settings{
+                    Cast<ml::ioj::USpaceGameInputUserSettings>(settings_.Get())}) {
+                input_settings->set_invert_gamepad_yaw(original_yaw_inversion_);
+                input_settings->set_invert_gamepad_roll(original_roll_inversion_);
+                input_settings->set_invert_gamepad_vertical_translation(
+                    original_vertical_inversion_);
+                input_settings->ApplySettings();
+            }
+        }
         if (!test_save_slot_.IsEmpty()) {
             GetMutableDefault<UEnhancedInputDeveloperSettings>()->InputSettingsSaveSlotName =
                 original_save_slot_;
@@ -75,6 +101,15 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
         if (auto* const controller{controller_.Get()}) {
             controller->ConsoleCommand(TEXT("Input.-key Four"), true);
             controller->ConsoleCommand(TEXT("Input.-key Gamepad_FaceButton_Bottom"), true);
+            controller->InputKey(FInputKeyEventArgs::CreateSimulated(
+                EKeys::Gamepad_FaceButton_Bottom, IE_Released, 0.0f));
+            controller->ConsoleCommand(TEXT("Input.-key Gamepad_LeftY"), true);
+            controller->ConsoleCommand(TEXT("Input.-key Gamepad_RightY"), true);
+            controller->ConsoleCommand(TEXT("Input.-key Gamepad_RightX"), true);
+            controller->ConsoleCommand(TEXT("Input.-key Gamepad_LeftX"), true);
+            controller->ConsoleCommand(TEXT("Input.-key C"), true);
+            controller->ConsoleCommand(TEXT("Input.-key One"), true);
+            controller->ConsoleCommand(TEXT("Input.-key Two"), true);
         }
         level_setup.end_test();
         controller_.Reset();
@@ -84,6 +119,8 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
         original_save_slot_.Reset();
         test_save_slot_.Reset();
         restore_remap_ = false;
+        restore_pitch_inversion_ = false;
+        restore_other_inversions_ = false;
     }
 
     AFTER_ALL()
@@ -145,6 +182,76 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                    ml::ioj::load_ship_control_context(ml::ioj::EShipControlScope::Starfox));
     }
 
+    void check_active_contexts(ml::ioj::EShipControlScope const mode) {
+        auto const* const controller{controller_.Get()};
+        auto const* const input{
+            IsValid(controller) ? Cast<UEnhancedPlayerInput>(controller->PlayerInput) : nullptr};
+        if (!checks.is_true(IsValid(input), TEXT("Enhanced PlayerInput exists"))) {
+            return;
+        }
+        auto const* const property{FindFProperty<FMapProperty>(UEnhancedPlayerInput::StaticClass(),
+                                                               TEXT("AppliedInputContextData"))};
+        if (!checks.is_true(property != nullptr, TEXT("Applied IMC state is inspectable"))) {
+            return;
+        }
+        FScriptMapHelper const active{property, property->ContainerPtrToValuePtr<void>(input)};
+        checks.is_true(active.Num() == 2, TEXT("Exactly General and one flight IMC are active"));
+        auto const* const key_property{CastFieldChecked<FObjectProperty>(property->KeyProp)};
+        for (auto index{active.CreateIterator()}; index; ++index) {
+            auto const* const context{Cast<UInputMappingContext>(
+                key_property->GetObjectPropertyValue(active.GetKeyPtr(index)))};
+            checks.is_true(context == ml::ioj::load_ship_control_context(
+                                          ml::ioj::EShipControlScope::General) ||
+                               context == ml::ioj::load_ship_control_context(mode),
+                           TEXT("No Blueprint or retired ship IMC is active"));
+        }
+    }
+
+    void check_single_ship_action_bindings() {
+        auto const* const controller{controller_.Get()};
+        auto const* const component{IsValid(controller)
+                                        ? Cast<UEnhancedInputComponent>(controller->InputComponent)
+                                        : nullptr};
+        if (!checks.is_true(IsValid(component), TEXT("Enhanced Input component exists"))) {
+            return;
+        }
+        for (auto const& [name, expected] : {std::pair{TEXT("IA_Ship_Pitch"), 3},
+                                             std::pair{TEXT("IA_Ship_TranslateUp"), 3},
+                                             std::pair{TEXT("IA_Ship_FirePrimary"), 3},
+                                             std::pair{TEXT("IA_Ship_SelectGunship"), 1}}) {
+            int32 count{};
+            for (auto const& binding : component->GetActionEventBindings()) {
+                if (IsValid(binding->GetAction()) && binding->GetAction()->GetName() == name) {
+                    ++count;
+                }
+            }
+            checks.is_true(count == expected,
+                           FString::Printf(TEXT("%s has only its canonical C++ bindings"), name));
+        }
+    }
+
+    auto native_pitch() const -> float {
+        auto const* const orchestrator{level_setup.get_orchestrator()};
+        auto const* const sim{IsValid(orchestrator) ? orchestrator->get_player_ship_simulation()
+                                                    : nullptr};
+        return sim != nullptr ? sim->get_flight_intent().rotation.x : 0.0f;
+    }
+
+    auto native_yaw() const -> float {
+        auto const* const sim{level_setup.get_orchestrator()->get_player_ship_simulation()};
+        return sim != nullptr ? sim->get_flight_intent().rotation.y : 0.0f;
+    }
+
+    auto native_roll() const -> float {
+        auto const* const sim{level_setup.get_orchestrator()->get_player_ship_simulation()};
+        return sim != nullptr ? sim->get_flight_intent().rotation.z : 0.0f;
+    }
+
+    auto native_vertical() const -> float {
+        auto const* const sim{level_setup.get_orchestrator()->get_player_ship_simulation()};
+        return sim != nullptr ? sim->get_flight_intent().translation.z : 0.0f;
+    }
+
     auto canonical_remap_reloaded(FKey const expected_key) const -> bool {
         auto* const controller{controller_.Get()};
         if (!IsValid(controller) || test_save_slot_.IsEmpty() ||
@@ -178,6 +285,16 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
         return false;
     }
 
+    auto inversion_reloaded(bool const expected) const -> bool {
+        auto* const controller{controller_.Get()};
+        auto const* const loaded{IsValid(controller)
+                                     ? Cast<ml::ioj::USpaceGameInputUserSettings>(
+                                           UEnhancedInputUserSettings::LoadOrCreateSettings(
+                                               controller->GetLocalPlayer()))
+                                     : nullptr};
+        return IsValid(loaded) && loaded->invert_gamepad_pitch() == expected;
+    }
+
     TEST_METHOD(DirectGameplayStartupAndModeSwitch)
     {
         TestCommandBuilder.Do([this] { setup(); })
@@ -186,6 +303,8 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 if (!checks.is_true(ready(), TEXT("Starfox context activates after possession"))) {
                     return;
                 }
+                check_active_contexts(ml::ioj::EShipControlScope::Starfox);
+                check_single_ship_action_bindings();
                 auto* const subsystem{subsystem_.Get()};
                 for (auto const scope : {ml::ioj::EShipControlScope::Fighter,
                                          ml::ioj::EShipControlScope::Skater,
@@ -226,6 +345,7 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                 }
                 checks.is_true(settings_->GetActiveKeyProfileId() == active_profile_id_,
                                TEXT("Flight-mode selection does not cycle key profiles"));
+                check_active_contexts(ml::ioj::EShipControlScope::Gunship);
             });
     }
 
@@ -266,6 +386,241 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                                TEXT("Gunship gamepad A sends negative vertical intent"));
                 checks.is_true(sim && sim->laser_firing_mode == ::ioj::sim::LaserFiringState::idle,
                                TEXT("Gunship gamepad A does not fire"));
+                check_active_contexts(ml::ioj::EShipControlScope::Gunship);
+                check_single_ship_action_bindings();
+            });
+    }
+
+    TEST_METHOD(ControllerPitchHasOneSignAcrossFlightModes)
+    {
+        TestCommandBuilder.Do([this] { setup(); })
+            .Until([this] { return !checks.all_passed || ready(); }, timeout)
+            .Then([this] {
+                auto* const input_settings{
+                    Cast<ml::ioj::USpaceGameInputUserSettings>(settings_.Get())};
+                if (!checks.is_true(IsValid(input_settings),
+                                    TEXT("Canonical input settings exist"))) {
+                    return;
+                }
+                original_pitch_inversion_ = input_settings->invert_gamepad_pitch();
+                restore_pitch_inversion_ = true;
+                input_settings->set_invert_gamepad_pitch(false);
+                input_settings->ApplySettings();
+                controller_->ConsoleCommand(TEXT("Input.+key Gamepad_LeftY 1.0"), true);
+            })
+            .Until([this] { return !checks.all_passed || native_pitch() > 0.5f; }, timeout)
+            .Then([this] {
+                checks.is_true(native_pitch() > 0.5f,
+                               TEXT("Starfox positive left Y gives positive Pitch"));
+                controller_->ConsoleCommand(TEXT("Input.-key Gamepad_LeftY"), true);
+                controller_->ConsoleCommand(TEXT("Input.+key Two"), true);
+            })
+            .Until(
+                [this] {
+                    auto const* const ship{IsValid(controller_.Get())
+                                               ? Cast<ATestSpaceShip>(controller_->GetPawn())
+                                               : nullptr};
+                    return !checks.all_passed ||
+                           (IsValid(ship) && ship->get_active_flight_model_slot() ==
+                                                 ::ioj::sim::player::FlightModelSlot::Right);
+                },
+                timeout)
+            .Then([this] {
+                controller_->ConsoleCommand(TEXT("Input.-key Two"), true);
+                controller_->ConsoleCommand(TEXT("Input.+key Gamepad_RightY 1.0"), true);
+            })
+            .Until([this] { return !checks.all_passed || native_pitch() > 0.5f; }, timeout)
+            .Then([this] {
+                checks.is_true(native_pitch() > 0.5f,
+                               TEXT("Fighter positive right Y matches Starfox Pitch"));
+                controller_->ConsoleCommand(TEXT("Input.-key Gamepad_RightY"), true);
+                controller_->ConsoleCommand(TEXT("Input.+key Four"), true);
+            })
+            .Until(
+                [this] {
+                    auto const* const ship{IsValid(controller_.Get())
+                                               ? Cast<ATestSpaceShip>(controller_->GetPawn())
+                                               : nullptr};
+                    return !checks.all_passed ||
+                           (IsValid(ship) && ship->get_active_flight_model_slot() ==
+                                                 ::ioj::sim::player::FlightModelSlot::Left);
+                },
+                timeout)
+            .Then([this] {
+                controller_->ConsoleCommand(TEXT("Input.-key Four"), true);
+                controller_->ConsoleCommand(TEXT("Input.+key Gamepad_RightY 1.0"), true);
+            })
+            .Until([this] { return !checks.all_passed || native_pitch() > 0.5f; }, timeout)
+            .Then([this] {
+                checks.is_true(native_pitch() > 0.5f,
+                               TEXT("Gunship positive right Y matches Starfox Pitch"));
+                auto* const input_settings{
+                    Cast<ml::ioj::USpaceGameInputUserSettings>(settings_.Get())};
+                input_settings->set_invert_gamepad_pitch(true);
+                input_settings->ApplySettings();
+            })
+            .Until([this] { return !checks.all_passed || native_pitch() < -0.5f; }, timeout)
+            .Then([this] {
+                checks.is_true(native_pitch() < -0.5f,
+                               TEXT("Global controller inversion reverses Gunship Pitch"));
+                controller_->ConsoleCommand(TEXT("Input.-key Gamepad_RightY"), true);
+                controller_->ConsoleCommand(TEXT("Input.+key Two"), true);
+            })
+            .Until(
+                [this] {
+                    auto const* const ship{IsValid(controller_.Get())
+                                               ? Cast<ATestSpaceShip>(controller_->GetPawn())
+                                               : nullptr};
+                    return !checks.all_passed ||
+                           (IsValid(ship) && ship->get_active_flight_model_slot() ==
+                                                 ::ioj::sim::player::FlightModelSlot::Right);
+                },
+                timeout)
+            .Then([this] {
+                controller_->ConsoleCommand(TEXT("Input.-key Two"), true);
+                controller_->ConsoleCommand(TEXT("Input.+key Gamepad_RightY 1.0"), true);
+            })
+            .Until([this] { return !checks.all_passed || native_pitch() < -0.5f; }, timeout)
+            .Then([this] {
+                checks.is_true(native_pitch() < -0.5f,
+                               TEXT("Global controller inversion reverses Fighter Pitch"));
+                controller_->ConsoleCommand(TEXT("Input.-key Gamepad_RightY"), true);
+                controller_->ConsoleCommand(TEXT("Input.+key One"), true);
+            })
+            .Until(
+                [this] {
+                    auto const* const ship{IsValid(controller_.Get())
+                                               ? Cast<ATestSpaceShip>(controller_->GetPawn())
+                                               : nullptr};
+                    return !checks.all_passed ||
+                           (IsValid(ship) && ship->get_active_flight_model_slot() ==
+                                                 ::ioj::sim::player::FlightModelSlot::Up);
+                },
+                timeout)
+            .Then([this] {
+                controller_->ConsoleCommand(TEXT("Input.-key One"), true);
+                controller_->ConsoleCommand(TEXT("Input.+key Gamepad_LeftY 1.0"), true);
+            })
+            .Until([this] { return !checks.all_passed || native_pitch() < -0.5f; }, timeout)
+            .Then([this] {
+                checks.is_true(native_pitch() < -0.5f,
+                               TEXT("Global controller inversion reverses Starfox Pitch"));
+            });
+    }
+
+    TEST_METHOD(GunshipPhysicalKeyPathADescendsWithoutFiring)
+    {
+        TestCommandBuilder.Do([this] { setup(); })
+            .Until([this] { return !checks.all_passed || ready(); }, timeout)
+            .Then([this] { controller_->ConsoleCommand(TEXT("Input.+key Four"), true); })
+            .Until(
+                [this] {
+                    auto const* const ship{IsValid(controller_.Get())
+                                               ? Cast<ATestSpaceShip>(controller_->GetPawn())
+                                               : nullptr};
+                    return !checks.all_passed ||
+                           (IsValid(ship) && ship->get_active_flight_model_slot() ==
+                                                 ::ioj::sim::player::FlightModelSlot::Left);
+                },
+                timeout)
+            .Then([this] {
+                controller_->ConsoleCommand(TEXT("Input.-key Four"), true);
+                check_active_contexts(ml::ioj::EShipControlScope::Gunship);
+                check_single_ship_action_bindings();
+                controller_->InputKey(FInputKeyEventArgs::CreateSimulated(
+                    EKeys::Gamepad_FaceButton_Bottom, IE_Pressed, 1.0f));
+            })
+            .Until(
+                [this] {
+                    auto const* const sim{
+                        level_setup.get_orchestrator()->get_player_ship_simulation()};
+                    return !checks.all_passed ||
+                           (sim != nullptr && sim->get_flight_intent().translation.z < -0.5f);
+                },
+                timeout)
+            .Then([this] {
+                auto const* const sim{level_setup.get_orchestrator()->get_player_ship_simulation()};
+                checks.is_true(sim != nullptr && sim->get_flight_intent().translation.z < -0.5f,
+                               TEXT("Hardware key path maps A to descent"));
+                checks.is_true(sim != nullptr &&
+                                   sim->laser_firing_mode == ::ioj::sim::LaserFiringState::idle,
+                               TEXT("Hardware key path A does not fire"));
+            });
+    }
+
+    TEST_METHOD(ControllerYawRollAndVerticalInversionAreSemantic)
+    {
+        TestCommandBuilder.Do([this] { setup(); })
+            .Until([this] { return !checks.all_passed || ready(); }, timeout)
+            .Then([this] {
+                auto* const settings{Cast<ml::ioj::USpaceGameInputUserSettings>(settings_.Get())};
+                if (!checks.is_true(IsValid(settings), TEXT("Canonical input settings exist"))) {
+                    return;
+                }
+                original_yaw_inversion_ = settings->invert_gamepad_yaw();
+                original_roll_inversion_ = settings->invert_gamepad_roll();
+                original_vertical_inversion_ = settings->invert_gamepad_vertical_translation();
+                restore_other_inversions_ = true;
+                settings->set_invert_gamepad_yaw(true);
+                settings->set_invert_gamepad_roll(true);
+                settings->set_invert_gamepad_vertical_translation(true);
+                settings->ApplySettings();
+                controller_->ConsoleCommand(TEXT("Input.+key Two"), true);
+            })
+            .Until(
+                [this] {
+                    auto const* const ship{IsValid(controller_.Get())
+                                               ? Cast<ATestSpaceShip>(controller_->GetPawn())
+                                               : nullptr};
+                    return !checks.all_passed ||
+                           (IsValid(ship) && ship->get_active_flight_model_slot() ==
+                                                 ::ioj::sim::player::FlightModelSlot::Right);
+                },
+                timeout)
+            .Then([this] {
+                controller_->ConsoleCommand(TEXT("Input.-key Two"), true);
+                controller_->ConsoleCommand(TEXT("Input.+key Gamepad_RightX 1.0"), true);
+                controller_->ConsoleCommand(TEXT("Input.+key Gamepad_LeftX 1.0"), true);
+            })
+            .Until(
+                [this] {
+                    return !checks.all_passed || (native_yaw() < -0.5f && native_roll() < -0.5f);
+                },
+                timeout)
+            .Then([this] {
+                checks.is_true(native_yaw() < -0.5f,
+                               TEXT("Controller Yaw inversion reverses Fighter yaw"));
+                checks.is_true(native_roll() < -0.5f,
+                               TEXT("Controller Roll inversion reverses Fighter roll"));
+                controller_->ConsoleCommand(TEXT("Input.-key Gamepad_RightX"), true);
+                controller_->ConsoleCommand(TEXT("Input.-key Gamepad_LeftX"), true);
+                controller_->ConsoleCommand(TEXT("Input.+key Four"), true);
+            })
+            .Until(
+                [this] {
+                    auto const* const ship{IsValid(controller_.Get())
+                                               ? Cast<ATestSpaceShip>(controller_->GetPawn())
+                                               : nullptr};
+                    return !checks.all_passed ||
+                           (IsValid(ship) && ship->get_active_flight_model_slot() ==
+                                                 ::ioj::sim::player::FlightModelSlot::Left);
+                },
+                timeout)
+            .Then([this] {
+                controller_->ConsoleCommand(TEXT("Input.-key Four"), true);
+                controller_->ConsoleCommand(TEXT("Input.+key Gamepad_FaceButton_Bottom"), true);
+            })
+            .Until([this] { return !checks.all_passed || native_vertical() > 0.5f; }, timeout)
+            .Then([this] {
+                checks.is_true(native_vertical() > 0.5f,
+                               TEXT("Controller vertical inversion follows authored A Negate"));
+                controller_->ConsoleCommand(TEXT("Input.-key Gamepad_FaceButton_Bottom"), true);
+                controller_->ConsoleCommand(TEXT("Input.+key C"), true);
+            })
+            .Until([this] { return !checks.all_passed || native_vertical() < -0.5f; }, timeout)
+            .Then([this] {
+                checks.is_true(native_vertical() < -0.5f,
+                               TEXT("Controller vertical inversion does not affect keyboard C"));
             });
     }
 
@@ -393,10 +748,20 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                                                   *FGuid::NewGuid().ToString(EGuidFormats::Digits));
                 developer_settings->InputSettingsSaveSlotName = test_save_slot_;
                 restore_remap_ = true;
+                auto* const input_settings{
+                    Cast<ml::ioj::USpaceGameInputUserSettings>(settings_.Get())};
+                if (!checks.is_true(IsValid(input_settings),
+                                    TEXT("Canonical input settings exist"))) {
+                    return;
+                }
+                original_pitch_inversion_ = input_settings->invert_gamepad_pitch();
+                restore_pitch_inversion_ = true;
 
                 checks.is_true(settings->set_control_binding(
                                    remap_address_, EKeys::Gamepad_FaceButton_Left, false),
                                TEXT("Canonical remap previews in the edit transaction"));
+                settings->set_setting(ml::ioj::EGameSetting::InvertGamepadPitch,
+                                      ml::ioj::FGameSettingValue{!original_pitch_inversion_});
                 settings->apply();
                 checks.is_true(settings
                                    ->control_bindings(EHardwareDevicePrimaryType::Gamepad,
@@ -411,7 +776,8 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
             .Until(
                 [this] {
                     return !checks.all_passed ||
-                           canonical_remap_reloaded(EKeys::Gamepad_FaceButton_Left);
+                           (canonical_remap_reloaded(EKeys::Gamepad_FaceButton_Left) &&
+                            inversion_reloaded(!original_pitch_inversion_));
                 },
                 FTimespan::FromSeconds(5))
             .Then([this] {
@@ -419,6 +785,8 @@ TEST_CLASS(PlayerInputSmoke, "Sandbox.LevelTests")
                                     TEXT("Saved semantic gamepad row survives a fresh reload"))) {
                     return;
                 }
+                checks.is_true(inversion_reloaded(!original_pitch_inversion_),
+                               TEXT("Apply persists controller Pitch inversion"));
                 auto* const controller{controller_.Get()};
                 auto* const settings{
                     controller->GetGameInstance()->GetSubsystem<ml::ioj::UGameSettingsSubsystem>()};

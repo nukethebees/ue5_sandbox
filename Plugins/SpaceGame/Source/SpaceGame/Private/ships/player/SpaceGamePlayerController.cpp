@@ -20,7 +20,10 @@
 #include <Engine/LocalPlayer.h>
 #include <EnhancedInputComponent.h>
 #include <EnhancedInputSubsystems.h>
+#include <HAL/IConsoleManager.h>
 #include <InputAction.h>
+#include <InputCoreTypes.h>
+#include <InputKeyEventArgs.h>
 #include <InputMappingContext.h>
 #include <Kismet/KismetSystemLibrary.h>
 #include <TimerManager.h>
@@ -29,6 +32,14 @@
 #include <UserSettings/EnhancedInputUserSettings.h>
 
 #include <SandboxGameShared/utilities/macros/null_checks.hpp>
+
+namespace spacegame::input_trace {
+static TAutoConsoleVariable<int32> enabled{
+    TEXT("spacegame.InputTrace"),
+    0,
+    TEXT("Log gamepad A, pitch-stick, right-trigger, mouse-click and mouse-Y events with active "
+         "mappings and ship handlers.")};
+}
 
 ASpaceGamePlayerController::ASpaceGamePlayerController() {
     PrimaryActorTick.bCanEverTick = true;
@@ -62,6 +73,57 @@ ASpaceGamePlayerController::ASpaceGamePlayerController() {
     observer_input.boost = observer_boost.Object;
     benchmark_input.mapping_context = benchmark_mapping.Object;
     benchmark_input.exit = benchmark_exit.Object;
+}
+
+bool ASpaceGamePlayerController::InputKey(FInputKeyEventArgs const& event_args) {
+    if (spacegame::input_trace::enabled.GetValueOnGameThread() != 0 &&
+        (event_args.Key == EKeys::Gamepad_FaceButton_Bottom ||
+         event_args.Key == EKeys::Gamepad_LeftY || event_args.Key == EKeys::Gamepad_RightY ||
+         event_args.Key == EKeys::Gamepad_RightTriggerAxis ||
+         event_args.Key == EKeys::LeftMouseButton || event_args.Key == EKeys::MouseY)) {
+        auto contexts{FString{}};
+        auto actions{FString{}};
+        if (auto* const local_player{GetLocalPlayer()}) {
+            if (auto* const subsystem{
+                    ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(local_player)}) {
+                UInputMappingContext const* const canonical_contexts[]{global_input.mapping_context,
+                                                                       input.starfox,
+                                                                       input.fighter,
+                                                                       input.skater,
+                                                                       input.gunship};
+                for (auto const* const context : canonical_contexts) {
+                    if (IsValid(context) && subsystem->HasMappingContext(context)) {
+                        if (!contexts.IsEmpty()) {
+                            contexts += TEXT(", ");
+                        }
+                        contexts += context->GetName();
+                    }
+                }
+                for (auto const& mapping : subsystem->GetAllPlayerMappableActionKeyMappings()) {
+                    if (mapping.Key != event_args.Key) {
+                        continue;
+                    }
+                    if (!actions.IsEmpty()) {
+                        actions += TEXT(", ");
+                    }
+                    actions += GetNameSafe(mapping.Action.Get());
+                }
+            }
+        }
+        UE_LOG(LogSandboxController,
+               Warning,
+               TEXT("[InputTrace] raw key=%s event=%d value=%.3f gamepad=%d simulated=%d "
+                    "device=%d contexts=[%s] actions=[%s]"),
+               *event_args.Key.GetFName().ToString(),
+               static_cast<int32>(event_args.Event),
+               event_args.AmountDepressed,
+               event_args.IsGamepad(),
+               event_args.IsSimulatedInput(),
+               event_args.InputDevice.GetId(),
+               *contexts,
+               *actions);
+    }
+    return Super::InputKey(event_args);
 }
 
 /* **************************************** */

@@ -71,7 +71,11 @@ auto section_label(FGameSettingDescriptor const& descriptor) -> FText {
         case EGameSetting::MouseTurnSensitivity:
         case EGameSetting::GamepadTurnSensitivity:
         case EGameSetting::InvertMousePitch:
+        case EGameSetting::InvertMouseYaw:
         case EGameSetting::InvertGamepadPitch:
+        case EGameSetting::InvertGamepadYaw:
+        case EGameSetting::InvertGamepadRoll:
+        case EGameSetting::InvertGamepadVerticalTranslation:
             return NSLOCTEXT("OptionsMenu", "ResponseSection", "Response");
         case EGameSetting::GamepadTurnDeadZone:
         case EGameSetting::GamepadMoveDeadZone:

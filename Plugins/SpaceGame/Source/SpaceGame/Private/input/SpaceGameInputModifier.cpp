@@ -64,25 +64,53 @@ auto apply_dead_zone(FInputActionValue const& value, float const threshold) -> F
     return value;
 }
 
-auto scale_and_invert(FInputActionValue const& value, float const scale, bool const invert_pitch)
+auto scale_and_invert(FInputActionValue const& value, float const scale, bool const invert)
     -> FInputActionValue {
     switch (value.GetValueType()) {
         case EInputActionValueType::Axis1D:
-            return FInputActionValue{value.Get<float>() * scale * (invert_pitch ? -1.f : 1.f)};
+            return FInputActionValue{value.Get<float>() * scale * (invert ? -1.f : 1.f)};
         case EInputActionValueType::Axis2D: {
             auto output{value.Get<FVector2D>() * scale};
-            output.Y *= invert_pitch ? -1.0f : 1.0f;
+            output.Y *= invert ? -1.0f : 1.0f;
             return FInputActionValue{output};
         }
         case EInputActionValueType::Axis3D: {
             auto output{value.Get<FVector>() * scale};
-            output.Y *= invert_pitch ? -1.0f : 1.0f;
+            output.Y *= invert ? -1.0f : 1.0f;
             return FInputActionValue{output};
         }
         case EInputActionValueType::Boolean:
             return value;
     }
     return value;
+}
+
+auto should_invert(USpaceGameInputUserSettings const& settings,
+                   ESpaceGameInputResponse const response,
+                   ESpaceGameInputAxis const axis) -> bool {
+    if (response == ESpaceGameInputResponse::TurnPointerDelta) {
+        switch (axis) {
+            case ESpaceGameInputAxis::Pitch:
+                return settings.invert_mouse_pitch();
+            case ESpaceGameInputAxis::Yaw:
+                return settings.invert_mouse_yaw();
+            default:
+                return false;
+        }
+    }
+    switch (axis) {
+        case ESpaceGameInputAxis::Pitch:
+            return settings.invert_gamepad_pitch();
+        case ESpaceGameInputAxis::Yaw:
+            return settings.invert_gamepad_yaw();
+        case ESpaceGameInputAxis::Roll:
+            return settings.invert_gamepad_roll();
+        case ESpaceGameInputAxis::VerticalTranslation:
+            return settings.invert_gamepad_vertical_translation();
+        case ESpaceGameInputAxis::None:
+            return false;
+    }
+    return false;
 }
 } // namespace
 
@@ -95,20 +123,22 @@ auto USpaceGameInputModifier::ModifyRaw_Implementation(
     if (settings == nullptr) {
         return current_value;
     }
+    auto const invert{should_invert(*settings, response, axis)};
 
     switch (response) {
         case ESpaceGameInputResponse::TurnPointerDelta:
             return scale_and_invert(current_value,
                                     input_constants::virtual_stick_units_per_mouse_count *
                                         settings->mouse_turn_sensitivity(),
-                                    pitch_axis && settings->invert_mouse_pitch());
+                                    invert);
         case ESpaceGameInputResponse::GamepadTurn:
             return scale_and_invert(
                 apply_dead_zone(current_value, settings->gamepad_turn_dead_zone()),
                 settings->gamepad_turn_sensitivity(),
-                pitch_axis && settings->invert_gamepad_pitch());
+                invert);
         case ESpaceGameInputResponse::GamepadMove:
-            return apply_dead_zone(current_value, settings->gamepad_move_dead_zone());
+            return scale_and_invert(
+                apply_dead_zone(current_value, settings->gamepad_move_dead_zone()), 1.0f, invert);
     }
     return current_value;
 }

@@ -250,8 +250,40 @@
     :apply immediate
     :device keyboard-mouse
     (control toggle))
+  (setting invert_mouse_yaw "Invert Mouse Yaw"
+    :tooltip "Invert horizontal mouse turning."
+    :category controls
+    :value-type bool
+    :backend enhanced_input_user_settings
+    :apply immediate
+    :device keyboard-mouse
+    (control toggle))
   (setting invert_gamepad_pitch "Invert Controller Pitch"
     :tooltip "Invert vertical controller turning."
+    :category controls
+    :value-type bool
+    :backend enhanced_input_user_settings
+    :apply immediate
+    :device controller
+    (control toggle))
+  (setting invert_gamepad_yaw "Invert Controller Yaw"
+    :tooltip "Invert horizontal controller turning."
+    :category controls
+    :value-type bool
+    :backend enhanced_input_user_settings
+    :apply immediate
+    :device controller
+    (control toggle))
+  (setting invert_gamepad_roll "Invert Controller Roll"
+    :tooltip "Invert controller roll input."
+    :category controls
+    :value-type bool
+    :backend enhanced_input_user_settings
+    :apply immediate
+    :device controller
+    (control toggle))
+  (setting invert_gamepad_vertical_translation "Invert Controller Vertical Translation"
+    :tooltip "Invert controller up/down translation in flight styles that use it."
     :category controls
     :value-type bool
     :backend enhanced_input_user_settings

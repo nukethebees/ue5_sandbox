@@ -45,8 +45,12 @@
 #include <Components/VerticalBox.h>
 #include <Components/VerticalBoxSlot.h>
 #include <Components/WidgetSwitcher.h>
+#include <EdGraph/EdGraph.h>
+#include <EdGraph/EdGraphNode.h>
 #include <Engine/Blueprint.h>
 #include <Engine/BlueprintGeneratedClass.h>
+#include <Engine/InputDelegateBinding.h>
+#include <Engine/SimpleConstructionScript.h>
 #include <FileHelpers.h>
 #include <GameFramework/GameModeBase.h>
 #include <GameFramework/WorldSettings.h>
@@ -114,9 +118,6 @@ constexpr TCHAR player_controller_object_path[]{
 constexpr TCHAR player_controller_package_name[]{
     TEXT("/SpaceGame/Players/BP_SpaceGamePlayerController")};
 constexpr TCHAR player_controller_asset_name[]{TEXT("BP_SpaceGamePlayerController")};
-constexpr TCHAR source_player_controller_object_path[]{
-    TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/BP_TestSpaceShipController."
-         "BP_TestSpaceShipController")};
 constexpr TCHAR scripted_level_source_config_object_path[]{
     TEXT("/Game/Levels/FeatureTests/FT_soa_turrets/DA_FT_soa_entities_LevelConfig."
          "DA_FT_soa_entities_LevelConfig")};
@@ -849,7 +850,13 @@ void add_ship_mapping(UInputMappingContext& context,
                                    ? ml::ioj::ESpaceGameInputResponse::GamepadTurn
                                    : ml::ioj::ESpaceGameInputResponse::GamepadMove;
         }
-        response->pitch_axis = FCString::Strcmp(semantic, TEXT("Pitch")) == 0;
+        response->axis =
+            FCString::Strcmp(semantic, TEXT("Pitch")) == 0  ? ml::ioj::ESpaceGameInputAxis::Pitch
+            : FCString::Strcmp(semantic, TEXT("Yaw")) == 0  ? ml::ioj::ESpaceGameInputAxis::Yaw
+            : FCString::Strcmp(semantic, TEXT("Roll")) == 0 ? ml::ioj::ESpaceGameInputAxis::Roll
+            : FCString::Strcmp(semantic, TEXT("TranslateUp")) == 0
+                ? ml::ioj::ESpaceGameInputAxis::VerticalTranslation
+                : ml::ioj::ESpaceGameInputAxis::None;
         mapping.Modifiers.Add(response);
     }
 
@@ -1396,30 +1403,60 @@ auto configure_gameplay_inputs(UBlueprint& blueprint, FGeneratedShipInputActions
     FBlueprintEditorUtils::MarkBlueprintAsModified(&blueprint);
     return true;
 }
+auto controller_blueprint_is_input_free(UBlueprint& blueprint) -> bool {
+    if (blueprint.ParentClass != ASpaceGamePlayerController::StaticClass()) {
+        return false;
+    }
+    TArray<UEdGraph*> graphs;
+    blueprint.GetAllGraphs(graphs);
+    for (auto const* const graph : graphs) {
+        for (auto const& node_ptr : graph->Nodes) {
+            auto const* const node{node_ptr.Get()};
+            if (graph->GetFName() == TEXT("UserConstructionScript") &&
+                node->GetClass()->GetFName() == TEXT("K2Node_FunctionEntry")) {
+                continue;
+            }
+            UE_LOG(LogTemp,
+                   Error,
+                   TEXT("Production controller contains graph node: %s/%s"),
+                   *graph->GetName(),
+                   *node->GetClass()->GetName());
+            return false;
+        }
+    }
+    if (blueprint.SimpleConstructionScript != nullptr &&
+        !blueprint.SimpleConstructionScript->GetAllNodes().IsEmpty()) {
+        UE_LOG(LogTemp, Error, TEXT("Production controller contains Blueprint components"));
+        return false;
+    }
+    auto const* const generated{Cast<UBlueprintGeneratedClass>(blueprint.GeneratedClass)};
+    if (generated == nullptr) {
+        return false;
+    }
+    for (auto const& binding_ptr : generated->DynamicBindingObjects) {
+        auto const* const binding{binding_ptr.Get()};
+        if (binding != nullptr && binding->IsA<UInputDelegateBinding>()) {
+            UE_LOG(LogTemp, Error, TEXT("Production controller contains Blueprint input binding"));
+            return false;
+        }
+    }
+    return true;
+}
 auto load_or_create_player_controller(FObserverControlInputs const& observer,
                                       FBenchmarkControlInputs const& benchmark,
                                       FGeneratedShipInputActions const& actions) -> UBlueprint* {
-    auto* const source{LoadObject<UBlueprint>(nullptr, source_player_controller_object_path)};
-    if (!IsValid(source) || !IsValid(source->GeneratedClass)) {
-        UE_LOG(LogTemp, Error, TEXT("Could not load source player controller inputs"));
-        return nullptr;
-    }
-    if (!configure_gameplay_inputs(*source, actions)) {
-        return nullptr;
-    }
-    CastChecked<UBlueprintGeneratedClass>(source->GeneratedClass)
-        ->UpdateCustomPropertyListForPostConstruction();
-    if (!save_asset(*source)) {
-        return nullptr;
-    }
-
     auto* blueprint{LoadObject<UBlueprint>(nullptr, player_controller_object_path)};
     if (!IsValid(blueprint)) {
         auto* const package{CreatePackage(player_controller_package_name)};
-        blueprint = Cast<UBlueprint>(StaticDuplicateObject(
-            source, package, player_controller_asset_name, RF_Public | RF_Standalone));
+        blueprint =
+            FKismetEditorUtilities::CreateBlueprint(ASpaceGamePlayerController::StaticClass(),
+                                                    package,
+                                                    FName{player_controller_asset_name},
+                                                    BPTYPE_Normal,
+                                                    UBlueprint::StaticClass(),
+                                                    UBlueprintGeneratedClass::StaticClass());
         if (!IsValid(blueprint)) {
-            UE_LOG(LogTemp, Error, TEXT("Could not duplicate player controller Blueprint"));
+            UE_LOG(LogTemp, Error, TEXT("Could not create player controller Blueprint"));
             return nullptr;
         }
         FAssetRegistryModule::AssetCreated(blueprint);
@@ -1429,9 +1466,30 @@ auto load_or_create_player_controller(FObserverControlInputs const& observer,
         UBlueprintEditorLibrary::ReparentBlueprint(blueprint,
                                                    ASpaceGamePlayerController::StaticClass());
     }
+    TArray<UEdGraph*> graphs;
+    blueprint->GetAllGraphs(graphs);
+    for (auto* const graph : graphs) {
+        TArray<UEdGraphNode*> const nodes{graph->Nodes};
+        for (auto* const node : nodes) {
+            if (graph->GetFName() == TEXT("UserConstructionScript") &&
+                node->GetClass()->GetFName() == TEXT("K2Node_FunctionEntry")) {
+                continue;
+            }
+            FBlueprintEditorUtils::RemoveNode(blueprint, node, true);
+        }
+    }
+    if (auto* const construction_script{blueprint->SimpleConstructionScript.Get()}) {
+        auto const components{construction_script->GetAllNodes()};
+        for (auto const& component : components) {
+            construction_script->RemoveNode(component);
+        }
+    }
     FKismetEditorUtilities::CompileBlueprint(blueprint);
     if (blueprint->Status == BS_Error || !IsValid(blueprint->GeneratedClass)) {
         UE_LOG(LogTemp, Error, TEXT("BP_SpaceGamePlayerController failed to compile"));
+        return nullptr;
+    }
+    if (!controller_blueprint_is_input_free(*blueprint)) {
         return nullptr;
     }
     if (!configure_control_context_inputs(*blueprint, observer, benchmark) ||
@@ -1443,7 +1501,7 @@ auto load_or_create_player_controller(FObserverControlInputs const& observer,
     if (blueprint->Status == BS_Error || !IsValid(blueprint->GeneratedClass)) {
         UE_LOG(LogTemp,
                Error,
-               TEXT("BP_SpaceGamePlayerController failed to compile after input migration"));
+               TEXT("BP_SpaceGamePlayerController failed to compile after input configuration"));
         return nullptr;
     }
     if (!configure_control_context_inputs(*blueprint, observer, benchmark) ||

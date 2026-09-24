@@ -40,7 +40,11 @@ enum class EGameSetting : uint8 {
     GamepadTurnDeadZone,
     GamepadMoveDeadZone,
     InvertMousePitch,
+    InvertMouseYaw,
     InvertGamepadPitch,
+    InvertGamepadYaw,
+    InvertGamepadRoll,
+    InvertGamepadVerticalTranslation,
 };
 
 enum class EGameSettingCategory : uint8 {
@@ -134,7 +138,11 @@ struct SPACEGAME_API FGameSettingsState {
     float gamepad_turn_dead_zone{};
     float gamepad_move_dead_zone{};
     bool invert_mouse_pitch{};
+    bool invert_mouse_yaw{};
     bool invert_gamepad_pitch{};
+    bool invert_gamepad_yaw{};
+    bool invert_gamepad_roll{};
+    bool invert_gamepad_vertical_translation{};
 
     auto operator==(FGameSettingsState const&) const -> bool = default;
 };
@@ -359,12 +367,43 @@ class TGameSettingsAccess {
         derived().set_setting(EGameSetting::InvertMousePitch, FGameSettingValue{value});
     }
 
+    auto invert_mouse_yaw() const -> bool { return derived().settings_state().invert_mouse_yaw; }
+
+    void set_invert_mouse_yaw(bool const value) {
+        derived().set_setting(EGameSetting::InvertMouseYaw, FGameSettingValue{value});
+    }
+
     auto invert_gamepad_pitch() const -> bool {
         return derived().settings_state().invert_gamepad_pitch;
     }
 
     void set_invert_gamepad_pitch(bool const value) {
         derived().set_setting(EGameSetting::InvertGamepadPitch, FGameSettingValue{value});
+    }
+
+    auto invert_gamepad_yaw() const -> bool {
+        return derived().settings_state().invert_gamepad_yaw;
+    }
+
+    void set_invert_gamepad_yaw(bool const value) {
+        derived().set_setting(EGameSetting::InvertGamepadYaw, FGameSettingValue{value});
+    }
+
+    auto invert_gamepad_roll() const -> bool {
+        return derived().settings_state().invert_gamepad_roll;
+    }
+
+    void set_invert_gamepad_roll(bool const value) {
+        derived().set_setting(EGameSetting::InvertGamepadRoll, FGameSettingValue{value});
+    }
+
+    auto invert_gamepad_vertical_translation() const -> bool {
+        return derived().settings_state().invert_gamepad_vertical_translation;
+    }
+
+    void set_invert_gamepad_vertical_translation(bool const value) {
+        derived().set_setting(EGameSetting::InvertGamepadVerticalTranslation,
+                              FGameSettingValue{value});
     }
   private:
     auto derived() -> Derived& { return static_cast<Derived&>(*this); }

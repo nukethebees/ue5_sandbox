@@ -6,9 +6,18 @@
 
 #include <EnhancedInputComponent.h>
 #include <EnhancedInputSubsystemInterface.h>
+#include <HAL/IConsoleManager.h>
 #include <InputAction.h>
 #include <InputActionValue.h>
 #include <InputMappingContext.h>
+
+namespace spacegame::input_trace {
+auto enabled() -> bool {
+    auto const* const variable{
+        IConsoleManager::Get().FindConsoleVariable(TEXT("spacegame.InputTrace"))};
+    return variable != nullptr && variable->GetInt() != 0;
+}
+}
 
 auto FShipControlContext::initialise(ASpaceGamePlayerController& owner,
                                      UEnhancedInputComponent& component,
@@ -271,11 +280,23 @@ void FShipControlContext::set_right_input(FInputActionValue const& value) {
 }
 void FShipControlContext::set_up_input(FInputActionValue const& value) {
     if (auto* const ship{get_ship()}) {
+        if (spacegame::input_trace::enabled()) {
+            UE_LOG(LogSandboxController,
+                   Warning,
+                   TEXT("[InputTrace] IA_Ship_TranslateUp -> native vertical intent %.3f"),
+                   value.Get<float>());
+        }
         ship->set_up_input(value.Get<float>());
     }
 }
 void FShipControlContext::set_pitch_input(FInputActionValue const& value) {
     if (auto* const ship{get_ship()}) {
+        if (spacegame::input_trace::enabled()) {
+            UE_LOG(LogSandboxController,
+                   Warning,
+                   TEXT("[InputTrace] IA_Ship_Pitch -> native pitch intent %.3f"),
+                   value.Get<float>());
+        }
         ship->set_pitch_input(value.Get<float>());
     }
 }
@@ -361,6 +382,11 @@ void FShipControlContext::stop_emergency_brake() {
 }
 void FShipControlContext::start_fire_primary() {
     if (auto* const ship{get_ship()}) {
+        if (spacegame::input_trace::enabled()) {
+            UE_LOG(LogSandboxController,
+                   Warning,
+                   TEXT("[InputTrace] IA_Ship_FirePrimary -> start_fire_laser"));
+        }
         ship->start_fire_laser();
     }
 }

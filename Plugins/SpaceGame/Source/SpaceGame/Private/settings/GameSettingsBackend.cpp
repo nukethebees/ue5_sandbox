@@ -142,8 +142,17 @@ auto FGameSettingsBackend::read() const -> FGameSettingsState {
                                     : input_defaults->gamepad_move_dead_zone(),
         .invert_mouse_pitch = input_settings != nullptr ? input_settings->invert_mouse_pitch()
                                                         : input_defaults->invert_mouse_pitch(),
+        .invert_mouse_yaw = input_settings != nullptr ? input_settings->invert_mouse_yaw()
+                                                      : input_defaults->invert_mouse_yaw(),
         .invert_gamepad_pitch = input_settings != nullptr ? input_settings->invert_gamepad_pitch()
                                                           : input_defaults->invert_gamepad_pitch(),
+        .invert_gamepad_yaw = input_settings != nullptr ? input_settings->invert_gamepad_yaw()
+                                                        : input_defaults->invert_gamepad_yaw(),
+        .invert_gamepad_roll = input_settings != nullptr ? input_settings->invert_gamepad_roll()
+                                                         : input_defaults->invert_gamepad_roll(),
+        .invert_gamepad_vertical_translation =
+            input_settings != nullptr ? input_settings->invert_gamepad_vertical_translation()
+                                      : input_defaults->invert_gamepad_vertical_translation(),
     };
 }
 
@@ -212,7 +221,12 @@ auto FGameSettingsBackend::defaults() const -> FGameSettingsState {
         .gamepad_turn_dead_zone = input_defaults->gamepad_turn_dead_zone(),
         .gamepad_move_dead_zone = input_defaults->gamepad_move_dead_zone(),
         .invert_mouse_pitch = input_defaults->invert_mouse_pitch(),
+        .invert_mouse_yaw = input_defaults->invert_mouse_yaw(),
         .invert_gamepad_pitch = input_defaults->invert_gamepad_pitch(),
+        .invert_gamepad_yaw = input_defaults->invert_gamepad_yaw(),
+        .invert_gamepad_roll = input_defaults->invert_gamepad_roll(),
+        .invert_gamepad_vertical_translation =
+            input_defaults->invert_gamepad_vertical_translation(),
     };
 }
 
@@ -248,14 +262,23 @@ void FGameSettingsBackend::preview_immediate(FGameSettingsState const& state,
         case EGameSetting::GamepadTurnDeadZone:
         case EGameSetting::GamepadMoveDeadZone:
         case EGameSetting::InvertMousePitch:
-        case EGameSetting::InvertGamepadPitch: {
+        case EGameSetting::InvertMouseYaw:
+        case EGameSetting::InvertGamepadPitch:
+        case EGameSetting::InvertGamepadYaw:
+        case EGameSetting::InvertGamepadRoll:
+        case EGameSetting::InvertGamepadVerticalTranslation: {
             if (auto* const input_settings{input_user_settings()}) {
                 input_settings->set_mouse_turn_sensitivity(state.mouse_turn_sensitivity);
                 input_settings->set_gamepad_turn_sensitivity(state.gamepad_turn_sensitivity);
                 input_settings->set_gamepad_turn_dead_zone(state.gamepad_turn_dead_zone);
                 input_settings->set_gamepad_move_dead_zone(state.gamepad_move_dead_zone);
                 input_settings->set_invert_mouse_pitch(state.invert_mouse_pitch);
+                input_settings->set_invert_mouse_yaw(state.invert_mouse_yaw);
                 input_settings->set_invert_gamepad_pitch(state.invert_gamepad_pitch);
+                input_settings->set_invert_gamepad_yaw(state.invert_gamepad_yaw);
+                input_settings->set_invert_gamepad_roll(state.invert_gamepad_roll);
+                input_settings->set_invert_gamepad_vertical_translation(
+                    state.invert_gamepad_vertical_translation);
                 input_settings->ApplySettings();
             }
             break;
@@ -279,7 +302,12 @@ void FGameSettingsBackend::apply_non_display(FGameSettingsState const& state) co
         input_settings->set_gamepad_turn_dead_zone(state.gamepad_turn_dead_zone);
         input_settings->set_gamepad_move_dead_zone(state.gamepad_move_dead_zone);
         input_settings->set_invert_mouse_pitch(state.invert_mouse_pitch);
+        input_settings->set_invert_mouse_yaw(state.invert_mouse_yaw);
         input_settings->set_invert_gamepad_pitch(state.invert_gamepad_pitch);
+        input_settings->set_invert_gamepad_yaw(state.invert_gamepad_yaw);
+        input_settings->set_invert_gamepad_roll(state.invert_gamepad_roll);
+        input_settings->set_invert_gamepad_vertical_translation(
+            state.invert_gamepad_vertical_translation);
         input_settings->ApplySettings();
     }
 }

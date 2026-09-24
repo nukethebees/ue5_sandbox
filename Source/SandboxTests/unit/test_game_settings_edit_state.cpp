@@ -99,6 +99,33 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
                               state.is_dirty());
     }
 
+    TEST_METHOD(AxisInversionUsesControlsTransaction)
+    {
+        ml::ioj::FGameSettingsState initial{};
+        ml::ioj::FGameSettingsEditState state;
+        state.begin(initial, initial);
+        state.set_setting(ml::ioj::EGameSetting::InvertGamepadPitch,
+                          ml::ioj::FGameSettingValue{true});
+        TestRunner->TestTrue(TEXT("Pitch inversion previews as a controls edit"),
+                             state.pending().invert_gamepad_pitch &&
+                                 state.is_dirty(ml::ioj::EGameSettingCategory::Controls));
+        state.cancel();
+        TestRunner->TestFalse(TEXT("Cancel restores inversion"),
+                              state.pending().invert_gamepad_pitch);
+
+        state.set_setting(ml::ioj::EGameSetting::InvertGamepadYaw,
+                          ml::ioj::FGameSettingValue{true});
+        state.commit_all();
+        TestRunner->TestTrue(TEXT("Apply commits inversion"),
+                             state.pending().invert_gamepad_yaw && !state.is_dirty());
+        state.reset_category(ml::ioj::EGameSettingCategory::Controls);
+        TestRunner->TestFalse(TEXT("Reset previews default inversion"),
+                              state.pending().invert_gamepad_yaw);
+        state.commit_all();
+        TestRunner->TestFalse(TEXT("Reset plus Apply commits default inversion"),
+                              state.pending().invert_gamepad_yaw || state.is_dirty());
+    }
+
     TEST_METHOD(GraphicsPresetUpdatesOnlyItsQualityGroups)
     {
         ml::ioj::FGameSettingsState applied;
@@ -151,7 +178,9 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
                                  ml::ioj::EGameSettingDevice::KeyboardMouse);
         TestRunner->TestTrue(TEXT("Mouse inversion belongs to keyboard and mouse"),
                              device_for(ml::ioj::EGameSetting::InvertMousePitch) ==
-                                 ml::ioj::EGameSettingDevice::KeyboardMouse);
+                                     ml::ioj::EGameSettingDevice::KeyboardMouse &&
+                                 device_for(ml::ioj::EGameSetting::InvertMouseYaw) ==
+                                     ml::ioj::EGameSettingDevice::KeyboardMouse);
         TestRunner->TestTrue(TEXT("Controller sensitivity belongs to controller"),
                              device_for(ml::ioj::EGameSetting::GamepadTurnSensitivity) ==
                                  ml::ioj::EGameSettingDevice::Controller);
@@ -160,9 +189,16 @@ TEST_CLASS(GameSettingsEditState, "Sandbox.UnitTests")
                                      ml::ioj::EGameSettingDevice::Controller &&
                                  device_for(ml::ioj::EGameSetting::GamepadMoveDeadZone) ==
                                      ml::ioj::EGameSettingDevice::Controller);
-        TestRunner->TestTrue(TEXT("Controller inversion belongs to controller"),
-                             device_for(ml::ioj::EGameSetting::InvertGamepadPitch) ==
-                                 ml::ioj::EGameSettingDevice::Controller);
+        TestRunner->TestTrue(
+            TEXT("Controller inversion belongs to controller"),
+            device_for(ml::ioj::EGameSetting::InvertGamepadPitch) ==
+                    ml::ioj::EGameSettingDevice::Controller &&
+                device_for(ml::ioj::EGameSetting::InvertGamepadYaw) ==
+                    ml::ioj::EGameSettingDevice::Controller &&
+                device_for(ml::ioj::EGameSetting::InvertGamepadRoll) ==
+                    ml::ioj::EGameSettingDevice::Controller &&
+                device_for(ml::ioj::EGameSetting::InvertGamepadVerticalTranslation) ==
+                    ml::ioj::EGameSettingDevice::Controller);
     }
 
     TEST_METHOD(ControlBindingPresentationIdentityIsStable)

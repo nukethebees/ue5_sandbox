@@ -47,9 +47,22 @@ void USpaceGameInputUserSettings::set_gamepad_move_dead_zone(float const value) 
 void USpaceGameInputUserSettings::set_invert_mouse_pitch(bool const value) noexcept {
     invert_mouse_pitch_ = value;
 }
+void USpaceGameInputUserSettings::set_invert_mouse_yaw(bool const value) noexcept {
+    invert_mouse_yaw_ = value;
+}
 
 void USpaceGameInputUserSettings::set_invert_gamepad_pitch(bool const value) noexcept {
     invert_gamepad_pitch_ = value;
+}
+void USpaceGameInputUserSettings::set_invert_gamepad_yaw(bool const value) noexcept {
+    invert_gamepad_yaw_ = value;
+}
+void USpaceGameInputUserSettings::set_invert_gamepad_roll(bool const value) noexcept {
+    invert_gamepad_roll_ = value;
+}
+void USpaceGameInputUserSettings::set_invert_gamepad_vertical_translation(
+    bool const value) noexcept {
+    invert_gamepad_vertical_translation_ = value;
 }
 
 auto USpaceGameInputUserSettings::chord_mapping_for_mapping(FString const& profile_id,

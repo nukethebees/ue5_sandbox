@@ -36,11 +36,21 @@ class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUse
 
     [[nodiscard]] auto invert_mouse_pitch() const noexcept -> bool { return invert_mouse_pitch_; }
     void set_invert_mouse_pitch(bool value) noexcept;
+    [[nodiscard]] auto invert_mouse_yaw() const noexcept -> bool { return invert_mouse_yaw_; }
+    void set_invert_mouse_yaw(bool value) noexcept;
 
     [[nodiscard]] auto invert_gamepad_pitch() const noexcept -> bool {
         return invert_gamepad_pitch_;
     }
     void set_invert_gamepad_pitch(bool value) noexcept;
+    [[nodiscard]] auto invert_gamepad_yaw() const noexcept -> bool { return invert_gamepad_yaw_; }
+    void set_invert_gamepad_yaw(bool value) noexcept;
+    [[nodiscard]] auto invert_gamepad_roll() const noexcept -> bool { return invert_gamepad_roll_; }
+    void set_invert_gamepad_roll(bool value) noexcept;
+    [[nodiscard]] auto invert_gamepad_vertical_translation() const noexcept -> bool {
+        return invert_gamepad_vertical_translation_;
+    }
+    void set_invert_gamepad_vertical_translation(bool value) noexcept;
 
     [[nodiscard]] auto chord_mapping_for_mapping(FString const& profile_id,
                                                  FPlayerKeyMapping const& mapping) const
@@ -67,9 +77,17 @@ class SPACEGAME_API USpaceGameInputUserSettings final : public UEnhancedInputUse
 
     UPROPERTY(SaveGame)
     bool invert_mouse_pitch_{};
+    UPROPERTY(SaveGame)
+    bool invert_mouse_yaw_{};
 
     UPROPERTY(SaveGame)
     bool invert_gamepad_pitch_{};
+    UPROPERTY(SaveGame)
+    bool invert_gamepad_yaw_{};
+    UPROPERTY(SaveGame)
+    bool invert_gamepad_roll_{};
+    UPROPERTY(SaveGame)
+    bool invert_gamepad_vertical_translation_{};
 };
 
 } // namespace ml::ioj

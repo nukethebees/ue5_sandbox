@@ -309,6 +309,15 @@ add_unreal_automation_test(
   LABELS input-smoke
 )
 add_unreal_automation_test(
+  Sandbox.InputUnitTests
+  FILTERS
+    Sandbox.UnitTests.CanonicalShipInput
+    Sandbox.UnitTests.GameSettingsEditState
+    Sandbox.UnitTests.PlayerController
+    Sandbox.UnitTests.ControlContextTransitions
+  LABELS input-unit
+)
+add_unreal_automation_test(
   Sandbox.AllAutomationTests
   FILTERS
     ${IOJ_UNIT_AUTOMATION_FILTERS}

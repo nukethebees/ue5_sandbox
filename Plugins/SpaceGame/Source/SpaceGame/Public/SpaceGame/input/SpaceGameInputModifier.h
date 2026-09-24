@@ -13,6 +13,15 @@ enum class ESpaceGameInputResponse : uint8 {
     GamepadMove,
 };
 
+UENUM()
+enum class ESpaceGameInputAxis : uint8 {
+    None,
+    Pitch,
+    Yaw,
+    Roll,
+    VerticalTranslation,
+};
+
 UCLASS(NotBlueprintable, meta = (DisplayName = "Space Game Input Response"))
 class SPACEGAME_API USpaceGameInputModifier final : public UInputModifier {
     GENERATED_BODY()
@@ -21,7 +30,7 @@ class SPACEGAME_API USpaceGameInputModifier final : public UInputModifier {
     ESpaceGameInputResponse response{ESpaceGameInputResponse::GamepadMove};
 
     UPROPERTY(EditAnywhere, Category = "Settings")
-    bool pitch_axis{};
+    ESpaceGameInputAxis axis{ESpaceGameInputAxis::None};
   protected:
     auto ModifyRaw_Implementation(UEnhancedPlayerInput const* player_input,
                                   FInputActionValue current_value,

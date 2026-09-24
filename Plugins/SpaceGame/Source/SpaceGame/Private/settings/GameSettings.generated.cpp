@@ -468,6 +468,22 @@ static TArray<FGameSettingDescriptor> const descriptors{
      0,
      0,
      TEXT("")},
+    {EGameSetting::InvertMouseYaw,
+     EGameSettingCategory::Controls,
+     EGameSettingValueType::Bool,
+     EGameSettingBackend::EnhancedInputUserSettings,
+     ESettingApplyMode::Immediate,
+     EGameSettingDevice::KeyboardMouse,
+     ESettingControlKind::Toggle,
+     EGameSettingOptionProvider::None,
+     EGameSettingAvailabilityProvider::Always,
+     TEXT("invert_mouse_yaw"),
+     FText::FromString(TEXT("Invert Mouse Yaw")),
+     FText::FromString(TEXT("Invert horizontal mouse turning.")),
+     0,
+     0,
+     0,
+     TEXT("")},
     {EGameSetting::InvertGamepadPitch,
      EGameSettingCategory::Controls,
      EGameSettingValueType::Bool,
@@ -480,6 +496,54 @@ static TArray<FGameSettingDescriptor> const descriptors{
      TEXT("invert_gamepad_pitch"),
      FText::FromString(TEXT("Invert Controller Pitch")),
      FText::FromString(TEXT("Invert vertical controller turning.")),
+     0,
+     0,
+     0,
+     TEXT("")},
+    {EGameSetting::InvertGamepadYaw,
+     EGameSettingCategory::Controls,
+     EGameSettingValueType::Bool,
+     EGameSettingBackend::EnhancedInputUserSettings,
+     ESettingApplyMode::Immediate,
+     EGameSettingDevice::Controller,
+     ESettingControlKind::Toggle,
+     EGameSettingOptionProvider::None,
+     EGameSettingAvailabilityProvider::Always,
+     TEXT("invert_gamepad_yaw"),
+     FText::FromString(TEXT("Invert Controller Yaw")),
+     FText::FromString(TEXT("Invert horizontal controller turning.")),
+     0,
+     0,
+     0,
+     TEXT("")},
+    {EGameSetting::InvertGamepadRoll,
+     EGameSettingCategory::Controls,
+     EGameSettingValueType::Bool,
+     EGameSettingBackend::EnhancedInputUserSettings,
+     ESettingApplyMode::Immediate,
+     EGameSettingDevice::Controller,
+     ESettingControlKind::Toggle,
+     EGameSettingOptionProvider::None,
+     EGameSettingAvailabilityProvider::Always,
+     TEXT("invert_gamepad_roll"),
+     FText::FromString(TEXT("Invert Controller Roll")),
+     FText::FromString(TEXT("Invert controller roll input.")),
+     0,
+     0,
+     0,
+     TEXT("")},
+    {EGameSetting::InvertGamepadVerticalTranslation,
+     EGameSettingCategory::Controls,
+     EGameSettingValueType::Bool,
+     EGameSettingBackend::EnhancedInputUserSettings,
+     ESettingApplyMode::Immediate,
+     EGameSettingDevice::Controller,
+     ESettingControlKind::Toggle,
+     EGameSettingOptionProvider::None,
+     EGameSettingAvailabilityProvider::Always,
+     TEXT("invert_gamepad_vertical_translation"),
+     FText::FromString(TEXT("Invert Controller Vertical Translation")),
+     FText::FromString(TEXT("Invert controller up/down translation in flight styles that use it.")),
      0,
      0,
      0,
@@ -559,8 +623,16 @@ auto game_setting_value(FGameSettingsState const& state, EGameSetting const id)
             return FGameSettingValue{state.gamepad_move_dead_zone};
         case EGameSetting::InvertMousePitch:
             return FGameSettingValue{state.invert_mouse_pitch};
+        case EGameSetting::InvertMouseYaw:
+            return FGameSettingValue{state.invert_mouse_yaw};
         case EGameSetting::InvertGamepadPitch:
             return FGameSettingValue{state.invert_gamepad_pitch};
+        case EGameSetting::InvertGamepadYaw:
+            return FGameSettingValue{state.invert_gamepad_yaw};
+        case EGameSetting::InvertGamepadRoll:
+            return FGameSettingValue{state.invert_gamepad_roll};
+        case EGameSetting::InvertGamepadVerticalTranslation:
+            return FGameSettingValue{state.invert_gamepad_vertical_translation};
     }
     checkNoEntry();
     return FGameSettingValue{state.resolution};
@@ -794,12 +866,44 @@ auto set_game_setting_value(FGameSettingsState& state,
             state.invert_mouse_pitch = *typed_value;
             return true;
         }
+        case EGameSetting::InvertMouseYaw: {
+            auto const* typed_value{std::get_if<bool>(&value)};
+            if (typed_value == nullptr) {
+                return false;
+            }
+            state.invert_mouse_yaw = *typed_value;
+            return true;
+        }
         case EGameSetting::InvertGamepadPitch: {
             auto const* typed_value{std::get_if<bool>(&value)};
             if (typed_value == nullptr) {
                 return false;
             }
             state.invert_gamepad_pitch = *typed_value;
+            return true;
+        }
+        case EGameSetting::InvertGamepadYaw: {
+            auto const* typed_value{std::get_if<bool>(&value)};
+            if (typed_value == nullptr) {
+                return false;
+            }
+            state.invert_gamepad_yaw = *typed_value;
+            return true;
+        }
+        case EGameSetting::InvertGamepadRoll: {
+            auto const* typed_value{std::get_if<bool>(&value)};
+            if (typed_value == nullptr) {
+                return false;
+            }
+            state.invert_gamepad_roll = *typed_value;
+            return true;
+        }
+        case EGameSetting::InvertGamepadVerticalTranslation: {
+            auto const* typed_value{std::get_if<bool>(&value)};
+            if (typed_value == nullptr) {
+                return false;
+            }
+            state.invert_gamepad_vertical_translation = *typed_value;
             return true;
         }
     }
