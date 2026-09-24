@@ -1,3 +1,7 @@
+if(NOT IOJ_WITH_UNREAL)
+  return()
+endif()
+
 set(CACHE{IOJ_ISMC_BENCHMARK_SECONDS}
   TYPE STRING
   HELP "Duration of the offscreen SandboxISMC paired benchmark"
