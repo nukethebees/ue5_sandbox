@@ -69,6 +69,7 @@ Checks:
   - bugprone-multiple-new-in-one-expression
   - bugprone-multiple-statement-macro
   - bugprone-no-escape
+  - bugprone-non-zero-enum-to-bool-conversion
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
