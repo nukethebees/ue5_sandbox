@@ -31,5 +31,6 @@ Checks:
   - bugprone-capturing-this-in-member-variable
   - bugprone-casting-through-void
   - bugprone-chained-comparison
+  - bugprone-compare-pointer-to-member-virtual-function
 ExtraArgsBefore:
   - /EHsc
