@@ -47,7 +47,4 @@ add_subdirectory(Scripts)
 add_subdirectory(tools)
 add_subdirectory(lispb/materials)
 add_subdirectory(Plugins/SpaceGame)
-
-if(IOJ_WITH_UNREAL)
-  add_subdirectory(unreal)
-endif()
+add_subdirectory(unreal)
