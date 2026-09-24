@@ -76,6 +76,7 @@ Checks:
   - bugprone-parent-virtual-call
   - bugprone-pointer-arithmetic-on-polymorphic-object
   - bugprone-posix-return
+  - bugprone-redundant-branch-condition
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
