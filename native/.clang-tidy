@@ -4,6 +4,17 @@
 # bugprone-exception-escape is disabled pending review: MSVC allocation and I/O
 # paths dominate its findings, including CLI exceptions already caught by std::exception.
 # Keep exception-policy changes separate from routine tidy fixes.
+# Deferred after review; findings are saved for a separate follow-up:
+# bugprone-integer-division: intentional integer grid coordinates (3 findings).
+# bugprone-incorrect-roundings: sign-aware rounding matching FMath::SinCos (1).
+# bugprone-return-const-ref-from-parameter: locally consumed projections (2).
+# bugprone-signed-char-misuse: nonnegative int8_t avoidance indices (2).
+# bugprone-suspicious-stringview-data-usage: Windows calls already pass lengths (5).
+# bugprone-misplaced-widening-cast: mixes guarded/constant arithmetic with size
+# calculations needing bounds review (17); defer that review rather than add casts.
+# bugprone-narrowing-conversions: includes mission kill-count signedness policy (4).
+# bugprone-unchecked-optional-access: 721 reports, including checked result wrappers
+# and explicitly guarded optionals; too noisy for this rollout.
 Checks:
   - '-*'
   - modernize-use-nullptr
