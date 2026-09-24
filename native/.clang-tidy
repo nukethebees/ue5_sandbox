@@ -62,6 +62,7 @@ Checks:
   - bugprone-macro-parentheses
   - bugprone-macro-repeated-side-effects
   - bugprone-misleading-setter-of-reference
+  - bugprone-misplaced-operator-in-strlen-in-alloc
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
