@@ -90,6 +90,7 @@ Checks:
   - bugprone-suspicious-memory-comparison
   - bugprone-suspicious-missing-comma
   - bugprone-suspicious-realloc-usage
+  - bugprone-suspicious-semicolon
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
