@@ -1,5 +1,7 @@
 include_guard(GLOBAL)
 
+add_custom_target(csharp-host-tools)
+
 function(sandbox_add_dotnet_host_tool target_name output_variable project_file)
   cmake_path(ABSOLUTE_PATH project_file
     BASE_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
@@ -35,9 +37,7 @@ function(sandbox_add_dotnet_host_tool target_name output_variable project_file)
     COMMENT "Building .NET host tool ${tool_name}"
     VERBATIM
   )
-  if(TARGET csharp-host-tools)
-    add_dependencies(csharp-host-tools ${target_name})
-  endif()
+  add_dependencies(csharp-host-tools ${target_name})
 
   set(${output_variable} "${output_file}" PARENT_SCOPE)
 endfunction()

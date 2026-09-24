@@ -20,8 +20,6 @@ include(cmake/ue_cache_vars.cmake)
 ioj_is_msvc_frontend(IOJ_MSVC_FRONTEND)
 ioj_is_clang_cl(IOJ_IS_CLANG_CL)
 
-add_custom_target(csharp-host-tools)
-
 add_subdirectory(cmake)
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
