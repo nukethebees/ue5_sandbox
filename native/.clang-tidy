@@ -73,6 +73,7 @@ Checks:
   - bugprone-nondeterministic-pointer-iteration-order
   - bugprone-not-null-terminated-result
   - bugprone-optional-value-conversion
+  - bugprone-parent-virtual-call
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
