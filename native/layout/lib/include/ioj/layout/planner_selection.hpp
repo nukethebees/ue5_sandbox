@@ -29,7 +29,7 @@ struct PlannerSelection {
                             lispb::schema::DeclarationId next) -> bool;
     auto identity() const -> std::optional<lispb::schema::TypeIdentity> const&;
     void reconcile(lispb::schema::TypeGraph const& types,
-                   std::optional<lispb::schema::TypeIdentity> const& selected_identity,
+                   std::optional<lispb::schema::TypeIdentity> selected_identity,
                    lispb::schema::EditableSchemaDocument const* document = nullptr);
     void clear_type_local_state();
   private:
