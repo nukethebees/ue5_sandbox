@@ -13,5 +13,6 @@ Checks:
   - bugprone-inaccurate-erase
   - bugprone-undefined-memory-manipulation
   - bugprone-suspicious-memset-usage
+  - bugprone-sizeof-expression
 ExtraArgsBefore:
   - /EHsc
