@@ -57,6 +57,7 @@ Checks:
   - bugprone-inc-dec-in-conditions
   - bugprone-incorrect-enable-if
   - bugprone-incorrect-enable-shared-from-this
+  - bugprone-infinite-loop
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
