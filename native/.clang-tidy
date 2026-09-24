@@ -22,5 +22,6 @@ Checks:
   - performance-implicit-conversion-in-loop
   - performance-move-constructor-init
   - performance-type-promotion-in-math-fn
+  - bugprone-assert-side-effect
 ExtraArgsBefore:
   - /EHsc
