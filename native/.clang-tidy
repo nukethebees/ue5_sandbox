@@ -18,5 +18,6 @@ Checks:
   - performance-for-range-copy
   - performance-implicit-conversion-in-loop
   - performance-move-constructor-init
+  - performance-type-promotion-in-math-fn
 ExtraArgsBefore:
   - /EHsc
