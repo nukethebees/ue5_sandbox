@@ -3,22 +3,35 @@
 #include <algorithm>
 
 namespace ioj::layout {
+namespace {
+
+auto declaration_kind(lispb::schema::EditableSchemaDocument const& document,
+                      lispb::schema::DeclarationInfo const& info) -> DeclarationKind {
+    auto const& module{
+        std::get<codegen::NormalModuleSchema>(document.manifest().modules[info.module_index])};
+    return declaration_capabilities(module.declarations[info.declaration_index]).kind;
+}
+
+} // namespace
 
 auto PlannerSelection::select_type(lispb::schema::TypeGraph const& types,
                                    std::optional<lispb::schema::TypeId> next) -> bool {
     if (next.has_value() && (!next->valid() || next->value >= types.types().size())) {
         next.reset();
     }
-    if (type == next && !declaration.has_value()) {
+    auto const next_identity{next.has_value() ? std::optional{types.type(*next).identity}
+                                              : std::optional<lispb::schema::TypeIdentity>{}};
+    auto const next_kind{next.has_value()
+                             ? std::optional{declaration_capabilities(types.type(*next)).kind}
+                             : std::nullopt};
+    if (type == next && !declaration.has_value() && identity_ == next_identity &&
+        kind_ == next_kind) {
         return false;
     }
     type = next;
     declaration.reset();
-    identity_ = next.has_value()
-                  ? std::optional<lispb::schema::TypeIdentity>{types.type(*next).identity}
-                  : std::nullopt;
-    kind_ = next.has_value() ? std::optional{declaration_capabilities(types.type(*next)).kind}
-                             : std::nullopt;
+    identity_ = next_identity;
+    kind_ = next_kind;
     clear_type_local_state();
     return true;
 }
@@ -29,50 +42,55 @@ auto PlannerSelection::select_declaration(lispb::schema::EditableSchemaDocument 
     if (info == nullptr || document.types().find(info->identity).has_value()) {
         return false;
     }
-    if (declaration == next && !type.has_value()) {
+    auto const next_kind{declaration_kind(document, *info)};
+    if (declaration == next && !type.has_value() && identity_ == info->identity &&
+        kind_ == next_kind) {
         return false;
     }
 
     type.reset();
     declaration = next;
-    identity_.reset();
-    kind_.reset();
+    identity_ = info->identity;
+    kind_ = next_kind;
     clear_type_local_state();
     return true;
+}
+
+auto PlannerSelection::identity() const -> std::optional<lispb::schema::TypeIdentity> const& {
+    return identity_;
 }
 
 void PlannerSelection::reconcile(lispb::schema::TypeGraph const& types,
                                  std::optional<lispb::schema::TypeIdentity> selected_identity,
                                  lispb::schema::EditableSchemaDocument const* const document) {
-    if (declaration.has_value() && !selected_identity.has_value()) {
-        auto const* info{document != nullptr ? document->declaration(*declaration) : nullptr};
-        if (info != nullptr) {
-            if (auto const semantic_type{types.find(info->identity)}; semantic_type.has_value()) {
-                select_type(types, *semantic_type);
-                return;
-            }
-        } else {
-            declaration.reset();
-            clear_type_local_state();
-        }
-        type.reset();
-        identity_.reset();
-        kind_.reset();
-        return;
-    }
-    declaration.reset();
-    auto const next{selected_identity.has_value() ? types.find(*selected_identity)
-                                                  : std::optional<lispb::schema::TypeId>{}};
-    auto const next_kind{next.has_value()
-                             ? std::optional{declaration_capabilities(types.type(*next)).kind}
-                             : std::nullopt};
-    if (selected_identity != identity_ || next_kind != kind_) {
+    auto const target_identity{selected_identity.has_value() ? selected_identity
+                               : declaration.has_value()     ? identity_
+                                                             : std::nullopt};
+    auto const next_type{target_identity.has_value() ? types.find(*target_identity)
+                                                     : std::optional<lispb::schema::TypeId>{}};
+    auto const next_declaration{target_identity.has_value() && !next_type.has_value() &&
+                                        document != nullptr
+                                    ? document->find_declaration(*target_identity)
+                                    : std::optional<lispb::schema::DeclarationId>{}};
+    auto const next_kind{
+        next_type.has_value() ? std::optional{declaration_capabilities(types.type(*next_type)).kind}
+        : next_declaration.has_value()
+            ? std::optional{declaration_kind(*document, *document->declaration(*next_declaration))}
+            : std::nullopt};
+    if (target_identity != identity_ || next_kind != kind_ ||
+        type.has_value() != next_type.has_value() ||
+        declaration.has_value() != next_declaration.has_value()) {
         clear_type_local_state();
     }
-    type = next;
-    identity_ = next.has_value() ? std::move(selected_identity) : std::nullopt;
+
+    type = next_type;
+    declaration = next_declaration;
+    identity_ =
+        next_type.has_value() || next_declaration.has_value() ? target_identity : std::nullopt;
     kind_ = next_kind;
-    prune_members(types);
+    if (type.has_value()) {
+        prune_members(types);
+    }
 }
 
 void PlannerSelection::clear_type_local_state() {

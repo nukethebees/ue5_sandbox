@@ -1297,10 +1297,7 @@ auto PlannerUi::draw_file_menu() -> bool {
                 schema_edit_message_ = result.error().message;
             }
         } else {
-            auto const selection{
-                analysis_session_.inputs.selection.type.transform([&](TypeId const type) {
-                    return analysis_session_.inputs.workspace.types().type(type).identity;
-                })};
+            auto const selection{analysis_session_.inputs.selection.identity()};
             auto result{document_->undo()};
             if (result.has_value() && *result) {
                 sync_document_graph(selection);
@@ -1322,10 +1319,7 @@ auto PlannerUi::draw_file_menu() -> bool {
                 schema_edit_message_ = result.error().message;
             }
         } else {
-            auto const selection{
-                analysis_session_.inputs.selection.type.transform([&](TypeId const type) {
-                    return analysis_session_.inputs.workspace.types().type(type).identity;
-                })};
+            auto const selection{analysis_session_.inputs.selection.identity()};
             auto result{document_->redo()};
             if (result.has_value() && *result) {
                 sync_document_graph(selection);
@@ -1907,9 +1901,7 @@ auto PlannerUi::save_changes() -> bool {
         return false;
     }
 
-    auto const selection{analysis_session_.inputs.selection.type.transform([&](TypeId const type) {
-        return analysis_session_.inputs.workspace.types().type(type).identity;
-    })};
+    auto const selection{analysis_session_.inputs.selection.identity()};
     auto result{document_->save()};
     if (!result.has_value()) {
         schema_edit_message_ = result.error().message;
@@ -1998,10 +1990,8 @@ auto PlannerUi::apply_document_edit(SchemaEditCommand command,
             "declarations.";
         return false;
     }
-    if (!selection.has_value() && analysis_session_.inputs.selection.type.has_value()) {
-        selection = analysis_session_.inputs.workspace.types()
-                        .type(*analysis_session_.inputs.selection.type)
-                        .identity;
+    if (!selection.has_value()) {
+        selection = analysis_session_.inputs.selection.identity();
     }
     auto result{document_->apply(std::move(command))};
     if (!result.has_value()) {
@@ -2123,6 +2113,10 @@ auto PlannerUi::load_project(std::filesystem::path const& path,
 }
 
 void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
+    std::optional<TypeIdentity> previous_identity;
+    if (project_path_ == loaded.project_path && target_name_ == loaded.target_name) {
+        previous_identity = analysis_session_.inputs.selection.identity();
+    }
     schema_warning_message_.clear();
     if (project_path_ != loaded.project_path || target_name_ != loaded.target_name) {
         export_build_root_path_.fill('\0');
@@ -2158,11 +2152,24 @@ void PlannerUi::adopt_loaded_schema(SchemaLoadResult loaded) {
             }
         }
     }
-    for (std::size_t index{}; index < types.size(); ++index) {
-        if (types[index].identity.origin == TypeOrigin::declaration &&
-            declaration_capabilities(types[index]).inspectable) {
-            select_type(TypeId{static_cast<std::uint32_t>(index)});
-            break;
+    if (previous_identity.has_value()) {
+        if (auto const next_type{
+                analysis_session_.inputs.workspace.types().find(*previous_identity)};
+            next_type.has_value()) {
+            select_type(*next_type);
+        } else if (document_.has_value()) {
+            if (auto const next_declaration{document_->find_declaration(*previous_identity)};
+                next_declaration.has_value()) {
+                select_declaration(*next_declaration);
+            }
+        }
+    } else {
+        for (std::size_t index{}; index < types.size(); ++index) {
+            if (types[index].identity.origin == TypeOrigin::declaration &&
+                declaration_capabilities(types[index]).inspectable) {
+                select_type(TypeId{static_cast<std::uint32_t>(index)});
+                break;
+            }
         }
     }
     analysis_session_.inputs.selection.field.clear();

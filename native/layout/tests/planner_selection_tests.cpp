@@ -1,4 +1,5 @@
 #include <ioj/layout/planner_selection.hpp>
+#include <ioj/layout/planner_session.hpp>
 
 #include <codegen/schema/schema_version.h>
 
@@ -174,13 +175,16 @@ TEST(PlannerSelection, OwnerKindChangeClearsLocalWorkload) {
     EXPECT_FALSE(selection.record_access_set_explicit);
 }
 
-TEST(PlannerSelection, DeclarationOnlySelectionKeepsIdentityWithoutInventingType) {
+auto declaration_selection_manifest() -> codegen::Manifest {
     codegen::Manifest manifest{};
     manifest.schema_version = codegen::manifest_schema_version;
     codegen::NormalModuleSchema module{};
     module.settings.name = "declarations";
     module.settings.header = "Declarations.h";
     module.settings.source = "Declarations.cpp";
+    auto record{codegen::RecordSchema{}};
+    record.name = "RecordA";
+    module.declarations.emplace_back(std::move(record));
     auto layout{codegen::HomogeneousLayoutSchema{}};
     layout.name = "Layout";
     layout.components = {"xs", "ys"};
@@ -206,15 +210,17 @@ TEST(PlannerSelection, DeclarationOnlySelectionKeepsIdentityWithoutInventingType
     method.return_type.name = "void";
     facade.methods.push_back(std::move(method));
     module.declarations.emplace_back(std::move(facade));
-    auto record{codegen::RecordSchema{}};
-    record.name = "Record";
-    module.declarations.emplace_back(std::move(record));
     manifest.modules.emplace_back(std::move(module));
-    auto const document{lispb::schema::EditableSchemaDocument::from_manifest(std::move(manifest))};
+    return manifest;
+}
+
+TEST(PlannerSelection, DeclarationOnlySelectionKeepsIdentityWithoutInventingType) {
+    auto const document{
+        lispb::schema::EditableSchemaDocument::from_manifest(declaration_selection_manifest())};
     PlannerSelection selection;
 
     for (auto const& info : document.declarations()) {
-        if (info.identity.name == "Record") {
+        if (info.identity.name == "RecordA") {
             continue;
         }
         auto const* normal{std::get_if<codegen::NormalModuleSchema>(
@@ -231,7 +237,7 @@ TEST(PlannerSelection, DeclarationOnlySelectionKeepsIdentityWithoutInventingType
         EXPECT_EQ(selection.declaration, info.id);
     }
 
-    auto const record_type{*document.types().find_declared("declarations", "Record")};
+    auto const record_type{*document.types().find_declared("declarations", "RecordA")};
     EXPECT_TRUE(selection.select_type(document.types(), record_type));
     EXPECT_FALSE(selection.declaration.has_value());
     EXPECT_EQ(selection.type, record_type);
@@ -239,15 +245,160 @@ TEST(PlannerSelection, DeclarationOnlySelectionKeepsIdentityWithoutInventingType
     auto promoted_manifest{document.manifest()};
     auto promoted{codegen::RecordSchema{}};
     promoted.name = "Layout";
-    std::get<codegen::NormalModuleSchema>(promoted_manifest.modules.front()).declarations.front() =
+    std::get<codegen::NormalModuleSchema>(promoted_manifest.modules.front()).declarations[1] =
         std::move(promoted);
     auto const promoted_document{
         lispb::schema::EditableSchemaDocument::from_manifest(std::move(promoted_manifest))};
-    EXPECT_TRUE(selection.select_declaration(document, document.declarations().front().id));
+    EXPECT_TRUE(selection.select_declaration(document, document.declarations()[1].id));
     selection.reconcile(promoted_document.types(), std::nullopt, &promoted_document);
     EXPECT_FALSE(selection.declaration.has_value());
     ASSERT_TRUE(selection.type.has_value());
     EXPECT_EQ(promoted_document.types().type(*selection.type).identity.name, "Layout");
+}
+
+TEST(PlannerSelection, DeclarationOnlySelectionSurvivesInsertedEarlierDeclaration) {
+    auto const original{
+        lispb::schema::EditableSchemaDocument::from_manifest(declaration_selection_manifest())};
+    auto const old_id{original.declarations()[1].id};
+    auto const identity{original.declarations()[1].identity};
+    auto reordered_manifest{declaration_selection_manifest()};
+    auto new_record{codegen::RecordSchema{}};
+    new_record.name = "NewRecord";
+    auto& declarations{
+        std::get<codegen::NormalModuleSchema>(reordered_manifest.modules.front()).declarations};
+    declarations.insert(declarations.begin(), codegen::DeclarationSchema{std::move(new_record)});
+    auto const reordered{
+        lispb::schema::EditableSchemaDocument::from_manifest(std::move(reordered_manifest))};
+    auto const new_id{reordered.find_declaration(identity)};
+    ASSERT_TRUE(new_id.has_value());
+    EXPECT_NE(*new_id, old_id);
+    ASSERT_NE(reordered.declaration(old_id), nullptr);
+    EXPECT_EQ(reordered.declaration(old_id)->identity.name, "RecordA");
+
+    PlannerAnalysisSession session{original.types()};
+    ASSERT_TRUE(session.inputs.selection.select_declaration(original, old_id));
+    session.replace_types(reordered, std::nullopt);
+    EXPECT_EQ(session.inputs.selection.declaration, new_id);
+    EXPECT_FALSE(session.inputs.selection.type.has_value());
+    EXPECT_EQ(session.inputs.selection.identity(), identity);
+}
+
+TEST(PlannerSelection, DeclarationOnlySelectionSurvivesRemovedEarlierDeclaration) {
+    auto const original{
+        lispb::schema::EditableSchemaDocument::from_manifest(declaration_selection_manifest())};
+    auto const old_id{original.declarations()[1].id};
+    auto const identity{original.declarations()[1].identity};
+    auto changed_manifest{declaration_selection_manifest()};
+    auto& declarations{
+        std::get<codegen::NormalModuleSchema>(changed_manifest.modules.front()).declarations};
+    declarations.erase(declarations.begin());
+    auto const changed{
+        lispb::schema::EditableSchemaDocument::from_manifest(std::move(changed_manifest))};
+    auto const new_id{changed.find_declaration(identity)};
+    ASSERT_TRUE(new_id.has_value());
+    EXPECT_NE(*new_id, old_id);
+
+    PlannerSelection selection;
+    ASSERT_TRUE(selection.select_declaration(original, old_id));
+    selection.reconcile(changed.types(), std::nullopt, &changed);
+    EXPECT_EQ(selection.declaration, new_id);
+    EXPECT_FALSE(selection.type.has_value());
+}
+
+TEST(PlannerSelection, RemovedDeclarationClearsSelectionDespiteReusedId) {
+    auto const original{
+        lispb::schema::EditableSchemaDocument::from_manifest(declaration_selection_manifest())};
+    auto const old_id{original.declarations()[1].id};
+    auto changed_manifest{declaration_selection_manifest()};
+    auto& declarations{
+        std::get<codegen::NormalModuleSchema>(changed_manifest.modules.front()).declarations};
+    declarations.erase(declarations.begin() + 1);
+    auto const changed{
+        lispb::schema::EditableSchemaDocument::from_manifest(std::move(changed_manifest))};
+    ASSERT_NE(changed.declaration(old_id), nullptr);
+    EXPECT_EQ(changed.declaration(old_id)->identity.name, "Table");
+
+    PlannerSelection selection;
+    ASSERT_TRUE(selection.select_declaration(original, old_id));
+    selection.reconcile(changed.types(), std::nullopt, &changed);
+    EXPECT_FALSE(selection.declaration.has_value());
+    EXPECT_FALSE(selection.type.has_value());
+    EXPECT_FALSE(selection.identity().has_value());
+}
+
+TEST(PlannerSelection, SemanticDeclarationCanBecomeDeclarationOnly) {
+    auto const original{
+        lispb::schema::EditableSchemaDocument::from_manifest(declaration_selection_manifest())};
+    auto const identity{original.declarations().front().identity};
+    auto const record{*original.types().find(identity)};
+    auto changed_manifest{declaration_selection_manifest()};
+    auto& declarations{
+        std::get<codegen::NormalModuleSchema>(changed_manifest.modules.front()).declarations};
+    auto demoted{std::get<codegen::HomogeneousLayoutSchema>(declarations[1])};
+    demoted.name = "RecordA";
+    declarations.front() = std::move(demoted);
+    auto const changed{
+        lispb::schema::EditableSchemaDocument::from_manifest(std::move(changed_manifest))};
+
+    PlannerSelection selection;
+    ASSERT_TRUE(selection.select_type(original.types(), record));
+    selection.field = "member";
+    selection.record_access_members["member"] = AccessOperation::read;
+    selection.record_access_set_explicit = true;
+    selection.reconcile(changed.types(), identity, &changed);
+    EXPECT_FALSE(selection.type.has_value());
+    EXPECT_EQ(selection.declaration, changed.find_declaration(identity));
+    EXPECT_TRUE(selection.field.empty());
+    EXPECT_TRUE(selection.record_access_members.empty());
+    EXPECT_FALSE(selection.record_access_set_explicit);
+}
+
+TEST(PlannerSelection, ChangingDeclarationOnlyOwnerClearsTypeLocalState) {
+    auto const document{
+        lispb::schema::EditableSchemaDocument::from_manifest(declaration_selection_manifest())};
+    PlannerSelection selection;
+    ASSERT_TRUE(selection.select_declaration(document, document.declarations()[1].id));
+    selection.field = "old";
+    selection.packed_access_fields["old"] = AccessOperation::read;
+    selection.record_access_members["old"] = AccessOperation::write;
+    selection.soa_access_columns["old"] = AccessOperation::read_write;
+    selection.packed_access_set_explicit = true;
+    selection.record_access_set_explicit = true;
+    selection.soa_access_set_explicit = true;
+
+    ASSERT_TRUE(selection.select_declaration(document, document.declarations()[2].id));
+    EXPECT_TRUE(selection.field.empty());
+    EXPECT_TRUE(selection.packed_access_fields.empty());
+    EXPECT_TRUE(selection.record_access_members.empty());
+    EXPECT_TRUE(selection.soa_access_columns.empty());
+    EXPECT_FALSE(selection.packed_access_set_explicit);
+    EXPECT_FALSE(selection.record_access_set_explicit);
+    EXPECT_FALSE(selection.soa_access_set_explicit);
+}
+
+TEST(PlannerSelection, DeclarationOnlyKindChangeClearsTypeLocalState) {
+    auto const original{
+        lispb::schema::EditableSchemaDocument::from_manifest(declaration_selection_manifest())};
+    auto const identity{original.declarations()[1].identity};
+    auto changed_manifest{declaration_selection_manifest()};
+    auto& declarations{
+        std::get<codegen::NormalModuleSchema>(changed_manifest.modules.front()).declarations};
+    auto replacement{std::get<codegen::FacadeSchema>(declarations[3])};
+    replacement.name = "Layout";
+    declarations[1] = std::move(replacement);
+    auto const changed{
+        lispb::schema::EditableSchemaDocument::from_manifest(std::move(changed_manifest))};
+
+    PlannerSelection selection;
+    ASSERT_TRUE(selection.select_declaration(original, original.declarations()[1].id));
+    selection.field = "old";
+    selection.soa_access_columns["old"] = AccessOperation::read;
+    selection.soa_access_set_explicit = true;
+    selection.reconcile(changed.types(), std::nullopt, &changed);
+    EXPECT_EQ(selection.declaration, changed.find_declaration(identity));
+    EXPECT_TRUE(selection.field.empty());
+    EXPECT_TRUE(selection.soa_access_columns.empty());
+    EXPECT_FALSE(selection.soa_access_set_explicit);
 }
 
 } // namespace
