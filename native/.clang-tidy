@@ -81,6 +81,7 @@ Checks:
   - bugprone-sizeof-container
   - bugprone-spuriously-wake-up-functions
   - bugprone-standalone-empty
+  - bugprone-string-constructor
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
