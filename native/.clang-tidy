@@ -41,5 +41,6 @@ Checks:
   - bugprone-empty-catch
   - bugprone-fold-init-type
   - bugprone-forward-declaration-namespace
+  - bugprone-forwarding-reference-overload
 ExtraArgsBefore:
   - /EHsc
