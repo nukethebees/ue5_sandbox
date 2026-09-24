@@ -106,6 +106,50 @@ Checks:
   - bugprone-virtual-near-miss
   - bugprone-reserved-identifier
   - bugprone-unused-return-value
+  - modernize-avoid-bind
+  - modernize-deprecated-headers
+  - modernize-deprecated-ios-base-aliases
+  - modernize-make-shared
+  - modernize-make-unique
+  - modernize-redundant-void-arg
+  - modernize-replace-disallow-copy-and-assign-macro
+  - modernize-replace-random-shuffle
+  - modernize-shrink-to-fit
+  - modernize-type-traits
+  - modernize-unary-static-assert
+  - modernize-use-bool-literals
+  - modernize-use-constraints
+  - modernize-use-equals-delete
+  - modernize-use-starts-ends-with
+  - modernize-use-transparent-functors
+  - modernize-use-uncaught-exceptions
+  - misc-confusable-identifiers
+  - misc-coroutine-hostile-raii
+  - misc-definitions-in-headers
+  - misc-header-include-cycle
+  - misc-misleading-bidirectional
+  - misc-misleading-identifier
+  - misc-new-delete-overloads
+  - misc-non-copyable-objects
+  - misc-redundant-expression
+  - misc-static-assert
+  - misc-throw-by-value-catch-by-reference
+  - misc-unconventional-assign-operator
+  - misc-uniqueptr-reset-release
+  - misc-unused-alias-decls
+  - misc-unused-using-decls
+  - clang-analyzer-cplusplus.ArrayDelete
+  - clang-analyzer-cplusplus.InnerPointer
+  - clang-analyzer-cplusplus.NewDelete
+  - clang-analyzer-cplusplus.NewDeleteLeaks
+  - clang-analyzer-cplusplus.SelfAssignment
+  - clang-analyzer-cplusplus.StringChecker
+  - clang-analyzer-core.uninitialized.ArraySubscript
+  - clang-analyzer-core.uninitialized.Assign
+  - clang-analyzer-core.uninitialized.Branch
+  - clang-analyzer-core.uninitialized.CapturedBlockVariable
+  - clang-analyzer-core.uninitialized.NewArraySize
+  - clang-analyzer-core.uninitialized.UndefReturn
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
