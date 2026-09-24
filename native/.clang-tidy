@@ -103,6 +103,7 @@ Checks:
   - bugprone-unique-ptr-array-mismatch
   - bugprone-unsafe-functions
   - bugprone-unused-local-non-trivial-variable
+  - bugprone-virtual-near-miss
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
