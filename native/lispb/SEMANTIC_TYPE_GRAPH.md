@@ -56,8 +56,12 @@ and typed undoable commands. A successful command resolves a replacement `TypeGr
 which fails validation leaves both the draft and its last valid graph unchanged. The document is
 the foundation for source-preserving LispB serialization and must remain in `lispb-schema` rather
 than becoming planner-owned state.
-Renames and namespace moves repair explicit declaration references through the shared schema
-reference visitor. Deletion checks include declaration-only users and generated storage types.
+Renames and cross-module moves repair explicit declaration references through the shared schema
+reference visitor, including moves within one C++ namespace and outgoing module-local bindings.
+Before publication, these operations verify that declared references and registered aliases retain
+their semantic targets. Ambiguous repairs are rejected transactionally. Replacement checks new
+references against the previous graph as well as existing users before removing owned types.
+Deletion checks include declaration-only users and generated storage types.
 Registry-bound types retain the existing restriction on renaming/moving across namespaces until
 source-aware registry editing is available; references from module configuration also prevent
 those operations rather than silently becoming external types.

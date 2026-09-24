@@ -805,6 +805,46 @@ TEST(SemanticTypeGraph, RejectsUnresolvedRegisteredReferences) {
     EXPECT_THROW(static_cast<void>(resolve_type_graph(manifest)), std::invalid_argument);
 }
 
+TEST(SemanticTypeGraph, ReferenceLookupMatchesResolverBindings) {
+    codegen::Manifest const manifest{
+        .schema_version = codegen::manifest_schema_version,
+        .types = {{"bar",
+                   codegen::RegisteredTypeSchema{.cpp_type = codegen::CppType{"game::Bar"}}}},
+        .modules = {codegen::NormalModuleSchema{
+                        .settings = {.name = "A", .header = "A.h", .namespace_name = "game"},
+                        .declarations =
+                            {codegen::RecordSchema{
+                                 .name = "Foo", .members = {{.name = "value", .type = {"int32"}}}},
+                             codegen::RecordSchema{
+                                 .name = "Bar", .members = {{.name = "value", .type = {"int32"}}}},
+                             codegen::RecordSchema{
+                                 .name = "User",
+                                 .members = {{.name = "local", .type = {"Foo"}},
+                                             {.name = "qualified", .type = {"game::Bar"}},
+                                             {.name = "registered", .type = {"@bar"}},
+                                             {.name = "suffixed", .type = {"Foo", "*"}},
+                                             {.name = "ambiguous", .type = {"game::Foo"}}}}}},
+                    codegen::NormalModuleSchema{
+                        .settings = {.name = "B", .header = "B.h", .namespace_name = "game"},
+                        .declarations = {codegen::RecordSchema{
+                            .name = "Foo", .members = {{.name = "value", .type = {"int32"}}}}}}}};
+    auto const graph{resolve_type_graph(manifest)};
+    auto const& schema{std::get<codegen::RecordSchema>(
+        std::get<codegen::NormalModuleSchema>(manifest.modules.front()).declarations.back())};
+    auto const& user{
+        std::get<RecordType>(graph.type(*graph.find_declared("A", "User")).definition)};
+    auto const bound_member_count{schema.members.size() - 1};
+    for (std::size_t index{}; index < bound_member_count; ++index) {
+        EXPECT_EQ(graph.find_reference(schema.members[index].type, "A"),
+                  user.members[index].semantic_type.type);
+    }
+    EXPECT_FALSE(graph.find_reference({"game::Foo"}, "A").has_value());
+    EXPECT_EQ(graph.type(user.members.back().semantic_type.type).identity.origin,
+              TypeOrigin::cpp_spelling);
+    EXPECT_FALSE(graph.find_reference({"Foo"}, "other").has_value());
+    EXPECT_FALSE(graph.find_reference({"@missing"}, "A").has_value());
+}
+
 TEST(SemanticTypeGraph, TreatsRawCppSpellingsAsExplicitExternalLeaves) {
     codegen::Manifest const manifest{
         .schema_version = codegen::manifest_schema_version,

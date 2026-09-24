@@ -162,8 +162,8 @@ class TypeGraphBuilder {
                                qualified_name(settings, name),
                                std::move(definition))};
         declarations_.push_back({id, module_index, declaration_index});
-        declarations_by_module_name_.emplace(std::pair{settings.name, name}, id);
-        declarations_by_spelling_[graph_.type(id).cpp_spelling].push_back(id);
+        graph_.declarations_by_module_name_.emplace(std::pair{settings.name, name}, id);
+        graph_.declarations_by_spelling_[graph_.type(id).cpp_spelling].push_back(id);
         declarations_by_name_[name].push_back(id);
     }
 
@@ -285,8 +285,9 @@ class TypeGraphBuilder {
             auto const declared_name{separator == std::string::npos
                                          ? cpp_type.spelling
                                          : cpp_type.spelling.substr(separator + 2)};
-            if (auto const local{declarations_by_module_name_.find(std::pair{name, declared_name})};
-                local != declarations_by_module_name_.end()) {
+            if (auto const local{
+                    graph_.declarations_by_module_name_.find(std::pair{name, declared_name})};
+                local != graph_.declarations_by_module_name_.end()) {
                 if (!std::holds_alternative<std::monostate>(registered.semantics)) {
                     throw std::invalid_argument{"External scalar registration '@" + name +
                                                 "' matches a LispB declaration"};
@@ -295,9 +296,10 @@ class TypeGraphBuilder {
                 continue;
             }
 
-            auto declarations{declarations_by_spelling_.find(cpp_type.spelling)};
-            auto const* matches{
-                declarations == declarations_by_spelling_.end() ? nullptr : &declarations->second};
+            auto declarations{graph_.declarations_by_spelling_.find(cpp_type.spelling)};
+            auto const* matches{declarations == graph_.declarations_by_spelling_.end()
+                                    ? nullptr
+                                    : &declarations->second};
             if (matches == nullptr) {
                 auto const by_name{declarations_by_name_.find(cpp_type.spelling)};
                 if (by_name != declarations_by_name_.end()) {
@@ -343,33 +345,18 @@ class TypeGraphBuilder {
     auto resolve_ref(codegen::TypeRef const& reference, std::string const& module_name)
         -> ResolvedTypeRef {
         auto const cpp_type{codegen::resolve_type(reference, manifest_.types)};
+        if (auto const found{graph_.find_reference(reference, module_name)}) {
+            return {.type = *found, .cpp_type = cpp_type};
+        }
         if (reference.name.starts_with('@')) {
-            auto const name{reference.name.substr(1)};
-            auto const found{graph_.registered_types_.find(name)};
-            if (found == graph_.registered_types_.end()) {
-                throw std::invalid_argument{"Unknown semantic type reference: " + reference.name};
-            }
-            return {.type = found->second, .cpp_type = cpp_type};
-        }
-
-        if (auto const local{
-                declarations_by_module_name_.find(std::pair{module_name, reference.name})};
-            local != declarations_by_module_name_.end()) {
-            return {.type = local->second, .cpp_type = cpp_type};
-        }
-
-        if (auto const declarations{declarations_by_spelling_.find(reference.name)};
-            declarations != declarations_by_spelling_.end() && declarations->second.size() == 1) {
-            return {.type = declarations->second.front(), .cpp_type = cpp_type};
+            throw std::invalid_argument{"Unknown semantic type reference: " + reference.name};
         }
         return {.type = raw_external(reference.name), .cpp_type = cpp_type};
     }
 
     auto local_declaration(std::string const& module_name, std::string const& name) const
         -> std::optional<TypeId> {
-        auto const found{declarations_by_module_name_.find(std::pair{module_name, name})};
-        return found == declarations_by_module_name_.end() ? std::nullopt
-                                                           : std::optional{found->second};
+        return graph_.find_declared(module_name, name);
     }
 
     void resolve_type_uses() {
@@ -1036,8 +1023,6 @@ class TypeGraphBuilder {
     codegen::Manifest const& manifest_;
     TypeGraph graph_;
     std::vector<Declaration> declarations_;
-    std::map<std::pair<std::string, std::string>, TypeId> declarations_by_module_name_;
-    std::map<std::string, std::vector<TypeId>, std::less<>> declarations_by_spelling_;
     std::map<std::string, std::vector<TypeId>, std::less<>> declarations_by_name_;
     std::map<std::string, TypeId, std::less<>> raw_external_types_;
 };
@@ -1060,18 +1045,29 @@ auto TypeGraph::find(TypeIdentity const& identity) const -> std::optional<TypeId
 
 auto TypeGraph::find_declared(std::string const& module_name, std::string const& name) const
     -> std::optional<TypeId> {
-    for (auto const& [identity, id] : identities_) {
-        if (identity.origin == TypeOrigin::declaration && identity.module_name == module_name &&
-            identity.name == name) {
-            return id;
-        }
-    }
-    return std::nullopt;
+    auto const found{declarations_by_module_name_.find(std::pair{module_name, name})};
+    return found == declarations_by_module_name_.end() ? std::nullopt
+                                                       : std::optional{found->second};
 }
 
 auto TypeGraph::find_registered(std::string const& name) const -> std::optional<TypeId> {
     auto const found{registered_types_.find(name)};
     return found == registered_types_.end() ? std::nullopt : std::optional{found->second};
+}
+
+auto TypeGraph::find_reference(codegen::TypeRef const& reference,
+                               std::string const& module_name) const -> std::optional<TypeId> {
+    if (reference.name.starts_with('@')) {
+        return find_registered(reference.name.substr(1));
+    }
+    if (auto const local{find_declared(module_name, reference.name)}) {
+        return local;
+    }
+    auto const found{declarations_by_spelling_.find(reference.name)};
+    if (found != declarations_by_spelling_.end() && found->second.size() == 1) {
+        return found->second.front();
+    }
+    return std::nullopt;
 }
 
 auto TypeGraph::dependencies_of(TypeId const id) const -> std::span<TypeId const> {

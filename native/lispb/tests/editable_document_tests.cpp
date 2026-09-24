@@ -8838,6 +8838,297 @@ TEST(EditableDocument, PendingNormalModuleCreatesMixedDeclarationsAndReloads) {
     EXPECT_NE(reloaded.record_schema(reloaded_snapshot), nullptr);
 }
 
+TEST(EditableDocument, ReplaceRejectsAtomicReferenceToRemovedOwnedType) {
+    TemporarySchema files;
+    files.write_source("modules.lispb", R"(
+(module layouts
+  :header "Layouts.h"
+  :source "Layouts.cpp"
+  :namespace game
+  (layout Pairs
+    :components (xs ys)
+    (value-type float f)
+    (value-type double d)))
+)");
+    auto document{files.load()};
+    auto const id{declaration_id(document, "layouts", "Pairs", "game")};
+    auto replacement{std::get<codegen::HomogeneousLayoutSchema>(
+        std::get<codegen::NormalModuleSchema>(document.manifest().modules.front())
+            .declarations.front())};
+    replacement.value_types.erase(replacement.value_types.begin());
+    for (auto const& reference : {codegen::TypeRef{"FPairsf"},
+                                  codegen::TypeRef{"game::FPairsf"},
+                                  codegen::TypeRef{"FPairsf", "*"}}) {
+        replacement.value_types.front().input_types = {reference};
+        auto const changed{document.apply(ReplaceDeclaration{id, replacement})};
+        ASSERT_FALSE(changed.has_value());
+        EXPECT_NE(changed.error().message.find("game::FPairsf"), std::string::npos);
+    }
+    EXPECT_TRUE(document.types().find_declared("layouts", "FPairsf").has_value());
+    EXPECT_EQ(document.types().types_for_declaration(document.declaration(id)->identity).size(),
+              2U);
+    EXPECT_FALSE(document.undo().value());
+    auto const preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value());
+    EXPECT_TRUE(preview->empty());
+}
+
+TEST(EditableDocument, ReplaceAllowsRemovingOwnedTypeAndAllItsReferences) {
+    TemporarySchema files;
+    files.write_source("modules.lispb", R"(
+(module layouts :header "Layouts.h" :source "Layouts.cpp" :namespace game
+  (layout Pairs :components (xs ys)
+    (value-type float f :input-types (FPairsf))
+    (value-type double d :input-types (FPairsf))))
+)");
+    auto document{files.load()};
+    auto const id{declaration_id(document, "layouts", "Pairs", "game")};
+    auto replacement{std::get<codegen::HomogeneousLayoutSchema>(
+        std::get<codegen::NormalModuleSchema>(document.manifest().modules.front())
+            .declarations.front())};
+    replacement.value_types.erase(replacement.value_types.begin());
+    replacement.value_types.front().input_types.clear();
+    auto const changed{document.apply(ReplaceDeclaration{id, replacement})};
+    ASSERT_TRUE(changed.has_value()) << changed.error().message;
+    EXPECT_FALSE(document.types().find_declared("layouts", "FPairsf").has_value());
+    ASSERT_TRUE(document.undo().value());
+    auto const restored{document.types().find_declared("layouts", "FPairsf")};
+    ASSERT_TRUE(restored.has_value());
+    EXPECT_EQ(std::get<HomogeneousStorageType>(document.types().type(*restored).definition)
+                  .input_types.front()
+                  .type,
+              *restored);
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.save().has_value());
+    EXPECT_FALSE(files.load().types().find_declared("layouts", "FPairsf").has_value());
+}
+
+TEST(EditableDocument, SameNamespaceMovePreservesIncomingLocalReferences) {
+    TemporarySchema files;
+    files.write_source("modules.lispb", R"(
+(module A
+  :header "A.h"
+  :namespace game
+  (record Foo (member value int32))
+  (record User (member foo Foo)))
+(module B :header "B.h" :namespace game)
+)");
+    auto document{files.load()};
+    auto const foo{declaration_id(document, "A", "Foo", "game")};
+    auto const user{declaration_id(document, "A", "User", "game")};
+    auto check_binding = [&](EditableSchemaDocument const& current, std::string const& module) {
+        auto const target{current.types().find_declared(module, "Foo")};
+        ASSERT_TRUE(target.has_value());
+        auto const consumer{declaration_id(current, "A", "User", "game")};
+        EXPECT_EQ(record_type(current, consumer).members.front().semantic_type.type, *target);
+        EXPECT_EQ(current.types().users_of(*target).size(), 1U);
+    };
+    check_binding(document, "A");
+
+    auto const moved{document.apply(MoveDeclaration{.declaration = foo, .module_index = 1})};
+    ASSERT_TRUE(moved.has_value()) << moved.error().message;
+    check_binding(document, "B");
+    EXPECT_EQ(document.declaration(foo)->identity.module_name, "B");
+    EXPECT_EQ(document.declaration(user)->identity.module_name, "A");
+    ASSERT_TRUE(document.undo().value());
+    check_binding(document, "A");
+    ASSERT_TRUE(document.redo().value());
+    check_binding(document, "B");
+    auto const preview{document.preview_source_updates()};
+    ASSERT_TRUE(preview.has_value()) << preview.error().message;
+    ASSERT_EQ(preview->size(), 1U);
+    EXPECT_NE(preview->front().updated.find("game::Foo"), std::string::npos);
+    auto const saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    check_binding(document, "B");
+    check_binding(files.load(), "B");
+}
+
+TEST(EditableDocument, SameNamespaceMovePreservesOutgoingLocalReferences) {
+    TemporarySchema files;
+    files.write_source("modules.lispb", R"(
+(module A
+  :header "A.h"
+  :namespace game
+  (record Foo (member value int32))
+  (record User (member foo Foo)))
+(module B :header "B.h" :namespace game)
+)");
+    auto document{files.load()};
+    auto const user{declaration_id(document, "A", "User", "game")};
+    auto const moved{document.apply(MoveDeclaration{.declaration = user, .module_index = 1})};
+    ASSERT_TRUE(moved.has_value()) << moved.error().message;
+    EXPECT_EQ(record_type(document, user).members.front().semantic_type.type,
+              *document.types().find_declared("A", "Foo"));
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.save().has_value());
+    auto const reloaded{files.load()};
+    EXPECT_EQ(record_type(reloaded, declaration_id(reloaded, "B", "User", "game"))
+                  .members.front()
+                  .semantic_type.type,
+              *reloaded.types().find_declared("A", "Foo"));
+}
+
+TEST(EditableDocument, RejectsEditsThatMakeSemanticReferencesAmbiguous) {
+    TemporarySchema files;
+    for (auto const rename : {false, true}) {
+        files.write_source("modules.lispb",
+                           std::string{R"(
+(module A :header "A.h" :namespace game
+  (record Foo (member value int32))
+  (record User (member foo Foo)))
+(module B :header "B.h" :namespace game)
+)"} + (rename ? R"(
+(module C :header "C.h" :namespace game (record Bar (member value int32)))
+(module D :header "D.h" (record OtherUser (member foo game::Foo)))
+)"
+              : R"(
+(module C :header "C.h" :namespace game (record Foo (member value int32)))
+)"));
+        auto document{files.load()};
+        auto const foo{declaration_id(document, "A", "Foo", "game")};
+        auto const result{rename ? document.apply(RenameDeclaration{foo, "Bar"})
+                                 : document.apply(MoveDeclaration{foo, 1})};
+        ASSERT_FALSE(result.has_value());
+        EXPECT_EQ(document.declaration(foo)->identity.module_name, "A");
+        EXPECT_EQ(document.declaration(foo)->identity.name, "Foo");
+        EXPECT_FALSE(document.can_undo());
+        EXPECT_EQ(record_type(document, declaration_id(document, "A", "User", "game"))
+                      .members.front()
+                      .semantic_type.type,
+                  *document.types().find_declared("A", "Foo"));
+    }
+}
+
+TEST(EditableDocument, GeneratedFamilyMoveAndRenamePreserveSpecializedUsers) {
+    TemporarySchema files;
+    files.write_source("modules.lispb", R"(
+(module A :header "A.h" :source "A.cpp" :namespace game
+  (layout Pairs :components (xs ys)
+    (value-type float f :input-types (FPairsf))
+    (value-type double d :input-types (FPairsf)))
+  (layout Copies :components (xs ys)
+    (value-type int32 i :input-types (FPairsf)))
+  (table Lookup (row first) (column value FPairsf))
+  (facade Access FPairsf target (method read FPairsd)))
+(module B :header "B.h" :source "B.cpp" :namespace game)
+)");
+    auto document{files.load()};
+    auto const layout{declaration_id(document, "A", "Pairs", "game")};
+    auto check_bindings = [&](EditableSchemaDocument const& current,
+                              std::string const& module,
+                              std::string const& name) {
+        auto const owner{declaration_id(current, module, name, "game")};
+        auto const owned{
+            current.types().types_for_declaration(current.declaration(owner)->identity)};
+        ASSERT_EQ(owned.size(), 2U);
+        auto uses{std::size_t{}};
+        for (auto const& use : current.types().type_uses()) {
+            if (std::ranges::find(owned, use.target.type) != owned.end()) {
+                ++uses;
+            }
+        }
+        EXPECT_EQ(uses, 6U);
+    };
+    check_bindings(document, "A", "Pairs");
+    auto const moved{document.apply(MoveDeclaration{layout, 1})};
+    ASSERT_TRUE(moved.has_value()) << moved.error().message;
+    check_bindings(document, "B", "Pairs");
+    auto const renamed{document.apply(RenameDeclaration{layout, "Coordinates"})};
+    ASSERT_TRUE(renamed.has_value()) << renamed.error().message;
+    check_bindings(document, "B", "Coordinates");
+    EXPECT_FALSE(document.apply(DeleteDeclaration{layout}).has_value());
+    EXPECT_FALSE(document.apply(DeleteModule{1}).has_value());
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_TRUE(document.undo().value());
+    EXPECT_EQ(document.declaration(layout)->identity.module_name, "A");
+    check_bindings(document, "A", "Pairs");
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.redo().value());
+    check_bindings(document, "B", "Coordinates");
+    auto const saved{document.save()};
+    ASSERT_TRUE(saved.has_value()) << saved.error().message;
+    check_bindings(document, "B", "Coordinates");
+    check_bindings(files.load(), "B", "Coordinates");
+}
+
+TEST(EditableDocument, SameNamespaceMovePreservesRegisteredAliases) {
+    TemporarySchema files;
+    files.write_source("types.lispb", R"((type foo :spelling "game::Foo" :header "A.h"))");
+    files.write_source("modules.lispb", R"(
+(module A :header "A.h" :namespace game
+  (record Foo (member value int32))
+  (record User (member first Foo) (member second @foo)))
+(module B :header "B.h" :namespace game)
+(module C :header "C.h" :namespace other)
+)");
+    auto document{files.load()};
+    auto const foo{declaration_id(document, "A", "Foo", "game")};
+    auto const user{declaration_id(document, "A", "User", "game")};
+    auto const moved{document.apply(MoveDeclaration{foo, 1})};
+    ASSERT_TRUE(moved.has_value()) << moved.error().message;
+    EXPECT_EQ(document.record_schema(user)->members.back().type.name, "@foo");
+    EXPECT_EQ(document.types().find_registered("foo"), document.types().find_declared("B", "Foo"));
+    EXPECT_FALSE(document.apply(MoveDeclaration{foo, 2}).has_value());
+    EXPECT_FALSE(document.apply(RenameDeclaration{foo, "Renamed"}).has_value());
+    ASSERT_TRUE(document.undo().value());
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.save().has_value());
+    auto const reloaded{files.load()};
+    EXPECT_EQ(reloaded.types().find_registered("foo"), reloaded.types().find_declared("B", "Foo"));
+}
+
+TEST(EditableDocument, NamespaceMoveCanUndoWithDuplicateCppNames) {
+    TemporarySchema files;
+    files.write_source("modules.lispb", R"(
+(module A :header "A.h" :namespace game
+  (record Foo (member value int32))
+  (record User (member foo Foo)))
+(module B :header "B.h" :namespace other)
+(module C :header "C.h" :namespace game
+  (record Foo (member value int32)))
+)");
+    auto document{files.load()};
+    auto const foo{declaration_id(document, "A", "Foo", "game")};
+    auto const moved{document.apply(MoveDeclaration{foo, 1})};
+    ASSERT_TRUE(moved.has_value()) << moved.error().message;
+    auto const undone{document.undo()};
+    ASSERT_TRUE(undone.has_value()) << undone.error().message;
+    ASSERT_TRUE(*undone);
+    EXPECT_EQ(record_type(document, declaration_id(document, "A", "User", "game"))
+                  .members.front()
+                  .semantic_type.type,
+              *document.types().find_declared("A", "Foo"));
+    ASSERT_TRUE(document.redo().value());
+    ASSERT_TRUE(document.save().has_value());
+}
+
+TEST(EditableDocument, SameNamespaceMoveRejectsLocalSoaLinks) {
+    TemporarySchema files;
+    auto document{files.load()};
+    auto const target{declaration_id(document, "authored_soa", "ExistingSoa", "authored")};
+    auto const user{declaration_id(document, "authored_soa", "NestedFlags", "authored")};
+    auto replacement{*document.soa_schema(user)};
+    replacement.members.front().kind = codegen::SoaMemberKind::nested;
+    replacement.members.front().type.name = "authored::ExistingSoa";
+    replacement.members.front().nested_schema = "ExistingSoa";
+    replacement.members.front().fixed_schema = "ExistingSoa";
+    ASSERT_TRUE(document.apply(ReplaceSoa{user, replacement}).has_value());
+    auto const destination{
+        document
+            .declaration(declaration_id(document, "authored_records", "ExistingRecord", "authored"))
+            ->module_index};
+    auto const revision{document.revision()};
+    for (auto const id : {target, user}) {
+        auto const moved{document.apply(MoveDeclaration{id, destination})};
+        ASSERT_FALSE(moved.has_value());
+        EXPECT_NE(moved.error().message.find("module-local nested/fixed"), std::string::npos);
+        EXPECT_EQ(document.revision(), revision);
+        EXPECT_EQ(document.declaration(id)->identity.module_name, "authored_soa");
+    }
+}
+
 TEST(EditableDocument, PendingNormalModuleSerializesSpecializedDeclarations) {
     TemporarySchema files;
     auto document{files.load()};

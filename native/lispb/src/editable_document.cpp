@@ -4132,6 +4132,54 @@ void refresh_declaration_locations(codegen::Manifest const& manifest,
 
 enum class LocalSoaReferencePolicy { ignore, rename, reject };
 
+void validate_relocated_references(codegen::Manifest const& manifest,
+                                   TypeGraph const& previous,
+                                   TypeGraph const& candidate,
+                                   TypeIdentity const& old_owner,
+                                   TypeIdentity const& new_owner) {
+    auto const old_types{previous.types_for_declaration(old_owner)};
+    auto const new_types{candidate.types_for_declaration(new_owner)};
+    if (old_types.size() != new_types.size()) {
+        throw std::invalid_argument{"Rename/move changed the declaration's owned types"};
+    }
+
+    // Rename and move preserve the members and order of a declaration's generated family.
+    auto expected_binding = [&](TypeId const old_type) -> std::optional<TypeId> {
+        auto const owned{std::ranges::find(old_types, old_type)};
+        if (owned != old_types.end()) {
+            return new_types[static_cast<std::size_t>(owned - old_types.begin())];
+        }
+        return candidate.find(previous.type(old_type).identity);
+    };
+    for (auto const& use : previous.type_uses()) {
+        if (previous.type(use.target.type).identity.origin != TypeOrigin::declaration) {
+            continue;
+        }
+        auto const owner{use.declaration == old_owner ? std::optional{new_owner} : use.declaration};
+        auto const expected{expected_binding(use.target.type)};
+        auto const preserved{std::ranges::any_of(candidate.type_uses(), [&](auto const& updated) {
+            return updated.declaration == owner && updated.role == use.role &&
+                   (owner.has_value() || updated.module_name == use.module_name) &&
+                   updated.target.type == expected;
+        })};
+        if (!preserved) {
+            throw std::invalid_argument{"Cannot preserve semantic reference to '" +
+                                        previous.type(use.target.type).cpp_spelling + "' from '" +
+                                        use.module_name + " / " + use.role + "' after rename/move"};
+        }
+    }
+    for (auto const& [name, registration] : manifest.types) {
+        static_cast<void>(registration);
+        auto const binding{previous.find_registered(name)};
+        if (binding.has_value() &&
+            previous.type(*binding).identity.origin == TypeOrigin::declaration &&
+            candidate.find_registered(name) != expected_binding(*binding)) {
+            throw std::invalid_argument{"Cannot preserve registered semantic reference '@" + name +
+                                        "' after rename/move"};
+        }
+    }
+}
+
 void repair_semantic_references(codegen::Manifest& manifest,
                                 TypeGraph const& types,
                                 std::span<DeclarationInfo const> const declarations,
@@ -4140,16 +4188,30 @@ void repair_semantic_references(codegen::Manifest& manifest,
                                 std::size_t const target_module_index,
                                 std::string_view const old_name,
                                 LocalSoaReferencePolicy const local_soa_policy,
-                                std::string_view const new_local_name = {}) {
-    auto repair_ref = [&](codegen::TypeRef& reference, TypeId const resolved) {
+                                std::string_view const new_local_name,
+                                std::size_t const destination_module_index) {
+    auto const requires_local_spelling{std::ranges::any_of(types.types(), [&](auto const& node) {
+        return node.identity.origin == TypeOrigin::declaration &&
+               node.identity != types.type(target).identity && node.cpp_spelling == new_spelling;
+    })};
+    auto repair_ref = [&](codegen::TypeRef& reference,
+                          TypeId const resolved,
+                          std::size_t const user_module_index) {
         if (resolved != target) {
             return;
         }
         if (reference.name.starts_with('@')) {
+            if (new_spelling == types.type(target).cpp_spelling) {
+                return;
+            }
             throw std::invalid_argument{"Cannot repair registered semantic reference '" +
                                         reference.name + "' to '" + std::string{old_name} + "'"};
         }
-        reference.name = new_spelling;
+        reference.name =
+            user_module_index == destination_module_index &&
+                    (reference.name.find("::") == std::string::npos || requires_local_spelling)
+                ? std::string{new_local_name}
+                : new_spelling;
     };
 
     for (auto const& user_info : declarations) {
@@ -4165,7 +4227,7 @@ void repair_semantic_references(codegen::Manifest& manifest,
                     return use.declaration == user_info.identity && use.role == role;
                 })};
                 if (found != types.type_uses().end()) {
-                    repair_ref(reference, found->target.type);
+                    repair_ref(reference, found->target.type, user_info.module_index);
                 }
             });
 
@@ -4198,7 +4260,9 @@ void repair_semantic_references(codegen::Manifest& manifest,
         }
     }
     for (auto const& use : types.type_uses()) {
-        if (!use.declaration.has_value() && use.target.type == target) {
+        if (!use.declaration.has_value() && use.target.type == target &&
+            (new_spelling != types.type(target).cpp_spelling ||
+             use.target.cpp_type.spelling != new_spelling)) {
             throw std::invalid_argument{
                 "Cannot rename or move a type referenced by module configuration: " +
                 use.module_name + " / " + use.role};
@@ -5229,17 +5293,19 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                                     name + "'"};
                             }
                         }
+                        codegen::visit_type_references(
+                            current,
+                            [&](std::string const& role, codegen::TypeRef const& reference) {
+                                if (types_.find_reference(reference, info->identity.module_name) ==
+                                    owned) {
+                                    throw std::invalid_argument{
+                                        "Cannot remove or rename generated type '" +
+                                        types_.type(owned).cpp_spelling + "'; it is used by '" +
+                                        info->identity.name + " / " + role + "'"};
+                                }
+                            });
                         for (auto const& use : types_.type_uses()) {
-                            auto const retained_local_reference{
-                                use.declaration == info->identity &&
-                                std::ranges::any_of(
-                                    candidate_types.type_uses(), [&](auto const& candidate_use) {
-                                        return candidate_use.declaration == info->identity &&
-                                               candidate_use.target.cpp_type.spelling ==
-                                                   use.target.cpp_type.spelling;
-                                    })};
-                            if (use.target.type == owned &&
-                                (use.declaration != info->identity || retained_local_reference)) {
+                            if (use.target.type == owned && use.declaration != info->identity) {
                                 throw std::invalid_argument{
                                     "Cannot remove or rename generated type '" +
                                     types_.type(owned).cpp_spelling + "'; it is used by '" +
@@ -5588,27 +5654,52 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                         }
                     }
                 }
-                if (namespace_changed) {
-                    try {
-                        for (auto const owned : owned_types) {
-                            auto const& name{types_.type(owned).identity.name};
-                            auto const new_spelling{destination_settings.namespace_name.has_value()
-                                                        ? *destination_settings.namespace_name +
-                                                              "::" + name
-                                                        : name};
-                            repair_semantic_references(manifest_,
-                                                       types_,
-                                                       declarations_,
-                                                       owned,
-                                                       new_spelling,
-                                                       original_info.module_index,
-                                                       original_info.identity.name,
-                                                       LocalSoaReferencePolicy::reject);
-                        }
-                    } catch (std::exception const& error) {
-                        manifest_ = previous_manifest;
-                        return std::unexpected{SchemaEditError{error.what()}};
+                try {
+                    auto& moving{std::get<codegen::NormalModuleSchema>(
+                                     manifest_.modules[original_info.module_index])
+                                     .declarations.at(original_info.declaration_index)};
+                    if (auto const* soa{std::get_if<codegen::SoaSchema>(&moving)};
+                        soa != nullptr && std::ranges::any_of(soa->members, [](auto const& member) {
+                            return member.nested_schema.has_value() ||
+                                   member.fixed_schema.has_value();
+                        })) {
+                        throw std::invalid_argument{
+                            "Cannot move a SoA across modules while module-local nested/fixed "
+                            "schema references exist"};
                     }
+                    codegen::visit_type_references(
+                        moving, [&](std::string const&, codegen::TypeRef& reference) {
+                            auto const binding{types_.find_reference(
+                                reference, original_info.identity.module_name)};
+                            if (reference.name.starts_with('@') || !binding.has_value() ||
+                                std::ranges::find(owned_types, *binding) != owned_types.end()) {
+                                return;
+                            }
+                            auto const& node{types_.type(*binding)};
+                            reference.name = node.identity.module_name == destination_settings.name
+                                               ? node.identity.name
+                                               : node.cpp_spelling;
+                        });
+                    for (auto const owned : owned_types) {
+                        auto const& name{types_.type(owned).identity.name};
+                        auto const new_spelling{destination_settings.namespace_name.has_value()
+                                                    ? *destination_settings.namespace_name +
+                                                          "::" + name
+                                                    : name};
+                        repair_semantic_references(manifest_,
+                                                   types_,
+                                                   declarations_,
+                                                   owned,
+                                                   new_spelling,
+                                                   original_info.module_index,
+                                                   original_info.identity.name,
+                                                   LocalSoaReferencePolicy::reject,
+                                                   name,
+                                                   edit.module_index);
+                    }
+                } catch (std::exception const& error) {
+                    manifest_ = previous_manifest;
+                    return std::unexpected{SchemaEditError{error.what()}};
                 }
                 auto move_schema = [&]<typename Schema>(std::vector<Schema>& source,
                                                         std::size_t const source_index,
@@ -5656,6 +5747,11 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                     codegen::validate_manifest(manifest_);
                     auto resolved{resolve_type_graph(manifest_)};
                     refresh_declaration_locations(manifest_, resolved, declarations_);
+                    validate_relocated_references(manifest_,
+                                                  types_,
+                                                  resolved,
+                                                  original_info.identity,
+                                                  declaration_it->identity);
                     types_ = std::move(resolved);
                 } catch (std::exception const& error) {
                     manifest_ = previous_manifest;
@@ -5803,7 +5899,8 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                                                    declaration_it->module_index,
                                                    old_name,
                                                    LocalSoaReferencePolicy::rename,
-                                                   edit.new_name);
+                                                   generated_name,
+                                                   declaration_it->module_index);
                     }
                     auto& target_module{manifest_.modules[declaration_it->module_index]};
                     auto& normal{std::get<codegen::NormalModuleSchema>(target_module)};
@@ -5811,7 +5908,12 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                     std::visit([&](auto& value) { value.name = edit.new_name; }, schema);
                     declaration_it->identity.name = edit.new_name;
                     codegen::validate_manifest(manifest_);
-                    types_ = resolve_type_graph(manifest_);
+                    auto resolved{resolve_type_graph(manifest_)};
+                    auto old_identity{declaration_it->identity};
+                    old_identity.name = old_name;
+                    validate_relocated_references(
+                        manifest_, types_, resolved, old_identity, declaration_it->identity);
+                    types_ = std::move(resolved);
                 } catch (std::exception const& error) {
                     manifest_ = previous_manifest;
                     declarations_ = previous_declarations;
