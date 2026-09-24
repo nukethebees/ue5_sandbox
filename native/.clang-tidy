@@ -26,5 +26,6 @@ Checks:
   - bugprone-assignment-in-if-condition
   - bugprone-bad-signal-to-kill-thread
   - bugprone-bitwise-pointer-cast
+  - bugprone-bool-pointer-implicit-conversion
 ExtraArgsBefore:
   - /EHsc
