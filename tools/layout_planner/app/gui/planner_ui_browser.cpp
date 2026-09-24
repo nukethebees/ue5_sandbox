@@ -586,6 +586,84 @@ void PlannerUi::draw_project_panel() {
         }
     }
 
+    auto const dependencies{external_dependencies(analysis_session_.inputs.workspace.types())};
+    auto const external_label{"External dependencies (" + std::to_string(dependencies.size()) +
+                              ")###external-dependencies"};
+    if (detail::section(external_label.c_str())) {
+        ImGui::InputTextWithHint("##external-filter",
+                                 "Filter types or registrations",
+                                 external_filter_.data(),
+                                 external_filter_.size());
+        ImGui::Checkbox("Include described types", &external_show_described_);
+        ImGui::Checkbox("Include types with no LispB references", &external_show_unreferenced_);
+        if (ImGui::BeginCombo("Used by module",
+                              external_module_filter_.empty() ? "All modules"
+                                                              : external_module_filter_.c_str())) {
+            if (ImGui::Selectable("All modules", external_module_filter_.empty())) {
+                external_module_filter_.clear();
+            }
+            if (document_.has_value()) {
+                for (auto const& module : document_->manifest().modules) {
+                    auto const& name{std::visit(
+                        [](auto const& value) -> std::string const& { return value.settings.name; },
+                        module)};
+                    if (ImGui::Selectable(name.c_str(), name == external_module_filter_)) {
+                        external_module_filter_ = name;
+                    }
+                }
+            }
+            ImGui::EndCombo();
+        }
+        auto const filter{lowercase(external_filter_.data())};
+        std::size_t shown{};
+        for (auto const& entry : dependencies) {
+            if ((!external_show_described_ && entry.semantics_known) ||
+                (!external_show_unreferenced_ && entry.uses.empty()) ||
+                (!external_module_filter_.empty() &&
+                 std::ranges::find(entry.modules, external_module_filter_) ==
+                     entry.modules.end())) {
+                continue;
+            }
+            auto searchable{entry.cpp_spelling};
+            for (auto const& name : entry.registered_names) {
+                searchable += " @" + name;
+            }
+            if (!filter.empty() && lowercase(searchable).find(filter) == std::string::npos) {
+                continue;
+            }
+            ++shown;
+            auto const selected{
+                analysis_session_.inputs.selection.type.has_value() &&
+                std::ranges::find(entry.types, *analysis_session_.inputs.selection.type) !=
+                    entry.types.end()};
+            auto const label{entry.cpp_spelling +
+                             (entry.semantics_known ? " [described]" : " [opaque]") + " — " +
+                             std::to_string(entry.declarations.size()) + " declarations"};
+            ImGui::PushID(entry.cpp_spelling.c_str());
+            if (ImGui::Selectable(label.c_str(), selected)) {
+                select_type(entry.types.front());
+            }
+            auto const layout_known{
+                analysis_session_.primary_abi().find(entry.cpp_spelling).has_value()};
+            auto tooltip{searchable +
+                         "\nTarget size/alignment: " + (layout_known ? "known" : "unknown")};
+            if (entry.uses.empty()) {
+                tooltip += "\nNo LispB references found.";
+            }
+            for (auto const& module : entry.modules) {
+                tooltip += "\nUsed by module: " + module;
+            }
+            ImGui::SetItemTooltip("%s", tooltip.c_str());
+            ImGui::PopID();
+        }
+        if (shown == 0) {
+            ImGui::TextDisabled("No external types match these filters.");
+        }
+        ImGui::TextWrapped(
+            "External types can remain external. Opaque types have no declared semantic "
+            "description. Usage covers explicit LispB references, not arbitrary C++ code.");
+    }
+
     if (!load_diagnostics_.empty() && detail::section("Load diagnostics")) {
         draw_diagnostics(load_diagnostics_);
     }

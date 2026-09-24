@@ -4,6 +4,66 @@
 
 namespace ioj::layout_planner {
 
+void PlannerUi::draw_declaration_dependencies(TypeIdentity const& identity) {
+    if (!detail::section("Declaration dependencies")) {
+        return;
+    }
+    auto const& types{analysis_session_.inputs.workspace.types()};
+    std::size_t count{};
+    for (auto const& use : types.type_uses()) {
+        if (use.declaration != identity) {
+            continue;
+        }
+        ImGui::PushID(static_cast<int>(count++));
+        auto const label{use.role + ": " + use.target.cpp_type.spelling};
+        if (ImGui::Selectable(label.c_str())) {
+            select_type(use.target.type);
+        }
+        ImGui::PopID();
+    }
+    if (count == 0) {
+        ImGui::TextDisabled("No explicit type references.");
+    }
+}
+
+void PlannerUi::draw_type_users(TypeId const type) {
+    if (!detail::section("LispB references")) {
+        return;
+    }
+    auto const& types{analysis_session_.inputs.workspace.types()};
+    auto const& selected{types.type(type)};
+    auto const external{std::holds_alternative<ExternalType>(selected.definition)};
+    std::size_t count{};
+    for (auto const& use : types.type_uses()) {
+        auto const& target{types.type(use.target.type)};
+        auto const matches{use.target.type == type ||
+                           (external && std::holds_alternative<ExternalType>(target.definition) &&
+                            codegen::native_spelling(target.cpp_spelling) ==
+                                codegen::native_spelling(selected.cpp_spelling))};
+        if (!matches) {
+            continue;
+        }
+        ImGui::PushID(static_cast<int>(count++));
+        auto const label{use.module_name + " / " +
+                         (use.declaration.has_value() ? use.declaration->name + " / " : "") +
+                         use.role};
+        auto const declaration{document_.has_value() && use.declaration.has_value()
+                                   ? document_->find_declaration(*use.declaration)
+                                   : std::optional<DeclarationId>{}};
+        if (declaration.has_value()) {
+            if (ImGui::Selectable(label.c_str())) {
+                select_declaration(*declaration);
+            }
+        } else {
+            ImGui::TextWrapped("%s", label.c_str());
+        }
+        ImGui::PopID();
+    }
+    if (count == 0) {
+        ImGui::TextDisabled("No LispB references found.");
+    }
+}
+
 auto PlannerUi::draw_type_picker(std::string_view const module_name, TypeIdentity const& owner)
     -> std::optional<std::string> {
     if (ImGui::SmallButton("...")) {
@@ -185,6 +245,7 @@ void PlannerUi::draw_properties_panel() {
                 }
             },
             schema);
+        draw_declaration_dependencies(info->identity);
         ImGui::TextDisabled("No semantic TypeGraph node or physical analysis is available.");
         ImGui::End();
         return;
@@ -1504,6 +1565,8 @@ void PlannerUi::draw_properties_panel() {
     };
     draw_links("Depends on", analysis_session_.inputs.workspace.types().dependencies_of(selected));
     draw_links("Used by", analysis_session_.inputs.workspace.types().users_of(selected));
+    draw_declaration_dependencies(node.identity);
+    draw_type_users(selected);
     end_panel();
 }
 

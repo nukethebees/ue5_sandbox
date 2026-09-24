@@ -42,6 +42,19 @@ struct DeclarationCapabilities {
 
 enum class LayoutStatus { available, unknown, error };
 
+struct ExternalDependency {
+    std::string cpp_spelling;
+    std::vector<lispb::schema::TypeId> types;
+    std::vector<std::string> registered_names;
+    std::vector<std::size_t> uses;
+    std::vector<lispb::schema::TypeIdentity> declarations;
+    std::vector<std::string> modules;
+    bool semantics_known{};
+};
+
+auto external_dependencies(lispb::schema::TypeGraph const& types)
+    -> std::vector<ExternalDependency>;
+
 auto integer_source_reference(lispb::schema::TypeNode const& node) -> std::string;
 
 auto declaration_capabilities(lispb::schema::TypeNode const& node) -> DeclarationCapabilities;

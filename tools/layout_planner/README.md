@@ -234,6 +234,12 @@ name and Escape cancels.
    Hover an edge label to inspect its source, target, and derived relationship text; click the label
    to navigate to its target.
 
+**External dependencies** in Project / Schema lists external types by C++ spelling, combining
+registration aliases and plain references. It defaults to referenced opaque types; enable the
+checkboxes to include described scalars and types with no LispB references. Filter by consuming
+module, select a type to inspect its semantic/target ABI facts, and follow **LispB references** in
+Properties to its users. Usage includes table, facade, and homogeneous-layout declarations.
+
 The planner supports enum and standalone integer-domain inspection, packed values, records, flat
 standard-library SoAs, and standard-library vector SoAs. Enum-backed packed fields retain links to
 their enum definitions; physical facts are derived separately from optional explicit C++ backing or

@@ -50,6 +50,7 @@ class TypeGraphBuilder {
         declare_types();
         bind_registered_types();
         resolve_definitions();
+        resolve_type_uses();
         validate_nested_soa_types();
         validate_vector_equivalents();
         validate_aggregate_cycles();
@@ -347,6 +348,73 @@ class TypeGraphBuilder {
         auto const found{declarations_by_module_name_.find(std::pair{module_name, name})};
         return found == declarations_by_module_name_.end() ? std::nullopt
                                                            : std::optional{found->second};
+    }
+
+    void resolve_type_uses() {
+        for (auto const& module : manifest_.modules) {
+            std::visit(
+                [&](auto const& schema) {
+                    using T = std::decay_t<decltype(schema)>;
+                    auto const& settings{schema.settings};
+                    auto add = [&](std::optional<TypeIdentity> const& owner,
+                                   std::string const& role,
+                                   codegen::TypeRef const& reference) {
+                        graph_.type_uses_.push_back(
+                            {.module_name = settings.name,
+                             .declaration = owner,
+                             .role = role,
+                             .target = resolve_ref(reference, settings.name)});
+                    };
+                    if constexpr (std::is_same_v<T, codegen::NormalModuleSchema>) {
+                        for (auto const& declaration : schema.declarations) {
+                            TypeIdentity const owner{
+                                .module_name = settings.name,
+                                .namespace_name = settings.namespace_name.value_or(""),
+                                .name = codegen::declaration_name(declaration)};
+                            codegen::visit_type_references(
+                                declaration, [&](auto const& role, auto const& reference) {
+                                    add(owner, role, reference);
+                                });
+                            auto registration = [&](std::string const& role,
+                                                    std::string const& name) {
+                                if (manifest_.types.contains(name)) {
+                                    add(owner, role, codegen::TypeRef{"@" + name});
+                                }
+                            };
+                            if (auto const* facade{
+                                    std::get_if<codegen::FacadeSchema>(&declaration)}) {
+                                for (auto const& name : facade->validation_dependencies) {
+                                    registration("validation dependency", name);
+                                }
+                            }
+                            if (auto const* soa{std::get_if<codegen::SoaSchema>(&declaration)}) {
+                                for (auto const& function : soa->functions) {
+                                    for (auto const& name : function.dependencies) {
+                                        registration("function " + function.name + " dependency",
+                                                     name);
+                                    }
+                                }
+                                for (auto const& function : soa->mutable_view_functions) {
+                                    for (auto const& name : function.dependencies) {
+                                        registration(
+                                            "view function " + function.name + " dependency", name);
+                                    }
+                                }
+                            }
+                        }
+                        for (auto const& allocator : schema.soa_array_allocators) {
+                            add(std::nullopt,
+                                "module allocator " + allocator.prefix,
+                                allocator.allocator);
+                        }
+                    } else if constexpr (std::is_same_v<T, codegen::SettingsModuleSchema>) {
+                        for (auto const& setting : schema.settings_list) {
+                            add(std::nullopt, "setting " + setting.name, setting.value_type);
+                        }
+                    }
+                },
+                module);
+        }
     }
 
     auto resolve_normal_definition(codegen::NormalModuleSchema const& module,
@@ -904,6 +972,10 @@ auto TypeGraph::dependencies_of(TypeId const id) const -> std::span<TypeId const
 
 auto TypeGraph::users_of(TypeId const id) const -> std::span<TypeId const> {
     return type(id).users;
+}
+
+auto TypeGraph::type_uses() const -> std::span<TypeUse const> {
+    return type_uses_;
 }
 
 auto resolve_type_graph(codegen::Manifest const& manifest) -> TypeGraph {

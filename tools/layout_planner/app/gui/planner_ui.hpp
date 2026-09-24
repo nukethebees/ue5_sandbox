@@ -178,6 +178,8 @@ class PlannerUi {
     void refresh_analysis();
     void select_type(std::optional<lispb::schema::TypeId> type);
     void select_declaration(lispb::schema::DeclarationId declaration);
+    void draw_declaration_dependencies(lispb::schema::TypeIdentity const& identity);
+    void draw_type_users(lispb::schema::TypeId type);
     void invalidate_type_editor_state();
     void draw_project_panel();
     void draw_layout_panel();
@@ -226,6 +228,10 @@ class PlannerUi {
 
     std::array<char, 128> variant_name_{};
     std::array<char, 128> schema_filter_{};
+    std::array<char, 128> external_filter_{};
+    std::string external_module_filter_;
+    bool external_show_described_{};
+    bool external_show_unreferenced_{};
     std::array<char, 128> type_picker_filter_{};
     std::array<char, 1024> target_profile_path_{};
     std::array<char, 1024> comparison_target_profile_path_{};

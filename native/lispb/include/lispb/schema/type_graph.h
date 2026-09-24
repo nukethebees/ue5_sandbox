@@ -39,6 +39,13 @@ struct ResolvedTypeRef {
     codegen::CppType cpp_type;
 };
 
+struct TypeUse {
+    std::string module_name;
+    std::optional<TypeIdentity> declaration;
+    std::string role;
+    ResolvedTypeRef target;
+};
+
 struct Enumerator {
     std::string name;
     std::optional<std::string> explicit_value;
@@ -245,11 +252,13 @@ class TypeGraph {
     auto find_registered(std::string const& name) const -> std::optional<TypeId>;
     auto dependencies_of(TypeId id) const -> std::span<TypeId const>;
     auto users_of(TypeId id) const -> std::span<TypeId const>;
+    auto type_uses() const -> std::span<TypeUse const>;
   private:
     friend class TypeGraphBuilder;
     friend auto resolve_type_graph(codegen::Manifest const& manifest) -> TypeGraph;
 
     std::vector<TypeNode> types_;
+    std::vector<TypeUse> type_uses_;
     std::map<TypeIdentity, TypeId> identities_;
     std::map<std::string, TypeId, std::less<>> registered_types_;
 };

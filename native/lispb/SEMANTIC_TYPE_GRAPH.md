@@ -29,6 +29,12 @@ not independently create storage. ABI and layout consumers follow physical type 
 derive sizes; they do not replace an enum or packed value with its storage type in the semantic
 model. `dependencies_of` and `users_of` expose the resulting directed graph.
 
+`type_uses()` additionally records explicit schema references with their owning declaration or
+module and role. This includes declaration-only constructs, function signatures, allocators,
+registered function/validation dependencies, and settings. These uses support dependency
+inventories without making every owner a semantic type. They do not parse embedded C++ text or
+claim that a registration with no LispB references is unused throughout a C++ project.
+
 `lispb-schema` owns parsing-adjacent schema validation and this resolved graph. C++ code generation
 and `native-layout` are peer consumers. Consumer-specific analysis results and editable layout
 experiments may project the graph, but must not duplicate or discard LispB semantics. New logical

@@ -9,6 +9,108 @@ namespace {
 template <typename>
 inline constexpr bool unhandled_declaration_schema{false};
 
+template <typename Declaration, typename Visitor>
+void visit_declaration_type_references(Declaration& declaration, Visitor const& visit) {
+    auto optional = [&](std::string const& role, auto& reference) {
+        if (reference.has_value()) {
+            visit(role, *reference);
+        }
+    };
+    auto relationship = [&](std::string const& role, auto& relation) {
+        if (relation.has_value()) {
+            visit(role + " relationship", relation->target);
+        }
+    };
+    auto function = [&](std::string const& role, auto& method) {
+        visit(role + " return", method.return_type);
+        for (auto& parameter : method.parameters) {
+            visit(role + " parameter " + parameter.name, parameter.type);
+        }
+    };
+    std::visit(
+        [&](auto& schema) {
+            using T = std::decay_t<decltype(schema)>;
+            if constexpr (std::is_same_v<T, EnumSchema>) {
+                optional("underlying type", schema.underlying_type);
+            } else if constexpr (std::is_same_v<T, IntegerScalarSchema>) {
+                optional("C++ type", schema.cpp_type);
+                relationship("value", schema.relationship);
+            } else if constexpr (std::is_same_v<T, LinearQuantizedSchema> ||
+                                 std::is_same_v<T, IntegerVarintSchema> ||
+                                 std::is_same_v<T, OptionalSentinelSchema> ||
+                                 std::is_same_v<T, OptionalPresenceBitSchema>) {
+                visit("source", schema.source);
+            } else if constexpr (std::is_same_v<T, PackedValueSchema>) {
+                visit("storage", schema.storage_type);
+                for (auto& segment : schema.segments) {
+                    if (auto* field{std::get_if<PackedFieldSchema>(&segment)}) {
+                        visit("field " + field->name, field->type);
+                        relationship("field " + field->name, field->relationship);
+                    }
+                }
+            } else if constexpr (std::is_same_v<T, RecordSchema> || std::is_same_v<T, SoaSchema>) {
+                for (auto& member : schema.members) {
+                    visit("member " + member.name, member.type);
+                    relationship("member " + member.name, member.relationship);
+                }
+                if constexpr (std::is_same_v<T, SoaSchema>) {
+                    optional("equivalent type", schema.equivalent_type);
+                    optional("array allocator", schema.array_allocator);
+                    optional("single allocation allocator", schema.single_allocation_allocator);
+                    for (auto& variant : schema.single_allocation_variants) {
+                        visit("allocator variant " + variant.name, variant.allocator);
+                    }
+                    for (auto& method : schema.functions) {
+                        function("function " + method.name, method);
+                        optional("function " + method.name + " trailing return",
+                                 method.trailing_return_type);
+                    }
+                    for (auto& method : schema.mutable_view_functions) {
+                        function("view function " + method.name, method);
+                        optional("view function " + method.name + " trailing return",
+                                 method.trailing_return_type);
+                    }
+                }
+            } else if constexpr (std::is_same_v<T, UnionSchema> ||
+                                 std::is_same_v<T, TaggedUnionSchema>) {
+                if constexpr (std::is_same_v<T, TaggedUnionSchema>) {
+                    visit("discriminant", schema.discriminant);
+                }
+                for (auto& alternative : schema.alternatives) {
+                    visit("alternative " + alternative.name, alternative.type);
+                }
+            } else if constexpr (std::is_same_v<T, VectorSoaSchema>) {
+                visit("value type", schema.value_type);
+                visit("equivalent type", schema.equivalent_type);
+            } else if constexpr (std::is_same_v<T, StaticTableSchema>) {
+                for (auto& column : schema.columns) {
+                    visit("column " + column.name, column.type);
+                }
+                for (auto& group : schema.groups) {
+                    visit("group " + group.name, group.type);
+                }
+            } else if constexpr (std::is_same_v<T, FacadeSchema>) {
+                visit("target", schema.target_type);
+                for (auto& method : schema.methods) {
+                    function("method " + method.name, method);
+                }
+            } else if constexpr (std::is_same_v<T, HomogeneousLayoutSchema>) {
+                for (auto& value : schema.value_types) {
+                    auto const role{"value " + value.suffix};
+                    visit(role, value.type);
+                    optional(role + " equivalent type", value.equivalent_type);
+                    for (std::size_t index{}; index < value.input_types.size(); ++index) {
+                        visit(role + " input " + std::to_string(index), value.input_types[index]);
+                    }
+                }
+            } else {
+                static_assert(std::is_same_v<T, FixedPointSchema> ||
+                              std::is_same_v<T, MiniFloatSchema>);
+            }
+        },
+        declaration);
+}
+
 auto soa_generated_cpp_names(SoaSchema const& schema,
                              NormalModuleSchema const& module,
                              bool const includes_allocator_variants) -> std::vector<std::string> {
@@ -110,6 +212,16 @@ auto declaration_head(DeclarationSchema const& declaration) -> std::string_view 
 
 auto contributes_semantic_type(DeclarationSchema const& declaration) -> bool {
     return declaration_metadata(declaration).semantic_type;
+}
+
+void visit_type_references(DeclarationSchema const& declaration,
+                           std::function<void(std::string const&, TypeRef const&)> const& visit) {
+    visit_declaration_type_references(declaration, visit);
+}
+
+void visit_type_references(DeclarationSchema& declaration,
+                           std::function<void(std::string const&, TypeRef&)> const& visit) {
+    visit_declaration_type_references(declaration, visit);
 }
 
 auto declaration_name(DeclarationSchema const& declaration) -> std::string const& {

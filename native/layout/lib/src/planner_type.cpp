@@ -7,6 +7,53 @@
 #include <variant>
 
 namespace ioj::layout {
+
+auto external_dependencies(lispb::schema::TypeGraph const& types)
+    -> std::vector<ExternalDependency> {
+    std::map<std::string, ExternalDependency> grouped;
+    auto append_unique = [](auto& values, auto const& value) {
+        if (std::ranges::find(values, value) == values.end()) {
+            values.push_back(value);
+        }
+    };
+    for (std::size_t index{}; index < types.types().size(); ++index) {
+        auto const& node{types.types()[index]};
+        auto const* external{std::get_if<lispb::schema::ExternalType>(&node.definition)};
+        if (external == nullptr) {
+            continue;
+        }
+        auto& entry{grouped[codegen::native_spelling(node.cpp_spelling)]};
+        entry.cpp_spelling = codegen::native_spelling(node.cpp_spelling);
+        entry.types.push_back(lispb::schema::TypeId{static_cast<std::uint32_t>(index)});
+        entry.semantics_known =
+            entry.semantics_known || !std::holds_alternative<std::monostate>(external->semantics);
+        for (auto const& name : external->registered_names) {
+            append_unique(entry.registered_names, name);
+        }
+    }
+    for (std::size_t index{}; index < types.type_uses().size(); ++index) {
+        auto const& use{types.type_uses()[index]};
+        auto const& node{types.type(use.target.type)};
+        if (!std::holds_alternative<lispb::schema::ExternalType>(node.definition)) {
+            continue;
+        }
+        auto& entry{grouped.at(codegen::native_spelling(node.cpp_spelling))};
+        entry.uses.push_back(index);
+        append_unique(entry.modules, use.module_name);
+        if (use.declaration.has_value()) {
+            append_unique(entry.declarations, *use.declaration);
+        }
+    }
+    std::vector<ExternalDependency> result;
+    for (auto& [spelling, entry] : grouped) {
+        result.push_back(std::move(entry));
+    }
+    std::ranges::stable_sort(result, [](auto const& left, auto const& right) {
+        return left.declarations.size() > right.declarations.size();
+    });
+    return result;
+}
+
 namespace {
 
 auto has_error(std::vector<Diagnostic> const& diagnostics) -> bool {
