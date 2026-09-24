@@ -12,5 +12,6 @@ Checks:
   - bugprone-dangling-handle
   - bugprone-inaccurate-erase
   - bugprone-undefined-memory-manipulation
+  - bugprone-suspicious-memset-usage
 ExtraArgsBefore:
   - /EHsc
