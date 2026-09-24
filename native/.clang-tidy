@@ -35,5 +35,6 @@ Checks:
   - bugprone-copy-constructor-init
   - bugprone-crtp-constructor-accessibility
   - bugprone-dynamic-static-initializers
+  - bugprone-empty-catch
 ExtraArgsBefore:
   - /EHsc
