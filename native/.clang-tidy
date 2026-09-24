@@ -80,6 +80,7 @@ Checks:
   - bugprone-shared-ptr-array-mismatch
   - bugprone-sizeof-container
   - bugprone-spuriously-wake-up-functions
+  - bugprone-standalone-empty
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
