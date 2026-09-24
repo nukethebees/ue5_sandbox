@@ -10,6 +10,7 @@
 #include <exception>
 #include <fstream>
 #include <map>
+#include <ranges>
 #include <sstream>
 #include <utility>
 
@@ -248,13 +249,12 @@ auto detail::clone_lispb_schema_with_opener(lispb::schema::EditableSchemaDocumen
         for (auto const& source : sources) {
             auto const& name{cloned_paths.at(std::filesystem::weakly_canonical(source.path))};
             auto content{source_text(source)};
-            for (auto include = source.includes.rbegin(); include != source.includes.rend();
-                 ++include) {
-                auto const& range{include->source_range};
+            for (auto const& include : source.includes | std::views::reverse) {
+                auto const& range{include.source_range};
                 content.replace(range.begin_offset,
                                 range.end_offset - range.begin_offset,
                                 "(include " +
-                                    quote(cloned_paths.at(include->target).generic_string()) + ")");
+                                    quote(cloned_paths.at(include.target).generic_string()) + ")");
             }
             write_file(source_directory / name, content);
             if (source.kind == lispb::schema::SchemaSourceKind::module) {

@@ -52,7 +52,8 @@ auto main(int argc, char** argv) -> int {
         }
         for (auto& [key, type] : manifest.types) {
             if (key.starts_with("soa_experiment_")) {
-                type.dependencies = {{type.spelling, "native_soa/leaf_types.h", {}}};
+                type.cpp_type.dependencies = {
+                    {type.cpp_type.spelling, "native_soa/leaf_types.h", {}}};
             }
         }
         manifest.modules = {std::move(native)};

@@ -63,9 +63,10 @@ auto PlannerSelection::identity() const -> std::optional<lispb::schema::TypeIden
     return identity_;
 }
 
-void PlannerSelection::reconcile(lispb::schema::TypeGraph const& types,
-                                 std::optional<lispb::schema::TypeIdentity> selected_identity,
-                                 lispb::schema::EditableSchemaDocument const* const document) {
+void
+    PlannerSelection::reconcile(lispb::schema::TypeGraph const& types,
+                                std::optional<lispb::schema::TypeIdentity> const& selected_identity,
+                                lispb::schema::EditableSchemaDocument const* const document) {
     auto const target_identity{selected_identity.has_value() ? selected_identity
                                : declaration.has_value()     ? identity_
                                                              : std::nullopt};

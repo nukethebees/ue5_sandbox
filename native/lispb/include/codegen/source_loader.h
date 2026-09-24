@@ -32,7 +32,7 @@ struct LoadedTypeRegistry {
     std::map<std::string, RegistrySourceRange, std::less<>> declarations;
 };
 
-auto load_type_registry(std::filesystem::path const& path) -> LoadedTypeRegistry;
+auto load_type_registry(std::filesystem::path const& root) -> LoadedTypeRegistry;
 auto load_sources(LoadedTypeRegistry const& registry,
                   std::span<std::filesystem::path const> module_paths) -> Manifest;
 
