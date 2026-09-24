@@ -62,7 +62,8 @@ auto parse_arguments(int const argc, char const* const* const argv) -> Arguments
         if (!seen.insert(argument).second) {
             throw std::invalid_argument{"Duplicate argument: " + argument};
         }
-        if (++index >= argc || std::string_view{argv[index]}.starts_with("--")) {
+        ++index;
+        if (index >= argc || std::string_view{argv[index]}.starts_with("--")) {
             throw std::invalid_argument{"Missing value after " + argument};
         }
 

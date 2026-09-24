@@ -43,6 +43,7 @@ Checks:
   - bugprone-forward-declaration-namespace
   - bugprone-forwarding-reference-overload
   - bugprone-implicit-widening-of-multiplication-result
+  - bugprone-inc-dec-in-conditions
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
