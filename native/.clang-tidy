@@ -67,6 +67,7 @@ Checks:
   - bugprone-move-forwarding-reference
   - bugprone-multi-level-implicit-pointer-conversion
   - bugprone-multiple-new-in-one-expression
+  - bugprone-multiple-statement-macro
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
