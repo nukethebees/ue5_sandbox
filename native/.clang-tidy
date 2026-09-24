@@ -32,5 +32,6 @@ Checks:
   - bugprone-casting-through-void
   - bugprone-chained-comparison
   - bugprone-compare-pointer-to-member-virtual-function
+  - bugprone-copy-constructor-init
 ExtraArgsBefore:
   - /EHsc
