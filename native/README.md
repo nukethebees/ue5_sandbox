@@ -15,7 +15,7 @@ link the resulting artifacts through thin adapters.
 
 ## Standalone workflow
 
-Standalone presets set `SANDBOX_WITH_UNREAL=OFF`, so they do not require `UE_ROOT`. The default
+Standalone presets set `IOJ_WITH_UNREAL=OFF`, so they do not require `UE_ROOT`. The default
 native configuration uses Windows clang-cl Debug + unity:
 
 ```powershell

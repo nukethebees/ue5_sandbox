@@ -30,7 +30,7 @@ class NativeWorkflowTests(unittest.TestCase):
         native = configure_presets["native"]
         self.assertEqual(native["inherits"], "win-x64-clangcl-debug-unity")
         self.assertFalse(
-            configure_presets["native-common"]["cacheVariables"]["SANDBOX_WITH_UNREAL"]
+            configure_presets["native-common"]["cacheVariables"]["IOJ_WITH_UNREAL"]
         )
 
     def test_native_workflows_build_and_run_native_only_validation(self) -> None:
@@ -97,7 +97,7 @@ class NativeWorkflowTests(unittest.TestCase):
             )
 
             cache = (build_directory / "CMakeCache.txt").read_text(encoding="utf-8")
-            self.assertIn("SANDBOX_WITH_UNREAL:BOOL=OFF", cache)
+            self.assertIn("IOJ_WITH_UNREAL:BOOL=OFF", cache)
 
             dry_run = self.run_cmake(
                 "--build",

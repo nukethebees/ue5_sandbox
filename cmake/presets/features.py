@@ -4,7 +4,7 @@ from matrix import Feature
 ASAN = Feature(
     name="asan",
     display_name="ASan",
-    cache_variables={"SANDBOX_WITH_ASAN": True},
+    cache_variables={"IOJ_ENABLE_ASAN": True},
     excluded_tests=(
         "Ast.RejectsInvalidFunctionQualifierCombinations",
         "Generator.PreservesDestinationWhenAtomicReplacementFails",

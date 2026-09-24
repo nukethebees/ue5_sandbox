@@ -30,7 +30,7 @@ executable naming, engine-tool paths, and package-artifact paths; the Python job
 remains responsible for integration coverage of generated Ninja and CTest files.
 
 `native` is the ordinary clang-cl Debug + unity native-only configuration and inherits
-`SANDBOX_WITH_UNREAL=OFF`. Use `cmake --build --preset native --target <target>` for targeted
+`IOJ_WITH_UNREAL=OFF`. Use `cmake --build --preset native --target <target>` for targeted
 native compilation, `ctest --preset native-simulation-tests` or `native-core-tests` for focused
 tests, and `cmake --workflow --preset native-tests` for the full native suite. The detailed native
 preset matrix remains available for explicit compiler, configuration, unity, and ASan choices.

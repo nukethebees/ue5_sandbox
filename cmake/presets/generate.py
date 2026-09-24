@@ -96,8 +96,8 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             "name": "native-common",
             "hidden": True,
             "cacheVariables": {
-                "SANDBOX_WITH_UNREAL": False,
-                "SANDBOX_WITH_ASAN": False,
+                "IOJ_WITH_UNREAL": False,
+                "IOJ_ENABLE_ASAN": False,
                 "SANDBOX_LAYOUT_PLANNER": False,
                 "SANDBOX_IMAGE_LAB": False,
                 "CMAKE_UNITY_BUILD": False,
@@ -159,7 +159,7 @@ def make_native_document(combinations: tuple[Combination, ...]) -> dict[str, Any
             "inherits": "win-x64-clangcl-debug",
             "binaryDir": "${sourceDir}/out/build/win-x64-clangcl-debug/clang-tidy",
             "cacheVariables": {
-                "SANDBOX_WITH_CLANG_TIDY": True,
+                "IOJ_ENABLE_CLANG_TIDY": True,
                 "CMAKE_DISABLE_PRECOMPILE_HEADERS": True,
                 "CMAKE_CXX_SCAN_FOR_MODULES": False,
                 "CMAKE_EXPORT_COMPILE_COMMANDS": True,
@@ -409,7 +409,7 @@ def make_unreal_document() -> dict[str, Any]:
                     "CMAKE_CXX_FLAGS_RELWITHDEBINFO": "/O2 /Zi /DNDEBUG",
                     "CMAKE_UNITY_BUILD": True,
                     "CMAKE_UNITY_BUILD_BATCH_SIZE": "32",
-                    "SANDBOX_WITH_UNREAL": True,
+                    "IOJ_WITH_UNREAL": True,
                 },
             }
         )

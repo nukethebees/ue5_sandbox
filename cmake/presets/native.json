@@ -15,8 +15,8 @@
       "name": "native-common",
       "hidden": true,
       "cacheVariables": {
-        "SANDBOX_WITH_UNREAL": false,
-        "SANDBOX_WITH_ASAN": false,
+        "IOJ_WITH_UNREAL": false,
+        "IOJ_ENABLE_ASAN": false,
         "SANDBOX_LAYOUT_PLANNER": false,
         "SANDBOX_IMAGE_LAB": false,
         "CMAKE_UNITY_BUILD": false
@@ -69,7 +69,7 @@
         "native-config-debug"
       ],
       "cacheVariables": {
-        "SANDBOX_WITH_ASAN": true
+        "IOJ_ENABLE_ASAN": true
       }
     },
     {
@@ -81,7 +81,7 @@
         "native-config-debug"
       ],
       "cacheVariables": {
-        "SANDBOX_WITH_ASAN": true,
+        "IOJ_ENABLE_ASAN": true,
         "CMAKE_UNITY_BUILD": true,
         "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
       },
@@ -120,7 +120,7 @@
         "native-config-release"
       ],
       "cacheVariables": {
-        "SANDBOX_WITH_ASAN": true
+        "IOJ_ENABLE_ASAN": true
       }
     },
     {
@@ -132,7 +132,7 @@
         "native-config-release"
       ],
       "cacheVariables": {
-        "SANDBOX_WITH_ASAN": true,
+        "IOJ_ENABLE_ASAN": true,
         "CMAKE_UNITY_BUILD": true,
         "CMAKE_UNITY_BUILD_BATCH_SIZE": "32"
       },
@@ -207,7 +207,7 @@
       "inherits": "win-x64-clangcl-debug",
       "binaryDir": "${sourceDir}/out/build/win-x64-clangcl-debug/clang-tidy",
       "cacheVariables": {
-        "SANDBOX_WITH_CLANG_TIDY": true,
+        "IOJ_ENABLE_CLANG_TIDY": true,
         "CMAKE_DISABLE_PRECOMPILE_HEADERS": true,
         "CMAKE_CXX_SCAN_FOR_MODULES": false,
         "CMAKE_EXPORT_COMPILE_COMMANDS": true

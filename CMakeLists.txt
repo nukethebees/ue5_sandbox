@@ -34,8 +34,6 @@ if(IOJ_ENABLE_ASAN)
   sandbox_enable_address_sanitizer()
 endif()
 
-add_subdirectory(cmake/clang_tidy)
-
 sandbox_add_dotnet_host_tool(
   benchmark-tools-host
   IOJ_BENCHMARK_TOOLS
