@@ -89,6 +89,7 @@ Checks:
   - bugprone-suspicious-include
   - bugprone-suspicious-memory-comparison
   - bugprone-suspicious-missing-comma
+  - bugprone-suspicious-realloc-usage
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
