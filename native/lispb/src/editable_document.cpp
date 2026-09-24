@@ -5629,6 +5629,8 @@ auto EditableSchemaDocument::execute(SchemaEditCommand const& command)
                 auto const previous_manifest{manifest_};
                 auto const previous_declarations{declarations_};
                 auto const previous_tombstones{source_tombstones_};
+                // Snapshot for undo before declarations_ is modified.
+                // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
                 auto const original_info{*declaration_it};
                 auto const target{types_.find(original_info.identity)};
                 auto const owned_types{types_.types_for_declaration(original_info.identity)};

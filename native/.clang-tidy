@@ -8,5 +8,6 @@ Checks:
   - performance-move-const-arg
   - bugprone-argument-comment
   - bugprone-use-after-move
+  - performance-unnecessary-copy-initialization
 ExtraArgsBefore:
   - /EHsc

@@ -199,6 +199,8 @@ TEST(NativeSoa, LayoutCursorMatchesChainedOffsets) {
     };
     single_allocation_layout::ColumnLayoutStart const start{};
     single_allocation_layout::ColumnLayout<std::int32_t> const first{start};
+    // Construction chains a new column after first.
+    // NOLINTNEXTLINE(performance-unnecessary-copy-initialization)
     single_allocation_layout::ColumnLayout<std::int32_t> const second{first};
     single_allocation_layout::ColumnLayout<Overaligned> const third{second};
 

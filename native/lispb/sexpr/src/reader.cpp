@@ -28,7 +28,7 @@ auto read_form(std::span<Token const> const tokens, std::size_t& index) -> Form 
         fail({}, SourceSpan{}, "expected an expression");
     }
 
-    auto const token{tokens[index++]};
+    auto const& token{tokens[index++]};
     if (token.kind == TokenKind::right_parenthesis || token.kind == TokenKind::end) {
         fail(token.span.path, token.span, "expected an expression");
     }

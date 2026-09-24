@@ -798,8 +798,7 @@ TEST(TaggedUnionAnalyzer, PreservesUnknownAndOverflowedTargetFactsDuringComparis
                                        fixture.type,
                                        AbiProfile::host_common(),
                                        std::numeric_limits<std::uint64_t>::max())};
-    auto const overflow_second{overflow_first};
-    comparison = Analyzer::compare_tagged_union_targets(overflow_first, overflow_second);
+    comparison = Analyzer::compare_tagged_union_targets(overflow_first, overflow_first);
     ASSERT_EQ(comparison.alternatives.size(), 2);
     EXPECT_FALSE(comparison.total_storage_delta.has_value());
     EXPECT_FALSE(comparison.total_payload_delta.has_value());
