@@ -11,11 +11,12 @@
 #include <algorithm>
 #include <filesystem>
 #include <limits>
+#include <string_view>
 
 namespace ioj::layout {
 namespace {
 
-TEST(PlannerType, ClassifiesVisibleAndPhysicalDeclarations) {
+TEST(PlannerType, ClassifiesInspectableAndPhysicalDeclarations) {
     auto const project{std::filesystem::path{SANDBOX_SOURCE_DIR} / "lispb/project.lispb"};
     auto loaded{load_lispb_schema(project, "sandbox-code")};
     ASSERT_TRUE(loaded.loaded);
@@ -30,16 +31,123 @@ TEST(PlannerType, ClassifiesVisibleAndPhysicalDeclarations) {
 
     auto const enum_capabilities{declaration_capabilities(types.type(*enumeration))};
     EXPECT_EQ(enum_capabilities.kind, DeclarationKind::enumeration);
-    EXPECT_TRUE(enum_capabilities.visible);
-    EXPECT_TRUE(enum_capabilities.has_physical_layout);
-    EXPECT_FALSE(enum_capabilities.supports_variants);
+    EXPECT_TRUE(enum_capabilities.inspectable);
+    EXPECT_TRUE(enum_capabilities.editable);
+    EXPECT_TRUE(enum_capabilities.physical_analysis_available);
+    EXPECT_FALSE(enum_capabilities.supports_variant_overrides);
     auto const packed_capabilities{declaration_capabilities(types.type(*packed))};
     EXPECT_EQ(packed_capabilities.kind, DeclarationKind::packed);
-    EXPECT_TRUE(packed_capabilities.supports_variants);
+    EXPECT_TRUE(packed_capabilities.supports_variant_overrides);
     auto const soa_capabilities{declaration_capabilities(types.type(*soa))};
     EXPECT_EQ(soa_capabilities.kind, DeclarationKind::soa);
-    EXPECT_TRUE(soa_capabilities.visible);
-    EXPECT_TRUE(soa_capabilities.supports_variants);
+    EXPECT_TRUE(soa_capabilities.inspectable);
+    EXPECT_TRUE(soa_capabilities.editable);
+    EXPECT_TRUE(soa_capabilities.physical_analysis_available);
+    EXPECT_TRUE(soa_capabilities.supports_variant_overrides);
+}
+
+auto backend_soa_graph() -> lispb::schema::TypeGraph {
+    codegen::Manifest manifest{};
+    manifest.schema_version = codegen::manifest_schema_version;
+    for (auto const backend :
+         {codegen::SoaBackend::unreal, codegen::SoaBackend::standard_library}) {
+        codegen::NormalModuleSchema module{};
+        module.settings.name = backend == codegen::SoaBackend::unreal ? "unreal" : "stdlib";
+        module.settings.header = module.settings.name + ".h";
+        module.settings.source = module.settings.name + ".cpp";
+        module.soa_backend = backend;
+        codegen::SoaSchema soa{};
+        soa.name = "Columns";
+        codegen::SoaMemberSchema member{};
+        member.name = "values";
+        member.kind = codegen::SoaMemberKind::array;
+        member.type.name = "std::uint32_t";
+        soa.members.push_back(std::move(member));
+        module.declarations.push_back(std::move(soa));
+        codegen::VectorSoaSchema vector{};
+        vector.name = "VectorColumns";
+        vector.value_type.name = "std::uint32_t";
+        vector.equivalent_type.name = "Vector";
+        vector.components = {"x", "y"};
+        vector.equivalent_members = {"x", "y"};
+        module.declarations.push_back(std::move(vector));
+        manifest.modules.emplace_back(std::move(module));
+    }
+    return lispb::schema::resolve_type_graph(manifest);
+}
+
+TEST(PlannerType, SoaBackendAndSourceKindControlAnalysisAndAuthoring) {
+    auto const types{backend_soa_graph()};
+    for (auto const* module : {"unreal", "stdlib"}) {
+        auto const physical{std::string_view{module} == "stdlib"};
+        for (auto const* name : {"Columns", "VectorColumns"}) {
+            auto const vector{std::string_view{name} == "VectorColumns"};
+            auto const type{types.find_declared(module, name)};
+            ASSERT_TRUE(type.has_value());
+            auto const capabilities{declaration_capabilities(types.type(*type))};
+            EXPECT_TRUE(capabilities.inspectable);
+            EXPECT_EQ(capabilities.kind,
+                      vector ? DeclarationKind::vector_soa : DeclarationKind::soa);
+            EXPECT_EQ(capabilities.editable, physical && !vector);
+            EXPECT_EQ(capabilities.physical_analysis_available, physical);
+            EXPECT_EQ(capabilities.supports_variant_overrides, physical);
+
+            PlannerAnalysisSession session{types};
+            EXPECT_TRUE(
+                session.inputs.selection.select_type(session.inputs.workspace.types(), *type));
+            EXPECT_TRUE(session.refresh(nullptr));
+            EXPECT_EQ(session.results().active_soa.has_value(), physical);
+        }
+    }
+}
+
+TEST(PlannerType, SupportedKindsKeepInspectionAndAnalysisCapabilities) {
+    using namespace lispb::schema;
+    auto const definitions{std::vector<std::pair<TypeDefinition, DeclarationKind>>{
+        {EnumType{}, DeclarationKind::enumeration},
+        {IntegerScalarType{}, DeclarationKind::integer_scalar},
+        {LinearQuantizedType{}, DeclarationKind::linear_quantized},
+        {IntegerVarintType{}, DeclarationKind::integer_varint},
+        {FixedPointType{}, DeclarationKind::fixed_point},
+        {MiniFloatType{}, DeclarationKind::mini_float},
+        {OptionalSentinelType{}, DeclarationKind::optional_sentinel},
+        {OptionalPresenceBitType{}, DeclarationKind::optional_presence_bit},
+        {PackedType{}, DeclarationKind::packed},
+        {RecordType{}, DeclarationKind::record},
+        {UnionType{}, DeclarationKind::union_},
+        {TaggedUnionType{}, DeclarationKind::tagged_union},
+    }};
+    for (auto const& [definition, kind] : definitions) {
+        auto node{TypeNode{}};
+        node.definition = definition;
+        auto const capabilities{declaration_capabilities(node)};
+        EXPECT_EQ(capabilities.kind, kind);
+        EXPECT_TRUE(capabilities.inspectable);
+        EXPECT_TRUE(capabilities.editable);
+        EXPECT_TRUE(capabilities.physical_analysis_available);
+        EXPECT_STRNE(declaration_kind_label(kind), "unknown");
+    }
+}
+
+TEST(PlannerType, SwitchingToUnrealSoaClearsPhysicalResults) {
+    auto const types{backend_soa_graph()};
+    auto const supported{*types.find_declared("stdlib", "Columns")};
+    auto const unsupported{*types.find_declared("unreal", "Columns")};
+    PlannerAnalysisSession session{types};
+    EXPECT_TRUE(session.inputs.selection.select_type(session.inputs.workspace.types(), supported));
+    EXPECT_TRUE(session.refresh(nullptr));
+    ASSERT_TRUE(session.results().active_soa.has_value());
+
+    EXPECT_TRUE(
+        session.inputs.selection.select_type(session.inputs.workspace.types(), unsupported));
+    EXPECT_TRUE(session.refresh(nullptr));
+    EXPECT_FALSE(session.results().active_soa.has_value());
+    EXPECT_FALSE(session.results().baseline_soa.has_value());
+    EXPECT_FALSE(session.results().soa_target_comparison.has_value());
+
+    EXPECT_TRUE(session.inputs.selection.select_type(session.inputs.workspace.types(), supported));
+    EXPECT_TRUE(session.refresh(nullptr));
+    EXPECT_TRUE(session.results().active_soa.has_value());
 }
 
 TEST(PlannerType, DistinguishesUnknownTargetFactsFromErrors) {

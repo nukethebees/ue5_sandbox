@@ -26,18 +26,25 @@ enum class DeclarationKind {
     union_,
     tagged_union,
     soa,
+    vector_soa,
+    homogeneous_layout,
+    static_table,
+    facade,
 };
 
 struct DeclarationCapabilities {
     DeclarationKind kind{DeclarationKind::external};
-    bool visible{};
-    bool has_physical_layout{};
-    bool supports_variants{};
+    bool inspectable{};
+    bool editable{};
+    bool physical_analysis_available{};
+    bool supports_variant_overrides{};
 };
 
 enum class LayoutStatus { available, unknown, error };
 
 auto declaration_capabilities(lispb::schema::TypeNode const& node) -> DeclarationCapabilities;
+auto declaration_capabilities(codegen::DeclarationSchema const& declaration)
+    -> DeclarationCapabilities;
 auto declaration_kind_label(DeclarationKind kind) -> char const*;
 auto declaration_status(lispb::schema::TypeGraph const& types,
                         lispb::schema::TypeId type,

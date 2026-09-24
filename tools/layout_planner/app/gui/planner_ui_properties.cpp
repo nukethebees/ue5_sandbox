@@ -1,5 +1,7 @@
 #include "planner_ui_properties_common.hpp"
 
+#include <type_traits>
+
 namespace ioj::layout_planner {
 
 auto PlannerUi::draw_type_picker(std::string_view const module_name, TypeIdentity const& owner)
@@ -102,7 +104,85 @@ void PlannerUi::draw_properties_panel() {
     ImGui::Begin("Properties", &properties_view_open_, ImGuiWindowFlags_HorizontalScrollbar);
     persist_view_visibility(was_open, properties_view_open_);
     if (!analysis_session_.inputs.selection.type.has_value()) {
-        ImGui::TextDisabled("No selection.");
+        auto const declaration{analysis_session_.inputs.selection.declaration};
+        auto const* info{document_.has_value() && declaration.has_value()
+                             ? document_->declaration(*declaration)
+                             : nullptr};
+        if (info == nullptr) {
+            ImGui::TextDisabled("No selection.");
+            ImGui::End();
+            return;
+        }
+        auto const& module{std::get<codegen::NormalModuleSchema>(
+            document_->manifest().modules[info->module_index])};
+        auto const& schema{module.declarations[info->declaration_index]};
+        ImGui::Text("%s", info->identity.name.c_str());
+        ImGui::TextDisabled("%s", info->identity.module_name.c_str());
+        ImGui::TextDisabled("%s — view only",
+                            std::string{codegen::declaration_head(schema)}.c_str());
+        if (info->source.has_value() &&
+            info->source->source_file_index < document_->source_files().size()) {
+            auto const& path{document_->source_files()[info->source->source_file_index].path};
+            ImGui::TextWrapped("Source: %s:%llu:%llu",
+                               path.string().c_str(),
+                               static_cast<unsigned long long>(info->source->line),
+                               static_cast<unsigned long long>(info->source->column));
+            if (ImGui::Button("View source")) {
+                selected_source_view_path_ = path.lexically_normal();
+                source_view_open_ = true;
+                focus_source_view_ = true;
+            }
+        }
+        std::visit(
+            [&](auto const& value) {
+                using Type = std::decay_t<decltype(value)>;
+                if constexpr (std::is_same_v<Type, codegen::HomogeneousLayoutSchema>) {
+                    if (detail::section("Homogeneous layout declaration")) {
+                        for (auto const& component : value.components) {
+                            ImGui::BulletText("Component: %s", component.c_str());
+                        }
+                        for (auto const& input : value.input_members) {
+                            ImGui::BulletText("Input member: %s", input.c_str());
+                        }
+                        for (auto const& type : value.value_types) {
+                            ImGui::BulletText(
+                                "Value type: %s%s", type.type.name.c_str(), type.suffix.c_str());
+                        }
+                    }
+                } else if constexpr (std::is_same_v<Type, codegen::StaticTableSchema>) {
+                    if (detail::section("Static table declaration")) {
+                        for (auto const& row : value.rows) {
+                            ImGui::BulletText("Row: %s", row.name.c_str());
+                        }
+                        for (auto const& column : value.columns) {
+                            ImGui::BulletText(
+                                "Column: %s (%s)", column.name.c_str(), column.type.name.c_str());
+                        }
+                        for (auto const& group : value.groups) {
+                            ImGui::BulletText(
+                                "Group: %s (%s)", group.name.c_str(), group.type.name.c_str());
+                            for (auto const& column : group.columns) {
+                                ImGui::TextDisabled("    %s", column.c_str());
+                            }
+                        }
+                    }
+                } else if constexpr (std::is_same_v<Type, codegen::FacadeSchema>) {
+                    if (detail::section("Facade declaration")) {
+                        ImGui::Text("Target type: %s", value.target_type.name.c_str());
+                        ImGui::Text("Target member: %s", value.target_member_name.c_str());
+                        for (auto const& method : value.methods) {
+                            ImGui::BulletText("Method: %s → %s",
+                                              method.name.c_str(),
+                                              method.return_type.name.c_str());
+                        }
+                        for (auto const& dependency : value.validation_dependencies) {
+                            ImGui::BulletText("Validation dependency: %s", dependency.c_str());
+                        }
+                    }
+                }
+            },
+            schema);
+        ImGui::TextDisabled("No semantic TypeGraph node or physical analysis is available.");
         ImGui::End();
         return;
     }
@@ -123,13 +203,15 @@ void PlannerUi::draw_properties_panel() {
 
     auto const selected{*analysis_session_.inputs.selection.type};
     auto const& node{analysis_session_.inputs.workspace.types().type(selected)};
+    auto const capabilities{declaration_capabilities(node)};
     ImGui::Text("%s", node.identity.name.c_str());
     ImGui::TextDisabled("%s", node.identity.module_name.c_str());
     ImGui::TextDisabled("%s", node.cpp_spelling.c_str());
     auto const selected_declaration{document_.has_value()
                                         ? document_->find_declaration(node.identity)
                                         : std::optional<DeclarationId>{}};
-    if (selected_declaration.has_value() && ImGui::Button("Duplicate declaration")) {
+    if (capabilities.editable && selected_declaration.has_value() &&
+        ImGui::Button("Duplicate declaration")) {
         if (duplicate_selected_declaration(node)) {
             end_panel();
             return;
@@ -151,7 +233,7 @@ void PlannerUi::draw_properties_panel() {
                             document_->union_schema(*selected_declaration) != nullptr ||
                             document_->tagged_union_schema(*selected_declaration) != nullptr ||
                             document_->soa_schema(*selected_declaration) != nullptr};
-        if (declaration_info != nullptr && editable) {
+        if (declaration_info != nullptr && editable && capabilities.editable) {
             auto const& modules{document_->manifest().modules};
             auto const& source_module{modules[declaration_info->module_index]};
             auto const& source_settings{std::visit(
@@ -204,7 +286,7 @@ void PlannerUi::draw_properties_panel() {
             }
         }
     }
-    auto const rename_supported{selected_declaration.has_value() &&
+    auto const rename_supported{capabilities.editable && selected_declaration.has_value() &&
                                 (!std::holds_alternative<SoaType>(node.definition) ||
                                  document_->soa_schema(*selected_declaration) != nullptr)};
     if (rename_supported) {
@@ -242,7 +324,7 @@ void PlannerUi::draw_properties_panel() {
             }
         }
     }
-    if (selected_declaration.has_value()) {
+    if (capabilities.editable && selected_declaration.has_value()) {
         auto const* declaration_info{document_->declaration(*selected_declaration)};
         if (declaration_info != nullptr) {
             auto const user_count{
@@ -284,7 +366,45 @@ void PlannerUi::draw_properties_panel() {
         ImGui::EndPopup();
     }
 
-    if (auto const* enumeration{std::get_if<EnumType>(&node.definition)}) {
+    if (auto const* soa{std::get_if<SoaType>(&node.definition)};
+        soa != nullptr && !capabilities.physical_analysis_available) {
+        if (detail::section("Semantic SoA")) {
+            ImGui::Text("Backend: %s",
+                        soa->backend == codegen::SoaBackend::unreal ? "Unreal"
+                                                                    : "standard library");
+            ImGui::Text("Source kind: %s",
+                        soa->source_kind == SoaSourceKind::vector ? "vector-soa" : "struct");
+            if (soa->equivalent_type.has_value()) {
+                ImGui::Text("Equivalent type: %s", soa->equivalent_type->cpp_type.spelling.c_str());
+            }
+            if (soa->related_storage_name.has_value()) {
+                ImGui::Text("Related storage: %s", soa->related_storage_name->c_str());
+            }
+            for (auto const& component : soa->vector_components) {
+                ImGui::BulletText("Component: %s", component.c_str());
+            }
+            for (auto const& column : soa->columns) {
+                auto const* kind{column.kind == codegen::SoaMemberKind::nested ? "nested SoA"
+                                                                               : "array"};
+                ImGui::BulletText("%s [%s]: %s",
+                                  column.name.c_str(),
+                                  kind,
+                                  column.semantic_type.cpp_type.spelling.c_str());
+                if (column.nested_type.has_value()) {
+                    auto const& nested{
+                        analysis_session_.inputs.workspace.types().type(*column.nested_type)};
+                    ImGui::SameLine();
+                    ImGui::PushID(column.name.c_str());
+                    if (ImGui::SmallButton(nested.cpp_spelling.c_str())) {
+                        select_type(*column.nested_type);
+                    }
+                    ImGui::PopID();
+                }
+            }
+            ImGui::TextWrapped(
+                "Physical layout analysis is not available for the Unreal SoA backend.");
+        }
+    } else if (auto const* enumeration{std::get_if<EnumType>(&node.definition)}) {
         if (detail::section("Enum")) {
             if (enumeration->underlying_type.has_value()) {
                 auto const& underlying{analysis_session_.inputs.workspace.types().type(
@@ -1120,7 +1240,7 @@ void PlannerUi::draw_properties_panel() {
                             LayoutWorkspace::baseline_variant_id};
         if (!editable) {
             if (detail::section("Baseline")) {
-                if (declaration_capabilities(node).supports_variants) {
+                if (capabilities.supports_variant_overrides) {
                     ImGui::TextDisabled("Planning overrides are read only on the baseline.");
                     ImGui::TextWrapped(
                         "Edit the LispB declaration above, or create an experiment for "
@@ -1536,6 +1656,14 @@ void PlannerUi::draw_variants_panel() {
     auto const was_open{variants_view_open_};
     ImGui::Begin("Variants", &variants_view_open_, ImGuiWindowFlags_HorizontalScrollbar);
     persist_view_visibility(was_open, variants_view_open_);
+    auto const selected_type{analysis_session_.inputs.selection.type};
+    if (!selected_type.has_value() ||
+        !declaration_capabilities(analysis_session_.inputs.workspace.types().type(*selected_type))
+             .physical_analysis_available) {
+        ImGui::TextWrapped("Physical variants are unavailable for this selection.");
+        ImGui::End();
+        return;
+    }
     auto const baseline_before_actions{analysis_session_.inputs.workspace.active_variant_id() ==
                                        LayoutWorkspace::baseline_variant_id};
     if (ImGui::BeginTable("variant-actions",

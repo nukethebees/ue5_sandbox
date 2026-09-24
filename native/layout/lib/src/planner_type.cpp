@@ -30,50 +30,98 @@ auto declaration_capabilities(lispb::schema::TypeNode const& node) -> Declaratio
         [](auto const& definition) -> DeclarationCapabilities {
             using Type = std::decay_t<decltype(definition)>;
             if constexpr (std::is_same_v<Type, lispb::schema::ExternalType>) {
-                return {.kind = DeclarationKind::external};
+                return {.kind = DeclarationKind::external, .inspectable = true};
             } else if constexpr (std::is_same_v<Type, lispb::schema::EnumType>) {
                 return {.kind = DeclarationKind::enumeration,
-                        .visible = true,
-                        .has_physical_layout = true};
+                        .inspectable = true,
+                        .editable = true,
+                        .physical_analysis_available = true};
             } else if constexpr (std::is_same_v<Type, lispb::schema::IntegerScalarType>) {
-                return {.kind = DeclarationKind::integer_scalar, .visible = true};
+                return {.kind = DeclarationKind::integer_scalar,
+                        .inspectable = true,
+                        .editable = true,
+                        .physical_analysis_available = true};
             } else if constexpr (std::is_same_v<Type, lispb::schema::LinearQuantizedType>) {
-                return {.kind = DeclarationKind::linear_quantized, .visible = true};
+                return {.kind = DeclarationKind::linear_quantized,
+                        .inspectable = true,
+                        .editable = true,
+                        .physical_analysis_available = true};
             } else if constexpr (std::is_same_v<Type, lispb::schema::IntegerVarintType>) {
-                return {.kind = DeclarationKind::integer_varint, .visible = true};
+                return {.kind = DeclarationKind::integer_varint,
+                        .inspectable = true,
+                        .editable = true,
+                        .physical_analysis_available = true};
             } else if constexpr (std::is_same_v<Type, lispb::schema::FixedPointType>) {
-                return {.kind = DeclarationKind::fixed_point, .visible = true};
+                return {.kind = DeclarationKind::fixed_point,
+                        .inspectable = true,
+                        .editable = true,
+                        .physical_analysis_available = true};
             } else if constexpr (std::is_same_v<Type, lispb::schema::MiniFloatType>) {
-                return {.kind = DeclarationKind::mini_float, .visible = true};
+                return {.kind = DeclarationKind::mini_float,
+                        .inspectable = true,
+                        .editable = true,
+                        .physical_analysis_available = true};
             } else if constexpr (std::is_same_v<Type, lispb::schema::OptionalSentinelType>) {
-                return {.kind = DeclarationKind::optional_sentinel, .visible = true};
+                return {.kind = DeclarationKind::optional_sentinel,
+                        .inspectable = true,
+                        .editable = true,
+                        .physical_analysis_available = true};
             } else if constexpr (std::is_same_v<Type, lispb::schema::OptionalPresenceBitType>) {
-                return {.kind = DeclarationKind::optional_presence_bit, .visible = true};
+                return {.kind = DeclarationKind::optional_presence_bit,
+                        .inspectable = true,
+                        .editable = true,
+                        .physical_analysis_available = true};
             } else if constexpr (std::is_same_v<Type, lispb::schema::PackedType>) {
                 return {.kind = DeclarationKind::packed,
-                        .visible = true,
-                        .has_physical_layout = true,
-                        .supports_variants = true};
+                        .inspectable = true,
+                        .editable = true,
+                        .physical_analysis_available = true,
+                        .supports_variant_overrides = true};
             } else if constexpr (std::is_same_v<Type, lispb::schema::RecordType>) {
-                return {
-                    .kind = DeclarationKind::record, .visible = true, .has_physical_layout = true};
+                return {.kind = DeclarationKind::record,
+                        .inspectable = true,
+                        .editable = true,
+                        .physical_analysis_available = true};
             } else if constexpr (std::is_same_v<Type, lispb::schema::UnionType>) {
-                return {
-                    .kind = DeclarationKind::union_, .visible = true, .has_physical_layout = true};
+                return {.kind = DeclarationKind::union_,
+                        .inspectable = true,
+                        .editable = true,
+                        .physical_analysis_available = true};
             } else if constexpr (std::is_same_v<Type, lispb::schema::TaggedUnionType>) {
                 return {.kind = DeclarationKind::tagged_union,
-                        .visible = true,
-                        .has_physical_layout = true};
+                        .inspectable = true,
+                        .editable = true,
+                        .physical_analysis_available = true};
             } else {
                 auto const supported{definition.backend == codegen::SoaBackend::standard_library};
-                return {.kind = DeclarationKind::soa,
-                        .visible = supported,
-                        .has_physical_layout = supported,
-                        .supports_variants = supported};
+                auto const vector{definition.source_kind == lispb::schema::SoaSourceKind::vector};
+                return {.kind = vector ? DeclarationKind::vector_soa : DeclarationKind::soa,
+                        .inspectable = true,
+                        .editable = supported && !vector,
+                        .physical_analysis_available = supported,
+                        .supports_variant_overrides = supported};
             }
         },
         node.definition)};
     return result;
+}
+
+auto declaration_capabilities(codegen::DeclarationSchema const& declaration)
+    -> DeclarationCapabilities {
+    return std::visit(
+        [](auto const& schema) -> DeclarationCapabilities {
+            using Type = std::decay_t<decltype(schema)>;
+            if constexpr (std::is_same_v<Type, codegen::HomogeneousLayoutSchema>) {
+                return {.kind = DeclarationKind::homogeneous_layout, .inspectable = true};
+            } else if constexpr (std::is_same_v<Type, codegen::StaticTableSchema>) {
+                return {.kind = DeclarationKind::static_table, .inspectable = true};
+            } else if constexpr (std::is_same_v<Type, codegen::FacadeSchema>) {
+                return {.kind = DeclarationKind::facade, .inspectable = true};
+            } else {
+                return {};
+            }
+        },
+        declaration);
 }
 
 auto declaration_kind_label(DeclarationKind const kind) -> char const* {
@@ -106,6 +154,14 @@ auto declaration_kind_label(DeclarationKind const kind) -> char const* {
             return "tagged union";
         case DeclarationKind::soa:
             return "SoA";
+        case DeclarationKind::vector_soa:
+            return "vector-soa";
+        case DeclarationKind::homogeneous_layout:
+            return "layout";
+        case DeclarationKind::static_table:
+            return "table";
+        case DeclarationKind::facade:
+            return "facade";
     }
     return "unknown";
 }

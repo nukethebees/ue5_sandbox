@@ -177,6 +177,7 @@ class PlannerUi {
     void remember_recent_project(std::filesystem::path const& path);
     void refresh_analysis();
     void select_type(std::optional<lispb::schema::TypeId> type);
+    void select_declaration(lispb::schema::DeclarationId declaration);
     void invalidate_type_editor_state();
     void draw_project_panel();
     void draw_layout_panel();

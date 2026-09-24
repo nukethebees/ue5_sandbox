@@ -11,6 +11,15 @@ void PlannerUi::draw_comparison_panel() {
     persist_view_visibility(was_open, comparison_view_open_);
     ImGui::TextDisabled("ABI profile: %s", analysis_session_.primary_abi().name().c_str());
 
+    auto const selected_type{analysis_session_.inputs.selection.type};
+    if (!selected_type.has_value() ||
+        !declaration_capabilities(analysis_session_.inputs.workspace.types().type(*selected_type))
+             .physical_analysis_available) {
+        ImGui::TextWrapped("Physical comparison is unavailable for this selection.");
+        ImGui::End();
+        return;
+    }
+
     if (analysis_session_.inputs.selection.type.has_value()) {
         auto const& selected_node{analysis_session_.inputs.workspace.types().type(
             *analysis_session_.inputs.selection.type)};

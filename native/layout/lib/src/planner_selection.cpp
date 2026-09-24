@@ -9,10 +9,11 @@ auto PlannerSelection::select_type(lispb::schema::TypeGraph const& types,
     if (next.has_value() && (!next->valid() || next->value >= types.types().size())) {
         next.reset();
     }
-    if (type == next) {
+    if (type == next && !declaration.has_value()) {
         return false;
     }
     type = next;
+    declaration.reset();
     identity_ = next.has_value()
                   ? std::optional<lispb::schema::TypeIdentity>{types.type(*next).identity}
                   : std::nullopt;
@@ -22,8 +23,44 @@ auto PlannerSelection::select_type(lispb::schema::TypeGraph const& types,
     return true;
 }
 
+auto PlannerSelection::select_declaration(lispb::schema::EditableSchemaDocument const& document,
+                                          lispb::schema::DeclarationId const next) -> bool {
+    auto const* info{document.declaration(next)};
+    if (info == nullptr || document.types().find(info->identity).has_value()) {
+        return false;
+    }
+    if (declaration == next && !type.has_value()) {
+        return false;
+    }
+
+    type.reset();
+    declaration = next;
+    identity_.reset();
+    kind_.reset();
+    clear_type_local_state();
+    return true;
+}
+
 void PlannerSelection::reconcile(lispb::schema::TypeGraph const& types,
-                                 std::optional<lispb::schema::TypeIdentity> selected_identity) {
+                                 std::optional<lispb::schema::TypeIdentity> selected_identity,
+                                 lispb::schema::EditableSchemaDocument const* const document) {
+    if (declaration.has_value() && !selected_identity.has_value()) {
+        auto const* info{document != nullptr ? document->declaration(*declaration) : nullptr};
+        if (info != nullptr) {
+            if (auto const semantic_type{types.find(info->identity)}; semantic_type.has_value()) {
+                select_type(types, *semantic_type);
+                return;
+            }
+        } else {
+            declaration.reset();
+            clear_type_local_state();
+        }
+        type.reset();
+        identity_.reset();
+        kind_.reset();
+        return;
+    }
+    declaration.reset();
     auto const next{selected_identity.has_value() ? types.find(*selected_identity)
                                                   : std::optional<lispb::schema::TypeId>{}};
     auto const next_kind{next.has_value()
