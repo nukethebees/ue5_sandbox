@@ -70,6 +70,7 @@ Checks:
   - bugprone-multiple-statement-macro
   - bugprone-no-escape
   - bugprone-non-zero-enum-to-bool-conversion
+  - bugprone-nondeterministic-pointer-iteration-order
 ExtraArgsBefore:
   - /EHsc
 CheckOptions:
