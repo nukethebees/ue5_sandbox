@@ -961,13 +961,10 @@ class TypeGraphBuilder {
                         if (definition.relationship.has_value()) {
                             add_dependency(node, definition.relationship->target.type);
                         }
-                    } else if constexpr (std::is_same_v<Definition, LinearQuantizedType>) {
-                        add_dependency(node, definition.source.type);
-                    } else if constexpr (std::is_same_v<Definition, IntegerVarintType>) {
-                        add_dependency(node, definition.source.type);
-                    } else if constexpr (std::is_same_v<Definition, OptionalSentinelType>) {
-                        add_dependency(node, definition.source.type);
-                    } else if constexpr (std::is_same_v<Definition, OptionalPresenceBitType>) {
+                    } else if constexpr (std::is_same_v<Definition, LinearQuantizedType> ||
+                                         std::is_same_v<Definition, IntegerVarintType> ||
+                                         std::is_same_v<Definition, OptionalSentinelType> ||
+                                         std::is_same_v<Definition, OptionalPresenceBitType>) {
                         add_dependency(node, definition.source.type);
                     } else if constexpr (std::is_same_v<Definition, PackedType>) {
                         add_dependency(node, definition.storage_type.type);

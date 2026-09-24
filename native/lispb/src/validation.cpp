@@ -951,7 +951,7 @@ void validate_packed_value(PackedValueSchema const& value,
             field->name + "_value_mask",
             field->name + "_mask",
         };
-        if (quantized != nullptr) {
+        if (quantized != nullptr || mini != nullptr) {
             names.push_back(field->name + "_encoded_type");
             names.push_back(field->name + "_encoded");
             names.push_back(field->name + "_maximum_encoded");
@@ -967,14 +967,6 @@ void validate_packed_value(PackedValueSchema const& value,
             if (value.mutable_value) {
                 names.push_back("set_" + field->name + "_raw");
                 names.push_back("try_set_" + field->name + "_raw");
-            }
-        } else if (mini != nullptr) {
-            names.push_back(field->name + "_encoded_type");
-            names.push_back(field->name + "_encoded");
-            names.push_back(field->name + "_maximum_encoded");
-            if (value.mutable_value) {
-                names.push_back("set_" + field->name + "_encoded");
-                names.push_back("try_set_" + field->name + "_encoded");
             }
         } else {
             names.push_back(field->name + "_type");

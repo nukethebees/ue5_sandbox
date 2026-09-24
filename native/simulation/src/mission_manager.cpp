@@ -288,12 +288,8 @@ void MissionManager::mission_tick() {
         case MissionState::Running: {
             break;
         }
-        case MissionState::Succeeded: {
-            return;
-        }
-        case MissionState::Failed: {
-            return;
-        }
+        case MissionState::Succeeded:
+        case MissionState::Failed:
         case MissionState::Disabled: {
             return;
         }
@@ -354,9 +350,7 @@ void MissionManager::set_mission_state(MissionState const new_state,
     mission_fail_reason = fail_reason;
 
     switch (mission_state) {
-        case MissionState::NotStarted: {
-            break;
-        }
+        case MissionState::NotStarted:
         case MissionState::Running: {
             break;
         }

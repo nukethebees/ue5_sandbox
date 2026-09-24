@@ -829,11 +829,8 @@ auto packed_value_text(PackedValueSchema const& source_schema,
                       field_type.spelling + " const value) noexcept -> bool {\n";
             if (field_type.spelling == "bool") {
                 output += "        auto const encoded{static_cast<storage_type>(value)};\n";
-            } else if (field.kind == PackedFieldKind::linear_quantized) {
-                output += "        if (value > " + field.name + "_maximum_encoded) {\n";
-                output += "            return false;\n        }\n";
-                output += "        auto const encoded{static_cast<storage_type>(value)};\n";
-            } else if (field.kind == PackedFieldKind::mini_float) {
+            } else if (field.kind == PackedFieldKind::linear_quantized ||
+                       field.kind == PackedFieldKind::mini_float) {
                 output += "        if (value > " + field.name + "_maximum_encoded) {\n";
                 output += "            return false;\n        }\n";
                 output += "        auto const encoded{static_cast<storage_type>(value)};\n";

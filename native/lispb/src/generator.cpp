@@ -322,19 +322,7 @@ auto publish(Compilation const& compilation, PublicationOptions const& options) 
                 }
             },
             artifact)};
-        auto const equal{std::visit(
-            [&](auto const& value) {
-                using Value = std::decay_t<decltype(value)>;
-                if (!current) {
-                    return false;
-                }
-                if constexpr (std::is_same_v<Value, TextArtifact>) {
-                    return *current == content;
-                } else {
-                    return *current == content;
-                }
-            },
-            artifact)};
+        auto const equal{current && *current == content};
         if (equal) {
             std::cout << "Unchanged " << relative.generic_string() << '\n';
             continue;
